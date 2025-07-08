@@ -65,7 +65,6 @@ namespace spp::asts {
     struct GenericParameterTypeInlineConstraintsAst;
 
     struct IdentifierAst;
-    struct GenericIdentifierAst;
 
     // Inner Scopes
     template <typename T>
@@ -190,6 +189,10 @@ namespace spp::asts {
     struct TypeUnaryExpressionOperatorAst;
     struct TypeUnaryExpressionOperatorBorrowAst;
     struct TypeUnaryExpressionOperatorNamespaceAst;
+
+    struct TypeParenthesisedExpressionAst;
+    struct TypeArrayShorthandAst;
+    struct TypeTupleShorthandAst;
 
     struct UseStatementAst;
     struct TypeStatementAst;

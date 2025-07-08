@@ -234,13 +234,13 @@ public:
     auto parse_postfix_type_expression() -> std::unique_ptr<asts::TypeAst>;
     auto parse_postfix_type_expression_op() -> std::unique_ptr<asts::TypePostfixExpressionOperatorAst>;
     auto parse_postfix_type_expression_op_optional() -> std::unique_ptr<asts::TypePostfixExpressionOperatorOptionalAst>;
-    auto parse_postfix_type_expression_op_nested() -> std::unique_ptr<asts::TypePostfixExpressionOperatorNestedAst>;
+    auto parse_postfix_type_expression_op_nested() -> std::unique_ptr<asts::TypePostfixExpressionOperatorNestedTypeAst>;
 
     auto parse_type_parenthesised_expression() -> std::unique_ptr<asts::TypeAst>;
 
     auto parse_type_expression_simple() -> std::unique_ptr<asts::TypeAst>;
-    auto parse_unary_type_expression_simple() -> std::unique_ptr<asts::TypeUnaryExpressionAst>;
-    auto parse_postfix_type_expression_simple() -> std::unique_ptr<asts::TypePostfixExpressionAst>;
+    auto parse_postfix_type_expression_simple() -> std::unique_ptr<asts::TypeAst>;
+    auto parse_unary_type_expression_simple() -> std::unique_ptr<asts::TypeAst>;
 
     auto parse_type_identifier() -> std::unique_ptr<asts::TypeIdentifierAst>;
 
@@ -254,7 +254,6 @@ public:
     auto parse_numeric_identifier() -> std::unique_ptr<asts::IdentifierAst>;
     auto parse_self_identifier() -> std::unique_ptr<asts::IdentifierAst>;
     auto parse_upper_identifier() -> std::unique_ptr<asts::IdentifierAst>;
-    auto parse_generic_identifier() -> std::unique_ptr<asts::GenericIdentifierAst>;
 
     auto parse_literal() -> std::unique_ptr<asts::LiteralAst>;
     auto parse_literal_boolean() -> std::unique_ptr<asts::BooleanLiteralAst>;
@@ -283,6 +282,18 @@ public:
     auto parse_cmp_object_initializer() -> std::unique_ptr<asts::ObjectInitializerAst>;
     auto parse_cmp_object_initializer_argument_group() -> std::unique_ptr<asts::ObjectInitializerArgumentGroupAst>;
     auto parse_cmp_object_initializer_argument_keyword() -> std::unique_ptr<asts::ObjectInitializerArgumentKeywordAst>;
+
+    auto parse_lexeme_character() -> std::unique_ptr<asts::TokenAst>;
+    auto parse_lexeme_digit() -> std::unique_ptr<asts::TokenAst>;
+    auto parse_lexeme_character_or_digit() -> std::unique_ptr<asts::TokenAst>;
+    auto parse_lexeme_character_or_digit_or_underscore() -> std::unique_ptr<asts::TokenAst>;
+    auto parse_lexeme_bin_integer() -> std::unique_ptr<asts::TokenAst>;
+    auto parse_lexeme_oct_integer() -> std::unique_ptr<asts::TokenAst>;
+    auto parse_lexeme_dec_integer() -> std::unique_ptr<asts::TokenAst>;
+    auto parse_lexeme_hex_integer() -> std::unique_ptr<asts::TokenAst>;
+    auto parse_lexeme_double_quote_string() -> std::unique_ptr<asts::TokenAst>;
+    auto parse_lexeme_identifier() -> std::unique_ptr<asts::TokenAst>;
+    auto parse_lexeme_upper_identifier() -> std::unique_ptr<asts::TokenAst>;
 
     auto parse_nothing() -> std::unique_ptr<asts::TokenAst>;
     auto parse_newline() -> std::unique_ptr<asts::TokenAst>;

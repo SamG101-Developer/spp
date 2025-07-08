@@ -6,27 +6,32 @@
 
 
 /**
- * The TypeIdentifierAst is a type expression that is represented by a single type name, and is anologus to the
+ * The TypeIdentifierAst is a type expression that is represented by a single type name, and is analogous to the
  * IdentifierAst of the ExpressionAst.
  */
 struct spp::asts::TypeIdentifierAst final : TypeAst {
     SPP_AST_KEY_FUNCTIONS;
 
     /**
-     * The name for the type. This is the name of the type, such as @c Str or @c Vec[BigInt].
+     * The name for the type. This is the name of the type, such as @c Str or @code Vec[BigInt]@endcode.
      */
-    std::unique_ptr<GenericIdentifierAst> name;
+    icu::UnicodeString name;
+
+    /**
+     * The generic arguments for the type. This is a list of generic arguments that are used to instantiate the type.
+     */
+    std::unique_ptr<GenericArgumentGroupAst> generic_args;
 
     /**
      * Construct the TypeIdentifier with the arguments matching the members.
-     * @param name The name for the type.
+     * @param[in] name The name for the type.
+     * @param[in] generic_args The generic arguments for the type.
      */
     explicit TypeIdentifierAst(
-        decltype(name) &&name);
+        decltype(name) &&name,
+        decltype(generic_args) &&generic_args);
 
-    static auto from_identifier(IdentifierAst const& identifier) -> std::unique_ptr<TypeIdentifierAst>;
-
-    static auto from_generic_identifier(GenericIdentifierAst const& identifier) -> std::unique_ptr<TypeIdentifierAst>;
+    static auto from_identifier(IdentifierAst const &identifier) -> std::unique_ptr<TypeIdentifierAst>;
 };
 
 
