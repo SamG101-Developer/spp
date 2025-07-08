@@ -6,7 +6,7 @@
 #include <spp/asts/literal_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
-constexpr auto FLOAT_TYPE_MAP = std::map<std::string, std::unique_ptr<spp::asts::TypeAst>>{
+constexpr auto FLOAT_TYPE_MAP = std::map<icu::UnicodeString, std::unique_ptr<spp::asts::TypeAst>>{
 };
 
 
@@ -60,7 +60,7 @@ struct spp::asts::FloatLiteralAst final : LiteralAst {
         decltype(int_val) &&int_val,
         decltype(tok_dot) &&tok_dot,
         decltype(frac_val) &&frac_val,
-        decltype(type) &&type);
+        icu::UnicodeString &&type);
 };
 
 

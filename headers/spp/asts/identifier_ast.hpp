@@ -9,20 +9,25 @@
 struct spp::asts::IdentifierAst final : PrimaryExpressionAst {
     SPP_AST_KEY_FUNCTIONS;
 
-    std::string val;
+    /**
+     * The internal value of the identifier. This is the name of the identifier, such as @c variable or @c my_function.
+     */
+    icu::UnicodeString val;
 
+    /**
+     * Construct the IdentifierAst with the arguments matching the members.
+     * @param val The internal value of the identifier.
+     */
     explicit IdentifierAst(
-        std::string &&val);
+        decltype(val) &&val);
 
     auto operator==(IdentifierAst const &that) const -> bool;
 
     auto operator+(IdentifierAst const &that) const -> IdentifierAst;
 
-    auto operator+(std::string const &that) const -> IdentifierAst;
+    auto operator+(icu::UnicodeString const &that) const -> IdentifierAst;
 
     static auto from_type(TypeAst const &val) -> IdentifierAst;
-
-    static auto from_generic_identifier(GenericIdentifierAst const &val) -> IdentifierAst;
 
     SPP_ATTR_NODISCARD auto to_function_identifier() const -> IdentifierAst;
 };

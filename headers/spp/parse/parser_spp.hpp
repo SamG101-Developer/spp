@@ -1,6 +1,7 @@
 #ifndef PARSER_SPP_HPP
 #define PARSER_SPP_HPP
 
+#include <cstdint>
 #include <functional>
 
 #include <spp/asts/_fwd.hpp>
@@ -256,14 +257,14 @@ public:
     auto parse_upper_identifier() -> std::unique_ptr<asts::IdentifierAst>;
 
     auto parse_literal() -> std::unique_ptr<asts::LiteralAst>;
-    auto parse_literal_boolean() -> std::unique_ptr<asts::BooleanLiteralAst>;
+    auto parse_literal_string() -> std::unique_ptr<asts::StringLiteralAst>;
     auto parse_literal_float() -> std::unique_ptr<asts::FloatLiteralAst>;
     auto parse_literal_integer() -> std::unique_ptr<asts::IntegerLiteralAst>;
-    auto parse_literal_string() -> std::unique_ptr<asts::StringLiteralAst>;
-    auto parse_literal_tuple() -> std::unique_ptr<asts::TupleLiteralAst>;
-    auto parse_literal_array() -> std::unique_ptr<asts::ArrayLiteralAst>;
+    auto parse_literal_boolean() -> std::unique_ptr<asts::BooleanLiteralAst>;
+    auto parse_literal_tuple(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::TupleLiteralAst>;
+    auto parse_literal_array(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::ArrayLiteralAst>;
 
-    auto parse_literal_foat_b10() -> std::unique_ptr<asts::FloatLiteralAst>;
+    auto parse_literal_float_b10() -> std::unique_ptr<asts::FloatLiteralAst>;
     auto parse_literal_integer_b10() -> std::unique_ptr<asts::IntegerLiteralAst>;
     auto parse_literal_integer_b02() -> std::unique_ptr<asts::IntegerLiteralAst>;
     auto parse_literal_integer_b08() -> std::unique_ptr<asts::IntegerLiteralAst>;
@@ -272,16 +273,20 @@ public:
     auto parse_float_suffix_type() -> std::unique_ptr<asts::TokenAst>;
     auto parse_integer_suffix_type() -> std::unique_ptr<asts::TokenAst>;
 
-    auto parse_literal_tuple_1_element() -> std::unique_ptr<asts::TupleLiteralAst>;
-    auto parse_literal_tuple_n_elements() -> std::unique_ptr<asts::TupleLiteralAst>;
+    auto parse_literal_tuple_1_element(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::TupleLiteralAst>;
+    auto parse_literal_tuple_n_elements(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::TupleLiteralAst>;
 
-    auto parse_literal_array_0_elements() -> std::unique_ptr<asts::ArrayLiteralAst>;
-    auto parse_literal_array_n_elements() -> std::unique_ptr<asts::ArrayLiteralAst>;
+    auto parse_literal_array_0_elements() -> std::unique_ptr<asts::ArrayLiteral0Elements>;
+    auto parse_literal_array_n_elements(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::ArrayLiteralNElements>;
 
     auto parse_cmp_value() -> std::unique_ptr<asts::ExpressionAst>;
     auto parse_cmp_object_initializer() -> std::unique_ptr<asts::ObjectInitializerAst>;
     auto parse_cmp_object_initializer_argument_group() -> std::unique_ptr<asts::ObjectInitializerArgumentGroupAst>;
+    auto parse_cmp_object_initializer_argument() -> std::unique_ptr<asts::ObjectInitializerArgumentAst>;
     auto parse_cmp_object_initializer_argument_keyword() -> std::unique_ptr<asts::ObjectInitializerArgumentKeywordAst>;
+
+    auto parse_specific_characters(icu::UnicodeString &&s) -> std::unique_ptr<asts::TokenAst>;
+    auto parse_specific_character(char16_t c) -> std::unique_ptr<asts::TokenAst>;
 
     auto parse_lexeme_character() -> std::unique_ptr<asts::TokenAst>;
     auto parse_lexeme_digit() -> std::unique_ptr<asts::TokenAst>;
@@ -374,6 +379,9 @@ public:
     auto parse_keyword_caps() -> std::unique_ptr<asts::TokenAst>;
 
     auto parse_token_raw(lex::RawTokenType tok, lex::SppTokenType mapped_tok) -> std::unique_ptr<asts::TokenAst>;
+
+private:
+    auto m_store_error(std::size_t pos, std::string &&err_str) -> bool;
 };
 
 

@@ -91,8 +91,8 @@ constexpr bool is_unique_ptr_v = is_unique_ptr<T>::value;
 }
 
 
-#define WRAP_METHOD(_, _, m) parser_method_t<alt_t>([this]() { \
-    return std::unique_ptr<alt_t>(m().release());              \
+#define WRAP_METHOD(_, _, m) parser_method_t<alt_t>([=] mutable { \
+    return std::unique_ptr<alt_t>(m().release());           \
 }),
 
 

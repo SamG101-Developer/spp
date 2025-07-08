@@ -85,6 +85,11 @@ enum class spp::lex::RawTokenType : std::uint8_t {
 
 
 enum class spp::lex::SppTokenType : std::uint8_t {
+    LX_CHARACTER,
+    LX_DIGIT,
+    LX_STRING,
+    LX_IDENTIFIER,
+
     KW_CLS,
     KW_FUN,
     KW_COR,
