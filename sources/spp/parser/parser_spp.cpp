@@ -127,6 +127,8 @@
 #include <spp/asts/type_binary_expression_temp_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/type_postfix_expression_ast.hpp>
+#include <spp/asts/type_postfix_expression_operator_ast.hpp>
+#include <spp/asts/type_postfix_expression_operator_nested_type_ast.hpp>
 #include <spp/asts/type_unary_expression_ast.hpp>
 #include <spp/asts/type_unary_expression_operator_borrow_ast.hpp>
 #include <spp/asts/type_unary_expression_operator_namespace_ast.hpp>

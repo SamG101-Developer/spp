@@ -184,7 +184,7 @@ namespace spp::asts {
     struct TypeIdentifierAst;
 
     struct TypePostfixExpressionOperatorAst;
-    struct TypePostfixExpressionOperatorNestedAst;
+    struct TypePostfixExpressionOperatorNestedTypeAst;
     struct TypePostfixExpressionOperatorOptionalAst;
 
     struct TypeUnaryExpressionOperatorAst;
@@ -194,7 +194,6 @@ namespace spp::asts {
     struct UseStatementAst;
     struct TypeStatementAst;
 
-    struct SupPrototypeAst;
     struct SupPrototypeFunctionsAst;
     struct SupPrototypeExtensionAst;
     struct SupImplementationAst;

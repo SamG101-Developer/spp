@@ -16,16 +16,16 @@ struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : TypeUnaryExpre
     /**
      * The @c :: operator token that represents the namespace operator.
      */
-    std::unique_ptr<TokenAst> tok_op;
+    std::unique_ptr<TokenAst> tok_sep;
 
     /**
      * Construct the TypeUnaryExpressionOperatorNamespaceAst with the arguments matching the members.
      * @param[in] ns The namespace token that represents the namespace in which the type is defined.
-     * @param[in] tok_op The @c :: operator token that represents the namespace operator.
+     * @param[in] tok_sep The @c :: operator token that represents the namespace operator.
      */
     explicit TypeUnaryExpressionOperatorNamespaceAst(
         decltype(ns) &&ns,
-        decltype(tok_op) &&tok_op);
+        decltype(tok_sep) &&tok_sep);
 };
 
 
