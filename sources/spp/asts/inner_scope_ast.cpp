@@ -1,0 +1,41 @@
+#include <algorithm>
+
+#include <spp/asts/inner_scope_ast.hpp>
+#include <spp/asts/token_ast.hpp>
+
+
+template <typename T>
+spp::asts::InnerScopeAst<T>::InnerScopeAst(
+    decltype(tok_l) &&tok_l,
+    decltype(members) &&members,
+    decltype(tok_r) &&tok_r):
+    tok_l(std::move(tok_l)),
+    members(std::move(members)),
+    tok_r(std::move(tok_r)) {
+}
+
+
+template <typename T>
+auto spp::asts::InnerScopeAst<T>::pos_end() -> std::size_t {
+    return tok_r->pos_end();
+}
+
+
+template <typename T>
+spp::asts::InnerScopeAst<T>::operator icu::UnicodeString() const {
+    SPP_STRING_START;
+    SPP_STRING_APPEND(tok_l);
+    SPP_STRING_EXTEND(members);
+    SPP_STRING_APPEND(tok_r);
+    SPP_STRING_END;
+}
+
+
+template <typename T>
+auto spp::asts::InnerScopeAst<T>::print(meta::AstPrinter &printer) const -> icu::UnicodeString {
+    SPP_PRINT_START;
+    SPP_PRINT_APPEND(tok_l);
+    SPP_PRINT_EXTEND(members);
+    SPP_PRINT_APPEND(tok_r);
+    SPP_PRINT_END;
+}

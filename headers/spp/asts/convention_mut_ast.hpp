@@ -1,0 +1,38 @@
+#ifndef CONVENTION_MUT_AST_HPP
+#define CONVENTION_MUT_AST_HPP
+
+#include <spp/asts/convention_ast.hpp>
+#include <spp/asts/_fwd.hpp>
+
+
+/**
+ * The ConventionMutAst represents a convention for mutable borrows. If the borrow is for an argument, this symbol must
+ * be mutably defined.
+ */
+struct spp::asts::ConventionMutAst final : ConventionAst {
+    SPP_AST_KEY_FUNCTIONS;
+
+    /**
+     * The token that represents the @c & borrow marker. This is used to indicate that a borrow of some convention is
+     * being made.
+     */
+    std::unique_ptr<TokenAst> tok_borrow;
+
+    /**
+     * The token that represents the @c mut keyword. This is used to indicate that the borrow is mutable, and that the
+     * value can be modified.
+     */
+    std::unique_ptr<TokenAst> tok_mut;
+
+    /**
+     * Construct the ConventionMutAst with the arguments matching the members.
+     * @param tok_borrow The token that represents the @c & borrow marker.
+     * @param tok_mut The token that represents the @c mut keyword.
+     */
+    ConventionMutAst(
+        decltype(tok_borrow) &&tok_borrow,
+        decltype(tok_mut) &&tok_mut);
+};
+
+
+#endif //CONVENTION_MUT_AST_HPP
