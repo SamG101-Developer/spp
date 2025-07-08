@@ -7,7 +7,9 @@
 #include <spp/parse/parser_base.hpp>
 
 
-namespace spp::parse { class ParserSpp; }
+namespace spp::parse {
+    class ParserSpp;
+}
 
 
 class spp::parse::ParserSpp final : ParserBase {
@@ -140,33 +142,32 @@ public:
     auto parse_case_expression_pattern_nested_for_destructure_array() -> std::unique_ptr<asts::CasePatternVariantAst>;
     auto parse_case_expression_pattern_nested_for_destructure_object() -> std::unique_ptr<asts::CasePatternVariantAst>;
     auto parse_case_expression_pattern_nested_for_destructure_tuple() -> std::unique_ptr<asts::CasePatternVariantAst>;
-    auto parse_case_expression_pattern_nested_for_attribute_binding() -> std::unique_ptr<asts::CasePatternVariantAst>;
-    auto parse_case_expression_pattern_guard() -> std::unique_ptr<asts::CasePatternGuardAst>;
+    auto parse_case_expression_pattern_nested_for_destructure_attribute_binding() -> std::unique_ptr<asts::CasePatternVariantAst>;
+
+    auto parse_pattern_guard() -> std::unique_ptr<asts::PatternGuardAst>;
     auto parse_boolean_comparison_op() -> std::unique_ptr<asts::TokenAst>;
 
     auto parse_loop_expression() -> std::unique_ptr<asts::LoopExpressionAst>;
     auto parse_loop_condition() -> std::unique_ptr<asts::LoopConditionAst>;
-    auto parse_loop_conditional_boolean() -> std::unique_ptr<asts::LoopConditionBooleanAst>;
-    auto parse_loop_conditional_iteration() -> std::unique_ptr<asts::LoopConditionIterationAst>;
+    auto parse_loop_condition_boolean() -> std::unique_ptr<asts::LoopConditionBooleanAst>;
+    auto parse_loop_condition_iterable() -> std::unique_ptr<asts::LoopConditionIterableAst>;
     auto parse_loop_else_statement() -> std::unique_ptr<asts::LoopElseStatementAst>;
 
-    auto parse_iter_expression() -> std::unique_ptr<asts::IterExpressionAst>;
-    auto parse_iter_expression_pattern_matcher() -> std::unique_ptr<asts::IterExpressionAst>;
-    auto parse_iter_expression_pattern_variant_variable() -> std::unique_ptr<asts::IterPatternVariableAst>;
-    auto parse_iter_expression_pattern_variant_no_value() -> std::unique_ptr<asts::IterPatternNoValueAst>;
-    auto parse_iter_expression_pattern_variant_exhausted() -> std::unique_ptr<asts::IterPatternExhaustedAst>;
-    auto parse_iter_expression_pattern_variant_exception() -> std::unique_ptr<asts::IterPatternExceptionAst>;
+    auto parse_iter_of_expression() -> std::unique_ptr<asts::IterExpressionAst>;
+    auto parse_iter_of_expression_branch() -> std::unique_ptr<asts::IterExpressionBranchAst>;
+    auto parse_iter_expression_pattern_variant() -> std::unique_ptr<asts::IterPatternVariantAst>;
+    auto parse_iter_expression_pattern_variant_variable() -> std::unique_ptr<asts::IterPatternVariantVariableAst>;
+    auto parse_iter_expression_pattern_variant_no_value() -> std::unique_ptr<asts::IterPatternVariantNoValueAst>;
+    auto parse_iter_expression_pattern_variant_exhausted() -> std::unique_ptr<asts::IterPatternVariantExhaustedAst>;
+    auto parse_iter_expression_pattern_variant_exception() -> std::unique_ptr<asts::IterPatternVariantExceptionAst>;
 
     auto parse_gen_expression() -> std::unique_ptr<asts::GenExpressionAst>;
     auto parse_gen_expression_with_expression() -> std::unique_ptr<asts::GenExpressionAst>;
     auto parse_gen_expression_without_expression() -> std::unique_ptr<asts::GenExpressionAst>;
     auto parse_gen_unroll_expression() -> std::unique_ptr<asts::GenWithExpressionAst>;
 
-    template <typename T>
-    auto parse_inner_scope_expression() -> std::unique_ptr<asts::InnerScopeExpressionAst<T>>;
-
-    template <typename T>
-    auto parse_inner_scope() -> std::unique_ptr<asts::InnerScopeAst<T>>;
+    auto parse_inner_scope_expression(auto &&parser) -> std::unique_ptr<asts::InnerScopeExpressionAst<decltype(parser())>>;
+    auto parse_inner_scope(auto &&parser) -> std::unique_ptr<asts::InnerScopeAst<decltype(parser())>>;
 
     auto parse_statement() -> std::unique_ptr<asts::StatementAst>;
     auto parse_assignment_statement() -> std::unique_ptr<asts::AssignmentStatementAst>;

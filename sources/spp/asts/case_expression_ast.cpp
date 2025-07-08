@@ -1,15 +1,16 @@
 #include <algorithm>
 
 #include <spp/asts/case_expression_ast.hpp>
+#include <spp/asts/case_expression_branch_ast.hpp>
+#include <spp/asts/inner_scope_expression_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 
 
 spp::asts::CaseExpressionAst::CaseExpressionAst(
-        decltype(tok_case) &&tok_case,
+    decltype(tok_case) &&tok_case,
     decltype(cond) &&cond,
     decltype(tok_of) &&tok_of,
     decltype(branches) &&branches):
-    Ast(pos),
     tok_case(std::move(tok_case)),
     cond(std::move(cond)),
     tok_of(std::move(tok_of)),
@@ -27,7 +28,7 @@ spp::asts::CaseExpressionAst::operator icu::UnicodeString() const {
     SPP_STRING_APPEND(tok_case);
     SPP_STRING_APPEND(cond);
     SPP_STRING_APPEND(tok_of);
-    SPP_STRING_EXTEND(branches);
+    SPP_STRING_APPEND(branches);
     SPP_STRING_END;
 }
 
@@ -37,6 +38,6 @@ auto spp::asts::CaseExpressionAst::print(meta::AstPrinter &printer) const -> icu
     SPP_PRINT_APPEND(tok_case);
     SPP_PRINT_APPEND(cond);
     SPP_PRINT_APPEND(tok_of);
-    SPP_PRINT_EXTEND(branches);
+    SPP_PRINT_APPEND(branches);
     SPP_PRINT_END;
 }

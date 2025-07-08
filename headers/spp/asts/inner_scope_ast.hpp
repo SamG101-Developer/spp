@@ -27,7 +27,7 @@ struct spp::asts::InnerScopeAst : Ast {
      * structure where different types of ASTs can be included in the same inner scope, as long as they derive from
      * a common base class.
      */
-    std::vector<std::unique_ptr<T>> members;
+    std::vector<T> members;
 
     /**
      * The @c } token that represents the end of the inner scope. This is used to indicate the end of the scope after

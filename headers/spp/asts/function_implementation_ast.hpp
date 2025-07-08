@@ -12,7 +12,7 @@ namespace spp::parse { class ParserSpp; }
  * function and contains the statements that make up the function's implementation. Semantically equivalent to a basic
  * InnerScopeAst.
  */
-struct spp::asts::FunctionImplementationAst final : InnerScopeAst<FunctionMemberAst> {
+struct spp::asts::FunctionImplementationAst final : InnerScopeAst<std::unique_ptr<FunctionMemberAst>> {
     friend class parse::ParserSpp;
     using InnerScopeAst::InnerScopeAst;
 

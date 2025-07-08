@@ -28,20 +28,20 @@ struct spp::asts::IterExpressionAst final : PrimaryExpressionAst {
      * The body of the iteration expression. This is a inner scope of @c iter block branches that each contain a
      * pattern, like @c case branches do.
      */
-    std::unique_ptr<InnerScopeExpressionAst<IterExpressionBranchAst>> body;
+    std::vector<std::unique_ptr<IterExpressionBranchAst>> branches;
 
     /**
      * Construct the IterExpressionAst with the arguments matching the members.
      * @param[in] tok_iter The @c iter token that indicates the start of an iteration expression.
      * @param[in] cond The generated value being inspected.
      * @param[in] tok_of The @c of keyword that indicated pattern matching.
-     * @param[in] body The body of the iteration expression.
+     * @param[in] branches The body of the iteration expression.
      */
     IterExpressionAst(
         decltype(tok_iter) &&tok_iter,
         decltype(cond) &&cond,
         decltype(tok_of) &&tok_of,
-        decltype(body) &&body);
+        decltype(branches) &&branches);
 };
 
 

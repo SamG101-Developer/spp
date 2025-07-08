@@ -7,7 +7,7 @@
 namespace spp::parse { class ParserSpp; }
 
 
-struct spp::asts::SupImplementationAst final : InnerScopeAst<SupMemberAst> {
+struct spp::asts::SupImplementationAst final : InnerScopeAst<std::unique_ptr<SupMemberAst>> {
     friend class parse::ParserSpp;
     using InnerScopeAst::InnerScopeAst;
 

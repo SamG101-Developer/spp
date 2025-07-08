@@ -72,14 +72,14 @@ namespace spp::asts {
     template <typename T>
     struct InnerScopeExpressionAst;
 
-    struct CasePatternGuardAst;
+    struct PatternGuardAst;
     struct CasePatternVariantAst;
-    struct CasePatternVariantAttributeBindingAst;
     struct CasePatternVariantDestructureArrayAst;
     struct CasePatternVariantDestructureObjectAst;
     struct CasePatternVariantDestructureTupleAst;
     struct CasePatternVariantDestructureSkipSingleArgumentAst;
     struct CasePatternVariantDestructureSkipMultipleArgumentsAst;
+    struct CasePatternVariantDestructureAttributeBindingAst;
     struct CasePatternVariantSingleIdentifierAst;
     struct CasePatternVariantElseAst;
     struct CasePatternVariantElseCaseAst;
@@ -95,7 +95,7 @@ namespace spp::asts {
     struct LoopExpressionAst;
     struct LoopConditionAst;
     struct LoopConditionBooleanAst;
-    struct LoopConditionIterationAst;
+    struct LoopConditionIterableAst;
     struct LoopControlFlowStatementAst;
     struct LoopElseStatementAst;
 
@@ -119,11 +119,11 @@ namespace spp::asts {
     struct IsExpressionTempAst;
     struct IterExpressionAst;
     struct IterExpressionBranchAst;
-    struct IterPatternAst;
-    struct IterPatternExceptionAst;
-    struct IterPatternExhaustedAst;
-    struct IterPatternNoValueAst;
-    struct IterPatternVariableAst;
+    struct IterPatternVariantAst;
+    struct IterPatternVariantExceptionAst;
+    struct IterPatternVariantExhaustedAst;
+    struct IterPatternVariantNoValueAst;
+    struct IterPatternVariantVariableAst;
 
     struct ClosureExpressionAst;
     struct ClosureExpressionCaptureItemAst;

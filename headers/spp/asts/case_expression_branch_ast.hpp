@@ -24,13 +24,13 @@ struct spp::asts::CaseExpressionBranchAst final : Ast {
      * The optional guard for the case branch. This is a boolean expression that must evaluate to true for destructuring
      * patterns only.
      */
-    std::unique_ptr<CasePatternGuardAst> guard;
+    std::unique_ptr<PatternGuardAst> guard;
 
     /**
      * The body of the case branch. This is an inner scope that contains the statements that will be executed if the
      * branch matches.
      */
-    std::unique_ptr<InnerScopeExpressionAst<StatementAst>> body;
+    std::unique_ptr<InnerScopeExpressionAst<std::unique_ptr<StatementAst>>> body;
 
     /**
      * Construct the CaseExpressionBranchAst with the arguments matching the members.

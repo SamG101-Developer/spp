@@ -35,7 +35,7 @@ struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
      * The inner scope of the case branches. This is where the branches of the case expression are defined, and allows
      * symbols to be created inside the @c case expression scope, but available to all branches, if need be.
      */
-    std::unique_ptr<InnerScopeAst<CaseExpressionBranchAst>> branches;
+    std::vector<std::unique_ptr<CaseExpressionBranchAst>> branches;
 
     /**
      * Construct the CaseExpressionAst with the arguments matching the members.
@@ -49,6 +49,12 @@ struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
         decltype(cond) &&cond,
         decltype(tok_of) &&tok_of,
         decltype(branches) &&branches);
+
+    static auto new_non_pattern_match(
+        decltype(tok_case) &&tok_case,
+        decltype(cond) &&cond,
+        std::unique_ptr<InnerScopeExpressionAst<std::unique_ptr<StatementAst>>> &&first,
+        decltype(branches) &&branches) -> std::unique_ptr<CaseExpressionAst>;
 };
 
 

@@ -10,7 +10,7 @@
  * associated namespace. It is internal mapped to a TypeStatementAst: @code use std::Str@endcode is equivalent to
  * @code type Str = std::Str@endcode.
  */
-struct spp::asts::UseStatementAst final : Ast {
+struct spp::asts::UseStatementAst final : StatementAst {
     SPP_AST_KEY_FUNCTIONS;
 
     /**
