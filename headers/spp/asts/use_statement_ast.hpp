@@ -29,6 +29,17 @@ struct spp::asts::UseStatementAst final : StatementAst {
      */
     std::unique_ptr<TypeAst> old_type;
 
+    /**
+     * Construct the UseStatementAst with the arguments matching the members.
+     * @param annotations The list of annotations that are applied to this use statement.
+     * @param tok_use The @c use token that starts this statement.
+     * @param old_type The old (fully qualified) type that this use statement is reducing.
+     */
+    UseStatementAst(
+        decltype(annotations) &&annotations,
+        decltype(tok_use) &&tok_use,
+        decltype(old_type) &&old_type);
+
 private:
     /**
      * The @c m_generated flag indicates whether this use statement has been generated yet. This is required, because

@@ -24,6 +24,17 @@ struct spp::asts::LoopConditionIterableAst final : LoopConditionAst {
      * type, typically the @code .iter_xxx@endcode family of methods.
      */
     std::unique_ptr<ExpressionAst> iterable;
+
+    /**
+     * Construct the LoopConditionIterableAst with the arguments matching the members.
+     * @param var The variable for iteration.
+     * @param tok_in The token that represents the @c in keyword in the loop condition.
+     * @param iterable The iterable expression that the loop will iterate over.
+     */
+    LoopConditionIterableAst(
+        decltype(var) &&var,
+        decltype(tok_in) &&tok_in,
+        decltype(iterable) &&iterable);
 };
 
 

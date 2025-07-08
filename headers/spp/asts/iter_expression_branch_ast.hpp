@@ -18,7 +18,7 @@ struct spp::asts::IterExpressionBranchAst final : Ast {
      * The body of the iteration branch. This is an inner scope that contains the statements that will be executed if
      * the branch matches.
      */
-    std::unique_ptr<InnerScopeExpressionAst<StatementAst>> body;
+    std::unique_ptr<InnerScopeExpressionAst<std::unique_ptr<StatementAst>>> body;
 
     /**
      * An optional guard for the iteration branch. This is a boolean expression that must evaluate to true for the

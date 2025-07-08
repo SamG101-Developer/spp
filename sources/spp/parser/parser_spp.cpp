@@ -2,6 +2,7 @@
 #include <spp/parse/parser_spp.hpp>
 
 #include <spp/asts/annotation_ast.hpp>
+#include <spp/asts/assignment_statement_ast.hpp>
 #include <spp/asts/ast.hpp>
 #include <spp/asts/binary_expression_ast.hpp>
 #include <spp/asts/binary_expression_temp_ast.hpp>
@@ -80,7 +81,14 @@
 #include <spp/asts/let_statement_initialized_ast.hpp>
 #include <spp/asts/let_statement_uninitialized_ast.hpp>
 #include <spp/asts/literal_ast.hpp>
+#include <spp/asts/local_variable_destructure_attribute_binding_ast.hpp>
 #include <spp/asts/local_variable_single_identifier_ast.hpp>
+#include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
+#include <spp/asts/local_variable_destructure_array_ast.hpp>
+#include <spp/asts/local_variable_destructure_object_ast.hpp>
+#include <spp/asts/local_variable_destructure_skip_single_argument_ast.hpp>
+#include <spp/asts/local_variable_destructure_skip_multiple_arguments_ast.hpp>
+#include <spp/asts/local_variable_destructure_tuple_ast.hpp>
 #include <spp/asts/loop_condition_ast.hpp>
 #include <spp/asts/loop_condition_boolean_ast.hpp>
 #include <spp/asts/loop_condition_iterable_ast.hpp>
@@ -114,7 +122,7 @@
 
 #include <spp/parse/parser_errors.hpp>
 
-#include "spp/asts/case_pattern_variant_ast.hpp"
+#define NO_ANNOTATIONS std::vector<std::unique_ptr<asts::AnnotationAst>>()
 
 
 auto spp::parse::ParserSpp::parse() -> std::unique_ptr<asts::ModulePrototypeAst> {
@@ -162,7 +170,7 @@ auto spp::parse::ParserSpp::parse_class_prototype() -> std::unique_ptr<asts::Cla
     PARSE_ONCE(p3, parse_upper_identifier);
     PARSE_OPTIONAL(p4, parse_generic_parameter_group);
     PARSE_ONCE(p5, parse_class_implementation);
-    return CREATE_AST(asts::ClassPrototypeAst, p1, p2, p3, p4, p5);
+    return CREATE_AST(asts::ClassPrototypeAst, p1, p2, asts::TypeIdentifierAst::from_identifier(*p3), p4, p5);
 }
 
 
@@ -532,8 +540,7 @@ auto spp::parse::ParserSpp::parse_generic_argument_type_keyword() -> std::unique
 auto spp::parse::ParserSpp::parse_annotation() -> std::unique_ptr<asts::AnnotationAst> {
     PARSE_ONCE(p1, parse_token_at);
     PARSE_ONCE(p2, parse_identifier);
-    PARSE_OPTIONAL(p3, parse_generic_argument_group);
-    return CREATE_AST(asts::AnnotationAst, p1, p2, p3);
+    return CREATE_AST(asts::AnnotationAst, p1, p2);
 }
 
 
@@ -562,7 +569,7 @@ auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_n(std::func
     PARSE_ONCE(p1, lhs_parser);
     PARSE_OPTIONAL(p2, op_rhs_parser);
     if (p2 == nullptr) { return p1; }
-    return CREATE_AST(asts::BinaryExpressionAst, p1, p2->op, p2->rhs);
+    return CREATE_AST(asts::BinaryExpressionAst, p1, p2->tok_op, p2->rhs);
 }
 
 
@@ -571,7 +578,7 @@ auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_n_for_is(st
     PARSE_ONCE(p1, lhs_parser);
     PARSE_OPTIONAL(p2, op_rhs_parser);
     if (p2 == nullptr) { return p1; }
-    return CREATE_AST(asts::IsExpressionAst, p1, p2->op, p2->rhs);
+    return CREATE_AST(asts::IsExpressionAst, p1, p2->tok_op, p2->rhs);
 }
 
 
@@ -1134,3 +1141,190 @@ auto spp::parse::ParserSpp::parse_statement() -> std::unique_ptr<asts::Statement
     return FORWARD_AST(p1);
 }
 
+
+auto spp::parse::ParserSpp::parse_assignment_statement() -> std::unique_ptr<asts::AssignmentStatementAst> {
+    PARSE_ONE_OR_MORE(p1, parse_expression, parse_token_comma);
+    PARSE_ONCE(p2, parse_token_assign);
+    PARSE_ONE_OR_MORE(p3, parse_expression, parse_token_comma);
+    return CREATE_AST(asts::AssignmentStatementAst, p1, p2, p3);
+}
+
+
+auto spp::parse::ParserSpp::parse_ret_statement() -> std::unique_ptr<asts::RetStatementAst> {
+    PARSE_ONCE(p1, parse_keyword_ret);
+    PARSE_OPTIONAL(p2, parse_expression);
+    return CREATE_AST(asts::RetStatementAst, p1, p2);
+}
+
+
+auto spp::parse::ParserSpp::parse_exit_statement() -> std::unique_ptr<asts::LoopControlFlowStatementAst> {
+    PARSE_ONE_OR_MORE(p1, parse_keyword_exit, parse_space);
+    PARSE_OPTIONAL(p2, parse_keyword_skip);
+    return CREATE_AST(asts::LoopControlFlowStatementAst, p1, p2, nullptr);
+}
+
+
+auto spp::parse::ParserSpp::parse_exit_statement_with_value() -> std::unique_ptr<asts::LoopControlFlowStatementAst> {
+    PARSE_ONE_OR_MORE(p1, parse_keyword_exit, parse_space);
+    PARSE_ONCE(p2, parse_expression)
+    return CREATE_AST(asts::LoopControlFlowStatementAst, p1, nullptr, p2);
+}
+
+
+auto spp::parse::ParserSpp::parse_skip_statement() -> std::unique_ptr<asts::LoopControlFlowStatementAst> {
+    PARSE_ONCE(p1, parse_keyword_skip);
+    return CREATE_AST(asts::LoopControlFlowStatementAst, std::vector<std::unique_ptr<asts::TokenAst>>(), p1, nullptr);
+}
+
+
+auto spp::parse::ParserSpp::parse_use_statement() -> std::unique_ptr<asts::UseStatementAst> {
+    PARSE_ONCE(p1, parse_keyword_use);
+    PARSE_ONCE(p2, parse_type_expression_simple)
+    return CREATE_AST(asts::UseStatementAst, NO_ANNOTATIONS, p1, p2);
+}
+
+
+auto spp::parse::ParserSpp::parse_type_statement() -> std::unique_ptr<asts::TypeStatementAst> {
+    PARSE_ONCE(p1, parse_keyword_type);
+    PARSE_ONCE(p2, parse_upper_identifier);
+    PARSE_OPTIONAL(p3, parse_generic_parameter_group);
+    PARSE_ONCE(p4, parse_token_assign);
+    PARSE_ONCE(p5, parse_type_expression);
+    return CREATE_AST(asts::TypeStatementAst, NO_ANNOTATIONS, p1, asts::TypeIdentifierAst::from_identifier(*p2), p3, p4, p5);
+}
+
+
+auto spp::parse::ParserSpp::parse_cmp_statement() -> std::unique_ptr<asts::CmpStatementAst> {
+    PARSE_ONCE(p1, parse_keyword_cmp);
+    PARSE_ONCE(p2, parse_identifier);
+    PARSE_ONCE(p3, parse_token_colon);
+    PARSE_ONCE(p4, parse_type_expression);
+    PARSE_ONCE(p5, parse_token_assign);
+    PARSE_ONCE(p6, parse_cmp_value);
+    return CREATE_AST(asts::CmpStatementAst, NO_ANNOTATIONS, p1, p2, p3, p4, p5, p6);
+}
+
+
+auto spp::parse::ParserSpp::parse_let_statement() -> std::unique_ptr<asts::LetStatementAst> {
+    PARSE_ALTERNATE(p1, asts::LetStatementAst, parse_let_statement_initialized, parse_let_statement_uninitialized);
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_let_statement_initialized() -> std::unique_ptr<asts::LetStatementAst> {
+    PARSE_ONCE(p1, parse_keyword_let);
+    PARSE_ONCE(p2, parse_local_variable);
+    PARSE_OPTIONAL(p3, parse_let_statement_initialized_explicit_type);
+    PARSE_ONCE(p4, parse_token_assign);
+    PARSE_ONCE(p5, parse_expression);
+    return CREATE_AST(asts::LetStatementInitializedAst, p1, p2, p3, p4, p5);
+}
+
+
+auto spp::parse::ParserSpp::parse_let_statement_initialized_explicit_type() -> std::unique_ptr<asts::TypeAst> {
+    PARSE_ONCE(p1, parse_token_colon);
+    PARSE_ONCE(p2, parse_type_expression);
+    return FORWARD_AST(p2);
+}
+
+
+auto spp::parse::ParserSpp::parse_let_statement_uninitialized() -> std::unique_ptr<asts::LetStatementAst> {
+    PARSE_ONCE(p1, parse_keyword_let);
+    PARSE_ONCE(p2, parse_local_variable);
+    PARSE_ONCE(p3, parse_token_colon);
+    PARSE_ONCE(p4, parse_type_expression);
+    return CREATE_AST(asts::LetStatementUninitializedAst, p1, p2, p3, p4);
+}
+
+
+auto spp::parse::ParserSpp::parse_global_use_statement() -> std::unique_ptr<asts::UseStatementAst> {
+    PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_newline);
+    PARSE_ONCE(p2, parse_use_statement);
+    p2->annotations = std::move(p1);
+    return FORWARD_AST(p2);
+}
+
+
+auto spp::parse::ParserSpp::parse_global_type_statement() -> std::unique_ptr<asts::TypeStatementAst> {
+    PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_newline);
+    PARSE_ONCE(p2, parse_type_statement);
+    p2->annotations = std::move(p1);
+    return FORWARD_AST(p2);
+}
+
+
+auto spp::parse::ParserSpp::parse_global_cmp_statement() -> std::unique_ptr<asts::CmpStatementAst> {
+    PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_newline);
+    PARSE_ONCE(p2, parse_cmp_statement);
+    p2->annotations = std::move(p1);
+    return FORWARD_AST(p2);
+}
+
+
+auto spp::parse::ParserSpp::parse_local_variable() -> std::unique_ptr<asts::LocalVariableAst> {
+    PARSE_ALTERNATE(
+        p1, asts::LocalVariableAst, parse_local_variable_destructure_array, parse_local_variable_destructure_tuple,
+        parse_local_variable_destructure_object, parse_local_variable_single_identifier);
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_local_variable_destructure_array() -> std::unique_ptr<asts::LocalVariableDestructureArrayAst> {
+    PARSE_ONCE(p1, parse_token_left_square_bracket);
+    PARSE_ZERO_OR_MORE(p2, parse_local_variable_nested_for_destructure_array, parse_token_comma);
+    PARSE_ONCE(p3, parse_token_right_square_bracket);
+    return CREATE_AST(asts::LocalVariableDestructureArrayAst, p1, p2, p3);
+}
+
+
+auto spp::parse::ParserSpp::parse_local_variable_destructure_object() -> std::unique_ptr<asts::LocalVariableDestructureObjectAst> {
+    PARSE_ONCE(p1, parse_type_expression_simple);
+    PARSE_ONCE(p2, parse_token_left_parenthesis);
+    PARSE_ZERO_OR_MORE(p3, parse_local_variable_nested_for_destructure_object, parse_token_comma);
+    PARSE_ONCE(p4, parse_token_right_parenthesis);
+    return CREATE_AST(asts::LocalVariableDestructureObjectAst, p1, p2, p3, p4);
+}
+
+
+auto spp::parse::ParserSpp::parse_local_variable_destructure_tuple() -> std::unique_ptr<asts::LocalVariableDestructureTupleAst> {
+    PARSE_ONCE(p1, parse_token_left_parenthesis);
+    PARSE_ZERO_OR_MORE(p2, parse_local_variable_nested_for_destructure_tuple, parse_token_comma);
+    PARSE_ONCE(p3, parse_token_right_parenthesis);
+    return CREATE_AST(asts::LocalVariableDestructureTupleAst, p1, p2, p3);
+}
+
+
+auto spp::parse::ParserSpp::parse_local_variable_destructure_skip_single_argument() -> std::unique_ptr<asts::LocalVariableDestructureSkipSingleArgumentAst> {
+    PARSE_ONCE(p1, parse_token_underscore);
+    return CREATE_AST(asts::LocalVariableDestructureSkipSingleArgumentAst, p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_local_variable_destructure_skip_multiple_arguments() -> std::unique_ptr<asts::LocalVariableDestructureSkipMultipleArgumentsAst> {
+    PARSE_ONCE(p1, parse_token_double_dot);
+    PARSE_OPTIONAL(p2, parse_local_variable_single_identifier);
+    return CREATE_AST(asts::LocalVariableDestructureSkipMultipleArgumentsAst, p1, p2);
+}
+
+
+auto spp::parse::ParserSpp::parse_local_variable_destructure_attribute_binding() -> std::unique_ptr<asts::LocalVariableDestructureAttributeBindingAst> {
+    PARSE_ONCE(p1, parse_identifier);
+    PARSE_ONCE(p2, parse_token_assign);
+    PARSE_ONCE(p3, parse_local_variable_nested_for_destructure_attribute_binding);
+    return CREATE_AST(asts::LocalVariableDestructureAttributeBindingAst, p1, p2, p3);
+}
+
+
+auto spp::parse::ParserSpp::parse_local_variable_single_identifier() -> std::unique_ptr<asts::LocalVariableSingleIdentifierAst> {
+    PARSE_OPTIONAL(p1, parse_keyword_mut);
+    PARSE_ONCE(p2, parse_identifier);
+    PARSE_OPTIONAL(p3, parse_local_variable_single_identifier_alias);
+    return CREATE_AST(asts::LocalVariableSingleIdentifierAst, p1, p2, p3);
+}
+
+
+auto spp::parse::ParserSpp::parse_local_variable_single_identifier_alias() -> std::unique_ptr<asts::LocalVariableSingleIdentifierAliasAst> {
+    PARSE_ONCE(p1, parse_keyword_as);
+    PARSE_ONCE(p2, parse_identifier);
+    return CREATE_AST(asts::LocalVariableSingleIdentifierAliasAst, p1, p2);
+}

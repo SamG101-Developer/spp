@@ -7,6 +7,12 @@
 
 struct spp::asts::LocalVariableAst : Ast {
     using Ast::Ast;
+
+protected:
+    /**
+     * The @c let statement that destructures are converted to, to introduce the variables created by the pattern.
+     */
+    std::unique_ptr<LetStatementInitializedAst> m_mapped_let;
 };
 
 

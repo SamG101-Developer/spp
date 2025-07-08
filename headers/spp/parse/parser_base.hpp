@@ -14,45 +14,61 @@
 #include <boost/preprocessor/enum.hpp>
 
 
+template <typename T>
+struct is_unique_ptr : std::false_type {
+};
+
+
+template <typename T, typename D>
+struct is_unique_ptr<std::unique_ptr<T, D>> : std::true_type {
+};
+
+
+template <typename T>
+constexpr bool is_unique_ptr_v = is_unique_ptr<T>::value;
+
+
 #define PARSE_ONCE(out, f) \
     auto out = f();        \
     if (out == nullptr) { return nullptr; }
 
 
-#define PARSE_OPTIONAL(out, f)               \
-    std::invoke_result_t<decltype(f())> out; \
-    {                                        \
-        const auto temp_index = m_pos;       \
-        auto temp_out = f();                 \
-        if (out == nullptr) {                \
-            m_pos = temp_index;              \
-            out = nullptr;                   \
-        }                                    \
-        else {                               \
-            out = std::move(temp_out);       \
-        }                                    \
+#define PARSE_OPTIONAL(out, f)             \
+    decltype(f()) out;                     \
+    {                                      \
+        const auto temp_index = m_pos;     \
+        auto temp_out_opt = f();           \
+        if (out == nullptr) {              \
+            m_pos = temp_index;            \
+            out = nullptr;                 \
+        }                                  \
+        else {                             \
+            out = std::move(temp_out_opt); \
+        }                                  \
     }
 
 
-#define PARSE_ZERO_OR_MORE(out, f, s)        \
-    auto done_1_parse = false;               \
-    auto out = std::vector<decltype(f())>(); \
-    auto temp_index = m_pos;                 \
-    while (true) {                           \
-        if (done_1_parse) {                  \
-            PARSE_OPTIONAL(sep, s);          \
-            if (sep == nullptr) { break; }   \
-        }                                    \
-        auto ast = f();                      \
-        if (ast == nullptr) {                \
-            m_pos = temp_index;              \
-            break;                           \
-        }                                    \
-        else {                               \
-            out.push_back(std::move(ast));   \
-            done_1_parse = true;             \
-            temp_index = m_pos;              \
-        }                                    \
+#define PARSE_ZERO_OR_MORE(out, f, s)          \
+    auto out = std::vector<decltype(f())>();   \
+    {                                          \
+        auto done_1_parse = false;             \
+        auto temp_index = m_pos;               \
+        while (true) {                         \
+            if (done_1_parse) {                \
+                PARSE_OPTIONAL(sep, s);        \
+                if (sep == nullptr) { break; } \
+            }                                  \
+            auto ast = f();                    \
+            if (ast == nullptr) {              \
+                m_pos = temp_index;            \
+                break;                         \
+            }                                  \
+            else {                             \
+                out.push_back(std::move(ast)); \
+                done_1_parse = true;           \
+                temp_index = m_pos;            \
+            }                                  \
+        }                                      \
     }
 
 
@@ -87,11 +103,10 @@
     for (auto &&f : wrapped) {                      \
         PARSE_OPTIONAL(temp_out, f);                \
         if (temp_out != nullptr) {                  \
-            out = temp_out;                         \
+            out = std::move(temp_out);              \
             break;                                  \
         }                                           \
     }
-
 
 #define FORWARD_AST(ast) \
     ast
@@ -136,6 +151,9 @@ protected:
 
     template <typename T>
     using parser_method_t = std::function<std::unique_ptr<T>()>;
+
+    template <typename T>
+    using parser_method_alt_t = std::function<T()>;
 };
 
 

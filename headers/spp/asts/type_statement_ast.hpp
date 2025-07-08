@@ -47,6 +47,23 @@ struct spp::asts::TypeStatementAst final : StatementAst {
      */
     std::unique_ptr<TypeAst> old_type;
 
+    /**
+     * Construct the TypeStatementAst with the arguments matching the members.
+     * @param annotations The list of annotations that are applied to this type statement.
+     * @param tok_type The @c type token that starts this statement.
+     * @param new_type The type that this type statement is defining.
+     * @param generic_param_group The generic parameter group for the new type.
+     * @param tok_assign The @c = token that separates the new type from the old type.
+     * @param old_type The old (fully qualified) type that this type statement is defining.
+     */
+    TypeStatementAst(
+        decltype(annotations) &&annotations,
+        decltype(tok_type) &&tok_type,
+        decltype(new_type) &&new_type,
+        decltype(generic_param_group) &&generic_param_group,
+        decltype(tok_assign) &&tok_assign,
+        decltype(old_type) &&old_type);
+
 private:
     bool m_generated = false;
 

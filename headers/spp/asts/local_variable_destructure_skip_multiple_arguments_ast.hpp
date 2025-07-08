@@ -1,11 +1,11 @@
-#ifndef CASE_PATTERN_VARIANT_DESTRUCTURE_SKIP_MULTIPLE_ARGUMENTS_AST_HPP
-#define CASE_PATTERN_VARIANT_DESTRUCTURE_SKIP_MULTIPLE_ARGUMENTS_AST_HPP
+#ifndef LOCAL_VARIABLE_DESTRUCTURE_SKIP_MULTIPLE_ARGUMENTS_AST_HPP
+#define LOCAL_VARIABLE_DESTRUCTURE_SKIP_MULTIPLE_ARGUMENTS_AST_HPP
 
-#include <spp/asts/case_pattern_variant_ast.hpp>
+#include <spp/asts/local_variable_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
 
-struct spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst final : CasePatternVariantAst {
+struct spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst final : LocalVariableAst {
     SPP_AST_KEY_FUNCTIONS;
 
     /**
@@ -20,17 +20,17 @@ struct spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst final : 
      * variable, as an inner array or tuple (based on the outer type being destructured). No biding means that these
      * values are dropped.
      */
-    std::unique_ptr<CasePatternVariantSingleIdentifierAst> binding;
+    std::unique_ptr<LocalVariableSingleIdentifierAst> binding;
 
     /**
-     * Construct the CasePatternVariantDestructureSkipMultipleArgumentsAst with the arguments matching the members.
+     * Construct the LocalVariableDestructureSkipMultipleArgumentsAst with the arguments matching the members.
      * @param tok_ellipsis The @c .. token that indicates the skip multiple arguments pattern.
      * @param binding The optional binding for the skip multiple arguments pattern.
      */
-    CasePatternVariantDestructureSkipMultipleArgumentsAst(
+    LocalVariableDestructureSkipMultipleArgumentsAst(
         decltype(tok_ellipsis) &&tok_ellipsis,
-        std::unique_ptr<CasePatternVariantAst> &&binding);  // cast in ctor
+        std::unique_ptr<LocalVariableAst> &&binding); // cast in ctor
 };
 
 
-#endif //CASE_PATTERN_VARIANT_DESTRUCTURE_SKIP_MULTIPLE_ARGUMENTS_AST_HPP
+#endif //LOCAL_VARIABLE_DESTRUCTURE_SKIP_MULTIPLE_ARGUMENTS_AST_HPP

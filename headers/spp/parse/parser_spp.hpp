@@ -173,7 +173,7 @@ public:
     auto parse_assignment_statement() -> std::unique_ptr<asts::AssignmentStatementAst>;
     auto parse_ret_statement() -> std::unique_ptr<asts::RetStatementAst>;
     auto parse_exit_statement() -> std::unique_ptr<asts::LoopControlFlowStatementAst>;
-    auto parse_exit_statement_final_action() -> std::unique_ptr<asts::LoopControlFlowStatementAst>;
+    auto parse_exit_statement_with_value() -> std::unique_ptr<asts::LoopControlFlowStatementAst>;
     auto parse_skip_statement() -> std::unique_ptr<asts::LoopControlFlowStatementAst>;
     auto parse_use_statement() -> std::unique_ptr<asts::UseStatementAst>;
     auto parse_type_statement() -> std::unique_ptr<asts::TypeStatementAst>;
@@ -188,12 +188,12 @@ public:
     auto parse_global_cmp_statement() -> std::unique_ptr<asts::CmpStatementAst>;
 
     auto parse_local_variable() -> std::unique_ptr<asts::LocalVariableAst>;
-    auto parse_loval_variable_destructure_array() -> std::unique_ptr<asts::LocalVariableDestructureArrayAst>;
+    auto parse_local_variable_destructure_array() -> std::unique_ptr<asts::LocalVariableDestructureArrayAst>;
     auto parse_local_variable_destructure_object() -> std::unique_ptr<asts::LocalVariableDestructureObjectAst>;
     auto parse_local_variable_destructure_tuple() -> std::unique_ptr<asts::LocalVariableDestructureTupleAst>;
     auto parse_local_variable_destructure_skip_single_argument() -> std::unique_ptr<asts::LocalVariableDestructureSkipSingleArgumentAst>;
     auto parse_local_variable_destructure_skip_multiple_arguments() -> std::unique_ptr<asts::LocalVariableDestructureSkipMultipleArgumentsAst>;
-    auto parse_local_variable_destructure_attribute_binding() -> std::unique_ptr<asts::LocalVariableAttributeBindingAst>;
+    auto parse_local_variable_destructure_attribute_binding() -> std::unique_ptr<asts::LocalVariableDestructureAttributeBindingAst>;
     auto parse_local_variable_single_identifier() -> std::unique_ptr<asts::LocalVariableSingleIdentifierAst>;
     auto parse_local_variable_single_identifier_alias() -> std::unique_ptr<asts::LocalVariableSingleIdentifierAliasAst>;
     auto parse_local_variable_nested_for_destructure_array() -> std::unique_ptr<asts::LocalVariableAst>;
@@ -286,6 +286,8 @@ public:
 
     auto parse_nothing() -> std::unique_ptr<asts::TokenAst>;
     auto parse_newline() -> std::unique_ptr<asts::TokenAst>;
+    auto parse_space() -> std::unique_ptr<asts::TokenAst>;
+
     auto parse_token_left_curly_brace() -> std::unique_ptr<asts::TokenAst>;
     auto parse_token_right_curly_brace() -> std::unique_ptr<asts::TokenAst>;
     auto parse_token_left_parenthesis() -> std::unique_ptr<asts::TokenAst>;

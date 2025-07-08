@@ -21,7 +21,7 @@ struct spp::asts::LoopExpressionAst final : PrimaryExpressionAst {
     /**
      * The body of the loop. This is a block of statements that will be executed for each iteration of the loop.
      */
-    std::unique_ptr<InnerScopeExpressionAst<StatementAst>> body;
+    std::unique_ptr<InnerScopeExpressionAst<std::unique_ptr<StatementAst>>> body;
 
     /**
      * The optional @c else block of the loop. This will be executed if the original condition is immediately false, or

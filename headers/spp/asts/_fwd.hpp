@@ -2,6 +2,7 @@
 #define _FWD_HPP
 
 #include <memory>
+#include <variant>
 #include <vector>
 
 
@@ -135,7 +136,7 @@ namespace spp::asts {
     struct LetStatementUninitializedAst;
 
     struct LocalVariableAst;
-    struct LocalVariableAttributeBindingAst;
+    struct LocalVariableDestructureAttributeBindingAst;
     struct LocalVariableDestructureArrayAst;
     struct LocalVariableDestructureObjectAst;
     struct LocalVariableDestructureTupleAst;

@@ -25,7 +25,6 @@ struct spp::asts::AnnotationAst final : Ast {
 
     /**
      * Construct the AnnotationAst with the arguments matching the members.
-     * @param[in] pos The position of the AST in the source code.
      * @param[in] tok_at_sign The token that represents the @c @ sign in the annotation.
      * @param[in] name The name of the annotation.
      */
