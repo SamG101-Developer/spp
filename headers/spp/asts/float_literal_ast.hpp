@@ -1,13 +1,8 @@
 #ifndef FLOAT_LITERAL_AST_HPP
 #define FLOAT_LITERAL_AST_HPP
 
-#include <map>
-
 #include <spp/asts/literal_ast.hpp>
 #include <spp/asts/_fwd.hpp>
-
-constexpr auto FLOAT_TYPE_MAP = std::map<icu::UnicodeString, std::unique_ptr<spp::asts::TypeAst>>{
-};
 
 
 /**

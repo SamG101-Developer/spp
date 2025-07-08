@@ -31,7 +31,7 @@ auto spp::lex::Lexer::lex() const -> std::vector<RawToken> {
     }
 
     // Iterate the source code.
-    auto i = 0uz;
+    auto i = 0z;
     while (i < m_code.length()) {
         const auto c = m_code[i];
 

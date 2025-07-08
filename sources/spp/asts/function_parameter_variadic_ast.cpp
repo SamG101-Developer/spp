@@ -5,11 +5,11 @@
 
 
 spp::asts::FunctionParameterVariadicAst::FunctionParameterVariadicAst(
-        decltype(tok_ellipsis) &&tok_ellipsis,
+    decltype(tok_ellipsis) &&tok_ellipsis,
     decltype(var) &&var,
     decltype(tok_colon) &&tok_colon,
     decltype(type) &&type):
-    FunctionParameterAst(pos, std::move(var), std::move(tok_colon), std::move(type)),
+    FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type)),
     tok_ellipsis(std::move(tok_ellipsis)) {
 }
 

@@ -18,7 +18,7 @@ public:
 
 public:
     virtual auto ns_parts() -> std::vector<IdentifierAst*> = 0;
-    virtual auto type_parts() -> std::vector<GenericIdentifierAst*> = 0;
+    virtual auto type_parts() -> std::vector<TypeIdentifierAst*> = 0;
     virtual auto without_generics() -> std::unique_ptr<AbstractTypeAst> = 0;
     virtual auto get_convention() -> ConventionAst* = 0;
     virtual auto substitute_generics(std::vector<GenericArgumentAst*> &&args) -> std::unique_ptr<AbstractTypeAst> = 0;

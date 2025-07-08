@@ -10,7 +10,7 @@
  * The TypeAst is a base class for all type-related AST nodes in the SPP language.
  */
 struct spp::asts::TypeAst : PrimaryExpressionAst, mixins::AbstractTypeAst {
-    using Ast::Ast;
+    using PrimaryExpressionAst::PrimaryExpressionAst;
 };
 
 

@@ -5,8 +5,7 @@
 
 
 spp::asts::ConventionRefAst::ConventionRefAst(
-        decltype(tok_borrow) &&tok_borrow):
-    ConventionAst(pos),
+    decltype(tok_borrow) &&tok_borrow):
     tok_borrow(std::move(tok_borrow)) {
 }
 

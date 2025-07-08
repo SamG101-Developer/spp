@@ -5,10 +5,9 @@
 
 
 spp::asts::ArrayLiteralNElements::ArrayLiteralNElements(
-        decltype(tok_l) &&tok_l,
+    decltype(tok_l) &&tok_l,
     decltype(elements) &&elements,
     decltype(tok_r) &&tok_r):
-    LiteralAst(pos),
     tok_l(std::move(tok_l)),
     elements(std::move(elements)),
     tok_r(std::move(tok_r)) {

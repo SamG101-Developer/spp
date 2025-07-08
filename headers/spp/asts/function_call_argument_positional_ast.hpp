@@ -25,9 +25,9 @@ struct spp::asts::FunctionCallArgumentPositionalAst final : FunctionCallArgument
      * @param tok_unpack The token that represents the @c .. unpacking operator.
      */
     FunctionCallArgumentPositionalAst(
-        std::unique_ptr<ConventionAst> &&conv,
-        std::unique_ptr<TokenAst> &&tok_unpack,
-        std::unique_ptr<ExpressionAst> &&val);
+        decltype(conv) &&conv,
+        decltype(tok_unpack) &&tok_unpack,
+        decltype(val) &&val);
 };
 
 

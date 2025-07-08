@@ -72,17 +72,17 @@ constexpr bool is_unique_ptr_v = is_unique_ptr<T>::value;
     }
 
 
-#define PARSE_ONE_OR_MORE(out, f, s)                                                       \
-    PARSE_ZERO_OR_MORE(out, f, s)                                                          \
-    if (out.empty()) {                                                                     \
-        return nullptr; \
+#define PARSE_ONE_OR_MORE(out, f, s) \
+    PARSE_ZERO_OR_MORE(out, f, s)    \
+    if (out.empty()) {               \
+        return nullptr;              \
     }
 
 
-#define PARSE_TWO_OR_MORE(out, f, s)                                                        \
-    PARSE_ONE_OR_MORE(out, f, s)                                                            \
-    if (out.size() < 2) {                                                                   \
-        return nullptr; \
+#define PARSE_TWO_OR_MORE(out, f, s) \
+    PARSE_ONE_OR_MORE(out, f, s)     \
+    if (out.size() < 2) {            \
+        return nullptr;              \
     }
 
 
@@ -91,8 +91,8 @@ constexpr bool is_unique_ptr_v = is_unique_ptr<T>::value;
 }
 
 
-#define WRAP_METHOD(_, _, m) parser_method_t<alt_t>([=] mutable { \
-    return std::unique_ptr<alt_t>(m().release());           \
+#define WRAP_METHOD(_1, _2, m) parser_method_t<alt_t>([=] mutable { \
+    return std::unique_ptr<alt_t>(m().release());                   \
 }),
 
 
@@ -118,7 +118,7 @@ constexpr bool is_unique_ptr_v = is_unique_ptr<T>::value;
 #define CREATE_AST_CUSTOM(T, static_func, ...) \
     T::static_func(BOOST_PP_SEQ_ENUM(BOOST_PP_SEQ_TRANSFORM(MOVE_AST_FOR_CREATION, BOOST_PP_EMPTY(), BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))))
 
-#define MOVE_AST_FOR_CREATION(_, _, ast) std::move(ast)
+#define MOVE_AST_FOR_CREATION(_1, _2, ast) std::move(ast)
 
 
 #define CREATE_AST_WITH_BASE(out, T, base) \

@@ -38,6 +38,9 @@ struct spp::asts::TokenAst final : Ast {
      * @return Whether the two ASTs are equal or not.
      */
     auto operator==(TokenAst const &that) const -> bool;
+
+private:
+    std::size_t pos;
 };
 
 

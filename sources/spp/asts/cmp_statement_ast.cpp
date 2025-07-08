@@ -1,7 +1,7 @@
 #include <algorithm>
 
 #include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/cmp_statement.hpp>
+#include <spp/asts/cmp_statement_ast.hpp>
 #include <spp/asts/expression_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
@@ -9,14 +9,13 @@
 
 
 spp::asts::CmpStatementAst::CmpStatementAst(
-        decltype(annotations) &&annotations,
+    decltype(annotations) &&annotations,
     decltype(tok_cmp) &&tok_cmp,
     decltype(name) &&name,
     decltype(tok_colon) &&tok_colon,
     decltype(type) &&type,
     decltype(tok_assign) &&tok_assign,
     decltype(value) &&value):
-    Ast(pos),
     annotations(std::move(annotations)),
     tok_cmp(std::move(tok_cmp)),
     name(std::move(name)),

@@ -3,8 +3,7 @@
 
 
 spp::asts::BooleanLiteralAst::BooleanLiteralAst(
-        decltype(tok_bool) &&tok_bool):
-    Ast(pos),
+    decltype(tok_bool) &&tok_bool):
     tok_bool(std::move(tok_bool)) {
 }
 

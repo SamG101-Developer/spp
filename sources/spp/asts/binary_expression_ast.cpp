@@ -1,15 +1,16 @@
 #include <spp/asts/binary_expression_ast.hpp>
+#include <spp/asts/postfix_expression_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 
 
 spp::asts::BinaryExpressionAst::BinaryExpressionAst(
-        decltype(lhs) &&lhs,
+    decltype(lhs) &&lhs,
     decltype(tok_op) &&tok_op,
     decltype(rhs) &&rhs):
-    Ast(pos),
     lhs(std::move(lhs)),
     tok_op(std::move(tok_op)),
-    rhs(std::move(rhs)) {
+    rhs(std::move(rhs)),
+    m_mapped_func(nullptr) {
 }
 
 

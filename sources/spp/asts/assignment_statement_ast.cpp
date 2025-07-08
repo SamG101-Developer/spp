@@ -1,14 +1,14 @@
 #include <algorithm>
 
 #include <spp/asts/assignment_statement_ast.hpp>
+#include <spp/asts/expression_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 
 
 spp::asts::AssignmentStatementAst::AssignmentStatementAst(
-        decltype(lhs) &&lhs,
+    decltype(lhs) &&lhs,
     decltype(tok_assign) &&tok_assign,
     decltype(rhs) &&rhs):
-    Ast(pos),
     lhs(std::move(lhs)),
     tok_assign(std::move(tok_assign)),
     rhs(std::move(rhs)) {

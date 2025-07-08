@@ -2,10 +2,12 @@
 
 
 spp::asts::TokenAst::TokenAst(
+    const std::size_t pos,
     const lex::SppTokenType token_type,
     icu::UnicodeString &&token_data):
     token_type(token_type),
-    token_data(std::move(token_data)) {
+    token_data(std::move(token_data)),
+    pos(pos) {
 }
 
 

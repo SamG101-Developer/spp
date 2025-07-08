@@ -1,5 +1,6 @@
 #include <spp/asts/array_literal_0_elements_ast.hpp>
 #include <spp/asts/token_ast.hpp>
+#include <spp/asts/type_ast.hpp>
 
 
 spp::asts::ArrayLiteral0Elements::ArrayLiteral0Elements(
@@ -8,7 +9,6 @@ spp::asts::ArrayLiteral0Elements::ArrayLiteral0Elements(
     decltype(tok_comma) &&tok_comma,
     decltype(size) &&size,
     decltype(tok_r) &&tok_r):
-    LiteralAst(pos),
     tok_l(std::move(tok_l)),
     elem_type(std::move(elem_type)),
     tok_comma(std::move(tok_comma)),

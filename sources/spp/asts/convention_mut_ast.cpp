@@ -5,9 +5,8 @@
 
 
 spp::asts::ConventionMutAst::ConventionMutAst(
-        decltype(tok_borrow) &&tok_borrow,
+    decltype(tok_borrow) &&tok_borrow,
     decltype(tok_mut) &&tok_mut):
-    ConventionAst(pos),
     tok_borrow(std::move(tok_borrow)),
     tok_mut(std::move(tok_mut)) {
 }
