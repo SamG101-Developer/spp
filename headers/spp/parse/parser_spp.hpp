@@ -99,8 +99,8 @@ public:
     auto parse_binary_expression_op_precedence_level_6() -> std::unique_ptr<asts::TokenAst>;
 
     auto parse_unary_expression() -> std::unique_ptr<asts::ExpressionAst>;
-    auto parse_unary_op() -> std::unique_ptr<asts::UnaryExpressionOperatorAst>;
-    auto parse_unary_op_async() -> std::unique_ptr<asts::UnaryExpressionOperatorAsyncAst>;
+    auto parse_unary_expression_op() -> std::unique_ptr<asts::UnaryExpressionOperatorAst>;
+    auto parse_unary_expression_op_async() -> std::unique_ptr<asts::UnaryExpressionOperatorAsyncAst>;
 
     auto parse_postfix_expression() -> std::unique_ptr<asts::ExpressionAst>;
     auto parse_postfix_expression_op() -> std::unique_ptr<asts::PostfixExpressionOperatorAst>;
@@ -212,14 +212,14 @@ public:
     auto parse_object_initializer_argument_shorthand() -> std::unique_ptr<asts::ObjectInitializerArgumentShorthandAst>;
 
     auto parse_closure_expression() -> std::unique_ptr<asts::ClosureExpressionAst>;
-    auto parse_closure_expression_capture_items() -> std::vector<std::unique_ptr<asts::ClosureExpressionCaptureItemAst>>;
-    auto parse_closure_expression_capture_item() -> std::unique_ptr<asts::ClosureExpressionCaptureItemAst>;
+    auto parse_closure_expression_capture_group() -> std::unique_ptr<asts::ClosureExpressionCaptureGroupAst>;
+    auto parse_closure_expression_capture() -> std::unique_ptr<asts::ClosureExpressionCaptureAst>;
     auto parse_closure_expression_parameter_and_capture_group() -> std::unique_ptr<asts::ClosureExpressionParameterAndCaptureGroupAst>;
     auto parse_closure_expression_parameter() -> std::unique_ptr<asts::ClosureExpressionParameterAst>;
 
     auto parse_type_expression() -> std::unique_ptr<asts::TypeAst>;
 
-    auto parse_binary_type_expression_precedence_level_n_rhs(std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser, std::function<std::unique_ptr<asts::TypeAst>()> &&rhs_parser) -> std::unique_ptr<asts::TypeAst>;
+    auto parse_binary_type_expression_precedence_level_n_rhs(std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser, std::function<std::unique_ptr<asts::TypeAst>()> &&rhs_parser) -> std::unique_ptr<asts::TypeBinaryExpressionTempAst>;
     auto parse_binary_type_expression_precedence_level_n(std::function<std::unique_ptr<asts::TypeAst>()> &&lhs_parser, std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser, std::function<std::unique_ptr<asts::TypeAst>()> &&rhs_parser) -> std::unique_ptr<asts::TypeAst>;
     auto parse_binary_type_expression_precedence_level_1() -> std::unique_ptr<asts::TypeAst>;
     auto parse_binary_type_expression_precedence_level_2() -> std::unique_ptr<asts::TypeAst>;
@@ -227,20 +227,20 @@ public:
     auto parse_binary_type_expression_op_precedence_level_2() -> std::unique_ptr<asts::TokenAst>;
 
     auto parse_unary_type_expression() -> std::unique_ptr<asts::TypeAst>;
-    auto parse_unary_type_expression_op() -> std::unique_ptr<asts::TypeUnaryOperatorAst>;
-    auto parse_unary_type_expression_op_borrow() -> std::unique_ptr<asts::TypeUnaryOperatorBorrowAst>;
-    auto parse_unary_type_expression_op_namespace() -> std::unique_ptr<asts::TypeUnaryOperatorNamespaceAst>;
+    auto parse_unary_type_expression_op() -> std::unique_ptr<asts::TypeUnaryExpressionOperatorAst>;
+    auto parse_unary_type_expression_op_borrow() -> std::unique_ptr<asts::TypeUnaryExpressionOperatorBorrowAst>;
+    auto parse_unary_type_expression_op_namespace() -> std::unique_ptr<asts::TypeUnaryExpressionOperatorNamespaceAst>;
 
-    auto parse_type_expression_postfix() -> std::unique_ptr<asts::TypeAst>;
-    auto parse_type_expression_postfix_op() -> std::unique_ptr<asts::TypePostfixOperatorAst>;
-    auto parse_type_expression_postfix_op_optional() -> std::unique_ptr<asts::TypePostfixOperatorOptionalAst>;
-    auto parse_type_expression_postfix_op_nested() -> std::unique_ptr<asts::TypePostfixOperatorNestedAst>;
+    auto parse_postfix_type_expression() -> std::unique_ptr<asts::TypeAst>;
+    auto parse_postfix_type_expression_op() -> std::unique_ptr<asts::TypePostfixExpressionOperatorAst>;
+    auto parse_postfix_type_expression_op_optional() -> std::unique_ptr<asts::TypePostfixExpressionOperatorOptionalAst>;
+    auto parse_postfix_type_expression_op_nested() -> std::unique_ptr<asts::TypePostfixExpressionOperatorNestedAst>;
 
     auto parse_type_parenthesised_expression() -> std::unique_ptr<asts::TypeAst>;
 
     auto parse_type_expression_simple() -> std::unique_ptr<asts::TypeAst>;
     auto parse_unary_type_expression_simple() -> std::unique_ptr<asts::TypeUnaryExpressionAst>;
-    auto parse_type_expression_postfix_simple() -> std::unique_ptr<asts::TypePostfixExpressionAst>;
+    auto parse_postfix_type_expression_simple() -> std::unique_ptr<asts::TypePostfixExpressionAst>;
 
     auto parse_type_identifier() -> std::unique_ptr<asts::TypeIdentifierAst>;
 

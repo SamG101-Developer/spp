@@ -26,8 +26,14 @@
 #include <spp/asts/class_attribute_ast.hpp>
 #include <spp/asts/class_implementation_ast.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
+#include <spp/asts/convention_ast.hpp>
+#include <spp/asts/convention_ref_ast.hpp>
+#include <spp/asts/convention_mut_ast.hpp>
 #include <spp/asts/coroutine_prototype_ast.hpp>
 #include <spp/asts/closure_expression_ast.hpp>
+#include <spp/asts/closure_expression_capture_group_ast.hpp>
+#include <spp/asts/closure_expression_capture_ast.hpp>
+#include <spp/asts/closure_expression_parameter_and_capture_group_ast.hpp>
 #include <spp/asts/cmp_statement_ast.hpp>
 #include <spp/asts/float_literal_ast.hpp>
 #include <spp/asts/fold_expression_ast.hpp>
@@ -98,6 +104,9 @@
 #include <spp/asts/module_implementation_ast.hpp>
 #include <spp/asts/module_prototype_ast.hpp>
 #include <spp/asts/object_initializer_ast.hpp>
+#include <spp/asts/object_initializer_argument_group_ast.hpp>
+#include <spp/asts/object_initializer_argument_keyword_ast.hpp>
+#include <spp/asts/object_initializer_argument_shorthand_ast.hpp>
 #include <spp/asts/parenthesised_expression.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
 #include <spp/asts/postfix_expression_operator_ast.hpp>
@@ -113,7 +122,14 @@
 #include <spp/asts/sup_implementation_ast.hpp>
 #include <spp/asts/sup_prototype_extension_ast.hpp>
 #include <spp/asts/sup_prototype_functions_ast.hpp>
+#include <spp/asts/type_ast.hpp>
+#include <spp/asts/type_binary_expression_ast.hpp>
+#include <spp/asts/type_binary_expression_temp_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
+#include <spp/asts/type_postfix_expression_ast.hpp>
+#include <spp/asts/type_unary_expression_ast.hpp>
+#include <spp/asts/type_unary_expression_operator_borrow_ast.hpp>
+#include <spp/asts/type_unary_expression_operator_namespace_ast.hpp>
 #include <spp/asts/type_statement_ast.hpp>
 #include <spp/asts/unary_expression_ast.hpp>
 #include <spp/asts/unary_expression_operator_ast.hpp>
@@ -673,7 +689,7 @@ auto spp::parse::ParserSpp::parse_binary_expression_op_precedence_level_6() -> s
 
 
 auto spp::parse::ParserSpp::parse_unary_expression() -> std::unique_ptr<asts::ExpressionAst> {
-    PARSE_ZERO_OR_MORE(p1, parse_unary_op, parse_nothing);
+    PARSE_ZERO_OR_MORE(p1, parse_unary_expression_op, parse_nothing);
     PARSE_ONCE(p2, parse_postfix_expression);
     return std::accumulate(
         p1.rbegin(), p1.rend(), std::move(p2),
@@ -683,14 +699,14 @@ auto spp::parse::ParserSpp::parse_unary_expression() -> std::unique_ptr<asts::Ex
 }
 
 
-auto spp::parse::ParserSpp::parse_unary_op() -> std::unique_ptr<asts::UnaryExpressionOperatorAst> {
+auto spp::parse::ParserSpp::parse_unary_expression_op() -> std::unique_ptr<asts::UnaryExpressionOperatorAst> {
     PARSE_ALTERNATE(
-        p1, asts::UnaryExpressionOperatorAst, parse_unary_op_async);
+        p1, asts::UnaryExpressionOperatorAst, parse_unary_expression_op_async);
     return FORWARD_AST(p1);
 }
 
 
-auto spp::parse::ParserSpp::parse_unary_op_async() -> std::unique_ptr<asts::UnaryExpressionOperatorAsyncAst> {
+auto spp::parse::ParserSpp::parse_unary_expression_op_async() -> std::unique_ptr<asts::UnaryExpressionOperatorAsyncAst> {
     PARSE_ONCE(p1, parse_keyword_async);
     return CREATE_AST(asts::UnaryExpressionOperatorAsyncAst, p1);
 }
@@ -1328,3 +1344,241 @@ auto spp::parse::ParserSpp::parse_local_variable_single_identifier_alias() -> st
     PARSE_ONCE(p2, parse_identifier);
     return CREATE_AST(asts::LocalVariableSingleIdentifierAliasAst, p1, p2);
 }
+
+
+auto spp::parse::ParserSpp::parse_local_variable_nested_for_destructure_array() -> std::unique_ptr<asts::LocalVariableAst> {
+    PARSE_ALTERNATE(
+        p1, asts::LocalVariableAst, parse_local_variable_destructure_skip_single_argument,
+        parse_local_variable_destructure_skip_multiple_arguments, parse_local_variable_destructure_array,
+        parse_local_variable_destructure_tuple, parse_local_variable_destructure_object,
+        parse_local_variable_single_identifier);
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_local_variable_nested_for_destructure_object() -> std::unique_ptr<asts::LocalVariableAst> {
+    PARSE_ALTERNATE(
+        p1, asts::LocalVariableAst, parse_local_variable_destructure_skip_single_argument,
+        parse_local_variable_destructure_attribute_binding, parse_local_variable_single_identifier);
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_local_variable_nested_for_destructure_tuple() -> std::unique_ptr<asts::LocalVariableAst> {
+    PARSE_ALTERNATE(
+        p1, asts::LocalVariableAst, parse_local_variable_destructure_skip_single_argument,
+        parse_local_variable_destructure_skip_multiple_arguments, parse_local_variable_destructure_array,
+        parse_local_variable_destructure_tuple, parse_local_variable_destructure_object,
+        parse_local_variable_single_identifier);
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_local_variable_nested_for_destructure_attribute_binding() -> std::unique_ptr<asts::LocalVariableAst> {
+    PARSE_ALTERNATE(
+        p1, asts::LocalVariableAst, parse_local_variable_destructure_array,
+        parse_local_variable_destructure_tuple, parse_local_variable_destructure_object);
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_convention() -> std::unique_ptr<asts::ConventionAst> {
+    PARSE_ALTERNATE(p1, asts::ConventionAst, parse_convention_mut, parse_convention_ref);
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_convention_mut() -> std::unique_ptr<asts::ConventionMutAst> {
+    PARSE_ONCE(p1, parse_token_ampersand);
+    PARSE_ONCE(p2, parse_keyword_mut);
+    return CREATE_AST(asts::ConventionMutAst, p1, p2);
+}
+
+
+auto spp::parse::ParserSpp::parse_convention_ref() -> std::unique_ptr<asts::ConventionRefAst> {
+    PARSE_ONCE(p1, parse_token_ampersand);
+    return CREATE_AST(asts::ConventionRefAst, p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_object_initializer() -> std::unique_ptr<asts::ObjectInitializerAst> {
+    PARSE_ONCE(p1, parse_type_expression_simple);
+    PARSE_ONCE(p2, parse_object_initializer_argument_group);
+    return CREATE_AST(asts::ObjectInitializerAst, p1, p2);
+}
+
+
+auto spp::parse::ParserSpp::parse_object_initializer_argument_group() -> std::unique_ptr<asts::ObjectInitializerArgumentGroupAst> {
+    PARSE_ONCE(p1, parse_token_left_parenthesis);
+    PARSE_ZERO_OR_MORE(p2, parse_object_initializer_argument, parse_token_comma);
+    PARSE_ONCE(p3, parse_token_right_parenthesis);
+    return CREATE_AST(asts::ObjectInitializerArgumentGroupAst, p1, p2, p3);
+}
+
+
+auto spp::parse::ParserSpp::parse_object_initializer_argument() -> std::unique_ptr<asts::ObjectInitializerArgumentAst> {
+    PARSE_ALTERNATE(
+        p1, asts::ObjectInitializerArgumentAst, parse_object_initializer_argument_keyword,
+        parse_object_initializer_argument_shorthand);
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_object_initializer_argument_keyword() -> std::unique_ptr<asts::ObjectInitializerArgumentKeywordAst> {
+    PARSE_ONCE(p1, parse_identifier);
+    PARSE_ONCE(p2, parse_token_assign);
+    PARSE_ONCE(p3, parse_expression);
+    return CREATE_AST(asts::ObjectInitializerArgumentKeywordAst, p1, p2, p3);
+}
+
+
+auto spp::parse::ParserSpp::parse_object_initializer_argument_shorthand() -> std::unique_ptr<asts::ObjectInitializerArgumentShorthandAst> {
+    PARSE_OPTIONAL(p1, parse_token_double_dot);
+    PARSE_ONCE(p2, parse_identifier);
+    return CREATE_AST(asts::ObjectInitializerArgumentShorthandAst, p1, p2);
+}
+
+
+auto spp::parse::ParserSpp::parse_closure_expression() -> std::unique_ptr<asts::ClosureExpressionAst> {
+    PARSE_OPTIONAL(p1, parse_keyword_cor);
+    PARSE_ONCE(p2, parse_closure_expression_parameter_and_capture_group);
+    PARSE_ONCE(p3, parse_expression);
+    return CREATE_AST(asts::ClosureExpressionAst, p1, p2, p3);
+}
+
+
+auto spp::parse::ParserSpp::parse_closure_expression_capture_group() -> std::unique_ptr<asts::ClosureExpressionCaptureGroupAst> {
+    PARSE_ONCE(p1, parse_keyword_caps);
+    PARSE_ONE_OR_MORE(p2, parse_closure_expression_capture, parse_token_comma);
+    return CREATE_AST(asts::ClosureExpressionCaptureGroupAst, p1, p2);
+}
+
+
+auto spp::parse::ParserSpp::parse_closure_expression_capture() -> std::unique_ptr<asts::ClosureExpressionCaptureAst> {
+    PARSE_OPTIONAL(p1, parse_convention);
+    PARSE_ONCE(p2, parse_identifier);
+    return CREATE_AST(asts::ClosureExpressionCaptureAst, p1, p2); // todo: allow "as" alias?
+}
+
+
+auto spp::parse::ParserSpp::parse_closure_expression_parameter_and_capture_group() -> std::unique_ptr<asts::ClosureExpressionParameterAndCaptureGroupAst> {
+    PARSE_ONCE(p1, parse_token_vertical_bar);
+    PARSE_ZERO_OR_MORE(p2, parse_closure_expression_parameter, parse_token_comma);
+    PARSE_OPTIONAL(p3, parse_closure_expression_capture_group);
+    PARSE_ONCE(p4, parse_token_vertical_bar);
+    return CREATE_AST(asts::ClosureExpressionParameterAndCaptureGroupAst, p1, p2, p3, p4);
+}
+
+
+auto spp::parse::ParserSpp::parse_closure_expression_parameter() -> std::unique_ptr<asts::ClosureExpressionParameterAst> {
+    PARSE_ALTERNATE(
+        p1, asts::ClosureExpressionParameterAst, parse_function_parameter_variadic, parse_function_parameter_optional,
+        parse_function_parameter_required);
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_type_expression() -> std::unique_ptr<asts::TypeAst> {
+    PARSE_ALTERNATE(
+        p1, asts::TypeAst, parse_type_parenthesised_expression, parse_type_array, parse_type_tuple,
+        parse_binary_type_expression_precedence_level_1);
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_binary_type_expression_precedence_level_n_rhs(std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser, std::function<std::unique_ptr<asts::TypeAst>()> &&rhs_parser) -> std::unique_ptr<asts::TypeBinaryExpressionTempAst> {
+    PARSE_ONCE(p1, op_parser);
+    PARSE_ONCE(p2, rhs_parser);
+    return CREATE_AST(asts::TypeBinaryExpressionTempAst, p1, p2);
+}
+
+
+auto spp::parse::ParserSpp::parse_binary_type_expression_precedence_level_n(std::function<std::unique_ptr<asts::TypeAst>()> &&lhs_parser, std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser, std::function<std::unique_ptr<asts::TypeAst>()> &&rhs_parser) -> std::unique_ptr<asts::TypeAst> {
+    auto op_rhs_parser = [this, op_parser, rhs_parser] mutable { return parse_binary_type_expression_precedence_level_n_rhs(std::move(op_parser), std::move(rhs_parser)); };
+    PARSE_ONCE(p1, lhs_parser);
+    PARSE_OPTIONAL(p2, op_rhs_parser);
+    if (p2 == nullptr) { return p1; }
+    return CREATE_AST(asts::TypeBinaryExpressionAst, p1, p2->tok_op, p2->rhs)->convert();
+}
+
+
+auto spp::parse::ParserSpp::parse_binary_type_expression_precedence_level_1() -> std::unique_ptr<asts::TypeAst> {
+    return parse_binary_type_expression_precedence_level_n(
+        [this] { return parse_binary_type_expression_precedence_level_2(); },
+        [this] { return parse_binary_type_expression_op_precedence_level_1(); },
+        [this] { return parse_binary_type_expression_precedence_level_1(); });
+}
+
+
+auto spp::parse::ParserSpp::parse_binary_type_expression_precedence_level_2() -> std::unique_ptr<asts::TypeAst> {
+    return parse_binary_type_expression_precedence_level_n(
+        [this] { return parse_postfix_type_expression(); },
+        [this] { return parse_binary_type_expression_op_precedence_level_2(); },
+        [this] { return parse_binary_type_expression_precedence_level_2(); });
+}
+
+
+auto spp::parse::ParserSpp::parse_binary_type_expression_op_precedence_level_1() -> std::unique_ptr<asts::TokenAst> {
+    PARSE_ONCE(p1, parse_keyword_and);
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_binary_type_expression_op_precedence_level_2() -> std::unique_ptr<asts::TokenAst> {
+    PARSE_ONCE(p1, parse_keyword_or);
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_unary_type_expression() -> std::unique_ptr<asts::TypeAst> {
+    PARSE_OPTIONAL(p1, parse_unary_type_expression_op_borrow)
+    PARSE_ZERO_OR_MORE(p2, parse_unary_type_expression_op, parse_nothing);
+    PARSE_ONCE(p3, parse_postfix_type_expression);
+    if (p1 != nullptr) { p2.insert(p2.begin(), std::unique_ptr<asts::TypeUnaryExpressionOperatorAst>(p1.release())); }
+    return std::accumulate(
+        p2.rbegin(), p2.rend(), std::move(p3),
+        [](std::unique_ptr<asts::TypeAst> acc, std::unique_ptr<asts::TypeUnaryExpressionOperatorAst> &x) {
+            return CREATE_AST(asts::TypeUnaryExpressionAst, x, std::move(acc));
+        });
+}
+
+
+auto spp::parse::ParserSpp::parse_unary_type_expression_op() -> std::unique_ptr<asts::TypeUnaryExpressionOperatorAst> {
+    PARSE_ALTERNATE(
+        p1, asts::TypeUnaryExpressionOperatorAst, parse_unary_type_expression_op_borrow,
+        parse_unary_type_expression_op_namespace);
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_unary_type_expression_op_borrow() -> std::unique_ptr<asts::TypeUnaryExpressionOperatorBorrowAst> {
+    PARSE_ONCE(p1, parse_convention);
+    return CREATE_AST(asts::TypeUnaryExpressionOperatorBorrowAst, p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_unary_type_expression_op_namespace() -> std::unique_ptr<asts::TypeUnaryExpressionOperatorNamespaceAst> {
+    PARSE_ONCE(p1, parse_identifier);
+    PARSE_ONCE(p2, parse_token_double_colon);
+    return CREATE_AST(asts::TypeUnaryExpressionOperatorNamespaceAst, p1, p2);
+}
+
+
+auto spp::parse::ParserSpp::parse_postfix_type_expression() -> std::unique_ptr<asts::TypeAst> {
+    PARSE_ONCE(p1, parse_unary_type_expression);
+    PARSE_ZERO_OR_MORE(p2, parse_postfix_type_expression_op, parse_nothing);
+    return std::accumulate(
+        p2.begin(), p2.end(), std::move(p1),
+        [](std::unique_ptr<asts::TypeAst> acc, std::unique_ptr<asts::TypePostfixExpressionOperatorAst> &x) {
+            return CREATE_AST(asts::TypePostfixExpressionAst, std::move(acc), x);
+        });
+}
+
+
+auto spp::parse::ParserSpp::parse_postfix_type_expression_op() -> std::unique_ptr<asts::TypePostfixExpressionOperatorAst> {
+    PARSE_ALTERNATE(
+        p1, asts::TypePostfixExpressionOperatorAst, parse_postfix_type_expression_op_optional,
+        parse_postfix_type_expression_op_nested);
+    return FORWARD_AST(p1);
+}
+

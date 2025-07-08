@@ -127,9 +127,10 @@ namespace spp::asts {
     struct IterPatternVariantVariableAst;
 
     struct ClosureExpressionAst;
-    struct ClosureExpressionCaptureItemAst;
+    struct ClosureExpressionCaptureAst;
+    struct ClosureExpressionCaptureGroupAst;
     struct ClosureExpressionParameterAndCaptureGroupAst;
-    struct ClosureExpressionParameterAst;
+    using ClosureExpressionParameterAst = FunctionParameterAst;
 
     struct LetStatementAst;
     struct LetStatementInitializedAst;
@@ -176,17 +177,19 @@ namespace spp::asts {
     struct TokenAst;
 
     struct TypeAst;
+    struct TypeBinaryExpressionAst;
+    struct TypeBinaryExpressionTempAst;
     struct TypePostfixExpressionAst;
     struct TypeUnaryExpressionAst;
     struct TypeIdentifierAst;
 
-    struct TypePostfixOperatorAst;
-    struct TypePostfixOperatorNestedAst;
-    struct TypePostfixOperatorOptionalAst;
+    struct TypePostfixExpressionOperatorAst;
+    struct TypePostfixExpressionOperatorNestedAst;
+    struct TypePostfixExpressionOperatorOptionalAst;
 
-    struct TypeUnaryOperatorAst;
-    struct TypeUnaryOperatorBorrowAst;
-    struct TypeUnaryOperatorNamespaceAst;
+    struct TypeUnaryExpressionOperatorAst;
+    struct TypeUnaryExpressionOperatorBorrowAst;
+    struct TypeUnaryExpressionOperatorNamespaceAst;
 
     struct UseStatementAst;
     struct TypeStatementAst;

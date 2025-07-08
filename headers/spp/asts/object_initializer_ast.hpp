@@ -17,7 +17,7 @@ struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst {
      * The object initializer argument group that contains the arguments for the object initializer. These arguments
      * will be passed into the attributes of the object being created.
      */
-    std::unique_ptr<ObjectInitializerAst> arg_group;
+    std::unique_ptr<ObjectInitializerArgumentGroupAst> arg_group;
 
     /**
      * Construct the ObjectInitializerAst with the arguments matching the members.
