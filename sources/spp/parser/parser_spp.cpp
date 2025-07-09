@@ -1672,7 +1672,7 @@ auto spp::parse::ParserSpp::parse_unary_type_expression_simple() -> std::unique_
 auto spp::parse::ParserSpp::parse_type_identifier() -> std::unique_ptr<asts::TypeIdentifierAst> {
     PARSE_ONCE(p1, parse_lexeme_identifier);
     PARSE_OPTIONAL(p2, parse_generic_argument_group);
-    return CREATE_AST(asts::TypeIdentifierAst, p1->token_data, p2);
+    return CREATE_AST(asts::TypeIdentifierAst, p1->pos_start(), p1->token_data, p2);
 }
 
 

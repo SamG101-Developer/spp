@@ -1,3 +1,4 @@
+#include <spp/asts/generic_argument_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
