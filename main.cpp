@@ -6,6 +6,7 @@
 #include <spp/lex/lexer.hpp>
 #include <spp/parse/parser_spp.hpp>
 #include <spp/utils/error_formatter.hpp>
+#include <spp/utils/errors.hpp>
 
 #include <unicode/unistr.h>
 

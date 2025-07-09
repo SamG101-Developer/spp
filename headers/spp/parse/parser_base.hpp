@@ -8,7 +8,6 @@
 #include <vector>
 
 #include <spp/lex/tokens.hpp>
-#include <spp/parse/parser_errors.hpp>
 
 #include <boost/preprocessor.hpp>
 #include <boost/preprocessor/enum.hpp>
@@ -115,8 +114,10 @@ constexpr bool is_unique_ptr_v = is_unique_ptr<T>::value;
 #define CREATE_AST(T, ...) \
     std::make_unique<T>(BOOST_PP_SEQ_ENUM(BOOST_PP_SEQ_TRANSFORM(MOVE_AST_FOR_CREATION, BOOST_PP_EMPTY(), BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))))
 
+
 #define CREATE_AST_CUSTOM(T, static_func, ...) \
     T::static_func(BOOST_PP_SEQ_ENUM(BOOST_PP_SEQ_TRANSFORM(MOVE_AST_FOR_CREATION, BOOST_PP_EMPTY(), BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))))
+
 
 #define MOVE_AST_FOR_CREATION(_1, _2, ast) std::move(ast)
 

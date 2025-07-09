@@ -17,7 +17,7 @@ struct spp::asts::PostfixExpressionAst final : ExpressionAst {
     /**
      * The operator token that represents the postfix operation. This indicates the type of operation being performed.
      */
-    std::unique_ptr<TokenAst> tok_op;
+    std::unique_ptr<PostfixExpressionOperatorAst> tok_op;
 
     /**
      * Construct the PostfixExpressionAst with the arguments matching the members.

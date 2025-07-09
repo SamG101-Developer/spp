@@ -1,5 +1,6 @@
 #include <spp/asts/binary_expression_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
+#include <spp/asts/postfix_expression_operator_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 
 

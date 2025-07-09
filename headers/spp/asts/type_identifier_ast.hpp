@@ -32,6 +32,23 @@ struct spp::asts::TypeIdentifierAst final : TypeAst {
         decltype(generic_args) &&generic_args);
 
     static auto from_identifier(IdentifierAst const &identifier) -> std::unique_ptr<TypeIdentifierAst>;
+
+public:
+    auto ns_parts() -> std::vector<IdentifierAst*> override;
+
+    auto type_parts() -> std::vector<TypeIdentifierAst*> override;
+
+    auto without_generics() -> std::unique_ptr<AbstractTypeAst> override;
+
+    auto get_convention() -> ConventionAst* override;
+
+    auto substitute_generics(std::vector<GenericArgumentAst*> &&args) -> std::unique_ptr<AbstractTypeAst> override;
+
+    auto contains_generic() const -> bool override;
+
+    auto set_generics() -> std::unique_ptr<AbstractTypeAst> override;
+
+    auto with_convention() -> std::unique_ptr<AbstractTypeAst> override;
 };
 
 

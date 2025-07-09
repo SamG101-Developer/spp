@@ -11,7 +11,7 @@ struct spp::asts::UnaryExpressionAst final : ExpressionAst {
     /**
      * The operator token that represents the unary operation. This indicates the type of operation being performed.
      */
-    std::unique_ptr<TokenAst> tok_op;
+    std::unique_ptr<UnaryExpressionOperatorAst> tok_op;
 
     /**
      * The expression that is being operated on by the unary operator.

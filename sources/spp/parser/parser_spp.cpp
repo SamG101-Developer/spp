@@ -147,21 +147,21 @@
 #include <spp/asts/use_statement_ast.hpp>
 
 #include <spp/parse/parser_spp.hpp>
-#include <spp/parse/parser_errors.hpp>
+#include <spp/utils/error_formatter.hpp>
+#include <spp/utils/errors.hpp>
 
 
 #define NO_ANNOTATIONS std::vector<std::unique_ptr<asts::AnnotationAst>>()
 
-#define LAM_CAPS [= BOOST_PP_COMMA() this]
 
-constexpr auto IDENTIFIER_TOKENS = std::vector{
+const auto IDENTIFIER_TOKENS = std::vector{
     spp::lex::RawTokenType::LX_CHARACTER,
     spp::lex::RawTokenType::LX_DIGIT,
     spp::lex::RawTokenType::TK_UNDERSCORE
 };
 
 
-constexpr auto UPPER_IDENTIFIER_TOKENS = std::vector{
+const auto UPPER_IDENTIFIER_TOKENS = std::vector{
     spp::lex::RawTokenType::LX_CHARACTER,
     spp::lex::RawTokenType::LX_DIGIT
 };
@@ -718,10 +718,10 @@ auto spp::parse::ParserSpp::parse_binary_expression_op_precedence_level_6() -> s
 auto spp::parse::ParserSpp::parse_unary_expression() -> std::unique_ptr<asts::ExpressionAst> {
     PARSE_ZERO_OR_MORE(p1, parse_unary_expression_op, parse_nothing);
     PARSE_ONCE(p2, parse_postfix_expression);
-    return std::accumulate(
+    return move_accumulate(
         p1.rbegin(), p1.rend(), std::move(p2),
-        [](std::unique_ptr<asts::ExpressionAst> acc, std::unique_ptr<asts::TokenAst> &x) {
-            return CREATE_AST(asts::UnaryExpressionAst, x, std::move(acc));
+        [](std::unique_ptr<asts::ExpressionAst> &&acc, std::unique_ptr<asts::UnaryExpressionOperatorAst> &&x) {
+            return CREATE_AST(asts::UnaryExpressionAst, std::move(x), std::move(acc));
         });
 }
 
@@ -742,10 +742,10 @@ auto spp::parse::ParserSpp::parse_unary_expression_op_async() -> std::unique_ptr
 auto spp::parse::ParserSpp::parse_postfix_expression() -> std::unique_ptr<asts::ExpressionAst> {
     PARSE_ONCE(p1, parse_primary_expression);
     PARSE_ZERO_OR_MORE(p2, parse_postfix_expression_op, parse_nothing);
-    return std::accumulate(
+    return move_accumulate(
         p2.begin(), p2.end(), std::move(p1),
-        [](std::unique_ptr<asts::ExpressionAst> acc, std::unique_ptr<asts::TokenAst> &x) {
-            return CREATE_AST(asts::PostfixExpressionAst, std::move(acc), x);
+        [](std::unique_ptr<asts::ExpressionAst> &&acc, std::unique_ptr<asts::PostfixExpressionOperatorAst> &&x) {
+            return CREATE_AST(asts::PostfixExpressionAst, std::move(acc), std::move(x));
         });
 }
 
@@ -848,15 +848,24 @@ auto spp::parse::ParserSpp::parse_case_expression_branch() -> std::unique_ptr<as
 auto spp::parse::ParserSpp::parse_case_expression_branch_else() -> std::unique_ptr<asts::CaseExpressionBranchAst> {
     PARSE_ONCE(p1, parse_case_expression_pattern_variant_else);
     PARSE_ONCE(p2, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
-    return CREATE_AST(asts::CaseExpressionBranchAst, nullptr, std::vector{std::move(p1)}, nullptr, p2);
+
+    auto temp = std::vector<decltype(p1)>();
+    temp.push_back(std::move(p1));
+    return CREATE_AST(asts::CaseExpressionBranchAst, nullptr, temp, nullptr, p2);
 }
 
 
 auto spp::parse::ParserSpp::parse_case_expression_branch_else_case() -> std::unique_ptr<asts::CaseExpressionBranchAst> {
     PARSE_ONCE(p1, parse_case_expression_pattern_variant_else_case);
+
     auto else_pattern = std::unique_ptr<asts::CasePatternVariantAst>(CREATE_AST(asts::CasePatternVariantElseAst, nullptr).release());
-    auto else_case_body = CREATE_AST(asts::InnerScopeExpressionAst<std::unique_ptr<asts::StatementAst>>, nullptr, std::vector{std::unique_ptr<asts::StatementAst>(dynamic_cast<asts::CasePatternVariantElseCaseAst*>(p1.release())->case_expr.release())}, nullptr);
-    return CREATE_AST(asts::CaseExpressionBranchAst, nullptr, std::vector{std::move(else_pattern)}, nullptr, else_case_body);
+    auto temp = std::vector<std::unique_ptr<asts::StatementAst>>{};
+    temp.push_back(std::unique_ptr<asts::StatementAst>(dynamic_cast<asts::CasePatternVariantElseCaseAst*>(p1.release())->case_expr.release()));
+
+    auto else_case_body = CREATE_AST(asts::InnerScopeExpressionAst<std::unique_ptr<asts::StatementAst>>, nullptr, temp, nullptr);
+    auto temp_2 = std::vector<decltype(else_pattern)>{};
+    temp_2.push_back(std::move(else_pattern));
+    return CREATE_AST(asts::CaseExpressionBranchAst, nullptr, temp_2, nullptr, else_case_body);
 }
 
 
@@ -1562,9 +1571,9 @@ auto spp::parse::ParserSpp::parse_unary_type_expression() -> std::unique_ptr<ast
     PARSE_ZERO_OR_MORE(p2, parse_unary_type_expression_op, parse_nothing);
     PARSE_ONCE(p3, parse_postfix_type_expression);
     if (p1 != nullptr) { p2.insert(p2.begin(), std::unique_ptr<asts::TypeUnaryExpressionOperatorAst>(p1.release())); }
-    return std::accumulate(
+    return move_accumulate(
         p2.rbegin(), p2.rend(), std::move(p3),
-        [](std::unique_ptr<asts::TypeAst> acc, std::unique_ptr<asts::TypeUnaryExpressionOperatorAst> &x) {
+        [](std::unique_ptr<asts::TypeAst> &&acc, std::unique_ptr<asts::TypeUnaryExpressionOperatorAst> &&x) {
             return CREATE_AST(asts::TypeUnaryExpressionAst, x, std::move(acc));
         });
 }
@@ -1594,9 +1603,9 @@ auto spp::parse::ParserSpp::parse_unary_type_expression_op_namespace() -> std::u
 auto spp::parse::ParserSpp::parse_postfix_type_expression() -> std::unique_ptr<asts::TypeAst> {
     PARSE_ONCE(p1, parse_unary_type_expression);
     PARSE_ZERO_OR_MORE(p2, parse_postfix_type_expression_op, parse_nothing);
-    return std::accumulate(
+    return move_accumulate(
         p2.begin(), p2.end(), std::move(p1),
-        [](std::unique_ptr<asts::TypeAst> acc, std::unique_ptr<asts::TypePostfixExpressionOperatorAst> &x) {
+        [](std::unique_ptr<asts::TypeAst> &&acc, std::unique_ptr<asts::TypePostfixExpressionOperatorAst> &&x) {
             return CREATE_AST(asts::TypePostfixExpressionAst, std::move(acc), x);
         });
 }
@@ -1640,9 +1649,9 @@ auto spp::parse::ParserSpp::parse_type_expression_simple() -> std::unique_ptr<as
 auto spp::parse::ParserSpp::parse_postfix_type_expression_simple() -> std::unique_ptr<asts::TypeAst> {
     PARSE_ONCE(p1, parse_unary_type_expression_simple);
     PARSE_ZERO_OR_MORE(p2, parse_postfix_type_expression_op, parse_nothing);
-    return std::accumulate(
+    return move_accumulate(
         p2.begin(), p2.end(), std::move(p1),
-        [](std::unique_ptr<asts::TypeAst> acc, std::unique_ptr<asts::TypePostfixExpressionOperatorAst> &x) {
+        [](std::unique_ptr<asts::TypeAst> &&acc, std::unique_ptr<asts::TypePostfixExpressionOperatorAst> &&x) {
             return CREATE_AST(asts::TypePostfixExpressionAst, std::move(acc), x);
         });
 }
@@ -1651,9 +1660,9 @@ auto spp::parse::ParserSpp::parse_postfix_type_expression_simple() -> std::uniqu
 auto spp::parse::ParserSpp::parse_unary_type_expression_simple() -> std::unique_ptr<asts::TypeAst> {
     PARSE_ZERO_OR_MORE(p1, parse_unary_type_expression_op, parse_nothing);
     PARSE_ONCE(p2, parse_postfix_type_expression);
-    return std::accumulate(
+    return move_accumulate(
         p1.rbegin(), p1.rend(), std::move(p2),
-        [](std::unique_ptr<asts::TypeAst> acc, std::unique_ptr<asts::TypeUnaryExpressionOperatorAst> &x) {
+        [](std::unique_ptr<asts::TypeAst> &&acc, std::unique_ptr<asts::TypeUnaryExpressionOperatorAst> &&x) {
             return CREATE_AST(asts::TypeUnaryExpressionAst, x, std::move(acc));
         });
 }
@@ -1695,7 +1704,10 @@ auto spp::parse::ParserSpp::parse_type_tuple_1_types() -> std::unique_ptr<asts::
     PARSE_ONCE(p2, parse_type_expression);
     PARSE_ONCE(p3, parse_token_comma);
     PARSE_ONCE(p4, parse_token_right_parenthesis);
-    return CREATE_AST(asts::TypeTupleShorthandAst, p1, std::vector{std::move(p2)}, p4)->convert();
+
+    auto temp = std::vector<decltype(p2)>();
+    temp.push_back(std::move(p2));
+    return CREATE_AST(asts::TypeTupleShorthandAst, p1, temp, p4)->convert();
 }
 
 
@@ -1767,15 +1779,15 @@ auto spp::parse::ParserSpp::parse_literal_boolean() -> std::unique_ptr<asts::Boo
 
 
 auto spp::parse::ParserSpp::parse_literal_tuple(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::TupleLiteralAst> {
-    auto parser_1 = [= BOOST_PP_COMMA() this] mutable { return parse_literal_tuple_1_element( std::move(elem_parser) ); };
-    auto parser_n = [= BOOST_PP_COMMA() this] mutable { return parse_literal_tuple_n_elements( std::move(elem_parser) ); };
+    auto parser_1 = [= BOOST_PP_COMMA() this] mutable { return parse_literal_tuple_1_element(std::move(elem_parser)); };
+    auto parser_n = [= BOOST_PP_COMMA() this] mutable { return parse_literal_tuple_n_elements(std::move(elem_parser)); };
     PARSE_ALTERNATE(p1, asts::TupleLiteralAst, parser_1, parser_n);
     return FORWARD_AST(p1);
 }
 
 
 auto spp::parse::ParserSpp::parse_literal_array(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::ArrayLiteralAst> {
-    auto parser_n = [= BOOST_PP_COMMA() this] mutable { return parse_literal_array_n_elements( std::move(elem_parser) ); };
+    auto parser_n = [= BOOST_PP_COMMA() this] mutable { return parse_literal_array_n_elements(std::move(elem_parser)); };
     PARSE_ALTERNATE(p1, asts::ArrayLiteralAst, parse_literal_array_0_elements, parser_n);
     return FORWARD_AST(p1);
 }
@@ -1865,10 +1877,13 @@ auto spp::parse::ParserSpp::parse_integer_suffix_type() -> std::unique_ptr<asts:
 
 auto spp::parse::ParserSpp::parse_literal_tuple_1_element(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::TupleLiteralAst> {
     PARSE_ONCE(p1, parse_token_left_parenthesis);
-    PARSE_ONCE(p2, elem_parser);
+    PARSE_ONCE(p2, std::move(elem_parser));
     PARSE_ONCE(p3, parse_token_comma);
     PARSE_ONCE(p4, parse_token_right_parenthesis);
-    return CREATE_AST(asts::TupleLiteralAst, p1, std::vector{std::move(p2)}, p3);
+
+    auto temp = std::vector<decltype(p2)>();
+    temp.push_back(std::move(p2));
+    return CREATE_AST(asts::TupleLiteralAst, p1, temp, p3);
 }
 
 
