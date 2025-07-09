@@ -14,6 +14,11 @@ auto spp::asts::ModuleImplementationAst::pos_start() const -> std::size_t {
 }
 
 
+auto spp::asts::ModuleImplementationAst::pos_end() const -> std::size_t {
+    return members.empty() ? 0 : members.back()->pos_end();
+}
+
+
 spp::asts::ModuleImplementationAst::operator icu::UnicodeString() const {
     SPP_STRING_START;
     SPP_STRING_EXTEND(members);

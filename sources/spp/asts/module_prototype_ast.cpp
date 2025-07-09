@@ -13,6 +13,11 @@ auto spp::asts::ModulePrototypeAst::pos_start() const -> std::size_t {
 }
 
 
+auto spp::asts::ModulePrototypeAst::pos_end() const -> std::size_t {
+    return implementation->pos_end();
+}
+
+
 spp::asts::ModulePrototypeAst::operator icu::UnicodeString() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(implementation);

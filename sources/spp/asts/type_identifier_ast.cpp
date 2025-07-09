@@ -44,3 +44,23 @@ auto spp::asts::TypeIdentifierAst::print(meta::AstPrinter &printer) const -> icu
 auto spp::asts::TypeIdentifierAst::from_identifier(IdentifierAst const &identifier) -> std::unique_ptr<TypeIdentifierAst> {
     return std::make_unique<TypeIdentifierAst>(identifier.pos_start(), icu::UnicodeString(identifier.val), nullptr);
 }
+
+
+auto spp::asts::TypeIdentifierAst::ns_parts() const -> std::vector<IdentifierAst const *> {
+    return {};
+}
+
+
+auto spp::asts::TypeIdentifierAst::type_parts() const -> std::vector<TypeIdentifierAst const *> {
+    return std::vector{this};
+}
+
+
+auto spp::asts::TypeIdentifierAst::without_generics() const -> std::unique_ptr<AbstractTypeAst> {
+    return std::make_unique<TypeIdentifierAst>(m_pos, icu::UnicodeString(name), nullptr);
+}
+
+
+auto spp::asts::TypeIdentifierAst::get_convention() const -> ConventionAst* {
+    return nullptr;
+}

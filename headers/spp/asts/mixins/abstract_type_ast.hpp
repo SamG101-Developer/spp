@@ -17,9 +17,9 @@ public:
     virtual ~AbstractTypeAst() = default;
 
 public:
-    virtual auto ns_parts() const -> std::vector<IdentifierAst*> = 0;
+    virtual auto ns_parts() const -> std::vector<IdentifierAst const*> = 0;
 
-    virtual auto type_parts() const -> std::vector<TypeIdentifierAst*> = 0;
+    virtual auto type_parts() const -> std::vector<TypeIdentifierAst const*> = 0;
 
     virtual auto without_generics() const -> std::unique_ptr<AbstractTypeAst> = 0;
 

@@ -39,9 +39,9 @@ private:
     std::size_t m_pos;
 
 public:
-    auto ns_parts() const -> std::vector<IdentifierAst*> override;
+    auto ns_parts() const -> std::vector<IdentifierAst const *> override;
 
-    auto type_parts() const -> std::vector<TypeIdentifierAst*> override;
+    auto type_parts() const -> std::vector<TypeIdentifierAst const *> override;
 
     auto without_generics() const -> std::unique_ptr<AbstractTypeAst> override;
 
