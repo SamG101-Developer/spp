@@ -9,7 +9,7 @@
  * The FunctionParameterAst provides a common base to all parameter types in a function prototype. It is inherited by
  * the required, optional, variadic and self parameters, and provides the common functionality for all of them.
  */
-struct spp::asts::FunctionParameterAst : Ast {
+struct spp::asts::FunctionParameterAst : virtual Ast {
     /**
      * The local variable declaration for this parameter. This is used to create a local variable for the parameter,
      * using the same syntax as variables, such as destructuring.

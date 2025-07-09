@@ -9,7 +9,7 @@
  * The ObjectInitializerArgumentAst is the base class representing an argument in a object initialization. It is
  * inherited into the "shorthand" and "keyword" variants.
  */
-struct spp::asts::ObjectInitializerArgumentAst : Ast {
+struct spp::asts::ObjectInitializerArgumentAst : virtual Ast {
     using Ast::Ast;
 
     /**

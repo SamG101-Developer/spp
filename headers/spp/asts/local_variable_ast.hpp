@@ -5,7 +5,7 @@
 #include <spp/asts/_fwd.hpp>
 
 
-struct spp::asts::LocalVariableAst : Ast {
+struct spp::asts::LocalVariableAst : virtual Ast {
     using Ast::Ast;
 
 protected:

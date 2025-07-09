@@ -13,7 +13,7 @@
  * This ASt is further inherited into the SubroutinePrototypeAst and CoroutinePrototypeAst, which add additional
  * analysis checks.
  */
-struct spp::asts::FunctionPrototypeAst : Ast {
+struct spp::asts::FunctionPrototypeAst : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

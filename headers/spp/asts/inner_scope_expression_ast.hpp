@@ -8,7 +8,6 @@
 
 template <typename T>
 struct spp::asts::InnerScopeExpressionAst final : InnerScopeAst<T>, PrimaryExpressionAst {
-    SPP_AST_KEY_FUNCTIONS;
     using InnerScopeAst<T>::InnerScopeAst;
 };
 

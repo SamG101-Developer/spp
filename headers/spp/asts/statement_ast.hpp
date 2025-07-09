@@ -9,7 +9,7 @@
  * The StatementAst class is the base class for all statements in the abstract syntax tree. It is used to represent
  * statements that do not return a value, such as variable declarations and control flow statements.
  */
-struct spp::asts::StatementAst : Ast {
+struct spp::asts::StatementAst : virtual Ast {
     using Ast::Ast;
 };
 

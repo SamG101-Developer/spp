@@ -10,7 +10,7 @@
  * class, including its name and any generic parameters it may have. The attributes are defined in the implementation
  * ast for this class, allowing for scoping rules to be made easier.
  */
-struct spp::asts::ClassPrototypeAst final : Ast {
+struct spp::asts::ClassPrototypeAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

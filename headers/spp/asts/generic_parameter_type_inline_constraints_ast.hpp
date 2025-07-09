@@ -5,7 +5,7 @@
 #include <spp/asts/_fwd.hpp>
 
 
-struct spp::asts::GenericParameterTypeInlineConstraintsAst final : Ast {
+struct spp::asts::GenericParameterTypeInlineConstraintsAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

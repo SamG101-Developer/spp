@@ -5,7 +5,7 @@
 #include <spp/asts/_fwd.hpp>
 
 
-struct spp::asts::LocalVariableSingleIdentifierAliasAst final : Ast {
+struct spp::asts::LocalVariableSingleIdentifierAliasAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

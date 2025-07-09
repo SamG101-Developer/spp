@@ -5,7 +5,7 @@
 #include <spp/asts/_fwd.hpp>
 
 
-struct spp::asts::GenericArgumentGroupAst final : Ast {
+struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

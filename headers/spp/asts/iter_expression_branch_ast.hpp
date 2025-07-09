@@ -5,7 +5,7 @@
 #include <spp/asts/_fwd.hpp>
 
 
-struct spp::asts::IterExpressionBranchAst final : Ast {
+struct spp::asts::IterExpressionBranchAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

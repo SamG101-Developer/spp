@@ -4,7 +4,7 @@
 #include <spp/asts/ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
-struct spp::asts::ClosureExpressionCaptureGroupAst final : Ast {
+struct spp::asts::ClosureExpressionCaptureGroupAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

@@ -5,7 +5,7 @@
 #include <spp/asts/_fwd.hpp>
 
 
-struct spp::asts::CasePatternVariantAst : Ast {
+struct spp::asts::CasePatternVariantAst : virtual Ast {
     using Ast::Ast;
 
 protected:

@@ -5,7 +5,7 @@
 #include <spp/asts/_fwd.hpp>
 
 
-struct spp::asts::PatternGuardAst final : Ast {
+struct spp::asts::PatternGuardAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

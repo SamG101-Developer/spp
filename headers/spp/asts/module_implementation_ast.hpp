@@ -9,7 +9,7 @@
  * The ModuleImplementationAst represents the implementation of a module in the SPP language. It contains a list of
  * module members that define the functionality and structure of the module.
  */
-struct spp::asts::ModuleImplementationAst final : Ast {
+struct spp::asts::ModuleImplementationAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

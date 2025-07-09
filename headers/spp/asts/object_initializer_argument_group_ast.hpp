@@ -9,7 +9,7 @@
  * The ObjectInitializerArgumentGroupAst represents a group of object initializer arguments. It is used to group
  * multiple shorthand or keyword arguments together in a object initializer.
  */
-struct spp::asts::ObjectInitializerArgumentGroupAst final : Ast {
+struct spp::asts::ObjectInitializerArgumentGroupAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

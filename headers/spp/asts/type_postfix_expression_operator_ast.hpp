@@ -5,7 +5,7 @@
 #include <spp/asts/_fwd.hpp>
 
 
-struct spp::asts::TypePostfixExpressionOperatorAst : Ast {
+struct spp::asts::TypePostfixExpressionOperatorAst : virtual Ast {
     using Ast::Ast;
 };
 

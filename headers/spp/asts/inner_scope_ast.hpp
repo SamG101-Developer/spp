@@ -13,7 +13,7 @@
  * @tparam T The type of the members in the inner scope.
  */
 template <typename T>
-struct spp::asts::InnerScopeAst : Ast {
+struct spp::asts::InnerScopeAst : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

@@ -5,7 +5,7 @@
 #include <spp/asts/_fwd.hpp>
 
 
-struct spp::asts::IterPatternVariantAst : Ast {
+struct spp::asts::IterPatternVariantAst : virtual Ast {
     using Ast::Ast;
 
 

@@ -8,7 +8,7 @@
 /**
  * A FunctionParameterGroupAst is used to represent a group of function parameters in a function prototype.
  */
-struct spp::asts::FunctionParameterGroupAst final : Ast {
+struct spp::asts::FunctionParameterGroupAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

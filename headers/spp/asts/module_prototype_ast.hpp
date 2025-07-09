@@ -9,7 +9,7 @@
  * The ModulePrototypeAst represents a prototype for a module in the SPP language. It contains a the implementation of
  * the module.
  */
-struct spp::asts::ModulePrototypeAst final : Ast {
+struct spp::asts::ModulePrototypeAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

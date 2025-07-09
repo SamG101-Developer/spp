@@ -10,7 +10,7 @@
  * marking a method as @c @virtualmethod won't generate any code, but will tag the method as virtual, unlocking
  * additional behaviour in the compiler.
  */
-struct spp::asts::AnnotationAst final : Ast {
+struct spp::asts::AnnotationAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

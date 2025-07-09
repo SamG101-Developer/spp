@@ -10,7 +10,7 @@
  * GenericArgumentTypeAst, which represent the two types of generic arguments in the language. These in turn are
  * inherited for the positional and keyword variants.
  */
-struct spp::asts::GenericArgumentAst : Ast {
+struct spp::asts::GenericArgumentAst : virtual Ast {
     using Ast::Ast;
 };
 

@@ -14,7 +14,7 @@
  * is also the terminator for \c pos_end() recursive calls; the end position is the length of the associated data added
  * to is the sart position.
  */
-struct spp::asts::TokenAst final : Ast {
+struct spp::asts::TokenAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

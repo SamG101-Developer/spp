@@ -9,7 +9,7 @@
  * The FunctionCallArgumentAst is the base class representing an argument in a function call. It is inherited into the
  * "positional" and "keyword" variants.
  */
-struct spp::asts::FunctionCallArgumentAst : Ast {
+struct spp::asts::FunctionCallArgumentAst : virtual Ast {
     using Ast::Ast;
 
     /**

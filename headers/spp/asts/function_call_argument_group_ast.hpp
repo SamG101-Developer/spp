@@ -9,7 +9,7 @@
  * The FunctionCallArgumentGroupAst represents a group of function call arguments. It is used to group multiple
  * positional or keyword arguments together in a function call.
  */
-struct spp::asts::FunctionCallArgumentGroupAst final : Ast {
+struct spp::asts::FunctionCallArgumentGroupAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

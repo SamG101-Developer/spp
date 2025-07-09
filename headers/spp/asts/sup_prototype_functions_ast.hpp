@@ -14,7 +14,7 @@
  * }
  * @endcode
  */
-struct spp::asts::SupPrototypeFunctionsAst final : Ast {
+struct spp::asts::SupPrototypeFunctionsAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

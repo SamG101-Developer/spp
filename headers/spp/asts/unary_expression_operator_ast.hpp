@@ -5,7 +5,7 @@
 #include <spp/asts/_fwd.hpp>
 
 
-struct spp::asts::UnaryExpressionOperatorAst : Ast {
+struct spp::asts::UnaryExpressionOperatorAst : virtual Ast {
     using Ast::Ast;
 };
 

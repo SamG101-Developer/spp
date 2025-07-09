@@ -9,7 +9,7 @@
  * The GenericParameterAst is the base class for all generic parameters. It is inherited by the GenericParameterCompAst
  * and GenericParameterTypeAst, which represent the two types of generic parameters in the language.
  */
-struct spp::asts::GenericParameterAst : Ast {
+struct spp::asts::GenericParameterAst : virtual Ast {
     using Ast::Ast;
 };
 

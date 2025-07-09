@@ -5,7 +5,7 @@
 #include <spp/asts/_fwd.hpp>
 
 
-struct spp::asts::LoopConditionAst : Ast {
+struct spp::asts::LoopConditionAst : virtual Ast {
     using Ast::Ast;
 };
 

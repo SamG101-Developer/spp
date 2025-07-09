@@ -6,7 +6,7 @@
 #include <spp/asts/_fwd.hpp>
 
 
-struct spp::asts::TypeTupleShorthandAst final : Ast, mixins::TempTypeAst {
+struct spp::asts::TypeTupleShorthandAst final : virtual Ast, mixins::TempTypeAst {
     SPP_AST_KEY_FUNCTIONS;
 
     /**
