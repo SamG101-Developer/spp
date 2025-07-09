@@ -24,14 +24,19 @@ struct spp::asts::TypeIdentifierAst final : TypeAst {
 
     /**
      * Construct the TypeIdentifier with the arguments matching the members.
+     * @param[in] pos The position of the type in the source code.
      * @param[in] name The name for the type.
      * @param[in] generic_args The generic arguments for the type.
      */
     explicit TypeIdentifierAst(
+        std::size_t pos,
         decltype(name) &&name,
         decltype(generic_args) &&generic_args);
 
     static auto from_identifier(IdentifierAst const &identifier) -> std::unique_ptr<TypeIdentifierAst>;
+
+private:
+    std::size_t m_pos;
 
 public:
     auto ns_parts() const -> std::vector<IdentifierAst*> override;

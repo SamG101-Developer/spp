@@ -18,6 +18,11 @@ spp::asts::FunctionParameterOptionalAst::FunctionParameterOptionalAst(
 }
 
 
+auto spp::asts::FunctionParameterOptionalAst::pos_start() const -> std::size_t {
+    return default_val->pos_start();
+}
+
+
 auto spp::asts::FunctionParameterOptionalAst::pos_end() const -> std::size_t {
     return default_val->pos_end();
 }

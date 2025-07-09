@@ -19,6 +19,11 @@ spp::asts::FloatLiteralAst::FloatLiteralAst(
 }
 
 
+auto spp::asts::FloatLiteralAst::pos_start() const -> std::size_t {
+    return tok_sign ? tok_sign->pos_start() : int_val->pos_start();
+}
+
+
 auto spp::asts::FloatLiteralAst::pos_end() const -> std::size_t {
     return type ? type->pos_end() : frac_val->pos_end();
 }

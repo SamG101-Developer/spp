@@ -1,6 +1,8 @@
 #include <algorithm>
 
+#include <spp/asts/class_member_ast.hpp>
 #include <spp/asts/inner_scope_ast.hpp>
+#include <spp/asts/statement_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 
 
@@ -12,6 +14,12 @@ spp::asts::InnerScopeAst<T>::InnerScopeAst(
     tok_l(std::move(tok_l)),
     members(std::move(members)),
     tok_r(std::move(tok_r)) {
+}
+
+
+template <typename T>
+auto spp::asts::InnerScopeAst<T>::pos_start() const -> std::size_t {
+    return tok_l->pos_start();
 }
 
 
@@ -39,3 +47,8 @@ auto spp::asts::InnerScopeAst<T>::print(meta::AstPrinter &printer) const -> icu:
     SPP_PRINT_APPEND(tok_r);
     SPP_PRINT_END;
 }
+
+
+template class spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::ClassMemberAst>>;
+template class spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::FunctionMemberAst>>;
+template class spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::SupMemberAst>>;

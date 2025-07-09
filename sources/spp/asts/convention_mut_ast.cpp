@@ -12,6 +12,11 @@ spp::asts::ConventionMutAst::ConventionMutAst(
 }
 
 
+auto spp::asts::ConventionMutAst::pos_start() const -> std::size_t {
+    return tok_borrow->pos_start();
+}
+
+
 auto spp::asts::ConventionMutAst::pos_end() const -> std::size_t {
     return tok_mut->pos_end();
 }

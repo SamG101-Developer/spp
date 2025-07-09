@@ -14,6 +14,11 @@ spp::asts::FunctionParameterSelfAst::FunctionParameterSelfAst(
 }
 
 
+auto spp::asts::FunctionParameterSelfAst::pos_start() const -> std::size_t {
+    return tok_conv->pos_start();
+}
+
+
 auto spp::asts::FunctionParameterSelfAst::pos_end() const -> std::size_t {
     return var->pos_end();
 }

@@ -34,6 +34,11 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
 }
 
 
+auto spp::asts::FunctionPrototypeAst::pos_start() const -> std::size_t {
+    return tok_fun->pos_start();
+}
+
+
 auto spp::asts::FunctionPrototypeAst::pos_end() const -> std::size_t {
     return implementation->pos_end();
 }
