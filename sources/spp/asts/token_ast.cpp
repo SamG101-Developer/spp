@@ -7,7 +7,7 @@ spp::asts::TokenAst::TokenAst(
     icu::UnicodeString &&token_data):
     token_type(token_type),
     token_data(std::move(token_data)),
-    pos(pos) {
+    m_pos(pos) {
 }
 
 
@@ -16,8 +16,13 @@ auto spp::asts::TokenAst::operator==(TokenAst const &that) const -> bool {
 }
 
 
-auto spp::asts::TokenAst::pos_end() -> std::size_t {
-    return pos + token_data.length();
+auto spp::asts::TokenAst::pos_start() const -> std::size_t {
+    return m_pos;
+}
+
+
+auto spp::asts::TokenAst::pos_end() const -> std::size_t {
+    return m_pos + token_data.length();
 }
 
 

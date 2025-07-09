@@ -15,7 +15,12 @@ spp::asts::AssignmentStatementAst::AssignmentStatementAst(
 }
 
 
-auto spp::asts::AssignmentStatementAst::pos_end() -> std::size_t {
+auto spp::asts::AssignmentStatementAst::pos_start() const -> std::size_t {
+    return lhs.front()->pos_start();
+}
+
+
+auto spp::asts::AssignmentStatementAst::pos_end() const -> std::size_t {
     return rhs.back()->pos_end();
 }
 

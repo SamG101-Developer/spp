@@ -12,7 +12,7 @@ spp::asts::ConventionMutAst::ConventionMutAst(
 }
 
 
-auto spp::asts::ConventionMutAst::pos_end() -> std::size_t {
+auto spp::asts::ConventionMutAst::pos_end() const -> std::size_t {
     return tok_mut->pos_end();
 }
 

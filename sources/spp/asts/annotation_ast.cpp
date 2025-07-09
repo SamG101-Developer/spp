@@ -16,7 +16,12 @@ auto spp::asts::AnnotationAst::operator==(AnnotationAst const &that) const -> bo
 }
 
 
-auto spp::asts::AnnotationAst::pos_end() -> std::size_t {
+auto spp::asts::AnnotationAst::pos_start() const -> std::size_t {
+    return tok_at_sign->pos_start();
+}
+
+
+auto spp::asts::AnnotationAst::pos_end() const -> std::size_t {
     return name->pos_end();
 }
 

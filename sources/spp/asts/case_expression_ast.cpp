@@ -23,7 +23,12 @@ spp::asts::CaseExpressionAst::CaseExpressionAst(
 }
 
 
-auto spp::asts::CaseExpressionAst::pos_end() -> std::size_t {
+auto spp::asts::CaseExpressionAst::pos_start() const -> std::size_t {
+    return tok_case->pos_start();
+}
+
+
+auto spp::asts::CaseExpressionAst::pos_end() const -> std::size_t {
     return branches.back()->pos_end();
 }
 

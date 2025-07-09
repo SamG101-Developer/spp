@@ -15,7 +15,12 @@ spp::asts::BinaryExpressionAst::BinaryExpressionAst(
 }
 
 
-auto spp::asts::BinaryExpressionAst::pos_end() -> std::size_t {
+auto spp::asts::BinaryExpressionAst::pos_start() const -> std::size_t {
+    return lhs->pos_start();
+}
+
+
+auto spp::asts::BinaryExpressionAst::pos_end() const -> std::size_t {
     return rhs->pos_end();
 }
 

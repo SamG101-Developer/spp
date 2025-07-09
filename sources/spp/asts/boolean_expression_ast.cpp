@@ -8,7 +8,12 @@ spp::asts::BooleanLiteralAst::BooleanLiteralAst(
 }
 
 
-auto spp::asts::BooleanLiteralAst::pos_end() -> std::size_t {
+auto spp::asts::BooleanLiteralAst::pos_start() const -> std::size_t {
+    return tok_bool->pos_start();
+}
+
+
+auto spp::asts::BooleanLiteralAst::pos_end() const -> std::size_t {
     return tok_bool->pos_end();
 }
 

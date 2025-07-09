@@ -40,7 +40,7 @@ struct spp::asts::TokenAst final : Ast {
     auto operator==(TokenAst const &that) const -> bool;
 
 private:
-    std::size_t pos;
+    std::size_t m_pos;
 };
 
 

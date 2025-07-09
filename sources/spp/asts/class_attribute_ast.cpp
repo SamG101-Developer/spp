@@ -22,8 +22,13 @@ spp::asts::ClassAttributeAst::ClassAttributeAst(
 }
 
 
-auto spp::asts::ClassAttributeAst::pos_end() -> std::size_t {
-    return default_value != nullptr ? default_value->pos_end() : type->pos_end();
+auto spp::asts::ClassAttributeAst::pos_start() const -> std::size_t {
+    return name->pos_start();
+}
+
+
+auto spp::asts::ClassAttributeAst::pos_end() const -> std::size_t {
+    return type->pos_end();
 }
 
 

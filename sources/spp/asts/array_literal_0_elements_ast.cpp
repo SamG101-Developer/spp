@@ -17,7 +17,12 @@ spp::asts::ArrayLiteral0Elements::ArrayLiteral0Elements(
 }
 
 
-auto spp::asts::ArrayLiteral0Elements::pos_end() -> std::size_t {
+auto spp::asts::ArrayLiteral0Elements::pos_start() const -> std::size_t {
+    return tok_l->pos_start();
+}
+
+
+auto spp::asts::ArrayLiteral0Elements::pos_end() const -> std::size_t {
     return tok_r->pos_end();
 }
 

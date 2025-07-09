@@ -17,7 +17,7 @@ spp::asts::FunctionCallArgumentKeywordAst::FunctionCallArgumentKeywordAst(
 }
 
 
-auto spp::asts::FunctionCallArgumentKeywordAst::pos_end() -> std::size_t {
+auto spp::asts::FunctionCallArgumentKeywordAst::pos_end() const -> std::size_t {
     return val->pos_end();
 }
 

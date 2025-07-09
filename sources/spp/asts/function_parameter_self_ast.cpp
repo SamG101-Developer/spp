@@ -14,7 +14,7 @@ spp::asts::FunctionParameterSelfAst::FunctionParameterSelfAst(
 }
 
 
-auto spp::asts::FunctionParameterSelfAst::pos_end() -> std::size_t {
+auto spp::asts::FunctionParameterSelfAst::pos_end() const -> std::size_t {
     return var->pos_end();
 }
 

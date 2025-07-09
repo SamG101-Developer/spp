@@ -19,7 +19,7 @@ spp::asts::FloatLiteralAst::FloatLiteralAst(
 }
 
 
-auto spp::asts::FloatLiteralAst::pos_end() -> std::size_t {
+auto spp::asts::FloatLiteralAst::pos_end() const -> std::size_t {
     return type ? type->pos_end() : frac_val->pos_end();
 }
 

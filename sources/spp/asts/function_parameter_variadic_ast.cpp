@@ -15,7 +15,7 @@ spp::asts::FunctionParameterVariadicAst::FunctionParameterVariadicAst(
 }
 
 
-auto spp::asts::FunctionParameterVariadicAst::pos_end() -> std::size_t {
+auto spp::asts::FunctionParameterVariadicAst::pos_end() const -> std::size_t {
     return tok_ellipsis->pos_end();
 }
 

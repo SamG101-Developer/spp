@@ -14,7 +14,7 @@ spp::asts::FunctionCallArgumentPositionalAst::FunctionCallArgumentPositionalAst(
 }
 
 
-auto spp::asts::FunctionCallArgumentPositionalAst::pos_end() -> std::size_t {
+auto spp::asts::FunctionCallArgumentPositionalAst::pos_end() const -> std::size_t {
     return val->pos_end();
 }
 

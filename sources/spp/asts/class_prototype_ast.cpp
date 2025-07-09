@@ -25,7 +25,12 @@ spp::asts::ClassPrototypeAst::ClassPrototypeAst(
 }
 
 
-auto spp::asts::ClassPrototypeAst::pos_end() -> std::size_t {
+auto spp::asts::ClassPrototypeAst::pos_start() const -> std::size_t {
+    return tok_cls->pos_start();
+}
+
+
+auto spp::asts::ClassPrototypeAst::pos_end() const -> std::size_t {
     return body->pos_end();
 }
 

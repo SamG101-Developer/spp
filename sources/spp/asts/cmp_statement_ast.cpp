@@ -26,7 +26,12 @@ spp::asts::CmpStatementAst::CmpStatementAst(
 }
 
 
-auto spp::asts::CmpStatementAst::pos_end() -> std::size_t {
+auto spp::asts::CmpStatementAst::pos_start() const -> std::size_t {
+    return name->pos_start();
+}
+
+
+auto spp::asts::CmpStatementAst::pos_end() const -> std::size_t {
     return value->pos_end();
 }
 

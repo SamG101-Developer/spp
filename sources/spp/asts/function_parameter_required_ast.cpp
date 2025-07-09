@@ -13,7 +13,7 @@ spp::asts::FunctionParameterRequiredAst::FunctionParameterRequiredAst(
 }
 
 
-auto spp::asts::FunctionParameterRequiredAst::pos_end() -> std::size_t {
+auto spp::asts::FunctionParameterRequiredAst::pos_end() const -> std::size_t {
     return type->pos_end();
 }
 

@@ -10,7 +10,7 @@ spp::asts::ConventionRefAst::ConventionRefAst(
 }
 
 
-auto spp::asts::ConventionRefAst::pos_end() -> std::size_t {
+auto spp::asts::ConventionRefAst::pos_end() const -> std::size_t {
     return tok_borrow->pos_end();
 }
 

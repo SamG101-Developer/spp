@@ -16,7 +16,7 @@ spp::asts::InnerScopeAst<T>::InnerScopeAst(
 
 
 template <typename T>
-auto spp::asts::InnerScopeAst<T>::pos_end() -> std::size_t {
+auto spp::asts::InnerScopeAst<T>::pos_end() const -> std::size_t {
     return tok_r->pos_end();
 }
 

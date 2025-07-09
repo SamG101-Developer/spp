@@ -18,7 +18,7 @@ spp::asts::FunctionCallArgumentGroupAst::FunctionCallArgumentGroupAst(
 }
 
 
-auto spp::asts::FunctionCallArgumentGroupAst::pos_end() -> std::size_t {
+auto spp::asts::FunctionCallArgumentGroupAst::pos_end() const -> std::size_t {
     return tok_r->pos_end();
 }
 

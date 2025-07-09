@@ -22,7 +22,12 @@ spp::asts::CaseExpressionBranchAst::CaseExpressionBranchAst(
 }
 
 
-auto spp::asts::CaseExpressionBranchAst::pos_end() -> std::size_t {
+auto spp::asts::CaseExpressionBranchAst::pos_start() const -> std::size_t {
+    return tok_comparison->pos_start();
+}
+
+
+auto spp::asts::CaseExpressionBranchAst::pos_end() const -> std::size_t {
     return body->pos_end();
 }
 

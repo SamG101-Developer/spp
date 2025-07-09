@@ -18,7 +18,7 @@ spp::asts::FunctionParameterGroupAst::FunctionParameterGroupAst(
 }
 
 
-auto spp::asts::FunctionParameterGroupAst::pos_end() -> std::size_t {
+auto spp::asts::FunctionParameterGroupAst::pos_end() const -> std::size_t {
     return tok_r->pos_end();
 }
 

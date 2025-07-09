@@ -22,8 +22,8 @@ namespace spp::analyse::scopes {
 
 
 #define SPP_AST_KEY_FUNCTIONS \
-    auto pos_start() -> std::size_t override;\
-    auto pos_end() -> std::size_t override;\
+    auto pos_start() const -> std::size_t override;\
+    auto pos_end() const -> std::size_t override;\
     explicit operator icu::UnicodeString() const override;\
     auto print(meta::AstPrinter &printer) const -> icu::UnicodeString override
 
@@ -65,14 +65,14 @@ public:
      * the start position of the first field, until a TokenAst is reached.
      * @return The first position this AST encompasses.
      */
-    virtual auto pos_start() -> std::size_t = 0;
+    virtual auto pos_start() const -> std::size_t = 0;
 
     /**
      * The end position is the final position in the source code that contains this AST. An AST will recursively get the
      * end position of the final field, until a TokenAst is reached.
      * @return The final position this AST encompasses.
      */
-    virtual auto pos_end() -> std::size_t = 0;
+    virtual auto pos_end() const -> std::size_t = 0;
 
     /**
      * Print an AST using raw-formatting. This does not handle indentation, and prints the AST as a single line.

@@ -34,7 +34,7 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
 }
 
 
-auto spp::asts::FunctionPrototypeAst::pos_end() -> std::size_t {
+auto spp::asts::FunctionPrototypeAst::pos_end() const -> std::size_t {
     return implementation->pos_end();
 }
 

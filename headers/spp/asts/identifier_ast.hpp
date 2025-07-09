@@ -16,9 +16,11 @@ struct spp::asts::IdentifierAst final : PrimaryExpressionAst {
 
     /**
      * Construct the IdentifierAst with the arguments matching the members.
-     * @param val The internal value of the identifier.
+     * @param[in] pos The position of the identifier in the source code.
+     * @param[in] val The internal value of the identifier.
      */
     explicit IdentifierAst(
+        std::size_t pos,
         decltype(val) &&val);
 
     auto operator==(IdentifierAst const &that) const -> bool;
@@ -27,9 +29,12 @@ struct spp::asts::IdentifierAst final : PrimaryExpressionAst {
 
     auto operator+(icu::UnicodeString const &that) const -> IdentifierAst;
 
-    static auto from_type(TypeAst const &val) -> IdentifierAst;
+    static auto from_type(TypeAst const &val) -> std::unique_ptr<IdentifierAst>;
 
-    SPP_ATTR_NODISCARD auto to_function_identifier() const -> IdentifierAst;
+    SPP_ATTR_NODISCARD auto to_function_identifier() const -> std::unique_ptr<IdentifierAst>;
+
+private:
+    std::size_t m_pos;
 };
 
 
