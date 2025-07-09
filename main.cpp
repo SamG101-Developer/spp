@@ -1,10 +1,12 @@
 #include <fstream>
 #include <sstream>
 
+#include <spp/asts/module_prototype_ast.hpp>
+#include <spp/asts/module_implementation_ast.hpp>
 #include <spp/lex/lexer.hpp>
 #include <spp/parse/parser_spp.hpp>
+#include <spp/utils/error_formatter.hpp>
 
-#include <magic_enum/magic_enum.hpp>
 #include <unicode/unistr.h>
 
 

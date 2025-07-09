@@ -16,6 +16,6 @@ auto spp::utils::errors::SyntacticError::raise() noexcept(false) -> void {
     // Replace the "£" with the string tokens.
     auto err_msg = std::string(what());
     err_msg.replace(err_msg.find("£"), 1, token_set_str);
-    err_msg = m_error_formatter->error_from_positions(pos, -1, std::move(err_msg), "Syntax error");
+    err_msg = m_error_formatter->error_from_positions(pos, std::move(err_msg), "Syntax error");
     throw SyntacticError(err_msg.c_str());
 }

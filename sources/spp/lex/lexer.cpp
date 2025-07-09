@@ -7,7 +7,7 @@
 
 
 auto is_alphanumeric(const char8_t c) -> bool {
-    return (c >= u8'a' and c <= u8'z') or (c >= u8'A' and c <= u8'Z') or (c >= u8'0' and c <= u8'9') or (c == u8'_');
+    return (c >= u'a' and c <= u'z') or (c >= u'A' and c <= u'Z') or (c >= u'0' and c <= u'9') or (c == u'_');
 }
 
 
@@ -36,13 +36,13 @@ auto spp::lex::Lexer::lex() const -> std::vector<RawToken> {
         const auto c = m_code[i];
 
         // Skip any characters in a single-line comment (except terminating newline character).
-        if (in_single_line_comment && c != u8'\n') {
+        if (in_single_line_comment && c != u'\n') {
             ++i;
             continue;
         }
 
         // Append any characters in a string literal as a character token (except terminating quotation mark).
-        if (in_string && c != u8'"') {
+        if (in_string && c != u'"') {
             tokens.emplace_back(RawTokenType::LX_CHARACTER, icu::UnicodeString(c, 1));
             ++i;
             continue;
@@ -50,143 +50,143 @@ auto spp::lex::Lexer::lex() const -> std::vector<RawToken> {
 
         // Otherwise, match the character to known tokens and append them to the token list.
         switch (c) {
-        case u8'#': {
+        case u'#': {
             in_single_line_comment = true;
             ++i;
             continue;
         }
-        case u8'=': {
+        case u'=': {
             tokens.emplace_back(RawTokenType::TK_EQUALS_TO, "=");
             ++i;
             continue;
         }
-        case u8'<': {
+        case u'<': {
             tokens.emplace_back(RawTokenType::TK_LESS_THAN, "<");
             ++i;
             continue;
         }
-        case u8'>': {
+        case u'>': {
             tokens.emplace_back(RawTokenType::TK_GREATER_THAN, ">");
             ++i;
             continue;
         }
-        case u8'+': {
+        case u'+': {
             tokens.emplace_back(RawTokenType::TK_PLUS_SIGN, "+");
             ++i;
             continue;
         }
-        case u8'-': {
+        case u'-': {
             tokens.emplace_back(RawTokenType::TK_HYPHEN, "-");
             ++i;
             continue;
         }
-        case u8'*': {
+        case u'*': {
             tokens.emplace_back(RawTokenType::TK_ASTERISK, "*");
             ++i;
             continue;
         }
-        case u8'/': {
+        case u'/': {
             tokens.emplace_back(RawTokenType::TK_SLASH, "/");
             ++i;
             continue;
         }
-        case u8'%': {
+        case u'%': {
             tokens.emplace_back(RawTokenType::TK_PERCENT_SIGN, "%");
             ++i;
             continue;
         }
-        case u8'(': {
+        case u'(': {
             tokens.emplace_back(RawTokenType::TK_LEFT_PARENTHESIS, "(");
             ++i;
             continue;
         }
-        case u8')': {
+        case u')': {
             tokens.emplace_back(RawTokenType::TK_RIGHT_PARENTHESIS, ")");
             ++i;
             continue;
         }
-        case u8'[': {
+        case u'[': {
             tokens.emplace_back(RawTokenType::TK_LEFT_SQUARE_BRACKET, "[");
             ++i;
             continue;
         }
-        case u8']': {
+        case u']': {
             tokens.emplace_back(RawTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
             ++i;
             continue;
         }
-        case u8'{': {
+        case u'{': {
             tokens.emplace_back(RawTokenType::TK_LEFT_CURLY_BRACE, "{");
             ++i;
             continue;
         }
-        case u8'}': {
+        case u'}': {
             tokens.emplace_back(RawTokenType::TK_RIGHT_CURLY_BRACE, "}");
             ++i;
             continue;
         }
-        case u8'?': {
+        case u'?': {
             tokens.emplace_back(RawTokenType::TK_QUESTION_MARK, "?");
             ++i;
             continue;
         }
-        case u8':': {
+        case u':': {
             tokens.emplace_back(RawTokenType::TK_COLON, ":");
             ++i;
             continue;
         }
-        case u8'&': {
+        case u'&': {
             tokens.emplace_back(RawTokenType::TK_AMPERSAND, "&");
             ++i;
             continue;
         }
-        case u8'|': {
+        case u'|': {
             tokens.emplace_back(RawTokenType::TK_VERTICAL_BAR, "|");
             ++i;
             continue;
         }
-        case u8'.': {
+        case u'.': {
             tokens.emplace_back(RawTokenType::TK_PERIOD, ".");
             ++i;
             continue;
         }
-        case u8',': {
+        case u',': {
             tokens.emplace_back(RawTokenType::TK_COMMA, ",");
             ++i;
             continue;
         }
-        case u8'@': {
+        case u'@': {
             tokens.emplace_back(RawTokenType::TK_AT_SIGN, "@");
             ++i;
             continue;
         }
-        case u8'_': {
+        case u'_': {
             tokens.emplace_back(RawTokenType::TK_UNDERSCORE, "_");
             ++i;
             continue;
         }
-        case u8'"': {
+        case u'"': {
             tokens.emplace_back(RawTokenType::TK_QUOTATION_MARK, "\"");
             in_string = !in_string;
             ++i;
             continue;
         }
-        case u8'!': {
+        case u'!': {
             tokens.emplace_back(RawTokenType::TK_EXCLAMATION_MARK, "!");
             ++i;
             continue;
         }
-        case u8'$': {
+        case u'$': {
             tokens.emplace_back(RawTokenType::TK_DOLLAR_SIGN, "$");
             ++i;
             continue;
         }
-        case u8' ': {
+        case u' ': {
             tokens.emplace_back(RawTokenType::TK_SPACE, " ");
             ++i;
             continue;
         }
-        case u8'\n': {
+        case u'\n': {
             tokens.emplace_back(RawTokenType::TK_LINE_FEED, "\n");
             in_single_line_comment = false;
             ++i;
@@ -212,12 +212,12 @@ auto spp::lex::Lexer::lex() const -> std::vector<RawToken> {
         }
 
         // Try to match individual characters or numbers, otherwise the token is unknown.
-        if (u8'a' <= c and c <= u8'z' or u8'A' <= c and c <= u8'Z') {
+        if ((u'a' <= c and c <= u'z') or (u'A' <= c and c <= u'Z')) {
             tokens.emplace_back(RawTokenType::LX_CHARACTER, icu::UnicodeString(c, 1));
             ++i;
             continue;
         }
-        else if (u8'0' <= c and c <= u8'9') {
+        else if (u'0' <= c and c <= u'9') {
             tokens.emplace_back(RawTokenType::LX_DIGIT, icu::UnicodeString(c, 1));
             ++i;
             continue;

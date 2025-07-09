@@ -34,18 +34,18 @@ namespace spp::analyse::scopes {
  */
 struct spp::asts::Ast : mixins::CompilerStages {
 public:
-    /**
-     * Ensure there is no copy constructor for the Ast class. This is to prevent accidental copies of ASTs, which would
-     * mutate the tree structure and potentially lead to undefined behavior.
-     */
-    Ast(Ast const &) = delete;
-
-    /**
-     * Ensure there is no move constructor for the Ast class. This is to prevent accidental moves of ASTs, which would
-     * mutate the tree structure and potentially lead to undefined behavior.
-     */
-    Ast(Ast &&) noexcept = delete;
-
+    // /**
+    //  * Ensure there is no copy constructor for the Ast class. This is to prevent accidental copies of ASTs, which would
+    //  * mutate the tree structure and potentially lead to undefined behavior.
+    //  */
+    // Ast(Ast const &) = delete;
+    //
+    // /**
+    //  * Ensure there is no move constructor for the Ast class. This is to prevent accidental moves of ASTs, which would
+    //  * mutate the tree structure and potentially lead to undefined behavior.
+    //  */
+    // Ast(Ast &&) noexcept = delete;
+    //
     // /**
     //  * Ensure there is no copy assignment operator for the Ast class. This is to prevent accidental copies of ASTs,
     //  * which would mutate the tree structure and potentially lead to undefined behavior.

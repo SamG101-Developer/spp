@@ -1,17 +1,18 @@
 #include <spp/asts/expression_ast.hpp>
 #include <spp/asts/function_parameter_optional_ast.hpp>
+#include <spp/asts/let_statement_initialized_ast.hpp>
 #include <spp/asts/local_variable_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 
 
 spp::asts::FunctionParameterOptionalAst::FunctionParameterOptionalAst(
-        decltype(var) &&var,
+    decltype(var) &&var,
     decltype(tok_colon) &&tok_colon,
     decltype(type) &&type,
     decltype(tok_assign) &&tok_assign,
     decltype(default_val) &&default_val):
-    FunctionParameterAst(pos, std::move(var), std::move(tok_colon), std::move(type)),
+    FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type)),
     tok_assign(std::move(tok_assign)),
     default_val(std::move(default_val)) {
 }

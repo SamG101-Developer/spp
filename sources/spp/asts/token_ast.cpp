@@ -21,7 +21,7 @@ auto spp::asts::TokenAst::pos_end() -> std::size_t {
 }
 
 
-auto spp::asts::TokenAst::print(meta::AstPrinter &printer) const -> icu::UnicodeString {
+auto spp::asts::TokenAst::print(meta::AstPrinter &) const -> icu::UnicodeString {
     return token_data;
 }
 

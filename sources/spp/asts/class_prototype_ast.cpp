@@ -2,17 +2,21 @@
 
 #include <spp/asts/annotation_ast.hpp>
 #include <spp/asts/class_implementation_ast.hpp>
+#include <spp/asts/class_member_ast.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
+#include <spp/asts/generic_parameter_ast.hpp>
+#include <spp/asts/generic_parameter_group_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
+#include <spp/asts/type_ast.hpp>
 
 
 spp::asts::ClassPrototypeAst::ClassPrototypeAst(
-        decltype(annotations) &&annotations,
+    decltype(annotations) &&annotations,
     decltype(tok_cls) &&tok_cls,
     decltype(name) &&name,
     decltype(generic_param_group) &&generic_param_group,
     decltype(body) &&body):
-    Ast(pos),
     annotations(std::move(annotations)),
     tok_cls(std::move(tok_cls)),
     name(std::move(name)),

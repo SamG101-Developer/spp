@@ -1,5 +1,6 @@
 #include <spp/asts/function_call_argument_ast.hpp>
 #include <spp/asts/convention_ast.hpp>
+#include <spp/asts/type_ast.hpp>
 
 
 spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(

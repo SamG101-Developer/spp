@@ -152,6 +152,8 @@
 
 #define NO_ANNOTATIONS std::vector<std::unique_ptr<asts::AnnotationAst>>()
 
+#define LAM_CAPS [= BOOST_PP_COMMA() this]
+
 constexpr auto IDENTIFIER_TOKENS = std::vector{
     spp::lex::RawTokenType::LX_CHARACTER,
     spp::lex::RawTokenType::LX_DIGIT,
@@ -302,6 +304,7 @@ auto spp::parse::ParserSpp::parse_sup_cmp_statement() -> std::unique_ptr<asts::S
 
 auto spp::parse::ParserSpp::parse_function_prototype() -> std::unique_ptr<asts::FunctionPrototypeAst> {
     PARSE_ALTERNATE(p1, asts::FunctionPrototypeAst, parse_subroutine_prototype, parse_coroutine_prototype);
+    return FORWARD_AST(p1);
 }
 
 
@@ -1160,17 +1163,17 @@ auto spp::parse::ParserSpp::parse_gen_unroll_expression() -> std::unique_ptr<ast
 
 auto spp::parse::ParserSpp::parse_inner_scope(auto &&parser) -> std::unique_ptr<asts::InnerScopeAst<decltype(parser())>> {
     PARSE_ONCE(p1, parse_token_left_curly_brace);
-    PARSE_ZERO_OR_MORE(p2, std::forward<decltype(parser)>(parser), parse_newline);
+    PARSE_ZERO_OR_MORE(p2, parser, parse_newline);
     PARSE_ONCE(p3, parse_token_right_curly_brace);
-    return CREATE_AST(asts::InnerScopeAst, p1, p2, p3);
+    return CREATE_AST(asts::InnerScopeAst<decltype(parser())>, p1, p2, p3);
 }
 
 
 auto spp::parse::ParserSpp::parse_inner_scope_expression(auto &&parser) -> std::unique_ptr<asts::InnerScopeExpressionAst<decltype(parser())>> {
     PARSE_ONCE(p1, parse_token_left_curly_brace);
-    PARSE_ZERO_OR_MORE(p2, std::forward<decltype(parser)>(parser), parse_newline);
+    PARSE_ZERO_OR_MORE(p2, parser, parse_newline);
     PARSE_ONCE(p3, parse_token_right_curly_brace);
-    return CREATE_AST(asts::InnerScopeExpressionAst, p1, p2, p3);
+    return CREATE_AST(asts::InnerScopeExpressionAst<decltype(parser())>, p1, p2, p3);
 }
 
 
@@ -1764,18 +1767,16 @@ auto spp::parse::ParserSpp::parse_literal_boolean() -> std::unique_ptr<asts::Boo
 
 
 auto spp::parse::ParserSpp::parse_literal_tuple(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::TupleLiteralAst> {
-    PARSE_ALTERNATE(
-        p1, asts::TupleLiteralAst,
-        [=] mutable { return parse_literal_tuple_1_element( std::move(elem_parser) ); },
-        [=] mutable { return parse_literal_tuple_n_elements( std::move(elem_parser) ); });
+    auto parser_1 = [= BOOST_PP_COMMA() this] mutable { return parse_literal_tuple_1_element( std::move(elem_parser) ); };
+    auto parser_n = [= BOOST_PP_COMMA() this] mutable { return parse_literal_tuple_n_elements( std::move(elem_parser) ); };
+    PARSE_ALTERNATE(p1, asts::TupleLiteralAst, parser_1, parser_n);
     return FORWARD_AST(p1);
 }
 
 
 auto spp::parse::ParserSpp::parse_literal_array(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::ArrayLiteralAst> {
-    PARSE_ALTERNATE(
-        p1, asts::ArrayLiteralAst, parse_literal_array_0_elements,
-        [=] mutable { return parse_literal_array_n_elements( std::move(elem_parser) ); });
+    auto parser_n = [= BOOST_PP_COMMA() this] mutable { return parse_literal_array_n_elements( std::move(elem_parser) ); };
+    PARSE_ALTERNATE(p1, asts::ArrayLiteralAst, parse_literal_array_0_elements, parser_n);
     return FORWARD_AST(p1);
 }
 
@@ -1943,8 +1944,8 @@ auto spp::parse::ParserSpp::parse_specific_characters(icu::UnicodeString &&s) ->
     PARSE_ONCE(_, parse_nothing);
     auto pos = m_pos;
 
-    for (auto c : s) {
-        PARSE_ONCE(p1, [=] { return parse_lexeme_character(c); });
+    for (auto i = 0; i < s.length(); ++i) {
+        PARSE_ONCE(p1, parse_lexeme_character);
         identifier += p1->token_data[0];
     }
 
@@ -2637,7 +2638,7 @@ auto spp::parse::ParserSpp::parse_token_raw(const lex::RawTokenType tok, lex::Sp
 
     auto data = mapped_tok == lex::SppTokenType::LX_CHARACTER or mapped_tok == lex::SppTokenType::LX_DIGIT
                     ? m_tokens[m_pos].data
-                    : magic_enum::enum_name(m_tokens[m_pos].type);
+                    : icu::UnicodeString::fromUTF8(magic_enum::enum_name(m_tokens[m_pos].type));
     return CREATE_AST(asts::TokenAst, m_pos, mapped_tok, std::move(data));
 }
 

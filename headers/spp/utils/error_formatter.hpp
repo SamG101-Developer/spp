@@ -21,7 +21,7 @@ public:
     ErrorFormatter(std::vector<lex::RawToken> tokens, std::string_view file_path);
 
 public:
-    auto error_from_positions(std::size_t start_pos, std::size_t end_pos, std::string &&message = "", std::string &&tag = "", bool minimal = false) const -> std::string;
+    auto error_from_positions(std::size_t start_pos, std::string &&message = "", std::string &&tag = "", bool minimal = false) const -> std::string;
     auto error_from_ast(asts::Ast *ast, std::string &&message = "", std::string &&tag = "", bool minimal = false) const -> std::string;
 
 private:

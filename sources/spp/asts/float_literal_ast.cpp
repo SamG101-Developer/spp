@@ -6,17 +6,16 @@
 
 
 spp::asts::FloatLiteralAst::FloatLiteralAst(
-        decltype(tok_sign) &&tok_sign,
+    decltype(tok_sign) &&tok_sign,
     decltype(int_val) &&int_val,
     decltype(tok_dot) &&tok_dot,
     decltype(frac_val) &&frac_val,
-    decltype(type) &&type):
-    PrimaryExpressionAst(pos),
+    icu::UnicodeString &&):
     tok_sign(std::move(tok_sign)),
     int_val(std::move(int_val)),
     tok_dot(std::move(tok_dot)),
     frac_val(std::move(frac_val)),
-    type(std::move(type)) {
+    type(nullptr) { // todo (type)
 }
 
 

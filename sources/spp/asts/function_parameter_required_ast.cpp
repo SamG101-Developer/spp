@@ -1,14 +1,15 @@
 #include <spp/asts/function_parameter_required_ast.hpp>
+#include <spp/asts/let_statement_initialized_ast.hpp>
 #include <spp/asts/local_variable_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 
 
 spp::asts::FunctionParameterRequiredAst::FunctionParameterRequiredAst(
-        decltype(var) &&var,
+    decltype(var) &&var,
     decltype(tok_colon) &&tok_colon,
     decltype(type) &&type):
-    FunctionParameterAst(pos, std::move(var), std::move(tok_colon), std::move(type)) {
+    FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type)) {
 }
 
 

@@ -3,16 +3,17 @@
 #include <spp/asts/annotation_ast.hpp>
 #include <spp/asts/class_attribute_ast.hpp>
 #include <spp/asts/expression_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
+#include <spp/asts/type_ast.hpp>
 
 
 spp::asts::ClassAttributeAst::ClassAttributeAst(
-        decltype(annotations) &&annotations,
+    decltype(annotations) &&annotations,
     decltype(name) &&name,
     decltype(tok_colon) &&tok_colon,
     decltype(type) &&type,
     decltype(default_value) &&default_value):
-    Ast(pos),
     annotations(std::move(annotations)),
     name(std::move(name)),
     tok_colon(std::move(tok_colon)),

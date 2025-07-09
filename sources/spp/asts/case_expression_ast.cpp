@@ -2,8 +2,13 @@
 
 #include <spp/asts/case_expression_ast.hpp>
 #include <spp/asts/case_expression_branch_ast.hpp>
+#include <spp/asts/case_pattern_variant_ast.hpp>
 #include <spp/asts/inner_scope_expression_ast.hpp>
+#include <spp/asts/let_statement_initialized_ast.hpp>
+#include <spp/asts/local_variable_ast.hpp>
+#include <spp/asts/pattern_guard_ast.hpp>
 #include <spp/asts/token_ast.hpp>
+#include <spp/asts/type_ast.hpp>
 
 
 spp::asts::CaseExpressionAst::CaseExpressionAst(
@@ -19,7 +24,7 @@ spp::asts::CaseExpressionAst::CaseExpressionAst(
 
 
 auto spp::asts::CaseExpressionAst::pos_end() -> std::size_t {
-    return branches->members.back()->pos_end();
+    return branches.back()->pos_end();
 }
 
 
@@ -28,7 +33,7 @@ spp::asts::CaseExpressionAst::operator icu::UnicodeString() const {
     SPP_STRING_APPEND(tok_case);
     SPP_STRING_APPEND(cond);
     SPP_STRING_APPEND(tok_of);
-    SPP_STRING_APPEND(branches);
+    SPP_STRING_EXTEND(branches);
     SPP_STRING_END;
 }
 
@@ -38,6 +43,6 @@ auto spp::asts::CaseExpressionAst::print(meta::AstPrinter &printer) const -> icu
     SPP_PRINT_APPEND(tok_case);
     SPP_PRINT_APPEND(cond);
     SPP_PRINT_APPEND(tok_of);
-    SPP_PRINT_APPEND(branches);
+    SPP_PRINT_EXTEND(branches);
     SPP_PRINT_END;
 }

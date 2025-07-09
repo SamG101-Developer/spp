@@ -1,10 +1,13 @@
 #include <algorithm>
 
 #include <spp/asts/case_expression_branch_ast.hpp>
+#include <spp/asts/case_pattern_variant_ast.hpp>
 #include <spp/asts/inner_scope_expression_ast.hpp>
+#include <spp/asts/let_statement_initialized_ast.hpp>
+#include <spp/asts/local_variable_ast.hpp>
 #include <spp/asts/pattern_guard_ast.hpp>
-
 #include <spp/asts/token_ast.hpp>
+#include <spp/asts/type_ast.hpp>
 
 
 spp::asts::CaseExpressionBranchAst::CaseExpressionBranchAst(

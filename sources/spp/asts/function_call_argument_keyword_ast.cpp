@@ -3,14 +3,15 @@
 #include <spp/asts/function_call_argument_keyword_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
+#include <spp/asts/type_ast.hpp>
 
 
 spp::asts::FunctionCallArgumentKeywordAst::FunctionCallArgumentKeywordAst(
-        decltype(name) &&name,
+    decltype(name) &&name,
     decltype(tok_assign) &&tok_assign,
     decltype(conv) &&conv,
     decltype(val) &&val):
-    FunctionCallArgumentAst(pos, std::move(conv), std::move(val)),
+    FunctionCallArgumentAst(std::move(conv), std::move(val)),
     name(std::move(name)),
     tok_assign(std::move(tok_assign)) {
 }

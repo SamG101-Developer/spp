@@ -1,13 +1,15 @@
 #include <spp/asts/function_parameter_self_ast.hpp>
+#include <spp/asts/convention_ast.hpp>
+#include <spp/asts/let_statement_initialized_ast.hpp>
 #include <spp/asts/local_variable_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 
 
 spp::asts::FunctionParameterSelfAst::FunctionParameterSelfAst(
-        decltype(tok_conv) &&tok_conv,
+    decltype(tok_conv) &&tok_conv,
     decltype(var) &&var):
-    FunctionParameterAst(pos, std::move(var), nullptr, nullptr),
+    FunctionParameterAst(std::move(var), nullptr, nullptr),
     tok_conv(std::move(tok_conv)) {
 }
 

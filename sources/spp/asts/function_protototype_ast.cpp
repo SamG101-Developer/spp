@@ -3,14 +3,19 @@
 #include <spp/asts/annotation_ast.hpp>
 #include <spp/asts/function_prototype_ast.hpp>
 #include <spp/asts/function_implementation_ast.hpp>
+#include <spp/asts/function_parameter_ast.hpp>
 #include <spp/asts/function_parameter_group_ast.hpp>
+#include <spp/asts/generic_parameter_ast.hpp>
 #include <spp/asts/generic_parameter_group_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
+#include <spp/asts/let_statement_initialized_ast.hpp>
+#include <spp/asts/local_variable_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 
 
 spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
-        decltype(annotations) &&annotations,
+    decltype(annotations) &&annotations,
     decltype(tok_fun) &&tok_fun,
     decltype(name) &&name,
     decltype(generic_param_group) &&generic_param_group,
@@ -18,7 +23,6 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     decltype(tok_arrow) &&tok_arrow,
     decltype(return_type) &&return_type,
     decltype(implementation) &&implementation):
-    Ast(pos),
     annotations(std::move(annotations)),
     tok_fun(std::move(tok_fun)),
     name(std::move(name)),

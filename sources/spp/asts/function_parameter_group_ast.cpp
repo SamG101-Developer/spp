@@ -2,14 +2,16 @@
 
 #include <spp/asts/function_parameter_group_ast.hpp>
 #include <spp/asts/function_parameter_ast.hpp>
+#include <spp/asts/let_statement_initialized_ast.hpp>
+#include <spp/asts/local_variable_ast.hpp>
 #include <spp/asts/token_ast.hpp>
+#include <spp/asts/type_ast.hpp>
 
 
 spp::asts::FunctionParameterGroupAst::FunctionParameterGroupAst(
-        decltype(tok_l) &&tok_l,
+    decltype(tok_l) &&tok_l,
     decltype(params) &&params,
     decltype(tok_r) &&tok_r):
-    Ast(pos),
     tok_l(std::move(tok_l)),
     params(std::move(params)),
     tok_r(std::move(tok_r)) {

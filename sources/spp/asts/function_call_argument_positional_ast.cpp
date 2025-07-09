@@ -2,6 +2,7 @@
 #include <spp/asts/expression_ast.hpp>
 #include <spp/asts/function_call_argument_positional_ast.hpp>
 #include <spp/asts/token_ast.hpp>
+#include <spp/asts/type_ast.hpp>
 
 
 spp::asts::FunctionCallArgumentPositionalAst::FunctionCallArgumentPositionalAst(

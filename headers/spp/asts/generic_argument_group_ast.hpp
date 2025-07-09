@@ -5,7 +5,9 @@
 #include <spp/asts/_fwd.hpp>
 
 
-struct spp::asts::GenericArgumentGroupAst : Ast {
+struct spp::asts::GenericArgumentGroupAst final : Ast {
+    SPP_AST_KEY_FUNCTIONS;
+
     /**
      * The token that represents the left bracket @code [@endcode in the generic argument group. This introduces the
      * generic argument group.
