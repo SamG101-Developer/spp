@@ -167,6 +167,7 @@ namespace spp::asts {
     struct UnaryExpressionAst;
     struct UnaryExpressionOperatorAst;
     struct UnaryExpressionOperatorAsyncAst;
+    struct UnaryExpressionOperatorDerefAst;
 
     struct ParenthesisedExpressionAst;
 

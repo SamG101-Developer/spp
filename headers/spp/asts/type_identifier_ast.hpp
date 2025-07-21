@@ -43,17 +43,17 @@ public:
 
     auto type_parts() const -> std::vector<TypeIdentifierAst const *> override;
 
-    auto without_generics() const -> std::unique_ptr<AbstractTypeAst> override;
+    auto without_generics() const -> std::unique_ptr<TypeAst> override;
 
     auto get_convention() const -> ConventionAst* override;
 
-    auto substitute_generics(std::vector<GenericArgumentAst*> &&args) const -> std::unique_ptr<AbstractTypeAst> override;
+    auto substitute_generics(std::vector<GenericArgumentAst*> &&args) const -> std::unique_ptr<TypeAst> override;
 
-    auto contains_generic() const -> bool override;
+    auto contains_generic(TypeAst const *generic) const -> bool override;
 
-    auto set_generics() -> std::unique_ptr<AbstractTypeAst> override;
+    auto set_generics(std::unique_ptr<GenericArgumentGroupAst> &&arg_group) -> std::unique_ptr<TypeAst> override;
 
-    auto with_convention() const -> std::unique_ptr<AbstractTypeAst> override;
+    auto with_convention() const -> std::unique_ptr<TypeAst> override;
 };
 
 

@@ -18,6 +18,14 @@ spp::asts::InnerScopeAst<T>::InnerScopeAst(
 
 
 template <typename T>
+spp::asts::InnerScopeAst<T>::InnerScopeAst():
+    tok_l(nullptr),
+    members(),
+    tok_r(nullptr) {
+}
+
+
+template <typename T>
 auto spp::asts::InnerScopeAst<T>::pos_start() const -> std::size_t {
     return tok_l->pos_start();
 }

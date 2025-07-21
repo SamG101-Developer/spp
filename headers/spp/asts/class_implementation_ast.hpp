@@ -11,7 +11,7 @@ struct spp::asts::ClassImplementationAst final : InnerScopeAst<std::unique_ptr<C
     friend class parse::ParserSpp;
     using InnerScopeAst::InnerScopeAst;
 
-private:
+public:
     static auto new_empty() -> std::unique_ptr<ClassImplementationAst>;
 };
 

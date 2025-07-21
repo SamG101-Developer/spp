@@ -145,6 +145,11 @@ auto spp::lex::Lexer::lex() const -> std::vector<RawToken> {
             ++i;
             continue;
         }
+        case u'^': {
+            tokens.emplace_back(RawTokenType::TK_CARET, "^");
+            ++i;
+            continue;
+        }
         case u'.': {
             tokens.emplace_back(RawTokenType::TK_PERIOD, ".");
             ++i;

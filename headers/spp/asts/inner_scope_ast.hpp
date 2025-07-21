@@ -45,6 +45,9 @@ struct spp::asts::InnerScopeAst : virtual Ast {
         decltype(tok_l) &&tok_l,
         decltype(members) &&members,
         decltype(tok_r) &&tok_r);
+
+protected:
+    InnerScopeAst();
 };
 
 
