@@ -30,6 +30,8 @@ struct spp::asts::GenericParameterTypeOptionalAst final : GenericParameterTypeAs
         decltype(constraints) &&constraints,
         decltype(tok_assign) &&tok_assign,
         decltype(default_val) &&default_val);
+
+    ~GenericParameterTypeOptionalAst() override;
 };
 
 

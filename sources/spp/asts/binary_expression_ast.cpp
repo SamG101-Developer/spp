@@ -25,7 +25,7 @@ auto spp::asts::BinaryExpressionAst::pos_end() const -> std::size_t {
 }
 
 
-spp::asts::BinaryExpressionAst::operator icu::UnicodeString() const {
+spp::asts::BinaryExpressionAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(lhs);
     SPP_STRING_APPEND(tok_op);
@@ -34,7 +34,7 @@ spp::asts::BinaryExpressionAst::operator icu::UnicodeString() const {
 }
 
 
-auto spp::asts::BinaryExpressionAst::print(meta::AstPrinter &printer) const -> icu::UnicodeString {
+auto spp::asts::BinaryExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(lhs);
     SPP_PRINT_APPEND(tok_op);

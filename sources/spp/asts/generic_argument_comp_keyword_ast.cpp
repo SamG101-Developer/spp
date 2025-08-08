@@ -1,0 +1,44 @@
+#include <spp/asts/generic_argument_comp_keyword_ast.hpp>
+#include <spp/asts/token_ast.hpp>
+#include <spp/asts/type_ast.hpp>
+
+
+spp::asts::GenericArgumentCompKeywordAst::GenericArgumentCompKeywordAst(
+    decltype(name) &&name,
+    decltype(tok_assign) &&tok_assign,
+    decltype(val) &&val):
+    GenericArgumentCompAst(std::move(val)),
+    name(std::move(name)),
+    tok_assign(std::move(tok_assign)) {
+}
+
+
+spp::asts::GenericArgumentCompKeywordAst::~GenericArgumentCompKeywordAst() = default;
+
+
+auto spp::asts::GenericArgumentCompKeywordAst::pos_start() const -> std::size_t {
+    return name->pos_start();
+}
+
+
+auto spp::asts::GenericArgumentCompKeywordAst::pos_end() const -> std::size_t {
+    return val->pos_end();
+}
+
+
+spp::asts::GenericArgumentCompKeywordAst::operator std::string() const {
+    SPP_STRING_START;
+    SPP_STRING_APPEND(name);
+    SPP_STRING_APPEND(tok_assign);
+    SPP_STRING_APPEND(val);
+    SPP_STRING_END;
+}
+
+
+auto spp::asts::GenericArgumentCompKeywordAst::print(meta::AstPrinter &printer) const -> std::string {
+    SPP_PRINT_START;
+    SPP_PRINT_APPEND(name);
+    SPP_PRINT_APPEND(tok_assign);
+    SPP_PRINT_APPEND(val);
+    SPP_PRINT_END;
+}

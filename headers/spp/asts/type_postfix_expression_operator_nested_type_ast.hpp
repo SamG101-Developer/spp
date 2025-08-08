@@ -26,6 +26,12 @@ struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final : TypePostfix
     TypePostfixExpressionOperatorNestedTypeAst(
         decltype(tok_sep) &&tok_sep,
         decltype(name) &&name);
+
+    ~TypePostfixExpressionOperatorNestedTypeAst() override;
+
+    auto ns_parts() const -> std::vector<IdentifierAst const*> override;
+
+    auto type_parts() const -> std::vector<TypeIdentifierAst const*> override;
 };
 
 

@@ -35,6 +35,8 @@ struct spp::asts::PostfixExpressionOperatorKeywordResAst final : PostfixExpressi
         decltype(tok_res) &&tok_res,
         decltype(arg_group) &&arg_group);
 
+    ~PostfixExpressionOperatorKeywordResAst() override;
+
 private:
     std::unique_ptr<PostfixExpressionAst> m_mapped_func;
 };

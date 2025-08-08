@@ -38,6 +38,8 @@ struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
         decltype(tok_seq_exit) &&tok_seq_exit,
         decltype(tok_skip) &&tok_skip,
         decltype(expr) &&expr);
+
+    ~LoopControlFlowStatementAst() override;
 };
 
 

@@ -20,6 +20,10 @@ struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeUnaryExpressi
     */
     explicit TypeUnaryExpressionOperatorBorrowAst(
         decltype(conv) &&conv);
+
+    auto ns_parts() const -> std::vector<IdentifierAst const *> override;
+
+    auto type_parts() const -> std::vector<TypeIdentifierAst const *> override;
 };
 
 

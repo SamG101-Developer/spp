@@ -34,6 +34,8 @@ struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgumentCompAst {
         decltype(name) &&name,
         decltype(tok_assign) &&tok_assign,
         decltype(val) &&val);
+
+    ~GenericArgumentCompKeywordAst() override;
 };
 
 

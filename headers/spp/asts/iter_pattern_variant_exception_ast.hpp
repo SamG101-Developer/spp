@@ -27,6 +27,8 @@ struct spp::asts::IterPatternVariantExceptionAst final : IterPatternVariantAst {
     IterPatternVariantExceptionAst(
         decltype(tok_exc) &&tok_exc,
         decltype(var) &&var);
+
+    ~IterPatternVariantExceptionAst() override;
 };
 
 

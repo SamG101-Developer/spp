@@ -19,11 +19,14 @@ struct spp::asts::BooleanLiteralAst final : LiteralAst {
 
     /**
      * Construct the BooleanLiteralAst with the arguments matching the members.
-     * @param[in] pos The position of the AST in the source code.
      * @param[in] tok_bool The token that represents the boolean literal.
      */
     explicit BooleanLiteralAst(
         decltype(tok_bool) &&tok_bool);
+
+    static auto True(std::size_t pos) -> std::unique_ptr<BooleanLiteralAst>;
+
+    static auto False(std::size_t pos) -> std::unique_ptr<BooleanLiteralAst>;
 };
 
 

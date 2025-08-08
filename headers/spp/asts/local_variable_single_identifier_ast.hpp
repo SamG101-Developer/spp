@@ -48,6 +48,8 @@ struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVariableAst {
         decltype(tok_mut) &&tok_mut,
         decltype(name) &&name,
         decltype(alias) &&alias);
+
+    ~LocalVariableSingleIdentifierAst();
 };
 
 

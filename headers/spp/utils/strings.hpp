@@ -5,7 +5,7 @@
 
 
 namespace spp::utils::strings {
-    auto snake_to_pascal(icu::UnicodeString const &) -> icu::UnicodeString;
+    auto snake_to_pascal(std::string const &) -> std::string;
 }
 
 

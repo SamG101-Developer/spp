@@ -20,6 +20,8 @@ struct spp::asts::CasePatternVariantLiteralAst final : CasePatternVariantAst {
      */
     explicit CasePatternVariantLiteralAst(
         decltype(literal) &&literal);
+
+    ~CasePatternVariantLiteralAst() override;
 };
 
 

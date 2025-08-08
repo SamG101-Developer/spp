@@ -36,6 +36,8 @@ struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : PostfixExpres
         decltype(generic_arg_group) &&generic_arg_group,
         decltype(arg_group) &&arg_group,
         decltype(fold) &&fold);
+
+    ~PostfixExpressionOperatorFunctionCallAst() override;
 };
 
 

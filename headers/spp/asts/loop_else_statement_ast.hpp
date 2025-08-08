@@ -27,6 +27,8 @@ struct spp::asts::LoopElseStatementAst final : virtual Ast {
     LoopElseStatementAst(
         decltype(tok_else) &&tok_else,
         decltype(body) &&body);
+
+    ~LoopElseStatementAst() override;
 };
 
 

@@ -32,7 +32,7 @@ auto spp::asts::CaseExpressionBranchAst::pos_end() const -> std::size_t {
 }
 
 
-spp::asts::CaseExpressionBranchAst::operator icu::UnicodeString() const {
+spp::asts::CaseExpressionBranchAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_comparison);
     SPP_STRING_EXTEND(patterns);
@@ -42,7 +42,7 @@ spp::asts::CaseExpressionBranchAst::operator icu::UnicodeString() const {
 }
 
 
-auto spp::asts::CaseExpressionBranchAst::print(meta::AstPrinter &printer) const -> icu::UnicodeString {
+auto spp::asts::CaseExpressionBranchAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_comparison);
     SPP_PRINT_EXTEND(patterns);

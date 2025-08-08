@@ -41,6 +41,8 @@ struct spp::asts::ClosureExpressionParameterAndCaptureGroupAst final : virtual A
         decltype(params) &&params,
         decltype(capture_group) &&capture_group,
         decltype(tok_r) &&tok_r);
+
+    ~ClosureExpressionParameterAndCaptureGroupAst() override;
 };
 
 

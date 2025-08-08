@@ -34,6 +34,8 @@ struct spp::asts::ObjectInitializerArgumentKeywordAst final : ObjectInitializerA
         decltype(name) &&name,
         decltype(tok_assign) &&tok_assign,
         decltype(val) &&val);
+
+    ~ObjectInitializerArgumentKeywordAst() override;
 };
 
 

@@ -10,7 +10,7 @@ spp::asts::FloatLiteralAst::FloatLiteralAst(
     decltype(int_val) &&int_val,
     decltype(tok_dot) &&tok_dot,
     decltype(frac_val) &&frac_val,
-    icu::UnicodeString &&):
+    std::string &&):
     tok_sign(std::move(tok_sign)),
     int_val(std::move(int_val)),
     tok_dot(std::move(tok_dot)),
@@ -29,7 +29,7 @@ auto spp::asts::FloatLiteralAst::pos_end() const -> std::size_t {
 }
 
 
-spp::asts::FloatLiteralAst::operator icu::UnicodeString() const {
+spp::asts::FloatLiteralAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_sign);
     SPP_STRING_APPEND(int_val);
@@ -40,7 +40,7 @@ spp::asts::FloatLiteralAst::operator icu::UnicodeString() const {
 }
 
 
-auto spp::asts::FloatLiteralAst::print(meta::AstPrinter &printer) const -> icu::UnicodeString {
+auto spp::asts::FloatLiteralAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_sign);
     SPP_PRINT_APPEND(int_val);

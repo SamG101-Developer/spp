@@ -35,6 +35,8 @@ struct spp::asts::TypeParenthesisedExpressionAst final : virtual Ast, mixins::Te
         decltype(expr) &&expr,
         decltype(tok_r) &&tok_r);
 
+    ~TypeParenthesisedExpressionAst() override;
+
     auto convert() -> std::unique_ptr<TypeAst> override;
 };
 

@@ -20,11 +20,15 @@ struct spp::asts::IntegerLiteralAst final : LiteralAst {
     std::unique_ptr<TokenAst> tok_integer;
 
     /**
-     * The type of the integer literal. This is used to determine the type of the integer literal, such as @c I32,
-     * @c U64, @c F16, etc. If not provided, the type is defaulted to @c BigInt, which is a large integer type that can
-     * handle arbitrarily large integers.
+     * The raw type of the integer literal. This is from the postfix tag to the literal, like "i32" or "u64".
      */
-    std::unique_ptr<TypeAst> type;
+    std::string raw_type;
+
+    /**
+     * The type of the integer literal. This is the type that the integer literal will be converted to, like @c i32 or
+     * @c u64.
+     */
+    std::unique_ptr<TypeAst> true_type;
 
     /**
      * Construct the IntegerLiteralAst with the arguments matching the members.
@@ -35,7 +39,9 @@ struct spp::asts::IntegerLiteralAst final : LiteralAst {
     IntegerLiteralAst(
         decltype(sign) &&sign,
         decltype(tok_integer) &&tok_integer,
-        icu::UnicodeString &&type);
+        std::string &&type);
+
+    ~IntegerLiteralAst() override;
 };
 
 

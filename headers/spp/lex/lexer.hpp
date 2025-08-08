@@ -15,11 +15,11 @@ namespace spp::lex {
 
 class spp::lex::Lexer {
 public:
-    explicit Lexer(icu::UnicodeString &&code);
+    explicit Lexer(std::string &&code);
     auto lex() const -> std::vector<RawToken>;
 
 private:
-    icu::UnicodeString m_code;
+    std::string m_code;
 };
 
 

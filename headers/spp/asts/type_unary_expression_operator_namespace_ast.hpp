@@ -26,6 +26,12 @@ struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : TypeUnaryExpre
     explicit TypeUnaryExpressionOperatorNamespaceAst(
         decltype(ns) &&ns,
         decltype(tok_sep) &&tok_sep);
+
+    ~TypeUnaryExpressionOperatorNamespaceAst() override;
+
+    auto ns_parts() const -> std::vector<IdentifierAst const *> override;
+
+    auto type_parts() const -> std::vector<TypeIdentifierAst const *> override;
 };
 
 

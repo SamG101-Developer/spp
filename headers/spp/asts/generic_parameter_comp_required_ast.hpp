@@ -5,6 +5,10 @@
 #include <spp/asts/_fwd.hpp>
 
 
+/**
+ * The GenericParameterCompRequiredAst represents required generic @c cmp parameters in classes, function,
+ * superimpositions etc. They look like: @code cls MyClass[cmp n: USize] { ... }@endcode.
+ */
 struct spp::asts::GenericParameterCompRequiredAst final : GenericParameterCompAst {
     SPP_AST_KEY_FUNCTIONS;
 
@@ -12,7 +16,7 @@ struct spp::asts::GenericParameterCompRequiredAst final : GenericParameterCompAs
      * Construct the GenericParameterCompAst with the arguments matching the members.
      * @param tok_cmp The @c cmp token that represents the generic comp parameter.
      * @param name The value of the generic comp parameter.
-     * @param tok_colon The token that represents the @c : colon in the generic parameter.
+     * @param tok_colon The token that represents the @code :@endcode colon in the generic parameter.
      * @param type The type of the parameter.
      *
      * @note This constructor just calls the GenericParameterCompAst constructor with the same arguments, but is defined
@@ -23,6 +27,8 @@ struct spp::asts::GenericParameterCompRequiredAst final : GenericParameterCompAs
         decltype(name) &&name,
         decltype(tok_colon) &&tok_colon,
         decltype(type) &&type);
+
+    ~GenericParameterCompRequiredAst() override;
 };
 
 

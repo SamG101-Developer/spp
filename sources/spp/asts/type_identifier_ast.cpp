@@ -11,7 +11,8 @@ spp::asts::TypeIdentifierAst::TypeIdentifierAst(
     decltype(generic_args) &&generic_args):
     name(std::move(name)),
     generic_args(std::move(generic_args)),
-    m_pos(pos) {
+    m_pos(pos),
+    m_is_never_type(false) {
 }
 
 
@@ -25,7 +26,7 @@ auto spp::asts::TypeIdentifierAst::pos_end() const -> std::size_t {
 }
 
 
-spp::asts::TypeIdentifierAst::operator icu::UnicodeString() const {
+spp::asts::TypeIdentifierAst::operator std::string() const {
     SPP_STRING_START;
     raw_string.append(name);
     SPP_STRING_APPEND(generic_args);
@@ -33,7 +34,7 @@ spp::asts::TypeIdentifierAst::operator icu::UnicodeString() const {
 }
 
 
-auto spp::asts::TypeIdentifierAst::print(meta::AstPrinter &printer) const -> icu::UnicodeString {
+auto spp::asts::TypeIdentifierAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     formatted_string.append(name);
     SPP_PRINT_APPEND(generic_args);
@@ -42,7 +43,12 @@ auto spp::asts::TypeIdentifierAst::print(meta::AstPrinter &printer) const -> icu
 
 
 auto spp::asts::TypeIdentifierAst::from_identifier(IdentifierAst const &identifier) -> std::unique_ptr<TypeIdentifierAst> {
-    return std::make_unique<TypeIdentifierAst>(identifier.pos_start(), icu::UnicodeString(identifier.val), nullptr);
+    return std::make_unique<TypeIdentifierAst>(identifier.pos_start(), std::string(identifier.val), nullptr);
+}
+
+
+auto spp::asts::TypeIdentifierAst::is_never_type() const -> bool {
+    return m_is_never_type;
 }
 
 
@@ -56,8 +62,8 @@ auto spp::asts::TypeIdentifierAst::type_parts() const -> std::vector<TypeIdentif
 }
 
 
-auto spp::asts::TypeIdentifierAst::without_generics() const -> std::unique_ptr<TypeAst> {
-    return std::make_unique<TypeIdentifierAst>(m_pos, icu::UnicodeString(name), nullptr);
+auto spp::asts::TypeIdentifierAst::without_convention() const -> TypeAst const* {
+    return this;
 }
 
 
@@ -66,9 +72,20 @@ auto spp::asts::TypeIdentifierAst::get_convention() const -> ConventionAst* {
 }
 
 
-auto spp::asts::TypeIdentifierAst::substitute_generics(std::vector<GenericArgumentAst*> &&) const -> std::unique_ptr<TypeAst> {
+auto spp::asts::TypeIdentifierAst::with_convention(std::unique_ptr<ConventionAst> &&) const -> std::unique_ptr<TypeAst> {
     // todo
-    return std::make_unique<TypeIdentifierAst>(m_pos, icu::UnicodeString(name), nullptr);
+    return nullptr;
+}
+
+
+auto spp::asts::TypeIdentifierAst::without_generics() const -> std::unique_ptr<TypeAst> {
+    return std::make_unique<TypeIdentifierAst>(m_pos, std::string(name), nullptr);
+}
+
+
+auto spp::asts::TypeIdentifierAst::substitute_generics(std::vector<GenericArgumentAst*>) const -> std::unique_ptr<TypeAst> {
+    // todo
+    return std::make_unique<TypeIdentifierAst>(m_pos, std::string(name), nullptr);
 }
 
 
@@ -78,12 +95,11 @@ auto spp::asts::TypeIdentifierAst::contains_generic(TypeAst const *) const -> bo
 }
 
 
-auto spp::asts::TypeIdentifierAst::set_generics(std::unique_ptr<GenericArgumentGroupAst> &&arg_group) -> std::unique_ptr<TypeAst> {
-    return std::make_unique<TypeIdentifierAst>(m_pos, icu::UnicodeString(name), std::move(arg_group));
+auto spp::asts::TypeIdentifierAst::match_generic(TypeAst const *, TypeAst const *) -> TypeAst* {
+    return this;
 }
 
 
-auto spp::asts::TypeIdentifierAst::with_convention() const -> std::unique_ptr<TypeAst> {
-    // todo
-    return std::make_unique<TypeIdentifierAst>(m_pos, icu::UnicodeString(name), nullptr);
+auto spp::asts::TypeIdentifierAst::with_generics(std::unique_ptr<GenericArgumentGroupAst> &&arg_group) -> std::unique_ptr<TypeAst> {
+    return std::make_unique<TypeIdentifierAst>(m_pos, std::string(name), std::move(arg_group));
 }

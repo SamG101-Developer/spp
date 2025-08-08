@@ -33,6 +33,8 @@ struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgumentTypeAst {
         decltype(name) &&name,
         decltype(tok_assign) &&tok_assign,
         decltype(val) &&val);
+
+    ~GenericArgumentTypeKeywordAst() override;
 };
 
 

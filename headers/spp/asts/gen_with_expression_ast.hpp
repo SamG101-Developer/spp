@@ -35,6 +35,8 @@ struct spp::asts::GenWithExpressionAst final : PrimaryExpressionAst {
         decltype(tok_gen) &&tok_gen,
         decltype(tok_with) &&tok_with,
         decltype(expr) &&expr);
+
+    ~GenWithExpressionAst() override;
 };
 
 

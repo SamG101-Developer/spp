@@ -21,7 +21,7 @@ auto spp::asts::PatternGuardAst::pos_end() const -> std::size_t {
 }
 
 
-spp::asts::PatternGuardAst::operator icu::UnicodeString() const {
+spp::asts::PatternGuardAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_and);
     SPP_STRING_APPEND(expression);
@@ -29,7 +29,7 @@ spp::asts::PatternGuardAst::operator icu::UnicodeString() const {
 }
 
 
-auto spp::asts::PatternGuardAst::print(meta::AstPrinter &printer) const -> icu::UnicodeString {
+auto spp::asts::PatternGuardAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_and);
     SPP_PRINT_APPEND(expression);

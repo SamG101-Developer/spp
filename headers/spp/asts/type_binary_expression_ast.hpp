@@ -36,6 +36,8 @@ struct spp::asts::TypeBinaryExpressionAst final : virtual Ast, mixins::TempTypeA
         decltype(tok_op) &&tok_op,
         decltype(rhs) &&rhs);
 
+    ~TypeBinaryExpressionAst() override;
+
     auto convert() -> std::unique_ptr<TypeAst> override;
 };
 

@@ -26,6 +26,8 @@ struct spp::asts::PostfixExpressionOperatorKeywordNotAst final : PostfixExpressi
     PostfixExpressionOperatorKeywordNotAst(
         decltype(tok_dot) &&tok_dot,
         decltype(tok_not) &&tok_not);
+
+    ~PostfixExpressionOperatorKeywordNotAst() override;
 };
 
 

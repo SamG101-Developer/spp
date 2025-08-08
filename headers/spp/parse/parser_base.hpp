@@ -35,10 +35,10 @@ constexpr bool is_unique_ptr_v = is_unique_ptr<T>::value;
 #define PARSE_OPTIONAL(out, f)             \
     decltype(f()) out;                     \
     {                                      \
-        const auto temp_index = m_pos;     \
+        const auto temp_opt_index = m_pos; \
         auto temp_out_opt = f();           \
         if (out == nullptr) {              \
-            m_pos = temp_index;            \
+            m_pos = temp_opt_index;        \
             out = nullptr;                 \
         }                                  \
         else {                             \
@@ -142,6 +142,9 @@ class spp::parse::ParserBase {
 public:
     explicit ParserBase(std::vector<lex::RawToken> tokens, std::string_view file_name = "", std::unique_ptr<utils::errors::ErrorFormatter> error_formatter = nullptr);
     virtual ~ParserBase() = default;
+
+public:
+    auto get_error() const -> std::string;
 
 protected:
     std::size_t m_pos = 0;

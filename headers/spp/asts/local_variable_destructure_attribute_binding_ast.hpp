@@ -34,6 +34,8 @@ struct spp::asts::LocalVariableDestructureAttributeBindingAst final : LocalVaria
         decltype(name) &&name,
         decltype(tok_assign) &&tok_assign,
         decltype(val) &&val);
+
+    ~LocalVariableDestructureAttributeBindingAst() override;
 };
 
 

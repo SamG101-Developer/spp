@@ -26,6 +26,8 @@ struct spp::asts::PostfixExpressionOperatorStaticMemberAccessAst final : Postfix
     explicit PostfixExpressionOperatorStaticMemberAccessAst(
         decltype(tok_dbl_colon) &&tok_dbl_colon,
         decltype(name) &&name);
+
+    ~PostfixExpressionOperatorStaticMemberAccessAst() override;
 };
 
 

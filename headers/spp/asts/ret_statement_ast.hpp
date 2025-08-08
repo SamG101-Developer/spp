@@ -27,6 +27,8 @@ struct spp::asts::RetStatementAst final : StatementAst {
     RetStatementAst(
         decltype(tok_ret) &&tok_ret,
         decltype(val) &&val);
+
+    ~RetStatementAst() override;
 };
 
 

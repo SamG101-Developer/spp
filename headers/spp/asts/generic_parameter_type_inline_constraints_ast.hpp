@@ -27,6 +27,8 @@ struct spp::asts::GenericParameterTypeInlineConstraintsAst final : virtual Ast {
     GenericParameterTypeInlineConstraintsAst(
         decltype(tok_colon) &&tok_colon,
         decltype(constraints) &&constraints);
+
+    ~GenericParameterTypeInlineConstraintsAst() override;
 };
 
 

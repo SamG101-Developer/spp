@@ -33,6 +33,8 @@ struct spp::asts::TupleLiteralAst final : LiteralAst {
         decltype(tok_l) &&tok_l,
         decltype(elements) &&elements,
         decltype(tok_r) &&tok_r);
+
+    ~TupleLiteralAst() override;
 };
 
 

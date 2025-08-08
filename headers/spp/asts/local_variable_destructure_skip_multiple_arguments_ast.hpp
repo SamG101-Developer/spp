@@ -30,6 +30,8 @@ struct spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst final : Local
     LocalVariableDestructureSkipMultipleArgumentsAst(
         decltype(tok_ellipsis) &&tok_ellipsis,
         std::unique_ptr<LocalVariableAst> &&binding); // cast in ctor
+
+    ~LocalVariableDestructureSkipMultipleArgumentsAst() override;
 };
 
 

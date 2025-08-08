@@ -35,6 +35,8 @@ struct spp::asts::TypeTupleShorthandAst final : virtual Ast, mixins::TempTypeAst
         decltype(element_types) &&element_types,
         decltype(tok_r) &&tok_r);
 
+    ~TypeTupleShorthandAst() override;
+
     auto convert() -> std::unique_ptr<TypeAst> override;
 };
 

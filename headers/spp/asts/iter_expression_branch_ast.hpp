@@ -36,6 +36,8 @@ struct spp::asts::IterExpressionBranchAst final : virtual Ast {
         decltype(patterns) &&patterns,
         decltype(body) &&body,
         decltype(guard) &&guard);
+
+    ~IterExpressionBranchAst() override;
 };
 
 

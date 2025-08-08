@@ -24,7 +24,7 @@ auto spp::asts::FunctionCallArgumentPositionalAst::pos_end() const -> std::size_
 }
 
 
-spp::asts::FunctionCallArgumentPositionalAst::operator icu::UnicodeString() const {
+spp::asts::FunctionCallArgumentPositionalAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_unpack);
     SPP_STRING_APPEND(conv);
@@ -33,7 +33,7 @@ spp::asts::FunctionCallArgumentPositionalAst::operator icu::UnicodeString() cons
 }
 
 
-auto spp::asts::FunctionCallArgumentPositionalAst::print(meta::AstPrinter &printer) const -> icu::UnicodeString {
+auto spp::asts::FunctionCallArgumentPositionalAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_unpack);
     SPP_PRINT_APPEND(conv);

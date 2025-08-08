@@ -26,6 +26,8 @@ struct spp::asts::UnaryExpressionAst final : ExpressionAst {
     UnaryExpressionAst(
         decltype(tok_op) &&tok_op,
         decltype(expr) &&expr);
+
+    ~UnaryExpressionAst() override;
 };
 
 

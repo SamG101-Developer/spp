@@ -28,7 +28,7 @@ auto spp::asts::FunctionParameterOptionalAst::pos_end() const -> std::size_t {
 }
 
 
-spp::asts::FunctionParameterOptionalAst::operator icu::UnicodeString() const {
+spp::asts::FunctionParameterOptionalAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(var);
     SPP_STRING_APPEND(tok_colon);
@@ -39,7 +39,7 @@ spp::asts::FunctionParameterOptionalAst::operator icu::UnicodeString() const {
 }
 
 
-auto spp::asts::FunctionParameterOptionalAst::print(meta::AstPrinter &printer) const -> icu::UnicodeString {
+auto spp::asts::FunctionParameterOptionalAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(var);
     SPP_PRINT_APPEND(tok_colon);

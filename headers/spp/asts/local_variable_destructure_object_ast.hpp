@@ -42,6 +42,8 @@ struct spp::asts::LocalVariableDestructureObjectAst final : LocalVariableAst {
         decltype(tok_l) &&tok_l,
         decltype(elems) &&elems,
         decltype(tok_r) &&tok_r);
+
+    ~LocalVariableDestructureObjectAst() override;
 };
 
 

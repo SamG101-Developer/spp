@@ -40,6 +40,8 @@ struct spp::asts::GenExpressionAst final : PrimaryExpressionAst {
         decltype(tok_gen) &&tok_gen,
         decltype(conv) &&conv,
         decltype(expr) &&expr);
+
+    ~GenExpressionAst() override;
 };
 
 

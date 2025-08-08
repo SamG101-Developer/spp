@@ -20,6 +20,8 @@ struct spp::asts::LoopConditionBooleanAst final : LoopConditionAst {
      */
     explicit LoopConditionBooleanAst(
         decltype(cond) &&cond);
+
+    ~LoopConditionBooleanAst() override;
 };
 
 

@@ -1,0 +1,49 @@
+#include <spp/asts/generic_parameter_comp_variadic_ast.hpp>
+#include <spp/asts/token_ast.hpp>
+#include <spp/asts/type_ast.hpp>
+
+
+spp::asts::GenericParameterCompVariadicAst::GenericParameterCompVariadicAst(
+    decltype(tok_cmp) &&tok_cmp,
+    decltype(tok_ellipsis) &&tok_ellipsis,
+    decltype(name) &&name,
+    decltype(tok_colon) &&tok_colon,
+    decltype(type) &&type) :
+    GenericParameterCompAst(std::move(tok_cmp), std::move(name), std::move(tok_colon), std::move(type)),
+    tok_ellipsis(std::move(tok_ellipsis)) {
+}
+
+
+spp::asts::GenericParameterCompVariadicAst::~GenericParameterCompVariadicAst() = default;
+
+
+auto spp::asts::GenericParameterCompVariadicAst::pos_start() const -> std::size_t {
+    return tok_cmp->pos_start();
+}
+
+
+auto spp::asts::GenericParameterCompVariadicAst::pos_end() const -> std::size_t {
+    return tok_ellipsis->pos_end();
+}
+
+
+spp::asts::GenericParameterCompVariadicAst::operator std::string() const {
+    SPP_STRING_START;
+    SPP_STRING_APPEND(tok_cmp);
+    SPP_STRING_APPEND(tok_ellipsis);
+    SPP_STRING_APPEND(name);
+    SPP_STRING_APPEND(tok_colon);
+    SPP_STRING_APPEND(type);
+    SPP_STRING_END;
+}
+
+
+auto spp::asts::GenericParameterCompVariadicAst::print(meta::AstPrinter &printer) const -> std::string {
+    SPP_PRINT_START;
+    SPP_PRINT_APPEND(tok_cmp);
+    SPP_PRINT_APPEND(tok_ellipsis);
+    SPP_PRINT_APPEND(name);
+    SPP_PRINT_APPEND(tok_colon);
+    SPP_PRINT_APPEND(type);
+    SPP_PRINT_END;
+}

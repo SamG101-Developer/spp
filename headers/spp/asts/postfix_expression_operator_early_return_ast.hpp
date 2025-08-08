@@ -2,7 +2,6 @@
 #define POSTFIX_EXPRESSION_OPERATOR_EARLY_RETURN_AST_HPP
 
 #include <spp/asts/postfix_expression_operator_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
 
 
 struct spp::asts::PostfixExpressionOperatorEarlyReturnAst final : PostfixExpressionOperatorAst {
@@ -21,6 +20,8 @@ struct spp::asts::PostfixExpressionOperatorEarlyReturnAst final : PostfixExpress
      */
     explicit PostfixExpressionOperatorEarlyReturnAst(
         decltype(tok_qst)&& tok_qst);
+
+    ~PostfixExpressionOperatorEarlyReturnAst() override;
 };
 
 

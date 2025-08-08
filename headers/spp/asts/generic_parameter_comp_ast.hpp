@@ -19,8 +19,8 @@ struct spp::asts::GenericParameterCompAst : GenericParameterAst {
     std::unique_ptr<TypeAst> name;
 
     /**
-     * The token that represents the @c : colon in the generic parameter. This separates the parameter name from the
-     * type.
+     * The token that represents the @code :@endcode colon in the generic parameter. This separates the parameter name
+     * from the type.
      */
     std::unique_ptr<TokenAst> tok_colon;
 

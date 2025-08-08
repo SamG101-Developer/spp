@@ -20,10 +20,8 @@ namespace spp::utils::errors {
 struct spp::utils::errors::CustomError : std::runtime_error {
 public:
     using std::runtime_error::runtime_error;
-    virtual auto raise() noexcept(false) -> void;
-
-protected:
-    std::unique_ptr<ErrorFormatter> m_error_formatter;
+    virtual auto get_message(ErrorFormatter &error_formatter) const noexcept -> std::string = 0;
+    virtual auto raise(ErrorFormatter &error_formatter) noexcept(false) -> void = 0;
 };
 
 
@@ -31,7 +29,8 @@ struct spp::utils::errors::SyntacticError : CustomError {
 public:
     using CustomError::CustomError;
     ~SyntacticError() override = default;
-    auto raise() noexcept(false) -> void override;
+    auto get_message(ErrorFormatter &error_formatter) const noexcept -> std::string override;
+    auto raise(ErrorFormatter &error_formatter) noexcept(false) -> void override;
 
 public:
     std::size_t pos = 0;

@@ -19,6 +19,8 @@ struct spp::asts::GenericParameterTypeRequiredAst final : GenericParameterTypeAs
     GenericParameterTypeRequiredAst(
         decltype(name) &&name,
         decltype(constraints) &&constraints);
+
+    ~GenericParameterTypeRequiredAst() override;
 };
 
 

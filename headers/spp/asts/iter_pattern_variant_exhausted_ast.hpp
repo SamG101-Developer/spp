@@ -19,6 +19,8 @@ struct spp::asts::IterPatternVariantExhaustedAst final : IterPatternVariantAst {
      */
     explicit IterPatternVariantExhaustedAst(
         decltype(tok_exhausted) &&tok_exhausted);
+
+    ~IterPatternVariantExhaustedAst() override;
 };
 
 

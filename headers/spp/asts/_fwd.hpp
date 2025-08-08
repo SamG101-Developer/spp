@@ -108,8 +108,8 @@ namespace spp::asts {
     struct FloatLiteralAst;
     struct IntegerLiteralAst;
     struct ArrayLiteralAst;
-    struct ArrayLiteral0Elements;
-    struct ArrayLiteralNElements;
+    struct ArrayLiteralRepeatedElementAst;
+    struct ArrayLiteralExplicitElements;
     struct StringLiteralAst;
     struct TupleLiteralAst;
 

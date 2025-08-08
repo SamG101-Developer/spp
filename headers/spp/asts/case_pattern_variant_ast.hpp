@@ -6,7 +6,9 @@
 
 
 struct spp::asts::CasePatternVariantAst : virtual Ast {
-    using Ast::Ast;
+    CasePatternVariantAst();
+
+    ~CasePatternVariantAst() override;
 
 protected:
     /**

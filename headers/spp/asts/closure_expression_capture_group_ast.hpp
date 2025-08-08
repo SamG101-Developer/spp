@@ -27,6 +27,8 @@ struct spp::asts::ClosureExpressionCaptureGroupAst final : virtual Ast {
     explicit ClosureExpressionCaptureGroupAst(
         decltype(tok_caps) &&tok_caps,
         decltype(captures) &&captures);
+
+    ~ClosureExpressionCaptureGroupAst() override;
 };
 
 #endif //CLOSURE_EXPRESSION_CAPTURE_GROUP_AST_HPP

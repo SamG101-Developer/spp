@@ -6,7 +6,10 @@
 
 
 struct spp::asts::LocalVariableAst : virtual Ast {
-    using Ast::Ast;
+public:
+    LocalVariableAst();
+
+    ~LocalVariableAst() override;
 
 protected:
     /**

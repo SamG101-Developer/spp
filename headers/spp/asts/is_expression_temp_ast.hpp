@@ -23,6 +23,8 @@ struct spp::asts::IsExpressionTempAst {
     IsExpressionTempAst(
         decltype(tok_op) &&tok_op,
         decltype(rhs) &&rhs);
+
+    ~IsExpressionTempAst();
 };
 
 

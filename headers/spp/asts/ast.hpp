@@ -4,7 +4,7 @@
 #include <spp/asts/meta/ast_printer.hpp>
 #include <spp/asts/mixins/compiler_stages.hpp>
 
-#include <unicode/unistr.h>
+#include <memory>
 
 
 namespace spp::asts {
@@ -13,6 +13,16 @@ namespace spp::asts {
     template <typename T>
     auto ast_cast(Ast *ast) -> T* {
         return dynamic_cast<T*>(ast);
+    }
+
+    template <typename T>
+    auto ast_cast(Ast const *ast) -> T const* {
+        return dynamic_cast<T const*>(ast);
+    }
+
+    template <typename T, typename U>
+    auto ast_cast(std::unique_ptr<U> &&ast) -> std::unique_ptr<T> {
+        return std::unique_ptr<T>(ast_cast<T>(ast.release()));
     }
 }
 
@@ -24,8 +34,8 @@ namespace spp::analyse::scopes {
 #define SPP_AST_KEY_FUNCTIONS \
     auto pos_start() const -> std::size_t override;\
     auto pos_end() const -> std::size_t override;\
-    explicit operator icu::UnicodeString() const override;\
-    auto print(meta::AstPrinter &printer) const -> icu::UnicodeString override
+    explicit operator std::string() const override;\
+    auto print(meta::AstPrinter &printer) const -> std::string override
 
 
 /**
@@ -75,10 +85,17 @@ public:
     virtual auto pos_end() const -> std::size_t = 0;
 
     /**
+     * The size of an AST is the number of tokens it encompasses. This is used to determine the size of the AST in the
+     * source code, and is used for error reporting. Calculated by subtracting the start position from the end position.
+     * @return The size of the AST in tokens.
+     */
+    auto size() const -> std::size_t;
+
+    /**
      * Print an AST using raw-formatting. This does not handle indentation, and prints the AST as a single line.
      * Recursively prints child nodes using their respective "operator UnicodeString()" methods.
      */
-    virtual explicit operator icu::UnicodeString() const = 0;
+    virtual explicit operator std::string() const = 0;
 
     /**
      * Print an AST using auto-formatting. This handles the indentation for the ASTs, and prints braces correctly.
@@ -86,7 +103,7 @@ public:
      * @param[out] printer The printer object that tracks indentation and formatting.
      * @return The formatted string representation of the AST.
      */
-    virtual auto print(meta::AstPrinter &printer) const -> icu::UnicodeString = 0;
+    virtual auto print(meta::AstPrinter &printer) const -> std::string = 0;
 
 protected:
     /**

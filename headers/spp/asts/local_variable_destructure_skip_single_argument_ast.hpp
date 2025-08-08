@@ -21,6 +21,8 @@ struct spp::asts::LocalVariableDestructureSkipSingleArgumentAst final : LocalVar
      */
     explicit LocalVariableDestructureSkipSingleArgumentAst(
         decltype(tok_underscore) &&tok_underscore);
+
+    ~LocalVariableDestructureSkipSingleArgumentAst() override;
 };
 
 

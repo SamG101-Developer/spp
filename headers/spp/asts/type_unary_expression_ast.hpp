@@ -11,38 +11,44 @@ struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
     /**
      * The operator token that represents the unary operation. This indicates the type of operation being performed.
      */
-    std::unique_ptr<TypeUnaryExpressionOperatorAst> tok_op;
+    std::unique_ptr<TypeUnaryExpressionOperatorAst> op;
 
     /**
      * The type that is being operated on by the unary operator.
      */
-    std::unique_ptr<TypeAst> expr;
+    std::unique_ptr<TypeAst> rhs;
 
     /**
      * Construct the UnaryExpressionAst with the arguments matching the members.
-     * @param[in] tok_op The operator token that represents the unary operation.
-     * @param[in] expr The type that is being operated on by the unary operator.
+     * @param[in] op The operator token that represents the unary operation.
+     * @param[in] rhs The type that is being operated on by the unary operator.
      */
     TypeUnaryExpressionAst(
-        decltype(tok_op) &&tok_op,
-        decltype(expr) &&expr);
+        decltype(op) &&op,
+        decltype(rhs) &&rhs);
 
 public:
-    auto ns_parts() const -> std::vector<IdentifierAst const *> override;
+    auto is_never_type() const -> bool override;
 
-    auto type_parts() const -> std::vector<TypeIdentifierAst const *> override;
+    auto ns_parts() const -> std::vector<IdentifierAst const*> override;
 
-    auto without_generics() const -> std::unique_ptr<TypeAst> override;
+    auto type_parts() const -> std::vector<TypeIdentifierAst const*> override;
+
+    auto without_convention() const -> TypeAst const* override;
 
     auto get_convention() const -> ConventionAst* override;
 
-    auto substitute_generics(std::vector<GenericArgumentAst*> &&args) const -> std::unique_ptr<TypeAst> override;
+    auto with_convention(std::unique_ptr<ConventionAst> &&convention) const -> std::unique_ptr<TypeAst> override;
+
+    auto without_generics() const -> std::unique_ptr<TypeAst> override;
+
+    auto substitute_generics(std::vector<GenericArgumentAst*> args) const -> std::unique_ptr<TypeAst> override;
 
     auto contains_generic(TypeAst const *generic) const -> bool override;
 
-    auto set_generics(std::unique_ptr<GenericArgumentGroupAst> &&arg_group) -> std::unique_ptr<TypeAst> override;
+    auto match_generic(TypeAst const *other, TypeAst const *generic) -> TypeAst* override;
 
-    auto with_convention() const -> std::unique_ptr<TypeAst> override;
+    auto with_generics(std::unique_ptr<GenericArgumentGroupAst> &&arg_group) -> std::unique_ptr<TypeAst> override;
 };
 
 

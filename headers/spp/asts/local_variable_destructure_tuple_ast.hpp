@@ -34,6 +34,8 @@ struct spp::asts::LocalVariableDestructureTupleAst final : LocalVariableAst {
         decltype(tok_l) &&tok_l,
         decltype(elems) &&elems,
         decltype(tok_r) &&tok_r);
+
+    ~LocalVariableDestructureTupleAst() override;
 };
 
 

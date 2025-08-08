@@ -13,3 +13,6 @@ spp::asts::FunctionParameterAst::FunctionParameterAst(
     tok_colon(std::move(tok_colon)),
     type(std::move(type)) {
 }
+
+
+spp::asts::FunctionParameterAst::~FunctionParameterAst() = default;

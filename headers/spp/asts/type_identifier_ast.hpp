@@ -15,7 +15,7 @@ struct spp::asts::TypeIdentifierAst final : TypeAst {
     /**
      * The name for the type. This is the name of the type, such as @c Str or @code Vec[BigInt]@endcode.
      */
-    icu::UnicodeString name;
+    std::string name;
 
     /**
      * The generic arguments for the type. This is a list of generic arguments that are used to instantiate the type.
@@ -38,22 +38,30 @@ struct spp::asts::TypeIdentifierAst final : TypeAst {
 private:
     std::size_t m_pos;
 
+    bool m_is_never_type;
+
 public:
-    auto ns_parts() const -> std::vector<IdentifierAst const *> override;
+    auto is_never_type() const -> bool override;
 
-    auto type_parts() const -> std::vector<TypeIdentifierAst const *> override;
+    auto ns_parts() const -> std::vector<IdentifierAst const*> override;
 
-    auto without_generics() const -> std::unique_ptr<TypeAst> override;
+    auto type_parts() const -> std::vector<TypeIdentifierAst const*> override;
+
+    auto without_convention() const -> TypeAst const* override;
 
     auto get_convention() const -> ConventionAst* override;
 
-    auto substitute_generics(std::vector<GenericArgumentAst*> &&args) const -> std::unique_ptr<TypeAst> override;
+    auto with_convention(std::unique_ptr<ConventionAst> &&convention) const -> std::unique_ptr<TypeAst> override;
+
+    auto without_generics() const -> std::unique_ptr<TypeAst> override;
+
+    auto substitute_generics(std::vector<GenericArgumentAst*> args) const -> std::unique_ptr<TypeAst> override;
 
     auto contains_generic(TypeAst const *generic) const -> bool override;
 
-    auto set_generics(std::unique_ptr<GenericArgumentGroupAst> &&arg_group) -> std::unique_ptr<TypeAst> override;
+    auto match_generic(TypeAst const *other, TypeAst const *generic) -> TypeAst* override;
 
-    auto with_convention() const -> std::unique_ptr<TypeAst> override;
+    auto with_generics(std::unique_ptr<GenericArgumentGroupAst> &&arg_group) -> std::unique_ptr<TypeAst> override;
 };
 
 

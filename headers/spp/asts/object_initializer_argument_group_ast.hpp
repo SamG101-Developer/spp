@@ -42,6 +42,8 @@ struct spp::asts::ObjectInitializerArgumentGroupAst final : virtual Ast {
         decltype(tok_l) &&tok_l,
         decltype(args) &&args,
         decltype(tok_r) &&tok_r);
+
+    ~ObjectInitializerArgumentGroupAst() override;
 };
 
 

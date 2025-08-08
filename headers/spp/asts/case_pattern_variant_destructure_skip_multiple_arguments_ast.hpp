@@ -29,7 +29,7 @@ struct spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst final : 
      */
     CasePatternVariantDestructureSkipMultipleArgumentsAst(
         decltype(tok_ellipsis) &&tok_ellipsis,
-        std::unique_ptr<CasePatternVariantAst> &&binding);  // cast in ctor
+        std::unique_ptr<CasePatternVariantAst> &&binding);
 };
 
 

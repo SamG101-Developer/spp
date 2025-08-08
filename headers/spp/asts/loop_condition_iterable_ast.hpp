@@ -35,6 +35,8 @@ struct spp::asts::LoopConditionIterableAst final : LoopConditionAst {
         decltype(var) &&var,
         decltype(tok_in) &&tok_in,
         decltype(iterable) &&iterable);
+
+    ~LoopConditionIterableAst() override;
 };
 
 

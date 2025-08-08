@@ -6,7 +6,7 @@
 
 
 /**
- * The ArrayLiteralNElements AST represents an array literal with a variable number of elements. This is used to create
+ * The ArrayLiteralExplicitElementsAst represents an array literal with a variable number of elements. This is used to create
  * an @code std::Arr[T, n]@endcode type, with @c T being the inferred type of each element (must all be the same type,
  * and @c n being the number of elements provided.
  *
@@ -14,7 +14,7 @@
  * The elements are stored as @c Ast* pointers, but are restricted to expression-like ASTs by the parser. Their
  * respective analysis functions will be called by inheritance/vtable logic.
  */
-struct spp::asts::ArrayLiteralNElements final : ArrayLiteralAst {
+struct spp::asts::ArrayLiteralExplicitElements final : ArrayLiteralAst {
     SPP_AST_KEY_FUNCTIONS;
 
     /**
@@ -40,7 +40,7 @@ struct spp::asts::ArrayLiteralNElements final : ArrayLiteralAst {
      * @param[in] elements The list of expressions that are the elements of the array.
      * @param[in] tok_r The token that represents the right square bracket \c ] in the array literal.
      */
-    ArrayLiteralNElements(
+    ArrayLiteralExplicitElements(
         decltype(tok_l) &&tok_l,
         decltype(elements) &&elements,
         decltype(tok_r) &&tok_r);

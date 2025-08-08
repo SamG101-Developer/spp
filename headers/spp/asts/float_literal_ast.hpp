@@ -55,7 +55,7 @@ struct spp::asts::FloatLiteralAst final : LiteralAst {
         decltype(int_val) &&int_val,
         decltype(tok_dot) &&tok_dot,
         decltype(frac_val) &&frac_val,
-        icu::UnicodeString &&type);
+        std::string &&type);
 };
 
 

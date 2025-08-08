@@ -20,6 +20,8 @@ struct spp::asts::IterPatternVariantVariableAst final : IterPatternVariantAst {
      */
     explicit IterPatternVariantVariableAst(
         decltype(var) &&var);
+
+    ~IterPatternVariantVariableAst() override;
 };
 
 

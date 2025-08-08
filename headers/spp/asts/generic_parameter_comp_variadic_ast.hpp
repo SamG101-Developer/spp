@@ -28,6 +28,8 @@ struct spp::asts::GenericParameterCompVariadicAst final : GenericParameterCompAs
         decltype(name) &&name,
         decltype(tok_colon) &&tok_colon,
         decltype(type) &&type);
+
+    ~GenericParameterCompVariadicAst() override;
 };
 
 

@@ -35,7 +35,7 @@ auto spp::asts::ClassPrototypeAst::pos_end() const -> std::size_t {
 }
 
 
-spp::asts::ClassPrototypeAst::operator icu::UnicodeString() const {
+spp::asts::ClassPrototypeAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_EXTEND(annotations);
     SPP_STRING_APPEND(tok_cls);
@@ -46,7 +46,7 @@ spp::asts::ClassPrototypeAst::operator icu::UnicodeString() const {
 }
 
 
-auto spp::asts::ClassPrototypeAst::print(meta::AstPrinter &printer) const -> icu::UnicodeString {
+auto spp::asts::ClassPrototypeAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_EXTEND(annotations);
     SPP_PRINT_APPEND(tok_cls);

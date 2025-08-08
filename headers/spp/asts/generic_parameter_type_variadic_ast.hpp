@@ -24,6 +24,8 @@ struct spp::asts::GenericParameterTypeVariadicAst final : GenericParameterTypeAs
         decltype(tok_ellipsis) &&tok_ellipsis,
         decltype(name) &&name,
         decltype(constraints) &&constraints);
+
+    ~GenericParameterTypeVariadicAst() override;
 };
 
 

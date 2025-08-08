@@ -36,6 +36,8 @@ struct spp::asts::CasePatternVariantSingleIdentifierAst final : CasePatternVaria
         decltype(tok_mut) &&tok_mut,
         decltype(name) &&name,
         decltype(alias) &&alias);
+
+    ~CasePatternVariantSingleIdentifierAst() override;
 };
 
 

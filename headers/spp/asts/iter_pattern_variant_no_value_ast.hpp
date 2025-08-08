@@ -9,16 +9,18 @@ struct spp::asts::IterPatternVariantNoValueAst final : IterPatternVariantAst {
     SPP_AST_KEY_FUNCTIONS;
 
     /**
-     * The @c ? token that indicates the pattern variant does not have a value. This is used with @c GenOpt generators.
+     * The @c _ token that indicates the pattern variant does not have a value. This is used with @c GenOpt generators.
      */
-    std::unique_ptr<TokenAst> tok_qst;
+    std::unique_ptr<TokenAst> tok_underscore;
 
     /**
      * Constructor for the @c IterPatternVariantNoValueAst.
-     * @param tok_qst The @c ? token that indicates the pattern variant does not have a value.
+     * @param tok_underscore The @c ? token that indicates the pattern variant does not have a value.
      */
     explicit IterPatternVariantNoValueAst(
-        decltype(tok_qst) &&tok_qst);
+        decltype(tok_underscore) &&tok_underscore);
+
+    ~IterPatternVariantNoValueAst() override;
 };
 
 

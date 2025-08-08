@@ -20,6 +20,8 @@ struct spp::asts::CasePatternVariantExpressionAst final : CasePatternVariantAst 
      */
     explicit CasePatternVariantExpressionAst(
         decltype(expr) &&expr);
+
+    ~CasePatternVariantExpressionAst();
 };
 
 

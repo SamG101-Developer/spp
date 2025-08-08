@@ -27,6 +27,8 @@ struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst {
     ObjectInitializerAst(
         decltype(type) &&type,
         decltype(arg_group) &&arg_group);
+
+    ~ObjectInitializerAst() override;
 };
 
 

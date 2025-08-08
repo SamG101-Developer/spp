@@ -33,6 +33,8 @@ struct spp::asts::ParenthesisedExpressionAst final : PrimaryExpressionAst {
         decltype(tok_open_paren) &&tok_open_paren,
         decltype(expr) &&expr,
         decltype(tok_close_paren) &&tok_close_paren);
+
+    ~ParenthesisedExpressionAst() override;
 };
 
 

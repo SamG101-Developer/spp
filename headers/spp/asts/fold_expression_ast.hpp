@@ -19,6 +19,8 @@ struct spp::asts::FoldExpressionAst final : PrimaryExpressionAst {
      */
     explicit FoldExpressionAst(
         decltype(tok_ellipsis) &&tok_ellipsis);
+
+    ~FoldExpressionAst() override;
 };
 
 

@@ -7,6 +7,11 @@
 
 struct spp::asts::TypeUnaryExpressionOperatorAst : virtual Ast {
     using Ast::Ast;
+
+public:
+    virtual auto ns_parts() const -> std::vector<IdentifierAst const*> = 0;
+
+    virtual auto type_parts() const -> std::vector<TypeIdentifierAst const*> = 0;
 };
 
 

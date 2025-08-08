@@ -25,7 +25,7 @@ auto spp::asts::FunctionParameterVariadicAst::pos_end() const -> std::size_t {
 }
 
 
-spp::asts::FunctionParameterVariadicAst::operator icu::UnicodeString() const {
+spp::asts::FunctionParameterVariadicAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(var);
     SPP_STRING_APPEND(tok_colon);
@@ -35,7 +35,7 @@ spp::asts::FunctionParameterVariadicAst::operator icu::UnicodeString() const {
 }
 
 
-auto spp::asts::FunctionParameterVariadicAst::print(meta::AstPrinter &printer) const -> icu::UnicodeString {
+auto spp::asts::FunctionParameterVariadicAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(var);
     SPP_PRINT_APPEND(tok_colon);

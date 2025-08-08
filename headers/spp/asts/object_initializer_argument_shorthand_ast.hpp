@@ -29,6 +29,8 @@ struct spp::asts::ObjectInitializerArgumentShorthandAst final : ObjectInitialize
     explicit ObjectInitializerArgumentShorthandAst(
         std::unique_ptr<TokenAst> tok_ellipsis,
         std::unique_ptr<ExpressionAst> &&val);
+
+    ~ObjectInitializerArgumentShorthandAst() override;
 };
 
 

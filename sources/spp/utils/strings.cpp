@@ -3,20 +3,20 @@
 #include <spp/utils/strings.hpp>
 
 
-auto spp::utils::strings::snake_to_pascal(icu::UnicodeString const &str) -> icu::UnicodeString {
-    auto out = icu::UnicodeString();
+auto spp::utils::strings::snake_to_pascal(std::string const &str) -> std::string {
+    auto out = std::string();
     auto caps = false;
-    for (auto i = 0; i < str.length(); ++i) {
-        const auto c = str.charAt(i);
+    for (auto i = 0uz; i < str.length(); ++i) {
+        const auto c = str[i];
         if (c == '_') {
             caps = true;
             continue;
         }
         if (caps) {
-            out.append(u_toupper(c));
+            out.push_back(std::toupper(c));
             caps = false;
         } else {
-            out.append(u_tolower(c));
+            out.push_back(std::tolower(c));
         }
     }
     return out;

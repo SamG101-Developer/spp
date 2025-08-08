@@ -24,6 +24,8 @@ struct spp::asts::TypeBinaryExpressionTempAst final {
     TypeBinaryExpressionTempAst(
         decltype(tok_op) &&tok_op,
         decltype(rhs) &&rhs);
+
+    ~TypeBinaryExpressionTempAst();
 };
 
 

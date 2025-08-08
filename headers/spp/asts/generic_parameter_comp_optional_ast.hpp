@@ -34,6 +34,8 @@ struct spp::asts::GenericParameterCompOptionalAst final : GenericParameterCompAs
         decltype(type) &&type,
         decltype(tok_assign) &&tok_assign,
         decltype(default_val) &&default_val);
+
+    ~GenericParameterCompOptionalAst() override;
 };
 
 

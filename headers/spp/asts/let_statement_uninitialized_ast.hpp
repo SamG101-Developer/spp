@@ -43,6 +43,8 @@ struct spp::asts::LetStatementUninitializedAst final : LetStatementAst {
         decltype(var) &&var,
         decltype(tok_colon) &&tok_colon,
         decltype(type) &&type);
+
+    ~LetStatementUninitializedAst() override;
 };
 
 

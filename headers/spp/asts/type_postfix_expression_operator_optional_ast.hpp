@@ -16,9 +16,15 @@ struct spp::asts::TypePostfixExpressionOperatorOptionalAst final : TypePostfixEx
 
     /**
      * Construct the TypePostfixExpressionOperatorOptionalAst with the arguments matching the members.
-     * @param tok_op The @c ? token that represents the optional postfix operation.
+     * @param tok_qst The @c ? token that represents the optional postfix operation.
      */
-    explicit TypePostfixExpressionOperatorOptionalAst(decltype(tok_qst) &&tok_op);
+    explicit TypePostfixExpressionOperatorOptionalAst(decltype(tok_qst) &&tok_qst);
+
+    ~TypePostfixExpressionOperatorOptionalAst() override;
+
+    auto ns_parts() const -> std::vector<IdentifierAst const *> override;
+
+    auto type_parts() const -> std::vector<TypeIdentifierAst const *> override;
 };
 
 

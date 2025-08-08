@@ -25,12 +25,12 @@ struct spp::asts::TokenAst final : virtual Ast {
     /**
      * The associated data to that token (normally the string representation).
      */
-    icu::UnicodeString token_data;
+    std::string token_data;
 
     TokenAst(
         std::size_t pos,
         lex::SppTokenType token_type,
-        icu::UnicodeString &&token_data);
+        std::string &&token_data);
 
     /**
      * Two tokens are equal if their token types are equal.

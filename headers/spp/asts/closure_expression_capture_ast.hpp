@@ -28,6 +28,8 @@ struct spp::asts::ClosureExpressionCaptureAst final : virtual Ast {
     ClosureExpressionCaptureAst(
         decltype(conv) &&conv,
         decltype(name) &&name);
+
+    ~ClosureExpressionCaptureAst() override;
 };
 
 

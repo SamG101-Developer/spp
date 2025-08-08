@@ -22,12 +22,12 @@ auto spp::asts::IdentifierAst::pos_end() const -> std::size_t {
 }
 
 
-spp::asts::IdentifierAst::operator icu::UnicodeString() const {
+spp::asts::IdentifierAst::operator std::string() const {
     return val;
 }
 
 
-auto spp::asts::IdentifierAst::print(meta::AstPrinter &) const -> icu::UnicodeString {
+auto spp::asts::IdentifierAst::print(meta::AstPrinter &) const -> std::string {
     return val;
 }
 
@@ -42,13 +42,13 @@ auto spp::asts::IdentifierAst::operator+(IdentifierAst const &that) const -> Ide
 }
 
 
-auto spp::asts::IdentifierAst::operator+(icu::UnicodeString const &that) const -> IdentifierAst {
+auto spp::asts::IdentifierAst::operator+(std::string const &that) const -> IdentifierAst {
     return IdentifierAst(m_pos, val + that);
 }
 
 
 auto spp::asts::IdentifierAst::from_type(TypeAst const &val) -> std::unique_ptr<IdentifierAst> {
-    return std::make_unique<IdentifierAst>(val.pos_start(), icu::UnicodeString(val.type_parts().back()->name));
+    return std::make_unique<IdentifierAst>(val.pos_start(), std::string(val.type_parts().back()->name));
 }
 
 

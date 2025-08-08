@@ -33,6 +33,8 @@ struct spp::asts::IsExpressionAst final : ExpressionAst {
         decltype(lhs) &&lhs,
         decltype(tok_op) &&tok_op,
         decltype(rhs) &&rhs);
+
+    ~IsExpressionAst() override;
 };
 
 

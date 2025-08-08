@@ -42,6 +42,8 @@ struct spp::asts::IterExpressionAst final : PrimaryExpressionAst {
         decltype(cond) &&cond,
         decltype(tok_of) &&tok_of,
         decltype(branches) &&branches);
+
+    ~IterExpressionAst() override;
 };
 
 

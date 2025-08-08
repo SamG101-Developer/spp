@@ -19,6 +19,8 @@ struct spp::asts::StringLiteralAst final : LiteralAst {
      */
     explicit StringLiteralAst(
         decltype(val) &&val);
+
+    ~StringLiteralAst() override;
 };
 
 

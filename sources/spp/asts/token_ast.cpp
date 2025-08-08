@@ -4,7 +4,7 @@
 spp::asts::TokenAst::TokenAst(
     const std::size_t pos,
     const lex::SppTokenType token_type,
-    icu::UnicodeString &&token_data):
+    std::string &&token_data) :
     token_type(token_type),
     token_data(std::move(token_data)),
     m_pos(pos) {
@@ -26,11 +26,11 @@ auto spp::asts::TokenAst::pos_end() const -> std::size_t {
 }
 
 
-auto spp::asts::TokenAst::print(meta::AstPrinter &) const -> icu::UnicodeString {
+auto spp::asts::TokenAst::print(meta::AstPrinter &) const -> std::string {
     return token_data;
 }
 
 
-spp::asts::TokenAst::operator icu::UnicodeString() const {
+spp::asts::TokenAst::operator std::string() const {
     return token_data;
 }

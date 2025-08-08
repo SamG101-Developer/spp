@@ -2,8 +2,8 @@
 
 #include <spp/asts/annotation_ast.hpp>
 #include <spp/asts/array_literal_ast.hpp>
-#include <spp/asts/array_literal_0_elements_ast.hpp>
-#include <spp/asts/array_literal_n_elements_ast.hpp>
+#include <spp/asts/array_literal_repeated_element_ast.hpp>
+#include <spp/asts/array_literal_explicit_elements_ast.hpp>
 #include <spp/asts/assignment_statement_ast.hpp>
 #include <spp/asts/ast.hpp>
 #include <spp/asts/binary_expression_ast.hpp>
@@ -1761,8 +1761,8 @@ auto spp::parse::ParserSpp::parse_type_identifier() -> std::unique_ptr<asts::Typ
 auto spp::parse::ParserSpp::parse_type_array() -> std::unique_ptr<asts::TypeAst> {
     PARSE_ONCE(p1, parse_token_left_square_bracket);
     PARSE_ONCE(p2, parse_type_expression);
-    PARSE_ONCE(p3, parse_token_comma);
-    PARSE_ONCE(p4, parse_lexeme_dec_integer);
+    PARSE_ONCE(p3, parse_token_semicolon);
+    PARSE_ONCE(p4, parse_cmp_value);
     PARSE_ONCE(p5, parse_token_right_square_bracket);
     return CREATE_AST(asts::TypeArrayShorthandAst, p1, p2, p3, p4, p5)->convert();
 }
@@ -1777,8 +1777,9 @@ auto spp::parse::ParserSpp::parse_type_tuple() -> std::unique_ptr<asts::TypeAst>
 
 auto spp::parse::ParserSpp::parse_type_tuple_0_types() -> std::unique_ptr<asts::TypeAst> {
     PARSE_ONCE(p1, parse_token_left_parenthesis);
-    PARSE_ONCE(p2, parse_token_right_parenthesis);
-    return CREATE_AST(asts::TypeTupleShorthandAst, p1, std::vector<std::unique_ptr<asts::TypeAst>>(), p2)->convert();
+    auto p2 = std::vector<std::unique_ptr<asts::TypeAst>>();
+    PARSE_ONCE(p3, parse_token_right_parenthesis);
+    return CREATE_AST(asts::TypeTupleShorthandAst, p1, p2, p3)->convert();
 }
 
 
@@ -1870,8 +1871,9 @@ auto spp::parse::ParserSpp::parse_literal_tuple(std::function<std::unique_ptr<as
 
 
 auto spp::parse::ParserSpp::parse_literal_array(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::ArrayLiteralAst> {
-    auto parser_n = [= BOOST_PP_COMMA() this] mutable { return parse_literal_array_n_elements(std::move(elem_parser)); };
-    PARSE_ALTERNATE(p1, asts::ArrayLiteralAst, parse_literal_array_0_elements, parser_n);
+    auto parser_e = [= BOOST_PP_COMMA() this] mutable { return parse_literal_array_explicit_elements(std::move(elem_parser)); };
+    auto parser_r = [= BOOST_PP_COMMA() this] mutable { return parse_literal_array_repeated_element(std::move(elem_parser)); };
+    PARSE_ALTERNATE(p1, asts::ArrayLiteralAst, parser_e, parser_r);
     return FORWARD_AST(p1);
 }
 
@@ -1978,21 +1980,21 @@ auto spp::parse::ParserSpp::parse_literal_tuple_n_elements(std::function<std::un
 }
 
 
-auto spp::parse::ParserSpp::parse_literal_array_0_elements() -> std::unique_ptr<asts::ArrayLiteral0Elements> {
+auto spp::parse::ParserSpp::parse_literal_array_repeated_element(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::ArrayLiteralRepeatedElementAst> {
     PARSE_ONCE(p1, parse_token_left_square_bracket);
-    PARSE_ONCE(p2, parse_type_expression);
-    PARSE_ONCE(p3, parse_token_comma);
-    PARSE_ONCE(p4, parse_lexeme_dec_integer);
+    PARSE_ONCE(p2, elem_parser);
+    PARSE_ONCE(p3, parse_token_semicolon);
+    PARSE_ONCE(p4, parse_cmp_value);
     PARSE_ONCE(p5, parse_token_right_square_bracket);
-    return CREATE_AST(asts::ArrayLiteral0Elements, p1, p2, p3, p4, p5);
+    return CREATE_AST(asts::ArrayLiteralRepeatedElementAst, p1, p2, p3, p4, p5);
 }
 
 
-auto spp::parse::ParserSpp::parse_literal_array_n_elements(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::ArrayLiteralNElements> {
+auto spp::parse::ParserSpp::parse_literal_array_explicit_elements(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::ArrayLiteralExplicitElements> {
     PARSE_ONCE(p1, parse_token_left_square_bracket);
     PARSE_ONE_OR_MORE(p2, elem_parser, parse_token_comma);
     PARSE_ONCE(p3, parse_token_right_square_bracket);
-    return CREATE_AST(asts::ArrayLiteralNElements, p1, p2, p3);
+    return CREATE_AST(asts::ArrayLiteralExplicitElements, p1, p2, p3);
 }
 
 
@@ -2037,12 +2039,12 @@ auto spp::parse::ParserSpp::parse_cmp_object_initializer_argument_keyword() -> s
 }
 
 
-auto spp::parse::ParserSpp::parse_specific_characters(icu::UnicodeString &&s) -> std::unique_ptr<asts::TokenAst> {
-    auto identifier = icu::UnicodeString();
+auto spp::parse::ParserSpp::parse_specific_characters(std::string &&s) -> std::unique_ptr<asts::TokenAst> {
+    auto identifier = std::string();
     PARSE_ONCE(_, parse_nothing);
     auto pos = m_pos;
 
-    for (auto i = 0; i < s.length(); ++i) {
+    for (auto i = 0uz; i < s.length(); ++i) {
         PARSE_ONCE(p1, parse_lexeme_character);
         identifier += p1->token_data[0];
     }
@@ -2085,7 +2087,7 @@ auto spp::parse::ParserSpp::parse_lexeme_character_or_digit_or_underscore() -> s
 
 auto spp::parse::ParserSpp::parse_lexeme_bin_integer() -> std::unique_ptr<asts::TokenAst> {
     PARSE_ONCE(_, parse_nothing);
-    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_DIGIT, icu::UnicodeString());
+    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_DIGIT, std::string());
 
     PARSE_ONCE(p1, [this] { return parse_specific_character('0'); });
     out->token_data += std::move(p1->token_data);
@@ -2109,7 +2111,7 @@ auto spp::parse::ParserSpp::parse_lexeme_bin_integer() -> std::unique_ptr<asts::
 
 auto spp::parse::ParserSpp::parse_lexeme_oct_integer() -> std::unique_ptr<asts::TokenAst> {
     PARSE_ONCE(_, parse_nothing);
-    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_DIGIT, icu::UnicodeString());
+    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_DIGIT, std::string());
 
     PARSE_ONCE(p1, [this] { return parse_specific_character('0'); });
     out->token_data += std::move(p1->token_data);
@@ -2133,7 +2135,7 @@ auto spp::parse::ParserSpp::parse_lexeme_oct_integer() -> std::unique_ptr<asts::
 
 auto spp::parse::ParserSpp::parse_lexeme_dec_integer() -> std::unique_ptr<asts::TokenAst> {
     PARSE_ONCE(_, parse_nothing);
-    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_DIGIT, icu::UnicodeString());
+    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_DIGIT, std::string());
 
     PARSE_ONCE(p1, parse_lexeme_digit);
     out->token_data += std::move(p1->token_data);
@@ -2149,7 +2151,7 @@ auto spp::parse::ParserSpp::parse_lexeme_dec_integer() -> std::unique_ptr<asts::
 
 auto spp::parse::ParserSpp::parse_lexeme_hex_integer() -> std::unique_ptr<asts::TokenAst> {
     PARSE_ONCE(_, parse_nothing);
-    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_DIGIT, icu::UnicodeString());
+    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_DIGIT, std::string());
 
     PARSE_ONCE(p1, [this] { return parse_specific_character('0'); });
     out->token_data += std::move(p1->token_data);
@@ -2158,12 +2160,12 @@ auto spp::parse::ParserSpp::parse_lexeme_hex_integer() -> std::unique_ptr<asts::
     out->token_data += std::move(p2->token_data);
 
     PARSE_ONCE(p3, parse_lexeme_character_or_digit);
-    if (icu::UnicodeString("0123456789abcdefABCDEF").indexOf(p3->token_data[0]) == -1) { return nullptr; }
+    if (std::string("0123456789abcdefABCDEF").find(p3->token_data[0]) == std::string::npos) { return nullptr; }
     out->token_data += std::move(p3->token_data);
 
     while (m_tokens[m_pos].type == lex::RawTokenType::LX_CHARACTER) {
         PARSE_ONCE(p4, parse_lexeme_character_or_digit);
-        if (icu::UnicodeString("0123456789abcdefABCDEF").indexOf(p4->token_data[0]) == -1) { return nullptr; }
+        if (std::string("0123456789abcdefABCDEF").find(p4->token_data[0]) == std::string::npos) { return nullptr; }
         out->token_data += std::move(p4->token_data);
     }
 
@@ -2173,7 +2175,7 @@ auto spp::parse::ParserSpp::parse_lexeme_hex_integer() -> std::unique_ptr<asts::
 
 auto spp::parse::ParserSpp::parse_lexeme_double_quote_string() -> std::unique_ptr<asts::TokenAst> {
     PARSE_ONCE(_, parse_nothing);
-    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_STRING, icu::UnicodeString());
+    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_STRING, std::string());
 
     PARSE_ONCE(p1, parse_token_double_quote);
     out->token_data += std::move(p1->token_data);
@@ -2192,7 +2194,7 @@ auto spp::parse::ParserSpp::parse_lexeme_double_quote_string() -> std::unique_pt
 
 auto spp::parse::ParserSpp::parse_lexeme_identifier() -> std::unique_ptr<asts::TokenAst> {
     PARSE_ONCE(_, parse_nothing);
-    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_IDENTIFIER, icu::UnicodeString());
+    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_IDENTIFIER, std::string());
 
     PARSE_OPTIONAL(p1, parse_token_dollar);
     if (p1 != nullptr) { out->token_data += p1->token_data; }
@@ -2212,7 +2214,7 @@ auto spp::parse::ParserSpp::parse_lexeme_identifier() -> std::unique_ptr<asts::T
 
 auto spp::parse::ParserSpp::parse_lexeme_upper_identifier() -> std::unique_ptr<asts::TokenAst> {
     PARSE_ONCE(_, parse_nothing);
-    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_IDENTIFIER, icu::UnicodeString());
+    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_IDENTIFIER, std::string());
 
     PARSE_OPTIONAL(p1, parse_token_dollar);
     if (p1 != nullptr) { out->token_data += p1->token_data; }
@@ -2406,6 +2408,12 @@ auto spp::parse::ParserSpp::parse_token_borrow() -> std::unique_ptr<asts::TokenA
 
 auto spp::parse::ParserSpp::parse_token_vertical_bar() -> std::unique_ptr<asts::TokenAst> {
     PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_VERTICAL_BAR, lex::SppTokenType::TK_VERTICAL_BAR); });
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_token_semicolon() -> std::unique_ptr<asts::TokenAst> {
+    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_SEMICOLON, lex::SppTokenType::TK_SEMICOLON); });
     return FORWARD_AST(p1);
 }
 
@@ -2794,7 +2802,7 @@ auto spp::parse::ParserSpp::parse_token_raw(const lex::RawTokenType tok, lex::Sp
     }
 
     if (tok == lex::RawTokenType::SP_NO_TOK) {
-        return CREATE_AST(asts::TokenAst, m_pos, mapped_tok, icu::UnicodeString());
+        return CREATE_AST(asts::TokenAst, m_pos, mapped_tok, std::string());
     }
 
     if (m_tokens[m_pos].type != tok) {
@@ -2803,16 +2811,17 @@ auto spp::parse::ParserSpp::parse_token_raw(const lex::RawTokenType tok, lex::Sp
             m_error->tokens.insert(mapped_tok);
             return nullptr;
         }
-        if (m_store_error(m_pos, "Expected £, got '"s + magic_enum::enum_name(m_tokens[m_pos].type) + "'")) {
+
+        if (m_store_error(m_pos, "Expected £, got '"s + m_tokens[m_pos].data + "'")) {
             m_error->tokens.insert(mapped_tok);
             return nullptr;
         }
     }
 
-    auto data = mapped_tok == lex::SppTokenType::LX_CHARACTER or mapped_tok == lex::SppTokenType::LX_DIGIT
-                    ? m_tokens[m_pos].data
-                    : icu::UnicodeString::fromUTF8(magic_enum::enum_name(m_tokens[m_pos].type));
-    return CREATE_AST(asts::TokenAst, m_pos, mapped_tok, std::move(data));
+    const auto data = mapped_tok == lex::SppTokenType::LX_CHARACTER or mapped_tok == lex::SppTokenType::LX_DIGIT
+                          ? m_tokens[m_pos].data.data()
+                          : magic_enum::enum_name(m_tokens[m_pos].type).data();
+    return CREATE_AST(asts::TokenAst, m_pos, mapped_tok, std::string(data));
 }
 
 

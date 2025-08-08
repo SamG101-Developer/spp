@@ -18,6 +18,8 @@ struct spp::asts::GenericArgumentTypePositionalAst final : GenericArgumentTypeAs
      */
     explicit GenericArgumentTypePositionalAst(
         decltype(val) &&val);
+
+    ~GenericArgumentTypePositionalAst() override;
 };
 
 

@@ -12,7 +12,7 @@ struct spp::asts::IdentifierAst final : PrimaryExpressionAst {
     /**
      * The internal value of the identifier. This is the name of the identifier, such as @c variable or @c my_function.
      */
-    icu::UnicodeString val;
+    std::string val;
 
     /**
      * Construct the IdentifierAst with the arguments matching the members.
@@ -27,11 +27,11 @@ struct spp::asts::IdentifierAst final : PrimaryExpressionAst {
 
     auto operator+(IdentifierAst const &that) const -> IdentifierAst;
 
-    auto operator+(icu::UnicodeString const &that) const -> IdentifierAst;
+    auto operator+(std::string const &that) const -> IdentifierAst;
 
     static auto from_type(TypeAst const &val) -> std::unique_ptr<IdentifierAst>;
 
-    SPP_ATTR_NODISCARD auto to_function_identifier() const -> std::unique_ptr<IdentifierAst>;
+    auto to_function_identifier() const -> std::unique_ptr<IdentifierAst>;
 
 private:
     std::size_t m_pos;

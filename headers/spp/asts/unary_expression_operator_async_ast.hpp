@@ -20,6 +20,8 @@ struct spp::asts::UnaryExpressionOperatorAsyncAst final : UnaryExpressionOperato
      */
     explicit UnaryExpressionOperatorAsyncAst(
         decltype(tok_async) &&tok_async);
+
+    ~UnaryExpressionOperatorAsyncAst() override;
 };
 
 

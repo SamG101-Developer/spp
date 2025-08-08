@@ -25,7 +25,7 @@ auto spp::asts::AssignmentStatementAst::pos_end() const -> std::size_t {
 }
 
 
-spp::asts::AssignmentStatementAst::operator icu::UnicodeString() const {
+spp::asts::AssignmentStatementAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_EXTEND(lhs);
     SPP_STRING_APPEND(tok_assign);
@@ -34,7 +34,7 @@ spp::asts::AssignmentStatementAst::operator icu::UnicodeString() const {
 }
 
 
-auto spp::asts::AssignmentStatementAst::print(meta::AstPrinter &printer) const -> icu::UnicodeString {
+auto spp::asts::AssignmentStatementAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_EXTEND(lhs);
     SPP_PRINT_APPEND(tok_assign);

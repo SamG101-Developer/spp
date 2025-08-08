@@ -41,6 +41,8 @@ struct spp::asts::LoopExpressionAst final : PrimaryExpressionAst {
         decltype(cond) &&cond,
         decltype(body) &&body,
         decltype(else_block) &&else_block);
+
+    ~LoopExpressionAst() override;
 };
 
 

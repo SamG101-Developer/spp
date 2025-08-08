@@ -38,7 +38,7 @@ auto spp::asts::InnerScopeAst<T>::pos_end() const -> std::size_t {
 
 
 template <typename T>
-spp::asts::InnerScopeAst<T>::operator icu::UnicodeString() const {
+spp::asts::InnerScopeAst<T>::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_l);
     SPP_STRING_EXTEND(members);
@@ -48,7 +48,7 @@ spp::asts::InnerScopeAst<T>::operator icu::UnicodeString() const {
 
 
 template <typename T>
-auto spp::asts::InnerScopeAst<T>::print(meta::AstPrinter &printer) const -> icu::UnicodeString {
+auto spp::asts::InnerScopeAst<T>::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);
     SPP_PRINT_EXTEND(members);

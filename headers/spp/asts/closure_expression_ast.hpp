@@ -37,6 +37,8 @@ struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst {
         decltype(pc_group) &&pc_group,
         decltype(body) &&body);
 
+    ~ClosureExpressionAst() override;
+
 private:
     std::unique_ptr<TypeAst> m_return_type;
 };

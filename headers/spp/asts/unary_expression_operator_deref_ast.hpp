@@ -19,6 +19,8 @@ struct spp::asts::UnaryExpressionOperatorDerefAst final : UnaryExpressionOperato
      */
     explicit UnaryExpressionOperatorDerefAst(
         decltype(tok_deref) &&tok_deref);
+
+    ~UnaryExpressionOperatorDerefAst() override;
 };
 
 
