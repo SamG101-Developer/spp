@@ -134,6 +134,7 @@ struct spp::asts::mixins::CompilerMetaDataState {
     analyse::scopes::Scope *current_lambda_outer_scope;
     FunctionPrototypeAst *target_call_function_prototype;
     bool target_call_was_function_async;
+    bool prevent_auto_generator_resume;
 };
 
 

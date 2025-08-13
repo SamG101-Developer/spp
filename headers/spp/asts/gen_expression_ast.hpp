@@ -12,6 +12,10 @@
 struct spp::asts::GenExpressionAst final : PrimaryExpressionAst {
     SPP_AST_KEY_FUNCTIONS;
 
+private:
+    std::shared_ptr<TypeAst> m_generator_type;
+
+public:
     /**
      * The token that represents a generation point. This is the @c gen keyword in the source code, which indicates that
      * the coroutine is suspending its execution and yielding a value.

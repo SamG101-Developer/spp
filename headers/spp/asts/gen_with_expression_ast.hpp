@@ -8,6 +8,10 @@
 struct spp::asts::GenWithExpressionAst final : PrimaryExpressionAst {
     SPP_AST_KEY_FUNCTIONS;
 
+private:
+    std::shared_ptr<TypeAst> m_generator_type;
+
+public:
     /**
      * The token that represents a generation point. This is the @c gen keyword in the source code, which indicates that
      * the coroutine is suspending its execution and yielding a value.
@@ -37,6 +41,12 @@ struct spp::asts::GenWithExpressionAst final : PrimaryExpressionAst {
         decltype(expr) &&expr);
 
     ~GenWithExpressionAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 

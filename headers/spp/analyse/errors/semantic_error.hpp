@@ -199,7 +199,7 @@ struct spp::analyse::errors::SppFunctionPrototypeConflictError final : spp::util
 
 
 struct spp::analyse::errors::SppFunctionSubroutineContainsGenExpressionError final : spp::utils::errors::SemanticError {
-    explicit SppFunctionSubroutineContainsGenExpressionError(asts::TokenAst const &fun_tag, asts::GenExpressionAst const &gen_expr);
+    explicit SppFunctionSubroutineContainsGenExpressionError(asts::TokenAst const &fun_tag, asts::TokenAst const &gen_expr);
 };
 
 

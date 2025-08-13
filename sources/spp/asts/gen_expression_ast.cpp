@@ -4,10 +4,13 @@
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/convention_mut_ast.hpp>
 #include <spp/asts/gen_expression_ast.hpp>
+#include <spp/asts/generic_argument_group_ast.hpp>
+#include <spp/asts/generic_argument_type_keyword_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
 #include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
 
 
@@ -71,7 +74,7 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
     // Check the enclosing function is a coroutine and not a subroutine.
     const auto function_flavour = meta->enclosing_function_flavour;
     if (function_flavour->token_type != lex::SppTokenType::KW_COR) {
-        analyse::errors::SppFunctionSubroutineContainsGenExpressionError(*function_flavour, *this)
+        analyse::errors::SppFunctionSubroutineContainsGenExpressionError(*function_flavour, *tok_gen)
             .scopes({sm->current_scope})
             .raise();
     }
@@ -86,6 +89,7 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
             meta->return_type_overload_resolver_type = std::move(yield_type);
         }
 
+        meta->assignment_target_type = meta->enclosing_function_ret_type.empty() ? nullptr : meta->enclosing_function_ret_type[0];
         expr->stage_7_analyse_semantics(sm, meta);
         expr_type = expr->infer_type(sm, meta);
         meta->restore();
@@ -93,10 +97,13 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
 
     // Functions provide the return type, closures require inference; handle the inference.
     if (meta->enclosing_function_ret_type.empty()) {
-        auto enclosing_closure_return_type = generate::common_types::gen_type(expr->pos_start(), expr_type);
-        enclosing_closure_return_type->stage_7_analyse_semantics(sm, meta);
-        meta->enclosing_function_ret_type.emplace_back(std::move(enclosing_closure_return_type));
+        m_generator_type = generate::common_types::gen_type(expr->pos_start(), expr_type);
+        m_generator_type->stage_7_analyse_semantics(sm, meta);
+        meta->enclosing_function_ret_type.emplace_back(m_generator_type);
         meta->enclosing_function_scope = sm->current_scope;
+    }
+    else {
+        m_generator_type = meta->enclosing_function_ret_type[0];
     }
 
     // Determine the "yield" type of the enclosing function (to type check the expression against).
@@ -140,4 +147,14 @@ auto spp::asts::GenExpressionAst::stage_8_check_memory(
             .scopes({sm->current_scope})
             .raise();
     }
+}
+
+
+auto spp::asts::GenExpressionAst::infer_type(
+    ScopeManager *,
+    mixins::CompilerMetaData *)
+    -> std::shared_ptr<TypeAst> {
+    // Get the "Send" generic type parameter from the generator type.
+    auto send_type = m_generator_type->type_parts().back()->generic_args->type_at("Send")->val;
+    return send_type;
 }
