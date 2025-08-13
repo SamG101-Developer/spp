@@ -18,9 +18,9 @@ struct spp::asts::ClassPrototypeAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
 
 protected:
-    bool m_for_alias;
+    bool m_for_alias = false;
 
-    analyse::scopes::TypeSymbol* m_cls_sym;
+    analyse::scopes::TypeSymbol* m_cls_sym = nullptr;
 
 public:
     /**

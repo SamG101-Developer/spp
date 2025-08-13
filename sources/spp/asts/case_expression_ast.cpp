@@ -107,7 +107,8 @@ auto spp::asts::CaseExpressionAst::stage_7_analyse_semantics(
     cond->stage_7_analyse_semantics(sm, meta);
 
     // Create the scope for the case expression.
-    sm->create_and_move_into_new_scope(analyse::scopes::ScopeBlockName("<case-expr#" + std::to_string(pos_start()) + ">"), this);
+    auto scope_name = analyse::scopes::ScopeBlockName("<case-expr#" + std::to_string(pos_start()) + ">");
+    sm->create_and_move_into_new_scope(std::move(scope_name), this);
 
     // Analyse eac branch of the case expression.
     for (auto &&branch : branches) {

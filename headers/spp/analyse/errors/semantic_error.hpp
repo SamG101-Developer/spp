@@ -35,6 +35,10 @@ namespace spp::analyse::errors {
     struct SppExpansionOfNonTupleError;
     struct SppMemoryOverlapUsageError;
     struct SppMultipleSelfParametersError;
+    struct SppSelfParamInFreeFunctionError;
+    struct SppFunctionPrototypeConflictError;
+    struct SppFunctionSubroutineContainsGenExpressionError;
+    struct SppYieldedTypeMismatchError;
 
     auto add_header(std::size_t err_code, std::string &&msg) -> std::string;
     auto add_error(std::size_t pos, std::string &&tag) -> std::string;
@@ -180,4 +184,25 @@ struct spp::analyse::errors::SppMemoryOverlapUsageError final : spp::utils::erro
 
 struct spp::analyse::errors::SppMultipleSelfParametersError final : spp::utils::errors::SemanticError {
     explicit SppMultipleSelfParametersError(asts::FunctionParameterSelfAst const &first_self, asts::FunctionParameterSelfAst const &second_self);
+};
+
+
+struct spp::analyse::errors::SppSelfParamInFreeFunctionError final : spp::utils::errors::SemanticError {
+    explicit SppSelfParamInFreeFunctionError(asts::FunctionPrototypeAst const &function_proto, asts::FunctionParameterSelfAst const &self_param);
+};
+
+
+// todo: remember to use m_orig for func names
+struct spp::analyse::errors::SppFunctionPrototypeConflictError final : spp::utils::errors::SemanticError {
+    explicit SppFunctionPrototypeConflictError(asts::FunctionPrototypeAst const &first_proto, asts::FunctionPrototypeAst const &second_proto);
+};
+
+
+struct spp::analyse::errors::SppFunctionSubroutineContainsGenExpressionError final : spp::utils::errors::SemanticError {
+    explicit SppFunctionSubroutineContainsGenExpressionError(asts::TokenAst const &fun_tag, asts::GenExpressionAst const &gen_expr);
+};
+
+
+struct spp::analyse::errors::SppYieldedTypeMismatchError final : spp::utils::errors::SemanticError {
+    explicit SppYieldedTypeMismatchError(asts::Ast const &lhs, asts::TypeAst const &lhs_ty, asts::Ast const &rhs, asts::TypeAst const &rhs_ty, bool is_optional, bool is_Fallible, asts::TypeAst const &error_type);
 };

@@ -44,14 +44,14 @@ auto spp::asts::mixins::CompilerStages::stage_10_code_gen_2() -> void {
 
 
 auto spp::asts::mixins::CompilerMetaData::save() -> void {
-    m_history.emplace(ast_clone(*return_type_to_match), assignment_targets);
+    m_history.emplace(ast_clone(*return_type_overload_resolver_type), assignment_targets);
 }
 
 
 auto spp::asts::mixins::CompilerMetaData::restore() -> void {
     auto state = std::move(m_history.top());
     m_history.pop();
-    return_type_to_match = std::move(state.return_type_to_match);
+    return_type_overload_resolver_type = std::move(state.return_type_overload_resolver_type);
     assignment_targets = std::move(state.assignment_targets);
     assignment_target_type = std::move(state.assignment_target_type);
     ignore_missing_else_branch_for_inference = state.ignore_missing_else_branch_for_inference;

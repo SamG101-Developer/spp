@@ -95,7 +95,7 @@ public:
      * The return type of the function prototype. This is the type that the function will return. This is required, and
      * is never "inferrable" from the expressions inside the function.
      */
-    std::unique_ptr<TypeAst> return_type;
+    std::shared_ptr<TypeAst> return_type;
 
     /**
      * The implementation of the function prototype. This is the body of the function, and contains the actual code that
@@ -126,9 +126,13 @@ public:
 
     ~FunctionPrototypeAst() override;
 
+private:
+    auto m_deduce_mock_class_type() const -> std::shared_ptr<TypeAst>;
+
+public:
     auto stage_1_pre_process(Ast *ctx) -> void override;
 
-    auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *) -> void override;
+    auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_3_gen_top_level_aliases(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

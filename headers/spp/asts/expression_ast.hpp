@@ -36,4 +36,8 @@ struct spp::asts::ExpressionAst : StatementAst {
     }
 
 
+#define RETURN_TYPE_OVERLOAD_HELPER(expr) \
+    if (auto pe = ast_cast<PostfixExpressionAst>(expr); pe != nullptr and ast_cast<PostfixExpressionOperatorFunctionCallAst>(pe->op.get()) != nullptr)
+
+
 #endif //EXPRESSION_AST_HPP

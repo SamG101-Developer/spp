@@ -15,14 +15,14 @@ struct spp::asts::ModulePrototypeAst final : virtual Ast {
     /**
      * The module implementation AST that this prototype represents.
      */
-    std::unique_ptr<ModuleImplementationAst> implementation;
+    std::unique_ptr<ModuleImplementationAst> impl;
 
     /**
      * Construct the ModulePrototypeAst with the given implementation.
-     * @param[in] implementation The module implementation AST that this prototype represents.
+     * @param[in] impl The module implementation AST that this prototype represents.
      */
     explicit ModulePrototypeAst(
-        std::unique_ptr<ModuleImplementationAst> &&implementation);
+        decltype(impl) &&impl);
 };
 
 

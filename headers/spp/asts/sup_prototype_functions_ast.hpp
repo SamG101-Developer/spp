@@ -39,20 +39,20 @@ struct spp::asts::SupPrototypeFunctionsAst final : virtual Ast {
      * The body of the superimposition. This is a list of methods that are being added to the type. Each method is
      * defined as a FunctionPrototypeAst, which includes the method's name, parameters, and return type.
      */
-    std::unique_ptr<SupImplementationAst> body;
+    std::unique_ptr<SupImplementationAst> impl;
 
     /**
      * Construct the SupPrototypeFunctionsAst with the arguments matching the members.
      * @param tok_sup The @c sup keyword that represents the start of the superimposition.
      * @param generic_param_group The generics available for this superimposition.
      * @param name The name of the type that is being extended.
-     * @param body The body of the superimposition.
+     * @param impl The body of the superimposition.
      */
     SupPrototypeFunctionsAst(
         decltype(tok_sup) &&tok_sup,
         decltype(generic_param_group) &&generic_param_group,
         decltype(name) &&name,
-        decltype(body) &&body);
+        decltype(impl) &&impl);
 };
 
 

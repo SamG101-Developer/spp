@@ -22,7 +22,7 @@ struct spp::asts::ClassAttributeAst final : ClassMemberAst, mixins::VisibilityEn
      * The name of the class attribute. This is the identifier that is used to refer to the attribute on the class, and
      * must be unique to the class.
      */
-    std::unique_ptr<IdentifierAst> name;
+    std::shared_ptr<IdentifierAst> name;
 
     /**
      * The token that represents the colon \c : in the class attribute definition. This separates the name from the type.
@@ -32,7 +32,7 @@ struct spp::asts::ClassAttributeAst final : ClassMemberAst, mixins::VisibilityEn
     /**
      * The type of the class attribute. This is the type that the attribute will hold, and must be specified.
      */
-    std::unique_ptr<TypeAst> type;
+    std::shared_ptr<TypeAst> type;
 
     /**
      * An optional default value for the class attribute. This is the value that will be assigned to the attribute if no

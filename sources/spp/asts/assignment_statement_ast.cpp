@@ -80,7 +80,7 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
         // Handle return type overloading matching for the lhs target types.
         if (auto pf = ast_cast<PostfixExpressionAst>(rhs_expr); pf) {
             if (auto fc = &ast_cast<PostfixExpressionOperatorFunctionCallAst>(*pf->op); fc) {
-                meta->return_type_to_match = lhs[i]->infer_type(sm, meta);
+                meta->return_type_overload_resolver_type = lhs[i]->infer_type(sm, meta);
             }
         }
 

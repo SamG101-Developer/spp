@@ -86,7 +86,8 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_7_analyse_se
     cap_group->stage_7_analyse_semantics(sm, meta);
 
     // New scope for parameters.
-    sm->create_and_move_into_new_scope(analyse::scopes::ScopeBlockName(std::format("<lambda-outer#{}>", pos_start())), this);
+    auto scope_name = analyse::scopes::ScopeBlockName("<lambda-outer#" + std::to_string(pos_start()));
+    sm->create_and_move_into_new_scope(std::move(scope_name), this);
     capture_group->captures = std::move(cap_group->args)
         | genex::views::cast.operator()<ClosureExpressionCaptureAst>()
         | genex::views::to<std::vector>();

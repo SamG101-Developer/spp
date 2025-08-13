@@ -58,5 +58,8 @@ auto spp::asts::TypeBinaryExpressionAst::convert() -> std::unique_ptr<TypeAst> {
         inner_types[1] = std::move(rhs);
         return generate::common_types::variant_type(pos_start(), std::move(inner_types));
     }
-    throw std::runtime_error("Unsupported type binary operation: "s + magic_enum::enum_name(tok_op->token_type));
+
+    // todo: unsupported featuer error for intersection ("and") types.
+
+    std::unreachable();
 }

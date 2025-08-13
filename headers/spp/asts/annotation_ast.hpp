@@ -4,6 +4,9 @@
 #include <spp/asts/_fwd.hpp>
 
 
+#define SPP_NO_ANNOTATIONS std::vector<std::unique_ptr<AnnotationAst>>{}
+
+
 /**
  * An AnnotationAst is used to represent a non-code generated transformation of behaviour inside an AST. For example,
  * marking a method as @c @virtualmethod won't generate any code, but will tag the method as virtual, unlocking

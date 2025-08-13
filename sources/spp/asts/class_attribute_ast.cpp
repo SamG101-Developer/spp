@@ -91,13 +91,13 @@ auto spp::asts::ClassAttributeAst::stage_2_gen_top_level_scopes(
 
     // Ensure that the type does not have a convention.
     if (const auto c = type->get_convention()) {
-        analyse::errors::SppSecondClassBorrowViolationError(*type, *c, "attribute_type")
+        analyse::errors::SppSecondClassBorrowViolationError(*type, *c, "attribute type")
             .scopes({sm->current_scope})
             .raise();
     }
 
     // Create a variable symbol for this attribute in the current scope (class scope).
-    auto sym = std::make_unique<analyse::scopes::VariableSymbol>(name.get(), type.get(), false, false, m_visibility.first);
+    auto sym = std::make_unique<analyse::scopes::VariableSymbol>(name, type, false, false, m_visibility.first);
     sm->current_scope->add_symbol(std::move(sym));
 }
 
@@ -116,7 +116,7 @@ auto spp::asts::ClassAttributeAst::stage_7_analyse_semantics(
     -> void {
     // Repeated convention check for generic substitutions.
     if (const auto c = type->get_convention()) {
-        analyse::errors::SppSecondClassBorrowViolationError(*type, *c, "attribute_type")
+        analyse::errors::SppSecondClassBorrowViolationError(*type, *c, "attribute type")
             .scopes({sm->current_scope})
             .raise();
     }

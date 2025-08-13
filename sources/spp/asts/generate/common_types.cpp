@@ -25,7 +25,7 @@ auto spp::asts::generate::common_types::boolean_type(std::size_t pos) -> std::un
 }
 
 
-auto spp::asts::generate::common_types::array_type(std::size_t pos, std::unique_ptr<TypeAst> elem_type, std::unique_ptr<ExpressionAst> size) -> std::unique_ptr<TypeAst> {
+auto spp::asts::generate::common_types::array_type(std::size_t pos, std::unique_ptr<TypeAst> &&elem_type, std::unique_ptr<ExpressionAst> &&size) -> std::unique_ptr<TypeAst> {
     auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(2);
     generics_lst[0] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(elem_type));
     generics_lst[1] = std::make_unique<GenericArgumentCompPositionalAst>(std::move(size));
@@ -38,7 +38,7 @@ auto spp::asts::generate::common_types::array_type(std::size_t pos, std::unique_
 }
 
 
-auto spp::asts::generate::common_types::variant_type(std::size_t pos, std::vector<std::unique_ptr<TypeAst>> &&inner_types) -> std::unique_ptr<TypeAst> {
+auto spp::asts::generate::common_types::variant_type(std::size_t pos, std::vector<std::shared_ptr<TypeAst>> &&inner_types) -> std::unique_ptr<TypeAst> {
     auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(inner_types.size());
     for (auto &&inner_type : inner_types) {
         generics_lst.push_back(std::make_unique<GenericArgumentTypePositionalAst>(std::move(inner_type)));
@@ -52,7 +52,7 @@ auto spp::asts::generate::common_types::variant_type(std::size_t pos, std::vecto
 }
 
 
-auto spp::asts::generate::common_types::tuple_type(std::size_t pos, std::vector<std::unique_ptr<TypeAst>> &&inner_types) -> std::unique_ptr<TypeAst> {
+auto spp::asts::generate::common_types::tuple_type(std::size_t pos, std::vector<std::shared_ptr<TypeAst>> &&inner_types) -> std::unique_ptr<TypeAst> {
     auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(inner_types.size());
     for (auto &&inner_type : inner_types) {
         generics_lst.push_back(std::make_unique<GenericArgumentTypePositionalAst>(std::move(inner_type)));

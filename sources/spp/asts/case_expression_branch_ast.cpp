@@ -73,7 +73,8 @@ auto spp::asts::CaseExpressionBranchAst::print(meta::AstPrinter &printer) const 
 auto spp::asts::CaseExpressionBranchAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta) -> void {
-    sm->create_and_move_into_new_scope(analyse::scopes::ScopeBlockName("<case-pattern#" + std::to_string(pos_start()) + ">"), this);
+    auto scope_name = analyse::scopes::ScopeBlockName("<case-pattern#" + std::to_string(pos_start()) + ">");
+    sm->create_and_move_into_new_scope(std::move(scope_name), this);
 
     // Analyse the patterns, ensuring comparison methods exist is needed.
     patterns | genex::views::for_each([sm, meta](auto &&x) { x->stage_7_analyse_semantics(sm, meta); });

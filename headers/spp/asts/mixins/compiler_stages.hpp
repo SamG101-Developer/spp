@@ -122,17 +122,17 @@ struct spp::asts::mixins::CompilerStages {
 
 struct spp::asts::mixins::CompilerMetaDataState {
     std::size_t current_stage;
-    std::unique_ptr<TypeAst> return_type_to_match;
-    IdentifierAst* assignment_target;
-    std::unique_ptr<TypeAst> assignment_target_type;
+    std::shared_ptr<TypeAst> return_type_overload_resolver_type;
+    IdentifierAst *assignment_target;
+    std::shared_ptr<TypeAst> assignment_target_type;
     bool ignore_missing_else_branch_for_inference;
-    ExpressionAst* case_condition;
-    analyse::scopes::TypeSymbol* cls_sym;
-    analyse::scopes::Scope* enclosing_function_scope;
-    TokenAst* enclosing_function_variation;
+    ExpressionAst *case_condition;
+    analyse::scopes::TypeSymbol *cls_sym;
+    analyse::scopes::Scope *enclosing_function_scope;
+    TokenAst *enclosing_function_flavour;
     std::vector<std::shared_ptr<TypeAst>> enclosing_function_ret_type;
-    analyse::scopes::Scope* current_lambda_outer_scope;
-    FunctionPrototypeAst* target_call_function_prototype;
+    analyse::scopes::Scope *current_lambda_outer_scope;
+    FunctionPrototypeAst *target_call_function_prototype;
     bool target_call_was_function_async;
 };
 

@@ -10,11 +10,11 @@ spp::asts::SupPrototypeFunctionsAst::SupPrototypeFunctionsAst(
     decltype(tok_sup) &&tok_sup,
     decltype(generic_param_group) &&generic_param_group,
     decltype(name) &&name,
-    decltype(body) &&body):
+    decltype(impl) &&impl):
     tok_sup(std::move(tok_sup)),
     generic_param_group(std::move(generic_param_group)),
     name(std::move(name)),
-    body(std::move(body)) {
+    impl(std::move(impl)) {
 }
 
 
@@ -24,7 +24,7 @@ auto spp::asts::SupPrototypeFunctionsAst::pos_start() const -> std::size_t {
 
 
 auto spp::asts::SupPrototypeFunctionsAst::pos_end() const -> std::size_t {
-    return body->pos_end();
+    return impl->pos_end();
 }
 
 
@@ -33,7 +33,7 @@ spp::asts::SupPrototypeFunctionsAst::operator std::string() const {
     SPP_STRING_APPEND(tok_sup);
     SPP_STRING_APPEND(generic_param_group);
     SPP_STRING_APPEND(name);
-    SPP_STRING_APPEND(body);
+    SPP_STRING_APPEND(impl);
     SPP_STRING_END;
 }
 
@@ -43,6 +43,6 @@ auto spp::asts::SupPrototypeFunctionsAst::print(meta::AstPrinter &printer) const
     SPP_PRINT_APPEND(tok_sup);
     SPP_PRINT_APPEND(generic_param_group);
     SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(body);
+    SPP_PRINT_APPEND(impl);
     SPP_PRINT_END;
 }

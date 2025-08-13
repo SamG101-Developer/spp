@@ -125,5 +125,5 @@ auto spp::asts::FloatLiteralAst::infer_type(
     }
 
     // This should never happen, due to parsing rules.
-    throw std::runtime_error("unrecognized floating point type");
+    std::unreachable();
 }

@@ -36,6 +36,16 @@ namespace spp::analyse::utils::type_utils {
         bool lhs_ignore_alias = false)
         -> bool;
 
+    auto is_type_indexable(
+        asts::TypeAst const &type,
+        scopes::Scope const &scope)
+        -> bool;
+
+    auto is_type_array(
+        asts::TypeAst const &type,
+        scopes::Scope const &scope)
+        -> bool;
+
     auto is_type_tuple(
         asts::TypeAst const &type,
         scopes::Scope const &scope)
@@ -51,8 +61,30 @@ namespace spp::analyse::utils::type_utils {
         scopes::Scope const &scope)
         -> bool;
 
+    auto is_type_function(
+        asts::TypeAst const &type,
+        scopes::Scope const &scope)
+        -> bool;
+
     auto is_type_recursive(
         asts::ClassPrototypeAst const &type,
         scopes::ScopeManager const &sm)
         -> asts::TypeAst*;
+
+    auto is_index_within_type_bound(
+        std::size_t index,
+        asts::TypeAst const &type,
+        scopes::Scope const &sm) -> bool;
+
+    auto get_nth_type_of_indexable_type(
+        std::size_t index,
+        asts::TypeAst const &type,
+        scopes::Scope const &sm) -> bool;
+
+    auto get_generator_and_yield_type(
+        asts::TypeAst const &type,
+        scopes::ScopeManager const &sm,
+        asts::ExpressionAst const &expr,
+        std::string_view what)
+        -> std::tuple<std::unique_ptr<asts::TypeAst>, std::unique_ptr<asts::TypeAst>, bool, bool, bool, std::unique_ptr<asts::TypeAst>>;
 }

@@ -45,6 +45,9 @@ namespace spp::asts {
 
     template <typename T>
     auto ast_name(T *ast) -> std::shared_ptr<TypeAst>;
+
+    template <typename T>
+    auto ast_body(T *ast) -> std::vector<Ast*>;
 }
 
 namespace spp::analyse::scopes {
@@ -66,6 +69,7 @@ namespace spp::analyse::scopes {
  */
 struct spp::asts::Ast : mixins::CompilerStages {
     friend struct AnnotationAst;
+    friend struct FunctionPrototypeAst;
 
 protected:
     /**

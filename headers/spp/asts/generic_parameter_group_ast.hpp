@@ -35,6 +35,8 @@ struct spp::asts::GenericParameterGroupAst final : virtual Ast {
         decltype(tok_l) &&tok_l,
         decltype(params) &&params,
         decltype(tok_r) &&tok_r);
+
+    auto opt_to_req() -> std::unique_ptr<GenericParameterGroupAst>;
 };
 
 

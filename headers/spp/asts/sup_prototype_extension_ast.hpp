@@ -33,7 +33,7 @@ struct spp::asts::SupPrototypeExtensionAst final : virtual Ast {
      * The name of the type that is being extended. This is the type that will gain the additional methods defined in
      * the body of this superimposition.
      */
-    std::unique_ptr<TypeAst> name;
+    std::shared_ptr<TypeAst> name;
 
     /**
      * The @c ext keyword that represents the type that is being extended. This is used to indicate that an extension,
@@ -45,13 +45,13 @@ struct spp::asts::SupPrototypeExtensionAst final : virtual Ast {
      * The name of the super class that is this type is being extended from. The attributes and methods of this type
      * will now be available on the superimposed type.
      */
-    std::unique_ptr<TypeAst> super_class;
+    std::shared_ptr<TypeAst> super_class;
 
     /**
      * The body of the superimposition. This is a list of methods that are being added to the type. Each method is
      * defined as a FunctionPrototypeAst, which includes the method's name, parameters, and return type.
      */
-    std::unique_ptr<SupImplementationAst> body;
+    std::unique_ptr<SupImplementationAst> impl;
 
     /**
      * Construct the SupPrototypeFunctionsAst with the arguments matching the members.
@@ -60,7 +60,7 @@ struct spp::asts::SupPrototypeExtensionAst final : virtual Ast {
      * @param name The name of the type that is being extended.
      * @param tok_ext The @c ext keyword that represents the type that is being extended.
      * @param super_class The name of the super class that is this type is being extended from.
-     * @param body The body of the superimposition.
+     * @param impl The body of the superimposition.
      */
     SupPrototypeExtensionAst(
         decltype(tok_sup) &&tok_sup,
@@ -68,7 +68,7 @@ struct spp::asts::SupPrototypeExtensionAst final : virtual Ast {
         decltype(name) &&name,
         decltype(tok_ext) &&tok_ext,
         decltype(super_class) &&super_class,
-        decltype(body) &&body);
+        decltype(impl) &&impl);
 };
 
 

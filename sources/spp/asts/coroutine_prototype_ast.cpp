@@ -23,7 +23,7 @@ auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
 
     // Update the meta information for enclosing function information.
     meta->save();
-    meta->enclosing_function_variation = this->tok_fun.get();
+    meta->enclosing_function_flavour = this->tok_fun.get();
     meta->enclosing_function_ret_type.emplace_back(ret_type_sym->fq_name());
     meta->enclosing_function_scope = sm->current_scope;
 
