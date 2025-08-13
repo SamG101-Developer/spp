@@ -7,6 +7,7 @@
 
 struct spp::asts::LocalVariableDestructureArrayAst final : LocalVariableAst {
     SPP_AST_KEY_FUNCTIONS;
+    friend struct CasePatternVariantDestructureArrayAst;
 
     /**
      * The @code [@endcode token that indicates the start of an array destructuring pattern.

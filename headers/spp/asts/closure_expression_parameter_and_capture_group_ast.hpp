@@ -16,7 +16,7 @@ struct spp::asts::ClosureExpressionParameterAndCaptureGroupAst final : virtual A
     /**
      * The parameters of the closure. This is a list of parameters that will be passed to the closure when it is called.
      */
-    std::vector<std::unique_ptr<ClosureExpressionParameterAst>> params;
+    std::unique_ptr<ClosureExpressionParameterGroupAst> param_group;
 
     /**
      * The captured variables from the outer scope. These are variables that are captured by the closure and can be used
@@ -32,17 +32,21 @@ struct spp::asts::ClosureExpressionParameterAndCaptureGroupAst final : virtual A
     /**
      * Construct the ClosureExpressionParameterAndCaptureGroupAst with the arguments matching the members.
      * @param tok_l The @c | token that indicates the start of the closure parameter and capture group.
-     * @param params The parameters of the closure.
+     * @param param_group The parameters of the closure.
      * @param capture_group The captured variables from the outer scope.
      * @param tok_r The @c | token that indicates the end of the closure parameter and capture group.
      */
     ClosureExpressionParameterAndCaptureGroupAst(
         decltype(tok_l) &&tok_l,
-        decltype(params) &&params,
+        decltype(param_group) &&param_group,
         decltype(capture_group) &&capture_group,
         decltype(tok_r) &&tok_r);
 
     ~ClosureExpressionParameterAndCaptureGroupAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

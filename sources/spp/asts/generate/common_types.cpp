@@ -8,7 +8,21 @@
 #include <spp/asts/type_unary_expression_ast.hpp>
 #include <spp/asts/type_unary_expression_operator_namespace_ast.hpp>
 
-#include <unicode/unistr.h>
+
+auto spp::asts::generate::common_types::void_type(std::size_t pos) -> std::unique_ptr<TypeAst> {
+    std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("Void"), nullptr);
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("void")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
+    return type;
+}
+
+
+auto spp::asts::generate::common_types::boolean_type(std::size_t pos) -> std::unique_ptr<TypeAst> {
+    std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("Bool"), nullptr);
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("boolean")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
+    return type;
+}
 
 
 auto spp::asts::generate::common_types::array_type(std::size_t pos, std::unique_ptr<TypeAst> elem_type, std::unique_ptr<ExpressionAst> size) -> std::unique_ptr<TypeAst> {

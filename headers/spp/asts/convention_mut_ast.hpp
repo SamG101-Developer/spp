@@ -32,6 +32,8 @@ struct spp::asts::ConventionMutAst final : ConventionAst {
     ConventionMutAst(
         decltype(tok_borrow) &&tok_borrow,
         decltype(tok_mut) &&tok_mut);
+
+    ~ConventionMutAst() override;
 };
 
 

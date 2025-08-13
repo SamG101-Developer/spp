@@ -26,7 +26,7 @@ struct spp::asts::FunctionParameterAst : virtual Ast {
      * The type of the parameter. This is used to specify the type of the parameter, such as @c I32 or @c F64 . This is
      * a required field, as the type of the parameter must be known at compile time.
      */
-    std::unique_ptr<TypeAst> type;
+    std::shared_ptr<TypeAst> type;
 
     /**
      * Construct the FunctionParameterAst with the arguments matching the members.
@@ -40,6 +40,14 @@ struct spp::asts::FunctionParameterAst : virtual Ast {
         decltype(type) &&type);
 
     ~FunctionParameterAst() override;
+
+    auto extract_names() const -> std::vector<IdentifierAst*>;
+
+    auto extract_name() const -> IdentifierAst*;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

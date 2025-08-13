@@ -29,7 +29,7 @@ struct spp::asts::LetStatementUninitializedAst final : LetStatementAst {
      * The type of the uninitialized variable. This is used to check that values being assigned to the variable in the
      * future are of the correct type.
      */
-    std::unique_ptr<TypeAst> type;
+    std::shared_ptr<TypeAst> type;
 
     /**
      * Construct the LetStatementUninitializedAst with the arguments matching the members.

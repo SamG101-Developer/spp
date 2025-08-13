@@ -1652,7 +1652,7 @@ auto spp::parse::ParserSpp::parse_binary_type_expression_op_precedence_level_2()
 auto spp::parse::ParserSpp::parse_unary_type_expression() -> std::unique_ptr<asts::TypeAst> {
     PARSE_OPTIONAL(p1, parse_unary_type_expression_op_borrow)
     PARSE_ZERO_OR_MORE(p2, parse_unary_type_expression_op, parse_nothing);
-    PARSE_ONCE(p3, parse_postfix_type_expression);
+    PARSE_ONCE(p3, [this] { return asts::ast_cast<asts::TypeAst>(parse_type_identifier()); });
     if (p1 != nullptr) { p2.insert(p2.begin(), std::unique_ptr<asts::TypeUnaryExpressionOperatorAst>(p1.release())); }
     return utils::algorithms::move_accumulate(
         p2.rbegin(), p2.rend(), std::move(p3),
@@ -2087,7 +2087,7 @@ auto spp::parse::ParserSpp::parse_lexeme_character_or_digit_or_underscore() -> s
 
 auto spp::parse::ParserSpp::parse_lexeme_bin_integer() -> std::unique_ptr<asts::TokenAst> {
     PARSE_ONCE(_, parse_nothing);
-    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_DIGIT, std::string());
+    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_NUMBER, std::string());
 
     PARSE_ONCE(p1, [this] { return parse_specific_character('0'); });
     out->token_data += std::move(p1->token_data);
@@ -2111,7 +2111,7 @@ auto spp::parse::ParserSpp::parse_lexeme_bin_integer() -> std::unique_ptr<asts::
 
 auto spp::parse::ParserSpp::parse_lexeme_oct_integer() -> std::unique_ptr<asts::TokenAst> {
     PARSE_ONCE(_, parse_nothing);
-    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_DIGIT, std::string());
+    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_NUMBER, std::string());
 
     PARSE_ONCE(p1, [this] { return parse_specific_character('0'); });
     out->token_data += std::move(p1->token_data);
@@ -2135,7 +2135,7 @@ auto spp::parse::ParserSpp::parse_lexeme_oct_integer() -> std::unique_ptr<asts::
 
 auto spp::parse::ParserSpp::parse_lexeme_dec_integer() -> std::unique_ptr<asts::TokenAst> {
     PARSE_ONCE(_, parse_nothing);
-    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_DIGIT, std::string());
+    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_NUMBER, std::string());
 
     PARSE_ONCE(p1, parse_lexeme_digit);
     out->token_data += std::move(p1->token_data);
@@ -2151,7 +2151,7 @@ auto spp::parse::ParserSpp::parse_lexeme_dec_integer() -> std::unique_ptr<asts::
 
 auto spp::parse::ParserSpp::parse_lexeme_hex_integer() -> std::unique_ptr<asts::TokenAst> {
     PARSE_ONCE(_, parse_nothing);
-    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_DIGIT, std::string());
+    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_NUMBER, std::string());
 
     PARSE_ONCE(p1, [this] { return parse_specific_character('0'); });
     out->token_data += std::move(p1->token_data);
@@ -2199,8 +2199,8 @@ auto spp::parse::ParserSpp::parse_lexeme_identifier() -> std::unique_ptr<asts::T
     PARSE_OPTIONAL(p1, parse_token_dollar);
     if (p1 != nullptr) { out->token_data += p1->token_data; }
 
-    PARSE_OPTIONAL(p2, parse_lexeme_character);
-    if (std::iswupper(p2->token_data[0])) { return nullptr; }
+    PARSE_ONCE(p2, parse_lexeme_character);
+    if (std::isupper(p2->token_data[0])) { return nullptr; }
     out->token_data += p2->token_data;
 
     while (std::ranges::find(IDENTIFIER_TOKENS, m_tokens[m_pos].type) != IDENTIFIER_TOKENS.end()) {
@@ -2220,7 +2220,7 @@ auto spp::parse::ParserSpp::parse_lexeme_upper_identifier() -> std::unique_ptr<a
     if (p1 != nullptr) { out->token_data += p1->token_data; }
 
     PARSE_ONCE(p2, parse_lexeme_character);
-    if (std::iswlower(p2->token_data[0])) { return nullptr; }
+    if (std::islower(p2->token_data[0])) { return nullptr; }
     out->token_data += p2->token_data;
 
     while (std::ranges::find(IDENTIFIER_TOKENS, m_tokens[m_pos].type) != IDENTIFIER_TOKENS.end()) {
@@ -2821,6 +2821,7 @@ auto spp::parse::ParserSpp::parse_token_raw(const lex::RawTokenType tok, lex::Sp
     const auto data = mapped_tok == lex::SppTokenType::LX_CHARACTER or mapped_tok == lex::SppTokenType::LX_DIGIT
                           ? m_tokens[m_pos].data.data()
                           : magic_enum::enum_name(m_tokens[m_pos].type).data();
+    ++m_pos;
     return CREATE_AST(asts::TokenAst, m_pos, mapped_tok, std::string(data));
 }
 

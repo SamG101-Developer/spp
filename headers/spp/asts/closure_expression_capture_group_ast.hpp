@@ -29,6 +29,10 @@ struct spp::asts::ClosureExpressionCaptureGroupAst final : virtual Ast {
         decltype(captures) &&captures);
 
     ~ClosureExpressionCaptureGroupAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 #endif //CLOSURE_EXPRESSION_CAPTURE_GROUP_AST_HPP

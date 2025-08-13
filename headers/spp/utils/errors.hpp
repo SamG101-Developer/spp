@@ -4,9 +4,9 @@
 #include <exception>
 #include <memory>
 #include <set>
+#include <vector>
 
 #include <spp/lex/tokens.hpp>
-#include <spp/macros.hpp>
 
 
 namespace spp::utils::errors {
@@ -16,12 +16,15 @@ namespace spp::utils::errors {
     class ErrorFormatter;
 }
 
+namespace spp::analyse::scopes {
+    class Scope;
+}
+
 
 struct spp::utils::errors::CustomError : std::runtime_error {
 public:
     using std::runtime_error::runtime_error;
     virtual auto get_message(ErrorFormatter &error_formatter) const noexcept -> std::string = 0;
-    virtual auto raise(ErrorFormatter &error_formatter) noexcept(false) -> void = 0;
 };
 
 
@@ -30,7 +33,7 @@ public:
     using CustomError::CustomError;
     ~SyntacticError() override = default;
     auto get_message(ErrorFormatter &error_formatter) const noexcept -> std::string override;
-    auto raise(ErrorFormatter &error_formatter) noexcept(false) -> void override;
+    auto raise(ErrorFormatter &error_formatter) noexcept(false) -> void;
 
 public:
     std::size_t pos = 0;
@@ -41,6 +44,9 @@ public:
 struct spp::utils::errors::SemanticError : CustomError {
     using CustomError::CustomError;
     ~SemanticError() override = default;
+    auto get_message(ErrorFormatter &error_formatter) const noexcept -> std::string override;
+    auto raise() noexcept(false) -> void;
+    auto scopes(std::vector<analyse::scopes::Scope*> &&scopes) -> SemanticError&;
 };
 
 

@@ -4,13 +4,14 @@
 
 #include <spp/asts/ast.hpp>
 #include <spp/asts/_fwd.hpp>
+#include <spp/asts/mixins/visbility_enabled_ast.hpp>
 
 
 /**
  * The CmpStatementAst represents a compile time definition statement at either the module or superimposition level. It
  * is analogous to Rust's "const" statement.
  */
-struct spp::asts::CmpStatementAst final : virtual Ast {
+struct spp::asts::CmpStatementAst final : virtual Ast, mixins::VisibilityEnabledAst {
     SPP_AST_KEY_FUNCTIONS;
 
     /**
@@ -28,7 +29,7 @@ struct spp::asts::CmpStatementAst final : virtual Ast {
      * The name of the cmp statement. This is the identifier that is used to refer to the compile time definition, and
      * must be unique within the scope.
      */
-    std::unique_ptr<IdentifierAst> name;
+    std::shared_ptr<IdentifierAst> name;
 
     /**
      * The token that represents the colon \c : in the cmp statement definition. This separates the name from the type.
@@ -40,7 +41,7 @@ struct spp::asts::CmpStatementAst final : virtual Ast {
      * specified. Needs to be specified rather than inferred, because the type must be known at an early stage that
      * needs to be completed before type-inference can be considered.
      */
-    std::unique_ptr<TypeAst> type;
+    std::shared_ptr<TypeAst> type;
 
     /**
      * The token that represents the assignment operator \c = in the cmp statement definition. This separates the type
@@ -57,7 +58,6 @@ struct spp::asts::CmpStatementAst final : virtual Ast {
 
     /**
      * Construct the CmpStatementAst with the arguments matching the members.
-     * @param[in] pos The position of the AST in the source code.
      * @param[in] annotations The list of annotations that are applied to this cmp statement.
      * @param[in] tok_cmp The token that represents the @c cmp keyword in the cmp statement.
      * @param[in] name The name of the cmp statement.
@@ -74,6 +74,16 @@ struct spp::asts::CmpStatementAst final : virtual Ast {
         decltype(type) &&type,
         decltype(tok_assign) &&tok_assign,
         decltype(value) &&value);
+
+    auto stage_1_pre_process(Ast *ctx) -> void override;
+
+    auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *) -> void override;
+
+    auto stage_5_load_super_scopes(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

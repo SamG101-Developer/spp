@@ -7,6 +7,7 @@
 
 struct spp::asts::LocalVariableDestructureTupleAst final : LocalVariableAst {
     SPP_AST_KEY_FUNCTIONS;
+    friend struct CasePatternVariantDestructureTupleAst;
 
     /**
      * The @code (@endcode token that indicates the start of a tuple destructuring pattern.

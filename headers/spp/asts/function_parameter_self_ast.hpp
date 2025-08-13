@@ -22,6 +22,10 @@ struct spp::asts::FunctionParameterSelfAst final : FunctionParameterAst {
     FunctionParameterSelfAst(
         decltype(tok_conv) &&tok_conv,
         decltype(var) &&var);
+
+    ~FunctionParameterSelfAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

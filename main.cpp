@@ -29,12 +29,7 @@ int main() {
         return 1;
     }
 
-    auto printer = spp::asts::meta::AstPrinter();
-    auto string = std::string();
-    root->print(printer);
-
-    std::cout << "PARSED\n";
-    std::cout << "Root AST: " << string << "\n";
+    std::cout << "PARSED";
 
     return 0;
 }

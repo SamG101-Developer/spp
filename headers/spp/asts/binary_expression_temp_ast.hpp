@@ -4,6 +4,10 @@
 #include <spp/asts/_fwd.hpp>
 
 
+/**
+ * Temporary aST node that hold the right-hand-side of a binary expression. This is because it is parsed together, aside
+ * from the left-hand-side, and as an entirety may be nullptr, and discarded.
+ */
 struct spp::asts::BinaryExpressionTempAst {
     /**
      * The operator token that represents the binary operation. This indicates the type of operation being performed.

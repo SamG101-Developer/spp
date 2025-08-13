@@ -30,6 +30,8 @@ struct spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst final : 
     CasePatternVariantDestructureSkipMultipleArgumentsAst(
         decltype(tok_ellipsis) &&tok_ellipsis,
         std::unique_ptr<CasePatternVariantAst> &&binding);
+
+    auto convert_to_variable(mixins::CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
 };
 
 

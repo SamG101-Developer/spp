@@ -23,6 +23,8 @@ struct spp::asts::IdentifierAst final : PrimaryExpressionAst {
         std::size_t pos,
         decltype(val) &&val);
 
+    IdentifierAst(IdentifierAst const &);
+
     auto operator==(IdentifierAst const &that) const -> bool;
 
     auto operator+(IdentifierAst const &that) const -> IdentifierAst;
@@ -32,6 +34,8 @@ struct spp::asts::IdentifierAst final : PrimaryExpressionAst {
     static auto from_type(TypeAst const &val) -> std::unique_ptr<IdentifierAst>;
 
     auto to_function_identifier() const -> std::unique_ptr<IdentifierAst>;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 
 private:
     std::size_t m_pos;

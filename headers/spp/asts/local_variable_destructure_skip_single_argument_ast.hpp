@@ -7,6 +7,7 @@
 
 struct spp::asts::LocalVariableDestructureSkipSingleArgumentAst final : LocalVariableAst {
     SPP_AST_KEY_FUNCTIONS;
+    friend struct CasePatternVariantDestructureSkipSingleArgumentAst;
 
     /**
      * The @c _ token that indicates the skip single argument pattern. This is used to indicate the next element

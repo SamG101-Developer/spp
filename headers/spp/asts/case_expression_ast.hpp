@@ -23,7 +23,7 @@ struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
      * pattern matching, the condition may not evaluate to boolean (but combining it with the partial fragments will
      * evaluate to boolean). Otherwise, the expression itself must be boolean.
      */
-    std::unique_ptr<Ast> cond;
+    std::unique_ptr<ExpressionAst> cond;
 
     /**
      * The optional @c of keyword, that indicates the case expression is doing pattern matching against partial
@@ -55,6 +55,12 @@ struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
         decltype(cond) &&cond,
         std::unique_ptr<InnerScopeExpressionAst<std::unique_ptr<StatementAst>>> &&first,
         decltype(branches) &&branches) -> std::unique_ptr<CaseExpressionAst>;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 

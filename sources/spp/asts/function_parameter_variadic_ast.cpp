@@ -9,7 +9,7 @@ spp::asts::FunctionParameterVariadicAst::FunctionParameterVariadicAst(
     decltype(tok_ellipsis) &&tok_ellipsis,
     decltype(var) &&var,
     decltype(tok_colon) &&tok_colon,
-    decltype(type) &&type):
+    decltype(type) &&type) :
     FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type)),
     tok_ellipsis(std::move(tok_ellipsis)) {
 }
@@ -22,6 +22,15 @@ auto spp::asts::FunctionParameterVariadicAst::pos_start() const -> std::size_t {
 
 auto spp::asts::FunctionParameterVariadicAst::pos_end() const -> std::size_t {
     return tok_ellipsis->pos_end();
+}
+
+
+auto spp::asts::FunctionParameterVariadicAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<FunctionParameterVariadicAst>(
+        ast_clone(*tok_ellipsis),
+        ast_clone(*var),
+        ast_clone(*tok_colon),
+        ast_clone(*type));
 }
 
 

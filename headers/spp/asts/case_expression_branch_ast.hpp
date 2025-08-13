@@ -3,16 +3,17 @@
 
 #include <spp/asts/ast.hpp>
 #include <spp/asts/_fwd.hpp>
+#include <spp/asts/mixins/type_inferrable.hpp>
 
 
-struct spp::asts::CaseExpressionBranchAst final : virtual Ast {
+struct spp::asts::CaseExpressionBranchAst final : virtual Ast, mixins::TypeInferrableAst {
     SPP_AST_KEY_FUNCTIONS;
 
     /**
      * The optional comparison operator. This is for cases pattern matching cases that look something like
      * @code== 123 { ... }@endcode.
      */
-    std::unique_ptr<TokenAst> tok_comparison;
+    std::unique_ptr<TokenAst> op;
 
     /**
      * The list of patterns that this branch matches against. There can be more than 1 pattern for non-destructuring
@@ -34,16 +35,22 @@ struct spp::asts::CaseExpressionBranchAst final : virtual Ast {
 
     /**
      * Construct the CaseExpressionBranchAst with the arguments matching the members.
-     * @param tok_comparison The optional comparison operator.
+     * @param op The optional comparison operator.
      * @param patterns The list of patterns that this branch matches against.
      * @param guard The optional guard for the case branch.
      * @param body The body of the case branch.
      */
     CaseExpressionBranchAst(
-        decltype(tok_comparison) &&tok_comparison,
+        decltype(op) &&op,
         decltype(patterns) &&patterns,
         decltype(guard) &&guard,
         decltype(body) &&body);
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 

@@ -2,6 +2,7 @@
 #define CLASS_ATTRIBUTE_AST_HPP
 
 #include <spp/asts/class_member_ast.hpp>
+#include <spp/asts/mixins/visbility_enabled_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
 
@@ -9,7 +10,7 @@
  * The ClassAttributeAst represents an attribute of a class. It is defined on the class prototype ast, and is used to
  * add "state" to a type.
  */
-struct spp::asts::ClassAttributeAst final : ClassMemberAst {
+struct spp::asts::ClassAttributeAst final : ClassMemberAst, mixins::VisibilityEnabledAst {
     SPP_AST_KEY_FUNCTIONS;
 
     /**
@@ -38,23 +39,34 @@ struct spp::asts::ClassAttributeAst final : ClassMemberAst {
      * value is provided when creating an instance of the class. Otherwise, standard "default initialization" will be
      * used, which is the default value of the type.
      */
-    std::unique_ptr<ExpressionAst> default_value;
+    std::unique_ptr<ExpressionAst> default_val;
 
     /**
      * Construct the ClassAttributeAst with the arguments matching the members.
-     * @param[in] pos The position of the AST in the source code.
      * @param[in] annotations The list of annotations that are applied to this class attribute.
      * @param[in] name The name of the class attribute.
      * @param[in] tok_colon The token that represents the colon \c : in the class attribute definition.
      * @param[in] type The type of the class attribute.
-     * @param[in] default_value An optional default value for the class attribute.
+     * @param[in] default_val An optional default value for the class attribute.
      */
     ClassAttributeAst(
         decltype(annotations) &&annotations,
         decltype(name) &&name,
         decltype(tok_colon) &&tok_colon,
         decltype(type) &&type,
-        decltype(default_value) &&default_value);
+        decltype(default_val) &&default_val);
+
+    ~ClassAttributeAst() override;
+
+    auto stage_1_pre_process(Ast *ctx) -> void override;
+
+    auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_5_load_super_scopes(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

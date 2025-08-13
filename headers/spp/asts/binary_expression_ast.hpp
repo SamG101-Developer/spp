@@ -40,6 +40,30 @@ struct spp::asts::BinaryExpressionAst final : ExpressionAst {
         decltype(tok_op) &&tok_op,
         decltype(rhs) &&rhs);
 
+    /**
+     * Ensure the operator exists over the left-hand-side type, compatible with the right-hand-side type. This is done
+     * by. Also handle any binary fold operations, like @code a + ..@endcode.
+     * @param[in] sm The scope manager to use for type checking.
+     * @param[in,out] meta Associated metadata.
+     */
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    /**
+     * Forward the memory checking to the mapped function. This checks the created argument group for the mapped
+     * function.
+     * @param[in] sm The scope manager to use for memory checking.
+     * @param[in,out] meta Associated metadata.
+     */
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    /**
+     * Forward the type checking to the mapped function. This just applies standard type inference from a function call.
+     * @param[in] sm The scope manager to use for type inference.
+     * @param[in,out] meta Associated metadata.
+     * @return The inferred type of the binary expression, which is the return type of the mapped function.
+     */
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+
 private:
     std::unique_ptr<PostfixExpressionAst> m_mapped_func;
 };

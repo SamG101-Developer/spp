@@ -61,6 +61,34 @@ struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLiteralAst {
         decltype(tok_semicolon) &&tok_semicolon,
         decltype(size) &&size,
         decltype(tok_r) &&tok_r);
+
+
+    /**
+     * Ensure that the element given is both copyable and not a borrow type, allowing it to be stored as multiple
+     * elements int he array. This is because the element is copied using @c memcpy @c n times into the array. Standard
+     * memory rules prevent borrows from being stored in arrays. The @n argument is verified to be a const variable if
+     * it is symbolic.
+     * @param[in] sm The scope manager to use for type checking.
+     * @param[in,out] meta Associated metadata.
+     */
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    /**
+     * Check the memory of the elements inside the array literal. This is done by checking calling the same method on
+     * each element.
+     * @param sm The scope manager to use for memory checking.
+     * @param meta Associated metadata.
+     */
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    /**
+     * The inferred type of an array literal is always @code std::array::Arr[T, n]@endcode, where @c T is the type of
+     * the element in the array literal, and @c n is the size given.
+     * @param [in] sm The scope manager to use for type inference.
+     * @param [in,out] meta Associated metadata.
+     * @return The @code std::array::Arr[T, n]@endcode type of the array literal.
+     */
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 

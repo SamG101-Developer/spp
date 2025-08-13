@@ -19,7 +19,21 @@
  */
 struct spp::asts::ExpressionAst : StatementAst {
     using StatementAst::StatementAst;
+
+    ExpressionAst(ExpressionAst const &other);
 };
+
+
+#define ENFORCE_EXPRESSION_SUBTYPE(ast) \
+    if ((ast_cast<TypeAst>(ast) != nullptr) or (ast_cast<TokenAst>(ast) != nullptr)) { \
+        analyse::errors::SppExpressionTypeInvalidError(*ast).scopes({sm->current_scope}).raise(); \
+    }
+
+
+#define ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(ast) \
+    if (ast_cast<TypeAst>(ast) != nullptr) { \
+        analyse::errors::SppExpressionTypeInvalidError(*ast).scopes({sm->current_scope}).raise(); \
+    }
 
 
 #endif //EXPRESSION_AST_HPP

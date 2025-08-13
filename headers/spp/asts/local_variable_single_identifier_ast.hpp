@@ -17,6 +17,8 @@
  */
 struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVariableAst {
     SPP_AST_KEY_FUNCTIONS;
+    friend struct CasePatternVariantLiteralAst;
+    friend struct CasePatternVariantSingleIdentifierAst;
 
     /**
      * The optional mutability token. If the "@c mut keyword was provided, then this will be given a value. Otherwise,
@@ -49,7 +51,7 @@ struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVariableAst {
         decltype(name) &&name,
         decltype(alias) &&alias);
 
-    ~LocalVariableSingleIdentifierAst();
+    ~LocalVariableSingleIdentifierAst() override;
 };
 
 

@@ -13,20 +13,6 @@
 #include <boost/preprocessor/enum.hpp>
 
 
-template <typename T>
-struct is_unique_ptr : std::false_type {
-};
-
-
-template <typename T, typename D>
-struct is_unique_ptr<std::unique_ptr<T, D>> : std::true_type {
-};
-
-
-template <typename T>
-constexpr bool is_unique_ptr_v = is_unique_ptr<T>::value;
-
-
 #define PARSE_ONCE(out, f) \
     auto out = f();        \
     if (out == nullptr) { return nullptr; }

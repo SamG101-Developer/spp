@@ -35,6 +35,13 @@ struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
         decltype(tok_l) &&tok_l,
         decltype(args) &&args,
         decltype(tok_r) &&tok_r);
+
+    GenericArgumentGroupAst(
+        GenericParameterGroupAst const& generic_params);
+
+    auto type_at(const char *key) const -> GenericArgumentTypeAst const*;
+
+    auto comp_at(const char *key) const -> GenericArgumentCompAst const*;
 };
 
 

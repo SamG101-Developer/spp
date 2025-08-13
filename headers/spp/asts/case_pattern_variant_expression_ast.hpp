@@ -21,7 +21,11 @@ struct spp::asts::CasePatternVariantExpressionAst final : CasePatternVariantAst 
     explicit CasePatternVariantExpressionAst(
         decltype(expr) &&expr);
 
-    ~CasePatternVariantExpressionAst();
+    ~CasePatternVariantExpressionAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

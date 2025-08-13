@@ -130,6 +130,7 @@ namespace spp::asts {
     struct ClosureExpressionCaptureGroupAst;
     struct ClosureExpressionParameterAndCaptureGroupAst;
     using ClosureExpressionParameterAst = FunctionParameterAst;
+    using ClosureExpressionParameterGroupAst = FunctionParameterGroupAst;
 
     struct LetStatementAst;
     struct LetStatementInitializedAst;

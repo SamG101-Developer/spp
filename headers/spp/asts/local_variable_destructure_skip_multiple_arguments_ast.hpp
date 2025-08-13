@@ -7,6 +7,7 @@
 
 struct spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst final : LocalVariableAst {
     SPP_AST_KEY_FUNCTIONS;
+    friend struct CasePatternVariantDestructureSkipMultipleArgumentsAst;
 
     /**
      * The @c .. token indicates the skip multiple arguments pattern. This is used to indicate that a group of arguments

@@ -40,7 +40,7 @@ struct spp::asts::FloatLiteralAst final : LiteralAst {
      * The optional type annotation of the float literal. This is used to specify the type of the float if the default
      * @c std::BigDec is not desired. This can be @c _f32 or @c _f64, for example.
      */
-    std::unique_ptr<TypeAst> type;
+    std::string type;
 
     /**
      * Construct the FloatLiteralAst with the arguments matching the members.
@@ -56,6 +56,12 @@ struct spp::asts::FloatLiteralAst final : LiteralAst {
         decltype(tok_dot) &&tok_dot,
         decltype(frac_val) &&frac_val,
         std::string &&type);
+
+    ~FloatLiteralAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 

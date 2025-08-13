@@ -8,11 +8,14 @@
 spp::asts::TypeIdentifierAst::TypeIdentifierAst(
     const std::size_t pos,
     decltype(name) &&name,
-    decltype(generic_args) &&generic_args):
+    decltype(generic_args) &&generic_args) :
     name(std::move(name)),
     generic_args(std::move(generic_args)),
     m_pos(pos),
     m_is_never_type(false) {
+    if (generic_args == nullptr) {
+        generic_args = std::make_unique<GenericArgumentGroupAst>(nullptr, decltype(GenericArgumentGroupAst::args)(), nullptr);
+    }
 }
 
 

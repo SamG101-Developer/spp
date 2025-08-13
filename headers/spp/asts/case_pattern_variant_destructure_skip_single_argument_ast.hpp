@@ -21,6 +21,8 @@ struct spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst final : Cas
      */
     explicit CasePatternVariantDestructureSkipSingleArgumentAst(
         decltype(tok_underscore) &&tok_underscore);
+
+    auto convert_to_variable(mixins::CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
 };
 
 

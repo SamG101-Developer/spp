@@ -15,7 +15,45 @@
  */
 struct spp::asts::FunctionPrototypeAst : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
+    friend struct AnnotationAst;
 
+private:
+    /**
+     * Save the original function name prior to AST transformations.
+     */
+    IdentifierAst *m_orig_name;
+
+    /**
+     * Optional @c @abstractmethod annotation. This is used to indicate that the function is abstract and must be
+     * implemented in subclasses.
+     */
+    AnnotationAst *m_abstract_annotation;
+
+    /**
+     * Optional @c @virtualmethod annotation. This is used to indicate that the function is virtual and can be
+     * overridden in subclasses.
+     */
+    AnnotationAst *m_virtual_annotation;
+
+    /**
+     * Optional @c @hot or @c @cold annotation. This is used to indicate that the function is a hot/cold function,
+     * which means it is called frequently/infrequently and should be optimized for performance.
+     */
+    AnnotationAst *m_temperature_annotation;
+
+    /**
+     * Optional @c @no_impl annotation. This is used to indicate that the function is not implemented, and the usual
+     * type checking rules can be suspended (but this function cannot be called).
+     */
+    AnnotationAst *m_no_impl_annotation;
+
+    /**
+     * Optional @c @always_inline, @c @inline, or @c @no_inline annotation. This is used to indicate that the function
+     * should be inlined, or not inlined, or always inlined.
+     */
+    AnnotationAst *m_inline_annotation;
+
+public:
     /**
      * The list of annotations that are applied to this function prototype. There are quite a lot of annotations that
      * can be applied here, including the typical access modifiers, but also @c @virtualmethod, @c @abstractmethod, and
@@ -63,7 +101,7 @@ struct spp::asts::FunctionPrototypeAst : virtual Ast {
      * The implementation of the function prototype. This is the body of the function, and contains the actual code that
      * will be executed when the function is called.
      */
-    std::unique_ptr<FunctionImplementationAst> implementation;
+    std::unique_ptr<FunctionImplementationAst> impl;
 
     /**
      * Construct the FunctionPrototypeAst with the arguments matching the members.
@@ -74,7 +112,7 @@ struct spp::asts::FunctionPrototypeAst : virtual Ast {
      * @param param_group The parameter group for the function prototype.
      * @param tok_arrow The token that represents the arrow \c -> in the function prototype.
      * @param return_type The return type of the function prototype.
-     * @param implementation The implementation of the function prototype.
+     * @param impl The implementation of the function prototype.
      */
     FunctionPrototypeAst(
         decltype(annotations) &&annotations,
@@ -84,43 +122,25 @@ struct spp::asts::FunctionPrototypeAst : virtual Ast {
         decltype(param_group) &&param_group,
         decltype(tok_arrow) &&tok_arrow,
         decltype(return_type) &&return_type,
-        decltype(implementation) &&implementation);
+        decltype(impl) &&impl);
 
-private:
-    /**
-     * Save the original function name prior to AST transformations.
-     */
-    std::unique_ptr<IdentifierAst> m_orig_name;
+    ~FunctionPrototypeAst() override;
 
-    /**
-     * Optional @c @abstractmethod annotation. This is used to indicate that the function is abstract and must be
-     * implemented in subclasses.
-     */
-    std::unique_ptr<AnnotationAst> m_abstract_annotation;
+    auto stage_1_pre_process(Ast *ctx) -> void override;
 
-    /**
-     * Optional @c @virtualmethod annotation. This is used to indicate that the function is virtual and can be
-     * overridden in subclasses.
-     */
-    std::unique_ptr<AnnotationAst> m_virtual_annotation;
+    auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *) -> void override;
 
-    /**
-     * Optional @c @hot annotation. This is used to indicate that the function is a hot function, which means it is
-     * called frequently and should be optimized for performance.
-     */
-    std::unique_ptr<AnnotationAst> m_hot_annotation;
+    auto stage_3_gen_top_level_aliases(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
-    /**
-     * Optional @c @cold annotation. This is used to indicate that the function is a cold function, which means it is
-     * called infrequently and can be optimized for size rather than performance.
-     */
-    std::unique_ptr<AnnotationAst> m_cold_annotation;
+    auto stage_4_qualify_types(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
-    /**
-     * Optional @c @no_impl annotation. This is used to indicate that the function is not implemented, and the usual
-     * type checking rules can be suspended (but this function cannot be called).
-     */
-    std::unique_ptr<AnnotationAst> m_no_impl_annotation;
+    auto stage_5_load_super_scopes(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_6_pre_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

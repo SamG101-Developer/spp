@@ -1,11 +1,12 @@
 #include <spp/asts/case_pattern_variant_destructure_skip_multiple_arguments_ast.hpp>
 #include <spp/asts/case_pattern_variant_single_identifier_ast.hpp>
+#include <spp/asts/local_variable_destructure_skip_multiple_arguments_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 
 
 spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::CasePatternVariantDestructureSkipMultipleArgumentsAst(
     decltype(tok_ellipsis) &&tok_ellipsis,
-    std::unique_ptr<CasePatternVariantAst> &&binding):
+    std::unique_ptr<CasePatternVariantAst> &&binding) :
     tok_ellipsis(std::move(tok_ellipsis)),
     binding(ast_cast<CasePatternVariantSingleIdentifierAst>(std::move(binding))) {
 }
@@ -18,6 +19,13 @@ auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::pos_start
 
 auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::pos_end() const -> std::size_t {
     return binding ? binding->pos_end() : tok_ellipsis->pos_end();
+}
+
+
+auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<CasePatternVariantDestructureSkipMultipleArgumentsAst>(
+        ast_clone(*tok_ellipsis),
+        ast_clone(*binding));
 }
 
 
@@ -34,4 +42,14 @@ auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::print(met
     SPP_PRINT_APPEND(tok_ellipsis);
     SPP_PRINT_APPEND(binding);
     SPP_PRINT_END;
+}
+
+
+auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::convert_to_variable(
+    mixins::CompilerMetaData *meta)
+    -> std::unique_ptr<LocalVariableAst> {
+    // Create the local variable destructure attribute binding AST.
+    auto var = std::make_unique<LocalVariableDestructureSkipMultipleArgumentsAst>(nullptr, binding->convert_to_variable(meta));
+    var->m_from_pattern = true;
+    return var;
 }

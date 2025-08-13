@@ -5,9 +5,12 @@
 
 
 spp::asts::ConventionRefAst::ConventionRefAst(
-    decltype(tok_borrow) &&tok_borrow):
+    decltype(tok_borrow) &&tok_borrow) :
     tok_borrow(std::move(tok_borrow)) {
 }
+
+
+spp::asts::ConventionRefAst::~ConventionRefAst() = default;
 
 
 auto spp::asts::ConventionRefAst::pos_start() const -> std::size_t {
@@ -17,6 +20,12 @@ auto spp::asts::ConventionRefAst::pos_start() const -> std::size_t {
 
 auto spp::asts::ConventionRefAst::pos_end() const -> std::size_t {
     return tok_borrow->pos_end();
+}
+
+
+auto spp::asts::ConventionRefAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<ConventionRefAst>(
+        ast_clone(*tok_borrow));
 }
 
 

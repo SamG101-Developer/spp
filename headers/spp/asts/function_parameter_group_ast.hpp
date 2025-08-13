@@ -38,6 +38,22 @@ struct spp::asts::FunctionParameterGroupAst final : virtual Ast {
         decltype(tok_l) &&tok_l,
         decltype(params) &&params,
         decltype(tok_r) &&tok_r);
+
+    ~FunctionParameterGroupAst() override;
+
+    auto get_self_param() const -> FunctionParameterSelfAst*;
+
+    auto get_required_params() const -> std::vector<FunctionParameterRequiredAst*>;
+
+    auto get_optional_params() const -> std::vector<FunctionParameterOptionalAst*>;
+
+    auto get_variadic_param() const -> FunctionParameterVariadicAst*;
+
+    auto get_non_self_params() const -> std::vector<FunctionParameterAst*>;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

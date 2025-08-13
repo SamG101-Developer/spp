@@ -42,6 +42,8 @@ struct spp::asts::IntegerLiteralAst final : LiteralAst {
         std::string &&type);
 
     ~IntegerLiteralAst() override;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 

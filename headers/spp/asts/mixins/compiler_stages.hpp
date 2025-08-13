@@ -2,6 +2,17 @@
 #define COMPILER_STAGES_HPP
 
 #include <cstdint>
+#include <expected>
+#include <stack>
+
+#include <spp/asts/_fwd.hpp>
+#include <spp/utils/errors.hpp>
+
+#include "compiler_stages.hpp"
+
+namespace spp::analyse::scopes {
+    struct TypeSymbol;
+}
 
 namespace spp::asts {
     struct Ast;
@@ -13,8 +24,11 @@ namespace spp::analyse::scopes {
 
 namespace spp::asts::mixins {
     struct CompilerStages;
+    struct CompilerMetaDataState;
     struct CompilerMetaData;
 }
+
+using spp::analyse::scopes::ScopeManager;
 
 
 /**
@@ -22,8 +36,6 @@ namespace spp::asts::mixins {
  * AST. The exceptions are the first 3 functions, which are applies to top level ASTs exclusively.
  */
 struct spp::asts::mixins::CompilerStages {
-    using ScopeManager = analyse::scopes::ScopeManager;
-
     CompilerStages() = default;
 
     virtual ~CompilerStages() = default;
@@ -33,7 +45,7 @@ struct spp::asts::mixins::CompilerStages {
      * This is key for the function architecture (transforming methods into callable types) etc.
      * @param[in, out] ctx The context AST for this AST.
      */
-    virtual auto pre_process(Ast *ctx) -> void;
+    virtual auto stage_1_pre_process(Ast *ctx) -> void;
 
     /**
      * Top level scopes must be generated first, and represent the scopes for modues, classes, functions and
@@ -41,7 +53,7 @@ struct spp::asts::mixins::CompilerStages {
      * here, as there is no guarantee their corresponding "old types" have been generated yet.
      * @param[in, out] sm The scope manager to hold generated scopes.
      */
-    virtual auto gen_top_level_scopes(ScopeManager *sm) -> void;
+    virtual auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *) -> void;
 
     /**
      * Aliases at the module and superimposition level are generated here. At this stage, all the classes will have been
@@ -50,7 +62,7 @@ struct spp::asts::mixins::CompilerStages {
      * @param[in, out] sm The scope manager to hold generated aliases.
      * @param[in, out] meta Metadata to pass between ASTs.
      */
-    virtual auto gen_top_level_aliases(ScopeManager *sm, CompilerMetaData *meta) -> void;
+    virtual auto stage_3_gen_top_level_aliases(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
     /**
      * Qualify types that have been written as non-fully-qualified in all ASTs that are not in the bodies of top level
@@ -58,7 +70,7 @@ struct spp::asts::mixins::CompilerStages {
      * @param[in, out] sm The scope manager to identify types in.
      * @param[in, out] meta Metadata to pass between ASTs.
      */
-    virtual auto qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void;
+    virtual auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
     /**
      * Attach superimposition scopes to the respective target types. This must be done in its own stage as it relies on
@@ -66,7 +78,7 @@ struct spp::asts::mixins::CompilerStages {
      * @param[in, out] sm The scope manager to find target type scopes in.
      * @param[in, out] meta Metadata to pass between ASTs.
      */
-    virtual auto load_super_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void;
+    virtual auto stage_5_load_super_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
     /**
      * There are some checks that have to happen after the superscopes have all been attached but must happen before
@@ -74,7 +86,7 @@ struct spp::asts::mixins::CompilerStages {
      * @param[in, out] sm The scope manager to do pre-analysis in.
      * @param[in, out] meta Metadata to pass between ASTs.
      */
-    virtual auto pre_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void;
+    virtual auto stage_6_pre_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
     /**
      * General analysis of all ASTs, except memory-oriented checks. All identifier checks, type checking, function
@@ -82,7 +94,7 @@ struct spp::asts::mixins::CompilerStages {
      * @param[in, out] sm The scope manager to do analysis in.
      * @param[in, out] meta Metadata to pass between ASTs.
      */
-    virtual auto analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void;
+    virtual auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
     /**
      * All memory oriented checks, such as ownership checking and law of exclusivity enforcement happen in this stage.
@@ -92,13 +104,36 @@ struct spp::asts::mixins::CompilerStages {
      * @param[in, out] sm The scope manager to get symbol's memory information from.
      * @param[in, out] meta Metadata to pass between ASTs.
      */
-    virtual auto check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void;
+    virtual auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
     /**
-     * Generate LLVM IR code from the ASTs. This will then all get linked together by the compiler to produce an
-     * executable, with internal modules based on the SPP code structure.
+     * Generate some LLVM IR code from the ASTs. This is IR that is needed for the rest of the program to be generated.
+     * Required to make the ASTs order-agnostic.
      */
-    virtual auto code_gen() -> void;
+    virtual auto stage_9_code_gen_1() -> void;
+
+    /**
+     * Finish the LLVM IR generation for the remaining (majority) of the ASTs. This will then all get linked together
+     * by the compiler to produce an executable, with internal modules based on the SPP code structure.
+     */
+    virtual auto stage_10_code_gen_2() -> void;
+};
+
+
+struct spp::asts::mixins::CompilerMetaDataState {
+    std::size_t current_stage;
+    std::unique_ptr<TypeAst> return_type_to_match;
+    IdentifierAst* assignment_target;
+    std::unique_ptr<TypeAst> assignment_target_type;
+    bool ignore_missing_else_branch_for_inference;
+    ExpressionAst* case_condition;
+    analyse::scopes::TypeSymbol* cls_sym;
+    analyse::scopes::Scope* enclosing_function_scope;
+    TokenAst* enclosing_function_variation;
+    std::vector<std::shared_ptr<TypeAst>> enclosing_function_ret_type;
+    analyse::scopes::Scope* current_lambda_outer_scope;
+    FunctionPrototypeAst* target_call_function_prototype;
+    bool target_call_was_function_async;
 };
 
 
@@ -106,8 +141,14 @@ struct spp::asts::mixins::CompilerStages {
  * Shared metadata for ASTs, exclusive to the stage of compilation taking place. For example, tracking if an assignment
  * is taking place, when the RHS expression is being analysed.
  */
-struct spp::asts::mixins::CompilerMetaData {
-    std::size_t current_stage;
+struct spp::asts::mixins::CompilerMetaData : CompilerMetaDataState {
+private:
+    std::stack<CompilerMetaDataState> m_history;
+
+public:
+    auto save() -> void;
+
+    auto restore() -> void;
 };
 
 

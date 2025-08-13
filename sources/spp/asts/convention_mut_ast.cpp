@@ -6,10 +6,13 @@
 
 spp::asts::ConventionMutAst::ConventionMutAst(
     decltype(tok_borrow) &&tok_borrow,
-    decltype(tok_mut) &&tok_mut):
+    decltype(tok_mut) &&tok_mut) :
     tok_borrow(std::move(tok_borrow)),
     tok_mut(std::move(tok_mut)) {
 }
+
+
+spp::asts::ConventionMutAst::~ConventionMutAst() = default;
 
 
 auto spp::asts::ConventionMutAst::pos_start() const -> std::size_t {
@@ -19,6 +22,13 @@ auto spp::asts::ConventionMutAst::pos_start() const -> std::size_t {
 
 auto spp::asts::ConventionMutAst::pos_end() const -> std::size_t {
     return tok_mut->pos_end();
+}
+
+
+auto spp::asts::ConventionMutAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<ConventionMutAst>(
+        ast_clone(*tok_borrow),
+        ast_clone(*tok_mut));
 }
 
 

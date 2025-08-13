@@ -17,16 +17,16 @@ struct spp::asts::PostfixExpressionAst final : ExpressionAst {
     /**
      * The operator token that represents the postfix operation. This indicates the type of operation being performed.
      */
-    std::unique_ptr<PostfixExpressionOperatorAst> tok_op;
+    std::unique_ptr<PostfixExpressionOperatorAst> op;
 
     /**
      * Construct the PostfixExpressionAst with the arguments matching the members.
      * @param[in] lhs The left-hand side expression of the postfix expression.
-     * @param[in] tok_op The operator token that represents the postfix operation.
+     * @param[in] op The operator token that represents the postfix operation.
      */
     PostfixExpressionAst(
         decltype(lhs) &&lhs,
-        decltype(tok_op) &&tok_op);
+        decltype(op) &&op);
 };
 
 

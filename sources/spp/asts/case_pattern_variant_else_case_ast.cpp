@@ -8,7 +8,7 @@
 
 spp::asts::CasePatternVariantElseCaseAst::CasePatternVariantElseCaseAst(
     decltype(tok_else) &&tok_else,
-    decltype(case_expr) &&case_expr):
+    decltype(case_expr) &&case_expr) :
     tok_else(std::move(tok_else)),
     case_expr(std::move(case_expr)) {
 }
@@ -21,6 +21,13 @@ auto spp::asts::CasePatternVariantElseCaseAst::pos_start() const -> std::size_t 
 
 auto spp::asts::CasePatternVariantElseCaseAst::pos_end() const -> std::size_t {
     return case_expr->pos_end();
+}
+
+
+auto spp::asts::CasePatternVariantElseCaseAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<CasePatternVariantElseCaseAst>(
+        ast_clone(*tok_else),
+        ast_clone(*case_expr));
 }
 
 
@@ -37,4 +44,22 @@ auto spp::asts::CasePatternVariantElseCaseAst::print(meta::AstPrinter &printer) 
     SPP_PRINT_APPEND(tok_else);
     SPP_PRINT_APPEND(case_expr);
     SPP_PRINT_END;
+}
+
+
+auto spp::asts::CasePatternVariantElseCaseAst::stage_7_analyse_semantics(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> void {
+    // Forward analysis into the case expression.
+    case_expr->stage_7_analyse_semantics(sm, meta);
+}
+
+
+auto spp::asts::CasePatternVariantElseCaseAst::stage_8_check_memory(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> void {
+    // Forward memory checks into the case expression.
+    case_expr->stage_8_check_memory(sm, meta);
 }

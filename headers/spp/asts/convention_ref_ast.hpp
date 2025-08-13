@@ -24,6 +24,8 @@ struct spp::asts::ConventionRefAst final : ConventionAst {
      */
     explicit ConventionRefAst(
         decltype(tok_borrow) &&tok_borrow);
+
+    ~ConventionRefAst() override;
 };
 
 

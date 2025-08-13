@@ -1,10 +1,18 @@
 #ifndef AST_HPP
 #define AST_HPP
 
+#include <memory>
+
 #include <spp/asts/meta/ast_printer.hpp>
 #include <spp/asts/mixins/compiler_stages.hpp>
 
-#include <memory>
+#include <genex/views/deref.hpp>
+#include <genex/views/map.hpp>
+#include <genex/views/to.hpp>
+
+#define ast_clone(ast) ast_cast<std::remove_cvref_t<decltype(ast)>>((ast).clone())
+
+#define ast_clone_vec(asts) (asts) | genex::views::deref | genex::views::map([](auto&& x) { return ast_clone(x); }) | genex::views::to<std::vector>()
 
 
 namespace spp::asts {
@@ -16,14 +24,27 @@ namespace spp::asts {
     }
 
     template <typename T>
+    auto ast_cast(Ast &ast) -> T& {
+        return dynamic_cast<T&>(ast);
+    }
+
+    template <typename T>
     auto ast_cast(Ast const *ast) -> T const* {
         return dynamic_cast<T const*>(ast);
+    }
+
+    template <typename T>
+    auto ast_cast(Ast const &ast) -> T const& {
+        return dynamic_cast<T const&>(ast);
     }
 
     template <typename T, typename U>
     auto ast_cast(std::unique_ptr<U> &&ast) -> std::unique_ptr<T> {
         return std::unique_ptr<T>(ast_cast<T>(ast.release()));
     }
+
+    template <typename T>
+    auto ast_name(T *ast) -> std::shared_ptr<TypeAst>;
 }
 
 namespace spp::analyse::scopes {
@@ -32,9 +53,10 @@ namespace spp::analyse::scopes {
 
 
 #define SPP_AST_KEY_FUNCTIONS \
-    auto pos_start() const -> std::size_t override;\
-    auto pos_end() const -> std::size_t override;\
-    explicit operator std::string() const override;\
+    auto pos_start() const -> std::size_t override; \
+    auto pos_end() const -> std::size_t override; \
+    auto clone() const -> std::unique_ptr<Ast> override; \
+    explicit operator std::string() const override; \
     auto print(meta::AstPrinter &printer) const -> std::string override
 
 
@@ -43,6 +65,20 @@ namespace spp::analyse::scopes {
  * and end position identification.
  */
 struct spp::asts::Ast : mixins::CompilerStages {
+    friend struct AnnotationAst;
+
+protected:
+    /**
+     * The context of an AST is used in certain analysis steps. This might be the parent AST, such as a
+     * FunctionPrototypeAst etc.
+     */
+    Ast *m_ctx = nullptr;
+
+    /**
+     * The scope of an AST is used when generating top level scopes, to create a simple link between scope and AST.
+     */
+    analyse::scopes::Scope *m_scope = nullptr;
+
 public:
     // /**
     //  * Ensure there is no copy constructor for the Ast class. This is to prevent accidental copies of ASTs, which would
@@ -92,6 +128,15 @@ public:
     auto size() const -> std::size_t;
 
     /**
+     * The clone operator that deepcopies the AST and all its children ASTs. This is used to create a new AST that is a
+     * copy of the original AST, preserving its structure and contents. This is useful for creating a new AST that can
+     * be modified without affecting the original AST. Can be cast down as needed, as the return type is a
+     * @code std::unique_ptr<T>@endcode to the base @c Ast class.
+     * @return The cloned AST as a unique pointer to the base Ast class.
+     */
+    virtual auto clone() const -> std::unique_ptr<Ast> = 0;
+
+    /**
      * Print an AST using raw-formatting. This does not handle indentation, and prints the AST as a single line.
      * Recursively prints child nodes using their respective "operator UnicodeString()" methods.
      */
@@ -105,24 +150,15 @@ public:
      */
     virtual auto print(meta::AstPrinter &printer) const -> std::string = 0;
 
+    auto stage_1_pre_process(Ast *ctx) -> void override;
+    auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
 protected:
     /**
      * Create a new AST (base class for all derived ASTs). This constructor is protected to prevent direct instantiation
      * as an AST should always be a specific type of AST, such as a TokenAst, IdentifierAst, etc.
      */
     explicit Ast();
-
-private:
-    /**
-     * The context of an AST is used in certain analysis steps. This might be the parent AST, such as a
-     * FunctionPrototypeAst etc.
-     */
-    Ast *m_ctx = nullptr;
-
-    /**
-     * The scope of an AST is used when generating top level scopes, to create a simple link between scope and AST.
-     */
-    analyse::scopes::Scope *m_scope = nullptr;
 };
 
 

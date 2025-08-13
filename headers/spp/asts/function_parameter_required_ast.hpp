@@ -21,6 +21,8 @@ struct spp::asts::FunctionParameterRequiredAst final : FunctionParameterAst {
         decltype(var) &&var,
         decltype(tok_colon) &&tok_colon,
         decltype(type) &&type);
+
+    ~FunctionParameterRequiredAst() override;
 };
 
 

@@ -40,6 +40,16 @@ struct spp::asts::FunctionCallArgumentGroupAst final : virtual Ast {
         decltype(tok_l) &&tok_l,
         decltype(args) &&args,
         decltype(tok_r) &&tok_r);
+
+    ~FunctionCallArgumentGroupAst() override;
+
+    auto get_keyword_args() const -> std::vector<FunctionCallArgumentKeywordAst*>;
+
+    auto get_positional_args() const -> std::vector<FunctionCallArgumentPositionalAst*>;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

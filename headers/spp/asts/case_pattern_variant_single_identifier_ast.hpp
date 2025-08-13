@@ -38,6 +38,12 @@ struct spp::asts::CasePatternVariantSingleIdentifierAst final : CasePatternVaria
         decltype(alias) &&alias);
 
     ~CasePatternVariantSingleIdentifierAst() override;
+
+    auto convert_to_variable(mixins::CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

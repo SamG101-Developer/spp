@@ -26,6 +26,10 @@ struct spp::asts::CasePatternVariantElseCaseAst final : CasePatternVariantAst {
     explicit CasePatternVariantElseCaseAst(
         decltype(tok_else) &&tok_else,
         decltype(case_expr) &&case_expr);
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

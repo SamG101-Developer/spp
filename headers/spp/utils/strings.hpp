@@ -1,7 +1,7 @@
 #ifndef STRINGS_HPP
 #define STRINGS_HPP
 
-#include <unicode/unistr.h>
+#include <string>
 
 
 namespace spp::utils::strings {

@@ -9,10 +9,15 @@
 struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst {
     SPP_AST_KEY_FUNCTIONS;
 
+protected:
+    TypeAst *m_ret_type;
+
+public:
     /**
-     * The optional @c cor keyword. Providing this will turn the closure into a coroutine closure.
+     * The optional @c cor keyword. Providing this will turn the closure into a coroutine closure. Otherwise, it will
+     * default to @code fun@endcode.
      */
-    std::unique_ptr<TokenAst> tok_cor;
+    std::unique_ptr<TokenAst> tok;
 
     /**
      * The parameter and capture group of the closure. This will contain the parameters for the closure, as well as any
@@ -28,16 +33,22 @@ struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst {
 
     /**
      * Construct the ClosureExpressionAst with the arguments matching the members.
-     * @param tok_cor The optional @c cor keyword.
-     * @param pc_group The parameter and capture group of the closure.
-     * @param body The body of the closure.
+     * @param[in] tok The optional @c cor keyword.
+     * @param[in] pc_group The parameter and capture group of the closure.
+     * @param[in] body The body of the closure.
      */
     ClosureExpressionAst(
-        decltype(tok_cor) &&tok_cor,
+        decltype(tok) &&tok,
         decltype(pc_group) &&pc_group,
         decltype(body) &&body);
 
     ~ClosureExpressionAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 
 private:
     std::unique_ptr<TypeAst> m_return_type;

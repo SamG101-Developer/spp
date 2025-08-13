@@ -10,7 +10,7 @@ template <typename T>
 spp::asts::InnerScopeAst<T>::InnerScopeAst(
     decltype(tok_l) &&tok_l,
     decltype(members) &&members,
-    decltype(tok_r) &&tok_r):
+    decltype(tok_r) &&tok_r) :
     tok_l(std::move(tok_l)),
     members(std::move(members)),
     tok_r(std::move(tok_r)) {
@@ -18,7 +18,7 @@ spp::asts::InnerScopeAst<T>::InnerScopeAst(
 
 
 template <typename T>
-spp::asts::InnerScopeAst<T>::InnerScopeAst():
+spp::asts::InnerScopeAst<T>::InnerScopeAst() :
     tok_l(nullptr),
     members(),
     tok_r(nullptr) {
@@ -57,6 +57,6 @@ auto spp::asts::InnerScopeAst<T>::print(meta::AstPrinter &printer) const -> std:
 }
 
 
-template class spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::ClassMemberAst>>;
-template class spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::FunctionMemberAst>>;
-template class spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::SupMemberAst>>;
+template struct spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::ClassMemberAst>>;
+template struct spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::FunctionMemberAst>>;
+template struct spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::SupMemberAst>>;

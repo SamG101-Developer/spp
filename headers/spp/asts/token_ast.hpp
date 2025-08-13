@@ -33,6 +33,13 @@ struct spp::asts::TokenAst final : virtual Ast {
         std::string &&token_data);
 
     /**
+     * Copy constructor for the TokenAst. This is used to create a deep copy of the token, preserving its structure and
+     * contents.
+     * @param other The other TokenAst to copy from.
+     */
+    TokenAst(TokenAst const &other);
+
+    /**
      * Two tokens are equal if their token types are equal.
      * @param[in] that The other TokenAst to compare with.
      * @return Whether the two ASTs are equal or not.

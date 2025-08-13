@@ -1,6 +1,7 @@
 #ifndef TOKENS_HPP
 #define TOKENS_HPP
 
+#include <array>
 #include <cstdint>
 
 #include <unicode/unistr.h>
@@ -9,6 +10,7 @@
 namespace spp::lex {
     enum class RawTokenType : std::uint8_t;
     enum class SppTokenType : std::uint8_t;
+    struct SppTokenSets;
     class RawToken;
 
     auto tok_to_string(SppTokenType token) noexcept -> std::string;
@@ -92,6 +94,7 @@ enum class spp::lex::SppTokenType : std::uint8_t {
     LX_CHARACTER,
     LX_DIGIT,
     LX_STRING,
+    LX_NUMBER,
     LX_IDENTIFIER,
 
     KW_CLS,
@@ -292,6 +295,31 @@ inline auto spp::lex::tok_to_string(const SppTokenType token) noexcept -> std::s
     default: return "";
     }
 }
+
+
+struct spp::lex::SppTokenSets {
+    constexpr static auto BIN_COMPOUND_ASSIGNMENT_OPS = std::array{
+        SppTokenType::TK_ADD_ASSIGN,
+        SppTokenType::TK_SUB_ASSIGN,
+        SppTokenType::TK_MUL_ASSIGN,
+        SppTokenType::TK_DIV_ASSIGN,
+        SppTokenType::TK_REM_ASSIGN,
+        SppTokenType::TK_BIT_AND_ASSIGN,
+        SppTokenType::TK_BIT_IOR_ASSIGN,
+        SppTokenType::TK_BIT_XOR_ASSIGN,
+        SppTokenType::TK_BIT_SHL_ASSIGN,
+        SppTokenType::TK_BIT_SHR_ASSIGN
+    };
+
+    constexpr static auto BIN_COMPARISON_OPS = std::array{
+        SppTokenType::TK_EQ,
+        SppTokenType::TK_NE,
+        SppTokenType::TK_LT,
+        SppTokenType::TK_GT,
+        SppTokenType::TK_LE,
+        SppTokenType::TK_GE
+    };
+};
 
 
 #endif //TOKENS_HPP

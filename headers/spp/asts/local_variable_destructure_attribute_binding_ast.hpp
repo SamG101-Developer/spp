@@ -7,6 +7,7 @@
 
 struct spp::asts::LocalVariableDestructureAttributeBindingAst final : LocalVariableAst {
     SPP_AST_KEY_FUNCTIONS;
+    friend struct CasePatternVariantDestructureAttributeBindingAst;
 
     /**
      * The name of the attribute. This is the identifier that is used to refer to the attribute of the object being

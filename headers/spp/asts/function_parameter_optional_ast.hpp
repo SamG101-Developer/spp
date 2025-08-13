@@ -36,6 +36,12 @@ struct spp::asts::FunctionParameterOptionalAst final : FunctionParameterAst {
         decltype(type) &&type,
         decltype(tok_assign) &&tok_assign,
         decltype(default_val) &&default_val);
+
+    ~FunctionParameterOptionalAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

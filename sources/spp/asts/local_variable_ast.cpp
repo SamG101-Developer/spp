@@ -4,9 +4,19 @@
 #include <spp/asts/type_ast.hpp>
 
 
-spp::asts::LocalVariableAst::LocalVariableAst():
+spp::asts::LocalVariableAst::LocalVariableAst() :
     m_mapped_let(nullptr) {
 }
 
 
 spp::asts::LocalVariableAst::~LocalVariableAst() = default;
+
+
+auto spp::asts::LocalVariableAst::extract_names() const -> std::vector<IdentifierAst*> {
+    return {};
+}
+
+
+auto spp::asts::LocalVariableAst::extract_name() const -> IdentifierAst* {
+    return nullptr;
+}

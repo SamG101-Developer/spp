@@ -16,6 +16,13 @@ protected:
      * The @c let statement that destructures are converted to, to introduce the variables created by the pattern.
      */
     std::unique_ptr<LetStatementInitializedAst> m_mapped_let;
+
+    bool m_from_pattern;
+
+public:
+    virtual auto extract_names() const -> std::vector<IdentifierAst*>;
+
+    virtual auto extract_name() const -> IdentifierAst*;
 };
 
 

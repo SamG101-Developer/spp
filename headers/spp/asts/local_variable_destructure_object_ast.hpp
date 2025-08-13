@@ -7,6 +7,7 @@
 
 struct spp::asts::LocalVariableDestructureObjectAst final : LocalVariableAst {
     SPP_AST_KEY_FUNCTIONS;
+    friend struct CasePatternVariantDestructureObjectAst;
 
     /**
      * The type of the object being destructured. This is used to determine the type of the destructured elements (by

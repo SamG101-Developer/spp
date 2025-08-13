@@ -22,6 +22,12 @@ struct spp::asts::CasePatternVariantLiteralAst final : CasePatternVariantAst {
         decltype(literal) &&literal);
 
     ~CasePatternVariantLiteralAst() override;
+
+    auto convert_to_variable(mixins::CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

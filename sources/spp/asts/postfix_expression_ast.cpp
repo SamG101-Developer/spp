@@ -4,9 +4,9 @@
 
 spp::asts::PostfixExpressionAst::PostfixExpressionAst(
     decltype(lhs) &&lhs,
-    decltype(tok_op) &&tok_op):
+    decltype(op) &&op):
     lhs(std::move(lhs)),
-    tok_op(std::move(tok_op)) {
+    op(std::move(op)) {
 }
 
 
@@ -16,14 +16,14 @@ auto spp::asts::PostfixExpressionAst::pos_start() const -> std::size_t {
 
 
 auto spp::asts::PostfixExpressionAst::pos_end() const -> std::size_t {
-    return tok_op->pos_end();
+    return op->pos_end();
 }
 
 
 spp::asts::PostfixExpressionAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(lhs);
-    SPP_STRING_APPEND(tok_op);
+    SPP_STRING_APPEND(op);
     SPP_STRING_END;
 }
 
@@ -31,6 +31,6 @@ spp::asts::PostfixExpressionAst::operator std::string() const {
 auto spp::asts::PostfixExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(lhs);
-    SPP_PRINT_APPEND(tok_op);
+    SPP_PRINT_APPEND(op);
     SPP_PRINT_END;
 }
