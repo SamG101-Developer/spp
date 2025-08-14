@@ -5,6 +5,10 @@
 #include <spp/asts/_fwd.hpp>
 
 
+namespace spp::analyse::scopes {
+    struct VariableSymbol;
+}
+
 /**
  * The GenericArgumentCompKeywordAst represents a keyword argument in a generic argument context. It is forces the argument
  * to be matched by a keyword rather than an index.
@@ -36,6 +40,14 @@ struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgumentCompAst {
         decltype(val) &&val);
 
     ~GenericArgumentCompKeywordAst() override;
+
+    static auto from_symbol(
+        analyse::scopes::VariableSymbol const *sym)
+        -> std::unique_ptr<GenericArgumentCompKeywordAst>;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

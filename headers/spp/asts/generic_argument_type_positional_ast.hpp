@@ -20,6 +20,8 @@ struct spp::asts::GenericArgumentTypePositionalAst final : GenericArgumentTypeAs
         decltype(val) &&val);
 
     ~GenericArgumentTypePositionalAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

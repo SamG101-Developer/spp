@@ -15,7 +15,7 @@ struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgumentTypeAst {
     /**
      * The name of the keyword argument. This is the type that is used to refer to the argument in the generic call.
      */
-    std::unique_ptr<TypeAst> name;
+    std::shared_ptr<TypeAst> name;
 
     /**
      * The token that represents the assignment operator \c = in the keyword argument. This separates the name of the
@@ -35,6 +35,10 @@ struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgumentTypeAst {
         decltype(val) &&val);
 
     ~GenericArgumentTypeKeywordAst() override;
+
+    static auto from_symbol(analyse::scopes::TypeSymbol const *sym) -> std::unique_ptr<GenericArgumentTypeKeywordAst>;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

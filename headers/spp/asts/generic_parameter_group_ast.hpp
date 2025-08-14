@@ -36,7 +36,15 @@ struct spp::asts::GenericParameterGroupAst final : virtual Ast {
         decltype(params) &&params,
         decltype(tok_r) &&tok_r);
 
+    ~GenericParameterGroupAst() override;
+
     auto opt_to_req() -> std::unique_ptr<GenericParameterGroupAst>;
+
+    auto stage_4_qualify_types(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

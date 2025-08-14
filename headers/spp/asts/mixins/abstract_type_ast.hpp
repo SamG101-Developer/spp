@@ -19,11 +19,11 @@ public:
 public:
     virtual auto is_never_type() const -> bool = 0;
 
-    virtual auto ns_parts() const -> std::vector<IdentifierAst const*> = 0;
+    virtual auto ns_parts() const -> std::vector<std::shared_ptr<IdentifierAst>> = 0;
 
-    virtual auto type_parts() const -> std::vector<TypeIdentifierAst const*> = 0;
+    virtual auto type_parts() const -> std::vector<std::shared_ptr<TypeIdentifierAst>> = 0;
 
-    virtual auto without_convention() const -> TypeAst const* = 0;
+    virtual auto without_convention() const -> std::shared_ptr<TypeAst> = 0;
 
     virtual auto get_convention() const -> ConventionAst* = 0;
 

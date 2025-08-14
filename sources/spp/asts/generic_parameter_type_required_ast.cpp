@@ -24,6 +24,13 @@ auto spp::asts::GenericParameterTypeRequiredAst::pos_end() const -> std::size_t 
 }
 
 
+auto spp::asts::GenericParameterTypeRequiredAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<GenericParameterTypeRequiredAst>(
+        ast_clone(*name),
+        ast_clone(*constraints));
+}
+
+
 spp::asts::GenericParameterTypeRequiredAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(name);

@@ -73,6 +73,8 @@ private:
     ScopeManagerIterator m_iterator;
 
 public:
+    explicit ScopeManager(std::shared_ptr<Scope> global_scope, Scope *current_scope = nullptr);
+
     auto begin() -> ScopeManagerIterator;
 
     auto end() -> ScopeManagerIterator;

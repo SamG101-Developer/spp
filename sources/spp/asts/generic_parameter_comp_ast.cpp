@@ -1,4 +1,9 @@
+#include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/scopes/scope.hpp>
+#include <spp/analyse/scopes/scope_manager.hpp>
+#include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/asts/generic_parameter_comp_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 
@@ -7,9 +12,48 @@ spp::asts::GenericParameterCompAst::GenericParameterCompAst(
     decltype(tok_cmp) &&tok_cmp,
     decltype(name) &&name,
     decltype(tok_colon) &&tok_colon,
-    decltype(type) &&type):
+    decltype(type) &&type) :
     tok_cmp(std::move(tok_cmp)),
     name(std::move(name)),
     tok_colon(std::move(tok_colon)),
     type(std::move(type)) {
+}
+
+
+auto spp::asts::GenericParameterCompAst::stage_2_gen_top_level_scopes(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *)
+    -> void {
+    // Ensure the type does not have a convention.
+    if (const auto c = type->get_convention()) {
+        analyse::errors::SppSecondClassBorrowViolationError(*type, *c, "function return type")
+            .scopes({sm->current_scope})
+            .raise();
+    }
+
+    // Create a variable symbol for this constant in the current scope (class / function).
+    auto sym = std::make_unique<analyse::scopes::VariableSymbol>(IdentifierAst::from_type(*name), type, false, true, utils::Visibility::PUBLIC);
+    sym->memory_info->ast_pins.emplace_back(name.get());
+    sym->memory_info->ast_comptime = this;
+    sym->memory_info->initialized_by(*this);
+    sm->current_scope->add_symbol(std::move(sym));
+}
+
+
+auto spp::asts::GenericParameterCompAst::stage_4_qualify_types(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> void {
+    // Qualify the type on the generic parameter.
+    type->stage_7_analyse_semantics(sm, meta);
+    type = sm->current_scope->get_type_symbol(*type)->fq_name();
+}
+
+
+auto spp::asts::GenericParameterCompAst::stage_7_analyse_semantics(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> void {
+    // Analyse the type.
+    type->stage_7_analyse_semantics(sm, meta);
 }

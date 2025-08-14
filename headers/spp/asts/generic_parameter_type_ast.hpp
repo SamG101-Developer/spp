@@ -27,6 +27,10 @@ struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
     GenericParameterTypeAst(
         decltype(name) &&name,
         decltype(constraints) &&constraints);
+
+    auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *) -> void override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

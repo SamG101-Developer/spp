@@ -35,6 +35,8 @@ struct spp::asts::IdentifierAst final : PrimaryExpressionAst {
 
     auto to_function_identifier() const -> std::unique_ptr<IdentifierAst>;
 
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 
 private:

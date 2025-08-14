@@ -36,6 +36,10 @@ struct spp::asts::GenericParameterCompOptionalAst final : GenericParameterCompAs
         decltype(default_val) &&default_val);
 
     ~GenericParameterCompOptionalAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

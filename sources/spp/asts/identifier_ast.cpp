@@ -1,12 +1,17 @@
+#include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/utils/strings.hpp>
 
+#include <genex/views/map.hpp>
+#include <genex/views/to.hpp>
+
 
 spp::asts::IdentifierAst::IdentifierAst(
     const std::size_t pos,
-    decltype(val) &&val):
+    decltype(val) &&val) :
     val(std::move(val)),
     m_pos(pos) {
 }
@@ -53,5 +58,33 @@ auto spp::asts::IdentifierAst::from_type(TypeAst const &val) -> std::unique_ptr<
 
 
 auto spp::asts::IdentifierAst::to_function_identifier() const -> std::unique_ptr<IdentifierAst> {
-    return std::make_unique<IdentifierAst>(m_pos, "$" + utils::strings::snake_to_pascal(val));
+    return std::make_unique<IdentifierAst>(m_pos, "$" + spp::utils::strings::snake_to_pascal(val));
+}
+
+
+auto spp::asts::IdentifierAst::stage_7_analyse_semantics(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *)
+    -> void {
+    // Check there is a symbol with the same name in the current scope.
+    if (not sm->current_scope->has_var_symbol(*this) and not sm->current_scope->has_ns_symbol(*this)) {
+        auto alternatives = sm->current_scope->all_var_symbols()
+            | genex::views::map([](auto &&x) { return x->name->val; })
+            | genex::views::to<std::vector>();
+
+        const auto closest_match = spp::utils::strings::closest_match(val, alternatives);
+        analyse::errors::SppIdentifierUnknownError(*this, "identifier", closest_match)
+            .scopes({sm->current_scope})
+            .raise();
+    }
+}
+
+
+auto spp::asts::IdentifierAst::infer_type(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *)
+    -> std::shared_ptr<TypeAst> {
+    // Extract the symbol from the current scope, as a variable symbol.
+    const auto var_sym = sm->current_scope->get_var_symbol(*this);
+    return var_sym->type;
 }

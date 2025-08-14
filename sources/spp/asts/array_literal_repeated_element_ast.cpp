@@ -83,8 +83,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
     }
 
     // Ensure the element's type is not a borrow type, as array elements cannot be borrows.
-    if (const auto conv = elem_type->get_convention()) {
-        analyse::errors::SppSecondClassBorrowViolationError(*elem, *conv, "repeated array element type").scopes({sm->current_scope}).raise();
+    if (const auto c = elem_type->get_convention()) {
+        analyse::errors::SppSecondClassBorrowViolationError(*elem, *c, "repeated array element type").scopes({sm->current_scope}).raise();
     }
 
     // Ensure the size is a constant expression (if symbolic).

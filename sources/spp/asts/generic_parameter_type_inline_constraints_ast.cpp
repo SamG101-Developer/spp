@@ -26,6 +26,13 @@ auto spp::asts::GenericParameterTypeInlineConstraintsAst::pos_end() const -> std
 }
 
 
+auto spp::asts::GenericParameterTypeInlineConstraintsAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<GenericParameterTypeInlineConstraintsAst>(
+        ast_clone(*tok_colon),
+        ast_clone_vec(constraints));
+}
+
+
 spp::asts::GenericParameterTypeInlineConstraintsAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_colon);

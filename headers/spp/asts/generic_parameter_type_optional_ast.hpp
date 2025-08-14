@@ -32,6 +32,10 @@ struct spp::asts::GenericParameterTypeOptionalAst final : GenericParameterTypeAs
         decltype(default_val) &&default_val);
 
     ~GenericParameterTypeOptionalAst() override;
+
+    auto stage_4_qualify_types(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

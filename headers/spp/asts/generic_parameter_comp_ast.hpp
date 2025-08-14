@@ -28,7 +28,7 @@ struct spp::asts::GenericParameterCompAst : GenericParameterAst {
      * The type of the parameter. This is used to specify the type of the generic comp parameter, such as @c I32 or
      * @c F64 . This is a required field, as the type of the parameter must be known at compile time.
      */
-    std::unique_ptr<TypeAst> type;
+    std::shared_ptr<TypeAst> type;
 
     /**
      * Construct the GenericParameterCompAst with the arguments matching the members.
@@ -42,6 +42,12 @@ struct spp::asts::GenericParameterCompAst : GenericParameterAst {
         decltype(name) &&name,
         decltype(tok_colon) &&tok_colon,
         decltype(type) &&type);
+
+    auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *) -> void override;
+
+    auto stage_4_qualify_types(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

@@ -1,6 +1,7 @@
 #ifndef GENERIC_ARGUMENT_GROUP_AST_HPP
 #define GENERIC_ARGUMENT_GROUP_AST_HPP
 
+#include <map>
 #include <spp/asts/ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -36,12 +37,29 @@ struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
         decltype(args) &&args,
         decltype(tok_r) &&tok_r);
 
-    GenericArgumentGroupAst(
-        GenericParameterGroupAst const& generic_params);
+    ~GenericArgumentGroupAst() override;
+
+    static auto from_params(
+        GenericParameterGroupAst const &generic_params);
+
+    static auto from_map(
+        std::map<TypeAst*, ExpressionAst*> const &map) -> std::unique_ptr<GenericArgumentGroupAst>;
 
     auto type_at(const char *key) const -> GenericArgumentTypeAst const*;
 
     auto comp_at(const char *key) const -> GenericArgumentCompAst const*;
+
+    auto get_type_args() const -> std::vector<GenericArgumentTypeAst*>;
+
+    auto get_comp_args() const -> std::vector<GenericArgumentCompAst*>;
+
+    auto get_keyword_args() const -> std::vector<GenericArgumentAst*>;
+
+    auto get_positional_args() const -> std::vector<GenericArgumentAst*>;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

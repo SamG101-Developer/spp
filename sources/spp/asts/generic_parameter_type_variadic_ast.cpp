@@ -26,6 +26,14 @@ auto spp::asts::GenericParameterTypeVariadicAst::pos_end() const -> std::size_t 
 }
 
 
+auto spp::asts::GenericParameterTypeVariadicAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<GenericParameterTypeVariadicAst>(
+        ast_clone(*tok_ellipsis),
+        ast_clone(*name),
+        ast_clone(*constraints));
+}
+
+
 spp::asts::GenericParameterTypeVariadicAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_ellipsis);

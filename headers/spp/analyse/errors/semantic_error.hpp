@@ -39,6 +39,8 @@ namespace spp::analyse::errors {
     struct SppFunctionPrototypeConflictError;
     struct SppFunctionSubroutineContainsGenExpressionError;
     struct SppYieldedTypeMismatchError;
+    struct SppIdentifierUnknownError;
+    struct SppUnreachableCodeError;
 
     auto add_header(std::size_t err_code, std::string &&msg) -> std::string;
     auto add_error(std::size_t pos, std::string &&tag) -> std::string;
@@ -205,4 +207,14 @@ struct spp::analyse::errors::SppFunctionSubroutineContainsGenExpressionError fin
 
 struct spp::analyse::errors::SppYieldedTypeMismatchError final : spp::utils::errors::SemanticError {
     explicit SppYieldedTypeMismatchError(asts::Ast const &lhs, asts::TypeAst const &lhs_ty, asts::Ast const &rhs, asts::TypeAst const &rhs_ty, bool is_optional, bool is_Fallible, asts::TypeAst const &error_type);
+};
+
+
+struct spp::analyse::errors::SppIdentifierUnknownError final : spp::utils::errors::SemanticError {
+    explicit SppIdentifierUnknownError(asts::IdentifierAst const &identifier, std::string_view what, std::optional<std::string> closest);
+};
+
+
+struct spp::analyse::errors::SppUnreachableCodeError final : spp::utils::errors::SemanticError {
+    explicit SppUnreachableCodeError(asts::Ast const &member, asts::Ast const& next_member);
 };
