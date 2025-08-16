@@ -91,7 +91,7 @@ namespace spp::analyse::utils::type_utils {
         scopes::ScopeManager const &sm,
         asts::ExpressionAst const &expr,
         std::string_view what)
-        -> std::tuple<std::unique_ptr<asts::TypeAst>, std::unique_ptr<asts::TypeAst>, bool, bool, bool, std::unique_ptr<asts::TypeAst>>;
+        -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::TypeAst>, bool, bool, bool, std::shared_ptr<asts::TypeAst>>;
 
     template <typename T>
     auto validate_inconsistent_types(

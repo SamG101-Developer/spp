@@ -1,8 +1,7 @@
 #ifndef COMPILER_STAGES_HPP
 #define COMPILER_STAGES_HPP
 
-#include <cstdint>
-#include <expected>
+#include <map>
 #include <stack>
 
 #include <spp/asts/_fwd.hpp>
@@ -137,6 +136,10 @@ struct spp::asts::mixins::CompilerMetaDataState {
     bool prevent_auto_generator_resume;
     std::shared_ptr<TypeAst> let_stmt_explicit_type;
     ExpressionAst* let_stmt_value;
+    bool loop_double_check_active;
+    std::size_t current_loop_depth;
+    LoopExpressionAst* current_loop_ast;
+    std::map<std::size_t, std::tuple<ExpressionAst*, TypeAst*, analyse::scopes::Scope*>> loop_return_types;
 };
 
 

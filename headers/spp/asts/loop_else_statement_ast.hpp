@@ -3,9 +3,10 @@
 
 #include <spp/asts/ast.hpp>
 #include <spp/asts/_fwd.hpp>
+#include <spp/asts/mixins/type_inferrable.hpp>
 
 
-struct spp::asts::LoopElseStatementAst final : virtual Ast {
+struct spp::asts::LoopElseStatementAst final : virtual Ast, mixins::TypeInferrableAst {
     SPP_AST_KEY_FUNCTIONS;
 
     /**
@@ -29,6 +30,12 @@ struct spp::asts::LoopElseStatementAst final : virtual Ast {
         decltype(body) &&body);
 
     ~LoopElseStatementAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 

@@ -37,6 +37,10 @@ struct spp::asts::LoopConditionIterableAst final : LoopConditionAst {
         decltype(iterable) &&iterable);
 
     ~LoopConditionIterableAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

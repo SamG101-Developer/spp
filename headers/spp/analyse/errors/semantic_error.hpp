@@ -54,6 +54,7 @@ namespace spp::analyse::errors {
     struct SppVariableTupleDestructureTupleSizeMismatchError;
     struct SppVariableObjectDestructureWithBoundMultiSkipError;
     struct SppExpressionNotBooleanError;
+    struct SppLoopTooManyControlFlowStatementsError;
 
     auto add_header(std::size_t err_code, std::string &&msg) -> std::string;
     auto add_error(std::size_t pos, std::string &&tag) -> std::string;
@@ -290,4 +291,9 @@ struct spp::analyse::errors::SppVariableObjectDestructureWithBoundMultiSkipError
 
 struct spp::analyse::errors::SppExpressionNotBooleanError final : spp::utils::errors::SemanticError {
     explicit SppExpressionNotBooleanError(asts::Ast const &expr, asts::TypeAst const &expr_type, std::string_view what);
+};
+
+
+struct spp::analyse::errors::SppLoopTooManyControlFlowStatementsError final : spp::utils::errors::SemanticError {
+    explicit SppLoopTooManyControlFlowStatementsError(asts::TokenAst const &tok_loop, asts::LoopControlFlowStatementAst const &stmt, std::size_t num_controls, std::size_t loop_depth);
 };

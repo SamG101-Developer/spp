@@ -8,6 +8,8 @@
 
 struct spp::asts::LoopConditionAst : virtual Ast, mixins::TypeInferrableAst {
     using Ast::Ast;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 
