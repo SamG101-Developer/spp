@@ -12,11 +12,11 @@ spp::asts::LocalVariableAst::LocalVariableAst() :
 spp::asts::LocalVariableAst::~LocalVariableAst() = default;
 
 
-auto spp::asts::LocalVariableAst::extract_names() const -> std::vector<IdentifierAst*> {
+auto spp::asts::LocalVariableAst::extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>> {
     return {};
 }
 
 
-auto spp::asts::LocalVariableAst::extract_name() const -> IdentifierAst* {
+auto spp::asts::LocalVariableAst::extract_name() const -> std::shared_ptr<IdentifierAst> {
     return nullptr;
 }

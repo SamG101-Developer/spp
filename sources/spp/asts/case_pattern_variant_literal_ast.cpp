@@ -30,7 +30,7 @@ auto spp::asts::CasePatternVariantLiteralAst::pos_end() const -> std::size_t {
 
 auto spp::asts::CasePatternVariantLiteralAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<CasePatternVariantLiteralAst>(
-        ast_clone(*literal));
+        ast_clone(literal));
 }
 
 

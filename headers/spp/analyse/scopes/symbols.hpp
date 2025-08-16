@@ -79,6 +79,8 @@ struct spp::analyse::scopes::VariableSymbol final : Symbol {
         asts::utils::Visibility visibility = asts::utils::Visibility::PUBLIC);
 
     VariableSymbol(VariableSymbol const &that);
+
+    auto clone() -> std::unique_ptr<VariableSymbol>;
 };
 
 

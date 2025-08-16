@@ -51,9 +51,9 @@ auto spp::asts::InnerScopeAst<T>::pos_end() const -> std::size_t {
 template <typename T>
 auto spp::asts::InnerScopeAst<T>::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<InnerScopeAst<T>>(
-        ast_clone(*tok_l),
+        ast_clone(tok_l),
         ast_clone_vec(members),
-        ast_clone(*tok_r));
+        ast_clone(tok_r));
 }
 
 

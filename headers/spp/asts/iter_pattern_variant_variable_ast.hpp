@@ -22,6 +22,10 @@ struct spp::asts::IterPatternVariantVariableAst final : IterPatternVariantAst {
         decltype(var) &&var);
 
     ~IterPatternVariantVariableAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

@@ -44,9 +44,9 @@ auto spp::asts::FunctionParameterGroupAst::pos_end() const -> std::size_t {
 
 auto spp::asts::FunctionParameterGroupAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<FunctionParameterGroupAst>(
-        ast_clone(*tok_l),
+        ast_clone(tok_l),
         ast_clone_vec(params),
-        ast_clone(*tok_r));
+        ast_clone(tok_r));
 }
 
 

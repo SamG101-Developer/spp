@@ -39,9 +39,9 @@ auto spp::asts::GenWithExpressionAst::pos_end() const -> std::size_t {
 
 auto spp::asts::GenWithExpressionAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<GenWithExpressionAst>(
-        ast_clone(*tok_gen),
-        ast_clone(*tok_with),
-        ast_clone(*expr));
+        ast_clone(tok_gen),
+        ast_clone(tok_with),
+        ast_clone(expr));
 }
 
 

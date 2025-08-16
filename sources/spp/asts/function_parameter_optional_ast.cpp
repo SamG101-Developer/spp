@@ -39,11 +39,11 @@ auto spp::asts::FunctionParameterOptionalAst::pos_end() const -> std::size_t {
 
 auto spp::asts::FunctionParameterOptionalAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<FunctionParameterOptionalAst>(
-        ast_clone(*var),
-        ast_clone(*tok_colon),
-        ast_clone(*type),
-        ast_clone(*tok_assign),
-        ast_clone(*default_val));
+        ast_clone(var),
+        ast_clone(tok_colon),
+        ast_clone(type),
+        ast_clone(tok_assign),
+        ast_clone(default_val));
 }
 
 

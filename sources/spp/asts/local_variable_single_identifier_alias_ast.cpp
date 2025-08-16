@@ -5,7 +5,7 @@
 
 spp::asts::LocalVariableSingleIdentifierAliasAst::LocalVariableSingleIdentifierAliasAst(
     decltype(tok_as) &&tok_as,
-    decltype(name) &&name):
+    decltype(name) &&name) :
     tok_as(std::move(tok_as)),
     name(std::move(name)) {
 }
@@ -18,6 +18,13 @@ auto spp::asts::LocalVariableSingleIdentifierAliasAst::pos_start() const -> std:
 
 auto spp::asts::LocalVariableSingleIdentifierAliasAst::pos_end() const -> std::size_t {
     return name->pos_end();
+}
+
+
+auto spp::asts::LocalVariableSingleIdentifierAliasAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<LocalVariableSingleIdentifierAliasAst>(
+        ast_clone(tok_as),
+        ast_clone(name));
 }
 
 

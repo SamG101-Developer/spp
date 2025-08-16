@@ -28,10 +28,10 @@ auto spp::asts::FunctionCallArgumentKeywordAst::pos_end() const -> std::size_t {
 
 auto spp::asts::FunctionCallArgumentKeywordAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<FunctionCallArgumentKeywordAst>(
-        ast_clone(*name),
-        ast_clone(*tok_assign),
-        ast_clone(*conv),
-        ast_clone(*val));
+        ast_clone(name),
+        ast_clone(tok_assign),
+        ast_clone(conv),
+        ast_clone(val));
 }
 
 

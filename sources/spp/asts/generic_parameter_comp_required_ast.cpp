@@ -27,10 +27,10 @@ auto spp::asts::GenericParameterCompRequiredAst::pos_end() const -> std::size_t 
 
 auto spp::asts::GenericParameterCompRequiredAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<GenericParameterCompRequiredAst>(
-        ast_clone(*tok_cmp),
-        ast_clone(*name),
-        ast_clone(*tok_colon),
-        ast_clone(*type));
+        ast_clone(tok_cmp),
+        ast_clone(name),
+        ast_clone(tok_colon),
+        ast_clone(type));
 }
 
 

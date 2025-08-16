@@ -31,10 +31,10 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::pos_end() const -> std::
 
 auto spp::asts::CasePatternVariantDestructureObjectAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<CasePatternVariantDestructureObjectAst>(
-        ast_clone(*type),
-        ast_clone(*tok_l),
+        ast_clone(type),
+        ast_clone(tok_l),
         ast_clone_vec(elems),
-        ast_clone(*tok_r));
+        ast_clone(tok_r));
 }
 
 
@@ -68,7 +68,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::convert_to_variable(
         | genex::views::to<std::vector>();
 
     // Create the final local variable wrapping, tag it and return it.
-    auto var = std::make_unique<LocalVariableDestructureObjectAst>(ast_clone(*type), nullptr, std::move(mapped_elems), nullptr);
+    auto var = std::make_unique<LocalVariableDestructureObjectAst>(ast_clone(type), nullptr, std::move(mapped_elems), nullptr);
     var->m_from_pattern = true;
     return var;
 }
@@ -79,7 +79,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantic
     mixins::CompilerMetaData *meta) -> void {
     // Create the new variable from the pattern in the patterns scope.
     auto var = convert_to_variable(meta);
-    m_mapped_let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, ast_clone(*meta->case_condition));
+    m_mapped_let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
     m_mapped_let->stage_7_analyse_semantics(sm, meta);
 }
 

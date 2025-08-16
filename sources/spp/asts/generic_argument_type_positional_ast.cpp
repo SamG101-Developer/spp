@@ -45,5 +45,5 @@ auto spp::asts::GenericArgumentTypePositionalAst::stage_7_analyse_semantics(
     -> void {
     // Analyse the name and value of the generic type argument.
     val->stage_7_analyse_semantics(sm, meta);
-    val = sm->current_scope->get_type_symbol(*val)->fq_name()->with_convention(ast_clone(*val->get_convention()));
+    val = sm->current_scope->get_type_symbol(*val)->fq_name()->with_convention(ast_clone(val->get_convention()));
 }

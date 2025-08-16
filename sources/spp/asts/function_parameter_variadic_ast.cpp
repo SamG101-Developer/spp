@@ -27,10 +27,10 @@ auto spp::asts::FunctionParameterVariadicAst::pos_end() const -> std::size_t {
 
 auto spp::asts::FunctionParameterVariadicAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<FunctionParameterVariadicAst>(
-        ast_clone(*tok_ellipsis),
-        ast_clone(*var),
-        ast_clone(*tok_colon),
-        ast_clone(*type));
+        ast_clone(tok_ellipsis),
+        ast_clone(var),
+        ast_clone(tok_colon),
+        ast_clone(type));
 }
 
 

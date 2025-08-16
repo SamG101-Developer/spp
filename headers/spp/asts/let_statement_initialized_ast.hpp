@@ -23,7 +23,7 @@ struct spp::asts::LetStatementInitializedAst final : LetStatementAst {
      * The optionally provided type of the variable. Variable type's can always be inferred from their value, but
      * providing the type allows for variant types to be used with values of an inner type.
      */
-    std::unique_ptr<TypeAst> type;
+    std::shared_ptr<TypeAst> type;
 
     /**
      * The @c = token that indicates the assignment of a value to the variable. This is used to indicate that the
@@ -51,6 +51,10 @@ struct spp::asts::LetStatementInitializedAst final : LetStatementAst {
         decltype(type) &&type,
         decltype(tok_assign) &&tok_assign,
         decltype(val) &&val);
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

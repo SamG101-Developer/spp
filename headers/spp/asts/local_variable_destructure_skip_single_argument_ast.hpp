@@ -24,6 +24,10 @@ struct spp::asts::LocalVariableDestructureSkipSingleArgumentAst final : LocalVar
         decltype(tok_underscore) &&tok_underscore);
 
     ~LocalVariableDestructureSkipSingleArgumentAst() override;
+
+    auto extract_name() const -> std::shared_ptr<IdentifierAst> override;
+
+    auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>> override;
 };
 
 

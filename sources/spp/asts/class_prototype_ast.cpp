@@ -47,10 +47,10 @@ auto spp::asts::ClassPrototypeAst::pos_end() const -> std::size_t {
 auto spp::asts::ClassPrototypeAst::clone() const -> std::unique_ptr<Ast> {
     auto c = std::make_unique<ClassPrototypeAst>(
         ast_clone_vec(annotations),
-        ast_clone(*tok_cls),
-        ast_clone(*name),
-        ast_clone(*generic_param_group),
-        ast_clone(*impl));
+        ast_clone(tok_cls),
+        ast_clone(name),
+        ast_clone(generic_param_group),
+        ast_clone(impl));
     c->m_ctx = m_ctx;
     c->m_scope = m_scope;
     c->m_for_alias = m_for_alias;
@@ -84,7 +84,7 @@ auto spp::asts::ClassPrototypeAst::print(meta::AstPrinter &printer) const -> std
 auto spp::asts::ClassPrototypeAst::m_generate_symbols(
     ScopeManager *sm)
     -> analyse::scopes::TypeSymbol* {
-    const auto sym_name = ast_clone(*name->type_parts()[0]);
+    const auto sym_name = ast_clone(name->type_parts()[0]);
     sym_name->generic_args = std::make_unique<GenericArgumentGroupAst>(*generic_param_group);
 
     // Create the symbols as TypeSymbol pointers, so AliasSymbols can also be used.

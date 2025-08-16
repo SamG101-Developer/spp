@@ -77,13 +77,13 @@ auto spp::asts::FunctionPrototypeAst::pos_end() const -> std::size_t {
 auto spp::asts::FunctionPrototypeAst::clone() const -> std::unique_ptr<Ast> {
     auto f = std::make_unique<FunctionPrototypeAst>(
         ast_clone_vec(annotations),
-        ast_clone(*tok_fun),
-        ast_clone(*name),
-        ast_clone(*generic_param_group),
-        ast_clone(*param_group),
-        ast_clone(*tok_arrow),
-        ast_clone(*return_type),
-        ast_clone(*impl));
+        ast_clone(tok_fun),
+        ast_clone(name),
+        ast_clone(generic_param_group),
+        ast_clone(param_group),
+        ast_clone(tok_arrow),
+        ast_clone(return_type),
+        ast_clone(impl));
     f->m_ctx = m_ctx;
     f->m_scope = m_scope;
     f->m_orig_name = m_orig_name;
@@ -188,7 +188,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     if (needs_generation) {
         auto mock_class_ast = std::make_unique<ClassPrototypeAst>(SPP_NO_ANNOTATIONS, nullptr, std::move(mock_class_name), nullptr, nullptr);
         auto mock_constant_value = std::make_unique<ObjectInitializerAst>(std::move(mock_class_name), nullptr);
-        auto mock_constant_ast = std::make_unique<CmpStatementAst>(SPP_NO_ANNOTATIONS, nullptr, ast_clone(*name), nullptr, ast_clone(*mock_class_name), nullptr, std::move(mock_constant_value));
+        auto mock_constant_ast = std::make_unique<CmpStatementAst>(SPP_NO_ANNOTATIONS, nullptr, ast_clone(name), nullptr, ast_clone(mock_class_name), nullptr, std::move(mock_constant_value));
 
         if (const auto mod_ctx = ast_cast<ModulePrototypeAst>(ctx)) {
             mod_ctx->impl->members.emplace_back(std::move(mock_class_ast));

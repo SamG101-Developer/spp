@@ -47,10 +47,10 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::pos_end() const ->
 
 auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<ClosureExpressionParameterAndCaptureGroupAst>(
-        ast_clone(*tok_l),
-        ast_clone(*param_group),
-        ast_clone(*capture_group),
-        ast_clone(*tok_r));
+        ast_clone(tok_l),
+        ast_clone(param_group),
+        ast_clone(capture_group),
+        ast_clone(tok_r));
 }
 
 

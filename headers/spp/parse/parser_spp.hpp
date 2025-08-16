@@ -172,6 +172,7 @@ public:
     auto parse_iter_expression_pattern_variant_no_value() -> std::unique_ptr<asts::IterPatternVariantNoValueAst>;
     auto parse_iter_expression_pattern_variant_exhausted() -> std::unique_ptr<asts::IterPatternVariantExhaustedAst>;
     auto parse_iter_expression_pattern_variant_exception() -> std::unique_ptr<asts::IterPatternVariantExceptionAst>;
+    auto parse_iter_expression_pattern_variant_else() -> std::unique_ptr<asts::IterPatternVariantElseAst>;
 
     auto parse_gen_expression() -> std::unique_ptr<asts::GenExpressionAst>;
     auto parse_gen_expression_with_expression() -> std::unique_ptr<asts::GenExpressionAst>;
@@ -288,7 +289,7 @@ public:
     auto parse_literal_tuple_n_elements(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::TupleLiteralAst>;
 
     auto parse_literal_array_repeated_element(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::ArrayLiteralRepeatedElementAst>;
-    auto parse_literal_array_explicit_elements(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::ArrayLiteralExplicitElements>;
+    auto parse_literal_array_explicit_elements(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::ArrayLiteralExplicitElementsAst>;
 
     auto parse_cmp_value() -> std::unique_ptr<asts::ExpressionAst>;
     auto parse_cmp_object_initializer() -> std::unique_ptr<asts::ObjectInitializerAst>;

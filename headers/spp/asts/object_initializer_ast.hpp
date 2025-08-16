@@ -11,7 +11,7 @@ struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst {
     /**
      * The type being initialized by the object initializer. This is the type of the object being created.
      */
-    std::unique_ptr<TypeAst> type;
+    std::shared_ptr<TypeAst> type;
 
     /**
      * The object initializer argument group that contains the arguments for the object initializer. These arguments

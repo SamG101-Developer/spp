@@ -19,7 +19,7 @@
 #include <genex/views/zip.hpp>
 
 
-spp::asts::ArrayLiteralExplicitElements::ArrayLiteralExplicitElements(
+spp::asts::ArrayLiteralExplicitElementsAst::ArrayLiteralExplicitElementsAst(
     decltype(tok_l) &&tok_l,
     decltype(elements) &&elements,
     decltype(tok_r) &&tok_r) :
@@ -29,25 +29,25 @@ spp::asts::ArrayLiteralExplicitElements::ArrayLiteralExplicitElements(
 }
 
 
-auto spp::asts::ArrayLiteralExplicitElements::pos_start() const -> std::size_t {
+auto spp::asts::ArrayLiteralExplicitElementsAst::pos_start() const -> std::size_t {
     return tok_l->pos_start();
 }
 
 
-auto spp::asts::ArrayLiteralExplicitElements::pos_end() const -> std::size_t {
+auto spp::asts::ArrayLiteralExplicitElementsAst::pos_end() const -> std::size_t {
     return tok_r->pos_end();
 }
 
 
-auto spp::asts::ArrayLiteralExplicitElements::clone() const -> std::unique_ptr<Ast> {
-    return std::make_unique<ArrayLiteralExplicitElements>(
-        ast_clone(*tok_l),
+auto spp::asts::ArrayLiteralExplicitElementsAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<ArrayLiteralExplicitElementsAst>(
+        ast_clone(tok_l),
         ast_clone_vec(elements),
-        ast_clone(*tok_r));
+        ast_clone(tok_r));
 }
 
 
-spp::asts::ArrayLiteralExplicitElements::operator std::string() const {
+spp::asts::ArrayLiteralExplicitElementsAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_l);
     SPP_STRING_EXTEND(elements);
@@ -56,7 +56,7 @@ spp::asts::ArrayLiteralExplicitElements::operator std::string() const {
 }
 
 
-auto spp::asts::ArrayLiteralExplicitElements::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::ArrayLiteralExplicitElementsAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);
     SPP_PRINT_EXTEND(elements);
@@ -65,7 +65,7 @@ auto spp::asts::ArrayLiteralExplicitElements::print(meta::AstPrinter &printer) c
 }
 
 
-auto spp::asts::ArrayLiteralExplicitElements::stage_7_analyse_semantics(
+auto spp::asts::ArrayLiteralExplicitElementsAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta) -> void {
     const auto zeroth_elem = elements[0].get();
@@ -98,7 +98,7 @@ auto spp::asts::ArrayLiteralExplicitElements::stage_7_analyse_semantics(
 }
 
 
-auto spp::asts::ArrayLiteralExplicitElements::stage_8_check_memory(
+auto spp::asts::ArrayLiteralExplicitElementsAst::stage_8_check_memory(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
     -> void {
@@ -110,7 +110,7 @@ auto spp::asts::ArrayLiteralExplicitElements::stage_8_check_memory(
 }
 
 
-auto spp::asts::ArrayLiteralExplicitElements::infer_type(
+auto spp::asts::ArrayLiteralExplicitElementsAst::infer_type(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> {
     // Create a "T" type and "n" size, for the array type.

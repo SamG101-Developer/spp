@@ -25,6 +25,12 @@ auto spp::asts::IterPatternVariantNoValueAst::pos_end() const -> std::size_t {
 }
 
 
+auto spp::asts::IterPatternVariantNoValueAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<IterPatternVariantNoValueAst>(
+        ast_clone(tok_underscore));
+}
+
+
 spp::asts::IterPatternVariantNoValueAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_underscore);

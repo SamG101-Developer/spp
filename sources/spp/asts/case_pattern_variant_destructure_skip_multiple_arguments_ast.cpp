@@ -24,8 +24,8 @@ auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::pos_end()
 
 auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<CasePatternVariantDestructureSkipMultipleArgumentsAst>(
-        ast_clone(*tok_ellipsis),
-        ast_clone(*binding));
+        ast_clone(tok_ellipsis),
+        ast_clone(binding));
 }
 
 

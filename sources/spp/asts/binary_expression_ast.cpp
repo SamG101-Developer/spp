@@ -26,11 +26,14 @@ spp::asts::BinaryExpressionAst::BinaryExpressionAst(
     decltype(lhs) &&lhs,
     decltype(tok_op) &&tok_op,
     decltype(rhs) &&rhs) :
+    m_mapped_func(nullptr),
     lhs(std::move(lhs)),
     tok_op(std::move(tok_op)),
-    rhs(std::move(rhs)),
-    m_mapped_func(nullptr) {
+    rhs(std::move(rhs)) {
 }
+
+
+spp::asts::BinaryExpressionAst::~BinaryExpressionAst() = default;
 
 
 auto spp::asts::BinaryExpressionAst::pos_start() const -> std::size_t {
@@ -45,9 +48,9 @@ auto spp::asts::BinaryExpressionAst::pos_end() const -> std::size_t {
 
 auto spp::asts::BinaryExpressionAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<BinaryExpressionAst>(
-        ast_clone(*lhs),
-        ast_clone(*tok_op),
-        ast_clone(*rhs));
+        ast_clone(lhs),
+        ast_clone(tok_op),
+        ast_clone(rhs));
 }
 
 
@@ -99,7 +102,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
         for (auto i = 0u; i < rhs_num_elems; ++i) {
             auto field = std::make_unique<IdentifierAst>(rhs->pos_start(), std::to_string(i));
             auto new_ast = std::make_unique<PostfixExpressionAst>(
-                ast_clone(*lhs),
+                ast_clone(lhs),
                 std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
             new_ast->stage_7_analyse_semantics(sm, meta);
             new_asts.push_back(std::move(new_ast));
@@ -109,7 +112,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
         lhs = std::move(new_asts[0]);
         rhs = std::move(new_asts[1]);
         for (auto &&new_ast : new_asts | genex::views::drop(2)) {
-            lhs = std::make_unique<BinaryExpressionAst>(std::move(lhs), ast_clone(*tok_op), std::move(rhs));
+            lhs = std::make_unique<BinaryExpressionAst>(std::move(lhs), ast_clone(tok_op), std::move(rhs));
             rhs = std::move(new_ast);
         }
         m_mapped_func = analyse::utils::bin_utils::convert_bin_expr_to_function_call(*this, *sm);
@@ -130,7 +133,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
         for (auto i = 0u; i < lhs_num_elems; ++i) {
             auto field = std::make_unique<IdentifierAst>(rhs->pos_start(), std::to_string(i));
             auto new_ast = std::make_unique<PostfixExpressionAst>(
-                ast_clone(*rhs),
+                ast_clone(rhs),
                 std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
             new_ast->stage_7_analyse_semantics(sm, meta);
             new_asts.push_back(std::move(new_ast));
@@ -141,7 +144,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
         lhs = std::move(new_asts[new_asts.size() - 1]);
         for (auto &&new_ast : new_asts | genex::views::take(new_asts.size() - 1)) {
             lhs = std::move(new_ast);
-            rhs = std::make_unique<BinaryExpressionAst>(std::move(lhs), ast_clone(*tok_op), std::move(rhs));
+            rhs = std::make_unique<BinaryExpressionAst>(std::move(lhs), ast_clone(tok_op), std::move(rhs));
         }
         m_mapped_func = analyse::utils::bin_utils::convert_bin_expr_to_function_call(*this, *sm);
         m_mapped_func->stage_7_analyse_semantics(sm, meta);

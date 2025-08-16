@@ -30,10 +30,10 @@ auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
 
     // Depending on that the comptime AST is, get the value.
     if (const auto comptime_param = ast_cast<GenericParameterCompAst>(c)) {
-        value = ast_clone(*comptime_param->name);
+        value = ast_clone(comptime_param->name);
     }
     else if (const auto comptime_arg = ast_cast<GenericArgumentCompAst>(c)) {
-        value = ast_clone(*comptime_arg->val);
+        value = ast_clone(comptime_arg->val);
     }
 
     // Create the GenericArgumentCompKeywordAst with the name and value.
@@ -57,9 +57,9 @@ auto spp::asts::GenericArgumentCompKeywordAst::pos_end() const -> std::size_t {
 
 auto spp::asts::GenericArgumentCompKeywordAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<GenericArgumentCompKeywordAst>(
-        ast_clone(*name),
-        ast_clone(*tok_assign),
-        ast_clone(*val));
+        ast_clone(name),
+        ast_clone(tok_assign),
+        ast_clone(val));
 }
 
 

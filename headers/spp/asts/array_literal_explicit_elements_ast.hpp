@@ -13,7 +13,7 @@
  * The elements are stored as @c Ast* pointers, but are restricted to expression-like ASTs by the parser. Their
  * respective analysis functions will be called by inheritance/vtable logic.
  */
-struct spp::asts::ArrayLiteralExplicitElements final : ArrayLiteralAst {
+struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiteralAst {
     SPP_AST_KEY_FUNCTIONS;
 
     /**
@@ -40,7 +40,7 @@ struct spp::asts::ArrayLiteralExplicitElements final : ArrayLiteralAst {
      * @param[in] elements The list of expressions that are the elements of the array.
      * @param[in] tok_r The token that represents the right square bracket \c ] in the array literal.
      */
-    ArrayLiteralExplicitElements(
+    ArrayLiteralExplicitElementsAst(
         decltype(tok_l) &&tok_l,
         decltype(elements) &&elements,
         decltype(tok_r) &&tok_r);

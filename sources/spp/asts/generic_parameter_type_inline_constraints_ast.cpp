@@ -28,7 +28,7 @@ auto spp::asts::GenericParameterTypeInlineConstraintsAst::pos_end() const -> std
 
 auto spp::asts::GenericParameterTypeInlineConstraintsAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<GenericParameterTypeInlineConstraintsAst>(
-        ast_clone(*tok_colon),
+        ast_clone(tok_colon),
         ast_clone_vec(constraints));
 }
 

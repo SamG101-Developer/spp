@@ -40,7 +40,7 @@ auto spp::asts::AssignmentStatementAst::pos_end() const -> std::size_t {
 auto spp::asts::AssignmentStatementAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<AssignmentStatementAst>(
         ast_clone_vec(lhs),
-        ast_clone(*tok_assign),
+        ast_clone(tok_assign),
         ast_clone_vec(rhs));
 }
 

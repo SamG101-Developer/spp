@@ -31,7 +31,7 @@ struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVariableAst {
      * The name of the local variable. This is the identifier that is used to refer to the variable in the local scope.
      * It will be saved against the symbol in the symbol table of the current scope.
      */
-    std::unique_ptr<IdentifierAst> name;
+    std::shared_ptr<IdentifierAst> name;
 
     /**
      * The optional alias for the local variable. This is used to create an alias for the variable, which can be used to
@@ -52,6 +52,14 @@ struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVariableAst {
         decltype(alias) &&alias);
 
     ~LocalVariableSingleIdentifierAst() override;
+
+    auto extract_name() const -> std::shared_ptr<IdentifierAst> override;
+
+    auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>> override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

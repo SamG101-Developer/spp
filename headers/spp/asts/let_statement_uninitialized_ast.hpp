@@ -45,6 +45,10 @@ struct spp::asts::LetStatementUninitializedAst final : LetStatementAst {
         decltype(type) &&type);
 
     ~LetStatementUninitializedAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

@@ -4,6 +4,7 @@
 #include <spp/asts/_fwd.hpp>
 
 #include <boost/multiprecision/cpp_dec_float.hpp>
+#include <boost/multiprecision/cpp_int.hpp>
 
 
 namespace spp::analyse::errors {
@@ -30,7 +31,8 @@ namespace spp::analyse::errors {
     struct SppIdentifierDuplicateError;
     struct SppRecursiveTypeError;
     struct SppCoroutineInvalidReturnTypeError;
-    struct SppNumberOutOfBoundsError;
+    struct SppFloatOutOfBoundsError;
+    struct SppIntegerOutOfBoundsError;
     struct SppOrderInvalidError;
     struct SppExpansionOfNonTupleError;
     struct SppMemoryOverlapUsageError;
@@ -41,6 +43,17 @@ namespace spp::analyse::errors {
     struct SppYieldedTypeMismatchError;
     struct SppIdentifierUnknownError;
     struct SppUnreachableCodeError;
+    struct SppIterExpressionPatternTypeDuplicateError;
+    struct SppIterExpressionPatternIncompatibleError;
+    struct SppIterExpressionPatternMissingError;
+    struct SppInvalidTypeAnnotationError;
+    struct SppMultipleSkipMultiArgumentsError;
+    struct SppVariableArrayDestructureArrayTypeMismatchError;
+    struct SppVariableArrayDestructureArraySizeMismatchError;
+    struct SppVariableTupleDestructureTupleTypeMismatchError;
+    struct SppVariableTupleDestructureTupleSizeMismatchError;
+    struct SppVariableObjectDestructureWithBoundMultiSkipError;
+    struct SppExpressionNotBooleanError;
 
     auto add_header(std::size_t err_code, std::string &&msg) -> std::string;
     auto add_error(std::size_t pos, std::string &&tag) -> std::string;
@@ -65,7 +78,7 @@ struct spp::analyse::errors::SppAnnotationInvalidError final : spp::utils::error
 
 
 struct spp::analyse::errors::SppExpressionTypeInvalidError final : spp::utils::errors::SemanticError {
-    explicit SppExpressionTypeInvalidError(asts::ExpressionAst const &expr);
+    explicit SppExpressionTypeInvalidError(asts::Ast const &expr);
 };
 
 
@@ -164,8 +177,13 @@ struct spp::analyse::errors::SppCoroutineInvalidReturnTypeError final : spp::uti
 };
 
 
-struct spp::analyse::errors::SppNumberOutOfBoundsError final : spp::utils::errors::SemanticError {
-    explicit SppNumberOutOfBoundsError(asts::LiteralAst const &literal, boost::multiprecision::cpp_dec_float_100 value, boost::multiprecision::cpp_dec_float_100 lower, boost::multiprecision::cpp_dec_float_100 upper, std::string_view what);
+struct spp::analyse::errors::SppFloatOutOfBoundsError final : spp::utils::errors::SemanticError {
+    explicit SppFloatOutOfBoundsError(asts::LiteralAst const &literal, boost::multiprecision::cpp_dec_float_100 value, boost::multiprecision::cpp_dec_float_100 lower, boost::multiprecision::cpp_dec_float_100 upper, std::string_view what);
+};
+
+
+struct spp::analyse::errors::SppIntegerOutOfBoundsError final : spp::utils::errors::SemanticError {
+    explicit SppIntegerOutOfBoundsError(asts::LiteralAst const &literal, boost::multiprecision::cpp_int value, boost::multiprecision::cpp_int lower, boost::multiprecision::cpp_int upper, std::string_view what);
 };
 
 
@@ -216,5 +234,60 @@ struct spp::analyse::errors::SppIdentifierUnknownError final : spp::utils::error
 
 
 struct spp::analyse::errors::SppUnreachableCodeError final : spp::utils::errors::SemanticError {
-    explicit SppUnreachableCodeError(asts::Ast const &member, asts::Ast const& next_member);
+    explicit SppUnreachableCodeError(asts::Ast const &member, asts::Ast const &next_member);
+};
+
+
+struct spp::analyse::errors::SppIterExpressionPatternTypeDuplicateError final : spp::utils::errors::SemanticError {
+    explicit SppIterExpressionPatternTypeDuplicateError(asts::IterPatternVariantAst const &first_branch, asts::IterPatternVariantAst const &second_branch);
+};
+
+
+struct spp::analyse::errors::SppIterExpressionPatternIncompatibleError final : spp::utils::errors::SemanticError {
+    explicit SppIterExpressionPatternIncompatibleError(asts::ExpressionAst const &cond, asts::TypeAst const &cond_type, asts::IterPatternVariantAst const &pattern, asts::TypeAst const &required_generator_type);
+};
+
+
+struct spp::analyse::errors::SppIterExpressionPatternMissingError final : spp::utils::errors::SemanticError {
+    explicit SppIterExpressionPatternMissingError(asts::ExpressionAst const &cond, asts::TypeAst const &cond_type);
+};
+
+
+struct spp::analyse::errors::SppInvalidTypeAnnotationError final : spp::utils::errors::SemanticError {
+    explicit SppInvalidTypeAnnotationError(asts::TypeAst const &type, asts::LocalVariableAst const &var);
+};
+
+
+struct spp::analyse::errors::SppMultipleSkipMultiArgumentsError final : spp::utils::errors::SemanticError {
+    explicit SppMultipleSkipMultiArgumentsError(asts::LocalVariableAst const &var, asts::LocalVariableDestructureSkipMultipleArgumentsAst const &first_arg, asts::LocalVariableDestructureSkipMultipleArgumentsAst const &second_arg);
+};
+
+
+struct spp::analyse::errors::SppVariableArrayDestructureArrayTypeMismatchError final : spp::utils::errors::SemanticError {
+    explicit SppVariableArrayDestructureArrayTypeMismatchError(asts::LocalVariableDestructureArrayAst const &var, asts::ExpressionAst const &val, asts::TypeAst const &val_type);
+};
+
+
+struct spp::analyse::errors::SppVariableArrayDestructureArraySizeMismatchError final : spp::utils::errors::SemanticError {
+    explicit SppVariableArrayDestructureArraySizeMismatchError(asts::LocalVariableDestructureArrayAst const &var, std::size_t var_size, asts::ExpressionAst const &val, std::size_t val_size);
+};
+
+
+struct spp::analyse::errors::SppVariableTupleDestructureTupleTypeMismatchError final : spp::utils::errors::SemanticError {
+    explicit SppVariableTupleDestructureTupleTypeMismatchError(asts::LocalVariableDestructureTupleAst const &var, asts::ExpressionAst const &val, asts::TypeAst const &val_type);
+};
+
+
+struct spp::analyse::errors::SppVariableTupleDestructureTupleSizeMismatchError final : spp::utils::errors::SemanticError {
+    explicit SppVariableTupleDestructureTupleSizeMismatchError(asts::LocalVariableDestructureTupleAst const &var, std::size_t var_size, asts::ExpressionAst const &val, std::size_t val_size);
+};
+
+
+struct spp::analyse::errors::SppVariableObjectDestructureWithBoundMultiSkipError final : spp::utils::errors::SemanticError {
+    explicit SppVariableObjectDestructureWithBoundMultiSkipError(asts::LocalVariableDestructureObjectAst const &var, asts::LocalVariableDestructureSkipMultipleArgumentsAst const &multi_skip);
+};
+
+
+struct spp::analyse::errors::SppExpressionNotBooleanError final : spp::utils::errors::SemanticError {
+    explicit SppExpressionNotBooleanError(asts::Ast const &expr, asts::TypeAst const &expr_type, std::string_view what);
 };

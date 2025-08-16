@@ -19,7 +19,7 @@ auto spp::asts::CasePatternVariantElseAst::pos_end() const -> std::size_t {
 
 
 auto spp::asts::CasePatternVariantElseAst::clone() const -> std::unique_ptr<Ast> {
-    return std::make_unique<CasePatternVariantElseAst>(ast_clone(*tok_else));
+    return std::make_unique<CasePatternVariantElseAst>(ast_clone(tok_else));
 }
 
 

@@ -23,7 +23,7 @@ auto spp::asts::FoldExpressionAst::pos_end() const -> std::size_t {
 
 auto spp::asts::FoldExpressionAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<FoldExpressionAst>(
-        ast_clone(*tok_ellipsis));
+        ast_clone(tok_ellipsis));
 }
 
 

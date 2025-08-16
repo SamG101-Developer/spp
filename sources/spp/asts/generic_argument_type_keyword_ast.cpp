@@ -26,7 +26,7 @@ auto spp::asts::GenericArgumentTypeKeywordAst::from_symbol(
     -> std::unique_ptr<GenericArgumentTypeKeywordAst> {
     // Extract the value from the symbol's scope, if it exists.
     auto value = sym->scope
-        ? dynamic_cast<analyse::scopes::TypeSymbol*>(sym->scope->ty_sym)->fq_name()->with_convention(ast_clone(*sym->convention))
+        ? dynamic_cast<analyse::scopes::TypeSymbol*>(sym->scope->ty_sym)->fq_name()->with_convention(ast_clone(sym->convention))
         : nullptr;
 
     // Wrap the value into a type argument.
@@ -46,9 +46,9 @@ auto spp::asts::GenericArgumentTypeKeywordAst::pos_end() const -> std::size_t {
 
 auto spp::asts::GenericArgumentTypeKeywordAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<GenericArgumentTypeKeywordAst>(
-        ast_clone(*name),
-        ast_clone(*tok_assign),
-        ast_clone(*val));
+        ast_clone(name),
+        ast_clone(tok_assign),
+        ast_clone(val));
 }
 
 
@@ -76,5 +76,5 @@ auto spp::asts::GenericArgumentTypeKeywordAst::stage_7_analyse_semantics(
     -> void {
     // Analyse the name and value of the generic type argument.
     val->stage_7_analyse_semantics(sm, meta);
-    val = sm->current_scope->get_type_symbol(*val)->fq_name()->with_convention(ast_clone(*val->get_convention()));
+    val = sm->current_scope->get_type_symbol(*val)->fq_name()->with_convention(ast_clone(val->get_convention()));
 }

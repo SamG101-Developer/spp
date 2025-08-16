@@ -3,7 +3,6 @@
 #include <spp/asts/_fwd.hpp>
 
 namespace spp::analyse::utils::mem_utils {
-
     /**
      * The @c InconsistentCondMemState holds two @c CondMemState pairs, which have conflicting information about the
      * symbols from different branches. Branches must equally set memory information for symbols if the branch is being
@@ -60,7 +59,7 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
      * set from a function parameter's convention. If this attribute is @c nullptr, then the convention is the "mov"
      * convention.
      */
-    asts::ConventionAst *ast_borrowed;
+    asts::Ast *ast_borrowed;
 
     /**
      * The @c ast_partial_moves ASTs are the ASTs that represent partial moves of the value out of the symbol. For the
@@ -265,5 +264,13 @@ namespace spp::analyse::utils::mem_utils {
         bool check_pins,
         bool check_linked_pins,
         bool mark_moves,
-        asts::mixins::CompilerMetaData *meta) -> void;
+        asts::mixins::CompilerMetaData *meta)
+        -> void;
+
+    template <typename T>
+    auto validate_inconsistent_memory(
+        std::vector<T> const &branches,
+        scopes::ScopeManager* sm,
+        asts::mixins::CompilerMetaData* meta)
+        -> void;
 }

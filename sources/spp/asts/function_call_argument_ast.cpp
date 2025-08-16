@@ -46,5 +46,5 @@ auto spp::asts::FunctionCallArgumentAst::infer_type(
     // Infer the type from the value expression, unless an explicit "self" type has been given.
     return m_self_type != nullptr
         ? m_self_type
-        : val->infer_type(sm, meta)->with_convention(ast_clone(*conv));
+        : val->infer_type(sm, meta)->with_convention(ast_clone(conv));
 }

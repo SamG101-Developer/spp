@@ -9,6 +9,10 @@ struct spp::asts::LocalVariableDestructureArrayAst final : LocalVariableAst {
     SPP_AST_KEY_FUNCTIONS;
     friend struct CasePatternVariantDestructureArrayAst;
 
+private:
+    std::vector<std::unique_ptr<LetStatementInitializedAst>> m_new_asts;
+
+public:
     /**
      * The @code [@endcode token that indicates the start of an array destructuring pattern.
      */
@@ -37,6 +41,14 @@ struct spp::asts::LocalVariableDestructureArrayAst final : LocalVariableAst {
         decltype(tok_r) &&tok_r);
 
     ~LocalVariableDestructureArrayAst() override;
+
+    auto extract_name() const -> std::shared_ptr<IdentifierAst> override;
+
+    auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>> override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

@@ -25,6 +25,12 @@ auto spp::asts::IterPatternVariantExhaustedAst::pos_end() const -> std::size_t {
 }
 
 
+auto spp::asts::IterPatternVariantExhaustedAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<IterPatternVariantExhaustedAst>(
+        ast_clone(tok_exhausted));
+}
+
+
 spp::asts::IterPatternVariantExhaustedAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_exhausted);

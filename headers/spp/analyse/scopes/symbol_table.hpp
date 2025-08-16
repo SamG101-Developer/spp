@@ -18,7 +18,7 @@ namespace spp::analyse::scopes {
 template <typename I, typename S>
 class spp::analyse::scopes::IndividualSymbolTable {
 private:
-    std::map<I*, S*> m_table;
+    std::map<I*, std::unique_ptr<S>> m_table;
 
 public:
     IndividualSymbolTable();

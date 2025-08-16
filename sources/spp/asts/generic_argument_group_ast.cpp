@@ -45,13 +45,13 @@ auto spp::asts::GenericArgumentGroupAst::from_params(
         // Map type generic parameters to keyword type arguments.
         if (const auto type_param = ast_cast<GenericParameterTypeAst>(param.get())) {
             mapped_args.emplace_back(std::make_unique<GenericArgumentTypeKeywordAst>(
-                ast_clone(*type_param->name), nullptr, ast_clone(*type_param->name)));
+                ast_clone(type_param->name), nullptr, ast_clone(type_param->name)));
         }
 
         // Map comptime generic parameters to keyword comptime arguments.
         else if (const auto comp_param = ast_cast<GenericParameterCompAst>(param.get())) {
             mapped_args.emplace_back(std::make_unique<GenericArgumentCompKeywordAst>(
-                ast_clone(*comp_param->name), nullptr, IdentifierAst::from_type(*comp_param->name)));
+                ast_clone(comp_param->name), nullptr, IdentifierAst::from_type(*comp_param->name)));
         }
     }
 
@@ -69,13 +69,13 @@ auto spp::asts::GenericArgumentGroupAst::from_map(
         // Map type ASTs to keyword type arguments.
         if (auto arg_val_for_type = ast_cast<TypeAst>(arg_val)) {
             mapped_args.emplace_back(std::make_unique<GenericArgumentTypeKeywordAst>(
-                ast_clone(*arg_name), nullptr, ast_clone(*arg_val_for_type)));
+                ast_clone(arg_name), nullptr, ast_clone(arg_val_for_type)));
         }
 
         // Map expression ASTs to keyword comptime arguments.
         else if (auto arg_val_for_comp = ast_cast<ExpressionAst>(arg_val)) {
             mapped_args.emplace_back(std::make_unique<GenericArgumentCompKeywordAst>(
-                ast_clone(*arg_name), nullptr, ast_clone(*arg_val_for_comp)));
+                ast_clone(arg_name), nullptr, ast_clone(arg_val_for_comp)));
         }
     }
 
@@ -96,9 +96,9 @@ auto spp::asts::GenericArgumentGroupAst::pos_end() const -> std::size_t {
 
 auto spp::asts::GenericArgumentGroupAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<GenericArgumentGroupAst>(
-        ast_clone(*tok_l),
+        ast_clone(tok_l),
         ast_clone_vec(args),
-        ast_clone(*tok_r));
+        ast_clone(tok_r));
 }
 
 

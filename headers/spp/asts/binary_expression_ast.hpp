@@ -14,6 +14,10 @@
 struct spp::asts::BinaryExpressionAst final : ExpressionAst {
     SPP_AST_KEY_FUNCTIONS;
 
+private:
+    std::unique_ptr<PostfixExpressionAst> m_mapped_func;
+
+public:
     /**
      * The left-hand side expression of the binary expression. This is the first operand.
      */
@@ -40,6 +44,8 @@ struct spp::asts::BinaryExpressionAst final : ExpressionAst {
         decltype(tok_op) &&tok_op,
         decltype(rhs) &&rhs);
 
+    ~BinaryExpressionAst() override;
+
     /**
      * Ensure the operator exists over the left-hand-side type, compatible with the right-hand-side type. This is done
      * by. Also handle any binary fold operations, like @code a + ..@endcode.
@@ -63,9 +69,6 @@ struct spp::asts::BinaryExpressionAst final : ExpressionAst {
      * @return The inferred type of the binary expression, which is the return type of the mapped function.
      */
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
-
-private:
-    std::unique_ptr<PostfixExpressionAst> m_mapped_func;
 };
 
 

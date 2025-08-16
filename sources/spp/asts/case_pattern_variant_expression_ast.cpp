@@ -27,7 +27,7 @@ auto spp::asts::CasePatternVariantExpressionAst::pos_end() const -> std::size_t 
 
 
 auto spp::asts::CasePatternVariantExpressionAst::clone() const -> std::unique_ptr<Ast> {
-    return std::make_unique<CasePatternVariantExpressionAst>(ast_clone(*expr));
+    return std::make_unique<CasePatternVariantExpressionAst>(ast_clone(expr));
 }
 
 

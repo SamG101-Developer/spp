@@ -43,10 +43,10 @@ auto spp::asts::CaseExpressionBranchAst::pos_end() const -> std::size_t {
 
 auto spp::asts::CaseExpressionBranchAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<CaseExpressionBranchAst>(
-        ast_clone(*op),
+        ast_clone(op),
         ast_clone_vec(patterns),
-        ast_clone(*guard),
-        ast_clone(*body));
+        ast_clone(guard),
+        ast_clone(body));
 }
 
 
@@ -85,7 +85,7 @@ auto spp::asts::CaseExpressionBranchAst::stage_7_analyse_semantics(
             const auto pe = ast_cast<CasePatternVariantExpressionAst>(p.get());
             const auto bin_ast = std::make_unique<BinaryExpressionAst>(
                 std::make_unique<ObjectInitializerAst>(meta->case_condition->infer_type(sm, meta), nullptr),
-                ast_clone(*op),
+                ast_clone(op),
                 std::make_unique<ObjectInitializerAst>(pe->expr->infer_type(sm, meta), nullptr));
             bin_ast->stage_7_analyse_semantics(sm, meta);
         }

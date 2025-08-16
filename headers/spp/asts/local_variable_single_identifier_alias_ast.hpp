@@ -17,7 +17,7 @@ struct spp::asts::LocalVariableSingleIdentifierAliasAst final : virtual Ast {
      * The identifier that is used as the alias for the local variable. This will be the name on the symbol that is
      * introduced.
      */
-    std::unique_ptr<IdentifierAst> name;
+    std::shared_ptr<IdentifierAst> name;
 
     /**
      * Construct the LocalVariableSingleIdentifierAliasAst with the arguments matching the members.

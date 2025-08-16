@@ -8,6 +8,10 @@
 struct spp::asts::IsExpressionAst final : ExpressionAst {
     SPP_AST_KEY_FUNCTIONS;
 
+private:
+    std::unique_ptr<PostfixExpressionAst> m_mapped_func;
+
+public:
     /**
      * The left-hand side expression of the is expression. This is the first operand.
      */
@@ -35,6 +39,12 @@ struct spp::asts::IsExpressionAst final : ExpressionAst {
         decltype(rhs) &&rhs);
 
     ~IsExpressionAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 

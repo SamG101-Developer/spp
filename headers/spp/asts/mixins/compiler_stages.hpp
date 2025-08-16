@@ -135,6 +135,8 @@ struct spp::asts::mixins::CompilerMetaDataState {
     FunctionPrototypeAst *target_call_function_prototype;
     bool target_call_was_function_async;
     bool prevent_auto_generator_resume;
+    std::shared_ptr<TypeAst> let_stmt_explicit_type;
+    ExpressionAst* let_stmt_value;
 };
 
 

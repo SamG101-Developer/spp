@@ -59,9 +59,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::pos_end() const -> std::size_t {
 
 auto spp::asts::FunctionCallArgumentGroupAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<FunctionCallArgumentGroupAst>(
-        ast_clone(*tok_l),
+        ast_clone(tok_l),
         ast_clone_vec(args),
-        ast_clone(*tok_r));
+        ast_clone(tok_r));
 }
 
 
@@ -148,9 +148,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         for (auto j = arg_type->type_parts().back()->generic_args->args.size() - 1; j > -1; --j) {
             auto field = std::make_unique<IdentifierAst>(arg->val->pos_start(), std::to_string(i));
             auto new_ast = std::make_unique<PostfixExpressionAst>(
-                ast_clone(*arg->val),
+                ast_clone(arg->val),
                 std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
-            auto new_arg = std::make_unique<FunctionCallArgumentPositionalAst>(ast_clone(*arg->conv), nullptr, std::move(new_ast));
+            auto new_arg = std::make_unique<FunctionCallArgumentPositionalAst>(ast_clone(arg->conv), nullptr, std::move(new_ast));
             args.insert(args.begin() + i, std::move(new_arg));
         }
     }

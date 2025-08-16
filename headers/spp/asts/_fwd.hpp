@@ -109,7 +109,7 @@ namespace spp::asts {
     struct IntegerLiteralAst;
     struct ArrayLiteralAst;
     struct ArrayLiteralRepeatedElementAst;
-    struct ArrayLiteralExplicitElements;
+    struct ArrayLiteralExplicitElementsAst;
     struct StringLiteralAst;
     struct TupleLiteralAst;
 
@@ -120,6 +120,7 @@ namespace spp::asts {
     struct IterExpressionAst;
     struct IterExpressionBranchAst;
     struct IterPatternVariantAst;
+    struct IterPatternVariantElseAst;
     struct IterPatternVariantExceptionAst;
     struct IterPatternVariantExhaustedAst;
     struct IterPatternVariantNoValueAst;

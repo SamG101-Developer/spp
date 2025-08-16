@@ -25,7 +25,7 @@ auto spp::asts::BooleanLiteralAst::False(const std::size_t pos) -> std::unique_p
 
 auto spp::asts::BooleanLiteralAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<BooleanLiteralAst>(
-        ast_clone(*tok_bool));
+        ast_clone(tok_bool));
 }
 
 

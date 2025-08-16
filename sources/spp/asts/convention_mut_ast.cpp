@@ -27,8 +27,8 @@ auto spp::asts::ConventionMutAst::pos_end() const -> std::size_t {
 
 auto spp::asts::ConventionMutAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<ConventionMutAst>(
-        ast_clone(*tok_borrow),
-        ast_clone(*tok_mut));
+        ast_clone(tok_borrow),
+        ast_clone(tok_mut));
 }
 
 

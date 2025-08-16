@@ -28,9 +28,9 @@ auto spp::asts::FunctionParameterRequiredAst::pos_end() const -> std::size_t {
 
 auto spp::asts::FunctionParameterRequiredAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<FunctionParameterRequiredAst>(
-        ast_clone(*var),
-        ast_clone(*tok_colon),
-        ast_clone(*type));
+        ast_clone(var),
+        ast_clone(tok_colon),
+        ast_clone(type));
 }
 
 

@@ -8,6 +8,11 @@ namespace spp::analyse::scopes {
 }
 
 
+namespace spp::asts::mixins {
+    struct CompilerMetaData;
+}
+
+
 namespace spp::analyse::utils::type_utils {
     /**
      * The symbolic equality type checker is a complex type checking algorithm that takes namespacing, scopes, aliases,
@@ -87,4 +92,11 @@ namespace spp::analyse::utils::type_utils {
         asts::ExpressionAst const &expr,
         std::string_view what)
         -> std::tuple<std::unique_ptr<asts::TypeAst>, std::unique_ptr<asts::TypeAst>, bool, bool, bool, std::unique_ptr<asts::TypeAst>>;
+
+    template <typename T>
+    auto validate_inconsistent_types(
+        std::vector<T> const &branches,
+        scopes::ScopeManager const *sm,
+        asts::mixins::CompilerMetaData *meta)
+        -> std::tuple<std::pair<asts::Ast*, asts::TypeAst*>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>>;
 }

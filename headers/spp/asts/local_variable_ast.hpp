@@ -20,9 +20,9 @@ protected:
     bool m_from_pattern;
 
 public:
-    virtual auto extract_names() const -> std::vector<IdentifierAst*>;
+    virtual auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>>;
 
-    virtual auto extract_name() const -> IdentifierAst*;
+    virtual auto extract_name() const -> std::shared_ptr<IdentifierAst>;
 };
 
 

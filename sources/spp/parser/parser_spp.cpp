@@ -1990,11 +1990,11 @@ auto spp::parse::ParserSpp::parse_literal_array_repeated_element(std::function<s
 }
 
 
-auto spp::parse::ParserSpp::parse_literal_array_explicit_elements(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::ArrayLiteralExplicitElements> {
+auto spp::parse::ParserSpp::parse_literal_array_explicit_elements(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::ArrayLiteralExplicitElementsAst> {
     PARSE_ONCE(p1, parse_token_left_square_bracket);
     PARSE_ONE_OR_MORE(p2, elem_parser, parse_token_comma);
     PARSE_ONCE(p3, parse_token_right_square_bracket);
-    return CREATE_AST(asts::ArrayLiteralExplicitElements, p1, p2, p3);
+    return CREATE_AST(asts::ArrayLiteralExplicitElementsAst, p1, p2, p3);
 }
 
 

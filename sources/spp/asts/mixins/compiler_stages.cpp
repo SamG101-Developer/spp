@@ -44,7 +44,7 @@ auto spp::asts::mixins::CompilerStages::stage_10_code_gen_2() -> void {
 
 
 auto spp::asts::mixins::CompilerMetaData::save() -> void {
-    m_history.emplace(ast_clone(*return_type_overload_resolver_type), assignment_targets);
+    m_history.emplace(ast_clone(return_type_overload_resolver_type), assignment_targets);
 }
 
 

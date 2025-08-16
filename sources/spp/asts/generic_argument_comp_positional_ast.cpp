@@ -27,7 +27,7 @@ auto spp::asts::GenericArgumentCompPositionalAst::pos_end() const -> std::size_t
 
 auto spp::asts::GenericArgumentCompPositionalAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<GenericArgumentCompPositionalAst>(
-        ast_clone(*val));
+        ast_clone(val));
 }
 
 

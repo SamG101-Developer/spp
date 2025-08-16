@@ -10,7 +10,6 @@
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 
-#include <boost/multiprecision/cpp_int.hpp>
 #include <boost/multiprecision/cpp_dec_float.hpp>
 
 using CppBigFloat = boost::multiprecision::cpp_dec_float_100;
@@ -54,10 +53,10 @@ auto spp::asts::FloatLiteralAst::pos_end() const -> std::size_t {
 
 auto spp::asts::FloatLiteralAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<FloatLiteralAst>(
-        ast_clone(*tok_sign),
-        ast_clone(*int_val),
-        ast_clone(*tok_dot),
-        ast_clone(*frac_val),
+        ast_clone(tok_sign),
+        ast_clone(int_val),
+        ast_clone(tok_dot),
+        ast_clone(frac_val),
         type.c_str());
 }
 
@@ -94,7 +93,7 @@ auto spp::asts::FloatLiteralAst::stage_7_analyse_semantics(
 
     // Check if the value is within the bounds.
     if (mapped_val < lower || mapped_val > upper) {
-        analyse::errors::SppNumberOutOfBoundsError(*this, mapped_val, lower, upper, "float")
+        analyse::errors::SppFloatOutOfBoundsError(*this, mapped_val, lower, upper, "float")
             .scopes({sm->current_scope})
             .raise();
     }

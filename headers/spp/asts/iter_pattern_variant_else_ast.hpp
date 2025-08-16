@@ -1,0 +1,23 @@
+#pragma once
+
+#include <spp/asts/iter_pattern_variant_ast.hpp>
+#include <spp/asts/_fwd.hpp>
+
+
+struct spp::asts::IterPatternVariantElseAst final : IterPatternVariantAst {
+    SPP_AST_KEY_FUNCTIONS;
+
+    /**
+     * The @c else token that indicates the pattern variant is a "catch-all". This is used with any generator.
+     */
+    std::unique_ptr<TokenAst> tok_else;
+
+    /**
+     * Constructor for the @c IterPatternVariantElseAst.
+     * @param tok_else The @c else token that indicates the pattern variant is a "catch-all".
+     */
+    explicit IterPatternVariantElseAst(
+        decltype(tok_else) &&tok_else);
+
+    ~IterPatternVariantElseAst() override;
+};

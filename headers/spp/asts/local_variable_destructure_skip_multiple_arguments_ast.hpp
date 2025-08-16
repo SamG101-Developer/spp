@@ -33,6 +33,10 @@ struct spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst final : Local
         std::unique_ptr<LocalVariableAst> &&binding); // cast in ctor
 
     ~LocalVariableDestructureSkipMultipleArgumentsAst() override;
+
+    auto extract_name() const -> std::shared_ptr<IdentifierAst> override;
+
+    auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>> override;
 };
 
 

@@ -37,11 +37,11 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::pos_end() const -> std::size_t {
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<ArrayLiteralRepeatedElementAst>(
-        ast_clone(*tok_l),
-        ast_clone(*elem),
-        ast_clone(*tok_semicolon),
-        ast_clone(*size),
-        ast_clone(*tok_r));
+        ast_clone(tok_l),
+        ast_clone(elem),
+        ast_clone(tok_semicolon),
+        ast_clone(size),
+        ast_clone(tok_r));
 }
 
 
@@ -114,7 +114,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Create the standard "std::array::Arr[T, n]" type, with generic arguments.
     auto elem_type = elem->infer_type(sm, meta);
-    auto array_type = generate::common_types::array_type(tok_l->pos_start(), std::move(elem_type), ast_clone(*size));
+    auto array_type = generate::common_types::array_type(tok_l->pos_start(), std::move(elem_type), ast_clone(size));
     array_type->stage_7_analyse_semantics(sm, meta);
     return array_type;
 }

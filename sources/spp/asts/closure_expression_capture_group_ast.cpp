@@ -45,7 +45,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::pos_end() const -> std::size_t
 
 auto spp::asts::ClosureExpressionCaptureGroupAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<ClosureExpressionCaptureGroupAst>(
-        ast_clone(*tok_caps),
+        ast_clone(tok_caps),
         ast_clone_vec(captures));
 }
 
@@ -74,7 +74,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_7_analyse_semantics(
     // original asts from the argument group analysis.
     for (auto &&cap : captures) {
         // Create a "let" statement to insert the symbol into the current scope.
-        auto cap_val = ast_cast<IdentifierAst>(ast_clone(*cap));
+        auto cap_val = ast_cast<IdentifierAst>(ast_clone(cap));
         auto var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(cap_val), nullptr);
         auto var_type = cap->val->infer_type(sm, meta);
         auto let_val = std::make_unique<ObjectInitializerAst>(std::move(var_type), nullptr);
@@ -86,9 +86,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_7_analyse_semantics(
         sym->memory_info->ast_borrowed = cap->conv.get();
         sym->memory_info->is_borrow_mut = ast_cast<ConventionMutAst>(cap->conv.get()) != nullptr;
         sym->memory_info->is_borrow_ref = ast_cast<ConventionRefAst>(cap->conv.get()) != nullptr;
-
-        // Apply the borrow to the type.
-        sym->type = sym->type->with_convention(ast_clone(*cap->conv));
+        sym->type = sym->type->with_convention(ast_clone(cap->conv));
     }
 }
 

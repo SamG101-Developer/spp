@@ -29,9 +29,9 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::pos_end() const -> std::s
 
 auto spp::asts::CasePatternVariantDestructureArrayAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<CasePatternVariantDestructureArrayAst>(
-        ast_clone(*tok_l),
+        ast_clone(tok_l),
         ast_clone_vec(elems),
-        ast_clone(*tok_r));
+        ast_clone(tok_r));
 }
 
 
@@ -74,7 +74,7 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::stage_7_analyse_semantics
     mixins::CompilerMetaData *meta) -> void {
     // Create the new variable from the pattern in the patterns scope.
     auto var = convert_to_variable(meta);
-    m_mapped_let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, ast_clone(*meta->case_condition));
+    m_mapped_let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
     m_mapped_let->stage_7_analyse_semantics(sm, meta);
 }
 

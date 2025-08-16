@@ -32,10 +32,10 @@ auto spp::asts::GenericParameterTypeOptionalAst::pos_end() const -> std::size_t 
 
 auto spp::asts::GenericParameterTypeOptionalAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<GenericParameterTypeOptionalAst>(
-        ast_clone(*name),
-        ast_clone(*constraints),
-        ast_clone(*tok_assign),
-        ast_clone(*default_val));
+        ast_clone(name),
+        ast_clone(constraints),
+        ast_clone(tok_assign),
+        ast_clone(default_val));
 }
 
 
@@ -65,7 +65,7 @@ auto spp::asts::GenericParameterTypeOptionalAst::stage_4_qualify_types(
     -> void {
     // Handle the default type.
     default_val->stage_7_analyse_semantics(sm, meta);
-    default_val = sm->current_scope->get_type_symbol(*default_val)->fq_name()->with_convention(ast_clone(*default_val->get_convention()));
+    default_val = sm->current_scope->get_type_symbol(*default_val)->fq_name()->with_convention(ast_clone(default_val->get_convention()));
 }
 
 

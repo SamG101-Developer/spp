@@ -17,28 +17,22 @@ struct spp::asts::IntegerLiteralAst final : LiteralAst {
     /**
      * The token that represents the integer literal. This is the actual integer value in the source code.
      */
-    std::unique_ptr<TokenAst> tok_integer;
+    std::unique_ptr<TokenAst> val;
 
     /**
      * The raw type of the integer literal. This is from the postfix tag to the literal, like "i32" or "u64".
      */
-    std::string raw_type;
-
-    /**
-     * The type of the integer literal. This is the type that the integer literal will be converted to, like @c i32 or
-     * @c u64.
-     */
-    std::unique_ptr<TypeAst> true_type;
+    std::string type;
 
     /**
      * Construct the IntegerLiteralAst with the arguments matching the members.
      * @param[in] sign The optionally provided sign token.
-     * @param[in] tok_integer The token that represents the integer literal.
+     * @param[in] val The token that represents the integer literal.
      * @param[in] type The type of the integer literal.
      */
     IntegerLiteralAst(
         decltype(sign) &&sign,
-        decltype(tok_integer) &&tok_integer,
+        decltype(val) &&val,
         std::string &&type);
 
     ~IntegerLiteralAst() override;

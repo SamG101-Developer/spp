@@ -26,6 +26,14 @@ auto spp::asts::LocalVariableDestructureAttributeBindingAst::pos_end() const -> 
 }
 
 
+auto spp::asts::LocalVariableDestructureAttributeBindingAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<LocalVariableDestructureAttributeBindingAst>(
+        ast_clone(name),
+        ast_clone(tok_assign),
+        ast_clone(val));
+}
+
+
 spp::asts::LocalVariableDestructureAttributeBindingAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(name);
