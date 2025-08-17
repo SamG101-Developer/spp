@@ -38,6 +38,12 @@ struct spp::asts::GenericParameterGroupAst final : virtual Ast {
 
     ~GenericParameterGroupAst() override;
 
+    auto get_required_params() const -> std::vector<GenericParameterAst*>;
+
+    auto get_optional_params() const -> std::vector<GenericParameterAst*>;
+
+    auto get_variadic_param() const -> GenericParameterAst*;
+
     auto opt_to_req() -> std::unique_ptr<GenericParameterGroupAst>;
 
     auto stage_4_qualify_types(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;

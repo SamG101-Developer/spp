@@ -35,6 +35,10 @@ struct spp::asts::ParenthesisedExpressionAst final : PrimaryExpressionAst {
         decltype(tok_close_paren) &&tok_close_paren);
 
     ~ParenthesisedExpressionAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

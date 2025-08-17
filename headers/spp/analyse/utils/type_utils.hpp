@@ -71,6 +71,11 @@ namespace spp::analyse::utils::type_utils {
         scopes::Scope const &scope)
         -> bool;
 
+    auto is_type_boolean(
+        asts::TypeAst const &type,
+        scopes::Scope const &scope)
+        -> bool;
+
     auto is_type_recursive(
         asts::ClassPrototypeAst const &type,
         scopes::ScopeManager const &sm)
@@ -93,10 +98,20 @@ namespace spp::analyse::utils::type_utils {
         std::string_view what)
         -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::TypeAst>, bool, bool, bool, std::shared_ptr<asts::TypeAst>>;
 
+    auto get_try_type(
+        asts::TypeAst const &type,
+        scopes::ScopeManager const &sm)
+        -> std::shared_ptr<asts::TypeAst>;
+
     template <typename T>
     auto validate_inconsistent_types(
         std::vector<T> const &branches,
         scopes::ScopeManager const *sm,
         asts::mixins::CompilerMetaData *meta)
         -> std::tuple<std::pair<asts::Ast*, asts::TypeAst*>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>>;
+
+    auto get_all_attrs(
+        asts::TypeAst const &type,
+        scopes::ScopeManager const *sm)
+        -> std::vector<std::pair<asts::ClassAttributeAst*, scopes::Scope*>>;
 }

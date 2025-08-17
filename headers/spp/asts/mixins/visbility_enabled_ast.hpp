@@ -12,6 +12,8 @@ namespace spp::asts::mixins {
 
 
 class spp::asts::mixins::VisibilityEnabledAst {
+    friend struct AnnotationAst;
+
 protected:
     VisibilityPair m_visibility;
 

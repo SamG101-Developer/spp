@@ -96,7 +96,7 @@ auto spp::asts::ClosureExpressionAst::stage_7_analyse_semantics(
     // Analyse the body of the closure.
     body->stage_7_analyse_semantics(sm, meta);
     const auto body_type = body->infer_type(sm, meta);
-    m_ret_type = std::move(meta->enclosing_function_ret_type.size() ? meta->enclosing_function_ret_type[0] : body_type.get());
+    m_ret_type = std::move(meta->enclosing_function_ret_type.size() ? meta->enclosing_function_ret_type[0].get() : body_type.get());
     meta->restore();
 
     // Set the scope back.

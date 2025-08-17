@@ -64,24 +64,24 @@ public:
 
     auto add_symbol(std::unique_ptr<Symbol> sym) -> void;
 
-    auto rem_var_symbol(asts::IdentifierAst &sym_name) -> void;
-    auto rem_type_symbol(asts::TypeAst &sym_name) -> void;
-    auto rem_ns_symbol(asts::IdentifierAst &sym_name) -> void;
+    auto rem_var_symbol(asts::IdentifierAst const &sym_name) -> void;
+    auto rem_type_symbol(asts::TypeAst const &sym_name) -> void;
+    auto rem_ns_symbol(asts::IdentifierAst const &sym_name) -> void;
 
     auto all_symbols(bool exclusive = false, bool sup_scope_search = false) -> std::generator<Symbol*>;
     auto all_var_symbols(bool exclusive = false, bool sup_scope_search = false) -> std::generator<VariableSymbol*>;
     auto all_type_symbols(bool exclusive = false, bool sup_scope_search = false) -> std::generator<TypeSymbol*>;
     auto all_ns_symbols(bool exclusive = false) -> std::generator<NamespaceSymbol*>;
 
-    auto has_var_symbol(asts::IdentifierAst &sym_name, bool exclusive = false) const -> bool;
-    auto has_type_symbol(asts::TypeAst &sym_name, bool exclusive = false) const -> bool;
-    auto has_ns_symbol(asts::IdentifierAst &sym_name, bool exclusive = false) const -> bool;
+    auto has_var_symbol(asts::IdentifierAst const &sym_name, bool exclusive = false) const -> bool;
+    auto has_type_symbol(asts::TypeAst const &sym_name, bool exclusive = false) const -> bool;
+    auto has_ns_symbol(asts::IdentifierAst const &sym_name, bool exclusive = false) const -> bool;
 
-    auto get_var_symbol(asts::IdentifierAst &sym_name, bool exclusive = false) -> VariableSymbol*;
-    auto get_type_symbol(asts::TypeAst &sym_name, bool exclusive = false, bool ignore_alias = false) -> TypeSymbol*;
+    auto get_var_symbol(asts::IdentifierAst const &sym_name, bool exclusive = false) -> VariableSymbol*;
+    auto get_type_symbol(asts::TypeAst const &sym_name, bool exclusive = false, bool ignore_alias = false) -> TypeSymbol*;
     auto get_ns_symbol(asts::IdentifierAst &sym_name, bool exclusive = false) -> NamespaceSymbol*;
 
-    auto get_var_symbol_outermost(asts::Ast &name) -> std::pair<VariableSymbol*, Scope*>;
+    auto get_var_symbol_outermost(asts::Ast const &name) -> std::pair<VariableSymbol*, Scope*>;
 
     auto depth_difference(Scope *scope) -> std::uint32_t;
 

@@ -8,6 +8,14 @@
 struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : PostfixExpressionOperatorAst {
     SPP_AST_KEY_FUNCTIONS;
 
+private:
+    std::optional<std::tuple<analyse::scopes::Scope*, FunctionPrototypeAst*, GenericArgumentGroupAst*>> m_overload_info;
+    Ast *m_is_async;
+    std::vector<FunctionCallArgumentAst*> m_folded_args;
+    FunctionCallArgumentPositionalAst *m_closure_dummy_arg;
+    bool m_is_coro_and_auto_resume;
+
+public:
     /**
      * The generic argument group that contains the generic arguments for the function call.
      */
@@ -38,6 +46,14 @@ struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : PostfixExpres
         decltype(fold) &&fold);
 
     ~PostfixExpressionOperatorFunctionCallAst() override;
+
+    auto determine_overload(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 

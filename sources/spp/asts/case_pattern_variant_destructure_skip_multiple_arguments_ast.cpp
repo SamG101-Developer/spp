@@ -1,5 +1,7 @@
 #include <spp/asts/case_pattern_variant_destructure_skip_multiple_arguments_ast.hpp>
 #include <spp/asts/case_pattern_variant_single_identifier_ast.hpp>
+#include <spp/asts/expression_ast.hpp>
+#include <spp/asts/let_statement_initialized_ast.hpp>
 #include <spp/asts/local_variable_destructure_skip_multiple_arguments_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 

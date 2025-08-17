@@ -55,6 +55,14 @@ namespace spp::analyse::errors {
     struct SppVariableObjectDestructureWithBoundMultiSkipError;
     struct SppExpressionNotBooleanError;
     struct SppLoopTooManyControlFlowStatementsError;
+    struct SppObjectInitializerMultipleAutofillArgumentsError;
+    struct SppArgumentNameInvalidError;
+    struct SppEarlyReturnRequiresTryTypeError;
+    struct SppFunctionCallAbstractFunctionError;
+    struct SppFunctionCallNotImplFunctionError;
+    struct SppFunctionCallTooManyArgumentsError;
+    struct SppFunctionFoldTupleElementTypeMismatchError;
+    struct SppFunctionFoldTupleLengthMismatchError;
 
     auto add_header(std::size_t err_code, std::string &&msg) -> std::string;
     auto add_error(std::size_t pos, std::string &&tag) -> std::string;
@@ -296,4 +304,44 @@ struct spp::analyse::errors::SppExpressionNotBooleanError final : spp::utils::er
 
 struct spp::analyse::errors::SppLoopTooManyControlFlowStatementsError final : spp::utils::errors::SemanticError {
     explicit SppLoopTooManyControlFlowStatementsError(asts::TokenAst const &tok_loop, asts::LoopControlFlowStatementAst const &stmt, std::size_t num_controls, std::size_t loop_depth);
+};
+
+
+struct spp::analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError final : spp::utils::errors::SemanticError {
+    explicit SppObjectInitializerMultipleAutofillArgumentsError(asts::ObjectInitializerArgumentAst const &arg1, asts::ObjectInitializerArgumentAst const &arg2);
+};
+
+
+struct spp::analyse::errors::SppArgumentNameInvalidError final : spp::utils::errors::SemanticError {
+    explicit SppArgumentNameInvalidError(asts::Ast const &target, std::string_view target_what, asts::Ast const &source, std::string_view source_what);
+};
+
+
+struct spp::analyse::errors::SppEarlyReturnRequiresTryTypeError final : spp::utils::errors::SemanticError {
+    explicit SppEarlyReturnRequiresTryTypeError(asts::PostfixExpressionOperatorEarlyReturnAst const &early_ret, asts::ExpressionAst const &expr, asts::TypeAst const &type);
+};
+
+
+struct spp::analyse::errors::SppFunctionCallAbstractFunctionError final : spp::utils::errors::SemanticError {
+    explicit SppFunctionCallAbstractFunctionError(asts::PostfixExpressionOperatorFunctionCallAst const &call, asts::FunctionPrototypeAst const &proto);
+};
+
+
+struct spp::analyse::errors::SppFunctionCallNotImplFunctionError final : spp::utils::errors::SemanticError {
+    explicit SppFunctionCallNotImplFunctionError(asts::PostfixExpressionOperatorFunctionCallAst const &call, asts::FunctionPrototypeAst const &proto);
+};
+
+
+struct spp::analyse::errors::SppFunctionCallTooManyArgumentsError final : spp::utils::errors::SemanticError {
+    explicit SppFunctionCallTooManyArgumentsError(asts::PostfixExpressionOperatorFunctionCallAst const &call, asts::FunctionPrototypeAst const &proto);
+};
+
+
+struct spp::analyse::errors::SppFunctionFoldTupleElementTypeMismatchError final : spp::utils::errors::SemanticError {
+    explicit SppFunctionFoldTupleElementTypeMismatchError(asts::TypeAst const &type, asts::ExpressionAst const &expr);
+};
+
+
+struct spp::analyse::errors::SppFunctionFoldTupleLengthMismatchError final : spp::utils::errors::SemanticError {
+    explicit SppFunctionFoldTupleLengthMismatchError(asts::ExpressionAst const &first_tup, std::size_t first_length, asts::ExpressionAst const &second_tup, std::size_t second_length);
 };

@@ -1,6 +1,6 @@
-#ifndef MODULE_PROTOTYPE_AST_HPP
-#define MODULE_PROTOTYPE_AST_HPP
+#pragma once
 
+#include <filesystem>
 #include <spp/asts/ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -12,6 +12,10 @@
 struct spp::asts::ModulePrototypeAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
 
+private:
+    std::filesystem::path m_file_path;
+
+public:
     /**
      * The module implementation AST that this prototype represents.
      */
@@ -23,7 +27,22 @@ struct spp::asts::ModulePrototypeAst final : virtual Ast {
      */
     explicit ModulePrototypeAst(
         decltype(impl) &&impl);
+
+    auto name() -> std::unique_ptr<IdentifierAst>;
+
+    auto stage_1_pre_process(Ast *ctx) -> void override;
+
+    auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *) -> void override;
+
+    auto stage_3_gen_top_level_aliases(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_4_qualify_types(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_5_load_super_scopes(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_6_pre_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //MODULE_PROTOTYPE_AST_HPP

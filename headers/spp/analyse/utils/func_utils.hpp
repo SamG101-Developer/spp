@@ -35,17 +35,17 @@ namespace spp::analyse::utils::func_utils {
      *      3. The function name (the identifier that is used to call the function).
      */
     auto get_function_owner_type_and_function_name(
-        scopes::ScopeManager const &sm,
         asts::ExpressionAst const &lhs,
+        scopes::ScopeManager const &sm,
         asts::mixins::CompilerMetaData *meta)
         -> std::tuple<asts::Ast*, scopes::Scope*, asts::IdentifierAst*>;
 
     auto convert_method_to_function_form(
-        scopes::ScopeManager const &sm,
         asts::Ast const &function_owner_type,
         asts::IdentifierAst const &function_name,
         asts::ExpressionAst const &lhs,
         asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
+        scopes::ScopeManager const &sm,
         asts::mixins::CompilerMetaData *meta)
         -> std::pair<asts::PostfixExpressionAst*, asts::PostfixExpressionOperatorFunctionCallAst*>;
 
@@ -77,8 +77,8 @@ namespace spp::analyse::utils::func_utils {
     auto name_generic_args(
         std::vector<asts::GenericArgumentAst*> args,
         std::vector<asts::GenericParameterAst*> params,
-        scopes::ScopeManager const &sm,
         asts::Ast const &owner,
+        scopes::ScopeManager const &sm,
         bool is_tuple_owner = false)
         -> void;
 
@@ -88,10 +88,10 @@ namespace spp::analyse::utils::func_utils {
         std::vector<asts::GenericArgumentAst*> explicit_args,
         std::map<asts::IdentifierAst*, asts::TypeAst*> infer_source,
         std::map<asts::IdentifierAst*, asts::TypeAst*> infer_target,
-        scopes::ScopeManager const &sm,
         asts::Ast const *owner = nullptr,
         asts::IdentifierAst *variadic_param_identifier = nullptr,
         bool is_tuple_owner = false,
+        scopes::ScopeManager const &sm,
         asts::mixins::CompilerMetaData *meta = nullptr)
         -> std::vector<asts::GenericArgumentAst*>;
 

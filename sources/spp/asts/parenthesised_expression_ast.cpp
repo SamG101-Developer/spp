@@ -1,5 +1,9 @@
+#include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/scopes/scope_manager.hpp>
+#include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/asts/parenthesised_expression.hpp>
 #include <spp/asts/token_ast.hpp>
+#include <spp/asts/type_ast.hpp>
 
 
 spp::asts::ParenthesisedExpressionAst::ParenthesisedExpressionAst(
@@ -26,6 +30,14 @@ auto spp::asts::ParenthesisedExpressionAst::pos_end() const -> std::size_t {
 }
 
 
+auto spp::asts::ParenthesisedExpressionAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<ParenthesisedExpressionAst>(
+        ast_clone(tok_open_paren),
+        ast_clone(expr),
+        ast_clone(tok_close_paren));
+}
+
+
 spp::asts::ParenthesisedExpressionAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_open_paren);
@@ -41,4 +53,22 @@ auto spp::asts::ParenthesisedExpressionAst::print(meta::AstPrinter &printer) con
     SPP_PRINT_APPEND(expr);
     SPP_PRINT_APPEND(tok_close_paren);
     SPP_PRINT_END;
+}
+
+
+auto spp::asts::ParenthesisedExpressionAst::stage_7_analyse_semantics(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta) -> void {
+    // Forward analysis into the expression.
+    ENFORCE_EXPRESSION_SUBTYPE(expr.get());
+    expr->stage_7_analyse_semantics(sm, meta);
+}
+
+
+auto spp::asts::ParenthesisedExpressionAst::stage_8_check_memory(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta) -> void {
+    // Check the memory of the expression.
+    expr->stage_8_check_memory(sm, meta);
+    analyse::utils::mem_utils::validate_symbol_memory(*expr, *this, sm, true, true, true, false, false, true, meta);
 }

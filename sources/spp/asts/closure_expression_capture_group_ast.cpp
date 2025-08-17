@@ -96,8 +96,8 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_8_check_memory(
     mixins::CompilerMetaData *meta)
     -> void {
     // Pin the lambda symbol if it is assigned to a variable and has borrowed captures.
-    if (not meta->assignment_targets.empty()) {
-        const auto assignment_target = ast_cast<IdentifierAst>(meta->assignment_targets[0]);
+    if (meta->assignment_target != nullptr) {
+        const auto assignment_target = ast_cast<IdentifierAst>(meta->assignment_target);
         captures
             | genex::views::filter([](auto &&x) { return x->conv != nullptr; })
             | genex::views::ptr_unique

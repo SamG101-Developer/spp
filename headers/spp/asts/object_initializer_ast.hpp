@@ -29,6 +29,12 @@ struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst {
         decltype(arg_group) &&arg_group);
 
     ~ObjectInitializerAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 

@@ -59,7 +59,7 @@ auto spp::asts::LoopConditionBooleanAst::stage_7_analyse_semantics(
     // Check the loop condition is boolean.
     const auto cond_type = cond->infer_type(sm, meta);
     const auto target_type = generate::common_types_precompiled::BOOL;
-    if (not analyse::utils::type_utils::symbolic_eq(*target_type, *cond_type, *sm->current_scope, *sm->current_scope)) {
+    if (not analyse::utils::type_utils::is_type_boolean(*cond_type, *sm->current_scope)) {
         analyse::errors::SppExpressionNotBooleanError(*cond, *cond_type, "loop")
             .scopes({sm->current_scope})
             .raise();

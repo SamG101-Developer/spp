@@ -36,6 +36,12 @@ struct spp::asts::ExpressionAst : StatementAst {
     }
 
 
+#define ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TYPE(ast) \
+    if (ast_cast<TokenAst>(ast) != nullptr) { \
+        analyse::errors::SppExpressionTypeInvalidError(*ast).scopes({sm->current_scope}).raise(); \
+    }
+
+
 #define RETURN_TYPE_OVERLOAD_HELPER(expr) \
     if (auto pe = ast_cast<PostfixExpressionAst>(expr); pe != nullptr and ast_cast<PostfixExpressionOperatorFunctionCallAst>(pe->op.get()) != nullptr)
 

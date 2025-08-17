@@ -18,7 +18,7 @@ struct spp::asts::PatternGuardAst final : virtual Ast {
      * The expression that is used as the guard for the pattern. This expression is evaluated to determine if the
      * pattern matches, and must be a boolean expression.
      */
-    std::unique_ptr<ExpressionAst> expression;
+    std::unique_ptr<ExpressionAst> expr;
 
     /**
      * Constructor for the @c PatternGuardAst.
@@ -27,7 +27,11 @@ struct spp::asts::PatternGuardAst final : virtual Ast {
      */
     PatternGuardAst(
         decltype(tok_and) &&tok_and,
-        decltype(expression) &&expression);
+        decltype(expr) &&expression);
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

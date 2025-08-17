@@ -27,6 +27,10 @@ struct spp::asts::PostfixExpressionAst final : ExpressionAst {
     PostfixExpressionAst(
         decltype(lhs) &&lhs,
         decltype(op) &&op);
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

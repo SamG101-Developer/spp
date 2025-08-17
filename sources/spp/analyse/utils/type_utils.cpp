@@ -1,10 +1,18 @@
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
+#include <spp/asts/class_attribute_ast.hpp>
+#include <spp/asts/class_prototype_ast.hpp>
+#include <spp/asts/type_ast.hpp>
 #include <spp/asts/mixins/compiler_stages.hpp>
 
+#include <genex/generator.hpp>
+#include <genex/actions/concat.hpp>
+#include <genex/views/cast.hpp>
 #include <genex/views/filter.hpp>
+#include <genex/views/flat.hpp>
 #include <genex/views/map.hpp>
+#include <genex/views/ptr.hpp>
 #include <genex/views/remove.hpp>
 #include <genex/views/to.hpp>
 
@@ -27,8 +35,8 @@ auto spp::analyse::utils::type_utils::validate_inconsistent_types(
 
     // Set the master branch type to the first branch's type, if it exists. This is the default and may be subsequently changed.
     auto master_branch_type_info = not branches.empty()
-        ? std::make_pair(branches_type_info[0].first, branches_type_info[0].second.get())
-        : std::make_pair(nullptr, nullptr);
+                                       ? std::make_pair(branches_type_info[0].first, branches_type_info[0].second.get())
+                                       : std::make_pair(nullptr, nullptr);
 
     // Override the master type if a pre-provided type (for assignment) has been given.
     if (meta->assignment_target_type != nullptr) {
@@ -62,4 +70,30 @@ auto spp::analyse::utils::type_utils::validate_inconsistent_types(
     }
 
     return std::make_tuple(master_branch_type_info, branches_type_info);
+}
+
+
+auto spp::analyse::utils::type_utils::get_all_attrs(
+    asts::TypeAst const &type,
+    ScopeManager const *sm)
+    -> std::vector<std::pair<asts::ClassAttributeAst*, scopes::Scope*>> {
+    // Get the symbol of the class type.
+    const auto cls_sym = sm->current_scope->get_type_symbol(type);
+
+    // Get the attribute information from the class type and all super types.
+    auto all_scopes = cls_sym->scope->sup_scopes();
+    all_scopes |= genex::actions::concat(std::vector{cls_sym->scope});
+    auto all_attrs = all_scopes
+        | genex::views::filter([](auto &&sup_scope) { return ast_cast<asts::ClassPrototypeAst>(sup_scope->ast) != nullptr; })
+        | genex::views::map([](auto &&sup_scope) {
+            return ast_cast<asts::ClassPrototypeAst>(sup_scope->ast)->impl->members
+                | genex::views::ptr_unique
+                | genex::views::cast.operator()<asts::ClassAttributeAst*>()
+                | genex::views::map([sup_scope](auto &&x) { return std::make_pair(x, sup_scope); })
+                | genex::views::to<std::vector>();
+        })
+        | genex::views::flat
+        | genex::views::to<std::vector>();
+
+    return all_attrs;
 }

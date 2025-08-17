@@ -1,16 +1,15 @@
-#include <spp/asts/object_initializer_argument_keyword_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
+#include <spp/asts/object_initializer_argument_keyword_ast.hpp>
 #include <spp/asts/token_ast.hpp>
+#include <spp/asts/type_ast.hpp>
 
 
 spp::asts::ObjectInitializerArgumentKeywordAst::ObjectInitializerArgumentKeywordAst(
     decltype(name) &&name,
     decltype(tok_assign) &&tok_assign,
-    decltype(val) &&val):
-    ObjectInitializerArgumentAst(),
-    name(std::move(name)),
+    decltype(val) &&val) :
+    ObjectInitializerArgumentAst(std::move(name), std::move(val)),
     tok_assign(std::move(tok_assign)) {
-    this->val = std::move(val);
 }
 
 
@@ -24,6 +23,14 @@ auto spp::asts::ObjectInitializerArgumentKeywordAst::pos_start() const -> std::s
 
 auto spp::asts::ObjectInitializerArgumentKeywordAst::pos_end() const -> std::size_t {
     return val->pos_end();
+}
+
+
+auto spp::asts::ObjectInitializerArgumentKeywordAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<ObjectInitializerArgumentKeywordAst>(
+        ast_clone(name),
+        ast_clone(tok_assign),
+        ast_clone(val));
 }
 
 

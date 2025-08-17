@@ -1,4 +1,7 @@
 #include <spp/asts/case_pattern_variant_else_ast.hpp>
+#include <spp/asts/expression_ast.hpp>
+#include <spp/asts/let_statement_initialized_ast.hpp>
+#include <spp/asts/local_variable_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 
 
@@ -19,7 +22,8 @@ auto spp::asts::CasePatternVariantElseAst::pos_end() const -> std::size_t {
 
 
 auto spp::asts::CasePatternVariantElseAst::clone() const -> std::unique_ptr<Ast> {
-    return std::make_unique<CasePatternVariantElseAst>(ast_clone(tok_else));
+    return std::make_unique<CasePatternVariantElseAst>(
+        ast_clone(tok_else));
 }
 
 

@@ -44,6 +44,20 @@ struct spp::asts::ObjectInitializerArgumentGroupAst final : virtual Ast {
         decltype(tok_r) &&tok_r);
 
     ~ObjectInitializerArgumentGroupAst() override;
+
+    auto get_autofill_arg() -> ObjectInitializerArgumentShorthandAst*;
+
+    auto get_non_autofill_args() -> std::vector<ObjectInitializerArgumentAst*>;
+
+    auto get_shorthand_args() -> std::vector<ObjectInitializerArgumentShorthandAst*>;
+
+    auto get_keyword_args() -> std::vector<ObjectInitializerArgumentKeywordAst*>;
+
+    auto stage_6_pre_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

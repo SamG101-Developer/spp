@@ -1,12 +1,13 @@
 #include <spp/asts/expression_ast.hpp>
 #include <spp/asts/object_initializer_argument_shorthand_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 
 
 spp::asts::ObjectInitializerArgumentShorthandAst::ObjectInitializerArgumentShorthandAst(
     std::unique_ptr<TokenAst> tok_ellipsis,
-    std::unique_ptr<ExpressionAst> &&val):
-    ObjectInitializerArgumentAst(std::move(val)),
+    std::unique_ptr<ExpressionAst> &&val) :
+    ObjectInitializerArgumentAst(ast_cast<IdentifierAst>(ast_clone(val)), std::move(val)),
     tok_ellipsis(std::move(tok_ellipsis)) {
 }
 
@@ -21,6 +22,13 @@ auto spp::asts::ObjectInitializerArgumentShorthandAst::pos_start() const -> std:
 
 auto spp::asts::ObjectInitializerArgumentShorthandAst::pos_end() const -> std::size_t {
     return val->pos_end();
+}
+
+
+auto spp::asts::ObjectInitializerArgumentShorthandAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<ObjectInitializerArgumentShorthandAst>(
+        ast_clone(tok_ellipsis),
+        ast_clone(val));
 }
 
 

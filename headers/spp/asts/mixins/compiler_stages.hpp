@@ -81,7 +81,8 @@ struct spp::asts::mixins::CompilerStages {
 
     /**
      * There are some checks that have to happen after the superscopes have all been attached but must happen before
-     * general semantic analysis, as not handling these errors can cause strange analysis errors.
+     * general semantic analysis, as not handling these errors can cause strange analysis errors. This will only run on
+     * top level ASTs.
      * @param[in, out] sm The scope manager to do pre-analysis in.
      * @param[in, out] meta Metadata to pass between ASTs.
      */
@@ -135,11 +136,15 @@ struct spp::asts::mixins::CompilerMetaDataState {
     bool target_call_was_function_async;
     bool prevent_auto_generator_resume;
     std::shared_ptr<TypeAst> let_stmt_explicit_type;
-    ExpressionAst* let_stmt_value;
+    ExpressionAst *let_stmt_value;
     bool loop_double_check_active;
     std::size_t current_loop_depth;
-    LoopExpressionAst* current_loop_ast;
+    LoopExpressionAst *current_loop_ast;
     std::map<std::size_t, std::tuple<ExpressionAst*, TypeAst*, analyse::scopes::Scope*>> loop_return_types;
+    TypeAst *object_init_type;
+    std::map<IdentifierAst*, std::shared_ptr<TypeAst>> infer_source;
+    std::map<IdentifierAst*, std::shared_ptr<TypeAst>> infer_target;
+    ExpressionAst* postfix_expression_lhs;
 };
 
 
