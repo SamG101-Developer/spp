@@ -137,17 +137,17 @@ auto spp::asts::FunctionPrototypeAst::m_deduce_mock_class_type() const
     }
 
     // Class methods with "self" are the FunMov type.
-    if (param_group->get_self_param()->tok_conv == nullptr) {
+    if (param_group->get_self_param()->conv == nullptr) {
         return generate::common_types::fun_mov_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
     }
 
     // Class methods with "&mut self" are the FunMut type.
-    if (ast_cast<ConventionMutAst>(param_group->get_self_param()->tok_conv.get()) != nullptr) {
+    if (ast_cast<ConventionMutAst>(param_group->get_self_param()->conv.get()) != nullptr) {
         return generate::common_types::fun_mut_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
     }
 
     // Class methods with "&self" are the FunRef type.
-    if (ast_cast<ConventionRefAst>(param_group->get_self_param()->tok_conv.get()) != nullptr) {
+    if (ast_cast<ConventionRefAst>(param_group->get_self_param()->conv.get()) != nullptr) {
         return generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
     }
 

@@ -10,7 +10,7 @@ struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst {
     SPP_AST_KEY_FUNCTIONS;
 
 protected:
-    TypeAst *m_ret_type;
+    std::shared_ptr<TypeAst> m_ret_type;
 
 public:
     /**

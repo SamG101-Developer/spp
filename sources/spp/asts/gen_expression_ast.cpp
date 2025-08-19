@@ -74,9 +74,7 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
     // Check the enclosing function is a coroutine and not a subroutine.
     const auto function_flavour = meta->enclosing_function_flavour;
     if (function_flavour->token_type != lex::SppTokenType::KW_COR) {
-        analyse::errors::SppFunctionSubroutineContainsGenExpressionError(*function_flavour, *tok_gen)
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SppFunctionSubroutineContainsGenExpressionError(*function_flavour, *tok_gen).scopes({sm->current_scope}).raise();
     }
 
     // Analyse the expression if it exists, and determine the type of the expression.
@@ -97,18 +95,17 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
 
     // Functions provide the return type, closures require inference; handle the inference.
     if (meta->enclosing_function_ret_type.empty()) {
-        m_generator_type = generate::common_types::gen_type(expr->pos_start(), expr_type);
-        m_generator_type->stage_7_analyse_semantics(sm, meta);
-        meta->enclosing_function_ret_type.emplace_back(m_generator_type);
-        meta->enclosing_function_scope = sm->current_scope;
+        m_gen_type = generate::common_types::gen_type(expr->pos_start(), expr_type);
+        m_gen_type->stage_7_analyse_semantics(sm, meta);
+        meta->enclosing_function_ret_type.emplace_back(m_gen_type);
     }
     else {
-        m_generator_type = meta->enclosing_function_ret_type[0];
+        m_gen_type = meta->enclosing_function_ret_type[0];
     }
 
-    // Determine the "yield" type of the enclosing function (to type check the expression against).
+    // Determine the "Yield" type of the enclosing function (to type check the expression against).
     auto [_, yield_type, _, is_optional, is_fallible, error_type] = analyse::utils::type_utils::get_generator_and_yield_type(
-        *meta->enclosing_function_ret_type[0], *sm, *meta->enclosing_function_ret_type[0], "coroutine");
+        *m_gen_type, *sm, *m_gen_type, "coroutine");
     const auto direct_match = analyse::utils::type_utils::symbolic_eq(*yield_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
     const auto optional_match = is_optional and analyse::utils::type_utils::symbolic_eq(*generate::common_types::void_type(0), *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
     const auto fallible_match = is_fallible and analyse::utils::type_utils::symbolic_eq(*error_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
@@ -138,7 +135,7 @@ auto spp::asts::GenExpressionAst::stage_8_check_memory(
     if (conv == nullptr) {
         // Ensure that attributes aren't being moved off of a borrowed value and that pins are maintained. Mark the move
         // or partial move of the argument.
-        analyse::utils::mem_utils::validate_symbol_memory(*expr, *tok_gen, sm, false, false, true, true, false, true, meta);
+        analyse::utils::mem_utils::validate_symbol_memory(*expr, *tok_gen, sm, false, false, true, true, true, true, meta);
     }
 
     else if (ast_cast<ConventionMutAst>(conv.get()) and not sym->is_mutable) {
@@ -155,6 +152,6 @@ auto spp::asts::GenExpressionAst::infer_type(
     mixins::CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Get the "Send" generic type parameter from the generator type.
-    auto send_type = m_generator_type->type_parts().back()->generic_args->type_at("Send")->val;
+    auto send_type = m_gen_type->type_parts().back()->generic_args->type_at("Send")->val;
     return send_type;
 }

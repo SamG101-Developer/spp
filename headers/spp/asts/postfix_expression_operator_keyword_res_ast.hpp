@@ -8,6 +8,10 @@
 struct spp::asts::PostfixExpressionOperatorKeywordResAst final : PostfixExpressionOperatorAst {
     SPP_AST_KEY_FUNCTIONS;
 
+private:
+    std::unique_ptr<PostfixExpressionAst> m_mapped_func;
+
+public:
     /**
      * The @c . token that indicates a member access operation.
      */
@@ -37,8 +41,11 @@ struct spp::asts::PostfixExpressionOperatorKeywordResAst final : PostfixExpressi
 
     ~PostfixExpressionOperatorKeywordResAst() override;
 
-private:
-    std::unique_ptr<PostfixExpressionAst> m_mapped_func;
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 

@@ -25,6 +25,7 @@ namespace spp::analyse::errors {
     struct SppInconsistentlyPinnedMemoryUseError;
     struct SppCompoundAssignmentTargetError;
     struct SppMemberAccessNonIndexableError;
+    struct SppMemberAccessOutOfBoundsError;
     struct SppCaseBranchMultipleDestructuresError;
     struct SppCaseBranchElseNotLastError;
     struct SppCaseBranchMissingElseError;
@@ -57,12 +58,20 @@ namespace spp::analyse::errors {
     struct SppLoopTooManyControlFlowStatementsError;
     struct SppObjectInitializerMultipleAutofillArgumentsError;
     struct SppArgumentNameInvalidError;
+    struct SppArgumentMissingError;
     struct SppEarlyReturnRequiresTryTypeError;
     struct SppFunctionCallAbstractFunctionError;
     struct SppFunctionCallNotImplFunctionError;
     struct SppFunctionCallTooManyArgumentsError;
     struct SppFunctionFoldTupleElementTypeMismatchError;
     struct SppFunctionFoldTupleLengthMismatchError;
+    struct SppFunctionCallNoValidSignaturesError;
+    struct SppFunctionCallOverloadAmbiguousError;
+    struct SppMemberAccessStaticOperatorExpectedError;
+    struct SppMemberAccessRuntimeOperatorExpectedError;
+    struct SppGenericTypeInvalidUsageError;
+    struct SppAmbiguousMemberAccessError;
+    struct SppFunctionCoroutineContainsRetExprExpressionError;
 
     auto add_header(std::size_t err_code, std::string &&msg) -> std::string;
     auto add_error(std::size_t pos, std::string &&tag) -> std::string;
@@ -152,7 +161,12 @@ struct spp::analyse::errors::SppCompoundAssignmentTargetError final : spp::utils
 
 
 struct spp::analyse::errors::SppMemberAccessNonIndexableError final : spp::utils::errors::SemanticError {
-    explicit SppMemberAccessNonIndexableError(asts::ExpressionAst const &lhs, asts::TypeAst const &lhs_type, asts::ExpressionAst const &access_op);
+    explicit SppMemberAccessNonIndexableError(asts::ExpressionAst const &lhs, asts::TypeAst const &lhs_type, asts::Ast const &access_op);
+};
+
+
+struct spp::analyse::errors::SppMemberAccessOutOfBoundsError final : spp::utils::errors::SemanticError {
+    explicit SppMemberAccessOutOfBoundsError(asts::ExpressionAst const &lhs, asts::TypeAst const &lhs_type, asts::Ast const &access_op);
 };
 
 
@@ -238,7 +252,7 @@ struct spp::analyse::errors::SppYieldedTypeMismatchError final : spp::utils::err
 
 
 struct spp::analyse::errors::SppIdentifierUnknownError final : spp::utils::errors::SemanticError {
-    explicit SppIdentifierUnknownError(asts::IdentifierAst const &identifier, std::string_view what, std::optional<std::string> closest);
+    explicit SppIdentifierUnknownError(asts::Ast const &name, std::string_view what, std::optional<std::string> closest);
 };
 
 
@@ -317,6 +331,11 @@ struct spp::analyse::errors::SppArgumentNameInvalidError final : spp::utils::err
 };
 
 
+struct spp::analyse::errors::SppArgumentMissingError final : spp::utils::errors::SemanticError {
+    explicit SppArgumentMissingError(asts::Ast const &target, std::string_view target_what, asts::Ast const &source, std::string_view source_what);
+};
+
+
 struct spp::analyse::errors::SppEarlyReturnRequiresTryTypeError final : spp::utils::errors::SemanticError {
     explicit SppEarlyReturnRequiresTryTypeError(asts::PostfixExpressionOperatorEarlyReturnAst const &early_ret, asts::ExpressionAst const &expr, asts::TypeAst const &type);
 };
@@ -344,4 +363,39 @@ struct spp::analyse::errors::SppFunctionFoldTupleElementTypeMismatchError final 
 
 struct spp::analyse::errors::SppFunctionFoldTupleLengthMismatchError final : spp::utils::errors::SemanticError {
     explicit SppFunctionFoldTupleLengthMismatchError(asts::ExpressionAst const &first_tup, std::size_t first_length, asts::ExpressionAst const &second_tup, std::size_t second_length);
+};
+
+
+struct spp::analyse::errors::SppFunctionCallNoValidSignaturesError final : spp::utils::errors::SemanticError {
+    explicit SppFunctionCallNoValidSignaturesError(asts::PostfixExpressionOperatorFunctionCallAst const &call, std::string_view sigs, std::string_view attempted);
+};
+
+
+struct spp::analyse::errors::SppFunctionCallOverloadAmbiguousError final : spp::utils::errors::SemanticError {
+    explicit SppFunctionCallOverloadAmbiguousError(asts::PostfixExpressionOperatorFunctionCallAst const &call, std::string_view sigs, std::string_view attempted);
+};
+
+
+struct spp::analyse::errors::SppMemberAccessStaticOperatorExpectedError final : spp::utils::errors::SemanticError {
+    explicit SppMemberAccessStaticOperatorExpectedError(asts::Ast const &lhs, asts::TokenAst const &access);
+};
+
+
+struct spp::analyse::errors::SppMemberAccessRuntimeOperatorExpectedError final : spp::utils::errors::SemanticError {
+    explicit SppMemberAccessRuntimeOperatorExpectedError(asts::Ast const &lhs, asts::TokenAst const &access);
+};
+
+
+struct spp::analyse::errors::SppGenericTypeInvalidUsageError final : spp::utils::errors::SemanticError {
+    explicit SppGenericTypeInvalidUsageError(asts::Ast const &gen_name, asts::TypeAst const &gen_val, std::string_view what);
+};
+
+
+struct spp::analyse::errors::SppAmbiguousMemberAccessError final : spp::utils::errors::SemanticError {
+    explicit SppAmbiguousMemberAccessError(asts::Ast const &found_field_1, asts::Ast const &found_field_2, asts::Ast const &field_access);
+};
+
+
+struct spp::analyse::errors::SppFunctionCoroutineContainsRetExprExpressionError final : spp::utils::errors::SemanticError {
+    explicit SppFunctionCoroutineContainsRetExprExpressionError(asts::TokenAst const &fun_tag, asts::TokenAst const &ret_stmt);
 };

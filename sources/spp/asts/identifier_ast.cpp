@@ -68,14 +68,12 @@ auto spp::asts::IdentifierAst::stage_7_analyse_semantics(
     -> void {
     // Check there is a symbol with the same name in the current scope.
     if (not sm->current_scope->has_var_symbol(*this) and not sm->current_scope->has_ns_symbol(*this)) {
-        auto alternatives = sm->current_scope->all_var_symbols()
+        const auto alternatives = sm->current_scope->all_var_symbols()
             | genex::views::map([](auto &&x) { return x->name->val; })
             | genex::views::to<std::vector>();
 
         const auto closest_match = spp::utils::strings::closest_match(val, alternatives);
-        analyse::errors::SppIdentifierUnknownError(*this, "identifier", closest_match)
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SppIdentifierUnknownError(*this, "identifier", closest_match).scopes({sm->current_scope}).raise();
     }
 }
 

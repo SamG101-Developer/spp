@@ -1,9 +1,11 @@
 #include <spp/asts/string_literal_ast.hpp>
 #include <spp/asts/token_ast.hpp>
+#include <spp/asts/type_ast.hpp>
+#include <spp/asts/generate/common_types.hpp>
 
 
 spp::asts::StringLiteralAst::StringLiteralAst(
-    decltype(val) &&val):
+    decltype(val) &&val) :
     LiteralAst(),
     val(std::move(val)) {
 }
@@ -22,6 +24,12 @@ auto spp::asts::StringLiteralAst::pos_end() const -> std::size_t {
 }
 
 
+auto spp::asts::StringLiteralAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<StringLiteralAst>(
+        ast_clone(val));
+}
+
+
 spp::asts::StringLiteralAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(val);
@@ -33,4 +41,13 @@ auto spp::asts::StringLiteralAst::print(meta::AstPrinter &printer) const -> std:
     SPP_PRINT_START;
     SPP_PRINT_APPEND(val);
     SPP_PRINT_END;
+}
+
+
+auto spp::asts::StringLiteralAst::infer_type(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> std::shared_ptr<TypeAst> {
+    // The type of a string literal is always a string type.
+    return generate::common_types::string_type(val->pos_start());
 }

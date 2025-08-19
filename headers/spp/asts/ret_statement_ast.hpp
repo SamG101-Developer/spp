@@ -8,6 +8,10 @@
 struct spp::asts::RetStatementAst final : StatementAst {
     SPP_AST_KEY_FUNCTIONS;
 
+private:
+    std::shared_ptr<TypeAst> m_ret_type;
+
+public:
     /**
      * The @c ret token that starts this statement.
      */
@@ -17,7 +21,7 @@ struct spp::asts::RetStatementAst final : StatementAst {
      * The optional value that is being returned from the function. This is the expression that will be evaluated and
      * returned.
      */
-    std::unique_ptr<ExpressionAst> val;
+    std::unique_ptr<ExpressionAst> expr;
 
     /**
      * Construct the RetStatementAst with the arguments matching the members.
@@ -26,9 +30,13 @@ struct spp::asts::RetStatementAst final : StatementAst {
      */
     RetStatementAst(
         decltype(tok_ret) &&tok_ret,
-        decltype(val) &&val);
+        decltype(expr) &&val);
 
     ~RetStatementAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

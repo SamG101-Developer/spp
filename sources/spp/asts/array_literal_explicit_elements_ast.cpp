@@ -11,8 +11,8 @@
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 
-#include <genex/views/copied.hpp>
-#include <genex/views/deref.hpp>
+#include <genex/algorithms/copy.hpp>
+#include <genex/views/address.hpp>
 #include <genex/views/map.hpp>
 #include <genex/views/to.hpp>
 #include <genex/views/view.hpp>

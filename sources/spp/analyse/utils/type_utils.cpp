@@ -3,6 +3,7 @@
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/class_attribute_ast.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
+#include <spp/asts/class_implementation_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/mixins/compiler_stages.hpp>
 

@@ -2,6 +2,8 @@
 
 #include <spp/asts/_fwd.hpp>
 
+#include "spp/asts/generic_argument_group_ast.hpp"
+
 namespace spp::analyse::scopes {
     class Scope;
     class ScopeManager;
@@ -76,6 +78,11 @@ namespace spp::analyse::utils::type_utils {
         scopes::Scope const &scope)
         -> bool;
 
+    auto is_type_void(
+        asts::TypeAst const &type,
+        scopes::Scope const &scope)
+        -> bool;
+
     auto is_type_recursive(
         asts::ClassPrototypeAst const &type,
         scopes::ScopeManager const &sm)
@@ -114,4 +121,30 @@ namespace spp::analyse::utils::type_utils {
         asts::TypeAst const &type,
         scopes::ScopeManager const *sm)
         -> std::vector<std::pair<asts::ClassAttributeAst*, scopes::Scope*>>;
+
+    auto create_generic_cls_scope(
+        asts::TypeIdentifierAst const &type_part,
+        scopes::TypeSymbol const &old_cls_symbol,
+        std::vector<scopes::Symbol*> external_generic_symbols,
+        bool is_tuple,
+        scopes::ScopeManager const &sm,
+        asts::mixins::CompilerMetaData *meta)
+        -> scopes::Scope*;
+
+    auto create_generic_fun_scope(
+        scopes::Scope const &old_fun_scope,
+        asts::GenericArgumentGroupAst const &generic_args,
+        std::vector<scopes::Symbol*> external_generic_syms,
+        scopes::ScopeManager const &sm,
+        asts::mixins::CompilerMetaData *meta)
+        -> scopes::Scope*;
+
+    auto create_generic_sup_scope(
+        scopes::Scope const &old_sup_scope,
+        scopes::Scope const &new_cls_scope,
+        asts::GenericArgumentGroupAst const &generic_args,
+        std::vector<scopes::Symbol*> external_generic_syms,
+        scopes::ScopeManager const &sm,
+        asts::mixins::CompilerMetaData *meta = nullptr)
+        -> scopes::Scope;
 }

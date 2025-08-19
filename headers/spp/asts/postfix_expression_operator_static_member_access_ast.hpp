@@ -28,6 +28,10 @@ struct spp::asts::PostfixExpressionOperatorStaticMemberAccessAst final : Postfix
         decltype(name) &&name);
 
     ~PostfixExpressionOperatorStaticMemberAccessAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 

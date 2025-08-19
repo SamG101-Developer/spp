@@ -58,9 +58,9 @@ public:
 
     static auto new_global(compiler::Module const &module) -> std::unique_ptr<Scope>;
 
-    auto get_generic_symbols() -> std::vector<asts::GenericArgumentAst*>;
+    auto get_generics() -> std::vector<asts::GenericArgumentAst*>;
 
-    auto get_extended_generic_symbols() -> std::vector<asts::GenericArgumentAst*>;
+    auto get_extended_generic_symbols(std::vector<asts::GenericArgumentAst*> generics) -> std::vector<Symbol*>;
 
     auto add_symbol(std::unique_ptr<Symbol> sym) -> void;
 

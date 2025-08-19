@@ -16,6 +16,7 @@
 struct spp::asts::FunctionPrototypeAst : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
     friend struct AnnotationAst;
+    friend struct PostfixExpressionOperatorFunctionCallAst;
 
 private:
     /**
@@ -52,6 +53,12 @@ private:
      * should be inlined, or not inlined, or always inlined.
      */
     AnnotationAst *m_inline_annotation;
+
+    /**
+     * If this function is generic, then all generic implementations / substitutions are stored here, for code
+     * generation.
+     */
+    std::vector<std::unique_ptr<FunctionPrototypeAst>> m_generic_implementations;
 
 public:
     /**
@@ -130,6 +137,8 @@ private:
     auto m_deduce_mock_class_type() const -> std::shared_ptr<TypeAst>;
 
 public:
+    auto print_signature(std::string_view owner) -> std::string;
+
     auto stage_1_pre_process(Ast *ctx) -> void override;
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;

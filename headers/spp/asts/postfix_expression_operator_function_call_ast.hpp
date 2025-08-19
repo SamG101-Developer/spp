@@ -9,10 +9,10 @@ struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : PostfixExpres
     SPP_AST_KEY_FUNCTIONS;
 
 private:
-    std::optional<std::tuple<analyse::scopes::Scope*, FunctionPrototypeAst*, GenericArgumentGroupAst*>> m_overload_info;
+    std::optional<std::tuple<analyse::scopes::Scope*, FunctionPrototypeAst*, std::vector<GenericArgumentAst*>>> m_overload_info;
     Ast *m_is_async;
     std::vector<FunctionCallArgumentAst*> m_folded_args;
-    FunctionCallArgumentPositionalAst *m_closure_dummy_arg;
+    std::unique_ptr<FunctionCallArgumentPositionalAst> m_closure_dummy_arg;
     bool m_is_coro_and_auto_resume;
 
 public:

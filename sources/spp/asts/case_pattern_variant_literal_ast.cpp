@@ -4,6 +4,7 @@
 #include <spp/asts/local_variable_single_identifier_ast.hpp>
 #include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
+#include <spp/asts/let_statement_initialized_ast.hpp>
 #include <spp/asts/literal_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 

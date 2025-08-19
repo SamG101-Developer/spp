@@ -41,9 +41,9 @@ public:
 
 class spp::analyse::scopes::SymbolTable {
 public:
-    IndividualSymbolTable<asts::IdentifierAst, VariableSymbol> var_tbl;
+    IndividualSymbolTable<asts::IdentifierAst, std::shared_ptr<VariableSymbol>> var_tbl;
 
-    IndividualSymbolTable<asts::TypeIdentifierAst, TypeSymbol> type_tbl;
+    IndividualSymbolTable<asts::TypeIdentifierAst, std::shared_ptr<TypeSymbol>> type_tbl;
 
-    IndividualSymbolTable<asts::IdentifierAst, NamespaceSymbol> namespace_tbl;
+    IndividualSymbolTable<asts::IdentifierAst, std::shared_ptr<NamespaceSymbol>> namespace_tbl;
 };

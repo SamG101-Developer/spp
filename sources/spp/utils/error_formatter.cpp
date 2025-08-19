@@ -3,11 +3,12 @@
 
 #include <colex/common.hpp>
 #include <genex/algorithms/find.hpp>
+#include <genex/algorithms/fold.hpp>
 #include <genex/algorithms/position.hpp>
 #include <genex/iterators/distance.hpp>
+#include <genex/operations/size.hpp>
 #include <genex/views/drop.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/fold.hpp>
 #include <genex/views/take.hpp>
 #include <genex/views/to.hpp>
 
@@ -43,7 +44,7 @@ auto spp::utils::errors::ErrorFormatter::internal_parse_error_raw_pos(
         m_tokens.begin() + error_line_start_pos,
         m_tokens.begin() + error_line_end_pos);
 
-    auto error_line_as_string = error_line_tokens | genex::views::fold_left(
+    auto error_line_as_string = error_line_tokens | genex::algorithms::fold_left(
         std::string(),
         [](std::string const &acc, const lex::RawToken &token) { return acc + token.data; });
 

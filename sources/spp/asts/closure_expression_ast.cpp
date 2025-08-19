@@ -9,6 +9,7 @@
 #include <spp/asts/convention_mut_ast.hpp>
 #include <spp/asts/convention_ref_ast.hpp>
 #include <spp/asts/function_call_argument_group_ast.hpp>
+#include <spp/asts/function_parameter_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
@@ -21,6 +22,7 @@
 #include <genex/views/to.hpp>
 
 #include "spp/analyse/utils/mem_utils.hpp"
+#include "spp/asts/function_parameter_group_ast.hpp"
 
 
 spp::asts::ClosureExpressionAst::ClosureExpressionAst(
@@ -96,7 +98,7 @@ auto spp::asts::ClosureExpressionAst::stage_7_analyse_semantics(
     // Analyse the body of the closure.
     body->stage_7_analyse_semantics(sm, meta);
     const auto body_type = body->infer_type(sm, meta);
-    m_ret_type = std::move(meta->enclosing_function_ret_type.size() ? meta->enclosing_function_ret_type[0].get() : body_type.get());
+    m_ret_type = std::move(meta->enclosing_function_ret_type.size() ? meta->enclosing_function_ret_type[0] : body_type);
     meta->restore();
 
     // Set the scope back.
@@ -134,26 +136,26 @@ auto spp::asts::ClosureExpressionAst::infer_type(
 
     // If there are no captures, return a FunRef type with the parameters and return type.
     if (pc_group->capture_group->captures.empty()) {
-        auto param_types = pc_group->param_group | genex::views::map([](auto &&x) { return x->type.get(); }) | genex::views::to<std::vector>();
-        ty = generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), param_types), m_ret_type);
+        auto param_types = pc_group->param_group->params | genex::views::map([](auto &&x) { return x->type; }) | genex::views::to<std::vector>();
+        ty = generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 
     else if (pc_group->capture_group->captures | genex::algorithms::any_of([](auto &&x) { return x->conv == nullptr; })) {
         // If there are captures, but no borrowed captures, return a FunMov type with the parameters and return type.
-        auto param_types = pc_group->param_group | genex::views::map([](auto &&x) { return x->type.get(); }) | genex::views::to<std::vector>();
-        ty = generate::common_types::fun_mov_type(pos_start(), generate::common_types::tuple_type(pos_start(), param_types), m_ret_type);
+        auto param_types = pc_group->param_group->params | genex::views::map([](auto &&x) { return x->type; }) | genex::views::to<std::vector>();
+        ty = generate::common_types::fun_mov_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 
     else if (pc_group->capture_group->captures | genex::algorithms::any_of([](auto &&x) { return ast_cast<ConventionMutAst>(x->conv.get()); })) {
         // If there are mutably borrowed captures, return a FunMut type with the parameters and return type.
-        auto param_types = pc_group->param_group | genex::views::map([](auto &&x) { return x->type.get(); }) | genex::views::to<std::vector>();
-        ty = generate::common_types::fun_mut_type(pos_start(), generate::common_types::tuple_type(pos_start(), param_types), m_ret_type);
+        auto param_types = pc_group->param_group->params | genex::views::map([](auto &&x) { return x->type; }) | genex::views::to<std::vector>();
+        ty = generate::common_types::fun_mut_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 
     else if (pc_group->capture_group->captures | genex::algorithms::any_of([](auto &&x) { return ast_cast<ConventionRefAst>(x->conv.get()); })) {
         // If there are immutable borrowed captures, return a FunRef type with the parameters and return type.
-        auto param_types = pc_group->param_group | genex::views::map([](auto &&x) { return x->type.get(); }) | genex::views::to<std::vector>();
-        ty = generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), param_types), m_ret_type);
+        auto param_types = pc_group->param_group->params | genex::views::map([](auto &&x) { return x->type; }) | genex::views::to<std::vector>();
+        ty = generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 
     // Analyse the type and return it.

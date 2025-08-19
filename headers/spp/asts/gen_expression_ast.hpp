@@ -13,7 +13,7 @@ struct spp::asts::GenExpressionAst final : PrimaryExpressionAst {
     SPP_AST_KEY_FUNCTIONS;
 
 private:
-    std::shared_ptr<TypeAst> m_generator_type;
+    std::shared_ptr<TypeAst> m_gen_type;
 
 public:
     /**

@@ -21,6 +21,8 @@ struct spp::asts::StringLiteralAst final : LiteralAst {
         decltype(val) &&val);
 
     ~StringLiteralAst() override;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 

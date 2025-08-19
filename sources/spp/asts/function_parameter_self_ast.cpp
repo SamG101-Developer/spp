@@ -9,10 +9,10 @@
 
 
 spp::asts::FunctionParameterSelfAst::FunctionParameterSelfAst(
-    decltype(tok_conv) &&tok_conv,
+    decltype(conv) &&conv,
     decltype(var) &&var) :
     FunctionParameterAst(std::move(var), nullptr, nullptr),
-    tok_conv(std::move(tok_conv)) {
+    conv(std::move(conv)) {
 }
 
 
@@ -20,7 +20,7 @@ spp::asts::FunctionParameterSelfAst::~FunctionParameterSelfAst() = default;
 
 
 auto spp::asts::FunctionParameterSelfAst::pos_start() const -> std::size_t {
-    return tok_conv->pos_start();
+    return conv->pos_start();
 }
 
 
@@ -31,7 +31,7 @@ auto spp::asts::FunctionParameterSelfAst::pos_end() const -> std::size_t {
 
 auto spp::asts::FunctionParameterSelfAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<FunctionParameterSelfAst>(
-        ast_clone(tok_conv),
+        ast_clone(conv),
         ast_clone(var));
 }
 
@@ -60,5 +60,5 @@ auto spp::asts::FunctionParameterSelfAst::stage_7_analyse_semantics(
     // Special mutability rules for the "self" parameter.
     const auto sym = sm->current_scope->get_var_symbol(*var->extract_name());
     sym->is_mutable = ast_cast<LocalVariableSingleIdentifierAst>(var.get())->tok_mut != nullptr
-        or ast_cast<ConventionMutAst>(tok_conv.get()) != nullptr;;
+        or ast_cast<ConventionMutAst>(conv.get()) != nullptr;;
 }

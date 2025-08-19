@@ -12,15 +12,15 @@ struct spp::asts::FunctionParameterSelfAst final : FunctionParameterAst {
      * The convention is attached to the self parameter rather than its type, as it is required before the type is
      * necessarily attached.
      */
-    std::unique_ptr<ConventionAst> tok_conv;
+    std::unique_ptr<ConventionAst> conv;
 
     /**
      * Construct the FunctionParameterSelfAst with the arguments matching the members.
-     * @param tok_conv The convention token for this parameter.
+     * @param conv The convention token for this parameter.
      * @param var The local variable declaration for this parameter.
      */
     FunctionParameterSelfAst(
-        decltype(tok_conv) &&tok_conv,
+        decltype(conv) &&conv,
         decltype(var) &&var);
 
     ~FunctionParameterSelfAst() override;
