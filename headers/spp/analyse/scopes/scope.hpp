@@ -38,7 +38,9 @@ public:
 
     asts::Ast *ast;
 
-    Symbol *ty_sym;
+    TypeSymbol *ty_sym;
+
+    NamespaceSymbol *ns_sym;
 
 private:
     SymbolTable m_symbol_table;

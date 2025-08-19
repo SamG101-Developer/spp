@@ -1,6 +1,4 @@
 #pragma once
-
-
 #include <spp/asts/_fwd.hpp>
 
 
@@ -19,6 +17,7 @@ namespace spp::asts::generate::common_types_precompiled {
     inline const std::shared_ptr<TypeAst> VOID;
 
     inline const std::shared_ptr<TypeAst> NEVER;
+    inline const std::shared_ptr<TypeAst> COPY;
 
     auto initialize_types() -> void;
 }

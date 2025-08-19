@@ -10,7 +10,7 @@
  * complex types, such as aliasing vectors, or partially specialized hash maps etc. For example,
  * @code type SecureByteMap[T] = std::collections::HashMap[K=Byte, V=T, A=SecureAlloc[(K, V)]]@endcode
  */
-struct spp::asts::TypeStatementAst final : StatementAst {
+struct spp::asts::TypeStatementAst : StatementAst {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

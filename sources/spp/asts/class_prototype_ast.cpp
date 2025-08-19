@@ -84,8 +84,8 @@ auto spp::asts::ClassPrototypeAst::print(meta::AstPrinter &printer) const -> std
 auto spp::asts::ClassPrototypeAst::m_generate_symbols(
     ScopeManager *sm)
     -> analyse::scopes::TypeSymbol* {
-    const auto sym_name = ast_clone(name->type_parts()[0]);
-    sym_name->generic_arg_group = std::make_unique<GenericArgumentGroupAst>(*generic_param_group);
+    auto sym_name = ast_clone(name->type_parts()[0]);
+    sym_name->generic_arg_group = GenericArgumentGroupAst::from_params(*generic_param_group);
 
     // Create the symbols as TypeSymbol pointers, so AliasSymbols can also be used.
     std::unique_ptr<analyse::scopes::TypeSymbol> symbol_1 = nullptr;
@@ -93,17 +93,17 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
 
     // Create the symbol for the type, include generics if applicable, like Vec[T].
     symbol_1 = m_for_alias
-                   ? std::make_unique<analyse::scopes::AliasSymbol>(sym_name.get(), this, sm->current_scope, sm->current_scope, nullptr)
-                   : std::make_unique<analyse::scopes::TypeSymbol>(sym_name.get(), this, sm->current_scope, sm->current_scope);
+        ? std::make_unique<analyse::scopes::AliasSymbol>(std::move(sym_name), this, sm->current_scope, sm->current_scope, nullptr)
+        : std::make_unique<analyse::scopes::TypeSymbol>(std::move(sym_name), this, sm->current_scope, sm->current_scope);
     sm->current_scope->ty_sym = symbol_1.get();
     sm->current_scope->parent->add_symbol(std::move(symbol_1));
-    m_cls_sym = dynamic_cast<analyse::scopes::TypeSymbol*>(sm->current_scope->ty_sym);
+    m_cls_sym = sm->current_scope->ty_sym;
 
     // If the type was generic, like Vec[T], also create a base Vec symbol.
     if (not generic_param_group->params.empty()) {
         symbol_2 = m_for_alias
-                       ? std::make_unique<analyse::scopes::AliasSymbol>(name->type_parts()[0], this, sm->current_scope, sm->current_scope, nullptr)
-                       : std::make_unique<analyse::scopes::TypeSymbol>(name->type_parts()[0], this, sm->current_scope, sm->current_scope);
+            ? std::make_unique<analyse::scopes::AliasSymbol>(name->type_parts()[0], this, sm->current_scope, sm->current_scope, nullptr)
+            : std::make_unique<analyse::scopes::TypeSymbol>(name->type_parts()[0], this, sm->current_scope, sm->current_scope);
         symbol_2->generic_impl = symbol_1.get();
         const auto ret_sym = symbol_2.get();
         sm->current_scope->parent->add_symbol(std::move(symbol_2));

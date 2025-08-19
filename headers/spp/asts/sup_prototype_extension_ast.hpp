@@ -1,8 +1,8 @@
 #ifndef SUP_PROTOTYPE_EXTENSION_AST_HPP
 #define SUP_PROTOTYPE_EXTENSION_AST_HPP
 
-#include <spp/asts/ast.hpp>
 #include <spp/asts/_fwd.hpp>
+#include <spp/asts/sup_member_ast.hpp>
 
 
 /**
@@ -14,7 +14,7 @@
  * }
  * @endcode
  */
-struct spp::asts::SupPrototypeExtensionAst final : virtual Ast {
+struct spp::asts::SupPrototypeExtensionAst final : virtual SupMemberAst {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

@@ -37,7 +37,8 @@ spp::asts::GenericArgumentGroupAst::~GenericArgumentGroupAst() = default;
 
 
 auto spp::asts::GenericArgumentGroupAst::from_params(
-    GenericParameterGroupAst const &generic_params) {
+    GenericParameterGroupAst const &generic_params)
+    -> std::unique_ptr<GenericArgumentGroupAst> {
     // Create the list of arguments, initially empty.
     auto mapped_args = std::vector<std::unique_ptr<GenericArgumentAst>>(generic_params.size());
 
@@ -61,7 +62,8 @@ auto spp::asts::GenericArgumentGroupAst::from_params(
 
 
 auto spp::asts::GenericArgumentGroupAst::from_map(
-    std::map<TypeAst*, ExpressionAst*> const &map) -> std::unique_ptr<GenericArgumentGroupAst> {
+    std::map<TypeAst*, ExpressionAst*> const &map)
+    -> std::unique_ptr<GenericArgumentGroupAst> {
     // Create the list of arguments, initially empty.
     auto mapped_args = std::vector<std::unique_ptr<GenericArgumentAst>>();
 

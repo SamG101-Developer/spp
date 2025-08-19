@@ -2,7 +2,10 @@
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/analyse/scopes/symbols.hpp>
+#include <spp/analyse/utils/func_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
+#include <spp/asts/class_prototype_ast.hpp>
+#include <spp/asts/function_prototype_ast.hpp>
 #include <spp/asts/generic_argument_type_keyword_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
 #include <spp/asts/generic_parameter_group_ast.hpp>
@@ -11,7 +14,9 @@
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
+#include <spp/asts/generate/common_types_precompiled.hpp>
 
+#include <genex/views/concat.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/map.hpp>
 #include <genex/views/to.hpp>
@@ -252,4 +257,52 @@ auto spp::asts::SupPrototypeExtensionAst::stage_5_load_super_scopes(
     // Load the implementation and move out of the scope.
     impl->stage_5_load_super_scopes(sm, meta);
     sm->move_out_of_current_scope();
+}
+
+
+auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> void {
+    // Move to the next scope.
+    sm->move_to_next_scope();
+    name->stage_7_analyse_semantics(sm, meta);
+    super_class->stage_7_analyse_semantics(sm, meta);
+
+    // Get the symbols.
+    const auto cls_sym = sm->current_scope->get_type_symbol(*name);
+    const auto sup_sym = sm->current_scope->get_type_symbol(*super_class);
+    const auto sup_scopes = std::vector{sup_sym->scope}
+        | genex::views::concat(sm->current_scope->get_type_symbol(*super_class)->scope->sup_scopes())
+        | genex::views::filter([](auto &&x) { return ast_cast<ClassPrototypeAst>(x->ast); })
+        | genex::views::to<std::vector>();
+
+    // Mark the class as copyable if the "Copy" type is the supertype.
+    for (const auto sup_scope : sup_scopes) {
+        auto fq_name = sup_scope->ty_sym->fq_name();
+        if (analyse::utils::type_utils::symbolic_eq(*fq_name, *generate::common_types_precompiled::COPY, *sup_scope, *sm->current_scope)) {
+            sm->current_scope->get_type_symbol(*name->without_generics())->is_directly_copyable = true;
+            cls_sym->is_directly_copyable = true;
+            break;
+        }
+    }
+
+    // Check every member on the superimposition exists on the supertype.
+    for (auto&& member: impl->members) {
+        if (const auto ext_member = ast_cast<SupPrototypeExtensionAst>(member.get())) {
+            // Get the method and identify the base method it is overriding.
+            const auto this_method = ast_cast<FunctionPrototypeAst>(ext_member->impl->final_member());
+            const auto base_method = analyse::utils::func_utils::check_for_conflicting_override(*sm->current_scope, *sup_sym->scope, *this_method);
+
+            // Check the base method exists.
+            if (base_method == nullptr) {
+                analyse::errors::SppSuperimpositionExtensionMethodInvalidError(*this_method->name, *super_class)->scopes({sm->current_scope}).raise();
+            }
+
+            // Check the base method is virtual or abstract.
+            if (not (base_method->m_abstract_annotation or base_method->m_virtual_annotation)) {
+                analyse::errors::SppSuperimpositionExtensionNonVirtualMethodOverriddenError(*this_method->name, *base_method->name, *super_class).scopes({sm->current_scope}).raise();
+            }
+        }
+    }
 }

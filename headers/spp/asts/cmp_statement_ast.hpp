@@ -11,7 +11,7 @@
  * The CmpStatementAst represents a compile time definition statement at either the module or superimposition level. It
  * is analogous to Rust's "const" statement.
  */
-struct spp::asts::CmpStatementAst final : virtual Ast, mixins::VisibilityEnabledAst {
+struct spp::asts::CmpStatementAst : virtual Ast, mixins::VisibilityEnabledAst {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

@@ -203,10 +203,11 @@ namespace spp::asts {
     struct SupPrototypeFunctionsAst;
     struct SupPrototypeExtensionAst;
     struct SupImplementationAst;
-    using SupCmpStatementAst = CmpStatementAst;
-    using SupTypeStatementAst = TypeStatementAst;
-    using SupMethodPrototypeAst = FunctionPrototypeAst;
-    using SupMemberAst = Ast;
+    struct SupMemberAst;
+    struct SupCmpStatementAst;
+    struct SupTypeStatementAst;
+    struct SupCoroutinePrototypeAst;
+    struct SupSubroutinePrototypeAst;
 
     using FunctionMemberAst = StatementAst;
 }
