@@ -46,7 +46,7 @@ struct spp::utils::errors::SemanticError : CustomError {
     ~SemanticError() override = default;
     auto get_message(ErrorFormatter &error_formatter) const noexcept -> std::string override;
     auto raise() noexcept(false) -> void;
-    auto scopes(std::vector<analyse::scopes::Scope*> &&scopes) -> SemanticError&;
+    auto scopes(std::vector<analyse::scopes::Scope const*> &&scopes) -> SemanticError&;
 };
 
 

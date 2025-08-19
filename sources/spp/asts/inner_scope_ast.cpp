@@ -128,8 +128,8 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
         }
     }
 
-    for (auto&& sym: all_syms) {
-        for (auto&& bor: sym->memory_info->borrow_refers_to | genex::views::view | genex::views::to<std::vector>()) {
+    for (auto &&sym : all_syms) {
+        for (auto &&bor : sym->memory_info->borrow_refers_to | genex::views::view | genex::views::to<std::vector>()) {
             auto [a, b, _, scope] = bor;
             if (scope == sm->current_scope) {
                 sym->memory_info->borrow_refers_to |= genex::actions::remove(bor);

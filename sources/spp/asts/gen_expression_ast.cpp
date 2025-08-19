@@ -152,6 +152,6 @@ auto spp::asts::GenExpressionAst::infer_type(
     mixins::CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Get the "Send" generic type parameter from the generator type.
-    auto send_type = m_gen_type->type_parts().back()->generic_args->type_at("Send")->val;
+    auto send_type = m_gen_type->type_parts().back()->generic_arg_group->type_at("Send")->val;
     return send_type;
 }

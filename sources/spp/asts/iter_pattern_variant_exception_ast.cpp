@@ -60,7 +60,7 @@ auto spp::asts::IterPatternVariantExceptionAst::stage_7_analyse_semantics(
     mixins::CompilerMetaData *meta)
     -> void {
     // Create a dummy type with the same type as the variable's type, to initialize it.
-    auto dummy_type = meta->case_condition->infer_type(sm, meta)->type_parts().back()->generic_args->type_at("Err")->val;
+    auto dummy_type = meta->case_condition->infer_type(sm, meta)->type_parts().back()->generic_arg_group->type_at("Err")->val;
     auto dummy = std::make_unique<ObjectInitializerAst>(std::move(dummy_type), nullptr);
 
     // Create a new AST node that initializes the variable with the dummy value.

@@ -238,9 +238,7 @@ auto spp::asts::FunctionPrototypeAst::stage_2_gen_top_level_scopes(
 
     // If there is a self parameter in a free function, throw as error.
     if (ast_cast<ModulePrototypeAst>(m_ctx) and param_group->get_self_param()) {
-        analyse::errors::SppSelfParamInFreeFunctionError(*this, *param_group->get_self_param())
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SppSelfParamInFreeFunctionError(*this, *param_group->get_self_param()).scopes({sm->current_scope}).raise();
     }
 
     // Run steps for the annotations.
@@ -248,9 +246,7 @@ auto spp::asts::FunctionPrototypeAst::stage_2_gen_top_level_scopes(
 
     // Ensure the function's return type does not have a convention.
     if (const auto c = return_type->get_convention()) {
-        analyse::errors::SppSecondClassBorrowViolationError(*return_type, *c, "function return type")
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SppSecondClassBorrowViolationError(*return_type, *c, "function return type").scopes({sm->current_scope}).raise();
     }
 
     // Generate the generic parameters and attributes of the function.

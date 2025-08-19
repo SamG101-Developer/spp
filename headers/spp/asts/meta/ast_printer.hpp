@@ -61,9 +61,9 @@ private:
 template <typename T>
 auto spp::asts::meta::AstPrinter::print(T &&ast) -> std::string {
     constexpr auto do_indent =
-        is_same_template_v<T, InnerScopeAst> ||
-        std::is_same_v<T, FunctionImplementationAst> ||
-        std::is_same_v<T, ClassImplementationAst> ||
+        is_same_template_v<T, InnerScopeAst> or
+        std::is_same_v<T, FunctionImplementationAst> or
+        std::is_same_v<T, ClassImplementationAst> or
         std::is_same_v<T, SupImplementationAst>;
 
     auto code = std::string();

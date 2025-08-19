@@ -85,7 +85,7 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
     ScopeManager *sm)
     -> analyse::scopes::TypeSymbol* {
     const auto sym_name = ast_clone(name->type_parts()[0]);
-    sym_name->generic_args = std::make_unique<GenericArgumentGroupAst>(*generic_param_group);
+    sym_name->generic_arg_group = std::make_unique<GenericArgumentGroupAst>(*generic_param_group);
 
     // Create the symbols as TypeSymbol pointers, so AliasSymbols can also be used.
     std::unique_ptr<analyse::scopes::TypeSymbol> symbol_1 = nullptr;

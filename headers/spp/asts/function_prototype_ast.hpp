@@ -18,7 +18,7 @@ struct spp::asts::FunctionPrototypeAst : virtual Ast {
     friend struct AnnotationAst;
     friend struct PostfixExpressionOperatorFunctionCallAst;
 
-private:
+protected:
     /**
      * Save the original function name prior to AST transformations.
      */

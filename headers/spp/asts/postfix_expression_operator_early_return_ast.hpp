@@ -19,7 +19,7 @@ struct spp::asts::PostfixExpressionOperatorEarlyReturnAst final : PostfixExpress
      * @param[in] tok_qst The @c ? token that indicates an early return in a postfix expression.
      */
     explicit PostfixExpressionOperatorEarlyReturnAst(
-        decltype(tok_qst)&& tok_qst);
+        decltype(tok_qst) &&tok_qst);
 
     ~PostfixExpressionOperatorEarlyReturnAst() override;
 

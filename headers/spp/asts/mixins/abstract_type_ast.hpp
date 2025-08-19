@@ -33,9 +33,9 @@ public:
 
     virtual auto substitute_generics(std::vector<GenericArgumentAst*> args) const -> std::unique_ptr<TypeAst> = 0;
 
-    virtual auto contains_generic(TypeAst const *generic) const -> bool = 0;
+    virtual auto contains_generic(GenericParameterAst const &generic) const -> bool = 0;
 
-    virtual auto match_generic(TypeAst const *other, TypeAst const *generic) -> TypeAst* = 0;
+    virtual auto match_generic(Ast const &other, Ast const &generic) -> TypeAst* = 0;
 
     virtual auto with_generics(std::unique_ptr<GenericArgumentGroupAst> &&arg_group) -> std::unique_ptr<TypeAst> = 0;
 };

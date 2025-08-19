@@ -12,7 +12,7 @@
 
 #define ast_clone(ast) ast != nullptr ? ast_cast<std::remove_cvref_t<decltype(*ast)>>((*ast).clone()) : nullptr
 
-#define ast_clone_vec(asts) (asts) | genex::views::map([](auto&& x) { return ast_clone(x); }) | genex::views::to<std::vector>()
+#define ast_clone_vec(asts) (asts) | genex::views::map([](auto &&x) { return ast_clone(x); }) | genex::views::to<std::vector>()
 
 
 namespace spp::asts {

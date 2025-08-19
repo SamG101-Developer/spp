@@ -66,7 +66,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_7_analyse_semanti
     }
 
     // Check the Residual type is compatible with the function's return type.
-    const auto residual_type = try_type->type_parts().back()->generic_args->type_at("Residual")->val;
+    const auto residual_type = try_type->type_parts().back()->generic_arg_group->type_at("Residual")->val;
     if (not analyse::utils::type_utils::symbolic_eq(*meta->enclosing_function_ret_type[0], *residual_type, *meta->enclosing_function_scope, *sm->current_scope)) {
         analyse::errors::SppTypeMismatchError(*meta->enclosing_function_ret_type[0], *meta->enclosing_function_ret_type[0], *lhs, *residual_type)
             .scopes({meta->enclosing_function_scope, sm->current_scope})
@@ -85,5 +85,5 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::infer_type(
 
     // Get the Try type's Output generic argument.
     const auto try_type = analyse::utils::type_utils::get_try_type(*lhs_type, *sm);
-    return try_type->type_parts().back()->generic_args->type_at("Output")->val;
+    return try_type->type_parts().back()->generic_arg_group->type_at("Output")->val;
 }

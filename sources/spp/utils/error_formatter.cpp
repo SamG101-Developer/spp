@@ -68,7 +68,7 @@ auto spp::utils::errors::ErrorFormatter::internal_parse_error_raw_pos(
     auto left_padding = std::string(error_line_number.length(), ' ');
 
     // Remove "\n" from the start and end of the error line string.
-    if (!error_line_as_string.empty() && error_line_as_string.front() == '\n') {
+    if (!error_line_as_string.empty() and error_line_as_string.front() == '\n') {
         error_line_as_string.erase(0, 1);
     }
 

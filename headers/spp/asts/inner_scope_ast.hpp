@@ -51,7 +51,7 @@ public:
         decltype(members) &&members,
         decltype(tok_r) &&tok_r);
 
-    auto final_member() const -> Ast*;
+    auto final_member() const -> StatementAst*;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

@@ -43,6 +43,14 @@ namespace spp::analyse::utils::type_utils {
         bool lhs_ignore_alias = false)
         -> bool;
 
+    auto relaxed_symbolic_eq(
+        asts::TypeAst const &lhs_type,
+        asts::TypeAst const &rhs_type,
+        scopes::Scope const &lhs_scope,
+        scopes::Scope const &rhs_scope,
+        std::map<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::TypeAst>> *generic_args = nullptr)
+        -> bool;
+
     auto is_type_indexable(
         asts::TypeAst const &type,
         scopes::Scope const &scope)

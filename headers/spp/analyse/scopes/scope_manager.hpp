@@ -53,7 +53,7 @@ class spp::analyse::scopes::ScopeManager {
 public:
     static std::map<TypeSymbol*, std::vector<Scope*>> normal_sup_blocks;
 
-    static std::map<TypeSymbol*, std::vector<Scope*>> generic_sup_blocks;
+    static std::vector<Scope*> generic_sup_blocks;
 
 public:
     /**

@@ -7,7 +7,10 @@
 
 struct spp::asts::LoopExpressionAst final : PrimaryExpressionAst {
     SPP_AST_KEY_FUNCTIONS;
+private:
+    std::optional<std::tuple<ExpressionAst*, std::shared_ptr<TypeAst>, analyse::scopes::Scope*>> m_loop_exit_type_info;
 
+public:
     /**
      * The @c loop token that indicates the start of a loop expression.
      */
@@ -43,6 +46,12 @@ struct spp::asts::LoopExpressionAst final : PrimaryExpressionAst {
         decltype(else_block) &&else_block);
 
     ~LoopExpressionAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 

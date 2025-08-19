@@ -145,7 +145,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
 
         // Replace the tuple-expansion argument with the expanded arguments.
         args |= genex::actions::pop(i);
-        for (auto j = arg_type->type_parts().back()->generic_args->args.size() - 1; j > -1; --j) {
+        for (auto j = arg_type->type_parts().back()->generic_arg_group->args.size() - 1; j > -1; --j) {
             auto field = std::make_unique<IdentifierAst>(arg->val->pos_start(), std::to_string(i));
             auto new_ast = std::make_unique<PostfixExpressionAst>(
                 ast_clone(arg->val),

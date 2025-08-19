@@ -126,7 +126,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
 
     // Determine number of elements in the left-hand-side and right-hand-side tuples.
     const auto num_lhs_arr_elems = elems.size();
-    const auto num_rhs_arr_elems = val->infer_type(sm, meta)->type_parts().back()->generic_args->args.size();
+    const auto num_rhs_arr_elems = val->infer_type(sm, meta)->type_parts().back()->generic_arg_group->args.size();
     if ((num_lhs_arr_elems < num_rhs_arr_elems and multi_arg_skips.empty()) or (num_lhs_arr_elems > num_rhs_arr_elems)) {
         analyse::errors::SppVariableTupleDestructureTupleSizeMismatchError(*this, num_lhs_arr_elems, *val, num_rhs_arr_elems)
             .scopes({sm->current_scope})

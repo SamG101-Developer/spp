@@ -26,8 +26,8 @@ public:
     std::unique_ptr<ClosureExpressionParameterAndCaptureGroupAst> pc_group;
 
     /**
-     * The body of the closure. This can be a single expression, like @code || 1 + 2 ||@endcode, or an inner scope
-     * (type of expression), for more complex closures.
+     * The body of the closure. This can be a single expression, like @code || 1 + 2@endcode, or an inner scope (type of
+     * expression), for more complex closures.
      */
     std::unique_ptr<ExpressionAst> body;
 

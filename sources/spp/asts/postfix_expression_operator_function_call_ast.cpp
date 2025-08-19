@@ -212,8 +212,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
                 // Tuples being folded must all have the same element types (per tuple).
                 for (auto &&arg : m_folded_args) {
-                    auto first_elem_type = ast_cast<GenericArgumentTypeAst>(arg->infer_type(sm, meta)->type_parts().back()->generic_args->args[0].get())->val;
-                    auto mismatch = arg->infer_type(sm, meta)->type_parts().back()->generic_args->args
+                    auto first_elem_type = ast_cast<GenericArgumentTypeAst>(arg->infer_type(sm, meta)->type_parts().back()->generic_arg_group->args[0].get())->val;
+                    auto mismatch = arg->infer_type(sm, meta)->type_parts().back()->generic_arg_group->args
                         | genex::views::drop(1)
                         | genex::views::filter([sm, first_elem_type](auto &&x) { return not analyse::utils::type_utils::symbolic_eq(*x->value, *first_elem_type, *sm->current_scope, *sm->current_scope); })
                         | genex::views::map([](auto &&x) { return x->val.get(); })
@@ -226,9 +226,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 }
 
                 // Ensure all tuples are the same length.
-                const auto first_tup_len = m_folded_args[0]->infer_type(sm, meta)->type_parts().back()->generic_args->args.size();
+                const auto first_tup_len = m_folded_args[0]->infer_type(sm, meta)->type_parts().back()->generic_arg_group->args.size();
                 for (auto &&arg : m_folded_args | genex::views::drop(1)) {
-                    const auto tup_len = arg->infer_type(sm, meta)->type_parts().back()->generic_args->args.size();
+                    const auto tup_len = arg->infer_type(sm, meta)->type_parts().back()->generic_arg_group->args.size();
                     if (tup_len != first_tup_len) {
                         analyse::errors::SppFunctionFoldTupleLengthMismatchError(
                             *m_folded_args[0]->val, first_tup_len, *arg->val, tup_len).scopes({sm->current_scope}).raise();
@@ -529,7 +529,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
         if (const auto cast_lhs = ast_cast<PostfixExpressionAst>(meta->postfix_expression_lhs); cast_lhs != nullptr) {
             const auto lhs_lhs_scope = sm->current_scope->get_type_symbol(*cast_lhs->lhs->infer_type(sm, meta))->scope;
             if (not analyse::utils::type_utils::is_type_tuple(*std::get<TypeIdentifierAst*>(lhs_lhs_scope->name), *sm->current_scope)) {
-                other_generics = std::get<TypeIdentifierAst*>(lhs_lhs_scope->name)->type_parts().back()->generic_args->args
+                other_generics = std::get<TypeIdentifierAst*>(lhs_lhs_scope->name)->type_parts().back()->generic_arg_group->args
                     | genex::views::ptr_unique
                     | genex::views::to<std::vector>();
             }

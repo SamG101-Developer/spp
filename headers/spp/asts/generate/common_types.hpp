@@ -30,6 +30,8 @@ namespace spp::asts::generate::common_types {
     auto void_type(std::size_t pos) -> std::unique_ptr<TypeAst>;
     auto boolean_type(std::size_t pos) -> std::unique_ptr<TypeAst>;
     auto string_type(std::size_t pos) -> std::unique_ptr<TypeAst>;
+    auto never_type(std::size_t pos) -> std::unique_ptr<TypeAst>;
+
     auto array_type(std::size_t pos, std::unique_ptr<TypeAst> &&elem_type, std::unique_ptr<ExpressionAst> &&size) -> std::unique_ptr<TypeAst>;
     auto variant_type(std::size_t pos, std::vector<std::shared_ptr<TypeAst>> &&inner_types) -> std::unique_ptr<TypeAst>;
     auto tuple_type(std::size_t pos, std::vector<std::shared_ptr<TypeAst>> &&inner_types) -> std::unique_ptr<TypeAst>;

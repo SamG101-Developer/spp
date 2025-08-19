@@ -92,7 +92,7 @@ auto spp::asts::FloatLiteralAst::stage_7_analyse_semantics(
     const auto mapped_val = CppBigFloat((int_val->token_data + "." + frac_val->token_data).c_str());
 
     // Check if the value is within the bounds.
-    if (mapped_val < lower || mapped_val > upper) {
+    if (mapped_val < lower or mapped_val > upper) {
         analyse::errors::SppFloatOutOfBoundsError(*this, mapped_val, lower, upper, "float")
             .scopes({sm->current_scope})
             .raise();

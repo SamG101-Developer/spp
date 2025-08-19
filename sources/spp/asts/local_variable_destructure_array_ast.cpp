@@ -126,7 +126,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
 
     // Determine number of elements in the left-hand-side and right-hand-side arrays.
     const auto num_lhs_arr_elems = elems.size();
-    const auto num_rhs_arr_elems = std::stoul(ast_cast<IntegerLiteralAst>(ast_cast<GenericArgumentTypeAst>(val_type->type_parts().back()->generic_args->args[1].get())->val.get())->val->token_data);
+    const auto num_rhs_arr_elems = std::stoul(ast_cast<IntegerLiteralAst>(ast_cast<GenericArgumentTypeAst>(val_type->type_parts().back()->generic_arg_group->args[1].get())->val.get())->val->token_data);
     if ((num_lhs_arr_elems < num_rhs_arr_elems and multi_arg_skips.empty()) or (num_lhs_arr_elems > num_rhs_arr_elems)) {
         analyse::errors::SppVariableArrayDestructureArraySizeMismatchError(*this, num_lhs_arr_elems, *val, num_rhs_arr_elems)
             .scopes({sm->current_scope})

@@ -117,7 +117,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::infer_type(
     // Form the Generator type and return it.
     auto generated_type = ast_clone(gen_type);
     generated_type->type_parts().back()->name = std::move(new_type_name);
-    generated_type->type_parts().back()->generic_args->args |= genex::actions::remove_if([](auto &&x) { return ast_cast<GenericArgumentTypeKeywordAst>(x.get())->name->type_parts().back()->name == "Send"; });
+    generated_type->type_parts().back()->generic_arg_group->args |= genex::actions::remove_if([](auto &&x) { return ast_cast<GenericArgumentTypeKeywordAst>(x.get())->name->type_parts().back()->name == "Send"; });
     generated_type->stage_7_analyse_semantics(sm, meta);
     return generated_type;
 }

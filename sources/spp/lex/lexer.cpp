@@ -41,13 +41,13 @@ auto spp::lex::Lexer::lex() const -> std::vector<RawToken> {
         const auto c = m_code[i];
 
         // Skip any characters in a single-line comment (except terminating newline character).
-        if (in_single_line_comment && c != '\n') {
+        if (in_single_line_comment and c != '\n') {
             ++i;
             continue;
         }
 
         // Append any characters in a string literal as a character token (except terminating quotation mark).
-        if (in_string && c != '"') {
+        if (in_string and c != '"') {
             tokens.emplace_back(RawTokenType::LX_CHARACTER, std::string(1, c));
             ++i;
             continue;

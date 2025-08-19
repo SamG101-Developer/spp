@@ -69,6 +69,40 @@ struct spp::asts::SupPrototypeExtensionAst final : virtual Ast {
         decltype(tok_ext) &&tok_ext,
         decltype(super_class) &&super_class,
         decltype(impl) &&impl);
+
+    ~SupPrototypeExtensionAst() override;
+
+private:
+    auto m_check_cyclic_extension(
+        analyse::scopes::TypeSymbol const &sup_sym,
+        analyse::scopes::Scope const &check_scope)
+        -> void;
+
+    auto m_check_double_extension(
+        analyse::scopes::TypeSymbol const &cls_sym,
+        analyse::scopes::Scope const &check_scope)
+        -> void;
+
+    auto m_check_self_extension(
+        analyse::scopes::Scope const &check_scope)
+        -> void;
+
+public:
+    auto stage_1_pre_process(Ast *ctx) -> void override;
+
+    auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *) -> void override;
+
+    auto stage_3_gen_top_level_aliases(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_4_qualify_types(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_5_load_super_scopes(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_6_pre_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

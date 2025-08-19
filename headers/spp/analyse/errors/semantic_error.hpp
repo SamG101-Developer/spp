@@ -72,6 +72,9 @@ namespace spp::analyse::errors {
     struct SppGenericTypeInvalidUsageError;
     struct SppAmbiguousMemberAccessError;
     struct SppFunctionCoroutineContainsRetExprExpressionError;
+    struct SppFunctionSubroutineMissingReturnStatementError;
+    struct SppSuperimpositionCyclicExtensionError;
+    struct SppSuperimpositionSelfExtensionError;
 
     auto add_header(std::size_t err_code, std::string &&msg) -> std::string;
     auto add_error(std::size_t pos, std::string &&tag) -> std::string;
@@ -398,4 +401,19 @@ struct spp::analyse::errors::SppAmbiguousMemberAccessError final : spp::utils::e
 
 struct spp::analyse::errors::SppFunctionCoroutineContainsRetExprExpressionError final : spp::utils::errors::SemanticError {
     explicit SppFunctionCoroutineContainsRetExprExpressionError(asts::TokenAst const &fun_tag, asts::TokenAst const &ret_stmt);
+};
+
+
+struct spp::analyse::errors::SppFunctionSubroutineMissingReturnStatementError final : spp::utils::errors::SemanticError {
+    explicit SppFunctionSubroutineMissingReturnStatementError(asts::Ast const &final_member, asts::TypeAst const &return_type);
+};
+
+
+struct spp::analyse::errors::SppSuperimpositionCyclicExtensionError final : spp::utils::errors::SemanticError {
+    explicit SppSuperimpositionCyclicExtensionError(asts::TypeAst const &first_extension, asts::TypeAst const &second_extension);
+};
+
+
+struct spp::analyse::errors::SppSuperimpositionSelfExtensionError final : spp::utils::errors::SemanticError {
+    explicit SppSuperimpositionSelfExtensionError(asts::TypeAst const &first_extension, asts::TypeAst const &second_extension);
 };

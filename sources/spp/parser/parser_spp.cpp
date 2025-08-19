@@ -2096,12 +2096,12 @@ auto spp::parse::ParserSpp::parse_lexeme_bin_integer() -> std::unique_ptr<asts::
     out->token_data += std::move(p2->token_data);
 
     PARSE_ONCE(p3, parse_lexeme_digit);
-    if (p3->token_data[0] != '0' && p3->token_data[0] != '1') { return nullptr; }
+    if (p3->token_data[0] != '0' and p3->token_data[0] != '1') { return nullptr; }
     out->token_data += std::move(p3->token_data);
 
     while (m_tokens[m_pos].type == lex::RawTokenType::LX_DIGIT) {
         PARSE_ONCE(p4, parse_lexeme_digit);
-        if (p4->token_data[0] != '0' && p4->token_data[0] != '1') { return nullptr; }
+        if (p4->token_data[0] != '0' and p4->token_data[0] != '1') { return nullptr; }
         out->token_data += std::move(p4->token_data);
     }
 
@@ -2120,12 +2120,12 @@ auto spp::parse::ParserSpp::parse_lexeme_oct_integer() -> std::unique_ptr<asts::
     out->token_data += std::move(p2->token_data);
 
     PARSE_ONCE(p3, parse_lexeme_digit);
-    if (p3->token_data[0] < '0' || p3->token_data[0] > '7') { return nullptr; }
+    if (p3->token_data[0] < '0' or p3->token_data[0] > '7') { return nullptr; }
     out->token_data += std::move(p3->token_data);
 
     while (m_tokens[m_pos].type == lex::RawTokenType::LX_DIGIT) {
         PARSE_ONCE(p4, parse_lexeme_digit);
-        if (p4->token_data[0] < '0' || p4->token_data[0] > '7') { return nullptr; }
+        if (p4->token_data[0] < '0' or p4->token_data[0] > '7') { return nullptr; }
         out->token_data += std::move(p4->token_data);
     }
 

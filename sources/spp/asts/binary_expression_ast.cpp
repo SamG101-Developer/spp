@@ -97,7 +97,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
         }
 
         // Get the parts of the tuple.
-        const auto rhs_num_elems = rhs_tuple_type->type_parts()[0]->generic_args->args.size();
+        const auto rhs_num_elems = rhs_tuple_type->type_parts()[0]->generic_arg_group->args.size();
         auto new_asts = std::vector<std::unique_ptr<PostfixExpressionAst>>();
         for (auto i = 0u; i < rhs_num_elems; ++i) {
             auto field = std::make_unique<IdentifierAst>(rhs->pos_start(), std::to_string(i));
@@ -128,7 +128,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
         }
 
         // Get the parts of the tuple.
-        const auto lhs_num_elems = lhs_tuple_type->type_parts()[0]->generic_args->args.size();
+        const auto lhs_num_elems = lhs_tuple_type->type_parts()[0]->generic_arg_group->args.size();
         auto new_asts = std::vector<std::unique_ptr<PostfixExpressionAst>>();
         for (auto i = 0u; i < lhs_num_elems; ++i) {
             auto field = std::make_unique<IdentifierAst>(rhs->pos_start(), std::to_string(i));

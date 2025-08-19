@@ -85,7 +85,7 @@ auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
     const auto mapped_val = CppBigInt(val->token_data.c_str());
 
     // Check if the value is within the bounds.
-    if (mapped_val < lower || mapped_val > upper) {
+    if (mapped_val < lower or mapped_val > upper) {
         analyse::errors::SppIntegerOutOfBoundsError(*this, mapped_val, lower, upper, "float")
             .scopes({sm->current_scope})
             .raise();

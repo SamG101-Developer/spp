@@ -8,9 +8,9 @@
 spp::asts::TypeIdentifierAst::TypeIdentifierAst(
     const std::size_t pos,
     decltype(name) &&name,
-    decltype(generic_args) &&generic_args) :
+    decltype(generic_arg_group) &&generic_args) :
     name(std::move(name)),
-    generic_args(std::move(generic_args)),
+    generic_arg_group(std::move(generic_args)),
     m_pos(pos),
     m_is_never_type(false) {
     if (generic_args == nullptr) {
@@ -25,14 +25,14 @@ auto spp::asts::TypeIdentifierAst::pos_start() const -> std::size_t {
 
 
 auto spp::asts::TypeIdentifierAst::pos_end() const -> std::size_t {
-    return generic_args ? generic_args->pos_end() : m_pos + name.length();
+    return generic_arg_group ? generic_arg_group->pos_end() : m_pos + name.length();
 }
 
 
 spp::asts::TypeIdentifierAst::operator std::string() const {
     SPP_STRING_START;
     raw_string.append(name);
-    SPP_STRING_APPEND(generic_args);
+    SPP_STRING_APPEND(generic_arg_group);
     SPP_STRING_END;
 }
 
@@ -40,7 +40,7 @@ spp::asts::TypeIdentifierAst::operator std::string() const {
 auto spp::asts::TypeIdentifierAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     formatted_string.append(name);
-    SPP_PRINT_APPEND(generic_args);
+    SPP_PRINT_APPEND(generic_arg_group);
     SPP_PRINT_END;
 }
 
