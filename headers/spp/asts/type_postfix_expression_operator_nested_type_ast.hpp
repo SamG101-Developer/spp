@@ -16,7 +16,7 @@ struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final : TypePostfix
     /**
      * The nested type identifier. This is the type that is being accessed within the outer type.
      */
-    std::unique_ptr<TypeIdentifierAst> name;
+    std::shared_ptr<TypeIdentifierAst> name;
 
     /**
      * Construct the TypePostfixExpressionOperatorNestedTypeAst with the arguments matching the members.
@@ -29,9 +29,9 @@ struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final : TypePostfix
 
     ~TypePostfixExpressionOperatorNestedTypeAst() override;
 
-    auto ns_parts() const -> std::vector<IdentifierAst const*> override;
+    auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
 
-    auto type_parts() const -> std::vector<TypeIdentifierAst const*> override;
+    auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
 };
 
 

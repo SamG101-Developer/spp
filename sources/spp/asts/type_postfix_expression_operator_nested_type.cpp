@@ -7,7 +7,7 @@
 
 spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypePostfixExpressionOperatorNestedTypeAst(
     decltype(tok_sep) &&tok_sep,
-    decltype(name) &&name):
+    decltype(name) &&name) :
     TypePostfixExpressionOperatorAst(),
     tok_sep(std::move(tok_sep)),
     name(std::move(name)) {
@@ -27,6 +27,13 @@ auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::pos_end() const -> s
 }
 
 
+auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<TypePostfixExpressionOperatorNestedTypeAst>(
+        ast_clone(tok_sep),
+        ast_clone(name));
+}
+
+
 spp::asts::TypePostfixExpressionOperatorNestedTypeAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_sep);
@@ -43,11 +50,15 @@ auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::print(meta::AstPrint
 }
 
 
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::ns_parts() const -> std::vector<IdentifierAst const*> {
+auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::ns_parts(
+    ) const
+    -> std::vector<std::shared_ptr<const IdentifierAst>> {
     return {};
 }
 
 
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::type_parts() const -> std::vector<TypeIdentifierAst const*> {
-    return {name.get()};
+auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::type_parts(
+    ) const
+    -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
+    return {name};
 }

@@ -27,7 +27,7 @@ struct spp::asts::UseStatementAst final : StatementAst {
      * The old (fully qualified) type that this use statement is reducing. For example, for @code use std::Str@endcode,
      * the fully qualified type is @c std::Str.
      */
-    std::unique_ptr<TypeAst> old_type;
+    std::shared_ptr<TypeAst> old_type;
 
     /**
      * Construct the UseStatementAst with the arguments matching the members.

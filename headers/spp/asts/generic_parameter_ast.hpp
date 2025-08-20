@@ -11,6 +11,12 @@
  */
 struct spp::asts::GenericParameterAst : virtual Ast {
     using Ast::Ast;
+
+    /**
+     * The name of the generic type parameter. This is the name that will be used to refer to the type parameter in the
+     * generic type.
+     */
+    std::shared_ptr<TypeAst> name;
 };
 
 

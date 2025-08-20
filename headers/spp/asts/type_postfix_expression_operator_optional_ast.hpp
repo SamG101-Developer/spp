@@ -22,9 +22,9 @@ struct spp::asts::TypePostfixExpressionOperatorOptionalAst final : TypePostfixEx
 
     ~TypePostfixExpressionOperatorOptionalAst() override;
 
-    auto ns_parts() const -> std::vector<IdentifierAst const *> override;
+    auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
 
-    auto type_parts() const -> std::vector<TypeIdentifierAst const *> override;
+    auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
 };
 
 

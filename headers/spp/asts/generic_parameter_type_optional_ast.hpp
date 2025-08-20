@@ -16,7 +16,7 @@ struct spp::asts::GenericParameterTypeOptionalAst final : GenericParameterTypeAs
     /**
      * The default value for the parameter. This is the expression that will be used if the parameter is not provided.
      */
-    std::unique_ptr<TypeAst> default_val;
+    std::shared_ptr<TypeAst> default_val;
 
     /**
      * Construct the GenericParameterTypeOptionalAst with the arguments matching the members.

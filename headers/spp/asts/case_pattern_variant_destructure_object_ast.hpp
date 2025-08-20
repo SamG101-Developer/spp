@@ -12,7 +12,7 @@ struct spp::asts::CasePatternVariantDestructureObjectAst final : CasePatternVari
      * The type of the object being destructured. This is used to determine the type of the destructured elements (by
      * attribute type inference)
      */
-    std::unique_ptr<TypeAst> type;
+    std::shared_ptr<TypeAst> type;
 
     /**
      * The @code (@endcode token that indicates the start of a object destructuring pattern.

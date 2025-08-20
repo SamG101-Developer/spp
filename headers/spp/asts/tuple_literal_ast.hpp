@@ -16,7 +16,7 @@ struct spp::asts::TupleLiteralAst final : LiteralAst {
     /**
      * The elements of the tuple literal. This is a list of expressions that are contained within the tuple.
      */
-    std::vector<std::unique_ptr<ExpressionAst>> elements;
+    std::vector<std::unique_ptr<ExpressionAst>> elems;
 
     /**
      * The right parenthesis token that represents the end of the tuple literal.
@@ -31,10 +31,16 @@ struct spp::asts::TupleLiteralAst final : LiteralAst {
      */
     TupleLiteralAst(
         decltype(tok_l) &&tok_l,
-        decltype(elements) &&elements,
+        decltype(elems) &&elements,
         decltype(tok_r) &&tok_r);
 
     ~TupleLiteralAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 

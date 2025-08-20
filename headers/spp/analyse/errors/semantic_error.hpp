@@ -115,7 +115,7 @@ struct spp::analyse::errors::SppTypeMismatchError final : spp::utils::errors::Se
 
 
 struct spp::analyse::errors::SppSecondClassBorrowViolationError final : spp::utils::errors::SemanticError {
-    explicit SppSecondClassBorrowViolationError(asts::Ast const &expr, asts::ConventionAst const &conv, std::string_view ctx);
+    explicit SppSecondClassBorrowViolationError(asts::Ast const &expr, asts::Ast const &conv, std::string_view ctx);
 };
 
 

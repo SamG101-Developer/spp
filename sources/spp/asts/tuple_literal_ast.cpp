@@ -1,16 +1,24 @@
 #include <algorithm>
 
+#include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/scopes/scope_manager.hpp>
+#include <spp/analyse/scopes/scope.hpp>
+#include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/asts/tuple_literal_ast.hpp>
 #include <spp/asts/token_ast.hpp>
+#include <spp/asts/type_ast.hpp>
+#include <spp/asts/generate/common_types.hpp>
+
+#include <genex/views/address.hpp>
 
 
 spp::asts::TupleLiteralAst::TupleLiteralAst(
     decltype(tok_l) &&tok_l,
-    decltype(elements) &&elements,
-    decltype(tok_r) &&tok_r):
+    decltype(elems) &&elements,
+    decltype(tok_r) &&tok_r) :
     LiteralAst(),
     tok_l(std::move(tok_l)),
-    elements(std::move(elements)),
+    elems(std::move(elements)),
     tok_r(std::move(tok_r)) {
 }
 
@@ -28,10 +36,18 @@ auto spp::asts::TupleLiteralAst::pos_end() const -> std::size_t {
 }
 
 
+auto spp::asts::TupleLiteralAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<TupleLiteralAst>(
+        ast_clone(tok_l),
+        ast_clone_vec(elems),
+        ast_clone(tok_r));
+}
+
+
 spp::asts::TupleLiteralAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_l);
-    SPP_STRING_EXTEND(elements);
+    SPP_STRING_EXTEND(elems);
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;
 }
@@ -40,7 +56,58 @@ spp::asts::TupleLiteralAst::operator std::string() const {
 auto spp::asts::TupleLiteralAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(elements);
+    SPP_PRINT_EXTEND(elems);
     SPP_PRINT_APPEND(tok_r);
     SPP_PRINT_END;
+}
+
+
+auto spp::asts::TupleLiteralAst::stage_7_analyse_semantics(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta) -> void {
+    // Analyse the elements in the tuple.
+    for (auto &&elem : elems) {
+        ENFORCE_EXPRESSION_SUBTYPE(elem.get());
+        elem->stage_7_analyse_semantics(sm, meta);
+    }
+
+    // Check all the elements are owned by the tuple, not borrowed.
+    for (auto &&elem : elems | genex::views::deref) {
+        if (auto [elem_sym, _] = sm->current_scope->get_var_symbol_outermost(elem); elem_sym != nullptr) {
+            if (const auto borrow_ast = elem_sym->memory_info->ast_borrowed) {
+                analyse::errors::SppSecondClassBorrowViolationError(elem, *borrow_ast, "explicit array element type").scopes({sm->current_scope}).raise();
+            }
+        }
+    }
+
+    // Analyse the inferred array type to generate the generic implementation.
+    infer_type(sm, meta)->stage_7_analyse_semantics(sm, meta);
+}
+
+
+auto spp::asts::TupleLiteralAst::stage_8_check_memory(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> void {
+    // Check the memory of each element in the array literal.
+    for (auto &&elem : elems) {
+        elem->stage_8_check_memory(sm, meta);
+        analyse::utils::mem_utils::validate_symbol_memory(*elem, *elem, sm, true, true, true, true, true, true, meta);
+    }
+}
+
+
+auto spp::asts::TupleLiteralAst::infer_type(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> std::shared_ptr<TypeAst> {
+    // Create a "..Ts" type, for the tuple type.
+    auto types_gen = elems
+        | genex::views::map([sm, meta](auto &&elem) { return elem->infer_type(sm, meta); })
+        | genex::views::to<std::vector>();
+
+    // Create a tuple type with the inferred element types.
+    auto tuple_type = generate::common_types::tuple_type(pos_start(), std::move(types_gen));
+    tuple_type->stage_7_analyse_semantics(sm, meta);
+    return tuple_type;
 }

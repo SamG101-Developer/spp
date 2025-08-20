@@ -38,7 +38,7 @@ public:
      * The name of the class prototype. This is the identifier that is used to refer to the class, and must be unique
      * within the scope.
      */
-    std::unique_ptr<TypeAst> name;
+    std::shared_ptr<TypeAst> name;
 
     /**
      * An optional generic parameter group for the class prototype. This is used to define generic types that the class

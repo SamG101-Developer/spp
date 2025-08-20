@@ -16,7 +16,7 @@ struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
     /**
      * The type that is being operated on by the unary operator.
      */
-    std::unique_ptr<TypeAst> rhs;
+    std::shared_ptr<TypeAst> rhs;
 
     /**
      * Construct the UnaryExpressionAst with the arguments matching the members.
@@ -28,6 +28,10 @@ struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
         decltype(rhs) &&rhs);
 
 public:
+    auto operator==(TypeUnaryExpressionAst const &other) const -> bool;
+
+    auto iterator() const -> genex::generator<std::shared_ptr<TypeIdentifierAst>> override;
+
     auto is_never_type() const -> bool override;
 
     auto ns_parts() const -> std::vector<IdentifierAst const*> override;

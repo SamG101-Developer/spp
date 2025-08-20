@@ -32,6 +32,16 @@ auto spp::asts::TypeArrayShorthandAst::pos_end() const -> std::size_t {
 }
 
 
+auto spp::asts::TypeArrayShorthandAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<TypeArrayShorthandAst>(
+        ast_clone(tok_l),
+        ast_clone(element_type),
+        ast_clone(tok_semicolon),
+        ast_clone(size),
+        ast_clone(tok_r));
+}
+
+
 spp::asts::TypeArrayShorthandAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_l);

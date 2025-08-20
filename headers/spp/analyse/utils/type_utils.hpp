@@ -3,6 +3,7 @@
 #include <spp/asts/_fwd.hpp>
 
 #include "spp/asts/generic_argument_group_ast.hpp"
+#include "spp/asts/type_identifier_ast.hpp"
 
 namespace spp::analyse::scopes {
     class Scope;
@@ -155,4 +156,17 @@ namespace spp::analyse::utils::type_utils {
         scopes::ScopeManager const &sm,
         asts::mixins::CompilerMetaData *meta = nullptr)
         -> scopes::Scope;
+
+    auto get_type_part_symbol_with_error(
+        scopes::Scope const &scope,
+        asts::TypeIdentifierAst const &type_part,
+        scopes::ScopeManager const &sm,
+        asts::mixins::CompilerMetaData *meta,
+        bool ignore_alias = false)
+        -> scopes::TypeSymbol*;
+
+    auto deduplicate_variant_inner_types(
+        asts::TypeIdentifierAst const &type,
+        scopes::Scope const &scope)
+        -> std::vector<std::shared_ptr<asts::TypeAst>>;
 }

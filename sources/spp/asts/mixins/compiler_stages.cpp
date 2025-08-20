@@ -56,4 +56,5 @@ auto spp::asts::mixins::CompilerMetaData::restore() -> void {
     assignment_target_type = std::move(state.assignment_target_type);
     ignore_missing_else_branch_for_inference = state.ignore_missing_else_branch_for_inference;
     case_condition = state.case_condition;
+    // todo: finish
 }

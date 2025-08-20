@@ -17,7 +17,7 @@ struct spp::asts::TypeArrayShorthandAst final : virtual Ast, mixins::TempTypeAst
     /**
      * The type of the elements in the array.
      */
-    std::unique_ptr<TypeAst> element_type;
+    std::shared_ptr<TypeAst> element_type;
 
     /**
      * The @code ;@endcode token that separates the element type from the size in the array type declaration.

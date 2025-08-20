@@ -69,13 +69,13 @@ namespace spp::analyse::utils::func_utils {
         -> asts::FunctionPrototypeAst*;
 
     auto name_args(
-        std::vector<asts::FunctionCallArgumentAst*> args,
+        std::vector<std::unique_ptr<asts::FunctionCallArgumentAst>> &args,
         std::vector<asts::FunctionParameterAst*> params,
         scopes::ScopeManager const &sm)
         -> void;
 
     auto name_generic_args(
-        std::vector<asts::GenericArgumentAst*> args,
+        std::vector<std::unique_ptr<asts::GenericArgumentAst>> &args,
         std::vector<asts::GenericParameterAst*> params,
         asts::Ast const &owner,
         scopes::ScopeManager const &sm,
@@ -86,8 +86,8 @@ namespace spp::analyse::utils::func_utils {
         std::vector<asts::GenericParameterAst*> params,
         std::vector<asts::GenericParameterAst*> opt_params,
         std::vector<asts::GenericArgumentAst*> explicit_args,
-        std::map<asts::IdentifierAst*, asts::TypeAst*> infer_source,
-        std::map<asts::IdentifierAst*, asts::TypeAst*> infer_target,
+        std::map<asts::IdentifierAst*, std::shared_ptr<asts::TypeAst>> infer_source,
+        std::map<asts::IdentifierAst*, std::shared_ptr<asts::TypeAst>> infer_target,
         asts::Ast const *owner = nullptr,
         asts::IdentifierAst *variadic_param_identifier = nullptr,
         bool is_tuple_owner = false,

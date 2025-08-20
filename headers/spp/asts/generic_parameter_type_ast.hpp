@@ -6,11 +6,6 @@
 
 
 struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
-    /**
-     * The name of the generic type parameter. This is the name that will be used to refer to the type parameter in the
-     * generic type.
-     */
-    std::unique_ptr<TypeAst> name;
 
     /**
      * The optional inline constraints for the generic type parameter. This is used to specify constraints on the type

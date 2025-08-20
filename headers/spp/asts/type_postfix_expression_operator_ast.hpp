@@ -9,9 +9,9 @@ struct spp::asts::TypePostfixExpressionOperatorAst : virtual Ast {
     using Ast::Ast;
 
 public:
-    virtual auto ns_parts() const -> std::vector<IdentifierAst const*> = 0;
+    virtual auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> = 0;
 
-    virtual auto type_parts() const -> std::vector<TypeIdentifierAst const*> = 0;
+    virtual auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> = 0;
 };
 
 

@@ -51,7 +51,7 @@ public:
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 
 private:
-    std::unique_ptr<TypeAst> m_return_type;
+    std::shared_ptr<TypeAst> m_return_type;
 };
 
 

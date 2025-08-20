@@ -26,6 +26,11 @@ auto spp::asts::TokenAst::pos_end() const -> std::size_t {
 }
 
 
+auto spp::asts::TokenAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<TokenAst>(m_pos, token_type, token_data.c_str());
+}
+
+
 auto spp::asts::TokenAst::print(meta::AstPrinter &) const -> std::string {
     return token_data;
 }

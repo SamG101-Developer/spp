@@ -46,13 +46,6 @@ namespace spp::asts::generate::common_types {
     auto fun_mov_type(std::size_t pos, std::shared_ptr<TypeAst> param_types, std::shared_ptr<TypeAst> ret_type) -> std::unique_ptr<TypeAst>;
 
     auto self_type(std::size_t pos) -> std::unique_ptr<TypeAst>;
-
-    struct Precompiled {
-        static std::unique_ptr<TypeAst> VOID;
-        static std::unique_ptr<TypeAst> BOOL;
-
-        auto initialize() -> void;
-    };
 }
 
 #endif //COMMON_TYPES_HPP

@@ -5,14 +5,14 @@
 #include <spp/asts/_fwd.hpp>
 
 
-struct spp::asts::TypePostfixExpressionAst final : TypeAst {
+struct spp::asts::TypePostfixExpressionAst final : TypeAst, std::enable_shared_from_this<TypePostfixExpressionAst> {
     SPP_AST_KEY_FUNCTIONS;
 
     /**
      * The left-hand side type of the postfix expression. This is the base type on which the postfix operation is
      * applied.
      */
-    std::unique_ptr<TypeAst> lhs;
+    std::shared_ptr<TypeAst> lhs;
 
     /**
      * The operator token that represents the postfix operation. This indicates the type of operation being performed.
@@ -29,27 +29,29 @@ struct spp::asts::TypePostfixExpressionAst final : TypeAst {
         decltype(tok_op) &&tok_op);
 
 public:
+    auto iterator() const -> genex::generator<std::shared_ptr<TypeIdentifierAst>> override;
+
     auto is_never_type() const -> bool override;
 
-    auto ns_parts() const -> std::vector<IdentifierAst const*> override;
+    auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
 
-    auto type_parts() const -> std::vector<TypeIdentifierAst const*> override;
+    auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
 
-    auto without_convention() const -> TypeAst const* override;
+    auto without_convention() const -> std::shared_ptr<const TypeAst> override;
 
     auto get_convention() const -> ConventionAst* override;
 
-    auto with_convention(std::unique_ptr<ConventionAst> &&convention) const -> std::unique_ptr<TypeAst> override;
+    auto with_convention(std::unique_ptr<ConventionAst> &&conv) const -> std::unique_ptr<TypeAst> override;
 
     auto without_generics() const -> std::unique_ptr<TypeAst> override;
 
     auto substitute_generics(std::vector<GenericArgumentAst*> args) const -> std::unique_ptr<TypeAst> override;
 
-    auto contains_generic(TypeAst const *generic) const -> bool override;
+    auto contains_generic(GenericParameterAst const &generic) const -> bool override;
 
-    auto match_generic(TypeAst const *other, TypeAst const *generic) -> TypeAst* override;
+    auto match_generic(TypeAst const &other, TypeIdentifierAst const &generic_name) const -> const ExpressionAst* override;
 
-    auto with_generics(std::unique_ptr<GenericArgumentGroupAst> &&arg_group) -> std::unique_ptr<TypeAst> override;
+    auto with_generics(std::shared_ptr<GenericArgumentGroupAst> &&arg_group) const -> std::unique_ptr<TypeAst> override;
 };
 
 

@@ -13,12 +13,6 @@ struct spp::asts::GenericParameterCompAst : GenericParameterAst {
     std::unique_ptr<TokenAst> tok_cmp;
 
     /**
-     * The value of the generic comp parameter. This is passed into the generic like
-     * @code fun func[cmp x: BigInt]()@endcode or @code std::Arr[std::String, 100_uz]@endcode.
-     */
-    std::unique_ptr<TypeAst> name;
-
-    /**
      * The token that represents the @code :@endcode colon in the generic parameter. This separates the parameter name
      * from the type.
      */

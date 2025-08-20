@@ -20,7 +20,7 @@ struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgumentCompAst {
      * The name of the keyword argument. This is the identifier that is used to refer to the argument in the generic
      * call.
      */
-    std::unique_ptr<TypeAst> name;
+    std::shared_ptr<TypeAst> name;
 
     /**
      * The token that represents the assignment operator \c = in the keyword argument. This separates the name of the

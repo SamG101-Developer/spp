@@ -12,7 +12,7 @@ struct spp::asts::TypeBinaryExpressionAst final : virtual Ast, mixins::TempTypeA
     /**
      * The left-hand side expression of the type binary expression. This is the first operand.
      */
-    std::unique_ptr<TypeAst> lhs;
+    std::shared_ptr<TypeAst> lhs;
 
     /**
      * The operator token that represents the type binary operation. This indicates the type of operation being
@@ -23,7 +23,7 @@ struct spp::asts::TypeBinaryExpressionAst final : virtual Ast, mixins::TempTypeA
     /**
      * The right-hand side expression of the type binary expression. This is the second operand.
      */
-    std::unique_ptr<TypeAst> rhs;
+    std::shared_ptr<TypeAst> rhs;
 
     /**
      * Construct the TypeBinaryExpressionAst with the arguments matching the members.

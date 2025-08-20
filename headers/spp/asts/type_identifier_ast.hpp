@@ -4,12 +4,14 @@
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
+#include <genex/generator.hpp>
+
 
 /**
  * The TypeIdentifierAst is a type expression that is represented by a single type name, and is analogous to the
  * IdentifierAst of the ExpressionAst.
  */
-struct spp::asts::TypeIdentifierAst final : TypeAst {
+struct spp::asts::TypeIdentifierAst final : TypeAst, std::enable_shared_from_this<TypeIdentifierAst> {
     SPP_AST_KEY_FUNCTIONS;
 
     /**
@@ -20,7 +22,7 @@ struct spp::asts::TypeIdentifierAst final : TypeAst {
     /**
      * The generic arguments for the type. This is a list of generic arguments that are used to instantiate the type.
      */
-    std::unique_ptr<GenericArgumentGroupAst> generic_arg_group;
+    std::shared_ptr<GenericArgumentGroupAst> generic_arg_group;
 
     /**
      * Construct the TypeIdentifier with the arguments matching the members.
@@ -41,17 +43,21 @@ private:
     bool m_is_never_type;
 
 public:
+    auto operator==(TypeIdentifierAst const &other) const -> bool;
+
+    auto iterator() const -> genex::generator<std::shared_ptr<TypeIdentifierAst>> override;
+
     auto is_never_type() const -> bool override;
 
-    auto ns_parts() const -> std::vector<std::shared_ptr<IdentifierAst>> override;
+    auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
 
-    auto type_parts() const -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
+    auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
 
-    auto without_convention() const -> std::shared_ptr<TypeAst> override;
+    auto without_convention() const -> std::shared_ptr<const TypeAst> override;
 
     auto get_convention() const -> ConventionAst* override;
 
-    auto with_convention(std::unique_ptr<ConventionAst> &&convention) const -> std::unique_ptr<TypeAst> override;
+    auto with_convention(std::unique_ptr<ConventionAst> &&conv) const -> std::unique_ptr<TypeAst> override;
 
     auto without_generics() const -> std::unique_ptr<TypeAst> override;
 
@@ -59,9 +65,15 @@ public:
 
     auto contains_generic(GenericParameterAst const &generic) const -> bool override;
 
-    auto match_generic(Ast const &other, Ast const &generic) -> TypeAst* override;
+    auto match_generic(TypeAst const &other, TypeIdentifierAst const &generic_name) const -> const ExpressionAst* override;
 
-    auto with_generics(std::unique_ptr<GenericArgumentGroupAst> &&arg_group) -> std::unique_ptr<TypeAst> override;
+    auto with_generics(std::shared_ptr<GenericArgumentGroupAst> &&arg_group) const -> std::unique_ptr<TypeAst> override;
+
+    auto stage_4_qualify_types(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 

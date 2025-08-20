@@ -17,7 +17,7 @@ struct spp::asts::TypeParenthesisedExpressionAst final : virtual Ast, mixins::Te
     /**
      * The type expression that is enclosed within the parentheses.
      */
-    std::unique_ptr<TypeAst> expr;
+    std::shared_ptr<TypeAst> expr;
 
     /**
      * The right parenthesis token that represents the end of the parenthesised expression.

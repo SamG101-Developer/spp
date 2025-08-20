@@ -45,6 +45,8 @@ struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
     static auto from_map(
         std::map<TypeAst*, ExpressionAst*> const &map) -> std::unique_ptr<GenericArgumentGroupAst>;
 
+    auto operator==(const GenericArgumentGroupAst &other) const -> bool;
+
     auto type_at(const char *key) const -> GenericArgumentTypeAst const*;
 
     auto comp_at(const char *key) const -> GenericArgumentCompAst const*;
@@ -56,6 +58,8 @@ struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
     auto get_keyword_args() const -> std::vector<GenericArgumentAst*>;
 
     auto get_positional_args() const -> std::vector<GenericArgumentAst*>;
+
+    auto get_all_args() const -> std::vector<GenericArgumentAst*>;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

@@ -3,7 +3,7 @@
 
 
 spp::asts::TypePostfixExpressionOperatorOptionalAst::TypePostfixExpressionOperatorOptionalAst(
-    decltype(tok_qst) &&tok_qst):
+    decltype(tok_qst) &&tok_qst) :
     TypePostfixExpressionOperatorAst(),
     tok_qst(std::move(tok_qst)) {
 }
@@ -22,6 +22,12 @@ auto spp::asts::TypePostfixExpressionOperatorOptionalAst::pos_end() const -> std
 }
 
 
+auto spp::asts::TypePostfixExpressionOperatorOptionalAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<TypePostfixExpressionOperatorOptionalAst>(
+        ast_clone(tok_qst));
+}
+
+
 spp::asts::TypePostfixExpressionOperatorOptionalAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_qst);
@@ -36,11 +42,11 @@ auto spp::asts::TypePostfixExpressionOperatorOptionalAst::print(meta::AstPrinter
 }
 
 
-auto spp::asts::TypePostfixExpressionOperatorOptionalAst::ns_parts() const -> std::vector<IdentifierAst const*> {
+auto spp::asts::TypePostfixExpressionOperatorOptionalAst::ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> {
     return {};
 }
 
 
-auto spp::asts::TypePostfixExpressionOperatorOptionalAst::type_parts() const -> std::vector<TypeIdentifierAst const*> {
+auto spp::asts::TypePostfixExpressionOperatorOptionalAst::type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
     return {};
 }

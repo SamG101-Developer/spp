@@ -6,8 +6,7 @@
 spp::asts::TypeParenthesisedExpressionAst::TypeParenthesisedExpressionAst(
     decltype(tok_l) &&tok_l,
     decltype(expr) &&expr,
-    decltype(tok_r) &&tok_r):
-    Ast(),
+    decltype(tok_r) &&tok_r) :
     TempTypeAst(),
     tok_l(std::move(tok_l)),
     expr(std::move(expr)),
@@ -25,6 +24,14 @@ auto spp::asts::TypeParenthesisedExpressionAst::pos_start() const -> std::size_t
 
 auto spp::asts::TypeParenthesisedExpressionAst::pos_end() const -> std::size_t {
     return tok_r->pos_end();
+}
+
+
+auto spp::asts::TypeParenthesisedExpressionAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<TypeParenthesisedExpressionAst>(
+        ast_clone(tok_l),
+        ast_clone(expr),
+        ast_clone(tok_r));
 }
 
 
