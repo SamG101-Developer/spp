@@ -5,6 +5,7 @@
 #include <spp/analyse/utils/func_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
+#include <spp/asts/cmp_statement_ast.hpp>
 #include <spp/asts/function_prototype_ast.hpp>
 #include <spp/asts/generic_argument_type_keyword_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
@@ -13,6 +14,7 @@
 #include <spp/asts/sup_implementation_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
+#include <spp/asts/type_statement_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>
 
@@ -166,13 +168,13 @@ auto spp::asts::SupPrototypeExtensionAst::stage_2_gen_top_level_scopes(
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
 
     // Check there are optional generic parameters.
-    if (auto optional = generic_param_group->get_optional_params(); not optional.empty()) {
-        analyse::errors::SppSuperipositionOptionalGenericPararmeterError(*optional[0]).scopes({sm->current_scope}).raise();
+    if (const auto optional = generic_param_group->get_optional_params(); not optional.empty()) {
+        analyse::errors::SppSuperimpositionOptionalGenericParameterError(*optional[0]).scopes({sm->current_scope}).raise();
     }
 
     // Check every generic parameter is constrained by the type.
-    if (auto unconstrained = generic_param_group->params | genex::views::filter([this](auto &&x) { return not(name->contains_generic(*x) or super_class->contains_generic(*x)); }) | genex::views::to<std::vector>(); not unconstrained.empty()) {
-        analyse::errors::SppSuperipositionUnconstrainedGenericPararmeterError(*unconstrained[0]).scopes({sm->current_scope}).raise();
+    if (const auto unconstrained = generic_param_group->params | genex::views::filter([this](auto &&x) { return not(name->contains_generic(*x) or super_class->contains_generic(*x)); }) | genex::views::to<std::vector>(); not unconstrained.empty()) {
+        analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError(*unconstrained[0]).scopes({sm->current_scope}).raise();
     }
 
     // No conventions allowed on the name.
@@ -288,7 +290,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
     }
 
     // Check every member on the superimposition exists on the supertype.
-    for (auto&& member: impl->members) {
+    for (auto &&member : impl->members) {
         if (const auto ext_member = ast_cast<SupPrototypeExtensionAst>(member.get())) {
             // Get the method and identify the base method it is overriding.
             const auto this_method = ast_cast<FunctionPrototypeAst>(ext_member->impl->final_member());
@@ -296,13 +298,63 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
 
             // Check the base method exists.
             if (base_method == nullptr) {
-                analyse::errors::SppSuperimpositionExtensionMethodInvalidError(*this_method->name, *super_class)->scopes({sm->current_scope}).raise();
+                analyse::errors::SppSuperimpositionExtensionMethodInvalidError(*this_method->name, *super_class).scopes({sm->current_scope}).raise();
             }
 
             // Check the base method is virtual or abstract.
-            if (not (base_method->m_abstract_annotation or base_method->m_virtual_annotation)) {
+            if (not(base_method->m_abstract_annotation or base_method->m_virtual_annotation)) {
                 analyse::errors::SppSuperimpositionExtensionNonVirtualMethodOverriddenError(*this_method->name, *base_method->name, *super_class).scopes({sm->current_scope}).raise();
             }
         }
+
+        else if (const auto type_member = ast_cast<TypeStatementAst>(member.get())) {
+            // Get the associated type from the supertype directly.
+            const auto this_type = type_member->new_type;
+            const auto base_type = sup_sym->scope->get_type_symbol(*this_type, true);
+
+            // Check to see if the base type exists.
+            if (base_type == nullptr) {
+                analyse::errors::SppSuperimpositionExtensionTypeStatementInvalidError(*type_member, *super_class).scopes({sm->current_scope}).raise();
+            }
+        }
+
+        else if (const auto cmp_member = ast_cast<CmpStatementAst>(member.get())) {
+            // Get the associated type from the supertype directly.
+            const auto this_const = cmp_member->name;
+            const auto base_const = sup_sym->scope->get_var_symbol(*this_const, true);
+
+            // Check to see if the base type exists.
+            if (base_const == nullptr) {
+                analyse::errors::SppSuperimpositionExtensionCmpStatementInvalidError(*cmp_member, *super_class).scopes({sm->current_scope}).raise();
+            }
+        }
     }
+
+    // Pre-analyse the implementation.
+    impl->stage_6_pre_analyse_semantics(sm, meta);
+    sm->move_out_of_current_scope();
+}
+
+
+auto spp::asts::SupPrototypeExtensionAst::stage_7_analyse_semantics(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> void {
+    // Move to the next scope.
+    sm->move_to_next_scope();
+    name->stage_7_analyse_semantics(sm, meta);
+    super_class->stage_7_analyse_semantics(sm, meta);
+    impl->stage_7_analyse_semantics(sm, meta);
+    sm->move_out_of_current_scope();
+}
+
+
+auto spp::asts::SupPrototypeExtensionAst::stage_8_check_memory(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> void {
+    // Move to the next scope.
+    sm->move_to_next_scope();
+    impl->stage_8_check_memory(sm, meta);
+    sm->move_out_of_current_scope();
 }

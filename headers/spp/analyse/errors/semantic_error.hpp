@@ -75,6 +75,12 @@ namespace spp::analyse::errors {
     struct SppFunctionSubroutineMissingReturnStatementError;
     struct SppSuperimpositionCyclicExtensionError;
     struct SppSuperimpositionSelfExtensionError;
+    struct SppSuperimpositionExtensionMethodInvalidError;
+    struct SppSuperimpositionExtensionNonVirtualMethodOverriddenError;
+    struct SppSuperimpositionOptionalGenericParameterError;
+    struct SppSuperimpositionUnconstrainedGenericParameterError;
+    struct SppSuperimpositionExtensionTypeStatementInvalidError;
+    struct SppSuperimpositionExtensionCmpStatementInvalidError;
 
     auto add_header(std::size_t err_code, std::string &&msg) -> std::string;
     auto add_error(std::size_t pos, std::string &&tag) -> std::string;
@@ -416,4 +422,34 @@ struct spp::analyse::errors::SppSuperimpositionCyclicExtensionError final : spp:
 
 struct spp::analyse::errors::SppSuperimpositionSelfExtensionError final : spp::utils::errors::SemanticError {
     explicit SppSuperimpositionSelfExtensionError(asts::TypeAst const &first_extension, asts::TypeAst const &second_extension);
+};
+
+
+struct spp::analyse::errors::SppSuperimpositionExtensionMethodInvalidError final : spp::utils::errors::SemanticError {
+    explicit SppSuperimpositionExtensionMethodInvalidError(asts::IdentifierAst const &new_method, asts::TypeAst const &super_class);
+};
+
+
+struct spp::analyse::errors::SppSuperimpositionExtensionNonVirtualMethodOverriddenError final : spp::utils::errors::SemanticError {
+    explicit SppSuperimpositionExtensionNonVirtualMethodOverriddenError(asts::IdentifierAst const &new_method, asts::IdentifierAst const &base_method, asts::TypeAst const &super_class);
+};
+
+
+struct spp::analyse::errors::SppSuperimpositionOptionalGenericParameterError final : spp::utils::errors::SemanticError {
+    explicit SppSuperimpositionOptionalGenericParameterError(asts::GenericParameterAst const &param);
+};
+
+
+struct spp::analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError final : spp::utils::errors::SemanticError {
+    explicit SppSuperimpositionUnconstrainedGenericParameterError(asts::GenericParameterAst const &param);
+};
+
+
+struct spp::analyse::errors::SppSuperimpositionExtensionTypeStatementInvalidError final : spp::utils::errors::SemanticError {
+    explicit SppSuperimpositionExtensionTypeStatementInvalidError(asts::TypeStatementAst const &stmt, asts::TypeAst const &super_class);
+};
+
+
+struct spp::analyse::errors::SppSuperimpositionExtensionCmpStatementInvalidError final : spp::utils::errors::SemanticError {
+    explicit SppSuperimpositionExtensionCmpStatementInvalidError(asts::CmpStatementAst const &stmt, asts::TypeAst const &super_class);
 };

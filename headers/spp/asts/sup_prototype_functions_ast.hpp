@@ -33,7 +33,7 @@ struct spp::asts::SupPrototypeFunctionsAst final : virtual Ast {
      * The name of the type that is being extended. This is the type that will gain the additional methods defined in
      * the body of this superimposition.
      */
-    std::unique_ptr<TypeAst> name;
+    std::shared_ptr<TypeAst> name;
 
     /**
      * The body of the superimposition. This is a list of methods that are being added to the type. Each method is
@@ -53,6 +53,22 @@ struct spp::asts::SupPrototypeFunctionsAst final : virtual Ast {
         decltype(generic_param_group) &&generic_param_group,
         decltype(name) &&name,
         decltype(impl) &&impl);
+
+    auto stage_1_pre_process(Ast *ctx) -> void override;
+
+    auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *) -> void override;
+
+    auto stage_3_gen_top_level_aliases(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_4_qualify_types(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_5_load_super_scopes(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_6_pre_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

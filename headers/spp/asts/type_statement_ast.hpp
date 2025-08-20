@@ -27,7 +27,7 @@ struct spp::asts::TypeStatementAst : StatementAst {
      * The type that this type statement is defining. For example, for @code type Str = std::Str@endcode, the
      * @c new_type is @c Str.
      */
-    std::unique_ptr<TypeAst> new_type;
+    std::shared_ptr<TypeAst> new_type;
 
     /**
      * The generic parameter group for the new type. For example,
@@ -45,7 +45,7 @@ struct spp::asts::TypeStatementAst : StatementAst {
      * The old (fully qualified) type that this type statement is defining. For example, for
      * @code type Str = std::Str@endcode, the fully qualified type is @c std::Str.
      */
-    std::unique_ptr<TypeAst> old_type;
+    std::shared_ptr<TypeAst> old_type;
 
     /**
      * Construct the TypeStatementAst with the arguments matching the members.

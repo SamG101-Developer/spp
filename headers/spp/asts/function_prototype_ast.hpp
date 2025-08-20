@@ -17,6 +17,7 @@ struct spp::asts::FunctionPrototypeAst : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
     friend struct AnnotationAst;
     friend struct PostfixExpressionOperatorFunctionCallAst;
+    friend struct SupPrototypeExtensionAst;
 
 protected:
     /**
