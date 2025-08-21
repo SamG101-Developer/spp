@@ -41,9 +41,9 @@ struct spp::asts::FunctionParameterAst : virtual Ast {
 
     ~FunctionParameterAst() override;
 
-    auto extract_names() const -> std::vector<IdentifierAst*>;
+    auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>>;
 
-    auto extract_name() const -> IdentifierAst*;
+    auto extract_name() const -> std::shared_ptr<IdentifierAst>;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

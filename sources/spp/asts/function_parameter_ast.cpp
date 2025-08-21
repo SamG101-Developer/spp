@@ -23,12 +23,12 @@ spp::asts::FunctionParameterAst::FunctionParameterAst(
 spp::asts::FunctionParameterAst::~FunctionParameterAst() = default;
 
 
-auto spp::asts::FunctionParameterAst::extract_names() const -> std::vector<IdentifierAst*> {
+auto spp::asts::FunctionParameterAst::extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>> {
     return var->extract_names();
 }
 
 
-auto spp::asts::FunctionParameterAst::extract_name() const -> IdentifierAst* {
+auto spp::asts::FunctionParameterAst::extract_name() const -> std::shared_ptr<IdentifierAst> {
     return var->extract_name();
 }
 

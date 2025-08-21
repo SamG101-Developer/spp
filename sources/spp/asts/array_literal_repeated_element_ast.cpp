@@ -4,6 +4,7 @@
 #include <spp/analyse/scopes/symbols.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/asts/array_literal_repeated_element_ast.hpp>
+#include <spp/asts/convention_ast.hpp>
 #include <spp/asts/expression_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
@@ -83,8 +84,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
     }
 
     // Ensure the element's type is not a borrow type, as array elements cannot be borrows.
-    if (const auto c = elem_type->get_convention()) {
-        analyse::errors::SppSecondClassBorrowViolationError(*elem, *c, "repeated array element type").scopes({sm->current_scope}).raise();
+    if (const auto conv = elem_type->get_convention()) {
+        analyse::errors::SppSecondClassBorrowViolationError(*elem, *conv, "repeated array element type").scopes({sm->current_scope}).raise();
     }
 
     // Ensure the size is a constant expression (if symbolic).

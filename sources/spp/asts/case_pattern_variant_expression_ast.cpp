@@ -3,6 +3,8 @@
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/asts/case_pattern_variant_expression_ast.hpp>
 #include <spp/asts/expression_ast.hpp>
+#include <spp/asts/let_statement_initialized_ast.hpp>
+#include <spp/asts/local_variable_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 

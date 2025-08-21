@@ -12,6 +12,7 @@
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 
+#include <genex/views/address.hpp>
 #include <genex/views/enumerate.hpp>
 #include <genex/views/map.hpp>
 #include <genex/views/zip.hpp>
@@ -78,14 +79,14 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
         meta->save();
 
         // Handle return type overloading matching for the lhs target types.
-        if (auto pf = ast_cast<PostfixExpressionAst>(rhs_expr); pf) {
-            if (auto fc = &ast_cast<PostfixExpressionOperatorFunctionCallAst>(*pf->op); fc) {
+        if (const auto pf = ast_cast<PostfixExpressionAst>(rhs_expr); pf) {
+            if (const auto fc = &ast_cast<PostfixExpressionOperatorFunctionCallAst>(*pf->op); fc) {
                 meta->return_type_overload_resolver_type = lhs[i]->infer_type(sm, meta);
             }
         }
 
         // Analyse the RHS expression.
-        meta->assignment_targets = std::vector{lhs[i].get()};
+        meta->assignment_target = ast_cast<IdentifierAst>(lhs[i].get());
         rhs_expr->stage_7_analyse_semantics(sm, meta);
         meta->restore();
     }
@@ -151,7 +152,7 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
         analyse::utils::mem_utils::validate_symbol_memory(*rhs_expr, *tok_assign, sm, is_attr(*lhs_expr), false, true, true, true, false, meta);
 
         meta->save();
-        meta->assignment_targets = {lhs_expr.get()};
+        meta->assignment_target = ast_cast<IdentifierAst>(lhs_expr.get());
         rhs_expr->stage_8_check_memory(sm, meta);
         meta->restore();
 

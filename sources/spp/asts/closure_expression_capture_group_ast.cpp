@@ -101,7 +101,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_8_check_memory(
         captures
             | genex::views::filter([](auto &&x) { return x->conv != nullptr; })
             | genex::views::ptr_unique
-            | genex::views::for_each([&](auto &&x) { parent_scope->get_var_symbol(*assignment_target)->memory_info->ast_pins.emplace_back(x->val.get()); });
+            | genex::views::for_each([&](auto &&x) { meta->current_lambda_outer_scope->get_var_symbol(*assignment_target)->memory_info->ast_pins.emplace_back(x->val.get()); });
     }
 
     // Pin any values that have been captured by the closure as borrows.

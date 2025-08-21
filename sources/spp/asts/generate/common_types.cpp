@@ -25,7 +25,7 @@ auto spp::asts::generate::common_types::boolean_type(std::size_t pos) -> std::un
 }
 
 
-auto spp::asts::generate::common_types::array_type(std::size_t pos, std::unique_ptr<TypeAst> &&elem_type, std::unique_ptr<ExpressionAst> &&size) -> std::unique_ptr<TypeAst> {
+auto spp::asts::generate::common_types::array_type(std::size_t pos, std::shared_ptr<TypeAst> elem_type, std::unique_ptr<ExpressionAst> &&size) -> std::unique_ptr<TypeAst> {
     auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(2);
     generics_lst[0] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(elem_type));
     generics_lst[1] = std::make_unique<GenericArgumentCompPositionalAst>(std::move(size));
