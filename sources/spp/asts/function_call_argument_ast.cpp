@@ -11,9 +11,9 @@ spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(
     decltype(val) &&val,
     const decltype(m_order_tag) order_tag) :
     OrderableAst(order_tag),
+    m_self_type(nullptr),
     conv(std::move(conv)),
-    val(std::move(val)),
-    m_self_type(nullptr) {
+    val(std::move(val)) {
 }
 
 

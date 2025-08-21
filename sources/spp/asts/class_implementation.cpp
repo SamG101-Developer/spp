@@ -3,10 +3,12 @@
 #include <spp/asts/class_implementation_ast.hpp>
 #include <spp/asts/class_attribute_ast.hpp>
 #include <spp/asts/class_member_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 
 #include <genex/views/for_each.hpp>
 #include <genex/views/duplicates.hpp>
+#include <genex/views/materialize.hpp>
 #include <genex/views/to.hpp>
 
 
@@ -62,6 +64,7 @@ auto spp::asts::ClassImplementationAst::stage_6_pre_analyse_semantics(
     // try reading a duplicate attribute before an error is raised.
     const auto duplicates = members
         | genex::views::map([](auto &&x) { return ast_cast<ClassAttributeAst>(*x).name.get(); })
+        | genex::views::materialize
         | genex::views::duplicates()
         | genex::views::to<std::vector>();
 

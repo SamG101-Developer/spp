@@ -216,15 +216,15 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     // Manipulate the context body with the new mock superimposition extension.
     if (const auto mod_ctx = ast_cast<ModulePrototypeAst>(ctx)) {
         mod_ctx->impl->members.emplace_back(std::move(mock_sup_ext));
-        mod_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return x.get() != this; });
+        mod_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return static_cast<void*>(x.get()) != static_cast<void*>(this); });
     }
     else if (const auto sup_ctx = ast_cast<SupPrototypeFunctionsAst>(ctx)) {
         sup_ctx->impl->members.emplace_back(std::move(mock_sup_ext));
-        sup_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return x.get() != this; });
+        sup_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return static_cast<void*>(x.get()) != static_cast<void*>(this); });
     }
     else if (const auto ext_ctx = ast_cast<SupPrototypeExtensionAst>(ctx)) {
         ext_ctx->impl->members.emplace_back(std::move(mock_sup_ext));
-        ext_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return x.get() != this; });
+        ext_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return static_cast<void*>(x.get()) != static_cast<void*>(this); });
     }
 }
 

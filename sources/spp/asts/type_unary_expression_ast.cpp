@@ -59,7 +59,7 @@ auto spp::asts::TypeUnaryExpressionAst::operator==(TypeUnaryExpressionAst const 
 }
 
 
-auto spp::asts::TypeUnaryExpressionAst::iterator() const -> genex::generator<std::shared_ptr<TypeIdentifierAst>> {
+auto spp::asts::TypeUnaryExpressionAst::iterator() const -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> {
     // Iterate from the right-hand-side.
     return rhs->iterator();
 }

@@ -153,7 +153,7 @@
 #include <spp/utils/errors.hpp>
 
 
-#define NO_ANNOTATIONS std::vector<std::unique_ptr<asts::AnnotationAst>>()
+#define NO_ANNOTATIONS std::vector<std::unique_ptr<spp::asts::AnnotationAst>>()
 
 
 const auto IDENTIFIER_TOKENS = std::vector{

@@ -91,7 +91,7 @@ auto spp::asts::TypeIdentifierAst::operator==(
 
 auto spp::asts::TypeIdentifierAst::iterator(
     ) const
-    -> genex::generator<std::shared_ptr<TypeIdentifierAst>> {
+    -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> {
     // First yield is the original type being iterated over.
     co_yield shared_from_this();
     for (auto &&g : generic_arg_group->args) {

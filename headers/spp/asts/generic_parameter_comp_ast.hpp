@@ -33,9 +33,9 @@ struct spp::asts::GenericParameterCompAst : GenericParameterAst {
      */
     GenericParameterCompAst(
         decltype(tok_cmp) &&tok_cmp,
-        decltype(name) &&name,
+        decltype(name) name,
         decltype(tok_colon) &&tok_colon,
-        decltype(type) &&type);
+        decltype(type) type);
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *) -> void override;
 

@@ -6,6 +6,7 @@
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/annotation_ast.hpp>
 #include <spp/asts/class_attribute_ast.hpp>
+#include <spp/asts/convention_ast.hpp>
 #include <spp/asts/expression_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
@@ -90,8 +91,8 @@ auto spp::asts::ClassAttributeAst::stage_2_gen_top_level_scopes(
     annotations | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
 
     // Ensure that the type does not have a convention.
-    if (const auto c = type->get_convention()) {
-        analyse::errors::SppSecondClassBorrowViolationError(*type, *c, "attribute type")
+    if (const auto conv = type->get_convention()) {
+        analyse::errors::SppSecondClassBorrowViolationError(*type, *conv, "attribute type")
             .scopes({sm->current_scope})
             .raise();
     }
@@ -115,8 +116,8 @@ auto spp::asts::ClassAttributeAst::stage_7_analyse_semantics(
     mixins::CompilerMetaData *meta)
     -> void {
     // Repeated convention check for generic substitutions.
-    if (const auto c = type->get_convention()) {
-        analyse::errors::SppSecondClassBorrowViolationError(*type, *c, "attribute type")
+    if (const auto conv = type->get_convention()) {
+        analyse::errors::SppSecondClassBorrowViolationError(*type, *conv, "attribute type")
             .scopes({sm->current_scope})
             .raise();
     }

@@ -17,7 +17,7 @@ public:
     virtual ~AbstractTypeAst() = default;
 
 public:
-    virtual auto iterator() const -> genex::generator<std::shared_ptr<TypeIdentifierAst>> = 0;
+    virtual auto iterator() const -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> = 0;
 
     virtual auto is_never_type() const -> bool = 0;
 

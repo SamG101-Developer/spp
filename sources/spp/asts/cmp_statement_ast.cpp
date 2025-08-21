@@ -5,6 +5,7 @@
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/annotation_ast.hpp>
+#include <spp/asts/convention_ast.hpp>
 #include <spp/asts/cmp_statement_ast.hpp>
 #include <spp/asts/expression_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
@@ -96,8 +97,8 @@ auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
     annotations | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
 
     // Ensure that the convention type doesn't have a convention.
-    if (const auto c = type->get_convention(); c != nullptr) {
-        analyse::errors::SppSecondClassBorrowViolationError(*this, *c, "global constant type")
+    if (const auto conv = type->get_convention(); conv != nullptr) {
+        analyse::errors::SppSecondClassBorrowViolationError(*this, *conv, "global constant type")
             .scopes({sm->current_scope})
             .raise();
     }

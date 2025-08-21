@@ -24,7 +24,6 @@
 spp::asts::ClosureExpressionCaptureGroupAst::ClosureExpressionCaptureGroupAst(
     decltype(tok_caps) &&tok_caps,
     decltype(captures) &&captures) :
-    Ast(),
     tok_caps(std::move(tok_caps)),
     captures(std::move(captures)) {
 }
@@ -99,8 +98,8 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_8_check_memory(
     if (meta->assignment_target != nullptr) {
         const auto assignment_target = ast_cast<IdentifierAst>(meta->assignment_target);
         captures
-            | genex::views::filter([](auto &&x) { return x->conv != nullptr; })
             | genex::views::ptr_unique
+            | genex::views::filter([](auto &&x) { return x->conv != nullptr; })
             | genex::views::for_each([&](auto &&x) { meta->current_lambda_outer_scope->get_var_symbol(*assignment_target)->memory_info->ast_pins.emplace_back(x->val.get()); });
     }
 

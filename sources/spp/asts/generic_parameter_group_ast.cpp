@@ -5,6 +5,7 @@
 #include <spp/asts/generic_parameter_ast.hpp>
 #include <spp/asts/generic_parameter_group_ast.hpp>
 #include <spp/asts/token_ast.hpp>
+#include <spp/asts/type_ast.hpp>
 
 #include <genex/views/cast.hpp>
 #include <genex/views/duplicates.hpp>

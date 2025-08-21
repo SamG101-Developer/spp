@@ -17,6 +17,8 @@ struct spp::asts::GenericParameterAst : virtual Ast {
      * generic type.
      */
     std::shared_ptr<TypeAst> name;
+
+    explicit GenericParameterAst(std::shared_ptr<TypeAst> name);
 };
 
 

@@ -198,7 +198,7 @@ struct spp::analyse::errors::SppCaseBranchMissingElseError final : spp::utils::e
 
 
 struct spp::analyse::errors::SppIdentifierDuplicateError final : spp::utils::errors::SemanticError {
-    explicit SppIdentifierDuplicateError(asts::IdentifierAst const &first_identifier, asts::IdentifierAst const &duplicate_identifier, std::string_view what);
+    explicit SppIdentifierDuplicateError(asts::Ast const &first_identifier, asts::Ast const &duplicate_identifier, std::string_view what);
 };
 
 

@@ -2,6 +2,7 @@
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
+#include <spp/asts/convention_ast.hpp>
 #include <spp/asts/generic_parameter_comp_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
@@ -10,11 +11,11 @@
 
 spp::asts::GenericParameterCompAst::GenericParameterCompAst(
     decltype(tok_cmp) &&tok_cmp,
-    decltype(name) &&name,
+    decltype(name) name,
     decltype(tok_colon) &&tok_colon,
-    decltype(type) &&type) :
+    decltype(type) type) :
+    GenericParameterAst(std::move(name)),
     tok_cmp(std::move(tok_cmp)),
-    name(std::move(name)),
     tok_colon(std::move(tok_colon)),
     type(std::move(type)) {
 }
@@ -25,8 +26,8 @@ auto spp::asts::GenericParameterCompAst::stage_2_gen_top_level_scopes(
     mixins::CompilerMetaData *)
     -> void {
     // Ensure the type does not have a convention.
-    if (const auto c = type->get_convention()) {
-        analyse::errors::SppSecondClassBorrowViolationError(*type, *c, "function return type")
+    if (const auto conv = type->get_convention(); conv != nullptr) {
+        analyse::errors::SppSecondClassBorrowViolationError(*type, *conv, "function return type")
             .scopes({sm->current_scope})
             .raise();
     }

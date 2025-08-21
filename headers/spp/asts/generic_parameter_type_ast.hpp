@@ -20,7 +20,7 @@ struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
      * @param constraints The optional inline constraints for the generic type parameter.
      */
     GenericParameterTypeAst(
-        decltype(name) &&name,
+        decltype(name) name,
         decltype(constraints) &&constraints);
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *) -> void override;

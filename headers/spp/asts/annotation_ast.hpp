@@ -4,7 +4,7 @@
 #include <spp/asts/_fwd.hpp>
 
 
-#define SPP_NO_ANNOTATIONS std::vector<std::unique_ptr<AnnotationAst>>{}
+#define SPP_NO_ANNOTATIONS std::vector<std::unique_ptr<asts::AnnotationAst>>{}
 
 
 /**
