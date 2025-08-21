@@ -84,8 +84,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
     if (lex::SppTokenSets::BIN_COMPOUND_ASSIGNMENT_OPS | genex::algorithms::contains(tok_op->token_type)) {
         if (not sm->current_scope->get_var_symbol_outermost(*lhs).first) {
             analyse::errors::SppCompoundAssignmentTargetError(*lhs)
-                .scopes({sm->current_scope})
-                .raise();
+                .scopes({sm->current_scope}).raise();
         }
     }
 
@@ -143,7 +142,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
         // Convert "t = (0, 1, 2, 3)", "t + .." into "(t.0 + (t.1 + (t.2 + t.3)))".
         rhs = std::move(new_asts[new_asts.size() - 2]);
         lhs = std::move(new_asts[new_asts.size() - 1]);
-        for (auto &&new_ast : new_asts | genex::views::take(new_asts.size() - 1)) {
+        for (auto &&new_ast : new_asts | genex::views::move | genex::views::take(new_asts.size() - 1)) {
             lhs = std::move(new_ast);
             rhs = std::make_unique<BinaryExpressionAst>(std::move(lhs), ast_clone(tok_op), std::move(rhs));
         }

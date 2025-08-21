@@ -14,6 +14,7 @@
 #include <spp/asts/postfix_expression_ast.hpp>
 #include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
 #include <spp/asts/token_ast.hpp>
+#include <spp/asts/type_ast.hpp>
 
 #include <genex/actions/concat.hpp>
 #include <genex/operations/at.hpp>
@@ -22,6 +23,7 @@
 #include <genex/views/address.hpp>
 #include <genex/views/duplicates.hpp>
 #include <genex/views/filter.hpp>
+#include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/remove.hpp>
 #include <genex/views/set_algorithms.hpp>
@@ -218,18 +220,16 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
 
         if (not analyse::utils::type_utils::symbolic_eq(*attr_type, *arg_type, *sm->current_scope, *sm->current_scope)) {
             analyse::errors::SppTypeMismatchError(*attr, *attr_type, *arg, *arg_type)
-                .scopes({sm->current_scope})
-                .raise();
+                .scopes({sm->current_scope}).raise();
         }
     }
 
     // Type check the default argument (if it exists).
     if (const auto af_arg = get_autofill_arg(); af_arg != nullptr) {
-        auto af_arg_type = af_arg->val->infer_type(sm, meta);
+        const auto af_arg_type = af_arg->val->infer_type(sm, meta);
         if (not analyse::utils::type_utils::symbolic_eq(*af_arg_type, *meta->object_init_type, *sm->current_scope, *sm->current_scope)) {
             analyse::errors::SppTypeMismatchError(*meta->object_init_type, *meta->object_init_type, *af_arg, *af_arg_type)
-                .scopes({sm->current_scope})
-                .raise();
+                .scopes({sm->current_scope}).raise();
         }
     }
 }

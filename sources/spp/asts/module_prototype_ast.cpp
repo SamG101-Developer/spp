@@ -45,17 +45,26 @@ auto spp::asts::ModulePrototypeAst::print(meta::AstPrinter &printer) const -> st
 
 auto spp::asts::ModulePrototypeAst::name()
     -> std::unique_ptr<IdentifierAst> {
+    // Split the file path intro parts.
+    auto parts = std::vector<std::string>();
+    for (auto const &entry : std::filesystem::directory_iterator(m_file_path)) {
+        if (entry.is_directory()) {
+            parts.push_back(entry.path().filename().string());
+        }
+    }
+
     // Check if "src" is in the file path.
     auto name = std::string();
     if (m_file_path | genex::algorithms::contains("src")) {
-        name = m_file_path
-            | genex::views::drop(m_file_path | genex::algorithms::position([](auto &&x) { return x == "src"; }), &std::filesystem::path::string)
-            | genex::views::join_with("::");
+        name = parts
+            | genex::views::drop(parts | genex::algorithms::position([](auto &&x) { return x == "src"; }))
+            | genex::views::join_with("::")
+            | genex::views::to<std::string>();
     }
     else {
-        const auto parts = std::vector(m_file_path.begin(), m_file_path.end());
-        name = std::vector{parts[0].string(), parts[1].string() + ".spp"}
-            | genex::views::join_with("::");
+        name = std::vector{parts[0], parts[1] + ".spp"}
+            | genex::views::join_with("::")
+            | genex::views::to<std::string>();
     }
 
     return std::make_unique<IdentifierAst>(pos_start(), std::move(name));

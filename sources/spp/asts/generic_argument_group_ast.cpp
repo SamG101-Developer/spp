@@ -17,6 +17,7 @@
 
 #include <genex/views/cast.hpp>
 #include <genex/views/duplicates.hpp>
+#include <genex/views/filter.hpp>
 #include <genex/views/for_each.hpp>
 #include <genex/views/map.hpp>
 #include <genex/views/ptr.hpp>
@@ -126,16 +127,30 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
     -> void {
-    // Check there are no duplicate argument names.
-    const auto arg_names = get_keyword_args()
+    // Check there are no duplicate type argument names.
+    const auto type_arg_names = get_keyword_args()
+        | genex::views::cast.operator()<GenericArgumentTypeKeywordAst*>()
+        | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::map([](auto &&x) { return x->name.get(); })
         | genex::views::duplicates()
         | genex::views::to<std::vector>();
 
-    if (not arg_names.empty()) {
-        analyse::errors::SppIdentifierDuplicateError(*arg_names[0], *arg_names[1], "keyword function-argument")
-            .scopes({sm->current_scope})
-            .raise();
+    if (not type_arg_names.empty()) {
+        analyse::errors::SppIdentifierDuplicateError(*type_arg_names[0], *type_arg_names[1], "keyword function-argument")
+            .scopes({sm->current_scope}).raise();
+    }
+
+    // Check there are no duplicate comp argument names.
+    const auto comp_arg_names = get_keyword_args()
+        | genex::views::cast.operator()<GenericArgumentCompKeywordAst*>()
+        | genex::views::filter([](auto &&x) { return x != nullptr; })
+        | genex::views::map([](auto &&x) { return x->name.get(); })
+        | genex::views::duplicates()
+        | genex::views::to<std::vector>();
+
+    if (not comp_arg_names.empty()) {
+        analyse::errors::SppIdentifierDuplicateError(*comp_arg_names[0], *comp_arg_names[1], "keyword function-argument")
+            .scopes({sm->current_scope}).raise();
     }
 
     // Check the arguments are in the correct order.

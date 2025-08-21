@@ -123,7 +123,7 @@ struct spp::asts::mixins::CompilerStages {
 struct spp::asts::mixins::CompilerMetaDataState {
     std::size_t current_stage;
     std::shared_ptr<TypeAst> return_type_overload_resolver_type;
-    IdentifierAst *assignment_target;
+    std::shared_ptr<IdentifierAst> assignment_target;
     std::shared_ptr<TypeAst> assignment_target_type;
     bool ignore_missing_else_branch_for_inference;
     ExpressionAst *case_condition;

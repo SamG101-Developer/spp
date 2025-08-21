@@ -239,15 +239,17 @@ auto spp::asts::FunctionPrototypeAst::stage_2_gen_top_level_scopes(
 
     // If there is a self parameter in a free function, throw as error.
     if (ast_cast<ModulePrototypeAst>(m_ctx) and param_group->get_self_param()) {
-        analyse::errors::SppSelfParamInFreeFunctionError(*this, *param_group->get_self_param()).scopes({sm->current_scope}).raise();
+        analyse::errors::SppSelfParamInFreeFunctionError(*this, *param_group->get_self_param())
+            .scopes({sm->current_scope}).raise();
     }
 
     // Run steps for the annotations.
     annotations | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
 
     // Ensure the function's return type does not have a convention.
-    if (const auto c = return_type->get_convention()) {
-        analyse::errors::SppSecondClassBorrowViolationError(*return_type, *c, "function return type").scopes({sm->current_scope}).raise();
+    if (const auto conv = return_type->get_convention(); conv != nullptr) {
+        analyse::errors::SppSecondClassBorrowViolationError(*return_type, *conv, "function return type")
+            .scopes({sm->current_scope}).raise();
     }
 
     // Generate the generic parameters and attributes of the function.
@@ -315,10 +317,9 @@ auto spp::asts::FunctionPrototypeAst::stage_7_analyse_semantics(
     sm->move_to_next_scope();
 
     // Repeated convention check for generic substitutions.
-    if (const auto c = return_type->get_convention()) {
-        analyse::errors::SppSecondClassBorrowViolationError(*return_type, *c, "function return type")
-            .scopes({sm->current_scope})
-            .raise();
+    if (const auto conv = return_type->get_convention(); conv != nullptr) {
+        analyse::errors::SppSecondClassBorrowViolationError(*return_type, *conv, "function return type")
+            .scopes({sm->current_scope}).raise();
     }
 
     // Analyse the generic parameter group, and the parameter group.

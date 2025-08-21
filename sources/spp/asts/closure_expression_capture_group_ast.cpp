@@ -96,11 +96,10 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_8_check_memory(
     -> void {
     // Pin the lambda symbol if it is assigned to a variable and has borrowed captures.
     if (meta->assignment_target != nullptr) {
-        const auto assignment_target = ast_cast<IdentifierAst>(meta->assignment_target);
         captures
             | genex::views::ptr_unique
             | genex::views::filter([](auto &&x) { return x->conv != nullptr; })
-            | genex::views::for_each([&](auto &&x) { meta->current_lambda_outer_scope->get_var_symbol(*assignment_target)->memory_info->ast_pins.emplace_back(x->val.get()); });
+            | genex::views::for_each([&](auto &&x) { meta->current_lambda_outer_scope->get_var_symbol(*meta->assignment_target)->memory_info->ast_pins.emplace_back(x->val.get()); });
     }
 
     // Pin any values that have been captured by the closure as borrows.

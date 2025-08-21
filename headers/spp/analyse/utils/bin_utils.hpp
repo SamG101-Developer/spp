@@ -2,6 +2,10 @@
 
 #include <spp/asts/_fwd.hpp>
 
+namespace spp::analyse::scopes {
+    class ScopeManager;
+}
+
 
 namespace spp::analyse::utils::bin_utils {
     auto fix_associativity(
