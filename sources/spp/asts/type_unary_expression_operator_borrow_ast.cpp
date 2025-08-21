@@ -3,7 +3,7 @@
 
 
 spp::asts::TypeUnaryExpressionOperatorBorrowAst::TypeUnaryExpressionOperatorBorrowAst(
-    decltype(conv) &&conv):
+    decltype(conv) &&conv) :
     conv(std::move(conv)) {
 }
 
@@ -15,6 +15,12 @@ auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::pos_start() const -> std::
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::pos_end() const -> std::size_t {
     return conv->pos_end();
+}
+
+
+auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(
+        ast_clone(conv));
 }
 
 
@@ -32,11 +38,15 @@ auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::print(meta::AstPrinter &pr
 }
 
 
-auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::ns_parts() const -> std::vector<IdentifierAst const *> {
+auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::ns_parts(
+    ) const
+    -> std::vector<std::shared_ptr<const IdentifierAst>> {
     return {};
 }
 
 
-auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::type_parts() const -> std::vector<TypeIdentifierAst const *> {
+auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::type_parts(
+    ) const
+    -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
     return {};
 }

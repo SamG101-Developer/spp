@@ -11,7 +11,7 @@ struct spp::asts::UnaryExpressionAst final : ExpressionAst {
     /**
      * The operator token that represents the unary operation. This indicates the type of operation being performed.
      */
-    std::unique_ptr<UnaryExpressionOperatorAst> tok_op;
+    std::unique_ptr<UnaryExpressionOperatorAst> op;
 
     /**
      * The expression that is being operated on by the unary operator.
@@ -24,10 +24,16 @@ struct spp::asts::UnaryExpressionAst final : ExpressionAst {
      * @param[in] expr The expression that is being operated on by the unary operator.
      */
     UnaryExpressionAst(
-        decltype(tok_op) &&tok_op,
+        decltype(op) &&tok_op,
         decltype(expr) &&expr);
 
     ~UnaryExpressionAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 

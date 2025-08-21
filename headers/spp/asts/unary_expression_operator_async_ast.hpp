@@ -22,6 +22,10 @@ struct spp::asts::UnaryExpressionOperatorAsyncAst final : UnaryExpressionOperato
         decltype(tok_async) &&tok_async);
 
     ~UnaryExpressionOperatorAsyncAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 

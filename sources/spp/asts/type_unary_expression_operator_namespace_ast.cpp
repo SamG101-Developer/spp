@@ -4,8 +4,8 @@
 
 
 spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypeUnaryExpressionOperatorNamespaceAst(
-    decltype(ns) &&ns,
-    decltype(tok_sep) &&tok_sep):
+    decltype(ns) ns,
+    decltype(tok_sep) &&tok_sep) :
     TypeUnaryExpressionOperatorAst(),
     ns(std::move(ns)),
     tok_sep(std::move(tok_sep)) {
@@ -25,6 +25,13 @@ auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::pos_end() const -> std:
 }
 
 
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(
+        ast_clone(ns),
+        ast_clone(tok_sep));
+}
+
+
 spp::asts::TypeUnaryExpressionOperatorNamespaceAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(ns);
@@ -41,11 +48,15 @@ auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::print(meta::AstPrinter 
 }
 
 
-auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::ns_parts() const -> std::vector<IdentifierAst const *> {
-    return {ns.get()};
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::ns_parts(
+    ) const
+    -> std::vector<std::shared_ptr<const IdentifierAst>> {
+    return {ns};
 }
 
 
-auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::type_parts() const -> std::vector<TypeIdentifierAst const*> {
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::type_parts(
+    ) const
+    -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
     return {};
 }

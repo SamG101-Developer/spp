@@ -145,6 +145,7 @@ struct spp::asts::mixins::CompilerMetaDataState {
     std::map<IdentifierAst*, std::shared_ptr<TypeAst>> infer_source;
     std::map<IdentifierAst*, std::shared_ptr<TypeAst>> infer_target;
     ExpressionAst *postfix_expression_lhs;
+    ExpressionAst *unary_expression_rhs;
     bool skip_type_analysis_generic_checks;
     analyse::scopes::Scope* type_analysis_type_scope;
 };

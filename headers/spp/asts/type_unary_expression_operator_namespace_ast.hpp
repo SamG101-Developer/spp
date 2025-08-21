@@ -11,7 +11,7 @@ struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : TypeUnaryExpre
     /**
      * The namespace token that represents the namespace in which the type is defined.
      */
-    std::unique_ptr<IdentifierAst> ns;
+    std::shared_ptr<IdentifierAst> ns;
 
     /**
      * The @c :: operator token that represents the namespace operator.
@@ -24,14 +24,14 @@ struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : TypeUnaryExpre
      * @param[in] tok_sep The @c :: operator token that represents the namespace operator.
      */
     explicit TypeUnaryExpressionOperatorNamespaceAst(
-        decltype(ns) &&ns,
+        decltype(ns) ns,
         decltype(tok_sep) &&tok_sep);
 
     ~TypeUnaryExpressionOperatorNamespaceAst() override;
 
-    auto ns_parts() const -> std::vector<IdentifierAst const *> override;
+    auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
 
-    auto type_parts() const -> std::vector<TypeIdentifierAst const *> override;
+    auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
 };
 
 

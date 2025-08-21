@@ -21,9 +21,9 @@ struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeUnaryExpressi
     explicit TypeUnaryExpressionOperatorBorrowAst(
         decltype(conv) &&conv);
 
-    auto ns_parts() const -> std::vector<IdentifierAst const *> override;
+    auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
 
-    auto type_parts() const -> std::vector<TypeIdentifierAst const *> override;
+    auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
 };
 
 

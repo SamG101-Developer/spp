@@ -81,6 +81,9 @@ namespace spp::analyse::errors {
     struct SppSuperimpositionUnconstrainedGenericParameterError;
     struct SppSuperimpositionExtensionTypeStatementInvalidError;
     struct SppSuperimpositionExtensionCmpStatementInvalidError;
+    struct SppAsyncTargetNotFunctionCallError;
+    struct SppDereferenceInvalidExpressionNonBorrowableTypeError;
+    struct SppDereferenceInvalidExpressionNonCopyableTypeError;
 
     auto add_header(std::size_t err_code, std::string &&msg) -> std::string;
     auto add_error(std::size_t pos, std::string &&tag) -> std::string;
@@ -452,4 +455,19 @@ struct spp::analyse::errors::SppSuperimpositionExtensionTypeStatementInvalidErro
 
 struct spp::analyse::errors::SppSuperimpositionExtensionCmpStatementInvalidError final : spp::utils::errors::SemanticError {
     explicit SppSuperimpositionExtensionCmpStatementInvalidError(asts::CmpStatementAst const &stmt, asts::TypeAst const &super_class);
+};
+
+
+struct spp::analyse::errors::SppAsyncTargetNotFunctionCallError final : spp::utils::errors::SemanticError {
+    explicit SppAsyncTargetNotFunctionCallError(asts::TokenAst const &async_op, asts::ExpressionAst const &rhs);
+};
+
+
+struct spp::analyse::errors::SppDereferenceInvalidExpressionNonBorrowableTypeError final : spp::utils::errors::SemanticError {
+    explicit SppDereferenceInvalidExpressionNonBorrowableTypeError(asts::TokenAst const& tok_deref, asts::ExpressionAst const &expr, asts::TypeAst const &type);
+};
+
+
+struct spp::analyse::errors::SppDereferenceInvalidExpressionNonCopyableTypeError final : spp::utils::errors::SemanticError {
+    explicit SppDereferenceInvalidExpressionNonCopyableTypeError(asts::TokenAst const& tok_deref, asts::ExpressionAst const &expr, asts::TypeAst const &type);
 };

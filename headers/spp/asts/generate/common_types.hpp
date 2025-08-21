@@ -35,6 +35,7 @@ namespace spp::asts::generate::common_types {
     auto array_type(std::size_t pos, std::unique_ptr<TypeAst> &&elem_type, std::unique_ptr<ExpressionAst> &&size) -> std::unique_ptr<TypeAst>;
     auto variant_type(std::size_t pos, std::vector<std::shared_ptr<TypeAst>> &&inner_types) -> std::unique_ptr<TypeAst>;
     auto tuple_type(std::size_t pos, std::vector<std::shared_ptr<TypeAst>> &&inner_types) -> std::unique_ptr<TypeAst>;
+    auto future_type(std::size_t pos, std::shared_ptr<TypeAst> &&inner_type) -> std::unique_ptr<TypeAst>;
 
     auto gen_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type, std::shared_ptr<TypeAst> send_type = nullptr) -> std::unique_ptr<TypeAst>;
     auto gen_once_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type) -> std::unique_ptr<TypeAst>;

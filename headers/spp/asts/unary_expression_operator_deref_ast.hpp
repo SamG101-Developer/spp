@@ -21,6 +21,10 @@ struct spp::asts::UnaryExpressionOperatorDerefAst final : UnaryExpressionOperato
         decltype(tok_deref) &&tok_deref);
 
     ~UnaryExpressionOperatorDerefAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 

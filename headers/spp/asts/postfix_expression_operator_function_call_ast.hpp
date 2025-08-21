@@ -7,6 +7,7 @@
 
 struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : PostfixExpressionOperatorAst {
     SPP_AST_KEY_FUNCTIONS;
+    friend struct UnaryExpressionOperatorAsyncAst;
 
 private:
     std::optional<std::tuple<analyse::scopes::Scope*, FunctionPrototypeAst*, std::vector<GenericArgumentAst*>>> m_overload_info;
