@@ -17,7 +17,7 @@ struct spp::asts::TypeTupleShorthandAst final : virtual Ast, mixins::TempTypeAst
     /**
      * The types of the elements in the tuple.
      */
-    std::vector<std::unique_ptr<TypeAst>> element_types;
+    std::vector<std::shared_ptr<TypeAst>> element_types;
 
     /**
      * The right parenthesis token that represents the end of the tuple type.

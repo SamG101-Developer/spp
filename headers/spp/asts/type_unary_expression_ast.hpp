@@ -5,13 +5,13 @@
 #include <spp/asts/_fwd.hpp>
 
 
-struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
+struct spp::asts::TypeUnaryExpressionAst final : TypeAst, std::enable_shared_from_this<TypeUnaryExpressionAst> {
     SPP_AST_KEY_FUNCTIONS;
 
     /**
      * The operator token that represents the unary operation. This indicates the type of operation being performed.
      */
-    std::unique_ptr<TypeUnaryExpressionOperatorAst> op;
+    std::shared_ptr<TypeUnaryExpressionOperatorAst> op;
 
     /**
      * The type that is being operated on by the unary operator.
@@ -24,8 +24,8 @@ struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
      * @param[in] rhs The type that is being operated on by the unary operator.
      */
     TypeUnaryExpressionAst(
-        decltype(op) &&op,
-        decltype(rhs) &&rhs);
+        decltype(op) op,
+        decltype(rhs) rhs);
 
 public:
     auto operator==(TypeUnaryExpressionAst const &other) const -> bool;
@@ -34,25 +34,31 @@ public:
 
     auto is_never_type() const -> bool override;
 
-    auto ns_parts() const -> std::vector<IdentifierAst const*> override;
+    auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
 
-    auto type_parts() const -> std::vector<TypeIdentifierAst const*> override;
+    auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
 
-    auto without_convention() const -> TypeAst const* override;
+    auto without_convention() const -> std::shared_ptr<const TypeAst> override;
 
     auto get_convention() const -> ConventionAst* override;
 
-    auto with_convention(std::unique_ptr<ConventionAst> &&convention) const -> std::unique_ptr<TypeAst> override;
+    auto with_convention(std::unique_ptr<ConventionAst> &&conv) const -> std::unique_ptr<TypeAst> override;
 
     auto without_generics() const -> std::unique_ptr<TypeAst> override;
 
     auto substitute_generics(std::vector<GenericArgumentAst*> args) const -> std::unique_ptr<TypeAst> override;
 
-    auto contains_generic(TypeAst const *generic) const -> bool override;
+    auto contains_generic(GenericParameterAst const &generic) const -> bool override;
 
-    auto match_generic(TypeAst const *other, TypeAst const *generic) -> TypeAst* override;
+    auto match_generic(TypeAst const &other, TypeIdentifierAst const &generic_name) const -> const ExpressionAst* override;
 
-    auto with_generics(std::unique_ptr<GenericArgumentGroupAst> &&arg_group) -> std::unique_ptr<TypeAst> override;
+    auto with_generics(std::shared_ptr<GenericArgumentGroupAst> &&arg_group) const -> std::unique_ptr<TypeAst> override;
+
+    auto stage_4_qualify_types(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
 
 

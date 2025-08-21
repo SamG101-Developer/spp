@@ -65,9 +65,9 @@ struct spp::asts::SupPrototypeExtensionAst final : virtual SupMemberAst {
     SupPrototypeExtensionAst(
         decltype(tok_sup) &&tok_sup,
         decltype(generic_param_group) &&generic_param_group,
-        decltype(name) &&name,
+        decltype(name) name,
         decltype(tok_ext) &&tok_ext,
-        decltype(super_class) &&super_class,
+        decltype(super_class) super_class,
         decltype(impl) &&impl);
 
     ~SupPrototypeExtensionAst() override;

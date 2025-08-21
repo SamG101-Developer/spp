@@ -14,6 +14,8 @@
 
 #define ast_clone_vec(asts) (asts) | genex::views::map([](auto &&x) { return ast_clone(x); }) | genex::views::to<std::vector>()
 
+#define ast_clone_vec_shared(asts) (asts) | genex::views::map([](auto x) { return x; }) | genex::views::to<std::vector>()
+
 
 namespace spp::asts {
     struct Ast;

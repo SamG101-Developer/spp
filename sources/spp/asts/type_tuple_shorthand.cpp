@@ -9,8 +9,7 @@
 spp::asts::TypeTupleShorthandAst::TypeTupleShorthandAst(
     decltype(tok_l) &&tok_l,
     decltype(element_types) &&element_types,
-    decltype(tok_r) &&tok_r):
-    Ast(),
+    decltype(tok_r) &&tok_r) :
     TempTypeAst(),
     tok_l(std::move(tok_l)),
     element_types(std::move(element_types)),
@@ -28,6 +27,14 @@ auto spp::asts::TypeTupleShorthandAst::pos_start() const -> std::size_t {
 
 auto spp::asts::TypeTupleShorthandAst::pos_end() const -> std::size_t {
     return tok_r->pos_end();
+}
+
+
+auto spp::asts::TypeTupleShorthandAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<TypeTupleShorthandAst>(
+        ast_clone(tok_l),
+        ast_clone_vec_shared(element_types),
+        ast_clone(tok_r));
 }
 
 

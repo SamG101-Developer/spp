@@ -176,7 +176,7 @@ auto spp::asts::TypeIdentifierAst::without_generics() const -> std::unique_ptr<T
 
 
 auto spp::asts::TypeIdentifierAst::substitute_generics(
-    std::vector<GenericArgumentAst*> new_generics) const
+    const std::vector<GenericArgumentAst*> new_generics) const
     -> std::unique_ptr<TypeAst> {
     auto name_clone = ast_clone(this);
 

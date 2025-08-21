@@ -6,13 +6,14 @@
 
 
 namespace spp::asts::mixins {
-    class VisibilityEnabledAst;
+    struct VisibilityEnabledAst;
     using VisibilityPair = std::pair<utils::Visibility, AnnotationAst*>;
 }
 
 
-class spp::asts::mixins::VisibilityEnabledAst {
+struct spp::asts::mixins::VisibilityEnabledAst {
     friend struct AnnotationAst;
+    friend struct TypeStatementAst;
 
 protected:
     VisibilityPair m_visibility;

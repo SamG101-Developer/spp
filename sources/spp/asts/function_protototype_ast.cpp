@@ -27,6 +27,7 @@
 #include <spp/asts/object_initializer_argument_group_ast.hpp>
 #include <spp/asts/module_prototype_ast.hpp>
 #include <spp/asts/module_implementation_ast.hpp>
+#include <spp/asts/sup_cmp_statement_ast.hpp>
 #include <spp/asts/sup_prototype_extension_ast.hpp>
 #include <spp/asts/sup_prototype_functions_ast.hpp>
 #include <spp/asts/sup_implementation_ast.hpp>
@@ -188,7 +189,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     if (needs_generation) {
         auto mock_class_ast = std::make_unique<ClassPrototypeAst>(SPP_NO_ANNOTATIONS, nullptr, std::move(mock_class_name), nullptr, nullptr);
         auto mock_constant_value = std::make_unique<ObjectInitializerAst>(std::move(mock_class_name), nullptr);
-        auto mock_constant_ast = std::make_unique<CmpStatementAst>(SPP_NO_ANNOTATIONS, nullptr, ast_clone(name), nullptr, ast_clone(mock_class_name), nullptr, std::move(mock_constant_value));
+        auto mock_constant_ast = std::make_unique<SupCmpStatementAst>(SPP_NO_ANNOTATIONS, nullptr, ast_clone(name), nullptr, ast_clone(mock_class_name), nullptr, std::move(mock_constant_value));
 
         if (const auto mod_ctx = ast_cast<ModulePrototypeAst>(ctx)) {
             mod_ctx->impl->members.emplace_back(std::move(mock_class_ast));

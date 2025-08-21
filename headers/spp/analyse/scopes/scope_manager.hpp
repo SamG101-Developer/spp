@@ -50,6 +50,8 @@ public:
 
 
 class spp::analyse::scopes::ScopeManager {
+    friend struct asts::TypeStatementAst;
+
 public:
     static std::map<TypeSymbol*, std::vector<Scope*>> normal_sup_blocks;
 

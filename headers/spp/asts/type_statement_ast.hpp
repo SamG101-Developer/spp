@@ -1,18 +1,33 @@
 #ifndef TYPE_STATEMENT_AST_HPP
 #define TYPE_STATEMENT_AST_HPP
 
-#include <spp/asts/statement_ast.hpp>
 #include <spp/asts/_fwd.hpp>
+#include <spp/asts/statement_ast.hpp>
+#include <spp/asts/mixins/visbility_enabled_ast.hpp>
 
+
+namespace spp::analyse::scopes {
+    struct AliasSymbol;
+}
 
 /**
  * The TypeStatementAst is used to alias a type to a new name in this scope. It can also use generic parameters for more
  * complex types, such as aliasing vectors, or partially specialized hash maps etc. For example,
  * @code type SecureByteMap[T] = std::collections::HashMap[K=Byte, V=T, A=SecureAlloc[(K, V)]]@endcode
  */
-struct spp::asts::TypeStatementAst : StatementAst {
+struct spp::asts::TypeStatementAst : StatementAst, mixins::VisibilityEnabledAst {
     SPP_AST_KEY_FUNCTIONS;
 
+private:
+    bool m_generated = false;
+
+    analyse::scopes::AliasSymbol *m_alias_sym;
+
+    std::unique_ptr<ClassPrototypeAst> m_generated_cls_ast;
+
+    std::unique_ptr<SupPrototypeExtensionAst> m_generated_ext_ast;
+
+public:
     /**
      * The list of annotations that are applied to this type statement. Typically, access modifiers in this context.
      */
@@ -65,9 +80,24 @@ struct spp::asts::TypeStatementAst : StatementAst {
         decltype(old_type) &&old_type);
 
 private:
-    bool m_generated = false;
+    auto m_skip_all_scopes(ScopeManager* sm) -> void;
 
-    // todo: other private members.
+public:
+    auto stage_1_pre_process(Ast *ctx) -> void override;
+
+    auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *) -> void override;
+
+    auto stage_3_gen_top_level_aliases(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_4_qualify_types(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_5_load_super_scopes(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_6_pre_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

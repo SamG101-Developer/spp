@@ -16,6 +16,7 @@ namespace spp::analyse::scopes {
  */
 struct spp::asts::ClassPrototypeAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
+    friend struct TypeStatementAst;
 
 protected:
     bool m_for_alias = false;
@@ -63,7 +64,7 @@ public:
     ClassPrototypeAst(
         decltype(annotations) &&annotations,
         decltype(tok_cls) &&tok_cls,
-        decltype(name) &&name,
+        decltype(name) name,
         decltype(generic_param_group) &&generic_param_group,
         decltype(impl) &&impl);
 

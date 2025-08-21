@@ -64,7 +64,7 @@ public:
 
     auto get_extended_generic_symbols(std::vector<asts::GenericArgumentAst*> generics) -> std::vector<Symbol*>;
 
-    auto add_symbol(std::unique_ptr<Symbol> sym) -> void;
+    auto add_symbol(std::shared_ptr<Symbol> sym) -> void;
 
     auto rem_var_symbol(asts::IdentifierAst const &sym_name) -> void;
     auto rem_type_symbol(asts::TypeAst const &sym_name) -> void;
