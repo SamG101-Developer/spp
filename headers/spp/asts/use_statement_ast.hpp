@@ -13,6 +13,21 @@
 struct spp::asts::UseStatementAst final : StatementAst {
     SPP_AST_KEY_FUNCTIONS;
 
+private:
+    /**
+     * The @c m_generated flag indicates whether this use statement has been generated yet. This is required, because
+     * @c use statements can be defined at the top level (module/sup) or inside function bodies. If defined inside a
+     * function body, all steps of the analysis must be run together, otherwise they are ran in their correct layer.
+     */
+    bool m_generated = false;
+
+    /**
+     * The @c m_conversion is the type statement that is generated from this use statement. It is used to analyse new
+     * types in a uniform way with @code type Str = std::Str@endcode.
+     */
+    std::unique_ptr<TypeStatementAst> m_conversion;
+
+public:
     /**
      * The list of annotations that are applied to this use statement. Typically, access modifiers in this context.
      */
@@ -38,21 +53,23 @@ struct spp::asts::UseStatementAst final : StatementAst {
     UseStatementAst(
         decltype(annotations) &&annotations,
         decltype(tok_use) &&tok_use,
-        decltype(old_type) &&old_type);
+        decltype(old_type) old_type);
 
-private:
-    /**
-     * The @c m_generated flag indicates whether this use statement has been generated yet. This is required, because
-     * @c use statements can be defined at the top level (module/sup) or inside function bodies. If defined inside a
-     * function body, all steps of the analysis must be run together, otherwise they are ran in their correct layer.
-     */
-    bool m_generated = false;
+    auto stage_1_pre_process(Ast *ctx) -> void override;
 
-    /**
-     * The @c m_conversion is the type statement that is generated from this use statement. It is used to analyse new
-     * types in a uniform way with @code type Str = std::Str@endcode.
-     */
-    std::unique_ptr<TypeStatementAst> m_conversion;
+    auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *) -> void override;
+
+    auto stage_3_gen_top_level_aliases(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_4_qualify_types(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_5_load_super_scopes(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_6_pre_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
 
 

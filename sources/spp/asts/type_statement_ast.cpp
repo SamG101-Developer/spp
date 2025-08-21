@@ -27,7 +27,7 @@ spp::asts::TypeStatementAst::TypeStatementAst(
     decltype(new_type) &&new_type,
     decltype(generic_param_group) &&generic_param_group,
     decltype(tok_assign) &&tok_assign,
-    decltype(old_type) &&old_type) :
+    decltype(old_type) old_type) :
     annotations(std::move(annotations)),
     tok_type(std::move(tok_type)),
     new_type(std::move(new_type)),

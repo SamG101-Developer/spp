@@ -77,7 +77,7 @@ public:
         decltype(new_type) &&new_type,
         decltype(generic_param_group) &&generic_param_group,
         decltype(tok_assign) &&tok_assign,
-        decltype(old_type) &&old_type);
+        decltype(old_type) old_type);
 
 private:
     auto m_skip_all_scopes(ScopeManager* sm) -> void;
