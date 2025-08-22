@@ -29,6 +29,8 @@ struct spp::analyse::scopes::ScopeBlockName {
 
 
 class spp::analyse::scopes::Scope {
+    friend struct asts::PostfixExpressionOperatorStaticMemberAccessAst;
+
 public:
     ScopeName name;
 
@@ -43,7 +45,7 @@ public:
     NamespaceSymbol *ns_sym;
 
 private:
-    SymbolTable m_symbol_table;
+    SymbolTable m_sym_table;
 
     std::vector<Scope*> m_direct_sup_scopes;
 

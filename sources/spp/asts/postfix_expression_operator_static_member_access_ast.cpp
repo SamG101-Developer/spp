@@ -87,15 +87,16 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
             return;
         }
 
+
         auto scopes_and_syms = std::vector{lhs_type_sym->scope}
-            | genex::views::concat(lhs_type_sym->scope->sup_scopes)
-            | genex::views::map([name=name.get()](auto &&x) { return std::make_pair(x, x->m_sym_table->type_tbl.get(*name)); })
+            | genex::views::concat(lhs_type_sym->scope->sup_scopes())
+            | genex::views::map([name=name.get()](auto &&x) { return std::make_pair(x, x->m_sym_table.var_tbl.get(*name)); })
             | genex::views::filter([](auto &&x) { return x.second != nullptr; })
             | genex::views::map([lhs_type_sym](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
             | genex::views::to<std::vector>();
 
         auto min_depth = scopes_and_syms
-            | genex::algorithms::min([](auto &&x) { return std::get<0>(x); });
+            | genex::algorithms::min([]<typename T>(T &&x) { return std::get<0>(std::forward<T>(x)); });
 
         auto closest = scopes_and_syms
             | genex::views::filter([min_depth](auto &&x) { return std::get<0>(x) == min_depth; })

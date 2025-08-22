@@ -1,6 +1,36 @@
+#include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/inner_scope_expression_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
+
+#include <genex/views/enumerate.hpp>
+#include <genex/views/for_each.hpp>
+
+
+template <typename T>
+auto spp::asts::InnerScopeExpressionAst<T>::stage_7_analyse_semantics(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> void {
+    // Create a scope for the InnerScopeAst node.
+    auto scope_name = analyse::scopes::ScopeBlockName("<inner-scope#" + std::to_string(pos_start()) + ">");
+    sm->create_and_move_into_new_scope(std::move(scope_name), this);
+    m_scope = sm->current_scope;
+
+    // Check for unreachable code.
+    for (auto &&[i, member] : this->members | genex::views::ptr_unique | genex::views::enumerate) {
+        auto ret_stmt = ast_cast<RetStatementAst>(member);
+        auto loop_flow_stmt = ast_cast<LoopControlFlowStatementAst>(member);
+        if ((ret_stmt or loop_flow_stmt) and (member != this->members.back())) {
+            analyse::errors::SppUnreachableCodeError(*member, *this->members[i + 1])
+                .scopes({sm->current_scope}).raise();
+        }
+    }
+
+    // Analyse the members of the inner scope.
+    this->members | genex::views::for_each([sm, meta](auto &&x) { x->stage_7_analyse_semantics(sm, meta); });
+    sm->move_out_of_current_scope();
+}
 
 
 template <typename T>

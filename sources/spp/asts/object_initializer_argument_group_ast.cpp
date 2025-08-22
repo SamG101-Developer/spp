@@ -129,6 +129,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics
     // try reading a duplicate attribute before an error is raised.
     const auto duplicates = get_keyword_args()
         | genex::views::map([](auto &&x) { return x->name; })
+        | genex::views::materialize
         | genex::views::duplicates()
         | genex::views::to<std::vector>();
 

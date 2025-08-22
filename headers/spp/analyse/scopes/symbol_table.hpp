@@ -12,6 +12,9 @@ namespace spp::analyse::scopes {
 
     class SymbolTable;
     struct Symbol;
+    struct NamespaceSymbol;
+    struct TypeSymbol;
+    struct VariableSymbol;
 }
 
 
@@ -25,25 +28,25 @@ public:
 
     IndividualSymbolTable(SymbolTable const &);
 
-    auto add(Symbol *sym) -> void;
+    auto add(std::shared_ptr<Symbol> sym) -> void;
 
-    auto rem(I *sym_name) -> void;
+    auto rem(I const &sym_name) -> void;
 
-    auto get(I *sym_name) -> S*;
+    auto get(I const &sym_name) -> std::shared_ptr<S>;
 
-    auto set(I *sym_name, S *sym) -> void;
+    auto set(I const &sym_name, std::shared_ptr<S> sym) -> void;
 
-    auto has(I *sym_name) -> bool;
+    auto has(I const &sym_name) -> bool;
 
-    auto all() -> std::generator<S*>;
+    auto all() -> std::generator<std::shared_ptr<S>>;
 };
 
 
 class spp::analyse::scopes::SymbolTable {
 public:
-    IndividualSymbolTable<asts::IdentifierAst, std::shared_ptr<VariableSymbol>> var_tbl;
+    IndividualSymbolTable<asts::IdentifierAst, std::shared_ptr<NamespaceSymbol>> namespace_tbl;
 
     IndividualSymbolTable<asts::TypeIdentifierAst, std::shared_ptr<TypeSymbol>> type_tbl;
 
-    IndividualSymbolTable<asts::IdentifierAst, std::shared_ptr<NamespaceSymbol>> namespace_tbl;
+    IndividualSymbolTable<asts::IdentifierAst, std::shared_ptr<VariableSymbol>> var_tbl;
 };

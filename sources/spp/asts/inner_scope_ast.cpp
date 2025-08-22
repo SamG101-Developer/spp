@@ -91,17 +91,6 @@ auto spp::asts::InnerScopeAst<T>::stage_7_analyse_semantics(
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
     m_scope = sm->current_scope;
 
-    // Check for unreachable code.
-    for (auto &&[i, member] : members | genex::views::enumerate) {
-        auto ret_stmt = ast_cast<RetStatementAst>(member.get());
-        auto loop_flow_stmt = ast_cast<LoopControlFlowStatementAst>(member.get());
-        if ((ret_stmt or loop_flow_stmt) and (member != members.back())) {
-            analyse::errors::SppUnreachableCodeError(*member, *members[i + 1])
-                .scopes({sm->current_scope})
-                .raise();
-        }
-    }
-
     // Analyse the members of the inner scope.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_7_analyse_semantics(sm, meta); });
     sm->move_out_of_current_scope();
@@ -144,7 +133,6 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
     // If the final expression of the inner scope is being used (ie assigned ot outer variable), then memory check it.
     if (const auto move = meta->assignment_target; not members.empty() and move != nullptr) {
         if (auto expr_member = ast_cast<ExpressionAst>(final_member())) {
-            auto last_member = members.back().get();
             analyse::utils::mem_utils::validate_symbol_memory(*expr_member, *move, sm, true, true, true, true, true, true, meta);
         }
     }

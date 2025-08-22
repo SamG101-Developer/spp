@@ -30,6 +30,7 @@
 #include <genex/views/enumerate.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/map.hpp>
+#include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/to.hpp>
 
@@ -108,6 +109,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
     // Check there are no duplicate argument names.
     const auto arg_names = get_keyword_args()
         | genex::views::map([](auto &&x) { return x->name.get(); })
+        | genex::views::materialize
         | genex::views::duplicates()
         | genex::views::to<std::vector>();
 
@@ -204,7 +206,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
         for (auto &&[assignment, b, m, _] : sym->memory_info->borrow_refers_to) {
             if (assignment == nullptr) { continue; }
             (m ? borrows_mut : borrows_ref).emplace_back(assignment);
-            (m ? preexisting_borrows_mut : preexisting_borrows_ref).try_emplace(assignment, std::vector<Ast*>{}).first->second.emplace_back(assignment);
+            (m ? preexisting_borrows_mut : preexisting_borrows_ref).try_emplace(assignment, std::vector<IdentifierAst*>{}).first->second.emplace_back(ast_cast<IdentifierAst>(assignment));
         }
     }
 
@@ -260,7 +262,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 sym->memory_info->ast_pins.emplace_back(arg->val.get());
                 sym->memory_info->is_borrow_mut = true;
                 sym->memory_info->borrow_refers_to.emplace_back(arg->val.get(), arg.get(), true, sm->current_scope);
-                sym->memory_info->borrow_refers_to.emplace_back(meta->assignment_target, arg.get(), true, sm->current_scope);
+                sym->memory_info->borrow_refers_to.emplace_back(meta->assignment_target.get(), arg.get(), true, sm->current_scope);
                 sm->current_scope->get_var_symbol(*meta->assignment_target)->memory_info->ast_pins.emplace_back(arg->val.get());
             }
 
@@ -286,7 +288,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 sym->memory_info->ast_pins.emplace_back(arg->val.get());
                 sym->memory_info->is_borrow_ref = true;
                 sym->memory_info->borrow_refers_to.emplace_back(arg->val.get(), arg.get(), false, sm->current_scope);
-                sym->memory_info->borrow_refers_to.emplace_back(meta->assignment_target, arg.get(), false, sm->current_scope);
+                sym->memory_info->borrow_refers_to.emplace_back(meta->assignment_target.get(), arg.get(), false, sm->current_scope);
                 sm->current_scope->get_var_symbol(*meta->assignment_target)->memory_info->ast_pins.emplace_back(arg->val.get());
             }
 
