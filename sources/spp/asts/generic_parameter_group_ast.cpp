@@ -2,6 +2,7 @@
 
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
+#include <spp/asts/function_parameter_self_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
 #include <spp/asts/generic_parameter_group_ast.hpp>
 #include <spp/asts/token_ast.hpp>
@@ -11,6 +12,7 @@
 #include <genex/views/duplicates.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/for_each.hpp>
+#include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
 
 
@@ -92,6 +94,7 @@ auto spp::asts::GenericParameterGroupAst::stage_7_analyse_semantics(
     // Check there are no duplicate parameter names.
     const auto param_names = params
         | genex::views::map([](auto &&x) { return x->name.get(); })
+        | genex::views::materialize
         | genex::views::duplicates()
         | genex::views::to<std::vector>();
 

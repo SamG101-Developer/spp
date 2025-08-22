@@ -1,4 +1,5 @@
 #include <spp/asts/sup_implementation_ast.hpp>
+#include <spp/asts/sup_member_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 
 #include <genex/views/for_each.hpp>

@@ -13,9 +13,12 @@
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
+#include <spp/asts/generate/common_types.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>
 
 #include <genex/actions/remove.hpp>
+
+#include "spp/asts/generic_argument_group_ast.hpp"
 
 
 spp::asts::PostfixExpressionOperatorKeywordResAst::PostfixExpressionOperatorKeywordResAst(
@@ -102,22 +105,28 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::infer_type(
     const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
     auto [gen_type, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(*lhs_type, *sm, *meta->let_stmt_value, "resume expression");
 
-    // Get the correct "Generated" type based on the generator type.
-    auto new_type_name = "";
+    // Convert the type Gen[Yield] => Generated[Yield]
     if (analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN, *gen_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
-        new_type_name = "Generated";
-    }
-    else if (analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN_OPT, *gen_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
-        new_type_name = "GeneratedOpt";
-    }
-    else if (analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN_RES, *gen_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
-        new_type_name = "GeneratedRes";
+        auto generated_type = generate::common_types::generated_type(pos_start(), std::move(yield_type));
+        generated_type->stage_7_analyse_semantics(sm, meta);
+        return generated_type;
     }
 
-    // Form the Generator type and return it.
-    auto generated_type = ast_clone(gen_type);
-    generated_type->type_parts().back()->name = std::move(new_type_name);
-    generated_type->type_parts().back()->generic_arg_group->args |= genex::actions::remove_if([](auto &&x) { return ast_cast<GenericArgumentTypeKeywordAst>(x.get())->name->type_parts().back()->name == "Send"; });
-    generated_type->stage_7_analyse_semantics(sm, meta);
-    return generated_type;
+    // Convert the type GenOpt[Yield] => GeneratedOpt[Yield]
+    if (analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN_OPT, *gen_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
+        auto generated_type = generate::common_types::generated_opt_type(pos_start(), std::move(yield_type));
+        generated_type->stage_7_analyse_semantics(sm, meta);
+        return generated_type;
+    }
+
+    // Convert the type GenRes[Yield, Err] => GeneratedRes[Yield, Err]
+    if (analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN_RES, *gen_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
+        auto generated_type = generate::common_types::generated_res_type(pos_start(), std::move(yield_type), gen_type->type_parts().back()->generic_arg_group->type_at("Err")->val);
+        generated_type->stage_7_analyse_semantics(sm, meta);
+        return generated_type;
+    }
+
+    // Semantic analysis prevents non-generator types from being used with the ".res" operator, so this should never be
+    // reached.
+    std::unreachable();
 }

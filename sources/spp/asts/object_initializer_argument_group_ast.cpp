@@ -24,6 +24,7 @@
 #include <genex/views/duplicates.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/materialize.hpp>
+#include <genex/views/move.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/remove.hpp>
 #include <genex/views/set_algorithms.hpp>
@@ -194,7 +195,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
 
     const auto invalid_args = arg_names
         | genex::views::deref
-        | genex::views::set_difference(all_attr_names | genex::views::deref)
+        | genex::views::set_difference(all_attr_names | genex::views::deref | genex::views::materialize)
         | genex::views::address
         | genex::views::to<std::vector>();
 

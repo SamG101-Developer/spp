@@ -3,6 +3,7 @@
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/symbols.hpp>
+#include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/analyse/utils/order_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/convention_mut_ast.hpp>
@@ -20,6 +21,7 @@
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
+#include <spp/asts/mixins/orderable_ast.hpp>
 
 #include <genex/actions/pop.hpp>
 #include <genex/views/concat.hpp>
@@ -30,8 +32,6 @@
 #include <genex/views/map.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/to.hpp>
-
-#include "spp/analyse/utils/mem_utils.hpp"
 
 
 spp::asts::FunctionCallArgumentGroupAst::FunctionCallArgumentGroupAst(

@@ -91,11 +91,6 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
     auto scope_name = analyse::scopes::ScopeBlockName("<iter-expr#" + std::to_string(pos_start()) + ">");
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
 
-    auto pattern_types = branches
-        | genex::views::ptr_unique
-        | genex::views::map([sm, meta](auto &&x) { return x->pattern->infer_type(sm, meta); })
-        | genex::views::to<std::vector>();
-
     // Ensure there is only one type of each branch variation.
     if (const auto bs = branches
         | genex::views::cast.operator()<IterPatternVariantExceptionAst>()

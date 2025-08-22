@@ -23,12 +23,13 @@
 
 #include <genex/algorithms/count.hpp>
 #include <genex/algorithms/position.hpp>
-#include <genex/actions/concat.hpp>
 #include <genex/views/cast.hpp>
+#include <genex/views/concat.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/flat.hpp>
 #include <genex/views/for_each.hpp>
 #include <genex/views/iota.hpp>
+#include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/to.hpp>
 #include <genex/views/zip.hpp>
@@ -111,8 +112,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
 
     if (multi_arg_skips.size() > 1) {
         analyse::errors::SppMultipleSkipMultiArgumentsError(*this, *multi_arg_skips[0], *multi_arg_skips[1])
-            .scopes({sm->current_scope})
-            .raise();
+            .scopes({sm->current_scope}).raise();
     }
 
     // Ensure the right-hand-side is an tuple type.
@@ -120,8 +120,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
     const auto val_type = val->infer_type(sm, meta)->type_parts().back();
     if (not analyse::utils::type_utils::is_type_tuple(*val_type, *sm->current_scope)) {
         analyse::errors::SppVariableTupleDestructureTupleTypeMismatchError(*this, *val, *val_type)
-            .scopes({sm->current_scope})
-            .raise();
+            .scopes({sm->current_scope}).raise();
     }
 
     // Determine number of elements in the left-hand-side and right-hand-side tuples.
@@ -129,14 +128,13 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
     const auto num_rhs_arr_elems = val->infer_type(sm, meta)->type_parts().back()->generic_arg_group->args.size();
     if ((num_lhs_arr_elems < num_rhs_arr_elems and multi_arg_skips.empty()) or (num_lhs_arr_elems > num_rhs_arr_elems)) {
         analyse::errors::SppVariableTupleDestructureTupleSizeMismatchError(*this, num_lhs_arr_elems, *val, num_rhs_arr_elems)
-            .scopes({sm->current_scope})
-            .raise();
+            .scopes({sm->current_scope}).raise();
     }
 
     // For a bound ".." destructure, ie "let [a, ..b, c] = t", create an intermediary type.
     auto bound_multi_skip = std::unique_ptr<TupleLiteralAst>(nullptr);
     if (not multi_arg_skips.empty() and multi_arg_skips[0]->binding != nullptr) {
-        const auto m = elems | genex::algorithms::position([&multi_arg_skips](auto &&x) { return x.get() == multi_arg_skips[0]; });
+        const auto m = elems | genex::views::ptr_unique | genex::algorithms::position([&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; });
         auto new_elems = genex::views::iota(m, m + num_rhs_arr_elems - num_lhs_arr_elems + 1)
             | genex::views::map([val](const auto i) {
                 auto identifier = std::make_unique<IdentifierAst>(0uz, std::to_string(i));
@@ -151,8 +149,8 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
     }
 
     // Create new indexes.
-    auto indexes = genex::views::iota(0, multi_arg_skips.empty() ? multi_arg_skips.size() : (elems | genex::algorithms::position([&multi_arg_skips](auto &&x) { return x.get() == multi_arg_skips[0]; })) + 1);
-    indexes |= genex::actions::concat(genex::views::iota(num_lhs_arr_elems, num_rhs_arr_elems));
+    auto indexes = genex::views::iota(0, multi_arg_skips.empty() ? multi_arg_skips.size() : (elems | genex::algorithms::position([&multi_arg_skips](auto &&x) { return x.get() == multi_arg_skips[0]; })) + 1)
+        | genex::views::concat(genex::views::iota(num_lhs_arr_elems, num_rhs_arr_elems) | genex::views::materialize);
 
     // Create expanded "let" statements for each part of the destructure.
     for (auto &&[i, elem] : genex::views::zip(indexes, elems | genex::views::ptr_unique)) {

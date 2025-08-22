@@ -23,7 +23,7 @@
 spp::asts::ClassPrototypeAst::ClassPrototypeAst(
     decltype(annotations) &&annotations,
     decltype(tok_cls) &&tok_cls,
-    decltype(name) &&name,
+    decltype(name) name,
     decltype(generic_param_group) &&generic_param_group,
     decltype(impl) &&impl) :
     annotations(std::move(annotations)),
@@ -102,8 +102,8 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
     // If the type was generic, like Vec[T], also create a base Vec symbol.
     if (not generic_param_group->params.empty()) {
         symbol_2 = m_for_alias
-            ? std::make_unique<analyse::scopes::AliasSymbol>(name->type_parts()[0], this, sm->current_scope, sm->current_scope, nullptr)
-            : std::make_unique<analyse::scopes::TypeSymbol>(name->type_parts()[0], this, sm->current_scope, sm->current_scope);
+            ? std::make_unique<analyse::scopes::AliasSymbol>(ast_clone(name->type_parts()[0]), this, sm->current_scope, sm->current_scope, nullptr)
+            : std::make_unique<analyse::scopes::TypeSymbol>(ast_clone(name->type_parts()[0]), this, sm->current_scope, sm->current_scope);
         symbol_2->generic_impl = symbol_1.get();
         const auto ret_sym = symbol_2.get();
         sm->current_scope->parent->add_symbol(std::move(symbol_2));
@@ -146,7 +146,7 @@ auto spp::asts::ClassPrototypeAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::ClassPrototypeAst::stage_3_gen_top_level_aliases(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    mixins::CompilerMetaData *)
     -> void {
     // Skip the class scope.
     sm->move_to_next_scope();

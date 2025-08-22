@@ -1,15 +1,15 @@
 #include <algorithm>
 
-#include <spp/asts/array_literal_explicit_elements_ast.hpp>
-#include <spp/asts/integer_literal_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
+#include <spp/asts/array_literal_explicit_elements_ast.hpp>
+#include <spp/asts/integer_literal_ast.hpp>
+#include <spp/asts/token_ast.hpp>
+#include <spp/asts/type_ast.hpp>
+#include <spp/asts/generate/common_types.hpp>
 
 #include <genex/algorithms/copy.hpp>
 #include <genex/views/address.hpp>
@@ -79,16 +79,16 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_7_analyse_semantics(
 
     // Check all elements have the same type as the 0th element.
     auto elem_types = elems | genex::views::map([sm, meta](auto &&elem) { return elem->infer_type(sm, meta); });
-    for (auto &&[elem, elem_type] : genex::views::zip(elems, elem_types)) {
+    for (auto &&[elem, elem_type] : genex::views::zip(elems | genex::views::ptr_unique, elem_types)) {
         if (not analyse::utils::type_utils::symbolic_eq(*zeroth_type, *elem_type, *sm->current_scope, *sm->current_scope))
             analyse::errors::SppTypeMismatchError(*zeroth_elem, *zeroth_type, *elem, *elem_type).scopes({sm->current_scope}).raise();
     }
 
     // Check all the elements are owned by the array, not borrowed.
-    for (auto &&elem : elems | genex::views::deref) {
-        if (auto [elem_sym, _] = sm->current_scope->get_var_symbol_outermost(elem); elem_sym != nullptr) {
+    for (auto &&elem : elems | genex::views::ptr_unique) {
+        if (auto [elem_sym, _] = sm->current_scope->get_var_symbol_outermost(*elem); elem_sym != nullptr) {
             if (const auto borrow_ast = elem_sym->memory_info->ast_borrowed) {
-                analyse::errors::SppSecondClassBorrowViolationError(elem, *borrow_ast, "explicit array element type").scopes({sm->current_scope}).raise();
+                analyse::errors::SppSecondClassBorrowViolationError(*elem, *borrow_ast, "explicit array element type").scopes({sm->current_scope}).raise();
             }
         }
     }

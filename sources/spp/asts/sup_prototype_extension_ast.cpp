@@ -6,6 +6,7 @@
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
 #include <spp/asts/cmp_statement_ast.hpp>
+#include <spp/asts/convention_ast.hpp>
 #include <spp/asts/function_prototype_ast.hpp>
 #include <spp/asts/generic_argument_type_keyword_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
@@ -27,9 +28,9 @@
 spp::asts::SupPrototypeExtensionAst::SupPrototypeExtensionAst(
     decltype(tok_sup) &&tok_sup,
     decltype(generic_param_group) &&generic_param_group,
-    decltype(name) &&name,
+    decltype(name) name,
     decltype(tok_ext) &&tok_ext,
-    decltype(super_class) &&super_class,
+    decltype(super_class) super_class,
     decltype(impl) &&impl) :
     tok_sup(std::move(tok_sup)),
     generic_param_group(std::move(generic_param_group)),
@@ -173,7 +174,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_2_gen_top_level_scopes(
     }
 
     // Check every generic parameter is constrained by the type.
-    if (const auto unconstrained = generic_param_group->params | genex::views::filter([this](auto &&x) { return not(name->contains_generic(*x) or super_class->contains_generic(*x)); }) | genex::views::to<std::vector>(); not unconstrained.empty()) {
+    if (const auto unconstrained = generic_param_group->get_all_params() | genex::views::filter([this](auto &&x) { return not(name->contains_generic(*x) or super_class->contains_generic(*x)); }) | genex::views::to<std::vector>(); not unconstrained.empty()) {
         analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError(*unconstrained[0]).scopes({sm->current_scope}).raise();
     }
 

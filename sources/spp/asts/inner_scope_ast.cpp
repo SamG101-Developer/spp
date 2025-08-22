@@ -5,10 +5,14 @@
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/asts/class_member_ast.hpp>
 #include <spp/asts/expression_ast.hpp>
+#include <spp/asts/expression_ast.hpp>
+#include <spp/asts/generic_argument_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/inner_scope_ast.hpp>
 #include <spp/asts/loop_control_flow_statement_ast.hpp>
 #include <spp/asts/ret_statement_ast.hpp>
 #include <spp/asts/statement_ast.hpp>
+#include <spp/asts/sup_member_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 
 #include <genex/actions/remove.hpp>
@@ -120,9 +124,9 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
     // Invalidate yielded borrows that are linked.
     for (auto &&sym : inner_syms) {
         for (auto &&pin : sym->memory_info->ast_pins | genex::views::view | genex::views::to<std::vector>()) {
-            const auto pin_sym = sm->current_scope->get_var_symbol(*pin);
+            const auto pin_sym = sm->current_scope->get_var_symbol(ast_cast<IdentifierAst>(*pin));
             for (auto &&info : pin_sym->memory_info->borrow_refers_to | genex::views::view | genex::views::to<std::vector>()) {
-                pin_sym->memory_info->borrow_refers_to |= genex::actions::remove_if([sym](auto &&x) { return std::get<0>(x) == sym->name; });
+                pin_sym->memory_info->borrow_refers_to |= genex::actions::remove_if([sym](auto &&x) { return *ast_cast<IdentifierAst>(std::get<0>(x)) == *sym->name; });
                 pin_sym->memory_info->borrow_refers_to |= genex::actions::remove_if([info](auto &&x) { return std::get<0>(x) == std::get<0>(info); });
             }
         }
@@ -138,9 +142,11 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
     }
 
     // If the final expression of the inner scope is being used (ie assigned ot outer variable), then memory check it.
-    if (auto move = meta->assignment_target; not members.empty() and move != nullptr) {
-        auto last_member = members.back().get();
-        analyse::utils::mem_utils::validate_symbol_memory(*last_member, *move, sm->current_scope, true, true, true, true, true, true, meta);
+    if (const auto move = meta->assignment_target; not members.empty() and move != nullptr) {
+        if (auto expr_member = ast_cast<ExpressionAst>(final_member())) {
+            auto last_member = members.back().get();
+            analyse::utils::mem_utils::validate_symbol_memory(*expr_member, *move, sm, true, true, true, true, true, true, meta);
+        }
     }
 
     sm->move_out_of_current_scope();

@@ -42,6 +42,10 @@ namespace spp::asts::generate::common_types {
     auto gen_opt_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type, std::shared_ptr<TypeAst> send_type = nullptr) -> std::unique_ptr<TypeAst>;
     auto gen_res_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type, std::shared_ptr<TypeAst> err_type, std::shared_ptr<TypeAst> send_type = nullptr) -> std::unique_ptr<TypeAst>;
 
+    auto generated_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type) -> std::unique_ptr<TypeAst>;
+    auto generated_opt_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type) -> std::unique_ptr<TypeAst>;
+    auto generated_res_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type, std::shared_ptr<TypeAst> err_type) -> std::unique_ptr<TypeAst>;
+
     auto fun_ref_type(std::size_t pos, std::shared_ptr<TypeAst> param_types, std::shared_ptr<TypeAst> ret_type) -> std::unique_ptr<TypeAst>;
     auto fun_mut_type(std::size_t pos, std::shared_ptr<TypeAst> param_types, std::shared_ptr<TypeAst> ret_type) -> std::unique_ptr<TypeAst>;
     auto fun_mov_type(std::size_t pos, std::shared_ptr<TypeAst> param_types, std::shared_ptr<TypeAst> ret_type) -> std::unique_ptr<TypeAst>;

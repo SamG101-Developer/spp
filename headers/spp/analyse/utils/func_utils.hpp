@@ -88,11 +88,11 @@ namespace spp::analyse::utils::func_utils {
         std::vector<asts::GenericArgumentAst*> explicit_args,
         std::map<asts::IdentifierAst*, std::shared_ptr<asts::TypeAst>> infer_source,
         std::map<asts::IdentifierAst*, std::shared_ptr<asts::TypeAst>> infer_target,
-        asts::Ast const *owner = nullptr,
-        asts::IdentifierAst *variadic_param_identifier = nullptr,
-        bool is_tuple_owner = false,
+        asts::Ast const *owner,
+        asts::IdentifierAst *variadic_param_identifier,
+        bool is_tuple_owner,
         scopes::ScopeManager const &sm,
-        asts::mixins::CompilerMetaData *meta = nullptr)
+        asts::mixins::CompilerMetaData *meta)
         -> std::vector<asts::GenericArgumentAst*>;
 
     auto is_target_callable(

@@ -45,6 +45,11 @@ namespace spp::asts {
         return std::unique_ptr<T>(ast_cast<T>(ast.release()));
     }
 
+    template <typename T, typename U>
+    auto ast_cast(std::shared_ptr<U> ast) -> std::shared_ptr<T> {
+        return std::shared_ptr<T>(ast_cast<T>(ast.get()));
+    }
+
     template <typename T>
     auto ast_name(T *ast) -> std::shared_ptr<TypeAst>;
 

@@ -4,6 +4,7 @@
 #include <spp/analyse/scopes/symbols.hpp>
 #include <spp/analyse/utils/func_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
+#include <spp/asts/convention_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
 #include <spp/asts/generic_parameter_group_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
@@ -14,6 +15,7 @@
 #include <spp/asts/type_identifier_ast.hpp>
 
 #include <genex/views/filter.hpp>
+#include <genex/views/to.hpp>
 
 
 spp::asts::SupPrototypeFunctionsAst::SupPrototypeFunctionsAst(
@@ -90,7 +92,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_2_gen_top_level_scopes(
     }
 
     // Check every generic parameter is constrained by the type.
-    if (const auto unconstrained = generic_param_group->params | genex::views::filter([this](auto &&x) { return not name->contains_generic(*x); }) | genex::views::to<std::vector>(); not unconstrained.empty()) {
+    if (const auto unconstrained = generic_param_group->get_all_params() | genex::views::filter([this](auto &&x) { return not name->contains_generic(*x); }) | genex::views::to<std::vector>(); not unconstrained.empty()) {
         analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError(*unconstrained[0]).scopes({sm->current_scope}).raise();
     }
 

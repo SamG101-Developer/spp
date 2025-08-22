@@ -5,16 +5,22 @@
 #include <spp/analyse/utils/order_utils.hpp>
 #include <spp/asts/function_parameter_group_ast.hpp>
 #include <spp/asts/function_parameter_ast.hpp>
+#include <spp/asts/function_parameter_optional_ast.hpp>
 #include <spp/asts/function_parameter_self_ast.hpp>
+#include <spp/asts/function_parameter_required_ast.hpp>
+#include <spp/asts/function_parameter_variadic_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/let_statement_initialized_ast.hpp>
 #include <spp/asts/local_variable_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/asts/mixins/orderable_ast.hpp>
 
 #include <genex/views/cast.hpp>
 #include <genex/views/duplicates.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/flat.hpp>
+#include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/to.hpp>
 
@@ -135,6 +141,7 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
     const auto param_names = params
         | genex::views::map([](auto &&x) { return x->extract_names(); })
         | genex::views::flat
+        | genex::views::materialize
         | genex::views::duplicates()
         | genex::views::to<std::vector>();
 
