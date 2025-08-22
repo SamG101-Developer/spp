@@ -132,13 +132,13 @@ auto spp::asts::GenExpressionAst::stage_8_check_memory(
     auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*expr);
     if (sym == nullptr) { return; }
 
-    if (conv == nullptr) {
+    if (conv->tag == ConventionAst::ConventionTag::MOV) {
         // Ensure that attributes aren't being moved off of a borrowed value and that pins are maintained. Mark the move
         // or partial move of the argument.
         analyse::utils::mem_utils::validate_symbol_memory(*expr, *tok_gen, sm, false, false, true, true, true, true, meta);
     }
 
-    else if (ast_cast<ConventionMutAst>(conv.get()) and not sym->is_mutable) {
+    else if (conv->tag == ConventionAst::ConventionTag::MUT and not sym->is_mutable) {
         // Check the argument's symbol is mutable, if the symbol exists.
         analyse::errors::SppInvalidMutationError(*expr, *conv, *sym->memory_info->ast_initialization)
             .scopes({sm->current_scope})

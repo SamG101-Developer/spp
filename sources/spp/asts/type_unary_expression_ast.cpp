@@ -54,7 +54,14 @@ auto spp::asts::TypeUnaryExpressionAst::print(meta::AstPrinter &printer) const -
 }
 
 
-auto spp::asts::TypeUnaryExpressionAst::operator==(TypeUnaryExpressionAst const &other) const -> bool {
+auto spp::asts::TypeUnaryExpressionAst::operator==(TypeAst const &other) const -> bool {
+    // Double dispatch to the appropriate equals method.
+    return other.equals_type_unary_expression(*this);
+}
+
+
+auto spp::asts::TypeUnaryExpressionAst::equals_type_unary_expression(TypeUnaryExpressionAst const &other) const -> bool {
+    // Check if the operators and right-hand-sides are the same.
     return *op == *other.op && *rhs == *other.rhs;
 }
 

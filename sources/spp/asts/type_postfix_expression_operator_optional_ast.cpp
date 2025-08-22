@@ -42,6 +42,20 @@ auto spp::asts::TypePostfixExpressionOperatorOptionalAst::print(meta::AstPrinter
 }
 
 
+auto spp::asts::TypePostfixExpressionOperatorOptionalAst::operator==(
+    const TypePostfixExpressionOperatorAst &other) const
+    -> bool {
+    return other.equals_optional(*this);
+}
+
+
+auto spp::asts::TypePostfixExpressionOperatorOptionalAst::equals_optional(
+    TypePostfixExpressionOperatorOptionalAst const &) const
+    -> bool {
+    return true;
+}
+
+
 auto spp::asts::TypePostfixExpressionOperatorOptionalAst::ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> {
     return {};
 }

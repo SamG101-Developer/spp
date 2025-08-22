@@ -42,8 +42,11 @@ private:
 
     bool m_is_never_type;
 
+protected:
+    auto equals_type_identifier(TypeIdentifierAst const &other) const -> bool override;
+
 public:
-    auto operator==(TypeIdentifierAst const &other) const -> bool;
+    auto operator==(TypeAst const &other) const -> bool override;
 
     auto iterator() const -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> override;
 

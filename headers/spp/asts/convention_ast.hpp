@@ -11,7 +11,11 @@
  * convention is used to indicate that a value is borrowed (and how), or moved (lack of borrow).
  */
 struct spp::asts::ConventionAst : virtual Ast {
-    using Ast::Ast;
+    enum class ConventionTag { MOV, MUT, REF };
+
+    ConventionTag tag;
+
+    explicit ConventionAst(ConventionTag tag);
 };
 
 

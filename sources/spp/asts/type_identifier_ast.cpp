@@ -82,6 +82,14 @@ auto spp::asts::TypeIdentifierAst::from_identifier(
 
 
 auto spp::asts::TypeIdentifierAst::operator==(
+    TypeAst const &other) const
+    -> bool {
+    // Double dispatch to the appropriate equals method.
+    return other.equals_type_identifier(*this);
+}
+
+
+auto spp::asts::TypeIdentifierAst::equals_type_identifier(
     TypeIdentifierAst const &other) const
     -> bool {
     // Check the name and args are equal.

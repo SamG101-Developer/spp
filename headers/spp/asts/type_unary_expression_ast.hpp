@@ -27,8 +27,11 @@ struct spp::asts::TypeUnaryExpressionAst final : TypeAst, std::enable_shared_fro
         decltype(op) op,
         decltype(rhs) rhs);
 
+protected:
+    auto equals_type_unary_expression(TypeUnaryExpressionAst const &other) const -> bool override;
+
 public:
-    auto operator==(TypeUnaryExpressionAst const &other) const -> bool;
+    auto operator==(TypeAst const &other) const -> bool override;
 
     auto iterator() const -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> override;
 

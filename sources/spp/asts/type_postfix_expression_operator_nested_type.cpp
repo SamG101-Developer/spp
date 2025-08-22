@@ -50,6 +50,21 @@ auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::print(meta::AstPrint
 }
 
 
+auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::operator==(
+    const TypePostfixExpressionOperatorAst &other) const
+    -> bool {
+    return other.equals_nested_type(*this);
+}
+
+
+auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::equals_nested_type(
+    TypePostfixExpressionOperatorNestedTypeAst const &other) const
+    -> bool {
+    // Compare the members for equality.
+    return *name == *other.name;
+}
+
+
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::ns_parts(
     ) const
     -> std::vector<std::shared_ptr<const IdentifierAst>> {

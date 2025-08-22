@@ -6,6 +6,7 @@
 
 spp::asts::ConventionRefAst::ConventionRefAst(
     decltype(tok_borrow) &&tok_borrow) :
+    ConventionAst(ConventionTag::REF),
     tok_borrow(std::move(tok_borrow)) {
 }
 

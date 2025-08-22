@@ -86,18 +86,18 @@ auto spp::asts::FunctionCallArgumentGroupAst::print(meta::AstPrinter &printer) c
 
 auto spp::asts::FunctionCallArgumentGroupAst::get_keyword_args() const -> std::vector<FunctionCallArgumentKeywordAst*> {
     return args
-        | genex::views::cast.operator()<FunctionCallArgumentKeywordAst>()
-        | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::ptr_unique
+        | genex::views::cast.operator()<FunctionCallArgumentKeywordAst*>()
+        | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::to<std::vector>();
 }
 
 
 auto spp::asts::FunctionCallArgumentGroupAst::get_positional_args() const -> std::vector<FunctionCallArgumentPositionalAst*> {
     return args
-        | genex::views::cast.operator()<FunctionCallArgumentPositionalAst>()
-        | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::ptr_unique
+        | genex::views::cast.operator()<FunctionCallArgumentPositionalAst*>()
+        | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::to<std::vector>();
 }
 
@@ -147,7 +147,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
 
         // Replace the tuple-expansion argument with the expanded arguments.
         args |= genex::actions::pop(i);
-        for (auto j = arg_type->type_parts().back()->generic_arg_group->args.size() - 1; j > -1; --j) {
+        for (std::make_signed_t<std::size_t> j = arg_type->type_parts().back()->generic_arg_group->args.size() - 1; j > -1; --j) {
             auto field = std::make_unique<IdentifierAst>(arg->val->pos_start(), std::to_string(i));
             auto new_ast = std::make_unique<PostfixExpressionAst>(
                 ast_clone(arg->val),
@@ -162,7 +162,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         arg->stage_7_analyse_semantics(sm, meta);
         const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*arg->val);
         if (sym == nullptr) { continue; }
-        if (ast_cast<ConventionMutAst>(arg->conv.get()) == nullptr) { continue; }
+        if (arg->conv->tag != ConventionAst::ConventionTag::MUT) { continue; }
 
         // Immutable symbols cannot be mutated.
         if (not sym->is_mutable) {
@@ -221,7 +221,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
         arg->stage_8_check_memory(sm, meta);
         analyse::utils::mem_utils::validate_symbol_memory(*arg->val, *arg, sm, true, true, false, false, false, false, meta);
 
-        if (arg->conv == nullptr) {
+        if (arg->conv->tag == ConventionAst::ConventionTag::MOV) {
             // Don't bother rechecking the moves or partial moves, but ensure that attributes aren't being moved off of
             // a borrowed value and that pins are maintained. Mark the move or partial move of the argument. Note the
             // "check_pins_linked=False" because function calls can only imply an inner scope, so it is guaranteed that
@@ -241,7 +241,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
             }
         }
 
-        else if (ast_cast<ConventionRefAst>(arg->conv.get()) != nullptr) {
+        else if (arg->conv->tag == ConventionAst::ConventionTag::REF) {
             // Check the mutable borrow doesn't overlap with any other borrow in the same scope.
             auto overlaps = genex::views::concat(borrows_ref, borrows_mut)
                 | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
@@ -270,7 +270,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
             borrows_mut.emplace_back(arg->val.get());
         }
 
-        else if (ast_cast<ConventionRefAst>(arg->conv.get()) != nullptr) {
+        else if (arg->conv->tag == ConventionAst::ConventionTag::MUT) {
             // Check the immutable borrow doesn't overlap with any other mutable borrow in the same scope.
             auto overlaps = borrows_mut
                 | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })

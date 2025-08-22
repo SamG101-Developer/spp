@@ -30,6 +30,7 @@
 #include <spp/asts/class_prototype_ast.hpp>
 #include <spp/asts/convention_ast.hpp>
 #include <spp/asts/convention_ref_ast.hpp>
+#include <spp/asts/convention_mov_ast.hpp>
 #include <spp/asts/convention_mut_ast.hpp>
 #include <spp/asts/coroutine_prototype_ast.hpp>
 #include <spp/asts/closure_expression_ast.hpp>
@@ -412,7 +413,7 @@ auto spp::parse::ParserSpp::parse_function_call_argument() -> std::unique_ptr<as
 
 
 auto spp::parse::ParserSpp::parse_function_call_argument_positional() -> std::unique_ptr<asts::FunctionCallArgumentPositionalAst> {
-    PARSE_OPTIONAL(p1, parse_convention);
+    PARSE_ONCE(p1, parse_convention);
     PARSE_OPTIONAL(p2, parse_token_double_dot)
     PARSE_ONCE(p3, parse_expression);
     return CREATE_AST(asts::FunctionCallArgumentPositionalAst, p1, p2, p3);
@@ -422,7 +423,7 @@ auto spp::parse::ParserSpp::parse_function_call_argument_positional() -> std::un
 auto spp::parse::ParserSpp::parse_function_call_argument_keyword() -> std::unique_ptr<asts::FunctionCallArgumentKeywordAst> {
     PARSE_ONCE(p1, parse_identifier);
     PARSE_ONCE(p2, parse_token_assign);
-    PARSE_OPTIONAL(p3, parse_convention);
+    PARSE_ONCE(p3, parse_convention);
     PARSE_ONCE(p4, parse_expression);
     return CREATE_AST(asts::FunctionCallArgumentKeywordAst, p1, p2, p3, p4);
 }
@@ -1228,7 +1229,7 @@ auto spp::parse::ParserSpp::parse_gen_expression() -> std::unique_ptr<asts::GenE
 
 auto spp::parse::ParserSpp::parse_gen_expression_with_expression() -> std::unique_ptr<asts::GenExpressionAst> {
     PARSE_ONCE(p1, parse_keyword_gen);
-    PARSE_OPTIONAL(p2, parse_convention);
+    PARSE_ONCE(p2, parse_convention);
     PARSE_ONCE(p3, parse_expression);
     return CREATE_AST(asts::GenExpressionAst, p1, p2, p3);
 }
@@ -1497,8 +1498,14 @@ auto spp::parse::ParserSpp::parse_local_variable_nested_for_destructure_attribut
 
 
 auto spp::parse::ParserSpp::parse_convention() -> std::unique_ptr<asts::ConventionAst> {
-    PARSE_ALTERNATE(p1, asts::ConventionAst, parse_convention_mut, parse_convention_ref);
+    PARSE_ALTERNATE(p1, asts::ConventionAst, parse_convention_mut, parse_convention_ref, parse_convention_mov);
     return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_convention_ref() -> std::unique_ptr<asts::ConventionRefAst> {
+    PARSE_ONCE(p1, parse_token_borrow);
+    return CREATE_AST(asts::ConventionRefAst, p1);
 }
 
 
@@ -1509,9 +1516,14 @@ auto spp::parse::ParserSpp::parse_convention_mut() -> std::unique_ptr<asts::Conv
 }
 
 
-auto spp::parse::ParserSpp::parse_convention_ref() -> std::unique_ptr<asts::ConventionRefAst> {
-    PARSE_ONCE(p1, parse_token_borrow);
-    return CREATE_AST(asts::ConventionRefAst, p1);
+auto spp::parse::ParserSpp::parse_convention_mov() -> std::unique_ptr<asts::ConventionMovAst> {
+    return CREATE_AST(asts::ConventionMovAst);
+}
+
+
+auto spp::parse::ParserSpp::parse_convention_non_mov() -> std::unique_ptr<asts::ConventionAst> {
+    PARSE_ALTERNATE(p1, asts::ConventionAst, parse_convention_mut, parse_convention_ref);
+    return FORWARD_AST(p1);
 }
 
 
@@ -1569,7 +1581,7 @@ auto spp::parse::ParserSpp::parse_closure_expression_capture_group() -> std::uni
 
 
 auto spp::parse::ParserSpp::parse_closure_expression_capture() -> std::unique_ptr<asts::ClosureExpressionCaptureAst> {
-    PARSE_OPTIONAL(p1, parse_convention);
+    PARSE_ONCE(p1, parse_convention);
     PARSE_ONCE(p2, parse_identifier);
     return CREATE_AST(asts::ClosureExpressionCaptureAst, p1, p2); // todo: allow "as" alias?
 }
@@ -1666,7 +1678,7 @@ auto spp::parse::ParserSpp::parse_unary_type_expression_op() -> std::unique_ptr<
 
 
 auto spp::parse::ParserSpp::parse_unary_type_expression_op_borrow() -> std::unique_ptr<asts::TypeUnaryExpressionOperatorBorrowAst> {
-    PARSE_ONCE(p1, parse_convention);
+    PARSE_ONCE(p1, parse_convention_non_move);
     return CREATE_AST(asts::TypeUnaryExpressionOperatorBorrowAst, p1);
 }
 

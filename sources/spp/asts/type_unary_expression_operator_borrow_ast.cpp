@@ -8,6 +8,9 @@ spp::asts::TypeUnaryExpressionOperatorBorrowAst::TypeUnaryExpressionOperatorBorr
 }
 
 
+spp::asts::TypeUnaryExpressionOperatorBorrowAst::~TypeUnaryExpressionOperatorBorrowAst() = default;
+
+
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::pos_start() const -> std::size_t {
     return conv->pos_start();
 }
@@ -35,6 +38,22 @@ auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::print(meta::AstPrinter &pr
     SPP_PRINT_START;
     SPP_PRINT_APPEND(conv);
     SPP_PRINT_END;
+}
+
+
+auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::operator==(
+    TypeUnaryExpressionOperatorAst const &other) const
+    -> bool {
+    // Double dispatch to the appropriate equals method.
+    return other.equals_op_borrow(*this);
+}
+
+
+auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::equals_op_borrow(
+    TypeUnaryExpressionOperatorBorrowAst const &other) const
+    -> bool {
+    // Check if the conventions are the same.
+    return conv->tag == other.conv->tag;
 }
 
 

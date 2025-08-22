@@ -53,8 +53,8 @@ auto spp::asts::FunctionParameterAst::stage_7_analyse_semantics(
         const auto sym = sm->current_scope->get_var_symbol(*name);
         sym->memory_info->initialized_by(*this);
         sym->memory_info->ast_borrowed = conv;
-        sym->memory_info->is_borrow_mut = ast_cast<ConventionMutAst>(conv) != nullptr;
-        sym->memory_info->is_borrow_ref = ast_cast<ConventionRefAst>(conv) != nullptr;
+        sym->memory_info->is_borrow_mut = conv->tag == ConventionAst::ConventionTag::MUT;
+        sym->memory_info->is_borrow_ref = conv->tag == ConventionAst::ConventionTag::REF;
     }
 }
 

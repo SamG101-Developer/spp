@@ -14,11 +14,17 @@ struct spp::asts::TypePostfixExpressionOperatorOptionalAst final : TypePostfixEx
      */
     std::unique_ptr<TokenAst> tok_qst;
 
+protected:
+    auto equals_optional(TypePostfixExpressionOperatorOptionalAst const &) const -> bool override;
+
+public:
     /**
      * Construct the TypePostfixExpressionOperatorOptionalAst with the arguments matching the members.
      * @param tok_qst The @c ? token that represents the optional postfix operation.
      */
     explicit TypePostfixExpressionOperatorOptionalAst(decltype(tok_qst) &&tok_qst);
+
+    auto operator==(const TypePostfixExpressionOperatorAst &) const -> bool override;
 
     ~TypePostfixExpressionOperatorOptionalAst() override;
 

@@ -27,7 +27,13 @@ struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final : TypePostfix
         decltype(tok_sep) &&tok_sep,
         decltype(name) &&name);
 
+protected:
+    auto equals_nested_type(TypePostfixExpressionOperatorNestedTypeAst const &) const -> bool override;
+
+public:
     ~TypePostfixExpressionOperatorNestedTypeAst() override;
+
+    auto operator==(const TypePostfixExpressionOperatorAst &) const -> bool override;
 
     auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
 

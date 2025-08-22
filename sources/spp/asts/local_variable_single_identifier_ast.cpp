@@ -96,8 +96,8 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_7_analyse_semantics(
         // Set borrow asts based on the value's type's convention.
         if (const auto conv = val_type->get_convention(); conv != nullptr) {
             sym->memory_info->ast_borrowed = val;
-            sym->memory_info->is_borrow_mut = ast_cast<ConventionMutAst>(conv) != nullptr;
-            sym->memory_info->is_borrow_ref = ast_cast<ConventionRefAst>(conv) != nullptr;
+            sym->memory_info->is_borrow_mut = conv->tag == ConventionAst::ConventionTag::MUT;
+            sym->memory_info->is_borrow_ref = conv->tag == ConventionAst::ConventionTag::REF;
         }
     }
 

@@ -48,6 +48,22 @@ auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::print(meta::AstPrinter 
 }
 
 
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::operator==(
+    TypeUnaryExpressionOperatorAst const &other) const
+    -> bool {
+    // Double dispatch to the appropriate equals method.
+    return other.equals_op_namespace(*this);
+}
+
+
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::equals_op_namespace(
+    TypeUnaryExpressionOperatorNamespaceAst const &other) const
+    -> bool {
+    // Check if the namespace identifiers are the same.
+    return *ns == *other.ns;
+}
+
+
 auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::ns_parts(
     ) const
     -> std::vector<std::shared_ptr<const IdentifierAst>> {

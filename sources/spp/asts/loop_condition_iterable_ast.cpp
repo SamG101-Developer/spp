@@ -89,8 +89,8 @@ auto spp::asts::LoopConditionIterableAst::stage_7_analyse_semantics(
         | genex::views::for_each([this, yield_type](auto &&x) {
             x->memory_info->initialized_by(*this);
             x->memory_info->ast_borrowed = yield_type->get_convention() != nullptr ? this : nullptr;
-            x->memory_info->is_borrow_mut = ast_cast<ConventionMutAst>(yield_type->get_convention()) != nullptr;
-            x->memory_info->is_borrow_ref = ast_cast<ConventionRefAst>(yield_type->get_convention()) != nullptr;
+            x->memory_info->is_borrow_mut = yield_type->get_convention()->tag == ConventionAst::ConventionTag::MUT;
+            x->memory_info->is_borrow_ref = yield_type->get_convention()->tag == ConventionAst::ConventionTag::REF;
         });
 }
 

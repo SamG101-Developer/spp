@@ -17,6 +17,7 @@ namespace spp::asts {
     struct ClassPrototypeAst;
     struct CmpStatementAst;
     struct ConventionAst;
+    struct ConventionMovAst;
     struct ConventionMutAst;
     struct ConventionRefAst;
     struct ExpressionAst;

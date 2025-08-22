@@ -29,7 +29,9 @@ struct spp::analyse::scopes::ScopeBlockName {
 
 
 class spp::analyse::scopes::Scope {
+    friend struct asts::PostfixExpressionOperatorRuntimeMemberAccessAst;
     friend struct asts::PostfixExpressionOperatorStaticMemberAccessAst;
+    friend struct asts::TypePostfixExpressionAst;
 
 public:
     ScopeName name;
