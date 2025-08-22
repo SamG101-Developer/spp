@@ -5,13 +5,15 @@
 #include <spp/asts/ast.hpp>
 #include <spp/asts/_fwd.hpp>
 #include <spp/asts/mixins/visbility_enabled_ast.hpp>
+#include <spp/asts/module_member_ast.hpp>
+#include <spp/asts/sup_member_ast.hpp>
 
 
 /**
  * The CmpStatementAst represents a compile time definition statement at either the module or superimposition level. It
  * is analogous to Rust's "const" statement.
  */
-struct spp::asts::CmpStatementAst : virtual Ast, mixins::VisibilityEnabledAst {
+struct spp::asts::CmpStatementAst final : virtual Ast, mixins::VisibilityEnabledAst, ModuleMemberAst, SupMemberAst {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

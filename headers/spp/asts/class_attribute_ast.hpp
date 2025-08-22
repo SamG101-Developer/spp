@@ -10,7 +10,7 @@
  * The ClassAttributeAst represents an attribute of a class. It is defined on the class prototype ast, and is used to
  * add "state" to a type.
  */
-struct spp::asts::ClassAttributeAst final : ClassMemberAst, mixins::VisibilityEnabledAst {
+struct spp::asts::ClassAttributeAst final : virtual Ast, mixins::VisibilityEnabledAst, ClassMemberAst {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

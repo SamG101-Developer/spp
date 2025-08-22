@@ -1,8 +1,9 @@
 #ifndef USE_STATEMENT_AST_HPP
 #define USE_STATEMENT_AST_HPP
 
-#include <spp/asts/statement_ast.hpp>
 #include <spp/asts/_fwd.hpp>
+#include <spp/asts/module_member_ast.hpp>
+#include <spp/asts/statement_ast.hpp>
 
 
 /**
@@ -10,7 +11,7 @@
  * associated namespace. It is internal mapped to a TypeStatementAst: @code use std::Str@endcode is equivalent to
  * @code type Str = std::Str@endcode.
  */
-struct spp::asts::UseStatementAst final : StatementAst {
+struct spp::asts::UseStatementAst final : StatementAst, ModuleMemberAst {
     SPP_AST_KEY_FUNCTIONS;
 
 private:

@@ -1,8 +1,10 @@
 #ifndef CLASS_PROTOTYPE_AST_HPP
 #define CLASS_PROTOTYPE_AST_HPP
 
-#include <spp/asts/ast.hpp>
 #include <spp/asts/_fwd.hpp>
+#include <spp/asts/ast.hpp>
+#include <spp/asts/module_member_ast.hpp>
+#include <spp/asts/sup_member_ast.hpp>
 
 
 namespace spp::analyse::scopes {
@@ -14,7 +16,7 @@ namespace spp::analyse::scopes {
  * class, including its name and any generic parameters it may have. The attributes are defined in the implementation
  * ast for this class, allowing for scoping rules to be made easier.
  */
-struct spp::asts::ClassPrototypeAst final : virtual Ast {
+struct spp::asts::ClassPrototypeAst final : virtual Ast, SupMemberAst, ModuleMemberAst {
     SPP_AST_KEY_FUNCTIONS;
     friend struct TypeStatementAst;
 

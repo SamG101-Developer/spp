@@ -2,6 +2,8 @@
 #define FUNCTION_PROTOTYPE_HPP
 
 #include <spp/asts/ast.hpp>
+#include <spp/asts/module_member_ast.hpp>
+#include <spp/asts/sup_member_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
 
@@ -13,7 +15,7 @@
  * This ASt is further inherited into the SubroutinePrototypeAst and CoroutinePrototypeAst, which add additional
  * analysis checks.
  */
-struct spp::asts::FunctionPrototypeAst : virtual Ast {
+struct spp::asts::FunctionPrototypeAst : virtual Ast, SupMemberAst, ModuleMemberAst {
     SPP_AST_KEY_FUNCTIONS;
     friend struct AnnotationAst;
     friend struct PostfixExpressionOperatorFunctionCallAst;

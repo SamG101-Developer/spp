@@ -150,7 +150,7 @@ namespace spp::asts {
 
     struct ModuleImplementationAst;
     struct ModulePrototypeAst;
-    using ModuleMemberAst = Ast;
+    struct ModuleMemberAst;
 
     struct ObjectInitializerAst;
     struct ObjectInitializerArgumentAst;
@@ -205,10 +205,6 @@ namespace spp::asts {
     struct SupPrototypeExtensionAst;
     struct SupImplementationAst;
     struct SupMemberAst;
-    struct SupCmpStatementAst;
-    struct SupTypeStatementAst;
-    struct SupCoroutinePrototypeAst;
-    struct SupSubroutinePrototypeAst;
 
     using FunctionMemberAst = StatementAst;
 }

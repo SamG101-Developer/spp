@@ -278,25 +278,24 @@ auto spp::parse::ParserSpp::parse_sup_implementation() -> std::unique_ptr<asts::
 
 auto spp::parse::ParserSpp::parse_sup_member() -> std::unique_ptr<asts::SupMemberAst> {
     PARSE_ALTERNATE(
-        p1, asts::SupMemberAst, parse_sup_coroutine_prototype, parse_sup_subroutine_prototype, parse_sup_type_statement,
-        parse_sup_cmp_statement);
+        p1, asts::SupMemberAst, parse_function_prototype, parse_sup_type_statement, parse_sup_cmp_statement);
     return FORWARD_AST(p1);
 }
 
 
-auto spp::parse::ParserSpp::parse_sup_type_statement() -> std::unique_ptr<asts::SupTypeStatementAst> {
+auto spp::parse::ParserSpp::parse_sup_type_statement() -> std::unique_ptr<asts::TypeStatementAst> {
     PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_newline);
     PARSE_ONCE(p2, parse_type_statement);
     p2->annotations = std::move(p1);
-    return FORWARD_AST(std::unique_ptr<asts::SupTypeStatementAst>(reinterpret_cast<asts::SupTypeStatementAst*>(p2.release())));
+    return p2;
 }
 
 
-auto spp::parse::ParserSpp::parse_sup_cmp_statement() -> std::unique_ptr<asts::SupCmpStatementAst> {
+auto spp::parse::ParserSpp::parse_sup_cmp_statement() -> std::unique_ptr<asts::CmpStatementAst> {
     PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_newline);
     PARSE_ONCE(p2, parse_cmp_statement);
     p2->annotations = std::move(p1);
-    return FORWARD_AST(std::unique_ptr<asts::SupCmpStatementAst>(reinterpret_cast<asts::SupCmpStatementAst*>(p2.release())));
+    return p2;
 }
 
 

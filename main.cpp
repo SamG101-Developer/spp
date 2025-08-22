@@ -2,6 +2,7 @@
 #include <iostream>
 #include <sstream>
 
+#include <spp/asts/module_member_ast.hpp>
 #include <spp/asts/module_prototype_ast.hpp>
 #include <spp/asts/module_implementation_ast.hpp>
 #include <spp/lex/lexer.hpp>

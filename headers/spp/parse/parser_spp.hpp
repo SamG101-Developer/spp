@@ -36,10 +36,8 @@ public:
     auto parse_sup_prototype_extension() -> std::unique_ptr<asts::SupPrototypeExtensionAst>;
     auto parse_sup_implementation() -> std::unique_ptr<asts::SupImplementationAst>;
     auto parse_sup_member() -> std::unique_ptr<asts::SupMemberAst>;
-    auto parse_sup_subroutine_prototype() -> std::unique_ptr<asts::SupSubroutinePrototypeAst>;
-    auto parse_sup_coroutine_prototype() -> std::unique_ptr<asts::SupCoroutinePrototypeAst>;
-    auto parse_sup_type_statement() -> std::unique_ptr<asts::SupTypeStatementAst>;
-    auto parse_sup_cmp_statement() -> std::unique_ptr<asts::SupCmpStatementAst>;
+    auto parse_sup_type_statement() -> std::unique_ptr<asts::TypeStatementAst>;
+    auto parse_sup_cmp_statement() -> std::unique_ptr<asts::CmpStatementAst>;
 
     auto parse_function_prototype() -> std::unique_ptr<asts::FunctionPrototypeAst>;
     auto parse_subroutine_prototype() -> std::unique_ptr<asts::SubroutinePrototypeAst>;

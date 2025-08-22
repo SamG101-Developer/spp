@@ -27,7 +27,6 @@
 #include <spp/asts/object_initializer_argument_group_ast.hpp>
 #include <spp/asts/module_prototype_ast.hpp>
 #include <spp/asts/module_implementation_ast.hpp>
-#include <spp/asts/sup_cmp_statement_ast.hpp>
 #include <spp/asts/sup_prototype_extension_ast.hpp>
 #include <spp/asts/sup_prototype_functions_ast.hpp>
 #include <spp/asts/sup_implementation_ast.hpp>
@@ -189,7 +188,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     if (needs_generation) {
         auto mock_class_ast = std::make_unique<ClassPrototypeAst>(SPP_NO_ANNOTATIONS, nullptr, std::move(mock_class_name), nullptr, nullptr);
         auto mock_constant_value = std::make_unique<ObjectInitializerAst>(std::move(mock_class_name), nullptr);
-        auto mock_constant_ast = std::make_unique<SupCmpStatementAst>(SPP_NO_ANNOTATIONS, nullptr, ast_clone(name), nullptr, ast_clone(mock_class_name), nullptr, std::move(mock_constant_value));
+        auto mock_constant_ast = std::make_unique<CmpStatementAst>(SPP_NO_ANNOTATIONS, nullptr, ast_clone(name), nullptr, ast_clone(mock_class_name), nullptr, std::move(mock_constant_value));
 
         if (const auto mod_ctx = ast_cast<ModulePrototypeAst>(ctx)) {
             mod_ctx->impl->members.emplace_back(std::move(mock_class_ast));
@@ -206,9 +205,9 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     }
 
     // Superimpose the function type over the mock class.
-    auto function_ast = std::vector<std::unique_ptr<FunctionPrototypeAst>>();
+    auto function_ast = std::vector<std::unique_ptr<SupMemberAst>>();
+    m_orig_name = name.get();
     function_ast.emplace_back(std::unique_ptr<FunctionPrototypeAst>(this));
-    function_ast[0]->m_orig_name = name.get();
     auto mock_sup_ext_impl = std::make_unique<SupImplementationAst>(nullptr, std::move(function_ast), nullptr);
     auto mock_sup_ext = std::make_unique<SupPrototypeExtensionAst>(nullptr, generic_param_group->opt_to_req(), std::move(mock_class_name), nullptr, std::move(function_type), std::move(mock_sup_ext_impl));
     mock_sup_ext->m_ctx = m_ctx;

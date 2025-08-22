@@ -4,6 +4,8 @@
 #include <spp/asts/_fwd.hpp>
 #include <spp/asts/statement_ast.hpp>
 #include <spp/asts/mixins/visbility_enabled_ast.hpp>
+#include <spp/asts/module_member_ast.hpp>
+#include <spp/asts/sup_member_ast.hpp>
 
 
 namespace spp::analyse::scopes {
@@ -15,7 +17,7 @@ namespace spp::analyse::scopes {
  * complex types, such as aliasing vectors, or partially specialized hash maps etc. For example,
  * @code type SecureByteMap[T] = std::collections::HashMap[K=Byte, V=T, A=SecureAlloc[(K, V)]]@endcode
  */
-struct spp::asts::TypeStatementAst : StatementAst, mixins::VisibilityEnabledAst {
+struct spp::asts::TypeStatementAst final : StatementAst, mixins::VisibilityEnabledAst, SupMemberAst, ModuleMemberAst {
     SPP_AST_KEY_FUNCTIONS;
 
 private:
@@ -80,7 +82,7 @@ public:
         decltype(old_type) old_type);
 
 private:
-    auto m_skip_all_scopes(ScopeManager* sm) -> void;
+    auto m_skip_all_scopes(ScopeManager *sm) -> void;
 
 public:
     auto stage_1_pre_process(Ast *ctx) -> void override;

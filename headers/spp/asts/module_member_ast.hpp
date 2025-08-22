@@ -2,6 +2,5 @@
 #include <spp/asts/_fwd.hpp>
 #include <spp/asts/ast.hpp>
 
-
-struct spp::asts::SupMemberAst : virtual Ast {
+struct spp::asts::ModuleMemberAst : virtual Ast {
 };
