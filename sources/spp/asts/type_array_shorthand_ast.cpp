@@ -64,6 +64,6 @@ auto spp::asts::TypeArrayShorthandAst::print(meta::AstPrinter &printer) const ->
 }
 
 
-auto spp::asts::TypeArrayShorthandAst::convert() -> std::unique_ptr<TypeAst> {
+auto spp::asts::TypeArrayShorthandAst::convert() -> std::shared_ptr<TypeAst> {
     return generate::common_types::array_type(pos_start(), std::move(element_type), std::move(size));
 }

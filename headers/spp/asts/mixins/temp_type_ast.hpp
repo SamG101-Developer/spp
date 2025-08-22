@@ -18,7 +18,7 @@ public:
      * @code [Type, 3_uz]@endcode to @code std::array::Arr[T=Type, n=3_uz]@endcode.
      * @return
      */
-    virtual auto convert() -> std::unique_ptr<TypeAst> = 0;
+    virtual auto convert() -> std::shared_ptr<TypeAst> = 0;
 };
 
 

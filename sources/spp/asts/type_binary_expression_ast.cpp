@@ -56,7 +56,7 @@ auto spp::asts::TypeBinaryExpressionAst::print(meta::AstPrinter &printer) const 
 }
 
 
-auto spp::asts::TypeBinaryExpressionAst::convert() -> std::unique_ptr<TypeAst> {
+auto spp::asts::TypeBinaryExpressionAst::convert() -> std::shared_ptr<TypeAst> {
     using namespace std::string_literals;
 
     if (tok_op->token_type == lex::SppTokenType::KW_OR) {

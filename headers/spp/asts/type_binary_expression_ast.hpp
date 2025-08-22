@@ -38,7 +38,7 @@ struct spp::asts::TypeBinaryExpressionAst final : virtual Ast, mixins::TempTypeA
 
     ~TypeBinaryExpressionAst() override;
 
-    auto convert() -> std::unique_ptr<TypeAst> override;
+    auto convert() -> std::shared_ptr<TypeAst> override;
 };
 
 

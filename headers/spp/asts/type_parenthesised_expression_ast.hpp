@@ -37,7 +37,7 @@ struct spp::asts::TypeParenthesisedExpressionAst final : virtual Ast, mixins::Te
 
     ~TypeParenthesisedExpressionAst() override;
 
-    auto convert() -> std::unique_ptr<TypeAst> override;
+    auto convert() -> std::shared_ptr<TypeAst> override;
 };
 
 
