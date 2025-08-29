@@ -48,7 +48,7 @@ auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::print(meta::AstPrinter 
 }
 
 
-auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::operator==(
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::equals(
     TypeUnaryExpressionOperatorAst const &other) const
     -> bool {
     // Double dispatch to the appropriate equals method.

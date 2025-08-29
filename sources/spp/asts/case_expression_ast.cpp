@@ -146,7 +146,7 @@ auto spp::asts::CaseExpressionAst::stage_8_check_memory(
     // Move into the "case" scope and check the memory satus of the symbols in the branches.
     sm->move_to_next_scope();
     analyse::utils::mem_utils::validate_inconsistent_memory(
-        branches | genex::views::ptr_unique | genex::views::to<std::vector>(), sm, meta);
+        branches | genex::views::ptr | genex::views::to<std::vector>(), sm, meta);
 
     // Move out of the case expression scope.
     sm->move_out_of_current_scope();

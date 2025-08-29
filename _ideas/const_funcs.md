@@ -11,8 +11,8 @@ into the ASTs before codegen. Otherwise, standard IR is used to call the functio
 if is the result of a non-compile-time function, or it is a parameters, because there is no guarantee that the parameter
 was a compile-time value or not.
 
-A parameter can, however, be tagged as `cmp`, meaning it is always a compile time value, and giving it a non-compile
-time value will throw an error.
+If a parameter should always be `cmp`, use it as a non-type generic parameter, like
+`fun[T, cmp n: Bool] () -> T { ... }`.
 
 The numeric addition functions will not have any `cmp` parameters, but can be called either as compile time executable,
 like `1 + 2`, or runtime executable, like `a + b`, where `a` and `b` are variables.

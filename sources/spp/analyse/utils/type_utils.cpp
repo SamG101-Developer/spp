@@ -11,7 +11,7 @@
 #include <genex/actions/concat.hpp>
 #include <genex/views/cast.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/flat.hpp>
+#include <genex/views/flatten.hpp>
 #include <genex/views/map.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/remove.hpp>
@@ -88,12 +88,12 @@ auto spp::analyse::utils::type_utils::get_all_attrs(
         | genex::views::filter([](auto &&sup_scope) { return ast_cast<asts::ClassPrototypeAst>(sup_scope->ast) != nullptr; })
         | genex::views::map([](auto &&sup_scope) {
             return ast_cast<asts::ClassPrototypeAst>(sup_scope->ast)->impl->members
-                | genex::views::ptr_unique
-                | genex::views::cast.operator()<asts::ClassAttributeAst*>()
+                | genex::views::ptr
+                | genex::views::cast_dynamic<asts::ClassAttributeAst*>()
                 | genex::views::map([sup_scope](auto &&x) { return std::make_pair(x, sup_scope); })
                 | genex::views::to<std::vector>();
         })
-        | genex::views::flat
+        | genex::views::flatten
         | genex::views::to<std::vector>();
 
     return all_attrs;

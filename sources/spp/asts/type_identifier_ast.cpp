@@ -81,7 +81,7 @@ auto spp::asts::TypeIdentifierAst::from_identifier(
 }
 
 
-auto spp::asts::TypeIdentifierAst::operator==(
+auto spp::asts::TypeIdentifierAst::equals(
     TypeAst const &other) const
     -> bool {
     // Double dispatch to the appropriate equals method.
@@ -190,13 +190,13 @@ auto spp::asts::TypeIdentifierAst::substitute_generics(
 
     // Get the generic type arguments.
     auto gen_type_args = new_generics
-        | genex::views::cast.operator()<GenericArgumentTypeKeywordAst*>()
+        | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()
         | genex::views::filter([](auto &&g) { return g != nullptr; })
         | genex::views::map([](auto &&g) { return std::make_pair(g->name.get(), g->val.get()); });
 
     // Get the generic comp arguments.
     auto gen_comp_args = new_generics
-        | genex::views::cast.operator()<GenericArgumentCompKeywordAst*>()
+        | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()
         | genex::views::filter([](auto &&g) { return g != nullptr; })
         | genex::views::map([](auto &&g) { return std::make_pair(g->name.get(), g->val.get()); });
 
@@ -209,7 +209,7 @@ auto spp::asts::TypeIdentifierAst::substitute_generics(
 
     // Substitute generics in the comp args' types.
     for (auto &&[gen_arg_name, gen_arg_val] : gen_type_args) {
-        for (auto &&g : name_clone->generic_arg_group->get_comp_args() | genex::views::cast.operator()<GenericArgumentCompKeywordAst*>()) {
+        for (auto &&g : name_clone->generic_arg_group->get_comp_args() | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()) {
             if (auto &&ident_val = ast_cast<IdentifierAst>(g->val.get()); ident_val != nullptr and *ident_val == *IdentifierAst::from_type(*gen_arg_name)) {
                 g->val = ast_clone(gen_arg_val);
             }
@@ -217,7 +217,7 @@ auto spp::asts::TypeIdentifierAst::substitute_generics(
     }
 
     // Substitute generics in the type args' types.
-    for (auto &&g : name_clone->generic_arg_group->get_type_args() | genex::views::cast.operator()<GenericArgumentTypeKeywordAst*>()) {
+    for (auto &&g : name_clone->generic_arg_group->get_type_args() | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()) {
         g->val = g->val->substitute_generics(new_generics);
     }
 
@@ -244,7 +244,7 @@ auto spp::asts::TypeIdentifierAst::match_generic(
     if (static_cast<std::string>(*this) == static_cast<std::string>(other)) { return this; }
 
     auto custom_iterator = [](this auto &&self, const TypeAst *t, std::size_t depth) -> genex::generator<std::pair<GenericArgumentAst*, std::size_t>> {
-        for (auto &&g : t->type_parts().back()->generic_arg_group->args | genex::views::ptr_unique) {
+        for (auto &&g : t->type_parts().back()->generic_arg_group->args | genex::views::ptr) {
             co_yield std::make_pair(g, depth);
             if (auto &&type_arg = ast_cast<GenericArgumentTypeAst>(g)) {
                 for (auto &&inner_ti : self(type_arg->val.get(), depth + 1)) {

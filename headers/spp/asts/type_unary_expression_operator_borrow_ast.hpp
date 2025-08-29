@@ -24,11 +24,11 @@ struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeUnaryExpressi
     ~TypeUnaryExpressionOperatorBorrowAst() override;
 
 protected:
+    auto equals(TypeUnaryExpressionOperatorAst const &) const -> bool override;
+
     auto equals_op_borrow(TypeUnaryExpressionOperatorBorrowAst const &) const -> bool override;
 
 public:
-    auto operator==(TypeUnaryExpressionOperatorAst const &other) const -> bool override;
-
     auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
 
     auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;

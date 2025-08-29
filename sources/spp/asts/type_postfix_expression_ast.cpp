@@ -62,7 +62,7 @@ auto spp::asts::TypePostfixExpressionAst::print(meta::AstPrinter &printer) const
 }
 
 
-auto spp::asts::TypePostfixExpressionAst::operator==(const TypeAst &other) const -> bool {
+auto spp::asts::TypePostfixExpressionAst::equals(const TypeAst &other) const -> bool {
     // Double dispatch to the appropriate equals method.
     return other.equals_type_postfix_expression(*this);
 }

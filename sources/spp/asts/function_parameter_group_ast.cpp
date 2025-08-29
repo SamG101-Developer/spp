@@ -19,7 +19,7 @@
 #include <genex/views/cast.hpp>
 #include <genex/views/duplicates.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/flat.hpp>
+#include <genex/views/flatten.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/to.hpp>
@@ -76,8 +76,8 @@ auto spp::asts::FunctionParameterGroupAst::print(meta::AstPrinter &printer) cons
 
 auto spp::asts::FunctionParameterGroupAst::get_self_param() const -> FunctionParameterSelfAst* {
     const auto ps = params
-        | genex::views::ptr_unique
-        | genex::views::cast.operator()<FunctionParameterSelfAst*>()
+        | genex::views::ptr
+        | genex::views::cast_dynamic<FunctionParameterSelfAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::to<std::vector>();
     return ps.empty() ? nullptr : ps[0];
@@ -86,8 +86,8 @@ auto spp::asts::FunctionParameterGroupAst::get_self_param() const -> FunctionPar
 
 auto spp::asts::FunctionParameterGroupAst::get_required_params() const -> std::vector<FunctionParameterRequiredAst*> {
     return params
-        | genex::views::ptr_unique
-        | genex::views::cast.operator()<FunctionParameterRequiredAst*>()
+        | genex::views::ptr
+        | genex::views::cast_dynamic<FunctionParameterRequiredAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::to<std::vector>();
 }
@@ -95,8 +95,8 @@ auto spp::asts::FunctionParameterGroupAst::get_required_params() const -> std::v
 
 auto spp::asts::FunctionParameterGroupAst::get_optional_params() const -> std::vector<FunctionParameterOptionalAst*> {
     return params
-        | genex::views::ptr_unique
-        | genex::views::cast.operator()<FunctionParameterOptionalAst*>()
+        | genex::views::ptr
+        | genex::views::cast_dynamic<FunctionParameterOptionalAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::to<std::vector>();
 }
@@ -104,8 +104,8 @@ auto spp::asts::FunctionParameterGroupAst::get_optional_params() const -> std::v
 
 auto spp::asts::FunctionParameterGroupAst::get_variadic_param() const -> FunctionParameterVariadicAst* {
     const auto ps = params
-        | genex::views::ptr_unique
-        | genex::views::cast.operator()<FunctionParameterVariadicAst*>()
+        | genex::views::ptr
+        | genex::views::cast_dynamic<FunctionParameterVariadicAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::to<std::vector>();
     return ps.empty() ? nullptr : ps[0];
@@ -114,7 +114,7 @@ auto spp::asts::FunctionParameterGroupAst::get_variadic_param() const -> Functio
 
 auto spp::asts::FunctionParameterGroupAst::get_non_self_params() const -> std::vector<FunctionParameterAst*> {
     return params
-        | genex::views::ptr_unique
+        | genex::views::ptr
         | genex::views::filter([](auto &&x) { return not ast_cast<FunctionParameterSelfAst>(x); })
         | genex::views::to<std::vector>();
 }
@@ -126,8 +126,8 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
     -> void {
     // Check there is only 1 "self" parameter.
     const auto self_params = params
-        | genex::views::ptr_unique
-        | genex::views::cast.operator()<FunctionParameterSelfAst*>()
+        | genex::views::ptr
+        | genex::views::cast_dynamic<FunctionParameterSelfAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::to<std::vector>();
 
@@ -140,7 +140,7 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
     // Check there are no duplicate parameter names.
     const auto param_names = params
         | genex::views::map([](auto &&x) { return x->extract_names(); })
-        | genex::views::flat
+        | genex::views::flatten
         | genex::views::materialize
         | genex::views::duplicates()
         | genex::views::to<std::vector>();
@@ -153,8 +153,8 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
 
     // Check the arguments are in the correct order.
     const auto unordered_args = analyse::utils::order_utils::order_args(params
-        | genex::views::cast.operator()<mixins::OrderableAst>()
-        | genex::views::ptr_unique
+        | genex::views::ptr
+        | genex::views::cast_dynamic<mixins::OrderableAst*>()
         | genex::views::to<std::vector>());
 
     if (not unordered_args.empty()) {

@@ -15,13 +15,15 @@ struct spp::asts::TypeAst : PrimaryExpressionAst, mixins::AbstractTypeAst {
     friend struct TypeUnaryExpressionAst;
     friend struct TypePostfixExpressionAst;
 
+    friend auto operator==(TypeAst const &lhs_type, TypeAst const &rhs_type) -> bool {
+        return lhs_type.equals(rhs_type);
+    }
+
 protected:
     virtual auto equals_type_identifier(TypeIdentifierAst const &) const -> bool;
     virtual auto equals_type_unary_expression(TypeUnaryExpressionAst const &) const -> bool;
     virtual auto equals_type_postfix_expression(TypePostfixExpressionAst const &) const -> bool;
-
-public:
-    virtual auto operator==(TypeAst const &other) const -> bool = 0;
+    virtual auto equals(TypeAst const &other) const -> bool = 0;
 };
 
 

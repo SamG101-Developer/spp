@@ -28,11 +28,11 @@ struct spp::asts::TypeUnaryExpressionAst final : TypeAst, std::enable_shared_fro
         decltype(rhs) rhs);
 
 protected:
+    auto equals(TypeAst const &other) const -> bool override;
+
     auto equals_type_unary_expression(TypeUnaryExpressionAst const &other) const -> bool override;
 
 public:
-    auto operator==(TypeAst const &other) const -> bool override;
-
     auto iterator() const -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> override;
 
     auto is_never_type() const -> bool override;

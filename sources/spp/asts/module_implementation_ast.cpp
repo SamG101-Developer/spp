@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include <spp/asts/module_implementation_ast.hpp>
+#include <spp/asts/module_member_ast.hpp>
 
 #include <genex/views/for_each.hpp>
 

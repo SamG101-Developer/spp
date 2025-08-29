@@ -80,8 +80,8 @@ auto spp::asts::GenericParameterGroupAst::stage_7_analyse_semantics(
     -> void {
     // Check there is only 1 "self" parameter.
     const auto self_params = params
-        | genex::views::ptr_unique
-        | genex::views::cast.operator()<FunctionParameterSelfAst*>()
+        | genex::views::ptr
+        | genex::views::cast_dynamic<FunctionParameterSelfAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::to<std::vector>();
 

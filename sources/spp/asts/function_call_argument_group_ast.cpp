@@ -86,8 +86,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::print(meta::AstPrinter &printer) c
 
 auto spp::asts::FunctionCallArgumentGroupAst::get_keyword_args() const -> std::vector<FunctionCallArgumentKeywordAst*> {
     return args
-        | genex::views::ptr_unique
-        | genex::views::cast.operator()<FunctionCallArgumentKeywordAst*>()
+        | genex::views::ptr
+        | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::to<std::vector>();
 }
@@ -95,8 +95,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::get_keyword_args() const -> std::v
 
 auto spp::asts::FunctionCallArgumentGroupAst::get_positional_args() const -> std::vector<FunctionCallArgumentPositionalAst*> {
     return args
-        | genex::views::ptr_unique
-        | genex::views::cast.operator()<FunctionCallArgumentPositionalAst*>()
+        | genex::views::ptr
+        | genex::views::cast_dynamic<FunctionCallArgumentPositionalAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::to<std::vector>();
 }
@@ -121,8 +121,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
 
     // Check the arguments are in the correct order.
     const auto unordered_args = analyse::utils::order_utils::order_args(args
-        | genex::views::cast.operator()<mixins::OrderableAst>()
-        | genex::views::ptr_unique
+        | genex::views::ptr
+        | genex::views::cast_dynamic<mixins::OrderableAst*>()
         | genex::views::to<std::vector>());
 
     if (not unordered_args.empty()) {
@@ -132,7 +132,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
     }
 
     // Expand tuple-expansion arguments ("..tuple" => "tuple.0, tuple.1, ...")
-    for (auto &&[i, arg] : args | genex::views::ptr_unique | genex::views::enumerate) {
+    for (auto &&[i, arg] : args | genex::views::ptr | genex::views::enumerate) {
         // Only check position arguments that have ".." tokens.
         const auto pos_arg = ast_cast<FunctionCallArgumentPositionalAst>(arg);
         if (pos_arg == nullptr or pos_arg->tok_unpack == nullptr) { continue; }
@@ -147,6 +147,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
 
         // Replace the tuple-expansion argument with the expanded arguments.
         args |= genex::actions::pop(i);
+
         for (std::make_signed_t<std::size_t> j = arg_type->type_parts().back()->generic_arg_group->args.size() - 1; j > -1; --j) {
             auto field = std::make_unique<IdentifierAst>(arg->val->pos_start(), std::to_string(i));
             auto new_ast = std::make_unique<PostfixExpressionAst>(

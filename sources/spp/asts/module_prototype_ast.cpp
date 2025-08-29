@@ -1,11 +1,13 @@
 #include <spp/asts/identifier_ast.hpp>
+#include <spp/asts/module_member_ast.hpp>
 #include <spp/asts/module_prototype_ast.hpp>
 #include <spp/asts/module_implementation_ast.hpp>
 
 #include <genex/algorithms/contains.hpp>
 #include <genex/algorithms/position.hpp>
 #include <genex/views/drop.hpp>
-#include <genex/views/join.hpp>
+#include <genex/views/flatten.hpp>
+#include <genex/views/intersperse.hpp>
 
 
 spp::asts::ModulePrototypeAst::ModulePrototypeAst(
@@ -43,8 +45,9 @@ auto spp::asts::ModulePrototypeAst::print(meta::AstPrinter &printer) const -> st
 }
 
 
-auto spp::asts::ModulePrototypeAst::name()
+auto spp::asts::ModulePrototypeAst::name() const
     -> std::unique_ptr<IdentifierAst> {
+    using namespace std::string_literals;
     // Split the file path intro parts.
     auto parts = std::vector<std::string>();
     for (auto const &entry : std::filesystem::directory_iterator(m_file_path)) {
@@ -55,15 +58,17 @@ auto spp::asts::ModulePrototypeAst::name()
 
     // Check if "src" is in the file path.
     auto name = std::string();
-    if (m_file_path | genex::algorithms::contains("src")) {
+    if (parts | genex::algorithms::contains("src"s)) {
         name = parts
             | genex::views::drop(parts | genex::algorithms::position([](auto &&x) { return x == "src"; }))
-            | genex::views::join_with("::")
+            | genex::views::intersperse("::"s)
+            | genex::views::flatten
             | genex::views::to<std::string>();
     }
     else {
         name = std::vector{parts[0], parts[1] + ".spp"}
-            | genex::views::join_with("::")
+            | genex::views::intersperse("::"s)
+            | genex::views::flatten
             | genex::views::to<std::string>();
     }
 

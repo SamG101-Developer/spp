@@ -29,11 +29,11 @@ struct spp::asts::TypePostfixExpressionAst final : TypeAst, std::enable_shared_f
         decltype(tok_op) &&tok_op);
 
 protected:
+    auto equals(const TypeAst &) const -> bool override;
+
     auto equals_type_postfix_expression(TypePostfixExpressionAst const &) const -> bool override;
 
 public:
-    auto operator==(const TypeAst &) const -> bool override;
-
     auto iterator() const -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> override;
 
     auto is_never_type() const -> bool override;

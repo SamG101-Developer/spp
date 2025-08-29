@@ -93,28 +93,32 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
 
     // Ensure there is only one type of each branch variation.
     if (const auto bs = branches
-        | genex::views::cast.operator()<IterPatternVariantExceptionAst>()
+        | genex::views::ptr
+        | genex::views::cast_dynamic<IterPatternVariantExceptionAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::to<std::vector>(); bs.size() > 1) {
         analyse::errors::SppIterExpressionPatternTypeDuplicateError(*bs[0], *bs[1]).scopes({sm->current_scope}).raise();
     }
 
     if (const auto bs = branches
-        | genex::views::cast.operator()<IterPatternVariantExhaustedAst>()
+        | genex::views::ptr
+        | genex::views::cast_dynamic<IterPatternVariantExhaustedAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::to<std::vector>(); bs.size() > 1) {
         analyse::errors::SppIterExpressionPatternTypeDuplicateError(*bs[0], *bs[1]).scopes({sm->current_scope}).raise();
     }
 
     if (const auto bs = branches
-        | genex::views::cast.operator()<IterPatternVariantNoValueAst>()
+        | genex::views::ptr
+        | genex::views::cast_dynamic<IterPatternVariantNoValueAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::to<std::vector>(); bs.size() > 1) {
         analyse::errors::SppIterExpressionPatternTypeDuplicateError(*bs[0], *bs[1]).scopes({sm->current_scope}).raise();
     }
 
     if (const auto bs = branches
-        | genex::views::cast.operator()<IterPatternVariantVariableAst>()
+        | genex::views::ptr
+        | genex::views::cast_dynamic<IterPatternVariantVariableAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::to<std::vector>(); bs.size() > 1) {
         analyse::errors::SppIterExpressionPatternTypeDuplicateError(*bs[0], *bs[1]).scopes({sm->current_scope}).raise();
@@ -126,7 +130,8 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
     // IterPatternNoValue -> must be a GenOpt condition.
     if (branches | genex::algorithms::any_of([](auto &&x) { return ast_cast<IterPatternVariantNoValueAst>(x.get()) == nullptr; })) {
         const auto pat = branches
-            | genex::views::cast.operator()<IterPatternVariantNoValueAst>()
+            | genex::views::ptr
+            | genex::views::cast_dynamic<IterPatternVariantNoValueAst*>()
             | genex::views::filter([](auto &&x) { return x != nullptr; })
             | genex::views::to<std::vector>();
 
@@ -140,7 +145,8 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
     // IterPatternException -> Must be a GenRes condition.
     if (branches | genex::algorithms::any_of([](auto &&x) { return ast_cast<IterPatternVariantExceptionAst>(x.get()) == nullptr; })) {
         const auto pat = branches
-            | genex::views::cast.operator()<IterPatternVariantExceptionAst>()
+            | genex::views::ptr
+            | genex::views::cast_dynamic<IterPatternVariantExceptionAst*>()
             | genex::views::filter([](auto &&x) { return x != nullptr; })
             | genex::views::to<std::vector>();
 
@@ -173,7 +179,7 @@ auto spp::asts::IterExpressionAst::stage_8_check_memory(
     // Move into the "case" scope and check the memory satus of the symbols in the branches.
     sm->move_to_next_scope();
     analyse::utils::mem_utils::validate_inconsistent_memory(
-        branches | genex::views::ptr_unique | genex::views::to<std::vector>(), sm, meta);
+        branches | genex::views::ptr | genex::views::to<std::vector>(), sm, meta);
 
     // Move out of the case expression scope.
     sm->move_out_of_current_scope();

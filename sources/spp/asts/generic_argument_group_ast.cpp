@@ -131,7 +131,7 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
     -> void {
     // Check there are no duplicate type argument names.
     const auto type_arg_names = get_keyword_args()
-        | genex::views::cast.operator()<GenericArgumentTypeKeywordAst*>()
+        | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::map([](auto &&x) { return x->name.get(); })
         | genex::views::materialize
@@ -145,7 +145,7 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
 
     // Check there are no duplicate comp argument names.
     const auto comp_arg_names = get_keyword_args()
-        | genex::views::cast.operator()<GenericArgumentCompKeywordAst*>()
+        | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::map([](auto &&x) { return x->name.get(); })
         | genex::views::materialize
@@ -159,8 +159,8 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
 
     // Check the arguments are in the correct order.
     const auto unordered_args = analyse::utils::order_utils::order_args(args
-        | genex::views::cast.operator()<mixins::OrderableAst>()
-        | genex::views::ptr_unique
+        | genex::views::ptr
+        | genex::views::cast_dynamic<mixins::OrderableAst*>()
         | genex::views::to<std::vector>());
 
     if (not unordered_args.empty()) {

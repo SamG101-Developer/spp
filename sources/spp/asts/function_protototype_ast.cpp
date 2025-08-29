@@ -181,7 +181,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
 
     // If this is the first overload being converted, then the class needs to be made for the mock type.
     const auto needs_generation = (ast_body(ctx)
-        | genex::views::cast.operator()<ClassPrototypeAst*>()
+        | genex::views::cast_dynamic<ClassPrototypeAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::filter([&mock_class_name](auto &&x) { return x->name->without_generics() == mock_class_name->without_generics(); })
         | genex::views::to<std::vector>()).empty();

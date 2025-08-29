@@ -41,7 +41,7 @@ auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::print(meta::AstPrinter &pr
 }
 
 
-auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::operator==(
+auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::equals(
     TypeUnaryExpressionOperatorAst const &other) const
     -> bool {
     // Double dispatch to the appropriate equals method.

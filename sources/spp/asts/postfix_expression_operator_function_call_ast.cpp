@@ -10,6 +10,7 @@
 #include <spp/asts/function_call_argument_ast.hpp>
 #include <spp/asts/function_call_argument_group_ast.hpp>
 #include <spp/asts/function_call_argument_keyword_ast.hpp>
+#include <spp/asts/function_call_argument_positional_ast.hpp>
 #include <spp/asts/function_parameter_ast.hpp>
 #include <spp/asts/function_parameter_group_ast.hpp>
 #include <spp/asts/function_parameter_required_ast.hpp>
@@ -38,7 +39,7 @@
 #include <genex/views/concat.hpp>
 #include <genex/views/drop.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/join.hpp>
+#include <genex/views/flatten.hpp>
 #include <genex/views/map.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/to.hpp>
@@ -46,8 +47,6 @@
 #include <genex/operations/size.hpp>
 #include <genex/views/set_algorithms.hpp>
 #include <genex/views/zip.hpp>
-
-#include "spp/asts/function_call_argument_positional_ast.hpp"
 
 
 spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFunctionCallAst(
@@ -130,13 +129,13 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     }
 
     for (auto &&[fn_scope, fn_proto, ctx_generic_arg_group] : all_overloads) {
-        auto ctx_generic_args = ctx_generic_arg_group->args | genex::views::ptr_unique | genex::views::to<std::vector>();
+        auto ctx_generic_args = ctx_generic_arg_group->args | genex::views::ptr | genex::views::to<std::vector>();
 
         // Extract generic/function parameter information from the overload.
-        auto func_params = fn_proto->param_group->params | genex::views::ptr_unique | genex::views::to<std::vector>();
-        auto generic_params = fn_proto->generic_param_group->params | genex::views::ptr_unique | genex::views::to<std::vector>();
-        auto func_args = arg_group->args | genex::views::ptr_unique | genex::views::to<std::vector>();
-        auto generic_args = generic_arg_group->args | genex::views::ptr_unique | genex::views::to<std::vector>();
+        auto func_params = fn_proto->param_group->params | genex::views::ptr | genex::views::to<std::vector>();
+        auto generic_params = fn_proto->generic_param_group->params | genex::views::ptr | genex::views::to<std::vector>();
+        auto func_args = arg_group->args | genex::views::ptr | genex::views::to<std::vector>();
+        auto generic_args = generic_arg_group->args | genex::views::ptr | genex::views::to<std::vector>();
 
         // Extract the parameter names and argument names.
         auto func_param_names = fn_proto->param_group->params
@@ -174,7 +173,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             analyse::utils::func_utils::name_args(func_args, func_params, *sm);
             analyse::utils::func_utils::name_generic_args(generic_args, generic_params, *fn_proto->name, *sm);
             func_arg_names = func_args
-                | genex::views::cast.operator()<FunctionCallArgumentKeywordAst>()
+                | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>()
                 | genex::views::filter([](auto &&x) { return x != nullptr; })
                 | genex::views::map([](auto &&x) { return x->name.get(); })
                 | genex::views::to<std::vector>();
@@ -200,7 +199,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             // For function folding, identify all tuple arguments that have non-tuple parameters.
             if (fold != nullptr) {
                 // Populate the list of arguments to fold.
-                for (auto &&arg : func_args | genex::views::cast.operator()<FunctionCallArgumentKeywordAst*>()) {
+                for (auto &&arg : func_args | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>()) {
                     if (analyse::utils::type_utils::is_type_tuple(*arg->infer_type(sm, meta), *sm->current_scope)) {
                         if (func_params
                             | genex::views::filter([sm](auto &&x) { return not analyse::utils::type_utils::is_type_tuple(*x->type, *sm->current_scope); })
@@ -264,7 +263,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 }
 
                 // Recreate the lists of function parameters and their names.
-                func_params = new_fn_proto->param_group->params | genex::views::ptr_unique | genex::views::to<std::vector>();
+                func_params = new_fn_proto->param_group->params | genex::views::ptr | genex::views::to<std::vector>();
                 func_param_names = new_fn_proto->param_group->params
                     | genex::views::map([](auto &&x) { return x->extract_name(); })
                     | genex::views::to<std::vector>();
@@ -408,12 +407,12 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     if (pass_overloads.empty()) {
         auto failed_signatures_and_errors = fail_overloads
             | genex::views::map([](auto &&f) { return std::get<1>(f)->print_signature(std::get<0>(f)->ast != nullptr ? static_cast<std::string>(*ast_name(std::get<0>(f)->ast)) : "") + std::format(" - {}", typeid(std::get<2>(f)).name()); })
-            | genex::views::join_with("\n")
+            | genex::views::flatten_with("\n")
             | genex::views::to<std::string>();
 
         auto arg_usage_signature = arg_group->args
             | genex::views::map([sm, meta](auto &&x) { return x->m_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
-            | genex::views::join_with(", ")
+            | genex::views::flatten_with(", ")
             | genex::views::to<std::string>();
 
         analyse::errors::SppFunctionCallNoValidSignaturesError(*this, failed_signatures_and_errors, arg_usage_signature).scopes({sm->current_scope}).raise();
@@ -423,12 +422,12 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     else if (pass_overloads.size() > 1) {
         auto signatures = pass_overloads
             | genex::views::map([](auto &&x) { return std::get<1>(x)->print_signature(std::get<0>(x)->ast != nullptr ? static_cast<std::string>(*ast_name(std::get<0>(x)->ast)) : ""); })
-            | genex::views::join_with("\n")
+            | genex::views::flatten_with("\n")
             | genex::views::to<std::string>();
 
         auto arg_usage_signature = arg_group->args
             | genex::views::map([sm, meta](auto &&x) { return x->m_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
-            | genex::views::join_with(", ")
+            | genex::views::flatten_with(", ")
             | genex::views::to<std::string>();
 
         analyse::errors::SppFunctionCallOverloadAmbiguousError(*this, signatures, arg_usage_signature).scopes({sm->current_scope}).raise();
@@ -489,7 +488,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_8_check_memory(
     // If a fold is taking place, analyse the non-folding argument again (checks for double move).
     if (fold != nullptr and not m_folded_args.empty()) {
         auto non_folding_args = arg_group->args
-            | genex::views::ptr_unique
+            | genex::views::ptr
             | genex::views::set_difference(m_folded_args)
             | genex::views::map([](auto &&x) { return ast_clone(x); })
             | genex::views::to<std::vector>();
@@ -531,7 +530,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
             const auto lhs_lhs_scope = sm->current_scope->get_type_symbol(*cast_lhs->lhs->infer_type(sm, meta))->scope;
             if (not analyse::utils::type_utils::is_type_tuple(*std::get<TypeIdentifierAst*>(lhs_lhs_scope->name), *sm->current_scope)) {
                 other_generics = std::get<TypeIdentifierAst*>(lhs_lhs_scope->name)->type_parts().back()->generic_arg_group->args
-                    | genex::views::ptr_unique
+                    | genex::views::ptr
                     | genex::views::to<std::vector>();
             }
 

@@ -84,8 +84,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::get_autofill_arg()
     -> ObjectInitializerArgumentShorthandAst* {
     // Get the first shorthand argument tagged with the ".." token.
     return args
-        | genex::views::ptr_unique
-        | genex::views::cast.operator()<ObjectInitializerArgumentShorthandAst*>()
+        | genex::views::ptr
+        | genex::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr and x->tok_ellipsis != nullptr; })
         | genex::operations::front;
 }
@@ -95,7 +95,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::get_non_autofill_args()
     -> std::vector<ObjectInitializerArgumentAst*> {
     // Get the first shorthand argument tagged with the ".." token.
     return args
-        | genex::views::ptr_unique
+        | genex::views::ptr
         | genex::views::remove(get_autofill_arg())
         | genex::views::to<std::vector>();
 }
@@ -105,8 +105,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::get_shorthand_args()
     -> std::vector<ObjectInitializerArgumentShorthandAst*> {
     // Get all shorthand arguments tagged with the ".." token.
     return args
-        | genex::views::ptr_unique
-        | genex::views::cast.operator()<ObjectInitializerArgumentShorthandAst*>()
+        | genex::views::ptr
+        | genex::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>()
         | genex::views::to<std::vector>();
 }
 
@@ -115,8 +115,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::get_keyword_args()
     -> std::vector<ObjectInitializerArgumentKeywordAst*> {
     // Get all keyword arguments.
     return args
-        | genex::views::ptr_unique
-        | genex::views::cast.operator()<ObjectInitializerArgumentKeywordAst*>()
+        | genex::views::ptr
+        | genex::views::cast_dynamic<ObjectInitializerArgumentKeywordAst*>()
         | genex::views::to<std::vector>();
 }
 

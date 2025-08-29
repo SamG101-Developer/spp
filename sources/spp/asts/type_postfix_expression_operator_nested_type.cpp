@@ -50,7 +50,7 @@ auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::print(meta::AstPrint
 }
 
 
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::operator==(
+auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::equals(
     const TypePostfixExpressionOperatorAst &other) const
     -> bool {
     return other.equals_nested_type(*this);

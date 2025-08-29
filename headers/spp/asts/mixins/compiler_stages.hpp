@@ -7,7 +7,6 @@
 #include <spp/asts/_fwd.hpp>
 #include <spp/utils/errors.hpp>
 
-#include "compiler_stages.hpp"
 
 namespace spp::analyse::scopes {
     struct TypeSymbol;

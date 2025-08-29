@@ -18,7 +18,7 @@ auto spp::asts::InnerScopeExpressionAst<T>::stage_7_analyse_semantics(
     m_scope = sm->current_scope;
 
     // Check for unreachable code.
-    for (auto &&[i, member] : this->members | genex::views::ptr_unique | genex::views::enumerate) {
+    for (auto &&[i, member] : this->members | genex::views::ptr | genex::views::enumerate) {
         auto ret_stmt = ast_cast<RetStatementAst>(member);
         auto loop_flow_stmt = ast_cast<LoopControlFlowStatementAst>(member);
         if ((ret_stmt or loop_flow_stmt) and (member != this->members.back())) {

@@ -54,7 +54,7 @@ auto spp::asts::TypeUnaryExpressionAst::print(meta::AstPrinter &printer) const -
 }
 
 
-auto spp::asts::TypeUnaryExpressionAst::operator==(TypeAst const &other) const -> bool {
+auto equals(TypeAst const &other) const -> bool {
     // Double dispatch to the appropriate equals method.
     return other.equals_type_unary_expression(*this);
 }
@@ -107,7 +107,7 @@ auto spp::asts::TypeUnaryExpressionAst::with_convention(std::unique_ptr<Conventi
     if (ast_cast<TypeUnaryExpressionOperatorBorrowAst>(op.get())) {
         return std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), rhs);
     }
-    return std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), std::dynamic_pointer_cast<TypeAst>(shared_from_this()));
+    return std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), ast_clone(this));
 }
 
 

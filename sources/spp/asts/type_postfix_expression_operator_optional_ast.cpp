@@ -42,7 +42,7 @@ auto spp::asts::TypePostfixExpressionOperatorOptionalAst::print(meta::AstPrinter
 }
 
 
-auto spp::asts::TypePostfixExpressionOperatorOptionalAst::operator==(
+auto spp::asts::TypePostfixExpressionOperatorOptionalAst::equals(
     const TypePostfixExpressionOperatorAst &other) const
     -> bool {
     return other.equals_optional(*this);

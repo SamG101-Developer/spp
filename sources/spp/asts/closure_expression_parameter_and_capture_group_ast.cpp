@@ -16,6 +16,7 @@
 #include <spp/asts/type_ast.hpp>
 
 #include <genex/views/cast.hpp>
+#include <genex/views/move.hpp>
 #include <genex/views/to.hpp>
 
 
@@ -79,8 +80,9 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_7_analyse_se
     mixins::CompilerMetaData *meta)
     -> void {
     // Analyse the arguments against the outer scope's symbols (temp move asts).
-    auto caps = std::move(capture_group->captures)
-        | genex::views::cast.operator()<FunctionCallArgumentAst>()
+    auto caps = capture_group->captures
+        | genex::views::move
+        | genex::views::cast_smart_ptr<FunctionCallArgumentAst>()
         | genex::views::to<std::vector>();
     const auto cap_group = std::make_unique<FunctionCallArgumentGroupAst>(nullptr, std::move(caps), nullptr);
     cap_group->stage_7_analyse_semantics(sm, meta);
@@ -88,8 +90,9 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_7_analyse_se
     // New scope for parameters.
     auto scope_name = analyse::scopes::ScopeBlockName("<lambda-outer#" + std::to_string(pos_start()));
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
-    capture_group->captures = std::move(cap_group->args)
-        | genex::views::cast.operator()<ClosureExpressionCaptureAst>()
+    capture_group->captures = cap_group->args
+        | genex::views::move
+        | genex::views::cast_smart_ptr<ClosureExpressionCaptureAst>()
         | genex::views::to<std::vector>();
 
     // Analyse the parameters and captures.
@@ -103,16 +106,18 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_8_check_memo
     mixins::CompilerMetaData *meta)
     -> void {
     // Analyse the arguments against the outer scope's symbols (temp move asts).
-    auto caps = std::move(capture_group->captures)
-        | genex::views::cast.operator()<FunctionCallArgumentAst>()
+    auto caps = capture_group->captures
+        | genex::views::move
+        | genex::views::cast_smart_ptr<FunctionCallArgumentAst>()
         | genex::views::to<std::vector>();
     const auto cap_group = std::make_unique<FunctionCallArgumentGroupAst>(nullptr, std::move(caps), nullptr);
     cap_group->stage_8_check_memory(sm, meta);
 
     // New scope for parameters.
     sm->move_to_next_scope();
-    capture_group->captures = std::move(cap_group->args)
-        | genex::views::cast.operator()<ClosureExpressionCaptureAst>()
+    capture_group->captures = cap_group->args
+        | genex::views::move
+        | genex::views::cast_smart_ptr<ClosureExpressionCaptureAst>()
         | genex::views::to<std::vector>();
 
     // Check the parameters and captures.

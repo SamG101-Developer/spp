@@ -27,7 +27,7 @@
 #include <genex/actions/concat.hpp>
 #include <genex/views/cast.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/flat.hpp>
+#include <genex/views/flatten.hpp>
 #include <genex/views/for_each.hpp>
 #include <genex/views/iota.hpp>
 #include <genex/views/ptr.hpp>
@@ -99,7 +99,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::extract_names() const
     -> std::vector<std::shared_ptr<IdentifierAst>> {
     return elems
         | genex::views::map(&LocalVariableAst::extract_names)
-        | genex::views::flat
+        | genex::views::flatten
         | genex::views::to<std::vector>();
 }
 
@@ -110,8 +110,8 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
     -> void {
     // Only 1 "multi-skip" allowed in a destructure.
     const auto multi_arg_skips = elems
-        | genex::views::ptr_unique
-        | genex::views::cast.operator()<LocalVariableDestructureSkipMultipleArgumentsAst*>()
+        | genex::views::ptr
+        | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::to<std::vector>();
 
@@ -132,7 +132,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
     const auto val_type = val->infer_type(sm, meta)->type_parts().back();
 
     // Create expanded "let" statements for each part of the destructure.
-    for (auto elem : elems | genex::views::ptr_unique) {
+    for (auto elem : elems | genex::views::ptr) {
         // Skip any conversion for unbound multi argument skipping.
         if (ast_cast<LocalVariableDestructureSkipMultipleArgumentsAst>(elem) != nullptr) {
         }
