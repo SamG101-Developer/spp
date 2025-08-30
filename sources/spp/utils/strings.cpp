@@ -17,11 +17,11 @@ auto spp::utils::strings::snake_to_pascal(
             continue;
         }
         if (caps) {
-            out.push_back(std::toupper(c));
+            out.push_back(static_cast<char>(std::toupper(c)));
             caps = false;
         }
         else {
-            out.push_back(std::tolower(c));
+            out.push_back(static_cast<char>(std::tolower(c)));
         }
     }
     return out;

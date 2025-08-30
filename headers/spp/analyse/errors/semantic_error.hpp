@@ -463,7 +463,7 @@ struct spp::analyse::errors::SppSuperimpositionExtensionCmpStatementInvalidError
 
 
 struct spp::analyse::errors::SppAsyncTargetNotFunctionCallError final : spp::utils::errors::SemanticError {
-    explicit SppAsyncTargetNotFunctionCallError(asts::TokenAst const &async_op, asts::ExpressionAst const &rhs);
+    explicit SppAsyncTargetNotFunctionCallError(asts::TokenAst const &async_op, asts::Ast const &rhs);
 };
 
 

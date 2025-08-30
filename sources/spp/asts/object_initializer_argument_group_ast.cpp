@@ -200,8 +200,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
 
     if (not invalid_args.empty()) {
         analyse::errors::SppArgumentNameInvalidError(*meta->object_init_type, "attribute", *invalid_args[0], "object initializer argument")
-            .scopes({sm->current_scope})
-            .raise();
+            .scopes({sm->current_scope}).raise();
     }
 
     // Type check the non-autofill arguments against the class attributes.

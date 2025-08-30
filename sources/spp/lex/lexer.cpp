@@ -207,6 +207,7 @@ auto spp::lex::Lexer::lex() const -> std::vector<RawToken> {
             continue;
         }
         default:
+            ;
         }
 
         // No symbolic tokens match, so try to match a keyword.

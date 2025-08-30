@@ -216,8 +216,8 @@ public:
     auto parse_convention() -> std::unique_ptr<asts::ConventionAst>;
     auto parse_convention_ref() -> std::unique_ptr<asts::ConventionRefAst>;
     auto parse_convention_mut() -> std::unique_ptr<asts::ConventionMutAst>;
-    auto parse_convention_mov() -> std::unique_ptr<asts::ConventionMutAst>;
-    auto parse_convention_non_move() -> std::unique_ptr<asts::ConventionAst>;
+    auto parse_convention_mov() -> std::unique_ptr<asts::ConventionMovAst>;
+    auto parse_convention_non_mov() -> std::unique_ptr<asts::ConventionAst>;
 
     auto parse_object_initializer() -> std::unique_ptr<asts::ObjectInitializerAst>;
     auto parse_object_initializer_argument_group() -> std::unique_ptr<asts::ObjectInitializerArgumentGroupAst>;
@@ -379,7 +379,7 @@ public:
     auto parse_keyword_use() -> std::unique_ptr<asts::TokenAst>;
     auto parse_keyword_cmp() -> std::unique_ptr<asts::TokenAst>;
     auto parse_keyword_let() -> std::unique_ptr<asts::TokenAst>;
-    auto parse_keyword_type() -> std::unique_ptr<asts::TokenAst>;;
+    auto parse_keyword_type() -> std::unique_ptr<asts::TokenAst>;
     auto parse_keyword_self() -> std::unique_ptr<asts::TokenAst>;
     auto parse_keyword_case() -> std::unique_ptr<asts::TokenAst>;
     auto parse_keyword_iter() -> std::unique_ptr<asts::TokenAst>;

@@ -32,6 +32,7 @@
 #include <spp/asts/generate/common_types.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>
 
+#include <genex/actions/pop.hpp>
 #include <genex/actions/remove.hpp>
 #include <genex/algorithms/position.hpp>
 #include <genex/algorithms/sorted.hpp>
@@ -42,13 +43,13 @@
 #include <genex/views/concat.hpp>
 #include <genex/views/drop.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/flatten.hpp>
+#include <genex/views/forward.hpp>
 #include <genex/views/intersperse.hpp>
+#include <genex/views/iota.hpp>
 #include <genex/views/map.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/to.hpp>
-#include <genex/views/view.hpp>
 #include <genex/views/set_algorithms.hpp>
 #include <genex/views/zip.hpp>
 
@@ -221,7 +222,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                     auto first_elem_type = ast_cast<GenericArgumentTypeAst>(arg->infer_type(sm, meta)->type_parts().back()->generic_arg_group->args[0].get())->val;
                     auto mismatch = arg->infer_type(sm, meta)->type_parts().back()->generic_arg_group->get_type_args()
                         | genex::views::drop(1)
-                        | genex::views::filter([sm, first_elem_type](auto &&x) { return not analyse::utils::type_utils::symbolic_eq(*x->value, *first_elem_type, *sm->current_scope, *sm->current_scope); })
+                        | genex::views::filter([sm, first_elem_type](auto &&x) { return not analyse::utils::type_utils::symbolic_eq(*x->val, *first_elem_type, *sm->current_scope, *sm->current_scope); })
                         | genex::views::map([](auto &&x) { return x->val.get(); })
                         | genex::views::to<std::vector>();
 
@@ -255,7 +256,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 new_fn_proto->generic_param_group->params.clear();
 
                 // Substitute and analyse the function parameters and return type.
-                for (auto &&p : new_fn_proto->param_group->params | genex::views::view) {
+                for (auto &&p : new_fn_proto->param_group->params | genex::views::forward) {
                     p->type = p->type->substitute_generics(generic_args_raw);
                     p->type->stage_7_analyse_semantics(sm, meta);
                 }
@@ -284,10 +285,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 fn_scope = new_fn_scope;
             }
 
-            // Check any params are void, remove them
-            for (auto &&p : fn_proto->param_group->params | genex::views::view) {
-                if (analyse::utils::type_utils::is_type_void(*p->type, *fn_scope)) {
-                    fn_proto->param_group->params |= genex::actions::remove(p);
+            // Check any params are void, pop them (indexes because of unique pointers).
+            for (auto &&i : genex::views::iota(0uz, fn_proto->param_group->params.size())) {
+                if (analyse::utils::type_utils::is_type_void(*fn_proto->param_group->params[i]->type, *fn_scope)) {
+                    fn_proto->param_group->params |= genex::actions::pop(fn_proto->param_group->params.begin() + i);
                 }
             }
 
@@ -301,7 +302,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
             // Check for missing parameters that don't have a corresponding argument.
             const auto missing_params = func_param_names_req
-                | genex::views::set_difference_unsorted(func_arg_names | genex::views::deref | genex::views::materialize, [](auto *x) { return *x; })
+                | genex::views::set_difference_unsorted(func_arg_names | genex::views::deref | genex::views::materialize, [](std::shared_ptr<IdentifierAst> const &x) { return *x; })
                 | genex::views::to<std::vector>();
             if (not missing_params.empty()) {
                 analyse::errors::SppArgumentMissingError(*missing_params[0], "parameter", *this, "argument").scopes({sm->current_scope}).raise();

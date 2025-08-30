@@ -1516,7 +1516,7 @@ auto spp::parse::ParserSpp::parse_convention_mut() -> std::unique_ptr<asts::Conv
 
 
 auto spp::parse::ParserSpp::parse_convention_mov() -> std::unique_ptr<asts::ConventionMovAst> {
-    return CREATE_AST(asts::ConventionMovAst);
+    return std::make_unique<asts::ConventionMovAst>();
 }
 
 
