@@ -43,6 +43,7 @@
 #include <genex/views/concat.hpp>
 #include <genex/views/drop.hpp>
 #include <genex/views/filter.hpp>
+#include <genex/views/flatten.hpp>
 #include <genex/views/forward.hpp>
 #include <genex/views/intersperse.hpp>
 #include <genex/views/iota.hpp>
@@ -208,10 +209,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 // Populate the list of arguments to fold.
                 for (auto &&arg : func_args | genex::views::ptr | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>()) {
                     if (analyse::utils::type_utils::is_type_tuple(*arg->infer_type(sm, meta), *sm->current_scope)) {
-                        if (func_params
+                        if (genex::operations::empty(func_params
                             | genex::views::filter([sm](auto &&x) { return not analyse::utils::type_utils::is_type_tuple(*x->type, *sm->current_scope); })
                             | genex::views::filter([arg](auto &&p) { return p->extract_name() == arg->name; })
-                            | genex::operations::empty) {
+                            | genex::views::materialize)) {
                             m_folded_args.emplace_back(arg);
                         }
                     }
@@ -416,11 +417,13 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
         auto failed_signatures_and_errors = fail_overloads
             | genex::views::map([](auto &&f) { return std::get<1>(f)->print_signature(std::get<0>(f)->ast != nullptr ? static_cast<std::string>(*ast_name(std::get<0>(f)->ast)) : ""); })
             | genex::views::intersperse("\n"s)
+            | genex::views::flatten
             | genex::views::to<std::string>();
 
         auto arg_usage_signature = arg_group->args
             | genex::views::map([sm, meta](auto &&x) { return x->m_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
             | genex::views::intersperse(", "s)
+            | genex::views::flatten
             | genex::views::to<std::string>();
 
         analyse::errors::SppFunctionCallNoValidSignaturesError(*this, failed_signatures_and_errors, arg_usage_signature).scopes({sm->current_scope}).raise();
@@ -431,11 +434,13 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
         auto signatures = pass_overloads
             | genex::views::map([](auto &&x) { return std::get<1>(x)->print_signature(std::get<0>(x)->ast != nullptr ? static_cast<std::string>(*ast_name(std::get<0>(x)->ast)) : ""); })
             | genex::views::intersperse("\n"s)
+            | genex::views::flatten
             | genex::views::to<std::string>();
 
         auto arg_usage_signature = arg_group->args
             | genex::views::map([sm, meta](auto &&x) { return x->m_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
             | genex::views::intersperse(", "s)
+            | genex::views::flatten
             | genex::views::to<std::string>();
 
         analyse::errors::SppFunctionCallOverloadAmbiguousError(*this, signatures, arg_usage_signature).scopes({sm->current_scope}).raise();

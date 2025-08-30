@@ -51,7 +51,7 @@ struct spp::asts::TypeArrayShorthandAst final : virtual Ast, mixins::TempTypeAst
 
     ~TypeArrayShorthandAst() override;
 
-    auto convert() -> std::shared_ptr<TypeAst> override;
+    auto convert() -> std::unique_ptr<TypeAst> override;
 };
 
 

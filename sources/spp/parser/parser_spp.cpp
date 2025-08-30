@@ -1677,7 +1677,7 @@ auto spp::parse::ParserSpp::parse_unary_type_expression_op() -> std::unique_ptr<
 
 
 auto spp::parse::ParserSpp::parse_unary_type_expression_op_borrow() -> std::unique_ptr<asts::TypeUnaryExpressionOperatorBorrowAst> {
-    PARSE_ONCE(p1, parse_convention_non_move);
+    PARSE_ONCE(p1, parse_convention_non_mov);
     return CREATE_AST(asts::TypeUnaryExpressionOperatorBorrowAst, p1);
 }
 
@@ -1783,7 +1783,7 @@ auto spp::parse::ParserSpp::parse_type_tuple() -> std::unique_ptr<asts::TypeAst>
 
 auto spp::parse::ParserSpp::parse_type_tuple_0_types() -> std::unique_ptr<asts::TypeAst> {
     PARSE_ONCE(p1, parse_token_left_parenthesis);
-    auto p2 = std::vector<std::unique_ptr<asts::TypeAst>>();
+    auto p2 = std::vector<std::shared_ptr<asts::TypeAst>>();
     PARSE_ONCE(p3, parse_token_right_parenthesis);
     return CREATE_AST(asts::TypeTupleShorthandAst, p1, p2, p3)->convert();
 }
@@ -1795,8 +1795,8 @@ auto spp::parse::ParserSpp::parse_type_tuple_1_types() -> std::unique_ptr<asts::
     PARSE_ONCE(p3, parse_token_comma);
     PARSE_ONCE(p4, parse_token_right_parenthesis);
 
-    auto temp = std::vector<decltype(p2)>();
-    temp.push_back(std::move(p2));
+    auto temp = std::vector<std::shared_ptr<asts::TypeAst>>();
+    temp.push_back(std::shared_ptr<asts::TypeAst>(p2.release()));
     return CREATE_AST(asts::TypeTupleShorthandAst, p1, temp, p4)->convert();
 }
 
@@ -1805,7 +1805,10 @@ auto spp::parse::ParserSpp::parse_type_tuple_n_types() -> std::unique_ptr<asts::
     PARSE_ONCE(p1, parse_token_left_parenthesis);
     PARSE_TWO_OR_MORE(p2, parse_type_expression, parse_token_comma);
     PARSE_ONCE(p3, parse_token_right_parenthesis);
-    return CREATE_AST(asts::TypeTupleShorthandAst, p1, p2, p3)->convert();
+
+    auto temp = std::vector<std::shared_ptr<asts::TypeAst>>();
+    for (auto &x : p2) { temp.push_back(std::shared_ptr<asts::TypeAst>(x.release())); }
+    return CREATE_AST(asts::TypeTupleShorthandAst, p1, temp, p3)->convert();
 }
 
 

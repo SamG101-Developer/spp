@@ -181,6 +181,8 @@ auto spp::asts::TypePostfixExpressionAst::stage_4_qualify_types(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
     -> void {
+    (void)sm;
+    (void)meta;
     // TODO ?
 }
 

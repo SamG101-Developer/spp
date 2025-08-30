@@ -53,6 +53,6 @@ auto spp::asts::TypeParenthesisedExpressionAst::print(meta::AstPrinter &printer)
 }
 
 
-auto spp::asts::TypeParenthesisedExpressionAst::convert() -> std::shared_ptr<TypeAst> {
-    return std::move(expr);
+auto spp::asts::TypeParenthesisedExpressionAst::convert() -> std::unique_ptr<TypeAst> {
+    return std::unique_ptr<TypeAst>(expr.get());
 }

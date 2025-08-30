@@ -37,7 +37,7 @@ struct spp::asts::TypeTupleShorthandAst final : virtual Ast, mixins::TempTypeAst
 
     ~TypeTupleShorthandAst() override;
 
-    auto convert() -> std::shared_ptr<TypeAst> override;
+    auto convert() -> std::unique_ptr<TypeAst> override;
 };
 
 

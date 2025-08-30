@@ -56,6 +56,6 @@ auto spp::asts::TypeTupleShorthandAst::print(meta::AstPrinter &printer) const ->
 }
 
 
-auto spp::asts::TypeTupleShorthandAst::convert() -> std::shared_ptr<TypeAst> {
+auto spp::asts::TypeTupleShorthandAst::convert() -> std::unique_ptr<TypeAst> {
     return generate::common_types::tuple_type(pos_start(), std::move(element_types));
 }
