@@ -229,6 +229,7 @@ public:
     auto parse_closure_expression_capture_group() -> std::unique_ptr<asts::ClosureExpressionCaptureGroupAst>;
     auto parse_closure_expression_capture() -> std::unique_ptr<asts::ClosureExpressionCaptureAst>;
     auto parse_closure_expression_parameter_and_capture_group() -> std::unique_ptr<asts::ClosureExpressionParameterAndCaptureGroupAst>;
+    auto parse_closure_expression_parameter_group() -> std::unique_ptr<asts::ClosureExpressionParameterGroupAst>;
     auto parse_closure_expression_parameter() -> std::unique_ptr<asts::ClosureExpressionParameterAst>;
 
     auto parse_type_expression() -> std::unique_ptr<asts::TypeAst>;

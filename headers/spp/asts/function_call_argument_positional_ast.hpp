@@ -9,7 +9,7 @@
  * The FunctionCallArgumentPositionalAst represents a positional argument in a function call. It is forces the argument
  * to be matched by an index rather than a keyword. It also support for unpacking a tuple into arguments.
  */
-struct spp::asts::FunctionCallArgumentPositionalAst final : FunctionCallArgumentAst {
+struct spp::asts::FunctionCallArgumentPositionalAst : FunctionCallArgumentAst {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

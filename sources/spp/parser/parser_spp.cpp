@@ -1582,16 +1582,22 @@ auto spp::parse::ParserSpp::parse_closure_expression_capture_group() -> std::uni
 auto spp::parse::ParserSpp::parse_closure_expression_capture() -> std::unique_ptr<asts::ClosureExpressionCaptureAst> {
     PARSE_ONCE(p1, parse_convention);
     PARSE_ONCE(p2, parse_identifier);
-    return CREATE_AST(asts::ClosureExpressionCaptureAst, p1, p2); // todo: allow "as" alias?
+    return CREATE_AST(asts::ClosureExpressionCaptureAst, p1, p2);
 }
 
 
 auto spp::parse::ParserSpp::parse_closure_expression_parameter_and_capture_group() -> std::unique_ptr<asts::ClosureExpressionParameterAndCaptureGroupAst> {
     PARSE_ONCE(p1, parse_token_vertical_bar);
-    PARSE_ZERO_OR_MORE(p2, parse_closure_expression_parameter, parse_token_comma);
+    PARSE_ONCE(p2, parse_closure_expression_parameter_group);
     PARSE_OPTIONAL(p3, parse_closure_expression_capture_group);
     PARSE_ONCE(p4, parse_token_vertical_bar);
     return CREATE_AST(asts::ClosureExpressionParameterAndCaptureGroupAst, p1, p2, p3, p4);
+}
+
+
+auto spp::parse::ParserSpp::parse_closure_expression_parameter_group() -> std::unique_ptr<asts::ClosureExpressionParameterGroupAst> {
+    PARSE_ZERO_OR_MORE(p1, parse_closure_expression_parameter, parse_token_comma);
+    return CREATE_AST(asts::ClosureExpressionParameterGroupAst, nullptr, p1, nullptr);
 }
 
 
