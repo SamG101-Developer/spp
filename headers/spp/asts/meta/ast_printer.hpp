@@ -53,8 +53,8 @@ private:
     auto m_format_code(std::string &&code) const -> std::string;
 
 private:
-    std::int32_t m_indent_size;
-    std::int32_t m_indent_level;
+    std::uint32_t m_indent_size;
+    std::uint32_t m_indent_level;
 };
 
 

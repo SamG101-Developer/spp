@@ -128,8 +128,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
             | genex::views::map([lhs_type_sym](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
             | genex::views::to<std::vector>();
 
-        auto min_depth = scopes_and_syms
-            | genex::algorithms::min([](auto &&x) { return std::get<0>(x); });
+        auto min_depth = genex::algorithms::min(scopes_and_syms | genex::views::map([](auto &&x) { return std::get<0>(x); }));
 
         auto closest = scopes_and_syms
             | genex::views::filter([min_depth](auto &&x) { return std::get<0>(x) == min_depth; })
@@ -137,7 +136,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
             | genex::views::to<std::vector>();
 
         if (closest.size() > 1) {
-            analyse::errors::SppAmbiguousMemberAccessError(closest[0].second->name, closest[1].second->name, *name).scopes({closest[0].first, closest[1].first, sm->current_scope}).raise();
+            analyse::errors::SppAmbiguousMemberAccessError(*closest[0].second->name, *closest[1].second->name, *name).scopes({closest[0].first, closest[1].first, sm->current_scope}).raise();
         }
     }
 }

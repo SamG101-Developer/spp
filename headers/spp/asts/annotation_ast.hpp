@@ -23,7 +23,7 @@ struct spp::asts::AnnotationAst final : virtual Ast {
     /**
      * The name of the annotation. This is the identifier that follows the @c @ sign.
      */
-    std::unique_ptr<IdentifierAst> name;
+    std::shared_ptr<IdentifierAst> name;
 
     /**
      * Construct the AnnotationAst with the arguments matching the members.

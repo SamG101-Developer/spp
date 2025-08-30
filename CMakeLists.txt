@@ -2,7 +2,14 @@ cmake_minimum_required(VERSION 3.31)
 project(spp)
 
 set(CMAKE_CXX_STANDARD 26)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Werror -fdiagnostics-all-candidates")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Werror -Wno-nonnull-compare")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
+  -Wall -Wextra -Wpedantic -Werror \
+  -Wcast-align -Wcast-qual -Wconversion \
+  -Wold-style-cast -Woverloaded-virtual -Wundef \
+  -Wnull-dereference -Wformat=2 -Wduplicated-cond -Wduplicated-branches \
+  -Wlogical-op -Wuseless-cast -Wdouble-promotion -Wstrict-overflow=5 \
+  -Wswitch-enum -Wswitch-default -Wno-nonnull-compare")
 
 find_package(ColEx REQUIRED)
 find_package(GenEx REQUIRED)

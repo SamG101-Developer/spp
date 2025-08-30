@@ -16,7 +16,7 @@ struct spp::asts::FunctionCallArgumentKeywordAst final : FunctionCallArgumentAst
      * The name of the keyword argument. This is the identifier that is used to refer to the argument in the function
      * call.
      */
-    std::unique_ptr<IdentifierAst> name;
+    std::shared_ptr<IdentifierAst> name;
 
     /**
      * The token that represents the assignment operator \c = in the keyword argument. This separates the name of the

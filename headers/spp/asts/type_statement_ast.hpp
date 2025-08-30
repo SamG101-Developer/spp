@@ -19,6 +19,7 @@ namespace spp::analyse::scopes {
  */
 struct spp::asts::TypeStatementAst final : StatementAst, mixins::VisibilityEnabledAst, SupMemberAst, ModuleMemberAst {
     SPP_AST_KEY_FUNCTIONS;
+    friend struct UseStatementAst;
 
 private:
     bool m_generated = false;

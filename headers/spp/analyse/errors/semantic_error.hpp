@@ -84,6 +84,10 @@ namespace spp::analyse::errors {
     struct SppAsyncTargetNotFunctionCallError;
     struct SppDereferenceInvalidExpressionNonBorrowableTypeError;
     struct SppDereferenceInvalidExpressionNonCopyableTypeError;
+    struct SppGenericParameterInferredConflictInferredError;
+    struct SppGenericParameterInferredConflictExplicitError;
+    struct SppGenericParameterNotInferredError;
+    struct SppGenericArgumentTooManyError;
 
     auto add_header(std::size_t err_code, std::string &&msg) -> std::string;
     auto add_error(std::size_t pos, std::string &&tag) -> std::string;
@@ -464,10 +468,30 @@ struct spp::analyse::errors::SppAsyncTargetNotFunctionCallError final : spp::uti
 
 
 struct spp::analyse::errors::SppDereferenceInvalidExpressionNonBorrowableTypeError final : spp::utils::errors::SemanticError {
-    explicit SppDereferenceInvalidExpressionNonBorrowableTypeError(asts::TokenAst const& tok_deref, asts::ExpressionAst const &expr, asts::TypeAst const &type);
+    explicit SppDereferenceInvalidExpressionNonBorrowableTypeError(asts::TokenAst const &tok_deref, asts::ExpressionAst const &expr, asts::TypeAst const &type);
 };
 
 
 struct spp::analyse::errors::SppDereferenceInvalidExpressionNonCopyableTypeError final : spp::utils::errors::SemanticError {
-    explicit SppDereferenceInvalidExpressionNonCopyableTypeError(asts::TokenAst const& tok_deref, asts::ExpressionAst const &expr, asts::TypeAst const &type);
+    explicit SppDereferenceInvalidExpressionNonCopyableTypeError(asts::TokenAst const &tok_deref, asts::ExpressionAst const &expr, asts::TypeAst const &type);
+};
+
+
+struct spp::analyse::errors::SppGenericParameterInferredConflictInferredError final : spp::utils::errors::SemanticError {
+    explicit SppGenericParameterInferredConflictInferredError(asts::Ast const &param, asts::Ast const &first_infer, asts::Ast const &second_infer);
+};
+
+
+struct spp::analyse::errors::SppGenericParameterInferredConflictExplicitError final : spp::utils::errors::SemanticError {
+    explicit SppGenericParameterInferredConflictExplicitError(asts::Ast const &param, asts::Ast const &first_infer, asts::Ast const &second_infer);
+};
+
+
+struct spp::analyse::errors::SppGenericParameterNotInferredError final : spp::utils::errors::SemanticError {
+    explicit SppGenericParameterNotInferredError(asts::Ast const &param, asts::Ast const &ctx);
+};
+
+
+struct spp::analyse::errors::SppGenericArgumentTooManyError final : spp::utils::errors::SemanticError {
+    explicit SppGenericArgumentTooManyError(asts::Ast const &param, asts::Ast const &owner, asts::GenericArgumentAst const &arg);
 };

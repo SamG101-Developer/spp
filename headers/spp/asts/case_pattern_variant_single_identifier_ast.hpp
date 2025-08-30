@@ -18,7 +18,7 @@ struct spp::asts::CasePatternVariantSingleIdentifierAst final : CasePatternVaria
      * The name of the single identifier pattern. This is the identifier that is used to refer to the variable being
      * introduced by the pattern.
      */
-    std::unique_ptr<IdentifierAst> name;
+    std::shared_ptr<IdentifierAst> name;
 
     /**
      * The optional alias for the single identifier pattern. This will cause the matching to happen against @c name, but

@@ -146,15 +146,16 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         }
 
         // Replace the tuple-expansion argument with the expanded arguments.
-        args |= genex::actions::pop(i);
+        args |= genex::actions::pop(args.begin() + static_cast<ssize_t>(i));
 
-        for (std::make_signed_t<std::size_t> j = arg_type->type_parts().back()->generic_arg_group->args.size() - 1; j > -1; --j) {
+        const auto max = static_cast<ssize_t>(arg_type->type_parts().back()->generic_arg_group->args.size());
+        for (auto j = max - 1; j > -1; --j) {
             auto field = std::make_unique<IdentifierAst>(arg->val->pos_start(), std::to_string(i));
             auto new_ast = std::make_unique<PostfixExpressionAst>(
                 ast_clone(arg->val),
                 std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
             auto new_arg = std::make_unique<FunctionCallArgumentPositionalAst>(ast_clone(arg->conv), nullptr, std::move(new_ast));
-            args.insert(args.begin() + i, std::move(new_arg));
+            args.insert(args.begin() + static_cast<ssize_t>(i), std::move(new_arg));
         }
     }
 
@@ -251,10 +252,10 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 analyse::errors::SppMemoryOverlapUsageError(*overlaps[0], *arg->val).scopes({sm->current_scope}).raise();
             }
 
-            for (auto *existing_assignment : preexisting_borrows_mut[arg->val.get()]) {
+            for (const auto *existing_assignment : preexisting_borrows_mut[arg->val.get()]) {
                 sm->current_scope->get_var_symbol(*existing_assignment)->memory_info->moved_by(*arg->val);
             }
-            for (auto *existing_assignment : preexisting_borrows_ref[arg->val.get()]) {
+            for (const auto *existing_assignment : preexisting_borrows_ref[arg->val.get()]) {
                 sm->current_scope->get_var_symbol(*existing_assignment)->memory_info->moved_by(*arg->val);
             }
 
@@ -280,7 +281,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 analyse::errors::SppMemoryOverlapUsageError(*overlaps[0], *arg->val).scopes({sm->current_scope}).raise();
             }
 
-            for (auto *existing_assignment : preexisting_borrows_mut[arg->val.get()]) {
+            for (const auto *existing_assignment : preexisting_borrows_mut[arg->val.get()]) {
                 sm->current_scope->get_var_symbol(*existing_assignment)->memory_info->moved_by(*arg->val);
             }
 

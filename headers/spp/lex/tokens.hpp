@@ -204,6 +204,7 @@ inline auto spp::lex::tok_to_string(const SppTokenType token) noexcept -> std::s
     case SppTokenType::LX_CHARACTER: return "";
     case SppTokenType::LX_DIGIT: return "";
     case SppTokenType::LX_STRING: return "";
+    case SppTokenType::LX_NUMBER: return "";
     case SppTokenType::LX_IDENTIFIER: return "";
     case SppTokenType::KW_CLS: return "cls";
     case SppTokenType::KW_FUN: return "fun";

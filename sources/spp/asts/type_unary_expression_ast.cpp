@@ -54,7 +54,7 @@ auto spp::asts::TypeUnaryExpressionAst::print(meta::AstPrinter &printer) const -
 }
 
 
-auto equals(TypeAst const &other) const -> bool {
+auto spp::asts::TypeUnaryExpressionAst::equals(TypeAst const &other) const -> bool {
     // Double dispatch to the appropriate equals method.
     return other.equals_type_unary_expression(*this);
 }

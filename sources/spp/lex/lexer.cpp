@@ -206,13 +206,14 @@ auto spp::lex::Lexer::lex() const -> std::vector<RawToken> {
             ++i;
             continue;
         }
+        default:
         }
 
         // No symbolic tokens match, so try to match a keyword.
         auto found_kw = false;
         for (auto [kw_enum, kw_string] : keywords) {
-            const auto is_prev_alnum = (i > 0 and is_alphanumeric(m_code[i - 1]));
-            const auto is_next_alnum = (i + kw_string.length() < m_code.length() and is_alphanumeric(m_code[i + kw_string.length()]));
+            const auto is_prev_alnum = i > 0 and is_alphanumeric(static_cast<char8_t>(m_code[i - 1]));
+            const auto is_next_alnum = i + kw_string.length() < m_code.length() and is_alphanumeric(static_cast<char8_t>(m_code[i + kw_string.length()]));
 
             if (m_code.substr(i).starts_with(kw_string) and not is_prev_alnum and not is_next_alnum) {
                 tokens.emplace_back(kw_enum, kw_string);

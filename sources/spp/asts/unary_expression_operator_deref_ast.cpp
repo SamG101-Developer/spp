@@ -75,5 +75,5 @@ auto spp::asts::UnaryExpressionOperatorDerefAst::infer_type(
     const auto rhs_type = rhs->infer_type(sm, meta);
 
     // Return the dereferenced type.
-    return rhs_type->without_convention();
+    return ast_clone(rhs_type->without_convention());
 }

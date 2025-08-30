@@ -12,7 +12,7 @@ struct spp::asts::CasePatternVariantDestructureAttributeBindingAst final : CaseP
      * The name of the attribute. This is the identifier that is used to refer to the attribute of the object being
      * destructured.
      */
-    std::unique_ptr<IdentifierAst> name;
+    std::shared_ptr<IdentifierAst> name;
 
     /**
      * The @c = token that separates the attribute name from the value in the destructure binding.

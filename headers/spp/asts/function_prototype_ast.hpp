@@ -81,7 +81,7 @@ public:
      * The name of the function prototype. This is the identifier that is used to refer to the function. Uniqueness is
      * not strictly required, as overloading is supported.
      */
-    std::unique_ptr<IdentifierAst> name;
+    std::shared_ptr<IdentifierAst> name;
 
     /**
      * The optional generic parameter group for the function prototype. This is used to define generic types that the

@@ -134,7 +134,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
     // For a bound ".." destructure, ie "let [a, ..b, c] = t", create an intermediary type.
     auto bound_multi_skip = std::unique_ptr<TupleLiteralAst>(nullptr);
     if (not multi_arg_skips.empty() and multi_arg_skips[0]->binding != nullptr) {
-        const auto m = elems | genex::views::ptr | genex::algorithms::position([&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; });
+        const auto m = static_cast<std::size_t>(genex::algorithms::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }));
         auto new_elems = genex::views::iota(m, m + num_rhs_arr_elems - num_lhs_arr_elems + 1)
             | genex::views::map([val](const auto i) {
                 auto identifier = std::make_unique<IdentifierAst>(0uz, std::to_string(i));
@@ -149,7 +149,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
     }
 
     // Create new indexes.
-    auto indexes = genex::views::iota(0, multi_arg_skips.empty() ? multi_arg_skips.size() : (elems | genex::views::ptr | genex::algorithms::position([&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; })) + 1)
+    auto indexes = genex::views::iota(0uz, multi_arg_skips.empty() ? multi_arg_skips.size() : static_cast<std::size_t>(genex::algorithms::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; })) + 1)
         | genex::views::concat(genex::views::iota(num_lhs_arr_elems, num_rhs_arr_elems) | genex::views::materialize);
 
     // Create expanded "let" statements for each part of the destructure.

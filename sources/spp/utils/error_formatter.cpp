@@ -2,10 +2,8 @@
 #include <ranges>
 
 #include <colex/common.hpp>
-#include <genex/algorithms/find.hpp>
 #include <genex/algorithms/fold.hpp>
 #include <genex/algorithms/position.hpp>
-#include <genex/iterators/distance.hpp>
 #include <genex/operations/size.hpp>
 #include <genex/views/drop.hpp>
 #include <genex/views/filter.hpp>
@@ -30,22 +28,28 @@ auto spp::utils::errors::ErrorFormatter::internal_parse_error_raw_pos(
     using lex::RawTokenType;
     using namespace std::string_literals;
 
-    const auto error_line_start_pos = (m_tokens
+    auto slice_front = m_tokens
         | genex::views::take(ast_start_pos)
-        | genex::views::to<std::vector>()
-        | genex::algorithms::position_last([](auto &&token) { return token.type == RawTokenType::TK_LINE_FEED; })) + 1;
+        | genex::views::to<std::vector>();
 
-    const auto error_line_end_pos = (m_tokens
+    auto slice_back = m_tokens
         | genex::views::drop(ast_start_pos)
-        | genex::views::to<std::vector>()
-        | genex::algorithms::position([](auto &&token) { return token.type == RawTokenType::TK_LINE_FEED; }, {}, m_tokens.size())) + ast_start_pos;
+        | genex::views::to<std::vector>();
+
+    const auto error_line_start_pos = genex::algorithms::position_last(
+        slice_front,
+        [](auto &&token) { return token.type == RawTokenType::TK_LINE_FEED; }) + 1;
+
+    const auto error_line_end_pos = genex::algorithms::position(
+        slice_back,
+        [](auto &&token) { return token.type == RawTokenType::TK_LINE_FEED; }, {}, m_tokens.size()) + ast_start_pos;
 
     auto error_line_tokens = std::vector(
         m_tokens.begin() + error_line_start_pos,
         m_tokens.begin() + error_line_end_pos);
 
-    auto error_line_as_string = error_line_tokens | genex::algorithms::fold_left(
-        std::string(),
+    auto error_line_as_string = genex::algorithms::fold_left(
+        error_line_tokens, std::string(),
         [](std::string const &acc, const lex::RawToken &token) { return acc + token.data; });
 
     // Get the line number of the error.

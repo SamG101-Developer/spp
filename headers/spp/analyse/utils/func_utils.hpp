@@ -83,13 +83,14 @@ namespace spp::analyse::utils::func_utils {
         -> void;
 
     auto infer_generic_args(
+        std::vector<std::unique_ptr<asts::GenericArgumentAst>> &args,
         std::vector<asts::GenericParameterAst*> params,
         std::vector<asts::GenericParameterAst*> opt_params,
         std::vector<asts::GenericArgumentAst*> explicit_args,
-        std::map<asts::IdentifierAst*, std::shared_ptr<asts::TypeAst>> infer_source,
-        std::map<asts::IdentifierAst*, std::shared_ptr<asts::TypeAst>> infer_target,
-        asts::Ast const *owner,
-        asts::IdentifierAst *variadic_param_identifier,
+        std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> infer_source,
+        std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> infer_target,
+        std::shared_ptr<asts::Ast> owner,
+        std::shared_ptr<asts::IdentifierAst> variadic_param_identifier,
         bool is_tuple_owner,
         scopes::ScopeManager const &sm,
         asts::mixins::CompilerMetaData *meta)

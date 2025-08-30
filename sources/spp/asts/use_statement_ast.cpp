@@ -6,6 +6,7 @@
 #include <spp/asts/class_implementation_ast.hpp>
 #include <spp/asts/class_member_ast.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
+#include <spp/asts/generic_argument_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
 #include <spp/asts/generic_parameter_group_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
@@ -44,7 +45,7 @@ auto spp::asts::UseStatementAst::pos_end() const -> std::size_t {
 
 auto spp::asts::UseStatementAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<UseStatementAst>(
-        ast_clone(annotations),
+        ast_clone_vec(annotations),
         ast_clone(tok_use),
         ast_clone(old_type));
 }
@@ -109,7 +110,7 @@ auto spp::asts::UseStatementAst::stage_3_gen_top_level_aliases(
 
     // Add the generic parameters to the conversion AST, and add mock generic arguments to the old type.
     m_conversion->generic_param_group = ast_clone(generic_params);
-    m_conversion->old_type->type_parts().back()->generic_arg_group = GenericArgumentGroupAst::from_params(*generic_params);
+    m_conversion->old_type->type_parts().back()->generic_arg_group->args = std::move(GenericArgumentGroupAst::from_params(*generic_params)->args);
     m_conversion->m_generated_cls_ast->generic_param_group = std::move(generic_params);
 
     // Generate the top-level alias for the converted type statement.

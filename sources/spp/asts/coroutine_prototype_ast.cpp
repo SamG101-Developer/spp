@@ -35,7 +35,7 @@ auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
         | genex::views::map([](auto &&x) { return x->without_generics(); })
         | genex::views::to<std::vector>();
 
-    if (superimposed_types | genex::algorithms::none_of([sm](auto &&x) { return analyse::utils::type_utils::is_type_generator(*x->without_generics(), *sm->current_scope); })) {
+    if (genex::algorithms::none_of(superimposed_types, [sm](auto &&x) { return analyse::utils::type_utils::is_type_generator(*x->without_generics(), *sm->current_scope); })) {
         analyse::errors::SppCoroutineInvalidReturnTypeError(*this, *return_type)
             .scopes({sm->current_scope})
             .raise();

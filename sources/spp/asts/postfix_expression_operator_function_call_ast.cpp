@@ -21,6 +21,7 @@
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
 #include <spp/asts/generic_parameter_group_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
 #include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
 #include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
@@ -34,17 +35,20 @@
 #include <genex/actions/remove.hpp>
 #include <genex/algorithms/position.hpp>
 #include <genex/algorithms/sorted.hpp>
+#include <genex/operations/cmp.hpp>
+#include <genex/operations/size.hpp>
 #include <genex/views/address.hpp>
 #include <genex/views/cast.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/drop.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/flatten.hpp>
+#include <genex/views/intersperse.hpp>
 #include <genex/views/map.hpp>
+#include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/to.hpp>
 #include <genex/views/view.hpp>
-#include <genex/operations/size.hpp>
 #include <genex/views/set_algorithms.hpp>
 #include <genex/views/zip.hpp>
 
@@ -118,7 +122,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     // Record the "pass" and "fail" overloads.
     auto all_overloads = analyse::utils::func_utils::get_all_function_scopes(*fn_name, *fn_owner_scope);
     auto pass_overloads = std::vector<std::tuple<analyse::scopes::Scope*, FunctionPrototypeAst*, std::vector<GenericArgumentAst*>>>{};
-    auto fail_overloads = std::vector<std::tuple<analyse::scopes::Scope*, FunctionPrototypeAst*, spp::utils::errors::SemanticError*>>{};
+    auto fail_overloads = std::vector<std::tuple<analyse::scopes::Scope*, FunctionPrototypeAst*, std::unique_ptr<spp::utils::errors::SemanticError>>>{};
 
     // Create a dummy overload for no-overload identifiers that are function types (closures etc).
     auto is_closure = false;
@@ -134,8 +138,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
         // Extract generic/function parameter information from the overload.
         auto func_params = fn_proto->param_group->params | genex::views::ptr | genex::views::to<std::vector>();
         auto generic_params = fn_proto->generic_param_group->params | genex::views::ptr | genex::views::to<std::vector>();
-        auto func_args = arg_group->args | genex::views::ptr | genex::views::to<std::vector>();
-        auto generic_args = generic_arg_group->args | genex::views::ptr | genex::views::to<std::vector>();
+        auto func_args = ast_clone_vec(arg_group->args);
+        auto generic_args = ast_clone_vec(generic_arg_group->args);
 
         // Extract the parameter names and argument names.
         auto func_param_names = fn_proto->param_group->params
@@ -171,35 +175,37 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
             // Remove the keyword argument names from the set of parameter names, and name the positional arguments.
             analyse::utils::func_utils::name_args(func_args, func_params, *sm);
-            analyse::utils::func_utils::name_generic_args(generic_args, generic_params, *fn_proto->name, *sm);
+            analyse::utils::func_utils::name_generic_args(generic_args, generic_params, *ast_cast<Ast>(fn_proto->name), *sm);
             func_arg_names = func_args
+                | genex::views::ptr
                 | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>()
                 | genex::views::filter([](auto &&x) { return x != nullptr; })
                 | genex::views::map([](auto &&x) { return x->name.get(); })
                 | genex::views::to<std::vector>();
 
-            auto generic_infer_source = func_args
-                | genex::views::map([sm, meta](auto &&x) { return std::make_pair(x->name.get(), x->val->infer_type(sm, meta)); })
+            auto generic_infer_source = arg_group->get_keyword_args()
+                | genex::views::map([sm, meta](auto &&x) { return std::make_pair(x->name, x->val->infer_type(sm, meta)); })
                 | genex::views::to<std::vector>();
 
             auto generic_infer_target = func_params
                 | genex::views::map([](auto &&x) { return std::make_pair(x->extract_name(), x->type); })
                 | genex::views::to<std::vector>();
 
-            generic_args = analyse::utils::func_utils::infer_generic_args(
-                fn_proto->generic_param_group->params,
+            analyse::utils::func_utils::infer_generic_args(
+                generic_args,
+                fn_proto->generic_param_group->params | genex::views::ptr | genex::views::to<std::vector>(),
                 fn_proto->generic_param_group->get_optional_params(),
-                genex::views::concat(generic_args, ctx_generic_args),
+                genex::views::concat(generic_args | genex::views::ptr, ctx_generic_args) | genex::views::to<std::vector>(),
                 std::map(generic_infer_source.begin(), generic_infer_source.end()),
                 std::map(generic_infer_target.begin(), generic_infer_target.end()),
                 lhs->infer_type(sm, meta),
                 is_variadic_fn ? fn_proto->param_group->get_variadic_param()->extract_name() : nullptr,
-                sm, meta);
+                false, *sm, meta);
 
             // For function folding, identify all tuple arguments that have non-tuple parameters.
             if (fold != nullptr) {
                 // Populate the list of arguments to fold.
-                for (auto &&arg : func_args | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>()) {
+                for (auto &&arg : func_args | genex::views::ptr | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>()) {
                     if (analyse::utils::type_utils::is_type_tuple(*arg->infer_type(sm, meta), *sm->current_scope)) {
                         if (func_params
                             | genex::views::filter([sm](auto &&x) { return not analyse::utils::type_utils::is_type_tuple(*x->type, *sm->current_scope); })
@@ -213,7 +219,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 // Tuples being folded must all have the same element types (per tuple).
                 for (auto &&arg : m_folded_args) {
                     auto first_elem_type = ast_cast<GenericArgumentTypeAst>(arg->infer_type(sm, meta)->type_parts().back()->generic_arg_group->args[0].get())->val;
-                    auto mismatch = arg->infer_type(sm, meta)->type_parts().back()->generic_arg_group->args
+                    auto mismatch = arg->infer_type(sm, meta)->type_parts().back()->generic_arg_group->get_type_args()
                         | genex::views::drop(1)
                         | genex::views::filter([sm, first_elem_type](auto &&x) { return not analyse::utils::type_utils::symbolic_eq(*x->value, *first_elem_type, *sm->current_scope, *sm->current_scope); })
                         | genex::views::map([](auto &&x) { return x->val.get(); })
@@ -237,9 +243,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             }
 
             // Create a new overload with the generic arguments applied.
+            auto generic_args_raw = generic_args | genex::views::ptr | genex::views::to<std::vector>();
             if (not generic_arg_group->args.empty()) {
                 auto new_fn_proto = ast_clone(fn_proto);
-                auto external_generics = sm->current_scope->get_extended_generic_symbols(generic_args);
+                auto external_generics = sm->current_scope->get_extended_generic_symbols(generic_args_raw);
                 auto new_fn_scope = analyse::utils::type_utils::create_generic_fun_scope(
                     *fn_scope, GenericArgumentGroupAst(nullptr, ast_clone_vec(generic_args), nullptr),
                     external_generics, *sm, meta);
@@ -249,10 +256,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
                 // Substitute and analyse the function parameters and return type.
                 for (auto &&p : new_fn_proto->param_group->params | genex::views::view) {
-                    p->type = p->type->substitute_generics(generic_args);
+                    p->type = p->type->substitute_generics(generic_args_raw);
                     p->type->stage_7_analyse_semantics(sm, meta);
                 }
-                new_fn_proto->return_type = new_fn_proto->return_type->substitute_generics(generic_args);
+                new_fn_proto->return_type = new_fn_proto->return_type->substitute_generics(generic_args_raw);
                 new_fn_proto->return_type->stage_7_analyse_semantics(sm, meta);
 
                 // Check he new return type isn't a borrow type.
@@ -286,9 +293,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
             // Check for any keyword arguments that don't have a corresponding parameter.
             const auto invalid_args = func_arg_names
-                | genex::views::deref
-                | genex::views::set_difference(func_param_names)
-                | genex::views::address
+                | genex::views::set_difference_unsorted(func_param_names | genex::views::deref | genex::views::materialize, [](auto *x) { return *x; })
                 | genex::views::to<std::vector>();
             if (not invalid_args.empty()) {
                 analyse::errors::SppArgumentNameInvalidError(*func_params[0], "parameter", *invalid_args[0], "argument").scopes({sm->current_scope}).raise();
@@ -296,35 +301,36 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
             // Check for missing parameters that don't have a corresponding argument.
             const auto missing_params = func_param_names_req
-                | genex::views::deref
-                | genex::views::set_difference(func_arg_names)
-                | genex::views::address
+                | genex::views::set_difference_unsorted(func_arg_names | genex::views::deref | genex::views::materialize, [](auto *x) { return *x; })
                 | genex::views::to<std::vector>();
             if (not missing_params.empty()) {
                 analyse::errors::SppArgumentMissingError(*missing_params[0], "parameter", *this, "argument").scopes({sm->current_scope}).raise();
             }
 
-            // Type chek the arguments against the parameters.
-            auto sorted_func_arguments = genex::algorithms::sorted(func_args, std::less<int>{}, [&func_param_names](auto &&a) { return func_param_names | genex::algorithms::position(a->name.get()); });
+            // Type check the arguments against the parameters. Sort the arguments into parameter order first.
+            auto sorted_func_arguments = genex::algorithms::sorted(
+                func_args | genex::views::ptr | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>() | genex::views::to<std::vector>(), {},
+                [&func_param_names](auto &&arg) { return genex::algorithms::position(func_param_names, [&arg](auto const &param) { return *arg->name == *param; }); });
+
             for (auto &&[arg, param] : sorted_func_arguments | genex::views::zip(func_params)) {
-                auto p_type = fn_scope->get_type_symbol(param->type).fq_name()->with_convention(param->type->get_convention());
+                auto p_type = std::shared_ptr(fn_scope->get_type_symbol(*param->type)->fq_name()->with_convention(ast_clone(param->type->get_convention())));
                 auto a_type = arg->infer_type(sm, meta);
 
                 // Special case for variadic parameters.
-                if (ast_cast<FunctionParameterVariadicAst>(param.get())) {
-                    p_type = generate::common_types::tuple_type(param.pos_start(), std::vector(a_type->type_parts().back()->generic_arg_group->args.size(), p_type));
+                if (ast_cast<FunctionParameterVariadicAst>(param)) {
+                    p_type = generate::common_types::tuple_type(param->pos_start(), std::vector(a_type->type_parts().back()->generic_arg_group->args.size(), p_type));
                     p_type->stage_7_analyse_semantics(sm, meta);
                 }
 
                 // Special case for "self" parameters.
-                else if (ast_cast<FunctionParameterSelfAst>(param.get())) {
-                    arg->convention = ast_clone(param->convention);
+                else if (auto self_param = ast_cast<FunctionParameterSelfAst>(param); self_param != nullptr) {
+                    arg->conv = ast_clone(self_param->conv);
                 }
 
                 // Regular parameter with arg folding.
-                else if (genex::algorithms::contains(m_folded_args, arg.get())) {
-                    if (not analyse::utils::type_utils::symbolic_eq(*p_type, *a_type->type_parts().back().generic_arg_group->args[0]->val, *fn_scope, *sm->current_scope)) {
-                        analyse::errors::SppTypeMismatchError(*param, *p_type, *arg, *a_type->type_parts().back()->generic_arg_group->args[0]->val).scopes({fn_scope, sm->current_scope}).raise();
+                else if (genex::algorithms::contains(m_folded_args, arg)) {
+                    if (not analyse::utils::type_utils::symbolic_eq(*p_type, *a_type->type_parts().back()->generic_arg_group->get_type_args()[0]->val, *fn_scope, *sm->current_scope)) {
+                        analyse::errors::SppTypeMismatchError(*param, *p_type, *arg, *a_type->type_parts().back()->generic_arg_group->get_type_args()[0]->val).scopes({fn_scope, sm->current_scope}).raise();
                     }
                 }
 
@@ -335,58 +341,58 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             }
 
             // Add the overload to the pass list.
-            pass_overloads.emplace_back(fn_scope, fn_proto, std::move(generic_args));
+            pass_overloads.emplace_back(fn_scope, fn_proto, std::move(generic_args_raw));
         }
 
 
         catch (const analyse::errors::SppFunctionCallAbstractFunctionError &e) {
             // If the overload is abstract, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, &e);
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
         }
 
         catch (const analyse::errors::SppFunctionCallNotImplFunctionError &e) {
             // If the overload is abstract, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, &e);
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
         }
 
         catch (const analyse::errors::SppFunctionCallTooManyArgumentsError &e) {
             // If the overload has too many arguments, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, &e);
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
         }
 
         catch (const analyse::errors::SppArgumentNameInvalidError &e) {
             // If the overload has an invalid argument name, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, &e);
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
         }
 
         catch (const analyse::errors::SppArgumentMissingError &e) {
             // If the overload is missing a required argument name, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, &e);
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
         }
 
         catch (const analyse::errors::SppTypeMismatchError &e) {
             // If the overload has a type mismatch, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, &e);
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
         }
 
         catch (const analyse::errors::SppGenericParameterInferredConflictInferredError &e) {
             // If the overload has an inferred generic parameter conflict, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, &e);
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
         }
 
         catch (const analyse::errors::SppGenericParameterInferredConflictExplicitError &e) {
             // If the overload has an explicit generic parameter conflict, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, &e);
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
         }
 
         catch (const analyse::errors::SppGenericParameterNotInferredError &e) {
             // If the overload has a generic parameter that is not inferred, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, &e);
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
         }
 
         catch (const analyse::errors::SppGenericArgumentTooManyError &e) {
             // If the overload has too many generic arguments, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, &e);
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
         }
     }
 
@@ -404,15 +410,16 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     }
 
     // If there are no pass overloads, raise an error.
+    using namespace std::string_literals;
     if (pass_overloads.empty()) {
         auto failed_signatures_and_errors = fail_overloads
-            | genex::views::map([](auto &&f) { return std::get<1>(f)->print_signature(std::get<0>(f)->ast != nullptr ? static_cast<std::string>(*ast_name(std::get<0>(f)->ast)) : "") + std::format(" - {}", typeid(std::get<2>(f)).name()); })
-            | genex::views::flatten_with("\n")
+            | genex::views::map([](auto &&f) { return std::get<1>(f)->print_signature(std::get<0>(f)->ast != nullptr ? static_cast<std::string>(*ast_name(std::get<0>(f)->ast)) : ""); })
+            | genex::views::intersperse("\n"s)
             | genex::views::to<std::string>();
 
         auto arg_usage_signature = arg_group->args
             | genex::views::map([sm, meta](auto &&x) { return x->m_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
-            | genex::views::flatten_with(", ")
+            | genex::views::intersperse(", "s)
             | genex::views::to<std::string>();
 
         analyse::errors::SppFunctionCallNoValidSignaturesError(*this, failed_signatures_and_errors, arg_usage_signature).scopes({sm->current_scope}).raise();
@@ -422,12 +429,12 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     else if (pass_overloads.size() > 1) {
         auto signatures = pass_overloads
             | genex::views::map([](auto &&x) { return std::get<1>(x)->print_signature(std::get<0>(x)->ast != nullptr ? static_cast<std::string>(*ast_name(std::get<0>(x)->ast)) : ""); })
-            | genex::views::flatten_with("\n")
+            | genex::views::intersperse("\n"s)
             | genex::views::to<std::string>();
 
         auto arg_usage_signature = arg_group->args
             | genex::views::map([sm, meta](auto &&x) { return x->m_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
-            | genex::views::flatten_with(", ")
+            | genex::views::intersperse(", "s)
             | genex::views::to<std::string>();
 
         analyse::errors::SppFunctionCallOverloadAmbiguousError(*this, signatures, arg_usage_signature).scopes({sm->current_scope}).raise();
@@ -535,9 +542,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
             }
 
             ret_type = std::get<0>(*m_overload_info)
-               ->get_type_symbol(*ret_type)->fq_name()
-               ->substitute_generics(other_generics)
-               ->substitute_generics(std::get<0>(*m_overload_info)->get_generics());
+                       ->get_type_symbol(*ret_type)->fq_name()
+                       ->substitute_generics(other_generics)
+                       ->substitute_generics(std::get<0>(*m_overload_info)->get_generics());
 
             auto tm = ScopeManager(sm->global_scope, std::get<0>(*m_overload_info));
             ret_type->stage_7_analyse_semantics(&tm, meta);

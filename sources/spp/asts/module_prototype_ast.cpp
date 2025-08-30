@@ -58,9 +58,9 @@ auto spp::asts::ModulePrototypeAst::name() const
 
     // Check if "src" is in the file path.
     auto name = std::string();
-    if (parts | genex::algorithms::contains("src"s)) {
+    if (genex::algorithms::contains(parts, "src"s)) {
         name = parts
-            | genex::views::drop(parts | genex::algorithms::position([](auto &&x) { return x == "src"; }))
+            | genex::views::drop(static_cast<std::size_t>(genex::algorithms::position(parts, [](auto &&x) { return x == "src"; })))
             | genex::views::intersperse("::"s)
             | genex::views::flatten
             | genex::views::to<std::string>();

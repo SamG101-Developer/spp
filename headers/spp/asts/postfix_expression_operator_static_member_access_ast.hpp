@@ -16,7 +16,7 @@ struct spp::asts::PostfixExpressionOperatorStaticMemberAccessAst final : Postfix
     /**
      * The identifier that represents the member being accessed. This is the name of the member in the class or struct.
      */
-    std::unique_ptr<IdentifierAst> name;
+    std::shared_ptr<IdentifierAst> name;
 
     /**
      * Construct the PostfixExpressionOperatorMemberAccessAst with the arguments matching the members.
