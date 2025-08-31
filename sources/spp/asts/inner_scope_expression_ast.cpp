@@ -1,4 +1,5 @@
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/inner_scope_expression_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
@@ -22,8 +23,8 @@ auto spp::asts::InnerScopeExpressionAst<T>::stage_7_analyse_semantics(
         auto ret_stmt = ast_cast<RetStatementAst>(member);
         auto loop_flow_stmt = ast_cast<LoopControlFlowStatementAst>(member);
         if ((ret_stmt or loop_flow_stmt) and (member != this->members.back())) {
-            analyse::errors::SppUnreachableCodeError(*member, *this->members[i + 1])
-                .scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppUnreachableCodeError>().with_args(
+                *member, *this->members[i + 1]).with_scopes({sm->current_scope}).raise();
         }
     }
 

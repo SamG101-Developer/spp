@@ -1,5 +1,6 @@
-#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
+#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/convention_mut_ast.hpp>
@@ -12,6 +13,7 @@
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
+
 
 spp::asts::GenWithExpressionAst::GenWithExpressionAst(
     decltype(tok_gen) &&tok_gen,
@@ -73,9 +75,8 @@ auto spp::asts::GenWithExpressionAst::stage_7_analyse_semantics(
     // Check the enclosing function is a coroutine and not a subroutine.
     const auto function_flavour = meta->enclosing_function_flavour;
     if (function_flavour->token_type != lex::SppTokenType::KW_COR) {
-        analyse::errors::SppFunctionSubroutineContainsGenExpressionError(*function_flavour, *tok_gen)
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionSubroutineContainsGenExpressionError>().with_args(
+            *function_flavour, *tok_gen).with_scopes({sm->current_scope}).raise();
     }
 
     // Analyse the expression (guaranteed to exist), and determine the type of the expression.
@@ -103,14 +104,13 @@ auto spp::asts::GenWithExpressionAst::stage_7_analyse_semantics(
     }
 
     // Determine the "yield" type of the enclosing function (to type check the expression against).
-    auto [_, yield_type, _, is_optional, is_fallible, error_type] = analyse::utils::type_utils::get_generator_and_yield_type(
+    auto [_, yield_type, _, _, _, error_type] = analyse::utils::type_utils::get_generator_and_yield_type(
         *meta->enclosing_function_ret_type[0], *sm, *meta->enclosing_function_ret_type[0], "coroutine");
 
     // The expression type must be a Gen type that exactly matches the function_ret_type.
     if (not analyse::utils::type_utils::symbolic_eq(*meta->enclosing_function_ret_type[0], *expr_type, *meta->enclosing_function_scope, *sm->current_scope)) {
-        analyse::errors::SppTypeMismatchError(*meta->enclosing_function_ret_type[0], *meta->enclosing_function_ret_type[0], *expr, *expr_type)
-            .scopes({meta->enclosing_function_scope, sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
+            *meta->enclosing_function_ret_type[0], *meta->enclosing_function_ret_type[0], *expr, *expr_type).with_scopes({meta->enclosing_function_scope, sm->current_scope}).raise();
     }
 }
 

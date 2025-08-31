@@ -1,4 +1,5 @@
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/class_attribute_ast.hpp>
 #include <spp/asts/class_implementation_ast.hpp>
@@ -69,9 +70,8 @@ auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
 
     // Generic types cannot have any attributes set | TODO: future with constraints will allow some.
     if (base_cls_sym->is_generic and not arg_group->args.empty()) {
-        analyse::errors::SppArgumentNameInvalidError(*type, "object initializer", *arg_group->args[0], "object initializer argument")
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppArgumentNameInvalidError>().with_args(
+            *type, "object initializer", *arg_group->args[0], "object initializer argument").with_scopes({sm->current_scope}).raise();
     }
 
     // Prepare the object initializer arguments.

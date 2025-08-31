@@ -11,6 +11,9 @@ spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::CasePatternVarian
 }
 
 
+spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::~CasePatternVariantDestructureSkipSingleArgumentAst() = default;
+
+
 auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::pos_start() const -> std::size_t {
     return tok_underscore->pos_start();
 }

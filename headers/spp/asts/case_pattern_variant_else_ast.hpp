@@ -19,6 +19,8 @@ struct spp::asts::CasePatternVariantElseAst final : CasePatternVariantAst {
      */
     explicit CasePatternVariantElseAst(
         decltype(tok_else) &&tok_else);
+
+    ~CasePatternVariantElseAst() override;
 };
 
 

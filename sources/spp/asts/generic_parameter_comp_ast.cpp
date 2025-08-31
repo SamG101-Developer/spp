@@ -1,4 +1,5 @@
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
@@ -21,15 +22,17 @@ spp::asts::GenericParameterCompAst::GenericParameterCompAst(
 }
 
 
+spp::asts::GenericParameterCompAst::~GenericParameterCompAst() = default;
+
+
 auto spp::asts::GenericParameterCompAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
     mixins::CompilerMetaData *)
     -> void {
     // Ensure the type does not have a convention.
     if (const auto conv = type->get_convention(); conv != nullptr) {
-        analyse::errors::SppSecondClassBorrowViolationError(*type, *conv, "function return type")
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
+            *type, *conv, "function return type").with_scopes({sm->current_scope}).raise();
     }
 
     // Create a variable symbol for this constant in the current scope (class / function).

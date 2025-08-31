@@ -24,21 +24,24 @@ struct spp::asts::ExpressionAst : StatementAst {
 };
 
 
-#define ENFORCE_EXPRESSION_SUBTYPE(ast) \
-    if ((ast_cast<TypeAst>(ast) != nullptr) or (ast_cast<TokenAst>(ast) != nullptr)) { \
-        analyse::errors::SppExpressionTypeInvalidError(*ast).scopes({sm->current_scope}).raise(); \
+#define ENFORCE_EXPRESSION_SUBTYPE(ast)                                                                    \
+    if ((ast_cast<TypeAst>(ast) != nullptr) or (ast_cast<TokenAst>(ast) != nullptr)) {                     \
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionTypeInvalidError>().with_args( \
+            *ast).with_scopes({sm->current_scope}).raise();                                                \
     }
 
 
-#define ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(ast) \
-    if (ast_cast<TypeAst>(ast) != nullptr) { \
-        analyse::errors::SppExpressionTypeInvalidError(*ast).scopes({sm->current_scope}).raise(); \
+#define ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(ast)                                                        \
+    if (ast_cast<TypeAst>(ast) != nullptr) {                                                               \
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionTypeInvalidError>().with_args( \
+            *ast).with_scopes({sm->current_scope}).raise();                                                \
     }
 
 
-#define ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TYPE(ast) \
-    if (ast_cast<TokenAst>(ast) != nullptr) { \
-        analyse::errors::SppExpressionTypeInvalidError(*ast).scopes({sm->current_scope}).raise(); \
+#define ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TYPE(ast)                                                         \
+    if (ast_cast<TokenAst>(ast) != nullptr) {                                                              \
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionTypeInvalidError>().with_args( \
+            *ast).with_scopes({sm->current_scope}).raise();                                                \
     }
 
 

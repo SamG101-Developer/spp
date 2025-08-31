@@ -27,6 +27,8 @@ struct spp::asts::TypeUnaryExpressionAst final : TypeAst, std::enable_shared_fro
         decltype(op) op,
         decltype(rhs) rhs);
 
+    ~TypeUnaryExpressionAst() override;
+
 protected:
     auto equals(TypeAst const &other) const -> bool override;
 

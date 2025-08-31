@@ -4,7 +4,7 @@
 #include <spp/asts/_fwd.hpp>
 
 
-#define SPP_NO_ANNOTATIONS std::vector<std::unique_ptr<asts::AnnotationAst>>{}
+#define SPP_NO_ANNOTATIONS std::vector<std::unique_ptr<asts::AnnotationAst>>()
 
 
 /**
@@ -33,6 +33,8 @@ struct spp::asts::AnnotationAst final : virtual Ast {
     AnnotationAst(
         decltype(tok_at_sign) &&tok_at_sign,
         decltype(name) &&name);
+
+    ~AnnotationAst() override;
 
     /**
      * Custom comparison involves comparing the identifier of the annotation. This makes checking for duplicate

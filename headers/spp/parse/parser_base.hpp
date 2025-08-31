@@ -8,6 +8,9 @@
 #include <vector>
 
 #include <spp/lex/tokens.hpp>
+#include <spp/parse/errors/parser_error.hpp>
+#include <spp/parse/errors/parser_error_builder.hpp>
+#include <spp/utils/error_formatter.hpp>
 
 #include <boost/preprocessor.hpp>
 #include <boost/preprocessor/enum.hpp>
@@ -109,13 +112,12 @@
 
 
 #define CREATE_AST_WITH_BASE(out, T, base) \
-    auto out = T::new_empty();\
+    auto out = T::new_empty();             \
     *static_cast<decltype(base)::pointer>(out.get()) = std::move(*base.release());
 
 
 namespace spp::utils::errors {
     class ErrorFormatter;
-    struct SyntacticError;
 }
 
 
@@ -129,14 +131,11 @@ public:
     explicit ParserBase(std::vector<lex::RawToken> tokens, std::string_view file_name = "", std::unique_ptr<utils::errors::ErrorFormatter> error_formatter = nullptr);
     virtual ~ParserBase() = default;
 
-public:
-    auto get_error() const -> std::string;
-
 protected:
     std::size_t m_pos = 0;
     std::vector<lex::RawToken> m_tokens = {};
     std::size_t m_tokens_len = 0;
-    std::unique_ptr<utils::errors::SyntacticError> m_error;
+    std::unique_ptr<errors::SyntacticErrorBuilder<errors::SppSyntaxError>> m_error_builder;
     std::unique_ptr<utils::errors::ErrorFormatter> m_error_formatter;
 
     template <typename T>

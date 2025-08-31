@@ -11,6 +11,9 @@ spp::asts::BooleanLiteralAst::BooleanLiteralAst(
 }
 
 
+spp::asts::BooleanLiteralAst::~BooleanLiteralAst() = default;
+
+
 auto spp::asts::BooleanLiteralAst::True(const std::size_t pos) -> std::unique_ptr<BooleanLiteralAst> {
     auto tok = std::make_unique<TokenAst>(pos, lex::SppTokenType::KW_TRUE, "true");
     return std::make_unique<BooleanLiteralAst>(std::move(tok));
@@ -57,5 +60,6 @@ auto spp::asts::BooleanLiteralAst::infer_type(
     ScopeManager *,
     mixins::CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
+    // The boolean ast is always inferred as "std::boolean::Bool".
     return generate::common_types::boolean_type(pos_start());
 }

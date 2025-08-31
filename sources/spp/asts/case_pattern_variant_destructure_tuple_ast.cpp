@@ -17,6 +17,9 @@ spp::asts::CasePatternVariantDestructureTupleAst::CasePatternVariantDestructureT
 }
 
 
+spp::asts::CasePatternVariantDestructureTupleAst::~CasePatternVariantDestructureTupleAst() = default;
+
+
 auto spp::asts::CasePatternVariantDestructureTupleAst::pos_start() const -> std::size_t {
     return tok_l->pos_start();
 }

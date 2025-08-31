@@ -7,7 +7,7 @@
 
 spp::asts::GenericParameterTypeInlineConstraintsAst::GenericParameterTypeInlineConstraintsAst(
     decltype(tok_colon) &&tok_colon,
-    decltype(constraints) &&constraints):
+    decltype(constraints) &&constraints) :
     tok_colon(std::move(tok_colon)),
     constraints(std::move(constraints)) {
 }

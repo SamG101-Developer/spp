@@ -16,6 +16,9 @@ spp::asts::FunctionCallArgumentKeywordAst::FunctionCallArgumentKeywordAst(
 }
 
 
+spp::asts::FunctionCallArgumentKeywordAst::~FunctionCallArgumentKeywordAst() = default;
+
+
 auto spp::asts::FunctionCallArgumentKeywordAst::pos_start() const -> std::size_t {
     return name->pos_start();
 }

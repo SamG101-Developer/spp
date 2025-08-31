@@ -10,8 +10,6 @@
 #include <spp/utils/error_formatter.hpp>
 #include <spp/utils/errors.hpp>
 
-#include <magic_enum/magic_enum.hpp>
-
 
 int main() {
     auto code_stream = std::stringstream();
@@ -24,13 +22,7 @@ int main() {
 
     auto parser = spp::parse::ParserSpp(tokens);
     const auto root = parser.parse();
-    if (root == nullptr) {
-        auto error = parser.get_error();
-        std::cerr << error << "\n";
-        return 1;
-    }
-
-    std::cout << "PARSED";
+    std::cout << "PARSED\n";
 
     return 0;
 }

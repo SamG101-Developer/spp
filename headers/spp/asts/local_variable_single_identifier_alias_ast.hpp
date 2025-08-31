@@ -27,6 +27,8 @@ struct spp::asts::LocalVariableSingleIdentifierAliasAst final : virtual Ast {
     LocalVariableSingleIdentifierAliasAst(
         decltype(tok_as) &&tok_as,
         decltype(name) &&name);
+
+    ~LocalVariableSingleIdentifierAliasAst() override;
 };
 
 

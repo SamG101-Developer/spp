@@ -17,6 +17,9 @@ spp::asts::CasePatternVariantDestructureArrayAst::CasePatternVariantDestructureA
 }
 
 
+spp::asts::CasePatternVariantDestructureArrayAst::~CasePatternVariantDestructureArrayAst() = default;
+
+
 auto spp::asts::CasePatternVariantDestructureArrayAst::pos_start() const -> std::size_t {
     return tok_l->pos_start();
 }

@@ -11,6 +11,9 @@ spp::asts::LocalVariableSingleIdentifierAliasAst::LocalVariableSingleIdentifierA
 }
 
 
+spp::asts::LocalVariableSingleIdentifierAliasAst::~LocalVariableSingleIdentifierAliasAst() = default;
+
+
 auto spp::asts::LocalVariableSingleIdentifierAliasAst::pos_start() const -> std::size_t {
     return tok_as->pos_start();
 }

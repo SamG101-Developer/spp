@@ -14,6 +14,9 @@ spp::asts::FunctionCallArgumentPositionalAst::FunctionCallArgumentPositionalAst(
 }
 
 
+spp::asts::FunctionCallArgumentPositionalAst::~FunctionCallArgumentPositionalAst() = default;
+
+
 auto spp::asts::FunctionCallArgumentPositionalAst::pos_start() const -> std::size_t {
     return tok_unpack->pos_start();
 }

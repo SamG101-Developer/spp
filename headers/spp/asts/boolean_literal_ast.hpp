@@ -24,6 +24,8 @@ struct spp::asts::BooleanLiteralAst final : LiteralAst {
     explicit BooleanLiteralAst(
         decltype(tok_bool) &&tok_bool);
 
+    ~BooleanLiteralAst() override;
+
     /**
      * A static constructor to create a @c BooleanLiteralAst with a @c true value.
      * @param pos The position to create this AST at.

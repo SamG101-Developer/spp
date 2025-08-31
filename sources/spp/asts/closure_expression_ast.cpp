@@ -10,19 +10,13 @@
 #include <spp/asts/convention_ref_ast.hpp>
 #include <spp/asts/function_call_argument_group_ast.hpp>
 #include <spp/asts/function_parameter_ast.hpp>
+#include <spp/asts/function_parameter_group_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 
 #include <genex/algorithms/any_of.hpp>
-#include <genex/views/cast.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/for_each.hpp>
-#include <genex/views/ptr.hpp>
 #include <genex/views/to.hpp>
-
-#include "spp/analyse/utils/mem_utils.hpp"
-#include "spp/asts/function_parameter_group_ast.hpp"
 
 
 spp::asts::ClosureExpressionAst::ClosureExpressionAst(

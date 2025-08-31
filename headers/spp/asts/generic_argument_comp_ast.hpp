@@ -22,6 +22,8 @@ struct spp::asts::GenericArgumentCompAst : GenericArgumentAst {
      */
     explicit GenericArgumentCompAst(
         decltype(val) &&val);
+
+    ~GenericArgumentCompAst() override;
 };
 
 

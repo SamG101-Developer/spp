@@ -6,7 +6,7 @@
 
 
 spp::asts::IterPatternVariantNoValueAst::IterPatternVariantNoValueAst(
-    decltype(tok_underscore) &&tok_underscore):
+    decltype(tok_underscore) &&tok_underscore) :
     IterPatternVariantAst(),
     tok_underscore(std::move(tok_underscore)) {
 }

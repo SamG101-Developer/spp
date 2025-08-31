@@ -82,6 +82,8 @@ public:
         decltype(tok_assign) &&tok_assign,
         decltype(old_type) old_type);
 
+    ~TypeStatementAst() override;
+
 private:
     auto m_skip_all_scopes(ScopeManager *sm) -> void;
 

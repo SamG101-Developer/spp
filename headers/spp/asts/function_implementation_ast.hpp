@@ -16,6 +16,8 @@ struct spp::asts::FunctionImplementationAst final : InnerScopeAst<std::unique_pt
     friend class parse::ParserSpp;
     using InnerScopeAst::InnerScopeAst;
 
+    ~FunctionImplementationAst() override;
+
 private:
     static auto new_empty() -> std::unique_ptr<FunctionImplementationAst>;
 };

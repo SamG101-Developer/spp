@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/annotation_ast.hpp>
@@ -35,6 +36,9 @@ spp::asts::TypeStatementAst::TypeStatementAst(
     tok_assign(std::move(tok_assign)),
     old_type(std::move(old_type)) {
 }
+
+
+spp::asts::TypeStatementAst::~TypeStatementAst() = default;
 
 
 auto spp::asts::TypeStatementAst::pos_start() const -> std::size_t {
@@ -113,14 +117,14 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
 
     // Check there are no conventions on the old type.
     if (auto &&conv = old_type->get_convention(); conv != nullptr) {
-        analyse::errors::SppSecondClassBorrowViolationError(*old_type, *conv, "use statement's old type")
-            .scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
+            *old_type, *conv, "use statement's old type").with_scopes({sm->current_scope}).raise();
     }
 
     // Check there are no conventions on the new type.
     if (auto &&conv = new_type->get_convention(); conv != nullptr) {
-        analyse::errors::SppSecondClassBorrowViolationError(*new_type, *conv, "use statement's new type")
-            .scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
+            *new_type, *conv, "use statement's new type").with_scopes({sm->current_scope}).raise();
     }
 
     // Create a class for the alias type, and generate it.

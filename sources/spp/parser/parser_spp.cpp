@@ -149,9 +149,10 @@
 #include <spp/asts/use_statement_ast.hpp>
 
 #include <spp/parse/parser_spp.hpp>
+#include <spp/parse/errors/parser_error.hpp>
+#include <spp/parse/errors/parser_error_builder.hpp>
 #include <spp/utils/algorithms.hpp>
 #include <spp/utils/error_formatter.hpp>
-#include <spp/utils/errors.hpp>
 
 
 #define NO_ANNOTATIONS std::vector<std::unique_ptr<spp::asts::AnnotationAst>>()
@@ -171,7 +172,11 @@ const auto UPPER_IDENTIFIER_TOKENS = std::vector{
 
 
 auto spp::parse::ParserSpp::parse() -> std::unique_ptr<asts::ModulePrototypeAst> {
-    return parse_root();
+    auto root = parse_root();
+    if (root == nullptr) {
+        m_error_builder->raise();
+    }
+    return root;
 }
 
 
@@ -937,11 +942,11 @@ auto spp::parse::ParserSpp::parse_case_expression_branch_else_case() -> std::uni
     PARSE_ONCE(p1, parse_case_expression_pattern_variant_else_case);
 
     auto else_pattern = std::unique_ptr<asts::CasePatternVariantAst>(CREATE_AST(asts::CasePatternVariantElseAst, nullptr).release());
-    auto temp = std::vector<std::unique_ptr<asts::StatementAst>>{};
+    auto temp = std::vector<std::unique_ptr<asts::StatementAst>>();
     temp.push_back(std::unique_ptr<asts::StatementAst>(dynamic_cast<asts::CasePatternVariantElseCaseAst*>(p1.release())->case_expr.release()));
 
     auto else_case_body = CREATE_AST(asts::InnerScopeExpressionAst<std::unique_ptr<asts::StatementAst>>, nullptr, temp, nullptr);
-    auto temp_2 = std::vector<decltype(else_pattern)>{};
+    auto temp_2 = std::vector<decltype(else_pattern)>();
     temp_2.push_back(std::move(else_pattern));
     return CREATE_AST(asts::CaseExpressionBranchAst, nullptr, temp_2, nullptr, else_case_body);
 }
@@ -2822,13 +2827,13 @@ auto spp::parse::ParserSpp::parse_token_raw(const lex::RawTokenType tok, lex::Sp
 
     if (m_tokens[m_pos].type != tok) {
         using namespace std::string_literals;
-        if (m_error->pos == m_pos) {
-            m_error->tokens.insert(mapped_tok);
+        if (m_error_builder->pos == m_pos) {
+            m_error_builder->tokens.insert(mapped_tok);
             return nullptr;
         }
 
         if (m_store_error(m_pos, "Expected £, got '"s + m_tokens[m_pos].data + "'")) {
-            m_error->tokens.insert(mapped_tok);
+            m_error_builder->tokens.insert(mapped_tok);
             return nullptr;
         }
     }
@@ -2842,10 +2847,10 @@ auto spp::parse::ParserSpp::parse_token_raw(const lex::RawTokenType tok, lex::Sp
 
 
 auto spp::parse::ParserSpp::m_store_error(const std::size_t pos, std::string &&err_str) -> bool {
-    if (pos > m_error->pos) {
-        m_error = std::make_unique<utils::errors::SyntacticError>(std::move(err_str));
-        m_error->tokens.clear();
-        m_error->pos = pos;
+    if (pos > m_error_builder->pos) {
+        m_error_builder->with_args(err_str);
+        m_error_builder->tokens.clear();
+        m_error_builder->pos = pos;
         return true;
     }
     return false;

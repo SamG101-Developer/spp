@@ -43,6 +43,8 @@ struct spp::asts::CasePatternVariantDestructureObjectAst final : CasePatternVari
         decltype(elems) &&elems,
         decltype(tok_r) &&tok_r);
 
+    ~CasePatternVariantDestructureObjectAst() override;
+
     auto convert_to_variable(mixins::CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;

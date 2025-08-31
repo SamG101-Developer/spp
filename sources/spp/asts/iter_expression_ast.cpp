@@ -2,6 +2,7 @@
 #include <tuple>
 
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
@@ -97,7 +98,8 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
         | genex::views::cast_dynamic<IterPatternVariantExceptionAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::to<std::vector>(); bs.size() > 1) {
-        analyse::errors::SppIterExpressionPatternTypeDuplicateError(*bs[0], *bs[1]).scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternTypeDuplicateError>().with_args(
+            *bs[0], *bs[1]).with_scopes({sm->current_scope}).raise();
     }
 
     if (const auto bs = branches
@@ -105,7 +107,8 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
         | genex::views::cast_dynamic<IterPatternVariantExhaustedAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::to<std::vector>(); bs.size() > 1) {
-        analyse::errors::SppIterExpressionPatternTypeDuplicateError(*bs[0], *bs[1]).scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternTypeDuplicateError>().with_args(
+            *bs[0], *bs[1]).with_scopes({sm->current_scope}).raise();
     }
 
     if (const auto bs = branches
@@ -113,7 +116,8 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
         | genex::views::cast_dynamic<IterPatternVariantNoValueAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::to<std::vector>(); bs.size() > 1) {
-        analyse::errors::SppIterExpressionPatternTypeDuplicateError(*bs[0], *bs[1]).scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternTypeDuplicateError>().with_args(
+            *bs[0], *bs[1]).with_scopes({sm->current_scope}).raise();
     }
 
     if (const auto bs = branches
@@ -121,7 +125,8 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
         | genex::views::cast_dynamic<IterPatternVariantVariableAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::to<std::vector>(); bs.size() > 1) {
-        analyse::errors::SppIterExpressionPatternTypeDuplicateError(*bs[0], *bs[1]).scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternTypeDuplicateError>().with_args(
+            *bs[0], *bs[1]).with_scopes({sm->current_scope}).raise();
     }
 
     // Check condition + branch compatibility.
@@ -136,9 +141,8 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
             | genex::views::to<std::vector>();
 
         if (not analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN_OPT, *cond_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
-            analyse::errors::SppIterExpressionPatternIncompatibleError(*cond, *cond_type, *pat[0], *generate::common_types_precompiled::GEN_OPT)
-                .scopes({sm->current_scope})
-                .raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternIncompatibleError>().with_args(
+                *cond, *cond_type, *pat[0], *generate::common_types_precompiled::GEN_OPT).with_scopes({sm->current_scope}).raise();
         }
     }
 
@@ -151,9 +155,8 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
             | genex::views::to<std::vector>();
 
         if (not analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN_RES, *cond_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
-            analyse::errors::SppIterExpressionPatternIncompatibleError(*cond, *cond_type, *pat[0], *generate::common_types_precompiled::GEN_RES)
-                .scopes({sm->current_scope})
-                .raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternIncompatibleError>().with_args(
+                *cond, *cond_type, *pat[0], *generate::common_types_precompiled::GEN_RES).with_scopes({sm->current_scope}).raise();
         }
     }
 
@@ -207,27 +210,24 @@ auto spp::asts::IterExpressionAst::infer_type(
         // The GenOpt type requires "else || (var && nov && exh)".
         if (analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN_OPT, *cond_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
             if ((not pat_var_present or not pat_nov_present or not pat_exh_present) and not pat_else_present) {
-                analyse::errors::SppIterExpressionPatternMissingError(*cond, *cond_type)
-                    .scopes({sm->current_scope})
-                    .raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternMissingError>().with_args(
+                    *cond, *cond_type).with_scopes({sm->current_scope}).raise();
             }
         }
 
         // The GenRes type requires "else || (var && exc && exh)".
         if (analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN_RES, *cond_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
             if ((not pat_var_present or not pat_exc_present or not pat_exh_present) and not pat_else_present) {
-                analyse::errors::SppIterExpressionPatternMissingError(*cond, *cond_type)
-                    .scopes({sm->current_scope})
-                    .raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternMissingError>().with_args(
+                    *cond, *cond_type).with_scopes({sm->current_scope}).raise();
             }
         }
 
         // The Gen type requires "else || (var && exh)".
         if (analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN, *cond_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
             if ((not pat_var_present or not pat_exh_present) and not pat_else_present) {
-                analyse::errors::SppIterExpressionPatternMissingError(*cond, *cond_type)
-                    .scopes({sm->current_scope})
-                    .raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternMissingError>().with_args(
+                    *cond, *cond_type).with_scopes({sm->current_scope}).raise();
             }
         }
     }

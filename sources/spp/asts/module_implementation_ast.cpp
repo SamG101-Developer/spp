@@ -12,6 +12,9 @@ spp::asts::ModuleImplementationAst::ModuleImplementationAst(
 }
 
 
+spp::asts::ModuleImplementationAst::~ModuleImplementationAst() = default;
+
+
 auto spp::asts::ModuleImplementationAst::pos_start() const -> std::size_t {
     return members.empty() ? 0 : members.front()->pos_start();
 }

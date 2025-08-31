@@ -16,6 +16,9 @@ spp::asts::CasePatternVariantElseCaseAst::CasePatternVariantElseCaseAst(
 }
 
 
+spp::asts::CasePatternVariantElseCaseAst::~CasePatternVariantElseCaseAst() = default;
+
+
 auto spp::asts::CasePatternVariantElseCaseAst::pos_start() const -> std::size_t {
     return tok_else->pos_start();
 }

@@ -1,5 +1,5 @@
-#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/scope.hpp>
+#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/loop_else_statement_ast.hpp>
 #include <spp/asts/inner_scope_expression_ast.hpp>
 #include <spp/asts/token_ast.hpp>

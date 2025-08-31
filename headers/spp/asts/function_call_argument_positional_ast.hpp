@@ -28,6 +28,8 @@ struct spp::asts::FunctionCallArgumentPositionalAst : FunctionCallArgumentAst {
         decltype(conv) &&conv,
         decltype(tok_unpack) &&tok_unpack,
         decltype(val) &&val);
+
+    ~FunctionCallArgumentPositionalAst() override;
 };
 
 

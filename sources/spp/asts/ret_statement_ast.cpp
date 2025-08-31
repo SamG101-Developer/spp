@@ -1,4 +1,5 @@
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
@@ -65,7 +66,8 @@ auto spp::asts::RetStatementAst::stage_7_analyse_semantics(
     // Check the enclosing function is a subroutine and not a subroutine, if a value is being returned.
     const auto function_flavour = meta->enclosing_function_flavour;
     if (function_flavour->token_type != lex::SppTokenType::KW_FUN and expr != nullptr) {
-        analyse::errors::SppFunctionCoroutineContainsRetExprExpressionError(*function_flavour, *tok_ret).scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCoroutineContainsRetExprExpressionError>().with_args(
+            *function_flavour, *tok_ret).with_scopes({sm->current_scope}).raise();
     }
 
     // Analyse the expression if it exists, and determine the type of the expression.
@@ -95,9 +97,8 @@ auto spp::asts::RetStatementAst::stage_7_analyse_semantics(
     const auto direct_match = analyse::utils::type_utils::symbolic_eq(*m_ret_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
     if (not direct_match) {
         const auto expr_for_err = expr ? ast_cast<Ast>(expr.get()) : ast_cast<Ast>(tok_ret.get());
-        analyse::errors::SppTypeMismatchError(*expr_type, *expr_type, *expr_for_err, *m_ret_type)
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
+            *expr_type, *expr_type, *expr_for_err, *m_ret_type).with_scopes({sm->current_scope}).raise();
     }
 }
 

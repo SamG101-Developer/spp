@@ -1,4 +1,5 @@
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/asts/object_initializer_argument_ast.hpp>
@@ -23,7 +24,6 @@ auto spp::asts::ObjectInitializerArgumentAst::stage_7_analyse_semantics(
     ENFORCE_EXPRESSION_SUBTYPE(val.get());
     val->stage_7_analyse_semantics(sm, meta);
 }
-
 
 
 auto spp::asts::ObjectInitializerArgumentAst::stage_8_check_memory(

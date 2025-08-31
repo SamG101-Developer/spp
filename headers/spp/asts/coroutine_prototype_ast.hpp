@@ -5,8 +5,10 @@
 #include <spp/asts/_fwd.hpp>
 
 
-struct spp::asts::CoroutinePrototypeAst : FunctionPrototypeAst {
+struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst {
     using FunctionPrototypeAst::FunctionPrototypeAst;
+
+    ~CoroutinePrototypeAst() override;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };

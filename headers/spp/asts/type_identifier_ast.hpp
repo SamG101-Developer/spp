@@ -35,6 +35,8 @@ struct spp::asts::TypeIdentifierAst final : TypeAst, std::enable_shared_from_thi
         decltype(name) &&name,
         decltype(generic_arg_group) &&generic_args);
 
+    ~TypeIdentifierAst() override;
+
     static auto from_identifier(IdentifierAst const &identifier) -> std::unique_ptr<TypeIdentifierAst>;
 
 private:

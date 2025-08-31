@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
@@ -31,6 +32,9 @@ spp::asts::CmpStatementAst::CmpStatementAst(
     tok_assign(std::move(tok_assign)),
     value(std::move(value)) {
 }
+
+
+spp::asts::CmpStatementAst::~CmpStatementAst() = default;
 
 
 auto spp::asts::CmpStatementAst::pos_start() const -> std::size_t {
@@ -98,9 +102,8 @@ auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
 
     // Ensure that the convention type doesn't have a convention.
     if (const auto conv = type->get_convention(); conv != nullptr) {
-        analyse::errors::SppSecondClassBorrowViolationError(*this, *conv, "global constant type")
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
+            *this, *conv, "global constant type").with_scopes({sm->current_scope}).raise();
     }
 
     // Create a symbol for this constant declaration.
@@ -134,9 +137,8 @@ auto spp::asts::CmpStatementAst::stage_7_analyse_semantics(
     const auto inferred_type = value->infer_type(sm, meta);
 
     if (not analyse::utils::type_utils::symbolic_eq(*given_type, *inferred_type, *sm->current_scope, *sm->current_scope)) {
-        analyse::errors::SppTypeMismatchError(*type, *given_type, *value, *inferred_type)
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
+            *type, *given_type, *value, *inferred_type).with_scopes({sm->current_scope}).raise();
     }
 }
 

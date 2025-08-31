@@ -1,4 +1,5 @@
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/type_ast.hpp>
@@ -73,7 +74,8 @@ auto spp::asts::IdentifierAst::stage_7_analyse_semantics(
             | genex::views::to<std::vector>();
 
         const auto closest_match = spp::utils::strings::closest_match(val, alternatives);
-        analyse::errors::SppIdentifierUnknownError(*this, "identifier", closest_match).scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierUnknownError>().with_args(
+            *this, "identifier", closest_match).with_scopes({sm->current_scope}).raise();
     }
 }
 

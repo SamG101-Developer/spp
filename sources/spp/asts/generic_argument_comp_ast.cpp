@@ -3,6 +3,9 @@
 
 
 spp::asts::GenericArgumentCompAst::GenericArgumentCompAst(
-    decltype(val) &&val):
+    decltype(val) &&val) :
     val(std::move(val)) {
 }
+
+
+spp::asts::GenericArgumentCompAst::~GenericArgumentCompAst() = default;

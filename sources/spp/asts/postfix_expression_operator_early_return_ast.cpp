@@ -1,4 +1,5 @@
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/generic_argument_type_ast.hpp>
@@ -60,17 +61,15 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_7_analyse_semanti
     // Ensure the left-hand-side superimposes the Try type.
     const auto try_type = analyse::utils::type_utils::get_try_type(*lhs_type, *sm);
     if (try_type == nullptr) {
-        analyse::errors::SppEarlyReturnRequiresTryTypeError(*this, *lhs, *lhs_type)
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppEarlyReturnRequiresTryTypeError>().with_args(
+            *this, *lhs, *lhs_type).with_scopes({sm->current_scope}).raise();
     }
 
     // Check the Residual type is compatible with the function's return type.
     const auto residual_type = try_type->type_parts().back()->generic_arg_group->type_at("Residual")->val;
     if (not analyse::utils::type_utils::symbolic_eq(*meta->enclosing_function_ret_type[0], *residual_type, *meta->enclosing_function_scope, *sm->current_scope)) {
-        analyse::errors::SppTypeMismatchError(*meta->enclosing_function_ret_type[0], *meta->enclosing_function_ret_type[0], *lhs, *residual_type)
-            .scopes({meta->enclosing_function_scope, sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
+            *meta->enclosing_function_ret_type[0], *meta->enclosing_function_ret_type[0], *lhs, *residual_type).with_scopes({meta->enclosing_function_scope, sm->current_scope}).raise();
     }
 }
 

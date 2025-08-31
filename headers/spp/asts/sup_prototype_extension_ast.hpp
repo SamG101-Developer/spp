@@ -76,16 +76,16 @@ struct spp::asts::SupPrototypeExtensionAst final : virtual Ast, SupMemberAst, Mo
 private:
     auto m_check_cyclic_extension(
         analyse::scopes::TypeSymbol const &sup_sym,
-        analyse::scopes::Scope const &check_scope)
+        analyse::scopes::Scope &check_scope)
         -> void;
 
     auto m_check_double_extension(
         analyse::scopes::TypeSymbol const &cls_sym,
-        analyse::scopes::Scope const &check_scope)
+        analyse::scopes::Scope &check_scope)
         -> void;
 
     auto m_check_self_extension(
-        analyse::scopes::Scope const &check_scope)
+        analyse::scopes::Scope &check_scope)
         -> void;
 
 public:

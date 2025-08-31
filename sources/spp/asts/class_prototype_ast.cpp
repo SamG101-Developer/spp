@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/symbols.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
@@ -32,6 +33,9 @@ spp::asts::ClassPrototypeAst::ClassPrototypeAst(
     generic_param_group(std::move(generic_param_group)),
     impl(std::move(impl)) {
 }
+
+
+spp::asts::ClassPrototypeAst::~ClassPrototypeAst() = default;
 
 
 auto spp::asts::ClassPrototypeAst::pos_start() const -> std::size_t {
@@ -88,13 +92,13 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
     sym_name->generic_arg_group = GenericArgumentGroupAst::from_params(*generic_param_group);
 
     // Create the symbols as TypeSymbol pointers, so AliasSymbols can also be used.
-    std::unique_ptr<analyse::scopes::TypeSymbol> symbol_1 = nullptr;
-    std::unique_ptr<analyse::scopes::TypeSymbol> symbol_2 = nullptr;
+    std::shared_ptr<analyse::scopes::TypeSymbol> symbol_1 = nullptr;
+    std::shared_ptr<analyse::scopes::TypeSymbol> symbol_2 = nullptr;
 
     // Create the symbol for the type, include generics if applicable, like Vec[T].
     symbol_1 = m_for_alias
-        ? std::make_unique<analyse::scopes::AliasSymbol>(std::move(sym_name), this, sm->current_scope, sm->current_scope, nullptr)
-        : std::make_unique<analyse::scopes::TypeSymbol>(std::move(sym_name), this, sm->current_scope, sm->current_scope);
+                   ? std::make_unique<analyse::scopes::AliasSymbol>(std::move(sym_name), this, sm->current_scope, sm->current_scope, nullptr)
+                   : std::make_unique<analyse::scopes::TypeSymbol>(std::move(sym_name), this, sm->current_scope, sm->current_scope);
     sm->current_scope->ty_sym = symbol_1.get();
     sm->current_scope->parent->add_symbol(std::move(symbol_1));
     m_cls_sym = sm->current_scope->ty_sym;
@@ -102,8 +106,8 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
     // If the type was generic, like Vec[T], also create a base Vec symbol.
     if (not generic_param_group->params.empty()) {
         symbol_2 = m_for_alias
-            ? std::make_unique<analyse::scopes::AliasSymbol>(ast_clone(name->type_parts()[0]), this, sm->current_scope, sm->current_scope, nullptr)
-            : std::make_unique<analyse::scopes::TypeSymbol>(ast_clone(name->type_parts()[0]), this, sm->current_scope, sm->current_scope);
+                       ? std::make_unique<analyse::scopes::AliasSymbol>(ast_clone(name->type_parts()[0]), this, sm->current_scope, sm->current_scope, nullptr)
+                       : std::make_unique<analyse::scopes::TypeSymbol>(ast_clone(name->type_parts()[0]), this, sm->current_scope, sm->current_scope);
         symbol_2->generic_impl = symbol_1.get();
         const auto ret_sym = symbol_2.get();
         sm->current_scope->parent->add_symbol(std::move(symbol_2));
@@ -187,9 +191,8 @@ auto spp::asts::ClassPrototypeAst::stage_6_pre_analyse_semantics(
 
     // Check the type isn't recursive.
     if (auto &&recursion = analyse::utils::type_utils::is_type_recursive(*this, *sm)) {
-        analyse::errors::SppRecursiveTypeError(*this, *recursion)
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppRecursiveTypeError>().with_args(
+            *this, *recursion).with_scopes({sm->current_scope}).raise();
     }
 
     sm->move_out_of_current_scope();

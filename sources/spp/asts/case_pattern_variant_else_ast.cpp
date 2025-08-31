@@ -6,9 +6,12 @@
 
 
 spp::asts::CasePatternVariantElseAst::CasePatternVariantElseAst(
-    decltype(tok_else) &&tok_else):
+    decltype(tok_else) &&tok_else) :
     tok_else(std::move(tok_else)) {
 }
+
+
+spp::asts::CasePatternVariantElseAst::~CasePatternVariantElseAst() = default;
 
 
 auto spp::asts::CasePatternVariantElseAst::pos_start() const -> std::size_t {

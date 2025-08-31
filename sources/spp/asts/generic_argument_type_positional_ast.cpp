@@ -1,5 +1,5 @@
-#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/scope.hpp>
+#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/symbols.hpp>
 #include <spp/asts/convention_ast.hpp>
 #include <spp/asts/generic_argument_type_positional_ast.hpp>

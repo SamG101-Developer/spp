@@ -5,7 +5,8 @@
 
 
 spp::asts::LocalVariableAst::LocalVariableAst() :
-    m_mapped_let(nullptr) {
+    m_mapped_let(nullptr),
+    m_from_pattern(false) {
 }
 
 

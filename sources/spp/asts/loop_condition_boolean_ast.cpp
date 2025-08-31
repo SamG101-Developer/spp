@@ -1,4 +1,5 @@
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
@@ -60,9 +61,8 @@ auto spp::asts::LoopConditionBooleanAst::stage_7_analyse_semantics(
     const auto cond_type = cond->infer_type(sm, meta);
     const auto target_type = generate::common_types_precompiled::BOOL;
     if (not analyse::utils::type_utils::is_type_boolean(*cond_type, *sm->current_scope)) {
-        analyse::errors::SppExpressionNotBooleanError(*cond, *cond_type, "loop")
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionNotBooleanError>().with_args(
+            *cond, *cond_type, "loop").with_scopes({sm->current_scope}).raise();
     }
 }
 

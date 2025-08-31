@@ -14,6 +14,9 @@ spp::asts::GenericParameterTypeAst::GenericParameterTypeAst(
 }
 
 
+spp::asts::GenericParameterTypeAst::~GenericParameterTypeAst() = default;
+
+
 auto spp::asts::GenericParameterTypeAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
     mixins::CompilerMetaData *) -> void {

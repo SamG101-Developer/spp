@@ -50,6 +50,8 @@ struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
         decltype(tok_of) &&tok_of,
         decltype(branches) &&branches);
 
+    ~CaseExpressionAst() override;
+
     static auto new_non_pattern_match(
         decltype(tok_case) &&tok_case,
         decltype(cond) &&cond,

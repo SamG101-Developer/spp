@@ -21,6 +21,9 @@ spp::asts::TypeUnaryExpressionAst::TypeUnaryExpressionAst(
 }
 
 
+spp::asts::TypeUnaryExpressionAst::~TypeUnaryExpressionAst() = default;
+
+
 auto spp::asts::TypeUnaryExpressionAst::pos_start() const -> std::size_t {
     return op->pos_start();
 }

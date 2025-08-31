@@ -6,7 +6,7 @@
 
 
 spp::asts::IterPatternVariantExhaustedAst::IterPatternVariantExhaustedAst(
-    decltype(tok_exhausted) &&tok_exhausted):
+    decltype(tok_exhausted) &&tok_exhausted) :
     IterPatternVariantAst(),
     tok_exhausted(std::move(tok_exhausted)) {
 }

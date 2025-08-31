@@ -50,6 +50,8 @@ public:
         decltype(members) &&members,
         decltype(tok_r) &&tok_r);
 
+    // ~InnerScopeAst() override;
+
 protected:
     static auto new_empty() -> std::unique_ptr<InnerScopeAst>;
 

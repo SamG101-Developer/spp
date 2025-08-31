@@ -1,6 +1,8 @@
+#include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
+#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
-#include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/asts/expression_ast.hpp>
 #include <spp/asts/function_parameter_optional_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
@@ -8,8 +10,6 @@
 #include <spp/asts/local_variable_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
-
-#include "spp/analyse/scopes/scope_manager.hpp"
 
 
 spp::asts::FunctionParameterOptionalAst::FunctionParameterOptionalAst(
@@ -76,9 +76,8 @@ auto spp::asts::FunctionParameterOptionalAst::stage_7_analyse_semantics(
     // Make sure the default expression the correct type.
     const auto default_type = default_val->infer_type(sm, meta);
     if (not analyse::utils::type_utils::symbolic_eq(*type, *default_type, *sm->current_scope, *sm->current_scope)) {
-        analyse::errors::SppTypeMismatchError(*extract_name(), *type, *default_val, *default_type)
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
+            *extract_name(), *type, *default_val, *default_type).with_scopes({sm->current_scope}).raise();
     }
 }
 

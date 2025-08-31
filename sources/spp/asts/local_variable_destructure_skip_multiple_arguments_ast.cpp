@@ -56,5 +56,5 @@ auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::extract_name()
 
 auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::extract_names() const
     -> std::vector<std::shared_ptr<IdentifierAst>> {
-    return binding != nullptr ? binding->extract_names() : std::vector<std::shared_ptr<IdentifierAst>>{};
+    return binding != nullptr ? binding->extract_names() : std::vector<std::shared_ptr<IdentifierAst>>();
 }

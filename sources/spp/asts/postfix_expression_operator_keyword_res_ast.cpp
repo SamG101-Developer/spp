@@ -4,6 +4,7 @@
 #include <spp/asts/function_call_argument_ast.hpp>
 #include <spp/asts/function_call_argument_group_ast.hpp>
 #include <spp/asts/fold_expression_ast.hpp>
+#include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_argument_type_keyword_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
@@ -17,8 +18,6 @@
 #include <spp/asts/generate/common_types_precompiled.hpp>
 
 #include <genex/actions/remove.hpp>
-
-#include "spp/asts/generic_argument_group_ast.hpp"
 
 
 spp::asts::PostfixExpressionOperatorKeywordResAst::PostfixExpressionOperatorKeywordResAst(

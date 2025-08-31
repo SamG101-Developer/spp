@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/symbols.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
@@ -114,9 +115,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         | genex::views::to<std::vector>();
 
     if (not arg_names.empty()) {
-        analyse::errors::SppIdentifierDuplicateError(*arg_names[0], *arg_names[1], "keyword function-argument")
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
+            *arg_names[0], *arg_names[1], "keyword function-argument").with_scopes({sm->current_scope}).raise();
     }
 
     // Check the arguments are in the correct order.
@@ -126,9 +126,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         | genex::views::to<std::vector>());
 
     if (not unordered_args.empty()) {
-        analyse::errors::SppOrderInvalidError(unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second)
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>().with_args(
+            unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second).with_scopes({sm->current_scope}).raise();
     }
 
     // Expand tuple-expansion arguments ("..tuple" => "tuple.0, tuple.1, ...")
@@ -140,9 +139,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         // Check the argument value is a tuple expression.
         auto arg_type = arg->infer_type(sm, meta);
         if (not analyse::utils::type_utils::is_type_tuple(*arg_type, *sm->current_scope)) {
-            analyse::errors::SppExpansionOfNonTupleError(*arg->val, *arg_type)
-                .scopes({sm->current_scope})
-                .raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpansionOfNonTupleError>().with_args(
+                *arg->val, *arg_type).with_scopes({sm->current_scope}).raise();
         }
 
         // Replace the tuple-expansion argument with the expanded arguments.
@@ -168,16 +166,14 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
 
         // Immutable symbols cannot be mutated.
         if (not sym->is_mutable) {
-            analyse::errors::SppInvalidMutationError(*arg->val, *arg->conv, *sym->memory_info->ast_initialization)
-                .scopes({sm->current_scope})
-                .raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
+                *arg->val, *arg->conv, *sym->memory_info->ast_initialization).with_scopes({sm->current_scope}).raise();
         }
 
         // Immutable borrows, even if their symbol is mutable, cannot be mutated.
         if (sym->memory_info->ast_borrowed and sym->memory_info->is_borrow_ref) {
-            analyse::errors::SppInvalidMutationError(*arg->val, *arg->conv, *sym->memory_info->ast_borrowed)
-                .scopes({sm->current_scope})
-                .raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
+                *arg->val, *arg->conv, *sym->memory_info->ast_borrowed).with_scopes({sm->current_scope}).raise();
         }
     }
 }
@@ -208,7 +204,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
         for (auto &&[assignment, b, m, _] : sym->memory_info->borrow_refers_to) {
             if (assignment == nullptr) { continue; }
             (m ? borrows_mut : borrows_ref).emplace_back(assignment);
-            (m ? preexisting_borrows_mut : preexisting_borrows_ref).try_emplace(assignment, std::vector<IdentifierAst*>{}).first->second.emplace_back(ast_cast<IdentifierAst>(assignment));
+            (m ? preexisting_borrows_mut : preexisting_borrows_ref).try_emplace(assignment, std::vector<IdentifierAst*>()).first->second.emplace_back(ast_cast<IdentifierAst>(assignment));
         }
     }
 
@@ -238,7 +234,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                     | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
                     | genex::views::to<std::vector>();
                 if (not overlaps.empty()) {
-                    analyse::errors::SppMemoryOverlapUsageError(*overlaps[0], *arg->val).scopes({sm->current_scope}).raise();
+                    analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemoryOverlapUsageError>().with_args(
+                        *overlaps[0], *arg->val).with_scopes({sm->current_scope}).raise();
                 }
             }
         }
@@ -249,7 +246,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
                 | genex::views::to<std::vector>();
             if (not overlaps.empty()) {
-                analyse::errors::SppMemoryOverlapUsageError(*overlaps[0], *arg->val).scopes({sm->current_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemoryOverlapUsageError>().with_args(
+                    *overlaps[0], *arg->val).with_scopes({sm->current_scope}).raise();
             }
 
             for (const auto *existing_assignment : preexisting_borrows_mut[arg->val.get()]) {
@@ -278,7 +276,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
                 | genex::views::to<std::vector>();
             if (not overlaps.empty()) {
-                analyse::errors::SppMemoryOverlapUsageError(*overlaps[0], *arg->val).scopes({sm->current_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemoryOverlapUsageError>().with_args(
+                    *overlaps[0], *arg->val).with_scopes({sm->current_scope}).raise();
             }
 
             for (const auto *existing_assignment : preexisting_borrows_mut[arg->val.get()]) {

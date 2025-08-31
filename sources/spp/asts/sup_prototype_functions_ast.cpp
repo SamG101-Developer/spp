@@ -1,4 +1,5 @@
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/analyse/scopes/symbols.hpp>
@@ -28,6 +29,9 @@ spp::asts::SupPrototypeFunctionsAst::SupPrototypeFunctionsAst(
     name(std::move(name)),
     impl(std::move(impl)) {
 }
+
+
+spp::asts::SupPrototypeFunctionsAst::~SupPrototypeFunctionsAst() = default;
 
 
 auto spp::asts::SupPrototypeFunctionsAst::pos_start() const -> std::size_t {
@@ -88,17 +92,20 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_2_gen_top_level_scopes(
 
     // Check there are optional generic parameters.
     if (const auto optional = generic_param_group->get_optional_params(); not optional.empty()) {
-        analyse::errors::SppSuperimpositionOptionalGenericParameterError(*optional[0]).scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionOptionalGenericParameterError>().with_args(
+            *optional[0]).with_scopes({sm->current_scope}).raise();
     }
 
     // Check every generic parameter is constrained by the type.
     if (const auto unconstrained = generic_param_group->get_all_params() | genex::views::filter([this](auto &&x) { return not name->contains_generic(*x); }) | genex::views::to<std::vector>(); not unconstrained.empty()) {
-        analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError(*unconstrained[0]).scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError>().with_args(
+            *unconstrained[0]).with_scopes({sm->current_scope}).raise();
     }
 
     // No conventions allowed on the name.
     if (auto &&conv = name->get_convention(); conv != nullptr) {
-        analyse::errors::SppSecondClassBorrowViolationError(*name, *conv, "superimposition type").scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
+            *name, *conv, "superimposition type").with_scopes({sm->current_scope}).raise();
     }
 
 
@@ -146,7 +153,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_5_load_super_scopes(
     const auto base_cls_sym = sm->current_scope->get_type_symbol(*name->without_generics());
     if (sm->current_scope->parent == sm->current_scope->parent_module()) {
         if (not base_cls_sym->is_generic) {
-            sm->normal_sup_blocks.try_emplace(base_cls_sym, std::vector<analyse::scopes::Scope*>{}).first->second.emplace_back(sm->current_scope);
+            sm->normal_sup_blocks.try_emplace(base_cls_sym, std::vector<analyse::scopes::Scope*>()).first->second.emplace_back(sm->current_scope);
         }
         else {
             sm->generic_sup_blocks.emplace_back(sm->current_scope);

@@ -1,4 +1,5 @@
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
 #include <spp/asts/postfix_expression_operator_ast.hpp>
@@ -11,6 +12,9 @@ spp::asts::PostfixExpressionAst::PostfixExpressionAst(
     lhs(std::move(lhs)),
     op(std::move(op)) {
 }
+
+
+spp::asts::PostfixExpressionAst::~PostfixExpressionAst() = default;
 
 
 auto spp::asts::PostfixExpressionAst::pos_start() const -> std::size_t {

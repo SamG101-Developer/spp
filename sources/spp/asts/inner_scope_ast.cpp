@@ -32,6 +32,10 @@ spp::asts::InnerScopeAst<T>::InnerScopeAst(
 }
 
 
+// template <typename T>
+// spp::asts::InnerScopeAst<T>::~InnerScopeAst() = default;
+
+
 template <typename T>
 spp::asts::InnerScopeAst<T>::InnerScopeAst() :
     tok_l(nullptr),

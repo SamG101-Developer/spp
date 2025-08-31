@@ -10,3 +10,6 @@ auto spp::asts::LoopConditionAst::infer_type(
     // Loop conditions are always boolean (analysis prevents non-boolean expressions).
     return generate::common_types::boolean_type(pos_start());
 }
+
+
+spp::asts::LoopConditionAst::~LoopConditionAst() = default;

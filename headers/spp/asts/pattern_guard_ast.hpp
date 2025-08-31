@@ -29,6 +29,8 @@ struct spp::asts::PatternGuardAst final : virtual Ast {
         decltype(tok_and) &&tok_and,
         decltype(expr) &&expression);
 
+    ~PatternGuardAst() override;
+
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;

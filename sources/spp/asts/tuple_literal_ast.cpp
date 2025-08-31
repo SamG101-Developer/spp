@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
@@ -75,7 +76,8 @@ auto spp::asts::TupleLiteralAst::stage_7_analyse_semantics(
     for (auto &&elem : elems | genex::views::deref) {
         if (auto [elem_sym, _] = sm->current_scope->get_var_symbol_outermost(elem); elem_sym != nullptr) {
             if (const auto borrow_ast = elem_sym->memory_info->ast_borrowed) {
-                analyse::errors::SppSecondClassBorrowViolationError(elem, *borrow_ast, "explicit array element type").scopes({sm->current_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
+                    elem, *borrow_ast, "explicit array element type").with_scopes({sm->current_scope}).raise();
             }
         }
     }

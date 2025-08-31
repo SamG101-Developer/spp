@@ -40,6 +40,9 @@ spp::asts::TypeIdentifierAst::TypeIdentifierAst(
 }
 
 
+spp::asts::TypeIdentifierAst::~TypeIdentifierAst() = default;
+
+
 auto spp::asts::TypeIdentifierAst::pos_start() const -> std::size_t {
     return m_pos;
 }

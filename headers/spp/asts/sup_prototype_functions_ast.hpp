@@ -55,6 +55,8 @@ struct spp::asts::SupPrototypeFunctionsAst final : virtual Ast, ModuleMemberAst 
         decltype(name) &&name,
         decltype(impl) &&impl);
 
+    ~SupPrototypeFunctionsAst() override;
+
     auto stage_1_pre_process(Ast *ctx) -> void override;
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *) -> void override;

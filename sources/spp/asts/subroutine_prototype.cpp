@@ -1,6 +1,7 @@
 #include <vector>
 
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/function_implementation_ast.hpp>
@@ -8,6 +9,9 @@
 #include <spp/asts/subroutine_prototype_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>
+
+
+spp::asts::SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;
 
 
 auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
@@ -36,6 +40,7 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
         *return_type, *generate::common_types_precompiled::VOID, *sm->current_scope, *sm->current_scope);
     if (not(is_void or is_never or m_no_impl_annotation or m_abstract_annotation or (not impl->members.empty() and ast_cast<RetStatementAst>(impl->final_member())))) {
         const auto final_member = impl->final_member();
-        analyse::errors::SppFunctionSubroutineMissingReturnStatementError(*final_member, *return_type).scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionSubroutineMissingReturnStatementError>().with_args(
+            *final_member, *return_type).with_scopes({sm->current_scope}).raise();
     }
 }

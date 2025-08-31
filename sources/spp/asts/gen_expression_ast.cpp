@@ -1,5 +1,6 @@
-#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
+#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/convention_mut_ast.hpp>
@@ -74,7 +75,8 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
     // Check the enclosing function is a coroutine and not a subroutine.
     const auto function_flavour = meta->enclosing_function_flavour;
     if (function_flavour->token_type != lex::SppTokenType::KW_COR) {
-        analyse::errors::SppFunctionSubroutineContainsGenExpressionError(*function_flavour, *tok_gen).scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionSubroutineContainsGenExpressionError>().with_args(
+            *function_flavour, *tok_gen).with_scopes({sm->current_scope}).raise();
     }
 
     // Analyse the expression if it exists, and determine the type of the expression.
@@ -110,9 +112,8 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
     const auto optional_match = is_optional and analyse::utils::type_utils::symbolic_eq(*generate::common_types::void_type(0), *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
     const auto fallible_match = is_fallible and analyse::utils::type_utils::symbolic_eq(*error_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
     if (not(direct_match or optional_match or fallible_match)) {
-        analyse::errors::SppYieldedTypeMismatchError(*yield_type, *yield_type, *expr, *expr_type, is_optional, is_fallible, *error_type)
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppYieldedTypeMismatchError>().with_args(
+            *yield_type, *yield_type, *expr, *expr_type, is_optional, is_fallible, *error_type).with_scopes({sm->current_scope}).raise();
     }
 }
 
@@ -140,9 +141,8 @@ auto spp::asts::GenExpressionAst::stage_8_check_memory(
 
     else if (conv->tag == ConventionAst::ConventionTag::MUT and not sym->is_mutable) {
         // Check the argument's symbol is mutable, if the symbol exists.
-        analyse::errors::SppInvalidMutationError(*expr, *conv, *sym->memory_info->ast_initialization)
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
+            *expr, *conv, *sym->memory_info->ast_initialization).with_scopes({sm->current_scope}).raise();
     }
 }
 

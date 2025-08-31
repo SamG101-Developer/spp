@@ -16,6 +16,9 @@ spp::asts::ModulePrototypeAst::ModulePrototypeAst(
 }
 
 
+spp::asts::ModulePrototypeAst::~ModulePrototypeAst() = default;
+
+
 auto spp::asts::ModulePrototypeAst::pos_start() const -> std::size_t {
     return impl->pos_start();
 }

@@ -11,6 +11,9 @@ spp::asts::TokenAst::TokenAst(
 }
 
 
+spp::asts::TokenAst::~TokenAst() = default;
+
+
 auto spp::asts::TokenAst::operator==(TokenAst const &that) const -> bool {
     return token_type == that.token_type;
 }

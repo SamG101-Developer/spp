@@ -45,6 +45,8 @@ struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiteralAst {
         decltype(elems) &&elements,
         decltype(tok_r) &&tok_r);
 
+    ~ArrayLiteralExplicitElementsAst() override;
+
     /**
      * Semantic analysis for an array with explicit elements ensures that all elements are of the same type, and that
      * none of the elements are borrowed (ie the type of all the elements is not a borrow type). This is because it

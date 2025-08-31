@@ -1,4 +1,5 @@
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
@@ -14,6 +15,9 @@ spp::asts::PatternGuardAst::PatternGuardAst(
     tok_and(std::move(tok_and)),
     expr(std::move(expression)) {
 }
+
+
+spp::asts::PatternGuardAst::~PatternGuardAst() = default;
 
 
 auto spp::asts::PatternGuardAst::pos_start() const -> std::size_t {
@@ -60,9 +64,8 @@ auto spp::asts::PatternGuardAst::stage_7_analyse_semantics(
     // Check the guard's type is boolean.
     const auto expr_type = expr->infer_type(sm, meta);
     if (not analyse::utils::type_utils::is_type_boolean(*expr_type, *sm->current_scope)) {
-        analyse::errors::SppExpressionNotBooleanError(*expr, *expr_type, "pattern guard")
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionNotBooleanError>().with_args(
+            *expr, *expr_type, "pattern guard").with_scopes({sm->current_scope}).raise();
     }
 }
 

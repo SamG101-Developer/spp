@@ -1,4 +1,5 @@
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
@@ -69,7 +70,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
 
         // Check the left-hand-side isn't a generic type. Todo: in the future, allow by constraints / intersection types?
         if (lhs_type_sym->is_generic) {
-            analyse::errors::SppGenericTypeInvalidUsageError(*lhs_as_type, *lhs_as_type, "member access").scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppGenericTypeInvalidUsageError>().with_args(
+                *lhs_as_type, *lhs_as_type, "member access").with_scopes({sm->current_scope}).raise();
         }
 
         // Check the target field exists on the type.
@@ -79,7 +81,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
                 | genex::views::to<std::vector>();
 
             const auto closest_match = spp::utils::strings::closest_match(lhs_as_type->name, alternatives);
-            analyse::errors::SppIdentifierUnknownError(*this, "type member", closest_match).scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierUnknownError>().with_args(
+                *this, "type member", closest_match).with_scopes({sm->current_scope}).raise();
         }
 
         // Check there is only 1 target field on the type at the highest level.
@@ -102,7 +105,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
             | genex::views::to<std::vector>();
 
         if (closest.size() > 1) {
-            analyse::errors::SppAmbiguousMemberAccessError(*closest[0].second->name, *closest[1].second->name, *name).scopes({closest[0].first, closest[1].first, sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppAmbiguousMemberAccessError>().with_args(
+                *closest[0].second->name, *closest[1].second->name, *name).with_scopes({closest[0].first, closest[1].first, sm->current_scope}).raise();
         }
     }
 
@@ -112,7 +116,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
 
         // Check the lhs is a namespace and not a variable.
         if (lhs_ns_sym == nullptr and lhs_var_sym != nullptr) {
-            analyse::errors::SppMemberAccessRuntimeOperatorExpectedError(*meta->postfix_expression_lhs, *tok_dbl_colon).scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessRuntimeOperatorExpectedError>().with_args(
+                *meta->postfix_expression_lhs, *tok_dbl_colon).with_scopes({sm->current_scope}).raise();
         }
 
         // Check the constant exists inside the namespace.
@@ -122,7 +127,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
                 | genex::views::to<std::vector>();
 
             const auto closest_match = spp::utils::strings::closest_match(lhs_as_ident->val, alternatives);
-            analyse::errors::SppIdentifierUnknownError(*this, "namespace member", closest_match).scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierUnknownError>().with_args(
+                *this, "namespace member", closest_match).with_scopes({sm->current_scope}).raise();
         }
     }
 }

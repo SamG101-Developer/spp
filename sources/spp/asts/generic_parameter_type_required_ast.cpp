@@ -6,7 +6,7 @@
 
 spp::asts::GenericParameterTypeRequiredAst::GenericParameterTypeRequiredAst(
     decltype(name) &&name,
-    decltype(constraints) &&constraints):
+    decltype(constraints) &&constraints) :
     GenericParameterTypeAst(std::move(name), std::move(constraints)) {
 }
 

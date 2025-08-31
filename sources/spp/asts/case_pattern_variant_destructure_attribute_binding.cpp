@@ -8,11 +8,14 @@
 spp::asts::CasePatternVariantDestructureAttributeBindingAst::CasePatternVariantDestructureAttributeBindingAst(
     decltype(name) &&name,
     decltype(tok_assign) &&tok_assign,
-    decltype(val) &&val):
+    decltype(val) &&val) :
     name(std::move(name)),
     tok_assign(std::move(tok_assign)),
     val(std::move(val)) {
 }
+
+
+spp::asts::CasePatternVariantDestructureAttributeBindingAst::~CasePatternVariantDestructureAttributeBindingAst() = default;
 
 
 auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::pos_start() const -> std::size_t {

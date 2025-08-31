@@ -31,6 +31,9 @@ spp::asts::CaseExpressionBranchAst::CaseExpressionBranchAst(
 }
 
 
+spp::asts::CaseExpressionBranchAst::~CaseExpressionBranchAst() = default;
+
+
 auto spp::asts::CaseExpressionBranchAst::pos_start() const -> std::size_t {
     return op->pos_start();
 }

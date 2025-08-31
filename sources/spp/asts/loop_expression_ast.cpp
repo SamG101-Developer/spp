@@ -1,4 +1,5 @@
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
@@ -140,7 +141,8 @@ auto spp::asts::LoopExpressionAst::infer_type(
         const auto else_type = else_block->infer_type(sm, meta);
         if (not analyse::utils::type_utils::symbolic_eq(*loop_type, *else_type, *sm->current_scope, *sm->current_scope)) {
             const auto final_member = else_block->body->final_member();
-            analyse::errors::SppTypeMismatchError(*exit_expr, *loop_type, *final_member, *else_type).scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
+                *exit_expr, *loop_type, *final_member, *else_type).with_scopes({sm->current_scope}).raise();
         }
     }
 

@@ -45,6 +45,8 @@ struct spp::asts::AssignmentStatementAst final : StatementAst {
         decltype(tok_assign) &&tok_assign,
         decltype(rhs) &&rhs);
 
+    ~AssignmentStatementAst() override;
+
     /**
      * An assignment statement ast node must have symbolic left-hand-side nodes. This ensures that the left-hand-side
      * expressions are non-temporary, and therefore have valid locations in emory for assignment. Assigning to

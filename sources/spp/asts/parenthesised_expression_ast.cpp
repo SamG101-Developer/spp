@@ -1,4 +1,5 @@
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/asts/parenthesised_expression.hpp>
@@ -9,7 +10,7 @@
 spp::asts::ParenthesisedExpressionAst::ParenthesisedExpressionAst(
     decltype(tok_open_paren) &&tok_open_paren,
     decltype(expr) &&expr,
-    decltype(tok_close_paren) &&tok_close_paren):
+    decltype(tok_close_paren) &&tok_close_paren) :
     PrimaryExpressionAst(),
     tok_open_paren(std::move(tok_open_paren)),
     expr(std::move(expr)),
@@ -71,4 +72,12 @@ auto spp::asts::ParenthesisedExpressionAst::stage_8_check_memory(
     // Check the memory of the expression.
     expr->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(*expr, *this, sm, true, true, true, false, false, true, meta);
+}
+
+
+auto spp::asts::ParenthesisedExpressionAst::infer_type(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> {
+    // The type of a parenthesised expression is the type of the inner expression.
+    return expr->infer_type(sm, meta);
 }

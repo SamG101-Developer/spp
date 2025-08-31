@@ -77,6 +77,8 @@ struct spp::asts::CmpStatementAst final : virtual Ast, mixins::VisibilityEnabled
         decltype(tok_assign) &&tok_assign,
         decltype(value) &&value);
 
+    ~CmpStatementAst() override;
+
     auto stage_1_pre_process(Ast *ctx) -> void override;
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *) -> void override;

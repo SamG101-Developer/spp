@@ -1,8 +1,9 @@
 #include <algorithm>
 #include <vector>
 
-#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
+#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/func_utils.hpp>
 #include <spp/asts/annotation_ast.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
@@ -238,8 +239,8 @@ auto spp::asts::FunctionPrototypeAst::stage_2_gen_top_level_scopes(
 
     // If there is a self parameter in a free function, throw as error.
     if (ast_cast<ModulePrototypeAst>(m_ctx) and param_group->get_self_param()) {
-        analyse::errors::SppSelfParamInFreeFunctionError(*this, *param_group->get_self_param())
-            .scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSelfParamInFreeFunctionError>().with_args(
+            *this, *param_group->get_self_param()).with_scopes({sm->current_scope}).raise();
     }
 
     // Run steps for the annotations.
@@ -247,8 +248,8 @@ auto spp::asts::FunctionPrototypeAst::stage_2_gen_top_level_scopes(
 
     // Ensure the function's return type does not have a convention.
     if (const auto conv = return_type->get_convention(); conv != nullptr) {
-        analyse::errors::SppSecondClassBorrowViolationError(*return_type, *conv, "function return type")
-            .scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
+            *return_type, *conv, "function return type").with_scopes({sm->current_scope}).raise();
     }
 
     // Generate the generic parameters and attributes of the function.
@@ -298,9 +299,8 @@ auto spp::asts::FunctionPrototypeAst::stage_6_pre_analyse_semantics(
 
     // Error if there are conflicts.
     if (const auto conflict = analyse::utils::func_utils::check_for_conflicting_overload(*sm->current_scope, *type_scope, *this)) {
-        analyse::errors::SppFunctionPrototypeConflictError(*this, *conflict)
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionPrototypeConflictError>().with_args(
+            *this, *conflict).with_scopes({sm->current_scope}).raise();
     }
 
     // Move out of the function scope, as it is now complete.
@@ -317,8 +317,8 @@ auto spp::asts::FunctionPrototypeAst::stage_7_analyse_semantics(
 
     // Repeated convention check for generic substitutions.
     if (const auto conv = return_type->get_convention(); conv != nullptr) {
-        analyse::errors::SppSecondClassBorrowViolationError(*return_type, *conv, "function return type")
-            .scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
+            *return_type, *conv, "function return type").with_scopes({sm->current_scope}).raise();
     }
 
     // Analyse the generic parameter group, and the parameter group.

@@ -62,6 +62,8 @@ struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLiteralAst {
         decltype(size) &&size,
         decltype(tok_r) &&tok_r);
 
+    ~ArrayLiteralRepeatedElementAst() override;
+
 
     /**
      * Ensure that the element given is both copyable and not a borrow type, allowing it to be stored as multiple

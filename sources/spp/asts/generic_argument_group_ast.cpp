@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/order_utils.hpp>
 #include <spp/asts/generic_argument_ast.hpp>
@@ -139,8 +140,8 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
         | genex::views::to<std::vector>();
 
     if (not type_arg_names.empty()) {
-        analyse::errors::SppIdentifierDuplicateError(*type_arg_names[0], *type_arg_names[1], "keyword function-argument")
-            .scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
+            *type_arg_names[0], *type_arg_names[1], "keyword function-argument").with_scopes({sm->current_scope}).raise();
     }
 
     // Check there are no duplicate comp argument names.
@@ -153,8 +154,8 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
         | genex::views::to<std::vector>();
 
     if (not comp_arg_names.empty()) {
-        analyse::errors::SppIdentifierDuplicateError(*comp_arg_names[0], *comp_arg_names[1], "keyword function-argument")
-            .scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
+            *comp_arg_names[0], *comp_arg_names[1], "keyword function-argument").with_scopes({sm->current_scope}).raise();
     }
 
     // Check the arguments are in the correct order.
@@ -164,9 +165,8 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
         | genex::views::to<std::vector>());
 
     if (not unordered_args.empty()) {
-        analyse::errors::SppOrderInvalidError(unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second)
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>().with_args(
+            unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second).with_scopes({sm->current_scope}).raise();
     }
 
     // Analyse the arguments.

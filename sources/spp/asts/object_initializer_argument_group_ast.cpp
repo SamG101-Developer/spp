@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/class_attribute_ast.hpp>
@@ -16,15 +17,12 @@
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 
-#include <genex/actions/concat.hpp>
 #include <genex/operations/at.hpp>
 #include <genex/views/cast.hpp>
-#include <genex/views/concat.hpp>
 #include <genex/views/address.hpp>
 #include <genex/views/duplicates.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/materialize.hpp>
-#include <genex/views/move.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/remove.hpp>
 #include <genex/views/set_algorithms.hpp>
@@ -134,9 +132,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics
         | genex::views::to<std::vector>();
 
     if (not duplicates.empty()) {
-        analyse::errors::SppIdentifierDuplicateError(*duplicates[0], *duplicates[1], "keyword object initializer arguments")
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
+            *duplicates[0], *duplicates[1], "keyword object initializer arguments").with_scopes({sm->current_scope}).raise();
     }
 
     // Get the attributes on the type and supertypes.
@@ -184,9 +181,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
         | genex::views::to<std::vector>();
 
     if (af_args.size() > 1) {
-        analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError(*af_args[0], *af_args[1])
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError>().with_args(
+            *af_args[0], *af_args[1]).with_scopes({sm->current_scope}).raise();
     }
 
     // Check there are no invalidly named arguments.
@@ -199,8 +195,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
         | genex::views::to<std::vector>();
 
     if (not invalid_args.empty()) {
-        analyse::errors::SppArgumentNameInvalidError(*meta->object_init_type, "attribute", *invalid_args[0], "object initializer argument")
-            .scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppArgumentNameInvalidError>().with_args(
+            *meta->object_init_type, "attribute", *invalid_args[0], "object initializer argument").with_scopes({sm->current_scope}).raise();
     }
 
     // Type check the non-autofill arguments against the class attributes.
@@ -218,8 +214,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
         meta->restore();
 
         if (not analyse::utils::type_utils::symbolic_eq(*attr_type, *arg_type, *sm->current_scope, *sm->current_scope)) {
-            analyse::errors::SppTypeMismatchError(*attr, *attr_type, *arg, *arg_type)
-                .scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
+                *attr, *attr_type, *arg, *arg_type).with_scopes({sm->current_scope}).raise();
         }
     }
 
@@ -227,8 +223,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
     if (const auto af_arg = get_autofill_arg(); af_arg != nullptr) {
         const auto af_arg_type = af_arg->val->infer_type(sm, meta);
         if (not analyse::utils::type_utils::symbolic_eq(*af_arg_type, *meta->object_init_type, *sm->current_scope, *sm->current_scope)) {
-            analyse::errors::SppTypeMismatchError(*meta->object_init_type, *meta->object_init_type, *af_arg, *af_arg_type)
-                .scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
+                *meta->object_init_type, *meta->object_init_type, *af_arg, *af_arg_type).with_scopes({sm->current_scope}).raise();
         }
     }
 }

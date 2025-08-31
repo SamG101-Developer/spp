@@ -1,4 +1,5 @@
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/symbols.hpp>
@@ -24,6 +25,9 @@ spp::asts::ArrayLiteralRepeatedElementAst::ArrayLiteralRepeatedElementAst(
     size(std::move(size)),
     tok_r(std::move(tok_r)) {
 }
+
+
+spp::asts::ArrayLiteralRepeatedElementAst::~ArrayLiteralRepeatedElementAst() = default;
 
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::pos_start() const -> std::size_t {
@@ -80,12 +84,14 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
 
     // Ensure the element type is copyable, so that is can be repeated in the array.
     if (not elem_type_sym->is_copyable()) {
-        analyse::errors::SppUninitializedMemoryUseError(*elem, *this, *size).scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppUninitializedMemoryUseError>().with_args(
+            *elem, *this, *size).with_scopes({sm->current_scope}).raise();
     }
 
     // Ensure the element's type is not a borrow type, as array elements cannot be borrows.
     if (const auto conv = elem_type->get_convention()) {
-        analyse::errors::SppSecondClassBorrowViolationError(*elem, *conv, "repeated array element type").scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
+            *elem, *conv, "repeated array element type").with_scopes({sm->current_scope}).raise();
     }
 
     // Ensure the size is a constant expression (if symbolic).
@@ -94,7 +100,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
     const auto size_sym = sm->current_scope->get_var_symbol(*symbolic_size);
     if (size_sym != nullptr) {
         if (size_sym->memory_info->ast_comptime == nullptr) {
-            analyse::errors::SppCompileTimeConstantError(*size).scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppCompileTimeConstantError>().with_args(
+                *size).with_scopes({sm->current_scope}).raise();
         }
     }
 }
@@ -104,6 +111,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_8_check_memory(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
     -> void {
+    // Check the memory of the repeated element (is it initialized etc).
     elem->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(*elem, *tok_semicolon, sm, true, true, true, true, true, true, meta);
 }

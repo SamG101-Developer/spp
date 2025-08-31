@@ -32,6 +32,8 @@ struct spp::asts::TokenAst final : virtual Ast {
         lex::SppTokenType token_type,
         std::string &&token_data);
 
+    ~TokenAst() override;
+
     /**
      * Two tokens are equal if their token types are equal.
      * @param[in] that The other TokenAst to compare with.

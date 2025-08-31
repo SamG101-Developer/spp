@@ -1,4 +1,5 @@
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/class_attribute_ast.hpp>
@@ -65,9 +66,8 @@ auto spp::analyse::utils::type_utils::validate_inconsistent_types(
     if (mismatch_branches_type_info.empty()) {
         auto [mismatch_branch, mismatch_branch_type] = std::move(mismatch_branches_type_info[0]);
         auto [master_branch, master_branch_type] = master_branch_type_info;
-        errors::SppTypeMismatchError(*master_branch->body->final_member(), *master_branch_type, *mismatch_branch->body->final_member(), *mismatch_branch_type)
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<errors::SppTypeMismatchError>().with_args(
+            *master_branch->body->final_member(), *master_branch_type, *mismatch_branch->body->final_member(), *mismatch_branch_type).scopes({sm->current_scope}).raise();
     }
 
     return std::make_tuple(master_branch_type_info, branches_type_info);

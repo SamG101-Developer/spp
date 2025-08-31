@@ -14,6 +14,9 @@ spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::CasePatternVar
 }
 
 
+spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::~CasePatternVariantDestructureSkipMultipleArgumentsAst() = default;
+
+
 auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::pos_start() const -> std::size_t {
     return tok_ellipsis->pos_start();
 }

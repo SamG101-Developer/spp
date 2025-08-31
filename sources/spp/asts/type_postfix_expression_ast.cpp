@@ -1,4 +1,5 @@
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/convention_ast.hpp>
@@ -27,6 +28,9 @@ spp::asts::TypePostfixExpressionAst::TypePostfixExpressionAst(
     lhs(std::move(lhs)),
     tok_op(std::move(tok_op)) {
 }
+
+
+spp::asts::TypePostfixExpressionAst::~TypePostfixExpressionAst() = default;
 
 
 auto spp::asts::TypePostfixExpressionAst::pos_start() const -> std::size_t {
@@ -214,7 +218,8 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
         | genex::views::to<std::vector>();
 
     if (closest.size() > 1) {
-        analyse::errors::SppAmbiguousMemberAccessError(*closest[0].second->name, *closest[1].second->name, *op_nested->name).scopes({closest[0].first, closest[1].first, sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppAmbiguousMemberAccessError>().with_args(
+            *closest[0].second->name, *closest[1].second->name, *op_nested->name).with_scopes({closest[0].first, closest[1].first, sm->current_scope}).raise();
     }
 
     meta->save();

@@ -37,6 +37,8 @@ struct spp::asts::FunctionCallArgumentKeywordAst final : FunctionCallArgumentAst
         decltype(conv) &&conv,
         decltype(val) &&val);
 
+    ~FunctionCallArgumentKeywordAst() override;
+
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;

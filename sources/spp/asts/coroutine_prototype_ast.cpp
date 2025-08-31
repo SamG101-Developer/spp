@@ -1,6 +1,7 @@
 #include <vector>
 
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/coroutine_prototype_ast.hpp>
@@ -11,6 +12,9 @@
 #include <genex/views/concat.hpp>
 #include <genex/views/map.hpp>
 #include <genex/views/to.hpp>
+
+
+spp::asts::CoroutinePrototypeAst::~CoroutinePrototypeAst() = default;
 
 
 auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
@@ -36,9 +40,8 @@ auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
         | genex::views::to<std::vector>();
 
     if (genex::algorithms::none_of(superimposed_types, [sm](auto &&x) { return analyse::utils::type_utils::is_type_generator(*x->without_generics(), *sm->current_scope); })) {
-        analyse::errors::SppCoroutineInvalidReturnTypeError(*this, *return_type)
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppCoroutineInvalidReturnTypeError>().with_args(
+            *this, *return_type).with_scopes({sm->current_scope}).raise();
     }
 
     // Analyse the semantics of the function body, and move out the scope.

@@ -1,4 +1,5 @@
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/integer_literal_ast.hpp>
 #include <spp/asts/token_ast.hpp>
@@ -86,9 +87,8 @@ auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
 
     // Check if the value is within the bounds.
     if (mapped_val < lower or mapped_val > upper) {
-        analyse::errors::SppIntegerOutOfBoundsError(*this, mapped_val, lower, upper, "float")
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIntegerOutOfBoundsError>().with_args(
+            *this, mapped_val, lower, upper, "float").with_scopes({sm->current_scope}).raise();
     }
 }
 

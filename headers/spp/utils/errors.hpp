@@ -3,17 +3,26 @@
 
 #include <exception>
 #include <memory>
-#include <set>
 #include <vector>
+#include <genex/views/flatten.hpp>
 
-#include <spp/lex/tokens.hpp>
+// #include <spp/analyse/scopes/scope.hpp>
+
+#include <genex/views/cycle.hpp>
+#include <genex/views/flatten.hpp>
+#include <genex/views/map.hpp>
+#include <genex/views/take.hpp>
+#include <genex/views/to.hpp>
+#include <genex/views/zip.hpp>
 
 
 namespace spp::utils::errors {
-    struct CustomError;
-    struct SyntacticError;
-    struct SemanticError;
     class ErrorFormatter;
+
+    struct AbstractError;
+
+    template <typename T>
+    struct AbstractErrorBuilder;
 }
 
 namespace spp::analyse::scopes {
@@ -21,33 +30,42 @@ namespace spp::analyse::scopes {
 }
 
 
-struct spp::utils::errors::CustomError : std::runtime_error {
+struct spp::utils::errors::AbstractError : std::runtime_error {
+public:
+    std::vector<std::string> messages;
+
 public:
     using std::runtime_error::runtime_error;
-    virtual auto get_message(ErrorFormatter &error_formatter) const noexcept -> std::string = 0;
+    AbstractError(AbstractError const &) noexcept = default;
+    ~AbstractError() override = default;
+
+    [[nodiscard]]
+    auto what() const noexcept -> const char* override {
+        const auto joined = messages
+            | genex::views::flatten_with('\n')
+            | genex::views::to<std::string>();
+        return joined.c_str();
+    }
 };
 
 
-struct spp::utils::errors::SyntacticError : CustomError {
-public:
-    using CustomError::CustomError;
-    ~SyntacticError() override = default;
-    auto get_message(ErrorFormatter &error_formatter) const noexcept -> std::string override;
-    auto raise(ErrorFormatter &error_formatter) noexcept(false) -> void;
+template <typename T>
+struct spp::utils::errors::AbstractErrorBuilder {
+    AbstractErrorBuilder() = default;
+
+private:
+    std::unique_ptr<AbstractError> m_err_obj;
+    std::vector<ErrorFormatter*> m_error_formatters;
 
 public:
-    std::size_t pos = 0;
-    std::set<lex::SppTokenType> tokens = {};
-};
+    template <typename... Args> requires std::is_constructible_v<T, Args...>
+    auto with_args(Args &&... args) -> AbstractErrorBuilder&;
 
+    auto with_scopes(std::vector<analyse::scopes::Scope*> scopes) -> AbstractErrorBuilder&;
 
-struct spp::utils::errors::SemanticError : CustomError {
-    using CustomError::CustomError;
-    ~SemanticError() override = default;
-    auto get_message(ErrorFormatter &error_formatter) const noexcept -> std::string override;
-    auto raise() noexcept(false) -> void;
-    auto scopes(std::vector<analyse::scopes::Scope const*> &&scopes) -> SemanticError&;
-    auto clone() const -> std::unique_ptr<SemanticError>;
+    auto with_error_formatter(ErrorFormatter *error_formatter) -> AbstractErrorBuilder&;
+
+    [[noreturn]] auto raise() -> void;
 };
 
 

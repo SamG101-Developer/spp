@@ -1,4 +1,5 @@
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/class_implementation_ast.hpp>
 #include <spp/asts/class_attribute_ast.hpp>
@@ -15,6 +16,9 @@
 auto spp::asts::ClassImplementationAst::new_empty() -> std::unique_ptr<ClassImplementationAst> {
     return std::make_unique<ClassImplementationAst>();
 }
+
+
+spp::asts::ClassImplementationAst::~ClassImplementationAst() = default;
 
 
 auto spp::asts::ClassImplementationAst::stage_1_pre_process(Ast *ctx) -> void {
@@ -69,9 +73,8 @@ auto spp::asts::ClassImplementationAst::stage_6_pre_analyse_semantics(
         | genex::views::to<std::vector>();
 
     if (not duplicates.empty()) {
-        analyse::errors::SppIdentifierDuplicateError(*duplicates[0], *duplicates[1], "attribute")
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
+            *duplicates[0], *duplicates[1], "attribute").with_scopes({sm->current_scope}).raise();
     }
 }
 

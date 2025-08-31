@@ -7,6 +7,7 @@
 #include <spp/asts/class_member_ast.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
 #include <spp/asts/generic_argument_ast.hpp>
+#include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
 #include <spp/asts/generic_parameter_group_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
@@ -19,8 +20,6 @@
 
 #include <genex/views/for_each.hpp>
 
-#include "spp/asts/generic_argument_group_ast.hpp"
-
 
 spp::asts::UseStatementAst::UseStatementAst(
     decltype(annotations) &&annotations,
@@ -31,6 +30,9 @@ spp::asts::UseStatementAst::UseStatementAst(
     tok_use(std::move(tok_use)),
     old_type(std::move(old_type)) {
 }
+
+
+spp::asts::UseStatementAst::~UseStatementAst() = default;
 
 
 auto spp::asts::UseStatementAst::pos_start() const -> std::size_t {

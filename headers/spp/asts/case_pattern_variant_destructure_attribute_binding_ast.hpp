@@ -35,6 +35,8 @@ struct spp::asts::CasePatternVariantDestructureAttributeBindingAst final : CaseP
         decltype(tok_assign) &&tok_assign,
         decltype(val) &&val);
 
+    ~CasePatternVariantDestructureAttributeBindingAst() override;
+
     auto convert_to_variable(mixins::CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
 };
 

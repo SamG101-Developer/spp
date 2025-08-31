@@ -3,6 +3,9 @@
 
 
 spp::asts::GenericArgumentTypeAst::GenericArgumentTypeAst(
-    decltype(val) &&val):
+    decltype(val) &&val) :
     val(std::move(val)) {
 }
+
+
+spp::asts::GenericArgumentTypeAst::~GenericArgumentTypeAst() = default;

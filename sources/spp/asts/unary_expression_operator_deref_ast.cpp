@@ -1,4 +1,5 @@
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/expression_ast.hpp>
@@ -56,12 +57,14 @@ auto spp::asts::UnaryExpressionOperatorDerefAst::stage_7_analyse_semantics(
 
     // Check the right-hand-side expression is a borrowable type.
     if (rhs_type->get_convention() == nullptr) {
-        analyse::errors::SppDereferenceInvalidExpressionNonBorrowableTypeError(*tok_deref, *rhs, *rhs_type).scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppDereferenceInvalidExpressionNonBorrowableTypeError>().with_args(
+            *tok_deref, *rhs, *rhs_type).with_scopes({sm->current_scope}).raise();
     }
 
     // Check the right-hand-side expression is a "Copy" type.
     if (not sm->current_scope->get_type_symbol(*rhs_type)->is_copyable()) {
-        analyse::errors::SppDereferenceInvalidExpressionNonCopyableTypeError(*tok_deref, *rhs, *rhs_type).scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppDereferenceInvalidExpressionNonCopyableTypeError>().with_args(
+            *tok_deref, *rhs, *rhs_type).with_scopes({sm->current_scope}).raise();
     }
 }
 

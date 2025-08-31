@@ -71,6 +71,8 @@ public:
         decltype(generic_param_group) &&generic_param_group,
         decltype(impl) &&impl);
 
+    ~ClassPrototypeAst() override;
+
 protected:
     auto m_generate_symbols(ScopeManager* sm) -> analyse::scopes::TypeSymbol*;
 

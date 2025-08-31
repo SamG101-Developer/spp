@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/order_utils.hpp>
 #include <spp/asts/function_parameter_group_ast.hpp>
@@ -132,9 +133,8 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
         | genex::views::to<std::vector>();
 
     if (self_params.size() > 1) {
-        analyse::errors::SppMultipleSelfParametersError(*self_params[0], *self_params[1])
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMultipleSelfParametersError>().with_args(
+            *self_params[0], *self_params[1]).with_scopes({sm->current_scope}).raise();
     }
 
     // Check there are no duplicate parameter names.
@@ -146,9 +146,8 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
         | genex::views::to<std::vector>();
 
     if (not param_names.empty()) {
-        analyse::errors::SppIdentifierDuplicateError(*param_names[0], *param_names[1], "keyword function-argument")
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
+            *param_names[0], *param_names[1], "keyword function-argument").with_scopes({sm->current_scope}).raise();
     }
 
     // Check the arguments are in the correct order.
@@ -158,8 +157,7 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
         | genex::views::to<std::vector>());
 
     if (not unordered_args.empty()) {
-        analyse::errors::SppOrderInvalidError(unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second)
-            .scopes({sm->current_scope})
-            .raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>().with_args(
+            unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second).with_scopes({sm->current_scope}).raise();
     }
 }

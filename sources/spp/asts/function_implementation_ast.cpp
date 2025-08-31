@@ -6,3 +6,6 @@
 auto spp::asts::FunctionImplementationAst::new_empty() -> std::unique_ptr<FunctionImplementationAst> {
     return std::make_unique<FunctionImplementationAst>();
 }
+
+
+spp::asts::FunctionImplementationAst::~FunctionImplementationAst() = default;

@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/array_literal_explicit_elements_ast.hpp>
@@ -111,24 +112,24 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
         | genex::views::to<std::vector>();
 
     if (multi_arg_skips.size() > 1) {
-        analyse::errors::SppMultipleSkipMultiArgumentsError(*this, *multi_arg_skips[0], *multi_arg_skips[1])
-            .scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMultipleSkipMultiArgumentsError>().with_args(
+            *this, *multi_arg_skips[0], *multi_arg_skips[1]).with_scopes({sm->current_scope}).raise();
     }
 
     // Ensure the right-hand-side is an array type.
     const auto val = meta->let_stmt_value;
     const auto val_type = val->infer_type(sm, meta)->type_parts().back();
     if (not analyse::utils::type_utils::is_type_array(*val_type, *sm->current_scope)) {
-        analyse::errors::SppVariableArrayDestructureArrayTypeMismatchError(*this, *val, *val_type)
-            .scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppVariableArrayDestructureArrayTypeMismatchError>().with_args(
+            *this, *val, *val_type).with_scopes({sm->current_scope}).raise();
     }
 
     // Determine number of elements in the left-hand-side and right-hand-side arrays.
     const auto num_lhs_arr_elems = elems.size();
     const auto num_rhs_arr_elems = std::stoul(ast_cast<IntegerLiteralAst>(ast_cast<GenericArgumentTypeAst>(val_type->type_parts().back()->generic_arg_group->args[1].get())->val.get())->val->token_data);
     if ((num_lhs_arr_elems < num_rhs_arr_elems and multi_arg_skips.empty()) or (num_lhs_arr_elems > num_rhs_arr_elems)) {
-        analyse::errors::SppVariableArrayDestructureArraySizeMismatchError(*this, num_lhs_arr_elems, *val, num_rhs_arr_elems)
-            .scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppVariableArrayDestructureArraySizeMismatchError>().with_args(
+            *this, num_lhs_arr_elems, *val, num_rhs_arr_elems).with_scopes({sm->current_scope}).raise();
     }
 
     // For a bound ".." destructure, ie "let [a, ..b, c] = t", create an intermediary type.

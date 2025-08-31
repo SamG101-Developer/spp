@@ -56,6 +56,8 @@ public:
         decltype(tok_use) &&tok_use,
         decltype(old_type) old_type);
 
+    ~UseStatementAst() override;
+
     auto stage_1_pre_process(Ast *ctx) -> void override;
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *) -> void override;

@@ -28,6 +28,8 @@ public:
     explicit ModulePrototypeAst(
         decltype(impl) &&impl);
 
+    ~ModulePrototypeAst() override;
+
     auto name() const -> std::unique_ptr<IdentifierAst>;
 
     auto stage_1_pre_process(Ast *ctx) -> void override;

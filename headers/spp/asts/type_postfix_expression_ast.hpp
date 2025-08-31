@@ -28,6 +28,8 @@ struct spp::asts::TypePostfixExpressionAst final : TypeAst, std::enable_shared_f
         decltype(lhs) &&lhs,
         decltype(tok_op) &&tok_op);
 
+    ~TypePostfixExpressionAst() override;
+
 protected:
     auto equals(const TypeAst &) const -> bool override;
 
