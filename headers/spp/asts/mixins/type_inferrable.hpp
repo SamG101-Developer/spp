@@ -9,6 +9,11 @@ namespace spp::asts::mixins {
 }
 
 
+namespace spp::analyse::scopes {
+    class ScopeManager;
+}
+
+
 /**
  * A @c TypeInferrableAst is an AST that can infer its type. This is used for ASTs that represent expressions or
  * literals that can have a type determined at compile time. The @c infer_type method is used to infer the type of the
@@ -26,5 +31,5 @@ public:
      * @param meta Associated metadata.
      * @return The inferred type of the AST.
      */
-    virtual auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> = 0;
+    virtual auto infer_type(analyse::scopes::ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> = 0;
 };

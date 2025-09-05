@@ -44,6 +44,10 @@ struct spp::asts::GenericParameterGroupAst final : virtual Ast {
 
     auto get_variadic_param() const -> GenericParameterAst*;
 
+    auto get_comp_params() const -> std::vector<GenericParameterCompAst*>;
+
+    auto get_type_params() const -> std::vector<GenericParameterTypeAst*>;
+
     auto get_all_params() const -> std::vector<GenericParameterAst*>;
 
     auto opt_to_req() const -> std::unique_ptr<GenericParameterGroupAst>;

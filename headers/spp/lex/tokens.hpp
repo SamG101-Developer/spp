@@ -298,29 +298,4 @@ inline auto spp::lex::tok_to_string(const SppTokenType token) noexcept -> std::s
 }
 
 
-struct spp::lex::SppTokenSets {
-    constexpr static auto BIN_COMPOUND_ASSIGNMENT_OPS = std::array{
-        SppTokenType::TK_ADD_ASSIGN,
-        SppTokenType::TK_SUB_ASSIGN,
-        SppTokenType::TK_MUL_ASSIGN,
-        SppTokenType::TK_DIV_ASSIGN,
-        SppTokenType::TK_REM_ASSIGN,
-        SppTokenType::TK_BIT_AND_ASSIGN,
-        SppTokenType::TK_BIT_IOR_ASSIGN,
-        SppTokenType::TK_BIT_XOR_ASSIGN,
-        SppTokenType::TK_BIT_SHL_ASSIGN,
-        SppTokenType::TK_BIT_SHR_ASSIGN
-    };
-
-    constexpr static auto BIN_COMPARISON_OPS = std::array{
-        SppTokenType::TK_EQ,
-        SppTokenType::TK_NE,
-        SppTokenType::TK_LT,
-        SppTokenType::TK_GT,
-        SppTokenType::TK_LE,
-        SppTokenType::TK_GE
-    };
-};
-
-
 #endif //TOKENS_HPP

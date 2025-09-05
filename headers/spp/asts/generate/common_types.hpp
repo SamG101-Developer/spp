@@ -1,6 +1,4 @@
-#ifndef COMMON_TYPES_HPP
-#define COMMON_TYPES_HPP
-
+#pragma once
 #include <spp/asts/_fwd.hpp>
 
 
@@ -52,5 +50,3 @@ namespace spp::asts::generate::common_types {
 
     auto self_type(std::size_t pos) -> std::unique_ptr<TypeAst>;
 }
-
-#endif //COMMON_TYPES_HPP

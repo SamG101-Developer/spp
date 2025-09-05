@@ -4,6 +4,8 @@
 #include <spp/utils/errors.hpp>
 #include <spp/utils/error_formatter.hpp>
 
+#include <genex/views/transform.hpp>
+
 #include <magic_enum/magic_enum.hpp>
 
 
@@ -23,7 +25,7 @@ auto spp::utils::errors::AbstractErrorBuilder<T>::with_scopes(
     std::vector<analyse::scopes::Scope*> scopes)
     -> AbstractErrorBuilder& {
     // Extract error formatters from a list of scopes.
-    m_error_formatters = scopes | genex::views::map(&analyse::scopes::Scope::get_error_formatter) | genex::views::to<std::vector>();
+    m_error_formatters = scopes | genex::views::transform(&analyse::scopes::Scope::get_error_formatter) | genex::views::to<std::vector>();
     return *this;
 }
 
@@ -50,7 +52,7 @@ auto spp::utils::errors::AbstractErrorBuilder<T>::raise()
     // Format all the error strings by the correct formatter (file agnostic).
     m_err_obj->messages = m_err_obj->messages
         | genex::views::zip(std::move(formatters))
-        | genex::views::map([](auto &&x) { return x.first->format(std::move(x.second)); })
+        | genex::views::transform([](auto &&x) { return x.first->format(std::move(x.second)); })
         | genex::views::to<std::vector>();
 
     // Throw the error object.

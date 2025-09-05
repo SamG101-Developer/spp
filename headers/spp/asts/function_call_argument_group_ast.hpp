@@ -1,6 +1,4 @@
-#ifndef FUNCTION_CALL_ARGUMENT_GROUP_AST_HPP
-#define FUNCTION_CALL_ARGUMENT_GROUP_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -51,6 +49,3 @@ struct spp::asts::FunctionCallArgumentGroupAst final : virtual Ast {
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //FUNCTION_CALL_ARGUMENT_GROUP_AST_HPP

@@ -5,7 +5,7 @@
 #include <spp/asts/_fwd.hpp>
 
 
-struct spp::asts::TypeUnaryExpressionAst final : TypeAst, std::enable_shared_from_this<TypeUnaryExpressionAst> {
+struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

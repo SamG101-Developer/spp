@@ -1,6 +1,4 @@
-#ifndef CLOSURE_EXPRESSION_PARAMETER_AND_CAPTURE_GROUP_AST_HPP
-#define CLOSURE_EXPRESSION_PARAMETER_AND_CAPTURE_GROUP_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -48,6 +46,3 @@ struct spp::asts::ClosureExpressionParameterAndCaptureGroupAst final : virtual A
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //CLOSURE_EXPRESSION_PARAMETER_AND_CAPTURE_GROUP_AST_HPP

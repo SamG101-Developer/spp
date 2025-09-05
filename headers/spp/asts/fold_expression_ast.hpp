@@ -1,6 +1,4 @@
-#ifndef FOLD_EXPRESSION_AST_HPP
-#define FOLD_EXPRESSION_AST_HPP
-
+#pragma once
 #include <spp/asts/primary_expression_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -22,6 +20,3 @@ struct spp::asts::FoldExpressionAst final : PrimaryExpressionAst {
 
     ~FoldExpressionAst() override;
 };
-
-
-#endif //FOLD_EXPRESSION_AST_HPP

@@ -1,6 +1,4 @@
-#ifndef FUNCTION_CALL_ARGUMENT_AST_HPP
-#define FUNCTION_CALL_ARGUMENT_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
 #include <spp/asts/_fwd.hpp>
 #include <spp/asts/mixins/orderable_ast.hpp>
@@ -52,7 +50,8 @@ public:
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+
+    auto set_self_type(std::shared_ptr<TypeAst> self_type) -> void;
+
+    auto get_self_type() -> std::shared_ptr<TypeAst>;
 };
-
-
-#endif //FUNCTION_CALL_ARGUMENT_AST_HPP

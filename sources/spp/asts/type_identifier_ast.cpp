@@ -404,9 +404,9 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
                 sm->current_scope->get_type_symbol(*old_type), new_scope->ty_sym->is_generic,
                 new_scope->ty_sym->is_copyable());
 
-            new_scope->ty_sym = new_alias_sym.get();
+            new_scope->ty_sym = std::move(new_alias_sym);
             new_scope->parent->rem_type_symbol(*new_scope->ty_sym->name);
-            new_scope->parent->add_symbol(std::move(new_alias_sym));
+            new_scope->parent->add_type_symbol(new_scope->ty_sym);
         }
     }
 }

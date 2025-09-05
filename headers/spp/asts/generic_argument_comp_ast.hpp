@@ -1,6 +1,4 @@
-#ifndef GENERIC_ARGUMENT_COMP_AST_HPP
-#define GENERIC_ARGUMENT_COMP_AST_HPP
-
+#pragma once
 #include <spp/asts/generic_argument_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -25,6 +23,3 @@ struct spp::asts::GenericArgumentCompAst : GenericArgumentAst {
 
     ~GenericArgumentCompAst() override;
 };
-
-
-#endif //GENERIC_ARGUMENT_COMP_AST_HPP

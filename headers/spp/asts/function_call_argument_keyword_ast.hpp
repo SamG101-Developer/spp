@@ -1,6 +1,4 @@
-#ifndef FUNCTION_CALL_ARGUMENT_KEYWORD_AST_HPP
-#define FUNCTION_CALL_ARGUMENT_KEYWORD_AST_HPP
-
+#pragma once
 #include <spp/asts/function_call_argument_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -45,6 +43,3 @@ struct spp::asts::FunctionCallArgumentKeywordAst final : FunctionCallArgumentAst
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //FUNCTION_CALL_ARGUMENT_KEYWORD_AST_HPP

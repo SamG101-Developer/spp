@@ -26,14 +26,13 @@ namespace spp::asts::mixins {
     struct CompilerMetaData;
 }
 
-using spp::analyse::scopes::ScopeManager;
-
 
 /**
  * The compiler stages are a list of functions that each AST can implement, and will be ran recursively from its parent
  * AST. The exceptions are the first 3 functions, which are applies to top level ASTs exclusively.
  */
 struct spp::asts::mixins::CompilerStages {
+    using ScopeManager = spp::analyse::scopes::ScopeManager;
     CompilerStages() = default;
 
     virtual ~CompilerStages() = default;

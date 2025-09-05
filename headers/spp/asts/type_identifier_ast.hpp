@@ -1,6 +1,4 @@
-#ifndef TYPE_IDENTIFIER_HPP
-#define TYPE_IDENTIFIER_HPP
-
+#pragma once
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -11,7 +9,7 @@
  * The TypeIdentifierAst is a type expression that is represented by a single type name, and is analogous to the
  * IdentifierAst of the ExpressionAst.
  */
-struct spp::asts::TypeIdentifierAst final : TypeAst, std::enable_shared_from_this<TypeIdentifierAst> {
+struct spp::asts::TypeIdentifierAst final : TypeAst {
     SPP_AST_KEY_FUNCTIONS;
 
     /**
@@ -80,6 +78,3 @@ public:
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //TYPE_IDENTIFIER_HPP

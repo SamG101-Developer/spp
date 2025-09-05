@@ -95,10 +95,11 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_cyclic_extension(
     analyse::scopes::Scope &check_scope)
     -> void {
     // Prevent double inheritance by checking if the scopes are already registered the other way around.
+    auto dummy = std::map<TypeAst *, ExpressionAst *>();
     const auto existing_sup_scopes = sup_sym.scope->sup_scopes()
         | genex::views::filter([](auto &&x) { return ast_cast<SupPrototypeExtensionAst>(x->ast); })
         | genex::views::map([](auto &&x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })
-        | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::relaxed_symbolic_eq(*super_class, *x.second->name, check_scope, *x.first); })
+        | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::relaxed_symbolic_eq(*super_class, *x.second->name, check_scope, *x.first, dummy); })
         | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::symbolic_eq(*x.second->super_class, *name, *x.first, check_scope); })
         | genex::views::to<std::vector>();
 
@@ -119,10 +120,11 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_double_extension(
     }
 
     // Prevent double inheritance by checking if the scopes are already registered the other way around.
+    auto dummy = std::map<TypeAst *, ExpressionAst *>();
     const auto existing_sup_scopes = cls_sym.scope->sup_scopes()
         | genex::views::filter([](auto &&x) { return ast_cast<SupPrototypeExtensionAst>(x->ast); })
         | genex::views::map([](auto &&x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })
-        | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::relaxed_symbolic_eq(*super_class, *x.second->name, check_scope, *x.first); })
+        | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::relaxed_symbolic_eq(*super_class, *x.second->name, check_scope, *x.first, dummy); })
         | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::symbolic_eq(*x.second->super_class, *name, *x.first, check_scope); })
         | genex::views::to<std::vector>();
 
@@ -134,7 +136,7 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_double_extension(
 
 
 auto spp::asts::SupPrototypeExtensionAst::m_check_self_extension(
-    analyse::scopes::Scope &check_scope)
+    analyse::scopes::Scope &check_scope) const
     -> void {
     // Check if the superimposition is extending itself.
     if (analyse::utils::type_utils::symbolic_eq(*name, *super_class, check_scope, check_scope)) {
@@ -250,7 +252,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_5_load_super_scopes(
     // Add the "Self" symbol into the scope.
     if (name->type_parts().back()->name[0] == '$') {
         const auto cls_sym = sm->current_scope->get_type_symbol(*name);
-        sm->current_scope->add_symbol(std::make_unique<analyse::scopes::AliasSymbol>(
+        sm->current_scope->add_type_symbol(std::make_unique<analyse::scopes::AliasSymbol>(
             std::make_unique<TypeIdentifierAst>(name->pos_start(), "Self", nullptr), nullptr, cls_sym->scope,
             sm->current_scope, cls_sym));
     }

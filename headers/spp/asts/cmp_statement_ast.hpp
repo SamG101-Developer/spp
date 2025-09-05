@@ -1,7 +1,4 @@
-#ifndef CMP_STATEMENT_AST_HPP
-#define CMP_STATEMENT_AST_HPP
-
-
+#pragma once
 #include <spp/asts/ast.hpp>
 #include <spp/asts/_fwd.hpp>
 #include <spp/asts/mixins/visbility_enabled_ast.hpp>
@@ -89,6 +86,3 @@ struct spp::asts::CmpStatementAst final : virtual Ast, mixins::VisibilityEnabled
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //CMP_STATEMENT_AST_HPP

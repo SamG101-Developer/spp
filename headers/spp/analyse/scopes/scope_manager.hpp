@@ -8,9 +8,11 @@
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/utils/error_formatter.hpp>
 
+#include "scope_manager.hpp"
+
 namespace spp::analyse::scopes {
     class ScopeManager;
-    struct ScopeManagerIterator;
+    // class ScopeIterator;
     struct TypeSymbol;
 }
 
@@ -18,35 +20,6 @@ namespace spp::analyse::scopes {
 namespace spp::asts::mixins {
     struct CompilerMetaData;
 }
-
-
-struct spp::analyse::scopes::ScopeManagerIterator {
-    using iterator_category = std::forward_iterator_tag;
-    using value_type = Scope;
-    using difference_type = std::ptrdiff_t;
-    using pointer = Scope*;
-    using reference = Scope&;
-
-private:
-    std::stack<std::pair<pointer, std::size_t>> m_stack;
-
-public:
-    ScopeManagerIterator() = default;
-
-    explicit ScopeManagerIterator(Scope *root);
-
-    auto operator*() const -> reference;
-
-    auto operator->() const -> pointer;
-
-    auto operator++() -> ScopeManagerIterator&;
-
-    auto operator++(int) -> ScopeManagerIterator;
-
-    friend bool operator==(const ScopeManagerIterator &lhs, const ScopeManagerIterator &rhs);
-
-    friend bool operator!=(const ScopeManagerIterator &lhs, const ScopeManagerIterator &rhs);
-};
 
 
 class spp::analyse::scopes::ScopeManager {
@@ -72,31 +45,33 @@ public:
     Scope *current_scope = nullptr;
 
 private:
-    ScopeManagerIterator m_iterator;
+    std::generator<Scope*> m_generator;
+    decltype(std::declval<std::generator<Scope*>>().begin()) m_it;
+    decltype(std::declval<std::generator<Scope*>>().end()) m_end;
 
 public:
-    explicit ScopeManager(std::shared_ptr<Scope> global_scope, Scope *current_scope = nullptr);
+    explicit ScopeManager(std::shared_ptr<Scope> const &global_scope, Scope *current_scope = nullptr);
 
-    auto begin() -> ScopeManagerIterator;
+    auto iter() const -> std::generator<Scope*>;
 
-    auto end() -> ScopeManagerIterator;
+    auto reset(Scope *scope = nullptr, std::optional<std::generator<Scope*>> gen = std::nullopt) -> void;
 
-    auto reset(Scope *scope = nullptr, std::optional<ScopeManagerIterator> it = std::nullopt) -> void;
-
-    auto create_and_move_into_new_scope(ScopeName name, asts::Ast *ast = nullptr, spp::utils::errors::ErrorFormatter *error_formatter = nullptr) -> Scope*;
+    auto create_and_move_into_new_scope(ScopeName name, asts::Ast *ast = nullptr, std::unique_ptr<spp::utils::errors::ErrorFormatter> &&error_formatter = nullptr) -> Scope*;
 
     auto move_out_of_current_scope() -> Scope*;
 
     auto move_to_next_scope() -> Scope*;
 
-    auto get_namespaced_scope(std::vector<asts::IdentifierAst*> const &names) -> Scope*;
+    auto get_namespaced_scope(std::vector<asts::IdentifierAst*> const &names) const -> Scope*;
 
     auto attach_all_super_scopes(asts::mixins::CompilerMetaData *meta) -> void;
 
-    auto attach_specific_super_scopes(Scope *scope, asts::mixins::CompilerMetaData *meta) -> void;
+    auto attach_specific_super_scopes(Scope &scope, asts::mixins::CompilerMetaData *meta) const -> void;
 
 private:
-    auto attach_specific_super_scopes_impl(Scope *scope, std::vector<Scope*> &&sup_scopes, asts::mixins::CompilerMetaData *meta) -> void;
+    auto attach_specific_super_scopes_impl(Scope &scope, std::vector<Scope*> &&sup_scopes, asts::mixins::CompilerMetaData *meta) const -> void;
+
+    static auto check_conflicting_type_or_cmp_statements(TypeSymbol const &cls_sym, Scope const &sup_scope) -> void;
 };
 
 

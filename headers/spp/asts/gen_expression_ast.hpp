@@ -1,6 +1,4 @@
-#ifndef GEN_EXPRESSION_AST_HPP
-#define GEN_EXPRESSION_AST_HPP
-
+#pragma once
 #include <spp/asts/primary_expression_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -53,6 +51,3 @@ public:
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //GEN_EXPRESSION_AST_HPP

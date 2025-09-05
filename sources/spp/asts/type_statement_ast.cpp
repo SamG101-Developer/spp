@@ -16,6 +16,7 @@
 #include <spp/asts/sup_prototype_extension_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/type_statement_ast.hpp>
 #include <spp/asts/generic_parameter_group_ast.hpp>
 

@@ -1,6 +1,4 @@
-#ifndef CASE_PATTERN_VARIANT_ELSE_AST_HPP
-#define CASE_PATTERN_VARIANT_ELSE_AST_HPP
-
+#pragma once
 #include <spp/asts/case_pattern_variant_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -22,6 +20,3 @@ struct spp::asts::CasePatternVariantElseAst final : CasePatternVariantAst {
 
     ~CasePatternVariantElseAst() override;
 };
-
-
-#endif //CASE_PATTERN_VARIANT_ELSE_AST_HPP

@@ -1,6 +1,4 @@
-#ifndef FUNCTION_IMPLEMENTATION_AST_HPP
-#define FUNCTION_IMPLEMENTATION_AST_HPP
-
+#pragma once
 #include <spp/asts/inner_scope_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -21,6 +19,3 @@ struct spp::asts::FunctionImplementationAst final : InnerScopeAst<std::unique_pt
 private:
     static auto new_empty() -> std::unique_ptr<FunctionImplementationAst>;
 };
-
-
-#endif //FUNCTION_IMPLEMENTATION_AST_HPP

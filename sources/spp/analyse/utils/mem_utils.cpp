@@ -1,11 +1,165 @@
 #include <map>
 
+#include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/symbols.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
+#include <spp/asts/ast.hpp>
+#include <spp/asts/array_literal_explicit_elements_ast.hpp>
+#include <spp/asts/expression_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
+#include <spp/asts/tuple_literal_ast.hpp>
 
-#include <genex/views/map.hpp>
+#include <genex/operations/access.hpp>
+#include <genex/views/cast.hpp>
+#include <genex/views/transform.hpp>
+#include <genex/views/for_each.hpp>
 #include <genex/views/to.hpp>
+
+
+auto spp::analyse::utils::mem_utils::memory_region_overlap(
+    asts::Ast const &ast_1,
+    asts::Ast const &ast_2)
+    -> bool {
+    const auto s1 = static_cast<std::string>(ast_1);
+    const auto s2 = static_cast<std::string>(ast_2);
+    return s1.starts_with(s2) or s2.starts_with(s1);
+}
+
+
+auto spp::analyse::utils::mem_utils::memory_region_right_overlap(
+    asts::Ast const &ast_1,
+    asts::Ast const &ast_2) -> bool {
+    const auto s1 = static_cast<std::string>(ast_1);
+    const auto s2 = static_cast<std::string>(ast_2);
+    return s2.starts_with(s1);
+}
+
+
+auto spp::analyse::utils::mem_utils::validate_symbol_memory(
+    asts::ExpressionAst &value_ast,
+    asts::Ast const &move_ast,
+    scopes::ScopeManager &sm,
+    const bool check_move,
+    const bool check_partial_move,
+    const bool check_move_from_borrowed_ctx,
+    const bool check_pins,
+    const bool check_linked_pins,
+    const bool mark_moves,
+    asts::mixins::CompilerMetaData *meta) -> void {
+    // For tuple and array literals, recursively analyse eac element.
+    if (const auto arr_literal = asts::ast_cast<asts::ArrayLiteralExplicitElementsAst>(&value_ast); arr_literal != nullptr) {
+        arr_literal->elems
+            | genex::views::ptr
+            | genex::views::for_each([&](auto *x) { validate_symbol_memory(*x, move_ast, sm, true, true, true, true, true, mark_moves, meta); });
+        return;
+    }
+    if (const auto tup_literal = asts::ast_cast<asts::TupleLiteralAst>(&value_ast); tup_literal != nullptr) {
+        tup_literal->elems
+            | genex::views::ptr
+            | genex::views::for_each([&](auto *x) { validate_symbol_memory(*x, move_ast, sm, true, true, true, true, true, mark_moves, meta); });
+        return;
+    }
+
+    // Get the symbol representing the outermost part of the expression being moved. Non-symbolic => temporary value.
+    auto [var_sym, var_scope] = sm.current_scope->get_var_symbol_outermost(value_ast);
+    if (var_sym == nullptr) { return; }
+    auto copies = var_scope->get_type_symbol(*var_sym->type)->is_copyable;
+    auto partial_copies = var_scope->get_type_symbol(*value_ast.infer_type(&sm, meta))->is_copyable;
+
+    // Check for inconsistent memory moving (from branching).
+    if (check_move and var_sym->memory_info->is_inconsistently_moved.has_value()) {
+        const auto pair = *var_sym->memory_info->is_inconsistently_moved;
+        errors::SemanticErrorBuilder<errors::SppInconsistentlyInitializedMemoryUseError>().with_args(
+            value_ast, *std::get<0>(pair), *std::get<1>(pair), "moved").with_scopes({sm.current_scope}).raise();
+    }
+
+    // Check for inconsistent memory initialization (from branching).
+    if (check_move and var_sym->memory_info->is_inconsistently_initialized.has_value()) {
+        const auto pair = *var_sym->memory_info->is_inconsistently_initialized;
+        errors::SemanticErrorBuilder<errors::SppInconsistentlyInitializedMemoryUseError>().with_args(
+            value_ast, *std::get<0>(pair), *std::get<1>(pair), "initialized").with_scopes({sm.current_scope}).raise();
+    }
+
+    // Check for inconsistent partial memory moving (from branching).
+    if (check_move and var_sym->memory_info->is_inconsistently_partially_moved.has_value()) {
+        const auto pair = *var_sym->memory_info->is_inconsistently_partially_moved;
+        errors::SemanticErrorBuilder<errors::SppInconsistentlyInitializedMemoryUseError>().with_args(
+            value_ast, *std::get<0>(pair), *std::get<1>(pair), "partially moved").with_scopes({sm.current_scope}).raise();
+    }
+
+    // Check for inconsistent pinned memory (from branching).
+    if (check_pins and var_sym->memory_info->is_inconsistently_pinned.has_value()) {
+        const auto pair = *var_sym->memory_info->is_inconsistently_pinned;
+        errors::SemanticErrorBuilder<errors::SppInconsistentlyPinnedMemoryUseError>().with_args(
+            value_ast, *std::get<0>(pair), *std::get<1>(pair)).with_scopes({sm.current_scope}).raise();
+    }
+
+    // Check the symbol hasn't already been moved.
+    if (check_move and var_sym->memory_info->ast_moved != nullptr) {
+        const auto where_init = var_sym->memory_info->ast_initialization_origin;
+        const auto where_moved = var_sym->memory_info->ast_moved;
+        errors::SemanticErrorBuilder<errors::SppUninitializedMemoryUseError>().with_args(
+            value_ast, *where_init, *where_moved).with_scopes({sm.current_scope}).raise();
+    }
+
+    // Check the symbol doesn't have any outstanding partial moved (moving a partially moved object).
+    if (check_partial_move and not var_sym->memory_info->ast_partial_moves.empty() and asts::ast_cast<asts::IdentifierAst>(&value_ast) != nullptr) {
+        const auto where_init = var_sym->memory_info->ast_initialization_origin;
+        const auto where_pm = var_sym->memory_info->ast_partial_moves.front();
+        errors::SemanticErrorBuilder<errors::SppPartiallyInitializedMemoryUseError>().with_args(
+            value_ast, *where_init, *where_pm).with_scopes({sm.current_scope}).raise();
+    }
+
+    // Check the symbol doesn't have any outstanding partial moves (directly moving a partial move).
+    if (check_partial_move and not var_sym->memory_info->ast_partial_moves.empty() and asts::ast_cast<asts::IdentifierAst>(&value_ast) == nullptr) {
+        const auto where_init = var_sym->memory_info->ast_initialization_origin;
+        const auto where_pm = var_sym->memory_info->ast_partial_moves.front();
+        errors::SemanticErrorBuilder<errors::SppUninitializedMemoryUseError>().with_args(
+            value_ast, *where_init, *where_pm).with_scopes({sm.current_scope}).raise();
+    }
+
+    // Check the symbol isn't being moved from a borrowed context.
+    if (check_move_from_borrowed_ctx and not var_sym->memory_info->ast_partial_moves.empty() and asts::ast_cast<asts::IdentifierAst>(&value_ast) == nullptr and not partial_copies) {
+        const auto where_borrow = var_sym->memory_info->ast_borrowed;
+        const auto where_pm = var_sym->memory_info->ast_partial_moves.front();
+        errors::SemanticErrorBuilder<errors::SppMoveFromBorrowedMemoryError>().with_args(
+            value_ast, *where_pm, *where_borrow).with_scopes({sm.current_scope}).raise();
+    }
+
+    // Check the object being moved isn't pinned.
+    const auto symbolic_pins = var_sym->memory_info->ast_pins
+        | genex::views::cast_dynamic<asts::IdentifierAst*>()
+        | genex::views::to<std::vector>();
+
+    if (not symbolic_pins.empty() and not copies) {
+        const auto pin_sym = var_scope->get_var_symbol(*symbolic_pins.front());
+        const auto where_init = var_sym->memory_info->ast_initialization_origin;
+        const auto where_move = &move_ast;
+        const auto where_pin = pin_sym->memory_info->ast_pins.front();
+
+        if (check_linked_pins and var_sym != pin_sym) {
+            const auto where_pin_init = pin_sym->memory_info->ast_initialization_origin;
+            errors::SemanticErrorBuilder<errors::SppMoveFromPinLinkedMemoryError>().with_args(
+                value_ast, *where_init, *where_move, *where_pin, *where_pin_init).with_scopes({sm.current_scope}).raise();
+        }
+
+        if (check_pins and var_sym == pin_sym) {
+            errors::SemanticErrorBuilder<errors::SppMoveFromPinnedMemoryError>().with_args(
+                value_ast, *where_init, *where_move, *where_pin).with_scopes({sm.current_scope}).raise();
+        }
+    }
+
+    // Mark the symbol as moved/partially-moved if it is not copyable.
+    if (mark_moves and asts::ast_cast<asts::IdentifierAst>(&value_ast) != nullptr and not copies) {
+        var_sym->memory_info->moved_by(value_ast);
+    }
+
+    else if (mark_moves and asts::ast_cast<asts::IdentifierAst>(&value_ast) == nullptr and not partial_copies) {
+        var_sym->memory_info->ast_partial_moves.emplace_back(&value_ast);
+    }
+}
 
 
 template <typename T>
@@ -22,13 +176,13 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
         // Make a record of the symbols' memory status in the scope before the branch is analysed.
         auto var_symbols_in_scope = sm->current_scope->all_var_symbols();
         auto old_symbol_mem_info = var_symbols_in_scope
-            | genex::views::map([sm](auto &&x) { return std::make_pair(x, sm->current_scope->get_var_symbol(*x->name)->memory_info->snapshot()); })
+            | genex::views::transform([sm](auto &&x) { return std::make_pair(x, sm->current_scope->get_var_symbol(*x->name)->memory_info->snapshot()); })
             | genex::views::to<std::vector>();
 
         // Analyse the memory and then recheck the symbols' memory status.
         branch->stage_8_check_memory(sm, meta);
         auto new_symbol_mem_info = var_symbols_in_scope
-            | genex::views::map([sm](auto &&x) { return std::make_pair(x, sm->current_scope->get_var_symbol(*x->name)->memory_info->snapshot()); })
+            | genex::views::transform([sm](auto &&x) { return std::make_pair(x, sm->current_scope->get_var_symbol(*x->name)->memory_info->snapshot()); })
             | genex::views::to<std::vector>();
 
         // Reset the memory status of the symbols for the next branch to analyse with the same original memory states.

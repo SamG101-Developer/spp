@@ -1,6 +1,4 @@
-#ifndef FLOAT_LITERAL_AST_HPP
-#define FLOAT_LITERAL_AST_HPP
-
+#pragma once
 #include <spp/asts/literal_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -63,6 +61,3 @@ struct spp::asts::FloatLiteralAst final : LiteralAst {
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //FLOAT_LITERAL_AST_HPP

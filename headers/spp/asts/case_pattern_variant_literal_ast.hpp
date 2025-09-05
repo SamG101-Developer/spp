@@ -1,6 +1,4 @@
-#ifndef CASE_PATTERN_VARIANT_LITERAL_AST_HPP
-#define CASE_PATTERN_VARIANT_LITERAL_AST_HPP
-
+#pragma once
 #include <spp/asts/case_pattern_variant_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -29,6 +27,3 @@ struct spp::asts::CasePatternVariantLiteralAst final : CasePatternVariantAst {
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //CASE_PATTERN_VARIANT_LITERAL_AST_HPP

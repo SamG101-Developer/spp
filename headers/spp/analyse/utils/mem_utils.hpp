@@ -105,25 +105,25 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
      * not in another branch. This is used to track whether a symbol has been initialised in one branch, but not in
      * another branch.
      */
-    InconsistentCondMemState is_inconsistently_initialized;
+    std::optional<InconsistentCondMemState> is_inconsistently_initialized;
 
     /**
      * A symbol is inconsistently moved if a symbol is @i changed into the moved state in one branch, but not in another
      * branch. This is used to track whether a symbol has been moved out of in one branch, but not in another branch.
      */
-    InconsistentCondMemState is_inconsistently_moved;
+    std::optional<InconsistentCondMemState> is_inconsistently_moved;
 
     /**
      * A symbol is inconsistently partially moved if the symbol maintains different partial moves in branches. This
      * leaves the symbol in different partially moved states.
      */
-    InconsistentCondMemState is_inconsistently_partially_moved;
+    std::optional<InconsistentCondMemState> is_inconsistently_partially_moved;
 
     /**
      * A symbol is inconsistently pinned if the symbol maintains different pin states in branches. This leaves the
      * symbol in different pinned states.
      */
-    InconsistentCondMemState is_inconsistently_pinned;
+    std::optional<InconsistentCondMemState> is_inconsistently_pinned;
 
     /**
      * The @c borrow_refers_to is a list of tuples that represent the borrows that this AST refers to having been
@@ -255,9 +255,9 @@ namespace spp::analyse::utils::mem_utils {
      * @throw spp::analyse::errors::SppInconsistentlyPinnedMemoryUseError If an inconsistently pinned symbol is used.
      */
     auto validate_symbol_memory(
-        asts::ExpressionAst const &value_ast,
+        asts::ExpressionAst &value_ast,
         asts::Ast const &move_ast,
-        scopes::ScopeManager *sm,
+        scopes::ScopeManager &sm,
         bool check_move,
         bool check_partial_move,
         bool check_move_from_borrowed_ctx,

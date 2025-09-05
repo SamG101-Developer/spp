@@ -5,6 +5,8 @@
 
 #include <spp/asts/_fwd.hpp>
 
+#include <tsl/robin_map.h>
+
 
 namespace spp::analyse::scopes {
     template <typename I, typename S>
@@ -21,32 +23,36 @@ namespace spp::analyse::scopes {
 template <typename I, typename S>
 class spp::analyse::scopes::IndividualSymbolTable {
 private:
-    std::map<I*, std::shared_ptr<S>> m_table;
+    tsl::robin_map<I*, std::shared_ptr<S>> m_table;
 
 public:
     IndividualSymbolTable();
 
-    IndividualSymbolTable(SymbolTable const &);
+    IndividualSymbolTable(IndividualSymbolTable const &that);
 
-    auto add(std::shared_ptr<Symbol> sym) -> void;
+    explicit operator std::string() const;
+
+    auto add(I const &sym_name, std::shared_ptr<S> sym) -> void;
 
     auto rem(I const &sym_name) -> void;
 
-    auto get(I const &sym_name) -> std::shared_ptr<S>;
+    auto get(I const &sym_name) const -> std::shared_ptr<S>;
 
-    auto set(I const &sym_name, std::shared_ptr<S> sym) -> void;
+    auto has(I const &sym_name) const -> bool;
 
-    auto has(I const &sym_name) -> bool;
-
-    auto all() -> std::generator<std::shared_ptr<S>>;
+    auto all() const -> std::generator<std::shared_ptr<S>>;
 };
 
 
 class spp::analyse::scopes::SymbolTable {
 public:
-    IndividualSymbolTable<asts::IdentifierAst, NamespaceSymbol> namespace_tbl;
+    SymbolTable();
 
-    IndividualSymbolTable<asts::TypeIdentifierAst, TypeSymbol> type_tbl;
+    SymbolTable(SymbolTable const &that);
+
+    IndividualSymbolTable<asts::IdentifierAst, NamespaceSymbol> ns_tbl;
+
+    IndividualSymbolTable<asts::TypeAst, TypeSymbol> type_tbl;
 
     IndividualSymbolTable<asts::IdentifierAst, VariableSymbol> var_tbl;
 };

@@ -1,6 +1,4 @@
-#ifndef CLASS_MEMBER_AST_HPP
-#define CLASS_MEMBER_AST_HPP
-
+#pragma once
 #include <spp/asts/_fwd.hpp>
 #include <spp/asts/ast.hpp>
 
@@ -11,6 +9,3 @@
  */
 struct spp::asts::ClassMemberAst: virtual Ast {
 };
-
-
-#endif //CLASS_MEMBER_AST_HPP

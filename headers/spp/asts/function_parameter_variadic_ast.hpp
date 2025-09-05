@@ -1,6 +1,4 @@
-#ifndef FUNCTION_PARAMETER_VARIADIC_AST_HPP
-#define FUNCTION_PARAMETER_VARIADIC_AST_HPP
-
+#pragma once
 #include <spp/asts/function_parameter_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -33,6 +31,3 @@ struct spp::asts::FunctionParameterVariadicAst final : FunctionParameterAst {
 
     ~FunctionParameterVariadicAst() override;
 };
-
-
-#endif //FUNCTION_PARAMETER_VARIADIC_AST_HPP

@@ -1,6 +1,4 @@
-#ifndef GENERIC_ARGUMENT_GROUP_AST_HPP
-#define GENERIC_ARGUMENT_GROUP_AST_HPP
-
+#pragma once
 #include <map>
 #include <spp/asts/ast.hpp>
 #include <spp/asts/_fwd.hpp>
@@ -43,7 +41,7 @@ struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
         GenericParameterGroupAst const &generic_params) -> std::unique_ptr<GenericArgumentGroupAst>;
 
     static auto from_map(
-        std::map<TypeAst*, ExpressionAst*> const &map) -> std::unique_ptr<GenericArgumentGroupAst>;
+        std::map<std::shared_ptr<TypeAst>, ExpressionAst*> &&map) -> std::unique_ptr<GenericArgumentGroupAst>;
 
     auto operator==(const GenericArgumentGroupAst &other) const -> bool;
 
@@ -65,6 +63,3 @@ struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //GENERIC_ARGUMENT_GROUP_AST_HPP

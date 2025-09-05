@@ -1,6 +1,4 @@
-#ifndef AST_HPP
-#define AST_HPP
-
+#pragma once
 #include <memory>
 
 #include <spp/asts/meta/ast_printer.hpp>
@@ -9,11 +7,6 @@
 #include <genex/views/ptr.hpp>
 #include <genex/views/map.hpp>
 #include <genex/views/to.hpp>
-
-
-#define SPP_GCC_DIAGNOSTIC_PUSH #pragma GCC diagnostic push
-#define SPP_GCC_DIAGNOSTIC_IGNORE_NONNULL_COMPARE #pragma GCC diagnostic ignored "-Wnonnull-compare"
-#define SPP_GCC_DIAGNOSTIC_POP #pragma GCC diagnostic pop
 
 
 #define ast_clone(ast) ((ast) != nullptr ? ast_cast<std::remove_cvref_t<decltype(*ast)>>((ast)->clone()) : nullptr)
@@ -83,6 +76,7 @@ namespace spp::analyse::scopes {
 struct spp::asts::Ast : mixins::CompilerStages {
     friend struct AnnotationAst;
     friend struct FunctionPrototypeAst;
+    friend class analyse::scopes::ScopeManager;
 
 protected:
     /**
@@ -177,6 +171,3 @@ protected:
      */
     explicit Ast();
 };
-
-
-#endif //AST_HPP

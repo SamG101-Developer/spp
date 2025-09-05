@@ -1,6 +1,4 @@
-#ifndef BINARY_EXPRESSION_TEMP_AST_HPP
-#define BINARY_EXPRESSION_TEMP_AST_HPP
-
+#pragma once
 #include <spp/asts/_fwd.hpp>
 
 
@@ -30,6 +28,3 @@ struct spp::asts::BinaryExpressionTempAst {
 
     ~BinaryExpressionTempAst();
 };
-
-
-#endif //BINARY_EXPRESSION_TEMP_AST_HPP

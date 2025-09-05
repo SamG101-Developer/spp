@@ -1,6 +1,4 @@
-#ifndef BOOLEAN_LITERAL_AST_HPP
-#define BOOLEAN_LITERAL_AST_HPP
-
+#pragma once
 #include <spp/asts/literal_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -49,6 +47,3 @@ struct spp::asts::BooleanLiteralAst final : LiteralAst {
      */
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //BOOLEAN_LITERAL_AST_HPP

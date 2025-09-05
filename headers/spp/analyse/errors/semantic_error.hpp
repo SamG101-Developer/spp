@@ -151,7 +151,7 @@ struct spp::analyse::errors::SppUninitializedMemoryUseError final : SemanticErro
 
 
 struct spp::analyse::errors::SppPartiallyInitializedMemoryUseError final : SemanticError {
-    explicit SppPartiallyInitializedMemoryUseError(asts::ExpressionAst const &ast, asts::Ast const &partial_move_location);
+    explicit SppPartiallyInitializedMemoryUseError(asts::ExpressionAst const &ast, asts::Ast const &init_location, asts::Ast const &partial_move_location);
 };
 
 
@@ -171,12 +171,12 @@ struct spp::analyse::errors::SppMoveFromPinLinkedMemoryError final : SemanticErr
 
 
 struct spp::analyse::errors::SppInconsistentlyInitializedMemoryUseError final : SemanticError {
-    explicit SppInconsistentlyInitializedMemoryUseError(asts::ExpressionAst const &ast, std::pair<asts::CaseExpressionBranchAst*, bool> branch_1, std::pair<asts::CaseExpressionBranchAst*, bool> branch_2, std::string_view what);
+    explicit SppInconsistentlyInitializedMemoryUseError(asts::ExpressionAst const &ast, asts::CaseExpressionBranchAst const &branch_1, asts::CaseExpressionBranchAst const &branch_2, std::string_view what);
 };
 
 
 struct spp::analyse::errors::SppInconsistentlyPinnedMemoryUseError final : SemanticError {
-    explicit SppInconsistentlyPinnedMemoryUseError(asts::ExpressionAst const &ast, std::pair<asts::CaseExpressionBranchAst*, bool> branch_1, std::pair<asts::CaseExpressionBranchAst*, bool> branch_2);
+    explicit SppInconsistentlyPinnedMemoryUseError(asts::ExpressionAst const &ast, asts::CaseExpressionBranchAst const &branch_1, asts::CaseExpressionBranchAst const &branch_2);
 };
 
 

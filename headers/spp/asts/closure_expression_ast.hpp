@@ -1,7 +1,4 @@
-#ifndef CLOSURE_EXPRESSION_AST_HPP
-#define CLOSURE_EXPRESSION_AST_HPP
-
-
+#pragma once
 #include <spp/asts/primary_expression_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -53,6 +50,3 @@ public:
 private:
     std::shared_ptr<TypeAst> m_return_type;
 };
-
-
-#endif //CLOSURE_EXPRESSION_AST_HPP

@@ -1,6 +1,4 @@
-#ifndef FUNCTION_CALL_ARGUMENT_POSITIONAL_AST_HPP
-#define FUNCTION_CALL_ARGUMENT_POSITIONAL_AST_HPP
-
+#pragma once
 #include <spp/asts/function_call_argument_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -31,6 +29,3 @@ struct spp::asts::FunctionCallArgumentPositionalAst : FunctionCallArgumentAst {
 
     ~FunctionCallArgumentPositionalAst() override;
 };
-
-
-#endif //FUNCTION_CALL_ARGUMENT_POSITIONAL_AST_HPP

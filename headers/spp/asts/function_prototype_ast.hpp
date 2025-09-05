@@ -1,6 +1,4 @@
-#ifndef FUNCTION_PROTOTYPE_HPP
-#define FUNCTION_PROTOTYPE_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
 #include <spp/asts/module_member_ast.hpp>
 #include <spp/asts/sup_member_ast.hpp>
@@ -158,6 +156,3 @@ public:
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //FUNCTION_PROTOTYPE_HPP

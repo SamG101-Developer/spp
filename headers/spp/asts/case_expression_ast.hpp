@@ -1,6 +1,4 @@
-#ifndef CASE_EXPRESSION_AST_HPP
-#define CASE_EXPRESSION_AST_HPP
-
+#pragma once
 #include <spp/asts/primary_expression_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -64,6 +62,3 @@ struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //CASE_EXPRESSION_AST_HPP

@@ -36,36 +36,36 @@ namespace spp::analyse::utils::func_utils {
      */
     auto get_function_owner_type_and_function_name(
         asts::ExpressionAst const &lhs,
-        scopes::ScopeManager const &sm,
+        scopes::ScopeManager &sm,
         asts::mixins::CompilerMetaData *meta)
-        -> std::tuple<asts::Ast*, scopes::Scope*, asts::IdentifierAst*>;
+        -> std::tuple<asts::TypeAst*, scopes::Scope*, asts::IdentifierAst*>;
 
     auto convert_method_to_function_form(
-        asts::Ast const &function_owner_type,
+        asts::TypeAst const &function_owner_type,
         asts::IdentifierAst const &function_name,
-        asts::ExpressionAst const &lhs,
+        asts::PostfixExpressionAst const &lhs,
         asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
-        scopes::ScopeManager const &sm,
+        scopes::ScopeManager &sm,
         asts::mixins::CompilerMetaData *meta)
-        -> std::pair<asts::PostfixExpressionAst*, asts::PostfixExpressionOperatorFunctionCallAst*>;
+        -> std::pair<std::unique_ptr<asts::PostfixExpressionAst>, std::unique_ptr<asts::PostfixExpressionOperatorFunctionCallAst>>;
 
     auto get_all_function_scopes(
         asts::IdentifierAst const &target_fn_name,
-        scopes::Scope const &target_scope,
+        scopes::Scope *target_scope,
         bool for_override = false)
-        -> std::vector<std::tuple<scopes::Scope*, asts::FunctionPrototypeAst*, asts::GenericArgumentGroupAst*>>;
+        -> std::vector<std::tuple<scopes::Scope*, asts::FunctionPrototypeAst*, std::unique_ptr<asts::GenericArgumentGroupAst>>>;
 
     auto check_for_conflicting_overload(
         scopes::Scope const &this_scope,
-        scopes::Scope const &target_scope,
-        asts::FunctionPrototypeAst const &new_func)
+        scopes::Scope *target_scope,
+        asts::FunctionPrototypeAst const &new_fn)
         -> asts::FunctionPrototypeAst*;
 
     auto check_for_conflicting_override(
         scopes::Scope const &this_scope,
-        scopes::Scope const &target_scope,
-        asts::FunctionPrototypeAst const &new_func,
-        scopes::Scope *exclude_scope = nullptr)
+        scopes::Scope *target_scope,
+        asts::FunctionPrototypeAst const &new_fn,
+        scopes::Scope const *exclude_scope = nullptr)
         -> asts::FunctionPrototypeAst*;
 
     auto name_args(
@@ -82,19 +82,43 @@ namespace spp::analyse::utils::func_utils {
         bool is_tuple_owner = false)
         -> void;
 
+    template <typename GenericArgType, typename GenericParamType>
+    auto name_generic_args_impl(
+        std::vector<std::unique_ptr<GenericArgType>> &args,
+        std::vector<GenericParamType*> params,
+        asts::Ast const &owner,
+        scopes::ScopeManager const &sm)
+        -> void;
+
     auto infer_generic_args(
         std::vector<std::unique_ptr<asts::GenericArgumentAst>> &args,
         std::vector<asts::GenericParameterAst*> params,
         std::vector<asts::GenericParameterAst*> opt_params,
         std::vector<asts::GenericArgumentAst*> explicit_args,
-        std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> infer_source,
-        std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> infer_target,
+        std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_source,
+        std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_target,
         std::shared_ptr<asts::Ast> owner,
+        scopes::Scope &owner_scope,
         std::shared_ptr<asts::IdentifierAst> variadic_param_identifier,
         bool is_tuple_owner,
-        scopes::ScopeManager const &sm,
+        scopes::ScopeManager &sm,
         asts::mixins::CompilerMetaData *meta)
-        -> std::vector<asts::GenericArgumentAst*>;
+        -> void;
+
+    template <typename GenericArgType, typename GenericParamType>
+    auto infer_generic_args_impl(
+        std::vector<std::unique_ptr<GenericArgType>> &args,
+        std::vector<GenericParamType*> params,
+        std::vector<GenericParamType*> opt_params,
+        std::vector<GenericArgType*> explicit_args,
+        std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_source,
+        std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_target,
+        std::shared_ptr<asts::Ast> owner,
+        scopes::Scope &owner_scope,
+        std::shared_ptr<asts::IdentifierAst> variadic_param_identifier,
+        scopes::ScopeManager &sm,
+        asts::mixins::CompilerMetaData *meta)
+        -> void;
 
     auto is_target_callable(
         asts::ExpressionAst const &expr,

@@ -1,6 +1,4 @@
-#ifndef PARSER_SPP_HPP
-#define PARSER_SPP_HPP
-
+#pragma once
 #include <cstdint>
 #include <functional>
 
@@ -409,6 +407,3 @@ public:
 private:
     auto m_store_error(std::size_t pos, std::string &&err_str) -> bool;
 };
-
-
-#endif //PARSER_SPP_HPP

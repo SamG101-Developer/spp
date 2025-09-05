@@ -1,6 +1,4 @@
-#ifndef IS_EXPRESSION_TEMP_AST_HPP
-#define IS_EXPRESSION_TEMP_AST_HPP
-
+#pragma once
 #include <spp/asts/_fwd.hpp>
 
 
@@ -26,6 +24,3 @@ struct spp::asts::IsExpressionTempAst {
 
     ~IsExpressionTempAst();
 };
-
-
-#endif //IS_EXPRESSION_TEMP_AST_HPP

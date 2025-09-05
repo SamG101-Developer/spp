@@ -1,6 +1,4 @@
-#ifndef FUNCTION_PARAMETER_OPTIONAL_AST_HPP
-#define FUNCTION_PARAMETER_OPTIONAL_AST_HPP
-
+#pragma once
 #include <spp/asts/function_parameter_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -43,6 +41,3 @@ struct spp::asts::FunctionParameterOptionalAst final : FunctionParameterAst {
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //FUNCTION_PARAMETER_OPTIONAL_AST_HPP

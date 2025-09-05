@@ -17,6 +17,7 @@
  */
 struct spp::asts::SupPrototypeExtensionAst final : virtual Ast, SupMemberAst, ModuleMemberAst {
     SPP_AST_KEY_FUNCTIONS;
+    friend class analyse::scopes::ScopeManager;
 
     /**
      * The @c sup keyword that represents the start of the superimposition. This is used to indicate that a type is
@@ -85,7 +86,7 @@ private:
         -> void;
 
     auto m_check_self_extension(
-        analyse::scopes::Scope &check_scope)
+        analyse::scopes::Scope &check_scope) const
         -> void;
 
 public:

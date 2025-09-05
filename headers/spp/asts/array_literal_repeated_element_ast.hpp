@@ -1,6 +1,4 @@
-#ifndef ARRAY_LITERAL_0_ELEMENTS_HPP
-#define ARRAY_LITERAL_0_ELEMENTS_HPP
-
+#pragma once
 #include <spp/asts/array_literal_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -92,6 +90,3 @@ struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLiteralAst {
      */
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //ARRAY_LITERAL_0_ELEMENTS_HPP

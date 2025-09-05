@@ -1,6 +1,4 @@
-#ifndef CASE_EXPRESSION_BRANCH_AST_HPP
-#define CASE_EXPRESSION_BRANCH_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
 #include <spp/asts/_fwd.hpp>
 #include <spp/asts/mixins/type_inferrable.hpp>
@@ -54,6 +52,3 @@ struct spp::asts::CaseExpressionBranchAst final : virtual Ast, mixins::TypeInfer
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //CASE_EXPRESSION_BRANCH_AST_HPP

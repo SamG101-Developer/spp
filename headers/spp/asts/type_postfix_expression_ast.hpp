@@ -5,7 +5,7 @@
 #include <spp/asts/_fwd.hpp>
 
 
-struct spp::asts::TypePostfixExpressionAst final : TypeAst, std::enable_shared_from_this<TypePostfixExpressionAst> {
+struct spp::asts::TypePostfixExpressionAst final : TypeAst {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

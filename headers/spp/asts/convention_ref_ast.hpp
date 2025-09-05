@@ -1,6 +1,4 @@
-#ifndef CONVENTION_REF_AST_HPP
-#define CONVENTION_REF_AST_HPP
-
+#pragma once
 #include <spp/asts/convention_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -27,6 +25,3 @@ struct spp::asts::ConventionRefAst final : ConventionAst {
 
     ~ConventionRefAst() override;
 };
-
-
-#endif //CONVENTION_REF_AST_HPP

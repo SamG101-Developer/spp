@@ -26,6 +26,11 @@ namespace spp::analyse::utils::type_utils {
      * @code Opt[T]@endcode, and the rhs is a inner type to the variant, such as @code Some[T]@endcode, or
      * @code None@endcode.
      *
+     * The type checking of generic types, such as @code Vec[Str]@endcode vs @code Vec[Str]@endcode, require the generic
+     * arguments to be symbolically equal too. A recursive algorithm is used to inspect arguments. However, non-type
+     * generic arguments (comp generic arguments) can't be "type-compared", so their values are compared instead. See
+     * the other overload of this function.
+     *
      * @param lhs_type The left hand side type to compare.
      * @param rhs_type The right hand side type to compare.
      * @param lhs_scope The scope to identify the lhs type in. This is used to resolve aliases and namespaces.
@@ -44,12 +49,19 @@ namespace spp::analyse::utils::type_utils {
         bool lhs_ignore_alias = false)
         -> bool;
 
+    auto symbolic_eq(
+        asts::ExpressionAst const &lhs_expr,
+        asts::ExpressionAst const &rhs_expr,
+        scopes::Scope const &lhs_scope,
+        scopes::Scope const &rhs_scope)
+        -> bool;
+
     auto relaxed_symbolic_eq(
         asts::TypeAst const &lhs_type,
         asts::TypeAst const &rhs_type,
         scopes::Scope const &lhs_scope,
         scopes::Scope const &rhs_scope,
-        std::map<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::TypeAst>> *generic_args = nullptr)
+        std::map<asts::TypeAst*, asts::ExpressionAst*> &generic_args)
         -> bool;
 
     auto is_type_indexable(
@@ -72,16 +84,6 @@ namespace spp::analyse::utils::type_utils {
         scopes::Scope const &scope)
         -> bool;
 
-    auto is_type_generator(
-        asts::TypeAst const &type,
-        scopes::Scope const &scope)
-        -> bool;
-
-    auto is_type_function(
-        asts::TypeAst const &type,
-        scopes::Scope const &scope)
-        -> bool;
-
     auto is_type_boolean(
         asts::TypeAst const &type,
         scopes::Scope const &scope)
@@ -92,20 +94,32 @@ namespace spp::analyse::utils::type_utils {
         scopes::Scope const &scope)
         -> bool;
 
+    auto is_type_generator(
+        asts::TypeAst const &type,
+        scopes::Scope const &scope)
+        -> bool;
+
+    auto is_type_function(
+        asts::TypeAst const &type,
+        scopes::Scope const &scope)
+        -> bool;
+
     auto is_type_recursive(
         asts::ClassPrototypeAst const &type,
         scopes::ScopeManager const &sm)
-        -> asts::TypeAst*;
+        -> std::shared_ptr<asts::TypeAst>;
 
     auto is_index_within_type_bound(
         std::size_t index,
         asts::TypeAst const &type,
-        scopes::Scope const &sm) -> bool;
+        scopes::Scope const &sm)
+        -> bool;
 
     auto get_nth_type_of_indexable_type(
         std::size_t index,
         asts::TypeAst const &type,
-        scopes::Scope const &sm) -> bool;
+        scopes::Scope const &sm)
+        -> std::shared_ptr<asts::TypeAst>;
 
     auto get_generator_and_yield_type(
         asts::TypeAst const &type,
@@ -155,7 +169,7 @@ namespace spp::analyse::utils::type_utils {
         std::vector<scopes::Symbol*> external_generic_syms,
         scopes::ScopeManager const &sm,
         asts::mixins::CompilerMetaData *meta = nullptr)
-        -> scopes::Scope;
+        -> std::tuple<scopes::Scope*, scopes::Scope*>;
 
     auto create_generic_sym(
         asts::GenericArgumentAst const &generic,

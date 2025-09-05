@@ -1,6 +1,4 @@
-#ifndef BINARY_EXPRESSION_AST_HPP
-#define BINARY_EXPRESSION_AST_HPP
-
+#pragma once
 #include <spp/asts/expression_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -70,6 +68,3 @@ public:
      */
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //BINARY_EXPRESSION_AST_HPP

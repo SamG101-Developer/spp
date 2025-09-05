@@ -1,6 +1,4 @@
-#ifndef _FWD_HPP
-#define _FWD_HPP
-
+#pragma once
 #include <memory>
 #include <variant>
 #include <vector>

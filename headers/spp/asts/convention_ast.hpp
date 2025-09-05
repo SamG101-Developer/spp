@@ -1,6 +1,4 @@
-#ifndef CONVENTION_AST_HPP
-#define CONVENTION_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -17,6 +15,3 @@ struct spp::asts::ConventionAst : virtual Ast {
 
     explicit ConventionAst(ConventionTag tag);
 };
-
-
-#endif //CONVENTION_AST_HPP

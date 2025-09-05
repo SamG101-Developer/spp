@@ -1,6 +1,4 @@
-#ifndef FUNCTION_PARAMETER_SELF_HPP
-#define FUNCTION_PARAMETER_SELF_HPP
-
+#pragma once
 #include <spp/asts/function_parameter_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -27,6 +25,3 @@ struct spp::asts::FunctionParameterSelfAst final : FunctionParameterAst {
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //FUNCTION_PARAMETER_SELF_HPP
