@@ -15,6 +15,7 @@ namespace spp::asts::generate::common_types_precompiled {
     inline const std::shared_ptr<TypeAst> ARR;
     inline const std::shared_ptr<TypeAst> TUP;
     inline const std::shared_ptr<TypeAst> VAR;
+    inline const std::shared_ptr<TypeAst> TRY;
 
     inline const std::shared_ptr<TypeAst> BOOL;
     inline const std::shared_ptr<TypeAst> VOID;

@@ -17,16 +17,17 @@
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 
-#include <genex/operations/at.hpp>
+#include <genex/operations/access.hpp>
 #include <genex/views/cast.hpp>
-#include <genex/views/address.hpp>
 #include <genex/views/duplicates.hpp>
 #include <genex/views/filter.hpp>
+#include <genex/views/indirect.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/remove.hpp>
 #include <genex/views/set_algorithms.hpp>
 #include <genex/views/to.hpp>
+#include <genex/views/transform.hpp>
 
 
 spp::asts::ObjectInitializerArgumentGroupAst::ObjectInitializerArgumentGroupAst(
@@ -126,8 +127,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics
     // Ensure there are no duplicate member names. This needs to be done before semantic analysis as other ASTs might
     // try reading a duplicate attribute before an error is raised.
     const auto duplicates = get_keyword_args()
-        | genex::views::map([](auto &&x) { return x->name; })
-        | genex::views::materialize
+        | genex::views::transform([](auto &&x) { return x->name; })
+        | genex::views::materialize()
         | genex::views::duplicates()
         | genex::views::to<std::vector>();
 
@@ -172,7 +173,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
     const auto cls_sym = sm->current_scope->get_type_symbol(*meta->object_init_type);
     const auto all_attrs = analyse::utils::type_utils::get_all_attrs(*meta->object_init_type, sm);
     const auto all_attr_names = all_attrs
-        | genex::views::map([](auto &&x) { return x.first->name; })
+        | genex::views::transform([](auto &&x) { return x.first->name; })
         | genex::views::to<std::vector>();
 
     // Check there is at most 1 autofill argument.
@@ -187,11 +188,11 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
 
     // Check there are no invalidly named arguments.
     auto arg_names = get_non_autofill_args()
-        | genex::views::map([](auto &&x) { return x->name.get(); })
+        | genex::views::transform([](auto &&x) { return x->name.get(); })
         | genex::views::to<std::vector>();
 
     const auto invalid_args = arg_names
-        | genex::views::set_difference_unsorted(all_attr_names | genex::views::deref | genex::views::materialize, [](IdentifierAst *x) { return *x; })
+        | genex::views::set_difference_unsorted(all_attr_names | genex::views::indirect | genex::views::materialize(), [](IdentifierAst *x) { return *x; })
         | genex::views::to<std::vector>();
 
     if (not invalid_args.empty()) {
@@ -204,7 +205,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
         // Todo: what if there is > 1 matching attr?
         auto [attr, scope] = all_attrs
             | genex::views::filter([&arg](auto &&x) { return x.first->name == arg->name; })
-            | genex::views::map([](auto &&x) { return std::make_pair(x.first, x.second); })
+            | genex::views::transform([](auto &&x) { return std::make_pair(x.first, x.second); })
             | genex::operations::front;
 
         const auto attr_type = scope->get_type_symbol(*cls_sym->scope->get_var_symbol(*attr->name)->type)->fq_name();

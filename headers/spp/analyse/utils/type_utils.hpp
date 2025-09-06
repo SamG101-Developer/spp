@@ -99,6 +99,11 @@ namespace spp::analyse::utils::type_utils {
         scopes::Scope const &scope)
         -> bool;
 
+    auto is_type_try(
+        asts::TypeAst const &type,
+        scopes::Scope const &scope)
+        -> bool;
+
     auto is_type_function(
         asts::TypeAst const &type,
         scopes::Scope const &scope)
@@ -126,12 +131,13 @@ namespace spp::analyse::utils::type_utils {
         scopes::ScopeManager const &sm,
         asts::ExpressionAst const &expr,
         std::string_view what)
-        -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::TypeAst>, bool, bool, bool, std::shared_ptr<asts::TypeAst>>;
+        -> std::tuple<std::shared_ptr<const asts::TypeAst>, std::shared_ptr<asts::TypeAst>, bool, bool, bool, std::shared_ptr<asts::TypeAst>>;
 
     auto get_try_type(
         asts::TypeAst const &type,
+        asts::ExpressionAst const &expr,
         scopes::ScopeManager const &sm)
-        -> std::shared_ptr<asts::TypeAst>;
+        -> std::shared_ptr<const asts::TypeAst>;
 
     template <typename T>
     auto validate_inconsistent_types(
@@ -146,35 +152,36 @@ namespace spp::analyse::utils::type_utils {
         -> std::vector<std::pair<asts::ClassAttributeAst*, scopes::Scope*>>;
 
     auto create_generic_cls_scope(
-        asts::TypeIdentifierAst const &type_part,
-        scopes::TypeSymbol const &old_cls_symbol,
-        std::vector<scopes::Symbol*> external_generic_symbols,
+        asts::TypeIdentifierAst &type_part,
+        scopes::TypeSymbol const &old_cls_sym,
+        std::vector<std::shared_ptr<scopes::Symbol>> external_generic_syms,
         bool is_tuple,
-        scopes::ScopeManager const &sm,
+        scopes::ScopeManager &sm,
         asts::mixins::CompilerMetaData *meta)
         -> scopes::Scope*;
 
     auto create_generic_fun_scope(
         scopes::Scope const &old_fun_scope,
         asts::GenericArgumentGroupAst const &generic_args,
-        std::vector<scopes::Symbol*> external_generic_syms,
-        scopes::ScopeManager const &sm,
+        std::vector<std::shared_ptr<scopes::Symbol>> external_generic_syms,
+        scopes::ScopeManager &sm,
         asts::mixins::CompilerMetaData *meta)
         -> scopes::Scope*;
 
     auto create_generic_sup_scope(
-        scopes::Scope const &old_sup_scope,
-        scopes::Scope const &new_cls_scope,
+        scopes::Scope &old_sup_scope,
+        scopes::Scope &new_cls_scope,
         asts::GenericArgumentGroupAst const &generic_args,
-        std::vector<scopes::Symbol*> external_generic_syms,
-        scopes::ScopeManager const &sm,
-        asts::mixins::CompilerMetaData *meta = nullptr)
+        std::vector<std::shared_ptr<scopes::Symbol>> external_generic_syms,
+        scopes::ScopeManager &sm,
+        asts::mixins::CompilerMetaData *meta)
         -> std::tuple<scopes::Scope*, scopes::Scope*>;
 
     auto create_generic_sym(
         asts::GenericArgumentAst const &generic,
-        scopes::ScopeManager const &sm,
-        scopes::ScopeManager const *tm = nullptr)
+        scopes::ScopeManager &sm,
+        asts::mixins::CompilerMetaData *meta,
+        scopes::ScopeManager *tm = nullptr)
         -> std::shared_ptr<scopes::Symbol>;
 
     auto get_type_part_symbol_with_error(

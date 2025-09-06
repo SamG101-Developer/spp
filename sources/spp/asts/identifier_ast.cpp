@@ -6,8 +6,8 @@
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/utils/strings.hpp>
 
-#include <genex/views/map.hpp>
 #include <genex/views/to.hpp>
+#include <genex/views/transform.hpp>
 
 
 spp::asts::IdentifierAst::IdentifierAst(
@@ -70,7 +70,7 @@ auto spp::asts::IdentifierAst::stage_7_analyse_semantics(
     // Check there is a symbol with the same name in the current scope.
     if (not sm->current_scope->has_var_symbol(*this) and not sm->current_scope->has_ns_symbol(*this)) {
         const auto alternatives = sm->current_scope->all_var_symbols()
-            | genex::views::map([](auto &&x) { return x->name->val; })
+            | genex::views::transform([](auto &&x) { return x->name->val; })
             | genex::views::to<std::vector>();
 
         const auto closest_match = spp::utils::strings::closest_match(val, alternatives);

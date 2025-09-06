@@ -57,6 +57,7 @@ namespace spp::analyse::errors {
     struct SppVariableTupleDestructureTupleSizeMismatchError;
     struct SppVariableObjectDestructureWithBoundMultiSkipError;
     struct SppExpressionNotBooleanError;
+    struct SppExpressionNotGeneratorError;
     struct SppLoopTooManyControlFlowStatementsError;
     struct SppObjectInitializerMultipleAutofillArgumentsError;
     struct SppArgumentNameInvalidError;
@@ -341,6 +342,11 @@ struct spp::analyse::errors::SppExpressionNotBooleanError final : SemanticError 
 };
 
 
+struct spp::analyse::errors::SppExpressionNotGeneratorError final : SemanticError {
+    explicit SppExpressionNotGeneratorError(asts::Ast const &expr, asts::TypeAst const &expr_type, std::string_view what);
+};
+
+
 struct spp::analyse::errors::SppLoopTooManyControlFlowStatementsError final : SemanticError {
     explicit SppLoopTooManyControlFlowStatementsError(asts::TokenAst const &tok_loop, asts::LoopControlFlowStatementAst const &stmt, std::size_t num_controls, std::size_t loop_depth);
 };
@@ -362,7 +368,7 @@ struct spp::analyse::errors::SppArgumentMissingError final : SemanticError {
 
 
 struct spp::analyse::errors::SppEarlyReturnRequiresTryTypeError final : SemanticError {
-    explicit SppEarlyReturnRequiresTryTypeError(asts::PostfixExpressionOperatorEarlyReturnAst const &early_ret, asts::ExpressionAst const &expr, asts::TypeAst const &type);
+    explicit SppEarlyReturnRequiresTryTypeError(asts::ExpressionAst const &expr, asts::TypeAst const &type);
 };
 
 

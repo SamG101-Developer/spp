@@ -1,6 +1,4 @@
-#ifndef ERROR_FORMATTER_HPP
-#define ERROR_FORMATTER_HPP
-
+#pragma once
 #include <string>
 #include <vector>
 
@@ -32,6 +30,3 @@ private:
     std::vector<lex::RawToken> m_tokens;
     std::string_view m_file_path;
 };
-
-
-#endif //ERROR_FORMATTER_HPP

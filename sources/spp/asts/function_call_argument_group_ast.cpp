@@ -24,16 +24,16 @@
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/mixins/orderable_ast.hpp>
 
-#include <genex/actions/pop.hpp>
+#include <genex/actions/erase.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/cast.hpp>
 #include <genex/views/duplicates.hpp>
 #include <genex/views/enumerate.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/map.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/to.hpp>
+#include <genex/views/transform.hpp>
 
 
 spp::asts::FunctionCallArgumentGroupAst::FunctionCallArgumentGroupAst(
@@ -109,8 +109,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
     -> void {
     // Check there are no duplicate argument names.
     const auto arg_names = get_keyword_args()
-        | genex::views::map([](auto &&x) { return x->name.get(); })
-        | genex::views::materialize
+        | genex::views::transform([](auto &&x) { return x->name.get(); })
+        | genex::views::materialize()
         | genex::views::duplicates()
         | genex::views::to<std::vector>();
 
@@ -144,7 +144,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         }
 
         // Replace the tuple-expansion argument with the expanded arguments.
-        args |= genex::actions::pop(args.begin() + static_cast<ssize_t>(i));
+        genex::actions::erase(args, args.begin() + static_cast<ssize_t>(i));
 
         const auto max = static_cast<ssize_t>(arg_type->type_parts().back()->generic_arg_group->args.size());
         for (auto j = max - 1; j > -1; --j) {
@@ -217,19 +217,19 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
         // Ensure the argument isn't moved or partially moved (applies to all conventions). For non-symbolic arguments,
         // nested checking is done via the argument itself.
         arg->stage_8_check_memory(sm, meta);
-        analyse::utils::mem_utils::validate_symbol_memory(*arg->val, *arg, sm, true, true, false, false, false, false, meta);
+        analyse::utils::mem_utils::validate_symbol_memory(*arg->val, *arg, *sm, true, true, false, false, false, false, meta);
 
         if (arg->conv->tag == ConventionAst::ConventionTag::MOV) {
             // Don't bother rechecking the moves or partial moves, but ensure that attributes aren't being moved off of
             // a borrowed value and that pins are maintained. Mark the move or partial move of the argument. Note the
             // "check_pins_linked=False" because function calls can only imply an inner scope, so it is guaranteed that
             // lifetimes aren't being extended.
-            analyse::utils::mem_utils::validate_symbol_memory(*arg->val, *arg, sm, false, false, true, true, false, true, meta);
+            analyse::utils::mem_utils::validate_symbol_memory(*arg->val, *arg, *sm, false, false, true, true, false, true, meta);
 
             // Check the move doesn't overlap with any borrows. This is to ensure that "f(&x, x)" can never happen,
             // because the first argument requires the owned object to outlive the function call, and moving it as the
             // second argument breaks this. Doesn't apply to copyable types.
-            if (not sm->current_scope->get_type_symbol(*arg->val->infer_type(sm, meta))->is_copyable()) {
+            if (not sm->current_scope->get_type_symbol(*arg->val->infer_type(sm, meta))->is_copyable) {
                 auto overlaps = genex::views::concat(borrows_ref, borrows_mut)
                     | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
                     | genex::views::to<std::vector>();

@@ -9,18 +9,20 @@
 #include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
 #include <spp/asts/module_prototype_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/asts/type_identifier_ast.hpp>
 #include <spp/compiler/module_tree.hpp>
 
 #include <genex/actions/concat.hpp>
-#include <genex/actions/push.hpp>
+#include <genex/actions/push_back.hpp>
 #include <genex/views/cast.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/drop.hpp>
+#include <genex/views/drop_last.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/for_each.hpp>
-#include <genex/views/map.hpp>
-#include <genex/views/take.hpp>
+#include <genex/views/take_until.hpp>
 #include <genex/views/to.hpp>
+#include <genex/views/transform.hpp>
 
 
 spp::analyse::scopes::Scope::Scope(
@@ -157,13 +159,13 @@ auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
     // Convert the provided generic arguments into symbols.
     const auto type_syms = generics
         | genex::views::cast_dynamic<asts::GenericArgumentTypeAst*>()
-        | genex::views::map([this](auto &&gen_arg) { return get_type_symbol(*gen_arg->val); })
+        | genex::views::transform([this](auto &&gen_arg) { return get_type_symbol(*gen_arg->val); })
         | genex::views::cast_dynamic<Symbol*>()
         | genex::views::to<std::vector>();
 
     const auto comp_syms = generics
         | genex::views::cast_dynamic<asts::GenericArgumentCompAst*>()
-        | genex::views::map([this](auto &&gen_arg) { return get_var_symbol(ast_cast<asts::IdentifierAst>(*gen_arg->val)); })
+        | genex::views::transform([this](auto &&gen_arg) { return get_var_symbol(ast_cast<asts::IdentifierAst>(*gen_arg->val)); })
         | genex::views::cast_dynamic<Symbol*>()
         | genex::views::to<std::vector>();
 
@@ -201,7 +203,7 @@ auto spp::analyse::scopes::Scope::add_type_symbol(
     std::shared_ptr<TypeSymbol> sym)
     -> void {
     // Add a type symbol to the corresponding symbol table.
-    m_sym_table.type_tbl.add(*sym->name, std::move(sym));
+    m_sym_table.type_tbl.add(asts::ast_cast<asts::TypeAst>(*sym->name), std::move(sym));
 }
 
 
@@ -390,7 +392,7 @@ auto spp::analyse::scopes::Scope::get_ns_symbol(
 
 auto spp::analyse::scopes::Scope::get_var_symbol_outermost(
     asts::Ast const &expr) const
-    -> std::pair<VariableSymbol*, Scope*> {
+    -> std::pair<VariableSymbol*, Scope const*> {
     // Define helper methods to check expression types.
     auto is_valid_postfix_expression = []<typename OpType>(auto *ast) -> bool {
         auto postfix_expr = asts::ast_cast<asts::PostfixExpressionAst>(ast);
@@ -469,7 +471,7 @@ auto spp::analyse::scopes::Scope::depth_difference(
 
 
 auto spp::analyse::scopes::Scope::final_child_scope() const
-    -> Scope* {
+    -> Scope const* {
     // If there are no children, return this scope (base case for the recursion).
     if (children.empty()) {
         return this;
@@ -481,9 +483,9 @@ auto spp::analyse::scopes::Scope::final_child_scope() const
 
 
 auto spp::analyse::scopes::Scope::ancestors() const
-    -> std::vector<Scope*> {
+    -> std::vector<Scope const*> {
     // Get all ancestor scopes, including this scope, and the global scope.
-    auto scopes = std::vector<Scope*>();
+    auto scopes = std::vector<Scope const*>();
     for (auto *scope = this; scope != nullptr; scope = scope->parent) {
         scopes.push_back(scope);
     }
@@ -492,7 +494,7 @@ auto spp::analyse::scopes::Scope::ancestors() const
 
 
 auto spp::analyse::scopes::Scope::parent_module() const
-    -> Scope* {
+    -> Scope const* {
     // Get the parent module scope, if it exists.
     for (auto *scope = this; scope != nullptr; scope = scope->parent) {
         if (std::holds_alternative<asts::IdentifierAst*>(scope->name)) {
@@ -521,7 +523,7 @@ auto spp::analyse::scopes::Scope::sup_types() const
     // Get all super types, recursively (filter and map the super scopes).
     return sup_scopes()
         | genex::views::filter([](auto *scope) { return asts::ast_cast<asts::ClassPrototypeAst>(scope->ast); })
-        | genex::views::map([](auto *scope) { return scope->ty_sym->fq_name(); })
+        | genex::views::transform([](auto *scope) { return scope->ty_sym->fq_name(); })
         | genex::views::to<std::vector>();
 }
 
@@ -538,6 +540,6 @@ auto spp::analyse::scopes::Scope::direct_sup_types() const
     // Get all direct super types (filter and map the direct super scopes).
     return m_direct_sup_scopes
         | genex::views::filter([](auto *scope) { return asts::ast_cast<asts::ClassPrototypeAst>(scope->ast); })
-        | genex::views::map([](auto *scope) { return scope->ty_sym->fq_name(); })
+        | genex::views::transform([](auto *scope) { return scope->ty_sym->fq_name(); })
         | genex::views::to<std::vector>();
 }

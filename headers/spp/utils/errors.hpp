@@ -1,19 +1,11 @@
 #ifndef ERRORS_HPP
 #define ERRORS_HPP
 
-#include <exception>
 #include <memory>
 #include <vector>
-#include <genex/views/flatten.hpp>
 
-// #include <spp/analyse/scopes/scope.hpp>
-
-#include <genex/views/cycle.hpp>
-#include <genex/views/flatten.hpp>
-#include <genex/views/map.hpp>
-#include <genex/views/take.hpp>
+#include <genex/views/flatten_with.hpp>
 #include <genex/views/to.hpp>
-#include <genex/views/zip.hpp>
 
 
 namespace spp::utils::errors {

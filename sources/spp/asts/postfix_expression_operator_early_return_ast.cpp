@@ -59,11 +59,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_7_analyse_semanti
     const auto lhs_type = lhs->infer_type(sm, meta);
 
     // Ensure the left-hand-side superimposes the Try type.
-    const auto try_type = analyse::utils::type_utils::get_try_type(*lhs_type, *sm);
-    if (try_type == nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppEarlyReturnRequiresTryTypeError>().with_args(
-            *this, *lhs, *lhs_type).with_scopes({sm->current_scope}).raise();
-    }
+    const auto try_type = analyse::utils::type_utils::get_try_type(*lhs_type, *lhs, *sm);
 
     // Check the Residual type is compatible with the function's return type.
     const auto residual_type = try_type->type_parts().back()->generic_arg_group->type_at("Residual")->val;
@@ -83,6 +79,6 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::infer_type(
     const auto lhs_type = lhs->infer_type(sm, meta);
 
     // Get the Try type's Output generic argument.
-    const auto try_type = analyse::utils::type_utils::get_try_type(*lhs_type, *sm);
+    const auto try_type = analyse::utils::type_utils::get_try_type(*lhs_type, *lhs, *sm);
     return try_type->type_parts().back()->generic_arg_group->type_at("Output")->val;
 }

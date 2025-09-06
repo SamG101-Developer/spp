@@ -79,7 +79,7 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
      * The @c ast_comptime AST is the AST that represents the compile-time declaration of the symbol. This might be the
      * @c cmp statement or @cmp generic parameter, wherever the symbol was declared with @c cmp.
      */
-    asts::Ast *ast_comptime;
+    asts::Ast const *ast_comptime;
 
     /**
      * The @c initialization_counter is the number of times the symbol has been initialized. This is used for @c let
@@ -270,7 +270,7 @@ namespace spp::analyse::utils::mem_utils {
     template <typename T>
     auto validate_inconsistent_memory(
         std::vector<T> const &branches,
-        scopes::ScopeManager* sm,
-        asts::mixins::CompilerMetaData* meta)
+        scopes::ScopeManager *sm,
+        asts::mixins::CompilerMetaData *meta)
         -> void;
 }

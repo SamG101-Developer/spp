@@ -206,5 +206,3 @@ namespace spp::asts {
 
     using FunctionMemberAst = StatementAst;
 }
-
-#endif //_FWD_HPP

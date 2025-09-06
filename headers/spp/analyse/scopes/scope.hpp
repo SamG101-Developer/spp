@@ -100,15 +100,15 @@ public:
     auto get_type_symbol(asts::TypeAst const &sym_name, bool exclusive = false, bool ignore_alias = false) const -> TypeSymbol*;
     auto get_ns_symbol(asts::IdentifierAst const &sym_name, bool exclusive = false) const -> NamespaceSymbol*;
 
-    auto get_var_symbol_outermost(asts::Ast const &expr) const -> std::pair<VariableSymbol*, Scope*>;
+    auto get_var_symbol_outermost(asts::Ast const &expr) const -> std::pair<VariableSymbol*, Scope const*>;
 
     auto depth_difference(const Scope *scope) const -> ssize_t;
 
-    auto final_child_scope() const -> Scope*;
+    auto final_child_scope() const -> Scope const*;
 
-    auto ancestors() const -> std::vector<Scope*>;
+    auto ancestors() const -> std::vector<Scope const*>;
 
-    auto parent_module() const -> Scope*;
+    auto parent_module() const -> Scope const*;
 
     auto sup_scopes() const -> std::vector<Scope*>;
 

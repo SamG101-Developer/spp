@@ -1,6 +1,4 @@
-#ifndef LET_STATEMENT_INITIALIZED_AST_HPP
-#define LET_STATEMENT_INITIALIZED_AST_HPP
-
+#pragma once
 #include <spp/asts/let_statement_ast.hpp>
 #include <spp/asts/_fwd.hpp>
 
@@ -56,6 +54,3 @@ struct spp::asts::LetStatementInitializedAst final : LetStatementAst {
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //LET_STATEMENT_INITIALIZED_AST_HPP
