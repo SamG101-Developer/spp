@@ -38,7 +38,7 @@ namespace spp::analyse::utils::func_utils {
         asts::ExpressionAst const &lhs,
         scopes::ScopeManager &sm,
         asts::mixins::CompilerMetaData *meta)
-        -> std::tuple<asts::TypeAst*, scopes::Scope*, asts::IdentifierAst*>;
+        -> std::tuple<asts::TypeAst*, scopes::Scope const*, asts::IdentifierAst*>;
 
     auto convert_method_to_function_form(
         asts::TypeAst const &function_owner_type,
@@ -51,13 +51,13 @@ namespace spp::analyse::utils::func_utils {
 
     auto get_all_function_scopes(
         asts::IdentifierAst const &target_fn_name,
-        scopes::Scope *target_scope,
+        scopes::Scope const *target_scope,
         bool for_override = false)
         -> std::vector<std::tuple<scopes::Scope*, asts::FunctionPrototypeAst*, std::unique_ptr<asts::GenericArgumentGroupAst>>>;
 
     auto check_for_conflicting_overload(
         scopes::Scope const &this_scope,
-        scopes::Scope *target_scope,
+        scopes::Scope const *target_scope,
         asts::FunctionPrototypeAst const &new_fn)
         -> asts::FunctionPrototypeAst*;
 
@@ -98,7 +98,7 @@ namespace spp::analyse::utils::func_utils {
         std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_source,
         std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_target,
         std::shared_ptr<asts::Ast> owner,
-        scopes::Scope &owner_scope,
+        scopes::Scope *owner_scope,
         std::shared_ptr<asts::IdentifierAst> variadic_param_identifier,
         bool is_tuple_owner,
         scopes::ScopeManager &sm,
@@ -114,7 +114,7 @@ namespace spp::analyse::utils::func_utils {
         std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_source,
         std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_target,
         std::shared_ptr<asts::Ast> owner,
-        scopes::Scope &owner_scope,
+        scopes::Scope *owner_scope,
         std::shared_ptr<asts::IdentifierAst> variadic_param_identifier,
         scopes::ScopeManager &sm,
         asts::mixins::CompilerMetaData *meta)

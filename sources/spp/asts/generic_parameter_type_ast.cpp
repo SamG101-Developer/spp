@@ -23,7 +23,7 @@ auto spp::asts::GenericParameterTypeAst::stage_2_gen_top_level_scopes(
     // Create e type symbol for the generic parameter.
     auto sym = std::make_unique<analyse::scopes::TypeSymbol>(
         ast_clone(name->type_parts().back().get()), nullptr, nullptr, sm->current_scope, true);
-    sm->current_scope->add_symbol(std::move(sym));
+    sm->current_scope->add_type_symbol(std::move(sym));
 }
 
 

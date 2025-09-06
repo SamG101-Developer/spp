@@ -76,5 +76,5 @@ auto spp::asts::PatternGuardAst::stage_8_check_memory(
     -> void {
     // Check the memory of the expression.
     expr->stage_8_check_memory(sm, meta);
-    analyse::utils::mem_utils::validate_symbol_memory(*expr, *this, sm, true, true, true, false, false, true, meta);
+    analyse::utils::mem_utils::validate_symbol_memory(*expr, *this, *sm, true, true, true, false, false, true, meta);
 }

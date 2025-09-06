@@ -5,6 +5,13 @@
 #include <rapidfuzz/fuzz.hpp>
 
 
+auto spp::utils::strings::is_alphanumeric(
+    const char c)
+    -> bool {
+    return (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or (c >= '0' and c <= '9') or (c == '_');
+}
+
+
 auto spp::utils::strings::snake_to_pascal(
     std::string const &str)
     -> std::string {

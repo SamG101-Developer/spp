@@ -58,6 +58,7 @@ namespace spp::analyse::errors {
     struct SppVariableObjectDestructureWithBoundMultiSkipError;
     struct SppExpressionNotBooleanError;
     struct SppExpressionNotGeneratorError;
+    struct SppExpressionAmbiguousGeneratorError;
     struct SppLoopTooManyControlFlowStatementsError;
     struct SppObjectInitializerMultipleAutofillArgumentsError;
     struct SppArgumentNameInvalidError;
@@ -344,6 +345,11 @@ struct spp::analyse::errors::SppExpressionNotBooleanError final : SemanticError 
 
 struct spp::analyse::errors::SppExpressionNotGeneratorError final : SemanticError {
     explicit SppExpressionNotGeneratorError(asts::Ast const &expr, asts::TypeAst const &expr_type, std::string_view what);
+};
+
+
+struct spp::analyse::errors::SppExpressionAmbiguousGeneratorError final : SemanticError {
+    explicit SppExpressionAmbiguousGeneratorError(asts::Ast const &expr, asts::TypeAst const &expr_type, std::string_view what);
 };
 
 

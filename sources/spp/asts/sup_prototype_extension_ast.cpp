@@ -94,7 +94,7 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_cyclic_extension(
     analyse::scopes::Scope &check_scope)
     -> void {
     // Prevent double inheritance by checking if the scopes are already registered the other way around.
-    auto dummy = std::map<TypeAst *, ExpressionAst *>();
+    auto dummy = std::map<std::shared_ptr<TypeAst>, ExpressionAst *>();
     const auto existing_sup_scopes = sup_sym.scope->sup_scopes()
         | genex::views::filter([](auto &&x) { return ast_cast<SupPrototypeExtensionAst>(x->ast); })
         | genex::views::transform([](auto &&x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })
@@ -119,7 +119,7 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_double_extension(
     }
 
     // Prevent double inheritance by checking if the scopes are already registered the other way around.
-    auto dummy = std::map<TypeAst *, ExpressionAst *>();
+    auto dummy = std::map<std::shared_ptr<TypeAst>, ExpressionAst *>();
     const auto existing_sup_scopes = cls_sym.scope->sup_scopes()
         | genex::views::filter([](auto &&x) { return ast_cast<SupPrototypeExtensionAst>(x->ast); })
         | genex::views::transform([](auto &&x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })
@@ -294,8 +294,8 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
     for (const auto sup_scope : sup_scopes) {
         auto fq_name = sup_scope->ty_sym->fq_name();
         if (analyse::utils::type_utils::symbolic_eq(*fq_name, *generate::common_types_precompiled::COPY, *sup_scope, *sm->current_scope)) {
-            sm->current_scope->get_type_symbol(*name->without_generics())->is_directly_copyable = true;
-            cls_sym->is_directly_copyable = true;
+            sm->current_scope->get_type_symbol(*name->without_generics())->is_copyable = true;
+            cls_sym->is_copyable = true;
             break;
         }
     }
@@ -305,7 +305,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
         if (const auto ext_member = ast_cast<SupPrototypeExtensionAst>(member.get())) {
             // Get the method and identify the base method it is overriding.
             const auto this_method = ast_cast<FunctionPrototypeAst>(ext_member->impl->final_member());
-            const auto base_method = analyse::utils::func_utils::check_for_conflicting_override(*sm->current_scope, *sup_sym->scope, *this_method);
+            const auto base_method = analyse::utils::func_utils::check_for_conflicting_override(*sm->current_scope, sup_sym->scope, *this_method);
 
             // Check the base method exists.
             if (base_method == nullptr) {

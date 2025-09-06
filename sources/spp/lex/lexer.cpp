@@ -3,15 +3,11 @@
 #include <map>
 
 #include <spp/lex/lexer.hpp>
+#include <spp/utils/strings.hpp>
 
 #include <genex/views/transform.hpp>
 #include <genex/views/to.hpp>
 #include <magic_enum/magic_enum.hpp>
-
-
-auto is_alphanumeric(const char8_t c) -> bool {
-    return (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or (c >= '0' and c <= '9') or (c == '_');
-}
 
 
 spp::lex::Lexer::Lexer(std::string &&code)
@@ -213,8 +209,8 @@ auto spp::lex::Lexer::lex() const -> std::vector<RawToken> {
         // No symbolic tokens match, so try to match a keyword.
         auto found_kw = false;
         for (auto [kw_enum, kw_string] : keywords) {
-            const auto is_prev_alnum = i > 0 and is_alphanumeric(static_cast<char8_t>(m_code[i - 1]));
-            const auto is_next_alnum = i + kw_string.length() < m_code.length() and is_alphanumeric(static_cast<char8_t>(m_code[i + kw_string.length()]));
+            const auto is_prev_alnum = i > 0 and utils::strings::is_alphanumeric(m_code[i - 1]);
+            const auto is_next_alnum = i + kw_string.length() < m_code.length() and utils::strings::is_alphanumeric(m_code[i + kw_string.length()]);
 
             if (m_code.substr(i).starts_with(kw_string) and not is_prev_alnum and not is_next_alnum) {
                 tokens.emplace_back(kw_enum, kw_string);

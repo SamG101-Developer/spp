@@ -161,12 +161,18 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     meta->restore();
 
     // Load the generics into the class and type-statement scopes.
-    const auto tm = ScopeManager(
+    auto tm = ScopeManager(
         sm->global_scope, sm->current_scope->get_type_symbol(*old_type->without_generics())->scope);
     for (auto &&generic_arg : GenericArgumentGroupAst::from_params(*generic_param_group)->args) {
-        const auto generic_sym = analyse::utils::type_utils::create_generic_sym(*generic_arg, *sm, &tm);
-        sm->current_scope->add_symbol(generic_sym);
-        m_generated_cls_ast->m_scope->add_symbol(generic_sym);
+        const auto generic_sym = analyse::utils::type_utils::create_generic_sym(*generic_arg, *sm, meta, &tm);
+        if (const auto generic_type_sym = std::dynamic_pointer_cast<analyse::scopes::TypeSymbol>(generic_sym)) {
+            sm->current_scope->add_type_symbol(generic_type_sym);
+            m_generated_cls_ast->m_scope->add_type_symbol(generic_type_sym);
+        }
+        else if (const auto generic_comp_sym = std::dynamic_pointer_cast<analyse::scopes::VariableSymbol>(generic_sym)) {
+            sm->current_scope->add_var_symbol(generic_comp_sym);
+            m_generated_cls_ast->m_scope->add_var_symbol(generic_comp_sym);
+        }
     }
 
     // Check the (full) old type is valid, and get the new symbol.
@@ -242,16 +248,17 @@ auto spp::asts::TypeStatementAst::stage_7_analyse_semantics(
         return;
     }
 
+    auto iter_copy_1 = sm->iter();
+    auto iter_copy_2 = sm->iter();
+
     // Otherwise, run all generation steps.
     const auto current_scope = sm->current_scope;
-    auto iter_copy = sm->m_iterator;
     stage_2_gen_top_level_scopes(sm, meta);
 
-    sm->reset(current_scope, iter_copy);
-    iter_copy = sm->m_iterator;
+    sm->reset(current_scope, std::move(iter_copy_1));
     stage_3_gen_top_level_aliases(sm, meta);
 
-    sm->reset(current_scope, iter_copy);
+    sm->reset(current_scope, std::move(iter_copy_2));
     stage_4_qualify_types(sm, meta);
 }
 

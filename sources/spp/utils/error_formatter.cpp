@@ -48,7 +48,7 @@ auto spp::utils::errors::ErrorFormatter::internal_parse_error_raw_pos(
 
     auto error_line_tokens = std::vector(
         m_tokens.begin() + error_line_start_pos,
-        m_tokens.begin() + error_line_end_pos);
+        m_tokens.begin() + (error_line_end_pos as SSize));
 
     auto error_line_as_string = genex::algorithms::fold_left(
         error_line_tokens, std::string(),
@@ -61,7 +61,7 @@ auto spp::utils::errors::ErrorFormatter::internal_parse_error_raw_pos(
         | genex::views::materialize()));
 
     // The number of "^" is the length of the token data where the error is.
-    const auto num_tokens_before_ast_pos = ast_start_pos - error_line_start_pos + 1;
+    const auto num_tokens_before_ast_pos = ast_start_pos - (error_line_start_pos as USize) + 1;
     auto carets = std::string(ast_size, '^');
     carets.insert(0, std::string(num_tokens_before_ast_pos, ' '));
 

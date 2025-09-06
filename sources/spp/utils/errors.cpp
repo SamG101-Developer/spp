@@ -4,7 +4,10 @@
 #include <spp/utils/errors.hpp>
 #include <spp/utils/error_formatter.hpp>
 
+#include <genex/views/cycle.hpp>
+#include <genex/views/take.hpp>
 #include <genex/views/transform.hpp>
+#include <genex/views/zip.hpp>
 
 #include <magic_enum/magic_enum.hpp>
 

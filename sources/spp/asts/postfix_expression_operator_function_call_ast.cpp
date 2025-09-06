@@ -122,7 +122,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     }
 
     // Record the "pass" and "fail" overloads.
-    auto all_overloads = analyse::utils::func_utils::get_all_function_scopes(*fn_name, *fn_owner_scope);
+    auto all_overloads = analyse::utils::func_utils::get_all_function_scopes(*fn_name, fn_owner_scope);
     auto pass_overloads = std::vector<std::tuple<analyse::scopes::Scope*, FunctionPrototypeAst*, std::vector<GenericArgumentAst*>>>();
     auto fail_overloads = std::vector<std::tuple<analyse::scopes::Scope*, FunctionPrototypeAst*, std::unique_ptr<analyse::errors::SemanticError>>>();
 
@@ -201,6 +201,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 std::map(generic_infer_source.begin(), generic_infer_source.end()),
                 std::map(generic_infer_target.begin(), generic_infer_target.end()),
                 lhs->infer_type(sm, meta),
+                *fn_scope,
                 is_variadic_fn ? fn_proto->param_group->get_variadic_param()->extract_name() : nullptr,
                 false, *sm, meta);
 
@@ -251,7 +252,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 auto external_generics = sm->current_scope->get_extended_generic_symbols(generic_args_raw);
                 auto new_fn_scope = analyse::utils::type_utils::create_generic_fun_scope(
                     *fn_scope, GenericArgumentGroupAst(nullptr, ast_clone_vec(generic_args), nullptr),
-                    external_generics, *sm, meta);
+                    external_generics, sm, meta);
 
                 auto tm = ScopeManager(sm->global_scope, new_fn_scope);
                 new_fn_proto->generic_param_group->params.clear();

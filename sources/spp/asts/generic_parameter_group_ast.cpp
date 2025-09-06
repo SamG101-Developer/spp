@@ -94,7 +94,7 @@ auto spp::asts::GenericParameterGroupAst::stage_7_analyse_semantics(
     // Check there are no duplicate parameter names.
     const auto param_names = params
         | genex::views::transform([](auto &&x) { return x->name.get(); })
-        | genex::views::materialize
+        | genex::views::materialize()
         | genex::views::duplicates()
         | genex::views::to<std::vector>();
 

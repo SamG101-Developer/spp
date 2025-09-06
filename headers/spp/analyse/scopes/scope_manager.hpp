@@ -66,10 +66,10 @@ public:
 
     auto attach_all_super_scopes(asts::mixins::CompilerMetaData *meta) -> void;
 
-    auto attach_specific_super_scopes(Scope &scope, asts::mixins::CompilerMetaData *meta) const -> void;
+    auto attach_specific_super_scopes(Scope &scope, asts::mixins::CompilerMetaData *meta) -> void;
 
 private:
-    auto attach_specific_super_scopes_impl(Scope &scope, std::vector<Scope*> &&sup_scopes, asts::mixins::CompilerMetaData *meta) const -> void;
+    auto attach_specific_super_scopes_impl(Scope &scope, std::vector<Scope*> &&sup_scopes, asts::mixins::CompilerMetaData *meta) -> void;
 
     static auto check_conflicting_type_or_cmp_statements(TypeSymbol const &cls_sym, Scope const &sup_scope) -> void;
 };

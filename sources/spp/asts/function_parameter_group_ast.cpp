@@ -141,7 +141,7 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
     const auto param_names = params
         | genex::views::transform([](auto &&x) { return x->extract_names(); })
         | genex::views::flatten
-        | genex::views::materialize
+        | genex::views::materialize()
         | genex::views::duplicates()
         | genex::views::to<std::vector>();
 

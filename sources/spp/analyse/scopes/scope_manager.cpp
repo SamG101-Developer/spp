@@ -128,7 +128,7 @@ auto spp::analyse::scopes::ScopeManager::attach_all_super_scopes(
 
 auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes(
     Scope &scope,
-    asts::mixins::CompilerMetaData *meta) const
+    asts::mixins::CompilerMetaData *meta)
     -> void {
     // Handle alias symbols.
     if (const auto alias_sym = dynamic_cast<AliasSymbol*>(scope.ty_sym.get()); alias_sym != nullptr and alias_sym->old_sym->scope != nullptr) {
@@ -139,7 +139,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes(
 
     // Handle type symbols.
     else if (const auto type_sym = scope.ty_sym.get(); type_sym != nullptr) {
-        auto scopes = genex::views::concat(normal_sup_blocks[scope.m_non_generic_scope->ty_sym.get()], generic_sup_blocks) | genex::views::to<std::vector>();
+        auto scopes = genex::views::concat(normal_sup_blocks[scope.non_generic_scope->ty_sym.get()], generic_sup_blocks) | genex::views::to<std::vector>();
         attach_specific_super_scopes_impl(scope, std::move(scopes), meta);
     }
 }
@@ -148,7 +148,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes(
 auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
     Scope &scope,
     std::vector<Scope*> &&sup_scopes,
-    asts::mixins::CompilerMetaData *meta) const
+    asts::mixins::CompilerMetaData *meta)
     -> void {
     // Skip "$" identifiers (functions don't have substitutable members and take up lots of time).
     auto scope_name = std::get<asts::TypeIdentifierAst*>(scope.name);
@@ -165,7 +165,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
     // Iterator through all the super scopes and check if the name matches.
     for (auto *sup_scope : sup_scopes) {
         // Perform a relaxed comparison between the two types (allows for specializations to match bases).
-        auto scope_generics_map = std::map<asts::TypeAst*, asts::ExpressionAst*>();
+        auto scope_generics_map = std::map<std::shared_ptr<asts::TypeAst>, asts::ExpressionAst*>();
         if (not utils::type_utils::relaxed_symbolic_eq(*scope.ty_sym->fq_name(), *asts::ast_name(sup_scope->ast), *scope.ty_sym->scope_defined_in, *sup_scope, scope_generics_map)) {
             continue;
         }
@@ -178,7 +178,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
 
         if (not scope_generics->args.empty() and not genex::algorithms::contains(generic_sup_blocks, sup_scope)) {
             const auto external_generics = scope.ty_sym->scope_defined_in->get_extended_generic_symbols(scope_generics->args | genex::views::ptr | genex::views::to<std::vector>());
-            std::tie(new_sup_scope, new_cls_scope) = utils::type_utils::create_generic_sup_scope(*sup_scope, scope, *scope_generics, external_generics, *this, meta);
+            std::tie(new_sup_scope, new_cls_scope) = utils::type_utils::create_generic_sup_scope(*sup_scope, scope, *scope_generics, external_generics, this, meta);
             sup_sym = new_cls_scope ? new_cls_scope->ty_sym.get() : nullptr;
         }
         else {
@@ -218,7 +218,7 @@ auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statement
     Scope const &sup_scope)
     -> void {
     // Get the scopes to check for conflicts in.
-    auto dummy = std::map<asts::TypeAst*, asts::ExpressionAst*>();
+    auto dummy = std::map<std::shared_ptr<asts::TypeAst>, asts::ExpressionAst*>();
     auto existing_scopes = cls_sym.scope->m_direct_sup_scopes
         | genex::views::filter([&](auto *scope) { return asts::ast_cast<asts::SupPrototypeExtensionAst>(scope->ast) or asts::ast_cast<asts::SupPrototypeFunctionsAst>(scope->ast); })
         | genex::views::filter([&](auto *scope) { return utils::type_utils::relaxed_symbolic_eq(*ast_name(sup_scope.ast), *ast_name(scope->ast), sup_scope, *scope->ast->m_scope, dummy); })

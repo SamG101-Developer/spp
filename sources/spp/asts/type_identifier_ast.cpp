@@ -233,7 +233,7 @@ auto spp::asts::TypeIdentifierAst::contains_generic(
     -> bool {
     // Check if the parameter's name is in the type parts iterated from this type.
     auto cast_name = ast_cast<TypeIdentifierAst>(generic.name.get());
-    return genex::algorithms::any_of(iterator(), [&cast_name](auto &&ti) { return *ti == *cast_name; });
+    return genex::algorithms::any_of(iterator(), [&cast_name](auto ti) { return *ti == *cast_name; });
 }
 
 
@@ -363,13 +363,14 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     // Infer the generic arguments from information given from object initialization.
     const auto owner = analyse::utils::type_utils::get_type_part_symbol_with_error(
         *type_scope, ast_cast<TypeIdentifierAst>(*without_generics()), *sm, meta, true)->fq_name();
+    auto owner_sym = sm->current_scope->get_type_symbol(*owner);
     analyse::utils::func_utils::infer_generic_args(
         generic_arg_group->args,
         type_sym->type->generic_param_group->get_all_params(),
         type_sym->type->generic_param_group->get_optional_params(),
         generic_arg_group->get_all_args(),
         meta->infer_source, meta->infer_target,
-        owner, nullptr, is_tuple, *sm, meta);
+        owner, owner_sym != nullptr ? owner_sym->scope : nullptr, nullptr, is_tuple, *sm, meta);
 
     // For variant types, collapse any duplicate generic arguments.
     if (analyse::utils::type_utils::symbolic_eq(*without_generics(), *generate::common_types_precompiled::VAR, *type_scope, *sm->current_scope, false, true)) {

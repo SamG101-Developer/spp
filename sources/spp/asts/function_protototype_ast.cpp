@@ -37,6 +37,7 @@
 #include <spp/asts/generate/common_types.hpp>
 
 #include <genex/actions/remove.hpp>
+#include <genex/actions/remove_if.hpp>
 #include <genex/views/cast.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/for_each.hpp>
@@ -87,7 +88,7 @@ auto spp::asts::FunctionPrototypeAst::clone() const -> std::unique_ptr<Ast> {
         ast_clone(impl));
     f->m_ctx = m_ctx;
     f->m_scope = m_scope;
-    f->m_orig_name = m_orig_name;
+    f->orig_name = orig_name;
     f->m_abstract_annotation = m_abstract_annotation;
     f->m_virtual_annotation = m_virtual_annotation;
     f->m_temperature_annotation = m_temperature_annotation;
@@ -207,7 +208,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
 
     // Superimpose the function type over the mock class.
     auto function_ast = std::vector<std::unique_ptr<SupMemberAst>>();
-    m_orig_name = name.get();
+    orig_name = name.get();
     function_ast.emplace_back(std::unique_ptr<FunctionPrototypeAst>(this));
     auto mock_sup_ext_impl = std::make_unique<SupImplementationAst>(nullptr, std::move(function_ast), nullptr);
     auto mock_sup_ext = std::make_unique<SupPrototypeExtensionAst>(nullptr, generic_param_group->opt_to_req(), std::move(mock_class_name), nullptr, std::move(function_type), std::move(mock_sup_ext_impl));
@@ -233,7 +234,7 @@ auto spp::asts::FunctionPrototypeAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta) -> void {
     // Create a new scope for the function prototype, and move into it.
-    auto scope_name = analyse::scopes::ScopeBlockName("<function#" + m_orig_name->val + "#" + std::to_string(pos_start()) + ">");
+    auto scope_name = analyse::scopes::ScopeBlockName("<function#" + orig_name->val + "#" + std::to_string(pos_start()) + ">");
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
     Ast::stage_2_gen_top_level_scopes(sm, meta);
 
@@ -298,7 +299,7 @@ auto spp::asts::FunctionPrototypeAst::stage_6_pre_analyse_semantics(
                                 : m_ctx->m_scope->get_type_symbol(*ast_name(m_ctx))->scope;
 
     // Error if there are conflicts.
-    if (const auto conflict = analyse::utils::func_utils::check_for_conflicting_overload(*sm->current_scope, *type_scope, *this)) {
+    if (const auto conflict = analyse::utils::func_utils::check_for_conflicting_overload(*sm->current_scope, type_scope, *this)) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionPrototypeConflictError>().with_args(
             *this, *conflict).with_scopes({sm->current_scope}).raise();
     }

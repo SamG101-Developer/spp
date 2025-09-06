@@ -2,14 +2,14 @@ cmake_minimum_required(VERSION 3.31)
 project(spp)
 
 set(CMAKE_CXX_STANDARD 26)
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Werror -Wno-nonnull-compare")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
-  -Wall -Wextra -Werror \
-  -Wcast-align -Wcast-qual -Wconversion -Wsign-conversion \
-  -Wold-style-cast -Woverloaded-virtual -Wundef \
-  -Wnull-dereference -Wformat=2 -Wduplicated-cond -Wduplicated-branches \
-  -Wlogical-op -Wuseless-cast -Wdouble-promotion -Wstrict-overflow=5 \
-  -Wswitch-enum -Wswitch-default -Wno-nonnull-compare")
+  -pedantic -Wall -Wextra -Werror \
+  -Wcast-align -Wcast-qual -Wconversion -Wsign-conversion -Wsign-promo -Wctor-dtor-privacy -Winit-self \
+  -Wold-style-cast -Woverloaded-virtual -Wundef -Wdisabled-optimization -Wmissing-declarations -Wmissing-include-dirs \
+  -Wnull-dereference -Wformat=2 -Wduplicated-cond -Wduplicated-branches -Wredundant-decls \
+  -Wlogical-op -Wuseless-cast -Wdouble-promotion -Wstrict-overflow=5 -Wstrict-null-sentinel -Wswitch-default \
+  -Wswitch-enum -Wswitch-default -Wno-nonnull-compare -Wno-unused")
+# Deliberately don't have -Wshadow (pain to re-do all AST constructors)
 
 find_package(ColEx REQUIRED)
 find_package(GenEx REQUIRED)

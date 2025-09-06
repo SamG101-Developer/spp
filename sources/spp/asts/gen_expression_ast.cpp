@@ -127,7 +127,8 @@ auto spp::asts::GenExpressionAst::stage_8_check_memory(
 
     // Ensure the argument isn't moved or partially moved (for all conventions)
     expr->stage_8_check_memory(sm, meta);
-    analyse::utils::mem_utils::validate_symbol_memory(*expr, *tok_gen, sm, true, true, false, false, false, false, meta);
+    analyse::utils::mem_utils::validate_symbol_memory(
+        *expr, *tok_gen, *sm, true, true, false, false, false, false, meta);
 
     // If the value is non-symbolic, then there is no borrow logic to implement, so return.
     auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*expr);
@@ -136,7 +137,8 @@ auto spp::asts::GenExpressionAst::stage_8_check_memory(
     if (conv->tag == ConventionAst::ConventionTag::MOV) {
         // Ensure that attributes aren't being moved off of a borrowed value and that pins are maintained. Mark the move
         // or partial move of the argument.
-        analyse::utils::mem_utils::validate_symbol_memory(*expr, *tok_gen, sm, false, false, true, true, true, true, meta);
+        analyse::utils::mem_utils::validate_symbol_memory(
+            *expr, *tok_gen, *sm, false, false, true, true, true, true, meta);
     }
 
     else if (conv->tag == ConventionAst::ConventionTag::MUT and not sym->is_mutable) {

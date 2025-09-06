@@ -21,11 +21,6 @@ struct spp::asts::FunctionPrototypeAst : virtual Ast, SupMemberAst, ModuleMember
 
 protected:
     /**
-     * Save the original function name prior to AST transformations.
-     */
-    IdentifierAst *m_orig_name;
-
-    /**
      * Optional @c @abstractmethod annotation. This is used to indicate that the function is abstract and must be
      * implemented in subclasses.
      */
@@ -110,6 +105,11 @@ public:
      * will be executed when the function is called.
      */
     std::unique_ptr<FunctionImplementationAst> impl;
+
+    /**
+     * Save the original function name prior to AST transformations.
+     */
+    IdentifierAst *orig_name;
 
     /**
      * Construct the FunctionPrototypeAst with the arguments matching the members.

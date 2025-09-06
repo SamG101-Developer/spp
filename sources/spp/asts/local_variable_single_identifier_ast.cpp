@@ -107,5 +107,5 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_7_analyse_semantics(
     }
 
     // Add the symbol to the current scope.
-    sm->current_scope->add_symbol(std::unique_ptr<analyse::scopes::Symbol>(sym.release()));
+    sm->current_scope->add_var_symbol(std::move(sym));
 }

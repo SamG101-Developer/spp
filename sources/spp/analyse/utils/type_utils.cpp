@@ -358,9 +358,9 @@ auto spp::analyse::utils::type_utils::get_all_attrs(
 auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     asts::TypeIdentifierAst &type_part,
     scopes::TypeSymbol const &old_cls_sym,
-    std::vector<std::shared_ptr<scopes::Symbol>> external_generic_syms,
+    std::vector<scopes::Symbol*> external_generic_syms,
     const bool is_tuple,
-    scopes::ScopeManager &sm,
+    scopes::ScopeManager *sm,
     asts::mixins::CompilerMetaData *meta)
     -> scopes::Scope* {
     // Create a new scope and symbol for the generic substituted type.
@@ -368,20 +368,20 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     auto new_cls_scope = std::make_unique<scopes::Scope>(&type_part, old_cls_scope->parent, old_cls_scope->ast);
     auto new_cls_symbol = std::make_unique<scopes::TypeSymbol>(
         asts::ast_cast<asts::TypeIdentifierAst>(type_part.shared_from_this()),
-        asts::ast_cast<asts::ClassPrototypeAst>(new_cls_scope->ast), new_cls_scope.get(), sm.current_scope,
+        asts::ast_cast<asts::ClassPrototypeAst>(new_cls_scope->ast), new_cls_scope.get(), sm->current_scope,
         old_cls_sym.is_generic, old_cls_sym.is_copyable, old_cls_sym.visibility);
 
     // Configure the new scope based on the base (old) scope.
     new_cls_scope->parent->add_type_symbol(std::move(new_cls_symbol));
-    new_cls_scope->m_sym_table = old_cls_scope->m_sym_table;
-    new_cls_scope->m_non_generic_scope = old_cls_scope;
+    new_cls_scope->table = scopes::SymbolTable(old_cls_scope->table);
+    new_cls_scope->non_generic_scope = old_cls_scope;
     new_cls_scope->children.emplace_back(std::move(new_cls_scope));
     if (not std::holds_alternative<scopes::ScopeBlockName>(new_cls_scope->name)) {
         old_cls_scope->parent->children.emplace_back(std::move(new_cls_scope));
     }
 
     if (meta->current_stage > 7) {
-        sm.attach_specific_super_scopes(*new_cls_scope, meta);
+        sm->attach_specific_super_scopes(*new_cls_scope, meta);
     }
 
     // No more checks for tuples.
@@ -391,7 +391,8 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
 
     // Register the generic symbols.
     auto generic_syms = external_generic_syms
-        | genex::views::concat(type_part.generic_arg_group->args | genex::views::transform([&](auto &&g) { return create_generic_sym(*g, sm, meta); }));
+        | genex::views::transform([&](auto *g) { return std::shared_ptr<scopes::Symbol>(g); })
+        | genex::views::concat(type_part.generic_arg_group->args | genex::views::transform([&](auto &&g) { return create_generic_sym(*g, *sm, meta); }));
 
     generic_syms
         | genex::views::cast_smart_ptr<scopes::TypeSymbol>()
@@ -402,7 +403,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
         | genex::views::for_each([&new_cls_scope](auto &&e) { new_cls_scope->add_var_symbol(std::move(e)); });
 
     // Run generic substitution on the symbols in the scope.
-    auto tm = scopes::ScopeManager(sm.global_scope, new_cls_scope.get());
+    auto tm = scopes::ScopeManager(sm->global_scope, new_cls_scope.get());
     for (auto &&scoped_sym : new_cls_scope->all_var_symbols()) {
         scoped_sym->type = scoped_sym->type->substitute_generics(type_part.generic_arg_group->args | genex::views::ptr | genex::views::to<std::vector>());
         scoped_sym->type->stage_7_analyse_semantics(&tm, meta);
@@ -421,8 +422,8 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
 auto spp::analyse::utils::type_utils::create_generic_fun_scope(
     scopes::Scope const &old_fun_scope,
     asts::GenericArgumentGroupAst const &generic_args,
-    std::vector<std::shared_ptr<scopes::Symbol>> external_generic_syms,
-    scopes::ScopeManager &sm,
+    std::vector<scopes::Symbol*> external_generic_syms,
+    scopes::ScopeManager *sm,
     asts::mixins::CompilerMetaData *meta)
     -> scopes::Scope* {
     // Create a new scope and symbol for the generic substituted function.
@@ -437,7 +438,8 @@ auto spp::analyse::utils::type_utils::create_generic_fun_scope(
 
     // Register the generic symbols.
     auto generic_syms = external_generic_syms
-        | genex::views::concat(generic_args.args | genex::views::transform([&](auto &&g) { return create_generic_sym(*g, sm, meta); }));
+        | genex::views::transform([&](auto &&g) { return std::shared_ptr<scopes::Symbol>(g); })
+        | genex::views::concat(generic_args.args | genex::views::transform([&](auto &&g) { return create_generic_sym(*g, *sm, meta); }));
 
     generic_syms
         | genex::views::cast_smart_ptr<scopes::TypeSymbol>()
@@ -456,15 +458,15 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     scopes::Scope &old_sup_scope,
     scopes::Scope &new_cls_scope,
     asts::GenericArgumentGroupAst const &generic_args,
-    std::vector<std::shared_ptr<scopes::Symbol>> external_generic_syms,
-    scopes::ScopeManager &sm,
+    std::vector<scopes::Symbol*> external_generic_syms,
+    scopes::ScopeManager *sm,
     asts::mixins::CompilerMetaData *meta)
     -> std::tuple<scopes::Scope*, scopes::Scope*> {
     // Create a new scope for the generic substituted super scope.
     auto self_type = asts::ast_name(old_sup_scope.ast)->substitute_generics(generic_args.args | genex::views::ptr | genex::views::to<std::vector>());
     auto new_sup_scope_name = old_sup_scope.name;
     auto new_sup_scope = std::make_unique<scopes::Scope>(new_sup_scope_name, old_sup_scope.parent, old_sup_scope.ast);
-    new_sup_scope->m_sym_table = old_sup_scope.m_sym_table;
+    new_sup_scope->table = old_sup_scope.table;
     new_sup_scope->children = old_sup_scope.children
         | genex::views::transform([](auto &&scope) { return std::make_unique<scopes::Scope>(*scope); })
         | genex::views::to<std::vector>();
@@ -472,7 +474,8 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
 
     // Register the generic symbols.
     auto generic_syms = external_generic_syms
-        | genex::views::concat(generic_args.args | genex::views::transform([&](auto &&g) { return create_generic_sym(*g, sm, meta); }));
+        | genex::views::transform([](auto *g) { return std::shared_ptr<scopes::Symbol>(g); })
+        | genex::views::concat(generic_args.args | genex::views::transform([&](auto &&g) { return create_generic_sym(*g, *sm, meta); }));
 
     generic_syms
         | genex::views::cast_smart_ptr<scopes::TypeSymbol>()
@@ -483,7 +486,7 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
         | genex::views::for_each([&old_sup_scope](auto &&e) { old_sup_scope.parent->add_var_symbol(std::move(e)); });
 
     // Add the "Self" symbol into the new scope.
-    self_type->stage_7_analyse_semantics(&sm, meta);
+    self_type->stage_7_analyse_semantics(sm, meta);
     auto old_self_sym = new_sup_scope->get_type_symbol(*self_type);
     new_sup_scope->add_type_symbol(std::make_unique<scopes::AliasSymbol>(
         std::make_unique<asts::TypeIdentifierAst>(0, "Self", nullptr), nullptr, &new_cls_scope, new_sup_scope.get(),
@@ -496,7 +499,7 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
             scoped_alias_sym->old_sym = old_sup_scope.get_type_symbol(*old_type_sub)
                                             ? old_sup_scope.get_type_symbol(*old_type_sub)
                                             : scoped_alias_sym->old_sym;
-            if (genex::algorithms::contains(old_sup_scope.children | genex::views::ptr, scoped_alias_sym->scope)) {
+            if (genex::algorithms::contains(old_sup_scope.children | genex::views::ptr | genex::views::to<std::vector>(), scoped_alias_sym->scope)) {
                 scoped_alias_sym->scope = new_sup_scope->children[genex::algorithms::position(old_sup_scope.children | genex::views::ptr, [&](auto &&x) { return x == scoped_alias_sym->scope; }) as USize].get();
             }
         }
@@ -512,7 +515,7 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     auto super_cls_scope = static_cast<scopes::Scope*>(nullptr);;
     if (const auto ext_ast = asts::ast_cast<asts::SupPrototypeExtensionAst>(old_sup_scope.ast); ext_ast != nullptr) {
         const auto new_fq_super_type = ext_ast->super_class->substitute_generics(generic_args.args | genex::views::ptr | genex::views::to<std::vector>());
-        new_fq_super_type->stage_7_analyse_semantics(&sm, meta);
+        new_fq_super_type->stage_7_analyse_semantics(sm, meta);
         super_cls_scope = new_cls_scope.get_type_symbol(*new_fq_super_type)->scope;
     }
 

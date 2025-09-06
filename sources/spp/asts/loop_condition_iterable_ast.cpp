@@ -102,7 +102,8 @@ auto spp::asts::LoopConditionIterableAst::stage_8_check_memory(
     // Check the memory state of the variable.
     if (not meta->loop_double_check_active) {
         iterable->stage_8_check_memory(sm, meta);
-        analyse::utils::mem_utils::validate_symbol_memory(*iterable, *iterable, sm, true, true, true, true, true, false, meta);
+        analyse::utils::mem_utils::validate_symbol_memory(
+            *iterable, *iterable, *sm, true, true, true, true, true, false, meta);
     }
 
     // Re-initialize for the double loop analysis.

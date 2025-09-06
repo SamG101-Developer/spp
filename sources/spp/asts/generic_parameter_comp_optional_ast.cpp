@@ -92,5 +92,6 @@ auto spp::asts::GenericParameterCompOptionalAst::stage_8_check_memory(
     -> void {
     // Check the default value for memory issues.
     default_val->stage_8_check_memory(sm, meta);
-    analyse::utils::mem_utils::validate_symbol_memory(*default_val, *default_val, sm, true, true, true, true, true, true, meta);
+    analyse::utils::mem_utils::validate_symbol_memory(
+        *default_val, *default_val, *sm, true, true, true, true, true, true, meta);
 }

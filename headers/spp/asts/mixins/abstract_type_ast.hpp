@@ -19,7 +19,7 @@ public:
 public:
     virtual auto iterator() const -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> = 0;
 
-    auto iterator() -> genex::generator<std::shared_ptr<TypeIdentifierAst>>;
+    auto iterator() -> genex::generator<std::shared_ptr<const TypeIdentifierAst>>;
 
     virtual auto is_never_type() const -> bool = 0;
 

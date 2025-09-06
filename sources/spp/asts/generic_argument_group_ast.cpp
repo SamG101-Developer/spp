@@ -70,17 +70,17 @@ auto spp::asts::GenericArgumentGroupAst::from_map(
     // Create the list of arguments, initially empty.
     auto mapped_args = std::vector<std::unique_ptr<GenericArgumentAst>>();
 
-    for (auto [arg_name, arg_val] : map) {
+    for (auto const& [arg_name, arg_val] : map) {
         // Map type ASTs to keyword type arguments.
         if (auto arg_val_for_type = ast_cast<TypeAst>(arg_val)) {
             mapped_args.emplace_back(std::make_unique<GenericArgumentTypeKeywordAst>(
-                arg_name, nullptr, ast_clone(arg_val_for_type)));
+                ast_clone(arg_name), nullptr, ast_clone(arg_val_for_type)));
         }
 
         // Map expression ASTs to keyword comptime arguments.
         else if (auto arg_val_for_comp = ast_cast<ExpressionAst>(arg_val)) {
             mapped_args.emplace_back(std::make_unique<GenericArgumentCompKeywordAst>(
-                std::move(arg_name), nullptr, ast_clone(arg_val_for_comp)));
+                ast_clone(arg_name), nullptr, ast_clone(arg_val_for_comp)));
         }
     }
 

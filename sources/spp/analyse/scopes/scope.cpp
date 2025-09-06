@@ -35,7 +35,7 @@ spp::analyse::scopes::Scope::Scope(
     ast(ast),
     ty_sym(nullptr),
     ns_sym(nullptr),
-    m_non_generic_scope(this),
+    non_generic_scope(this),
     m_error_formatter(std::move(error_formatter)) {
 }
 
@@ -174,7 +174,7 @@ auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
 
     // Re-use above logic to collect generic symbols from the ancestor scopes.
     auto scopes = ancestors()
-        | genex::views::take_until([this](auto &&scope) { return scope == m_non_generic_scope or std::holds_alternative<asts::IdentifierAst*>(scope->name); });
+        | genex::views::take_until([this](auto &&scope) { return scope == non_generic_scope or std::holds_alternative<asts::IdentifierAst*>(scope->name); });
 
     for (auto &&scope : scopes) {
         scope->all_type_symbols(true)
@@ -195,7 +195,7 @@ auto spp::analyse::scopes::Scope::add_var_symbol(
     std::shared_ptr<VariableSymbol> sym)
     -> void {
     // Add a type symbol to the corresponding symbol table.
-    m_sym_table.var_tbl.add(*sym->name, std::move(sym));
+    table.var_tbl.add(*sym->name, std::move(sym));
 }
 
 
@@ -203,7 +203,7 @@ auto spp::analyse::scopes::Scope::add_type_symbol(
     std::shared_ptr<TypeSymbol> sym)
     -> void {
     // Add a type symbol to the corresponding symbol table.
-    m_sym_table.type_tbl.add(asts::ast_cast<asts::TypeAst>(*sym->name), std::move(sym));
+    table.type_tbl.add(asts::ast_cast<asts::TypeAst>(*sym->name), std::move(sym));
 }
 
 
@@ -211,7 +211,7 @@ auto spp::analyse::scopes::Scope::add_ns_symbol(
     std::shared_ptr<NamespaceSymbol> sym)
     -> void {
     // Add a namespace symbol to the corresponding symbol table.
-    m_sym_table.ns_tbl.add(*sym->name, std::move(sym));
+    table.ns_tbl.add(*sym->name, std::move(sym));
 }
 
 
@@ -219,7 +219,7 @@ auto spp::analyse::scopes::Scope::rem_var_symbol(
     asts::IdentifierAst const &sym_name)
     -> void {
     // Remove a variable symbol from the corresponding symbol table.
-    m_sym_table.var_tbl.rem(sym_name);
+    table.var_tbl.rem(sym_name);
 }
 
 
@@ -227,7 +227,7 @@ auto spp::analyse::scopes::Scope::rem_type_symbol(
     asts::TypeAst const &sym_name)
     -> void {
     // Remove a type symbol from the corresponding symbol table.
-    m_sym_table.type_tbl.rem(sym_name);
+    table.type_tbl.rem(sym_name);
 }
 
 
@@ -235,7 +235,7 @@ auto spp::analyse::scopes::Scope::rem_ns_symbol(
     asts::IdentifierAst const &sym_name)
     -> void {
     // Remove a namespace symbol from the corresponding symbol table.
-    m_sym_table.ns_tbl.rem(sym_name);
+    table.ns_tbl.rem(sym_name);
 }
 
 
@@ -269,7 +269,7 @@ auto spp::analyse::scopes::Scope::all_var_symbols(
     const bool sup_scope_search) const
     -> std::generator<VariableSymbol*> {
     // Use the variable symbol table, and the corresponding member function to yield all variable symbols.
-    return all_symbols_impl<VariableSymbol>(m_sym_table.var_tbl, &Scope::all_var_symbols, exclusive, sup_scope_search);
+    return all_symbols_impl<VariableSymbol>(table.var_tbl, &Scope::all_var_symbols, exclusive, sup_scope_search);
 }
 
 
@@ -278,7 +278,7 @@ auto spp::analyse::scopes::Scope::all_type_symbols(
     const bool sup_scope_search) const
     -> std::generator<TypeSymbol*> {
     // Use the type symbol table, and the corresponding member function to yield all type symbols.
-    return all_symbols_impl<TypeSymbol>(m_sym_table.type_tbl, &Scope::all_type_symbols, exclusive, sup_scope_search);
+    return all_symbols_impl<TypeSymbol>(table.type_tbl, &Scope::all_type_symbols, exclusive, sup_scope_search);
 }
 
 
@@ -286,7 +286,7 @@ auto spp::analyse::scopes::Scope::all_ns_symbols(
     const bool exclusive, bool) const
     -> std::generator<NamespaceSymbol*> {
     // Use the namespace symbol table, and the corresponding member function to yield all namespace symbols.
-    return all_symbols_impl<NamespaceSymbol>(m_sym_table.ns_tbl, &Scope::all_ns_symbols, exclusive, false);
+    return all_symbols_impl<NamespaceSymbol>(table.ns_tbl, &Scope::all_ns_symbols, exclusive, false);
 }
 
 
@@ -323,7 +323,7 @@ auto spp::analyse::scopes::Scope::get_var_symbol(
     -> VariableSymbol* {
     // Get the symbol from the symbol table if it exists.
     auto scope = this;
-    auto sym = m_sym_table.var_tbl.get(sym_name).get();
+    auto sym = table.var_tbl.get(sym_name).get();
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym != nullptr and not exclusive and scope->parent != nullptr) {
@@ -351,7 +351,7 @@ auto spp::analyse::scopes::Scope::get_type_symbol(
     std::tie(scope, sym_name_extracted) = shift_scope_for_namespaced_type(*scope, *sym_name_extracted);
 
     // Get the symbol from the symbol table if it exists.
-    auto sym = scope->m_sym_table.type_tbl.get(*sym_name_extracted).get();
+    auto sym = scope->table.type_tbl.get(*sym_name_extracted).get();
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym == nullptr and not exclusive and scope->parent != nullptr) {
@@ -378,7 +378,7 @@ auto spp::analyse::scopes::Scope::get_ns_symbol(
     -> NamespaceSymbol* {
     // Get the symbol from the symbol table if it exists.
     auto scope = this;
-    auto sym = m_sym_table.ns_tbl.get(sym_name).get();
+    auto sym = table.ns_tbl.get(sym_name).get();
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym != nullptr and not exclusive and scope->parent != nullptr) {

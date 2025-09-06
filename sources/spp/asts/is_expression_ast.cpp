@@ -10,7 +10,7 @@
 #include <spp/asts/let_statement_initialized_ast.hpp>
 #include <spp/asts/local_variable_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_ast.hpp>
+#include <spp/asts/case_expression_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
@@ -78,12 +78,14 @@ auto spp::asts::IsExpressionAst::stage_7_analyse_semantics(
 
     // Convert to a "case" destructure and analyse it.
     const auto n = sm->current_scope->children.size();
-    m_mapped_func = analyse::utils::bin_utils::convert_is_expr_to_function_call(*this, *sm);
+    m_mapped_func = analyse::utils::bin_utils::convert_is_expr_to_function_call(*this);
     m_mapped_func->stage_7_analyse_semantics(sm, meta);
 
     // Add the destructure symbols to the current scope.
     auto destructure_syms = sm->current_scope->children[n]->children[0]->all_var_symbols(true, true);
-    destructure_syms | genex::views::for_each([sm](auto &&x) { sm->current_scope->add_symbol(x->clone()); });
+    destructure_syms | genex::views::for_each([sm](auto &&x) {
+        sm->current_scope->add_var_symbol(std::shared_ptr<analyse::scopes::VariableSymbol>(x));
+    });
 }
 
 

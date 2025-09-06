@@ -207,7 +207,7 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
     const auto op_nested = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
     auto scopes_and_syms = std::vector{lhs_type_sym->scope}
         | genex::views::concat(lhs_type_sym->scope->sup_scopes())
-        | genex::views::transform([name=op_nested->name.get()](auto &&x) { return std::make_pair(x, x->m_sym_table.type_tbl.get(*name)); })
+        | genex::views::transform([name=op_nested->name.get()](auto &&x) { return std::make_pair(x, x->table.type_tbl.get(*name)); })
         | genex::views::filter([](auto &&x) { return x.second != nullptr; })
         | genex::views::transform([lhs_type_sym](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
         | genex::views::to<std::vector>();

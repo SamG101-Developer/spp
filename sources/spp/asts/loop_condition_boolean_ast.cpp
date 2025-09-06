@@ -73,5 +73,5 @@ auto spp::asts::LoopConditionBooleanAst::stage_8_check_memory(
     -> void {
     // Check the memory state of the condition expression.
     cond->stage_8_check_memory(sm, meta);
-    analyse::utils::mem_utils::validate_symbol_memory(*cond, *cond, sm, true, true, true, true, true, false, meta);
+    analyse::utils::mem_utils::validate_symbol_memory(*cond, *cond, *sm, true, true, true, true, true, false, meta);
 }

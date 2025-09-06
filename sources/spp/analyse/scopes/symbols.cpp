@@ -9,7 +9,11 @@
 #include <spp/asts/type_unary_expression_operator_namespace_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-overflow"
+#pragma GCC diagnostic ignored "-Wstrict-overflow=5"
 #include <nlohmann/json.hpp>
+#pragma GCC diagnostic pop
 
 
 spp::analyse::scopes::NamespaceSymbol::NamespaceSymbol(
