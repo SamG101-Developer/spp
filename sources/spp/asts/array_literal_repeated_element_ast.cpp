@@ -83,7 +83,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
     const auto elem_type_sym = sm->current_scope->get_type_symbol(*elem_type);
 
     // Ensure the element type is copyable, so that is can be repeated in the array.
-    if (not elem_type_sym->is_copyable()) {
+    if (not elem_type_sym->is_copyable) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppUninitializedMemoryUseError>().with_args(
             *elem, *this, *size).with_scopes({sm->current_scope}).raise();
     }
@@ -113,7 +113,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_8_check_memory(
     -> void {
     // Check the memory of the repeated element (is it initialized etc).
     elem->stage_8_check_memory(sm, meta);
-    analyse::utils::mem_utils::validate_symbol_memory(*elem, *tok_semicolon, sm, true, true, true, true, true, true, meta);
+    analyse::utils::mem_utils::validate_symbol_memory(*elem, *tok_semicolon, *sm, true, true, true, true, true, true, meta);
 }
 
 

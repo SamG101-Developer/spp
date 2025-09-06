@@ -10,7 +10,6 @@
 
 #include <genex/algorithms/none_of.hpp>
 #include <genex/views/concat.hpp>
-#include <genex/views/map.hpp>
 #include <genex/views/to.hpp>
 
 
@@ -36,7 +35,7 @@ auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
     temp.emplace_back(ret_type_sym->fq_name()->without_generics());
     auto superimposed_types = ret_type_sym->scope->sup_types()
         | genex::views::concat(std::move(temp))
-        | genex::views::map([](auto &&x) { return x->without_generics(); })
+        | genex::views::transform([](auto &&x) { return x->without_generics(); })
         | genex::views::to<std::vector>();
 
     if (genex::algorithms::none_of(superimposed_types, [sm](auto &&x) { return analyse::utils::type_utils::is_type_generator(*x->without_generics(), *sm->current_scope); })) {

@@ -94,7 +94,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::extract_name() const
 auto spp::asts::LocalVariableDestructureArrayAst::extract_names() const
     -> std::vector<std::shared_ptr<IdentifierAst>> {
     return elems
-        | genex::views::map(&LocalVariableAst::extract_names)
+        | genex::views::transform(&LocalVariableAst::extract_names)
         | genex::views::flatten
         | genex::views::to<std::vector>();
 }
@@ -137,7 +137,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
     if (not multi_arg_skips.empty() and multi_arg_skips[0]->binding != nullptr) {
         const auto m = static_cast<std::size_t>(genex::algorithms::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }));
         auto new_elems = genex::views::iota(m, m + num_rhs_arr_elems - num_lhs_arr_elems + 1)
-            | genex::views::map([val](const auto i) {
+            | genex::views::transform([val](const auto i) {
                 auto identifier = std::make_unique<IdentifierAst>(0uz, std::to_string(i));
                 auto field = std::make_unique<PostfixExpressionOperatorStaticMemberAccessAst>(nullptr, std::move(identifier));
                 auto postfix = std::make_unique<PostfixExpressionAst>(ast_clone(val), std::move(field));

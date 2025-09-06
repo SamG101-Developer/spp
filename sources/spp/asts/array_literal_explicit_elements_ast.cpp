@@ -13,7 +13,6 @@
 #include <spp/asts/generate/common_types.hpp>
 
 #include <genex/views/address.hpp>
-#include <genex/views/map.hpp>
 #include <genex/views/to.hpp>
 #include <genex/views/zip.hpp>
 
@@ -80,7 +79,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_7_analyse_semantics(
     }
 
     // Check all elements have the same type as the 0th element.
-    auto elem_types = elems | genex::views::map([sm, meta](auto &&elem) { return elem->infer_type(sm, meta); });
+    auto elem_types = elems | genex::views::transform([sm, meta](auto &&elem) { return elem->infer_type(sm, meta); });
     for (auto &&[elem, elem_type] : genex::views::zip(elems | genex::views::ptr, elem_types)) {
         if (not analyse::utils::type_utils::symbolic_eq(*zeroth_type, *elem_type, *sm->current_scope, *sm->current_scope))
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
@@ -109,7 +108,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_8_check_memory(
     // Check the memory of each element in the array literal.
     for (auto &&elem : elems) {
         elem->stage_8_check_memory(sm, meta);
-        analyse::utils::mem_utils::validate_symbol_memory(*elem, *elem, sm, true, true, true, true, true, true, meta);
+        analyse::utils::mem_utils::validate_symbol_memory(*elem, *elem, *sm, true, true, true, true, true, true, meta);
     }
 }
 

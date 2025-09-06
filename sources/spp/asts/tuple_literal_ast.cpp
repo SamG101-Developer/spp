@@ -105,7 +105,7 @@ auto spp::asts::TupleLiteralAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Create a "..Ts" type, for the tuple type.
     auto types_gen = elems
-        | genex::views::map([sm, meta](auto &&elem) { return elem->infer_type(sm, meta); })
+        | genex::views::transform([sm, meta](auto &&elem) { return elem->infer_type(sm, meta); })
         | genex::views::to<std::vector>();
 
     // Create a tuple type with the inferred element types.

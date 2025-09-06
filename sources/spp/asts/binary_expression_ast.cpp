@@ -82,7 +82,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
     ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(rhs.get());
 
     // Check compound assignment (for example "+=") has a symbolic lhs target.
-    if (genex::algorithms::contains(lex::SppTokenSets::BIN_COMPOUND_ASSIGNMENT_OPS, tok_op->token_type)) {
+    if (genex::algorithms::contains(analyse::utils::bin_utils::BIN_COMPOUND_ASSIGNMENT_OPS, tok_op->token_type)) {
         if (not sm->current_scope->get_var_symbol_outermost(*lhs).first) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppCompoundAssignmentTargetError>().with_args(
                 *lhs).with_scopes({sm->current_scope}).raise();
@@ -117,7 +117,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
             lhs = std::make_unique<BinaryExpressionAst>(std::move(lhs), ast_clone(tok_op), std::move(rhs));
             rhs = std::move(new_ast);
         }
-        m_mapped_func = analyse::utils::bin_utils::convert_bin_expr_to_function_call(*this, *sm);
+        m_mapped_func = analyse::utils::bin_utils::convert_bin_expr_to_function_call(*this);
         m_mapped_func->stage_7_analyse_semantics(sm, meta);
     }
 
@@ -149,13 +149,13 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
             lhs = std::move(new_ast);
             rhs = std::make_unique<BinaryExpressionAst>(std::move(lhs), ast_clone(tok_op), std::move(rhs));
         }
-        m_mapped_func = analyse::utils::bin_utils::convert_bin_expr_to_function_call(*this, *sm);
+        m_mapped_func = analyse::utils::bin_utils::convert_bin_expr_to_function_call(*this);
         m_mapped_func->stage_7_analyse_semantics(sm, meta);
     }
 
     else {
         // Standard non-folding binary expression.
-        m_mapped_func = analyse::utils::bin_utils::convert_bin_expr_to_function_call(*this, *sm);
+        m_mapped_func = analyse::utils::bin_utils::convert_bin_expr_to_function_call(*this);
         m_mapped_func->stage_7_analyse_semantics(sm, meta);
     }
 }

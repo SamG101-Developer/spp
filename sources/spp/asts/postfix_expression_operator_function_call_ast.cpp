@@ -48,7 +48,6 @@
 #include <genex/views/indirect.hpp>
 #include <genex/views/intersperse.hpp>
 #include <genex/views/iota.hpp>
-#include <genex/views/map.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/to.hpp>
@@ -146,15 +145,15 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
         // Extract the parameter names and argument names.
         auto func_param_names = fn_proto->param_group->params
-            | genex::views::map([](auto &&x) { return x->extract_name(); })
+            | genex::views::transform([](auto &&x) { return x->extract_name(); })
             | genex::views::to<std::vector>();
 
         auto func_param_names_req = fn_proto->param_group->get_required_params()
-            | genex::views::map([](auto &&x) { return x->extract_name(); })
+            | genex::views::transform([](auto &&x) { return x->extract_name(); })
             | genex::views::to<std::vector>();
 
         auto func_arg_names = arg_group->get_keyword_args()
-            | genex::views::map([](auto &&x) { return x->name.get(); })
+            | genex::views::transform([](auto &&x) { return x->name.get(); })
             | genex::views::to<std::vector>();
 
         auto is_variadic_fn = fn_proto->param_group->get_variadic_param() != nullptr;
@@ -183,15 +182,15 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 | genex::views::ptr
                 | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>()
                 | genex::views::filter([](auto &&x) { return x != nullptr; })
-                | genex::views::map([](auto &&x) { return x->name.get(); })
+                | genex::views::transform([](auto &&x) { return x->name.get(); })
                 | genex::views::to<std::vector>();
 
             auto generic_infer_source = arg_group->get_keyword_args()
-                | genex::views::map([sm, meta](auto &&x) { return std::make_pair(x->name, x->val->infer_type(sm, meta)); })
+                | genex::views::transform([sm, meta](auto &&x) { return std::make_pair(x->name, x->val->infer_type(sm, meta)); })
                 | genex::views::to<std::vector>();
 
             auto generic_infer_target = func_params
-                | genex::views::map([](auto &&x) { return std::make_pair(x->extract_name(), x->type); })
+                | genex::views::transform([](auto &&x) { return std::make_pair(x->extract_name(), x->type); })
                 | genex::views::to<std::vector>();
 
             analyse::utils::func_utils::infer_generic_args(
@@ -225,7 +224,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                     auto mismatch = arg->infer_type(sm, meta)->type_parts().back()->generic_arg_group->get_type_args()
                         | genex::views::drop(1)
                         | genex::views::filter([sm, first_elem_type](auto &&x) { return not analyse::utils::type_utils::symbolic_eq(*x->val, *first_elem_type, *sm->current_scope, *sm->current_scope); })
-                        | genex::views::map([](auto &&x) { return x->val.get(); })
+                        | genex::views::transform([](auto &&x) { return x->val.get(); })
                         | genex::views::to<std::vector>();
 
                     if (not mismatch.empty()) {
@@ -274,10 +273,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 // Recreate the lists of function parameters and their names.
                 func_params = new_fn_proto->param_group->params | genex::views::ptr | genex::views::to<std::vector>();
                 func_param_names = new_fn_proto->param_group->params
-                    | genex::views::map([](auto &&x) { return x->extract_name(); })
+                    | genex::views::transform([](auto &&x) { return x->extract_name(); })
                     | genex::views::to<std::vector>();
                 func_param_names_req = new_fn_proto->param_group->get_required_params()
-                    | genex::views::map([](auto &&x) { return x->extract_name(); })
+                    | genex::views::transform([](auto &&x) { return x->extract_name(); })
                     | genex::views::to<std::vector>();
 
                 // Save the generic implementation against the base function, and update the active scope and prototype.
@@ -419,13 +418,13 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     using namespace std::string_literals;
     if (pass_overloads.empty()) {
         auto failed_signatures_and_errors = fail_overloads
-            | genex::views::map([](auto &&f) { return std::get<1>(f)->print_signature(std::get<0>(f)->ast != nullptr ? static_cast<std::string>(*ast_name(std::get<0>(f)->ast)) : ""); })
+            | genex::views::transform([](auto &&f) { return std::get<1>(f)->print_signature(std::get<0>(f)->ast != nullptr ? static_cast<std::string>(*ast_name(std::get<0>(f)->ast)) : ""); })
             | genex::views::intersperse("\n"s)
             | genex::views::flatten
             | genex::views::to<std::string>();
 
         auto arg_usage_signature = arg_group->args
-            | genex::views::map([sm, meta](auto &&x) { return x->m_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
+            | genex::views::transform([sm, meta](auto &&x) { return x->m_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
             | genex::views::intersperse(", "s)
             | genex::views::flatten
             | genex::views::to<std::string>();
@@ -437,13 +436,13 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     // If there are multiple pass overloads, raise an error.
     else if (pass_overloads.size() > 1) {
         auto signatures = pass_overloads
-            | genex::views::map([](auto &&x) { return std::get<1>(x)->print_signature(std::get<0>(x)->ast != nullptr ? static_cast<std::string>(*ast_name(std::get<0>(x)->ast)) : ""); })
+            | genex::views::transform([](auto &&x) { return std::get<1>(x)->print_signature(std::get<0>(x)->ast != nullptr ? static_cast<std::string>(*ast_name(std::get<0>(x)->ast)) : ""); })
             | genex::views::intersperse("\n"s)
             | genex::views::flatten
             | genex::views::to<std::string>();
 
         auto arg_usage_signature = arg_group->args
-            | genex::views::map([sm, meta](auto &&x) { return x->m_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
+            | genex::views::transform([sm, meta](auto &&x) { return x->m_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
             | genex::views::intersperse(", "s)
             | genex::views::flatten
             | genex::views::to<std::string>();
@@ -509,7 +508,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_8_check_memory(
         auto non_folding_args = arg_group->args
             | genex::views::ptr
             | genex::views::set_difference(m_folded_args)
-            | genex::views::map([](auto &&x) { return ast_clone(x); })
+            | genex::views::transform([](auto &&x) { return ast_clone(x); })
             | genex::views::to<std::vector>();
         auto group = FunctionCallArgumentGroupAst(nullptr, std::move(non_folding_args), nullptr);
         group.stage_8_check_memory(sm, meta);

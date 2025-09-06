@@ -21,7 +21,6 @@
 #include <genex/views/cast.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/for_each.hpp>
-#include <genex/views/map.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/to.hpp>
 

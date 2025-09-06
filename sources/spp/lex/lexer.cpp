@@ -4,7 +4,7 @@
 
 #include <spp/lex/lexer.hpp>
 
-#include <genex/views/map.hpp>
+#include <genex/views/transform.hpp>
 #include <genex/views/to.hpp>
 #include <magic_enum/magic_enum.hpp>
 
@@ -30,7 +30,7 @@ auto spp::lex::Lexer::lex() const -> std::vector<RawToken> {
     for (auto [kw, kw_string] : magic_enum::enum_entries<RawTokenType>()) {
         if (kw_string.starts_with("KW_")) {
             keywords[kw] = kw_string.substr(3)
-                | genex::views::map([](auto c) { return std::tolower(c); })
+                | genex::views::transform([](auto c) { return std::tolower(c); })
                 | genex::views::to<std::string>();
         }
     }

@@ -22,7 +22,6 @@
 #include <genex/algorithms/any_of.hpp>
 #include <genex/views/cast.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/map.hpp>
 #include <genex/views/ptr.hpp>
 
 
@@ -195,13 +194,13 @@ auto spp::asts::TypeIdentifierAst::substitute_generics(
     auto gen_type_args = new_generics
         | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()
         | genex::views::filter([](auto &&g) { return g != nullptr; })
-        | genex::views::map([](auto &&g) { return std::make_pair(g->name.get(), g->val.get()); });
+        | genex::views::transform([](auto &&g) { return std::make_pair(g->name.get(), g->val.get()); });
 
     // Get the generic comp arguments.
     auto gen_comp_args = new_generics
         | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()
         | genex::views::filter([](auto &&g) { return g != nullptr; })
-        | genex::views::map([](auto &&g) { return std::make_pair(g->name.get(), g->val.get()); });
+        | genex::views::transform([](auto &&g) { return std::make_pair(g->name.get(), g->val.get()); });
 
     // Check if this type directly matches any generic type argument name.
     for (auto &&[gen_arg_name, gen_arg_val] : gen_type_args) {

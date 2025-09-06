@@ -67,8 +67,8 @@ auto spp::asts::ClassImplementationAst::stage_6_pre_analyse_semantics(
     // Ensure there are no duplicate member names. This needs to be done before semantic analysis as other ASTs might
     // try reading a duplicate attribute before an error is raised.
     const auto duplicates = members
-        | genex::views::map([](auto &&x) { return ast_cast<ClassAttributeAst>(*x).name.get(); })
-        | genex::views::materialize
+        | genex::views::transform([](auto &&x) { return ast_cast<ClassAttributeAst>(*x).name.get(); })
+        | genex::views::materialize()
         | genex::views::duplicates()
         | genex::views::to<std::vector>();
 

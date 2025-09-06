@@ -130,25 +130,25 @@ auto spp::asts::ClosureExpressionAst::infer_type(
 
     // If there are no captures, return a FunRef type with the parameters and return type.
     if (pc_group->capture_group->captures.empty()) {
-        auto param_types = pc_group->param_group->params | genex::views::map([](auto &&x) { return x->type; }) | genex::views::to<std::vector>();
+        auto param_types = pc_group->param_group->params | genex::views::transform([](auto &&x) { return x->type; }) | genex::views::to<std::vector>();
         ty = generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 
     else if (genex::algorithms::any_of(pc_group->capture_group->captures, [](auto &&x) { return x->conv->tag == ConventionAst::ConventionTag::MOV; })) {
         // If there are captures, but no borrowed captures, return a FunMov type with the parameters and return type.
-        auto param_types = pc_group->param_group->params | genex::views::map([](auto &&x) { return x->type; }) | genex::views::to<std::vector>();
+        auto param_types = pc_group->param_group->params | genex::views::transform([](auto &&x) { return x->type; }) | genex::views::to<std::vector>();
         ty = generate::common_types::fun_mov_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 
     else if (genex::algorithms::any_of(pc_group->capture_group->captures, [](auto &&x) { return x->conv->tag == ConventionAst::ConventionTag::MUT; })) {
         // If there are mutably borrowed captures, return a FunMut type with the parameters and return type.
-        auto param_types = pc_group->param_group->params | genex::views::map([](auto &&x) { return x->type; }) | genex::views::to<std::vector>();
+        auto param_types = pc_group->param_group->params | genex::views::transform([](auto &&x) { return x->type; }) | genex::views::to<std::vector>();
         ty = generate::common_types::fun_mut_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 
     else if (genex::algorithms::any_of(pc_group->capture_group->captures, [](auto &&x) { return x->conv->tag == ConventionAst::ConventionTag::REF; })) {
         // If there are immutable borrowed captures, return a FunRef type with the parameters and return type.
-        auto param_types = pc_group->param_group->params | genex::views::map([](auto &&x) { return x->type; }) | genex::views::to<std::vector>();
+        auto param_types = pc_group->param_group->params | genex::views::transform([](auto &&x) { return x->type; }) | genex::views::to<std::vector>();
         ty = generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 

@@ -64,5 +64,5 @@ auto spp::asts::CasePatternVariantExpressionAst::stage_8_check_memory(
     -> void {
     // Check the memory of the expression.
     expr->stage_8_check_memory(sm, meta);
-    analyse::utils::mem_utils::validate_symbol_memory(*expr, *expr, sm, true, true, true, true, true, true, meta);
+    analyse::utils::mem_utils::validate_symbol_memory(*expr, *expr, *sm, true, true, true, true, true, true, meta);
 }

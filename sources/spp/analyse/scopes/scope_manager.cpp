@@ -138,7 +138,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes(
     }
 
     // Handle type symbols.
-    else if (const auto type_sym = dynamic_cast<TypeSymbol*>(scope.ty_sym.get()); type_sym != nullptr) {
+    else if (const auto type_sym = scope.ty_sym.get(); type_sym != nullptr) {
         auto scopes = genex::views::concat(normal_sup_blocks[scope.m_non_generic_scope->ty_sym.get()], generic_sup_blocks) | genex::views::to<std::vector>();
         attach_specific_super_scopes_impl(scope, std::move(scopes), meta);
     }
@@ -226,13 +226,13 @@ auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statement
 
     // Check for conflicting "type" statements.
     auto existing_types = existing_scopes
-        | genex::views::map([](auto *scope) { return asts::ast_body(scope->ast); })
+        | genex::views::transform([](auto *scope) { return asts::ast_body(scope->ast); })
         | genex::views::flatten
         | genex::views::filter([](auto *member) { return asts::ast_cast<asts::TypeStatementAst>(member); })
         | genex::views::to<std::vector>();
 
     auto existing_type_names = existing_types
-        | genex::views::map([](auto *type_stmt) { return asts::ast_cast<asts::TypeStatementAst>(type_stmt)->new_type->name; })
+        | genex::views::transform([](auto *type_stmt) { return asts::ast_cast<asts::TypeStatementAst>(type_stmt)->new_type->name; })
         | genex::views::to<std::vector>();
 
     auto duplicate_type_names = existing_type_names
@@ -250,13 +250,13 @@ auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statement
 
     // Check for conflicting "cmp" statements.
     auto existing_cmps = existing_scopes
-        | genex::views::map([](auto *scope) { return asts::ast_body(scope->ast); })
+        | genex::views::transform([](auto *scope) { return asts::ast_body(scope->ast); })
         | genex::views::flatten
         | genex::views::filter([](auto *member) { return asts::ast_cast<asts::CmpStatementAst>(member); })
         | genex::views::to<std::vector>();
 
     auto existing_cmp_names = existing_cmps
-        | genex::views::map([](auto *cmp_stmt) { return asts::ast_cast<asts::CmpStatementAst>(cmp_stmt)->name; })
+        | genex::views::transform([](auto *cmp_stmt) { return asts::ast_cast<asts::CmpStatementAst>(cmp_stmt)->name; })
         | genex::views::to<std::vector>();
 
     auto duplicate_cmp_names = existing_cmp_names

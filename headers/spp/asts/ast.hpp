@@ -5,15 +5,15 @@
 #include <spp/asts/mixins/compiler_stages.hpp>
 
 #include <genex/views/ptr.hpp>
-#include <genex/views/map.hpp>
+#include <genex/views/transform.hpp>
 #include <genex/views/to.hpp>
 
 
 #define ast_clone(ast) ((ast) != nullptr ? ast_cast<std::remove_cvref_t<decltype(*ast)>>((ast)->clone()) : nullptr)
 
-#define ast_clone_vec(asts) (asts) | genex::views::map([](auto &&x) { return ast_clone(x); }) | genex::views::to<std::vector>()
+#define ast_clone_vec(asts) (asts) | genex::views::transform([](auto &&x) { return ast_clone(x); }) | genex::views::to<std::vector>()
 
-#define ast_clone_vec_shared(asts) (asts) | genex::views::map([](auto x) { return x; }) | genex::views::to<std::vector>()
+#define ast_clone_vec_shared(asts) (asts) | genex::views::transform([](auto x) { return x; }) | genex::views::to<std::vector>()
 
 
 namespace spp::asts {

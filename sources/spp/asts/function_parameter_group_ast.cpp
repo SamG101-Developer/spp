@@ -139,7 +139,7 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
 
     // Check there are no duplicate parameter names.
     const auto param_names = params
-        | genex::views::map([](auto &&x) { return x->extract_names(); })
+        | genex::views::transform([](auto &&x) { return x->extract_names(); })
         | genex::views::flatten
         | genex::views::materialize
         | genex::views::duplicates()

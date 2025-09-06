@@ -391,7 +391,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
 
     // Register the generic symbols.
     auto generic_syms = external_generic_syms
-        | genex::views::concat(type_part.generic_arg_group->args | genex::views::transform([&sm](auto &&g) { return create_generic_sym(*g, sm); }));
+        | genex::views::concat(type_part.generic_arg_group->args | genex::views::transform([&](auto &&g) { return create_generic_sym(*g, sm, meta); }));
 
     generic_syms
         | genex::views::cast_smart_ptr<scopes::TypeSymbol>()
@@ -423,7 +423,7 @@ auto spp::analyse::utils::type_utils::create_generic_fun_scope(
     asts::GenericArgumentGroupAst const &generic_args,
     std::vector<std::shared_ptr<scopes::Symbol>> external_generic_syms,
     scopes::ScopeManager &sm,
-    asts::mixins::CompilerMetaData *)
+    asts::mixins::CompilerMetaData *meta)
     -> scopes::Scope* {
     // Create a new scope and symbol for the generic substituted function.
     auto new_fun_scope_name = std::get<asts::IdentifierAst*>(old_fun_scope.name);
@@ -437,15 +437,15 @@ auto spp::analyse::utils::type_utils::create_generic_fun_scope(
 
     // Register the generic symbols.
     auto generic_syms = external_generic_syms
-        | genex::views::concat(generic_args.args | genex::views::transform([&sm](auto &&g) { return create_generic_sym(*g, sm); }));
+        | genex::views::concat(generic_args.args | genex::views::transform([&](auto &&g) { return create_generic_sym(*g, sm, meta); }));
 
     generic_syms
         | genex::views::cast_smart_ptr<scopes::TypeSymbol>()
-        | genex::views::for_each([&new_fun_scope](auto &&e) { new_fun_scope->add_type_symbol(std::move(e)); });
+        | genex::views::for_each([&new_fun_scope](auto e) { new_fun_scope->add_type_symbol(std::move(e)); });
 
     generic_syms
         | genex::views::cast_smart_ptr<scopes::VariableSymbol>()
-        | genex::views::for_each([&new_fun_scope](auto &&e) { new_fun_scope->add_var_symbol(std::move(e)); });
+        | genex::views::for_each([&new_fun_scope](auto e) { new_fun_scope->add_var_symbol(std::move(e)); });
 
     // Return the new function scope.
     return new_fun_scope.get();
@@ -472,7 +472,7 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
 
     // Register the generic symbols.
     auto generic_syms = external_generic_syms
-        | genex::views::concat(generic_args.args | genex::views::transform([&sm](auto &&g) { return create_generic_sym(*g, sm); }));
+        | genex::views::concat(generic_args.args | genex::views::transform([&](auto &&g) { return create_generic_sym(*g, sm, meta); }));
 
     generic_syms
         | genex::views::cast_smart_ptr<scopes::TypeSymbol>()

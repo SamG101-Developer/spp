@@ -99,7 +99,7 @@ auto spp::asts::ClassAttributeAst::stage_2_gen_top_level_scopes(
 
     // Create a variable symbol for this attribute in the current scope (class scope).
     auto sym = std::make_unique<analyse::scopes::VariableSymbol>(name, type, false, false, m_visibility.first);
-    sm->current_scope->add_symbol(std::move(sym));
+    sm->current_scope->add_var_symbol(std::move(sym));
 }
 
 
@@ -142,6 +142,7 @@ auto spp::asts::ClassAttributeAst::stage_8_check_memory(
     // If there is a default value, check it for memory errors.
     if (default_val != nullptr) {
         default_val->stage_8_check_memory(sm, meta);
-        analyse::utils::mem_utils::validate_symbol_memory(*default_val, *default_val, sm, true, true, true, true, true, true, meta);
+        analyse::utils::mem_utils::validate_symbol_memory(
+            *default_val, *default_val, *sm, true, true, true, true, true, true, meta);
     }
 }

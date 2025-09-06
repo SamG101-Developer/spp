@@ -129,7 +129,7 @@ auto spp::asts::FunctionPrototypeAst::m_deduce_mock_class_type() const
     -> std::shared_ptr<TypeAst> {
     // Extract the parameter types.
     auto param_types = param_group->params
-        | genex::views::map([](auto &&x) { return x->type; })
+        | genex::views::transform([](auto &&x) { return x->type; })
         | genex::views::to<std::vector>();
 
     // Module level functions, and static methods, are always FunRef.

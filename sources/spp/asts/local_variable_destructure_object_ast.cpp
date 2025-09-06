@@ -99,7 +99,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::extract_name() const
 auto spp::asts::LocalVariableDestructureObjectAst::extract_names() const
     -> std::vector<std::shared_ptr<IdentifierAst>> {
     return elems
-        | genex::views::map(&LocalVariableAst::extract_names)
+        | genex::views::transform(&LocalVariableAst::extract_names)
         | genex::views::flatten
         | genex::views::to<std::vector>();
 }

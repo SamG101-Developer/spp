@@ -24,7 +24,7 @@ struct spp::asts::ClassPrototypeAst final : virtual Ast, mixins::VisibilityEnabl
 protected:
     bool m_for_alias = false;
 
-    analyse::scopes::TypeSymbol* m_cls_sym = nullptr;
+    std::shared_ptr<analyse::scopes::TypeSymbol> m_cls_sym = nullptr;
 
 public:
     /**

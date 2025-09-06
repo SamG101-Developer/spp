@@ -21,7 +21,6 @@
 #include <genex/views/duplicates.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/for_each.hpp>
-#include <genex/views/map.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/to.hpp>
@@ -134,8 +133,8 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
     const auto type_arg_names = get_keyword_args()
         | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
-        | genex::views::map([](auto &&x) { return x->name.get(); })
-        | genex::views::materialize
+        | genex::views::transform([](auto &&x) { return x->name.get(); })
+        | genex::views::materialize()
         | genex::views::duplicates()
         | genex::views::to<std::vector>();
 
@@ -148,8 +147,8 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
     const auto comp_arg_names = get_keyword_args()
         | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
-        | genex::views::map([](auto &&x) { return x->name.get(); })
-        | genex::views::materialize
+        | genex::views::transform([](auto &&x) { return x->name.get(); })
+        | genex::views::materialize()
         | genex::views::duplicates()
         | genex::views::to<std::vector>();
 

@@ -15,7 +15,7 @@
 
 #include <genex/views/address.hpp>
 #include <genex/views/enumerate.hpp>
-#include <genex/views/map.hpp>
+#include <genex/views/indirect.hpp>
 #include <genex/views/zip.hpp>
 
 
@@ -79,7 +79,7 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
     }
 
     // Ensure the RHS is semantically valid.
-    for (auto [i, rhs_expr] : rhs | genex::views::map(&std::unique_ptr<ExpressionAst>::get) | genex::views::enumerate) {
+    for (auto [i, rhs_expr] : rhs | genex::views::transform(&std::unique_ptr<ExpressionAst>::get) | genex::views::enumerate) {
         meta->save();
 
         // Handle return type overloading matching for the lhs target types.
@@ -97,8 +97,8 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
 
     // For each assignment, get the outermost symbol of the expression.
     auto lhs_syms = lhs
-        | genex::views::deref
-        | genex::views::map([sm](auto &&x) { return sm->current_scope->get_var_symbol_outermost(x); })
+        | genex::views::indirect
+        | genex::views::transform([sm](auto &&x) { return sm->current_scope->get_var_symbol_outermost(x); })
         | genex::views::to<std::vector>();
 
     // Create quick access derefs for the looping.
@@ -140,8 +140,8 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
     // For each assignment, check the memory status and resolve any (partial-)moves.
     auto is_attr = [](Ast const &x) -> bool { return not ast_cast<IdentifierAst>(&x); };
     auto lhs_syms = lhs
-        | genex::views::deref
-        | genex::views::map([sm](auto &&x) { return sm->current_scope->get_var_symbol_outermost(x); })
+        | genex::views::indirect
+        | genex::views::transform([sm](auto &&x) { return sm->current_scope->get_var_symbol_outermost(x); })
         | genex::views::to<std::vector>();
 
     for (auto &&[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(lhs | genex::views::ptr, rhs | genex::views::ptr, lhs_syms)) {
@@ -149,7 +149,7 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
 
         // Partially validate the memory of the right-hand-side expression, if it is an attribute being set. Don't mark
         // the move, but do some checks before calling the internal memory checker on the postfix expression.
-        analyse::utils::mem_utils::validate_symbol_memory(*rhs_expr, *tok_assign, sm, is_attr(*lhs_expr), false, true, true, true, false, meta);
+        analyse::utils::mem_utils::validate_symbol_memory(*rhs_expr, *tok_assign, *sm, is_attr(*lhs_expr), false, true, true, true, false, meta);
 
         meta->save();
         meta->assignment_target = ast_clone(ast_cast<IdentifierAst>(lhs_expr));
@@ -157,11 +157,11 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
         meta->restore();
 
         // Fully validate the memory of the right-hand-side expression, marking the move.
-        analyse::utils::mem_utils::validate_symbol_memory(*rhs_expr, *tok_assign, sm, true, true, true, true, true, true, meta);
+        analyse::utils::mem_utils::validate_symbol_memory(*rhs_expr, *tok_assign, *sm, true, true, true, true, true, true, meta);
 
         if (is_attr(*lhs_expr)) {
             const auto pf = ast_cast<PostfixExpressionAst>(lhs_expr);
-            analyse::utils::mem_utils::validate_symbol_memory(*lhs_expr, *tok_assign, sm, true, is_attr(*pf->lhs), false, true, true, false, meta);
+            analyse::utils::mem_utils::validate_symbol_memory(*lhs_expr, *tok_assign, *sm, true, is_attr(*pf->lhs), false, true, true, false, meta);
         }
 
         // Resolve moved identifiers to the "initialised" state, otherwise resolve a partial move.

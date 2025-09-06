@@ -29,7 +29,9 @@ spp::analyse::scopes::NamespaceSymbol::operator std::string() const {
 }
 
 
-auto spp::analyse::scopes::NamespaceSymbol::operator==(NamespaceSymbol const &that) const -> bool {
+auto spp::analyse::scopes::NamespaceSymbol::operator==(
+    NamespaceSymbol const &that) const
+    -> bool {
     return this == &that;
 }
 
@@ -57,7 +59,9 @@ spp::analyse::scopes::VariableSymbol::operator std::string() const {
 }
 
 
-auto spp::analyse::scopes::VariableSymbol::operator==(VariableSymbol const &that) const -> bool {
+auto spp::analyse::scopes::VariableSymbol::operator==(
+    VariableSymbol const &that) const
+    -> bool {
     return this == &that;
 }
 
@@ -160,7 +164,8 @@ auto spp::analyse::scopes::AliasSymbol::operator==(
 }
 
 
-auto spp::analyse::scopes::AliasSymbol::fq_name() const
+auto spp::analyse::scopes::AliasSymbol::fq_name(
+    ) const
     -> std::shared_ptr<asts::TypeAst> {
     // Alias symbols' qualified names are just the symbol's name (die to alias mapping).
     return name;

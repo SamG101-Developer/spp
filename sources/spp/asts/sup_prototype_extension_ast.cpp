@@ -22,7 +22,6 @@
 
 #include <genex/views/concat.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/map.hpp>
 #include <genex/views/to.hpp>
 
 
@@ -98,7 +97,7 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_cyclic_extension(
     auto dummy = std::map<TypeAst *, ExpressionAst *>();
     const auto existing_sup_scopes = sup_sym.scope->sup_scopes()
         | genex::views::filter([](auto &&x) { return ast_cast<SupPrototypeExtensionAst>(x->ast); })
-        | genex::views::map([](auto &&x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })
+        | genex::views::transform([](auto &&x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })
         | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::relaxed_symbolic_eq(*super_class, *x.second->name, check_scope, *x.first, dummy); })
         | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::symbolic_eq(*x.second->super_class, *name, *x.first, check_scope); })
         | genex::views::to<std::vector>();
@@ -123,7 +122,7 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_double_extension(
     auto dummy = std::map<TypeAst *, ExpressionAst *>();
     const auto existing_sup_scopes = cls_sym.scope->sup_scopes()
         | genex::views::filter([](auto &&x) { return ast_cast<SupPrototypeExtensionAst>(x->ast); })
-        | genex::views::map([](auto &&x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })
+        | genex::views::transform([](auto &&x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })
         | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::relaxed_symbolic_eq(*super_class, *x.second->name, check_scope, *x.first, dummy); })
         | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::symbolic_eq(*x.second->super_class, *name, *x.first, check_scope); })
         | genex::views::to<std::vector>();

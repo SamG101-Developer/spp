@@ -57,7 +57,6 @@
 #include <genex/views/enumerate.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/indirect.hpp>
-#include <genex/views/map.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/set_algorithms.hpp>
@@ -342,11 +341,11 @@ auto spp::analyse::utils::func_utils::name_args(
     auto arg_names = args
         | genex::views::ptr
         | genex::views::cast_dynamic<asts::FunctionCallArgumentKeywordAst*>()
-        | genex::views::map([](auto &&x) { return x->name; })
+        | genex::views::transform([](auto &&x) { return x->name; })
         | genex::views::to<std::vector>();
 
     auto param_names = params
-        | genex::views::map([](auto &&x) { return x->extract_name(); })
+        | genex::views::transform([](auto &&x) { return x->extract_name(); })
         | genex::views::to<std::vector>();
 
     const auto is_variadic =
@@ -373,7 +372,7 @@ auto spp::analyse::utils::func_utils::name_args(
 
         // The variadic parameter requires a tuple of the remaining arguments.
         if (param_names.empty() and is_variadic) {
-            auto elems = args | genex::views::drop(i) | genex::views::map([](auto &&x) { return std::move(x->val); }) | genex::views::to<std::vector>();
+            auto elems = args | genex::views::drop(i) | genex::views::transform([](auto &&x) { return std::move(x->val); }) | genex::views::to<std::vector>();
             keyword_arg->val = std::make_unique<asts::TupleLiteralAst>(nullptr, std::move(elems), nullptr);
             args[i] = std::move(keyword_arg);
             args |= genex::actions::take(i + 1);
@@ -479,13 +478,13 @@ auto spp::analyse::utils::func_utils::name_generic_args_impl(
         if (param_names.empty() and is_variadic) {
             if constexpr (std::same_as<GenericParamType, asts::GenericParameterCompAst>) {
                 // Variadic check: map arguments "func[1_u32, 1_u32]" for "func[..s]" to "func[ts = (1_u32, 1_u32)]".
-                auto vals = args | genex::views::drop(i) | genex::views::map([](auto &&x) { return std::move(x->val); }) | genex::views::to<std::vector>();
+                auto vals = args | genex::views::drop(i) | genex::views::transform([](auto &&x) { return std::move(x->val); }) | genex::views::to<std::vector>();
                 auto tup_lit = std::make_unique<asts::TupleLiteralAst>(nullptr, std::move(vals), nullptr);
                 keyword_arg->val = std::move(tup_lit);
             }
             else {
                 // Variadic check: map arguments "func[U32, U32]" for "func[..Ts]" to "func[Ts = (U32, U32)]".
-                auto types = args | genex::views::drop(i) | genex::views::map([](auto &&x) { return std::move(x->val); }) | genex::views::to<std::vector>();
+                auto types = args | genex::views::drop(i) | genex::views::transform([](auto &&x) { return std::move(x->val); }) | genex::views::to<std::vector>();
                 auto tup_type = asts::generate::common_types::tuple_type(positional_arg->pos_start(), std::move(types));
                 keyword_arg->val = std::move(tup_type);
             }
@@ -519,7 +518,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args(
     // Special case for tuples to prevent an infinite recursion, or there is nothing to infer.
     if (is_tuple_owner or params.empty()) {
         args |= genex::actions::clear();
-        args |= genex::actions::concat(explicit_args | genex::views::map([](auto &&x) { return ast_clone(x); }));
+        args |= genex::actions::concat(explicit_args | genex::views::transform([](auto &&x) { return ast_clone(x); }));
         return;
     }
 

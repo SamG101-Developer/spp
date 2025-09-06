@@ -1,7 +1,7 @@
 #include <spp/analyse/scopes/symbol_table.hpp>
 
-#include <genex/views/map.hpp>
 #include <genex/views/to.hpp>
+#include <genex/views/transform.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -23,7 +23,7 @@ spp::analyse::scopes::IndividualSymbolTable<I, S>::IndividualSymbolTable(
 template <typename I, typename S>
 spp::analyse::scopes::IndividualSymbolTable<I, S>::operator std::string() const {
     return nlohmann::json(m_table
-            | genex::views::map([](auto const &pair) { return std::make_pair(static_cast<std::string>(*pair.first), static_cast<std::string>(*pair.second)); })
+            | genex::views::transform([](auto const &pair) { return std::make_pair(static_cast<std::string>(*pair.first), static_cast<std::string>(*pair.second)); })
             | genex::views::to<std::map<std::string, std::string>>())
         .dump();
 }
