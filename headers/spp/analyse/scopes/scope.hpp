@@ -112,7 +112,7 @@ public:
 
     auto get_error_formatter() const -> spp::utils::errors::ErrorFormatter*;
 
-    auto get_generics() -> std::vector<std::unique_ptr<asts::GenericArgumentAst>>;
+    auto get_generics() const -> std::vector<std::unique_ptr<asts::GenericArgumentAst>>;
 
     auto get_extended_generic_symbols(std::vector<asts::GenericArgumentAst*> generics) -> std::vector<Symbol*>;
 

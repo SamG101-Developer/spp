@@ -25,7 +25,7 @@ auto spp::utils::errors::AbstractErrorBuilder<T>::with_args(
 
 template <typename T>
 auto spp::utils::errors::AbstractErrorBuilder<T>::with_scopes(
-    std::vector<analyse::scopes::Scope*> scopes)
+    std::vector<analyse::scopes::Scope const*> scopes)
     -> AbstractErrorBuilder& {
     // Extract error formatters from a list of scopes.
     m_error_formatters = scopes | genex::views::transform(&analyse::scopes::Scope::get_error_formatter) | genex::views::to<std::vector>();

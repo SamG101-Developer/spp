@@ -50,6 +50,8 @@ public:
 
     SymbolTable(SymbolTable const &that);
 
+    auto operator=(SymbolTable const &that) -> SymbolTable&;
+
     IndividualSymbolTable<asts::IdentifierAst, NamespaceSymbol> ns_tbl;
 
     IndividualSymbolTable<asts::TypeAst, TypeSymbol> type_tbl;

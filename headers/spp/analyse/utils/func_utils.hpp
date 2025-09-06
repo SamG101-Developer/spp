@@ -53,7 +53,7 @@ namespace spp::analyse::utils::func_utils {
         asts::IdentifierAst const &target_fn_name,
         scopes::Scope const *target_scope,
         bool for_override = false)
-        -> std::vector<std::tuple<scopes::Scope*, asts::FunctionPrototypeAst*, std::unique_ptr<asts::GenericArgumentGroupAst>>>;
+        -> std::vector<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, std::unique_ptr<asts::GenericArgumentGroupAst>>>;
 
     auto check_for_conflicting_overload(
         scopes::Scope const &this_scope,
@@ -63,7 +63,7 @@ namespace spp::analyse::utils::func_utils {
 
     auto check_for_conflicting_override(
         scopes::Scope const &this_scope,
-        scopes::Scope *target_scope,
+        scopes::Scope const *target_scope,
         asts::FunctionPrototypeAst const &new_fn,
         scopes::Scope const *exclude_scope = nullptr)
         -> asts::FunctionPrototypeAst*;
@@ -98,7 +98,7 @@ namespace spp::analyse::utils::func_utils {
         std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_source,
         std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_target,
         std::shared_ptr<asts::Ast> owner,
-        scopes::Scope *owner_scope,
+        scopes::Scope const *owner_scope,
         std::shared_ptr<asts::IdentifierAst> variadic_param_identifier,
         bool is_tuple_owner,
         scopes::ScopeManager &sm,
@@ -114,7 +114,7 @@ namespace spp::analyse::utils::func_utils {
         std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_source,
         std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_target,
         std::shared_ptr<asts::Ast> owner,
-        scopes::Scope *owner_scope,
+        scopes::Scope const *owner_scope,
         std::shared_ptr<asts::IdentifierAst> variadic_param_identifier,
         scopes::ScopeManager &sm,
         asts::mixins::CompilerMetaData *meta)

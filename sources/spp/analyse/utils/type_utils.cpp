@@ -373,7 +373,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
 
     // Configure the new scope based on the base (old) scope.
     new_cls_scope->parent->add_type_symbol(std::move(new_cls_symbol));
-    new_cls_scope->table = scopes::SymbolTable(old_cls_scope->table);
+    new_cls_scope->table = old_cls_scope->table;
     new_cls_scope->non_generic_scope = old_cls_scope;
     new_cls_scope->children.emplace_back(std::move(new_cls_scope));
     if (not std::holds_alternative<scopes::ScopeBlockName>(new_cls_scope->name)) {

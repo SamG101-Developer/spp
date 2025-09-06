@@ -53,7 +53,7 @@ public:
     template <typename... Args> requires std::is_constructible_v<T, Args...>
     auto with_args(Args &&... args) -> AbstractErrorBuilder&;
 
-    auto with_scopes(std::vector<analyse::scopes::Scope*> scopes) -> AbstractErrorBuilder&;
+    auto with_scopes(std::vector<analyse::scopes::Scope const*> scopes) -> AbstractErrorBuilder&;
 
     auto with_error_formatter(ErrorFormatter *error_formatter) -> AbstractErrorBuilder&;
 

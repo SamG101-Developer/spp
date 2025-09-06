@@ -127,7 +127,7 @@ auto spp::analyse::scopes::Scope::get_error_formatter() const
 }
 
 
-auto spp::analyse::scopes::Scope::get_generics()
+auto spp::analyse::scopes::Scope::get_generics() const
     -> std::vector<std::unique_ptr<asts::GenericArgumentAst>> {
     // Create the symbols list.
     auto syms = std::vector<std::unique_ptr<asts::GenericArgumentAst>>();

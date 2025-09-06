@@ -153,7 +153,7 @@ auto spp::asts::TypeIdentifierAst::ns_parts(
 auto spp::asts::TypeIdentifierAst::type_parts(
     ) const
     -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
-    return std::vector{shared_from_this()};
+    return std::vector{std::dynamic_pointer_cast<const TypeIdentifierAst>(shared_from_this())};
 }
 
 

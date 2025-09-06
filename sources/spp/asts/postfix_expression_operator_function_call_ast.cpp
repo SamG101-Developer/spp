@@ -114,7 +114,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
     // Convert the "obj.method_call(...args)" into "Type::method_call(obj, ...args)".
     if (const auto cast_lhs = ast_cast<PostfixExpressionAst>(meta->postfix_expression_lhs); cast_lhs != nullptr and ast_cast<PostfixExpressionOperatorRuntimeMemberAccessAst>(cast_lhs->op.get())) {
-        auto [transformed_lhs, transformed_fn_call] = analyse::utils::func_utils::convert_method_to_function_form(*fn_owner_type, *fn_name, *lhs, *this, *sm, meta);
+        auto [transformed_lhs, transformed_fn_call] = analyse::utils::func_utils::convert_method_to_function_form(
+            *fn_owner_type, *fn_name, *cast_lhs, *this, *sm, meta);
         transformed_fn_call->determine_overload(sm, meta);
         m_overload_info = std::move(transformed_fn_call->m_overload_info);
         arg_group = std::move(transformed_fn_call->arg_group);
@@ -162,17 +163,20 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
         try {
             // Cannot call an abstract function.
             if (fn_proto->m_abstract_annotation != nullptr) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallAbstractFunctionError>().with_args(*this, *fn_proto).with_scopes({fn_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallAbstractFunctionError>().with_args(
+                    *this, *fn_proto).with_scopes({fn_scope}).raise();
             }
 
             // Cannot call a not implemented function.
             if (fn_proto->m_no_impl_annotation != nullptr) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallNotImplFunctionError>().with_args(*this, *fn_proto).with_scopes({fn_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallNotImplFunctionError>().with_args(
+                    *this, *fn_proto).with_scopes({fn_scope}).raise();
             }
 
             // Check if there are too many arguments (for a non-variadic function).
             if (func_args.size() > func_params.size() and not is_variadic_fn) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallTooManyArgumentsError>().with_args(*this, *fn_proto).with_scopes({fn_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallTooManyArgumentsError>().with_args(
+                    *this, *fn_proto).with_scopes({fn_scope}).raise();
             }
 
             // Remove the keyword argument names from the set of parameter names, and name the positional arguments.
