@@ -84,7 +84,7 @@ auto spp::asts::TypeIdentifierAst::from_identifier(
 
 
 auto spp::asts::TypeIdentifierAst::equals(
-    TypeAst const &other) const
+    ExpressionAst const &other) const
     -> bool {
     // Double dispatch to the appropriate equals method.
     return other.equals_type_identifier(*this);

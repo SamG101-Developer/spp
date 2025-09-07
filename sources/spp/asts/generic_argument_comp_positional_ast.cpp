@@ -46,6 +46,20 @@ auto spp::asts::GenericArgumentCompPositionalAst::print(meta::AstPrinter &printe
 }
 
 
+auto spp::asts::GenericArgumentCompPositionalAst::equals(
+    GenericArgumentAst const &other) const
+    -> bool {
+    return other.equals_generic_argument_comp_positional(*this);
+}
+
+
+auto spp::asts::GenericArgumentCompPositionalAst::equals_generic_argument_comp_positional(
+    GenericArgumentCompPositionalAst const &other) const
+    -> bool {
+    return *val == *other.val;
+}
+
+
 auto spp::asts::GenericArgumentCompPositionalAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)

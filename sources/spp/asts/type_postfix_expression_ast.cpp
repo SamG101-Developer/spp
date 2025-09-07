@@ -66,7 +66,9 @@ auto spp::asts::TypePostfixExpressionAst::print(meta::AstPrinter &printer) const
 }
 
 
-auto spp::asts::TypePostfixExpressionAst::equals(const TypeAst &other) const -> bool {
+auto spp::asts::TypePostfixExpressionAst::equals(
+    const ExpressionAst &other) const
+    -> bool {
     // Double dispatch to the appropriate equals method.
     return other.equals_type_postfix_expression(*this);
 }
@@ -207,7 +209,7 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
     const auto op_nested = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
     auto scopes_and_syms = std::vector{lhs_type_sym->scope}
         | genex::views::concat(lhs_type_sym->scope->sup_scopes())
-        | genex::views::transform([name=op_nested->name.get()](auto &&x) { return std::make_pair(x, x->table.type_tbl.get(*name)); })
+        | genex::views::transform([name=op_nested->name.get()](auto &&x) { return std::make_pair(x, x->table.type_tbl.get(name)); })
         | genex::views::filter([](auto &&x) { return x.second != nullptr; })
         | genex::views::transform([lhs_type_sym](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
         | genex::views::to<std::vector>();

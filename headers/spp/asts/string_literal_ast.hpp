@@ -13,6 +13,12 @@ struct spp::asts::StringLiteralAst final : LiteralAst {
      */
     std::unique_ptr<TokenAst> val;
 
+protected:
+    auto equals(ExpressionAst const &other) const -> bool override;
+
+    auto equals_string_literal(StringLiteralAst const &) const -> bool override;
+
+public:
     /**
      * Construct the StringLiteralAst with the arguments matching the members.
      * @param[in] val The string value of the string literal.

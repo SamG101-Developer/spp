@@ -44,6 +44,20 @@ auto spp::asts::StringLiteralAst::print(meta::AstPrinter &printer) const -> std:
 }
 
 
+auto spp::asts::StringLiteralAst::equals(
+    ExpressionAst const &other) const
+    -> bool {
+    return other.equals_string_literal(*this);
+}
+
+
+auto spp::asts::StringLiteralAst::equals_string_literal(
+    StringLiteralAst const &other) const
+    -> bool {
+    return *val == *other.val;
+}
+
+
 auto spp::asts::StringLiteralAst::infer_type(
     ScopeManager *,
     mixins::CompilerMetaData *)

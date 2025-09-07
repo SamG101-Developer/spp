@@ -12,6 +12,12 @@
 struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgumentTypeAst {
     SPP_AST_KEY_FUNCTIONS;
 
+protected:
+    auto equals(GenericArgumentAst const &other) const -> bool override;
+
+    auto equals_generic_argument_type_keyword(GenericArgumentTypeKeywordAst const &) const -> bool override;
+
+public:
     /**
      * The name of the keyword argument. This is the type that is used to refer to the argument in the generic call.
      */

@@ -82,6 +82,20 @@ auto spp::asts::GenericArgumentCompKeywordAst::print(meta::AstPrinter &printer) 
 }
 
 
+auto spp::asts::GenericArgumentCompKeywordAst::equals(
+    GenericArgumentAst const &other) const
+    -> bool {
+    return other.equals_generic_argument_comp_keyword(*this);
+}
+
+
+auto spp::asts::GenericArgumentCompKeywordAst::equals_generic_argument_comp_keyword(
+    GenericArgumentCompKeywordAst const &other) const
+    -> bool {
+    return *name == *other.name and *val == *other.val;
+}
+
+
 auto spp::asts::GenericArgumentCompKeywordAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)

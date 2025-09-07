@@ -49,4 +49,19 @@ namespace spp::asts::detail {
  */
 struct spp::asts::GenericArgumentAst : virtual Ast {
     using Ast::Ast;
+    friend struct GenericArgumentCompKeywordAst;
+    friend struct GenericArgumentCompPositionalAst;
+    friend struct GenericArgumentTypeKeywordAst;
+    friend struct GenericArgumentTypePositionalAst;
+
+    friend auto operator==(GenericArgumentAst const &lhs_arg, GenericArgumentAst const &rhs_arg) -> bool {
+        return lhs_arg.equals(rhs_arg);
+    }
+
+protected:
+    virtual auto equals_generic_argument_comp_keyword(GenericArgumentCompKeywordAst const &) const -> bool;
+    virtual auto equals_generic_argument_comp_positional(GenericArgumentCompPositionalAst const &) const -> bool;
+    virtual auto equals_generic_argument_type_keyword(GenericArgumentTypeKeywordAst const &) const -> bool;
+    virtual auto equals_generic_argument_type_positional(GenericArgumentTypePositionalAst const &) const -> bool;
+    virtual auto equals(GenericArgumentAst const &other) const -> bool = 0;
 };

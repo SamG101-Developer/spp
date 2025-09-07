@@ -23,7 +23,7 @@ namespace spp::compiler {
 
 struct spp::analyse::scopes::ScopeBlockName {
     std::string name;
-    explicit ScopeBlockName(std::string name);
+    explicit ScopeBlockName(std::string &&name);
     ScopeBlockName(ScopeBlockName const &) = default;
     ScopeBlockName(ScopeBlockName &&) noexcept = default;
 };

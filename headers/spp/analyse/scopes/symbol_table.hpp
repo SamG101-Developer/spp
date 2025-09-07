@@ -17,28 +17,41 @@ namespace spp::analyse::scopes {
     struct NamespaceSymbol;
     struct TypeSymbol;
     struct VariableSymbol;
+
+    template <typename T>
+    struct SymNameCmp;
 }
+
+
+template <typename T>
+struct spp::analyse::scopes::SymNameCmp {
+    auto operator()(T const *lhs, T const *rhs) const -> bool;
+};
 
 
 template <typename I, typename S>
 class spp::analyse::scopes::IndividualSymbolTable {
 private:
-    tsl::robin_map<I*, std::shared_ptr<S>> m_table;
+    std::map<I const*, std::shared_ptr<S>, SymNameCmp<I>> m_table;
 
 public:
     IndividualSymbolTable();
 
     IndividualSymbolTable(IndividualSymbolTable const &that);
 
-    explicit operator std::string() const;
+    ~IndividualSymbolTable();
 
-    auto add(I const &sym_name, std::shared_ptr<S> sym) -> void;
+    auto operator=(IndividualSymbolTable const &that) -> IndividualSymbolTable&;
 
-    auto rem(I const &sym_name) -> void;
+    // explicit operator std::string() const;
 
-    auto get(I const &sym_name) const -> std::shared_ptr<S>;
+    auto add(I const *sym_name, std::shared_ptr<S> sym) -> void;
 
-    auto has(I const &sym_name) const -> bool;
+    auto rem(I const *sym_name) -> void;
+
+    auto get(I const *sym_name) const -> std::shared_ptr<S>;
+
+    auto has(I const *sym_name) const -> bool;
 
     auto all() const -> std::generator<std::shared_ptr<S>>;
 };
@@ -49,6 +62,8 @@ public:
     SymbolTable();
 
     SymbolTable(SymbolTable const &that);
+
+    ~SymbolTable();
 
     auto operator=(SymbolTable const &that) -> SymbolTable&;
 

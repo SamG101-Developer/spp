@@ -72,6 +72,20 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::print(meta::AstPrinter &printer)
 }
 
 
+auto spp::asts::ArrayLiteralRepeatedElementAst::equals(
+    ExpressionAst const &other) const
+    -> bool {
+    return other.equals_array_literal_repeated_elements(*this);
+}
+
+
+auto spp::asts::ArrayLiteralRepeatedElementAst::equals_array_literal_repeated_elements(
+    ArrayLiteralRepeatedElementAst const &other) const
+    -> bool {
+    return *elem == *other.elem and *size == *other.size;
+}
+
+
 auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)

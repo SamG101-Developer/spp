@@ -14,6 +14,12 @@ struct spp::asts::IdentifierAst final : PrimaryExpressionAst {
      */
     std::string val;
 
+protected:
+    auto equals(ExpressionAst const &other) const -> bool override;
+
+    auto equals_identifier(IdentifierAst const &) const -> bool override;
+
+public:
     /**
      * Construct the IdentifierAst with the arguments matching the members.
      * @param[in] pos The position of the identifier in the source code.

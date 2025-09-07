@@ -14,13 +14,17 @@ spp::asts::BooleanLiteralAst::BooleanLiteralAst(
 spp::asts::BooleanLiteralAst::~BooleanLiteralAst() = default;
 
 
-auto spp::asts::BooleanLiteralAst::True(const std::size_t pos) -> std::unique_ptr<BooleanLiteralAst> {
+auto spp::asts::BooleanLiteralAst::True(
+    const std::size_t pos)
+    -> std::unique_ptr<BooleanLiteralAst> {
     auto tok = std::make_unique<TokenAst>(pos, lex::SppTokenType::KW_TRUE, "true");
     return std::make_unique<BooleanLiteralAst>(std::move(tok));
 }
 
 
-auto spp::asts::BooleanLiteralAst::False(const std::size_t pos) -> std::unique_ptr<BooleanLiteralAst> {
+auto spp::asts::BooleanLiteralAst::False(
+    const std::size_t pos)
+    -> std::unique_ptr<BooleanLiteralAst> {
     auto tok = std::make_unique<TokenAst>(pos, lex::SppTokenType::KW_FALSE, "false");
     return std::make_unique<BooleanLiteralAst>(std::move(tok));
 }
@@ -53,6 +57,20 @@ auto spp::asts::BooleanLiteralAst::print(meta::AstPrinter &printer) const -> std
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_bool);
     SPP_PRINT_END;
+}
+
+
+auto spp::asts::BooleanLiteralAst::equals(
+    ExpressionAst const &other) const
+    -> bool {
+    return other.equals_boolean_literal(*this);
+}
+
+
+auto spp::asts::BooleanLiteralAst::equals_boolean_literal(
+    BooleanLiteralAst const &other) const
+    -> bool {
+    return *tok_bool == *other.tok_bool;
 }
 
 

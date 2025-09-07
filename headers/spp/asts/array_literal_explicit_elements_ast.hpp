@@ -16,6 +16,12 @@
 struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiteralAst {
     SPP_AST_KEY_FUNCTIONS;
 
+protected:
+    auto equals_array_literal_explicit_elements(ArrayLiteralExplicitElementsAst const &) const -> bool override;
+
+    auto equals(ExpressionAst const &other) const -> bool override;
+
+public:
     /**
      * The token that represents the left square bracket @code [@endcode in the array literal. This introduces the array
      * literal.

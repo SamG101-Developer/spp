@@ -18,6 +18,12 @@ spp::asts::IdentifierAst::IdentifierAst(
 }
 
 
+spp::asts::IdentifierAst::IdentifierAst(IdentifierAst const &other) :
+    val(other.val),
+    m_pos(other.m_pos) {
+}
+
+
 auto spp::asts::IdentifierAst::pos_start() const -> std::size_t {
     return m_pos;
 }
@@ -35,6 +41,20 @@ spp::asts::IdentifierAst::operator std::string() const {
 
 auto spp::asts::IdentifierAst::print(meta::AstPrinter &) const -> std::string {
     return val;
+}
+
+
+auto spp::asts::IdentifierAst::equals(
+    ExpressionAst const &other) const
+    -> bool {
+    return other.equals_identifier(*this);
+}
+
+
+auto spp::asts::IdentifierAst::equals_identifier(
+    IdentifierAst const &other) const
+    -> bool {
+    return val == other.val;
 }
 
 

@@ -28,6 +28,12 @@ struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgumentCompAst {
      */
     std::unique_ptr<TokenAst> tok_assign;
 
+protected:
+    auto equals(GenericArgumentAst const &other) const -> bool override;
+
+    auto equals_generic_argument_comp_keyword(GenericArgumentCompKeywordAst const &) const -> bool override;
+
+public:
     /**
      * Construct the GenericArgumentCompKeywordAst with the arguments matching the members.
      * @param name The name of the keyword argument.

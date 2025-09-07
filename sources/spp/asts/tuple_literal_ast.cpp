@@ -10,7 +10,9 @@
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
 
+#include <genex/algorithms/all_of.hpp>
 #include <genex/views/indirect.hpp>
+#include <genex/views/zip.hpp>
 
 
 spp::asts::TupleLiteralAst::TupleLiteralAst(
@@ -60,6 +62,25 @@ auto spp::asts::TupleLiteralAst::print(meta::AstPrinter &printer) const -> std::
     SPP_PRINT_EXTEND(elems);
     SPP_PRINT_APPEND(tok_r);
     SPP_PRINT_END;
+}
+
+
+auto spp::asts::TupleLiteralAst::equals(
+    ExpressionAst const &other) const
+    -> bool {
+    return other.equals_tuple_literal(*this);
+}
+
+
+auto spp::asts::TupleLiteralAst::equals_tuple_literal(
+    TupleLiteralAst const &other) const
+    -> bool {
+    if (elems.size() != other.elems.size()) {
+        return false;
+    }
+    return genex::algorithms::all_of(
+        genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::views::to<std::vector>(),
+        [](auto &&pair) { return *std::get<0>(pair) == *std::get<1>(pair); });
 }
 
 

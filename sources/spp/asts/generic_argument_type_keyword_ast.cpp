@@ -70,6 +70,20 @@ auto spp::asts::GenericArgumentTypeKeywordAst::print(meta::AstPrinter &printer) 
 }
 
 
+auto spp::asts::GenericArgumentTypeKeywordAst::equals(
+    GenericArgumentAst const &other) const
+    -> bool {
+    return other.equals_generic_argument_type_keyword(*this);
+}
+
+
+auto spp::asts::GenericArgumentTypeKeywordAst::equals_generic_argument_type_keyword(
+    GenericArgumentTypeKeywordAst const &other) const
+    -> bool {
+    return *name == *other.name and *val == *other.val;
+}
+
+
 auto spp::asts::GenericArgumentTypeKeywordAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)

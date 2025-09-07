@@ -26,6 +26,10 @@
 #include <genex/views/transform.hpp>
 
 
+spp::analyse::scopes::ScopeBlockName::ScopeBlockName(std::string &&name) : name(std::move(name)) {
+}
+
+
 spp::analyse::scopes::Scope::Scope(
     ScopeName name,
     Scope *parent,
@@ -196,7 +200,7 @@ auto spp::analyse::scopes::Scope::add_var_symbol(
     std::shared_ptr<VariableSymbol> sym)
     -> void {
     // Add a type symbol to the corresponding symbol table.
-    table.var_tbl.add(*sym->name, std::move(sym));
+    table.var_tbl.add(sym->name.get(), std::move(sym));
 }
 
 
@@ -204,7 +208,7 @@ auto spp::analyse::scopes::Scope::add_type_symbol(
     std::shared_ptr<TypeSymbol> sym)
     -> void {
     // Add a type symbol to the corresponding symbol table.
-    table.type_tbl.add(asts::ast_cast<asts::TypeAst>(*sym->name), std::move(sym));
+    table.type_tbl.add(asts::ast_cast<asts::TypeAst>(sym->name.get()), std::move(sym));
 }
 
 
@@ -212,7 +216,7 @@ auto spp::analyse::scopes::Scope::add_ns_symbol(
     std::shared_ptr<NamespaceSymbol> sym)
     -> void {
     // Add a namespace symbol to the corresponding symbol table.
-    table.ns_tbl.add(*sym->name, std::move(sym));
+    table.ns_tbl.add(sym->name.get(), std::move(sym));
 }
 
 
@@ -220,7 +224,7 @@ auto spp::analyse::scopes::Scope::rem_var_symbol(
     asts::IdentifierAst const &sym_name)
     -> void {
     // Remove a variable symbol from the corresponding symbol table.
-    table.var_tbl.rem(sym_name);
+    table.var_tbl.rem(&sym_name);
 }
 
 
@@ -228,7 +232,7 @@ auto spp::analyse::scopes::Scope::rem_type_symbol(
     asts::TypeAst const &sym_name)
     -> void {
     // Remove a type symbol from the corresponding symbol table.
-    table.type_tbl.rem(sym_name);
+    table.type_tbl.rem(&sym_name);
 }
 
 
@@ -236,7 +240,7 @@ auto spp::analyse::scopes::Scope::rem_ns_symbol(
     asts::IdentifierAst const &sym_name)
     -> void {
     // Remove a namespace symbol from the corresponding symbol table.
-    table.ns_tbl.rem(sym_name);
+    table.ns_tbl.rem(&sym_name);
 }
 
 
@@ -323,8 +327,8 @@ auto spp::analyse::scopes::Scope::get_var_symbol(
     const bool exclusive) const
     -> VariableSymbol* {
     // Get the symbol from the symbol table if it exists.
-    auto scope = this;
-    auto sym = table.var_tbl.get(sym_name).get();
+    const auto scope = this;
+    auto sym = table.var_tbl.get(&sym_name).get();
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym != nullptr and not exclusive and scope->parent != nullptr) {
@@ -352,7 +356,7 @@ auto spp::analyse::scopes::Scope::get_type_symbol(
     std::tie(scope, sym_name_extracted) = shift_scope_for_namespaced_type(*scope, *sym_name_extracted);
 
     // Get the symbol from the symbol table if it exists.
-    auto sym = scope->table.type_tbl.get(*sym_name_extracted).get();
+    auto sym = scope->table.type_tbl.get(sym_name_extracted.get()).get();
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym == nullptr and not exclusive and scope->parent != nullptr) {
@@ -379,7 +383,7 @@ auto spp::analyse::scopes::Scope::get_ns_symbol(
     -> NamespaceSymbol* {
     // Get the symbol from the symbol table if it exists.
     auto scope = this;
-    auto sym = table.ns_tbl.get(sym_name).get();
+    auto sym = table.ns_tbl.get(&sym_name).get();
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym != nullptr and not exclusive and scope->parent != nullptr) {

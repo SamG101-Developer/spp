@@ -30,7 +30,7 @@ struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
     ~TypeUnaryExpressionAst() override;
 
 protected:
-    auto equals(TypeAst const &other) const -> bool override;
+    auto equals(ExpressionAst const &other) const -> bool override;
 
     auto equals_type_unary_expression(TypeUnaryExpressionAst const &other) const -> bool override;
 

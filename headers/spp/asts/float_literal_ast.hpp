@@ -40,6 +40,12 @@ struct spp::asts::FloatLiteralAst final : LiteralAst {
      */
     std::string type;
 
+protected:
+    auto equals(ExpressionAst const &other) const -> bool override;
+
+    auto equals_float_literal(FloatLiteralAst const &) const -> bool override;
+
+public:
     /**
      * Construct the FloatLiteralAst with the arguments matching the members.
      * @param[in] tok_sign The optional sign of the float literal.

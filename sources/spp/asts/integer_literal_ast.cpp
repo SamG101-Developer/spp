@@ -77,6 +77,23 @@ auto spp::asts::IntegerLiteralAst::print(meta::AstPrinter &printer) const -> std
 }
 
 
+auto spp::asts::IntegerLiteralAst::equals(
+    ExpressionAst const &other) const
+    -> bool {
+    return other.equals_integer_literal(*this);
+}
+
+
+auto spp::asts::IntegerLiteralAst::equals_integer_literal(
+    IntegerLiteralAst const &other) const
+    -> bool {
+    return
+        ((sign == nullptr and other.sign == nullptr) or (sign != nullptr and other.sign != nullptr and *sign == *other.sign)) and
+        *val == *other.val and
+        type == other.type;
+}
+
+
 auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     mixins::CompilerMetaData *)

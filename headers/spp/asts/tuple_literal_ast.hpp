@@ -23,6 +23,13 @@ struct spp::asts::TupleLiteralAst final : LiteralAst {
      */
     std::unique_ptr<TokenAst> tok_r;
 
+protected:
+    auto equals(ExpressionAst const &other) const -> bool override;
+
+    auto equals_tuple_literal(TupleLiteralAst const &) const -> bool override;
+
+public:
+
     /**
      * Construct the TupleLiteralAst with the arguments matching the members.
      * @param tok_l The left parenthesis token.

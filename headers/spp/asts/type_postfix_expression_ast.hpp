@@ -31,7 +31,7 @@ struct spp::asts::TypePostfixExpressionAst final : TypeAst {
     ~TypePostfixExpressionAst() override;
 
 protected:
-    auto equals(const TypeAst &) const -> bool override;
+    auto equals(const ExpressionAst &) const -> bool override;
 
     auto equals_type_postfix_expression(TypePostfixExpressionAst const &) const -> bool override;
 

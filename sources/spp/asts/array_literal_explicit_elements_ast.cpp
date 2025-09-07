@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <genex/algorithms/any_of.hpp>
 
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
@@ -12,6 +13,7 @@
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
 
+#include <genex/algorithms/all_of.hpp>
 #include <genex/views/address.hpp>
 #include <genex/views/to.hpp>
 #include <genex/views/zip.hpp>
@@ -63,6 +65,22 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::print(meta::AstPrinter &printer
     SPP_PRINT_EXTEND(elems);
     SPP_PRINT_APPEND(tok_r);
     SPP_PRINT_END;
+}
+
+
+auto spp::asts::ArrayLiteralExplicitElementsAst::equals_array_literal_explicit_elements(
+    ArrayLiteralExplicitElementsAst const &other) const
+    -> bool {
+    return genex::algorithms::all_of(
+        genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::views::to<std::vector>(),
+        [](auto &&pair) { return *std::get<0>(pair) == *std::get<1>(pair); });
+}
+
+
+auto spp::asts::ArrayLiteralExplicitElementsAst::equals(
+    ExpressionAst const &other) const
+    -> bool {
+    return other.equals_array_literal_explicit_elements(*this);
 }
 
 

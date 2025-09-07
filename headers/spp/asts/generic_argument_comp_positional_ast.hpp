@@ -12,6 +12,12 @@
 struct spp::asts::GenericArgumentCompPositionalAst final : GenericArgumentCompAst {
     SPP_AST_KEY_FUNCTIONS;
 
+protected:
+    auto equals(GenericArgumentAst const &other) const -> bool override;
+
+    auto equals_generic_argument_comp_positional(GenericArgumentCompPositionalAst const &) const -> bool override;
+
+public:
     /**
      * Construct the GenericArgumentCompPositionalAst with the arguments matching the members.
      * @param val The value of the generic comp argument.

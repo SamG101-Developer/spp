@@ -10,6 +10,12 @@
 struct spp::asts::GenericArgumentTypePositionalAst final : GenericArgumentTypeAst {
     SPP_AST_KEY_FUNCTIONS;
 
+protected:
+    auto equals(GenericArgumentAst const &other) const -> bool override;
+
+    auto equals_generic_argument_type_positional(GenericArgumentTypePositionalAst const &) const -> bool override;
+
+public:
     /**
      * Construct the GenericArgumentTypePositionalAst with the arguments matching the members.
      * @param val The value of the generic type argument.
