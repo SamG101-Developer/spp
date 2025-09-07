@@ -627,9 +627,10 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl(
             // Handle the variadic parameter if it exists.
             if constexpr (std::same_as<GenericParamType, asts::GenericParameterTypeAst>) {
                 if (variadic_param_identifier != nullptr and *infer_target_name == *variadic_param_identifier) {
-                    auto temp = asts::ast_cast<asts::TypeAst>(inferred_args.at(param_name).back());
-                    auto repl = asts::ast_cast<asts::GenericArgumentTypeAst>(temp->type_parts().back()->generic_arg_group->args.back())->val;
-                    inferred_args |= genex::actions::replace(temp, repl);
+                    auto temp1 = std::move(asts::ast_cast<asts::TypeAst>(inferred_args.at(param_name).back())->type_parts().back()->generic_arg_group->args[0]);
+                    auto temp2 = asts::ast_cast<asts::GenericArgumentTypeAst>(std::move(temp1))->val;
+                    inferred_args.at(param_name).pop_back();
+                    inferred_args.at(param_name).emplace_back(temp2.get());
                 }
             }
         }
@@ -638,10 +639,9 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl(
     // Fully qualify and type arguments (replaced within the inference map).
     if constexpr (std::same_as<GenericParamType, asts::GenericParameterTypeAst>) {
         if (const auto owner_sym = sm.current_scope->get_type_symbol(*asts::ast_cast<asts::TypeAst>(owner)); owner_sym != nullptr) {
-            const auto tm = scopes::ScopeManager(sm.global_scope, owner_scope);
             for (auto &&opt_param : opt_params | genex::views::cast_dynamic<asts::detail::make_optional_param_t<GenericParamType>*>()) {
-                if (not genex::algorithms::contains(inferred_args | genex::views::keys, *opt_param->name, [](auto *x) { return *x; })) {
-                    auto def_type = tm.current_scope->get_type_symbol(*opt_param->default_val)->fq_name();
+                if (not genex::algorithms::contains(inferred_args | genex::views::keys | genex::views::to<std::vector>(), *opt_param->name, [](auto *x) { return *x; })) {
+                    auto def_type = owner_scope->get_type_symbol(*opt_param->default_val)->fq_name();
                     inferred_args[opt_param->name].emplace_back(def_type);
                 }
             }

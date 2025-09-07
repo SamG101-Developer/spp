@@ -10,7 +10,7 @@ struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : PostfixExpres
     friend struct UnaryExpressionOperatorAsyncAst;
 
 private:
-    std::optional<std::tuple<analyse::scopes::Scope*, FunctionPrototypeAst*, std::vector<GenericArgumentAst*>>> m_overload_info;
+    std::optional<std::tuple<analyse::scopes::Scope const*, FunctionPrototypeAst*, std::vector<GenericArgumentAst*>>> m_overload_info;
     Ast *m_is_async;
     std::vector<FunctionCallArgumentAst*> m_folded_args;
     std::unique_ptr<FunctionCallArgumentPositionalAst> m_closure_dummy_arg;

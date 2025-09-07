@@ -53,6 +53,7 @@
 #include <genex/views/to.hpp>
 #include <genex/views/set_algorithms.hpp>
 #include <genex/views/zip.hpp>
+#include <opex/cast.hpp>
 
 
 spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFunctionCallAst(
@@ -124,8 +125,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
     // Record the "pass" and "fail" overloads.
     auto all_overloads = analyse::utils::func_utils::get_all_function_scopes(*fn_name, fn_owner_scope);
-    auto pass_overloads = std::vector<std::tuple<analyse::scopes::Scope*, FunctionPrototypeAst*, std::vector<GenericArgumentAst*>>>();
-    auto fail_overloads = std::vector<std::tuple<analyse::scopes::Scope*, FunctionPrototypeAst*, std::unique_ptr<analyse::errors::SemanticError>>>();
+    auto pass_overloads = std::vector<std::tuple<analyse::scopes::Scope const*, FunctionPrototypeAst*, std::vector<GenericArgumentAst*>>>();
+    auto fail_overloads = std::vector<std::tuple<analyse::scopes::Scope const*, FunctionPrototypeAst*, std::unique_ptr<analyse::errors::SemanticError>>>();
 
     // Create a dummy overload for no-overload identifiers that are function types (closures etc).
     auto is_closure = false;
@@ -205,7 +206,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 std::map(generic_infer_source.begin(), generic_infer_source.end()),
                 std::map(generic_infer_target.begin(), generic_infer_target.end()),
                 lhs->infer_type(sm, meta),
-                *fn_scope,
+                fn_scope,
                 is_variadic_fn ? fn_proto->param_group->get_variadic_param()->extract_name() : nullptr,
                 false, *sm, meta);
 
@@ -293,7 +294,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             // Check any params are void, pop them (indexes because of unique pointers).
             for (auto &&i : genex::views::iota(0uz, fn_proto->param_group->params.size())) {
                 if (analyse::utils::type_utils::is_type_void(*fn_proto->param_group->params[i]->type, *fn_scope)) {
-                    fn_proto->param_group->params |= genex::actions::pop(i);
+                    genex::actions::erase(fn_proto->param_group->params, fn_proto->param_group->params.begin() + (i as SSize));
                 }
             }
 
@@ -316,9 +317,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             }
 
             // Type check the arguments against the parameters. Sort the arguments into parameter order first.
-            auto sorted_func_arguments = genex::actions::sort(
-                func_args | genex::views::ptr | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>() | genex::views::to<std::vector>(), {},
-                [&func_param_names](auto &&arg) { return genex::algorithms::position(func_param_names, [&arg](auto const &param) { return *arg->name == *param; }); });
+            auto sorted_func_arguments = func_args | genex::views::ptr | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>() | genex::views::to<std::vector>();
+            genex::actions::sort(sorted_func_arguments,
+                {}, [&func_param_names](FunctionCallArgumentKeywordAst *arg) { return genex::algorithms::position(func_param_names, [&arg](auto const &param) { return *arg->name == *param; }); });
 
             for (auto &&[arg, param] : sorted_func_arguments | genex::views::zip(func_params)) {
                 auto p_type = std::shared_ptr(fn_scope->get_type_symbol(*param->type)->fq_name()->with_convention(ast_clone(param->type->get_convention())));
@@ -562,7 +563,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
                        ->substitute_generics(other_generics)
                        ->substitute_generics(std::get<0>(*m_overload_info)->get_generics() | genex::views::ptr | genex::views::to<std::vector>());
 
-            auto tm = ScopeManager(sm->global_scope, std::get<0>(*m_overload_info));
+            // TODO: REMOVE CONST CAST
+            auto tm = ScopeManager(sm->global_scope, const_cast<analyse::scopes::Scope*>(std::get<0>(*m_overload_info)));
             ret_type->stage_7_analyse_semantics(&tm, meta);
         }
     }

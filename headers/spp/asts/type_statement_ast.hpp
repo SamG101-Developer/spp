@@ -63,7 +63,7 @@ public:
      * The old (fully qualified) type that this type statement is defining. For example, for
      * @code type Str = std::Str@endcode, the fully qualified type is @c std::Str.
      */
-    std::shared_ptr<TypeIdentifierAst> old_type;
+    std::shared_ptr<TypeAst> old_type;
 
     /**
      * Construct the TypeStatementAst with the arguments matching the members.

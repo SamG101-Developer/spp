@@ -103,7 +103,8 @@ auto spp::asts::TypeIdentifierAst::iterator(
     ) const
     -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> {
     // First yield is the original type being iterated over.
-    co_yield shared_from_this();
+    co_yield std::dynamic_pointer_cast<const TypeIdentifierAst>(shared_from_this());
+
     for (auto &&g : generic_arg_group->args) {
         // Positional generic comp argument with identifier value.
         if (auto &&comp_positional_arg = ast_cast<GenericArgumentCompPositionalAst>(g.get())) {
@@ -233,7 +234,8 @@ auto spp::asts::TypeIdentifierAst::contains_generic(
     -> bool {
     // Check if the parameter's name is in the type parts iterated from this type.
     auto cast_name = ast_cast<TypeIdentifierAst>(generic.name.get());
-    return genex::algorithms::any_of(iterator(), [&cast_name](auto ti) { return *ti == *cast_name; });
+    return genex::algorithms::any_of(
+        iterator() | genex::views::to<std::vector>(), [&cast_name](auto ti) { return *ti == *cast_name; });
 }
 
 
@@ -387,7 +389,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     if (not type_scope->parent->has_type_symbol(*this)) {
         const auto external_generics = sm->current_scope->get_extended_generic_symbols(generic_arg_group->get_all_args());
         const auto new_scope = analyse::utils::type_utils::create_generic_cls_scope(
-            *this, *type_sym, external_generics, is_tuple, *sm, meta);
+            *this, *type_sym, external_generics, is_tuple, sm, meta);
 
         // Handle type aliasing (providing generics to the original type).
         if (const auto alias_sym = dynamic_cast<analyse::scopes::AliasSymbol*>(type_sym)) {
@@ -402,7 +404,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
             auto new_alias_sym = std::make_unique<analyse::scopes::AliasSymbol>(
                 new_scope->ty_sym->name, new_scope->ty_sym->type, new_scope, new_scope->ty_sym->scope_defined_in,
                 sm->current_scope->get_type_symbol(*old_type), new_scope->ty_sym->is_generic,
-                new_scope->ty_sym->is_copyable());
+                new_scope->ty_sym->is_copyable);
 
             new_scope->ty_sym = std::move(new_alias_sym);
             new_scope->parent->rem_type_symbol(*new_scope->ty_sym->name);
