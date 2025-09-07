@@ -8,7 +8,6 @@
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/utils/error_formatter.hpp>
 
-#include "scope_manager.hpp"
 
 namespace spp::analyse::scopes {
     class ScopeManager;

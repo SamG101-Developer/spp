@@ -260,8 +260,8 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_overload(
 
         // If neither parameter list contains a required parameter, throw an error.
         if (genex::operations::empty(params_new
-            | genex::views::concat(std::move(params_old))
             | genex::views::ptr
+            | genex::views::concat(params_old | genex::views::ptr)
             | genex::views::cast_dynamic<asts::FunctionParameterRequiredAst*>()
             | genex::views::to<std::vector>())) {
             return old_fn;
@@ -355,14 +355,13 @@ auto spp::analyse::utils::func_utils::name_args(
         not params.empty() and asts::ast_cast<asts::FunctionParameterVariadicAst>(params.back()) != nullptr;
 
     // Check for invalid argument names against parameter names, then remove the valid ones.
-    auto invalid_arg_names = genex::views::set_difference_unsorted(
-            arg_names | genex::views::indirect | genex::views::materialize(),
-            param_names | genex::views::indirect | genex::views::materialize())
+    auto invalid_arg_names = arg_names
+        | genex::views::set_difference_unsorted(param_names, SPP_INSTANT_INDIRECT, SPP_INSTANT_INDIRECT)
         | genex::views::to<std::vector>();
 
     if (not invalid_arg_names.empty()) {
         errors::SemanticErrorBuilder<errors::SppArgumentNameInvalidError>().with_args(
-            *params[0], "function parameter", invalid_arg_names[0], "function argument").with_scopes({sm.current_scope}).raise();
+            *params[0], "function parameter", *invalid_arg_names[0], "function argument").with_scopes({sm.current_scope}).raise();
     }
 
     // Name all the positional arguments with leftover parameter names.
@@ -459,12 +458,13 @@ auto spp::analyse::utils::func_utils::name_generic_args_impl(
         not params.empty() and asts::ast_cast<asts::detail::make_variadic_param_t<GenericParamType>>(params.back()) != nullptr;
 
     // Check for invalid argument names against parameter names, then remove the valid ones.
-    auto invalid_arg_names = genex::views::set_difference_unsorted(arg_names | genex::views::indirect, param_names | genex::views::indirect)
+    auto invalid_arg_names = arg_names
+        | genex::views::set_difference_unsorted(param_names, SPP_INSTANT_INDIRECT, SPP_INSTANT_INDIRECT)
         | genex::views::to<std::vector>();
 
     if (not invalid_arg_names.empty()) {
         errors::SemanticErrorBuilder<errors::SppArgumentNameInvalidError>().with_args(
-            *params[0], "function parameter", invalid_arg_names[0], "function argument").with_scopes({sm.current_scope}).raise();
+            *params[0], "function parameter", *invalid_arg_names[0], "function argument").with_scopes({sm.current_scope}).raise();
     }
 
     // Name all the positional arguments with leftover parameter names.
@@ -487,13 +487,13 @@ auto spp::analyse::utils::func_utils::name_generic_args_impl(
         if (param_names.empty() and is_variadic) {
             if constexpr (std::same_as<GenericParamType, asts::GenericParameterCompAst>) {
                 // Variadic check: map arguments "func[1_u32, 1_u32]" for "func[..s]" to "func[ts = (1_u32, 1_u32)]".
-                auto vals = args | genex::views::drop(i) | genex::views::transform([](auto &&x) { return std::move(x->val); }) | genex::views::to<std::vector>();
+                auto vals = args | genex::views::ptr | genex::views::drop(i) | genex::views::transform([](auto &&x) { return std::move(x->val); }) | genex::views::to<std::vector>();
                 auto tup_lit = std::make_unique<asts::TupleLiteralAst>(nullptr, std::move(vals), nullptr);
                 keyword_arg->val = std::move(tup_lit);
             }
             else {
                 // Variadic check: map arguments "func[U32, U32]" for "func[..Ts]" to "func[Ts = (U32, U32)]".
-                auto types = args | genex::views::drop(i) | genex::views::transform([](auto &&x) { return std::move(x->val); }) | genex::views::to<std::vector>();
+                auto types = args | genex::views::ptr | genex::views::drop(i) | genex::views::transform([](auto &&x) { return std::move(x->val); }) | genex::views::to<std::vector>();
                 auto tup_type = asts::generate::common_types::tuple_type(positional_arg->pos_start(), std::move(types));
                 keyword_arg->val = std::move(tup_type);
             }
@@ -640,9 +640,9 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl(
     if constexpr (std::same_as<GenericParamType, asts::GenericParameterTypeAst>) {
         if (const auto owner_sym = sm.current_scope->get_type_symbol(*asts::ast_cast<asts::TypeAst>(owner)); owner_sym != nullptr) {
             for (auto &&opt_param : opt_params | genex::views::cast_dynamic<asts::detail::make_optional_param_t<GenericParamType>*>()) {
-                if (not genex::algorithms::contains(inferred_args | genex::views::keys | genex::views::to<std::vector>(), *opt_param->name, [](auto *x) { return *x; })) {
+                if (not genex::algorithms::contains(inferred_args | genex::views::keys | genex::views::to<std::vector>(), *opt_param->name, [](auto x) -> asts::TypeAst& { return *x; })) {
                     auto def_type = owner_scope->get_type_symbol(*opt_param->default_val)->fq_name();
-                    inferred_args[opt_param->name].emplace_back(def_type);
+                    inferred_args[opt_param->name].emplace_back(def_type.get());
                 }
             }
         }
@@ -732,8 +732,8 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl(
         return;
     }
 
-    for (auto &&[param, arg] : genex::views::zip(params, args)) {
-        auto comp_arg = asts::ast_cast<asts::GenericArgumentCompKeywordAst>(param);
+    for (auto &&[param, arg] : genex::views::zip(params, args | genex::views::ptr)) {
+        auto comp_arg = asts::ast_cast<asts::GenericArgumentCompKeywordAst>(arg);
         auto comp_param = asts::ast_cast<asts::GenericParameterCompAst>(param);
         if (comp_arg == nullptr) { continue; }
 

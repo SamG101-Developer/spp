@@ -300,7 +300,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
             // Check for any keyword arguments that don't have a corresponding parameter.
             const auto invalid_args = func_arg_names
-                | genex::views::set_difference_unsorted(func_param_names | genex::views::indirect | genex::views::materialize(), [](auto *x) { return *x; })
+                | genex::views::set_difference_unsorted(func_param_names, SPP_INSTANT_INDIRECT, SPP_INSTANT_INDIRECT)
                 | genex::views::to<std::vector>();
             if (not invalid_args.empty()) {
                 analyse::errors::SemanticErrorBuilder<analyse::errors::SppArgumentNameInvalidError>().with_args(
@@ -309,7 +309,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
             // Check for missing parameters that don't have a corresponding argument.
             const auto missing_params = func_param_names_req
-                | genex::views::set_difference_unsorted(func_arg_names | genex::views::indirect | genex::views::materialize(), [](std::shared_ptr<IdentifierAst> const &x) { return *x; })
+                | genex::views::set_difference_unsorted(func_arg_names, SPP_INSTANT_INDIRECT, SPP_INSTANT_INDIRECT)
                 | genex::views::to<std::vector>();
             if (not missing_params.empty()) {
                 analyse::errors::SemanticErrorBuilder<analyse::errors::SppArgumentMissingError>().with_args(

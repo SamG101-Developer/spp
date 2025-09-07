@@ -1,4 +1,5 @@
 #include <spp/analyse/scopes/scope.hpp>
+#include <spp/analyse/scopes/symbol_table.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
 #include <spp/asts/generic_argument_ast.hpp>
 #include <spp/asts/generic_argument_comp_keyword_ast.hpp>

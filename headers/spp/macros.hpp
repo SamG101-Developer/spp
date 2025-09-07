@@ -26,5 +26,7 @@
 
 #define SPP_ATTR_UNREACHABLE [[gnu::unreachable]]
 
+#define SPP_INSTANT_INDIRECT [](auto &&x) -> decltype(auto) { return *x; }
+
 
 #endif //MACROS_HPP

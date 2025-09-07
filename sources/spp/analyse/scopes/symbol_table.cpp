@@ -3,11 +3,7 @@
 #include <genex/views/to.hpp>
 #include <genex/views/transform.hpp>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstrict-overflow"
-#pragma GCC diagnostic ignored "-Wstrict-overflow=5"
 #include <nlohmann/json.hpp>
-#pragma GCC diagnostic pop
 
 
 template <typename I, typename S>

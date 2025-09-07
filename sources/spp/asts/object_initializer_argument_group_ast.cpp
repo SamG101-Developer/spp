@@ -192,7 +192,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
         | genex::views::to<std::vector>();
 
     const auto invalid_args = arg_names
-        | genex::views::set_difference_unsorted(all_attr_names | genex::views::indirect | genex::views::materialize(), [](IdentifierAst *x) { return *x; })
+        | genex::views::set_difference_unsorted(all_attr_names, SPP_INSTANT_INDIRECT, SPP_INSTANT_INDIRECT)
         | genex::views::to<std::vector>();
 
     if (not invalid_args.empty()) {
