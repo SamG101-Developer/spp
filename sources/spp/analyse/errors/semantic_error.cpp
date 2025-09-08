@@ -49,6 +49,12 @@ auto spp::analyse::errors::SemanticError::add_footer(std::string &&note, std::st
 }
 
 
+auto spp::analyse::errors::SemanticError::clone() const -> std::unique_ptr<SemanticError> {
+    // Use the copy constructor to clone the error.
+    return std::make_unique<SemanticError>(*this);
+}
+
+
 spp::analyse::errors::SppAnnotationInvalidApplicationError::SppAnnotationInvalidApplicationError(
     asts::AnnotationAst const &annotation,
     asts::Ast const &ctx,
@@ -304,8 +310,8 @@ spp::analyse::errors::SppMoveFromPinLinkedMemoryError::SppMoveFromPinLinkedMemor
 
 spp::analyse::errors::SppInconsistentlyInitializedMemoryUseError::SppInconsistentlyInitializedMemoryUseError(
     asts::ExpressionAst const &ast,
-    asts::CaseExpressionBranchAst const &branch_1,
-    asts::CaseExpressionBranchAst const &branch_2,
+    asts::Ast const &branch_1,
+    asts::Ast const &branch_2,
     const std::string_view what) {
     add_header(
         13, "SPP Inconsistently Initialized Memory Use Error");
@@ -326,8 +332,8 @@ spp::analyse::errors::SppInconsistentlyInitializedMemoryUseError::SppInconsisten
 
 spp::analyse::errors::SppInconsistentlyPinnedMemoryUseError::SppInconsistentlyPinnedMemoryUseError(
     asts::ExpressionAst const &ast,
-    asts::CaseExpressionBranchAst const &branch_1,
-    asts::CaseExpressionBranchAst const &branch_2) {
+    asts::Ast const &branch_1,
+    asts::Ast const &branch_2) {
     add_header(
         14, "SPP Inconsistently Pinned Memory Use Error");
     add_context_for_error(

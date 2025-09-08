@@ -8,7 +8,7 @@ namespace spp::analyse::utils::mem_utils {
      * symbols from different branches. Branches must equally set memory information for symbols if the branch is being
      * used for assignment.
      */
-    using InconsistentCondMemState = std::pair<asts::CaseExpressionBranchAst*, asts::CaseExpressionBranchAst*>;
+    using InconsistentCondMemState = std::pair<asts::Ast*, asts::Ast*>;
 
     struct MemoryInfo;
     struct MemoryInfoSnapshot;

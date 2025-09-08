@@ -32,7 +32,7 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
     meta->save();
     meta->ignore_missing_else_branch_for_inference = true;
     const auto is_never = not impl->members.empty() and analyse::utils::type_utils::symbolic_eq(
-        *impl->final_member()->infer_type(sm, meta), *generate::common_types_precompiled::NEVER,
+        *ast_cast<StatementAst>(impl->final_member())->infer_type(sm, meta), *generate::common_types_precompiled::NEVER,
         *sm->current_scope, *sm->current_scope);
 
     // Check there is a return statement at the end (for non-void functions).

@@ -7,8 +7,10 @@
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/asts/ast.hpp>
 #include <spp/asts/array_literal_explicit_elements_ast.hpp>
+#include <spp/asts/case_expression_branch_ast.hpp>
 #include <spp/asts/expression_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
+#include <spp/asts/iter_expression_branch_ast.hpp>
 #include <spp/asts/tuple_literal_ast.hpp>
 
 #include <genex/actions/remove.hpp>
@@ -229,7 +231,7 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
     asts::mixins::CompilerMetaData *meta)
     -> void {
     // Define a simple alias for a list of symbols and their memory.
-    using SymbolMemoryList = std::vector<std::pair<typename T::value_type::pointer, MemoryInfoSnapshot>>;
+    using SymbolMemoryList = std::vector<std::pair<T, MemoryInfoSnapshot>>;
 
     auto sym_mem_info = std::map<scopes::VariableSymbol*, SymbolMemoryList>();
     for (auto &&branch : branches) {
@@ -254,13 +256,13 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
             sym->memory_info->initialization_counter = old_mem_status.initialization_counter;
 
             // Save this memory status for subsequent inter-branch status comparisons.
-            sym_mem_info.try_emplace(sym, SymbolMemoryList()).first->second.emplace_back(branch.get(), old_mem_status);
+            sym_mem_info.try_emplace(sym, SymbolMemoryList()).first->second.emplace_back(branch, old_mem_status);
         }
     }
 
     // Check for consistency among the branches' symbols' memory states.
     for (auto &&[sym, branches_memory_info_lists] : sym_mem_info) {
-        auto first_branch = branches.front().get();
+        auto first_branch = branches.front();
         auto first_branch_mem_info = branches_memory_info_lists.at(0).second;
 
         // Assuming all new memory states are consistent across branches, update o the first "new" state list.
@@ -294,3 +296,17 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
         }
     }
 }
+
+
+template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
+    std::vector<asts::CaseExpressionBranchAst*> const &branches,
+    scopes::ScopeManager *sm,
+    asts::mixins::CompilerMetaData *meta)
+    -> void;
+
+
+template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
+    std::vector<asts::IterExpressionBranchAst*> const &branches,
+    scopes::ScopeManager *sm,
+    asts::mixins::CompilerMetaData *meta)
+    -> void;

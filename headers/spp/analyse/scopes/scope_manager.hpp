@@ -24,9 +24,9 @@ class spp::analyse::scopes::ScopeManager {
     friend struct asts::TypeStatementAst;
 
 public:
-    static std::map<TypeSymbol*, std::vector<Scope*>> normal_sup_blocks;
+    inline static std::map<TypeSymbol*, std::vector<Scope*>> normal_sup_blocks = {};
 
-    static std::vector<Scope*> generic_sup_blocks;
+    inline static std::vector<Scope*> generic_sup_blocks = {};
 
 public:
     /**

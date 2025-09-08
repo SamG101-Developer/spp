@@ -2,6 +2,10 @@
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/inner_scope_expression_ast.hpp>
+#include <spp/asts/loop_control_flow_statement_ast.hpp>
+#include <spp/asts/ret_statement_ast.hpp>
+#include <spp/asts/token_ast.hpp>
+#include <spp/asts/type_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
 
 #include <genex/views/enumerate.hpp>
@@ -22,7 +26,7 @@ auto spp::asts::InnerScopeExpressionAst<T>::stage_7_analyse_semantics(
     for (auto &&[i, member] : this->members | genex::views::ptr | genex::views::enumerate) {
         auto ret_stmt = ast_cast<RetStatementAst>(member);
         auto loop_flow_stmt = ast_cast<LoopControlFlowStatementAst>(member);
-        if ((ret_stmt or loop_flow_stmt) and (member != this->members.back())) {
+        if ((ret_stmt or loop_flow_stmt) and (member != this->members.back().get())) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppUnreachableCodeError>().with_args(
                 *member, *this->members[i + 1]).with_scopes({sm->current_scope}).raise();
         }
@@ -39,11 +43,14 @@ auto spp::asts::InnerScopeExpressionAst<T>::infer_type(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> {
     // If there are any members, return the last member's inferred type.
-    if (not this->members->empty()) {
+    if (not this->members.empty()) {
         auto tm = ScopeManager(sm->global_scope, m_scope);
-        return this->members->back()->infer_type(&tm, meta);
+        return this->members.back()->infer_type(&tm, meta);
     }
 
     // Otherwise, return the void type.
     return generate::common_types::void_type(pos_start());
 }
+
+
+template struct spp::asts::InnerScopeExpressionAst<std::unique_ptr<spp::asts::StatementAst>>;

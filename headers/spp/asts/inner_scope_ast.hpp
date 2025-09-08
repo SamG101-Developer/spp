@@ -50,13 +50,10 @@ public:
         decltype(members) &&members,
         decltype(tok_r) &&tok_r);
 
-    // ~InnerScopeAst() override;
-
-protected:
     static auto new_empty() -> std::unique_ptr<InnerScopeAst>;
 
 public:
-    auto final_member() const -> T::pointer;
+    auto final_member() const -> Ast*;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

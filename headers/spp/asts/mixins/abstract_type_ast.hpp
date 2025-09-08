@@ -21,8 +21,6 @@ public:
 public:
     virtual auto iterator() const -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> = 0;
 
-    auto iterator() -> genex::generator<std::shared_ptr<const TypeIdentifierAst>>;
-
     virtual auto is_never_type() const -> bool = 0;
 
     virtual auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> = 0;
@@ -46,8 +44,6 @@ public:
     virtual auto contains_generic(GenericParameterAst const &generic) const -> bool = 0;
 
     virtual auto match_generic(TypeAst const &other, TypeIdentifierAst const &generic_name) const -> const ExpressionAst* = 0;
-
-    // auto match_generic(TypeAst const &other, TypeIdentifierAst const &generic_name) -> ExpressionAst*;
 
     virtual auto with_generics(std::shared_ptr<GenericArgumentGroupAst> &&arg_group) const -> std::unique_ptr<TypeAst> = 0;
 };

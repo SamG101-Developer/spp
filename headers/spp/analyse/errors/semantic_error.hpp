@@ -184,12 +184,12 @@ struct spp::analyse::errors::SppMoveFromPinLinkedMemoryError final : SemanticErr
 
 
 struct spp::analyse::errors::SppInconsistentlyInitializedMemoryUseError final : SemanticError {
-    explicit SppInconsistentlyInitializedMemoryUseError(asts::ExpressionAst const &ast, asts::CaseExpressionBranchAst const &branch_1, asts::CaseExpressionBranchAst const &branch_2, std::string_view what);
+    explicit SppInconsistentlyInitializedMemoryUseError(asts::ExpressionAst const &ast, asts::Ast const &branch_1, asts::Ast const &branch_2, std::string_view what);
 };
 
 
 struct spp::analyse::errors::SppInconsistentlyPinnedMemoryUseError final : SemanticError {
-    explicit SppInconsistentlyPinnedMemoryUseError(asts::ExpressionAst const &ast, asts::CaseExpressionBranchAst const &branch_1, asts::CaseExpressionBranchAst const &branch_2);
+    explicit SppInconsistentlyPinnedMemoryUseError(asts::ExpressionAst const &ast, asts::Ast const &branch_1, asts::Ast const &branch_2);
 };
 
 

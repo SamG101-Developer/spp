@@ -769,3 +769,36 @@ auto spp::analyse::utils::type_utils::get_namespaced_scope_with_error(
     // Return the found namespace scope.
     return ns_scope;
 }
+
+
+auto spp::analyse::utils::type_utils::deduplicate_variant_inner_types(
+    asts::TypeAst const &type,
+    scopes::Scope const &scope)
+    -> std::vector<std::shared_ptr<asts::TypeAst>> {
+    // Create the list of types.
+    auto out = std::vector<std::shared_ptr<asts::TypeAst>>{};
+    if (type.type_parts().back()->generic_arg_group->args.empty()) {
+        return out;
+    }
+
+    for (auto &&generic_arg : type.type_parts().back()->generic_arg_group->get_type_args()[0]->val->type_parts().back()->generic_arg_group->get_type_args()) {
+        // Inspect inner variant types by extending the composite type list.
+        if (is_type_variant(*generic_arg->val->without_generics(), scope)) {
+            out.append_range(deduplicate_variant_inner_types(*generic_arg->val, scope));
+        }
+
+        // Ensure there are no borrowed types inside the variant type.
+        else if (const auto conv = generic_arg->val->get_convention(); conv != nullptr) {
+            errors::SemanticErrorBuilder<errors::SppSecondClassBorrowViolationError>().with_args(
+                type, *conv, "variant type argument").with_scopes({&scope}).raise();
+        }
+
+        // Inspect a non-variant type, and if it hasn't beem added to the list, add it.
+        else if (not genex::algorithms::any_of(out, [&](auto x) { return symbolic_eq(*generic_arg->val, *x, scope, scope); })) {
+            out.push_back(generic_arg->val);
+        }
+    }
+
+    // Return the deduplicated list of types.
+    return out;
+}

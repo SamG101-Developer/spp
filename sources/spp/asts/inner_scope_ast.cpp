@@ -33,15 +33,17 @@ spp::asts::InnerScopeAst<T>::InnerScopeAst(
 }
 
 
-// template <typename T>
-// spp::asts::InnerScopeAst<T>::~InnerScopeAst() = default;
-
-
 template <typename T>
 spp::asts::InnerScopeAst<T>::InnerScopeAst() :
     tok_l(nullptr),
     members(),
     tok_r(nullptr) {
+}
+
+
+template <typename T>
+auto spp::asts::InnerScopeAst<T>::new_empty() -> std::unique_ptr<InnerScopeAst> {
+    return std::make_unique<InnerScopeAst>(nullptr, std::vector<T>(), nullptr);
 }
 
 
@@ -83,6 +85,14 @@ auto spp::asts::InnerScopeAst<T>::print(meta::AstPrinter &printer) const -> std:
     SPP_PRINT_EXTEND(members);
     SPP_PRINT_APPEND(tok_r);
     SPP_PRINT_END;
+}
+
+
+template <typename T>
+auto spp::asts::InnerScopeAst<T>::final_member() const -> Ast* {
+    return members.empty()
+               ? ast_cast<Ast>(tok_r.get())
+               : ast_cast<Ast>(members.front().get());
 }
 
 
@@ -130,7 +140,7 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
         for (auto &&bor : sym->memory_info->borrow_refers_to | genex::views::view | genex::views::to<std::vector>()) {
             auto [a, b, _, scope] = bor;
             if (scope == sm->current_scope) {
-                sym->memory_info->borrow_refers_to |= genex::actions::remove(bor);
+                sym->memory_info->borrow_refers_to |= genex::actions::remove_if([bor](auto &&x) { return x == bor; });
             }
         }
     }

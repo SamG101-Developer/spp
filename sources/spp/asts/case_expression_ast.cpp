@@ -162,7 +162,7 @@ auto spp::asts::CaseExpressionAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Ensure consistency across branches.
     auto [master_branch_type_info, branches_type_info] = analyse::utils::type_utils::validate_inconsistent_types(
-        branches, sm, meta);
+        branches | genex::views::ptr | genex::views::to<std::vector>(), sm, meta);
 
     // Ensure there is an "else" branch if the branches are not exhaustive. Todo: Need to investigate how to detect exhaustion.
     if (ast_cast<CasePatternVariantElseAst>(branches.back()->patterns[0].get()) == nullptr and not meta->ignore_missing_else_branch_for_inference) {

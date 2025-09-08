@@ -194,7 +194,7 @@ auto spp::asts::IterExpressionAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Ensure consistency across branches.
     auto [master_branch_type_info, branches_type_info] = analyse::utils::type_utils::validate_inconsistent_types(
-        branches, sm, meta);
+        branches | genex::views::ptr | genex::views::to<std::vector>(), sm, meta);
 
     // Ensure there is a full set of branches for the corresponding generator type (unless there is an "else" present).
     const auto cond_type = cond->infer_type(sm, meta);
