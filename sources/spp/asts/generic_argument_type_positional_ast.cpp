@@ -39,6 +39,12 @@ auto spp::asts::GenericArgumentTypePositionalAst::print(meta::AstPrinter &printe
 }
 
 
+auto spp::asts::GenericArgumentTypePositionalAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<GenericArgumentTypePositionalAst>(
+        ast_clone(val));
+}
+
+
 auto spp::asts::GenericArgumentTypePositionalAst::equals(
     GenericArgumentAst const &other) const
     -> bool {

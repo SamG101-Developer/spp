@@ -1,5 +1,4 @@
-#ifndef ERRORS_HPP
-#define ERRORS_HPP
+#pragma once
 
 #include <memory>
 #include <vector>
@@ -83,6 +82,3 @@ public:
         throw T(*m_err_obj);
     }
 };
-
-
-#endif //ERRORS_HPP

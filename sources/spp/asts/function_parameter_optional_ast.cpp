@@ -15,7 +15,7 @@
 spp::asts::FunctionParameterOptionalAst::FunctionParameterOptionalAst(
     decltype(var) &&var,
     decltype(tok_colon) &&tok_colon,
-    decltype(type) &&type,
+    decltype(type) type,
     decltype(tok_assign) &&tok_assign,
     decltype(default_val) &&default_val) :
     FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type)),

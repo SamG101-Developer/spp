@@ -151,3 +151,23 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
         }
     }
 }
+
+
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::infer_type(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> std::shared_ptr<TypeAst> {
+    // Get the type of the left-hand-side expression.
+    const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
+
+    // Numeric index access (for tuples).
+    if (std::isdigit(name->val[0])) {
+        const auto elem_type = analyse::utils::type_utils::get_nth_type_of_indexable_type(std::stoul(name->val), *lhs_type, *sm->current_scope);
+        return elem_type;
+    }
+
+    // Get the field symbol and return its type.
+    const auto lhs_sym = sm->current_scope->get_type_symbol(*lhs_type);
+    const auto field_sym = lhs_sym->scope->get_var_symbol(*name);
+    return field_sym->type;
+}

@@ -126,6 +126,19 @@ auto spp::asts::FunctionPrototypeAst::print(meta::AstPrinter &printer) const -> 
 }
 
 
+auto spp::asts::FunctionPrototypeAst::print_signature(
+    const std::string_view owner) const
+    -> std::string {
+    SPP_STRING_START;
+    raw_string += owner;
+    SPP_STRING_APPEND(generic_param_group);
+    SPP_STRING_APPEND(param_group);
+    SPP_STRING_APPEND(tok_arrow);
+    SPP_STRING_APPEND(return_type);
+    SPP_STRING_END;
+}
+
+
 auto spp::asts::FunctionPrototypeAst::m_deduce_mock_class_type() const
     -> std::shared_ptr<TypeAst> {
     // Extract the parameter types.

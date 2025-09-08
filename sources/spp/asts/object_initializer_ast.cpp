@@ -5,6 +5,7 @@
 #include <spp/asts/class_implementation_ast.hpp>
 #include <spp/asts/class_member_ast.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
+#include <spp/asts/convention_ast.hpp>
 #include <spp/asts/object_initializer_ast.hpp>
 #include <spp/asts/object_initializer_argument_ast.hpp>
 #include <spp/asts/object_initializer_argument_group_ast.hpp>
@@ -109,4 +110,14 @@ auto spp::asts::ObjectInitializerAst::stage_8_check_memory(
     -> void {
     // Check the memory of the object argument group.
     arg_group->stage_8_check_memory(sm, meta);
+}
+
+
+auto spp::asts::ObjectInitializerAst::infer_type(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *)
+    -> std::shared_ptr<TypeAst> {
+    // The type of the object initializer is the type being initialized. The conventions are added for dummy types being
+    // created into values during other ast's analysis. Types cannot be instantiated as borrows in user code.
+    return sm->current_scope->get_type_symbol(*type)->fq_name()->with_convention(ast_clone(type->get_convention()));
 }

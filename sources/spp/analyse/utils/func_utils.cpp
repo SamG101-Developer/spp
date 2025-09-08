@@ -9,6 +9,7 @@
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/function_call_argument_keyword_ast.hpp>
 #include <spp/asts/function_call_argument_positional_ast.hpp>
+#include <spp/asts/function_implementation_ast.hpp>
 #include <spp/asts/function_parameter_ast.hpp>
 #include <spp/asts/function_parameter_group_ast.hpp>
 #include <spp/asts/function_parameter_required_ast.hpp>
@@ -28,6 +29,7 @@
 #include <spp/asts/generic_parameter_type_ast.hpp>
 #include <spp/asts/generic_parameter_type_optional_ast.hpp>
 #include <spp/asts/generic_parameter_type_variadic_ast.hpp>
+#include <spp/asts/local_variable_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
 #include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
 #include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
@@ -67,6 +69,8 @@
 #include <genex/views/tuple_n.hpp>
 #include <genex/views/view.hpp>
 #include <genex/views/zip.hpp>
+
+#include "spp/asts/annotation_ast.hpp"
 
 
 auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
@@ -764,6 +768,39 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl(
                 *comp_param, *p_type, *comp_arg, *a_type).with_scopes({owner_scope, sm.current_scope}).raise();
         }
     }
+}
+
+
+auto spp::analyse::utils::func_utils::is_target_callable(
+    asts::ExpressionAst &expr,
+    scopes::ScopeManager &sm,
+    asts::mixins::CompilerMetaData *meta)
+    -> std::shared_ptr<asts::TypeAst> {
+    // Get the type of the expression.
+    auto expr_type = expr.infer_type(&sm, meta);
+    const auto is_type_functional = type_utils::is_type_function(*expr_type, *sm.current_scope);
+    return is_type_functional ? std::move(expr_type) : nullptr;
+}
+
+
+auto spp::analyse::utils::func_utils::create_callable_prototype(
+    asts::TypeAst const &expr_type)
+    -> std::unique_ptr<asts::FunctionPrototypeAst> {
+    // Extract the parameter and return types from the expression type.
+    auto dummy_return_type = expr_type.type_parts().back()->generic_arg_group->type_at("Out")->val;
+    auto dummy_param_types = expr_type.type_parts().back()->generic_arg_group->type_at("Args")->val->type_parts().back()->generic_arg_group->get_type_args()
+        | genex::views::transform([](auto *g) { return std::make_unique<asts::FunctionParameterRequiredAst>(nullptr, nullptr, g->val); })
+        | genex::views::cast_smart_ptr<asts::FunctionParameterAst>()
+        | genex::views::to<std::vector>();
+
+    // Create a function prototype based off of the parameter and return type.
+    auto dummy_param_group = std::make_unique<asts::FunctionParameterGroupAst>(nullptr, std::move(dummy_param_types), nullptr);
+    auto dummy_overload = std::make_unique<asts::FunctionPrototypeAst>(
+        SPP_NO_ANNOTATIONS, nullptr, nullptr, nullptr, std::move(dummy_param_group), nullptr,
+        std::move(dummy_return_type), nullptr);
+
+    // Return the function prototype.
+    return dummy_overload;
 }
 
 

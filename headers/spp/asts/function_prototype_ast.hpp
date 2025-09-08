@@ -138,7 +138,7 @@ private:
     auto m_deduce_mock_class_type() const -> std::shared_ptr<TypeAst>;
 
 public:
-    auto print_signature(std::string_view owner) -> std::string;
+    auto print_signature(std::string_view owner) const -> std::string;
 
     auto stage_1_pre_process(Ast *ctx) -> void override;
 

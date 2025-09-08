@@ -4,6 +4,7 @@
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/asts/convention_ast.hpp>
+#include <spp/asts/case_expression_branch_ast.hpp>
 #include <spp/asts/class_attribute_ast.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
 #include <spp/asts/class_implementation_ast.hpp>
@@ -16,7 +17,9 @@
 #include <spp/asts/generic_parameter_ast.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>
 #include <spp/asts/identifier_ast.hpp>
+#include <spp/asts/inner_scope_expression_ast.hpp>
 #include <spp/asts/integer_literal_ast.hpp>
+#include <spp/asts/iter_expression_branch_ast.hpp>
 #include <spp/asts/sup_prototype_extension_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
@@ -447,12 +450,12 @@ auto spp::analyse::utils::type_utils::get_try_type(
 template <typename T>
 auto spp::analyse::utils::type_utils::validate_inconsistent_types(
     std::vector<T> const &branches,
-    scopes::ScopeManager const *sm,
+    scopes::ScopeManager *sm,
     asts::mixins::CompilerMetaData *meta)
-    -> std::tuple<std::pair<asts::Ast*, asts::TypeAst*>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>> {
+    -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>> {
     // Collect type information for each branch, pairing the branch with its inferred type.
     auto branches_type_info = branches
-        | genex::views::transform([sm, meta](auto &&x) { return std::make_pair(x.get(), x->infer_type(sm, meta)); })
+        | genex::views::transform([sm, meta](auto *x) { return std::make_pair(x, x->infer_type(sm, meta)); })
         | genex::views::to<std::vector>();
 
     // Filter the branch types down to variant types for custom analysis.
@@ -462,21 +465,21 @@ auto spp::analyse::utils::type_utils::validate_inconsistent_types(
 
     // Set the master branch type to the first branch's type, if it exists. This is the default and may be subsequently changed.
     auto master_branch_type_info = not branches.empty()
-                                       ? std::make_pair(branches_type_info[0].first, branches_type_info[0].second.get())
+                                       ? std::make_pair(branches_type_info[0].first, branches_type_info[0].second)
                                        : std::make_pair(nullptr, nullptr);
 
     // Override the master type if a pre-provided type (for assignment) has been given.
     if (meta->assignment_target_type != nullptr) {
-        master_branch_type_info = std::make_pair(nullptr, meta->assignment_target_type.get());
+        master_branch_type_info = std::make_pair(nullptr, meta->assignment_target_type);
     }
 
     // Otherwise, if there are variant branches, use the most variant type as the master branch type.
     else if (not variant_branches_type_info.empty()) {
         auto most_inner_types = 0uz;
         for (auto &&[variant_branch, variant_type] : variant_branches_type_info) {
-            const auto variant_size = variant_type->type_parts().back()->generic_args->type_at("Variant")->val->type_parts().back()->generic_args->args.size();
+            const auto variant_size = variant_type->type_parts().back()->generic_arg_group->type_at("Variant")->val->type_parts().back()->generic_arg_group->args.size();
             if (variant_size > most_inner_types) {
-                master_branch_type_info = std::make_tuple(variant_branch, variant_type.get());
+                master_branch_type_info = std::make_tuple(variant_branch, variant_type);
                 most_inner_types = variant_size;
             }
         }
@@ -492,10 +495,15 @@ auto spp::analyse::utils::type_utils::validate_inconsistent_types(
         auto [mismatch_branch, mismatch_branch_type] = std::move(mismatch_branches_type_info[0]);
         auto [master_branch, master_branch_type] = master_branch_type_info;
         analyse::errors::SemanticErrorBuilder<errors::SppTypeMismatchError>().with_args(
-            *master_branch->body->final_member(), *master_branch_type, *mismatch_branch->body->final_member(), *mismatch_branch_type).scopes({sm->current_scope}).raise();
+            *master_branch->body->final_member(), *master_branch_type, *mismatch_branch->body->final_member(), *mismatch_branch_type).with_scopes({sm->current_scope}).raise();
     }
 
-    return std::make_tuple(master_branch_type_info, branches_type_info);
+    // Cast to common AST nodes and return with the types.
+    auto cast_master_branch_type_info = std::make_pair(asts::ast_cast<asts::Ast>(master_branch_type_info.first), master_branch_type_info.second);
+    auto cast_branches_type_info = branches_type_info
+        | genex::views::transform([](auto &&x) { return std::make_pair(asts::ast_cast<asts::Ast>(x.first), x.second); })
+        | genex::views::to<std::vector>();
+    return std::make_tuple(cast_master_branch_type_info, cast_branches_type_info);
 }
 
 
@@ -802,3 +810,17 @@ auto spp::analyse::utils::type_utils::deduplicate_variant_inner_types(
     // Return the deduplicated list of types.
     return out;
 }
+
+
+template auto spp::analyse::utils::type_utils::validate_inconsistent_types<spp::asts::CaseExpressionBranchAst*>(
+    std::vector<asts::CaseExpressionBranchAst*> const &,
+    scopes::ScopeManager *,
+    asts::mixins::CompilerMetaData *)
+    -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>>;
+
+
+template auto spp::analyse::utils::type_utils::validate_inconsistent_types<spp::asts::IterExpressionBranchAst*>(
+    std::vector<asts::IterExpressionBranchAst*> const &,
+    scopes::ScopeManager *,
+    asts::mixins::CompilerMetaData *)
+    -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>>;

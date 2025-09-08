@@ -11,7 +11,7 @@ find_package(magic_enum REQUIRED)
 find_package(rapidfuzz REQUIRED)
 find_package(Boost REQUIRED)
 
-file(GLOB_RECURSE SOURCE_FILES "sources/*.cpp")
+file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS "sources/*.cpp")
 
 add_executable(${PROJECT_NAME} main.cpp ${SOURCE_FILES})
 

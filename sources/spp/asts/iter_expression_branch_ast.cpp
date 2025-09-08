@@ -7,6 +7,8 @@
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 
+#include "spp/analyse/scopes/scope_manager.hpp"
+
 
 spp::asts::IterExpressionBranchAst::IterExpressionBranchAst(
     decltype(pattern) &&pattern,
@@ -54,4 +56,52 @@ auto spp::asts::IterExpressionBranchAst::print(meta::AstPrinter &printer) const 
     SPP_PRINT_APPEND(body);
     SPP_PRINT_APPEND(guard);
     SPP_PRINT_END;
+}
+
+
+auto spp::asts::IterExpressionBranchAst::stage_7_analyse_semantics(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> void {
+    // Create the scope for the iteration branch.
+    auto scope_name = analyse::scopes::ScopeBlockName("<iter-branch#" + std::to_string(pos_start()) + ">");
+    sm->create_and_move_into_new_scope(std::move(scope_name), this);
+
+
+    // Analyse the pattern, guard and body.
+    pattern->stage_7_analyse_semantics(sm, meta);
+    if (guard) {
+        guard->stage_7_analyse_semantics(sm, meta);
+    }
+    body->stage_7_analyse_semantics(sm, meta);
+
+    // Exit the scope.
+    sm->move_out_of_current_scope();
+}
+
+
+auto spp::asts::IterExpressionBranchAst::stage_8_check_memory(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta) -> void {
+    // Move into the branch's scope.
+    sm->move_to_next_scope();
+
+    // Check the patterns, guard and body.
+    pattern->stage_8_check_memory(sm, meta);
+    if (guard) {
+        guard->stage_8_check_memory(sm, meta);
+    }
+    body->stage_8_check_memory(sm, meta);
+
+    // Move out of the branch's scope.
+    sm->move_out_of_current_scope();
+}
+
+
+auto spp::asts::IterExpressionBranchAst::infer_type(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> std::shared_ptr<TypeAst> {
+    // The type of the branch is the type of the body.
+    return body->infer_type(sm, meta);
 }

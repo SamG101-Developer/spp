@@ -70,3 +70,12 @@ auto spp::asts::LoopElseStatementAst::stage_8_check_memory(
     body->stage_8_check_memory(sm, meta);
     sm->move_out_of_current_scope();
 }
+
+
+auto spp::asts::LoopElseStatementAst::infer_type(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> std::shared_ptr<TypeAst> {
+    // The type of an else statement is the type of its body.
+    return body->infer_type(sm, meta);
+}

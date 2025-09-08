@@ -142,9 +142,9 @@ namespace spp::analyse::utils::type_utils {
     template <typename T>
     auto validate_inconsistent_types(
         std::vector<T> const &branches,
-        scopes::ScopeManager const *sm,
+        scopes::ScopeManager *sm,
         asts::mixins::CompilerMetaData *meta)
-        -> std::tuple<std::pair<asts::Ast*, asts::TypeAst*>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>>;
+        -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>>;
 
     auto get_all_attrs(
         asts::TypeAst const &type,

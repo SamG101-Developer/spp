@@ -121,10 +121,10 @@ namespace spp::analyse::utils::func_utils {
         -> void;
 
     auto is_target_callable(
-        asts::ExpressionAst const &expr,
-        scopes::ScopeManager const &sm,
+        asts::ExpressionAst &expr,
+        scopes::ScopeManager &sm,
         asts::mixins::CompilerMetaData *meta)
-        -> std::unique_ptr<asts::TypeAst>;
+        -> std::shared_ptr<asts::TypeAst>;
 
     auto create_callable_prototype(
         asts::TypeAst const &expr_type)

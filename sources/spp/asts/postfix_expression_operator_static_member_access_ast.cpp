@@ -133,3 +133,24 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
         }
     }
 }
+
+
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::infer_type(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> std::shared_ptr<TypeAst> {
+    // Get the left-hand-side type's member's type.
+    if (const auto lhs_as_type = ast_cast<TypeIdentifierAst>(meta->postfix_expression_lhs)) {
+        const auto lhs_type_sym = sm->current_scope->get_type_symbol(*lhs_as_type);
+        return lhs_type_sym->scope->get_var_symbol(*name, true)->type;
+    }
+
+    // Get the left-hand-side namespace's member's type.
+    if (const auto lhs_as_ident = ast_cast<IdentifierAst>(meta->postfix_expression_lhs)) {
+        const auto lhs_ns_sym = sm->current_scope->get_ns_symbol(*lhs_as_ident);
+        return lhs_ns_sym->scope->get_var_symbol(*name, true)->type;
+    }
+
+    // Should never happen due to earlier checks.
+    std::unreachable();
+}

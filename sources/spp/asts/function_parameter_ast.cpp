@@ -13,7 +13,7 @@
 spp::asts::FunctionParameterAst::FunctionParameterAst(
     decltype(var) &&var,
     decltype(tok_colon) &&tok_colon,
-    decltype(type) &&type) :
+    decltype(type) type) :
     var(std::move(var)),
     tok_colon(std::move(tok_colon)),
     type(std::move(type)) {

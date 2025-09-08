@@ -31,7 +31,7 @@ struct spp::asts::FunctionParameterOptionalAst final : FunctionParameterAst {
     FunctionParameterOptionalAst(
         decltype(var) &&var,
         decltype(tok_colon) &&tok_colon,
-        decltype(type) &&type,
+        decltype(type) type,
         decltype(tok_assign) &&tok_assign,
         decltype(default_val) &&default_val);
 
