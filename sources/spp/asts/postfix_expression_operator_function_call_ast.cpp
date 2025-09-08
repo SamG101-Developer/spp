@@ -165,19 +165,19 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             // Cannot call an abstract function.
             if (fn_proto->m_abstract_annotation != nullptr) {
                 analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallAbstractFunctionError>().with_args(
-                    *this, *fn_proto).with_scopes({fn_scope}).raise();
+                    *fn_proto, *this).with_scopes({fn_scope}).raise();
             }
 
             // Cannot call a not implemented function.
             if (fn_proto->m_no_impl_annotation != nullptr) {
                 analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallNotImplFunctionError>().with_args(
-                    *this, *fn_proto).with_scopes({fn_scope}).raise();
+                    *fn_proto, *this).with_scopes({fn_scope}).raise();
             }
 
             // Check if there are too many arguments (for a non-variadic function).
             if (func_args.size() > func_params.size() and not is_variadic_fn) {
                 analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallTooManyArgumentsError>().with_args(
-                    *this, *fn_proto).with_scopes({fn_scope}).raise();
+                    *fn_proto, *this).with_scopes({fn_scope}).raise();
             }
 
             // Remove the keyword argument names from the set of parameter names, and name the positional arguments.
@@ -319,7 +319,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             // Type check the arguments against the parameters. Sort the arguments into parameter order first.
             auto sorted_func_arguments = func_args | genex::views::ptr | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>() | genex::views::to<std::vector>();
             genex::actions::sort(sorted_func_arguments,
-                {}, [&func_param_names](FunctionCallArgumentKeywordAst *arg) { return genex::algorithms::position(func_param_names, [&arg](auto const &param) { return *arg->name == *param; }); });
+                                 {}, [&func_param_names](FunctionCallArgumentKeywordAst *arg) { return genex::algorithms::position(func_param_names, [&arg](auto const &param) { return *arg->name == *param; }); });
 
             for (auto &&[arg, param] : sorted_func_arguments | genex::views::zip(func_params)) {
                 auto p_type = std::shared_ptr(fn_scope->get_type_symbol(*param->type)->fq_name()->with_convention(ast_clone(param->type->get_convention())));

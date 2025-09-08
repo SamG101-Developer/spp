@@ -289,7 +289,7 @@ struct spp::analyse::errors::SppYieldedTypeMismatchError final : SemanticError {
 
 
 struct spp::analyse::errors::SppIdentifierUnknownError final : SemanticError {
-    explicit SppIdentifierUnknownError(asts::Ast const &name, std::string_view what, std::optional<std::string> closest);
+    explicit SppIdentifierUnknownError(asts::Ast const &name, std::string_view what, std::optional<std::string> const &closest);
 };
 
 
@@ -389,17 +389,17 @@ struct spp::analyse::errors::SppEarlyReturnRequiresTryTypeError final : Semantic
 
 
 struct spp::analyse::errors::SppFunctionCallAbstractFunctionError final : SemanticError {
-    explicit SppFunctionCallAbstractFunctionError(asts::PostfixExpressionOperatorFunctionCallAst const &call, asts::FunctionPrototypeAst const &proto);
+    explicit SppFunctionCallAbstractFunctionError(asts::FunctionPrototypeAst const &proto, asts::PostfixExpressionOperatorFunctionCallAst const &call);
 };
 
 
 struct spp::analyse::errors::SppFunctionCallNotImplFunctionError final : SemanticError {
-    explicit SppFunctionCallNotImplFunctionError(asts::PostfixExpressionOperatorFunctionCallAst const &call, asts::FunctionPrototypeAst const &proto);
+    explicit SppFunctionCallNotImplFunctionError(asts::FunctionPrototypeAst const &proto, asts::PostfixExpressionOperatorFunctionCallAst const &call);
 };
 
 
 struct spp::analyse::errors::SppFunctionCallTooManyArgumentsError final : SemanticError {
-    explicit SppFunctionCallTooManyArgumentsError(asts::PostfixExpressionOperatorFunctionCallAst const &call, asts::FunctionPrototypeAst const &proto);
+    explicit SppFunctionCallTooManyArgumentsError(asts::FunctionPrototypeAst const &proto, asts::PostfixExpressionOperatorFunctionCallAst const &call);
 };
 
 

@@ -161,3 +161,14 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
             unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second).with_scopes({sm->current_scope}).raise();
     }
 }
+
+
+auto spp::asts::FunctionParameterGroupAst::stage_8_check_memory(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> void {
+    // Check each parameter's memory.
+    for (auto &&param : params) {
+        param->stage_8_check_memory(sm, meta);
+    }
+}

@@ -22,6 +22,8 @@ public:
     explicit OrderableAst(OrderableTag order_tag);
 
     virtual ~OrderableAst();
+
+    auto get_order_tag() const -> OrderableTag;
 };
 
 
