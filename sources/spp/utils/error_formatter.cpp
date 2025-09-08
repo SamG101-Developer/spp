@@ -85,15 +85,16 @@ auto spp::utils::errors::ErrorFormatter::internal_parse_error_raw_pos(
 
 
 auto spp::utils::errors::ErrorFormatter::error_raw_pos(
-    const std::size_t ast_start_port,
+    const std::size_t ast_start_pos,
     const std::size_t ast_size,
     std::string &&message,
     std::string &&tag_message)
     -> std::string {
     using namespace std::string_literals;
 
-    auto [file_path, line_number, error_line, left_padding, carets] = internal_parse_error_raw_pos(ast_start_port, ast_size, std::move(tag_message));
-    const auto line1 = (colex::fg_white & colex::st_bold) + "Error in file '"s + file_path + "', on line "s + line_number + ";\n";
+    auto [file_path, line_number, error_line, left_padding, carets] = internal_parse_error_raw_pos(
+        ast_start_pos, ast_size, std::move(tag_message));
+    const auto line1 = (colex::fg_white & colex::st_bold) + "Error in file '"s + file_path + "', on line "s + line_number + ":\n";
     const auto line2 = (colex::fg_white & colex::st_bold) + left_padding + " |\n"s;
     const auto line3 = (colex::fg_red & colex::st_bold) + line_number + " | "s + error_line + "\n"s;
     const auto line4 = (colex::fg_white & colex::st_bold) + left_padding + " |"s;
@@ -103,12 +104,38 @@ auto spp::utils::errors::ErrorFormatter::error_raw_pos(
 }
 
 
-auto spp::utils::errors::ErrorFormatter::error(
-    const asts::Ast *ast,
+auto spp::utils::errors::ErrorFormatter::error_raw_pow_minimal(
+    const std::size_t ast_start_pos,
+    const std::size_t ast_size,
+    std::string &&tag_message)
+    -> std::string {
+    using namespace std::string_literals;
+
+    auto [file_path, line_number, error_line, left_padding, carets] = internal_parse_error_raw_pos(
+        ast_start_pos, ast_size, std::move(tag_message));
+    const auto line1 = (colex::fg_white & colex::st_bold) + "Context from file '"s + file_path + "', on line "s + line_number + ":\n";
+    const auto line2 = (colex::fg_white & colex::st_bold) + left_padding + " |\n"s;
+    const auto line3 = (colex::fg_yellow & colex::st_bold) + line_number + " | "s + error_line + "\n"s;
+    const auto line4 = (colex::fg_white & colex::st_bold) + left_padding + " |"s;
+    const auto line5 = (colex::reset & colex::fg_yellow) + carets + "\n"s;
+    return line1 + line2 + line3 + line4 + line5;
+}
+
+
+auto spp::utils::errors::ErrorFormatter::error_ast(
+    asts::Ast const *ast,
     std::string &&message,
     std::string &&tag_message)
     -> std::string {
-    const auto ast_start_pos = ast->pos_start();
-    const auto ast_size = ast->size();
-    return error_raw_pos(ast_start_pos, ast_size, std::move(message), std::move(tag_message));
+    return error_raw_pos(
+        ast->pos_start(), ast->pos_end() - ast->pos_start(), std::move(message), std::move(tag_message));
+}
+
+
+auto spp::utils::errors::ErrorFormatter::error_ast_minimal(
+    asts::Ast const *ast,
+    std::string &&tag_message)
+    -> std::string {
+    return error_raw_pow_minimal(
+        ast->pos_start(), ast->pos_end() - ast->pos_start(), std::move(tag_message));
 }

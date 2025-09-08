@@ -11,7 +11,6 @@
 
 namespace spp::analyse::scopes {
     class ScopeManager;
-    // class ScopeIterator;
     struct TypeSymbol;
 }
 
@@ -61,7 +60,7 @@ public:
 
     auto move_to_next_scope() -> Scope*;
 
-    auto get_namespaced_scope(std::vector<asts::IdentifierAst*> const &names) const -> Scope*;
+    auto get_namespaced_scope(std::vector<asts::IdentifierAst const*> const &names) const -> Scope*;
 
     auto attach_all_super_scopes(asts::mixins::CompilerMetaData *meta) -> void;
 

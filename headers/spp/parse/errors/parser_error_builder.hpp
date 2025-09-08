@@ -16,7 +16,7 @@ namespace spp::parse::errors {
 
 
 template <typename T>
-struct spp::parse::errors::SyntacticErrorBuilder : spp::utils::errors::AbstractErrorBuilder<T> {
+struct spp::parse::errors::SyntacticErrorBuilder final : spp::utils::errors::AbstractErrorBuilder<T> {
     friend class spp::parse::ParserSpp;
 
 private:
@@ -25,4 +25,9 @@ private:
 
 public:
     SyntacticErrorBuilder() = default;
+
+    [[noreturn]]
+    auto raise() -> void override {
+        throw T(*this->m_err_obj);
+    }
 };

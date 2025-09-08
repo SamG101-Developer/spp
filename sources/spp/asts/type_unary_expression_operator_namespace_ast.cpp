@@ -71,8 +71,20 @@ auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::ns_parts(
 }
 
 
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::ns_parts(
+    ) -> std::vector<std::shared_ptr<IdentifierAst>> {
+    return {ns};
+}
+
+
 auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::type_parts(
     ) const
     -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
+    return {};
+}
+
+
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::type_parts(
+    ) -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
     return {};
 }

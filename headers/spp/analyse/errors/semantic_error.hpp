@@ -92,17 +92,28 @@ namespace spp::analyse::errors {
     struct SppGenericParameterInferredConflictExplicitError;
     struct SppGenericParameterNotInferredError;
     struct SppGenericArgumentTooManyError;
-
-    auto add_header(std::size_t err_code, std::string &&msg) -> std::string;
-    auto add_error(std::size_t pos, std::string &&tag) -> std::string;
-    auto add_context_for_error(std::size_t pos, std::string &&msg) -> std::string;
-    auto add_footer(std::string &&note, std::string &&help) -> std::string;
 }
 
 
 struct spp::analyse::errors::SemanticError : spp::utils::errors::AbstractError {
     using AbstractError::AbstractError;
+    SemanticError(SemanticError const &) = default;
     ~SemanticError() override = default;
+
+    enum class ErrorInformationType {
+        HEADER, ERROR, CONTEXT, FOOTER
+    };
+
+    std::vector<std::tuple<asts::Ast const*, ErrorInformationType, std::string, std::string>> m_error_info;
+
+    auto add_header(std::size_t err_code, std::string &&msg) -> void;
+
+    auto add_error(asts::Ast const *ast, std::string &&tag) -> void;
+
+    auto add_context_for_error(asts::Ast const *ast, std::string &&tag) -> void;
+
+    auto add_footer(std::string &&note, std::string &&help) -> void;
+
     auto clone() const -> std::unique_ptr<SemanticError>;
 };
 
@@ -262,7 +273,6 @@ struct spp::analyse::errors::SppSelfParamInFreeFunctionError final : SemanticErr
 };
 
 
-// todo: remember to use m_orig for func names
 struct spp::analyse::errors::SppFunctionPrototypeConflictError final : SemanticError {
     explicit SppFunctionPrototypeConflictError(asts::FunctionPrototypeAst const &first_proto, asts::FunctionPrototypeAst const &second_proto);
 };
@@ -274,7 +284,7 @@ struct spp::analyse::errors::SppFunctionSubroutineContainsGenExpressionError fin
 
 
 struct spp::analyse::errors::SppYieldedTypeMismatchError final : SemanticError {
-    explicit SppYieldedTypeMismatchError(asts::Ast const &lhs, asts::TypeAst const &lhs_ty, asts::Ast const &rhs, asts::TypeAst const &rhs_ty, bool is_optional, bool is_Fallible, asts::TypeAst const &error_type);
+    explicit SppYieldedTypeMismatchError(asts::Ast const &lhs, asts::TypeAst const &lhs_ty, asts::Ast const &rhs, asts::TypeAst const &rhs_ty, bool is_optional, bool is_fallible, asts::TypeAst const &error_type);
 };
 
 

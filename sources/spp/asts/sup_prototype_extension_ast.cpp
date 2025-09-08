@@ -94,11 +94,11 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_cyclic_extension(
     analyse::scopes::Scope &check_scope)
     -> void {
     // Prevent double inheritance by checking if the scopes are already registered the other way around.
-    auto dummy = std::map<std::shared_ptr<TypeAst>, ExpressionAst *>();
+    auto dummy = std::map<std::shared_ptr<TypeAst>, ExpressionAst const*>();
     const auto existing_sup_scopes = sup_sym.scope->sup_scopes()
         | genex::views::filter([](auto &&x) { return ast_cast<SupPrototypeExtensionAst>(x->ast); })
         | genex::views::transform([](auto &&x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })
-        | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::relaxed_symbolic_eq(*super_class, *x.second->name, check_scope, *x.first, dummy); })
+        | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::relaxed_symbolic_eq(*super_class, *x.second->name, &check_scope, x.first, dummy); })
         | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::symbolic_eq(*x.second->super_class, *name, *x.first, check_scope); })
         | genex::views::to<std::vector>();
 
@@ -119,11 +119,11 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_double_extension(
     }
 
     // Prevent double inheritance by checking if the scopes are already registered the other way around.
-    auto dummy = std::map<std::shared_ptr<TypeAst>, ExpressionAst *>();
+    auto dummy = std::map<std::shared_ptr<TypeAst>, ExpressionAst const*>();
     const auto existing_sup_scopes = cls_sym.scope->sup_scopes()
         | genex::views::filter([](auto &&x) { return ast_cast<SupPrototypeExtensionAst>(x->ast); })
         | genex::views::transform([](auto &&x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })
-        | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::relaxed_symbolic_eq(*super_class, *x.second->name, check_scope, *x.first, dummy); })
+        | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::relaxed_symbolic_eq(*super_class, *x.second->name, &check_scope, x.first, dummy); })
         | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::symbolic_eq(*x.second->super_class, *name, *x.first, check_scope); })
         | genex::views::to<std::vector>();
 

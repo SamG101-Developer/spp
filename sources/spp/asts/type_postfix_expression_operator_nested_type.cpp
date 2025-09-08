@@ -72,8 +72,20 @@ auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::ns_parts(
 }
 
 
+auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::ns_parts(
+    ) -> std::vector<std::shared_ptr<IdentifierAst>> {
+    return {};
+}
+
+
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::type_parts(
     ) const
     -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
+    return {name};
+}
+
+
+auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::type_parts(
+    ) -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
     return {name};
 }

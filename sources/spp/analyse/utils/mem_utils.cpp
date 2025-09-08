@@ -11,11 +11,71 @@
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/tuple_literal_ast.hpp>
 
-#include <genex/operations/access.hpp>
+#include <genex/actions/remove.hpp>
+#include <genex/algorithms/contains.hpp>
 #include <genex/views/cast.hpp>
 #include <genex/views/transform.hpp>
 #include <genex/views/for_each.hpp>
 #include <genex/views/to.hpp>
+
+
+auto spp::analyse::utils::mem_utils::MemoryInfo::moved_by(
+    asts::Ast const &ast)
+    -> void {
+    ast_moved = &ast;
+    ast_initialization = nullptr;
+}
+
+
+auto spp::analyse::utils::mem_utils::MemoryInfo::initialized_by(
+    asts::Ast const &ast)
+    -> void {
+    ast_initialization = &ast;
+    ast_initialization_origin = &ast;
+    ast_moved = nullptr;
+    initialization_counter += 1;
+
+    is_inconsistently_initialized = std::nullopt;
+    is_inconsistently_moved = std::nullopt;
+    is_inconsistently_partially_moved = std::nullopt;
+    is_inconsistently_pinned = std::nullopt;
+}
+
+
+auto spp::analyse::utils::mem_utils::MemoryInfo::remove_partial_move(
+    asts::Ast const &ast)
+    -> void {
+    genex::actions::remove(ast_partial_moves, &ast);
+    if (not ast_partial_moves.empty()) {
+        initialized_by(ast);
+    }
+}
+
+
+auto spp::analyse::utils::mem_utils::MemoryInfo::snapshot() const
+    -> MemoryInfoSnapshot {
+    // Create and return the snapshot.
+    return MemoryInfoSnapshot(
+        ast_initialization, ast_moved, ast_partial_moves, ast_pins, initialization_counter);
+}
+
+
+auto spp::analyse::utils::mem_utils::MemoryInfo::clone() const
+    -> std::unique_ptr<MemoryInfo> {
+    auto out = std::make_unique<MemoryInfo>();
+    out->ast_initialization = ast_initialization;
+    out->ast_moved = ast_moved;
+    out->ast_initialization_origin = ast_initialization_origin;
+    out->ast_borrowed = ast_borrowed;
+    out->ast_partial_moves = ast_partial_moves;
+    out->ast_pins = ast_pins;
+    out->initialization_counter = initialization_counter;
+    out->is_inconsistently_initialized = is_inconsistently_initialized;
+    out->is_inconsistently_moved = is_inconsistently_moved;
+    out->is_inconsistently_partially_moved = is_inconsistently_partially_moved;
+    out->is_inconsistently_pinned = is_inconsistently_pinned;
+    return out;
+}
 
 
 auto spp::analyse::utils::mem_utils::memory_region_overlap(
@@ -65,8 +125,8 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
     // Get the symbol representing the outermost part of the expression being moved. Non-symbolic => temporary value.
     auto [var_sym, var_scope] = sm.current_scope->get_var_symbol_outermost(value_ast);
     if (var_sym == nullptr) { return; }
-    auto copies = var_scope->get_type_symbol(*var_sym->type)->is_copyable;
-    auto partial_copies = var_scope->get_type_symbol(*value_ast.infer_type(&sm, meta))->is_copyable;
+    const auto copies = var_scope->get_type_symbol(*var_sym->type)->is_copyable;
+    const auto partial_copies = var_scope->get_type_symbol(*value_ast.infer_type(&sm, meta))->is_copyable;
 
     // Check for inconsistent memory moving (from branching).
     if (check_move and var_sym->memory_info->is_inconsistently_moved.has_value()) {
@@ -130,7 +190,7 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
 
     // Check the object being moved isn't pinned.
     const auto symbolic_pins = var_sym->memory_info->ast_pins
-        | genex::views::cast_dynamic<asts::IdentifierAst*>()
+        | genex::views::cast_dynamic<asts::IdentifierAst const*>()
         | genex::views::to<std::vector>();
 
     if (not symbolic_pins.empty() and not copies) {

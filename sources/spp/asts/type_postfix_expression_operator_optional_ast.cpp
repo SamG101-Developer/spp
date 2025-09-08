@@ -56,11 +56,25 @@ auto spp::asts::TypePostfixExpressionOperatorOptionalAst::equals_optional(
 }
 
 
-auto spp::asts::TypePostfixExpressionOperatorOptionalAst::ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> {
+auto spp::asts::TypePostfixExpressionOperatorOptionalAst::ns_parts() const
+    -> std::vector<std::shared_ptr<const IdentifierAst>> {
     return {};
 }
 
 
-auto spp::asts::TypePostfixExpressionOperatorOptionalAst::type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
+auto spp::asts::TypePostfixExpressionOperatorOptionalAst::ns_parts()
+    -> std::vector<std::shared_ptr<IdentifierAst>> {
+    return {};
+}
+
+
+auto spp::asts::TypePostfixExpressionOperatorOptionalAst::type_parts() const
+    -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
+    return {};
+}
+
+
+auto spp::asts::TypePostfixExpressionOperatorOptionalAst::type_parts()
+    -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
     return {};
 }

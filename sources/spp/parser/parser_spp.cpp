@@ -2846,9 +2846,9 @@ auto spp::parse::ParserSpp::parse_token_raw(const lex::RawTokenType tok, lex::Sp
 }
 
 
-auto spp::parse::ParserSpp::m_store_error(const std::size_t pos, std::string &&err_str) -> bool {
+auto spp::parse::ParserSpp::m_store_error(const std::size_t pos, std::string &&err_str) const -> bool {
     if (pos > m_error_builder->pos) {
-        m_error_builder->with_args(err_str);
+        m_error_builder->with_args(std::move(err_str));
         m_error_builder->tokens.clear();
         m_error_builder->pos = pos;
         return true;

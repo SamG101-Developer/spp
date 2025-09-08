@@ -34,6 +34,11 @@ auto spp::asts::IdentifierAst::pos_end() const -> std::size_t {
 }
 
 
+auto spp::asts::IdentifierAst::clone() const -> std::unique_ptr<Ast> {
+    return std::make_unique<IdentifierAst>(m_pos, std::string(val));
+}
+
+
 spp::asts::IdentifierAst::operator std::string() const {
     return val;
 }

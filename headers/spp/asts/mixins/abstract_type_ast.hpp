@@ -2,6 +2,8 @@
 #define ABSTRACT_TYPE_AST_HPP
 
 #include <spp/asts/_fwd.hpp>
+#include <genex/generator.hpp>
+
 
 namespace spp::asts {
     struct IdentifierAst;
@@ -25,11 +27,11 @@ public:
 
     virtual auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> = 0;
 
-    auto ns_parts() -> std::vector<std::shared_ptr<const IdentifierAst>>;
+    virtual auto ns_parts() -> std::vector<std::shared_ptr<IdentifierAst>> = 0;
 
     virtual auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> = 0;
 
-    auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>>;
+    virtual auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> = 0;
 
     virtual auto without_convention() const -> std::shared_ptr<const TypeAst> = 0;
 

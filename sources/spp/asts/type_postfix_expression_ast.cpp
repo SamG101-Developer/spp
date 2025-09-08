@@ -101,6 +101,15 @@ auto spp::asts::TypePostfixExpressionAst::ns_parts(
     ) const
     -> std::vector<std::shared_ptr<const IdentifierAst>> {
     // Concatenate the lhs and rhs namespace parts.
+    auto a = const_cast<const TypeAst*>(lhs.get())->ns_parts();
+    auto b = const_cast<const TypePostfixExpressionOperatorAst*>(tok_op.get())->ns_parts();
+    return genex::views::concat(std::move(a), std::move(b)) | genex::views::to<std::vector>();
+}
+
+
+auto spp::asts::TypePostfixExpressionAst::ns_parts(
+    ) -> std::vector<std::shared_ptr<IdentifierAst>> {
+    // Concatenate the lhs and rhs namespace parts.
     return genex::views::concat(lhs->ns_parts(), tok_op->ns_parts()) | genex::views::to<std::vector>();
 }
 
@@ -108,6 +117,15 @@ auto spp::asts::TypePostfixExpressionAst::ns_parts(
 auto spp::asts::TypePostfixExpressionAst::type_parts(
     ) const
     -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
+    // Concatenate the lhs and rhs type parts.
+    auto a = const_cast<const TypeAst*>(lhs.get())->type_parts();
+    auto b = const_cast<const TypePostfixExpressionOperatorAst*>(tok_op.get())->type_parts();
+    return genex::views::concat(std::move(a), std::move(b)) | genex::views::to<std::vector>();
+}
+
+
+auto spp::asts::TypePostfixExpressionAst::type_parts(
+    ) -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
     // Concatenate the lhs and rhs type parts.
     return genex::views::concat(lhs->type_parts(), tok_op->type_parts()) | genex::views::to<std::vector>();
 }

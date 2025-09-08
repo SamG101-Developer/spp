@@ -24,7 +24,11 @@ protected:
 public:
     virtual auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> = 0;
 
+    virtual auto ns_parts() -> std::vector<std::shared_ptr<IdentifierAst>> = 0;
+
     virtual auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> = 0;
+
+    virtual auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> = 0;
 };
 
 

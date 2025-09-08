@@ -49,11 +49,9 @@ namespace spp::asts {
         return std::shared_ptr<T>(ast_cast<T>(ast.get()));
     }
 
-    template <typename T>
-    auto ast_name(T *ast) -> std::shared_ptr<TypeAst>;
+    auto ast_name(Ast *ast) -> std::shared_ptr<TypeAst>;
 
-    template <typename T>
-    auto ast_body(T *ast) -> std::vector<Ast*>;
+    auto ast_body(Ast *ast) -> std::vector<Ast*>;
 }
 
 namespace spp::analyse::scopes {

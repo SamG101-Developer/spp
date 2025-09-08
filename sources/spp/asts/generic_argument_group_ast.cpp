@@ -69,7 +69,7 @@ auto spp::asts::GenericArgumentGroupAst::from_params(
 
 
 auto spp::asts::GenericArgumentGroupAst::from_map(
-    std::map<std::shared_ptr<TypeAst>, ExpressionAst*> &&map)
+    std::map<std::shared_ptr<TypeAst>, ExpressionAst const*> &&map)
     -> std::unique_ptr<GenericArgumentGroupAst> {
     // Create the list of arguments, initially empty.
     auto mapped_args = std::vector<std::unique_ptr<GenericArgumentAst>>();
@@ -247,7 +247,6 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
     // Check there are no duplicate type argument names.
     const auto type_arg_names = get_keyword_args()
         | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()
-        | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::transform([](auto &&x) { return x->name.get(); })
         | genex::views::materialize()
         | genex::views::duplicates()
@@ -261,7 +260,6 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
     // Check there are no duplicate comp argument names.
     const auto comp_arg_names = get_keyword_args()
         | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()
-        | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::transform([](auto &&x) { return x->name.get(); })
         | genex::views::materialize()
         | genex::views::duplicates()

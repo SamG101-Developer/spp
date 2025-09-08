@@ -64,8 +64,20 @@ auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::ns_parts(
 }
 
 
+auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::ns_parts(
+    ) -> std::vector<std::shared_ptr<IdentifierAst>> {
+    return {};
+}
+
+
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::type_parts(
     ) const
     -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
+    return {};
+}
+
+
+auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::type_parts(
+    ) -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
     return {};
 }

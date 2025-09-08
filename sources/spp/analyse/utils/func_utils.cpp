@@ -671,7 +671,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl(
     }
 
     // At this point, all conflicts have been checked, so it is safe to only use the first inferred value.
-    auto formatted_generic_arguments = std::map<std::shared_ptr<asts::TypeAst>, asts::ExpressionAst*>();
+    auto formatted_generic_arguments = std::map<std::shared_ptr<asts::TypeAst>, asts::ExpressionAst const*>();
     for (auto [arg_name, inferred_vals] : inferred_args) {
         formatted_generic_arguments[arg_name] = inferred_vals[0];
     }
@@ -711,7 +711,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl(
             args.emplace_back(asts::ast_cast<GenericArgType>(std::move(temp_arg)));
         }
         else {
-            auto temp_val = asts::ast_cast<asts::TypeAst>(val)->shared_from_this();
+            auto temp_val = ast_clone(asts::ast_cast<asts::TypeAst>(val));
             auto temp_arg = std::make_unique<asts::GenericArgumentTypeKeywordAst>(ast_clone(key), nullptr, std::move(temp_val));
             args.emplace_back(asts::ast_cast<GenericArgType>(std::move(temp_arg)));
         }

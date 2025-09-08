@@ -12,9 +12,10 @@ namespace spp::parse::errors {
 struct spp::parse::errors::SyntacticError : utils::errors::AbstractError {
     using AbstractError::AbstractError;
     ~SyntacticError() override = default;
+    SyntacticError(SyntacticError const &) = default;
 };
 
 
 struct spp::parse::errors::SppSyntaxError final : SyntacticError {
-    using SyntacticError::SyntacticError;
+    explicit SppSyntaxError(std::string &&);
 };

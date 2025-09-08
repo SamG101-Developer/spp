@@ -37,7 +37,11 @@ protected:
 public:
     auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
 
+    auto ns_parts() -> std::vector<std::shared_ptr<IdentifierAst>> override;
+
     auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
+
+    auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
 };
 
 

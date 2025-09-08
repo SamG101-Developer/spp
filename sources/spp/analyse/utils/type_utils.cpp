@@ -3,14 +3,17 @@
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
+#include <spp/asts/convention_ast.hpp>
 #include <spp/asts/class_attribute_ast.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
 #include <spp/asts/class_implementation_ast.hpp>
+#include <spp/asts/function_parameter_variadic_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_argument_comp_ast.hpp>
 #include <spp/asts/generic_argument_comp_keyword_ast.hpp>
 #include <spp/asts/generic_argument_type_keyword_ast.hpp>
 #include <spp/asts/generic_argument_type_positional_ast.hpp>
+#include <spp/asts/generic_parameter_ast.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/integer_literal_ast.hpp>
@@ -18,10 +21,12 @@
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
+#include <spp/asts/generate/common_types_precompiled.hpp>
 #include <spp/asts/mixins/compiler_stages.hpp>
 #include <spp/utils/strings.hpp>
 
 #include <genex/actions/concat.hpp>
+#include <genex/algorithms/any_of.hpp>
 #include <genex/algorithms/contains.hpp>
 #include <genex/algorithms/position.hpp>
 #include <genex/views/cast.hpp>
@@ -34,6 +39,171 @@
 #include <genex/views/remove_if.hpp>
 #include <genex/views/to.hpp>
 #include <opex/cast.hpp>
+
+#include "spp/asts/generic_parameter_group_ast.hpp"
+
+
+auto spp::analyse::utils::type_utils::symbolic_eq(
+    asts::TypeAst const &lhs_type,
+    asts::TypeAst const &rhs_type,
+    scopes::Scope const &lhs_scope,
+    scopes::Scope const &rhs_scope,
+    const bool check_variant,
+    const bool lhs_ignore_alias)
+    -> bool {
+    // Special case for the "!" never type.
+    if (rhs_type.is_never_type()) { return true; }
+    if (lhs_type.is_never_type()) { return rhs_type.is_never_type(); }
+
+    // Do a convention check, and allow "&mut" to coerce to "&".
+    if (lhs_type.get_convention()->tag != rhs_type.get_convention()->tag) {
+        if (not(lhs_type.get_convention()->tag == asts::ConventionAst::ConventionTag::REF and rhs_type.get_convention()->tag == asts::ConventionAst::ConventionTag::MUT)) {
+            return false;
+        }
+    }
+
+    // Strip the generics from the types.
+    const auto stripped_lhs = lhs_type.without_generics();
+    const auto stripped_rhs = rhs_type.without_generics();
+
+    // Get the non-generic symbols.
+    const auto stripped_lhs_sym = lhs_scope.get_type_symbol(*stripped_lhs, false, lhs_ignore_alias);
+    const auto stripped_rhs_sym = rhs_scope.get_type_symbol(*stripped_rhs, false);
+
+    // If the left-hand-side is a "Variant" type, check the composite types first.
+    if (check_variant and symbolic_eq(*stripped_lhs_sym->fq_name()->without_generics(), *asts::generate::common_types_precompiled::VAR, lhs_scope, lhs_scope, false)) {
+        auto lhs_composite_types = deduplicate_variant_inner_types(*lhs_scope.get_type_symbol(lhs_type)->fq_name(), lhs_scope);
+        if (genex::algorithms::any_of(lhs_composite_types, [&](auto &&lhs_composite_type) { return symbolic_eq(*lhs_composite_type, rhs_type, lhs_scope, rhs_scope); })) {
+            return true;
+        }
+    }
+
+    // If the stripped types are not equal, return false (by pointer is fine).
+    if (stripped_lhs_sym->type != stripped_rhs_sym->type) {
+        return false;
+    }
+
+    // Get the generic arguments for both types.
+    const auto lhs_type_fq = lhs_scope.get_type_symbol(lhs_type, false, lhs_ignore_alias)->fq_name();
+    const auto rhs_type_fq = rhs_scope.get_type_symbol(rhs_type, false)->fq_name();
+
+    auto &lhs_generics = lhs_type_fq->type_parts().back()->generic_arg_group->args;
+    auto &rhs_generics = rhs_type_fq->type_parts().back()->generic_arg_group->args;
+
+    // Special case for variadic parameter types.
+    const auto temp_type_proto = lhs_scope.get_type_symbol(lhs_type)->type;
+    if (temp_type_proto and not temp_type_proto->generic_param_group->params.empty()) {
+        if (asts::ast_cast<asts::FunctionParameterVariadicAst>(temp_type_proto->generic_param_group->params.back().get()) != nullptr) {
+            if (lhs_generics.size() != rhs_generics.size()) {
+                return false;
+            }
+        }
+    }
+
+    // Ensure each generic argument is symbolically equal to the other.
+    for (auto [lhs_generic, rhs_generic] : genex::views::zip(lhs_generics | genex::views::ptr, rhs_generics | genex::views::ptr)) {
+        if (asts::ast_cast<asts::GenericArgumentTypeAst>(lhs_generic)) {
+            const auto lhs_generic_part = asts::ast_cast<asts::GenericArgumentTypeAst>(lhs_generic);
+            const auto rhs_generic_part = asts::ast_cast<asts::GenericArgumentTypeAst>(rhs_generic);
+            if (not symbolic_eq(*lhs_generic_part->val, *rhs_generic_part->val, lhs_scope, rhs_scope)) {
+                return false;
+            }
+        }
+        else {
+            const auto lhs_generic_part = asts::ast_cast<asts::GenericArgumentCompAst>(lhs_generic);
+            const auto rhs_generic_part = asts::ast_cast<asts::GenericArgumentCompAst>(rhs_generic);
+            if (not symbolic_eq(*lhs_generic_part->val, *rhs_generic_part->val, lhs_scope, rhs_scope)) {
+                return false;
+            }
+        }
+    }
+
+    // If all the generic arguments are symbolically equal, return true.
+    return true;
+}
+
+
+auto spp::analyse::utils::type_utils::symbolic_eq(
+    asts::ExpressionAst const &lhs_expr,
+    asts::ExpressionAst const &rhs_expr,
+    scopes::Scope const &,
+    scopes::Scope const &)
+    -> bool {
+    // Simple equality between the expressions.
+    return lhs_expr == rhs_expr;
+}
+
+
+auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
+    asts::TypeAst const &lhs_type,
+    asts::TypeAst const &rhs_type,
+    scopes::Scope const *lhs_scope,
+    scopes::Scope const *rhs_scope,
+    std::map<std::shared_ptr<asts::TypeAst>, asts::ExpressionAst const*> &generic_args) -> bool {
+    // If the right-hand-side scope is nullptr, the scope is generic so auto-match it.
+    if (rhs_scope == nullptr) {
+        return true;
+    }
+
+    // Handle generic comp arguments (simple value comparison).
+    if (not asts::ast_cast<asts::TypeAst>(&lhs_type)) {
+        if (const auto rhs_type_as_identifier = asts::ast_cast<asts::IdentifierAst>(&rhs_type)) {
+            generic_args[asts::TypeIdentifierAst::from_identifier(*rhs_type_as_identifier)] = &lhs_type;
+            return true;
+        }
+        return false;
+    }
+
+    // Strip the generics from the right-hand-side type (possible generic).
+    auto stripped_rhs = rhs_type.without_generics();
+
+    // If the right-hand-side is generic, then return a match: "sup[T] T { ... }" matches all types.
+    const auto stripped_rhs_sym = rhs_scope->get_type_symbol(*stripped_rhs);
+    if (stripped_rhs_sym->is_generic) {
+        generic_args[std::move(stripped_rhs)] = &lhs_type;
+        return true;
+    }
+
+    // Strip the generics from the left-hand-side type.
+    const auto stripped_lhs = lhs_type.without_generics();
+
+    // If the stripped types aren't equal, then return false.
+    const auto stripped_lhs_sym = lhs_scope->get_type_symbol(*stripped_lhs);
+    if (stripped_lhs_sym->type != stripped_rhs_sym->type) {
+        return false;
+    }
+
+    // The next step is to get the generic arguments for both types.
+    const auto lhs_type_fq = lhs_scope->get_type_symbol(*stripped_lhs)->fq_name();
+    const auto rhs_type_fq = rhs_scope->get_type_symbol(*stripped_rhs)->fq_name();
+
+    auto &lhs_generics = lhs_type_fq->type_parts().back()->generic_arg_group->args;
+    auto &rhs_generics = rhs_type_fq->type_parts().back()->generic_arg_group->args;
+
+    // Special case for variadic parameter types.
+    const auto temp_type_proto = lhs_scope->get_type_symbol(lhs_type)->type;
+    if (temp_type_proto and not temp_type_proto->generic_param_group->params.empty()) {
+        if (asts::ast_cast<asts::FunctionParameterVariadicAst>(temp_type_proto->generic_param_group->params.back().get()) != nullptr) {
+            if (lhs_generics.size() != rhs_generics.size()) {
+                return false;
+            }
+        }
+    }
+
+    // Ensure each generic argument is symbolically equal to the other.
+    for (auto [lhs_generic, rhs_generic] : genex::views::zip(lhs_generics | genex::views::ptr, rhs_generics | genex::views::ptr)) {
+        if (asts::ast_cast<asts::GenericArgumentTypeAst>(rhs_generic)) {
+            const auto lhs_generic_part = asts::ast_cast<asts::GenericArgumentTypeAst>(lhs_generic);
+            const auto rhs_generic_part = asts::ast_cast<asts::GenericArgumentTypeAst>(rhs_generic);
+            if (not relaxed_symbolic_eq(*lhs_generic_part->val, *rhs_generic_part->val, lhs_scope, rhs_scope, generic_args)) {
+                return false;
+            }
+        }
+    }
+
+    // If all the generic arguments are symbolically equal, return true.
+    return true;
+}
 
 
 auto spp::analyse::utils::type_utils::is_type_indexable(
@@ -576,4 +746,26 @@ auto spp::analyse::utils::type_utils::get_type_part_symbol_with_error(
 
     // Return the found type symbol.
     return type_sym;
+}
+
+
+auto spp::analyse::utils::type_utils::get_namespaced_scope_with_error(
+    scopes::ScopeManager const &sm,
+    asts::IdentifierAst const &ns)
+    -> scopes::Scope* {
+    // If the namespace does not exist, raise an error.
+    const auto ns_scope = sm.get_namespaced_scope({&ns});
+    if (ns_scope == nullptr) {
+        const auto alternatives = sm.current_scope->all_var_symbols()
+            | genex::views::transform([](auto &&x) { return x->name->val; })
+            | genex::views::remove_if([](auto &&x) { return x[0] == '$'; })
+            | genex::views::to<std::vector>();
+
+        const auto closest_match = spp::utils::strings::closest_match(ns.val, alternatives);
+        analyse::errors::SemanticErrorBuilder<errors::SppIdentifierUnknownError>().with_args(
+            ns, "namespace", closest_match).with_scopes({sm.current_scope}).raise();
+    }
+
+    // Return the found namespace scope.
+    return ns_scope;
 }

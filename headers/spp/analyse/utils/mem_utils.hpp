@@ -36,7 +36,7 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
      * the symbol, this attribute will be set to @c nullptr. This attribute is mutually exclusive with the @c ast_moved
      * attribute.
      */
-    asts::Ast *ast_initialization;
+    asts::Ast const *ast_initialization;
 
     /**
      * The @c ast_moved AST is the AST that moved the value out of the symbol this memory information struct is attached
@@ -44,7 +44,7 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
      * this attribute will be set to @c nullptr. This attribute is mutually exclusive with the @c ast_initialization
      * attribute.
      */
-    asts::Ast *ast_moved;
+    asts::Ast const *ast_moved;
 
     /**
      * The @c ast_initialization_origin AST is the same as the @c ast_initialization, but it isn't set to nullptr when
@@ -52,28 +52,28 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
      * value is moved out of the symbol, the initialization origin can still be tracked and used for further analysis
      * and error formatting.
      */
-    asts::Ast *ast_initialization_origin;
+    asts::Ast const *ast_initialization_origin;
 
     /**
      * The @c ast_borrowed AST is the AST that is set if the value symbol is declared with a borrow type. This will be
      * set from a function parameter's convention. If this attribute is @c nullptr, then the convention is the "mov"
      * convention.
      */
-    asts::Ast *ast_borrowed;
+    asts::Ast const *ast_borrowed;
 
     /**
      * The @c ast_partial_moves ASTs are the ASTs that represent partial moves of the value out of the symbol. For the
      * symbol @c a, the partial moves might be @c a.b and @c a.x.y.z. Partial moves are set when attributes are moved
      * off an owned value, and are popped from this list when attributes are re-assigned to the symbol.
      */
-    std::vector<asts::Ast*> ast_partial_moves;
+    std::vector<asts::Ast const*> ast_partial_moves;
 
     /**
      * The @c ast_pins are the ASTs that are either this symbol or partials of this symbol that are pinned from borrows
      * into coroutines or async function calls. Certain operations cannot be performed on pinned symbols, such as moving
      * them, or re-initializing them.
      */
-    std::vector<asts::Ast*> ast_pins;
+    std::vector<asts::Ast const*> ast_pins;
 
     /**
      * The @c ast_comptime AST is the AST that represents the compile-time declaration of the symbol. This might be the
@@ -158,7 +158,7 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
      * time.
      * @return The snapshot of the memory information.
      */
-    auto snapshot() -> MemoryInfoSnapshot;
+    auto snapshot() const -> MemoryInfoSnapshot;
 
     /**
      * Provide a clone method for the @c MemoryInfo struct. This is used to create a clone of the memory information for
@@ -172,24 +172,24 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
 
 struct spp::analyse::utils::mem_utils::MemoryInfoSnapshot {
     /**
-     * View of the initializng ast for the owning @c MemoryInfo
+     * View of the initializing ast for the owning @c MemoryInfo
      */
-    asts::Ast *ast_initialization;
+    asts::Ast const *ast_initialization;
 
     /**
      * View of the moving ast for the owning @c MemoryInfo
      */
-    asts::Ast *ast_moved;
+    asts::Ast const *ast_moved;
 
     /**
      * List of partial moves that were present in the owning @c MemoryInfo at the time of the snapshot.
      */
-    std::vector<asts::Ast*> ast_partial_moves;
+    std::vector<asts::Ast const*> ast_partial_moves;
 
     /**
      * List of pins that were present in the owning @c MemoryInfo at the time of the snapshot.
      */
-    std::vector<asts::Ast*> ast_pins;
+    std::vector<asts::Ast const*> ast_pins;
 
     /**
      * The @c initialization_counter that was present in the owning @c MemoryInfo at the time of the snapshot.

@@ -59,9 +59,9 @@ namespace spp::analyse::utils::type_utils {
     auto relaxed_symbolic_eq(
         asts::TypeAst const &lhs_type,
         asts::TypeAst const &rhs_type,
-        scopes::Scope const &lhs_scope,
-        scopes::Scope const &rhs_scope,
-        std::map<std::shared_ptr<asts::TypeAst>, asts::ExpressionAst*> &generic_args)
+        scopes::Scope const *lhs_scope,
+        scopes::Scope const *rhs_scope,
+        std::map<std::shared_ptr<asts::TypeAst>, asts::ExpressionAst const*> &generic_args)
         -> bool;
 
     auto is_type_indexable(
@@ -198,7 +198,7 @@ namespace spp::analyse::utils::type_utils {
         -> scopes::Scope*;
 
     auto deduplicate_variant_inner_types(
-        asts::TypeIdentifierAst const &type,
+        asts::TypeAst const &type,
         scopes::Scope const &scope)
         -> std::vector<std::shared_ptr<asts::TypeAst>>;
 }

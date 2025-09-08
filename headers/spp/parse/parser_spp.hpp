@@ -405,5 +405,5 @@ public:
     auto parse_token_raw(lex::RawTokenType tok, lex::SppTokenType mapped_tok) -> std::unique_ptr<asts::TokenAst>;
 
 private:
-    auto m_store_error(std::size_t pos, std::string &&err_str) -> bool;
+    auto m_store_error(std::size_t pos, std::string &&err_str) const -> bool;
 };
