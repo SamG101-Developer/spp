@@ -45,6 +45,17 @@ spp::analyse::scopes::Scope::Scope(
 }
 
 
+spp::analyse::scopes::Scope::Scope(Scope const &other) :
+    name(other.name),
+    parent(other.parent),
+    ast(other.ast),
+    ty_sym(other.ty_sym),
+    ns_sym(other.ns_sym),
+    table(other.table),
+    non_generic_scope(other.non_generic_scope) {
+}
+
+
 auto spp::analyse::scopes::Scope::new_global(
     compiler::Module const &module)
     -> std::unique_ptr<Scope> {

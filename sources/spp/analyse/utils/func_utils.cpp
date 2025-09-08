@@ -601,7 +601,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl(
 
     // The inferred generic map is of the structure: {TypeAst: [ExpressionAst]} for the different types/constants that
     // each generic is inferred as.
-    auto inferred_args = std::map<std::shared_ptr<asts::TypeAst>, std::vector<asts::ExpressionAst*>>();
+    auto inferred_args = std::map<std::shared_ptr<asts::TypeAst>, std::vector<asts::ExpressionAst const*>>();
 
     // Preload the explicit generic arguments into the inference map, as the consistency of these arguments needs
     // checking too.
@@ -612,7 +612,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl(
     // Infer the generic arguments from the source/target maps.
     for (auto param_name : param_names) {
         for (auto [infer_target_name, infer_target_type] : infer_target) {
-            auto inferred_arg = static_cast<asts::ExpressionAst*>(nullptr);
+            auto inferred_arg = static_cast<asts::ExpressionAst const*>(nullptr);
 
             // Check for a direct match ("a: T" & "a: Str") or an inner match ("a: Vec[T]" & "a: Vec[Str]").
             if (infer_source.contains(infer_target_name)) {

@@ -47,7 +47,7 @@ public:
 
     virtual auto match_generic(TypeAst const &other, TypeIdentifierAst const &generic_name) const -> const ExpressionAst* = 0;
 
-    auto match_generic(TypeAst const &other, TypeIdentifierAst const &generic_name) -> ExpressionAst*;
+    // auto match_generic(TypeAst const &other, TypeIdentifierAst const &generic_name) -> ExpressionAst*;
 
     virtual auto with_generics(std::shared_ptr<GenericArgumentGroupAst> &&arg_group) const -> std::unique_ptr<TypeAst> = 0;
 };
