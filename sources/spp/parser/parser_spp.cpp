@@ -1099,21 +1099,21 @@ auto spp::parse::ParserSpp::parse_case_expression_pattern_nested_for_destructure
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_nested_for_destructure_object() -> std::unique_ptr<asts::CasePatternVariantAst> {
     PARSE_ALTERNATE(
-        p1, asts::CasePatternVariantAst, parse_case_expression_pattern_variant_destructure_skip_single_argument,
+        p1, asts::CasePatternVariantAst, parse_case_expression_pattern_variant_destructure_attribute_binding,
         parse_case_expression_pattern_variant_destructure_skip_multiple_arguments,
-        parse_case_expression_pattern_variant_destructure_array,
-        parse_case_expression_pattern_variant_destructure_tuple,
-        parse_case_expression_pattern_variant_destructure_object,
-        parse_case_expression_pattern_variant_single_identifier,
-        parse_case_expression_pattern_variant_literal);
+        parse_case_expression_pattern_variant_single_identifier);
     return FORWARD_AST(p1);
 }
 
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_nested_for_destructure_tuple() -> std::unique_ptr<asts::CasePatternVariantAst> {
     PARSE_ALTERNATE(
-        p1, asts::CasePatternVariantAst, parse_case_expression_pattern_variant_destructure_skip_multiple_arguments,
-        parse_case_expression_pattern_variant_destructure_attribute_binding,
+        p1, asts::CasePatternVariantAst, parse_case_expression_pattern_variant_destructure_skip_single_argument,
+        parse_case_expression_pattern_variant_destructure_skip_multiple_arguments,
+        parse_case_expression_pattern_variant_destructure_array,
+        parse_case_expression_pattern_variant_destructure_tuple,
+        parse_case_expression_pattern_variant_destructure_object,
+        parse_case_expression_pattern_variant_single_identifier,
         parse_case_expression_pattern_variant_literal);
     return FORWARD_AST(p1);
 }
@@ -1282,7 +1282,8 @@ auto spp::parse::ParserSpp::parse_inner_scope_expression(auto &&parser) -> std::
 auto spp::parse::ParserSpp::parse_statement() -> std::unique_ptr<asts::StatementAst> {
     PARSE_ALTERNATE(
         p1, asts::StatementAst, parse_use_statement, parse_type_statement, parse_let_statement, parse_ret_statement,
-        parse_exit_statement, parse_skip_statement, parse_assignment_statement, parse_expression);
+        parse_exit_statement, parse_exit_statement_with_value, parse_skip_statement, parse_assignment_statement,
+        parse_expression);
     return FORWARD_AST(p1);
 }
 
@@ -1304,14 +1305,14 @@ auto spp::parse::ParserSpp::parse_ret_statement() -> std::unique_ptr<asts::RetSt
 
 auto spp::parse::ParserSpp::parse_exit_statement() -> std::unique_ptr<asts::LoopControlFlowStatementAst> {
     PARSE_ONE_OR_MORE(p1, parse_keyword_exit, parse_space);
-    PARSE_OPTIONAL(p2, parse_keyword_skip);
+    PARSE_ONCE(p2, parse_keyword_skip);
     return CREATE_AST(asts::LoopControlFlowStatementAst, p1, p2, nullptr);
 }
 
 
 auto spp::parse::ParserSpp::parse_exit_statement_with_value() -> std::unique_ptr<asts::LoopControlFlowStatementAst> {
     PARSE_ONE_OR_MORE(p1, parse_keyword_exit, parse_space);
-    PARSE_ONCE(p2, parse_expression)
+    PARSE_OPTIONAL(p2, parse_expression)
     return CREATE_AST(asts::LoopControlFlowStatementAst, p1, nullptr, p2);
 }
 
@@ -2085,7 +2086,7 @@ auto spp::parse::ParserSpp::parse_specific_characters(std::string &&s) -> std::u
     auto pos = m_pos;
 
     for (auto i = 0uz; i < s.length(); ++i) {
-        PARSE_ONCE(p1, parse_lexeme_character);
+        PARSE_ONCE(p1, parse_lexeme_character_or_digit);
         identifier += p1->token_data[0];
     }
 
