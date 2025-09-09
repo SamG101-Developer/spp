@@ -67,10 +67,10 @@ auto spp::analyse::scopes::ScopeManager::reset(
 auto spp::analyse::scopes::ScopeManager::create_and_move_into_new_scope(
     ScopeName name,
     asts::Ast *ast,
-    std::unique_ptr<spp::utils::errors::ErrorFormatter> &&error_formatter)
+    spp::utils::errors::ErrorFormatter *error_formatter)
     -> Scope* {
     // Create a new scope, using the current scope as the parent scope.
-    auto scope = std::make_unique<Scope>(name, current_scope, ast, std::move(error_formatter));
+    auto scope = std::make_unique<Scope>(name, current_scope, ast, error_formatter);
     current_scope->children.emplace_back(std::move(scope));
 
     // Set the new scope as the current scope, and advance the iterator to match.

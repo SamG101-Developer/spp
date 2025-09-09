@@ -17,6 +17,7 @@
 #include <spp/asts/local_variable_destructure_tuple_ast.hpp>
 #include <spp/asts/local_variable_destructure_skip_multiple_arguments_ast.hpp>
 #include <spp/asts/loop_control_flow_statement_ast.hpp>
+#include <spp/asts/module_prototype_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/object_initializer_argument_ast.hpp>
 #include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
@@ -1504,4 +1505,17 @@ spp::analyse::errors::SppGenericArgumentTooManyError::SppGenericArgumentTooManyE
     add_footer(
         "Too many generic arguments provided for this context.",
         "Remove the extra generic argument");
+}
+
+
+spp::analyse::errors::SppMissingMainFunctionError::SppMissingMainFunctionError(
+    asts::ModulePrototypeAst const &mod) {
+    add_header(
+        81, "SPP Missing Main Function Error");
+    add_error(
+        &mod,
+        "Module defined here");
+    add_footer(
+        "The module is missing a 'main' function, which is required as the entry point of the program.",
+        "Define a 'main' function in the module");
 }

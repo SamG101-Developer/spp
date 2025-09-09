@@ -54,7 +54,7 @@ public:
 
     auto reset(Scope *scope = nullptr, std::optional<std::generator<Scope*>> gen = std::nullopt) -> void;
 
-    auto create_and_move_into_new_scope(ScopeName name, asts::Ast *ast = nullptr, std::unique_ptr<spp::utils::errors::ErrorFormatter> &&error_formatter = nullptr) -> Scope*;
+    auto create_and_move_into_new_scope(ScopeName name, asts::Ast *ast = nullptr, spp::utils::errors::ErrorFormatter *error_formatter = nullptr) -> Scope*;
 
     auto move_out_of_current_scope() -> Scope*;
 

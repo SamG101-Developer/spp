@@ -3,25 +3,25 @@
 
 
 namespace spp::asts::generate::common_types_precompiled {
-    inline const std::shared_ptr<TypeAst> GEN;
-    inline const std::shared_ptr<TypeAst> GEN_OPT;
-    inline const std::shared_ptr<TypeAst> GEN_RES;
-    inline const std::shared_ptr<TypeAst> GEN_ONCE;
+    inline std::shared_ptr<TypeAst> GEN;
+    inline std::shared_ptr<TypeAst> GEN_OPT;
+    inline std::shared_ptr<TypeAst> GEN_RES;
+    inline std::shared_ptr<TypeAst> GEN_ONCE;
 
-    inline const std::shared_ptr<TypeAst> FUN_MOV;
-    inline const std::shared_ptr<TypeAst> FUN_MUT;
-    inline const std::shared_ptr<TypeAst> FUN_REF;
+    inline std::shared_ptr<TypeAst> FUN_MOV;
+    inline std::shared_ptr<TypeAst> FUN_MUT;
+    inline std::shared_ptr<TypeAst> FUN_REF;
 
-    inline const std::shared_ptr<TypeAst> ARR;
-    inline const std::shared_ptr<TypeAst> TUP;
-    inline const std::shared_ptr<TypeAst> VAR;
-    inline const std::shared_ptr<TypeAst> TRY;
+    inline std::shared_ptr<TypeAst> ARR;
+    inline std::shared_ptr<TypeAst> TUP;
+    inline std::shared_ptr<TypeAst> VAR;
+    inline std::shared_ptr<TypeAst> TRY;
 
-    inline const std::shared_ptr<TypeAst> BOOL;
-    inline const std::shared_ptr<TypeAst> VOID;
+    inline std::shared_ptr<TypeAst> BOOL;
+    inline std::shared_ptr<TypeAst> VOID;
 
-    inline const std::shared_ptr<TypeAst> NEVER;
-    inline const std::shared_ptr<TypeAst> COPY;
+    inline std::shared_ptr<TypeAst> NEVER;
+    inline std::shared_ptr<TypeAst> COPY;
 
     auto initialize_types() -> void;
 }

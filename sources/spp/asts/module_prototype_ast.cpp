@@ -79,6 +79,14 @@ auto spp::asts::ModulePrototypeAst::name() const
 }
 
 
+auto spp::asts::ModulePrototypeAst::file_name() const
+    -> std::unique_ptr<IdentifierAst> {
+    using namespace std::string_literals;
+    // Return the filepath as an IdentifierAst.
+    return std::make_unique<IdentifierAst>(pos_start(), m_file_path.string());
+}
+
+
 auto spp::asts::ModulePrototypeAst::stage_1_pre_process(
     Ast *ctx)
     -> void {

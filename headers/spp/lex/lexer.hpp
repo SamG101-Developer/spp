@@ -15,7 +15,7 @@ namespace spp::lex {
 
 class spp::lex::Lexer {
 public:
-    explicit Lexer(std::string &&code);
+    explicit Lexer(std::string code);
     auto lex() const -> std::vector<RawToken>;
 
 private:

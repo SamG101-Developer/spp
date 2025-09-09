@@ -92,6 +92,7 @@ namespace spp::analyse::errors {
     struct SppGenericParameterInferredConflictExplicitError;
     struct SppGenericParameterNotInferredError;
     struct SppGenericArgumentTooManyError;
+    struct SppMissingMainFunctionError;
 }
 
 
@@ -525,4 +526,9 @@ struct spp::analyse::errors::SppGenericParameterNotInferredError final : Semanti
 
 struct spp::analyse::errors::SppGenericArgumentTooManyError final : SemanticError {
     explicit SppGenericArgumentTooManyError(asts::Ast const &param, asts::Ast const &owner, asts::GenericArgumentAst const &arg);
+};
+
+
+struct spp::analyse::errors::SppMissingMainFunctionError final : SemanticError {
+    explicit SppMissingMainFunctionError(asts::ModulePrototypeAst const& mod);
 };

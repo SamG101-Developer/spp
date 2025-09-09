@@ -108,12 +108,17 @@
     T::static_func(BOOST_PP_SEQ_ENUM(BOOST_PP_SEQ_TRANSFORM(MOVE_AST_FOR_CREATION, BOOST_PP_EMPTY(), BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))))
 
 
-#define MOVE_AST_FOR_CREATION(_1, _2, ast) std::move(ast)
+#define MOVE_AST_FOR_CREATION(_1, _2, ast) \
+    std::move((ast))
 
 
 #define CREATE_AST_WITH_BASE(out, T, base) \
     auto out = T::new_empty();             \
-    *static_cast<decltype(base)::pointer>(out.get()) = std::move(*base.release());
+    *static_cast<decltype(base)::pointer>((out).get()) = std::move(*(base).release())
+
+
+#define INJECT_CODE(code, method) \
+    spp::parse::ParserSpp(spp::lex::Lexer((code)).lex(), nullptr).method()
 
 
 namespace spp::utils::errors {
@@ -128,7 +133,7 @@ namespace spp::parse {
 
 class spp::parse::ParserBase {
 public:
-    explicit ParserBase(std::vector<lex::RawToken> tokens, std::string_view file_name = "", std::unique_ptr<utils::errors::ErrorFormatter> error_formatter = nullptr);
+    explicit ParserBase(std::vector<lex::RawToken> tokens, utils::errors::ErrorFormatter *error_formatter = nullptr);
     virtual ~ParserBase() = default;
 
 protected:
@@ -136,7 +141,7 @@ protected:
     std::vector<lex::RawToken> m_tokens = {};
     std::size_t m_tokens_len = 0;
     std::unique_ptr<errors::SyntacticErrorBuilder<errors::SppSyntaxError>> m_error_builder;
-    std::unique_ptr<utils::errors::ErrorFormatter> m_error_formatter;
+    utils::errors::ErrorFormatter *m_error_formatter;
 
     template <typename T>
     using parser_method_t = std::function<std::unique_ptr<T>()>;

@@ -93,14 +93,14 @@ private:
     std::vector<Scope*> m_direct_sub_scopes;
 
 
-    std::unique_ptr<spp::utils::errors::ErrorFormatter> m_error_formatter;
+    spp::utils::errors::ErrorFormatter* m_error_formatter;
 
 private:
     template <typename S, typename T, typename This>
     auto all_symbols_impl(T const &map, This const &func, bool exclusive, bool sup_scope_search) const -> std::generator<S*>;
 
 public:
-    Scope(ScopeName name, Scope *parent, asts::Ast *ast = nullptr, std::unique_ptr<spp::utils::errors::ErrorFormatter> &&error_formatter = nullptr);
+    Scope(ScopeName name, Scope *parent, asts::Ast *ast = nullptr, spp::utils::errors::ErrorFormatter *error_formatter = nullptr);
 
     Scope(Scope const &other);
 

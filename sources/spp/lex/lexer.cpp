@@ -10,7 +10,7 @@
 #include <magic_enum/magic_enum.hpp>
 
 
-spp::lex::Lexer::Lexer(std::string &&code)
+spp::lex::Lexer::Lexer(std::string code)
     : m_code("\n" + std::move(code)) {
 }
 

@@ -32,6 +32,8 @@ public:
 
     auto name() const -> std::unique_ptr<IdentifierAst>;
 
+    auto file_name() const -> std::unique_ptr<IdentifierAst>;
+
     auto stage_1_pre_process(Ast *ctx) -> void override;
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *) -> void override;

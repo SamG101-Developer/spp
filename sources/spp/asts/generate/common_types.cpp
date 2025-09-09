@@ -193,6 +193,14 @@ auto spp::asts::generate::common_types::never_type(std::size_t pos) -> std::uniq
 }
 
 
+auto spp::asts::generate::common_types::copy_type(std::size_t pos) -> std::unique_ptr<TypeAst> {
+    std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("Copy"), nullptr);
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("copy")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
+    return type;
+}
+
+
 auto spp::asts::generate::common_types::array_type(std::size_t pos, std::shared_ptr<TypeAst> elem_type, std::unique_ptr<ExpressionAst> &&size) -> std::unique_ptr<TypeAst> {
     auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(2);
     generics_lst[0] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(elem_type));

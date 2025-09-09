@@ -34,14 +34,14 @@ spp::analyse::scopes::Scope::Scope(
     ScopeName name,
     Scope *parent,
     asts::Ast *ast,
-    std::unique_ptr<spp::utils::errors::ErrorFormatter> &&error_formatter) :
+    spp::utils::errors::ErrorFormatter *error_formatter) :
     name(std::move(name)),
     parent(parent),
     ast(ast),
     ty_sym(nullptr),
     ns_sym(nullptr),
     non_generic_scope(this),
-    m_error_formatter(std::move(error_formatter)) {
+    m_error_formatter(error_formatter) {
 }
 
 
@@ -52,7 +52,8 @@ spp::analyse::scopes::Scope::Scope(Scope const &other) :
     ty_sym(other.ty_sym),
     ns_sym(other.ns_sym),
     table(other.table),
-    non_generic_scope(other.non_generic_scope) {
+    non_generic_scope(other.non_generic_scope),
+    m_error_formatter(nullptr) {
 }
 
 
@@ -67,7 +68,7 @@ auto spp::analyse::scopes::Scope::new_global(
     auto glob_ns_sym_name = std::make_unique<asts::IdentifierAst>(0, "_global");
     auto glob_ns_sym = std::make_unique<NamespaceSymbol>(std::move(glob_ns_sym_name), glob_scope.get());
     glob_scope->ns_sym = std::move(glob_ns_sym);
-    glob_scope->ast = module.module_ast;
+    glob_scope->ast = module.module_ast.get();
 
     // Return the global scope.
     return glob_scope;
@@ -138,7 +139,7 @@ auto spp::analyse::scopes::Scope::shift_scope_for_namespaced_type(
 auto spp::analyse::scopes::Scope::get_error_formatter() const
     -> spp::utils::errors::ErrorFormatter* {
     // Return this scope's error formatter, or the parent's if it doesn't exist.
-    const auto this_formatter = m_error_formatter.get();
+    const auto this_formatter = m_error_formatter;
     return this_formatter != nullptr ? this_formatter : parent->get_error_formatter();
 }
 
@@ -393,7 +394,7 @@ auto spp::analyse::scopes::Scope::get_ns_symbol(
     const bool exclusive) const
     -> NamespaceSymbol* {
     // Get the symbol from the symbol table if it exists.
-    auto scope = this;
+    const auto scope = this;
     auto sym = table.ns_tbl.get(&sym_name).get();
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
@@ -421,11 +422,11 @@ auto spp::analyse::scopes::Scope::get_var_symbol_outermost(
     };
 
     auto is_valid_postfix_expression_runtime = [is_valid_postfix_expression](auto *ast) -> bool {
-        return is_valid_postfix_expression.template operator()<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(ast);
+        return is_valid_postfix_expression.operator()<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(ast);
     };
 
     auto is_valid_postfix_expression_static = [is_valid_postfix_expression](auto *ast) -> bool {
-        return is_valid_postfix_expression.template operator()<asts::PostfixExpressionOperatorStaticMemberAccessAst>(ast);
+        return is_valid_postfix_expression.operator()<asts::PostfixExpressionOperatorStaticMemberAccessAst>(ast);
     };
 
     auto adjusted_name = &expr;

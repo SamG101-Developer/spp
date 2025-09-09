@@ -5,11 +5,15 @@ set(CMAKE_CXX_STANDARD 26)
 find_package(ColEx REQUIRED)
 find_package(GenEx REQUIRED)
 
+find_package(indicators REQUIRED)
 find_package(nlohmann_json REQUIRED)
-find_package(tsl-robin-map REQUIRED)
 find_package(magic_enum REQUIRED)
 find_package(rapidfuzz REQUIRED)
+find_package(tomlplusplus REQUIRED)
+find_package(tsl-robin-map REQUIRED)
 find_package(Boost REQUIRED)
+find_package(Glob)
+find_package(CLI11 REQUIRED)
 
 file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS "sources/*.cpp")
 
@@ -28,4 +32,4 @@ target_compile_options(${PROJECT_NAME} PRIVATE
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/headers)
 target_link_libraries(${PROJECT_NAME} PRIVATE ColEx::ColExLib GenEx::GenExLib)
 target_link_libraries(${PROJECT_NAME} PRIVATE
-        nlohmann_json::nlohmann_json tsl::robin_map magic_enum::magic_enum rapidfuzz::rapidfuzz Boost::boost)
+        nlohmann_json::nlohmann_json tsl::robin_map magic_enum::magic_enum rapidfuzz::rapidfuzz Boost::boost Glob)
