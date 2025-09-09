@@ -1,8 +1,5 @@
-#include <algorithm>
-#include <iostream>
-#include <map>
-
 #include <spp/lex/lexer.hpp>
+#include <spp/pch.hpp>
 #include <spp/utils/strings.hpp>
 
 #include <genex/views/transform.hpp>

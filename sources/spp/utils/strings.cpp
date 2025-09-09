@@ -1,5 +1,3 @@
-#include <unicode/uchar.h>
-
 #include <spp/utils/strings.hpp>
 
 #include <rapidfuzz/fuzz.hpp>

@@ -1,5 +1,3 @@
-#include <algorithm>
-
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
@@ -15,6 +13,7 @@
 #include <spp/asts/generic_parameter_group_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/pch.hpp>
 
 #include <genex/views/cast.hpp>
 #include <genex/views/concat.hpp>

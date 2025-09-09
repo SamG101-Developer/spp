@@ -1,8 +1,7 @@
-#include <algorithm>
-
 #include <spp/asts/generic_parameter_type_inline_constraints_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/pch.hpp>
 
 
 spp::asts::GenericParameterTypeInlineConstraintsAst::GenericParameterTypeInlineConstraintsAst(

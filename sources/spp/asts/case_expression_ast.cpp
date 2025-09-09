@@ -1,6 +1,3 @@
-#include <algorithm>
-#include <map>
-
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope.hpp>
@@ -23,6 +20,7 @@
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
+#include <spp/pch.hpp>
 
 #include <genex/actions/remove.hpp>
 #include <genex/views/filter.hpp>

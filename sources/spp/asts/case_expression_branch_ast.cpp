@@ -1,5 +1,3 @@
-#include <algorithm>
-
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/binary_expression_ast.hpp>
 #include <spp/asts/case_expression_branch_ast.hpp>
@@ -15,6 +13,7 @@
 #include <spp/asts/object_initializer_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/pch.hpp>
 
 #include <genex/views/for_each.hpp>
 

@@ -1,6 +1,5 @@
-#include <vector>
-
 #include <spp/asts/meta/ast_printer.hpp>
+#include <spp/pch.hpp>
 
 
 spp::asts::meta::AstPrinter::AstPrinter(

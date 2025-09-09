@@ -1,5 +1,5 @@
 #pragma once
-#include <memory>
+#include <spp/pch.hpp>
 
 #include <spp/asts/meta/ast_printer.hpp>
 #include <spp/asts/mixins/compiler_stages.hpp>
@@ -147,7 +147,7 @@ public:
 
     /**
      * Print an AST using raw-formatting. This does not handle indentation, and prints the AST as a single line.
-     * Recursively prints child nodes using their respective "operator UnicodeString()" methods.
+     * Recursively prints child nodes using their respective "operator std::string()" methods.
      */
     virtual explicit operator std::string() const = 0;
 

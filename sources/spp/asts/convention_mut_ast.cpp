@@ -1,7 +1,6 @@
-#include <algorithm>
-
 #include <spp/asts/convention_mut_ast.hpp>
 #include <spp/asts/token_ast.hpp>
+#include <spp/pch.hpp>
 
 
 spp::asts::ConventionMutAst::ConventionMutAst(

@@ -1,8 +1,7 @@
 #ifndef AST_PRINTER_HPP
 #define AST_PRINTER_HPP
 
-#include <cstdint>
-#include <string>
+#include <spp/pch.hpp>
 
 #define SPP_PRINT_START auto formatted_string = std::string()
 #define SPP_PRINT_APPEND(x) formatted_string.append(x->print(printer))

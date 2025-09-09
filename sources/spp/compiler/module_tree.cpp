@@ -59,9 +59,9 @@ spp::compiler::ModuleTree::ModuleTree(
 
     // Merge the src, vcs and ffi modules together.
     m_modules = genex::views::concat(src_modules | genex::views::move, vcs_modules | genex::views::move, ffi_modules | genex::views::move) | genex::views::to<std::vector>();
-    for (auto &m : m_modules) {
-        m.path = m.path.string().substr(std::filesystem::current_path().string().size());
-    }
+    // for (auto &m : m_modules) {
+    //     m.path = m.path.string().substr(std::filesystem::current_path().string().size());
+    // }
 }
 
 

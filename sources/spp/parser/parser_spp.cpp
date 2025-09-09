@@ -1,5 +1,3 @@
-#include <numeric>
-
 #include <spp/asts/annotation_ast.hpp>
 #include <spp/asts/array_literal_ast.hpp>
 #include <spp/asts/array_literal_repeated_element_ast.hpp>
@@ -147,6 +145,7 @@
 #include <spp/asts/unary_expression_operator_async_ast.hpp>
 #include <spp/asts/unary_expression_operator_deref_ast.hpp>
 #include <spp/asts/use_statement_ast.hpp>
+#include <spp/pch.hpp>
 
 #include <spp/parse/parser_spp.hpp>
 #include <spp/parse/errors/parser_error.hpp>
@@ -583,9 +582,14 @@ auto spp::parse::ParserSpp::parse_generic_argument_type_keyword() -> std::unique
 
 
 auto spp::parse::ParserSpp::parse_annotation() -> std::unique_ptr<asts::AnnotationAst> {
+    auto t0 = std::chrono::high_resolution_clock::now();
     PARSE_ONCE(p1, parse_token_at);
+    std::cout << "Time taken to parse @: " << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t0).count() << "us\n";
     PARSE_ONCE(p2, parse_identifier);
-    return CREATE_AST(asts::AnnotationAst, p1, p2);
+    std::cout << "Time taken to parse identifier after @: " << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t0).count() << "us\n";
+    auto x = CREATE_AST(asts::AnnotationAst, p1, p2);
+    std::cout << "Time taken to create AST for annotation: " << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t0).count() << "us\n";
+    return x;
 }
 
 
@@ -1904,7 +1908,7 @@ auto spp::parse::ParserSpp::parse_literal_float_b10() -> std::unique_ptr<asts::F
     PARSE_ONCE(p3, parse_token_dot);
     PARSE_ONCE(p4, parse_lexeme_dec_integer);
     PARSE_OPTIONAL(p5, parse_float_suffix_type);
-    return CREATE_AST(asts::FloatLiteralAst, p1, p2, p3, p4, p5->token_data);
+    return CREATE_AST(asts::FloatLiteralAst, p1, p2, p3, p4, p5 ? p5->token_data : "");
 }
 
 
@@ -1912,7 +1916,7 @@ auto spp::parse::ParserSpp::parse_literal_integer_b02() -> std::unique_ptr<asts:
     PARSE_OPTIONAL(p1, parse_numeric_prefix_op);
     PARSE_ONCE(p2, parse_lexeme_bin_integer);
     PARSE_OPTIONAL(p3, parse_integer_suffix_type);
-    return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3->token_data);
+    return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3 ? p3->token_data : "");
 }
 
 
@@ -1920,7 +1924,7 @@ auto spp::parse::ParserSpp::parse_literal_integer_b08() -> std::unique_ptr<asts:
     PARSE_OPTIONAL(p1, parse_numeric_prefix_op);
     PARSE_ONCE(p2, parse_lexeme_oct_integer);
     PARSE_OPTIONAL(p3, parse_integer_suffix_type);
-    return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3->token_data);
+    return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3 ? p3->token_data : "");
 }
 
 
@@ -1928,7 +1932,7 @@ auto spp::parse::ParserSpp::parse_literal_integer_b10() -> std::unique_ptr<asts:
     PARSE_OPTIONAL(p1, parse_numeric_prefix_op);
     PARSE_ONCE(p2, parse_lexeme_dec_integer);
     PARSE_OPTIONAL(p3, parse_integer_suffix_type);
-    return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3->token_data);
+    return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3 ? p3->token_data : "");
 }
 
 
@@ -1936,7 +1940,7 @@ auto spp::parse::ParserSpp::parse_literal_integer_b16() -> std::unique_ptr<asts:
     PARSE_OPTIONAL(p1, parse_numeric_prefix_op);
     PARSE_ONCE(p2, parse_lexeme_hex_integer);
     PARSE_OPTIONAL(p3, parse_integer_suffix_type);
-    return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3->token_data);
+    return CREATE_AST(asts::IntegerLiteralAst, p1, p2, p3 ? p3->token_data : "");
 }
 
 

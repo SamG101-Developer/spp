@@ -1,5 +1,3 @@
-#include <vector>
-
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
@@ -9,6 +7,7 @@
 #include <spp/asts/subroutine_prototype_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>
+#include <spp/pch.hpp>
 
 
 spp::asts::SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;

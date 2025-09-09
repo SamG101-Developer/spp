@@ -31,10 +31,10 @@
 auto spp::compiler::CompilerBoot::lex(indicators::ProgressBar &bar, ModuleTree &tree) -> void {
     // Lexing stage.
     for (auto &&mod : tree) {
+        bar.tick();
         mod.code = utils::files::read_file(std::filesystem::current_path() / mod.path);
         mod.tokens = lex::Lexer(mod.code).lex();
         mod.error_formatter = std::make_unique<utils::errors::ErrorFormatter>(mod.tokens, mod.path.string());
-        bar.tick();
     }
     bar.mark_as_completed();
 }
@@ -43,9 +43,9 @@ auto spp::compiler::CompilerBoot::lex(indicators::ProgressBar &bar, ModuleTree &
 auto spp::compiler::CompilerBoot::parse(indicators::ProgressBar &bar, ModuleTree &tree) -> void {
     // Parsing stage.
     for (auto &&mod : tree) {
+        bar.tick();
         mod.module_ast = parse::ParserSpp(mod.tokens, mod.error_formatter.get()).parse();
         m_modules.push_back(mod.module_ast.get());
-        bar.tick();
     }
     bar.mark_as_completed();
 }

@@ -1,15 +1,10 @@
 #ifndef PARSER_BASE_HPP
 #define PARSER_BASE_HPP
 
-#include <cstddef>
-#include <functional>
-#include <memory>
-#include <utility>
-#include <vector>
-
 #include <spp/lex/tokens.hpp>
 #include <spp/parse/errors/parser_error.hpp>
 #include <spp/parse/errors/parser_error_builder.hpp>
+#include <spp/pch.hpp>
 #include <spp/utils/error_formatter.hpp>
 
 #include <boost/preprocessor.hpp>

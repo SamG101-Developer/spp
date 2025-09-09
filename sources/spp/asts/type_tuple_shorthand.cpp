@@ -1,9 +1,8 @@
-#include <algorithm>
-
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_tuple_shorthand_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
+#include <spp/pch.hpp>
 
 
 spp::asts::TypeTupleShorthandAst::TypeTupleShorthandAst(

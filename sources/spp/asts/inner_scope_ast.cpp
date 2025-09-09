@@ -1,5 +1,3 @@
-#include <algorithm>
-
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
@@ -14,6 +12,7 @@
 #include <spp/asts/statement_ast.hpp>
 #include <spp/asts/sup_member_ast.hpp>
 #include <spp/asts/token_ast.hpp>
+#include <spp/pch.hpp>
 
 #include <genex/actions/remove.hpp>
 #include <genex/actions/remove_if.hpp>

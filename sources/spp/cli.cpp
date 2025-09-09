@@ -139,21 +139,23 @@ auto spp::cli::handle_vcs()
 
         // Repo doesn't exist locally => clone it.
         if (not std::filesystem::exists(repo_folder)) {
-            boost::process::system("git", "clone", repo_url, repo_folder.string());
-            boost::process::system("git", "-C", repo_folder.string(), "checkout", repo_branch, SPP_CLI_NULL);
-            std::cout << "Cloned "s + repo_name + " from "s + repo_url + "\n";
+            boost::process::system("git clone " + repo_url + " " + repo_folder.string());
+            boost::process::system("git -C " + repo_folder.string() + " checkout " + repo_branch);
+            std::cout << "Cloned "s + repo_name + " from " + repo_url + "\n";
         }
         else {
-            boost::process::system("git", "-C", repo_folder.string(), "pull", "origin", repo_branch);
-            boost::process::system("git", "-C", repo_folder.string(), "checkout", repo_branch, SPP_CLI_NULL);
-            std::cout << "Updated "s + repo_name + " from "s + repo_url + "\n";
+            boost::process::system("git -C " + repo_folder.string() + " pull origin " + repo_branch);
+            boost::process::system("git -C " + repo_folder.string() + " checkout " + repo_branch);
+            std::cout << "Updated "s + repo_name + " from " + repo_url + "\n";
         }
 
         // Copy all DLLs from the VCS's FFI folder into this project's FFI folder.
         auto ffi_repo_folder = repo_folder / FFI_FOLDER;
         if (std::filesystem::exists(ffi_repo_folder)) {
             for (const auto &entry : std::filesystem::directory_iterator(ffi_repo_folder)) {
-                std::filesystem::create_directory_symlink(entry.path(), ffi_repo_folder / entry.path().filename());
+                std::filesystem::copy(
+                    entry.path(), cwd / FFI_FOLDER / entry.path().filename(),
+                    std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing);
             }
         }
     }
@@ -183,15 +185,8 @@ auto spp::cli::handle_build(
     SPP_VALIDATE_STRUCTURE;
 
     // Compile the code.
-    try {
-        auto c = compiler::Compiler(mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL);
-        c.compile();
-        std::filesystem::current_path(cwd.parent_path());
-    }
-    catch (const std::exception &) {
-        std::filesystem::current_path(cwd.parent_path());
-        throw;
-    }
+    auto c = compiler::Compiler(mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL);
+    c.compile();
 }
 
 
@@ -281,7 +276,7 @@ auto spp::cli::handle_validate()
     }
 
     // For the VCS folders, validate each VCS entry (if it exists).
-    for (auto vcs_dir : std::filesystem::directory_iterator(cwd / VCS_FOLDER)) {
+    for (auto const &vcs_dir : std::filesystem::directory_iterator(cwd / VCS_FOLDER)) {
         std::filesystem::current_path(cwd / vcs_dir);
         handle_validate();
         std::filesystem::current_path(cwd);
@@ -289,23 +284,23 @@ auto spp::cli::handle_validate()
 
     // Check the FFI subfolders are structured properly.
     const auto ext = get_system_shared_library_extension();
-    for (auto ffi_dir : std::filesystem::directory_iterator(cwd / FFI_FOLDER)) {
+    for (auto const &ffi_dir : std::filesystem::directory_iterator(cwd / FFI_FOLDER)) {
         if (not std::filesystem::is_directory(ffi_dir)) {
             std::cerr << "Error: Non-directory found in 'ffi' folder: "s + ffi_dir.path().filename().string() + "\n";
             return false;
         }
 
         // Check for "{library_name}/lib/{library_name}.{ext}" and "{library_name/stub.spp}" files.
-        if (not std::filesystem::exists(ffi_dir.path() / "lib" / (ffi_dir.path().filename().string() + "." + ext))) {
-            std::cerr << "Error: Missing shared library file in 'ffi/"s + ffi_dir.path().filename().string() + "/lib' folder.\n";
-            return false;
-        }
-
-        // Check for stub file.
-        if (not std::filesystem::exists(ffi_dir.path() / "stub.spp")) {
-            std::cerr << "Error: Missing 'stub.spp' file in 'ffi/"s + ffi_dir.path().filename().string() + "' folder.\n";
-            return false;
-        }
+        // if (not std::filesystem::exists(ffi_dir.path() / "lib" / (ffi_dir.path().filename().string() + "." + ext))) {
+        //     std::cerr << "Error: Missing shared library file in 'ffi/"s + ffi_dir.path().filename().string() + "/lib' folder.\n";
+        //     return false;
+        // }
+        //
+        // // Check for stub file.
+        // if (not std::filesystem::exists(ffi_dir.path() / "stub.spp")) {
+        //     std::cerr << "Error: Missing 'stub.spp' file in 'ffi/"s + ffi_dir.path().filename().string() + "' folder.\n";
+        //     return false;
+        // }
     }
 
     // All checks passed.
@@ -334,11 +329,11 @@ auto spp::cli::create_default_config_for(
 auto spp::cli::get_system_shared_library_extension()
     -> std::string {
     // Return the appropriate shared library extension for the current OS.
-    #if defined(_WIN32) || defined(_WIN64)
-        return "dll";
-    #elif defined(__APPLE__)
-        return "dylib";
-    #else
-        return "so";
-    #endif
+#if defined(_WIN32) || defined(_WIN64)
+    return "dll";
+#elif defined(__APPLE__)
+    return "dylib";
+#else
+    return "so";
+#endif
 }

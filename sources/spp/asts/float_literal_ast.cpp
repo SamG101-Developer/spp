@@ -1,5 +1,3 @@
-#include <algorithm>
-#include <format>
 
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
@@ -9,6 +7,7 @@
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
+#include <spp/pch.hpp>
 
 #include <boost/multiprecision/cpp_dec_float.hpp>
 

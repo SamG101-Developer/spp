@@ -1,5 +1,4 @@
-#include <algorithm>
-#include <genex/algorithms/any_of.hpp>
+#include <spp/pch.hpp>
 
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
@@ -14,6 +13,7 @@
 #include <spp/asts/generate/common_types.hpp>
 
 #include <genex/algorithms/all_of.hpp>
+#include <genex/algorithms/any_of.hpp>
 #include <genex/views/address.hpp>
 #include <genex/views/to.hpp>
 #include <genex/views/zip.hpp>

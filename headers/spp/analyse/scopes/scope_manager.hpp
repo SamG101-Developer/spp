@@ -1,10 +1,6 @@
 #ifndef SCOPE_MANAGER_HPP
 #define SCOPE_MANAGER_HPP
 
-#include <map>
-#include <stack>
-#include <vector>
-
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/utils/error_formatter.hpp>
 

@@ -1,10 +1,9 @@
-#include <algorithm>
-
 #include <spp/asts/case_pattern_variant_destructure_object_ast.hpp>
 #include <spp/asts/let_statement_initialized_ast.hpp>
 #include <spp/asts/local_variable_destructure_object_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/pch.hpp>
 
 
 spp::asts::CasePatternVariantDestructureObjectAst::CasePatternVariantDestructureObjectAst(

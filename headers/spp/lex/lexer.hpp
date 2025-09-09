@@ -1,11 +1,6 @@
-#ifndef LEXER_HPP
-#define LEXER_HPP
-
-#include <vector>
-
+#pragma once
+#include <spp/pch.hpp>
 #include <spp/lex/tokens.hpp>
-
-#include <unicode/unistr.h>
 
 
 namespace spp::lex {
@@ -21,6 +16,3 @@ public:
 private:
     std::string m_code;
 };
-
-
-#endif //LEXER_HPP

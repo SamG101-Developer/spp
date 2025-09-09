@@ -1,6 +1,3 @@
-#include <algorithm>
-#include <format>
-
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/closure_expression_capture_ast.hpp>
@@ -14,6 +11,7 @@
 #include <spp/asts/function_parameter_group_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/pch.hpp>
 
 #include <genex/views/cast.hpp>
 #include <genex/views/move.hpp>

@@ -1,9 +1,7 @@
 #pragma once
-#include <array>
-#include <filesystem>
-
 #include <spp/compiler/compiler_boot.hpp>
 #include <spp/compiler/module_tree.hpp>
+#include <spp/pch.hpp>
 
 
 namespace spp::compiler {

@@ -1,12 +1,10 @@
 #ifndef SCOPE_HPP
 #define SCOPE_HPP
 
-#include <generator>
-#include <variant>
-
 #include <spp/asts/_fwd.hpp>
 #include <spp/analyse/scopes/symbols.hpp>
 #include <spp/analyse/scopes/symbol_table.hpp>
+#include <spp/pch.hpp>
 #include <spp/utils/error_formatter.hpp>
 
 

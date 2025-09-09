@@ -1,5 +1,3 @@
-#include <algorithm>
-
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/annotation_ast.hpp>
@@ -17,6 +15,7 @@
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/type_statement_ast.hpp>
 #include <spp/asts/use_statement_ast.hpp>
+#include <spp/pch.hpp>
 
 #include <genex/views/for_each.hpp>
 

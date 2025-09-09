@@ -1,9 +1,6 @@
 #pragma once
-
-#include <memory>
-#include <vector>
-
 #include <spp/analyse/scopes/scope.hpp>
+#include <spp/pch.hpp>
 
 #include <genex/views/flatten_with.hpp>
 #include <genex/views/to.hpp>
