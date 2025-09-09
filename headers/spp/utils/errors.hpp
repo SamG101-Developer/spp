@@ -70,7 +70,7 @@ public:
 
     auto with_error_formatter(ErrorFormatter *error_formatter) -> AbstractErrorBuilder& {
         // Add a single error formatter to the list.
-        m_error_formatters.push_back(error_formatter);
+        m_error_formatters.emplace_back(error_formatter);
         return *this;
     }
 

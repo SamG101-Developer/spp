@@ -147,11 +147,12 @@
 #include <spp/asts/unary_expression_operator_async_ast.hpp>
 #include <spp/asts/unary_expression_operator_deref_ast.hpp>
 #include <spp/asts/use_statement_ast.hpp>
+#include <spp/parse/errors/parser_error.hpp>
 
 #include <gtest/gtest.h>
 
 
-SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_intentional_error, R"(
+SPP_TEST_SHOULD_FAIL_SYNTACTIC(parse_intentional_error, R"(
     3254gGG
 )")
 SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_class_prototype, R"(
@@ -286,9 +287,6 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_generic_parameters, R"(
 )")
 SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_generic_inline_constraints, R"(
     fun my_function[T: Copy, U: Clone]() -> Void { }
-)")
-SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_where_block_constraints, R"(
-    fun my_function[T, U]() -> Void where [T, U: Copy, U: Clone] { }
 )")
 SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_annotations_function, R"(
     @annotation1
@@ -447,18 +445,6 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_gen_expression_unroll, R"(
         gen with another_generator
     }
 )")
-SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_with_expression, R"(
-    fun my_function() -> Void {
-        with some_function_call, R"(
-        }
-    }
-)")
-SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_with_expression_alias, R"(
-    fun my_function() -> Void {
-        with some_function_call() as alias {
-        }
-    }
-)")
 SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_ret_statement_no_value, R"(
     fun my_function() -> Void {
         ret
@@ -512,8 +498,8 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_inner_scope, R"(
         }
     }
 )")
-SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_global_use_statement, R"(
-    use MyString = Str
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_global_type_statement, R"(
+    type MyString = Str
 
 )")
 SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_global_constant, R"(
@@ -603,35 +589,35 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC( parse_case_else_case_pattern_with_condition, R"(
 SPP_TEST_SHOULD_PASS_SYNTACTIC( parse_case_destructure_array, R"(
     fun my_function() -> Void {
         case value of {
-            [a, b, c] { }
+            is [a, b, c] { }
         }
     }
 )")
 SPP_TEST_SHOULD_PASS_SYNTACTIC( parse_case_destructure_tuple, R"(
     fun my_function() -> Void {
         case value of {
-            (a, b, c) { }
+            is (a, b, c) { }
         }
     }
 )")
 SPP_TEST_SHOULD_PASS_SYNTACTIC( parse_case_destructure_object, R"(
     fun my_function() -> Void {
         case value of {
-            MyType(a, b, c) { }
+            is MyType(a, b, c) { }
         }
     }
 )")
 SPP_TEST_SHOULD_PASS_SYNTACTIC( parse_case_destructure_object_attr_binding, R"(
     fun my_function() -> Void {
         case value of {
-            MyType(attr1=Point(x, y), attr2) { }
+            is MyType(attr1=Point(x, y), attr2) { }
         }
     }
 )")
 SPP_TEST_SHOULD_PASS_SYNTACTIC( parse_case_destructure_literal, R"(
     fun my_function() -> Void {
         case value of {
-            1 { }
+            == 1 { }
         }
     }
 )")
@@ -694,11 +680,6 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_type_union, R"(
         let a: I32 or Str
     }
 )")
-SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_type_intersection, R"(
-    fun my_function() -> Void {
-        let a: I32 and Str
-    }
-)")
 SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_type_single, R"(
     fun my_function() -> Void {
         let a: I32
@@ -756,7 +737,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_literal_integer_base_16, R"(
 )")
 SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_literal_string, R"(
     fun my_function() -> Void {
-        let a = \"string\"
+        let a = "string"
     }
 )")
 SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_literal_boolean, R"(

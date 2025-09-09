@@ -27,7 +27,7 @@ auto spp::compiler::Compiler::compile() -> void {
         p->set_option(indicators::option::ShowElapsedTime{true});
         p->set_option(indicators::option::ShowRemainingTime{true});
         p->set_option(indicators::option::MaxProgress{static_cast<int>(m_modules.get_modules().size())});
-        progress_bars.push_back(std::move(p));
+        progress_bars.emplace_back(std::move(p));
     }
 
     // Save the modules into the CompilerBoot instance, and lex/parse.

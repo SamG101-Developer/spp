@@ -50,7 +50,7 @@ auto spp::asts::CaseExpressionAst::new_non_pattern_match(
     decltype(branches) &&branches) -> std::unique_ptr<CaseExpressionAst> {
     // Convert consecutive if/else-if/else branches into case pattern matching.
     auto patterns = std::vector<std::unique_ptr<CasePatternVariantAst>>(1);
-    patterns.push_back(std::make_unique<CasePatternVariantExpressionAst>(BooleanLiteralAst::True(tok_case->pos_start())));
+    patterns[0] = std::make_unique<CasePatternVariantExpressionAst>(BooleanLiteralAst::True(tok_case->pos_start()));
     auto first_branch = std::make_unique<CaseExpressionBranchAst>(nullptr, std::move(patterns), nullptr, std::move(first));
     branches.insert(branches.begin(), std::move(first_branch));
 

@@ -44,8 +44,8 @@ auto spp::compiler::CompilerBoot::parse(indicators::ProgressBar &bar, ModuleTree
     // Parsing stage.
     for (auto &&mod : tree) {
         bar.tick();
-        mod.module_ast = parse::ParserSpp(mod.tokens, mod.error_formatter.get()).parse();
-        m_modules.push_back(mod.module_ast.get());
+        mod.module_ast = parse::ParserSpp(mod.tokens, mod.error_formatter).parse();
+        m_modules.emplace_back(mod.module_ast.get());
     }
     bar.mark_as_completed();
 }

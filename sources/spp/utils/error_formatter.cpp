@@ -28,21 +28,13 @@ auto spp::utils::errors::ErrorFormatter::internal_parse_error_raw_pos(
     using lex::RawTokenType;
     using namespace std::string_literals;
 
-    auto slice_front = m_tokens
-        | genex::views::take(ast_start_pos)
-        | genex::views::to<std::vector>();
-
-    auto slice_back = m_tokens
-        | genex::views::drop(ast_start_pos)
-        | genex::views::to<std::vector>();
-
     const auto error_line_start_pos = genex::algorithms::position_last(
-        slice_front,
+        m_tokens | genex::views::take(ast_start_pos) | genex::views::to<std::vector>(),
         [](auto &&token) { return token.type == RawTokenType::TK_LINE_FEED; }) + 1;
 
     const auto error_line_end_pos = genex::algorithms::position(
-        slice_back,
-        [](auto &&token) { return token.type == RawTokenType::TK_LINE_FEED; }, {}, m_tokens.size()) + ast_start_pos;
+        m_tokens | genex::views::drop(ast_start_pos) | genex::views::to<std::vector>(),
+        [](auto &&token) { return token.type == RawTokenType::TK_LINE_FEED; }, {}, m_tokens.size() - ast_start_pos) + ast_start_pos;
 
     auto error_line_tokens = std::vector(
         m_tokens.begin() + error_line_start_pos,

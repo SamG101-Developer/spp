@@ -55,7 +55,7 @@ auto spp::asts::ModulePrototypeAst::name() const
     auto parts = std::vector<std::string>();
     for (auto const &entry : std::filesystem::directory_iterator(m_file_path)) {
         if (entry.is_directory()) {
-            parts.push_back(entry.path().filename().string());
+            parts.emplace_back(entry.path().filename().string());
         }
     }
 

@@ -28,12 +28,12 @@ auto spp::asts::meta::AstPrinter::m_format_code(std::string &&code) const -> std
     auto start = 0uz, end = 0uz;
 
     while ((end = code.find('\n', start)) != std::string::npos) {
-        lines.push_back(code.substr(start, end));
+        lines.emplace_back(code.substr(start, end));
         start = end + 1;
     }
 
     if (start <= code.length()) {
-        lines.push_back(code.substr(start));
+        lines.emplace_back(code.substr(start));
     }
 
     const auto indent = std::string(m_indent_level, ' ');

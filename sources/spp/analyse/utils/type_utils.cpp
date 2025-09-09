@@ -803,7 +803,7 @@ auto spp::analyse::utils::type_utils::deduplicate_variant_inner_types(
 
         // Inspect a non-variant type, and if it hasn't beem added to the list, add it.
         else if (not genex::algorithms::any_of(out, [&](auto x) { return symbolic_eq(*generic_arg->val, *x, scope, scope); })) {
-            out.push_back(generic_arg->val);
+            out.emplace_back(generic_arg->val);
         }
     }
 

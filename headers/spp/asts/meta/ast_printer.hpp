@@ -9,7 +9,7 @@
 #define SPP_PRINT_END return formatted_string
 
 #define SPP_STRING_START auto raw_string = std::string()
-#define SPP_STRING_APPEND(x) raw_string.append(static_cast<std::string>(*x))
+#define SPP_STRING_APPEND(x) raw_string.append(x != nullptr ? static_cast<std::string>(*x) : "")
 #define SPP_STRING_EXTEND(x) for (auto &&elem : x) { raw_string.append(static_cast<std::string>(*elem)); }
 #define SPP_STRING_END return raw_string
 

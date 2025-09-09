@@ -16,7 +16,7 @@ struct spp::compiler::Module {
     std::string code;
     std::vector<lex::RawToken> tokens = {};
     std::unique_ptr<asts::ModulePrototypeAst> module_ast;
-    std::unique_ptr<utils::errors::ErrorFormatter> error_formatter;
+    std::shared_ptr<utils::errors::ErrorFormatter> error_formatter;
 
     static auto from_path(std::filesystem::path const &path);
 };

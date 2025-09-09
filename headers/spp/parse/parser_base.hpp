@@ -21,7 +21,7 @@
     {                                      \
         const auto temp_opt_index = m_pos; \
         auto temp_out_opt = f();           \
-        if (out == nullptr) {              \
+        if (temp_out_opt == nullptr) {     \
             m_pos = temp_opt_index;        \
             out = nullptr;                 \
         }                                  \
@@ -47,7 +47,7 @@
                 break;                         \
             }                                  \
             else {                             \
-                out.push_back(std::move(ast)); \
+                out.emplace_back(std::move(ast)); \
                 done_1_parse = true;           \
                 temp_index = m_pos;            \
             }                                  \
@@ -89,6 +89,9 @@
             out = std::move(temp_out);              \
             break;                                  \
         }                                           \
+    }                                               \
+    if (out == nullptr) {                           \
+        return nullptr;                             \
     }
 
 #define FORWARD_AST(ast) \
@@ -113,7 +116,7 @@
 
 
 #define INJECT_CODE(code, method) \
-    spp::parse::ParserSpp(spp::lex::Lexer((code)).lex(), nullptr).method()
+    spp::parse::ParserSpp(spp::lex::Lexer((code)).lex()).method()
 
 
 namespace spp::utils::errors {
@@ -128,7 +131,7 @@ namespace spp::parse {
 
 class spp::parse::ParserBase {
 public:
-    explicit ParserBase(std::vector<lex::RawToken> tokens, utils::errors::ErrorFormatter *error_formatter = nullptr);
+    explicit ParserBase(std::vector<lex::RawToken> tokens, std::shared_ptr<utils::errors::ErrorFormatter> const &error_formatter = nullptr);
     virtual ~ParserBase() = default;
 
 protected:
@@ -136,7 +139,7 @@ protected:
     std::vector<lex::RawToken> m_tokens = {};
     std::size_t m_tokens_len = 0;
     std::unique_ptr<errors::SyntacticErrorBuilder<errors::SppSyntaxError>> m_error_builder;
-    utils::errors::ErrorFormatter *m_error_formatter;
+    std::shared_ptr<utils::errors::ErrorFormatter> m_error_formatter;
 
     template <typename T>
     using parser_method_t = std::function<std::unique_ptr<T>()>;

@@ -107,7 +107,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
                 ast_clone(lhs),
                 std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
             new_ast->stage_7_analyse_semantics(sm, meta);
-            new_asts.push_back(std::move(new_ast));
+            new_asts.emplace_back(std::move(new_ast));
         }
 
         // Convert "t = (0, 1, 2, 3)", ".. + t" into "(((t.0 + t.1) + t.2) + t.3)".
@@ -139,7 +139,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
                 ast_clone(rhs),
                 std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
             new_ast->stage_7_analyse_semantics(sm, meta);
-            new_asts.push_back(std::move(new_ast));
+            new_asts.emplace_back(std::move(new_ast));
         }
 
         // Convert "t = (0, 1, 2, 3)", "t + .." into "(t.0 + (t.1 + (t.2 + t.3)))".

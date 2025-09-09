@@ -8,6 +8,8 @@
 #include <spp/asts/type_unary_expression_ast.hpp>
 #include <spp/asts/type_unary_expression_operator_namespace_ast.hpp>
 
+#include <genex/views/enumerate.hpp>
+
 
 auto spp::asts::generate::common_types::f8(std::size_t pos) -> std::unique_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("F8"), nullptr);
@@ -216,8 +218,8 @@ auto spp::asts::generate::common_types::array_type(std::size_t pos, std::shared_
 
 auto spp::asts::generate::common_types::variant_type(std::size_t pos, std::vector<std::shared_ptr<TypeAst>> &&inner_types) -> std::unique_ptr<TypeAst> {
     auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(inner_types.size());
-    for (auto &&inner_type : inner_types) {
-        generics_lst.push_back(std::make_unique<GenericArgumentTypePositionalAst>(std::move(inner_type)));
+    for (auto &&[i, inner_type] : inner_types | genex::views::enumerate) {
+        generics_lst[i] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(inner_type));
     }
     auto generics = std::make_unique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
@@ -230,8 +232,8 @@ auto spp::asts::generate::common_types::variant_type(std::size_t pos, std::vecto
 
 auto spp::asts::generate::common_types::tuple_type(std::size_t pos, std::vector<std::shared_ptr<TypeAst>> &&inner_types) -> std::unique_ptr<TypeAst> {
     auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(inner_types.size());
-    for (auto &&inner_type : inner_types) {
-        generics_lst.push_back(std::make_unique<GenericArgumentTypePositionalAst>(std::move(inner_type)));
+    for (auto &&[i, inner_type] : inner_types | genex::views::enumerate) {
+        generics_lst[i] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(inner_type));
     }
     auto generics = std::make_unique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
@@ -255,7 +257,7 @@ auto spp::asts::generate::common_types::future_type(std::size_t pos, std::shared
 
 
 auto spp::asts::generate::common_types::gen_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type, std::shared_ptr<TypeAst> send_type) -> std::unique_ptr<TypeAst> {
-    auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(send_type ? 2 : 1);
+    auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(2);
     generics_lst[0] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(yield_type));
     generics_lst[1] = std::make_unique<GenericArgumentTypePositionalAst>(send_type ? std::move(send_type) : void_type(pos));
     auto generics = std::make_unique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
@@ -280,7 +282,7 @@ auto spp::asts::generate::common_types::gen_once_type(std::size_t pos, std::shar
 
 
 auto spp::asts::generate::common_types::gen_opt_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type, std::shared_ptr<TypeAst> send_type) -> std::unique_ptr<TypeAst> {
-    auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(send_type ? 2 : 1);
+    auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(2);
     generics_lst[0] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(yield_type));
     generics_lst[1] = std::make_unique<GenericArgumentTypePositionalAst>(send_type ? std::move(send_type) : void_type(pos));
     auto generics = std::make_unique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
@@ -293,7 +295,7 @@ auto spp::asts::generate::common_types::gen_opt_type(std::size_t pos, std::share
 
 
 auto spp::asts::generate::common_types::gen_res_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type, std::shared_ptr<TypeAst> err_type, std::shared_ptr<TypeAst> send_type) -> std::unique_ptr<TypeAst> {
-    auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(err_type ? 3 : 2);
+    auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(3);
     generics_lst[0] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(yield_type));
     generics_lst[1] = std::make_unique<GenericArgumentTypePositionalAst>(err_type ? std::move(err_type) : void_type(pos));
     generics_lst[2] = std::make_unique<GenericArgumentTypePositionalAst>(send_type ? std::move(send_type) : void_type(pos));

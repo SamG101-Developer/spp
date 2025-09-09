@@ -248,6 +248,7 @@ public:
     auto parse_postfix_type_expression_op_nested() -> std::unique_ptr<asts::TypePostfixExpressionOperatorNestedTypeAst>;
 
     auto parse_type_parenthesised_expression() -> std::unique_ptr<asts::TypeAst>;
+    auto parse_type_never() -> std::unique_ptr<asts::TypeAst>;
 
     auto parse_type_expression_simple() -> std::unique_ptr<asts::TypeAst>;
     auto parse_postfix_type_expression_simple() -> std::unique_ptr<asts::TypeAst>;

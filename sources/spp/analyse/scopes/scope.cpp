@@ -157,12 +157,12 @@ auto spp::analyse::scopes::Scope::get_generics() const
         // Type symbols must be generic and have a "scope" ie the generic points to a concrete type.
         scope->all_type_symbols(true)
             | genex::views::filter([](auto &&sym) { return sym->is_generic and sym->scope != nullptr; })
-            | genex::views::for_each([&syms](auto &&sym) { syms.push_back(asts::GenericArgumentTypeKeywordAst::from_symbol(sym)); });
+            | genex::views::for_each([&syms](auto &&sym) { syms.emplace_back(asts::GenericArgumentTypeKeywordAst::from_symbol(sym)); });
 
         // Comp symbols must be generic.
         scope->all_var_symbols(true)
             | genex::views::filter([](auto &&sym) { return sym->is_generic; })
-            | genex::views::for_each([&syms](auto &&sym) { syms.push_back(asts::GenericArgumentCompKeywordAst::from_symbol(sym)); });
+            | genex::views::for_each([&syms](auto &&sym) { syms.emplace_back(asts::GenericArgumentCompKeywordAst::from_symbol(sym)); });
     }
 
     // Return the list of generic symbols.
@@ -196,11 +196,11 @@ auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
     for (auto &&scope : scopes) {
         scope->all_type_symbols(true)
             | genex::views::filter([](auto &&sym) { return sym->is_generic and sym->scope != nullptr; })
-            | genex::views::for_each([&syms](auto &&sym) { syms.push_back(sym); });
+            | genex::views::for_each([&syms](auto &&sym) { syms.emplace_back(sym); });
 
         scope->all_var_symbols(true)
             | genex::views::filter([](auto &&sym) { return sym->is_generic; })
-            | genex::views::for_each([&syms](auto &&sym) { syms.push_back(sym); });
+            | genex::views::for_each([&syms](auto &&sym) { syms.emplace_back(sym); });
     }
 
     // Return the full list of generic symbols.
@@ -504,7 +504,7 @@ auto spp::analyse::scopes::Scope::ancestors() const
     // Get all ancestor scopes, including this scope, and the global scope.
     auto scopes = std::vector<Scope const*>();
     for (auto *scope = this; scope != nullptr; scope = scope->parent) {
-        scopes.push_back(scope);
+        scopes.emplace_back(scope);
     }
     return scopes;
 }
