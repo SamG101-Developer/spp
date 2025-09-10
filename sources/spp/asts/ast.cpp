@@ -6,6 +6,8 @@
 #include <spp/asts/class_member_ast.hpp>
 #include <spp/asts/function_implementation_ast.hpp>
 #include <spp/asts/function_prototype_ast.hpp>
+#include <spp/asts/module_implementation_ast.hpp>
+#include <spp/asts/module_prototype_ast.hpp>
 #include <spp/asts/sup_implementation_ast.hpp>
 #include <spp/asts/sup_prototype_extension_ast.hpp>
 #include <spp/asts/sup_prototype_functions_ast.hpp>
@@ -46,6 +48,9 @@ auto spp::asts::ast_body(Ast *ast) -> std::vector<Ast*> {
     }
     if (dynamic_cast<FunctionPrototypeAst*>(ast) != nullptr) {
         return ast_cast<FunctionPrototypeAst>(ast)->impl->members | genex::views::ptr | genex::views::cast_dynamic<Ast*>() | genex::views::to<std::vector>();
+    }
+    if (dynamic_cast<ModulePrototypeAst*>(ast) != nullptr) {
+        return ast_cast<ModulePrototypeAst>(ast)->impl->members | genex::views::ptr | genex::views::cast_dynamic<Ast*>() | genex::views::to<std::vector>();
     }
 
     throw std::runtime_error("ast_body: Unsupported AST type");

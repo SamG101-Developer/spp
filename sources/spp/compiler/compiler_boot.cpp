@@ -46,7 +46,6 @@ auto spp::compiler::CompilerBoot::parse(indicators::ProgressBar &bar, ModuleTree
         mod.module_ast = parse::ParserSpp(mod.tokens, mod.error_formatter).parse();
         m_modules.emplace_back(mod.module_ast.get());
     }
-    bar.mark_as_completed();
 }
 
 
@@ -62,7 +61,6 @@ auto spp::compiler::CompilerBoot::stage_1_pre_process(
         mod->stage_1_pre_process(ctx);
         bar.tick();
     }
-    bar.mark_as_completed();
 }
 
 
@@ -77,7 +75,6 @@ auto spp::compiler::CompilerBoot::stage_2_gen_top_level_scopes(
         mod->stage_2_gen_top_level_scopes(sm, &meta);
         bar.tick();
     }
-    bar.mark_as_completed();
 }
 
 
@@ -92,7 +89,6 @@ auto spp::compiler::CompilerBoot::stage_3_gen_top_level_aliases(
         mod->stage_3_gen_top_level_aliases(sm, &meta);
         bar.tick();
     }
-    bar.mark_as_completed();
 }
 
 
@@ -107,7 +103,6 @@ auto spp::compiler::CompilerBoot::stage_4_qualify_types(
         mod->stage_4_qualify_types(sm, &meta);
         bar.tick();
     }
-    bar.mark_as_completed();
 }
 
 
@@ -122,7 +117,6 @@ auto spp::compiler::CompilerBoot::stage_5_load_super_scopes(
         mod->stage_5_load_super_scopes(sm, &meta);
         bar.tick();
     }
-    bar.mark_as_completed();
 
     // Attach all super scopes now.
     auto meta = asts::mixins::CompilerMetaData();
@@ -142,7 +136,6 @@ auto spp::compiler::CompilerBoot::stage_6_pre_analyse_semantics(
         mod->stage_6_pre_analyse_semantics(sm, &meta);
         bar.tick();
     }
-    bar.mark_as_completed();
 }
 
 
@@ -157,7 +150,6 @@ auto spp::compiler::CompilerBoot::stage_7_analyse_semantics(
         mod->stage_7_analyse_semantics(sm, &meta);
         bar.tick();
     }
-    bar.mark_as_completed();
 
     // Validate entry point now.
     validate_entry_point(sm);
@@ -175,7 +167,6 @@ auto spp::compiler::CompilerBoot::stage_8_check_memory(
         mod->stage_8_check_memory(sm, &meta);
         bar.tick();
     }
-    bar.mark_as_completed();
 }
 
 

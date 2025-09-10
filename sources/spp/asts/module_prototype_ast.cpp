@@ -91,7 +91,8 @@ auto spp::asts::ModulePrototypeAst::stage_1_pre_process(
     Ast *ctx)
     -> void {
     // Shift to implementation.
-    impl->stage_1_pre_process(ctx);
+    Ast::stage_1_pre_process(ctx);
+    impl->stage_1_pre_process(this);
 }
 
 

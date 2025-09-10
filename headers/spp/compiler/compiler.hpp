@@ -10,16 +10,16 @@ namespace spp::compiler {
 
 
 inline constexpr auto COMPILER_STAGE_NAMES = std::array{
-    "Lexing",
-    "Parsing",
-    "Pre-processing",
-    "Generating Top-Level Scopes",
-    "Generating Top-Level Aliases",
-    "Qualifying Types",
-    "Loading Super Scopes",
-    "Pre-Analysing Semantics",
-    "Analysing Semantics",
-    "Checking Memory Safety"
+    "Lexing......................... ",
+    "Parsing........................ ",
+    "Pre-processing................. ",
+    "Generating Top-Level Scopes.... ",
+    "Generating Top-Level Aliases... ",
+    "Qualifying Types............... ",
+    "Loading Super Scopes........... ",
+    "Pre-Analysing Semantics........ ",
+    "Analysing Semantics............ ",
+    "Checking Memory Safety......... ",
 };
 
 

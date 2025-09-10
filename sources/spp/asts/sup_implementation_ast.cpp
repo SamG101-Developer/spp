@@ -5,6 +5,9 @@
 #include <genex/views/for_each.hpp>
 
 
+spp::asts::SupImplementationAst::~SupImplementationAst() = default;
+
+
 auto spp::asts::SupImplementationAst::new_empty() -> std::unique_ptr<SupImplementationAst> {
     return std::make_unique<SupImplementationAst>();
 }

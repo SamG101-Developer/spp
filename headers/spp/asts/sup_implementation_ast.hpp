@@ -13,6 +13,8 @@ struct spp::asts::SupImplementationAst final : InnerScopeAst<std::unique_ptr<Sup
     friend class parse::ParserSpp;
     using InnerScopeAst::InnerScopeAst;
 
+    ~SupImplementationAst() override;
+
 private:
     static auto new_empty() -> std::unique_ptr<SupImplementationAst>;
 
