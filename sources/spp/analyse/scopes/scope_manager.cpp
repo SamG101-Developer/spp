@@ -17,6 +17,7 @@
 #include <genex/views/filter.hpp>
 #include <genex/views/flatten.hpp>
 #include <genex/views/for_each.hpp>
+#include <genex/views/ptr.hpp>
 #include <genex/views/to.hpp>
 #include <opex/cast.hpp>
 
@@ -47,8 +48,8 @@ auto spp::analyse::scopes::ScopeManager::iter_impl(
     // Define the generation algorithm for iterating scopes.
     // TODO: REMOVE CONST CAST.
     co_yield const_cast<Scope*>(scope);
-    for (auto &&child : scope->children) {
-        for (auto *descendant : iter_impl(child.get())) {
+    for (auto &&child : scope->children | genex::views::ptr) {
+        for (auto *descendant : iter_impl(child)) {
             co_yield descendant;
         }
     }
@@ -80,10 +81,7 @@ auto spp::analyse::scopes::ScopeManager::create_and_move_into_new_scope(
 
     // Set the new scope as the current scope, and advance the iterator to match.
     current_scope = current_scope->children.back().get();
-    if (m_it == m_end) {
-        throw std::runtime_error("Scope iterator is out of range.");
-    }
-    ++m_it;
+    reset(current_scope);
     return current_scope;
 }
 

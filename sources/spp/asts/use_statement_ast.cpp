@@ -91,7 +91,7 @@ auto spp::asts::UseStatementAst::stage_2_gen_top_level_scopes(
     m_conversion = std::make_unique<TypeStatementAst>(
         std::move(annotations), nullptr,
         asts::ast_cast<TypeIdentifierAst>(old_type->type_parts().back()->without_generics()), nullptr, nullptr,
-        asts::ast_cast<TypeIdentifierAst>(old_type));
+        ast_clone(old_type));
     m_conversion->stage_2_gen_top_level_scopes(sm, meta);
     m_generated = true;
 }

@@ -91,7 +91,7 @@ auto spp::asts::FunctionPrototypeAst::clone() const -> std::unique_ptr<Ast> {
         ast_clone(impl));
     f->m_ctx = m_ctx;
     f->m_scope = m_scope;
-    f->orig_name = orig_name;
+    f->orig_name = ast_clone(orig_name);
     f->m_abstract_annotation = m_abstract_annotation;
     f->m_virtual_annotation = m_virtual_annotation;
     f->m_temperature_annotation = m_temperature_annotation;
@@ -192,7 +192,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     }
 
     // Preprocess the annotations.
-    annotations | genex::views::for_each([ctx](auto &&x) { x->stage_1_pre_process(ctx); });
+    annotations | genex::views::for_each([this](auto &&x) { x->stage_1_pre_process(this); });
 
     // Convert the "fun" function to a "sup" superimposition of a "Fun[Mov|Mut|Ref]" type over a mock type.
     auto mock_class_name = TypeIdentifierAst::from_identifier(*name->to_function_identifier());
@@ -208,7 +208,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     if (needs_generation) {
         auto mock_class_ast = std::make_unique<ClassPrototypeAst>(SPP_NO_ANNOTATIONS, nullptr, ast_clone(mock_class_name), nullptr, nullptr);
         auto mock_constant_value = std::make_unique<ObjectInitializerAst>(ast_clone(mock_class_name), nullptr);
-        auto mock_constant_ast = std::make_unique<CmpStatementAst>(SPP_NO_ANNOTATIONS, nullptr, ast_clone(name), nullptr, std::move(mock_class_name), nullptr, std::move(mock_constant_value));
+        auto mock_constant_ast = std::make_unique<CmpStatementAst>(SPP_NO_ANNOTATIONS, nullptr, ast_clone(name), nullptr, ast_clone(mock_class_name), nullptr, std::move(mock_constant_value));
 
         if (const auto mod_ctx = ast_cast<ModulePrototypeAst>(ctx)) {
             mod_ctx->impl->members.emplace_back(std::move(mock_class_ast));
@@ -226,7 +226,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
 
     // Superimpose the function type over the mock class.
     auto function_ast = std::vector<std::unique_ptr<SupMemberAst>>();
-    orig_name = name.get();
+    orig_name = ast_clone(name);
     function_ast.emplace_back(ast_clone(this));
     auto mock_sup_ext_impl = std::make_unique<SupImplementationAst>(nullptr, std::move(function_ast), nullptr);
     auto mock_sup_ext = std::make_unique<SupPrototypeExtensionAst>(

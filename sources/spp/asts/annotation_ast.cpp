@@ -62,9 +62,12 @@ auto spp::asts::AnnotationAst::print(meta::AstPrinter &printer) const -> std::st
 }
 
 
-auto spp::asts::AnnotationAst::stage_1_pre_process(Ast *ctx) -> void {
+auto spp::asts::AnnotationAst::stage_1_pre_process(
+    Ast *ctx)
+    -> void {
+    // Default AST processing (sets context).
     Ast::stage_1_pre_process(ctx);
-    using namespace asts::utils;
+    using utils::Visibility;
 
     // Define some cast contexts for attribute assignment.
     const auto fun_ctx = ast_cast<FunctionPrototypeAst>(ctx);
@@ -122,9 +125,13 @@ auto spp::asts::AnnotationAst::stage_1_pre_process(Ast *ctx) -> void {
 }
 
 
-auto spp::asts::AnnotationAst::stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void {
+auto spp::asts::AnnotationAst::stage_2_gen_top_level_scopes(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> void {
+    // Default AST processing (sets scope).
     Ast::stage_2_gen_top_level_scopes(sm, meta);
-    using namespace asts::utils;
+    using utils::Visibility;
 
     // Define some cast contexts for attribute assignment.
     const auto fun_ctx = ast_cast<FunctionPrototypeAst>(m_ctx);

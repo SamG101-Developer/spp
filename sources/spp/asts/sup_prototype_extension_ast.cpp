@@ -38,6 +38,7 @@ spp::asts::SupPrototypeExtensionAst::SupPrototypeExtensionAst(
     tok_ext(std::move(tok_ext)),
     super_class(std::move(super_class)),
     impl(std::move(impl)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_sup, lex::SppTokenType::KW_SUP, "sup");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_param_group);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->impl);
 }
@@ -162,7 +163,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_1_pre_process(
     super_class = super_class->substitute_generics(gen_sub);
 
     // Preprocess the implementation.
-    impl->stage_1_pre_process(ctx);
+    impl->stage_1_pre_process(this);
 
     // Todo: some sort of check that prevents something like "sup [T] T ext Borrow[T]", because this is infinite generation
 }

@@ -108,7 +108,7 @@ public:
     /**
      * Save the original function name prior to AST transformations.
      */
-    IdentifierAst *orig_name;
+    std::unique_ptr<IdentifierAst> orig_name;
 
     /**
      * Construct the FunctionPrototypeAst with the arguments matching the members.

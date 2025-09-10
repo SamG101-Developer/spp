@@ -35,6 +35,8 @@ spp::asts::TypeStatementAst::TypeStatementAst(
     generic_param_group(std::move(generic_param_group)),
     tok_assign(std::move(tok_assign)),
     old_type(std::move(old_type)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_type, lex::SppTokenType::KW_TYPE, "type");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_param_group);
 }
 
 
