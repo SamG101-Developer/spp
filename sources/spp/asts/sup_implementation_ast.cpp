@@ -14,7 +14,10 @@ auto spp::asts::SupImplementationAst::new_empty() -> std::unique_ptr<SupImplemen
 
 
 auto spp::asts::SupImplementationAst::stage_1_pre_process(Ast *ctx) -> void {
-    members | genex::views::for_each([&ctx](auto &&m) { m->stage_1_pre_process(ctx); });
+    members
+        | genex::views::ptr
+        | genex::views::to<std::vector>()
+        | genex::views::for_each([ctx](auto *member) { member->stage_1_pre_process(ctx); });
 }
 
 

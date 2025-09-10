@@ -3,6 +3,7 @@
 #include <spp/pch.hpp>
 
 #include <genex/views/for_each.hpp>
+#include <genex/views/ptr.hpp>
 
 
 spp::asts::ModuleImplementationAst::ModuleImplementationAst(
@@ -47,8 +48,10 @@ auto spp::asts::ModuleImplementationAst::print(meta::AstPrinter &printer) const 
 auto spp::asts::ModuleImplementationAst::stage_1_pre_process(
     Ast *ctx)
     -> void {
-    // Shift to members.
-    members | genex::views::for_each([ctx](auto &&x) { x->stage_1_pre_process(ctx); });
+    members
+        | genex::views::ptr
+        | genex::views::to<std::vector>()
+        | genex::views::for_each([ctx](auto *member) { member->stage_1_pre_process(ctx); });
 }
 
 
