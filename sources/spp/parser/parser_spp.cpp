@@ -372,10 +372,24 @@ auto spp::parse::ParserSpp::parse_function_parameter() -> std::unique_ptr<asts::
 
 
 auto spp::parse::ParserSpp::parse_function_parameter_self() -> std::unique_ptr<asts::FunctionParameterSelfAst> {
-    PARSE_ONCE(p1, parse_keyword_mut);
-    PARSE_ONCE(p2, parse_convention);
-    PARSE_ONCE(p3, parse_self_identifier);
-    return CREATE_AST(asts::FunctionParameterSelfAst, p2, CREATE_AST(asts::LocalVariableSingleIdentifierAst, p1, p3, nullptr));
+    PARSE_ALTERNATE(
+        p1, asts::FunctionParameterSelfAst, parse_function_parameter_self_with_convention,
+        parse_function_parameter_self_without_convention);
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_function_parameter_self_with_convention() -> std::unique_ptr<asts::FunctionParameterSelfAst> {
+    PARSE_ONCE(p1, parse_convention);
+    PARSE_ONCE(p2, parse_self_identifier);
+    return CREATE_AST(asts::FunctionParameterSelfAst, p1, CREATE_AST(asts::LocalVariableSingleIdentifierAst, nullptr, p2, nullptr));
+}
+
+
+auto spp::parse::ParserSpp::parse_function_parameter_self_without_convention() -> std::unique_ptr<asts::FunctionParameterSelfAst> {
+    PARSE_OPTIONAL(p1, parse_keyword_mut)
+    PARSE_ONCE(p2, parse_self_identifier);
+    return CREATE_AST(asts::FunctionParameterSelfAst, nullptr, CREATE_AST(asts::LocalVariableSingleIdentifierAst, p1, p2, nullptr));
 }
 
 
@@ -526,7 +540,7 @@ auto spp::parse::ParserSpp::parse_generic_parameter_type_variadic() -> std::uniq
 
 auto spp::parse::ParserSpp::parse_generic_parameter_type_inline_constraints() -> std::unique_ptr<asts::GenericParameterTypeInlineConstraintsAst> {
     PARSE_ONCE(p1, parse_token_colon);
-    PARSE_ONE_OR_MORE(p2, parse_type_expression, parse_token_comma);
+    PARSE_ONE_OR_MORE(p2, parse_type_expression, parse_token_bit_and);
     return CREATE_AST(asts::GenericParameterTypeInlineConstraintsAst, p1, p2);
 }
 

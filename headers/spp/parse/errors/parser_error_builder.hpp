@@ -46,9 +46,9 @@ public:
 
         // Replace the "£" with the string tokens.
         auto err_msg = cast_error->header;
-        err_msg.replace(err_msg.find("£"), 1, token_set_str);
+        err_msg.replace(err_msg.find("£"), 1, std::move(token_set_str));
         err_msg = this->m_error_formatters[0]->error_raw_pos(pos, 1, std::move(err_msg), "Syntax error");
-        std::cout << "Error message: " << err_msg << std::endl;
+        std::cout << err_msg << std::endl;
         this->m_err_obj->messages = {err_msg};
 
         throw T(*this->m_err_obj);

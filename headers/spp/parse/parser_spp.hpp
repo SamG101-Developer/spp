@@ -43,6 +43,8 @@ public:
     auto parse_function_parameter_group() -> std::unique_ptr<asts::FunctionParameterGroupAst>;
     auto parse_function_parameter() -> std::unique_ptr<asts::FunctionParameterAst>;
     auto parse_function_parameter_self() -> std::unique_ptr<asts::FunctionParameterSelfAst>;
+    auto parse_function_parameter_self_with_convention() -> std::unique_ptr<asts::FunctionParameterSelfAst>;
+    auto parse_function_parameter_self_without_convention() -> std::unique_ptr<asts::FunctionParameterSelfAst>;
     auto parse_function_parameter_required() -> std::unique_ptr<asts::FunctionParameterRequiredAst>;
     auto parse_function_parameter_optional() -> std::unique_ptr<asts::FunctionParameterOptionalAst>;
     auto parse_function_parameter_variadic() -> std::unique_ptr<asts::FunctionParameterVariadicAst>;

@@ -419,23 +419,58 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_binary_expression_precedence_7, R"(
 )")
 
 
-SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_binary_expression_precedence_8, R"(
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_binary_expression_precedence_8_a, R"(
     fun my_function() -> Void {
         variable << other_variable
     }
 )")
 
 
-SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_binary_expression_precedence_9, R"(
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_binary_expression_precedence_8_b, R"(
+    fun my_function() -> Void {
+        variable >> other_variable
+    }
+)")
+
+
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_binary_expression_precedence_9_a, R"(
     fun my_function() -> Void {
         variable + other_variable
     }
 )")
 
 
-SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_binary_expression_precedence_10, R"(
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_binary_expression_precedence_9_b, R"(
+    fun my_function() -> Void {
+        variable - other_variable
+    }
+)")
+
+
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_binary_expression_precedence_10_a, R"(
     fun my_function() -> Void {
         variable * other_variable
+    }
+)")
+
+
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_binary_expression_precedence_10_b, R"(
+    fun my_function() -> Void {
+        variable / other_variable
+    }
+)")
+
+
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_binary_expression_precedence_10_c, R"(
+    fun my_function() -> Void {
+        variable % other_variable
+    }
+)")
+
+
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_binary_expression_precedence_10_d, R"(
+    fun my_function() -> Void {
+        variable ** other_variable
     }
 )")
 
