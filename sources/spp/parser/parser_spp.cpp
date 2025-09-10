@@ -706,7 +706,7 @@ auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_6() -> std:
 
 auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_7() -> std::unique_ptr<asts::ExpressionAst> {
     return parse_binary_expression_precedence_level_n(
-        [this] { return parse_unary_expression(); },
+        [this] { return parse_binary_expression_precedence_level_8(); },
         [this] { return parse_binary_expression_op_precedence_level_7(); },
         [this] { return parse_binary_expression_precedence_level_7(); });
 }
@@ -714,7 +714,7 @@ auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_7() -> std:
 
 auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_8() -> std::unique_ptr<asts::ExpressionAst> {
     return parse_binary_expression_precedence_level_n(
-        [this] { return parse_postfix_expression(); },
+        [this] { return parse_binary_expression_precedence_level_9(); },
         [this] { return parse_binary_expression_op_precedence_level_8(); },
         [this] { return parse_binary_expression_precedence_level_8(); });
 }
@@ -722,7 +722,7 @@ auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_8() -> std:
 
 auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_9() -> std::unique_ptr<asts::ExpressionAst> {
     return parse_binary_expression_precedence_level_n(
-        [this] { return parse_primary_expression(); },
+        [this] { return parse_binary_expression_precedence_level_10(); },
         [this] { return parse_binary_expression_op_precedence_level_9(); },
         [this] { return parse_binary_expression_precedence_level_9(); });
 }
