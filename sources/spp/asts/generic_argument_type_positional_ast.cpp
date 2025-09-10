@@ -7,7 +7,7 @@
 
 
 spp::asts::GenericArgumentTypePositionalAst::GenericArgumentTypePositionalAst(
-    decltype(val) &&val) :
+    decltype(val) val) :
     GenericArgumentTypeAst(std::move(val)) {
 }
 

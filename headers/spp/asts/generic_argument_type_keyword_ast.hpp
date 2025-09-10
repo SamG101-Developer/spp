@@ -35,7 +35,7 @@ public:
     GenericArgumentTypeKeywordAst(
         decltype(name) &&name,
         decltype(tok_assign) &&tok_assign,
-        decltype(val) &&val);
+        decltype(val) val);
 
     ~GenericArgumentTypeKeywordAst() override;
 

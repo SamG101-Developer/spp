@@ -20,7 +20,7 @@ public:
      * @param val The value of the generic type argument.
      */
     explicit GenericArgumentTypePositionalAst(
-        decltype(val) &&val);
+        decltype(val) val);
 
     ~GenericArgumentTypePositionalAst() override;
 

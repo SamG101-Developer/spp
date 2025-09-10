@@ -11,7 +11,7 @@
 spp::asts::GenericArgumentTypeKeywordAst::GenericArgumentTypeKeywordAst(
     decltype(name) &&name,
     decltype(tok_assign) &&tok_assign,
-    decltype(val) &&val) :
+    decltype(val) val) :
     GenericArgumentTypeAst(std::move(val)),
     name(std::move(name)),
     tok_assign(std::move(tok_assign)) {
