@@ -150,7 +150,7 @@ auto spp::asts::FunctionPrototypeAst::m_deduce_mock_class_type() const
         | genex::views::to<std::vector>();
 
     // Module level functions, and static methods, are always FunRef.
-    if (ast_cast<ModulePrototypeAst>(m_ctx) != nullptr or param_group->get_self_param() != nullptr) {
+    if (ast_cast<ModulePrototypeAst>(m_ctx) == nullptr or param_group->get_self_param() == nullptr) {
         return generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
     }
 
@@ -206,9 +206,9 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
         | genex::views::filter([&mock_class_name](auto &&x) { return x->name->without_generics() == mock_class_name->without_generics(); })
         | genex::views::to<std::vector>()).empty();
     if (needs_generation) {
-        auto mock_class_ast = std::make_unique<ClassPrototypeAst>(SPP_NO_ANNOTATIONS, nullptr, std::move(mock_class_name), nullptr, nullptr);
-        auto mock_constant_value = std::make_unique<ObjectInitializerAst>(std::move(mock_class_name), nullptr);
-        auto mock_constant_ast = std::make_unique<CmpStatementAst>(SPP_NO_ANNOTATIONS, nullptr, ast_clone(name), nullptr, ast_clone(mock_class_name), nullptr, std::move(mock_constant_value));
+        auto mock_class_ast = std::make_unique<ClassPrototypeAst>(SPP_NO_ANNOTATIONS, nullptr, ast_clone(mock_class_name), nullptr, nullptr);
+        auto mock_constant_value = std::make_unique<ObjectInitializerAst>(ast_clone(mock_class_name), nullptr);
+        auto mock_constant_ast = std::make_unique<CmpStatementAst>(SPP_NO_ANNOTATIONS, nullptr, ast_clone(name), nullptr, std::move(mock_class_name), nullptr, std::move(mock_constant_value));
 
         if (const auto mod_ctx = ast_cast<ModulePrototypeAst>(ctx)) {
             mod_ctx->impl->members.emplace_back(std::move(mock_class_ast));

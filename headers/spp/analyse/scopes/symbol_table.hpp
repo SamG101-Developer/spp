@@ -44,7 +44,7 @@ public:
 
     // explicit operator std::string() const;
 
-    auto add(I const *sym_name, std::shared_ptr<S> sym) -> void;
+    auto add(I const *sym_name, std::shared_ptr<S> const &sym) -> void;
 
     auto rem(I const *sym_name) -> void;
 

@@ -20,7 +20,7 @@ spp::asts::CmpStatementAst::CmpStatementAst(
     decltype(tok_cmp) &&tok_cmp,
     decltype(name) &&name,
     decltype(tok_colon) &&tok_colon,
-    decltype(type) &&type,
+    decltype(type) type,
     decltype(tok_assign) &&tok_assign,
     decltype(value) &&value) :
     annotations(std::move(annotations)),

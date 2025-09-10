@@ -90,7 +90,7 @@ private:
     std::vector<Scope*> m_direct_sub_scopes;
 
 
-    spp::utils::errors::ErrorFormatter* m_error_formatter;
+    spp::utils::errors::ErrorFormatter *m_error_formatter;
 
 private:
     template <typename S, typename T, typename This>
@@ -113,9 +113,9 @@ public:
 
     auto get_extended_generic_symbols(std::vector<asts::GenericArgumentAst*> generics) -> std::vector<Symbol*>;
 
-    SPP_NO_ASAN auto add_var_symbol(std::shared_ptr<VariableSymbol> sym) -> void;
-    SPP_NO_ASAN auto add_type_symbol(std::shared_ptr<TypeSymbol> sym) -> void;
-    SPP_NO_ASAN auto add_ns_symbol(std::shared_ptr<NamespaceSymbol> sym) -> void;
+    SPP_NO_ASAN auto add_var_symbol(std::shared_ptr<VariableSymbol> const &sym) -> void;
+    SPP_NO_ASAN auto add_type_symbol(std::shared_ptr<TypeSymbol> const &sym) -> void;
+    SPP_NO_ASAN auto add_ns_symbol(std::shared_ptr<NamespaceSymbol> const &sym) -> void;
 
     auto rem_var_symbol(asts::IdentifierAst const &sym_name) -> void;
     auto rem_type_symbol(asts::TypeAst const &sym_name) -> void;

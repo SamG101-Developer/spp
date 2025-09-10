@@ -40,7 +40,7 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::operator=(
 template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::add(
     I const *sym_name,
-    std::shared_ptr<S> sym)
+    std::shared_ptr<S> const & sym)
     -> void {
     // Add a symbol to the table.
     m_table[sym_name] = sym;
@@ -60,6 +60,7 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::get(
     I const *sym_name) const
     -> std::shared_ptr<S> {
     // Get a symbol from the table.
+    if (sym_name == nullptr or not has(sym_name)) { return nullptr; }
     return m_table.at(sym_name);
 }
 

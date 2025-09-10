@@ -210,7 +210,7 @@ auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
 
 
 auto spp::analyse::scopes::Scope::add_var_symbol(
-    std::shared_ptr<VariableSymbol> sym)
+    std::shared_ptr<VariableSymbol> const &sym)
     -> void {
     // Add a type symbol to the corresponding symbol table.
     table.var_tbl.add(sym->name.get(), std::move(sym));
@@ -218,7 +218,7 @@ auto spp::analyse::scopes::Scope::add_var_symbol(
 
 
 auto spp::analyse::scopes::Scope::add_type_symbol(
-    std::shared_ptr<TypeSymbol> sym)
+    std::shared_ptr<TypeSymbol> const &sym)
     -> void {
     // Add a type symbol to the corresponding symbol table.
     table.type_tbl.add(asts::ast_cast<asts::TypeAst>(sym->name.get()), std::move(sym));
@@ -226,10 +226,10 @@ auto spp::analyse::scopes::Scope::add_type_symbol(
 
 
 auto spp::analyse::scopes::Scope::add_ns_symbol(
-    std::shared_ptr<NamespaceSymbol> sym)
+    std::shared_ptr<NamespaceSymbol> const &sym)
     -> void {
     // Add a namespace symbol to the corresponding symbol table.
-    table.ns_tbl.add(sym->name.get(), std::move(sym));
+    table.ns_tbl.add(sym->name.get(), sym);
 }
 
 

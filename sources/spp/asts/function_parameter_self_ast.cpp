@@ -6,6 +6,7 @@
 #include <spp/asts/local_variable_single_identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/asts/generate/common_types.hpp>
 
 
 spp::asts::FunctionParameterSelfAst::FunctionParameterSelfAst(
@@ -13,6 +14,7 @@ spp::asts::FunctionParameterSelfAst::FunctionParameterSelfAst(
     decltype(var) &&var) :
     FunctionParameterAst(std::move(var), nullptr, nullptr),
     conv(std::move(conv)) {
+    type = generate::common_types::self_type(pos_start());
 }
 
 

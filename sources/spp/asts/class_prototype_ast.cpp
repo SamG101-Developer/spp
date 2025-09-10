@@ -31,6 +31,8 @@ spp::asts::ClassPrototypeAst::ClassPrototypeAst(
     name(std::move(name)),
     generic_param_group(std::move(generic_param_group)),
     impl(std::move(impl)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_param_group);
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->impl);
 }
 
 

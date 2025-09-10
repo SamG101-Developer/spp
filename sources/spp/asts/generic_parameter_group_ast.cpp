@@ -32,14 +32,18 @@ spp::asts::GenericParameterGroupAst::GenericParameterGroupAst(
     tok_l(std::move(tok_l)),
     params(std::move(params)),
     tok_r(std::move(tok_r)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_l, lex::SppTokenType::TK_LEFT_PARENTHESIS, "(");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_r, lex::SppTokenType::TK_RIGHT_PARENTHESIS, ")");
 }
 
 
 spp::asts::GenericParameterGroupAst::~GenericParameterGroupAst() = default;
 
 
-auto spp::asts::GenericParameterGroupAst::new_empty() -> std::unique_ptr<GenericParameterGroupAst> {
-    return std::make_unique<GenericParameterGroupAst>(nullptr, decltype(params)(), nullptr);
+auto spp::asts::GenericParameterGroupAst::new_empty()
+    -> std::unique_ptr<GenericParameterGroupAst> {
+    auto x = std::make_unique<GenericParameterGroupAst>(nullptr, decltype(params)(), nullptr);
+    return x;
 }
 
 

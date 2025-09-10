@@ -14,6 +14,14 @@ spp::asts::TokenAst::TokenAst(
 spp::asts::TokenAst::~TokenAst() = default;
 
 
+auto spp::asts::TokenAst::new_empty(
+    lex::SppTokenType token_type,
+    std::string &&token_data)
+    -> std::unique_ptr<TokenAst> {
+    return std::make_unique<TokenAst>(0, token_type, std::move(token_data));
+}
+
+
 auto spp::asts::TokenAst::operator==(TokenAst const &that) const -> bool {
     return token_type == that.token_type;
 }

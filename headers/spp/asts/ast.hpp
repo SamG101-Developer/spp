@@ -16,9 +16,9 @@
 //
 // #define ast_clone_vec_shared(asts) (asts) | genex::views::transform([](auto x) { return x; }) | genex::views::to<std::vector>()
 
-#define SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(ast_attr) \
-    if ((ast_attr) == nullptr) { \
-        (ast_attr) = std::remove_cvref_t<decltype(*ast_attr)>::new_empty(); \
+#define SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(ast_attr, ...) \
+    if ((ast_attr).get() == nullptr) { \
+        (ast_attr) = std::remove_cvref_t<decltype(*ast_attr)>::new_empty(__VA_ARGS__); \
     }
 
 

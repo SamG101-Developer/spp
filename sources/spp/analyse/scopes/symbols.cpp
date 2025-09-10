@@ -46,7 +46,8 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
     type(std::move(type)),
     is_mutable(is_mutable),
     is_generic(is_generic),
-    visibility(visibility) {
+    visibility(visibility),
+    memory_info(std::make_unique<utils::mem_utils::MemoryInfo>()) {
 }
 
 
