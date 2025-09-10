@@ -153,7 +153,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_1_pre_process(
     Ast::stage_1_pre_process(ctx);
 
     // Substitute the "Self" parameter's type with the name of the type being superimposed over.
-    const auto self_gen_sub = std::make_unique<GenericArgumentTypeKeywordAst>(generate::common_types::self_type(pos_start()), nullptr, ast_name(ctx));
+    const auto self_gen_sub = std::make_unique<GenericArgumentTypeKeywordAst>(generate::common_types::self_type(pos_start()), nullptr, name);
     auto gen_sub = std::vector<GenericArgumentAst*>();
     gen_sub.emplace_back(self_gen_sub.get());
     super_class = super_class->substitute_generics(gen_sub);

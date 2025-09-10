@@ -10,7 +10,9 @@
 #include <spp/asts/loop_control_flow_statement_ast.hpp>
 #include <spp/asts/ret_statement_ast.hpp>
 #include <spp/asts/statement_ast.hpp>
+#include <spp/asts/sup_implementation_ast.hpp>
 #include <spp/asts/sup_member_ast.hpp>
+#include <spp/asts/sup_prototype_extension_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/pch.hpp>
 

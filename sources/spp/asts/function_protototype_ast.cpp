@@ -226,23 +226,25 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     // Superimpose the function type over the mock class.
     auto function_ast = std::vector<std::unique_ptr<SupMemberAst>>();
     orig_name = name.get();
-    function_ast.emplace_back(std::unique_ptr<FunctionPrototypeAst>(this));
+    function_ast.emplace_back(ast_clone(this));
     auto mock_sup_ext_impl = std::make_unique<SupImplementationAst>(nullptr, std::move(function_ast), nullptr);
-    auto mock_sup_ext = std::make_unique<SupPrototypeExtensionAst>(nullptr, generic_param_group->opt_to_req(), std::move(mock_class_name), nullptr, std::move(function_type), std::move(mock_sup_ext_impl));
+    auto mock_sup_ext = std::make_unique<SupPrototypeExtensionAst>(
+        nullptr, generic_param_group->opt_to_req(), std::move(mock_class_name), nullptr, std::move(function_type),
+        std::move(mock_sup_ext_impl));
     mock_sup_ext->m_ctx = m_ctx;
 
     // Manipulate the context body with the new mock superimposition extension.
     if (const auto mod_ctx = ast_cast<ModulePrototypeAst>(ctx)) {
         mod_ctx->impl->members.emplace_back(std::move(mock_sup_ext));
-        mod_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return static_cast<void*>(x.get()) != static_cast<void*>(this); });
+        mod_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return x.get() == this; });
     }
     else if (const auto sup_ctx = ast_cast<SupPrototypeFunctionsAst>(ctx)) {
         sup_ctx->impl->members.emplace_back(std::move(mock_sup_ext));
-        sup_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return static_cast<void*>(x.get()) != static_cast<void*>(this); });
+        sup_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return x.get() == this; });
     }
     else if (const auto ext_ctx = ast_cast<SupPrototypeExtensionAst>(ctx)) {
         ext_ctx->impl->members.emplace_back(std::move(mock_sup_ext));
-        ext_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return static_cast<void*>(x.get()) != static_cast<void*>(this); });
+        ext_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return x.get() == this; });
     }
 }
 
