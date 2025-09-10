@@ -545,6 +545,13 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_unary_expression_async_op, R"(
 )")
 
 
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_unary_expression_deref_op, R"(
+    fun my_function() -> Void {
+        *borrow
+    }
+)")
+
+
 SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_postfix_expression_function_call, R"(
     fun my_function() -> Void {
         function()
@@ -782,6 +789,11 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_global_type_statement, R"(
 SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_global_constant, R"(
     cmp constant: I32 = 1
 
+)")
+
+
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_global_constant_advanced, R"(
+    cmp glob_array_1: Arr[std::bignum::bigint::BigInt, 100_uz] = std::array::Arr[std::bignum::bigint::BigInt, 100_uz]()
 )")
 
 
@@ -1141,5 +1153,53 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_array_0_items, R"(
 SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_array_n_items, R"(
     fun my_function() -> Void {
         let a = [1,2,3]
+    }
+)")
+
+
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_main, R"(
+    fun main(args: std::vector::Vec[std::string::Str]) -> std::void::Void {
+    }
+)")
+
+
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_closure_no_params, R"(
+    fun my_function() -> Void {
+        let my_closure = || { }
+    }
+)")
+
+
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_closure_with_params, R"(
+    fun my_function() -> Void {
+        let my_closure = |a: I32, b: I32| { }
+    }
+)")
+
+
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_closure_with_capture, R"(
+    fun my_function() -> Void {
+        let my_closure = |caps a, &b, &mut c| { }
+    }
+)")
+
+
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_closure_with_params_and_capture, R"(
+    fun my_function() -> Void {
+        let my_closure = |a: I32, b: I32 caps c, &d, &mut e| { }
+    }
+)")
+
+
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_closure_with_param_optional, R"(
+    fun my_function() -> Void {
+        let my_closure = |a: I32, b: I32 = 0| { }
+    }
+)")
+
+
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_closure_with_param_variadic, R"(
+    fun my_function() -> Void {
+        let my_closure = |a: I32, ..b: I32| { a }
     }
 )")

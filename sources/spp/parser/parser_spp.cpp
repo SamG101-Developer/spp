@@ -181,7 +181,6 @@ auto spp::parse::ParserSpp::parse() -> std::unique_ptr<asts::ModulePrototypeAst>
     if (root == nullptr) {
         m_error_builder->raise();
     }
-    std::cout << root->impl->members.size() << " members parsed." << std::endl;
     return root;
 }
 
@@ -255,7 +254,7 @@ auto spp::parse::ParserSpp::parse_class_attribute() -> std::unique_ptr<asts::Cla
 
 auto spp::parse::ParserSpp::parse_class_attribute_default_value() -> std::unique_ptr<asts::ExpressionAst> {
     PARSE_ONCE(p1, parse_token_assign);
-    PARSE_ONCE(p2, parse_expression);
+    PARSE_ONCE(p2, parse_cmp_value);
     return FORWARD_AST(p2);
 }
 
@@ -406,7 +405,7 @@ auto spp::parse::ParserSpp::parse_function_parameter_optional() -> std::unique_p
     PARSE_ONCE(p2, parse_token_colon);
     PARSE_ONCE(p3, parse_type_expression);
     PARSE_ONCE(p4, parse_token_assign);
-    PARSE_ONCE(p5, parse_expression);
+    PARSE_ONCE(p5, parse_cmp_value);
     return CREATE_AST(asts::FunctionParameterOptionalAst, p1, p2, p3, p4, p5);
 }
 
@@ -463,7 +462,7 @@ auto spp::parse::ParserSpp::parse_generic_parameter_group() -> std::unique_ptr<a
 
 auto spp::parse::ParserSpp::parse_generic_parameter() -> std::unique_ptr<asts::GenericParameterAst> {
     PARSE_ALTERNATE(
-        p1, asts::GenericParameterAst, parse_generic_parameter_comp, parse_generic_parameter_type);
+        p1, asts::GenericParameterAst, parse_generic_parameter_type, parse_generic_parameter_comp);
     return FORWARD_AST(p1);
 }
 
@@ -555,7 +554,7 @@ auto spp::parse::ParserSpp::parse_generic_argument_group() -> std::unique_ptr<as
 
 auto spp::parse::ParserSpp::parse_generic_argument() -> std::unique_ptr<asts::GenericArgumentAst> {
     PARSE_ALTERNATE(
-        p1, asts::GenericArgumentAst, parse_generic_argument_comp, parse_generic_argument_type);
+        p1, asts::GenericArgumentAst, parse_generic_argument_type, parse_generic_argument_comp);
     return FORWARD_AST(p1);
 }
 
@@ -1182,8 +1181,8 @@ auto spp::parse::ParserSpp::parse_loop_condition_boolean() -> std::unique_ptr<as
 
 auto spp::parse::ParserSpp::parse_loop_condition_iterable() -> std::unique_ptr<asts::LoopConditionIterableAst> {
     PARSE_ONCE(p1, parse_local_variable);
-    PARSE_OPTIONAL(p2, parse_keyword_in);
-    PARSE_OPTIONAL(p3, parse_expression);
+    PARSE_ONCE(p2, parse_keyword_in);
+    PARSE_ONCE(p3, parse_expression);
     return CREATE_AST(asts::LoopConditionIterableAst, p1, p2, p3);
 }
 
@@ -1695,7 +1694,7 @@ auto spp::parse::ParserSpp::parse_unary_type_expression() -> std::unique_ptr<ast
     PARSE_OPTIONAL(p1, parse_unary_type_expression_op_borrow)
     PARSE_ZERO_OR_MORE(p2, parse_unary_type_expression_op, parse_nothing);
     PARSE_ONCE(p3, [this] { return asts::ast_cast<asts::TypeAst>(parse_type_identifier()); });
-    if (p1 != nullptr) { p2.insert(p2.begin(), std::unique_ptr<asts::TypeUnaryExpressionOperatorAst>(p1.release())); } // todo: ast cast
+    if (p1 != nullptr) { p2.insert(p2.begin(), asts::ast_cast<asts::TypeUnaryExpressionOperatorAst>(std::move(p1))); }
     return utils::algorithms::move_accumulate(
         p2.rbegin(), p2.rend(), std::move(p3),
         [](std::unique_ptr<asts::TypeAst> &&acc, std::unique_ptr<asts::TypeUnaryExpressionOperatorAst> &&x) {
@@ -1999,18 +1998,20 @@ auto spp::parse::ParserSpp::parse_integer_suffix_type() -> std::unique_ptr<asts:
     PARSE_ONCE(p1, parse_token_underscore);
     PARSE_ALTERNATE(
         p2, asts::TokenAst,
-        [this] { return parse_specific_characters("i8"); },
-        [this] { return parse_specific_characters("i16"); },
-        [this] { return parse_specific_characters("i32"); },
-        [this] { return parse_specific_characters("i64"); },
-        [this] { return parse_specific_characters("i128"); },
-        [this] { return parse_specific_characters("i256"); },
+        [this] { return parse_specific_characters("s8"); },
+        [this] { return parse_specific_characters("s16"); },
+        [this] { return parse_specific_characters("s32"); },
+        [this] { return parse_specific_characters("s64"); },
+        [this] { return parse_specific_characters("s128"); },
+        [this] { return parse_specific_characters("s256"); },
+        [this] { return parse_specific_characters("sz"); },
         [this] { return parse_specific_characters("u8"); },
         [this] { return parse_specific_characters("u16"); },
         [this] { return parse_specific_characters("u32"); },
         [this] { return parse_specific_characters("u64"); },
         [this] { return parse_specific_characters("u128"); },
-        [this] { return parse_specific_characters("u256"); });
+        [this] { return parse_specific_characters("u256"); },
+        [this] { return parse_specific_characters("uz"); });
     return FORWARD_AST(p2);
 }
 
@@ -2058,7 +2059,8 @@ auto spp::parse::ParserSpp::parse_cmp_value() -> std::unique_ptr<asts::Expressio
     PARSE_ALTERNATE(
         p1, asts::ExpressionAst, parse_literal_string, parse_literal_float, parse_literal_integer,
         parse_literal_boolean, [this] { return parse_literal_tuple([this] { return parse_cmp_value(); }); },
-        [this] { return parse_literal_array([this] { return parse_cmp_value(); }); });
+        [this] { return parse_literal_array([this] { return parse_cmp_value(); }); }, parse_cmp_object_initializer,
+        parse_identifier);
     return FORWARD_AST(p1);
 }
 

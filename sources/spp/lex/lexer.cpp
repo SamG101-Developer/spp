@@ -179,6 +179,11 @@ auto spp::lex::Lexer::lex() const -> std::vector<RawToken> {
             ++i;
             continue;
         }
+        case ';': {
+            tokens.emplace_back(RawTokenType::TK_SEMICOLON, ";");
+            ++i;
+            continue;
+        }
         case '$': {
             tokens.emplace_back(RawTokenType::TK_DOLLAR_SIGN, "$");
             ++i;

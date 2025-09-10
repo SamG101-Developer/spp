@@ -36,7 +36,6 @@ auto spp::compiler::CompilerBoot::lex(indicators::ProgressBar &bar, ModuleTree &
         mod.tokens = lex::Lexer(mod.code).lex();
         mod.error_formatter = std::make_unique<utils::errors::ErrorFormatter>(mod.tokens, mod.path.string());
     }
-    bar.mark_as_completed();
 }
 
 

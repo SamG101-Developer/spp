@@ -139,14 +139,13 @@ auto spp::cli::handle_vcs()
 
         // Repo doesn't exist locally => clone it.
         if (not std::filesystem::exists(repo_folder)) {
-            boost::process::system("git clone " + repo_url + " " + repo_folder.string());
-            boost::process::system("git -C " + repo_folder.string() + " checkout " + repo_branch);
+            boost::process::system("git clone --branch " + repo_branch + " " + repo_url + " " + repo_folder.string(), SPP_CLI_NULL);
             std::cout << "Cloned "s + repo_name + " from " + repo_url + "\n";
         }
         else {
-            boost::process::system("git -C " + repo_folder.string() + " pull origin " + repo_branch);
-            boost::process::system("git -C " + repo_folder.string() + " checkout " + repo_branch);
-            std::cout << "Updated "s + repo_name + " from " + repo_url + "\n";
+            boost::process::system("git -C " + repo_folder.string() + " pull origin " + repo_branch, SPP_CLI_NULL);
+            boost::process::system("git -C " + repo_folder.string() + " checkout " + repo_branch, SPP_CLI_NULL);
+            std::cout << "Updated "s + repo_name + " from " + repo_url + " (" + repo_branch + ")" + "\n";
         }
 
         // Copy all DLLs from the VCS's FFI folder into this project's FFI folder.
