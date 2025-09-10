@@ -1,8 +1,5 @@
-#ifndef ITER_PATTERN_VARIANT_VARIABLE_AST_HPP
-#define ITER_PATTERN_VARIANT_VARIABLE_AST_HPP
-
+#pragma once
 #include <spp/asts/iter_pattern_variant_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::IterPatternVariantVariableAst final : IterPatternVariantAst {
@@ -27,6 +24,3 @@ struct spp::asts::IterPatternVariantVariableAst final : IterPatternVariantAst {
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //ITER_PATTERN_VARIANT_VARIABLE_AST_HPP

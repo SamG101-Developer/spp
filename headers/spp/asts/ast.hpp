@@ -1,8 +1,8 @@
 #pragma once
-#include <spp/pch.hpp>
-
+#include <spp/asts/_fwd.hpp>
 #include <spp/asts/meta/ast_printer.hpp>
 #include <spp/asts/mixins/compiler_stages.hpp>
+#include <spp/pch.hpp>
 
 #include <genex/views/ptr.hpp>
 #include <genex/views/transform.hpp>
@@ -114,6 +114,8 @@ public:
     //  * @return Cannot be called.
     //  */
     // Ast& operator=(Ast &&) noexcept = delete;
+
+    ~Ast() override;
 
     /**
      * The start position is the first position in the source code that contains this AST. An AST will recursively get

@@ -1,6 +1,5 @@
 #pragma once
 #include <spp/asts/type_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 #include <genex/generator.hpp>
 

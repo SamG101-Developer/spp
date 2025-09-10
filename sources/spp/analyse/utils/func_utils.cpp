@@ -40,6 +40,7 @@
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
+#include <spp/macros.hpp>
 
 #include <genex/actions/clear.hpp>
 #include <genex/actions/concat.hpp>

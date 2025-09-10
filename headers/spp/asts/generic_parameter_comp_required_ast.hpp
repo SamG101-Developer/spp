@@ -1,8 +1,5 @@
-#ifndef GENERIC_PARAMETER_COMP_REQUIRED_AST_HPP
-#define GENERIC_PARAMETER_COMP_REQUIRED_AST_HPP
-
+#pragma once
 #include <spp/asts/generic_parameter_comp_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 /**
@@ -30,6 +27,3 @@ struct spp::asts::GenericParameterCompRequiredAst final : GenericParameterCompAs
 
     ~GenericParameterCompRequiredAst() override;
 };
-
-
-#endif //GENERIC_PARAMETER_COMP_REQUIRED_AST_HPP

@@ -1,10 +1,7 @@
-#ifndef COMPILER_STAGES_HPP
-#define COMPILER_STAGES_HPP
-
+#pragma once
 #include <map>
 #include <stack>
 
-#include <spp/asts/_fwd.hpp>
 #include <spp/utils/errors.hpp>
 
 
@@ -162,6 +159,3 @@ public:
 
     auto restore() -> void;
 };
-
-
-#endif //COMPILER_STAGES_HPP

@@ -1,7 +1,6 @@
-#ifndef ABSTRACT_TYPE_AST_HPP
-#define ABSTRACT_TYPE_AST_HPP
-
+#pragma once
 #include <spp/asts/_fwd.hpp>
+
 #include <genex/generator.hpp>
 
 
@@ -47,6 +46,3 @@ public:
 
     virtual auto with_generics(std::shared_ptr<GenericArgumentGroupAst> &&arg_group) const -> std::unique_ptr<TypeAst> = 0;
 };
-
-
-#endif //ABSTRACT_TYPE_AST_HPP

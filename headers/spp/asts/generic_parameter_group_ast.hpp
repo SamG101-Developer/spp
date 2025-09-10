@@ -1,8 +1,5 @@
-#ifndef GENERIC_PARAMETER_GROUP_AST_HPP
-#define GENERIC_PARAMETER_GROUP_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::GenericParameterGroupAst final : virtual Ast {
@@ -58,6 +55,3 @@ struct spp::asts::GenericParameterGroupAst final : virtual Ast {
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //GENERIC_PARAMETER_GROUP_AST_HPP

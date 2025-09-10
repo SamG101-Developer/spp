@@ -1,9 +1,6 @@
-#ifndef TYPE_TUPLE_SHORTHAND_AST_HPP
-#define TYPE_TUPLE_SHORTHAND_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
 #include <spp/asts/mixins/temp_type_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::TypeTupleShorthandAst final : virtual Ast, mixins::TempTypeAst {
@@ -39,6 +36,3 @@ struct spp::asts::TypeTupleShorthandAst final : virtual Ast, mixins::TempTypeAst
 
     auto convert() -> std::unique_ptr<TypeAst> override;
 };
-
-
-#endif //TYPE_TUPLE_SHORTHAND_AST_HPP

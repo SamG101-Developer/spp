@@ -1,8 +1,5 @@
-#ifndef GENERIC_PARAMETER_TYPE_REQUIRED_AST_HPP
-#define GENERIC_PARAMETER_TYPE_REQUIRED_AST_HPP
-
+#pragma once
 #include <spp/asts/generic_parameter_type_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::GenericParameterTypeRequiredAst final : GenericParameterTypeAst {
@@ -22,6 +19,3 @@ struct spp::asts::GenericParameterTypeRequiredAst final : GenericParameterTypeAs
 
     ~GenericParameterTypeRequiredAst() override;
 };
-
-
-#endif //GENERIC_PARAMETER_TYPE_REQUIRED_AST_HPP

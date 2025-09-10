@@ -1,7 +1,9 @@
 #pragma once
 #include <map>
+
 #include <spp/asts/_fwd.hpp>
 #include <spp/lex/tokens.hpp>
+
 
 namespace spp::analyse::scopes {
     class ScopeManager;

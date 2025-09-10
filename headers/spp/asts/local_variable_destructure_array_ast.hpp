@@ -1,8 +1,5 @@
-#ifndef LOCAL_VARIABLE_DESTRUCTURE_ARRAY_AST_HPP
-#define LOCAL_VARIABLE_DESTRUCTURE_ARRAY_AST_HPP
-
+#pragma once
 #include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::LocalVariableDestructureArrayAst final : LocalVariableAst {
@@ -50,6 +47,3 @@ public:
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //LOCAL_VARIABLE_DESTRUCTURE_ARRAY_AST_HPP

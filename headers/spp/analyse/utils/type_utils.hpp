@@ -1,7 +1,9 @@
 #pragma once
 
 #include <map>
+
 #include <spp/asts/_fwd.hpp>
+
 
 namespace spp::analyse::scopes {
     class Scope;

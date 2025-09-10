@@ -1,7 +1,6 @@
 #pragma once
 
 #include <spp/asts/iter_pattern_variant_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::IterPatternVariantElseAst final : IterPatternVariantAst {

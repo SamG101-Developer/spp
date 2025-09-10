@@ -1,8 +1,5 @@
-#ifndef GENERIC_PARAMETER_TYPE_VARIADIC_AST_HPP
-#define GENERIC_PARAMETER_TYPE_VARIADIC_AST_HPP
-
+#pragma once
 #include <spp/asts/generic_parameter_type_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::GenericParameterTypeVariadicAst final : GenericParameterTypeAst {
@@ -27,6 +24,3 @@ struct spp::asts::GenericParameterTypeVariadicAst final : GenericParameterTypeAs
 
     ~GenericParameterTypeVariadicAst() override;
 };
-
-
-#endif //GENERIC_PARAMETER_TYPE_VARIADIC_AST_HPP

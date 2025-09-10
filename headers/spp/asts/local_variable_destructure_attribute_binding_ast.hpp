@@ -1,8 +1,5 @@
-#ifndef LOCAL_VARIABLE_DESTRUCTURE_ATTRIBUTE_BINDING_AST_HPP
-#define LOCAL_VARIABLE_DESTRUCTURE_ATTRIBUTE_BINDING_AST_HPP
-
+#pragma once
 #include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::LocalVariableDestructureAttributeBindingAst final : LocalVariableAst {
@@ -38,6 +35,3 @@ struct spp::asts::LocalVariableDestructureAttributeBindingAst final : LocalVaria
 
     ~LocalVariableDestructureAttributeBindingAst() override;
 };
-
-
-#endif //LOCAL_VARIABLE_DESTRUCTURE_ATTRIBUTE_BINDING_AST_HPP

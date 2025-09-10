@@ -1,8 +1,5 @@
-#ifndef STRING_LITERAL_AST_HPP
-#define STRING_LITERAL_AST_HPP
-
+#pragma once
 #include <spp/asts/literal_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::StringLiteralAst final : LiteralAst {
@@ -30,6 +27,3 @@ public:
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //STRING_LITERAL_AST_HPP

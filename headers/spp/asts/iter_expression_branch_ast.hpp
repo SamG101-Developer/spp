@@ -1,8 +1,5 @@
-#ifndef ITER_EXPRESSION_BRANCH_AST_HPP
-#define ITER_EXPRESSION_BRANCH_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
-#include <spp/asts/_fwd.hpp>
 #include <spp/asts/mixins/type_inferrable.hpp>
 
 
@@ -46,6 +43,3 @@ struct spp::asts::IterExpressionBranchAst final : virtual Ast, mixins::TypeInfer
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //ITER_EXPRESSION_BRANCH_AST_HPP

@@ -1,8 +1,5 @@
-#ifndef SUP_IMPLEMENTATION_AST_HPP
-#define SUP_IMPLEMENTATION_AST_HPP
-
+#pragma once
 #include <spp/asts/inner_scope_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 namespace spp::parse {
     class ParserSpp;
@@ -35,6 +32,3 @@ public:
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //SUP_IMPLEMENTATION_AST_HPP

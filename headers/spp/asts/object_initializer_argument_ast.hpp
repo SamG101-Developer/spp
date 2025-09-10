@@ -1,8 +1,5 @@
-#ifndef OBJECT_INITIALIZER_ARGUMENT_AST_HPP
-#define OBJECT_INITIALIZER_ARGUMENT_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
-#include <spp/asts/_fwd.hpp>
 #include <spp/asts/mixins/type_inferrable.hpp>
 
 
@@ -41,6 +38,3 @@ struct spp::asts::ObjectInitializerArgumentAst : virtual Ast, mixins::TypeInferr
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //OBJECT_INITIALIZER_ARGUMENT_AST_HPP

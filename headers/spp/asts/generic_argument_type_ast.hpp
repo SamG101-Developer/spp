@@ -1,8 +1,5 @@
-#ifndef GENERIC_ARGUMENT_TYPE_AST_HPP
-#define GENERIC_ARGUMENT_TYPE_AST_HPP
-
+#pragma once
 #include <spp/asts/generic_argument_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 /**
@@ -24,6 +21,3 @@ struct spp::asts::GenericArgumentTypeAst : GenericArgumentAst {
 
     ~GenericArgumentTypeAst() override;
 };
-
-
-#endif //GENERIC_ARGUMENT_TYPE_AST_HPP

@@ -1,9 +1,6 @@
-#ifndef SUP_PROTOTYPE_FUNCTIONS_AST_HPP
-#define SUP_PROTOTYPE_FUNCTIONS_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
 #include <spp/asts/module_member_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 /**
@@ -73,6 +70,3 @@ struct spp::asts::SupPrototypeFunctionsAst final : virtual Ast, ModuleMemberAst 
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //SUP_PROTOTYPE_FUNCTIONS_AST_HPP

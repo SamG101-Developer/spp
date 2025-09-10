@@ -14,6 +14,7 @@
 #include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/macros.hpp>
 #include <spp/pch.hpp>
 
 #include <genex/operations/access.hpp>

@@ -1,8 +1,5 @@
-#ifndef IS_EXPRESSION_AST_HPP
-#define IS_EXPRESSION_AST_HPP
-
+#pragma once
 #include <spp/asts/expression_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::IsExpressionAst final : ExpressionAst {
@@ -46,6 +43,3 @@ public:
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //IS_EXPRESSION_AST_HPP

@@ -1,8 +1,5 @@
-#ifndef CASE_PATTERN_VARIANT_DESTRUCTURE_SKIP_SINGLE_ARGUMENT_AST_HPP
-#define CASE_PATTERN_VARIANT_DESTRUCTURE_SKIP_SINGLE_ARGUMENT_AST_HPP
-
+#pragma once
 #include <spp/asts/case_pattern_variant_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst final : CasePatternVariantAst {
@@ -26,6 +23,3 @@ struct spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst final : Cas
 
     auto convert_to_variable(mixins::CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
 };
-
-
-#endif //CASE_PATTERN_VARIANT_DESTRUCTURE_SKIP_SINGLE_ARGUMENT_AST_HPP

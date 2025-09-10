@@ -1,6 +1,5 @@
 #pragma once
 #include <spp/asts/expression_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 /**

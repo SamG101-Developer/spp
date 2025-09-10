@@ -1,7 +1,5 @@
 #pragma once
-
 #include <spp/asts/ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 #define SPP_NO_ANNOTATIONS std::vector<std::unique_ptr<asts::AnnotationAst>>()

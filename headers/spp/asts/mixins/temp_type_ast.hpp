@@ -1,7 +1,5 @@
-#ifndef TEMP_TYPE_AST_HPP
-#define TEMP_TYPE_AST_HPP
+#pragma once
 
-#include <spp/asts/_fwd.hpp>
 
 namespace spp::asts::mixins {
     struct TempTypeAst;
@@ -20,6 +18,3 @@ public:
      */
     virtual auto convert() -> std::unique_ptr<TypeAst> = 0;
 };
-
-
-#endif //TEMP_TYPE_AST_HPP

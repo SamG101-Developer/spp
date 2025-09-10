@@ -1,6 +1,5 @@
 #pragma once
 #include <spp/asts/case_pattern_variant_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::CasePatternVariantLiteralAst final : CasePatternVariantAst {

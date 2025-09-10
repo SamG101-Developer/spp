@@ -1,6 +1,5 @@
 #pragma once
 #include <spp/asts/array_literal_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 /**

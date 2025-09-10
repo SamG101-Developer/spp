@@ -1,8 +1,5 @@
-#ifndef LOOP_CONDITION_BOOLEAN_HPP
-#define LOOP_CONDITION_BOOLEAN_HPP
-
+#pragma once
 #include <spp/asts/loop_condition_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::LoopConditionBooleanAst final : LoopConditionAst {
@@ -27,6 +24,3 @@ struct spp::asts::LoopConditionBooleanAst final : LoopConditionAst {
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //LOOP_CONDITION_BOOLEAN_HPP

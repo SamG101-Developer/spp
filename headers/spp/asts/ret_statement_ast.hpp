@@ -1,8 +1,5 @@
-#ifndef RET_STATEMENT_AST_HPP
-#define RET_STATEMENT_AST_HPP
-
+#pragma once
 #include <spp/asts/statement_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::RetStatementAst final : StatementAst {
@@ -38,6 +35,3 @@ public:
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //RET_STATEMENT_AST_HPP

@@ -1,8 +1,5 @@
-#ifndef LOOP_ELSE_STATEMENT_AST_HPP
-#define LOOP_ELSE_STATEMENT_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
-#include <spp/asts/_fwd.hpp>
 #include <spp/asts/mixins/type_inferrable.hpp>
 
 
@@ -37,6 +34,3 @@ struct spp::asts::LoopElseStatementAst final : virtual Ast, mixins::TypeInferrab
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //LOOP_ELSE_STATEMENT_AST_HPP

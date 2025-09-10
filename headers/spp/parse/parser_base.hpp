@@ -1,6 +1,4 @@
-#ifndef PARSER_BASE_HPP
-#define PARSER_BASE_HPP
-
+#pragma once
 #include <spp/lex/tokens.hpp>
 #include <spp/parse/errors/parser_error.hpp>
 #include <spp/parse/errors/parser_error_builder.hpp>
@@ -110,11 +108,6 @@
     std::move((ast))
 
 
-#define CREATE_AST_WITH_BASE(out, T, base) \
-    auto out = T::new_empty();             \
-    *static_cast<decltype(base)::pointer>((out).get()) = std::move(*(base).release())
-
-
 #define INJECT_CODE(code, method) \
     spp::parse::ParserSpp(spp::lex::Lexer((code)).lex()).method()
 
@@ -147,6 +140,3 @@ protected:
     template <typename T>
     using parser_method_alt_t = std::function<T()>;
 };
-
-
-#endif //PARSER_BASE_HPP

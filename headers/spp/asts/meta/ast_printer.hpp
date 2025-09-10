@@ -1,7 +1,6 @@
-#ifndef AST_PRINTER_HPP
-#define AST_PRINTER_HPP
-
+#pragma once
 #include <spp/pch.hpp>
+
 
 #define SPP_PRINT_START auto formatted_string = std::string()
 #define SPP_PRINT_APPEND(x) formatted_string.append(x->print(printer))
@@ -79,6 +78,3 @@ auto spp::asts::meta::AstPrinter::print(T &&ast) -> std::string {
 
     return code;
 }
-
-
-#endif //AST_PRINTER_HPP

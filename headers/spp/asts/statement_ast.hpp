@@ -1,8 +1,5 @@
-#ifndef STATEMENT_AST_HPP
-#define STATEMENT_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 #include <spp/asts/mixins/type_inferrable.hpp>
 
@@ -23,6 +20,3 @@ struct spp::asts::StatementAst : virtual Ast, mixins::TypeInferrableAst {
      */
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //STATEMENT_AST_HPP

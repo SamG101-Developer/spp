@@ -1,8 +1,5 @@
-#ifndef LOCAL_VARIABLE_SINGLE_IDENTIFIER_ALIAS_AST_HPP
-#define LOCAL_VARIABLE_SINGLE_IDENTIFIER_ALIAS_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::LocalVariableSingleIdentifierAliasAst final : virtual Ast {
@@ -30,6 +27,3 @@ struct spp::asts::LocalVariableSingleIdentifierAliasAst final : virtual Ast {
 
     ~LocalVariableSingleIdentifierAliasAst() override;
 };
-
-
-#endif //LOCAL_VARIABLE_SINGLE_IDENTIFIER_ALIAS_AST_HPP

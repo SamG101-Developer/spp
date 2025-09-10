@@ -1,8 +1,5 @@
-#ifndef TOKEN_AST_HPP
-#define TOKEN_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
-#include <spp/asts/_fwd.hpp>
 #include <spp/lex/tokens.hpp>
 
 #include <magic_enum/magic_enum.hpp>
@@ -58,6 +55,3 @@ struct std::hash<spp::asts::TokenAst> {
         return std::hash<std::string>()(magic_enum::enum_name(t.token_type).data());
     }
 };
-
-
-#endif //TOKEN_AST_HPP

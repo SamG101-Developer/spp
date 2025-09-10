@@ -1,6 +1,5 @@
 #pragma once
 #include <spp/asts/function_parameter_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::FunctionParameterSelfAst final : FunctionParameterAst {

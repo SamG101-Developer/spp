@@ -1,9 +1,5 @@
-#ifndef IDENTIFIER_AST_HPP
-#define IDENTIFIER_AST_HPP
-
-#include <spp/macros.hpp>
+#pragma once
 #include <spp/asts/primary_expression_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::IdentifierAst final : PrimaryExpressionAst {
@@ -48,6 +44,3 @@ public:
 private:
     std::size_t m_pos;
 };
-
-
-#endif //IDENTIFIER_AST_HPP

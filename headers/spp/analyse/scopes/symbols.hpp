@@ -1,7 +1,7 @@
 #pragma once
-
 #include <spp/asts/_fwd.hpp>
 #include <spp/asts/utils/visbility.hpp>
+
 
 namespace spp::analyse::scopes {
     class Scope;

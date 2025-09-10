@@ -1,7 +1,4 @@
-#ifndef TYPE_STATEMENT_AST_HPP
-#define TYPE_STATEMENT_AST_HPP
-
-#include <spp/asts/_fwd.hpp>
+#pragma once
 #include <spp/asts/statement_ast.hpp>
 #include <spp/asts/mixins/visbility_enabled_ast.hpp>
 #include <spp/asts/module_member_ast.hpp>
@@ -104,6 +101,3 @@ public:
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //TYPE_STATEMENT_AST_HPP

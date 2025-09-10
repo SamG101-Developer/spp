@@ -1,8 +1,5 @@
-#ifndef PARENTHESISED_EXPRESSION_HPP
-#define PARENTHESISED_EXPRESSION_HPP
-
+#pragma once
 #include <spp/asts/primary_expression_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::ParenthesisedExpressionAst final : PrimaryExpressionAst {
@@ -42,6 +39,3 @@ struct spp::asts::ParenthesisedExpressionAst final : PrimaryExpressionAst {
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //PARENTHESISED_EXPRESSION_HPP

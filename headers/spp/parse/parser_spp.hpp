@@ -1,6 +1,5 @@
 #pragma once
 #include <spp/pch.hpp>
-#include <spp/asts/_fwd.hpp>
 #include <spp/parse/parser_base.hpp>
 
 

@@ -1,8 +1,5 @@
-#ifndef POSTFIX_EXPRESSION_OPERATOR_RUNTIME_MEMBER_ACCESS_AST_HPP
-#define POSTFIX_EXPRESSION_OPERATOR_RUNTIME_MEMBER_ACCESS_AST_HPP
-
+#pragma once
 #include <spp/asts/postfix_expression_operator_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst final : PostfixExpressionOperatorAst {
@@ -33,6 +30,3 @@ struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst final : Postfi
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //POSTFIX_EXPRESSION_OPERATOR_RUNTIME_MEMBER_ACCESS_AST_HPP

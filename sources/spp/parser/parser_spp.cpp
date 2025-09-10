@@ -230,9 +230,10 @@ auto spp::parse::ParserSpp::parse_class_prototype() -> std::unique_ptr<asts::Cla
 
 
 auto spp::parse::ParserSpp::parse_class_implementation() -> std::unique_ptr<asts::ClassImplementationAst> {
-    PARSE_ONCE(p1, [this] { return parse_inner_scope([this] { return parse_class_member(); }); });
-    CREATE_AST_WITH_BASE(p2, asts::ClassImplementationAst, p1);
-    return FORWARD_AST(p2);
+    PARSE_ONCE(p1, parse_token_left_curly_brace);
+    PARSE_ZERO_OR_MORE(p2, parse_class_member, parse_newline);
+    PARSE_ONCE(p3, parse_token_right_curly_brace);
+    return CREATE_AST(asts::ClassImplementationAst, p1, p2, p3);
 }
 
 
@@ -280,9 +281,10 @@ auto spp::parse::ParserSpp::parse_sup_prototype_extension() -> std::unique_ptr<a
 
 
 auto spp::parse::ParserSpp::parse_sup_implementation() -> std::unique_ptr<asts::SupImplementationAst> {
-    PARSE_ONCE(p1, [this] { return parse_inner_scope([this] { return parse_sup_member(); }); });
-    CREATE_AST_WITH_BASE(p2, asts::SupImplementationAst, p1);
-    return FORWARD_AST(p2);
+    PARSE_ONCE(p1, parse_token_left_curly_brace);
+    PARSE_ZERO_OR_MORE(p2, parse_sup_member, parse_newline);
+    PARSE_ONCE(p3, parse_token_right_curly_brace);
+    return CREATE_AST(asts::SupImplementationAst, p1, p2, p3);
 }
 
 
@@ -342,9 +344,10 @@ auto spp::parse::ParserSpp::parse_coroutine_prototype() -> std::unique_ptr<asts:
 
 
 auto spp::parse::ParserSpp::parse_function_implementation() -> std::unique_ptr<asts::FunctionImplementationAst> {
-    PARSE_ONCE(p1, [this] { return parse_inner_scope([this] { return parse_function_member(); }); });
-    CREATE_AST_WITH_BASE(p2, asts::FunctionImplementationAst, p1);
-    return FORWARD_AST(p2);
+    PARSE_ONCE(p1, parse_token_left_curly_brace);
+    PARSE_ZERO_OR_MORE(p2, parse_function_member, parse_newline);
+    PARSE_ONCE(p3, parse_token_right_curly_brace);
+    return CREATE_AST(asts::FunctionImplementationAst, p1, p2, p3);
 }
 
 

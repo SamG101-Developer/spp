@@ -1,6 +1,4 @@
-#ifndef STRINGS_HPP
-#define STRINGS_HPP
-
+#pragma once
 #include <spp/pch.hpp>
 
 namespace spp::utils::strings {
@@ -10,6 +8,3 @@ namespace spp::utils::strings {
 
     auto closest_match(std::string const &query, std::vector<std::string> const &choices) -> std::optional<std::string>;
 }
-
-
-#endif //STRINGS_HPP

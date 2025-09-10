@@ -1,8 +1,5 @@
-#ifndef TYPE_POSTFIX_EXPRESSION_OPERATOR_AST_HPP
-#define TYPE_POSTFIX_EXPRESSION_OPERATOR_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::TypePostfixExpressionOperatorAst : virtual Ast {
@@ -30,6 +27,3 @@ public:
 
     virtual auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> = 0;
 };
-
-
-#endif //TYPE_POSTFIX_EXPRESSION_OPERATOR_AST_HPP

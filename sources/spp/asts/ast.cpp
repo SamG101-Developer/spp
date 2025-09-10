@@ -60,6 +60,9 @@ auto spp::asts::ast_body(Ast *ast) -> std::vector<Ast*> {
 spp::asts::Ast::Ast() = default;
 
 
+spp::asts::Ast::~Ast() = default;
+
+
 auto spp::asts::Ast::size() const -> std::size_t {
     return pos_end() - pos_start();
 }

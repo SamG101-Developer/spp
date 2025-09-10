@@ -1,6 +1,5 @@
 #pragma once
 #include <spp/asts/ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 namespace spp::asts::detail {

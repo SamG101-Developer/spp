@@ -1,9 +1,6 @@
-#ifndef INNER_SCOPE_EXPRESSION_HPP
-#define INNER_SCOPE_EXPRESSION_HPP
-
+#pragma once
 #include <spp/asts/inner_scope_ast.hpp>
 #include <spp/asts/primary_expression_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 template <typename T>
@@ -14,6 +11,3 @@ struct spp::asts::InnerScopeExpressionAst final : InnerScopeAst<T>, PrimaryExpre
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //INNER_SCOPE_EXPRESSION_HPP

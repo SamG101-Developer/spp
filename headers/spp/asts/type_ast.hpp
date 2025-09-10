@@ -1,9 +1,6 @@
-#ifndef TYPE_AST_HPP
-#define TYPE_AST_HPP
-
+#pragma once
 #include <spp/asts/primary_expression_ast.hpp>
 #include <spp/asts/mixins/abstract_type_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 /**
@@ -12,6 +9,3 @@
 struct spp::asts::TypeAst : PrimaryExpressionAst, mixins::AbstractTypeAst, std::enable_shared_from_this<TypeAst> {
     using PrimaryExpressionAst::PrimaryExpressionAst;
 };
-
-
-#endif //TYPE_AST_HPP

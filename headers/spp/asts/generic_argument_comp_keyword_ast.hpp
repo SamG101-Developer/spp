@@ -1,8 +1,5 @@
-#ifndef GENERIC_ARGUMENT_COMP_KEYWORD_AST_HPP
-#define GENERIC_ARGUMENT_COMP_KEYWORD_AST_HPP
-
+#pragma once
 #include <spp/asts/generic_argument_comp_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 namespace spp::analyse::scopes {
@@ -55,6 +52,3 @@ public:
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //GENERIC_ARGUMENT_COMP_KEYWORD_AST_HPP

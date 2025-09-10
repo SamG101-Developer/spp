@@ -1,8 +1,5 @@
-#ifndef OBJECT_INITIALIZER_AST_HPP
-#define OBJECT_INITIALIZER_AST_HPP
-
+#pragma once
 #include <spp/asts/primary_expression_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst {
@@ -36,6 +33,3 @@ struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst {
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //OBJECT_INITIALIZER_AST_HPP

@@ -1,8 +1,5 @@
-#ifndef INNER_SCOPE_AST_HPP
-#define INNER_SCOPE_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 /**
@@ -50,6 +47,8 @@ public:
         decltype(members) &&members,
         decltype(tok_r) &&tok_r);
 
+    ~InnerScopeAst() override;
+
     static auto new_empty() -> std::unique_ptr<InnerScopeAst>;
 
 public:
@@ -59,6 +58,3 @@ public:
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //INNER_SCOPE_AST_HPP

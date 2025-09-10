@@ -1,9 +1,6 @@
-#ifndef CLASS_ATTRIBUTE_AST_HPP
-#define CLASS_ATTRIBUTE_AST_HPP
-
+#pragma once
 #include <spp/asts/class_member_ast.hpp>
 #include <spp/asts/mixins/visbility_enabled_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 /**
@@ -68,6 +65,3 @@ struct spp::asts::ClassAttributeAst final : virtual Ast, mixins::VisibilityEnabl
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //CLASS_ATTRIBUTE_AST_HPP

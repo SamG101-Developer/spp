@@ -1,8 +1,5 @@
-#ifndef GENERIC_PARAMETER_AST_HPP
-#define GENERIC_PARAMETER_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 namespace spp::asts::detail {
@@ -78,6 +75,3 @@ struct spp::asts::GenericParameterAst : virtual Ast {
 
     explicit GenericParameterAst(std::shared_ptr<TypeAst> name);
 };
-
-
-#endif //GENERIC_PARAMETER_AST_HPP

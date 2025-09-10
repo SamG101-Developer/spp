@@ -1,8 +1,5 @@
-#ifndef ITER_EXPRESSION_AST_HPP
-#define ITER_EXPRESSION_AST_HPP
-
+#pragma once
 #include <spp/asts/primary_expression_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::IterExpressionAst final : PrimaryExpressionAst {
@@ -51,6 +48,3 @@ struct spp::asts::IterExpressionAst final : PrimaryExpressionAst {
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //ITER_EXPRESSION_AST_HPP

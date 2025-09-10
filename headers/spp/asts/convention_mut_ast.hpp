@@ -1,8 +1,5 @@
-#ifndef CONVENTION_MUT_AST_HPP
-#define CONVENTION_MUT_AST_HPP
-
+#pragma once
 #include <spp/asts/convention_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 /**
@@ -35,6 +32,3 @@ struct spp::asts::ConventionMutAst final : ConventionAst {
 
     ~ConventionMutAst() override;
 };
-
-
-#endif //CONVENTION_MUT_AST_HPP

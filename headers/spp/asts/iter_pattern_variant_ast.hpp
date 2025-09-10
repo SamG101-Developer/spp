@@ -1,8 +1,5 @@
-#ifndef ITER_PATTERN_VARIANT_AST_HPP
-#define ITER_PATTERN_VARIANT_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::IterPatternVariantAst : virtual Ast {
@@ -14,6 +11,3 @@ protected:
      */
     std::unique_ptr<LetStatementInitializedAst> m_mapped_let;
 };
-
-
-#endif //ITER_PATTERN_VARIANT_AST_HPP

@@ -1,8 +1,5 @@
-#ifndef UNARY_EXPRESSION_AST_HPP
-#define UNARY_EXPRESSION_AST_HPP
-
+#pragma once
 #include <spp/asts/expression_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::UnaryExpressionAst final : ExpressionAst {
@@ -35,6 +32,3 @@ struct spp::asts::UnaryExpressionAst final : ExpressionAst {
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //UNARY_EXPRESSION_AST_HPP

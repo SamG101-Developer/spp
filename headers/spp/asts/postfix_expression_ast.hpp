@@ -1,8 +1,5 @@
-#ifndef POSTFIX_EXPRESSION_AST_HPP
-#define POSTFIX_EXPRESSION_AST_HPP
-
+#pragma once
 #include <spp/asts/expression_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::PostfixExpressionAst final : ExpressionAst {
@@ -34,6 +31,3 @@ struct spp::asts::PostfixExpressionAst final : ExpressionAst {
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //POSTFIX_EXPRESSION_AST_HPP

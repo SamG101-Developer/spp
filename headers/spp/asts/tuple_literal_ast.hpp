@@ -1,8 +1,5 @@
-#ifndef TUPLE_LITERAL_AST_HPP
-#define TUPLE_LITERAL_AST_HPP
-
+#pragma once
 #include <spp/asts/literal_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::TupleLiteralAst final : LiteralAst {
@@ -49,6 +46,3 @@ public:
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //TUPLE_LITERAL_AST_HPP

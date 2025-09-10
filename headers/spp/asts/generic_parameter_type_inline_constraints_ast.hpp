@@ -1,8 +1,5 @@
-#ifndef GENERIC_PARAMETER_TYPE_INLINE_CONSTRAINTS_AST_HPP
-#define GENERIC_PARAMETER_TYPE_INLINE_CONSTRAINTS_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::GenericParameterTypeInlineConstraintsAst final : virtual Ast {
@@ -30,6 +27,3 @@ struct spp::asts::GenericParameterTypeInlineConstraintsAst final : virtual Ast {
 
     ~GenericParameterTypeInlineConstraintsAst() override;
 };
-
-
-#endif //GENERIC_PARAMETER_TYPE_INLINE_CONSTRAINTS_AST_HPP

@@ -1,6 +1,5 @@
 #pragma once
 #include <spp/asts/let_statement_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::LetStatementInitializedAst final : LetStatementAst {

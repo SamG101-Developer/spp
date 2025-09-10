@@ -1,8 +1,5 @@
-#ifndef ITER_PATTERN_VARIANT_NO_VALUE_AST_HPP
-#define ITER_PATTERN_VARIANT_NO_VALUE_AST_HPP
-
+#pragma once
 #include <spp/asts/iter_pattern_variant_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::IterPatternVariantNoValueAst final : IterPatternVariantAst {
@@ -22,6 +19,3 @@ struct spp::asts::IterPatternVariantNoValueAst final : IterPatternVariantAst {
 
     ~IterPatternVariantNoValueAst() override;
 };
-
-
-#endif //ITER_PATTERN_VARIANT_NO_VALUE_AST_HPP

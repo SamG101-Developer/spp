@@ -1,5 +1,4 @@
-#ifndef MACROS_HPP
-#define MACROS_HPP
+#pragma once
 
 
 #define SPP_ATTR_NODISCARD [[nodiscard]]
@@ -27,6 +26,3 @@
 #define SPP_ATTR_UNREACHABLE [[gnu::unreachable]]
 
 #define SPP_INSTANT_INDIRECT [](auto &&x) -> decltype(auto) { return *x; }
-
-
-#endif //MACROS_HPP

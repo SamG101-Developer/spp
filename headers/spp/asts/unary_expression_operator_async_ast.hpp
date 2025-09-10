@@ -1,8 +1,5 @@
-#ifndef UNARY_EXPRESSION_OPERATOR_ASYNC_AST_HPP
-#define UNARY_EXPRESSION_OPERATOR_ASYNC_AST_HPP
-
+#pragma once
 #include <spp/asts/unary_expression_operator_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::UnaryExpressionOperatorAsyncAst final : UnaryExpressionOperatorAst {
@@ -27,6 +24,3 @@ struct spp::asts::UnaryExpressionOperatorAsyncAst final : UnaryExpressionOperato
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //UNARY_EXPRESSION_OPERATOR_ASYNC_AST_HPP

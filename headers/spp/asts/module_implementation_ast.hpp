@@ -1,8 +1,5 @@
-#ifndef MODULE_IMPLEMENTATION_AST_HPP
-#define MODULE_IMPLEMENTATION_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 /**
@@ -43,6 +40,3 @@ struct spp::asts::ModuleImplementationAst final : virtual Ast {
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //MODULE_IMPLEMENTATION_AST_HPP

@@ -1,8 +1,5 @@
-#ifndef TYPE_POSTFIX_EXPRESSION_AST_HPP
-#define TYPE_POSTFIX_EXPRESSION_AST_HPP
-
+#pragma once
 #include <spp/asts/type_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::TypePostfixExpressionAst final : TypeAst {
@@ -70,6 +67,3 @@ public:
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-#endif //TYPE_POSTFIX_EXPRESSION_AST_HPP

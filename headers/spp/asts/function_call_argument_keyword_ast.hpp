@@ -1,6 +1,5 @@
 #pragma once
 #include <spp/asts/function_call_argument_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 /**

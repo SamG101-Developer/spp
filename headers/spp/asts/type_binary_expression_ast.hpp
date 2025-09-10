@@ -1,9 +1,6 @@
-#ifndef TYPE_BINARY_EXPRESSION_AST_HPP
-#define TYPE_BINARY_EXPRESSION_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
 #include <spp/asts/mixins/temp_type_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::TypeBinaryExpressionAst final : virtual Ast, mixins::TempTypeAst {
@@ -40,6 +37,3 @@ struct spp::asts::TypeBinaryExpressionAst final : virtual Ast, mixins::TempTypeA
 
     auto convert() -> std::unique_ptr<TypeAst> override;
 };
-
-
-#endif //TYPE_BINARY_EXPRESSION_AST_HPP

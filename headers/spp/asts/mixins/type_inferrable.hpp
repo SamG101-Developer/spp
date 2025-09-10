@@ -1,5 +1,4 @@
 #pragma once
-
 #include <spp/asts/_fwd.hpp>
 
 

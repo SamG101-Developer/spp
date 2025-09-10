@@ -1,6 +1,4 @@
-#ifndef ALGORITHMS_HPP
-#define ALGORITHMS_HPP
-
+#pragma once
 #include <utility>
 
 
@@ -17,6 +15,3 @@ auto spp::utils::algorithms::move_accumulate(InputIt first, InputIt last, T &&in
     }
     return init;
 }
-
-
-#endif //ALGORITHMS_HPP

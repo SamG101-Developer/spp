@@ -1,8 +1,5 @@
-#ifndef TYPE_UNARY_EXPRESSION_OPERATOR_NAMESPACE_AST_HPP
-#define TYPE_UNARY_EXPRESSION_OPERATOR_NAMESPACE_AST_HPP
-
+#pragma once
 #include <spp/asts/type_unary_expression_operator_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : TypeUnaryExpressionOperatorAst {
@@ -43,6 +40,3 @@ public:
 
     auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
 };
-
-
-#endif //TYPE_UNARY_EXPRESSION_OPERATOR_NAMESPACE_AST_HPP

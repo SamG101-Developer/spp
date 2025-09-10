@@ -1,8 +1,5 @@
-#ifndef TYPE_POSTFIX_EXPRESSION_OPERATOR_NESTED_TYPE_AST_HPP
-#define TYPE_POSTFIX_EXPRESSION_OPERATOR_NESTED_TYPE_AST_HPP
-
+#pragma once
 #include <spp/asts/type_postfix_expression_operator_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final : TypePostfixExpressionOperatorAst {
@@ -43,6 +40,3 @@ public:
 
     auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
 };
-
-
-#endif //TYPE_POSTFIX_EXPRESSION_OPERATOR_NESTED_TYPE_AST_HPP

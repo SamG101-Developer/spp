@@ -1,6 +1,4 @@
-#ifndef TOKENS_HPP
-#define TOKENS_HPP
-
+#pragma once
 #include <spp/pch.hpp>
 
 
@@ -293,6 +291,3 @@ inline auto spp::lex::tok_to_string(const SppTokenType token) noexcept -> std::s
     default: return "";
     }
 }
-
-
-#endif //TOKENS_HPP

@@ -2,7 +2,6 @@
 #include <spp/asts/ast.hpp>
 #include <spp/asts/module_member_ast.hpp>
 #include <spp/asts/sup_member_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 /**

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <spp/utils/errors.hpp>
-#include <spp/asts/_fwd.hpp>
 
 #include <boost/multiprecision/cpp_dec_float.hpp>
 #include <boost/multiprecision/cpp_int.hpp>

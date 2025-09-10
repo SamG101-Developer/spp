@@ -1,7 +1,4 @@
-#ifndef CLASS_PROTOTYPE_AST_HPP
-#define CLASS_PROTOTYPE_AST_HPP
-
-#include <spp/asts/_fwd.hpp>
+#pragma once
 #include <spp/asts/ast.hpp>
 #include <spp/asts/module_member_ast.hpp>
 #include <spp/asts/sup_member_ast.hpp>
@@ -93,6 +90,3 @@ public:
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //CLASS_PROTOTYPE_AST_HPP

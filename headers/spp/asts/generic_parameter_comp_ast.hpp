@@ -1,8 +1,5 @@
-#ifndef GENERIC_PARAMETER_COMP_AST_HPP
-#define GENERIC_PARAMETER_COMP_AST_HPP
-
+#pragma once
 #include <spp/asts/generic_parameter_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::GenericParameterCompAst : GenericParameterAst {
@@ -45,6 +42,3 @@ struct spp::asts::GenericParameterCompAst : GenericParameterAst {
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //GENERIC_PARAMETER_COMP_AST_HPP

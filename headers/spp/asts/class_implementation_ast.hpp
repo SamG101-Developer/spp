@@ -1,6 +1,5 @@
 #pragma once
 #include <spp/asts/inner_scope_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 namespace spp::parse {
     class ParserSpp;

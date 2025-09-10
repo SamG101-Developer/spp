@@ -1,6 +1,4 @@
-#ifndef SCOPE_MANAGER_HPP
-#define SCOPE_MANAGER_HPP
-
+#pragma once
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/utils/error_formatter.hpp>
 
@@ -67,6 +65,3 @@ private:
 
     static auto check_conflicting_type_or_cmp_statements(TypeSymbol const &cls_sym, Scope const &sup_scope) -> void;
 };
-
-
-#endif //SCOPE_MANAGER_HPP

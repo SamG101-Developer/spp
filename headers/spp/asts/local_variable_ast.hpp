@@ -1,8 +1,5 @@
-#ifndef LOCAL_VARIABLE_AST_HPP
-#define LOCAL_VARIABLE_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::LocalVariableAst : virtual Ast {
@@ -24,6 +21,3 @@ public:
 
     virtual auto extract_name() const -> std::shared_ptr<IdentifierAst>;
 };
-
-
-#endif //LOCAL_VARIABLE_AST_HPP

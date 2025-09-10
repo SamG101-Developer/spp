@@ -1,8 +1,5 @@
-#ifndef PATTERN_GUARD_AST_HPP
-#define PATTERN_GUARD_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::PatternGuardAst final : virtual Ast {
@@ -35,6 +32,3 @@ struct spp::asts::PatternGuardAst final : virtual Ast {
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //PATTERN_GUARD_AST_HPP

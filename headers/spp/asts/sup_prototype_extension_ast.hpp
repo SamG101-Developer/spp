@@ -1,7 +1,4 @@
-#ifndef SUP_PROTOTYPE_EXTENSION_AST_HPP
-#define SUP_PROTOTYPE_EXTENSION_AST_HPP
-
-#include <spp/asts/_fwd.hpp>
+#pragma once
 #include <spp/asts/module_member_ast.hpp>
 #include <spp/asts/sup_member_ast.hpp>
 
@@ -106,6 +103,3 @@ public:
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //SUP_PROTOTYPE_EXTENSION_AST_HPP

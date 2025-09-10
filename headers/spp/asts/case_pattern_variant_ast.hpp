@@ -1,8 +1,5 @@
-#ifndef CASE_PATTERN_VARIANT_AST_HPP
-#define CASE_PATTERN_VARIANT_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 /**
@@ -19,8 +16,7 @@ protected:
     std::unique_ptr<LetStatementInitializedAst> m_mapped_let;
 
 public:
+    ~CasePatternVariantAst() override;
+
     virtual auto convert_to_variable(mixins::CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst>;
 };
-
-
-#endif //CASE_PATTERN_VARIANT_AST_HPP

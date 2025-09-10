@@ -1,8 +1,5 @@
-#ifndef OBJECT_INITIALIZER_ARGUMENT_GROUP_AST_HPP
-#define OBJECT_INITIALIZER_ARGUMENT_GROUP_AST_HPP
-
+#pragma once
 #include <spp/asts/ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 /**
@@ -59,6 +56,3 @@ struct spp::asts::ObjectInitializerArgumentGroupAst final : virtual Ast {
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //OBJECT_INITIALIZER_ARGUMENT_GROUP_AST_HPP

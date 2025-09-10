@@ -1,8 +1,5 @@
-#ifndef LOCAL_VARIABLE_DESTRUCTURE_SKIP_MULTIPLE_ARGUMENTS_AST_HPP
-#define LOCAL_VARIABLE_DESTRUCTURE_SKIP_MULTIPLE_ARGUMENTS_AST_HPP
-
+#pragma once
 #include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst final : LocalVariableAst {
@@ -38,6 +35,3 @@ struct spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst final : Local
 
     auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>> override;
 };
-
-
-#endif //LOCAL_VARIABLE_DESTRUCTURE_SKIP_MULTIPLE_ARGUMENTS_AST_HPP

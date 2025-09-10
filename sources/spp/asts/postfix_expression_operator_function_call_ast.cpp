@@ -32,6 +32,7 @@
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>
+#include <spp/macros.hpp>
 
 #include <genex/actions/sort.hpp>
 #include <genex/actions/remove.hpp>

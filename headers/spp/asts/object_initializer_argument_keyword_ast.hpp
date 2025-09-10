@@ -1,8 +1,5 @@
-#ifndef OBJECT_INITIALIZER_ARGUMENT_KEYWORD_AST_HPP
-#define OBJECT_INITIALIZER_ARGUMENT_KEYWORD_AST_HPP
-
+#pragma once
 #include <spp/asts/object_initializer_argument_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 /**
@@ -31,6 +28,3 @@ struct spp::asts::ObjectInitializerArgumentKeywordAst final : ObjectInitializerA
 
     ~ObjectInitializerArgumentKeywordAst() override;
 };
-
-
-#endif //OBJECT_INITIALIZER_ARGUMENT_KEYWORD_AST_HPP

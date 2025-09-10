@@ -1,8 +1,5 @@
-#ifndef GENERIC_PARAMETER_COMP_VARIADIC_AST_HPP
-#define GENERIC_PARAMETER_COMP_VARIADIC_AST_HPP
-
+#pragma once
 #include <spp/asts/generic_parameter_comp_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 struct spp::asts::GenericParameterCompVariadicAst final : GenericParameterCompAst {
@@ -31,6 +28,3 @@ struct spp::asts::GenericParameterCompVariadicAst final : GenericParameterCompAs
 
     ~GenericParameterCompVariadicAst() override;
 };
-
-
-#endif //GENERIC_PARAMETER_COMP_VARIADIC_AST_HPP

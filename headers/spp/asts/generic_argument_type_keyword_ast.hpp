@@ -1,8 +1,5 @@
-#ifndef GENERIC_ARGUMENT_TYPE_KEYWORD_AST_HPP
-#define GENERIC_ARGUMENT_TYPE_KEYWORD_AST_HPP
-
+#pragma once
 #include <spp/asts/generic_argument_type_ast.hpp>
-#include <spp/asts/_fwd.hpp>
 
 
 /**
@@ -46,6 +43,3 @@ public:
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-#endif //GENERIC_ARGUMENT_TYPE_KEYWORD_AST_HPP

@@ -1,7 +1,6 @@
 #pragma once
 #include <tuple>
 #include <map>
-#include <spp/asts/_fwd.hpp>
 
 
 namespace spp::analyse::scopes {
