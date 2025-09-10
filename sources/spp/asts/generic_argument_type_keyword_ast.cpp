@@ -9,7 +9,7 @@
 
 
 spp::asts::GenericArgumentTypeKeywordAst::GenericArgumentTypeKeywordAst(
-    decltype(name) &&name,
+    decltype(name) name,
     decltype(tok_assign) &&tok_assign,
     decltype(val) val) :
     GenericArgumentTypeAst(std::move(val)),

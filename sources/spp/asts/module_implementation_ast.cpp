@@ -48,6 +48,7 @@ auto spp::asts::ModuleImplementationAst::print(meta::AstPrinter &printer) const 
 auto spp::asts::ModuleImplementationAst::stage_1_pre_process(
     Ast *ctx)
     -> void {
+    // Shift to members.
     members
         | genex::views::ptr
         | genex::views::to<std::vector>()

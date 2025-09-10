@@ -38,6 +38,11 @@ spp::asts::GenericParameterGroupAst::GenericParameterGroupAst(
 spp::asts::GenericParameterGroupAst::~GenericParameterGroupAst() = default;
 
 
+auto spp::asts::GenericParameterGroupAst::new_empty() -> std::unique_ptr<GenericParameterGroupAst> {
+    return std::make_unique<GenericParameterGroupAst>(nullptr, decltype(params)(), nullptr);
+}
+
+
 auto spp::asts::GenericParameterGroupAst::get_required_params() const
     -> std::vector<GenericParameterAst*> {
     auto required_type = params

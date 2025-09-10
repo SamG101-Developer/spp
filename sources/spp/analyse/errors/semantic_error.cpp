@@ -730,9 +730,9 @@ spp::analyse::errors::SppCoroutineInvalidReturnTypeError::SppCoroutineInvalidRet
 
 spp::analyse::errors::SppFloatOutOfBoundsError::SppFloatOutOfBoundsError(
     asts::LiteralAst const &literal,
-    const boost::multiprecision::cpp_dec_float_100 value,
-    const boost::multiprecision::cpp_dec_float_100 lower,
-    const boost::multiprecision::cpp_dec_float_100 upper,
+    boost::multiprecision::cpp_dec_float_100 const &value,
+    boost::multiprecision::cpp_dec_float_100 const &lower,
+    boost::multiprecision::cpp_dec_float_100 const &upper,
     const std::string_view what) {
     add_header(
         37, "SPP Float Out Of Bounds Error");
@@ -747,9 +747,9 @@ spp::analyse::errors::SppFloatOutOfBoundsError::SppFloatOutOfBoundsError(
 
 spp::analyse::errors::SppIntegerOutOfBoundsError::SppIntegerOutOfBoundsError(
     asts::LiteralAst const &literal,
-    const boost::multiprecision::cpp_int value,
-    const boost::multiprecision::cpp_int lower,
-    const boost::multiprecision::cpp_int upper,
+    boost::multiprecision::cpp_int const &value,
+    boost::multiprecision::cpp_int const &lower,
+    boost::multiprecision::cpp_int const &upper,
     const std::string_view what) {
     add_header(
         38, "SPP Integer Out Of Bounds Error");

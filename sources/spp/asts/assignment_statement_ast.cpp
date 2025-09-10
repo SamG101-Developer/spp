@@ -101,7 +101,7 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
         | genex::views::to<std::vector>();
 
     // Create quick access derefs for the looping.
-    for (auto &&[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(lhs | genex::views::ptr, rhs | genex::views::ptr, lhs_syms)) {
+    for (auto &&[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(lhs | genex::views::ptr, rhs | genex::views::ptr, lhs_syms) | genex::views::to<std::vector>()) {
         auto &&[lhs_sym, _] = lhs_sym_and_scope;
 
         // Full assignment (ie "x" = "y") requires the "x" symbol to be marked as "mut" or never initialized.

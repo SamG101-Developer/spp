@@ -1,13 +1,10 @@
-
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/generate/common_types.hpp>
-#include <spp/asts/float_literal_ast.hpp>
 #include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
-#include <spp/pch.hpp>
+#include <spp/asts/float_literal_ast.hpp>
 
 #include <boost/multiprecision/cpp_dec_float.hpp>
 
@@ -105,7 +102,7 @@ auto spp::asts::FloatLiteralAst::stage_7_analyse_semantics(
     mixins::CompilerMetaData *)
     -> void {
     // Get the lower and upper bounds as big floats.
-    auto [lower, upper] = FLOAT_TYPE_MIN_MAX.at(type);
+    auto const &[lower, upper] = FLOAT_TYPE_MIN_MAX.at(type);
     const auto mapped_val = CppBigFloat((int_val->token_data + "." + frac_val->token_data).c_str());
 
     // Check if the value is within the bounds.

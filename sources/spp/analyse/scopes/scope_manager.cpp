@@ -32,20 +32,24 @@ spp::analyse::scopes::ScopeManager::ScopeManager(
 }
 
 
-auto spp::analyse::scopes::ScopeManager::iter() const -> std::generator<Scope*> {
-    // Define the generation algorithm for iterating scopes.
-    auto iterator = [](this auto &&self, const Scope *scope) -> std::generator<Scope*> {
-        for (auto &&child : scope->children) {
-            co_yield child.get();
-            for (auto *descendant : self(child.get())) {
-                co_yield descendant;
-            }
-        }
-    };
-
+auto spp::analyse::scopes::ScopeManager::iter() const
+    -> std::generator<Scope*> {
     // Generate from the lambda.
-    for (auto *scope : iterator(current_scope)) {
+    for (auto *scope : iter_impl(current_scope)) {
         co_yield scope;
+    }
+}
+
+
+auto spp::analyse::scopes::ScopeManager::iter_impl(
+    const Scope *scope) const
+    -> std::generator<Scope*> {
+    // Define the generation algorithm for iterating scopes.
+    for (auto &&child : scope->children) {
+        co_yield child.get();
+        for (auto *descendant : iter_impl(child.get())) {
+            co_yield descendant;
+        }
     }
 }
 

@@ -33,6 +33,8 @@ struct spp::asts::GenericParameterGroupAst final : virtual Ast {
         decltype(params) &&params,
         decltype(tok_r) &&tok_r);
 
+    static auto new_empty() -> std::unique_ptr<GenericParameterGroupAst>;
+
     ~GenericParameterGroupAst() override;
 
     auto get_required_params() const -> std::vector<GenericParameterAst*>;

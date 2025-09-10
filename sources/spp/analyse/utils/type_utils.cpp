@@ -104,7 +104,7 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
     }
 
     // Ensure each generic argument is symbolically equal to the other.
-    for (auto [lhs_generic, rhs_generic] : genex::views::zip(lhs_generics | genex::views::ptr, rhs_generics | genex::views::ptr)) {
+    for (auto [lhs_generic, rhs_generic] : genex::views::zip(lhs_generics | genex::views::ptr, rhs_generics | genex::views::ptr) | genex::views::to<std::vector>()) {
         if (asts::ast_cast<asts::GenericArgumentTypeAst>(lhs_generic)) {
             const auto lhs_generic_part = asts::ast_cast<asts::GenericArgumentTypeAst>(lhs_generic);
             const auto rhs_generic_part = asts::ast_cast<asts::GenericArgumentTypeAst>(rhs_generic);
@@ -194,7 +194,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     }
 
     // Ensure each generic argument is symbolically equal to the other.
-    for (auto [lhs_generic, rhs_generic] : genex::views::zip(lhs_generics | genex::views::ptr, rhs_generics | genex::views::ptr)) {
+    for (auto [lhs_generic, rhs_generic] : genex::views::zip(lhs_generics | genex::views::ptr, rhs_generics | genex::views::ptr) | genex::views::to<std::vector>()) {
         if (asts::ast_cast<asts::GenericArgumentTypeAst>(rhs_generic)) {
             const auto lhs_generic_part = asts::ast_cast<asts::GenericArgumentTypeAst>(lhs_generic);
             const auto rhs_generic_part = asts::ast_cast<asts::GenericArgumentTypeAst>(rhs_generic);
@@ -307,19 +307,6 @@ auto spp::analyse::utils::type_utils::is_type_recursive(
     asts::ClassPrototypeAst const &type,
     scopes::ScopeManager const &sm)
     -> std::shared_ptr<asts::TypeAst> {
-    // Define the internal function to recursively search for attribute types.
-    auto get_attr_types = [](this auto &&self, const asts::ClassPrototypeAst *cls_proto, const scopes::Scope *cls_scope) -> std::generator<std::pair<const asts::ClassPrototypeAst*, std::shared_ptr<asts::TypeAst>>> {
-        for (const auto attr : cls_proto->impl->members | genex::views::ptr | genex::views::cast_dynamic<asts::ClassAttributeAst*>()) {
-            const auto attr_type_sym = cls_scope->get_type_symbol(*attr->type, true);
-            if (attr_type_sym and attr_type_sym->type != nullptr) {
-                co_yield std::make_tuple(attr_type_sym->type, attr->type);
-                for (auto &&tup : self(attr_type_sym->type, attr_type_sym->scope)) {
-                    co_yield std::move(tup);
-                }
-            }
-        }
-    };
-
     // Get the attribute types recursively from the class prototype, and check for a match with the class prototype.
     for (auto [cls_proto, attr_ast] : get_attr_types(&type, sm.current_scope)) {
         if (cls_proto == &type) {
@@ -332,10 +319,28 @@ auto spp::analyse::utils::type_utils::is_type_recursive(
 }
 
 
+auto spp::analyse::utils::type_utils::get_attr_types(
+    const asts::ClassPrototypeAst *cls_proto,
+    const scopes::Scope *cls_scope)
+    -> std::generator<std::pair<const asts::ClassPrototypeAst*, std::shared_ptr<asts::TypeAst>>> {
+    // Define the internal function to recursively search for attribute types.
+    for (const auto attr : cls_proto->impl->members | genex::views::ptr | genex::views::cast_dynamic<asts::ClassAttributeAst*>()) {
+        const auto attr_type_sym = cls_scope->get_type_symbol(*attr->type, true);
+        if (attr_type_sym and attr_type_sym->type != nullptr) {
+            co_yield std::make_tuple(attr_type_sym->type, attr->type);
+            for (auto &&tup : get_attr_types(attr_type_sym->type, attr_type_sym->scope)) {
+                co_yield std::move(tup);
+            }
+        }
+    }
+}
+
+
 auto spp::analyse::utils::type_utils::is_index_within_type_bound(
     const std::size_t index,
     asts::TypeAst const &type,
-    scopes::Scope const &sm) -> bool {
+    scopes::Scope const &sm)
+    -> bool {
     // For tuples, count the number of generic arguments.
     if (is_type_tuple(type, sm)) {
         return index < type.type_parts().back()->generic_arg_group->args.size();
@@ -586,7 +591,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
         scoped_sym->type = scoped_sym->type->substitute_generics(type_part.generic_arg_group->args | genex::views::ptr | genex::views::to<std::vector>());
         scoped_sym->type->stage_7_analyse_semantics(&tm, meta);
     }
-    for (auto attr : asts::ast_cast<asts::ClassPrototypeAst>(old_cls_scope->ast)->impl->members | genex::views::ptr | genex::views::cast_dynamic<asts::ClassAttributeAst*>()) {
+    for (auto attr : asts::ast_cast<asts::ClassPrototypeAst>(old_cls_scope->ast)->impl->members | genex::views::ptr | genex::views::cast_dynamic<asts::ClassAttributeAst*>() | genex::views::to<std::vector>()) {
         const auto new_attr = ast_clone(attr);
         new_attr->type = new_attr->type->substitute_generics(type_part.generic_arg_group->args | genex::views::ptr | genex::views::to<std::vector>());
         new_attr->type->stage_7_analyse_semantics(&tm, meta);
@@ -671,14 +676,14 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
         old_self_sym));
 
     // Run generic substitution on the aliases in the new scope.
-    for (auto &&scoped_sym : new_sup_scope->all_type_symbols()) {
+    for (auto &&scoped_sym : new_sup_scope->all_type_symbols() | genex::views::to<std::vector>()) {
         if (auto scoped_alias_sym = dynamic_cast<scopes::AliasSymbol*>(scoped_sym); scoped_alias_sym != nullptr) {
             auto old_type_sub = scoped_alias_sym->old_sym->fq_name();
             scoped_alias_sym->old_sym = old_sup_scope.get_type_symbol(*old_type_sub)
                                             ? old_sup_scope.get_type_symbol(*old_type_sub)
                                             : scoped_alias_sym->old_sym;
             if (genex::algorithms::contains(old_sup_scope.children | genex::views::ptr | genex::views::to<std::vector>(), scoped_alias_sym->scope)) {
-                scoped_alias_sym->scope = new_sup_scope->children[genex::algorithms::position(old_sup_scope.children | genex::views::ptr, [&](auto &&x) { return x == scoped_alias_sym->scope; }) as USize].get();
+                scoped_alias_sym->scope = new_sup_scope->children[genex::algorithms::position(old_sup_scope.children | genex::views::ptr | genex::views::to<std::vector>(), [&](auto &&x) { return x == scoped_alias_sym->scope; }) as USize].get();
             }
         }
     }

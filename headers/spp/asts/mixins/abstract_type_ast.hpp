@@ -38,7 +38,7 @@ public:
 
     virtual auto without_generics() const -> std::unique_ptr<TypeAst> = 0;
 
-    virtual auto substitute_generics(std::vector<GenericArgumentAst*> args) const -> std::unique_ptr<TypeAst> = 0;
+    virtual auto substitute_generics(std::vector<GenericArgumentAst*> const &args) const -> std::unique_ptr<TypeAst> = 0;
 
     virtual auto contains_generic(GenericParameterAst const &generic) const -> bool = 0;
 

@@ -239,12 +239,12 @@ struct spp::analyse::errors::SppCoroutineInvalidReturnTypeError final : Semantic
 
 
 struct spp::analyse::errors::SppFloatOutOfBoundsError final : SemanticError {
-    explicit SppFloatOutOfBoundsError(asts::LiteralAst const &literal, boost::multiprecision::cpp_dec_float_100 value, boost::multiprecision::cpp_dec_float_100 lower, boost::multiprecision::cpp_dec_float_100 upper, std::string_view what);
+    explicit SppFloatOutOfBoundsError(asts::LiteralAst const &literal, boost::multiprecision::cpp_dec_float_100 const &value, boost::multiprecision::cpp_dec_float_100 const &lower, boost::multiprecision::cpp_dec_float_100 const &upper, std::string_view what);
 };
 
 
 struct spp::analyse::errors::SppIntegerOutOfBoundsError final : SemanticError {
-    explicit SppIntegerOutOfBoundsError(asts::LiteralAst const &literal, boost::multiprecision::cpp_int value, boost::multiprecision::cpp_int lower, boost::multiprecision::cpp_int upper, std::string_view what);
+    explicit SppIntegerOutOfBoundsError(asts::LiteralAst const &literal, boost::multiprecision::cpp_int const &value, boost::multiprecision::cpp_int const &lower, boost::multiprecision::cpp_int const &upper, std::string_view what);
 };
 
 
@@ -529,5 +529,5 @@ struct spp::analyse::errors::SppGenericArgumentTooManyError final : SemanticErro
 
 
 struct spp::analyse::errors::SppMissingMainFunctionError final : SemanticError {
-    explicit SppMissingMainFunctionError(asts::ModulePrototypeAst const& mod);
+    explicit SppMissingMainFunctionError(asts::ModulePrototypeAst const &mod);
 };

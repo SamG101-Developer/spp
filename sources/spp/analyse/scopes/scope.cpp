@@ -9,6 +9,7 @@
 #include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
 #include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
 #include <spp/asts/module_prototype_ast.hpp>
+#include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/compiler/module_tree.hpp>

@@ -12,7 +12,6 @@ struct spp::asts::SupImplementationAst final : InnerScopeAst<std::unique_ptr<Sup
 
     ~SupImplementationAst() override;
 
-private:
     static auto new_empty() -> std::unique_ptr<SupImplementationAst>;
 
 public:

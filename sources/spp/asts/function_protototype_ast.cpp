@@ -180,10 +180,11 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     Ast::stage_1_pre_process(ctx);
 
     // Substitute the "Self" parameter's type with the name of the method.
-    if (ast_cast<ModulePrototypeAst>(ctx) != nullptr and param_group->get_self_param()) {
-        const auto self_gen_sub = std::make_unique<GenericArgumentTypeKeywordAst>(generate::common_types::self_type(pos_start()), nullptr, ast_name(ctx));
-        auto gen_sub = std::vector<GenericArgumentAst*>();
-        gen_sub.emplace_back(self_gen_sub.get());
+    if (ast_cast<ModulePrototypeAst>(ctx) == nullptr and param_group->get_self_param() != nullptr) {
+        const auto self_gen_sub = std::make_unique<GenericArgumentTypeKeywordAst>(
+            generate::common_types::self_type(pos_start()), nullptr, ast_name(ctx));
+        auto gen_sub = std::vector<GenericArgumentAst*>(1);
+        gen_sub[0] = self_gen_sub.get();
 
         param_group->get_self_param()->type = param_group->get_self_param()->type->substitute_generics(gen_sub);
         param_group->params | genex::views::for_each([gen_sub](auto &&x) { x->type = x->type->substitute_generics(gen_sub); });

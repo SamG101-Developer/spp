@@ -2,6 +2,7 @@
 #include <spp/analyse/scopes/symbols.hpp>
 #include <spp/analyse/scopes/symbol_table.hpp>
 #include <spp/asts/_fwd.hpp>
+#include <spp/macros.hpp>
 #include <spp/pch.hpp>
 #include <spp/utils/error_formatter.hpp>
 
@@ -93,7 +94,7 @@ private:
 
 private:
     template <typename S, typename T, typename This>
-    auto all_symbols_impl(T const &map, This const &func, bool exclusive, bool sup_scope_search) const -> std::generator<S*>;
+    SPP_NO_ASAN auto all_symbols_impl(T const &map, This const &func, bool exclusive, bool sup_scope_search) const -> std::generator<S*>;
 
 public:
     Scope(ScopeName name, Scope *parent, asts::Ast *ast = nullptr, spp::utils::errors::ErrorFormatter *error_formatter = nullptr);
@@ -112,17 +113,17 @@ public:
 
     auto get_extended_generic_symbols(std::vector<asts::GenericArgumentAst*> generics) -> std::vector<Symbol*>;
 
-    auto add_var_symbol(std::shared_ptr<VariableSymbol> sym) -> void;
-    auto add_type_symbol(std::shared_ptr<TypeSymbol> sym) -> void;
-    auto add_ns_symbol(std::shared_ptr<NamespaceSymbol> sym) -> void;
+    SPP_NO_ASAN auto add_var_symbol(std::shared_ptr<VariableSymbol> sym) -> void;
+    SPP_NO_ASAN auto add_type_symbol(std::shared_ptr<TypeSymbol> sym) -> void;
+    SPP_NO_ASAN auto add_ns_symbol(std::shared_ptr<NamespaceSymbol> sym) -> void;
 
     auto rem_var_symbol(asts::IdentifierAst const &sym_name) -> void;
     auto rem_type_symbol(asts::TypeAst const &sym_name) -> void;
     auto rem_ns_symbol(asts::IdentifierAst const &sym_name) -> void;
 
-    auto all_var_symbols(bool exclusive = false, bool sup_scope_search = false) const -> std::generator<VariableSymbol*>;
-    auto all_type_symbols(bool exclusive = false, bool sup_scope_search = false) const -> std::generator<TypeSymbol*>;
-    auto all_ns_symbols(bool exclusive = false, bool = false) const -> std::generator<NamespaceSymbol*>;
+    SPP_NO_ASAN auto all_var_symbols(bool exclusive = false, bool sup_scope_search = false) const -> std::generator<VariableSymbol*>;
+    SPP_NO_ASAN auto all_type_symbols(bool exclusive = false, bool sup_scope_search = false) const -> std::generator<TypeSymbol*>;
+    SPP_NO_ASAN auto all_ns_symbols(bool exclusive = false, bool = false) const -> std::generator<NamespaceSymbol*>;
 
     auto has_var_symbol(asts::IdentifierAst const &sym_name, bool exclusive = false) const -> bool;
     auto has_type_symbol(asts::TypeAst const &sym_name, bool exclusive = false) const -> bool;

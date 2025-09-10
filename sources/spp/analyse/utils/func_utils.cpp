@@ -190,7 +190,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
 
         // From the super scopes, check each one for "sup $Func ext FunXXX { ... }" super-impositions.
         for (auto *sup_scope : sup_scopes) {
-            for (auto *sup_ast : asts::ast_body(sup_scope->ast) | genex::views::cast_dynamic<asts::SupPrototypeExtensionAst*>()) {
+            for (auto *sup_ast : asts::ast_body(sup_scope->ast) | genex::views::cast_dynamic<asts::SupPrototypeExtensionAst*>() | genex::views::to<std::vector>()) {
                 if (asts::ast_cast<asts::TypeIdentifierAst>(sup_ast->name)->name == mapped_name->val) {
                     auto generics = std::make_unique<asts::GenericArgumentGroupAst>(nullptr, sup_scope->get_generics(), nullptr);
                     auto scope = sup_scope;
@@ -214,7 +214,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
 
         // Adjust the scope in the tuple to the inner function scope.
         if (not for_override) {
-            for (auto [i, info] : overload_scopes | genex::views::move | genex::views::enumerate) {
+            for (auto &&[i, info] : overload_scopes | genex::views::move | genex::views::enumerate | genex::views::to<std::vector>()) {
                 auto &[scope, proto, generics] = info;
                 scope = scope->children[0].get();
                 overload_scopes[i] = std::make_tuple(scope, proto, std::move(generics));
@@ -238,7 +238,7 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_overload(
     auto existing_fns = existing | genex::views::tuple_element<1>() | genex::views::to<std::vector>();
 
     // Check for an overload conflict with all functions of the same name.
-    for (auto [old_scope, old_fn] : genex::views::zip(existing_scopes, existing_fns)) {
+    for (auto [old_scope, old_fn] : genex::views::zip(existing_scopes, existing_fns) | genex::views::to<std::vector>()) {
         // Ignore if the method is an identical match on a base class (override) or is the same object.
         if (old_fn == &new_fn) { continue; }
         if (old_fn == check_for_conflicting_override(this_scope, old_scope, new_fn, old_scope)) { continue; }
@@ -298,7 +298,7 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_override(
     auto existing_fns = existing | genex::views::tuple_element<1>() | genex::views::to<std::vector>();
 
     // Check for an overload conflict with all functions of the same name.
-    for (auto [old_scope, old_fn] : genex::views::zip(existing_scopes, existing_fns)) {
+    for (auto [old_scope, old_fn] : genex::views::zip(existing_scopes, existing_fns) | genex::views::to<std::vector>()) {
         // Ignore if the method is the same object.
         if (old_fn == &new_fn) { continue; }
         if (old_scope == exclude_scope) { continue; }
@@ -374,7 +374,7 @@ auto spp::analyse::utils::func_utils::name_args(
         | genex::views::ptr
         | genex::views::cast_dynamic<asts::FunctionCallArgumentPositionalAst*>();
 
-    for (auto [i, positional_arg] : positional_args | genex::views::enumerate) {
+    for (auto [i, positional_arg] : positional_args | genex::views::enumerate | genex::views::to<std::vector>()) {
         auto param_name = param_names.front();
         param_names |= genex::actions::pop_front();
         auto keyword_arg = std::make_unique<asts::FunctionCallArgumentKeywordAst>(std::move(param_name), nullptr, std::move(positional_arg->conv), nullptr);
@@ -477,7 +477,7 @@ auto spp::analyse::utils::func_utils::name_generic_args_impl(
         | genex::views::ptr
         | genex::views::cast_dynamic<asts::detail::make_positional_arg_t<GenericArgType>*>();
 
-    for (auto [i, positional_arg] : positional_args | genex::views::enumerate) {
+    for (auto [i, positional_arg] : positional_args | genex::views::enumerate | genex::views::to<std::vector>()) {
         // Error if there are too many generic arguments.
         if (param_names.empty()) {
             errors::SemanticErrorBuilder<errors::SppGenericArgumentTooManyError>().with_args(
@@ -682,7 +682,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl(
     }
 
     // Cross-apply generic arguments. This allows "Vec[T, A=Alloc[T]]" to substitute the new value of "T" into "Alloc".
-    for (auto &&arg_name : inferred_args | genex::views::keys) {
+    for (auto &&arg_name : inferred_args | genex::views::keys | genex::views::to<std::vector>()) {
         if (genex::algorithms::contains(explicit_arg_names, *arg_name, [](auto *x) { return *x; })) {
             continue;
         }
@@ -737,7 +737,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl(
         return;
     }
 
-    for (auto &&[param, arg] : genex::views::zip(params, args | genex::views::ptr)) {
+    for (auto &&[param, arg] : genex::views::zip(params, args | genex::views::ptr) | genex::views::to<std::vector>()) {
         auto comp_arg = asts::ast_cast<asts::GenericArgumentCompKeywordAst>(arg);
         auto comp_param = asts::ast_cast<asts::GenericParameterCompAst>(param);
         if (comp_arg == nullptr) { continue; }

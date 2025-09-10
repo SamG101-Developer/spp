@@ -25,17 +25,28 @@
 #include <genex/views/ptr.hpp>
 
 
+SPP_NO_ASAN
+static auto custom_iterator(const spp::asts::TypeAst *t, std::size_t depth) -> genex::generator<std::pair<spp::asts::GenericArgumentAst*, std::size_t>> {
+    for (auto &&g : t->type_parts().back()->generic_arg_group->args | genex::views::ptr) {
+        co_yield std::make_pair(g, depth);
+        if (auto &&type_arg = ast_cast<spp::asts::GenericArgumentTypeAst>(g)) {
+            for (auto &&inner_ti : custom_iterator(type_arg->val.get(), depth + 1)) {
+                co_yield inner_ti;
+            }
+        }
+    }
+}
+
+
 spp::asts::TypeIdentifierAst::TypeIdentifierAst(
     const std::size_t pos,
     decltype(name) &&name,
-    decltype(generic_arg_group) &&generic_args) :
+    decltype(generic_arg_group) &&generic_arg_group) :
     name(std::move(name)),
-    generic_arg_group(std::move(generic_args)),
+    generic_arg_group(std::move(generic_arg_group)),
     m_pos(pos),
     m_is_never_type(false) {
-    if (generic_args == nullptr) {
-        generic_args = std::make_unique<GenericArgumentGroupAst>(nullptr, decltype(GenericArgumentGroupAst::args)(), nullptr);
-    }
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_arg_group);
 }
 
 
@@ -199,25 +210,26 @@ auto spp::asts::TypeIdentifierAst::without_generics() const -> std::unique_ptr<T
 
 
 auto spp::asts::TypeIdentifierAst::substitute_generics(
-    const std::vector<GenericArgumentAst*> new_generics) const
+    std::vector<GenericArgumentAst*> const &args) const
     -> std::unique_ptr<TypeAst> {
     auto name_clone = ast_clone(this);
 
     // Get the generic type arguments.
-    auto gen_type_args = new_generics
+    auto gen_type_args = args
         | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()
         | genex::views::filter([](auto &&g) { return g != nullptr; })
-        | genex::views::transform([](auto &&g) { return std::make_pair(g->name.get(), g->val.get()); });
+        | genex::views::transform([](auto &&g) { return std::make_pair(g->name, g->val); })
+        | genex::views::to<std::vector>();
 
     // Get the generic comp arguments.
-    auto gen_comp_args = new_generics
+    auto gen_comp_args = args
         | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()
         | genex::views::filter([](auto &&g) { return g != nullptr; })
-        | genex::views::transform([](auto &&g) { return std::make_pair(g->name.get(), g->val.get()); });
+        | genex::views::transform([](auto &&g) { return std::make_pair(g->name, g->val.get()); });
 
     // Check if this type directly matches any generic type argument name.
     for (auto &&[gen_arg_name, gen_arg_val] : gen_type_args) {
-        if (*this == *ast_cast<TypeIdentifierAst>(gen_arg_name)) {
+        if (*this == *ast_cast<TypeIdentifierAst>(gen_arg_name.get())) {
             return ast_clone(gen_arg_val);
         }
     }
@@ -233,7 +245,7 @@ auto spp::asts::TypeIdentifierAst::substitute_generics(
 
     // Substitute generics in the type args' types.
     for (auto &&g : name_clone->generic_arg_group->get_type_args() | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()) {
-        g->val = g->val->substitute_generics(new_generics);
+        g->val = g->val->substitute_generics(args);
     }
 
     // Return the cloned type with generics substituted.
@@ -257,17 +269,6 @@ auto spp::asts::TypeIdentifierAst::match_generic(
     -> const ExpressionAst* {
     // Precheck to skip processing.
     if (static_cast<std::string>(*this) == static_cast<std::string>(other)) { return this; }
-
-    auto custom_iterator = [](this auto &&self, const TypeAst *t, std::size_t depth) -> genex::generator<std::pair<GenericArgumentAst*, std::size_t>> {
-        for (auto &&g : t->type_parts().back()->generic_arg_group->args | genex::views::ptr) {
-            co_yield std::make_pair(g, depth);
-            if (auto &&type_arg = ast_cast<GenericArgumentTypeAst>(g)) {
-                for (auto &&inner_ti : self(type_arg->val.get(), depth + 1)) {
-                    co_yield inner_ti;
-                }
-            }
-        }
-    };
 
     auto this_parts = custom_iterator(this, 0);
     auto that_parts = custom_iterator(&other, 0);

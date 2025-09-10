@@ -25,12 +25,12 @@ struct spp::asts::TypeIdentifierAst final : TypeAst {
      * Construct the TypeIdentifier with the arguments matching the members.
      * @param[in] pos The position of the type in the source code.
      * @param[in] name The name for the type.
-     * @param[in] generic_args The generic arguments for the type.
+     * @param[in] generic_arg_group The generic arguments for the type.
      */
     explicit TypeIdentifierAst(
         std::size_t pos,
         decltype(name) &&name,
-        decltype(generic_arg_group) &&generic_args);
+        decltype(generic_arg_group) &&generic_arg_group);
 
     ~TypeIdentifierAst() override;
 
@@ -47,6 +47,7 @@ protected:
     auto equals_type_identifier(TypeIdentifierAst const &other) const -> bool override;
 
 public:
+    SPP_NO_ASAN
     auto iterator() const -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> override;
 
     auto is_never_type() const -> bool override;
@@ -67,7 +68,7 @@ public:
 
     auto without_generics() const -> std::unique_ptr<TypeAst> override;
 
-    auto substitute_generics(std::vector<GenericArgumentAst*> args) const -> std::unique_ptr<TypeAst> override;
+    auto substitute_generics(std::vector<GenericArgumentAst*> const &args) const -> std::unique_ptr<TypeAst> override;
 
     auto contains_generic(GenericParameterAst const &generic) const -> bool override;
 

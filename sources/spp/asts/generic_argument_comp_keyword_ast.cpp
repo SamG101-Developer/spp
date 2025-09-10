@@ -31,7 +31,7 @@ auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
 
     // Depending on that the comptime AST is, get the value.
     if (const auto comptime_param = ast_cast<GenericParameterCompAst>(c)) {
-        value = ast_clone(comptime_param->name);
+        value = asts::ast_cast<ExpressionAst>(ast_clone(comptime_param->name));
     }
     else if (const auto comptime_arg = ast_cast<GenericArgumentCompAst>(c)) {
         value = ast_clone(comptime_arg->val);

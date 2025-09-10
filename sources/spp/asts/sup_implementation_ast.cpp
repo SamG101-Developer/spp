@@ -13,7 +13,10 @@ auto spp::asts::SupImplementationAst::new_empty() -> std::unique_ptr<SupImplemen
 }
 
 
-auto spp::asts::SupImplementationAst::stage_1_pre_process(Ast *ctx) -> void {
+auto spp::asts::SupImplementationAst::stage_1_pre_process(
+    Ast *ctx)
+    -> void {
+    // Shift to members.
     members
         | genex::views::ptr
         | genex::views::to<std::vector>()

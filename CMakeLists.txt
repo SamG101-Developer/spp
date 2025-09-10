@@ -27,19 +27,29 @@ target_compile_options(spp_lib PRIVATE
         -Wcast-align -Wcast-qual -Wconversion -Wsign-conversion -Wsign-promo -Wctor-dtor-privacy -Winit-self
         -Wold-style-cast -Woverloaded-virtual -Wundef -Wdisabled-optimization -Wmissing-declarations -Wmissing-include-dirs
         -Wnull-dereference -Wformat=2 -Wduplicated-cond -Wduplicated-branches -Wredundant-decls -Wlogical-op
-        -Wuseless-cast -Wdouble-promotion -Wstrict-null-sentinel -Wswitch-default -Wswitch-enum
-        -Wswitch-default -Wno-nonnull-compare -Wno-unused)
+        -Wuseless-cast -Wdouble-promotion -Wstrict-null-sentinel -Wswitch-default -Wswitch-enum -Wswitch-default
+        -Wno-null-dereference -Wno-maybe-uninitialized)
+#  -Wno-nonnull-compare -Wno-unused)
 # Deliberately don't have -Wshadow (pain to re-do all AST constructors)
 # Deliberately don't have -Wstrict-overflow=5 (errors in linked libraries)
 
-target_include_directories(spp_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/headers)
 target_link_libraries(spp_lib PRIVATE ColEx::ColExLib GenEx::GenExLib)
 target_link_libraries(spp_lib PRIVATE
         nlohmann_json::nlohmann_json tsl::robin_map magic_enum::magic_enum rapidfuzz::rapidfuzz Boost::boost Glob)
+
+target_include_directories(spp_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/headers)
 # target_precompile_headers(spp_lib PUBLIC "pch.hpp")
 
 add_executable(spp main.cpp)
 target_link_libraries(spp PRIVATE spp_lib)
+
+# In debug mode, add address sanitizer
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message(STATUS "Debug mode: Adding AddressSanitizer flags")
+    target_compile_options(spp_lib PRIVATE -fsanitize=address -fno-omit-frame-pointer -g -O0)
+    target_compile_options(spp PRIVATE -fsanitize=address -fno-omit-frame-pointer -g -O0)
+    target_link_options(spp PRIVATE -fsanitize=address)
+endif()
 
 enable_testing()
 add_subdirectory(tests)

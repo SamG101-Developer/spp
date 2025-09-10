@@ -173,7 +173,9 @@ auto spp::asts::CaseExpressionAst::infer_type(
         return generate::common_types::void_type(pos_start());
     }
 
-    auto final_type_info = branches_type_info | genex::views::filter([master_branch_type_info](auto &&x) { return x.second == master_branch_type_info.second; });
+    auto final_type_info = branches_type_info
+        | genex::views::filter([master_branch_type_info](auto &&x) { return x.second == master_branch_type_info.second; })
+        | genex::views::to<std::vector>();
     for (auto &&[_, final_type] : final_type_info) {
         return std::move(final_type);
     }

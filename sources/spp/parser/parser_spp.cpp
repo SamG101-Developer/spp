@@ -2880,9 +2880,9 @@ auto spp::parse::ParserSpp::parse_token_raw(const lex::RawTokenType tok, lex::Sp
         return nullptr;
     }
 
-    const auto data = mapped_tok == lex::SppTokenType::LX_CHARACTER or mapped_tok == lex::SppTokenType::LX_DIGIT
-                          ? m_tokens[m_pos].data.data()
-                          : magic_enum::enum_name(m_tokens[m_pos].type).data();
+    // const auto data = mapped_tok == lex::SppTokenType::LX_CHARACTER or mapped_tok == lex::SppTokenType::LX_DIGIT
+    //                       ? m_tokens[m_pos].data.data()
+    //                       : magic_enum::enum_name(m_tokens[m_pos].type).data();
     ++m_pos;
     return CREATE_AST(asts::TokenAst, m_pos, mapped_tok, m_tokens[m_pos - 1].data.data());
 }

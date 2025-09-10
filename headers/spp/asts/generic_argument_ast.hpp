@@ -63,4 +63,7 @@ protected:
     virtual auto equals_generic_argument_type_keyword(GenericArgumentTypeKeywordAst const &) const -> bool;
     virtual auto equals_generic_argument_type_positional(GenericArgumentTypePositionalAst const &) const -> bool;
     virtual auto equals(GenericArgumentAst const &other) const -> bool = 0;
+
+public:
+    ~GenericArgumentAst() override;
 };

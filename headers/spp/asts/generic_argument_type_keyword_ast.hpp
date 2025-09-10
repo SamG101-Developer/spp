@@ -33,7 +33,7 @@ public:
      * @param val The value of the generic type argument.
      */
     GenericArgumentTypeKeywordAst(
-        decltype(name) &&name,
+        decltype(name) name,
         decltype(tok_assign) &&tok_assign,
         decltype(val) val);
 

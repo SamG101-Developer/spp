@@ -32,6 +32,7 @@ protected:
     auto equals_type_unary_expression(TypeUnaryExpressionAst const &other) const -> bool override;
 
 public:
+    SPP_NO_ASAN
     auto iterator() const -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> override;
 
     auto is_never_type() const -> bool override;
@@ -52,7 +53,7 @@ public:
 
     auto without_generics() const -> std::unique_ptr<TypeAst> override;
 
-    auto substitute_generics(std::vector<GenericArgumentAst*> args) const -> std::unique_ptr<TypeAst> override;
+    auto substitute_generics(std::vector<GenericArgumentAst*> const &args) const -> std::unique_ptr<TypeAst> override;
 
     auto contains_generic(GenericParameterAst const &generic) const -> bool override;
 

@@ -2,6 +2,7 @@
 #include <spp/asts/_fwd.hpp>
 #include <spp/asts/meta/ast_printer.hpp>
 #include <spp/asts/mixins/compiler_stages.hpp>
+#include <spp/macros.hpp>
 #include <spp/pch.hpp>
 
 #include <genex/views/ptr.hpp>
@@ -9,15 +10,52 @@
 #include <genex/views/to.hpp>
 
 
-#define ast_clone(ast) ((ast) != nullptr ? ast_cast<std::remove_cvref_t<decltype(*ast)>>((ast)->clone()) : nullptr)
+// #define ast_clone(ast) ((ast) != nullptr ? ast_cast<std::remove_cvref_t<decltype(*ast)>>((ast)->clone()) : nullptr)
+//
+// #define ast_clone_vec(asts) (asts) | genex::views::transform([](auto &&x) { return ast_clone(x); }) | genex::views::to<std::vector>()
+//
+// #define ast_clone_vec_shared(asts) (asts) | genex::views::transform([](auto x) { return x; }) | genex::views::to<std::vector>()
 
-#define ast_clone_vec(asts) (asts) | genex::views::transform([](auto &&x) { return ast_clone(x); }) | genex::views::to<std::vector>()
-
-#define ast_clone_vec_shared(asts) (asts) | genex::views::transform([](auto x) { return x; }) | genex::views::to<std::vector>()
+#define SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(ast_attr) \
+    if ((ast_attr) == nullptr) { \
+        (ast_attr) = std::remove_cvref_t<decltype(*ast_attr)>::new_empty(); \
+    }
 
 
 namespace spp::asts {
     struct Ast;
+
+    template <typename T>
+    auto ast_clone(std::unique_ptr<T> const &ast) -> std::unique_ptr<std::remove_cvref_t<T>> {
+        if (ast == nullptr) { return nullptr; }
+        return ast_cast<std::remove_cvref_t<T>>(ast->clone());
+    }
+
+    template <typename T>
+    auto ast_clone(std::shared_ptr<T> const &ast) -> std::unique_ptr<std::remove_cvref_t<T>> {
+        if (ast == nullptr) { return nullptr; }
+        return ast_cast<std::remove_cvref_t<T>>(ast->clone());
+    }
+
+    template <typename T>
+    auto ast_clone(T *ast) -> std::unique_ptr<std::remove_cvref_t<T>> {
+        if (ast == nullptr) { return nullptr; }
+        return ast_cast<std::remove_cvref_t<T>>(ast->clone());
+    }
+
+    template <typename T>
+    auto ast_clone_vec(std::vector<std::unique_ptr<T>> const &asts) -> std::vector<std::unique_ptr<T>> {
+        return asts
+            | genex::views::transform([](auto &&x) { return ast_clone(x); })
+            | genex::views::to<std::vector>();
+    }
+
+    template <typename T>
+    auto ast_clone_vec_shared(std::vector<std::shared_ptr<T>> const &asts) -> std::vector<std::shared_ptr<T>> {
+        return asts
+            | genex::views::transform([](auto x) { return x; })
+            | genex::views::to<std::vector>();
+    }
 
     template <typename T>
     auto ast_cast(Ast *ast) -> T* {
@@ -45,7 +83,7 @@ namespace spp::asts {
     }
 
     template <typename T, typename U>
-    auto ast_cast(std::shared_ptr<U> ast) -> std::shared_ptr<T> {
+    auto ast_cast(std::shared_ptr<U> const &ast) -> std::shared_ptr<T> {
         return std::shared_ptr<T>(ast_cast<T>(ast.get()));
     }
 

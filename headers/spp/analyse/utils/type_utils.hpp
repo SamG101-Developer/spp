@@ -3,6 +3,7 @@
 #include <map>
 
 #include <spp/asts/_fwd.hpp>
+#include <spp/macros.hpp>
 
 
 namespace spp::analyse::scopes {
@@ -111,12 +112,17 @@ namespace spp::analyse::utils::type_utils {
         scopes::Scope const &scope)
         -> bool;
 
-    auto is_type_recursive(
+    SPP_NO_ASAN auto is_type_recursive(
         asts::ClassPrototypeAst const &type,
         scopes::ScopeManager const &sm)
         -> std::shared_ptr<asts::TypeAst>;
 
-    auto is_index_within_type_bound(
+    SPP_NO_ASAN auto get_attr_types(
+        const asts::ClassPrototypeAst *cls_proto,
+        const scopes::Scope *cls_scope)
+        -> std::generator<std::pair<const asts::ClassPrototypeAst*, std::shared_ptr<asts::TypeAst>>>;
+
+    SPP_NO_ASAN auto is_index_within_type_bound(
         std::size_t index,
         asts::TypeAst const &type,
         scopes::Scope const &sm)

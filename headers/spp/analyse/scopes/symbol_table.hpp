@@ -1,9 +1,8 @@
 #pragma once
 
-#include <generator>
-#include <map>
-
 #include <spp/asts/_fwd.hpp>
+#include <spp/macros.hpp>
+#include <spp/pch.hpp>
 
 #include <tsl/robin_map.h>
 
@@ -53,6 +52,7 @@ public:
 
     auto has(I const *sym_name) const -> bool;
 
+    SPP_NO_ASAN
     auto all() const -> std::generator<std::shared_ptr<S>>;
 };
 

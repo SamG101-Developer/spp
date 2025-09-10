@@ -1,6 +1,9 @@
 #include <spp/asts/generic_argument_ast.hpp>
 
 
+spp::asts::GenericArgumentAst::~GenericArgumentAst() = default;
+
+
 auto spp::asts::GenericArgumentAst::equals_generic_argument_comp_keyword(
     GenericArgumentCompKeywordAst const &) const
     -> bool {

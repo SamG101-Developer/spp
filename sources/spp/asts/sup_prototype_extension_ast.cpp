@@ -38,6 +38,8 @@ spp::asts::SupPrototypeExtensionAst::SupPrototypeExtensionAst(
     tok_ext(std::move(tok_ext)),
     super_class(std::move(super_class)),
     impl(std::move(impl)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_param_group);
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->impl);
 }
 
 
@@ -153,9 +155,10 @@ auto spp::asts::SupPrototypeExtensionAst::stage_1_pre_process(
     Ast::stage_1_pre_process(ctx);
 
     // Substitute the "Self" parameter's type with the name of the type being superimposed over.
-    const auto self_gen_sub = std::make_unique<GenericArgumentTypeKeywordAst>(generate::common_types::self_type(pos_start()), nullptr, name);
-    auto gen_sub = std::vector<GenericArgumentAst*>();
-    gen_sub.emplace_back(self_gen_sub.get());
+    const auto self_gen_sub = std::make_unique<GenericArgumentTypeKeywordAst>(
+        generate::common_types::self_type(pos_start()), nullptr, name);
+    auto gen_sub = std::vector<GenericArgumentAst*>(1);
+    gen_sub[0] = self_gen_sub.get();
     super_class = super_class->substitute_generics(gen_sub);
 
     // Preprocess the implementation.

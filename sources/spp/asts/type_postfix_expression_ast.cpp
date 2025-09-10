@@ -166,11 +166,12 @@ auto spp::asts::TypePostfixExpressionAst::without_generics(
 
 
 auto spp::asts::TypePostfixExpressionAst::substitute_generics(
-    const std::vector<GenericArgumentAst*> args) const
+    std::vector<GenericArgumentAst*> const &args) const
     -> std::unique_ptr<TypeAst> {
     const auto rhs = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
     auto new_lhs = lhs->substitute_generics(args);
-    auto new_rhs = std::make_unique<TypePostfixExpressionOperatorNestedTypeAst>(nullptr, ast_cast<TypeIdentifierAst>(rhs->name->substitute_generics(std::move(args))));
+    auto new_rhs = std::make_unique<TypePostfixExpressionOperatorNestedTypeAst>(
+        nullptr, ast_cast<TypeIdentifierAst>(rhs->name->substitute_generics(std::move(args))));
     return std::make_unique<TypePostfixExpressionAst>(std::move(new_lhs), std::move(new_rhs));
 }
 

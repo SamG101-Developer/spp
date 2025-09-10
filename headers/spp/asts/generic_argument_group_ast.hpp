@@ -36,6 +36,8 @@ struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
 
     ~GenericArgumentGroupAst() override;
 
+    static auto new_empty() -> std::unique_ptr<GenericArgumentGroupAst>;
+
     static auto from_params(
         GenericParameterGroupAst const &generic_params) -> std::unique_ptr<GenericArgumentGroupAst>;
 

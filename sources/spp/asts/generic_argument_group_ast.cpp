@@ -22,7 +22,6 @@
 #include <genex/views/cast.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/duplicates.hpp>
-#include <genex/views/filter.hpp>
 #include <genex/views/for_each.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
@@ -40,6 +39,12 @@ spp::asts::GenericArgumentGroupAst::GenericArgumentGroupAst(
 
 
 spp::asts::GenericArgumentGroupAst::~GenericArgumentGroupAst() = default;
+
+
+auto spp::asts::GenericArgumentGroupAst::new_empty()
+    -> std::unique_ptr<GenericArgumentGroupAst> {
+    return std::make_unique<GenericArgumentGroupAst>(nullptr, decltype(args)(), nullptr);
+}
 
 
 auto spp::asts::GenericArgumentGroupAst::from_params(
