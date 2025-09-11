@@ -77,6 +77,7 @@ public:
         this->m_err_obj->final_message = this->m_err_obj->messages
             | genex::views::flatten_with('\n')
             | genex::views::to<std::string>();
+
         throw T(*m_err_obj);
     }
 };
