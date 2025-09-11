@@ -27,9 +27,9 @@ struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
     ~TypeUnaryExpressionAst() override;
 
 protected:
-    auto equals(ExpressionAst const &other) const -> std::weak_ordering override;
+    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
-    auto equals_type_unary_expression(TypeUnaryExpressionAst const &other) const -> std::weak_ordering override;
+    auto equals_type_unary_expression(TypeUnaryExpressionAst const &other) const -> std::strong_ordering override;
 
 public:
     SPP_NO_ASAN
@@ -49,17 +49,17 @@ public:
 
     auto get_convention() const -> ConventionAst* override;
 
-    auto with_convention(std::unique_ptr<ConventionAst> &&conv) const -> std::unique_ptr<TypeAst> override;
+    auto with_convention(std::unique_ptr<ConventionAst> &&conv) const -> std::shared_ptr<TypeAst> override;
 
-    auto without_generics() const -> std::unique_ptr<TypeAst> override;
+    auto without_generics() const -> std::shared_ptr<TypeAst> override;
 
-    auto substitute_generics(std::vector<GenericArgumentAst*> const &args) const -> std::unique_ptr<TypeAst> override;
+    auto substitute_generics(std::vector<GenericArgumentAst*> const &args) const -> std::shared_ptr<TypeAst> override;
 
     auto contains_generic(GenericParameterAst const &generic) const -> bool override;
 
     auto match_generic(TypeAst const &other, TypeIdentifierAst const &generic_name) const -> const ExpressionAst* override;
 
-    auto with_generics(std::shared_ptr<GenericArgumentGroupAst> &&arg_group) const -> std::unique_ptr<TypeAst> override;
+    auto with_generics(std::shared_ptr<GenericArgumentGroupAst> &&arg_group) const -> std::shared_ptr<TypeAst> override;
 
     auto stage_4_qualify_types(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

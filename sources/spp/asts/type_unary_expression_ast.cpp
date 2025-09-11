@@ -59,7 +59,7 @@ auto spp::asts::TypeUnaryExpressionAst::print(meta::AstPrinter &printer) const -
 
 auto spp::asts::TypeUnaryExpressionAst::equals(
     ExpressionAst const &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     // Double dispatch to the appropriate equals method.
     return other.equals_type_unary_expression(*this);
 }
@@ -67,12 +67,12 @@ auto spp::asts::TypeUnaryExpressionAst::equals(
 
 auto spp::asts::TypeUnaryExpressionAst::equals_type_unary_expression(
     TypeUnaryExpressionAst const &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     // Check if the operators and right-hand-sides are the same.
     if (*op == *other.op && *rhs == *other.rhs) {
-        return std::weak_ordering::equivalent;
+        return std::strong_ordering::equal;
     }
-    return std::weak_ordering::less;
+    return std::strong_ordering::less;
 }
 
 
@@ -137,24 +137,24 @@ auto spp::asts::TypeUnaryExpressionAst::get_convention() const
 
 auto spp::asts::TypeUnaryExpressionAst::with_convention(
     std::unique_ptr<ConventionAst> &&conv) const
-    -> std::unique_ptr<TypeAst> {
+    -> std::shared_ptr<TypeAst> {
     if (ast_cast<TypeUnaryExpressionOperatorBorrowAst>(op.get())) {
-        return std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), rhs);
+        return std::make_shared<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), rhs);
     }
-    return std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), ast_clone(this));
+    return std::make_shared<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), ast_clone(this));
 }
 
 
 auto spp::asts::TypeUnaryExpressionAst::without_generics() const
-    -> std::unique_ptr<TypeAst> {
-    return std::make_unique<TypeUnaryExpressionAst>(op, rhs->without_generics());
+    -> std::shared_ptr<TypeAst> {
+    return std::make_shared<TypeUnaryExpressionAst>(op, rhs->without_generics());
 }
 
 
 auto spp::asts::TypeUnaryExpressionAst::substitute_generics(
     std::vector<GenericArgumentAst*> const &args) const
-    -> std::unique_ptr<TypeAst> {
-    return std::make_unique<TypeUnaryExpressionAst>(op, rhs->substitute_generics(args));
+    -> std::shared_ptr<TypeAst> {
+    return std::make_shared<TypeUnaryExpressionAst>(op, rhs->substitute_generics(args));
 }
 
 
@@ -175,7 +175,7 @@ auto spp::asts::TypeUnaryExpressionAst::match_generic(
 
 auto spp::asts::TypeUnaryExpressionAst::with_generics(
     std::shared_ptr<GenericArgumentGroupAst> &&arg_group) const
-    -> std::unique_ptr<TypeAst> {
+    -> std::shared_ptr<TypeAst> {
     // Clone this type and add the generics to the right most part.
     auto type_clone = ast_clone(this);
     type_clone->type_parts().back()->generic_arg_group->args = std::move(arg_group->args);

@@ -34,15 +34,15 @@ public:
 
     virtual auto get_convention() const -> ConventionAst* = 0;
 
-    virtual auto with_convention(std::unique_ptr<ConventionAst> &&conv) const -> std::unique_ptr<TypeAst> = 0;
+    virtual auto with_convention(std::unique_ptr<ConventionAst> &&conv) const -> std::shared_ptr<TypeAst> = 0;
 
-    virtual auto without_generics() const -> std::unique_ptr<TypeAst> = 0;
+    virtual auto without_generics() const -> std::shared_ptr<TypeAst> = 0;
 
-    virtual auto substitute_generics(std::vector<GenericArgumentAst*> const &args) const -> std::unique_ptr<TypeAst> = 0;
+    virtual auto substitute_generics(std::vector<GenericArgumentAst*> const &args) const -> std::shared_ptr<TypeAst> = 0;
 
     virtual auto contains_generic(GenericParameterAst const &generic) const -> bool = 0;
 
     virtual auto match_generic(TypeAst const &other, TypeIdentifierAst const &generic_name) const -> const ExpressionAst* = 0;
 
-    virtual auto with_generics(std::shared_ptr<GenericArgumentGroupAst> &&arg_group) const -> std::unique_ptr<TypeAst> = 0;
+    virtual auto with_generics(std::shared_ptr<GenericArgumentGroupAst> &&arg_group) const -> std::shared_ptr<TypeAst> = 0;
 };

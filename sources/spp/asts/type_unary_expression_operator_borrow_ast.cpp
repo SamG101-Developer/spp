@@ -43,7 +43,7 @@ auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::print(meta::AstPrinter &pr
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::equals(
     TypeUnaryExpressionOperatorAst const &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     // Double dispatch to the appropriate equals method.
     return other.equals_op_borrow(*this);
 }
@@ -51,12 +51,12 @@ auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::equals(
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::equals_op_borrow(
     TypeUnaryExpressionOperatorBorrowAst const &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     // Check if the conventions are the same.
     if (conv->tag == other.conv->tag) {
-        return std::weak_ordering::equivalent;
+        return std::strong_ordering::equal;
     }
-    return std::weak_ordering::less;
+    return std::strong_ordering::less;
 }
 
 

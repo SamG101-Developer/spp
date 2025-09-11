@@ -50,7 +50,7 @@ auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::print(meta::AstPrinter 
 
 auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::equals(
     TypeUnaryExpressionOperatorAst const &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     // Double dispatch to the appropriate equals method.
     return other.equals_op_namespace(*this);
 }
@@ -58,12 +58,12 @@ auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::equals(
 
 auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::equals_op_namespace(
     TypeUnaryExpressionOperatorNamespaceAst const &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     // Check if the namespace identifiers are the same.
     if (*ns == *other.ns) {
-        return std::weak_ordering::equivalent;
+        return std::strong_ordering::equal;
     }
-    return std::weak_ordering::less;
+    return std::strong_ordering::less;
 }
 
 

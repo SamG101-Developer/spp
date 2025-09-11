@@ -5,13 +5,13 @@
 
 auto spp::asts::TypeUnaryExpressionOperatorAst::equals_op_borrow(
     TypeUnaryExpressionOperatorBorrowAst const &) const
-    -> std::weak_ordering {
-    return std::weak_ordering::less;
+    -> std::strong_ordering {
+    return std::strong_ordering::less;
 }
 
 
 auto spp::asts::TypeUnaryExpressionOperatorAst::equals_op_namespace(
     TypeUnaryExpressionOperatorNamespaceAst const &) const
-    -> std::weak_ordering {
-    return std::weak_ordering::less;
+    -> std::strong_ordering {
+    return std::strong_ordering::less;
 }

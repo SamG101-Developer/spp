@@ -747,9 +747,9 @@ auto spp::analyse::utils::type_utils::get_type_part_symbol_with_error(
     // Get the type part's symbol, and raise an error if it doesn't exist.
     const auto type_sym = scope.get_type_symbol(type_part, ignore_alias, meta);
     if (type_sym == nullptr) {
-        const auto alternatives = sm.current_scope->all_var_symbols()
-            | genex::views::transform([](auto &&x) { return x->name->val; })
-            | genex::views::remove_if([](auto &&x) { return x[0] == '$'; })
+        const auto alternatives = sm.current_scope->all_type_symbols()
+            | genex::views::transform([](auto *x) { return x->name->name; })
+            | genex::views::remove_if([](auto const &x) { return x[0] == '$'; })
             | genex::views::to<std::vector>();
 
         const auto closest_match = spp::utils::strings::closest_match(type_part.name, alternatives);
@@ -770,8 +770,7 @@ auto spp::analyse::utils::type_utils::get_namespaced_scope_with_error(
     const auto ns_scope = sm.get_namespaced_scope({&ns});
     if (ns_scope == nullptr) {
         const auto alternatives = sm.current_scope->all_var_symbols()
-            | genex::views::transform([](auto &&x) { return x->name->val; })
-            | genex::views::remove_if([](auto &&x) { return x[0] == '$'; })
+            | genex::views::transform([](auto *x) { return x->name->val; })
             | genex::views::to<std::vector>();
 
         const auto closest_match = spp::utils::strings::closest_match(ns.val, alternatives);
