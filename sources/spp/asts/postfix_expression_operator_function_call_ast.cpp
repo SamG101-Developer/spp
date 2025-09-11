@@ -323,7 +323,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                                  {}, [&func_param_names](FunctionCallArgumentKeywordAst *arg) { return genex::algorithms::position(func_param_names, [&arg](auto const &param) { return *arg->name == *param; }); });
 
             for (auto &&[arg, param] : sorted_func_arguments | genex::views::zip(func_params)) {
-                auto p_type = std::shared_ptr(fn_scope->get_type_symbol(*param->type)->fq_name()->with_convention(ast_clone(param->type->get_convention())));
+                auto p_type = fn_scope->get_type_symbol(*param->type)->fq_name()->with_convention(ast_clone(param->type->get_convention()));
                 auto a_type = arg->infer_type(sm, meta);
 
                 // Special case for variadic parameters.
