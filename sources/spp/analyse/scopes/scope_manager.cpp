@@ -96,7 +96,7 @@ auto spp::analyse::scopes::ScopeManager::move_out_of_current_scope()
 
 auto spp::analyse::scopes::ScopeManager::move_to_next_scope()
     -> Scope* {
-    // Move ti the next scope by advancing the iterator.
+    // Move to the next scope by advancing the iterator.
     current_scope = *++m_it;
     return current_scope;
 }
