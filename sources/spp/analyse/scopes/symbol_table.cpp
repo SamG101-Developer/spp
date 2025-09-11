@@ -3,8 +3,18 @@
 #include <spp/asts/type_ast.hpp>
 
 
-template <typename T>
-auto spp::analyse::scopes::SymNameCmp<T>::operator()(T const *lhs, T const *rhs) const -> bool {
+auto spp::analyse::scopes::SymNameCmp<spp::asts::IdentifierAst*>::operator()(
+    asts::IdentifierAst const *lhs,
+    asts::IdentifierAst const *rhs) const
+    -> bool {
+    return *lhs < *rhs;
+}
+
+
+auto spp::analyse::scopes::SymNameCmp<spp::asts::TypeAst*>::operator()(
+    asts::TypeAst const *lhs,
+    asts::TypeAst const *rhs) const
+    -> bool {
     return *lhs < *rhs;
 }
 
@@ -40,7 +50,7 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::operator=(
 template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::add(
     I const *sym_name,
-    std::shared_ptr<S> const & sym)
+    std::shared_ptr<S> const &sym)
     -> void {
     // Add a symbol to the table.
     m_table[sym_name] = sym;

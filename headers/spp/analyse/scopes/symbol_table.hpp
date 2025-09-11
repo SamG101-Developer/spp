@@ -17,21 +17,32 @@ namespace spp::analyse::scopes {
     struct TypeSymbol;
     struct VariableSymbol;
 
-    template <typename T>
+    template <typename>
     struct SymNameCmp;
 }
 
 
-template <typename T>
+template <typename>
 struct spp::analyse::scopes::SymNameCmp {
-    auto operator()(T const *lhs, T const *rhs) const -> bool;
+};
+
+
+template <>
+struct spp::analyse::scopes::SymNameCmp<spp::asts::IdentifierAst*> {
+    auto operator()(asts::IdentifierAst const *lhs, asts::IdentifierAst const *rhs) const -> bool;
+};
+
+
+template <>
+struct spp::analyse::scopes::SymNameCmp<spp::asts::TypeAst*> {
+    auto operator()(asts::TypeAst const *lhs, asts::TypeAst const *rhs) const -> bool;
 };
 
 
 template <typename I, typename S>
 class spp::analyse::scopes::IndividualSymbolTable {
 private:
-    std::map<I const*, std::shared_ptr<S>, SymNameCmp<I>> m_table;
+    std::map<I const*, std::shared_ptr<S>, SymNameCmp<I*>> m_table;
 
 public:
     IndividualSymbolTable();
