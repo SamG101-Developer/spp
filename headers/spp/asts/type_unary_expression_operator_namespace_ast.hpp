@@ -27,9 +27,9 @@ struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : TypeUnaryExpre
     ~TypeUnaryExpressionOperatorNamespaceAst() override;
 
 protected:
-    auto equals(TypeUnaryExpressionOperatorAst const &) const -> bool override;
+    auto equals(TypeUnaryExpressionOperatorAst const &) const -> std::weak_ordering override;
 
-    auto equals_op_namespace(TypeUnaryExpressionOperatorNamespaceAst const &) const -> bool override;
+    auto equals_op_namespace(TypeUnaryExpressionOperatorNamespaceAst const &) const -> std::weak_ordering override;
 
 public:
     auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;

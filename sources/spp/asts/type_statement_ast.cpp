@@ -148,6 +148,7 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
     // Create a new scope for the type statement.
     auto scope_name = analyse::scopes::ScopeBlockName("<type-stmt#" + static_cast<std::string>(*new_type) + "#" + std::to_string(pos_start()) + ">");
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
+    sm->move_out_of_current_scope();
     m_generated = true;
 }
 

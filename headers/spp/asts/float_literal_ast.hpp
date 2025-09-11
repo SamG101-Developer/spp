@@ -40,9 +40,9 @@ struct spp::asts::FloatLiteralAst final : LiteralAst {
     std::string type;
 
 protected:
-    auto equals(ExpressionAst const &other) const -> bool override;
+    auto equals(ExpressionAst const &other) const -> std::weak_ordering override;
 
-    auto equals_float_literal(FloatLiteralAst const &) const -> bool override;
+    auto equals_float_literal(FloatLiteralAst const &) const -> std::weak_ordering override;
 
 public:
     /**

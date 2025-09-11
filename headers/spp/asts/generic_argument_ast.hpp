@@ -53,16 +53,20 @@ struct spp::asts::GenericArgumentAst : virtual Ast {
     friend struct GenericArgumentTypeKeywordAst;
     friend struct GenericArgumentTypePositionalAst;
 
-    friend auto operator==(GenericArgumentAst const &lhs_arg, GenericArgumentAst const &rhs_arg) -> bool {
+    friend auto operator<=>(GenericArgumentAst const &lhs_arg, GenericArgumentAst const &rhs_arg) -> std::weak_ordering {
         return lhs_arg.equals(rhs_arg);
     }
 
+    friend auto operator==(GenericArgumentAst const &lhs_arg, GenericArgumentAst const &rhs_arg) -> bool {
+        return (lhs_arg.equals(rhs_arg) == std::weak_ordering::equivalent);
+    }
+
 protected:
-    virtual auto equals_generic_argument_comp_keyword(GenericArgumentCompKeywordAst const &) const -> bool;
-    virtual auto equals_generic_argument_comp_positional(GenericArgumentCompPositionalAst const &) const -> bool;
-    virtual auto equals_generic_argument_type_keyword(GenericArgumentTypeKeywordAst const &) const -> bool;
-    virtual auto equals_generic_argument_type_positional(GenericArgumentTypePositionalAst const &) const -> bool;
-    virtual auto equals(GenericArgumentAst const &other) const -> bool = 0;
+    virtual auto equals_generic_argument_comp_keyword(GenericArgumentCompKeywordAst const &) const -> std::weak_ordering;
+    virtual auto equals_generic_argument_comp_positional(GenericArgumentCompPositionalAst const &) const -> std::weak_ordering;
+    virtual auto equals_generic_argument_type_keyword(GenericArgumentTypeKeywordAst const &) const -> std::weak_ordering;
+    virtual auto equals_generic_argument_type_positional(GenericArgumentTypePositionalAst const &) const -> std::weak_ordering;
+    virtual auto equals(GenericArgumentAst const &other) const -> std::weak_ordering = 0;
 
 public:
     ~GenericArgumentAst() override;

@@ -81,19 +81,21 @@ auto spp::asts::FloatLiteralAst::print(meta::AstPrinter &printer) const -> std::
 
 auto spp::asts::FloatLiteralAst::equals(
     ExpressionAst const &other) const
-    -> bool {
+    -> std::weak_ordering {
     return other.equals_float_literal(*this);
 }
 
 
 auto spp::asts::FloatLiteralAst::equals_float_literal(
     FloatLiteralAst const &other) const
-    -> bool {
-    return
-        ((not tok_sign and not other.tok_sign) or (tok_sign and other.tok_sign and *tok_sign == *other.tok_sign)) and
+    -> std::weak_ordering {
+    if (((not tok_sign and not other.tok_sign) or (tok_sign and other.tok_sign and *tok_sign == *other.tok_sign)) and
         *int_val == *other.int_val and
         *frac_val == *other.frac_val and
-        type == other.type;
+        type == other.type) {
+        return std::weak_ordering::equivalent;
+    }
+    return std::weak_ordering::less;
 }
 
 

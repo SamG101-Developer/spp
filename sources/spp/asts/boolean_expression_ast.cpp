@@ -62,15 +62,18 @@ auto spp::asts::BooleanLiteralAst::print(meta::AstPrinter &printer) const -> std
 
 auto spp::asts::BooleanLiteralAst::equals(
     ExpressionAst const &other) const
-    -> bool {
+    -> std::weak_ordering {
     return other.equals_boolean_literal(*this);
 }
 
 
 auto spp::asts::BooleanLiteralAst::equals_boolean_literal(
     BooleanLiteralAst const &other) const
-    -> bool {
-    return *tok_bool == *other.tok_bool;
+    -> std::weak_ordering {
+    if (*tok_bool == *other.tok_bool) {
+        return std::weak_ordering::equivalent;
+    }
+    return std::weak_ordering::less;
 }
 
 

@@ -96,7 +96,7 @@ auto spp::asts::TypeIdentifierAst::from_identifier(
 
 auto spp::asts::TypeIdentifierAst::equals(
     ExpressionAst const &other) const
-    -> bool {
+    -> std::weak_ordering {
     // Double dispatch to the appropriate equals method.
     return other.equals_type_identifier(*this);
 }
@@ -104,9 +104,12 @@ auto spp::asts::TypeIdentifierAst::equals(
 
 auto spp::asts::TypeIdentifierAst::equals_type_identifier(
     TypeIdentifierAst const &other) const
-    -> bool {
+    -> std::weak_ordering {
     // Check the name and args are equal.
-    return name == other.name and *generic_arg_group == *other.generic_arg_group;
+    if (name == other.name and *generic_arg_group == *other.generic_arg_group) {
+        return std::weak_ordering::equivalent;
+    }
+    return std::weak_ordering::less;
 }
 
 

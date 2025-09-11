@@ -11,9 +11,9 @@ struct spp::asts::IdentifierAst final : PrimaryExpressionAst {
     std::string val;
 
 protected:
-    auto equals(ExpressionAst const &other) const -> bool override;
+    auto equals(ExpressionAst const &other) const -> std::weak_ordering override;
 
-    auto equals_identifier(IdentifierAst const &) const -> bool override;
+    auto equals_identifier(IdentifierAst const &) const -> std::weak_ordering override;
 
 public:
     /**
@@ -27,7 +27,7 @@ public:
 
     IdentifierAst(IdentifierAst const &);
 
-    auto operator==(IdentifierAst const &that) const -> bool;
+    auto operator<=>(IdentifierAst const &that) const -> std::weak_ordering;
 
     auto operator+(IdentifierAst const &that) const -> IdentifierAst;
 

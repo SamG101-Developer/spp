@@ -46,15 +46,18 @@ auto spp::asts::StringLiteralAst::print(meta::AstPrinter &printer) const -> std:
 
 auto spp::asts::StringLiteralAst::equals(
     ExpressionAst const &other) const
-    -> bool {
+    -> std::weak_ordering {
     return other.equals_string_literal(*this);
 }
 
 
 auto spp::asts::StringLiteralAst::equals_string_literal(
     StringLiteralAst const &other) const
-    -> bool {
-    return *val == *other.val;
+    -> std::weak_ordering {
+    if (*val == *other.val) {
+        return std::weak_ordering::equivalent;
+    }
+    return std::weak_ordering::less;
 }
 
 

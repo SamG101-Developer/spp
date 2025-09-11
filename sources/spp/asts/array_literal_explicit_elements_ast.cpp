@@ -70,16 +70,19 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::print(meta::AstPrinter &printer
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::equals_array_literal_explicit_elements(
     ArrayLiteralExplicitElementsAst const &other) const
-    -> bool {
-    return genex::algorithms::all_of(
+    -> std::weak_ordering {
+    if (genex::algorithms::all_of(
         genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::views::to<std::vector>(),
-        [](auto &&pair) { return *std::get<0>(pair) == *std::get<1>(pair); });
+        [](auto &&pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
+        return std::weak_ordering::equivalent;
+    }
+    return std::weak_ordering::less;
 }
 
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::equals(
     ExpressionAst const &other) const
-    -> bool {
+    -> std::weak_ordering {
     return other.equals_array_literal_explicit_elements(*this);
 }
 

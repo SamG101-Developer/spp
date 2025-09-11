@@ -42,9 +42,9 @@ private:
     bool m_is_never_type;
 
 protected:
-    auto equals(ExpressionAst const &other) const -> bool override;
+    auto equals(ExpressionAst const &other) const -> std::weak_ordering override;
 
-    auto equals_type_identifier(TypeIdentifierAst const &other) const -> bool override;
+    auto equals_type_identifier(TypeIdentifierAst const &other) const -> std::weak_ordering override;
 
 public:
     SPP_NO_ASAN

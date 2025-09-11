@@ -22,9 +22,9 @@ struct spp::asts::IntegerLiteralAst final : LiteralAst {
     std::string type;
 
 protected:
-    auto equals(ExpressionAst const &other) const -> bool override;
+    auto equals(ExpressionAst const &other) const -> std::weak_ordering override;
 
-    auto equals_integer_literal(IntegerLiteralAst const &) const -> bool override;
+    auto equals_integer_literal(IntegerLiteralAst const &) const -> std::weak_ordering override;
 
 public:
     /**

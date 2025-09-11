@@ -15,9 +15,9 @@ struct spp::asts::BooleanLiteralAst final : LiteralAst {
     std::unique_ptr<TokenAst> tok_bool;
 
 protected:
-    auto equals(ExpressionAst const &other) const -> bool override;
+    auto equals(ExpressionAst const &other) const -> std::weak_ordering override;
 
-    auto equals_boolean_literal(BooleanLiteralAst const &) const -> bool override;
+    auto equals_boolean_literal(BooleanLiteralAst const &) const -> std::weak_ordering override;
 
 public:
     /**

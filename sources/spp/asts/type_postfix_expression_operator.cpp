@@ -5,13 +5,13 @@
 
 auto spp::asts::TypePostfixExpressionOperatorAst::equals_nested_type(
     TypePostfixExpressionOperatorNestedTypeAst const &) const
-    -> bool {
-    return false;
+    -> std::weak_ordering {
+    return std::weak_ordering::less;
 }
 
 
 auto spp::asts::TypePostfixExpressionOperatorAst::equals_optional(
     TypePostfixExpressionOperatorOptionalAst const &) const
-    -> bool {
-    return false;
+    -> std::weak_ordering {
+    return std::weak_ordering::less;
 }

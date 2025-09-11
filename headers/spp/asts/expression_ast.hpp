@@ -28,23 +28,27 @@ struct spp::asts::ExpressionAst : StatementAst {
     friend struct TypeUnaryExpressionAst;
     friend struct TypePostfixExpressionAst;
 
-    friend auto operator==(ExpressionAst const &lhs_expr, ExpressionAst const &rhs_expr) -> bool {
+    friend auto operator<=>(ExpressionAst const &lhs_expr, ExpressionAst const &rhs_expr) -> std::weak_ordering {
         return lhs_expr.equals(rhs_expr);
     }
 
+    friend auto operator==(ExpressionAst const &lhs_expr, ExpressionAst const &rhs_expr) -> bool {
+        return (lhs_expr.equals(rhs_expr) == std::weak_ordering::equivalent);
+    }
+
 protected:
-    virtual auto equals_array_literal_explicit_elements(ArrayLiteralExplicitElementsAst const &) const -> bool;
-    virtual auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> bool;
-    virtual auto equals_boolean_literal(BooleanLiteralAst const &) const -> bool;
-    virtual auto equals_float_literal(FloatLiteralAst const &) const -> bool;
-    virtual auto equals_identifier(IdentifierAst const &) const -> bool;
-    virtual auto equals_integer_literal(IntegerLiteralAst const &) const -> bool;
-    virtual auto equals_string_literal(StringLiteralAst const &) const -> bool;
-    virtual auto equals_tuple_literal(TupleLiteralAst const &) const -> bool;
-    virtual auto equals_type_identifier(TypeIdentifierAst const &) const -> bool;
-    virtual auto equals_type_unary_expression(TypeUnaryExpressionAst const &) const -> bool;
-    virtual auto equals_type_postfix_expression(TypePostfixExpressionAst const &) const -> bool;
-    virtual auto equals(ExpressionAst const &other) const -> bool;
+    virtual auto equals_array_literal_explicit_elements(ArrayLiteralExplicitElementsAst const &) const -> std::weak_ordering;
+    virtual auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> std::weak_ordering;
+    virtual auto equals_boolean_literal(BooleanLiteralAst const &) const -> std::weak_ordering;
+    virtual auto equals_float_literal(FloatLiteralAst const &) const -> std::weak_ordering;
+    virtual auto equals_identifier(IdentifierAst const &) const -> std::weak_ordering;
+    virtual auto equals_integer_literal(IntegerLiteralAst const &) const -> std::weak_ordering;
+    virtual auto equals_string_literal(StringLiteralAst const &) const -> std::weak_ordering;
+    virtual auto equals_tuple_literal(TupleLiteralAst const &) const -> std::weak_ordering;
+    virtual auto equals_type_identifier(TypeIdentifierAst const &) const -> std::weak_ordering;
+    virtual auto equals_type_unary_expression(TypeUnaryExpressionAst const &) const -> std::weak_ordering;
+    virtual auto equals_type_postfix_expression(TypePostfixExpressionAst const &) const -> std::weak_ordering;
+    virtual auto equals(ExpressionAst const &other) const -> std::weak_ordering;
 
 public:
     ExpressionAst(ExpressionAst const &other);

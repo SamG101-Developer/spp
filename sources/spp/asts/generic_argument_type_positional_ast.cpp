@@ -47,15 +47,18 @@ auto spp::asts::GenericArgumentTypePositionalAst::clone() const -> std::unique_p
 
 auto spp::asts::GenericArgumentTypePositionalAst::equals(
     GenericArgumentAst const &other) const
-    -> bool {
+    -> std::weak_ordering {
     return other.equals_generic_argument_type_positional(*this);
 }
 
 
 auto spp::asts::GenericArgumentTypePositionalAst::equals_generic_argument_type_positional(
     GenericArgumentTypePositionalAst const &other) const
-    -> bool {
-    return *val == *other.val;
+    -> std::weak_ordering {
+    if (*val == *other.val) {
+        return std::weak_ordering::equivalent;
+    }
+    return std::weak_ordering::less;
 }
 
 

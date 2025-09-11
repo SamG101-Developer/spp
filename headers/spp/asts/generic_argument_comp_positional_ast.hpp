@@ -10,9 +10,9 @@ struct spp::asts::GenericArgumentCompPositionalAst final : GenericArgumentCompAs
     SPP_AST_KEY_FUNCTIONS;
 
 protected:
-    auto equals(GenericArgumentAst const &other) const -> bool override;
+    auto equals(GenericArgumentAst const &other) const -> std::weak_ordering override;
 
-    auto equals_generic_argument_comp_positional(GenericArgumentCompPositionalAst const &) const -> bool override;
+    auto equals_generic_argument_comp_positional(GenericArgumentCompPositionalAst const &) const -> std::weak_ordering override;
 
 public:
     /**

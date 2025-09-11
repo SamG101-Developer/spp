@@ -12,9 +12,9 @@ struct spp::asts::TypePostfixExpressionOperatorOptionalAst final : TypePostfixEx
     std::unique_ptr<TokenAst> tok_qst;
 
 protected:
-    auto equals(TypePostfixExpressionOperatorAst const &) const -> bool override;
+    auto equals(TypePostfixExpressionOperatorAst const &) const -> std::weak_ordering override;
 
-    auto equals_optional(TypePostfixExpressionOperatorOptionalAst const &) const -> bool override;
+    auto equals_optional(TypePostfixExpressionOperatorOptionalAst const &) const -> std::weak_ordering override;
 
 public:
     /**

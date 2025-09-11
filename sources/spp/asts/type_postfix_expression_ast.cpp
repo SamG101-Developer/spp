@@ -68,7 +68,7 @@ auto spp::asts::TypePostfixExpressionAst::print(meta::AstPrinter &printer) const
 
 auto spp::asts::TypePostfixExpressionAst::equals(
     const ExpressionAst &other) const
-    -> bool {
+    -> std::weak_ordering {
     // Double dispatch to the appropriate equals method.
     return other.equals_type_postfix_expression(*this);
 }
@@ -76,9 +76,12 @@ auto spp::asts::TypePostfixExpressionAst::equals(
 
 auto spp::asts::TypePostfixExpressionAst::equals_type_postfix_expression(
     TypePostfixExpressionAst const &other) const
-    -> bool {
+    -> std::weak_ordering {
     // Check the lhs and operator are the same.
-    return *lhs == *other.lhs && *tok_op == *other.tok_op;
+    if (*lhs == *other.lhs && *tok_op == *other.tok_op) {
+        return std::weak_ordering::equivalent;
+    }
+    return std::weak_ordering::less;
 }
 
 

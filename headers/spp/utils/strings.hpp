@@ -1,6 +1,7 @@
 #pragma once
 #include <spp/pch.hpp>
 
+
 namespace spp::utils::strings {
     auto is_alphanumeric(char c) -> bool;
 

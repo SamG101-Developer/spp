@@ -51,20 +51,23 @@ auto spp::asts::IdentifierAst::print(meta::AstPrinter &) const -> std::string {
 
 auto spp::asts::IdentifierAst::equals(
     ExpressionAst const &other) const
-    -> bool {
+    -> std::weak_ordering {
     return other.equals_identifier(*this);
 }
 
 
 auto spp::asts::IdentifierAst::equals_identifier(
     IdentifierAst const &other) const
-    -> bool {
-    return val == other.val;
+    -> std::weak_ordering {
+    if (val == other.val) {
+        return std::weak_ordering::equivalent;
+    }
+    return std::weak_ordering::less;
 }
 
 
-auto spp::asts::IdentifierAst::operator==(IdentifierAst const &that) const -> bool {
-    return val == that.val;
+auto spp::asts::IdentifierAst::operator<=>(IdentifierAst const &that) const -> std::weak_ordering {
+    return val <=> that.val;
 }
 
 

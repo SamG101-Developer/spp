@@ -59,7 +59,7 @@ auto spp::asts::TypeUnaryExpressionAst::print(meta::AstPrinter &printer) const -
 
 auto spp::asts::TypeUnaryExpressionAst::equals(
     ExpressionAst const &other) const
-    -> bool {
+    -> std::weak_ordering {
     // Double dispatch to the appropriate equals method.
     return other.equals_type_unary_expression(*this);
 }
@@ -67,9 +67,12 @@ auto spp::asts::TypeUnaryExpressionAst::equals(
 
 auto spp::asts::TypeUnaryExpressionAst::equals_type_unary_expression(
     TypeUnaryExpressionAst const &other) const
-    -> bool {
+    -> std::weak_ordering {
     // Check if the operators and right-hand-sides are the same.
-    return *op == *other.op && *rhs == *other.rhs;
+    if (*op == *other.op && *rhs == *other.rhs) {
+        return std::weak_ordering::equivalent;
+    }
+    return std::weak_ordering::less;
 }
 
 
