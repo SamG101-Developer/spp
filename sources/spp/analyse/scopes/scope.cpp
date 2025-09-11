@@ -401,7 +401,7 @@ auto spp::analyse::scopes::Scope::get_ns_symbol(
     auto sym = table.ns_tbl.get(&sym_name).get();
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
-    if (sym != nullptr and not exclusive and scope->parent != nullptr) {
+    if (sym == nullptr and not exclusive and scope->parent != nullptr) {
         sym = scope->parent->get_ns_symbol(sym_name, exclusive);
     }
 
