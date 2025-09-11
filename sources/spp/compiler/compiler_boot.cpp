@@ -82,8 +82,6 @@ auto spp::compiler::CompilerBoot::stage_2_gen_top_level_scopes(
         sm->reset();
         bar.tick();
     }
-
-    std::cout << sm->global_scope->print_scope_tree() << std::endl;
 }
 
 
@@ -239,7 +237,8 @@ auto spp::compiler::CompilerBoot::move_scope_manager_to_ns(
         auto identifier_part = std::make_shared<asts::IdentifierAst>(0, std::string(part));
 
         // If the part exists in the current scope (starting from the global scope), then move into it.
-        if (sm->current_scope->has_ns_symbol(*identifier_part)) {
+        const auto quick_ns_sym = sm->current_scope->get_ns_symbol(*identifier_part);
+        if (quick_ns_sym != nullptr) {
             const auto ns_scope = sm->current_scope->get_ns_symbol(*identifier_part)->scope;
             sm->reset(ns_scope);
         }
