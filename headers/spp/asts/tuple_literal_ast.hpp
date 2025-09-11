@@ -21,9 +21,9 @@ struct spp::asts::TupleLiteralAst final : LiteralAst {
     std::unique_ptr<TokenAst> tok_r;
 
 protected:
-    auto equals(ExpressionAst const &other) const -> std::weak_ordering override;
+    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
-    auto equals_tuple_literal(TupleLiteralAst const &) const -> std::weak_ordering override;
+    auto equals_tuple_literal(TupleLiteralAst const &) const -> std::strong_ordering override;
 
 public:
 

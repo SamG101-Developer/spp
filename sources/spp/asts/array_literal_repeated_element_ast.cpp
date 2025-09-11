@@ -74,18 +74,18 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::print(meta::AstPrinter &printer)
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::equals(
     ExpressionAst const &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     return other.equals_array_literal_repeated_elements(*this);
 }
 
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::equals_array_literal_repeated_elements(
     ArrayLiteralRepeatedElementAst const &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     if (*elem == *other.elem and *size == *other.size) {
-        return std::weak_ordering::equivalent;
+        return std::strong_ordering::equal;
     }
-    return std::weak_ordering::less;
+    return std::strong_ordering::less;
 }
 
 

@@ -79,18 +79,18 @@ auto spp::asts::IntegerLiteralAst::print(meta::AstPrinter &printer) const -> std
 
 auto spp::asts::IntegerLiteralAst::equals(
     ExpressionAst const &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     return other.equals_integer_literal(*this);
 }
 
 
 auto spp::asts::IntegerLiteralAst::equals_integer_literal(
     IntegerLiteralAst const &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     if (((sign == nullptr and other.sign == nullptr) or (sign != nullptr and other.sign != nullptr and *sign == *other.sign)) and *val == *other.val and  type == other.type) {
-        return std::weak_ordering::equivalent;
+        return std::strong_ordering::equal;
     }
-    return std::weak_ordering::less;
+    return std::strong_ordering::less;
 }
 
 

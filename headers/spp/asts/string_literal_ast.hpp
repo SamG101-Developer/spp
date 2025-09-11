@@ -11,9 +11,9 @@ struct spp::asts::StringLiteralAst final : LiteralAst {
     std::unique_ptr<TokenAst> val;
 
 protected:
-    auto equals(ExpressionAst const &other) const -> std::weak_ordering override;
+    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
-    auto equals_string_literal(StringLiteralAst const &) const -> std::weak_ordering override;
+    auto equals_string_literal(StringLiteralAst const &) const -> std::strong_ordering override;
 
 public:
     /**

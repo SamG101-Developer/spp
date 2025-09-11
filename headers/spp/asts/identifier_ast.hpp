@@ -10,10 +10,19 @@ struct spp::asts::IdentifierAst final : PrimaryExpressionAst {
      */
     std::string val;
 
-protected:
-    auto equals(ExpressionAst const &other) const -> std::weak_ordering override;
+    friend auto operator<=>(IdentifierAst const &lhs, IdentifierAst const &rhs) -> std::strong_ordering {
+        return lhs.val <=> rhs.val;
+    }
 
-    auto equals_identifier(IdentifierAst const &) const -> std::weak_ordering override;
+    friend auto operator==(IdentifierAst const &lhs, IdentifierAst const &rhs) -> bool {
+        return lhs.val == rhs.val;
+    }
+
+
+protected:
+    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+
+    auto equals_identifier(IdentifierAst const &) const -> std::strong_ordering override;
 
 public:
     /**
@@ -26,8 +35,6 @@ public:
         decltype(val) &&val);
 
     IdentifierAst(IdentifierAst const &);
-
-    auto operator<=>(IdentifierAst const &that) const -> std::weak_ordering;
 
     auto operator+(IdentifierAst const &that) const -> IdentifierAst;
 

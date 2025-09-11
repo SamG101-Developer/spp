@@ -45,9 +45,9 @@ struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLiteralAst {
     std::unique_ptr<TokenAst> tok_r;
 
 protected:
-    auto equals(ExpressionAst const &other) const -> std::weak_ordering override;
+    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
-    auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> std::weak_ordering override;
+    auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> std::strong_ordering override;
 
 public:
 

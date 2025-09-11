@@ -66,20 +66,20 @@ auto spp::asts::TupleLiteralAst::print(meta::AstPrinter &printer) const -> std::
 
 auto spp::asts::TupleLiteralAst::equals(
     ExpressionAst const &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     return other.equals_tuple_literal(*this);
 }
 
 
 auto spp::asts::TupleLiteralAst::equals_tuple_literal(
     TupleLiteralAst const &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     if (elems.size() == other.elems.size() and genex::algorithms::all_of(
         genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::views::to<std::vector>(),
         [](auto &&pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
-        return std::weak_ordering::equivalent;
+        return std::strong_ordering::equal;
     }
-    return std::weak_ordering::less;
+    return std::strong_ordering::less;
 }
 
 
