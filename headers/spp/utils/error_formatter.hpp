@@ -14,7 +14,7 @@ namespace spp::utils::errors {
 
 class spp::utils::errors::ErrorFormatter {
 public:
-    ErrorFormatter(std::vector<lex::RawToken> tokens, std::string_view file_path);
+    ErrorFormatter(std::vector<lex::RawToken> tokens, std::string file_path);
 
 public:
     // auto error_from_positions(std::size_t start_pos, std::string &&message = "", std::string &&tag = "", bool minimal = false) const -> std::string;
@@ -29,5 +29,5 @@ public:
 
 private:
     std::vector<lex::RawToken> m_tokens;
-    std::string_view m_file_path;
+    std::string m_file_path;
 };

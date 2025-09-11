@@ -54,13 +54,18 @@ auto spp::asts::TypeStatementAst::pos_end() const -> std::size_t {
 
 
 auto spp::asts::TypeStatementAst::clone() const -> std::unique_ptr<Ast> {
-    return std::make_unique<TypeStatementAst>(
+    auto ast = std::make_unique<TypeStatementAst>(
         ast_clone_vec(annotations),
         ast_clone(tok_type),
         ast_clone(new_type),
         ast_clone(generic_param_group),
         ast_clone(tok_assign),
         ast_clone(old_type));
+    ast->m_ctx = m_ctx;
+    ast->m_scope = m_scope;
+    ast->m_visibility = m_visibility;
+    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->m_ctx = ast; });
+    return ast;
 }
 
 

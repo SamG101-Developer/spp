@@ -25,7 +25,10 @@ struct spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::Ab
         // Format all the error strings by the correct formatter (file agnostic).
         cast_error->messages = cast_error->m_error_info
             | genex::views::zip(std::move(formatters))
-            | genex::views::transform([this](auto &&x) { return stringify_error_information(std::get<1>(x), std::get<0>(x)); })
+            | genex::views::transform([this](auto &&x) {
+                auto s = stringify_error_information(std::get<1>(x), std::get<0>(x));
+                return s;
+            })
             | genex::views::to<std::vector>();
 
         // Throw the error object.

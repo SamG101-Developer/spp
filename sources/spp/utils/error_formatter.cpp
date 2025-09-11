@@ -15,9 +15,9 @@
 #include <opex/cast.hpp>
 
 
-spp::utils::errors::ErrorFormatter::ErrorFormatter(std::vector<lex::RawToken> tokens, const std::string_view file_path) :
+spp::utils::errors::ErrorFormatter::ErrorFormatter(std::vector<lex::RawToken> tokens, std::string file_path) :
     m_tokens(std::move(tokens)),
-    m_file_path(file_path) {
+    m_file_path(std::move(file_path)) {
 }
 
 
@@ -70,7 +70,7 @@ auto spp::utils::errors::ErrorFormatter::internal_parse_error_raw_pos(
     }
 
     // Return the file path, line number, line as string, and carets.
-    return std::make_tuple(std::string(m_file_path), error_line_number, error_line_as_string, left_padding, carets);
+    return std::make_tuple(m_file_path, error_line_number, error_line_as_string, left_padding, carets);
 }
 
 

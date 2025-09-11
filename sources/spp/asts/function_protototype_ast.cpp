@@ -51,6 +51,11 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     decltype(tok_arrow) &&tok_arrow,
     decltype(return_type) &&return_type,
     decltype(impl) &&impl) :
+    m_abstract_annotation(nullptr),
+    m_virtual_annotation(nullptr),
+    m_temperature_annotation(nullptr),
+    m_no_impl_annotation(nullptr),
+    m_inline_annotation(nullptr),
     annotations(std::move(annotations)),
     tok_fun(std::move(tok_fun)),
     name(std::move(name)),
@@ -80,7 +85,7 @@ auto spp::asts::FunctionPrototypeAst::pos_end() const -> std::size_t {
 
 
 auto spp::asts::FunctionPrototypeAst::clone() const -> std::unique_ptr<Ast> {
-    auto f = std::make_unique<FunctionPrototypeAst>(
+    auto ast = std::make_unique<FunctionPrototypeAst>(
         ast_clone_vec(annotations),
         ast_clone(tok_fun),
         ast_clone(name),
@@ -89,15 +94,17 @@ auto spp::asts::FunctionPrototypeAst::clone() const -> std::unique_ptr<Ast> {
         ast_clone(tok_arrow),
         ast_clone(return_type),
         ast_clone(impl));
-    f->m_ctx = m_ctx;
-    f->m_scope = m_scope;
-    f->orig_name = ast_clone(orig_name);
-    f->m_abstract_annotation = m_abstract_annotation;
-    f->m_virtual_annotation = m_virtual_annotation;
-    f->m_temperature_annotation = m_temperature_annotation;
-    f->m_no_impl_annotation = m_no_impl_annotation;
-    f->m_inline_annotation = m_inline_annotation;
-    return f;
+    ast->orig_name = ast_clone(orig_name);
+    ast->m_ctx = m_ctx;
+    ast->m_scope = m_scope;
+    ast->m_abstract_annotation = m_abstract_annotation;
+    ast->m_virtual_annotation = m_virtual_annotation;
+    ast->m_temperature_annotation = m_temperature_annotation;
+    ast->m_no_impl_annotation = m_no_impl_annotation;
+    ast->m_inline_annotation = m_inline_annotation;
+    ast->m_visibility = m_visibility;
+    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->m_ctx = ast; });
+    return ast;
 }
 
 
@@ -191,9 +198,6 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
         return_type = return_type->substitute_generics(gen_sub);
     }
 
-    // Preprocess the annotations.
-    annotations | genex::views::for_each([this](auto &&x) { x->stage_1_pre_process(this); });
-
     // Convert the "fun" function to a "sup" superimposition of a "Fun[Mov|Mut|Ref]" type over a mock type.
     auto mock_class_name = TypeIdentifierAst::from_identifier(*name->to_function_identifier());
     auto function_type = m_deduce_mock_class_type();
@@ -225,10 +229,12 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     }
 
     // Superimpose the function type over the mock class.
-    auto function_ast = std::vector<std::unique_ptr<SupMemberAst>>();
     orig_name = ast_clone(name);
-    function_ast.emplace_back(ast_clone(this));
-    auto mock_sup_ext_impl = std::make_unique<SupImplementationAst>(nullptr, std::move(function_ast), nullptr);
+    auto sup_ext_impl_members = std::vector<std::unique_ptr<SupMemberAst>>();
+    auto clone = ast_clone(this);
+    clone->annotations | genex::views::for_each([clone=clone.get()](auto &&x) { x->stage_1_pre_process(clone); });
+    sup_ext_impl_members.emplace_back(std::move(clone));
+    auto mock_sup_ext_impl = std::make_unique<SupImplementationAst>(nullptr, std::move(sup_ext_impl_members), nullptr);
     auto mock_sup_ext = std::make_unique<SupPrototypeExtensionAst>(
         nullptr, generic_param_group->opt_to_req(), std::move(mock_class_name), nullptr, std::move(function_type),
         std::move(mock_sup_ext_impl));
@@ -265,7 +271,9 @@ auto spp::asts::FunctionPrototypeAst::stage_2_gen_top_level_scopes(
     }
 
     // Run steps for the annotations.
-    annotations | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
+    for (auto &&x : annotations) {
+        x->stage_2_gen_top_level_scopes(sm, meta);
+    }
 
     // Ensure the function's return type does not have a convention.
     if (const auto conv = return_type->get_convention(); conv != nullptr) {

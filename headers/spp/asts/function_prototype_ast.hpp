@@ -2,6 +2,7 @@
 #include <spp/asts/ast.hpp>
 #include <spp/asts/module_member_ast.hpp>
 #include <spp/asts/sup_member_ast.hpp>
+#include <spp/asts/mixins/visbility_enabled_ast.hpp>
 
 
 /**
@@ -12,7 +13,7 @@
  * This ASt is further inherited into the SubroutinePrototypeAst and CoroutinePrototypeAst, which add additional
  * analysis checks.
  */
-struct spp::asts::FunctionPrototypeAst : virtual Ast, SupMemberAst, ModuleMemberAst {
+struct spp::asts::FunctionPrototypeAst : virtual Ast, SupMemberAst, ModuleMemberAst, mixins::VisibilityEnabledAst {
     SPP_AST_KEY_FUNCTIONS;
     friend struct AnnotationAst;
     friend struct PostfixExpressionOperatorFunctionCallAst;

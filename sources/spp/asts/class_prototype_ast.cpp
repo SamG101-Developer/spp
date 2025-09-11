@@ -50,17 +50,19 @@ auto spp::asts::ClassPrototypeAst::pos_end() const -> std::size_t {
 
 
 auto spp::asts::ClassPrototypeAst::clone() const -> std::unique_ptr<Ast> {
-    auto c = std::make_unique<ClassPrototypeAst>(
+    auto ast = std::make_unique<ClassPrototypeAst>(
         ast_clone_vec(annotations),
         ast_clone(tok_cls),
         ast_clone(name),
         ast_clone(generic_param_group),
         ast_clone(impl));
-    c->m_ctx = m_ctx;
-    c->m_scope = m_scope;
-    c->m_for_alias = m_for_alias;
-    c->m_cls_sym = m_cls_sym;
-    return c;
+    ast->m_ctx = m_ctx;
+    ast->m_scope = m_scope;
+    ast->m_for_alias = m_for_alias;
+    ast->m_cls_sym = m_cls_sym;
+    ast->m_visibility = m_visibility;
+    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->m_ctx = ast; });
+    return ast;
 }
 
 

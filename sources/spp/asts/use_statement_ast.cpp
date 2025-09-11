@@ -45,10 +45,14 @@ auto spp::asts::UseStatementAst::pos_end() const -> std::size_t {
 
 
 auto spp::asts::UseStatementAst::clone() const -> std::unique_ptr<Ast> {
-    return std::make_unique<UseStatementAst>(
+    auto ast = std::make_unique<UseStatementAst>(
         ast_clone_vec(annotations),
         ast_clone(tok_use),
         ast_clone(old_type));
+    ast->m_ctx = m_ctx;
+    ast->m_scope = m_scope;
+    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->m_ctx = ast; });
+    return ast;
 }
 
 

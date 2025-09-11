@@ -111,7 +111,12 @@ namespace spp::analyse::scopes {
  */
 struct spp::asts::Ast : mixins::CompilerStages {
     friend struct AnnotationAst;
+    friend struct ClassAttributeAst;
+    friend struct ClassPrototypeAst;
+    friend struct CmpStatementAst;
     friend struct FunctionPrototypeAst;
+    friend struct TypeStatementAst;
+    friend struct UseStatementAst;
     friend class analyse::scopes::ScopeManager;
 
 protected:

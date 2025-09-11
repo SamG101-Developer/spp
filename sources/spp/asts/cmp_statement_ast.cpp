@@ -47,7 +47,7 @@ auto spp::asts::CmpStatementAst::pos_end() const -> std::size_t {
 
 
 auto spp::asts::CmpStatementAst::clone() const -> std::unique_ptr<Ast> {
-    return std::make_unique<CmpStatementAst>(
+    auto ast = std::make_unique<CmpStatementAst>(
         ast_clone_vec(annotations),
         ast_clone(tok_cmp),
         ast_clone(name),
@@ -55,6 +55,11 @@ auto spp::asts::CmpStatementAst::clone() const -> std::unique_ptr<Ast> {
         ast_clone(type),
         ast_clone(tok_assign),
         ast_clone(value));
+    ast->m_ctx = m_ctx;
+    ast->m_scope = m_scope;
+    ast->m_visibility = m_visibility;
+    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->m_ctx = ast; });
+    return ast;
 }
 
 
@@ -85,9 +90,10 @@ auto spp::asts::CmpStatementAst::print(meta::AstPrinter &printer) const -> std::
 
 
 auto spp::asts::CmpStatementAst::stage_1_pre_process(
-    Ast *)
+    Ast *ctx)
     -> void {
     // No pre-processing needed for cmp statements.
+    Ast::stage_1_pre_process(ctx);
     annotations | genex::views::for_each([this](auto &&x) { x->stage_1_pre_process(this); });
 }
 

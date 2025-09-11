@@ -40,9 +40,12 @@ auto spp::asts::AnnotationAst::pos_end() const -> std::size_t {
 
 
 auto spp::asts::AnnotationAst::clone() const -> std::unique_ptr<Ast> {
-    return std::make_unique<AnnotationAst>(
+    auto ast = std::make_unique<AnnotationAst>(
         ast_clone(tok_at_sign),
         ast_clone(name));
+    ast->m_ctx = m_ctx;
+    ast->m_scope = m_scope;
+    return ast;
 }
 
 

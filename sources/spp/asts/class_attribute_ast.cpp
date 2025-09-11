@@ -43,12 +43,16 @@ auto spp::asts::ClassAttributeAst::pos_end() const -> std::size_t {
 
 
 auto spp::asts::ClassAttributeAst::clone() const -> std::unique_ptr<Ast> {
-    return std::make_unique<ClassAttributeAst>(
+    auto ast = std::make_unique<ClassAttributeAst>(
         ast_clone_vec(annotations),
         ast_clone(name),
         ast_clone(tok_colon),
         ast_clone(type),
         ast_clone(default_val));
+    ast->m_ctx = m_ctx;
+    ast->m_scope = m_scope;
+    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->m_ctx = ast; });
+    return ast;
 }
 
 
