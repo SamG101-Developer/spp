@@ -5,7 +5,7 @@
 
 template <typename T>
 auto spp::analyse::scopes::SymNameCmp<T>::operator()(T const *lhs, T const *rhs) const -> bool {
-    return *lhs == *rhs;
+    return *lhs < *rhs;
 }
 
 
