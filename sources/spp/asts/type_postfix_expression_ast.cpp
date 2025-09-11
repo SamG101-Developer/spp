@@ -68,7 +68,7 @@ auto spp::asts::TypePostfixExpressionAst::print(meta::AstPrinter &printer) const
 
 auto spp::asts::TypePostfixExpressionAst::equals(
     const ExpressionAst &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     // Double dispatch to the appropriate equals method.
     return other.equals_type_postfix_expression(*this);
 }
@@ -76,12 +76,12 @@ auto spp::asts::TypePostfixExpressionAst::equals(
 
 auto spp::asts::TypePostfixExpressionAst::equals_type_postfix_expression(
     TypePostfixExpressionAst const &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     // Check the lhs and operator are the same.
     if (*lhs == *other.lhs && *tok_op == *other.tok_op) {
-        return std::weak_ordering::equivalent;
+        return std::strong_ordering::equal;
     }
-    return std::weak_ordering::less;
+    return std::strong_ordering::less;
 }
 
 
@@ -151,31 +151,30 @@ auto spp::asts::TypePostfixExpressionAst::get_convention(
 
 auto spp::asts::TypePostfixExpressionAst::with_convention(
     std::unique_ptr<ConventionAst> &&conv) const
-    -> std::unique_ptr<TypeAst> {
+    -> std::shared_ptr<TypeAst> {
     auto borrow_op = std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv));
-    auto wrapped = std::make_unique<TypeUnaryExpressionAst>(std::move(borrow_op), ast_clone(this));
+    auto wrapped = std::make_shared<TypeUnaryExpressionAst>(std::move(borrow_op), ast_clone(this));
     return wrapped;
 }
 
 
-auto spp::asts::TypePostfixExpressionAst::without_generics(
-    ) const
-    -> std::unique_ptr<TypeAst> {
+auto spp::asts::TypePostfixExpressionAst::without_generics() const
+    -> std::shared_ptr<TypeAst> {
     const auto rhs = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
     auto new_lhs = lhs->without_generics();
     auto new_rhs = std::make_unique<TypePostfixExpressionOperatorNestedTypeAst>(nullptr, ast_cast<TypeIdentifierAst>(rhs->name->without_generics()));
-    return std::make_unique<TypePostfixExpressionAst>(std::move(new_lhs), std::move(new_rhs));
+    return std::make_shared<TypePostfixExpressionAst>(std::move(new_lhs), std::move(new_rhs));
 }
 
 
 auto spp::asts::TypePostfixExpressionAst::substitute_generics(
     std::vector<GenericArgumentAst*> const &args) const
-    -> std::unique_ptr<TypeAst> {
+    -> std::shared_ptr<TypeAst> {
     const auto rhs = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
     auto new_lhs = lhs->substitute_generics(args);
     auto new_rhs = std::make_unique<TypePostfixExpressionOperatorNestedTypeAst>(
         nullptr, ast_cast<TypeIdentifierAst>(rhs->name->substitute_generics(std::move(args))));
-    return std::make_unique<TypePostfixExpressionAst>(std::move(new_lhs), std::move(new_rhs));
+    return std::make_shared<TypePostfixExpressionAst>(std::move(new_lhs), std::move(new_rhs));
 }
 
 
@@ -199,7 +198,7 @@ auto spp::asts::TypePostfixExpressionAst::match_generic(
 
 auto spp::asts::TypePostfixExpressionAst::with_generics(
     std::shared_ptr<GenericArgumentGroupAst> &&arg_group) const
-    -> std::unique_ptr<TypeAst> {
+    -> std::shared_ptr<TypeAst> {
     // Clone this type and add the generics to the right most part.
     auto type_clone = ast_clone(this);
     type_clone->type_parts().back()->generic_arg_group->args = std::move(arg_group->args);

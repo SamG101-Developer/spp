@@ -92,10 +92,9 @@ auto spp::asts::UseStatementAst::stage_2_gen_top_level_scopes(
     annotations | genex::views::for_each([sm, meta](const auto &annotation) { annotation->stage_2_gen_top_level_scopes(sm, meta); });
 
     // Create the type statement AST conversion.
+    const auto new_type = std::dynamic_pointer_cast<TypeIdentifierAst>(old_type->type_parts().back()->without_generics());
     m_conversion = std::make_unique<TypeStatementAst>(
-        std::move(annotations), nullptr,
-        asts::ast_cast<TypeIdentifierAst>(old_type->type_parts().back()->without_generics()), nullptr, nullptr,
-        ast_clone(old_type));
+        std::move(annotations), nullptr, new_type, nullptr, nullptr, old_type);
     m_conversion->stage_2_gen_top_level_scopes(sm, meta);
     m_generated = true;
 }

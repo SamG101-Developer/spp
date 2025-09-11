@@ -89,14 +89,14 @@ auto spp::asts::TypeIdentifierAst::print(meta::AstPrinter &printer) const -> std
 
 auto spp::asts::TypeIdentifierAst::from_identifier(
     IdentifierAst const &identifier)
-    -> std::unique_ptr<TypeIdentifierAst> {
-    return std::make_unique<TypeIdentifierAst>(identifier.pos_start(), std::string(identifier.val), nullptr);
+    -> std::shared_ptr<TypeIdentifierAst> {
+    return std::make_shared<TypeIdentifierAst>(identifier.pos_start(), std::string(identifier.val), nullptr);
 }
 
 
 auto spp::asts::TypeIdentifierAst::equals(
     ExpressionAst const &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     // Double dispatch to the appropriate equals method.
     return other.equals_type_identifier(*this);
 }
@@ -104,12 +104,12 @@ auto spp::asts::TypeIdentifierAst::equals(
 
 auto spp::asts::TypeIdentifierAst::equals_type_identifier(
     TypeIdentifierAst const &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     // Check the name and args are equal.
     if (name == other.name and *generic_arg_group == *other.generic_arg_group) {
-        return std::weak_ordering::equivalent;
+        return std::strong_ordering::equal;
     }
-    return std::weak_ordering::less;
+    return std::strong_ordering::less;
 }
 
 
@@ -200,21 +200,22 @@ auto spp::asts::TypeIdentifierAst::get_convention(
 
 auto spp::asts::TypeIdentifierAst::with_convention(
     std::unique_ptr<ConventionAst> &&conv) const
-    -> std::unique_ptr<TypeAst> {
+    -> std::shared_ptr<TypeAst> {
     auto borrow_op = std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv));
-    auto wrapped = std::make_unique<TypeUnaryExpressionAst>(std::move(borrow_op), ast_clone(this));
+    auto wrapped = std::make_shared<TypeUnaryExpressionAst>(std::move(borrow_op), ast_clone(this));
     return wrapped;
 }
 
 
-auto spp::asts::TypeIdentifierAst::without_generics() const -> std::unique_ptr<TypeAst> {
-    return std::make_unique<TypeIdentifierAst>(m_pos, std::string(name), nullptr);
+auto spp::asts::TypeIdentifierAst::without_generics() const
+    -> std::shared_ptr<TypeAst> {
+    return std::make_shared<TypeIdentifierAst>(m_pos, std::string(name), nullptr);
 }
 
 
 auto spp::asts::TypeIdentifierAst::substitute_generics(
     std::vector<GenericArgumentAst*> const &args) const
-    -> std::unique_ptr<TypeAst> {
+    -> std::shared_ptr<TypeAst> {
     auto name_clone = ast_clone(this);
 
     // Get the generic type arguments.
@@ -309,9 +310,9 @@ auto spp::asts::TypeIdentifierAst::match_generic(
 
 auto spp::asts::TypeIdentifierAst::with_generics(
     std::shared_ptr<GenericArgumentGroupAst> &&arg_group) const
-    -> std::unique_ptr<TypeAst> {
+    -> std::shared_ptr<TypeAst> {
     // Attach the new generic argument group to a clone of this type identifier.
-    return std::make_unique<TypeIdentifierAst>(m_pos, std::string(name), std::move(arg_group));
+    return std::make_shared<TypeIdentifierAst>(m_pos, std::string(name), std::move(arg_group));
 }
 
 

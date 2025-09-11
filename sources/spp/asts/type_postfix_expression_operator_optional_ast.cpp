@@ -44,15 +44,15 @@ auto spp::asts::TypePostfixExpressionOperatorOptionalAst::print(meta::AstPrinter
 
 auto spp::asts::TypePostfixExpressionOperatorOptionalAst::equals(
     const TypePostfixExpressionOperatorAst &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     return other.equals_optional(*this);
 }
 
 
 auto spp::asts::TypePostfixExpressionOperatorOptionalAst::equals_optional(
     TypePostfixExpressionOperatorOptionalAst const &) const
-    -> std::weak_ordering {
-    return std::weak_ordering::equivalent;
+    -> std::strong_ordering {
+    return std::strong_ordering::equal;
 }
 
 

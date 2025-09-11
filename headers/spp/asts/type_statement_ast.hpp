@@ -74,7 +74,7 @@ public:
     TypeStatementAst(
         decltype(annotations) &&annotations,
         decltype(tok_type) &&tok_type,
-        decltype(new_type) &&new_type,
+        decltype(new_type) new_type,
         decltype(generic_param_group) &&generic_param_group,
         decltype(tok_assign) &&tok_assign,
         decltype(old_type) old_type);

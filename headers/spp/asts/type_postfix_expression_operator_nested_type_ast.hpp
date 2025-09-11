@@ -25,9 +25,9 @@ struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final : TypePostfix
         decltype(name) &&name);
 
 protected:
-    auto equals(TypePostfixExpressionOperatorAst const &) const -> std::weak_ordering override;
+    auto equals(TypePostfixExpressionOperatorAst const &) const -> std::strong_ordering override;
 
-    auto equals_nested_type(TypePostfixExpressionOperatorNestedTypeAst const &) const -> std::weak_ordering override;
+    auto equals_nested_type(TypePostfixExpressionOperatorNestedTypeAst const &) const -> std::strong_ordering override;
 
 public:
     ~TypePostfixExpressionOperatorNestedTypeAst() override;

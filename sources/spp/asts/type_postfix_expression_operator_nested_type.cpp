@@ -52,14 +52,14 @@ auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::print(meta::AstPrint
 
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::equals(
     const TypePostfixExpressionOperatorAst &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     return other.equals_nested_type(*this);
 }
 
 
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::equals_nested_type(
     TypePostfixExpressionOperatorNestedTypeAst const &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     // Compare the members for equality.
     return *name <=> *other.name;
 }
