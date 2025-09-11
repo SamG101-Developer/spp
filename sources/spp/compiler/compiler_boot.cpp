@@ -73,8 +73,11 @@ auto spp::compiler::CompilerBoot::stage_2_gen_top_level_scopes(
     for (auto &&mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(4.0);
         mod->stage_2_gen_top_level_scopes(sm, &meta);
+        sm->reset();
         bar.tick();
     }
+
+    std::cout << sm->global_scope->print_scope_tree() << std::endl;
 }
 
 
@@ -87,6 +90,7 @@ auto spp::compiler::CompilerBoot::stage_3_gen_top_level_aliases(
     for (auto &&mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(5.0);
         mod->stage_3_gen_top_level_aliases(sm, &meta);
+        sm->reset();
         bar.tick();
     }
 }
@@ -101,6 +105,7 @@ auto spp::compiler::CompilerBoot::stage_4_qualify_types(
     for (auto &&mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(6.0);
         mod->stage_4_qualify_types(sm, &meta);
+        sm->reset();
         bar.tick();
     }
 }
@@ -115,6 +120,7 @@ auto spp::compiler::CompilerBoot::stage_5_load_super_scopes(
     for (auto &&mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(7.0);
         mod->stage_5_load_super_scopes(sm, &meta);
+        sm->reset();
         bar.tick();
     }
 
@@ -134,6 +140,7 @@ auto spp::compiler::CompilerBoot::stage_6_pre_analyse_semantics(
     for (auto &&mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(8.0);
         mod->stage_6_pre_analyse_semantics(sm, &meta);
+        sm->reset();
         bar.tick();
     }
 }
@@ -148,6 +155,7 @@ auto spp::compiler::CompilerBoot::stage_7_analyse_semantics(
     for (auto &&mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(9.0);
         mod->stage_7_analyse_semantics(sm, &meta);
+        sm->reset();
         bar.tick();
     }
 
@@ -165,6 +173,7 @@ auto spp::compiler::CompilerBoot::stage_8_check_memory(
     for (auto &&mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(10.0);
         mod->stage_8_check_memory(sm, &meta);
+        sm->reset();
         bar.tick();
     }
 }
@@ -174,7 +183,7 @@ auto spp::compiler::CompilerBoot::validate_entry_point(
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Get the "main.spp" main module (entry point).
-    auto main_mod = *genex::algorithms::find_if(m_modules, [](auto mod) {
+    const auto main_mod = *genex::algorithms::find_if(m_modules, [](auto mod) {
         return mod->file_name()->val == "main.spp";
     });
 
@@ -231,7 +240,7 @@ auto spp::compiler::CompilerBoot::move_scope_manager_to_ns(
 
         // Otherwise, create a new scope and move into it.
         else {
-            const auto ns_sym = std::make_shared<analyse::scopes::NamespaceSymbol>(ast_clone(identifier_part), nullptr);
+            const auto ns_sym = std::make_shared<analyse::scopes::NamespaceSymbol>(identifier_part, nullptr);
             sm->current_scope->add_ns_symbol(ns_sym);
             const auto ns_scope = sm->create_and_move_into_new_scope(identifier_part.get(), nullptr, mod.error_formatter.get());
             ns_sym->scope = ns_scope;
