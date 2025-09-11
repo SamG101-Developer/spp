@@ -48,18 +48,18 @@ auto spp::asts::GenericArgumentCompPositionalAst::print(meta::AstPrinter &printe
 
 auto spp::asts::GenericArgumentCompPositionalAst::equals(
     GenericArgumentAst const &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     return other.equals_generic_argument_comp_positional(*this);
 }
 
 
 auto spp::asts::GenericArgumentCompPositionalAst::equals_generic_argument_comp_positional(
     GenericArgumentCompPositionalAst const &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     if (*val == *other.val) {
-        return std::weak_ordering::equivalent;
+        return std::strong_ordering::equal;
     }
-    return std::weak_ordering::less;
+    return std::strong_ordering::less;
 }
 
 

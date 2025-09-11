@@ -26,9 +26,9 @@ struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgumentCompAst {
     std::unique_ptr<TokenAst> tok_assign;
 
 protected:
-    auto equals(GenericArgumentAst const &other) const -> std::weak_ordering override;
+    auto equals(GenericArgumentAst const &other) const -> std::strong_ordering override;
 
-    auto equals_generic_argument_comp_keyword(GenericArgumentCompKeywordAst const &) const -> std::weak_ordering override;
+    auto equals_generic_argument_comp_keyword(GenericArgumentCompKeywordAst const &) const -> std::strong_ordering override;
 
 public:
     /**

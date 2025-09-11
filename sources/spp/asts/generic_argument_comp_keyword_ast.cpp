@@ -84,18 +84,18 @@ auto spp::asts::GenericArgumentCompKeywordAst::print(meta::AstPrinter &printer) 
 
 auto spp::asts::GenericArgumentCompKeywordAst::equals(
     GenericArgumentAst const &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     return other.equals_generic_argument_comp_keyword(*this);
 }
 
 
 auto spp::asts::GenericArgumentCompKeywordAst::equals_generic_argument_comp_keyword(
     GenericArgumentCompKeywordAst const &other) const
-    -> std::weak_ordering {
+    -> std::strong_ordering {
     if (*name == *other.name and *val == *other.val) {
-        return std::weak_ordering::equivalent;
+        return std::strong_ordering::equal;
     }
-    return std::weak_ordering::less;
+    return std::strong_ordering::less;
 }
 
 
