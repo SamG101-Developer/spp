@@ -13,6 +13,7 @@
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/compiler/module_tree.hpp>
+#include <spp/utils/variants.hpp>
 
 #include <genex/actions/concat.hpp>
 #include <genex/actions/push_back.hpp>
@@ -22,6 +23,7 @@
 #include <genex/views/drop_last.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/for_each.hpp>
+#include <genex/views/ptr.hpp>
 #include <genex/views/take_until.hpp>
 #include <genex/views/to.hpp>
 #include <genex/views/transform.hpp>
@@ -560,4 +562,31 @@ auto spp::analyse::scopes::Scope::direct_sup_types() const
         | genex::views::filter([](auto *scope) { return asts::ast_cast<asts::ClassPrototypeAst>(scope->ast); })
         | genex::views::transform([](auto *scope) { return scope->ty_sym->fq_name(); })
         | genex::views::to<std::vector>();
+}
+
+
+auto spp::analyse::scopes::Scope::print_scope_tree() const
+    -> std::string {
+    // Indent the children, print the scope name.
+    auto func = [](this auto &&self, Scope const *scope, std::string const &indent) -> std::string {
+        auto result = indent + std::visit(
+            spp::utils::variants::overload{
+                [](asts::IdentifierAst *id) {
+                    return id->val;
+                },
+                [](asts::TypeIdentifierAst *id) {
+                    return id->name;
+                },
+                [](ScopeBlockName const &block) {
+                    return block.name;
+                }
+            }, scope->name) + "\n";
+
+        for (auto child : scope->children | genex::views::ptr) {
+            result += self(child, indent + "    ");
+        }
+        return result;
+    };
+
+    return func(this, "");
 }

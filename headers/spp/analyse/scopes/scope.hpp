@@ -154,4 +154,6 @@ public:
     auto sub_scopes() -> std::vector<Scope*>;
 
     auto direct_sub_scopes() -> std::vector<Scope*>;
+
+    auto print_scope_tree() const -> std::string;
 };
