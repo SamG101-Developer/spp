@@ -53,8 +53,6 @@ public:
 
     auto operator=(IndividualSymbolTable const &that) -> IndividualSymbolTable&;
 
-    // explicit operator std::string() const;
-
     auto add(I const *sym_name, std::shared_ptr<S> const &sym) -> void;
 
     auto rem(I const *sym_name) -> void;
@@ -63,7 +61,6 @@ public:
 
     auto has(I const *sym_name) const -> bool;
 
-    SPP_NO_ASAN
     auto all() const -> std::generator<std::shared_ptr<S>>;
 };
 

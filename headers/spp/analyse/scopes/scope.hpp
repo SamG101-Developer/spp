@@ -92,10 +92,6 @@ private:
 
     spp::utils::errors::ErrorFormatter *m_error_formatter;
 
-private:
-    template <typename S, typename T, typename This>
-    SPP_NO_ASAN auto all_symbols_impl(T const &map, This const &func, bool exclusive, bool sup_scope_search) const -> std::generator<S*>;
-
 public:
     Scope(ScopeName name, Scope *parent, asts::Ast *ast = nullptr, spp::utils::errors::ErrorFormatter *error_formatter = nullptr);
 
