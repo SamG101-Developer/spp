@@ -32,7 +32,7 @@ struct spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::Ab
             | genex::views::to<std::vector>();
 
         // Throw the error object.
-        throw T(*this->m_err_obj);
+        spp::utils::errors::AbstractErrorBuilder<T>::raise();
     }
 
 private:

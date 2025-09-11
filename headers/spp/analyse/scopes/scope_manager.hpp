@@ -44,9 +44,13 @@ private:
 public:
     explicit ScopeManager(std::shared_ptr<Scope> const &global_scope, Scope *current_scope = nullptr);
 
-    SPP_NO_ASAN auto iter() const -> std::generator<Scope*>;
+    SPP_NO_ASAN auto iter() -> std::generator<Scope*>;
 
-    SPP_NO_ASAN auto iter_impl(const Scope *scope) const -> std::generator<Scope*>;
+    SPP_NO_ASAN auto iter() const -> std::generator<Scope const*>;
+
+    SPP_NO_ASAN auto iter_impl(Scope *scope) -> std::generator<Scope*>;
+
+    SPP_NO_ASAN auto iter_impl(Scope const *scope) const -> std::generator<Scope const*>;
 
     auto reset(Scope *scope = nullptr, std::optional<std::generator<Scope*>> gen = std::nullopt) -> void;
 

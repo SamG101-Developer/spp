@@ -454,9 +454,44 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_binary_expression_precedence_3, R"(
 )")
 
 
-SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_binary_expression_precedence_4, R"(
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_binary_expression_precedence_4_a, R"(
     fun my_function() -> Void {
         variable == other_variable
+    }
+)")
+
+
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_binary_expression_precedence_4_b, R"(
+    fun my_function() -> Void {
+        variable != other_variable
+    }
+)")
+
+
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_binary_expression_precedence_4_c, R"(
+    fun my_function() -> Void {
+        variable < other_variable
+    }
+)")
+
+
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_binary_expression_precedence_4_d, R"(
+    fun my_function() -> Void {
+        variable <= other_variable
+    }
+)")
+
+
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_binary_expression_precedence_4_e, R"(
+    fun my_function() -> Void {
+        variable > other_variable
+    }
+)")
+
+
+SPP_TEST_SHOULD_PASS_SYNTACTIC(parse_binary_expression_precedence_4_f, R"(
+    fun my_function() -> Void {
+        variable >= other_variable
     }
 )")
 

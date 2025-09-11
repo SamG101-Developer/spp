@@ -28,7 +28,10 @@
     meta.current_stage = (s)
 
 
-auto spp::compiler::CompilerBoot::lex(indicators::ProgressBar &bar, ModuleTree &tree) -> void {
+auto spp::compiler::CompilerBoot::lex(
+    indicators::ProgressBar &bar,
+    ModuleTree &tree)
+    -> void {
     // Lexing stage.
     for (auto &&mod : tree) {
         bar.tick();
@@ -39,7 +42,10 @@ auto spp::compiler::CompilerBoot::lex(indicators::ProgressBar &bar, ModuleTree &
 }
 
 
-auto spp::compiler::CompilerBoot::parse(indicators::ProgressBar &bar, ModuleTree &tree) -> void {
+auto spp::compiler::CompilerBoot::parse(
+    indicators::ProgressBar &bar,
+    ModuleTree &tree)
+    -> void {
     // Parsing stage.
     for (auto &&mod : tree) {
         bar.tick();

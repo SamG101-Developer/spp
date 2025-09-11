@@ -34,6 +34,7 @@ spp::compiler::ModuleTree::ModuleTree(
         | genex::views::transform([](auto const &p) { return Module::from_path(p); })
         | genex::views::to<std::vector>();
 
+    auto test = glob::rglob(m_vcs_path / "**/*.spp");
     auto vcs_modules = glob::rglob(m_vcs_path / "**/*.spp")
         | genex::views::transform([](auto const &p) { return Module::from_path(p); })
         | genex::views::to<std::vector>();
@@ -43,22 +44,23 @@ spp::compiler::ModuleTree::ModuleTree(
         | genex::views::to<std::vector>();
 
     // Remove the "main.spp" files from the vcs modules.
-    for (auto &m : vcs_modules | genex::views::borrow) {
+    auto filtered_vcs_modules = std::vector<Module>();
+    for (auto &m : vcs_modules) {
         auto relative_path = std::filesystem::relative(m.path, m_vcs_path);
         auto inner_path = std::filesystem::path();
-        auto sep = std::filesystem::path::preferred_separator;
+        constexpr auto sep = std::filesystem::path::preferred_separator;
         for (auto const &part : std::filesystem::path(relative_path.string() | genex::views::chunk(sep) | genex::views::drop(1) | genex::views::materialize() | genex::views::flatten_with(sep) | genex::views::to<std::string>())) {
             inner_path /= part;
         }
 
         // Check if the inner_path matches "src/main.spp" or startswith "ffi/":
-        if (inner_path == std::filesystem::path("src/main.spp") or inner_path.string().starts_with("ffi"s + std::filesystem::path::preferred_separator)) {
-            vcs_modules |= genex::actions::remove_if([&m](auto &&x) { return x.path == m.path; });
+        if (inner_path != std::filesystem::path("src/main.spp") and not inner_path.string().starts_with("ffi"s + std::filesystem::path::preferred_separator)) {
+            filtered_vcs_modules.emplace_back(std::move(m));
         }
     }
 
     // Merge the src, vcs and ffi modules together.
-    m_modules = genex::views::concat(src_modules | genex::views::move, vcs_modules | genex::views::move, ffi_modules | genex::views::move) | genex::views::to<std::vector>();
+    m_modules = genex::views::concat(src_modules | genex::views::move, filtered_vcs_modules | genex::views::move, ffi_modules | genex::views::move) | genex::views::to<std::vector>();
     // for (auto &m : m_modules) {
     //     m.path = m.path.string().substr(std::filesystem::current_path().string().size());
     // }

@@ -35,6 +35,8 @@ spp::asts::GenericArgumentGroupAst::GenericArgumentGroupAst(
     tok_l(std::move(tok_l)),
     args(std::move(args)),
     tok_r(std::move(tok_r)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_l, lex::SppTokenType::TK_LEFT_SQUARE_BRACKET, "[");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_r, lex::SppTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
 }
 
 

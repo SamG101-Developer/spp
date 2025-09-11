@@ -30,6 +30,7 @@ public:
     }
 
     std::vector<std::string> messages;
+    std::string final_message;
 
 public:
     AbstractError(AbstractError const &) noexcept = default;
@@ -37,10 +38,7 @@ public:
 
     [[nodiscard]]
     auto what() const noexcept -> const char* override {
-        const auto joined = messages
-            | genex::views::flatten_with('\n')
-            | genex::views::to<std::string>();
-        return joined.c_str();
+        return final_message.c_str();
     }
 };
 
@@ -76,6 +74,9 @@ public:
 
     [[noreturn]] virtual auto raise() -> void {
         // Throw the error object.
+        this->m_err_obj->final_message = this->m_err_obj->messages
+            | genex::views::flatten_with('\n')
+            | genex::views::to<std::string>();
         throw T(*m_err_obj);
     }
 };

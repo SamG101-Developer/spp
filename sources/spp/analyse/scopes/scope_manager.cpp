@@ -33,7 +33,7 @@ spp::analyse::scopes::ScopeManager::ScopeManager(
 }
 
 
-auto spp::analyse::scopes::ScopeManager::iter() const
+auto spp::analyse::scopes::ScopeManager::iter()
     -> std::generator<Scope*> {
     // Generate from the lambda.
     for (auto *scope : iter_impl(current_scope)) {
@@ -42,13 +42,34 @@ auto spp::analyse::scopes::ScopeManager::iter() const
 }
 
 
+auto spp::analyse::scopes::ScopeManager::iter() const
+    -> std::generator<Scope const*> {
+    // Generate from the lambda.
+    for (auto const *scope : iter_impl(current_scope)) {
+        co_yield scope;
+    }
+}
+
+
 auto spp::analyse::scopes::ScopeManager::iter_impl(
-    const Scope *scope) const
+    Scope *scope)
     -> std::generator<Scope*> {
     // Define the generation algorithm for iterating scopes.
-    // TODO: REMOVE CONST CAST.
+    co_yield scope;
+    for (auto *child : scope->children | genex::views::ptr) {
+        for (auto *descendant : iter_impl(child)) {
+            co_yield descendant;
+        }
+    }
+}
+
+
+auto spp::analyse::scopes::ScopeManager::iter_impl(
+    Scope const *scope) const
+    -> std::generator<Scope const*> {
+    // Define the generation algorithm for iterating scopes.
     co_yield const_cast<Scope*>(scope);
-    for (auto &&child : scope->children | genex::views::ptr) {
+    for (auto const *child : scope->children | genex::views::ptr) {
         for (auto *descendant : iter_impl(child)) {
             co_yield descendant;
         }
@@ -96,6 +117,13 @@ auto spp::analyse::scopes::ScopeManager::move_out_of_current_scope()
 
 auto spp::analyse::scopes::ScopeManager::move_to_next_scope()
     -> Scope* {
+    // For debugging mode only, check if the iterator has reached the end of the generator.
+#ifdef SPP_IS_DEBUG_BUILD
+    if (m_it == m_end) {
+        throw std::out_of_range("ScopeManager iterator has reached the end of the generator.");
+    }
+#endif
+
     // Move to the next scope by advancing the iterator.
     current_scope = *++m_it;
     return current_scope;

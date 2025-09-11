@@ -375,8 +375,8 @@ auto spp::parse::ParserSpp::parse_function_parameter() -> std::unique_ptr<asts::
 
 auto spp::parse::ParserSpp::parse_function_parameter_self() -> std::unique_ptr<asts::FunctionParameterSelfAst> {
     PARSE_ALTERNATE(
-        p1, asts::FunctionParameterSelfAst, parse_function_parameter_self_with_convention,
-        parse_function_parameter_self_without_convention);
+        p1, asts::FunctionParameterSelfAst, parse_function_parameter_self_without_convention,
+        parse_function_parameter_self_with_convention);
     return FORWARD_AST(p1);
 }
 
@@ -389,9 +389,10 @@ auto spp::parse::ParserSpp::parse_function_parameter_self_with_convention() -> s
 
 
 auto spp::parse::ParserSpp::parse_function_parameter_self_without_convention() -> std::unique_ptr<asts::FunctionParameterSelfAst> {
-    PARSE_OPTIONAL(p1, parse_keyword_mut)
-    PARSE_ONCE(p2, parse_self_identifier);
-    return CREATE_AST(asts::FunctionParameterSelfAst, nullptr, CREATE_AST(asts::LocalVariableSingleIdentifierAst, p1, p2, nullptr));
+    PARSE_ONCE(p1, parse_convention_mov)
+    PARSE_OPTIONAL(p2, parse_keyword_mut)
+    PARSE_ONCE(p3, parse_self_identifier);
+    return CREATE_AST(asts::FunctionParameterSelfAst, p1, CREATE_AST(asts::LocalVariableSingleIdentifierAst, p2, p3, nullptr));
 }
 
 
@@ -767,8 +768,8 @@ auto spp::parse::ParserSpp::parse_binary_expression_op_precedence_level_3() -> s
 
 auto spp::parse::ParserSpp::parse_binary_expression_op_precedence_level_4() -> std::unique_ptr<asts::TokenAst> {
     PARSE_ALTERNATE(
-        p1, asts::TokenAst, parse_token_equals, parse_token_not_equals, parse_token_less_than, parse_token_greater_than,
-        parse_token_less_than_equals, parse_token_greater_than_equals);
+        p1, asts::TokenAst, parse_token_equals, parse_token_not_equals, parse_token_less_than_equals,
+        parse_token_greater_than_equals, parse_token_less_than, parse_token_greater_than);
     return FORWARD_AST(p1);
 }
 
@@ -1154,8 +1155,8 @@ auto spp::parse::ParserSpp::parse_pattern_guard() -> std::unique_ptr<asts::Patte
 
 auto spp::parse::ParserSpp::parse_boolean_comparison_op() -> std::unique_ptr<asts::TokenAst> {
     PARSE_ALTERNATE(
-        p1, asts::TokenAst, parse_token_equals, parse_token_not_equals, parse_token_less_than, parse_token_greater_than,
-        parse_token_less_than_equals, parse_token_greater_than_equals);
+        p1, asts::TokenAst, parse_token_equals, parse_token_not_equals, parse_token_less_than_equals,
+        parse_token_greater_than_equals, parse_token_less_than, parse_token_greater_than);
     return FORWARD_AST(p1);
 }
 

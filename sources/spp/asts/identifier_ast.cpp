@@ -67,7 +67,8 @@ auto spp::asts::IdentifierAst::equals_identifier(
 
 
 auto spp::asts::IdentifierAst::operator<=>(IdentifierAst const &that) const -> std::weak_ordering {
-    return val <=> that.val;
+    const auto x = val <=> that.val;
+    return x;
 }
 
 
