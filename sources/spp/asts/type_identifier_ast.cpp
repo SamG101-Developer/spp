@@ -47,6 +47,8 @@ spp::asts::TypeIdentifierAst::TypeIdentifierAst(
     m_pos(pos),
     m_is_never_type(false) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_arg_group);
+    this->generic_arg_group->tok_l->m_pos = this->generic_arg_group->tok_l->m_pos ? this->generic_arg_group->tok_l->m_pos : pos + this->pos_start() + this->name.length();
+    this->generic_arg_group->tok_r->m_pos = this->generic_arg_group->tok_r->m_pos ? this->generic_arg_group->tok_r->m_pos : this->generic_arg_group->tok_l->m_pos + 1;
 }
 
 

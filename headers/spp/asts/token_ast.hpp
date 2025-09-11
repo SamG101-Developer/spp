@@ -13,6 +13,7 @@
  */
 struct spp::asts::TokenAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
+    friend struct TypeIdentifierAst;
 
     /**
      * The token type (part of the enum) that this AST is wrapping.
@@ -31,14 +32,17 @@ struct spp::asts::TokenAst final : virtual Ast {
 
     ~TokenAst() override;
 
-    static auto new_empty(lex::SppTokenType token_type, std::string &&token_data) -> std::unique_ptr<TokenAst>;
+    static auto new_empty(
+        lex::SppTokenType token_type,
+        std::string &&token_data)
+        -> std::unique_ptr<TokenAst>;
 
     /**
      * Two tokens are equal if their token types are equal.
      * @param[in] that The other TokenAst to compare with.
      * @return Whether the two ASTs are equal or not.
      */
-    auto operator==(TokenAst const &that) const -> bool;
+    auto operator==(TokenAst const &that) const -> bool;  // todo: do as friend
 
 private:
     std::size_t m_pos;
