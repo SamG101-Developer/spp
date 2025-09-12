@@ -195,6 +195,15 @@ auto spp::asts::GenericParameterGroupAst::print(meta::AstPrinter &printer) const
 }
 
 
+auto spp::asts::GenericParameterGroupAst::stage_2_gen_top_level_scopes(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> void {
+    // Run the generation steps on the parameters in the group.
+    params | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
+}
+
+
 auto spp::asts::GenericParameterGroupAst::stage_4_qualify_types(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)

@@ -51,6 +51,8 @@ struct spp::asts::GenericParameterGroupAst final : virtual Ast {
 
     auto opt_to_req() const -> std::unique_ptr<GenericParameterGroupAst>;
 
+    auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
     auto stage_4_qualify_types(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;

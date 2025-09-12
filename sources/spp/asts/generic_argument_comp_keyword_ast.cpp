@@ -23,10 +23,10 @@ spp::asts::GenericArgumentCompKeywordAst::GenericArgumentCompKeywordAst(
 
 
 auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
-    analyse::scopes::VariableSymbol const *sym)
+    analyse::scopes::VariableSymbol const &sym)
     -> std::unique_ptr<GenericArgumentCompKeywordAst> {
     // Get the comptime value from the symbol's memory info.
-    const auto c = sym->memory_info->ast_comptime;
+    const auto c = sym.memory_info->ast_comptime;
     std::unique_ptr<ExpressionAst> value = nullptr;
 
     // Depending on that the comptime AST is, get the value.
@@ -39,7 +39,7 @@ auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
 
     // Create the GenericArgumentCompKeywordAst with the name and value.
     return std::make_unique<GenericArgumentCompKeywordAst>(
-        TypeIdentifierAst::from_identifier(*sym->name), nullptr, std::move(value));
+        TypeIdentifierAst::from_identifier(*sym.name), nullptr, std::move(value));
 }
 
 

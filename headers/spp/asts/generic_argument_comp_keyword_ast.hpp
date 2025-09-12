@@ -45,7 +45,7 @@ public:
     ~GenericArgumentCompKeywordAst() override;
 
     static auto from_symbol(
-        analyse::scopes::VariableSymbol const *sym)
+        analyse::scopes::VariableSymbol const &sym)
         -> std::unique_ptr<GenericArgumentCompKeywordAst>;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;

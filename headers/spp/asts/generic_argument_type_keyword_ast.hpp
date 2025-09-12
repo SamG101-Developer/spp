@@ -39,7 +39,7 @@ public:
 
     ~GenericArgumentTypeKeywordAst() override;
 
-    static auto from_symbol(analyse::scopes::TypeSymbol const *sym) -> std::unique_ptr<GenericArgumentTypeKeywordAst>;
+    static auto from_symbol(analyse::scopes::TypeSymbol const &sym) -> std::unique_ptr<GenericArgumentTypeKeywordAst>;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
