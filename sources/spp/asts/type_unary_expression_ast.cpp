@@ -208,7 +208,7 @@ auto spp::asts::TypeUnaryExpressionAst::stage_4_qualify_types(
         meta->save();
         meta->type_analysis_type_scope = type_scope;
         rhs->stage_4_qualify_types(sm, meta);
-        meta->save();
+        meta->restore();
     }
     else {
         rhs->stage_4_qualify_types(sm, meta);
@@ -227,7 +227,7 @@ auto spp::asts::TypeUnaryExpressionAst::stage_7_analyse_semantics(
         meta->save();
         meta->type_analysis_type_scope = type_scope;
         rhs->stage_7_analyse_semantics(sm, meta);
-        meta->save();
+        meta->restore();
     }
     else {
         rhs->stage_7_analyse_semantics(sm, meta);

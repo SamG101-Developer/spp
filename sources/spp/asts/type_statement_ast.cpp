@@ -256,8 +256,8 @@ auto spp::asts::TypeStatementAst::stage_7_analyse_semantics(
         return;
     }
 
-    auto iter_copy_1 = sm->iter();
-    auto iter_copy_2 = sm->iter();
+    auto iter_copy_1 = sm->m_it;
+    auto iter_copy_2 = sm->m_it;
 
     // Otherwise, run all generation steps.
     const auto current_scope = sm->current_scope;
