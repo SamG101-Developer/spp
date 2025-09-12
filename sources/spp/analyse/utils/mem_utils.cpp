@@ -256,7 +256,7 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
             sym->memory_info->initialization_counter = old_mem_status.initialization_counter;
 
             // Save this memory status for subsequent inter-branch status comparisons.
-            sym_mem_info.try_emplace(sym, SymbolMemoryList()).first->second.emplace_back(branch, old_mem_status);
+            sym_mem_info.try_emplace(sym.get(), SymbolMemoryList()).first->second.emplace_back(branch, old_mem_status);
         }
     }
 
