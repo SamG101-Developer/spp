@@ -1,7 +1,7 @@
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/analyse/scopes/symbols.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/convention_ast.hpp>
+#include <spp/asts/convention_mov_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
@@ -119,16 +119,18 @@ auto spp::analyse::scopes::TypeSymbol::fq_name() const
 
     // Fully qualify the name from the root scope.
     auto qualifier_scope = scope->parent;
-    auto qualified_name = asts::ast_cast<asts::TypeAst>(name);
+    auto qualified_name = std::dynamic_pointer_cast<asts::TypeAst>(name);
     while (qualifier_scope->parent != nullptr) {
-        auto ns_name = std::shared_ptr<asts::IdentifierAst>(std::get<asts::IdentifierAst*>(qualifier_scope->name));
+        const auto raw_ns_name = std::get<asts::IdentifierAst*>(qualifier_scope->name);
+        auto ns_name = std::make_shared<asts::IdentifierAst>(raw_ns_name->pos_start(), raw_ns_name->val);
         auto ns_op = std::make_unique<asts::TypeUnaryExpressionOperatorNamespaceAst>(std::move(ns_name), nullptr);
-        qualified_name = std::make_unique<asts::TypeUnaryExpressionAst>(std::move(ns_op), std::move(qualified_name));
+        qualified_name = std::make_shared<asts::TypeUnaryExpressionAst>(std::move(ns_op), std::move(qualified_name));
         qualifier_scope = qualifier_scope->parent;
     }
 
     // Re-add the convention of the type if it exists.
-    return qualified_name->with_convention(ast_clone(convention));
+    auto conv = convention ? ast_clone(convention) : std::make_unique<asts::ConventionMovAst>();
+    return qualified_name->with_convention(std::move(conv));
 }
 
 
