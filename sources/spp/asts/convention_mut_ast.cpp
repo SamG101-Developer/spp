@@ -35,7 +35,7 @@ auto spp::asts::ConventionMutAst::clone() const -> std::unique_ptr<Ast> {
 spp::asts::ConventionMutAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_borrow);
-    SPP_STRING_APPEND(tok_mut);
+    SPP_STRING_APPEND(tok_mut).append(" ");
     SPP_STRING_END;
 }
 
@@ -43,6 +43,6 @@ spp::asts::ConventionMutAst::operator std::string() const {
 auto spp::asts::ConventionMutAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_borrow);
-    SPP_PRINT_APPEND(tok_mut);
+    SPP_PRINT_APPEND(tok_mut).append(" ");
     SPP_PRINT_END;
 }

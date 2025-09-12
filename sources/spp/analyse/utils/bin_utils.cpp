@@ -95,14 +95,8 @@ auto spp::analyse::utils::bin_utils::convert_bin_expr_to_function_call(
     auto fn_call = std::make_unique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
     auto new_ast = std::make_unique<asts::PostfixExpressionAst>(std::move(field_access), std::move(fn_call));
 
-    // Apply the correct "self" convention based on the operator.
-    auto convention = asts::ast_cast<asts::ConventionAst>(std::make_unique<asts::ConventionMovAst>());
-    if (genex::algorithms::contains(BIN_COMPARISON_OPS, bin_expr.tok_op->token_type)) {
-        convention = std::make_unique<asts::ConventionRefAst>(nullptr);
-    }
-
     // Set the arguments for the function call, and return the AST.
-    auto arg = std::make_unique<asts::FunctionCallArgumentPositionalAst>(std::move(convention), nullptr, std::move(bin_expr.rhs));
+    auto arg = std::make_unique<asts::FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(bin_expr.rhs));
     fn_call->arg_group->args.emplace_back(std::move(arg));
     return new_ast;
 }

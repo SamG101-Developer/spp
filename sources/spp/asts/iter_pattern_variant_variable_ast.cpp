@@ -73,8 +73,8 @@ auto spp::asts::IterPatternVariantVariableAst::stage_7_analyse_semantics(
         // Apply the borrow to the symbol.
         const auto sym = sm->current_scope->get_var_symbol(*name);
         sym->memory_info->ast_borrowed = conv;
-        sym->memory_info->is_borrow_mut = conv->tag == ConventionAst::ConventionTag::MUT;
-        sym->memory_info->is_borrow_ref = conv->tag == ConventionAst::ConventionTag::REF;
+        sym->memory_info->is_borrow_mut = conv and *conv == ConventionAst::ConventionTag::MUT;
+        sym->memory_info->is_borrow_ref = conv and *conv == ConventionAst::ConventionTag::REF;
         sym->type = sym->type->with_convention(ast_clone(conv));
     }
 }

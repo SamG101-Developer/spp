@@ -81,9 +81,10 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_7_analyse_semantics(
 
         // Apply the borrow to the symbol.
         const auto sym = sm->current_scope->get_var_symbol(ast_cast<IdentifierAst>(*let->val));
-        sym->memory_info->ast_borrowed = cap->conv.get();
-        sym->memory_info->is_borrow_mut = cap->conv->tag == ConventionAst::ConventionTag::MUT;
-        sym->memory_info->is_borrow_ref = cap->conv->tag == ConventionAst::ConventionTag::MUT;
+        auto conv = cap->conv.get();
+        sym->memory_info->ast_borrowed = conv;
+        sym->memory_info->is_borrow_mut = conv and *conv == ConventionAst::ConventionTag::MUT;
+        sym->memory_info->is_borrow_ref = conv and *conv == ConventionAst::ConventionTag::MUT;
         sym->type = sym->type->with_convention(ast_clone(cap->conv));
     }
 }

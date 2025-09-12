@@ -372,7 +372,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
 
     // Determine the type scope and type symbol.
     const auto type_sym = analyse::utils::type_utils::get_type_part_symbol_with_error(
-        *type_scope, ast_cast<TypeIdentifierAst>(*without_generics()), *sm, meta, true);
+        *type_scope, *std::dynamic_pointer_cast<TypeIdentifierAst>(without_generics()), *sm, meta, true);
     type_scope = type_sym->scope;
     if (type_sym->is_generic) { return; }
     if (name == "Self") { return; }
@@ -393,6 +393,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     }
 
     // Analyse the generic arguments.
+    meta->type_analysis_type_scope = nullptr;
     generic_arg_group->stage_7_analyse_semantics(sm, meta);
 
     // Infer the generic arguments from information given from object initialization.

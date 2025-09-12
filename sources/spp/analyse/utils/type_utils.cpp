@@ -59,8 +59,11 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
     if (lhs_type.is_never_type()) { return rhs_type.is_never_type(); }
 
     // Do a convention check, and allow "&mut" to coerce to "&".
-    if (lhs_type.get_convention()->tag != rhs_type.get_convention()->tag) {
-        if (not(lhs_type.get_convention()->tag == asts::ConventionAst::ConventionTag::REF and rhs_type.get_convention()->tag == asts::ConventionAst::ConventionTag::MUT)) {
+    if (lhs_type.get_convention() != rhs_type.get_convention()) {
+        const auto lhs_conv = lhs_type.get_convention();
+        const auto rhs_conv = rhs_type.get_convention();
+
+        if (not((lhs_conv and *lhs_conv == asts::ConventionAst::ConventionTag::REF) and (rhs_conv and *rhs_conv == asts::ConventionAst::ConventionTag::MUT))) {
             return false;
         }
     }
@@ -558,7 +561,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     new_cls_scope->parent->add_type_symbol(std::move(new_cls_symbol));
     new_cls_scope->table = old_cls_scope->table;
     new_cls_scope->non_generic_scope = old_cls_scope;
-    new_cls_scope->children.emplace_back(std::move(new_cls_scope));
+    auto new_cls_scope_ptr = new_cls_scope.get();
     if (not std::holds_alternative<scopes::ScopeBlockName>(new_cls_scope->name)) {
         old_cls_scope->parent->children.emplace_back(std::move(new_cls_scope));
     }
@@ -569,7 +572,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
 
     // No more checks for tuples.
     if (is_tuple) {
-        return new_cls_scope.get();
+        return new_cls_scope_ptr;
     }
 
     // Register the generic symbols.
@@ -598,7 +601,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     }
 
     // Return the new class scope.
-    return old_cls_scope->parent->children.back().get();
+    return new_cls_scope_ptr;
 }
 
 
