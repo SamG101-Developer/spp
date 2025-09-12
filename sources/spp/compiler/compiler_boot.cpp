@@ -82,6 +82,8 @@ auto spp::compiler::CompilerBoot::stage_2_gen_top_level_scopes(
         sm->reset();
         bar.tick();
     }
+
+    std::cout << sm->global_scope->print_scope_tree() << std::endl;
 }
 
 

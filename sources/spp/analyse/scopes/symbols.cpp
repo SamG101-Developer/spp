@@ -84,7 +84,7 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
     is_copyable(is_copyable),
     visibility(visibility),
     convention(convention),
-    generic_impl(nullptr) {
+    generic_impl(this) {
 }
 
 
@@ -129,8 +129,7 @@ auto spp::analyse::scopes::TypeSymbol::fq_name() const
     }
 
     // Re-add the convention of the type if it exists.
-    auto conv = convention ? ast_clone(convention) : std::make_unique<asts::ConventionMovAst>();
-    return qualified_name->with_convention(std::move(conv));
+    return convention ? qualified_name->with_convention(ast_clone(convention)) : qualified_name;
 }
 
 
