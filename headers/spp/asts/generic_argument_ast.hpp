@@ -53,14 +53,6 @@ struct spp::asts::GenericArgumentAst : virtual Ast {
     friend struct GenericArgumentTypeKeywordAst;
     friend struct GenericArgumentTypePositionalAst;
 
-    friend auto operator<=>(GenericArgumentAst const &lhs_arg, GenericArgumentAst const &rhs_arg) -> std::strong_ordering {
-        return lhs_arg.equals(rhs_arg);
-    }
-
-    friend auto operator==(GenericArgumentAst const &lhs_arg, GenericArgumentAst const &rhs_arg) -> bool {
-        return (lhs_arg.equals(rhs_arg) == std::strong_ordering::equal);
-    }
-
 protected:
     virtual auto equals_generic_argument_comp_keyword(GenericArgumentCompKeywordAst const &) const -> std::strong_ordering;
     virtual auto equals_generic_argument_comp_positional(GenericArgumentCompPositionalAst const &) const -> std::strong_ordering;
@@ -70,4 +62,6 @@ protected:
 
 public:
     ~GenericArgumentAst() override;
+    auto operator<=>(GenericArgumentAst const &other) const -> std::strong_ordering;
+    auto operator==(GenericArgumentAst const &other) const -> bool;
 };

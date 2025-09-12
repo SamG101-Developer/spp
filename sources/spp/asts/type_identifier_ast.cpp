@@ -96,6 +96,20 @@ auto spp::asts::TypeIdentifierAst::from_identifier(
 }
 
 
+auto spp::asts::TypeIdentifierAst::operator<=>(
+    const TypeIdentifierAst &that) const
+    -> std::strong_ordering {
+    return equals(that);
+}
+
+
+auto spp::asts::TypeIdentifierAst::operator==(
+    const TypeIdentifierAst &that) const
+    -> bool {
+    return equals(that) == std::strong_ordering::equal;
+}
+
+
 auto spp::asts::TypeIdentifierAst::equals(
     ExpressionAst const &other) const
     -> std::strong_ordering {

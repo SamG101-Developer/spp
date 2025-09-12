@@ -27,6 +27,10 @@ struct spp::asts::TypePostfixExpressionAst final : TypeAst {
 
     ~TypePostfixExpressionAst() override;
 
+    auto operator<=>(TypePostfixExpressionAst const &) const -> std::strong_ordering;
+
+    auto operator==(TypePostfixExpressionAst const &) const -> bool;
+
 protected:
     auto equals(const ExpressionAst &) const -> std::strong_ordering override;
 

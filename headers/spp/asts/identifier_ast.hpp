@@ -10,15 +10,6 @@ struct spp::asts::IdentifierAst final : PrimaryExpressionAst {
      */
     std::string val;
 
-    friend auto operator<=>(IdentifierAst const &lhs, IdentifierAst const &rhs) -> std::strong_ordering {
-        return lhs.val <=> rhs.val;
-    }
-
-    friend auto operator==(IdentifierAst const &lhs, IdentifierAst const &rhs) -> bool {
-        return lhs.val == rhs.val;
-    }
-
-
 protected:
     auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
@@ -35,6 +26,10 @@ public:
         decltype(val) &&val);
 
     IdentifierAst(IdentifierAst const &);
+
+    auto operator<=>(IdentifierAst const&) const -> std::strong_ordering;
+
+    auto operator==(IdentifierAst const&) const -> bool;
 
     auto operator+(IdentifierAst const &that) const -> IdentifierAst;
 

@@ -33,6 +33,20 @@ spp::asts::TypePostfixExpressionAst::TypePostfixExpressionAst(
 spp::asts::TypePostfixExpressionAst::~TypePostfixExpressionAst() = default;
 
 
+auto spp::asts::TypePostfixExpressionAst::operator<=>(
+    TypePostfixExpressionAst const &) const
+    -> std::strong_ordering {
+    return equals(*this);
+}
+
+
+auto spp::asts::TypePostfixExpressionAst::operator==(
+    TypePostfixExpressionAst const &) const
+    -> bool {
+    return equals(*this) == std::strong_ordering::equal;
+}
+
+
 auto spp::asts::TypePostfixExpressionAst::pos_start() const -> std::size_t {
     return lhs->pos_start();
 }

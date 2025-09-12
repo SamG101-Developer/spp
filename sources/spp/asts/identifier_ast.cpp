@@ -66,22 +66,43 @@ auto spp::asts::IdentifierAst::equals_identifier(
 }
 
 
-auto spp::asts::IdentifierAst::operator+(IdentifierAst const &that) const -> IdentifierAst {
+auto spp::asts::IdentifierAst::operator<=>(
+    IdentifierAst const &that) const
+    -> std::strong_ordering {
+    return val <=> that.val;
+}
+
+
+auto spp::asts::IdentifierAst::operator==(
+    IdentifierAst const &that) const
+    -> bool {
+    return equals(that) == std::strong_ordering::equal;
+}
+
+
+auto spp::asts::IdentifierAst::operator+(
+    IdentifierAst const &that) const
+    -> IdentifierAst {
     return IdentifierAst(m_pos, val + that.val);
 }
 
 
-auto spp::asts::IdentifierAst::operator+(std::string const &that) const -> IdentifierAst {
+auto spp::asts::IdentifierAst::operator+(
+    std::string const &that) const
+    -> IdentifierAst {
     return IdentifierAst(m_pos, val + that);
 }
 
 
-auto spp::asts::IdentifierAst::from_type(TypeAst const &val) -> std::unique_ptr<IdentifierAst> {
+auto spp::asts::IdentifierAst::from_type(
+    TypeAst const &val)
+    -> std::unique_ptr<IdentifierAst> {
     return std::make_unique<IdentifierAst>(val.pos_start(), std::string(val.type_parts().back()->name));
 }
 
 
-auto spp::asts::IdentifierAst::to_function_identifier() const -> std::unique_ptr<IdentifierAst> {
+auto spp::asts::IdentifierAst::to_function_identifier() const
+    -> std::unique_ptr<IdentifierAst> {
     return std::make_unique<IdentifierAst>(m_pos, "$" + spp::utils::strings::snake_to_pascal(val));
 }
 

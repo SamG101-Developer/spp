@@ -26,6 +26,10 @@ struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
 
     ~TypeUnaryExpressionAst() override;
 
+    auto operator<=>(TypeUnaryExpressionAst const &) const -> std::strong_ordering;
+
+    auto operator==(TypeUnaryExpressionAst const &) const -> bool;
+
 protected:
     auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 

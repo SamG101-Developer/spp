@@ -7,13 +7,9 @@ struct spp::asts::TypeUnaryExpressionOperatorAst : virtual Ast {
     friend struct TypeUnaryExpressionOperatorBorrowAst;
     friend struct TypeUnaryExpressionOperatorNamespaceAst;
 
-    friend auto operator<=>(TypeUnaryExpressionOperatorAst const &lhs, TypeUnaryExpressionOperatorAst const &rhs) -> std::strong_ordering {
-        return lhs.equals(rhs);
-    }
+    auto operator<=>(TypeUnaryExpressionOperatorAst const &) const -> std::strong_ordering;
 
-    friend auto operator==(TypeUnaryExpressionOperatorAst const &lhs, TypeUnaryExpressionOperatorAst const &rhs) -> bool {
-        return (lhs.equals(rhs) == std::strong_ordering::equal);
-    }
+    auto operator==(TypeUnaryExpressionOperatorAst const &) const -> bool;
 
 protected:
     virtual auto equals(TypeUnaryExpressionOperatorAst const &) const -> std::strong_ordering = 0;

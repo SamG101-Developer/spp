@@ -28,14 +28,6 @@ struct spp::asts::ExpressionAst : StatementAst {
     friend struct TypeUnaryExpressionAst;
     friend struct TypePostfixExpressionAst;
 
-    friend auto operator<=>(ExpressionAst const &lhs_expr, ExpressionAst const &rhs_expr) -> std::strong_ordering {
-        return lhs_expr.equals(rhs_expr);
-    }
-
-    friend auto operator==(ExpressionAst const &lhs_expr, ExpressionAst const &rhs_expr) -> bool {
-        return (lhs_expr.equals(rhs_expr) == std::strong_ordering::equal);
-    }
-
 protected:
     virtual auto equals_array_literal_explicit_elements(ArrayLiteralExplicitElementsAst const &) const -> std::strong_ordering;
     virtual auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> std::strong_ordering;
@@ -52,6 +44,8 @@ protected:
 
 public:
     ExpressionAst(ExpressionAst const &other);
+    auto operator<=>(const ExpressionAst &) const -> std::strong_ordering;
+    auto operator==(const ExpressionAst &) const -> bool;
 };
 
 

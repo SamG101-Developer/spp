@@ -7,13 +7,9 @@ struct spp::asts::TypePostfixExpressionOperatorAst : virtual Ast {
     friend struct TypePostfixExpressionOperatorNestedTypeAst;
     friend struct TypePostfixExpressionOperatorOptionalAst;
 
-    friend auto operator<=>(TypePostfixExpressionOperatorAst const &lhs, TypePostfixExpressionOperatorAst const &rhs) -> std::strong_ordering {
-        return lhs.equals(rhs);
-    }
+    auto operator<=>(TypePostfixExpressionOperatorAst const &) const -> std::strong_ordering;
 
-    friend auto operator==(TypePostfixExpressionOperatorAst const &lhs, TypePostfixExpressionOperatorAst const &rhs) -> bool {
-        return (lhs.equals(rhs) == std::strong_ordering::equal);
-    }
+    auto operator==(TypePostfixExpressionOperatorAst const &) const -> bool;
 
 protected:
     virtual auto equals(TypePostfixExpressionOperatorAst const &) const -> std::strong_ordering = 0;

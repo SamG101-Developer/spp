@@ -99,22 +99,6 @@ auto spp::asts::GenericArgumentGroupAst::from_map(
 }
 
 
-auto spp::asts::GenericArgumentGroupAst::operator==(
-    const GenericArgumentGroupAst &other) const
-    -> bool {
-    // Check each argument is equal per group.
-    if (args.size() != other.args.size()) {
-        return false;
-    }
-    for (auto i = 0u; i < args.size(); ++i) {
-        if (*args[i] != *other.args[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-
-
 auto spp::asts::GenericArgumentGroupAst::type_at(
     const char *key) const
     -> GenericArgumentTypeAst const* {
@@ -299,3 +283,22 @@ auto spp::asts::GenericArgumentGroupAst::stage_8_check_memory(
     // Check the arguments for memory issues.
     args | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });
 }
+
+
+auto operator==(
+    spp::asts::GenericArgumentGroupAst const &lhs,
+    spp::asts::GenericArgumentGroupAst const &rhs)
+    -> bool {
+    if (lhs.args.size() != rhs.args.size()) {
+        return false;
+    }
+
+    for (std::size_t i = 0; i < lhs.args.size(); i++) {
+        if (*lhs.args[i] != *rhs.args[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+

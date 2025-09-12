@@ -44,8 +44,6 @@ struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
     static auto from_map(
         std::map<std::shared_ptr<TypeAst>, ExpressionAst const*> &&map) -> std::unique_ptr<GenericArgumentGroupAst>;
 
-    auto operator==(const GenericArgumentGroupAst &other) const -> bool;
-
     auto type_at(const char *key) const -> GenericArgumentTypeAst const*;
 
     auto comp_at(const char *key) const -> GenericArgumentCompAst const*;
@@ -64,3 +62,6 @@ struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
+
+
+auto operator==(spp::asts::GenericArgumentGroupAst const &lhs, spp::asts::GenericArgumentGroupAst const &rhs) -> bool;

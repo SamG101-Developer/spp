@@ -11,6 +11,12 @@
 struct spp::asts::TypeIdentifierAst final : TypeAst {
     SPP_AST_KEY_FUNCTIONS;
 
+protected:
+    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+
+    auto equals_type_identifier(TypeIdentifierAst const &other) const -> std::strong_ordering override;
+
+public:
     /**
      * The name for the type. This is the name of the type, such as @c Str or @code Vec[BigInt]@endcode.
      */
@@ -36,15 +42,14 @@ struct spp::asts::TypeIdentifierAst final : TypeAst {
 
     static auto from_identifier(IdentifierAst const &identifier) -> std::shared_ptr<TypeIdentifierAst>;
 
+    auto operator<=>(const TypeIdentifierAst &that) const -> std::strong_ordering;
+
+    auto operator==(const TypeIdentifierAst &that) const -> bool;
+
 private:
     std::size_t m_pos;
 
     bool m_is_never_type;
-
-protected:
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-
-    auto equals_type_identifier(TypeIdentifierAst const &other) const -> std::strong_ordering override;
 
 public:
     SPP_NO_ASAN

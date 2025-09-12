@@ -741,11 +741,11 @@ auto spp::analyse::utils::type_utils::get_type_part_symbol_with_error(
     scopes::Scope const &scope,
     asts::TypeIdentifierAst const &type_part,
     scopes::ScopeManager const &sm,
-    asts::mixins::CompilerMetaData *meta,
+    asts::mixins::CompilerMetaData *,
     const bool ignore_alias)
     -> scopes::TypeSymbol* {
     // Get the type part's symbol, and raise an error if it doesn't exist.
-    const auto type_sym = scope.get_type_symbol(type_part, ignore_alias, meta);
+    const auto type_sym = scope.get_type_symbol(type_part, false, ignore_alias);
     if (type_sym == nullptr) {
         const auto alternatives = sm.current_scope->all_type_symbols()
             | genex::views::transform([](auto *x) { return x->name->name; })
