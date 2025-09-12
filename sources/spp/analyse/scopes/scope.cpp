@@ -223,7 +223,7 @@ auto spp::analyse::scopes::Scope::add_type_symbol(
     std::shared_ptr<TypeSymbol> const &sym)
     -> void {
     // Add a type symbol to the corresponding symbol table.
-    table.type_tbl.add(asts::ast_cast<asts::TypeAst>(sym->name.get()), std::move(sym));
+    table.type_tbl.add(sym->name.get(), sym);
 }
 
 
@@ -244,7 +244,7 @@ auto spp::analyse::scopes::Scope::rem_var_symbol(
 
 
 auto spp::analyse::scopes::Scope::rem_type_symbol(
-    asts::TypeAst const &sym_name)
+    asts::TypeIdentifierAst const &sym_name)
     -> void {
     // Remove a type symbol from the corresponding symbol table.
     table.type_tbl.rem(&sym_name);
@@ -386,9 +386,7 @@ auto spp::analyse::scopes::Scope::get_type_symbol(
     const bool ignore_alias) const
     -> TypeSymbol* {
     // Adjust the scope for the namespace of the type identifier if there is one.
-    auto scope = this;
-    auto sym_name_extracted = sym_name.without_convention();
-    std::tie(scope, sym_name_extracted) = shift_scope_for_namespaced_type(*scope, *sym_name_extracted);
+    auto [scope, sym_name_extracted] = shift_scope_for_namespaced_type(*this, *sym_name.without_convention());
 
     // Get the symbol from the symbol table if it exists.
     auto sym = scope->table.type_tbl.get(sym_name_extracted.get()).get();

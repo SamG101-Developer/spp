@@ -114,7 +114,7 @@ public:
     SPP_NO_ASAN auto add_ns_symbol(std::shared_ptr<NamespaceSymbol> const &sym) -> void;
 
     auto rem_var_symbol(asts::IdentifierAst const &sym_name) -> void;
-    auto rem_type_symbol(asts::TypeAst const &sym_name) -> void;
+    auto rem_type_symbol(asts::TypeIdentifierAst const &sym_name) -> void;
     auto rem_ns_symbol(asts::IdentifierAst const &sym_name) -> void;
 
     SPP_NO_ASAN auto all_var_symbols(bool exclusive = false, bool sup_scope_search = false) const -> std::generator<VariableSymbol*>;
