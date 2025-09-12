@@ -19,9 +19,9 @@ struct spp::asts::ClassPrototypeAst final : virtual Ast, mixins::VisibilityEnabl
     friend struct TypeStatementAst;
 
 protected:
-    bool m_for_alias = false;
+    bool m_for_alias;
 
-    std::shared_ptr<analyse::scopes::TypeSymbol> m_cls_sym = nullptr;
+    std::shared_ptr<analyse::scopes::TypeSymbol> m_cls_sym;
 
 public:
     /**

@@ -141,6 +141,7 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
 
     // Update the type statement's attributes.
     meta->save();
+    cls_ast->stage_2_gen_top_level_scopes(sm, meta);
     m_alias_sym = dynamic_cast<analyse::scopes::AliasSymbol*>(meta->cls_sym);
     m_generated_cls_ast = std::move(cls_ast);
     meta->restore();

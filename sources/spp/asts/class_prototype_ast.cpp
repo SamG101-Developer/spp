@@ -26,6 +26,8 @@ spp::asts::ClassPrototypeAst::ClassPrototypeAst(
     decltype(name) name,
     decltype(generic_param_group) &&generic_param_group,
     decltype(impl) &&impl) :
+    m_for_alias(false),
+    m_cls_sym(nullptr),
     annotations(std::move(annotations)),
     tok_cls(std::move(tok_cls)),
     name(std::move(name)),
