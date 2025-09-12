@@ -138,7 +138,7 @@ spp::analyse::scopes::AliasSymbol::AliasSymbol(
     asts::ClassPrototypeAst const *type,
     Scope *scope,
     Scope *scope_defined_in,
-    TypeSymbol *old_sym,
+    std::shared_ptr<TypeSymbol> const &old_sym,
     const bool is_generic,
     const bool is_copyable,
     const asts::utils::Visibility visibility,

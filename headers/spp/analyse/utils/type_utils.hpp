@@ -162,7 +162,7 @@ namespace spp::analyse::utils::type_utils {
     auto create_generic_cls_scope(
         asts::TypeIdentifierAst &type_part,
         scopes::TypeSymbol const &old_cls_sym,
-        std::vector<scopes::Symbol*> external_generic_syms,
+        std::vector<std::shared_ptr<scopes::Symbol>> const &external_generic_syms,
         bool is_tuple,
         scopes::ScopeManager *sm,
         asts::mixins::CompilerMetaData *meta)
@@ -171,7 +171,7 @@ namespace spp::analyse::utils::type_utils {
     auto create_generic_fun_scope(
         scopes::Scope const &old_fun_scope,
         asts::GenericArgumentGroupAst const &generic_args,
-        std::vector<scopes::Symbol*> external_generic_syms,
+        std::vector<std::shared_ptr<scopes::Symbol>> const &external_generic_syms,
         scopes::ScopeManager *sm,
         asts::mixins::CompilerMetaData *meta)
         -> scopes::Scope*;
@@ -180,7 +180,7 @@ namespace spp::analyse::utils::type_utils {
         scopes::Scope &old_sup_scope,
         scopes::Scope &new_cls_scope,
         asts::GenericArgumentGroupAst const &generic_args,
-        std::vector<scopes::Symbol*> external_generic_syms,
+        std::vector<std::shared_ptr<scopes::Symbol>> const &external_generic_syms,
         scopes::ScopeManager *sm,
         asts::mixins::CompilerMetaData *meta)
         -> std::tuple<scopes::Scope*, scopes::Scope*>;

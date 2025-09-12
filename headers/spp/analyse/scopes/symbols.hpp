@@ -118,19 +118,19 @@ struct spp::analyse::scopes::TypeSymbol : Symbol {
 
 
 struct spp::analyse::scopes::AliasSymbol final : TypeSymbol {
-    TypeSymbol *old_sym = nullptr;
+    std::shared_ptr<TypeSymbol> old_sym = nullptr;
 
     AliasSymbol(
-            std::shared_ptr<asts::TypeIdentifierAst> name,
-            asts::ClassPrototypeAst const *type,
-            Scope *scope,
-            Scope *scope_defined_in,
-            TypeSymbol *old_sym,
-            bool is_generic = false,
-            bool is_copyable = false,
-            asts::utils::Visibility visibility = asts::utils::Visibility::PUBLIC,
-            asts::ConventionAst *convention = nullptr
-        );
+        std::shared_ptr<asts::TypeIdentifierAst> name,
+        asts::ClassPrototypeAst const *type,
+        Scope *scope,
+        Scope *scope_defined_in,
+        std::shared_ptr<TypeSymbol> const &old_sym,
+        bool is_generic = false,
+        bool is_copyable = false,
+        asts::utils::Visibility visibility = asts::utils::Visibility::PUBLIC,
+        asts::ConventionAst *convention = nullptr
+    );
 
     explicit operator std::string() const override;
 

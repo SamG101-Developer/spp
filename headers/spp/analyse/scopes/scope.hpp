@@ -99,15 +99,15 @@ public:
 
     static auto new_global(compiler::Module const &module) -> std::unique_ptr<Scope>;
 
-    static auto search_sup_scopes_for_var(Scope const &scope, asts::IdentifierAst const &name) -> VariableSymbol*;
-    static auto search_sup_scopes_for_type(Scope const &scope, asts::TypeAst const &name, bool ignore_alias) -> TypeSymbol*;
+    static auto search_sup_scopes_for_var(Scope const &scope, asts::IdentifierAst const &name) -> std::shared_ptr<VariableSymbol>;
+    static auto search_sup_scopes_for_type(Scope const &scope, asts::TypeAst const &name, bool ignore_alias) -> std::shared_ptr<TypeSymbol>;
     static auto shift_scope_for_namespaced_type(Scope const &scope, asts::TypeAst const &fq_type) -> std::pair<const Scope*, std::shared_ptr<const asts::TypeIdentifierAst>>;
 
     auto get_error_formatter() const -> spp::utils::errors::ErrorFormatter*;
 
     auto get_generics() const -> std::vector<std::unique_ptr<asts::GenericArgumentAst>>;
 
-    auto get_extended_generic_symbols(std::vector<asts::GenericArgumentAst*> generics) -> std::vector<Symbol*>;
+    auto get_extended_generic_symbols(std::vector<asts::GenericArgumentAst*> generics) -> std::vector<std::shared_ptr<Symbol>>;
 
     SPP_NO_ASAN auto add_var_symbol(std::shared_ptr<VariableSymbol> const &sym) -> void;
     SPP_NO_ASAN auto add_type_symbol(std::shared_ptr<TypeSymbol> const &sym) -> void;
@@ -117,19 +117,19 @@ public:
     auto rem_type_symbol(asts::TypeIdentifierAst const &sym_name) -> void;
     auto rem_ns_symbol(asts::IdentifierAst const &sym_name) -> void;
 
-    SPP_NO_ASAN auto all_var_symbols(bool exclusive = false, bool sup_scope_search = false) const -> std::generator<VariableSymbol*>;
-    SPP_NO_ASAN auto all_type_symbols(bool exclusive = false, bool sup_scope_search = false) const -> std::generator<TypeSymbol*>;
-    SPP_NO_ASAN auto all_ns_symbols(bool exclusive = false, bool = false) const -> std::generator<NamespaceSymbol*>;
+    SPP_NO_ASAN auto all_var_symbols(bool exclusive = false, bool sup_scope_search = false) const -> std::generator<std::shared_ptr<VariableSymbol>>;
+    SPP_NO_ASAN auto all_type_symbols(bool exclusive = false, bool sup_scope_search = false) const -> std::generator<std::shared_ptr<TypeSymbol>>;
+    SPP_NO_ASAN auto all_ns_symbols(bool exclusive = false, bool = false) const -> std::generator<std::shared_ptr<NamespaceSymbol>>;
 
     auto has_var_symbol(asts::IdentifierAst const &sym_name, bool exclusive = false) const -> bool;
     auto has_type_symbol(asts::TypeAst const &sym_name, bool exclusive = false) const -> bool;
     auto has_ns_symbol(asts::IdentifierAst const &sym_name, bool exclusive = false) const -> bool;
 
-    auto get_var_symbol(asts::IdentifierAst const &sym_name, bool exclusive = false) const -> VariableSymbol*;
-    auto get_type_symbol(asts::TypeAst const &sym_name, bool exclusive = false, bool ignore_alias = false) const -> TypeSymbol*;
-    auto get_ns_symbol(asts::IdentifierAst const &sym_name, bool exclusive = false) const -> NamespaceSymbol*;
+    auto get_var_symbol(asts::IdentifierAst const &sym_name, bool exclusive = false) const -> std::shared_ptr<VariableSymbol>;
+    auto get_type_symbol(asts::TypeAst const &sym_name, bool exclusive = false, bool ignore_alias = false) const -> std::shared_ptr<TypeSymbol>;
+    auto get_ns_symbol(asts::IdentifierAst const &sym_name, bool exclusive = false) const -> std::shared_ptr<NamespaceSymbol>;
 
-    auto get_var_symbol_outermost(asts::Ast const &expr) const -> std::pair<VariableSymbol*, Scope const*>;
+    auto get_var_symbol_outermost(asts::Ast const &expr) const -> std::pair<std::shared_ptr<VariableSymbol>, Scope const*>;
 
     auto depth_difference(const Scope *scope) const -> ssize_t;
 
