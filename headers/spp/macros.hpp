@@ -30,3 +30,11 @@
 #define SPP_NO_ASAN __attribute__((no_sanitize_address))
 
 #define SPP_IS_DEBUG_BUILD (defined(_DEBUG) || !defined(NDEBUG))
+
+#define SPP_ASSERT(x) \
+    do { \
+        if (!(x)) { \
+            std::cerr << "Assertion failed: " #x ", file " << __FILE__ << ", line " << __LINE__ << std::endl; \
+            std::abort(); \
+        } \
+    } while (0)
