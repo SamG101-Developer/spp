@@ -257,7 +257,6 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_overload(
         // Remove all the required parameters on the first parameter list off of the other parameter list.
         for (auto [p, q] : genex::views::zip(new_fn.param_group->params | genex::views::ptr, old_fn->param_group->params | genex::views::ptr)) {
             if (type_utils::symbolic_eq(*p->type, *q->type, this_scope, *old_scope)) {
-                genex::actions::remove_if([p](auto &&x) { return x.extract_names() == p->extract_names(); });
                 params_new |= genex::actions::remove_if([pe=p->extract_names()](auto &&x) { return x->extract_names() == std::move(pe); });
                 params_old |= genex::actions::remove_if([qe=q->extract_names()](auto &&x) { return x->extract_names() == std::move(qe); });
             }
