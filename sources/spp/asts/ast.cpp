@@ -68,11 +68,16 @@ auto spp::asts::Ast::size() const -> std::size_t {
 }
 
 
-auto spp::asts::Ast::stage_1_pre_process(Ast *ctx) -> void {
+auto spp::asts::Ast::stage_1_pre_process(
+    Ast *ctx)
+    -> void {
     m_ctx = ctx;
 }
 
 
-auto spp::asts::Ast::stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *) -> void {
+auto spp::asts::Ast::stage_2_gen_top_level_scopes(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *)
+    -> void {
     m_scope = sm->current_scope;
 }

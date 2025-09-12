@@ -514,7 +514,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_8_check_memory(
     if (fold != nullptr and not m_folded_args.empty()) {
         auto non_folding_args = arg_group->args
             | genex::views::ptr
-            | genex::views::set_difference(m_folded_args)
+            | genex::views::set_difference_unsorted(m_folded_args)
             | genex::views::transform([](auto &&x) { return ast_clone(x); })
             | genex::views::to<std::vector>();
         auto group = FunctionCallArgumentGroupAst(nullptr, std::move(non_folding_args), nullptr);
