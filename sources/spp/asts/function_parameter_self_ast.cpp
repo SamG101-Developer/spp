@@ -22,7 +22,7 @@ spp::asts::FunctionParameterSelfAst::~FunctionParameterSelfAst() = default;
 
 
 auto spp::asts::FunctionParameterSelfAst::pos_start() const -> std::size_t {
-    return conv->pos_start();
+    return conv != nullptr ? conv->pos_start() : var->pos_start();
 }
 
 
@@ -62,5 +62,5 @@ auto spp::asts::FunctionParameterSelfAst::stage_7_analyse_semantics(
     // Special mutability rules for the "self" parameter.
     const auto sym = sm->current_scope->get_var_symbol(*var->extract_name());
     sym->is_mutable = ast_cast<LocalVariableSingleIdentifierAst>(var.get())->tok_mut != nullptr
-        or conv->tag == ConventionAst::ConventionTag::MUT;
+        or (conv and *conv == ConventionAst::ConventionTag::MUT);
 }

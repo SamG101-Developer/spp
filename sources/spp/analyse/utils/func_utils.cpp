@@ -4,6 +4,7 @@
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/func_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
+#include <spp/asts/annotation_ast.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
 #include <spp/asts/convention_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
@@ -44,12 +45,11 @@
 
 #include <genex/actions/clear.hpp>
 #include <genex/actions/concat.hpp>
+#include <genex/actions/drop.hpp>
 #include <genex/actions/pop_front.hpp>
 #include <genex/actions/remove_if.hpp>
-#include <genex/actions/replace.hpp>
 #include <genex/actions/sort.hpp>
 #include <genex/actions/take.hpp>
-#include <genex/algorithms/any_of.hpp>
 #include <genex/algorithms/any_of.hpp>
 #include <genex/algorithms/contains.hpp>
 #include <genex/algorithms/position.hpp>
@@ -68,10 +68,7 @@
 #include <genex/views/set_algorithms.hpp>
 #include <genex/views/transform.hpp>
 #include <genex/views/tuple_n.hpp>
-#include <genex/views/view.hpp>
 #include <genex/views/zip.hpp>
-
-#include "spp/asts/annotation_ast.hpp"
 
 
 auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
@@ -288,7 +285,7 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_override(
 
     // Helper function to get the type of the convention AST applied to the "self" parameter.
     auto sc = [&hs](asts::FunctionPrototypeAst const *f) {
-        return hs(f) ? f->param_group->get_self_param()->conv->tag : asts::ConventionAst::ConventionTag::MOV;
+        return hs(f) ? f->param_group->get_self_param()->conv.get() : nullptr;
     };
 
     // Get the existing functions that belong to this type, or any of its supertypes.
@@ -474,7 +471,8 @@ auto spp::analyse::utils::func_utils::name_generic_args_impl(
     // Name all the positional arguments with leftover parameter names.
     auto positional_args = args
         | genex::views::ptr
-        | genex::views::cast_dynamic<asts::detail::make_positional_arg_t<GenericArgType>*>();
+        | genex::views::cast_dynamic<asts::detail::make_positional_arg_t<GenericArgType>*>()
+        | genex::views::to<std::vector>();
 
     for (auto [i, positional_arg] : positional_args | genex::views::enumerate | genex::views::to<std::vector>()) {
         // Error if there are too many generic arguments.
@@ -530,8 +528,9 @@ auto spp::analyse::utils::func_utils::infer_generic_args(
     -> void {
     // Special case for tuples to prevent an infinite recursion, or there is nothing to infer.
     if (is_tuple_owner or params.empty()) {
-        args |= genex::actions::clear();
+        const auto i = args.size();
         args |= genex::actions::concat(explicit_args | genex::views::transform([](auto &&x) { return ast_clone(x); }));
+        if (i > 0) { args |= genex::actions::drop(i);}
         return;
     }
 
