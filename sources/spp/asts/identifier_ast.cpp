@@ -12,16 +12,20 @@
 
 spp::asts::IdentifierAst::IdentifierAst(
     const std::size_t pos,
-    decltype(val) &&val) :
+    decltype(val) val) :
     val(std::move(val)),
     m_pos(pos) {
 }
 
 
-spp::asts::IdentifierAst::IdentifierAst(IdentifierAst const &other) :
+spp::asts::IdentifierAst::IdentifierAst(
+    IdentifierAst const &other) :
     val(other.val),
     m_pos(other.m_pos) {
 }
+
+
+spp::asts::IdentifierAst::~IdentifierAst() = default;
 
 
 auto spp::asts::IdentifierAst::pos_start() const -> std::size_t {

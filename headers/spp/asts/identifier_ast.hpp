@@ -23,9 +23,11 @@ public:
      */
     explicit IdentifierAst(
         std::size_t pos,
-        decltype(val) &&val);
+        decltype(val) val);
 
     IdentifierAst(IdentifierAst const &);
+
+    ~IdentifierAst() override;
 
     auto operator<=>(IdentifierAst const&) const -> std::strong_ordering;
 
