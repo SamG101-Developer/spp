@@ -5,6 +5,8 @@
 
 namespace spp::analyse::scopes {
     class ScopeManager;
+    class ScopeIterator;
+    class ScopeRange;
     struct TypeSymbol;
 }
 
@@ -14,15 +16,44 @@ namespace spp::asts::mixins {
 }
 
 
+class spp::analyse::scopes::ScopeIterator {
+    Scope *m_root;
+    std::vector<Scope*> m_stack;
+    std::size_t m_seen_children;
+
+public:
+    using iterator_category = std::input_iterator_tag;
+    using iterator_concept = std::input_iterator_tag;
+    using value_type = Scope*;
+    using difference_type = std::ptrdiff_t;
+    using pointer = Scope**;
+    using reference = Scope*&;
+    using const_pointer = Scope* const*;
+    using const_reference = Scope* const&;
+
+    explicit ScopeIterator(Scope *root = nullptr);
+    auto operator*() -> reference;
+    auto operator*() const -> const_reference;
+    auto operator->() -> pointer;
+    auto operator->() const -> const_pointer;
+    auto operator++() -> ScopeIterator&;
+    auto operator++(int) -> ScopeIterator;
+    auto operator==(ScopeIterator const &other) const -> bool;
+    auto operator!=(ScopeIterator const &other) const -> bool;
+};
+
+
 class spp::analyse::scopes::ScopeManager {
     friend struct asts::TypeStatementAst;
+
+private:
+    ScopeIterator m_it;
 
 public:
     inline static std::map<TypeSymbol*, std::vector<Scope*>> normal_sup_blocks = {};
 
     inline static std::vector<Scope*> generic_sup_blocks = {};
 
-public:
     /**
      * The global scope is the root scope fo the entire program. It is a @c std::shared_ptr as temp scope manager's need
      * to be created sometimes, where the global scope will be shared. Not a raw pointer as the scope managers do own
@@ -36,23 +67,12 @@ public:
      */
     Scope *current_scope = nullptr;
 
-private:
-    std::generator<Scope*> m_generator;
-    decltype(std::declval<std::generator<Scope*>>().begin()) m_it;
-    decltype(std::declval<std::generator<Scope*>>().end()) m_end;
-
 public:
     explicit ScopeManager(std::shared_ptr<Scope> const &global_scope, Scope *current_scope = nullptr);
 
-    SPP_NO_ASAN auto iter() -> std::generator<Scope*>;
+    auto iter() const -> ScopeRange;
 
-    SPP_NO_ASAN auto iter() const -> std::generator<Scope const*>;
-
-    SPP_NO_ASAN auto iter_impl(Scope *scope) -> std::generator<Scope*>;
-
-    SPP_NO_ASAN auto iter_impl(Scope const *scope) const -> std::generator<Scope const*>;
-
-    auto reset(Scope *scope = nullptr, std::optional<std::generator<Scope*>> gen = std::nullopt) -> void;
+    auto reset(Scope *scope = nullptr, std::optional<ScopeIterator> iterator = std::nullopt) -> void;
 
     auto create_and_move_into_new_scope(ScopeName name, asts::Ast *ast = nullptr, spp::utils::errors::ErrorFormatter *error_formatter = nullptr) -> Scope*;
 
@@ -70,4 +90,14 @@ private:
     auto attach_specific_super_scopes_impl(Scope &scope, std::vector<Scope*> &&sup_scopes, asts::mixins::CompilerMetaData *meta) -> void;
 
     static auto check_conflicting_type_or_cmp_statements(TypeSymbol const &cls_sym, Scope const &sup_scope) -> void;
+};
+
+
+class spp::analyse::scopes::ScopeRange {
+    Scope *m_root;
+
+public:
+    explicit ScopeRange(Scope *root);
+    auto begin() const -> ScopeIterator;
+    auto end() const -> ScopeIterator;
 };

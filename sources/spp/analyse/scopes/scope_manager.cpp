@@ -26,68 +26,22 @@ spp::analyse::scopes::ScopeManager::ScopeManager(
     std::shared_ptr<Scope> const &global_scope,
     Scope *current_scope) :
     global_scope(global_scope),
-    current_scope(current_scope ? current_scope : global_scope.get()),
-    m_generator(iter()),
-    m_it(m_generator.begin()),
-    m_end(m_generator.end()) {
+    current_scope(current_scope ? current_scope : global_scope.get()) {
 }
 
 
-auto spp::analyse::scopes::ScopeManager::iter()
-    -> std::generator<Scope*> {
-    // Generate from the lambda.
-    for (auto *scope : iter_impl(current_scope)) {
-        co_yield scope;
-    }
-}
-
-
-auto spp::analyse::scopes::ScopeManager::iter() const
-    -> std::generator<Scope const*> {
-    // Generate from the lambda.
-    for (auto const *scope : iter_impl(current_scope)) {
-        co_yield scope;
-    }
-}
-
-
-auto spp::analyse::scopes::ScopeManager::iter_impl(
-    Scope *scope)
-    -> std::generator<Scope*> {
-    // Define the generation algorithm for iterating scopes.
-    co_yield scope;
-    for (auto *child : scope->children | genex::views::ptr) {
-        for (auto *descendant : iter_impl(child)) {
-            co_yield descendant;
-        }
-    }
-}
-
-
-auto spp::analyse::scopes::ScopeManager::iter_impl(
-    Scope const *scope) const
-    -> std::generator<Scope const*> {
-    // Define the generation algorithm for iterating scopes.
-    co_yield const_cast<Scope*>(scope);
-    for (auto const *child : scope->children | genex::views::ptr) {
-        for (auto *descendant : iter_impl(child)) {
-            co_yield descendant;
-        }
-    }
+auto spp::analyse::scopes::ScopeManager::iter() const -> ScopeRange {
+    return ScopeRange{current_scope};
 }
 
 
 auto spp::analyse::scopes::ScopeManager::reset(
     Scope *scope,
-    std::optional<std::generator<Scope*>> gen)
+    std::optional<ScopeIterator> iterator)
     -> void {
     // Set the current scope to the provided scope or global scope.
     current_scope = scope ? scope : global_scope.get();
-
-    // Reset the iterator from the new generator.
-    m_generator = gen.has_value() ? std::move(gen.value()) : iter();
-    m_it = m_generator.begin();
-    m_end = m_generator.end();
+    m_it = iterator.has_value() ? *iterator : ScopeIterator{current_scope};
 }
 
 
@@ -99,10 +53,10 @@ auto spp::analyse::scopes::ScopeManager::create_and_move_into_new_scope(
     // Create a new scope, using the current scope as the parent scope.
     auto scope = std::make_unique<Scope>(name, current_scope, ast, error_formatter);
     current_scope->children.emplace_back(std::move(scope));
+    ++m_it;
 
     // Set the new scope as the current scope, and advance the iterator to match.
     current_scope = current_scope->children.back().get();
-    reset(current_scope);
     return current_scope;
 }
 
@@ -118,12 +72,6 @@ auto spp::analyse::scopes::ScopeManager::move_out_of_current_scope()
 auto spp::analyse::scopes::ScopeManager::move_to_next_scope()
     -> Scope* {
     // For debugging mode only, check if the iterator has reached the end of the generator.
-#ifdef SPP_IS_DEBUG_BUILD
-    if (m_it == m_end) {
-        throw std::out_of_range("ScopeManager iterator has reached the end of the generator.");
-    }
-#endif
-
     // Move to the next scope by advancing the iterator.
     current_scope = *++m_it;
     return current_scope;
@@ -153,9 +101,11 @@ auto spp::analyse::scopes::ScopeManager::attach_all_super_scopes(
     -> void {
     // Ensure the scope manager is at the global scope.
     reset();
-    iter()
-        | genex::views::filter([](auto *scope) { return scope->ty_sym != nullptr; })
-        | genex::views::for_each([meta, this](auto *scope) { attach_specific_super_scopes(*scope, meta); });
+    for (auto *scope: iter()) {
+        if (scope->ty_sym != nullptr) {
+            attach_specific_super_scopes(*scope, meta);
+        }
+    }
     reset();
 }
 
@@ -305,4 +255,103 @@ auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statement
         errors::SemanticErrorBuilder<errors::SppIdentifierDuplicateError>().with_args(
             *d1, *d2, "comparison operator").with_scopes({d1->m_scope, d2->m_scope}).raise();
     }
+}
+
+
+spp::analyse::scopes::ScopeIterator::ScopeIterator(
+    Scope *root) :
+    m_root(root) {
+    if (m_root != nullptr) {
+        m_stack.push_back(m_root);
+        m_seen_children = m_root->children.size();
+    }
+}
+
+
+auto spp::analyse::scopes::ScopeIterator::operator*()
+    -> reference {
+    return m_stack.back();
+}
+
+
+auto spp::analyse::scopes::ScopeIterator::operator*() const
+    -> const_reference {
+    return m_stack.back();
+}
+
+
+auto spp::analyse::scopes::ScopeIterator::operator->()
+    -> pointer {
+    return &m_stack.back();
+}
+
+
+auto spp::analyse::scopes::ScopeIterator::operator->() const
+    -> const_pointer {
+    return &m_stack.back();
+}
+
+
+auto spp::analyse::scopes::ScopeIterator::operator++()
+    -> ScopeIterator& {
+    if (m_stack.empty()) { return *this; }
+
+    const auto cur = m_stack.back();
+    m_stack.pop_back();
+
+    // Push children of the current scope.
+    for (auto it = cur->children.rbegin(); it != cur->children.rend(); ++it) {
+        m_stack.push_back(it->get());
+    }
+
+    // If exhausted, but root got new children, pick them up.
+    if (m_stack.empty() and m_root != nullptr) {
+        for (auto i = m_seen_children; i < m_root->children.size(); ++i) {
+            m_stack.push_back(m_root->children[i].get());
+        }
+        m_seen_children = m_root->children.size();
+    }
+
+    // Return self
+    return *this;
+}
+
+
+auto spp::analyse::scopes::ScopeIterator::operator++(int)
+    -> ScopeIterator {
+    auto tmp = *this;
+    ++*this;
+    return tmp;
+}
+
+
+auto spp::analyse::scopes::ScopeIterator::operator==(
+    ScopeIterator const &other) const
+    -> bool {
+    return m_stack.empty() and other.m_stack.empty();
+}
+
+
+auto spp::analyse::scopes::ScopeIterator::operator!=(
+    ScopeIterator const &other) const
+    -> bool {
+    return not(*this == other);
+}
+
+
+spp::analyse::scopes::ScopeRange::ScopeRange(
+    Scope *root) :
+    m_root(root) {
+}
+
+
+auto spp::analyse::scopes::ScopeRange::begin() const
+    -> ScopeIterator {
+    return ScopeIterator(m_root);
+}
+
+
+auto spp::analyse::scopes::ScopeRange::end() const
+    -> ScopeIterator {
+    return ScopeIterator();
 }

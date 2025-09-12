@@ -122,7 +122,7 @@ auto spp::analyse::scopes::Scope::shift_scope_for_namespaced_type(
 
     // Iterate to move through the namespace parts first.
     for (auto &&ns_part : ns_parts) {
-        const auto sym = scope.get_ns_symbol(*ns_part);
+        const auto sym = shifted_scope->get_ns_symbol(*ns_part);
         if (sym == nullptr) { break; }
         shifted_scope = sym->scope;
     }
@@ -194,9 +194,10 @@ auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
 
     // Re-use above logic to collect generic symbols from the ancestor scopes.
     auto scopes = ancestors()
-        | genex::views::take_until([this](auto &&scope) { return scope == non_generic_scope or std::holds_alternative<asts::IdentifierAst*>(scope->name); });
+        | genex::views::take_until([](auto *scope) { return std::holds_alternative<asts::IdentifierAst*>(scope->name); })
+        | genex::views::to<std::vector>();
 
-    for (auto &&scope : scopes) {
+    for (auto *scope : scopes) {
         scope->all_type_symbols(true)
             | genex::views::filter([](auto &&sym) { return sym->is_generic and sym->scope != nullptr; })
             | genex::views::for_each([&syms](auto &&sym) { syms.emplace_back(sym); });
