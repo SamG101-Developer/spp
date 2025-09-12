@@ -237,9 +237,8 @@ auto spp::compiler::CompilerBoot::move_scope_manager_to_ns(
         auto identifier_part = std::make_shared<asts::IdentifierAst>(0, std::string(part));
 
         // If the part exists in the current scope (starting from the global scope), then move into it.
-        const auto quick_ns_sym = sm->current_scope->get_ns_symbol(*identifier_part);
-        if (quick_ns_sym != nullptr) {
-            const auto ns_scope = sm->current_scope->get_ns_symbol(*identifier_part)->scope;
+        if (const auto quick_ns_sym = sm->current_scope->get_ns_symbol(*identifier_part); quick_ns_sym != nullptr) {
+            const auto ns_scope = quick_ns_sym->scope;
             sm->reset(ns_scope);
         }
 
