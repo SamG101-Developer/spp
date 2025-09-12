@@ -1,6 +1,6 @@
 #include <spp/analyse/scopes/symbol_table.hpp>
 #include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+#include <spp/asts/type_identifier_ast.hpp>
 
 
 auto spp::analyse::scopes::SymNameCmp<spp::asts::IdentifierAst*>::operator()(
@@ -11,9 +11,9 @@ auto spp::analyse::scopes::SymNameCmp<spp::asts::IdentifierAst*>::operator()(
 }
 
 
-auto spp::analyse::scopes::SymNameCmp<spp::asts::TypeAst*>::operator()(
-    asts::TypeAst const *lhs,
-    asts::TypeAst const *rhs) const
+auto spp::analyse::scopes::SymNameCmp<spp::asts::TypeIdentifierAst*>::operator()(
+    asts::TypeIdentifierAst const *lhs,
+    asts::TypeIdentifierAst const *rhs) const
     -> bool {
     return *lhs < *rhs;
 }
@@ -53,7 +53,8 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::add(
     std::shared_ptr<S> const &sym)
     -> void {
     // Add a symbol to the table.
-    m_table[sym_name] = sym;
+    if (has(sym_name)) { return; }
+    m_table.insert({sym_name, sym});
 }
 
 
@@ -70,8 +71,13 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::get(
     I const *sym_name) const
     -> std::shared_ptr<S> {
     // Get a symbol from the table.
-    if (sym_name == nullptr or not has(sym_name)) { return nullptr; }
-    return m_table.at(sym_name);
+    if (sym_name == nullptr) { return nullptr; }
+    for (auto const &[k, v] : m_table) {
+        if (*k == *sym_name) {
+            return v;
+        }
+    }
+    return nullptr;
 }
 
 
@@ -80,7 +86,13 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::has(
     I const *sym_name) const
     -> bool {
     // Check if a symbol exists in the table.
-    return m_table.contains(sym_name);
+    if (sym_name == nullptr) { return false; }
+    for (auto const &[k, _] : m_table) {
+        if (*k == *sym_name) {
+            return true;
+        }
+    }
+    return false;
 }
 
 
@@ -124,5 +136,5 @@ auto spp::analyse::scopes::SymbolTable::operator=(
 
 
 template class spp::analyse::scopes::IndividualSymbolTable<spp::asts::IdentifierAst, spp::analyse::scopes::NamespaceSymbol>;
-template class spp::analyse::scopes::IndividualSymbolTable<spp::asts::TypeAst, spp::analyse::scopes::TypeSymbol>;
+template class spp::analyse::scopes::IndividualSymbolTable<spp::asts::TypeIdentifierAst, spp::analyse::scopes::TypeSymbol>;
 template class spp::analyse::scopes::IndividualSymbolTable<spp::asts::IdentifierAst, spp::analyse::scopes::VariableSymbol>;

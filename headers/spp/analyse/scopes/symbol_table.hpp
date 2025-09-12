@@ -34,8 +34,8 @@ struct spp::analyse::scopes::SymNameCmp<spp::asts::IdentifierAst*> {
 
 
 template <>
-struct spp::analyse::scopes::SymNameCmp<spp::asts::TypeAst*> {
-    auto operator()(asts::TypeAst const *lhs, asts::TypeAst const *rhs) const -> bool;
+struct spp::analyse::scopes::SymNameCmp<spp::asts::TypeIdentifierAst*> {
+    auto operator()(asts::TypeIdentifierAst const *lhs, asts::TypeIdentifierAst const *rhs) const -> bool;
 };
 
 
@@ -77,7 +77,7 @@ public:
 
     IndividualSymbolTable<asts::IdentifierAst, NamespaceSymbol> ns_tbl;
 
-    IndividualSymbolTable<asts::TypeAst, TypeSymbol> type_tbl;
+    IndividualSymbolTable<asts::TypeIdentifierAst, TypeSymbol> type_tbl;
 
     IndividualSymbolTable<asts::IdentifierAst, VariableSymbol> var_tbl;
 };
