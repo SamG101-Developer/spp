@@ -367,12 +367,12 @@ auto spp::analyse::scopes::Scope::get_var_symbol(
     auto sym = table.var_tbl.get(&sym_name);
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
-    if (sym != nullptr and not exclusive and scope->parent != nullptr) {
+    if (sym == nullptr and not exclusive and scope->parent != nullptr) {
         sym = scope->parent->get_var_symbol(sym_name, exclusive);
     }
 
     // If the symbol still hasn't been found, check the super scopes for it.
-    if (sym != nullptr) {
+    if (sym == nullptr) {
         sym = search_sup_scopes_for_var(*scope, sym_name);
     }
 
