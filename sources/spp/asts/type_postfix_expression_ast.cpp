@@ -166,6 +166,7 @@ auto spp::asts::TypePostfixExpressionAst::get_convention(
 auto spp::asts::TypePostfixExpressionAst::with_convention(
     std::unique_ptr<ConventionAst> &&conv) const
     -> std::shared_ptr<TypeAst> {
+    if (conv == nullptr) { return const_cast<TypePostfixExpressionAst*>(this)->shared_from_this(); }
     auto borrow_op = std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv));
     auto wrapped = std::make_shared<TypeUnaryExpressionAst>(std::move(borrow_op), ast_clone(this));
     return wrapped;

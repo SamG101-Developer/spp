@@ -129,10 +129,10 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
     }
 
     // Check there are no conventions on the new type.
-    // if (auto &&conv = new_type->get_convention(); conv != nullptr) {
-    //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
-    //         *new_type, *conv, "use statement's new type").with_scopes({sm->current_scope}).raise();
-    // }
+    if (auto &&conv = new_type->get_convention(); conv != nullptr) {
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
+            *new_type, *conv, "use statement's new type").with_scopes({sm->current_scope}).raise();
+    }
 
     // Create a class for the alias type, and generate it.
     auto cls_ast = std::make_unique<ClassPrototypeAst>(SPP_NO_ANNOTATIONS, nullptr, new_type, ast_clone(generic_param_group), nullptr);

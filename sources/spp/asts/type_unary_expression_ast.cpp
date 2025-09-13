@@ -152,6 +152,7 @@ auto spp::asts::TypeUnaryExpressionAst::get_convention() const
 auto spp::asts::TypeUnaryExpressionAst::with_convention(
     std::unique_ptr<ConventionAst> &&conv) const
     -> std::shared_ptr<TypeAst> {
+    if (conv == nullptr) { return const_cast<TypeUnaryExpressionAst*>(this)->shared_from_this(); }
     if (ast_cast<TypeUnaryExpressionOperatorBorrowAst>(op.get())) {
         return std::make_shared<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), rhs);
     }

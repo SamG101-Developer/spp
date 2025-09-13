@@ -217,6 +217,7 @@ auto spp::asts::TypeIdentifierAst::get_convention(
 auto spp::asts::TypeIdentifierAst::with_convention(
     std::unique_ptr<ConventionAst> &&conv) const
     -> std::shared_ptr<TypeAst> {
+    if (conv == nullptr) { return const_cast<TypeIdentifierAst*>(this)->shared_from_this(); }
     auto borrow_op = std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv));
     auto wrapped = std::make_shared<TypeUnaryExpressionAst>(std::move(borrow_op), ast_clone(this));
     return wrapped;
@@ -374,8 +375,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     const auto type_sym = analyse::utils::type_utils::get_type_part_symbol_with_error(
         *type_scope, *std::dynamic_pointer_cast<TypeIdentifierAst>(without_generics()), *sm, meta, true);
     type_scope = type_sym->scope;
-    if (type_sym->is_generic) { return; }
-    if (name == "Self") { return; }
+    if (type_sym->is_generic or name == "Self") { return; }
 
     // Name all the generic arguments.
     const auto is_tuple = ( {
