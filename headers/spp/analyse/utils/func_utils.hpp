@@ -104,17 +104,28 @@ namespace spp::analyse::utils::func_utils {
         asts::mixins::CompilerMetaData *meta)
         -> void;
 
-    template <typename GenericArgType, typename GenericParamType>
-    auto infer_generic_args_impl(
-        std::vector<std::unique_ptr<GenericArgType>> &args,
-        std::vector<GenericParamType*> params,
-        std::vector<GenericParamType*> opt_params,
-        std::vector<GenericArgType*> explicit_args,
+    auto infer_generic_args_impl_type(
+        std::vector<std::unique_ptr<asts::GenericArgumentTypeKeywordAst>> &args,
+        std::vector<asts::GenericParameterTypeAst*> params,
+        std::vector<asts::GenericParameterTypeAst*> opt_params,
+        std::vector<asts::GenericArgumentTypeKeywordAst*> explicit_args,
         std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_source,
         std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_target,
         std::shared_ptr<asts::Ast> owner,
         scopes::Scope const *owner_scope,
         std::shared_ptr<asts::IdentifierAst> variadic_param_identifier,
+        scopes::ScopeManager &sm,
+        asts::mixins::CompilerMetaData *meta)
+        -> void;
+
+    auto infer_generic_args_impl_comp(
+        std::vector<std::unique_ptr<asts::GenericArgumentCompKeywordAst>> &args,
+        std::vector<asts::GenericParameterCompAst*> params,
+        std::vector<asts::GenericArgumentCompKeywordAst*> explicit_args,
+        std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_source,
+        std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_target,
+        std::shared_ptr<asts::Ast> owner,
+        scopes::Scope const *owner_scope,
         scopes::ScopeManager &sm,
         asts::mixins::CompilerMetaData *meta)
         -> void;
