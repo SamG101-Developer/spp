@@ -44,6 +44,9 @@ struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
     static auto from_map(
         std::map<std::shared_ptr<TypeAst>, ExpressionAst const*> &&map) -> std::unique_ptr<GenericArgumentGroupAst>;
 
+    static auto from_map(
+        std::map<std::shared_ptr<TypeAst>, std::shared_ptr<const TypeAst>> &&map) -> std::unique_ptr<GenericArgumentGroupAst>;
+
     auto type_at(const char *key) const -> GenericArgumentTypeAst const*;
 
     auto comp_at(const char *key) const -> GenericArgumentCompAst const*;

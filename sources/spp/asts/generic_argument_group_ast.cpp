@@ -99,6 +99,18 @@ auto spp::asts::GenericArgumentGroupAst::from_map(
 }
 
 
+auto spp::asts::GenericArgumentGroupAst::from_map(
+    std::map<std::shared_ptr<TypeAst>, std::shared_ptr<const TypeAst>> &&map)
+    -> std::unique_ptr<GenericArgumentGroupAst> {
+    // Cast the values to "ExpressionAst const*".
+    auto mapped_args = std::map<std::shared_ptr<TypeAst>, ExpressionAst const*>();
+    for (auto const &[k, v] : map) {
+        mapped_args[k] = v.get();
+    }
+    return from_map(std::move(mapped_args));
+}
+
+
 auto spp::asts::GenericArgumentGroupAst::type_at(
     const char *key) const
     -> GenericArgumentTypeAst const* {
@@ -276,7 +288,10 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
     }
 
     // Analyse the arguments.
-    args | genex::views::for_each([sm, meta](auto &&x) { x->stage_7_analyse_semantics(sm, meta); });
+    // args | genex::views::for_each([sm, meta](auto const &x) { x->stage_7_analyse_semantics(sm, meta); });
+    for (auto &&arg : args) {
+        arg->stage_7_analyse_semantics(sm, meta);
+    }
 }
 
 
