@@ -36,7 +36,7 @@ public:
     explicit TypeIdentifierAst(
         std::size_t pos,
         decltype(name) &&name,
-        decltype(generic_arg_group) &&generic_arg_group);
+        decltype(generic_arg_group) generic_arg_group);
 
     ~TypeIdentifierAst() override;
 

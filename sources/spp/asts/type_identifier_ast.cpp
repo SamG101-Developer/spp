@@ -41,7 +41,7 @@ static auto custom_iterator(const spp::asts::TypeAst *t, std::size_t depth) -> g
 spp::asts::TypeIdentifierAst::TypeIdentifierAst(
     const std::size_t pos,
     decltype(name) &&name,
-    decltype(generic_arg_group) &&generic_arg_group) :
+    decltype(generic_arg_group) generic_arg_group) :
     name(std::move(name)),
     generic_arg_group(std::move(generic_arg_group)),
     m_pos(pos),
@@ -217,9 +217,13 @@ auto spp::asts::TypeIdentifierAst::get_convention(
 auto spp::asts::TypeIdentifierAst::with_convention(
     std::unique_ptr<ConventionAst> &&conv) const
     -> std::shared_ptr<TypeAst> {
-    if (conv == nullptr) { return const_cast<TypeIdentifierAst*>(this)->shared_from_this(); }
+    if (conv == nullptr) {
+        return std::make_shared<TypeIdentifierAst>(pos_start(), std::string(name), generic_arg_group);
+    }
+
     auto borrow_op = std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv));
-    auto wrapped = std::make_shared<TypeUnaryExpressionAst>(std::move(borrow_op), ast_clone(this));
+    auto wrapped = std::make_shared<TypeUnaryExpressionAst>(
+        std::move(borrow_op), std::make_shared<TypeIdentifierAst>(pos_start(), std::string(name), generic_arg_group));
     return wrapped;
 }
 
@@ -265,7 +269,7 @@ auto spp::asts::TypeIdentifierAst::substitute_generics(
     }
 
     // Substitute generics in the type args' types.
-    for (auto &&g : name_clone->generic_arg_group->get_type_args() | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()) {
+    for (auto &&g : name_clone->generic_arg_group->get_type_args() | genex::views::cast_dynamic<GenericArgumentTypeAst*>()) {
         g->val = g->val->substitute_generics(args);
     }
 
