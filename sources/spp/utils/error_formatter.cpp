@@ -61,7 +61,7 @@ auto spp::utils::errors::ErrorFormatter::internal_parse_error_raw_pos(
     while ((pos = error_line_as_string.find("  "s, pos)) != std::string::npos) {
         error_line_as_string.replace(pos, 2, "");
     }
-    carets = carets.substr(l1 - error_line_as_string.length()) + (colex::fg_white & colex::st_bold) + " <- " + tag_message;
+    carets = carets.substr(l1 - error_line_as_string.length()) + (colex::fg_bright_white & colex::st_bold) + " <- " + tag_message;
     auto left_padding = std::string(error_line_number.length(), ' ');
 
     // Remove "\n" from the start and end of the error line string.
@@ -84,12 +84,12 @@ auto spp::utils::errors::ErrorFormatter::error_raw_pos(
 
     auto [file_path, line_number, error_line, left_padding, carets] = internal_parse_error_raw_pos(
         ast_start_pos, ast_size, std::move(tag_message));
-    const auto line1 = (colex::fg_white & colex::st_bold) + "Error in file '"s + file_path + "', on line "s + line_number + ":\n";
-    const auto line2 = (colex::fg_white & colex::st_bold) + left_padding + " |\n"s;
-    const auto line3 = (colex::fg_red & colex::st_bold) + line_number + " | "s + error_line + "\n"s;
-    const auto line4 = (colex::fg_white & colex::st_bold) + left_padding + " |"s;
-    const auto line5 = (colex::reset & colex::fg_red) + carets + "\n"s;
-    const auto line6 = (colex::reset & colex::fg_red) + message + "\n"s;
+    const auto line1 = (colex::fg_bright_white & colex::st_bold) + "Error in file '"s + file_path + "', on line "s + line_number + ":\n";
+    const auto line2 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |\n"s;
+    const auto line3 = (colex::fg_bright_red & colex::st_bold) + line_number + " | "s + error_line + "\n"s;
+    const auto line4 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |"s;
+    const auto line5 = (colex::reset & colex::fg_bright_red) + carets + "\n"s;
+    const auto line6 = (colex::reset & colex::fg_bright_red) + message + "\n"s;
     return line1 + line2 + line3 + line4 + line5 + line6;
 }
 
@@ -103,11 +103,11 @@ auto spp::utils::errors::ErrorFormatter::error_raw_pow_minimal(
 
     auto [file_path, line_number, error_line, left_padding, carets] = internal_parse_error_raw_pos(
         ast_start_pos, ast_size, std::move(tag_message));
-    const auto line1 = (colex::fg_white & colex::st_bold) + "Context from file '"s + file_path + "', on line "s + line_number + ":\n";
-    const auto line2 = (colex::fg_white & colex::st_bold) + left_padding + " |\n"s;
-    const auto line3 = (colex::fg_yellow & colex::st_bold) + line_number + " | "s + error_line + "\n"s;
-    const auto line4 = (colex::fg_white & colex::st_bold) + left_padding + " |"s;
-    const auto line5 = (colex::reset & colex::fg_yellow) + carets + "\n"s;
+    const auto line1 = (colex::fg_bright_white & colex::st_bold) + "Context from file '"s + file_path + "', on line "s + line_number + ":\n";
+    const auto line2 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |\n"s;
+    const auto line3 = (colex::fg_bright_green & colex::st_bold) + line_number + " | "s + error_line + "\n"s;
+    const auto line4 = (colex::fg_bright_white & colex::st_bold) + left_padding + " |"s;
+    const auto line5 = (colex::reset & colex::fg_bright_green) + carets + "\n"s;
     return line1 + line2 + line3 + line4 + line5;
 }
 
