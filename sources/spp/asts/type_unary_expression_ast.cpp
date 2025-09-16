@@ -25,16 +25,16 @@ spp::asts::TypeUnaryExpressionAst::~TypeUnaryExpressionAst() = default;
 
 
 auto spp::asts::TypeUnaryExpressionAst::operator<=>(
-    TypeUnaryExpressionAst const &) const
+    TypeUnaryExpressionAst const &other) const
     -> std::strong_ordering {
-    return equals(*this);
+    return equals(other);
 }
 
 
 auto spp::asts::TypeUnaryExpressionAst::operator==(
-    TypeUnaryExpressionAst const &) const
+    TypeUnaryExpressionAst const &other) const
     -> bool {
-    return equals(*this) == std::strong_ordering::equal;
+    return equals(other) == std::strong_ordering::equal;
 }
 
 
@@ -152,7 +152,7 @@ auto spp::asts::TypeUnaryExpressionAst::get_convention() const
 auto spp::asts::TypeUnaryExpressionAst::with_convention(
     std::unique_ptr<ConventionAst> &&conv) const
     -> std::shared_ptr<TypeAst> {
-    if (conv == nullptr) { return const_cast<TypeUnaryExpressionAst*>(this)->shared_from_this(); }
+    if (conv == nullptr) { return ast_clone(this); }
     if (ast_cast<TypeUnaryExpressionOperatorBorrowAst>(op.get())) {
         return std::make_shared<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), rhs);
     }

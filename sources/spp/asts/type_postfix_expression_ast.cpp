@@ -34,16 +34,16 @@ spp::asts::TypePostfixExpressionAst::~TypePostfixExpressionAst() = default;
 
 
 auto spp::asts::TypePostfixExpressionAst::operator<=>(
-    TypePostfixExpressionAst const &) const
+    TypePostfixExpressionAst const &other) const
     -> std::strong_ordering {
-    return equals(*this);
+    return equals(other);
 }
 
 
 auto spp::asts::TypePostfixExpressionAst::operator==(
-    TypePostfixExpressionAst const &) const
+    TypePostfixExpressionAst const &other) const
     -> bool {
-    return equals(*this) == std::strong_ordering::equal;
+    return equals(other) == std::strong_ordering::equal;
 }
 
 
