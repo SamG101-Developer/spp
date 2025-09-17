@@ -13,7 +13,7 @@
 
 auto spp::asts::generate::common_types::f8(std::size_t pos) -> std::unique_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("F8"), nullptr);
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("f8")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("number")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }
@@ -21,7 +21,7 @@ auto spp::asts::generate::common_types::f8(std::size_t pos) -> std::unique_ptr<T
 
 auto spp::asts::generate::common_types::f16(std::size_t pos) -> std::unique_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("F16"), nullptr);
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("f16")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("number")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }
@@ -29,7 +29,7 @@ auto spp::asts::generate::common_types::f16(std::size_t pos) -> std::unique_ptr<
 
 auto spp::asts::generate::common_types::f32(std::size_t pos) -> std::unique_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("F32"), nullptr);
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("f32")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("number")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }
@@ -37,7 +37,7 @@ auto spp::asts::generate::common_types::f32(std::size_t pos) -> std::unique_ptr<
 
 auto spp::asts::generate::common_types::f64(std::size_t pos) -> std::unique_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("F64"), nullptr);
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("f64")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("number")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }
@@ -45,7 +45,7 @@ auto spp::asts::generate::common_types::f64(std::size_t pos) -> std::unique_ptr<
 
 auto spp::asts::generate::common_types::f128(std::size_t pos) -> std::unique_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("F128"), nullptr);
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("f128")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("number")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }
@@ -53,7 +53,7 @@ auto spp::asts::generate::common_types::f128(std::size_t pos) -> std::unique_ptr
 
 auto spp::asts::generate::common_types::s8(std::size_t pos) -> std::unique_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("S8"), nullptr);
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("s8")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("number")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }
@@ -61,7 +61,7 @@ auto spp::asts::generate::common_types::s8(std::size_t pos) -> std::unique_ptr<T
 
 auto spp::asts::generate::common_types::s16(std::size_t pos) -> std::unique_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("S16"), nullptr);
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("s16")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("number")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }
@@ -69,7 +69,7 @@ auto spp::asts::generate::common_types::s16(std::size_t pos) -> std::unique_ptr<
 
 auto spp::asts::generate::common_types::s32(std::size_t pos) -> std::unique_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("S32"), nullptr);
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("s32")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("number")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }
@@ -77,7 +77,7 @@ auto spp::asts::generate::common_types::s32(std::size_t pos) -> std::unique_ptr<
 
 auto spp::asts::generate::common_types::s64(std::size_t pos) -> std::unique_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("S64"), nullptr);
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("s64")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("number")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }
@@ -85,7 +85,7 @@ auto spp::asts::generate::common_types::s64(std::size_t pos) -> std::unique_ptr<
 
 auto spp::asts::generate::common_types::s128(std::size_t pos) -> std::unique_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("S128"), nullptr);
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("s128")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("number")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }
@@ -93,7 +93,7 @@ auto spp::asts::generate::common_types::s128(std::size_t pos) -> std::unique_ptr
 
 auto spp::asts::generate::common_types::s256(std::size_t pos) -> std::unique_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("S256"), nullptr);
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("s256")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("number")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }
@@ -101,7 +101,7 @@ auto spp::asts::generate::common_types::s256(std::size_t pos) -> std::unique_ptr
 
 auto spp::asts::generate::common_types::ssize(std::size_t pos) -> std::unique_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("SSize"), nullptr);
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("ssize")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("number")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }
@@ -109,7 +109,7 @@ auto spp::asts::generate::common_types::ssize(std::size_t pos) -> std::unique_pt
 
 auto spp::asts::generate::common_types::u8(std::size_t pos) -> std::unique_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("U8"), nullptr);
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("u8")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("number")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }
@@ -117,7 +117,7 @@ auto spp::asts::generate::common_types::u8(std::size_t pos) -> std::unique_ptr<T
 
 auto spp::asts::generate::common_types::u16(std::size_t pos) -> std::unique_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("U16"), nullptr);
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("u16")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("number")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }
@@ -125,7 +125,7 @@ auto spp::asts::generate::common_types::u16(std::size_t pos) -> std::unique_ptr<
 
 auto spp::asts::generate::common_types::u32(std::size_t pos) -> std::unique_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("U32"), nullptr);
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("u32")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("number")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }
@@ -133,7 +133,7 @@ auto spp::asts::generate::common_types::u32(std::size_t pos) -> std::unique_ptr<
 
 auto spp::asts::generate::common_types::u64(std::size_t pos) -> std::unique_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("U64"), nullptr);
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("u64")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("number")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }
@@ -141,7 +141,7 @@ auto spp::asts::generate::common_types::u64(std::size_t pos) -> std::unique_ptr<
 
 auto spp::asts::generate::common_types::u128(std::size_t pos) -> std::unique_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("U128"), nullptr);
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("u128")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("number")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }
@@ -149,7 +149,7 @@ auto spp::asts::generate::common_types::u128(std::size_t pos) -> std::unique_ptr
 
 auto spp::asts::generate::common_types::u256(std::size_t pos) -> std::unique_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("U256"), nullptr);
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("u256")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("number")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }
@@ -157,7 +157,7 @@ auto spp::asts::generate::common_types::u256(std::size_t pos) -> std::unique_ptr
 
 auto spp::asts::generate::common_types::usize(std::size_t pos) -> std::unique_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("USize"), nullptr);
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("usize")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("number")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }
@@ -230,16 +230,16 @@ auto spp::asts::generate::common_types::variant_type(std::size_t pos, std::vecto
 }
 
 
-auto spp::asts::generate::common_types::tuple_type(std::size_t pos, std::vector<std::shared_ptr<TypeAst>> &&inner_types) -> std::unique_ptr<TypeAst> {
+auto spp::asts::generate::common_types::tuple_type(std::size_t pos, std::vector<std::shared_ptr<TypeAst>> &&inner_types) -> std::shared_ptr<TypeAst> {
     auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(inner_types.size());
     for (auto &&[i, inner_type] : inner_types | genex::views::enumerate) {
         generics_lst[i] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(inner_type));
     }
     auto generics = std::make_unique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
-    std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("Tup"), std::move(generics));
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("tuple")), nullptr), std::move(type));
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
+    std::shared_ptr<TypeAst> type = std::make_shared<TypeIdentifierAst>(pos, std::string("Tup"), std::move(generics));
+    type = std::make_shared<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("tuple")), nullptr), std::move(type));
+    type = std::make_shared<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }
 
