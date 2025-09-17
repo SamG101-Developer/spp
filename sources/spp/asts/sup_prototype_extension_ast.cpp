@@ -188,9 +188,11 @@ auto spp::asts::SupPrototypeExtensionAst::stage_2_gen_top_level_scopes(
     }
 
     // Check every generic parameter is constrained by the type.
-    if (const auto unconstrained = generic_param_group->get_all_params() | genex::views::filter([this](auto &&x) { return not(name->contains_generic(*x) or super_class->contains_generic(*x)); }) | genex::views::to<std::vector>(); not unconstrained.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError>().with_args(
-            *unconstrained[0]).with_scopes({sm->current_scope}).raise();
+    if (name->type_parts().back()->name[0] != '$') {
+        if (const auto unconstrained = generic_param_group->get_all_params() | genex::views::filter([this](auto &&x) { return not(name->contains_generic(*x) or super_class->contains_generic(*x)); }) | genex::views::to<std::vector>(); not unconstrained.empty()) {
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError>().with_args(
+                *unconstrained[0]).with_scopes({sm->current_scope}).raise();
+        }
     }
 
     // No conventions allowed on the name.
