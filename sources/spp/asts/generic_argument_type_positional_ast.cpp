@@ -15,13 +15,22 @@ spp::asts::GenericArgumentTypePositionalAst::GenericArgumentTypePositionalAst(
 spp::asts::GenericArgumentTypePositionalAst::~GenericArgumentTypePositionalAst() = default;
 
 
-auto spp::asts::GenericArgumentTypePositionalAst::pos_start() const -> std::size_t {
+auto spp::asts::GenericArgumentTypePositionalAst::pos_start() const
+    -> std::size_t {
     return val->pos_start();
 }
 
 
-auto spp::asts::GenericArgumentTypePositionalAst::pos_end() const -> std::size_t {
+auto spp::asts::GenericArgumentTypePositionalAst::pos_end() const
+    -> std::size_t {
     return val->pos_end();
+}
+
+
+auto spp::asts::GenericArgumentTypePositionalAst::clone() const
+    -> std::unique_ptr<Ast> {
+    return std::make_unique<GenericArgumentTypePositionalAst>(
+        ast_clone(val));
 }
 
 
@@ -32,16 +41,12 @@ spp::asts::GenericArgumentTypePositionalAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenericArgumentTypePositionalAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::GenericArgumentTypePositionalAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(val);
     SPP_PRINT_END;
-}
-
-
-auto spp::asts::GenericArgumentTypePositionalAst::clone() const -> std::unique_ptr<Ast> {
-    return std::make_unique<GenericArgumentTypePositionalAst>(
-        ast_clone(val));
 }
 
 
@@ -68,5 +73,9 @@ auto spp::asts::GenericArgumentTypePositionalAst::stage_7_analyse_semantics(
     -> void {
     // Analyse the name and value of the generic type argument.
     val->stage_7_analyse_semantics(sm, meta);
-    val = sm->current_scope->get_type_symbol(*val)->fq_name()->with_convention(ast_clone(val->get_convention()));
+    const auto tmp1 = sm->current_scope->get_type_symbol(val);
+    const auto tmp2 = tmp1->fq_name();
+    auto tmp3 = ast_clone(val->get_convention());
+    const auto tmp4 = tmp2->with_convention(std::move(tmp3));
+    val = tmp4;
 }

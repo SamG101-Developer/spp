@@ -111,7 +111,7 @@ auto spp::asts::UseStatementAst::stage_3_gen_top_level_aliases(
     meta->restore();
 
     // Get the symbol for the old type (as this is a use statement, it won't have generics).
-    const auto old_type_sym = sm->current_scope->get_type_symbol(*old_type, false, true);
+    const auto old_type_sym = sm->current_scope->get_type_symbol(old_type, false, true);
     auto generic_params = ast_clone(old_type_sym->type->generic_param_group);
 
     // Add the generic parameters to the conversion AST, and add mock generic arguments to the old type.

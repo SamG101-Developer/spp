@@ -97,7 +97,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
     ENFORCE_EXPRESSION_SUBTYPE(elem.get());
     elem->stage_7_analyse_semantics(sm, meta);
     const auto elem_type = elem->infer_type(sm, meta);
-    const auto elem_type_sym = sm->current_scope->get_type_symbol(*elem_type);
+    const auto elem_type_sym = sm->current_scope->get_type_symbol(elem_type);
 
     // Ensure the element type is copyable, so that is can be repeated in the array.
     if (not elem_type_sym->is_copyable) {
@@ -113,8 +113,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
 
     // Ensure the size is a constant expression (if symbolic).
     ENFORCE_EXPRESSION_SUBTYPE(size.get());
-    const auto symbolic_size = dynamic_cast<IdentifierAst*>(size.get());
-    const auto size_sym = sm->current_scope->get_var_symbol(*symbolic_size);
+    auto symbolic_size = asts::ast_cast<IdentifierAst>(ast_clone(size));
+    const auto size_sym = sm->current_scope->get_var_symbol(std::move(symbolic_size));
     if (size_sym != nullptr) {
         if (size_sym->memory_info->ast_comptime == nullptr) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppCompileTimeConstantError>().with_args(

@@ -324,7 +324,7 @@ auto spp::asts::FunctionPrototypeAst::stage_6_pre_analyse_semantics(
     sm->move_to_next_scope();
     const auto type_scope = ast_cast<ModulePrototypeAst>(m_ctx)
                                 ? sm->current_scope->parent_module()
-                                : m_ctx->m_scope->get_type_symbol(*ast_name(m_ctx))->scope;
+                                : m_ctx->m_scope->get_type_symbol(ast_name(m_ctx))->scope;
 
     // Error if there are conflicts.
     if (const auto conflict = analyse::utils::func_utils::check_for_conflicting_overload(*sm->current_scope, type_scope, *this)) {

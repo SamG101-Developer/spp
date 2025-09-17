@@ -25,7 +25,7 @@ public:
     /**
      * The generic arguments for the type. This is a list of generic arguments that are used to instantiate the type.
      */
-    std::shared_ptr<GenericArgumentGroupAst> generic_arg_group;
+    std::unique_ptr<GenericArgumentGroupAst> generic_arg_group;
 
     /**
      * Construct the TypeIdentifier with the arguments matching the members.
@@ -79,7 +79,7 @@ public:
 
     auto match_generic(TypeAst const &other, TypeIdentifierAst const &generic_name) const -> const ExpressionAst* override;
 
-    auto with_generics(std::shared_ptr<GenericArgumentGroupAst> &&arg_group) const -> std::shared_ptr<TypeAst> override;
+    auto with_generics(std::unique_ptr<GenericArgumentGroupAst> &&arg_group) const -> std::shared_ptr<TypeAst> override;
 
     auto stage_4_qualify_types(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

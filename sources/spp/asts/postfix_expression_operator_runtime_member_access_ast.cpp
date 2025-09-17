@@ -72,7 +72,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
     // Numeric index access (for tuples).
     if (std::isdigit(name->val[0])) {
         const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
-        const auto lhs_type_sym = sm->current_scope->get_type_symbol(*lhs_type);
+        const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_type);
 
         // Check the left-hand-side isn't a generic type.
         if (lhs_type_sym->is_generic) {
@@ -97,9 +97,9 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
     else {
         const auto lhs_as_ident = ast_cast<IdentifierAst>(meta->postfix_expression_lhs);
         const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
-        const auto lhs_ns_sym = sm->current_scope->get_ns_symbol(*lhs_as_ident);
-        const auto lhs_var_sym = sm->current_scope->get_var_symbol(*lhs_as_ident);
-        const auto lhs_type_sym = sm->current_scope->get_type_symbol(*lhs_type);
+        const auto lhs_ns_sym = sm->current_scope->get_ns_symbol(lhs_as_ident->shared_from_this());
+        const auto lhs_var_sym = sm->current_scope->get_var_symbol(lhs_as_ident->shared_from_this());
+        const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_type);
 
         // Check the lhs is a variable and not a namespace.
         if (lhs_var_sym == nullptr and lhs_ns_sym != nullptr) {
@@ -114,7 +114,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
         }
 
         // Check the target field exists on the type.
-        if (not lhs_type_sym->scope->has_var_symbol(*name, true)) {
+        if (not lhs_type_sym->scope->has_var_symbol(name, true)) {
             const auto alternatives = sm->current_scope->all_var_symbols(true, true)
                 | genex::views::transform([](auto &&x) { return x->name->val; })
                 | genex::views::to<std::vector>();
@@ -125,13 +125,13 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
         }
 
         // Check there is only 1 target field on the type at the highest level.
-        if (lhs_type_sym->scope->get_var_symbol(*name)->type->type_parts().back()->name[0] == '$') {
+        if (lhs_type_sym->scope->get_var_symbol(name)->type->type_parts().back()->name[0] == '$') {
             return;
         }
 
         auto scopes_and_syms = std::vector{lhs_type_sym->scope}
             | genex::views::concat(lhs_type_sym->scope->sup_scopes())
-            | genex::views::transform([name=name.get()](auto &&x) { return std::make_pair(x, x->table.var_tbl.get(name)); })
+            | genex::views::transform([name=name.get()](auto &&x) { return std::make_pair(x, x->table.var_tbl.get(ast_clone(name))); })
             | genex::views::filter([](auto &&x) { return x.second != nullptr; })
             | genex::views::transform([lhs_type_sym](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
             | genex::views::to<std::vector>();
@@ -167,7 +167,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::infer_type(
     }
 
     // Get the field symbol and return its type.
-    const auto lhs_sym = sm->current_scope->get_type_symbol(*lhs_type);
-    const auto field_sym = lhs_sym->scope->get_var_symbol(*name);
+    const auto lhs_sym = sm->current_scope->get_type_symbol(lhs_type);
+    const auto field_sym = lhs_sym->scope->get_var_symbol(name);
     return field_sym->type;
 }

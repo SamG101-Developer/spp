@@ -1,3 +1,5 @@
+#include <print>
+
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope.hpp>
@@ -90,21 +92,21 @@ auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
     if (postfix_lhs != nullptr and runtime_field != nullptr) {
         function_owner_type = postfix_lhs->lhs->infer_type(&sm, meta);
         function_name = runtime_field->name;
-        function_owner_scope = sm.current_scope->get_type_symbol(*function_owner_type)->scope;
+        function_owner_scope = sm.current_scope->get_type_symbol(function_owner_type)->scope;
     }
 
     // Static access into a type: "Type::method()" or "ns::Type::method()".
     else if (auto type_lhs = asts::ast_cast<asts::TypeAst>(postfix_lhs->lhs.get()); postfix_lhs != nullptr and static_field != nullptr and type_lhs != nullptr) {
         function_owner_type = ast_clone(type_lhs);
         function_name = static_field->name;
-        function_owner_scope = sm.current_scope->get_type_symbol(*function_owner_type)->scope;
+        function_owner_scope = sm.current_scope->get_type_symbol(function_owner_type)->scope;
     }
 
     // Direct access into a namespaced free function: "std::io::print(variable)".
     else if (postfix_lhs != nullptr and static_field != nullptr) {
-        function_owner_scope = sm.current_scope->get_ns_symbol(*static_field->name)->scope;
+        function_owner_scope = sm.current_scope->get_ns_symbol(static_field->name)->scope;
         function_name = static_field->name;
-        function_owner_type = function_owner_scope->get_var_symbol(*function_name)->type;
+        function_owner_type = function_owner_scope->get_var_symbol(function_name)->type;
     }
 
     // Direct access into a non-namespaced function: "function()":
@@ -339,7 +341,7 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_override(
 auto spp::analyse::utils::func_utils::name_args(
     std::vector<std::unique_ptr<asts::FunctionCallArgumentAst>> &args,
     std::vector<asts::FunctionParameterAst*> params,
-    scopes::ScopeManager const &sm)
+    scopes::ScopeManager &sm)
     -> void {
     // Get the argument names and parameter names, and check for the existence of a variadic parameter.
     auto arg_names = args
@@ -400,7 +402,8 @@ auto spp::analyse::utils::func_utils::name_generic_args(
     std::vector<std::unique_ptr<asts::GenericArgumentAst>> &args,
     std::vector<asts::GenericParameterAst*> params,
     asts::Ast const &owner,
-    scopes::ScopeManager const &sm,
+    scopes::ScopeManager &sm,
+    asts::mixins::CompilerMetaData *meta,
     const bool is_tuple_owner)
     -> void {
     // Special case for tuples to prevent an infinite recursion.
@@ -427,8 +430,8 @@ auto spp::analyse::utils::func_utils::name_generic_args(
         | genex::views::to<std::vector>();
 
     // Call the two individual naming functions.
-    name_generic_args_impl(comp_args, comp_params, owner, sm);
-    name_generic_args_impl(type_args, type_params, owner, sm);
+    name_generic_args_impl(comp_args, comp_params, owner, sm, meta);
+    name_generic_args_impl(type_args, type_params, owner, sm, meta);
 
     // Recombine the arguments (into the "args" vector).
     args |= genex::actions::clear();
@@ -442,7 +445,8 @@ auto spp::analyse::utils::func_utils::name_generic_args_impl(
     std::vector<std::unique_ptr<GenericArgType>> &args,
     std::vector<GenericParamType*> params,
     asts::Ast const &owner,
-    scopes::ScopeManager const &sm)
+    scopes::ScopeManager &sm,
+    asts::mixins::CompilerMetaData *meta)
     -> void {
     // Get the argument names and parameter names, and check for the existence of a variadic parameter.
     auto arg_names = args
@@ -495,9 +499,11 @@ auto spp::analyse::utils::func_utils::name_generic_args_impl(
             }
             else {
                 // Variadic check: map arguments "func[U32, U32]" for "func[..Ts]" to "func[Ts = (U32, U32)]".
+                auto temp_pos = positional_arg->pos_start();
                 auto types = args | genex::views::ptr | genex::views::drop(i) | genex::views::transform([](auto &&x) { return std::move(x->val); }) | genex::views::to<std::vector>();
-                auto tup_type = asts::generate::common_types::tuple_type(positional_arg->pos_start(), std::move(types));
-                keyword_arg->val = std::move(tup_type);
+                auto tup_type = asts::generate::common_types::tuple_type(temp_pos, std::move(types));
+                tup_type->stage_7_analyse_semantics(&sm, meta);
+                keyword_arg->val = tup_type;
             }
 
             args[i] = std::move(keyword_arg);
@@ -568,10 +574,21 @@ auto spp::analyse::utils::func_utils::infer_generic_args(
     infer_generic_args_impl_comp(comp_args, comp_params, comp_explicit_args, infer_source, infer_target, owner, owner_scope, sm, meta);
     infer_generic_args_impl_type(type_args, type_params, type_opt_params, type_explicit_args, infer_source, infer_target, owner, owner_scope, variadic_param_identifier, sm, meta);
 
+    // Sort the new arguments to match the parameter order.
+    auto final_args = genex::views::concat(
+        comp_args | genex::views::cast_smart_ptr<asts::GenericArgumentAst>(),
+        type_args | genex::views::cast_smart_ptr<asts::GenericArgumentAst>()
+    ) | genex::views::to<std::vector>();
+
+    final_args |= genex::actions::sort([&](auto const &a, auto const &b) {
+        const auto a_index = genex::algorithms::position(params, [&](auto *p) { return *p->name == *(dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(a.get()) ? dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(a.get())->name : dynamic_cast<asts::GenericArgumentCompKeywordAst*>(a.get())->name); });
+        const auto b_index = genex::algorithms::position(params, [&](auto *p) { return *p->name == *(dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(b.get()) ? dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(b.get())->name : dynamic_cast<asts::GenericArgumentCompKeywordAst*>(b.get())->name); });
+        return a_index < b_index;
+    });
+
     // Recombine the arguments (into the "args" vector).
     args |= genex::actions::clear();
-    args |= genex::actions::concat(comp_args | genex::views::cast_smart_ptr<asts::GenericArgumentAst>());
-    args |= genex::actions::concat(type_args | genex::views::cast_smart_ptr<asts::GenericArgumentAst>());
+    args |= genex::actions::concat(final_args | genex::views::move);
 }
 
 
@@ -612,14 +629,16 @@ template auto spp::analyse::utils::func_utils::name_generic_args_impl<spp::asts:
     std::vector<std::unique_ptr<asts::GenericArgumentCompAst>> &args,
     std::vector<asts::GenericParameterCompAst*> params,
     asts::Ast const &owner,
-    scopes::ScopeManager const &sm) -> void;
+    scopes::ScopeManager &sm,
+    asts::mixins::CompilerMetaData *meta) -> void;
 
 
 template auto spp::analyse::utils::func_utils::name_generic_args_impl<spp::asts::GenericArgumentTypeAst, spp::asts::GenericParameterTypeAst>(
     std::vector<std::unique_ptr<asts::GenericArgumentTypeAst>> &args,
     std::vector<asts::GenericParameterTypeAst*> params,
     asts::Ast const &owner,
-    scopes::ScopeManager const &sm) -> void;
+    scopes::ScopeManager &sm,
+    asts::mixins::CompilerMetaData *meta) -> void;
 
 
 auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
@@ -731,11 +750,11 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
     if (i > 0) { args |= genex::actions::drop(i); }
 
     // Sort the arguments to match the parameter order.
-    args |= genex::actions::sort([&](auto &&ident_a, auto &&ident_b) {
-        auto a = genex::algorithms::position(param_names, [&](auto &&x) { return *x == *std::dynamic_pointer_cast<asts::TypeIdentifierAst>(ident_a->name); });
-        auto b = genex::algorithms::position(param_names, [&](auto &&x) { return *x == *std::dynamic_pointer_cast<asts::TypeIdentifierAst>(ident_b->name); });
-        return a < b;
-    });
+    // args |= genex::actions::sort([&](auto &&ident_a, auto &&ident_b) {
+    //     auto a = genex::algorithms::position(param_names, [&](auto &&x) { return *x == *std::dynamic_pointer_cast<asts::TypeIdentifierAst>(ident_a->name); });
+    //     auto b = genex::algorithms::position(param_names, [&](auto &&x) { return *x == *std::dynamic_pointer_cast<asts::TypeIdentifierAst>(ident_b->name); });
+    //     return a < b;
+    // });
 
     // Type-check the "comp" args. Only do this at the semantic analysis stage.
     if (meta->current_stage <= 5) {
@@ -825,7 +844,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
 
             // Handle the variadic parameter if it exists.
             if (variadic_param_identifier != nullptr and *infer_target_name == *variadic_param_identifier) {
-                auto temp1 = std::move(inferred_args.at(param_name).back()->type_parts().back()->generic_arg_group->args[0]);
+                auto temp1 = ast_clone(inferred_args.at(param_name).back()->type_parts().back()->generic_arg_group->args[0]);
                 auto temp2 = asts::ast_cast<asts::GenericArgumentTypeAst>(std::move(temp1))->val;
                 inferred_args.at(param_name).pop_back();
                 inferred_args.at(param_name).emplace_back(temp2);
@@ -834,12 +853,12 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
     }
 
     // Fully qualify and type arguments (replaced within the inference map).
-    if (const auto owner_sym = sm.current_scope->get_type_symbol(*std::dynamic_pointer_cast<asts::TypeAst>(owner)); owner_sym != nullptr) {
+    if (const auto owner_sym = sm.current_scope->get_type_symbol(std::dynamic_pointer_cast<asts::TypeAst>(owner)); owner_sym != nullptr) {
         for (auto *opt_param : opt_params | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
             if (not genex::algorithms::contains(inferred_args | genex::views::keys | genex::views::cast_smart_ptr<asts::TypeAst>() | genex::views::to<std::vector>(), *opt_param->name, SPP_INSTANT_INDIRECT)) {
                 auto def_type = opt_param->default_val;
-                if (auto def_val_type_sym = owner_scope->get_type_symbol(*def_type); def_val_type_sym != nullptr) {
-                    def_type = owner_scope->get_type_symbol(*opt_param->default_val)->fq_name();
+                if (auto def_val_type_sym = owner_scope->get_type_symbol(def_type); def_val_type_sym != nullptr) {
+                    def_type = owner_scope->get_type_symbol(opt_param->default_val)->fq_name();
                 }
                 inferred_args[std::dynamic_pointer_cast<asts::TypeIdentifierAst>(opt_param->name)].emplace_back(def_type);
             }
@@ -869,9 +888,9 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
     }
 
     // At this point, all conflicts have been checked, so it is safe to only use the first inferred value.
-    auto formatted_generic_arguments = std::map<std::shared_ptr<asts::TypeAst>, std::shared_ptr<const asts::TypeAst>>();
+    auto formatted_args = std::map<std::shared_ptr<asts::TypeAst>, std::shared_ptr<const asts::TypeAst>>();
     for (auto [arg_name, inferred_vals] : inferred_args) {
-        formatted_generic_arguments[arg_name] = inferred_vals[0];
+        formatted_args[arg_name] = inferred_vals[0];
     }
 
     // Cross-apply generic arguments. This allows "Vec[T, A=Alloc[T]]" to substitute the new value of "T" into "Alloc".
@@ -880,36 +899,27 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
             continue;
         }
 
-        auto other_args = formatted_generic_arguments
+        auto other_args = formatted_args
             | genex::views::filter([&](auto &&p) { return *p.first != *arg_name; })
             | genex::views::to<std::vector>();
 
         auto other_args_group = asts::GenericArgumentGroupAst::from_map(std::map(other_args.begin(), other_args.end()));
         auto other_args_vec = other_args_group->args | genex::views::ptr | genex::views::to<std::vector>();
 
-        auto t = formatted_generic_arguments[arg_name]->substitute_generics(other_args_vec);
-        formatted_generic_arguments[arg_name] = t;
+        auto t = formatted_args[arg_name]->substitute_generics(other_args_vec);
+        formatted_args[arg_name] = t;
     }
 
     // Convert the inferred types into new generic arguments.
     auto i = args.size();
-    for (auto const &[key, val] : formatted_generic_arguments) {
+    for (auto const &[key, val] : formatted_args) {
         const auto matching_param = genex::algorithms::find_if(params, [&](auto *p) { return *p->name == *key; });
         if (matching_param == params.end()) { continue; }
-
-        auto temp_val = ast_clone(val);
-        auto temp_arg = std::make_unique<asts::GenericArgumentTypeKeywordAst>(ast_clone(key), nullptr, std::move(temp_val));
+        auto temp_arg = std::make_unique<asts::GenericArgumentTypeKeywordAst>(ast_clone(key), nullptr, ast_clone(val));
         args.emplace_back(std::move(temp_arg));
     }
 
     if (i > 0) {
         args |= genex::actions::drop(i);
     }
-
-    // Sort the arguments to match the parameter order.
-    args |= genex::actions::sort([&](auto &&ident_a, auto &&ident_b) {
-        auto a = genex::algorithms::position(param_names, [&](auto &&x) { return *x == *std::dynamic_pointer_cast<asts::TypeIdentifierAst>(ident_a->name); });
-        auto b = genex::algorithms::position(param_names, [&](auto &&x) { return *x == *std::dynamic_pointer_cast<asts::TypeIdentifierAst>(ident_b->name); });
-        return a < b;
-    });
 }

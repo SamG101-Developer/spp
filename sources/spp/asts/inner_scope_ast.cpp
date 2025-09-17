@@ -132,8 +132,8 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
 
     // Invalidate yielded borrows that are linked.
     for (auto &&sym : inner_syms) {
-        for (auto &&pin : sym->memory_info->ast_pins | genex::views::view | genex::views::to<std::vector>()) {
-            const auto pin_sym = sm->current_scope->get_var_symbol(ast_cast<IdentifierAst>(*pin));
+        for (auto *pin : sym->memory_info->ast_pins | genex::views::view | genex::views::to<std::vector>()) {
+            const auto pin_sym = sm->current_scope->get_var_symbol(ast_clone(ast_cast<IdentifierAst>(pin)));
             for (auto &&info : pin_sym->memory_info->borrow_refers_to | genex::views::view | genex::views::to<std::vector>()) {
                 pin_sym->memory_info->borrow_refers_to |= genex::actions::remove_if([sym](auto &&x) { return *ast_cast<IdentifierAst>(std::get<0>(x)) == *sym->name; });
                 pin_sym->memory_info->borrow_refers_to |= genex::actions::remove_if([info](auto &&x) { return std::get<0>(x) == std::get<0>(info); });

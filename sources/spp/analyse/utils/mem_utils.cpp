@@ -127,8 +127,8 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
     // Get the symbol representing the outermost part of the expression being moved. Non-symbolic => temporary value.
     auto [var_sym, var_scope] = sm.current_scope->get_var_symbol_outermost(value_ast);
     if (var_sym == nullptr) { return; }
-    const auto copies = var_scope->get_type_symbol(*var_sym->type)->is_copyable;
-    const auto partial_copies = var_scope->get_type_symbol(*value_ast.infer_type(&sm, meta))->is_copyable;
+    const auto copies = var_scope->get_type_symbol(var_sym->type)->is_copyable;
+    const auto partial_copies = var_scope->get_type_symbol(value_ast.infer_type(&sm, meta))->is_copyable;
 
     // Check for inconsistent memory moving (from branching).
     if (check_move and var_sym->memory_info->is_inconsistently_moved.has_value()) {
@@ -196,7 +196,7 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
         | genex::views::to<std::vector>();
 
     if (not symbolic_pins.empty() and not copies) {
-        const auto pin_sym = var_scope->get_var_symbol(*symbolic_pins.front());
+        const auto pin_sym = var_scope->get_var_symbol(ast_clone(symbolic_pins.front()));
         const auto where_init = var_sym->memory_info->ast_initialization_origin;
         const auto where_move = &move_ast;
         const auto where_pin = pin_sym->memory_info->ast_pins.front();
@@ -238,13 +238,13 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
         // Make a record of the symbols' memory status in the scope before the branch is analysed.
         auto var_symbols_in_scope = sm->current_scope->all_var_symbols();
         auto old_symbol_mem_info = var_symbols_in_scope
-            | genex::views::transform([sm](auto &&x) { return std::make_pair(x, sm->current_scope->get_var_symbol(*x->name)->memory_info->snapshot()); })
+            | genex::views::transform([sm](auto &&x) { return std::make_pair(x, sm->current_scope->get_var_symbol(x->name)->memory_info->snapshot()); })
             | genex::views::to<std::vector>();
 
         // Analyse the memory and then recheck the symbols' memory status.
         branch->stage_8_check_memory(sm, meta);
         auto new_symbol_mem_info = var_symbols_in_scope
-            | genex::views::transform([sm](auto &&x) { return std::make_pair(x, sm->current_scope->get_var_symbol(*x->name)->memory_info->snapshot()); })
+            | genex::views::transform([sm](auto &&x) { return std::make_pair(x, sm->current_scope->get_var_symbol(x->name)->memory_info->snapshot()); })
             | genex::views::to<std::vector>();
 
         // Reset the memory status of the symbols for the next branch to analyse with the same original memory states.

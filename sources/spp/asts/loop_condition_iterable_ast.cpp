@@ -85,7 +85,7 @@ auto spp::asts::LoopConditionIterableAst::stage_7_analyse_semantics(
 
     // Set the memory information of the symbol based on the type of iteration.
     var->extract_names()
-        | genex::views::transform([sm](auto &&x) { return sm->current_scope->get_var_symbol(*x); })
+        | genex::views::transform([sm](auto &&x) { return sm->current_scope->get_var_symbol(x); })
         | genex::views::for_each([this, yield_type](auto &&x) {
             const auto conv = yield_type->get_convention();
             x->memory_info->initialized_by(*this);
@@ -109,6 +109,6 @@ auto spp::asts::LoopConditionIterableAst::stage_8_check_memory(
 
     // Re-initialize for the double loop analysis.
     var->extract_names()
-        | genex::views::transform([sm](auto &&x) { return sm->current_scope->get_var_symbol(*x); })
+        | genex::views::transform([sm](auto &&x) { return sm->current_scope->get_var_symbol(x); })
         | genex::views::for_each([this](auto &&x) { x->memory_info->initialized_by(*this); });
 }

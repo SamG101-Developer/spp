@@ -42,8 +42,8 @@ namespace spp::asts::detail {
 
 
 /**
- * The GenericArgumentAst is the base class for all generic arguments. It is inherited by the GenericArgumentCompAst and
- * GenericArgumentTypeAst, which represent the two types of generic arguments in the language. These in turn are
+ * The GenericArgumentAst is the base class for all generic arguments. It is inherited by the @c GenericArgumentCompAst
+ * and @c GenericArgumentTypeAst, which represent the two types of generic arguments in the language. These in turn are
  * inherited for the positional and keyword variants.
  */
 struct spp::asts::GenericArgumentAst : virtual Ast {

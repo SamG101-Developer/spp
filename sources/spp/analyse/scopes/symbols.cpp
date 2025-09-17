@@ -109,7 +109,7 @@ auto spp::analyse::scopes::TypeSymbol::fq_name() const
     -> std::shared_ptr<asts::TypeAst> {
     // If the type is generic, or the name starts with a '$', return the name as-is.
     if (is_generic or name->name[0] == '$') {
-        return name;
+        return ast_clone(name);
     }
 
     // Map "Self" types to the fully qualified name of the type via the scope.

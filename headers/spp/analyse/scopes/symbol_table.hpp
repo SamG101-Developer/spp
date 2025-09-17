@@ -28,21 +28,21 @@ struct spp::analyse::scopes::SymNameCmp {
 
 
 template <>
-struct spp::analyse::scopes::SymNameCmp<spp::asts::IdentifierAst*> {
-    auto operator()(asts::IdentifierAst const *lhs, asts::IdentifierAst const *rhs) const -> bool;
+struct spp::analyse::scopes::SymNameCmp<std::shared_ptr<spp::asts::IdentifierAst>> {
+    auto operator()(std::shared_ptr<asts::IdentifierAst> const &lhs, std::shared_ptr<asts::IdentifierAst> const &rhs) const -> bool;
 };
 
 
 template <>
-struct spp::analyse::scopes::SymNameCmp<spp::asts::TypeIdentifierAst*> {
-    auto operator()(asts::TypeIdentifierAst const *lhs, asts::TypeIdentifierAst const *rhs) const -> bool;
+struct spp::analyse::scopes::SymNameCmp<std::shared_ptr<spp::asts::TypeIdentifierAst>> {
+    auto operator()(std::shared_ptr<asts::TypeIdentifierAst> const &lhs, std::shared_ptr<asts::TypeIdentifierAst> const &rhs) const -> bool;
 };
 
 
 template <typename I, typename S>
 class spp::analyse::scopes::IndividualSymbolTable {
 private:
-    std::map<I const*, std::shared_ptr<S>, SymNameCmp<I*>> m_table;
+    std::map<std::shared_ptr<I>, std::shared_ptr<S>, SymNameCmp<std::shared_ptr<I>>> m_table;
 
 public:
     IndividualSymbolTable();
@@ -53,13 +53,13 @@ public:
 
     auto operator=(IndividualSymbolTable const &that) -> IndividualSymbolTable&;
 
-    auto add(I const *sym_name, std::shared_ptr<S> const &sym) -> void;
+    auto add(std::shared_ptr<I> const &sym_name, std::shared_ptr<S> const &sym) -> void;
 
-    auto rem(I const *sym_name) -> void;
+    auto rem(std::shared_ptr<I> const &sym_name) -> void;
 
-    auto get(I const *sym_name) const -> std::shared_ptr<S>;
+    auto get(std::shared_ptr<const I> const &sym_name) const -> std::shared_ptr<S>;
 
-    auto has(I const *sym_name) const -> bool;
+    auto has(std::shared_ptr<I> const &sym_name) const -> bool;
 
     auto all() const -> std::generator<std::shared_ptr<S>>;
 };

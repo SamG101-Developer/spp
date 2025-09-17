@@ -13,6 +13,7 @@
 spp::asts::IdentifierAst::IdentifierAst(
     const std::size_t pos,
     decltype(val) val) :
+    std::enable_shared_from_this<IdentifierAst>(),
     val(std::move(val)),
     m_pos(pos) {
 }
@@ -20,6 +21,7 @@ spp::asts::IdentifierAst::IdentifierAst(
 
 spp::asts::IdentifierAst::IdentifierAst(
     IdentifierAst const &other) :
+    std::enable_shared_from_this<IdentifierAst>(),
     val(other.val),
     m_pos(other.m_pos) {
 }
@@ -116,7 +118,8 @@ auto spp::asts::IdentifierAst::stage_7_analyse_semantics(
     mixins::CompilerMetaData *)
     -> void {
     // Check there is a symbol with the same name in the current scope.
-    if (not sm->current_scope->has_var_symbol(*this) and not sm->current_scope->has_ns_symbol(*this)) {
+    const auto shared = std::shared_ptr(ast_clone(this));
+    if (not sm->current_scope->has_var_symbol(shared) and not sm->current_scope->has_ns_symbol(shared)) {
         const auto alternatives = sm->current_scope->all_var_symbols()
             | genex::views::transform([](auto &&x) { return x->name->val; })
             | genex::views::to<std::vector>();
@@ -133,6 +136,6 @@ auto spp::asts::IdentifierAst::infer_type(
     mixins::CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Extract the symbol from the current scope, as a variable symbol.
-    const auto var_sym = sm->current_scope->get_var_symbol(*this);
+    const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));
     return var_sym->type;
 }

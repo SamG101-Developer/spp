@@ -65,7 +65,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
     -> void {
     // Handle types on the left-hand-side of a static member access.
     if (const auto lhs_as_type = ast_cast<TypeIdentifierAst>(meta->postfix_expression_lhs)) {
-        const auto lhs_type_sym = sm->current_scope->get_type_symbol(*lhs_as_type);
+        const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_as_type->shared_from_this());
 
         // Check the left-hand-side isn't a generic type. Todo: in the future, allow by constraints / intersection types?
         if (lhs_type_sym->is_generic) {
@@ -74,7 +74,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
         }
 
         // Check the target field exists on the type.
-        if (not lhs_type_sym->scope->has_var_symbol(*name, true)) {
+        if (not lhs_type_sym->scope->has_var_symbol(name, true)) {
             const auto alternatives = sm->current_scope->all_type_symbols(true, true)
                 | genex::views::transform([](auto &&x) { return x->name->name; })
                 | genex::views::to<std::vector>();
@@ -85,13 +85,13 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
         }
 
         // Check there is only 1 target field on the type at the highest level.
-        if (lhs_type_sym->scope->get_var_symbol(*name)->type->type_parts().back()->name[0] == '$') {
+        if (lhs_type_sym->scope->get_var_symbol(name)->type->type_parts().back()->name[0] == '$') {
             return;
         }
 
         auto scopes_and_syms = std::vector{lhs_type_sym->scope}
             | genex::views::concat(lhs_type_sym->scope->sup_scopes())
-            | genex::views::transform([name=name.get()](auto &&x) { return std::make_pair(x, x->table.var_tbl.get(name)); })
+            | genex::views::transform([name=name.get()](auto &&x) { return std::make_pair(x, x->table.var_tbl.get(ast_clone(name))); })
             | genex::views::filter([](auto &&x) { return x.second != nullptr; })
             | genex::views::transform([lhs_type_sym](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
             | genex::views::to<std::vector>();
@@ -112,8 +112,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
     }
 
     else if (const auto lhs_as_ident = ast_cast<IdentifierAst>(meta->postfix_expression_lhs)) {
-        const auto lhs_ns_sym = sm->current_scope->get_ns_symbol(*lhs_as_ident);
-        const auto lhs_var_sym = sm->current_scope->get_var_symbol(*lhs_as_ident);
+        const auto lhs_ns_sym = sm->current_scope->get_ns_symbol(lhs_as_ident->shared_from_this());
+        const auto lhs_var_sym = sm->current_scope->get_var_symbol(lhs_as_ident->shared_from_this());
 
         // Check the lhs is a namespace and not a variable.
         if (lhs_ns_sym == nullptr and lhs_var_sym != nullptr) {
@@ -122,7 +122,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
         }
 
         // Check the constant exists inside the namespace.
-        if (not lhs_ns_sym->scope->has_var_symbol(*name, true)) {
+        if (not lhs_ns_sym->scope->has_var_symbol(name, true)) {
             const auto alternatives = sm->current_scope->all_var_symbols(false, true)
                 | genex::views::transform([](auto &&x) { return x->name->val; })
                 | genex::views::to<std::vector>();
@@ -141,14 +141,14 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Get the left-hand-side type's member's type.
     if (const auto lhs_as_type = ast_cast<TypeIdentifierAst>(meta->postfix_expression_lhs)) {
-        const auto lhs_type_sym = sm->current_scope->get_type_symbol(*lhs_as_type);
-        return lhs_type_sym->scope->get_var_symbol(*name, true)->type;
+        const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_as_type->shared_from_this());
+        return lhs_type_sym->scope->get_var_symbol(name, true)->type;
     }
 
     // Get the left-hand-side namespace's member's type.
     if (const auto lhs_as_ident = ast_cast<IdentifierAst>(meta->postfix_expression_lhs)) {
-        const auto lhs_ns_sym = sm->current_scope->get_ns_symbol(*lhs_as_ident);
-        return lhs_ns_sym->scope->get_var_symbol(*name, true)->type;
+        const auto lhs_ns_sym = sm->current_scope->get_ns_symbol(lhs_as_ident->shared_from_this());
+        return lhs_ns_sym->scope->get_var_symbol(name, true)->type;
     }
 
     // Should never happen due to earlier checks.

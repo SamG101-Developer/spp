@@ -57,6 +57,23 @@ namespace spp::asts::detail {
 
     template <typename GenericParameterType>
     using make_variadic_param_t = typename make_variadic_param<GenericParameterType>::type;
+
+
+    template <typename GenericParameterType>
+    struct generic_param_value_type;
+
+    template <>
+    struct generic_param_value_type<GenericParameterCompAst> {
+        using type = ExpressionAst const*;
+    };
+
+    template <>
+    struct generic_param_value_type<GenericParameterTypeAst> {
+        using type = std::shared_ptr<TypeAst>;
+    };
+
+    template <typename GenericParameterType>
+    using value_type_t = typename generic_param_value_type<GenericParameterType>::type;
 }
 
 

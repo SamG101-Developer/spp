@@ -70,14 +70,15 @@ namespace spp::analyse::utils::func_utils {
     auto name_args(
         std::vector<std::unique_ptr<asts::FunctionCallArgumentAst>> &args,
         std::vector<asts::FunctionParameterAst*> params,
-        scopes::ScopeManager const &sm)
+        scopes::ScopeManager &sm)
         -> void;
 
     auto name_generic_args(
         std::vector<std::unique_ptr<asts::GenericArgumentAst>> &args,
         std::vector<asts::GenericParameterAst*> params,
         asts::Ast const &owner,
-        scopes::ScopeManager const &sm,
+        scopes::ScopeManager &sm,
+        asts::mixins::CompilerMetaData *meta,
         bool is_tuple_owner = false)
         -> void;
 
@@ -86,7 +87,8 @@ namespace spp::analyse::utils::func_utils {
         std::vector<std::unique_ptr<GenericArgType>> &args,
         std::vector<GenericParamType*> params,
         asts::Ast const &owner,
-        scopes::ScopeManager const &sm)
+        scopes::ScopeManager &sm,
+        asts::mixins::CompilerMetaData *meta)
         -> void;
 
     auto infer_generic_args(

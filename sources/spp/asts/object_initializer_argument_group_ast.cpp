@@ -153,7 +153,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics
                 if (attrs.size() > 1) { continue; }
 
                 // Use the type off the single matching attribute.
-                const auto attr_type_sym = attrs[0].second->get_type_symbol(*attrs[0].first->type);
+                const auto attr_type_sym = attrs[0].second->get_type_symbol(attrs[0].first->type);
                 const auto attr_type = attr_type_sym->is_generic ? nullptr : attr_type_sym->fq_name();
                 meta->return_type_overload_resolver_type = std::move(attr_type);
             }
@@ -170,7 +170,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
     mixins::CompilerMetaData *meta)
     -> void {
     // Get the attributes on the type and supertypes.
-    const auto cls_sym = sm->current_scope->get_type_symbol(*meta->object_init_type);
+    const auto cls_sym = sm->current_scope->get_type_symbol(meta->object_init_type->shared_from_this());
     const auto all_attrs = analyse::utils::type_utils::get_all_attrs(*meta->object_init_type, sm);
     const auto all_attr_names = all_attrs
         | genex::views::transform([](auto &&x) { return x.first->name; })
@@ -208,7 +208,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
             | genex::views::transform([](auto &&x) { return std::make_pair(x.first, x.second); })
             | genex::operations::front;
 
-        const auto attr_type = scope->get_type_symbol(*cls_sym->scope->get_var_symbol(*attr->name)->type)->fq_name();
+        const auto attr_type = scope->get_type_symbol(cls_sym->scope->get_var_symbol(attr->name)->type)->fq_name();
         meta->save();
         meta->assignment_target_type = attr_type;
         auto arg_type = arg->infer_type(sm, meta);

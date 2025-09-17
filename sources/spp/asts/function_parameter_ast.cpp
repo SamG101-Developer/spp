@@ -39,7 +39,7 @@ auto spp::asts::FunctionParameterAst::stage_7_analyse_semantics(
     -> void {
     // Analyse the type.
     type->stage_7_analyse_semantics(sm, meta);
-    type = sm->current_scope->get_type_symbol(*type)->fq_name();
+    type = sm->current_scope->get_type_symbol(type)->fq_name();
 
     // Create the variable for the parameter (use temp copies and put them back).
     const auto ast = std::make_unique<LetStatementUninitializedAst>(nullptr, std::move(var), nullptr, std::move(type));
@@ -50,7 +50,7 @@ auto spp::asts::FunctionParameterAst::stage_7_analyse_semantics(
     // Mark the symbol as initialized.
     const auto conv = type->get_convention();
     for (auto &&name : extract_names()) {
-        const auto sym = sm->current_scope->get_var_symbol(*name);
+        const auto sym = sm->current_scope->get_var_symbol(name);
         sym->memory_info->initialized_by(*this);
         sym->memory_info->ast_borrowed = conv;
         sym->memory_info->is_borrow_mut = conv and *conv == ConventionAst::ConventionTag::MUT;
@@ -65,7 +65,7 @@ auto spp::asts::FunctionParameterAst::stage_8_check_memory(
     -> void {
     // Check the memory of each name.
     for (auto &&name : extract_names()) {
-        const auto sym = sm->current_scope->get_var_symbol(*name);
+        const auto sym = sm->current_scope->get_var_symbol(name);
         sym->memory_info->initialized_by(*this);
     }
 }

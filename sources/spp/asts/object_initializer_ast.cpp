@@ -66,7 +66,7 @@ auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
     -> void {
     // Get the base class symbol (no generics) and check it exists.
     type->without_generics()->stage_7_analyse_semantics(sm, meta);
-    const auto base_cls_sym = sm->current_scope->get_type_symbol(*type->without_generics());
+    const auto base_cls_sym = sm->current_scope->get_type_symbol(type->without_generics());
 
     // Generic types cannot have any attributes set | TODO: future with constraints will allow some.
     if (base_cls_sym->is_generic and not arg_group->args.empty()) {
@@ -88,7 +88,7 @@ auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
     auto generic_infer_target = base_cls_sym->type->impl->members
         | genex::views::ptr
         | genex::views::cast_dynamic<ClassAttributeAst*>()
-        | genex::views::transform([base_cls_sym](auto &&x) { return std::make_pair(x->name, base_cls_sym->scope->get_type_symbol(*x->type)->fq_name()); })
+        | genex::views::transform([base_cls_sym](auto &&x) { return std::make_pair(x->name, base_cls_sym->scope->get_type_symbol(x->type)->fq_name()); })
         | genex::views::to<std::vector>();
 
     // Analyse the type and object argument group.
@@ -119,5 +119,5 @@ auto spp::asts::ObjectInitializerAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // The type of the object initializer is the type being initialized. The conventions are added for dummy types being
     // created into values during other ast's analysis. Types cannot be instantiated as borrows in user code.
-    return sm->current_scope->get_type_symbol(*type)->fq_name()->with_convention(ast_clone(type->get_convention()));
+    return sm->current_scope->get_type_symbol(type)->fq_name()->with_convention(ast_clone(type->get_convention()));
 }

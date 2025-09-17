@@ -6,6 +6,7 @@
 #include <spp/analyse/utils/func_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/convention_ast.hpp>
+#include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
 #include <spp/asts/generic_parameter_group_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
@@ -153,10 +154,10 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_5_load_super_scopes(
 
     // Analyse the type being superimposed over.
     name->stage_7_analyse_semantics(sm, meta);
-    name = sm->current_scope->get_type_symbol(*name)->fq_name();
+    name = sm->current_scope->get_type_symbol(name)->fq_name();
 
     // Register the superimposition against the base symbol.
-    const auto base_cls_sym = sm->current_scope->get_type_symbol(*name->without_generics());
+    const auto base_cls_sym = sm->current_scope->get_type_symbol(name->without_generics());
     if (sm->current_scope->parent == sm->current_scope->parent_module()) {
         if (not base_cls_sym->is_generic) {
             sm->normal_sup_blocks.try_emplace(base_cls_sym.get(), std::vector<analyse::scopes::Scope*>()).first->second.emplace_back(sm->current_scope);
@@ -168,7 +169,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_5_load_super_scopes(
 
     // Add the "Self" symbol into the scope.
     if (name->type_parts().back()->name[0] == '$') {
-        const auto cls_sym = sm->current_scope->get_type_symbol(*name);
+        const auto cls_sym = sm->current_scope->get_type_symbol(name);
         sm->current_scope->add_type_symbol(std::make_unique<analyse::scopes::AliasSymbol>(
             std::make_unique<TypeIdentifierAst>(name->pos_start(), "Self", nullptr), nullptr, cls_sym->scope,
             sm->current_scope, cls_sym));

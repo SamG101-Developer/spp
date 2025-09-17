@@ -19,7 +19,7 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
     -> void {
     // Perform default function prototype semantic analysis
     FunctionPrototypeAst::stage_7_analyse_semantics(sm, meta);
-    const auto ret_type_sym = sm->current_scope->get_type_symbol(*return_type);
+    const auto ret_type_sym = sm->current_scope->get_type_symbol(return_type);
 
     // Update the meta information for enclosing function information.
     meta->save();

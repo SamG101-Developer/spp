@@ -183,7 +183,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
             // Remove the keyword argument names from the set of parameter names, and name the positional arguments.
             analyse::utils::func_utils::name_args(func_args, func_params, *sm);
-            analyse::utils::func_utils::name_generic_args(generic_args, generic_params, *ast_cast<Ast>(fn_proto->name), *sm);
+            analyse::utils::func_utils::name_generic_args(generic_args, generic_params, *ast_cast<Ast>(fn_proto->name), *sm, meta);
             func_arg_names = func_args
                 | genex::views::ptr
                 | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>()
@@ -323,7 +323,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                                  {}, [&func_param_names](FunctionCallArgumentKeywordAst *arg) { return genex::algorithms::position(func_param_names, [&arg](auto const &param) { return *arg->name == *param; }); });
 
             for (auto &&[arg, param] : sorted_func_arguments | genex::views::zip(func_params)) {
-                auto p_type = fn_scope->get_type_symbol(*param->type)->fq_name()->with_convention(ast_clone(param->type->get_convention()));
+                auto p_type = fn_scope->get_type_symbol(param->type)->fq_name()->with_convention(ast_clone(param->type->get_convention()));
                 auto a_type = arg->infer_type(sm, meta);
 
                 // Special case for variadic parameters.
@@ -552,7 +552,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
         // Get the other generics
         auto other_generics = std::vector<GenericArgumentAst*>();
         if (const auto cast_lhs = ast_cast<PostfixExpressionAst>(meta->postfix_expression_lhs); cast_lhs != nullptr) {
-            const auto lhs_lhs_scope = sm->current_scope->get_type_symbol(*cast_lhs->lhs->infer_type(sm, meta))->scope;
+            const auto lhs_lhs_scope = sm->current_scope->get_type_symbol(cast_lhs->lhs->infer_type(sm, meta))->scope;
             if (not analyse::utils::type_utils::is_type_tuple(*std::get<TypeIdentifierAst*>(lhs_lhs_scope->name), *sm->current_scope)) {
                 other_generics = std::get<TypeIdentifierAst*>(lhs_lhs_scope->name)->type_parts().back()->generic_arg_group->args
                     | genex::views::ptr
@@ -560,7 +560,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
             }
 
             ret_type = std::get<0>(*m_overload_info)
-                       ->get_type_symbol(*ret_type)->fq_name()
+                       ->get_type_symbol(ret_type)->fq_name()
                        ->substitute_generics(other_generics)
                        ->substitute_generics(std::get<0>(*m_overload_info)->get_generics() | genex::views::ptr | genex::views::to<std::vector>());
 

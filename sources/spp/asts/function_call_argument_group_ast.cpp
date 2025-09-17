@@ -191,19 +191,19 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
     auto borrows_mut = std::vector<Ast*>();
 
     // Create the pre-existing borrows (from coroutines, async calls) that are already in scope.
-    auto preexisting_borrows_ref = std::map<Ast*, std::vector<IdentifierAst*>>();
-    auto preexisting_borrows_mut = std::map<Ast*, std::vector<IdentifierAst*>>();
+    auto preexisting_borrows_ref = std::map<Ast*, std::vector<std::shared_ptr<IdentifierAst>>>();
+    auto preexisting_borrows_mut = std::map<Ast*, std::vector<std::shared_ptr<IdentifierAst>>>();
 
     // Merge the preexisting borrows into the borrow lists.
     for (auto &&arg : args) {
-        const auto arg_val = ast_cast<IdentifierAst>(arg->val.get());
-        const auto sym = sm->current_scope->get_var_symbol(*arg_val);
+        auto arg_val = ast_cast<IdentifierAst>(ast_clone(arg->val));
+        const auto sym = sm->current_scope->get_var_symbol(std::move(arg_val));
         if (sym == nullptr) { continue; }
 
         for (auto &&[assignment, b, m, _] : sym->memory_info->borrow_refers_to) {
             if (assignment == nullptr) { continue; }
             (m ? borrows_mut : borrows_ref).emplace_back(assignment);
-            (m ? preexisting_borrows_mut : preexisting_borrows_ref).try_emplace(assignment, std::vector<IdentifierAst*>()).first->second.emplace_back(ast_cast<IdentifierAst>(assignment));
+            (m ? preexisting_borrows_mut : preexisting_borrows_ref).try_emplace(assignment, std::vector<std::shared_ptr<IdentifierAst>>()).first->second.emplace_back(ast_cast<IdentifierAst>(assignment));
         }
     }
 
@@ -228,7 +228,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
             // Check the move doesn't overlap with any borrows. This is to ensure that "f(&x, x)" can never happen,
             // because the first argument requires the owned object to outlive the function call, and moving it as the
             // second argument breaks this. Doesn't apply to copyable types.
-            if (not sm->current_scope->get_type_symbol(*arg->val->infer_type(sm, meta))->is_copyable) {
+            if (not sm->current_scope->get_type_symbol(arg->val->infer_type(sm, meta))->is_copyable) {
                 auto overlaps = genex::views::concat(borrows_ref, borrows_mut)
                     | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
                     | genex::views::to<std::vector>();
@@ -249,11 +249,11 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                     *overlaps[0], *arg->val).with_scopes({sm->current_scope}).raise();
             }
 
-            for (const auto *existing_assignment : preexisting_borrows_mut[arg->val.get()]) {
-                sm->current_scope->get_var_symbol(*existing_assignment)->memory_info->moved_by(*arg->val);
+            for (const auto &existing_assignment : preexisting_borrows_mut[arg->val.get()]) {
+                sm->current_scope->get_var_symbol(existing_assignment)->memory_info->moved_by(*arg->val);
             }
-            for (const auto *existing_assignment : preexisting_borrows_ref[arg->val.get()]) {
-                sm->current_scope->get_var_symbol(*existing_assignment)->memory_info->moved_by(*arg->val);
+            for (const auto &existing_assignment : preexisting_borrows_ref[arg->val.get()]) {
+                sm->current_scope->get_var_symbol(existing_assignment)->memory_info->moved_by(*arg->val);
             }
 
             // Auto-pin the argument and the assignment target if required.
@@ -262,7 +262,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 sym->memory_info->is_borrow_mut = true;
                 sym->memory_info->borrow_refers_to.emplace_back(arg->val.get(), arg.get(), true, sm->current_scope);
                 sym->memory_info->borrow_refers_to.emplace_back(meta->assignment_target.get(), arg.get(), true, sm->current_scope);
-                sm->current_scope->get_var_symbol(*meta->assignment_target)->memory_info->ast_pins.emplace_back(arg->val.get());
+                sm->current_scope->get_var_symbol(meta->assignment_target)->memory_info->ast_pins.emplace_back(arg->val.get());
             }
 
             // Add the mutable borrow to the mutable borrow set.
@@ -279,8 +279,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                     *overlaps[0], *arg->val).with_scopes({sm->current_scope}).raise();
             }
 
-            for (const auto *existing_assignment : preexisting_borrows_mut[arg->val.get()]) {
-                sm->current_scope->get_var_symbol(*existing_assignment)->memory_info->moved_by(*arg->val);
+            for (const auto &existing_assignment : preexisting_borrows_mut[arg->val.get()]) {
+                sm->current_scope->get_var_symbol(existing_assignment)->memory_info->moved_by(*arg->val);
             }
 
             // Auto-pin the argument and the assignment target if required.
@@ -289,7 +289,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 sym->memory_info->is_borrow_ref = true;
                 sym->memory_info->borrow_refers_to.emplace_back(arg->val.get(), arg.get(), false, sm->current_scope);
                 sym->memory_info->borrow_refers_to.emplace_back(meta->assignment_target.get(), arg.get(), false, sm->current_scope);
-                sm->current_scope->get_var_symbol(*meta->assignment_target)->memory_info->ast_pins.emplace_back(arg->val.get());
+                sm->current_scope->get_var_symbol(meta->assignment_target)->memory_info->ast_pins.emplace_back(arg->val.get());
             }
 
             // Add the mutable borrow to the mutable borrow set.

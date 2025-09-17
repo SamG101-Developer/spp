@@ -124,7 +124,15 @@ auto spp::asts::ClassAttributeAst::stage_7_analyse_semantics(
             *type, *conv, "attribute type").with_scopes({sm->current_scope}).raise();
     }
 
-    type->stage_7_analyse_semantics(sm, meta);
+
+    // Todo: I hate this, yet it works.
+    try {
+        type->stage_7_analyse_semantics(sm, meta);
+    }
+
+    catch (analyse::errors::SppIdentifierUnknownError const &e) {
+    }
+
     if (default_val != nullptr) {
         default_val->stage_7_analyse_semantics(sm, meta);
         const auto default_type = default_val->infer_type(sm, meta);

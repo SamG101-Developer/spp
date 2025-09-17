@@ -124,6 +124,6 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_8_check_memory(
         *meta->let_stmt_value, *this, *sm, true, true, true, true, false, true, meta);
 
     // Get the name or alias symbol to mark it as initialized.
-    const auto sym = sm->current_scope->get_var_symbol(alias != nullptr ? *alias->name : *name);
+    const auto sym = sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name);
     sym->memory_info->initialized_by(*name);
 }

@@ -170,7 +170,7 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
 
     // Load the generics into the class and type-statement scopes.
     auto tm = ScopeManager(
-        sm->global_scope, sm->current_scope->get_type_symbol(*old_type->without_generics())->scope);
+        sm->global_scope, sm->current_scope->get_type_symbol(old_type->without_generics())->scope);
     for (auto &&generic_arg : GenericArgumentGroupAst::from_params(*generic_param_group)->args) {
         const auto generic_sym = analyse::utils::type_utils::create_generic_sym(*generic_arg, *sm, meta, &tm);
         if (const auto generic_type_sym = std::dynamic_pointer_cast<analyse::scopes::TypeSymbol>(generic_sym)) {
@@ -185,7 +185,7 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
 
     // Check the (full) old type is valid, and get the new symbol.
     old_type->stage_7_analyse_semantics(sm, meta);
-    m_alias_sym->old_sym = sm->current_scope->get_type_symbol(*old_type);
+    m_alias_sym->old_sym = sm->current_scope->get_type_symbol(old_type);
     dynamic_cast<analyse::scopes::AliasSymbol*>(m_alias_sym->generic_impl)->old_sym = m_alias_sym->old_sym;
 
     // Create a "sup" block, to allow attribute and method access.
@@ -205,7 +205,7 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
     sm->move_to_next_scope();
 
     // Get the old type's symbol, without generics.
-    const auto stripped_old_sym = sm->current_scope->get_type_symbol(*old_type->without_generics(), false, true);
+    const auto stripped_old_sym = sm->current_scope->get_type_symbol(old_type->without_generics(), false, true);
     if (not stripped_old_sym->is_generic) {
         auto tm = ScopeManager(sm->global_scope, stripped_old_sym->scope_defined_in);
 
@@ -217,7 +217,7 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
         // Update the parameter groups on the generated ASTs.
         m_generated_cls_ast->generic_param_group = ast_clone(generic_param_group);
         m_generated_ext_ast->generic_param_group = generic_param_group->opt_to_req();
-        m_alias_sym->old_sym = sm->current_scope->get_type_symbol(*old_type);
+        m_alias_sym->old_sym = sm->current_scope->get_type_symbol(old_type);
         dynamic_cast<analyse::scopes::AliasSymbol*>(m_alias_sym->generic_impl)->old_sym = m_alias_sym->old_sym;
     }
 

@@ -65,7 +65,7 @@ auto spp::asts::GenericParameterTypeOptionalAst::stage_4_qualify_types(
     -> void {
     // Handle the default type.
     default_val->stage_7_analyse_semantics(sm, meta);
-    default_val = sm->current_scope->get_type_symbol(*default_val)->fq_name()->with_convention(ast_clone(default_val->get_convention()));
+    default_val = sm->current_scope->get_type_symbol(default_val)->fq_name()->with_convention(ast_clone(default_val->get_convention()));
 }
 
 

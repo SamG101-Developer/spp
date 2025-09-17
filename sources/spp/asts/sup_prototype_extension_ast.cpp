@@ -9,6 +9,7 @@
 #include <spp/asts/cmp_statement_ast.hpp>
 #include <spp/asts/convention_ast.hpp>
 #include <spp/asts/function_prototype_ast.hpp>
+#include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_argument_type_keyword_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
 #include <spp/asts/generic_parameter_group_ast.hpp>
@@ -242,10 +243,10 @@ auto spp::asts::SupPrototypeExtensionAst::stage_5_load_super_scopes(
 
     // Analyse the type being superimposed over.
     name->stage_7_analyse_semantics(sm, meta);
-    name = sm->current_scope->get_type_symbol(*name)->fq_name();
+    name = sm->current_scope->get_type_symbol(name)->fq_name();
 
     // Register the superimposition against the base symbol.
-    const auto base_cls_sym = sm->current_scope->get_type_symbol(*name->without_generics());
+    const auto base_cls_sym = sm->current_scope->get_type_symbol(name->without_generics());
     if (sm->current_scope->parent == sm->current_scope->parent_module()) {
         if (not base_cls_sym->is_generic) {
             sm->normal_sup_blocks.try_emplace(base_cls_sym.get(), std::vector<analyse::scopes::Scope*>()).first->second.emplace_back(sm->current_scope);
@@ -257,7 +258,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_5_load_super_scopes(
 
     // Add the "Self" symbol into the scope.
     if (name->type_parts().back()->name[0] == '$') {
-        const auto cls_sym = sm->current_scope->get_type_symbol(*name);
+        const auto cls_sym = sm->current_scope->get_type_symbol(name);
         sm->current_scope->add_type_symbol(std::make_unique<analyse::scopes::AliasSymbol>(
             std::make_unique<TypeIdentifierAst>(name->pos_start(), "Self", nullptr), nullptr, cls_sym->scope,
             sm->current_scope, cls_sym));
@@ -265,10 +266,10 @@ auto spp::asts::SupPrototypeExtensionAst::stage_5_load_super_scopes(
 
     // Analyse the supertype after Self has been added (allows use in generic arguments to the superclass).
     super_class->stage_7_analyse_semantics(sm, meta);
-    super_class = sm->current_scope->get_type_symbol(*super_class)->fq_name();
+    super_class = sm->current_scope->get_type_symbol(super_class)->fq_name();
 
     // Check the supertype is not generic.
-    const auto sup_sym = sm->current_scope->get_type_symbol(*super_class);
+    const auto sup_sym = sm->current_scope->get_type_symbol(super_class);
     if (sup_sym->is_generic) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppGenericTypeInvalidUsageError>().with_args(
             *super_class, *super_class, "superimposition supertype").with_scopes({sm->current_scope}).raise();
@@ -290,10 +291,10 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
     super_class->stage_7_analyse_semantics(sm, meta);
 
     // Get the symbols.
-    const auto cls_sym = sm->current_scope->get_type_symbol(*name);
-    const auto sup_sym = sm->current_scope->get_type_symbol(*super_class);
+    const auto cls_sym = sm->current_scope->get_type_symbol(name);
+    const auto sup_sym = sm->current_scope->get_type_symbol(super_class);
     const auto sup_scopes = std::vector{sup_sym->scope}
-        | genex::views::concat(sm->current_scope->get_type_symbol(*super_class)->scope->sup_scopes())
+        | genex::views::concat(sm->current_scope->get_type_symbol(super_class)->scope->sup_scopes())
         | genex::views::filter([](auto &&x) { return ast_cast<ClassPrototypeAst>(x->ast); })
         | genex::views::to<std::vector>();
 
@@ -301,7 +302,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
     for (const auto sup_scope : sup_scopes) {
         auto fq_name = sup_scope->ty_sym->fq_name();
         if (analyse::utils::type_utils::symbolic_eq(*fq_name, *generate::common_types_precompiled::COPY, *sup_scope, *sm->current_scope)) {
-            sm->current_scope->get_type_symbol(*name->without_generics())->is_copyable = true;
+            sm->current_scope->get_type_symbol(name->without_generics())->is_copyable = true;
             cls_sym->is_copyable = true;
             break;
         }
@@ -330,7 +331,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
         else if (const auto type_member = ast_cast<TypeStatementAst>(member.get())) {
             // Get the associated type from the supertype directly.
             const auto this_type = type_member->new_type;
-            const auto base_type = sup_sym->scope->get_type_symbol(*this_type, true);
+            const auto base_type = sup_sym->scope->get_type_symbol(this_type, true);
 
             // Check to see if the base type exists.
             if (base_type == nullptr) {
@@ -342,7 +343,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
         else if (const auto cmp_member = ast_cast<CmpStatementAst>(member.get())) {
             // Get the associated type from the supertype directly.
             const auto this_const = cmp_member->name;
-            const auto base_const = sup_sym->scope->get_var_symbol(*this_const, true);
+            const auto base_const = sup_sym->scope->get_var_symbol(this_const, true);
 
             // Check to see if the base type exists.
             if (base_const == nullptr) {

@@ -4,6 +4,7 @@
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/cmp_statement_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/sup_prototype_functions_ast.hpp>
 #include <spp/asts/sup_prototype_extension_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
@@ -82,13 +83,13 @@ auto spp::analyse::scopes::ScopeManager::get_namespaced_scope(
     std::vector<asts::IdentifierAst const*> const &names) const
     -> Scope* {
     // Find the first scope that matches the first part of the namespace.
-    auto ns_sym = current_scope->get_ns_symbol(*names[0]);
+    auto ns_sym = current_scope->get_ns_symbol(names[0]->shared_from_this());
     if (ns_sym == nullptr) { return nullptr; }
 
     // Work inwards, getting the nested scopes for the namespace parts.
     auto ns_scope = ns_sym->scope;
     for (auto &&ns_part : names | genex::views::drop(1)) {
-        ns_sym = ns_scope->get_ns_symbol(*ns_part);
+        ns_sym = ns_scope->get_ns_symbol(ns_part->shared_from_this());
         if (ns_sym == nullptr) { return nullptr; }
         ns_scope = ns_sym->scope;
     }
@@ -168,7 +169,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
         else {
             const auto sup_proto = asts::ast_cast<asts::SupPrototypeExtensionAst>(sup_scope->ast);
             new_sup_scope = sup_scope;
-            new_cls_scope = sup_proto ? scope.get_type_symbol(*sup_proto->super_class)->scope : nullptr;
+            new_cls_scope = sup_proto ? scope.get_type_symbol(sup_proto->super_class)->scope : nullptr;
             sup_sym = new_cls_scope ? new_cls_scope->ty_sym.get() : nullptr;
         }
         auto cls_sym = scope.ty_sym;

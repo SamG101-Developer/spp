@@ -68,10 +68,10 @@ auto spp::asts::IterPatternVariantVariableAst::stage_7_analyse_semantics(
     m_mapped_let->stage_7_analyse_semantics(sm, meta);
 
     // Update borrow flags if the "Yield" type has a borrow convention attached to it.
-    auto conv = dummy_type->get_convention();
+    const auto conv = dummy_type->get_convention();
     for (auto &&name : var->extract_names()) {
         // Apply the borrow to the symbol.
-        const auto sym = sm->current_scope->get_var_symbol(*name);
+        const auto sym = sm->current_scope->get_var_symbol(name);
         sym->memory_info->ast_borrowed = conv;
         sym->memory_info->is_borrow_mut = conv and *conv == ConventionAst::ConventionTag::MUT;
         sym->memory_info->is_borrow_ref = conv and *conv == ConventionAst::ConventionTag::REF;

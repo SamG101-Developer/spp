@@ -12,6 +12,7 @@
 
 #include <genex/views/concat.hpp>
 
+// static auto COUNTER = 0;
 
 spp::asts::TypeUnaryExpressionAst::TypeUnaryExpressionAst(
     decltype(op) op,
@@ -49,6 +50,11 @@ auto spp::asts::TypeUnaryExpressionAst::pos_end() const -> std::size_t {
 
 
 auto spp::asts::TypeUnaryExpressionAst::clone() const -> std::unique_ptr<Ast> {
+    // std::cout << COUNTER << std::endl;
+    // COUNTER++;
+
+    auto _ = 123;
+
     return std::make_unique<TypeUnaryExpressionAst>(
         ast_clone(op),
         ast_clone(rhs));
@@ -152,11 +158,17 @@ auto spp::asts::TypeUnaryExpressionAst::get_convention() const
 auto spp::asts::TypeUnaryExpressionAst::with_convention(
     std::unique_ptr<ConventionAst> &&conv) const
     -> std::shared_ptr<TypeAst> {
-    if (conv == nullptr) { return ast_clone(this); }
-    if (ast_cast<TypeUnaryExpressionOperatorBorrowAst>(op.get())) {
-        return std::make_shared<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), rhs);
+    if (conv == nullptr) {
+        return std::make_shared<TypeUnaryExpressionAst>(ast_clone(op), ast_clone(rhs));
     }
-    return std::make_shared<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), ast_clone(this));
+    if (ast_cast<TypeUnaryExpressionOperatorBorrowAst>(op.get())) {
+        return std::make_shared<TypeUnaryExpressionAst>(
+            std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)),
+            ast_clone(rhs));
+    }
+    return std::make_shared<TypeUnaryExpressionAst>(
+        std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)),
+        ast_clone(this));
 }
 
 
@@ -169,7 +181,7 @@ auto spp::asts::TypeUnaryExpressionAst::without_generics() const
 auto spp::asts::TypeUnaryExpressionAst::substitute_generics(
     std::vector<GenericArgumentAst*> const &args) const
     -> std::shared_ptr<TypeAst> {
-    return std::make_shared<TypeUnaryExpressionAst>(op, rhs->substitute_generics(args));
+    return std::make_shared<TypeUnaryExpressionAst>(ast_clone(op), rhs->substitute_generics(args));
 }
 
 
@@ -189,11 +201,11 @@ auto spp::asts::TypeUnaryExpressionAst::match_generic(
 
 
 auto spp::asts::TypeUnaryExpressionAst::with_generics(
-    std::shared_ptr<GenericArgumentGroupAst> &&arg_group) const
+    std::unique_ptr<GenericArgumentGroupAst> &&arg_group) const
     -> std::shared_ptr<TypeAst> {
     // Clone this type and add the generics to the right most part.
     auto type_clone = ast_clone(this);
-    type_clone->type_parts().back()->generic_arg_group->args = std::move(arg_group->args);
+    type_clone->type_parts().back()->generic_arg_group = std::move(arg_group);
     return type_clone;
 }
 
@@ -242,6 +254,6 @@ auto spp::asts::TypeUnaryExpressionAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Infer the RHS type.
     const auto type_scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
-    const auto type_sym = type_scope->get_type_symbol(*this);
+    const auto type_sym = type_scope->get_type_symbol(shared_from_this());
     return type_sym->fq_name()->with_convention(ast_clone(get_convention()));
 }

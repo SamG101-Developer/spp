@@ -99,9 +99,9 @@ public:
 
     static auto new_global(compiler::Module const &module) -> std::unique_ptr<Scope>;
 
-    static auto search_sup_scopes_for_var(Scope const &scope, asts::IdentifierAst const &name) -> std::shared_ptr<VariableSymbol>;
-    static auto search_sup_scopes_for_type(Scope const &scope, asts::TypeAst const &name, bool ignore_alias) -> std::shared_ptr<TypeSymbol>;
-    static auto shift_scope_for_namespaced_type(Scope const &scope, asts::TypeAst const &fq_type) -> std::pair<const Scope*, std::shared_ptr<const asts::TypeIdentifierAst>>;
+    static auto search_sup_scopes_for_var(Scope const &scope, std::shared_ptr<asts::IdentifierAst> const &name) -> std::shared_ptr<VariableSymbol>;
+    static auto search_sup_scopes_for_type(Scope const &scope, std::shared_ptr<asts::TypeAst> const &name, bool ignore_alias) -> std::shared_ptr<TypeSymbol>;
+    static auto shift_scope_for_namespaced_type(Scope const &scope, asts::TypeAst const &fq_type) -> std::pair<const Scope*, std::shared_ptr<asts::TypeIdentifierAst>>;
 
     auto get_error_formatter() const -> spp::utils::errors::ErrorFormatter*;
 
@@ -113,21 +113,21 @@ public:
     SPP_NO_ASAN auto add_type_symbol(std::shared_ptr<TypeSymbol> const &sym) -> void;
     SPP_NO_ASAN auto add_ns_symbol(std::shared_ptr<NamespaceSymbol> const &sym) -> void;
 
-    auto rem_var_symbol(asts::IdentifierAst const &sym_name) -> void;
-    auto rem_type_symbol(asts::TypeIdentifierAst const &sym_name) -> void;
-    auto rem_ns_symbol(asts::IdentifierAst const &sym_name) -> void;
+    auto rem_var_symbol(std::shared_ptr<asts::IdentifierAst> const &sym_name) -> void;
+    auto rem_type_symbol(std::shared_ptr<asts::TypeIdentifierAst> const &sym_name) -> void;
+    auto rem_ns_symbol(std::shared_ptr<asts::IdentifierAst> const &sym_name) -> void;
 
     SPP_NO_ASAN auto all_var_symbols(bool exclusive = false, bool sup_scope_search = false) const -> std::generator<std::shared_ptr<VariableSymbol>>;
     SPP_NO_ASAN auto all_type_symbols(bool exclusive = false, bool sup_scope_search = false) const -> std::generator<std::shared_ptr<TypeSymbol>>;
     SPP_NO_ASAN auto all_ns_symbols(bool exclusive = false, bool = false) const -> std::generator<std::shared_ptr<NamespaceSymbol>>;
 
-    auto has_var_symbol(asts::IdentifierAst const &sym_name, bool exclusive = false) const -> bool;
-    auto has_type_symbol(asts::TypeAst const &sym_name, bool exclusive = false) const -> bool;
-    auto has_ns_symbol(asts::IdentifierAst const &sym_name, bool exclusive = false) const -> bool;
+    auto has_var_symbol(std::shared_ptr<asts::IdentifierAst> const &sym_name, bool exclusive = false) const -> bool;
+    auto has_type_symbol(std::shared_ptr<asts::TypeAst> const &sym_name, bool exclusive = false) const -> bool;
+    auto has_ns_symbol(std::shared_ptr<asts::IdentifierAst> const &sym_name, bool exclusive = false) const -> bool;
 
-    auto get_var_symbol(asts::IdentifierAst const &sym_name, bool exclusive = false) const -> std::shared_ptr<VariableSymbol>;
-    auto get_type_symbol(asts::TypeAst const &sym_name, bool exclusive = false, bool ignore_alias = false) const -> std::shared_ptr<TypeSymbol>;
-    auto get_ns_symbol(asts::IdentifierAst const &sym_name, bool exclusive = false) const -> std::shared_ptr<NamespaceSymbol>;
+    auto get_var_symbol(std::shared_ptr<asts::IdentifierAst> const &sym_name, bool exclusive = false) const -> std::shared_ptr<VariableSymbol>;
+    auto get_type_symbol(std::shared_ptr<const asts::TypeAst> const &sym_name, bool exclusive = false, bool ignore_alias = false) const -> std::shared_ptr<TypeSymbol>;
+    auto get_ns_symbol(std::shared_ptr<const asts::IdentifierAst> const &sym_name, bool exclusive = false) const -> std::shared_ptr<NamespaceSymbol>;
 
     auto get_var_symbol_outermost(asts::Ast const &expr) const -> std::pair<std::shared_ptr<VariableSymbol>, Scope const*>;
 

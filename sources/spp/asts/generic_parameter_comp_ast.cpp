@@ -50,7 +50,7 @@ auto spp::asts::GenericParameterCompAst::stage_4_qualify_types(
     -> void {
     // Qualify the type on the generic parameter.
     type->stage_7_analyse_semantics(sm, meta);
-    type = sm->current_scope->get_type_symbol(*type)->fq_name();
+    type = sm->current_scope->get_type_symbol(type)->fq_name();
 }
 
 

@@ -73,12 +73,12 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
     const auto stripped_rhs = rhs_type.without_generics();
 
     // Get the non-generic symbols.
-    const auto stripped_lhs_sym = lhs_scope.get_type_symbol(*stripped_lhs, false, lhs_ignore_alias);
-    const auto stripped_rhs_sym = rhs_scope.get_type_symbol(*stripped_rhs, false);
+    const auto stripped_lhs_sym = lhs_scope.get_type_symbol(stripped_lhs, false, lhs_ignore_alias);
+    const auto stripped_rhs_sym = rhs_scope.get_type_symbol(stripped_rhs, false);
 
     // If the left-hand-side is a "Variant" type, check the composite types first.
     if (check_variant and symbolic_eq(*stripped_lhs_sym->fq_name()->without_generics(), *asts::generate::common_types_precompiled::VAR, lhs_scope, lhs_scope, false)) {
-        auto lhs_composite_types = deduplicate_variant_inner_types(*lhs_scope.get_type_symbol(lhs_type)->fq_name(), lhs_scope);
+        auto lhs_composite_types = deduplicate_variant_inner_types(*lhs_scope.get_type_symbol(lhs_type.shared_from_this())->fq_name(), lhs_scope);
         if (genex::algorithms::any_of(lhs_composite_types, [&](auto &&lhs_composite_type) { return symbolic_eq(*lhs_composite_type, rhs_type, lhs_scope, rhs_scope); })) {
             return true;
         }
@@ -90,14 +90,14 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
     }
 
     // Get the generic arguments for both types.
-    const auto lhs_type_fq = lhs_scope.get_type_symbol(lhs_type, false, lhs_ignore_alias)->fq_name();
-    const auto rhs_type_fq = rhs_scope.get_type_symbol(rhs_type, false)->fq_name();
+    const auto lhs_type_fq = lhs_scope.get_type_symbol(lhs_type.shared_from_this(), false, lhs_ignore_alias)->fq_name();
+    const auto rhs_type_fq = rhs_scope.get_type_symbol(rhs_type.shared_from_this(), false)->fq_name();
 
     auto &lhs_generics = lhs_type_fq->type_parts().back()->generic_arg_group->args;
     auto &rhs_generics = rhs_type_fq->type_parts().back()->generic_arg_group->args;
 
     // Special case for variadic parameter types.
-    const auto temp_type_proto = lhs_scope.get_type_symbol(lhs_type)->type;
+    const auto temp_type_proto = lhs_scope.get_type_symbol(lhs_type.shared_from_this())->type;
     if (temp_type_proto and not temp_type_proto->generic_param_group->params.empty()) {
         if (asts::ast_cast<asts::FunctionParameterVariadicAst>(temp_type_proto->generic_param_group->params.back().get()) != nullptr) {
             if (lhs_generics.size() != rhs_generics.size()) {
@@ -164,7 +164,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     auto stripped_rhs = rhs_type.without_generics();
 
     // If the right-hand-side is generic, then return a match: "sup[T] T { ... }" matches all types.
-    const auto stripped_rhs_sym = rhs_scope->get_type_symbol(*stripped_rhs);
+    const auto stripped_rhs_sym = rhs_scope->get_type_symbol(stripped_rhs);
     if (stripped_rhs_sym->is_generic) {
         generic_args[std::move(stripped_rhs)] = &lhs_type;
         return true;
@@ -174,20 +174,20 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     const auto stripped_lhs = lhs_type.without_generics();
 
     // If the stripped types aren't equal, then return false.
-    const auto stripped_lhs_sym = lhs_scope->get_type_symbol(*stripped_lhs);
+    const auto stripped_lhs_sym = lhs_scope->get_type_symbol(stripped_lhs);
     if (stripped_lhs_sym->type != stripped_rhs_sym->type) {
         return false;
     }
 
     // The next step is to get the generic arguments for both types.
-    const auto lhs_type_fq = lhs_scope->get_type_symbol(*stripped_lhs)->fq_name();
-    const auto rhs_type_fq = rhs_scope->get_type_symbol(*stripped_rhs)->fq_name();
+    const auto lhs_type_fq = lhs_scope->get_type_symbol(stripped_lhs)->fq_name();
+    const auto rhs_type_fq = rhs_scope->get_type_symbol(stripped_rhs)->fq_name();
 
     auto &lhs_generics = lhs_type_fq->type_parts().back()->generic_arg_group->args;
     auto &rhs_generics = rhs_type_fq->type_parts().back()->generic_arg_group->args;
 
     // Special case for variadic parameter types.
-    const auto temp_type_proto = lhs_scope->get_type_symbol(lhs_type)->type;
+    const auto temp_type_proto = lhs_scope->get_type_symbol(lhs_type.shared_from_this())->type;
     if (temp_type_proto and not temp_type_proto->generic_param_group->params.empty()) {
         if (asts::ast_cast<asts::FunctionParameterVariadicAst>(temp_type_proto->generic_param_group->params.back().get()) != nullptr) {
             if (lhs_generics.size() != rhs_generics.size()) {
@@ -328,7 +328,7 @@ auto spp::analyse::utils::type_utils::get_attr_types(
     -> std::generator<std::pair<const asts::ClassPrototypeAst*, std::shared_ptr<asts::TypeAst>>> {
     // Define the internal function to recursively search for attribute types.
     for (const auto attr : cls_proto->impl->members | genex::views::ptr | genex::views::cast_dynamic<asts::ClassAttributeAst*>()) {
-        const auto attr_type_sym = cls_scope->get_type_symbol(*attr->type, true);
+        const auto attr_type_sym = cls_scope->get_type_symbol(attr->type, true);
         if (attr_type_sym and attr_type_sym->type != nullptr) {
             co_yield std::make_tuple(attr_type_sym->type, attr->type);
             for (auto &&tup : get_attr_types(attr_type_sym->type, attr_type_sym->scope)) {
@@ -386,7 +386,7 @@ auto spp::analyse::utils::type_utils::get_generator_and_yield_type(
     std::string_view what)
     -> std::tuple<std::shared_ptr<const asts::TypeAst>, std::shared_ptr<asts::TypeAst>, bool, bool, bool, std::shared_ptr<asts::TypeAst>> {
     // Generic types are not generators, so raise an error.
-    const auto type_sym = sm.current_scope->get_type_symbol(type);
+    const auto type_sym = sm.current_scope->get_type_symbol(type.shared_from_this());
     if (type_sym->scope == nullptr) {
         errors::SemanticErrorBuilder<errors::SppExpressionNotGeneratorError>().with_args(
             expr, type, what).with_scopes({sm.current_scope}).raise();
@@ -432,7 +432,7 @@ auto spp::analyse::utils::type_utils::get_try_type(
     scopes::ScopeManager const &sm)
     -> std::shared_ptr<const asts::TypeAst> {
     // Generic types are not Try types, so return nullptr.
-    const auto type_sym = sm.current_scope->get_type_symbol(type);
+    const auto type_sym = sm.current_scope->get_type_symbol(type.shared_from_this());
     if (type_sym->scope == nullptr) {
         return nullptr;
     }
@@ -520,7 +520,7 @@ auto spp::analyse::utils::type_utils::get_all_attrs(
     scopes::ScopeManager const *sm)
     -> std::vector<std::pair<asts::ClassAttributeAst*, scopes::Scope*>> {
     // Get the symbol of the class type.
-    const auto cls_sym = sm->current_scope->get_type_symbol(type);
+    const auto cls_sym = sm->current_scope->get_type_symbol(type.shared_from_this());
 
     // Get the attribute information from the class type and all super types.
     auto all_scopes = cls_sym->scope->sup_scopes();
@@ -553,7 +553,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     const auto old_cls_scope = old_cls_sym.scope;
     auto new_cls_scope = std::make_unique<scopes::Scope>(&type_part, old_cls_scope->parent, old_cls_scope->ast);
     auto new_cls_symbol = std::make_unique<scopes::TypeSymbol>(
-        asts::ast_cast<asts::TypeIdentifierAst>(type_part.shared_from_this()),
+        ast_clone(&type_part),
         asts::ast_cast<asts::ClassPrototypeAst>(new_cls_scope->ast), new_cls_scope.get(), sm->current_scope,
         old_cls_sym.is_generic, old_cls_sym.is_copyable, old_cls_sym.visibility);
 
@@ -590,14 +590,15 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
 
     // Run generic substitution on the symbols in the scope.
     auto tm = scopes::ScopeManager(sm->global_scope, new_cls_scope_ptr);
-    for (auto &&scoped_sym : new_cls_scope_ptr->all_var_symbols()) {
+    for (auto &&scoped_sym : new_cls_scope_ptr->all_var_symbols(true)) {
         scoped_sym->type = scoped_sym->type->substitute_generics(type_part.generic_arg_group->args | genex::views::ptr | genex::views::to<std::vector>());
-        scoped_sym->type->stage_7_analyse_semantics(&tm, meta);
+        // scoped_sym->type->stage_7_analyse_semantics(&tm, meta);
     }
+
     for (const auto attr : asts::ast_cast<asts::ClassPrototypeAst>(old_cls_scope->ast)->impl->members | genex::views::ptr | genex::views::cast_dynamic<asts::ClassAttributeAst*>() | genex::views::to<std::vector>()) {
         const auto new_attr = ast_clone(attr);
         new_attr->type = new_attr->type->substitute_generics(type_part.generic_arg_group->args | genex::views::ptr | genex::views::to<std::vector>());
-        new_attr->type->stage_7_analyse_semantics(&tm, meta);
+        new_attr->stage_7_analyse_semantics(sm, meta);
     }
 
     // Return the new class scope.
@@ -629,11 +630,11 @@ auto spp::analyse::utils::type_utils::create_generic_fun_scope(
 
     generic_syms
         | genex::views::cast_smart_ptr<scopes::TypeSymbol>()
-        | genex::views::for_each([&new_fun_scope](auto e) { new_fun_scope->add_type_symbol(std::move(e)); });
+        | genex::views::for_each([&new_fun_scope](auto const &e) { new_fun_scope->add_type_symbol(e); });
 
     generic_syms
         | genex::views::cast_smart_ptr<scopes::VariableSymbol>()
-        | genex::views::for_each([&new_fun_scope](auto e) { new_fun_scope->add_var_symbol(std::move(e)); });
+        | genex::views::for_each([&new_fun_scope](auto const& e) { new_fun_scope->add_var_symbol(e); });
 
     // Return the new function scope.
     return new_fun_scope.get();
@@ -672,7 +673,7 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
 
     // Add the "Self" symbol into the new scope.
     self_type->stage_7_analyse_semantics(sm, meta);
-    auto old_self_sym = new_sup_scope->get_type_symbol(*self_type);
+    auto old_self_sym = new_sup_scope->get_type_symbol(self_type);
     new_sup_scope->add_type_symbol(std::make_unique<scopes::AliasSymbol>(
         std::make_unique<asts::TypeIdentifierAst>(0, "Self", nullptr), nullptr, &new_cls_scope, new_sup_scope.get(),
         old_self_sym));
@@ -681,8 +682,8 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     for (auto &&scoped_sym : new_sup_scope->all_type_symbols() | genex::views::to<std::vector>()) {
         if (auto scoped_alias_sym = std::dynamic_pointer_cast<scopes::AliasSymbol>(scoped_sym); scoped_alias_sym != nullptr) {
             auto old_type_sub = scoped_alias_sym->old_sym->fq_name();
-            scoped_alias_sym->old_sym = old_sup_scope.get_type_symbol(*old_type_sub)
-                                            ? old_sup_scope.get_type_symbol(*old_type_sub)
+            scoped_alias_sym->old_sym = old_sup_scope.get_type_symbol(old_type_sub)
+                                            ? old_sup_scope.get_type_symbol(old_type_sub)
                                             : scoped_alias_sym->old_sym;
             if (genex::algorithms::contains(old_sup_scope.children | genex::views::ptr | genex::views::to<std::vector>(), scoped_alias_sym->scope)) {
                 scoped_alias_sym->scope = new_sup_scope->children[genex::algorithms::position(old_sup_scope.children | genex::views::ptr | genex::views::to<std::vector>(), [&](auto &&x) { return x == scoped_alias_sym->scope; }) as USize].get();
@@ -701,7 +702,7 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     if (const auto ext_ast = asts::ast_cast<asts::SupPrototypeExtensionAst>(old_sup_scope.ast); ext_ast != nullptr) {
         const auto new_fq_super_type = ext_ast->super_class->substitute_generics(generic_args.args | genex::views::ptr | genex::views::to<std::vector>());
         new_fq_super_type->stage_7_analyse_semantics(sm, meta);
-        super_cls_scope = new_cls_scope.get_type_symbol(*new_fq_super_type)->scope;
+        super_cls_scope = new_cls_scope.get_type_symbol(new_fq_super_type)->scope;
     }
 
     return std::make_tuple(&new_cls_scope, super_cls_scope);
@@ -716,9 +717,9 @@ auto spp::analyse::utils::type_utils::create_generic_sym(
     -> std::shared_ptr<scopes::Symbol> {
     // Handle the generic type argument => creates a type symbol.
     if (const auto type_arg = asts::ast_cast<asts::GenericArgumentTypeKeywordAst>(&generic); type_arg != nullptr) {
-        const auto true_val_sym = sm.current_scope->get_type_symbol(*type_arg->val);
+        const auto true_val_sym = sm.current_scope->get_type_symbol(type_arg->val);
         auto sym = std::make_unique<scopes::TypeSymbol>(
-            type_arg->name->type_parts().back(), true_val_sym ? true_val_sym->type : nullptr,
+            ast_clone(type_arg->name->type_parts().back()), true_val_sym ? true_val_sym->type : nullptr,
             true_val_sym ? true_val_sym->scope : nullptr, sm.current_scope, true,
             true_val_sym ? true_val_sym->is_copyable : false, asts::utils::Visibility::PUBLIC,
             type_arg->val->get_convention());
@@ -729,7 +730,7 @@ auto spp::analyse::utils::type_utils::create_generic_sym(
     if (const auto comp_arg = asts::ast_cast<asts::GenericArgumentCompKeywordAst>(&generic); comp_arg != nullptr) {
         auto sym = std::make_unique<scopes::VariableSymbol>(
             asts::IdentifierAst::from_type(*comp_arg->name),
-            (tm ? *tm : sm).current_scope->get_type_symbol(*comp_arg->val->infer_type(tm ? tm : &sm, meta))->fq_name(),
+            (tm ? *tm : sm).current_scope->get_type_symbol(comp_arg->val->infer_type(tm ? tm : &sm, meta))->fq_name(),
             false, true, asts::utils::Visibility::PUBLIC);
         sym->memory_info->ast_comptime = comp_arg;
         return sym;
@@ -747,7 +748,7 @@ auto spp::analyse::utils::type_utils::get_type_part_symbol_with_error(
     const bool ignore_alias)
     -> scopes::TypeSymbol* {
     // Get the type part's symbol, and raise an error if it doesn't exist.
-    const auto type_sym = scope.get_type_symbol(type_part, false, ignore_alias);
+    const auto type_sym = scope.get_type_symbol(type_part.shared_from_this(), false, ignore_alias);
     if (type_sym == nullptr) {
         const auto alternatives = sm.current_scope->all_type_symbols()
             | genex::views::transform([](auto const &x) { return x->name->name; })

@@ -73,7 +73,7 @@
 
 
 #define WRAP_METHOD(_1, _2, m) parser_method_t<alt_t>([=, this] mutable { \
-    return std::unique_ptr<alt_t>(m().release());                   \
+    return std::unique_ptr<alt_t>(m().release());                         \
 }),
 
 

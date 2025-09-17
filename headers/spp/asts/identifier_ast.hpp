@@ -2,7 +2,7 @@
 #include <spp/asts/primary_expression_ast.hpp>
 
 
-struct spp::asts::IdentifierAst final : PrimaryExpressionAst {
+struct spp::asts::IdentifierAst final : PrimaryExpressionAst, std::enable_shared_from_this<IdentifierAst> {
     SPP_AST_KEY_FUNCTIONS;
 
     /**

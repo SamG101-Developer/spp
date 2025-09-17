@@ -910,9 +910,9 @@ spp::analyse::errors::SppIdentifierUnknownError::SppIdentifierUnknownError(
         34, "SPP Identifier Unknown Error");
     add_error(
         &name,
-        "Unknown " + std::string(what) + " identifier defined here" + (closest ? " (did you mean '" + *closest + "'?)" : ""));
+        "Unknown " + std::string(what) + " defined here" + (closest ? " (did you mean '" + *closest + "'?)" : ""));
     add_footer(
-        "This " + std::string(what) + " identifier is not defined in the current scope.",
+        "This " + std::string(what) + " is not defined in the current scope.",
         "Define the identifier or correct its name");
 }
 

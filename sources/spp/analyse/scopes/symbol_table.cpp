@@ -1,19 +1,21 @@
 #include <spp/analyse/scopes/symbol_table.hpp>
+#include <spp/asts/generic_argument_group_ast.hpp>
+#include <spp/asts/generic_argument_type_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 
 
-auto spp::analyse::scopes::SymNameCmp<spp::asts::IdentifierAst*>::operator()(
-    asts::IdentifierAst const *lhs,
-    asts::IdentifierAst const *rhs) const
+auto spp::analyse::scopes::SymNameCmp<std::shared_ptr<spp::asts::IdentifierAst>>::operator()(
+    std::shared_ptr<asts::IdentifierAst> const &lhs,
+    std::shared_ptr<asts::IdentifierAst> const &rhs) const
     -> bool {
     return *lhs < *rhs;
 }
 
 
-auto spp::analyse::scopes::SymNameCmp<spp::asts::TypeIdentifierAst*>::operator()(
-    asts::TypeIdentifierAst const *lhs,
-    asts::TypeIdentifierAst const *rhs) const
+auto spp::analyse::scopes::SymNameCmp<std::shared_ptr<spp::asts::TypeIdentifierAst>>::operator()(
+    std::shared_ptr<asts::TypeIdentifierAst> const &lhs,
+    std::shared_ptr<asts::TypeIdentifierAst> const &rhs) const
     -> bool {
     return *lhs < *rhs;
 }
@@ -49,18 +51,18 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::operator=(
 
 template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::add(
-    I const *sym_name,
+    std::shared_ptr<I> const &sym_name,
     std::shared_ptr<S> const &sym)
     -> void {
     // Add a symbol to the table.
-    if (has(sym_name)) { return; }
-    m_table.insert({sym_name, sym});
+    if (has(asts::ast_clone(sym_name))) { return; }
+    m_table.insert({asts::ast_clone(sym_name), sym});
 }
 
 
 template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::rem(
-    I const *sym_name) -> void {
+    std::shared_ptr<I> const &sym_name) -> void {
     // Remove a symbol from the table.
     m_table.erase(m_table.find(sym_name));
 }
@@ -68,7 +70,7 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::rem(
 
 template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::get(
-    I const *sym_name) const
+    std::shared_ptr<const I> const &sym_name) const
     -> std::shared_ptr<S> {
     // Get a symbol from the table.
     if (sym_name == nullptr) { return nullptr; }
@@ -83,7 +85,7 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::get(
 
 template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::has(
-    I const *sym_name) const
+    std::shared_ptr<I> const &sym_name) const
     -> bool {
     // Check if a symbol exists in the table.
     if (sym_name == nullptr) { return false; }

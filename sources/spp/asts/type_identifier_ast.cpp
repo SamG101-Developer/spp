@@ -218,12 +218,11 @@ auto spp::asts::TypeIdentifierAst::with_convention(
     std::unique_ptr<ConventionAst> &&conv) const
     -> std::shared_ptr<TypeAst> {
     if (conv == nullptr) {
-        return std::make_shared<TypeIdentifierAst>(pos_start(), std::string(name), generic_arg_group);
+        return ast_clone(this);
     }
 
     auto borrow_op = std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv));
-    auto wrapped = std::make_shared<TypeUnaryExpressionAst>(
-        std::move(borrow_op), std::make_shared<TypeIdentifierAst>(pos_start(), std::string(name), generic_arg_group));
+    auto wrapped = std::make_shared<TypeUnaryExpressionAst>(std::move(borrow_op), ast_clone(this));
     return wrapped;
 }
 
@@ -261,7 +260,7 @@ auto spp::asts::TypeIdentifierAst::substitute_generics(
 
     // Substitute generics in the comp args' types.
     for (auto &&[gen_arg_name, gen_arg_val] : gen_type_args) {
-        for (auto &&g : name_clone->generic_arg_group->get_comp_args() | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()) {
+        for (auto const &g : name_clone->generic_arg_group->get_comp_args() | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()) {
             if (auto &&ident_val = ast_cast<IdentifierAst>(g->val.get()); ident_val != nullptr and *ident_val == *IdentifierAst::from_type(*gen_arg_name)) {
                 g->val = ast_clone(gen_arg_val);
             }
@@ -269,7 +268,7 @@ auto spp::asts::TypeIdentifierAst::substitute_generics(
     }
 
     // Substitute generics in the type args' types.
-    for (auto &&g : name_clone->generic_arg_group->get_type_args() | genex::views::cast_dynamic<GenericArgumentTypeAst*>()) {
+    for (auto const &g : name_clone->generic_arg_group->get_type_args() | genex::views::cast_dynamic<GenericArgumentTypeAst*>()) {
         g->val = g->val->substitute_generics(args);
     }
 
@@ -330,7 +329,7 @@ auto spp::asts::TypeIdentifierAst::match_generic(
 
 
 auto spp::asts::TypeIdentifierAst::with_generics(
-    std::shared_ptr<GenericArgumentGroupAst> &&arg_group) const
+    std::unique_ptr<GenericArgumentGroupAst> &&arg_group) const
     -> std::shared_ptr<TypeAst> {
     // Attach the new generic argument group to a clone of this type identifier.
     return std::make_shared<TypeIdentifierAst>(m_pos, std::string(name), std::move(arg_group));
@@ -355,15 +354,15 @@ auto spp::asts::TypeIdentifierAst::stage_4_qualify_types(
             continue;
         }
 
-        std::shared_ptr<GenericArgumentGroupAst> generics = nullptr;
-        if (const auto sym = sm->current_scope->get_type_symbol(*g->val); sym != nullptr) {
-            generics = sym->fq_name()->type_parts().back()->generic_arg_group;
+        std::unique_ptr<GenericArgumentGroupAst> generics = nullptr;
+        if (const auto sym = sm->current_scope->get_type_symbol(g->val); sym != nullptr) {
+            generics = ast_clone(sym->fq_name()->type_parts().back()->generic_arg_group);
         }
         else {
-            generics = g->val->type_parts().back()->generic_arg_group;
+            generics = ast_clone(g->val->type_parts().back()->generic_arg_group);
         }
 
-        g->val = sm->current_scope->get_type_symbol(*g->val->without_generics())->fq_name()->with_generics(std::move(generics))->with_convention(ast_clone(g->val->get_convention()));
+        g->val = sm->current_scope->get_type_symbol(g->val->without_generics())->fq_name()->with_generics(std::move(generics))->with_convention(ast_clone(g->val->get_convention()));
     }
 }
 
@@ -386,10 +385,11 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
         const auto as_unary = std::dynamic_pointer_cast<TypeUnaryExpressionAst>(type_sym->fq_name()->without_generics());
         as_unary != nullptr and *as_unary == ast_cast<TypeUnaryExpressionAst>(*generate::common_types_precompiled::TUP);
     });
+
     analyse::utils::func_utils::name_generic_args(
         generic_arg_group->args,
         type_sym->type->generic_param_group->get_all_params(),
-        *this, *sm, is_tuple);
+        *this, *sm, meta, is_tuple);
 
     // Stop here is there is a flag to not check generics.
     if (meta->skip_type_analysis_generic_checks) {
@@ -403,7 +403,8 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     // Infer the generic arguments from information given from object initialization.
     const auto owner = analyse::utils::type_utils::get_type_part_symbol_with_error(
         *type_scope, ast_cast<TypeIdentifierAst>(*without_generics()), *sm, meta, true)->fq_name();
-    auto owner_sym = sm->current_scope->get_type_symbol(*owner);
+    const auto owner_sym = sm->current_scope->get_type_symbol(owner);
+
     analyse::utils::func_utils::infer_generic_args(
         generic_arg_group->args,
         type_sym->type->generic_param_group->get_all_params(),
@@ -424,7 +425,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     }
 
     // If the generically filled type doesn't exist (Vec[Str]), but the base does (Vec[T]), create it.
-    if (not type_scope->parent->has_type_symbol(*this)) {
+    if (not type_scope->parent->has_type_symbol(shared_from_this())) {
         const auto external_generics = sm->current_scope->get_extended_generic_symbols(generic_arg_group->get_all_args());
         const auto new_scope = analyse::utils::type_utils::create_generic_cls_scope(
             *this, *type_sym, external_generics, is_tuple, sm, meta);
@@ -441,11 +442,11 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
             // Create a new aliasing symbol for the substituted new type.
             auto new_alias_sym = std::make_unique<analyse::scopes::AliasSymbol>(
                 new_scope->ty_sym->name, new_scope->ty_sym->type, new_scope, new_scope->ty_sym->scope_defined_in,
-                sm->current_scope->get_type_symbol(*old_type), new_scope->ty_sym->is_generic,
+                sm->current_scope->get_type_symbol(old_type), new_scope->ty_sym->is_generic,
                 new_scope->ty_sym->is_copyable);
 
             new_scope->ty_sym = std::move(new_alias_sym);
-            new_scope->parent->rem_type_symbol(*new_scope->ty_sym->name);
+            new_scope->parent->rem_type_symbol(new_scope->ty_sym->name);
             new_scope->parent->add_type_symbol(new_scope->ty_sym);
         }
     }
@@ -458,6 +459,6 @@ auto spp::asts::TypeIdentifierAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Fully qualify name from the scope.
     const auto type_scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
-    const auto type_sym = type_scope->get_type_symbol(*this);
+    const auto type_sym = type_scope->get_type_symbol(shared_from_this());
     return type_sym->fq_name();
 }

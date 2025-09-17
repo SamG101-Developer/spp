@@ -80,8 +80,8 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_7_analyse_semantics(
         let->stage_7_analyse_semantics(sm, meta);
 
         // Apply the borrow to the symbol.
-        const auto sym = sm->current_scope->get_var_symbol(ast_cast<IdentifierAst>(*let->val));
-        auto conv = cap->conv.get();
+        const auto sym = sm->current_scope->get_var_symbol(ast_cast<IdentifierAst>(std::move(let->val)));
+        const auto conv = cap->conv.get();
         sym->memory_info->ast_borrowed = conv;
         sym->memory_info->is_borrow_mut = conv and *conv == ConventionAst::ConventionTag::MUT;
         sym->memory_info->is_borrow_ref = conv and *conv == ConventionAst::ConventionTag::MUT;
@@ -99,14 +99,14 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_8_check_memory(
         captures
             | genex::views::ptr
             | genex::views::filter([](auto &&x) { return x->conv != nullptr; })
-            | genex::views::for_each([&](auto &&x) { meta->current_lambda_outer_scope->get_var_symbol(*meta->assignment_target)->memory_info->ast_pins.emplace_back(x->val.get()); });
+            | genex::views::for_each([&](auto &&x) { meta->current_lambda_outer_scope->get_var_symbol(meta->assignment_target)->memory_info->ast_pins.emplace_back(x->val.get()); });
     }
 
     // Pin any values that have been captured by the closure as borrows.
     for (auto &&cap : captures) {
         if (cap->conv != nullptr) {
             const auto cap_val = ast_cast<IdentifierAst>(cap->val.get());
-            const auto cap_sym = sm->current_scope->get_var_symbol(*cap_val);
+            const auto cap_sym = sm->current_scope->get_var_symbol(cap_val->shared_from_this());
             cap_sym->memory_info->ast_pins.emplace_back(cap->val.get());
         }
     }

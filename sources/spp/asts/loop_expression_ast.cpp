@@ -152,7 +152,7 @@ auto spp::asts::LoopExpressionAst::infer_type(
         if (ast_cast<LoopConditionBooleanAst>(cond.get())) {
             // Non-symbolic expressions, or compile time symbolic boolean expressions, can never change (infinite loop)
             const auto is_symbolic = ast_cast<IdentifierAst>(cond.get());
-            if (not is_symbolic or sm->current_scope->get_var_symbol(*is_symbolic)->memory_info->ast_comptime != nullptr) {
+            if (not is_symbolic or sm->current_scope->get_var_symbol(is_symbolic->shared_from_this())->memory_info->ast_comptime != nullptr) {
                 loop_type = generate::common_types::never_type(pos_start());
             }
         }

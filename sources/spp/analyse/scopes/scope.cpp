@@ -80,7 +80,7 @@ auto spp::analyse::scopes::Scope::new_global(
 
 auto spp::analyse::scopes::Scope::search_sup_scopes_for_var(
     Scope const &scope,
-    asts::IdentifierAst const &name)
+    std::shared_ptr<asts::IdentifierAst> const &name)
     -> std::shared_ptr<VariableSymbol> {
     // Recursively search the super scopes for a variable symbol.
     for (const auto sup_scope : scope.m_direct_sup_scopes) {
@@ -96,7 +96,7 @@ auto spp::analyse::scopes::Scope::search_sup_scopes_for_var(
 
 auto spp::analyse::scopes::Scope::search_sup_scopes_for_type(
     Scope const &scope,
-    asts::TypeAst const &name,
+    std::shared_ptr<asts::TypeAst> const &name,
     const bool ignore_alias)
     -> std::shared_ptr<TypeSymbol> {
     // Recursively search the super scopes for a type symbol.
@@ -114,7 +114,7 @@ auto spp::analyse::scopes::Scope::search_sup_scopes_for_type(
 auto spp::analyse::scopes::Scope::shift_scope_for_namespaced_type(
     Scope const &scope,
     asts::TypeAst const &fq_type)
-    -> std::pair<const Scope*, std::shared_ptr<const asts::TypeIdentifierAst>> {
+    -> std::pair<const Scope*, std::shared_ptr<asts::TypeIdentifierAst>> {
     // Get the namespace and type parts, to get the scopes.
     const auto ns_parts = fq_type.ns_parts();
     const auto type_parts = fq_type.type_parts();
@@ -122,20 +122,21 @@ auto spp::analyse::scopes::Scope::shift_scope_for_namespaced_type(
 
     // Iterate to move through the namespace parts first.
     for (auto &&ns_part : ns_parts) {
-        const auto sym = shifted_scope->get_ns_symbol(*ns_part);
+        const auto sym = shifted_scope->get_ns_symbol(ns_part);
         if (sym == nullptr) { break; }
         shifted_scope = sym->scope;
     }
 
     // Iterate through the type parts (except the final one) next.
     for (auto &&type_part : type_parts | genex::views::drop_last(1)) {
-        const auto sym = shifted_scope->get_type_symbol(*type_part);
+        const auto sym = shifted_scope->get_type_symbol(type_part);
         if (sym == nullptr or sym->scope == nullptr) { break; }
         shifted_scope = sym->scope;
     }
 
     // Return the type scope, and the final type part.
-    return std::make_pair(shifted_scope, type_parts.back());
+    auto final = asts::ast_clone(type_parts.back());
+    return std::make_pair(shifted_scope, std::move(final));
 }
 
 
@@ -160,12 +161,12 @@ auto spp::analyse::scopes::Scope::get_generics() const
         // Type symbols must be generic and have a "scope" ie the generic points to a concrete type.
         scope->all_type_symbols(true)
             | genex::views::filter([](auto &&sym) { return sym->is_generic and sym->scope != nullptr; })
-            | genex::views::for_each([&syms](auto const&sym) { syms.emplace_back(asts::GenericArgumentTypeKeywordAst::from_symbol(*sym)); });
+            | genex::views::for_each([&syms](auto const &sym) { syms.emplace_back(asts::GenericArgumentTypeKeywordAst::from_symbol(*sym)); });
 
         // Comp symbols must be generic.
         scope->all_var_symbols(true)
             | genex::views::filter([](auto &&sym) { return sym->is_generic; })
-            | genex::views::for_each([&syms](auto const&sym) { syms.emplace_back(asts::GenericArgumentCompKeywordAst::from_symbol(*sym)); });
+            | genex::views::for_each([&syms](auto const &sym) { syms.emplace_back(asts::GenericArgumentCompKeywordAst::from_symbol(*sym)); });
     }
 
     // Return the list of generic symbols.
@@ -176,16 +177,17 @@ auto spp::analyse::scopes::Scope::get_generics() const
 auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
     std::vector<asts::GenericArgumentAst*> generics)
     -> std::vector<std::shared_ptr<Symbol>> {
+
     // Convert the provided generic arguments into symbols.
     const auto type_syms = generics
         | genex::views::cast_dynamic<asts::GenericArgumentTypeAst*>()
-        | genex::views::transform([this](auto &&gen_arg) { return get_type_symbol(*gen_arg->val); })
+        | genex::views::transform([this](auto &&gen_arg) { return get_type_symbol(gen_arg->val); })
         | genex::views::cast_smart_ptr<Symbol>()
         | genex::views::to<std::vector>();
 
     const auto comp_syms = generics
         | genex::views::cast_dynamic<asts::GenericArgumentCompAst*>()
-        | genex::views::transform([this](auto &&gen_arg) { return get_var_symbol(ast_cast<asts::IdentifierAst>(*gen_arg->val)); })
+        | genex::views::transform([this](auto &&gen_arg) { return get_var_symbol(asts::ast_cast<asts::IdentifierAst>(asts::ast_clone(gen_arg->val))); })
         | genex::views::cast_smart_ptr<Symbol>()
         | genex::views::to<std::vector>();
 
@@ -216,7 +218,7 @@ auto spp::analyse::scopes::Scope::add_var_symbol(
     std::shared_ptr<VariableSymbol> const &sym)
     -> void {
     // Add a type symbol to the corresponding symbol table.
-    table.var_tbl.add(sym->name.get(), std::move(sym));
+    table.var_tbl.add(sym->name, std::move(sym));
 }
 
 
@@ -224,7 +226,7 @@ auto spp::analyse::scopes::Scope::add_type_symbol(
     std::shared_ptr<TypeSymbol> const &sym)
     -> void {
     // Add a type symbol to the corresponding symbol table.
-    table.type_tbl.add(sym->name.get(), sym);
+    table.type_tbl.add(sym->name, sym);
 }
 
 
@@ -232,31 +234,31 @@ auto spp::analyse::scopes::Scope::add_ns_symbol(
     std::shared_ptr<NamespaceSymbol> const &sym)
     -> void {
     // Add a namespace symbol to the corresponding symbol table.
-    table.ns_tbl.add(sym->name.get(), sym);
+    table.ns_tbl.add(sym->name, sym);
 }
 
 
 auto spp::analyse::scopes::Scope::rem_var_symbol(
-    asts::IdentifierAst const &sym_name)
+    std::shared_ptr<asts::IdentifierAst> const &sym_name)
     -> void {
     // Remove a variable symbol from the corresponding symbol table.
-    table.var_tbl.rem(&sym_name);
+    table.var_tbl.rem(sym_name);
 }
 
 
 auto spp::analyse::scopes::Scope::rem_type_symbol(
-    asts::TypeIdentifierAst const &sym_name)
+    std::shared_ptr<asts::TypeIdentifierAst> const &sym_name)
     -> void {
     // Remove a type symbol from the corresponding symbol table.
-    table.type_tbl.rem(&sym_name);
+    table.type_tbl.rem(sym_name);
 }
 
 
 auto spp::analyse::scopes::Scope::rem_ns_symbol(
-    asts::IdentifierAst const &sym_name)
+    std::shared_ptr<asts::IdentifierAst> const &sym_name)
     -> void {
     // Remove a namespace symbol from the corresponding symbol table.
-    table.ns_tbl.rem(&sym_name);
+    table.ns_tbl.rem(sym_name);
 }
 
 
@@ -332,7 +334,7 @@ auto spp::analyse::scopes::Scope::all_ns_symbols(
 
 
 auto spp::analyse::scopes::Scope::has_var_symbol(
-    asts::IdentifierAst const &sym_name,
+    std::shared_ptr<asts::IdentifierAst> const &sym_name,
     const bool exclusive) const
     -> bool {
     // Check if getting the symbol returns nullptr or not.
@@ -341,7 +343,7 @@ auto spp::analyse::scopes::Scope::has_var_symbol(
 
 
 auto spp::analyse::scopes::Scope::has_type_symbol(
-    asts::TypeAst const &sym_name,
+    std::shared_ptr<asts::TypeAst> const &sym_name,
     const bool exclusive) const
     -> bool {
     // Check if getting the symbol returns nullptr or not.
@@ -350,7 +352,7 @@ auto spp::analyse::scopes::Scope::has_type_symbol(
 
 
 auto spp::analyse::scopes::Scope::has_ns_symbol(
-    asts::IdentifierAst const &sym_name,
+    std::shared_ptr<asts::IdentifierAst> const &sym_name,
     const bool exclusive) const
     -> bool {
     // Check if getting the symbol returns nullptr or not.
@@ -359,12 +361,12 @@ auto spp::analyse::scopes::Scope::has_ns_symbol(
 
 
 auto spp::analyse::scopes::Scope::get_var_symbol(
-    asts::IdentifierAst const &sym_name,
+    std::shared_ptr<asts::IdentifierAst> const &sym_name,
     const bool exclusive) const
     -> std::shared_ptr<VariableSymbol> {
     // Get the symbol from the symbol table if it exists.
     const auto scope = this;
-    auto sym = table.var_tbl.get(&sym_name);
+    auto sym = table.var_tbl.get(sym_name);
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym == nullptr and not exclusive and scope->parent != nullptr) {
@@ -382,24 +384,25 @@ auto spp::analyse::scopes::Scope::get_var_symbol(
 
 
 auto spp::analyse::scopes::Scope::get_type_symbol(
-    asts::TypeAst const &sym_name,
+    std::shared_ptr<const asts::TypeAst> const &sym_name,
     const bool exclusive,
     const bool ignore_alias) const
     -> std::shared_ptr<TypeSymbol> {
+
     // Adjust the scope for the namespace of the type identifier if there is one.
-    auto [scope, sym_name_extracted] = shift_scope_for_namespaced_type(*this, *sym_name.without_convention());
+    auto [scope, sym_name_extracted] = shift_scope_for_namespaced_type(*this, *sym_name->without_convention());
 
     // Get the symbol from the symbol table if it exists.
-    auto sym = scope->table.type_tbl.get(sym_name_extracted.get());
+    auto sym = scope->table.type_tbl.get(sym_name_extracted);
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym == nullptr and not exclusive and scope->parent != nullptr) {
-        sym = scope->parent->get_type_symbol(*sym_name_extracted, exclusive, ignore_alias);
+        sym = scope->parent->get_type_symbol(sym_name_extracted, exclusive, ignore_alias);
     }
 
     // If the symbol still hasn't been found, check the super scopes for it.
     if (sym == nullptr) {
-        sym = search_sup_scopes_for_type(*scope, *sym_name_extracted, ignore_alias);
+        sym = search_sup_scopes_for_type(*scope, sym_name_extracted, ignore_alias);
     }
 
     // Handle any possible type aliases; sometimes the original type needs retrieving.
@@ -412,12 +415,12 @@ auto spp::analyse::scopes::Scope::get_type_symbol(
 
 
 auto spp::analyse::scopes::Scope::get_ns_symbol(
-    asts::IdentifierAst const &sym_name,
+    std::shared_ptr<const asts::IdentifierAst> const &sym_name,
     const bool exclusive) const
     -> std::shared_ptr<NamespaceSymbol> {
     // Get the symbol from the symbol table if it exists.
     const auto scope = this;
-    auto sym = table.ns_tbl.get(&sym_name);
+    auto sym = table.ns_tbl.get(sym_name);
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym == nullptr and not exclusive and scope->parent != nullptr) {
@@ -459,7 +462,7 @@ auto spp::analyse::scopes::Scope::get_var_symbol_outermost(
         }
 
         // Get the symbol (will be in this scope), and return it with the scope.
-        auto sym = get_var_symbol(*asts::ast_cast<asts::IdentifierAst>(adjusted_name));
+        auto sym = get_var_symbol(asts::ast_cast<asts::IdentifierAst>(ast_clone(adjusted_name)));
         return std::make_pair(sym, this);
     }
 
@@ -470,8 +473,8 @@ auto spp::analyse::scopes::Scope::get_var_symbol_outermost(
 
         // Type based left-hand-side, such as "some_namespace::Type::static_member()"
         if (const auto type_lhs = asts::ast_cast<asts::TypeAst>(postfix_expr->lhs.get())) {
-            const auto type_sym = get_type_symbol(*type_lhs);
-            const auto var_sym = type_sym->scope->get_var_symbol(*postfix_op->name);
+            const auto type_sym = get_type_symbol(type_lhs->shared_from_this());
+            const auto var_sym = type_sym->scope->get_var_symbol(postfix_op->name);
             return std::make_pair(var_sym, type_sym->scope);
         }
 
@@ -479,14 +482,14 @@ auto spp::analyse::scopes::Scope::get_var_symbol_outermost(
         auto namespace_scope = this;
         while (is_valid_postfix_expression_static(adjusted_name)) {
             adjusted_name = asts::ast_cast<asts::PostfixExpressionAst>(adjusted_name)->lhs.get();
-            const auto namespace_sym = namespace_scope->get_ns_symbol(*asts::ast_cast<asts::IdentifierAst>(adjusted_name));
+            const auto namespace_sym = namespace_scope->get_ns_symbol(asts::ast_cast<asts::IdentifierAst>(asts::ast_clone(adjusted_name)));
             namespace_scope = namespace_sym->scope;
         }
-        return std::make_pair(namespace_scope->get_var_symbol(*postfix_op->name), namespace_scope);
+        return std::make_pair(namespace_scope->get_var_symbol(postfix_op->name), namespace_scope);
     }
 
     // Identifiers or non-symbolic expressions can use the normal lookup.
-    auto sym = get_var_symbol(*asts::ast_cast<asts::IdentifierAst>(adjusted_name));
+    auto sym = get_var_symbol(asts::ast_cast<asts::IdentifierAst>(asts::ast_clone(adjusted_name)));
     return std::make_pair(sym, this);
 }
 
