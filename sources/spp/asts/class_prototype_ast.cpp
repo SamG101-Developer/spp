@@ -47,7 +47,7 @@ auto spp::asts::ClassPrototypeAst::pos_start() const -> std::size_t {
 
 
 auto spp::asts::ClassPrototypeAst::pos_end() const -> std::size_t {
-    return impl->pos_end();
+    return name->pos_end();
 }
 
 
