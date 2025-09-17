@@ -26,6 +26,7 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
     meta->enclosing_function_flavour = this->tok_fun.get();
     meta->enclosing_function_ret_type.emplace_back(ret_type_sym->fq_name());
     meta->enclosing_function_scope = sm->current_scope;
+    impl->stage_7_analyse_semantics(sm, meta);
 
     // Handle the "!" never type.
     meta->save();
@@ -33,6 +34,7 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
     const auto is_never = not impl->members.empty() and analyse::utils::type_utils::symbolic_eq(
         *ast_cast<StatementAst>(impl->final_member())->infer_type(sm, meta), *generate::common_types_precompiled::NEVER,
         *sm->current_scope, *sm->current_scope);
+    meta->restore();
 
     // Check there is a return statement at the end (for non-void functions).
     const auto is_void = analyse::utils::type_utils::symbolic_eq(
@@ -42,4 +44,7 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionSubroutineMissingReturnStatementError>().with_args(
             *final_member, *return_type).with_scopes({sm->current_scope}).raise();
     }
+
+    sm->move_out_of_current_scope();
+    meta->restore();
 }

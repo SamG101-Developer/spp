@@ -28,6 +28,7 @@ auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
     meta->enclosing_function_flavour = this->tok_fun.get();
     meta->enclosing_function_ret_type.emplace_back(ret_type_sym->fq_name());
     meta->enclosing_function_scope = sm->current_scope;
+    impl->stage_7_analyse_semantics(sm, meta);
 
     // Check the return type superimposes the generator type.
     auto temp = std::vector<std::shared_ptr<TypeAst>>();
@@ -43,6 +44,6 @@ auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
     }
 
     // Analyse the semantics of the function body, and move out the scope.
-    impl->stage_7_analyse_semantics(sm, meta);
+    meta->restore();
     sm->move_out_of_current_scope();
 }
