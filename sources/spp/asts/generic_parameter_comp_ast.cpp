@@ -48,7 +48,7 @@ auto spp::asts::GenericParameterCompAst::stage_4_qualify_types(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
     -> void {
-    // Qualify the type on the generic parameter.
+    // Qualify the type on the generic parameter. Note: not possible to have a convention here.
     type->stage_7_analyse_semantics(sm, meta);
     type = sm->current_scope->get_type_symbol(type)->fq_name();
 }

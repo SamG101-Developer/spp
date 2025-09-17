@@ -39,10 +39,10 @@ auto spp::asts::GenericParameterCompVariadicAst::clone() const -> std::unique_pt
 
 spp::asts::GenericParameterCompVariadicAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_cmp);
+    SPP_STRING_APPEND(tok_cmp).append(" ");
     SPP_STRING_APPEND(tok_ellipsis);
     SPP_STRING_APPEND(name);
-    SPP_STRING_APPEND(tok_colon);
+    SPP_STRING_APPEND(tok_colon).append(" ");
     SPP_STRING_APPEND(type);
     SPP_STRING_END;
 }
@@ -50,10 +50,10 @@ spp::asts::GenericParameterCompVariadicAst::operator std::string() const {
 
 auto spp::asts::GenericParameterCompVariadicAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_cmp);
+    SPP_PRINT_APPEND(tok_cmp).append(" ");
     SPP_PRINT_APPEND(tok_ellipsis);
     SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(tok_colon);
+    SPP_PRINT_APPEND(tok_colon).append(" ");
     SPP_PRINT_APPEND(type);
     SPP_PRINT_END;
 }
