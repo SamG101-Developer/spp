@@ -21,6 +21,7 @@
 
 #include <genex/algorithms/any_of.hpp>
 #include <genex/views/cast.hpp>
+#include <genex/views/concat.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/ptr.hpp>
 
@@ -241,33 +242,32 @@ auto spp::asts::TypeIdentifierAst::substitute_generics(
     // Get the generic type arguments.
     auto gen_type_args = args
         | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()
-        | genex::views::filter([](auto &&g) { return g != nullptr; })
-        | genex::views::transform([](auto &&g) { return std::make_pair(g->name, g->val); })
+        | genex::views::transform([](auto &&g) { return std::make_pair(g->name, dynamic_cast<ExpressionAst const*>(g->val.get())); })
         | genex::views::to<std::vector>();
 
     // Get the generic comp arguments.
     auto gen_comp_args = args
         | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()
-        | genex::views::filter([](auto &&g) { return g != nullptr; })
-        | genex::views::transform([](auto &&g) { return std::make_pair(g->name, g->val.get()); });
+        | genex::views::transform([](auto &&g) { return std::make_pair(g->name, g->val.get()); })
+        | genex::views::to<std::vector>();
 
     // Check if this type directly matches any generic type argument name.
     for (auto &&[gen_arg_name, gen_arg_val] : gen_type_args) {
         if (*this == *ast_cast<TypeIdentifierAst>(gen_arg_name.get())) {
-            return ast_clone(gen_arg_val);
+            return ast_clone(dynamic_cast<TypeAst const*>(gen_arg_val));
         }
     }
 
-    // Substitute generics in the comp args' types.
-    for (auto &&[gen_arg_name, gen_arg_val] : gen_type_args) {
+    // Substitute generics in the comp arguments' types.
+    for (auto &&[gen_arg_name, gen_arg_val] : genex::views::concat(gen_type_args, gen_comp_args) | genex::views::to<std::vector>()) {
         for (auto const &g : name_clone->generic_arg_group->get_comp_args() | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()) {
-            if (auto &&ident_val = ast_cast<IdentifierAst>(g->val.get()); ident_val != nullptr and *ident_val == *IdentifierAst::from_type(*gen_arg_name)) {
+            if (auto const *ident_val = ast_cast<IdentifierAst>(g->val.get()); ident_val != nullptr and *ident_val == *IdentifierAst::from_type(*gen_arg_name)) {
                 g->val = ast_clone(gen_arg_val);
             }
         }
     }
 
-    // Substitute generics in the type args' types.
+    // Substitute generics in the type arguments' types.
     for (auto const &g : name_clone->generic_arg_group->get_type_args() | genex::views::cast_dynamic<GenericArgumentTypeAst*>()) {
         g->val = g->val->substitute_generics(args);
     }
@@ -440,14 +440,14 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
             meta->restore();
 
             // Create a new aliasing symbol for the substituted new type.
-            auto new_alias_sym = std::make_unique<analyse::scopes::AliasSymbol>(
+            const auto new_alias_sym = std::make_shared<analyse::scopes::AliasSymbol>(
                 new_scope->ty_sym->name, new_scope->ty_sym->type, new_scope, new_scope->ty_sym->scope_defined_in,
                 sm->current_scope->get_type_symbol(old_type), new_scope->ty_sym->is_generic,
                 new_scope->ty_sym->is_copyable);
 
-            new_scope->ty_sym = std::move(new_alias_sym);
-            new_scope->parent->rem_type_symbol(new_scope->ty_sym->name);
-            new_scope->parent->add_type_symbol(new_scope->ty_sym);
+            // new_scope->parent->rem_type_symbol(new_scope->ty_sym->name);
+            new_scope->parent->add_type_symbol(new_alias_sym);
+            new_scope->ty_sym = new_alias_sym;
         }
     }
 }
