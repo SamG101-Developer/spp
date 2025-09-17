@@ -45,7 +45,7 @@ public:
      * An optional generic parameter group for the class prototype. This is used to define generic types that the class
      * can use.
      */
-    std::unique_ptr<GenericParameterGroupAst> generic_param_group;
+    std::shared_ptr<GenericParameterGroupAst> generic_param_group;
 
     /**
      * The list of class attributes that are defined on the class prototype. These are the properties that the class

@@ -37,6 +37,7 @@ spp::asts::TypeStatementAst::TypeStatementAst(
     old_type(std::move(old_type)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_type, lex::SppTokenType::KW_TYPE, "type");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_param_group);
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
 }
 
 
@@ -171,6 +172,7 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     // Load the generics into the class and type-statement scopes.
     auto tm = ScopeManager(
         sm->global_scope, sm->current_scope->get_type_symbol(old_type->without_generics())->scope);
+
     for (auto &&generic_arg : GenericArgumentGroupAst::from_params(*generic_param_group)->args) {
         const auto generic_sym = analyse::utils::type_utils::create_generic_sym(*generic_arg, *sm, meta, &tm);
         if (const auto generic_type_sym = std::dynamic_pointer_cast<analyse::scopes::TypeSymbol>(generic_sym)) {
@@ -210,8 +212,8 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
         auto tm = ScopeManager(sm->global_scope, stripped_old_sym->scope_defined_in);
 
         // Qualify the generics, and the overall type.
-        generic_param_group->stage_4_qualify_types(sm, meta);
-        old_type->stage_4_qualify_types(sm, meta);
+        generic_param_group->stage_4_qualify_types(&tm, meta);
+        old_type->stage_4_qualify_types(&tm, meta);
         old_type->stage_7_analyse_semantics(sm, meta);
 
         // Update the parameter groups on the generated ASTs.

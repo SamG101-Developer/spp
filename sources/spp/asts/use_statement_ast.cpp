@@ -59,7 +59,7 @@ auto spp::asts::UseStatementAst::clone() const -> std::unique_ptr<Ast> {
 spp::asts::UseStatementAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_EXTEND(annotations);
-    SPP_STRING_APPEND(tok_use);
+    SPP_STRING_APPEND(tok_use).append(" ");
     SPP_STRING_APPEND(old_type);
     SPP_STRING_END;
 }
@@ -68,7 +68,7 @@ spp::asts::UseStatementAst::operator std::string() const {
 auto spp::asts::UseStatementAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_EXTEND(annotations);
-    SPP_PRINT_APPEND(tok_use);
+    SPP_PRINT_APPEND(tok_use).append(" ");
     SPP_PRINT_APPEND(old_type);
     SPP_PRINT_END;
 }
@@ -112,12 +112,12 @@ auto spp::asts::UseStatementAst::stage_3_gen_top_level_aliases(
 
     // Get the symbol for the old type (as this is a use statement, it won't have generics).
     const auto old_type_sym = sm->current_scope->get_type_symbol(old_type, false, true);
-    auto generic_params = ast_clone(old_type_sym->type->generic_param_group);
+    auto generic_params = old_type_sym->type->generic_param_group;
 
     // Add the generic parameters to the conversion AST, and add mock generic arguments to the old type.
-    m_conversion->generic_param_group = ast_clone(generic_params);
+    m_conversion->generic_param_group = generic_params;
     m_conversion->old_type->type_parts().back()->generic_arg_group->args = std::move(GenericArgumentGroupAst::from_params(*generic_params)->args);
-    m_conversion->m_generated_cls_ast->generic_param_group = std::move(generic_params);
+    m_conversion->m_generated_cls_ast->generic_param_group = generic_params;
 
     // Generate the top-level alias for the converted type statement.
     m_conversion->stage_3_gen_top_level_aliases(sm, meta);

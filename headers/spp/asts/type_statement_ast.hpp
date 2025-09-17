@@ -49,7 +49,7 @@ public:
      * @code type MyVector[T] = std::Vector[T, A=SomeAlloc]@endcode defines @c T as a generic internal to this type
      * statement only.
      */
-    std::unique_ptr<GenericParameterGroupAst> generic_param_group;
+    std::shared_ptr<GenericParameterGroupAst> generic_param_group;
 
     /**
      * The @c = token that separates the new type from the old type.
