@@ -65,9 +65,8 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     return_type(std::move(return_type)),
     impl(std::move(impl)) {
     // Create any ASTs that are needed as "empty" if they are nullptr.
-    if (this->generic_param_group == nullptr) {
-        this->generic_param_group = std::make_unique<GenericParameterGroupAst>(nullptr, decltype(GenericParameterGroupAst::params)(), nullptr);
-    }
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_param_group);
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->impl);
 }
 
 

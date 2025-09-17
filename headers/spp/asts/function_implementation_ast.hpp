@@ -17,6 +17,5 @@ struct spp::asts::FunctionImplementationAst final : InnerScopeAst<std::unique_pt
 
     ~FunctionImplementationAst() override;
 
-private:
     static auto new_empty() -> std::unique_ptr<FunctionImplementationAst>;
 };
