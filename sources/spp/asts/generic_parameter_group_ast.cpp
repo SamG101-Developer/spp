@@ -148,10 +148,13 @@ auto spp::asts::GenericParameterGroupAst::opt_to_req() const
             auto cast_param = ast_cast<GenericParameterAst>(std::move(param));
             new_params.emplace_back(std::move(cast_param));
         }
-        if (const auto opt_comp = ast_cast<GenericParameterCompOptionalAst>(p.get())) {
+        else if (const auto opt_comp = ast_cast<GenericParameterCompOptionalAst>(p.get())) {
             auto param = std::make_unique<GenericParameterCompRequiredAst>(nullptr, ast_clone(opt_comp->name), nullptr, ast_clone(opt_comp->type));
             auto cast_param = ast_cast<GenericParameterAst>(std::move(param));
             new_params.emplace_back(std::move(cast_param));
+        }
+        else {
+            new_params.emplace_back(ast_clone(p));
         }
     }
 
