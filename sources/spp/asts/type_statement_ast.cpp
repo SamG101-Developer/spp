@@ -72,10 +72,10 @@ auto spp::asts::TypeStatementAst::clone() const -> std::unique_ptr<Ast> {
 spp::asts::TypeStatementAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_EXTEND(annotations);
-    SPP_STRING_APPEND(tok_type);
+    SPP_STRING_APPEND(tok_type).append(" ");
     SPP_STRING_APPEND(new_type);
-    SPP_STRING_APPEND(generic_param_group);
-    SPP_STRING_APPEND(tok_assign);
+    SPP_STRING_APPEND(generic_param_group).append(" ");
+    SPP_STRING_APPEND(tok_assign).append(" ");
     SPP_STRING_APPEND(old_type);
     SPP_STRING_END;
 }
@@ -84,10 +84,10 @@ spp::asts::TypeStatementAst::operator std::string() const {
 auto spp::asts::TypeStatementAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_EXTEND(annotations);
-    SPP_PRINT_APPEND(tok_type);
+    SPP_PRINT_APPEND(tok_type).append(" ");
     SPP_PRINT_APPEND(new_type);
-    SPP_PRINT_APPEND(generic_param_group);
-    SPP_PRINT_APPEND(tok_assign);
+    SPP_PRINT_APPEND(generic_param_group).append(" ");
+    SPP_PRINT_APPEND(tok_assign).append(" ");
     SPP_PRINT_APPEND(old_type);
     SPP_PRINT_END;
 }
@@ -188,7 +188,7 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     m_alias_sym->old_sym = sm->current_scope->get_type_symbol(old_type);
     dynamic_cast<analyse::scopes::AliasSymbol*>(m_alias_sym->generic_impl)->old_sym = m_alias_sym->old_sym;
 
-    // Create a "sup" block, to allow attribute and method access.
+    // Create a "sup" block, to allow for attribute and method access.
     m_generated_ext_ast = std::make_unique<SupPrototypeExtensionAst>(
         nullptr, generic_param_group->opt_to_req(), new_type, nullptr, old_type, nullptr);
     m_generated_ext_ast->stage_2_gen_top_level_scopes(sm, meta);

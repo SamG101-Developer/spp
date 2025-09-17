@@ -552,13 +552,14 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     // Create a new scope and symbol for the generic substituted type.
     const auto old_cls_scope = old_cls_sym.scope;
     auto new_cls_scope = std::make_unique<scopes::Scope>(&type_part, old_cls_scope->parent, old_cls_scope->ast);
-    auto new_cls_symbol = std::make_unique<scopes::TypeSymbol>(
+    auto new_cls_symbol = std::make_shared<scopes::TypeSymbol>(
         ast_clone(&type_part),
         asts::ast_cast<asts::ClassPrototypeAst>(new_cls_scope->ast), new_cls_scope.get(), sm->current_scope,
         old_cls_sym.is_generic, old_cls_sym.is_copyable, old_cls_sym.visibility);
 
     // Configure the new scope based on the base (old) scope.
-    new_cls_scope->parent->add_type_symbol(std::move(new_cls_symbol));
+    new_cls_scope->parent->add_type_symbol(new_cls_symbol);
+    new_cls_scope->ty_sym = new_cls_symbol;
     new_cls_scope->table = old_cls_scope->table;
     new_cls_scope->non_generic_scope = old_cls_scope;
     auto new_cls_scope_ptr = new_cls_scope.get();

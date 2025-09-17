@@ -17,7 +17,6 @@
 #include <genex/views/drop.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/flatten.hpp>
-#include <genex/views/for_each.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/to.hpp>
 #include <opex/cast.hpp>

@@ -85,6 +85,7 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
     visibility(visibility),
     convention(convention),
     generic_impl(this) {
+    generic_impl = this;
 }
 
 
