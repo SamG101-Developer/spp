@@ -120,7 +120,6 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
     mixins::CompilerMetaData *meta)
     -> void {
     // Run top level scope generation for the annotations.
-    Ast::stage_2_gen_top_level_scopes(sm, nullptr);
     annotations | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
 
     // Check there are no conventions on the old type.
@@ -150,6 +149,7 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
     // Create a new scope for the type statement.
     auto scope_name = analyse::scopes::ScopeBlockName("<type-stmt#" + static_cast<std::string>(*new_type) + "#" + std::to_string(pos_start()) + ">");
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
+    Ast::stage_2_gen_top_level_scopes(sm, nullptr);
     sm->move_out_of_current_scope();
     m_generated = true;
 }
@@ -160,8 +160,13 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     mixins::CompilerMetaData *meta)
     -> void {
     // Skip the class scope, and enter the type statement scope.
+    const auto s1 = sm->current_scope;
     sm->move_to_next_scope();
+    const auto s2 = sm->current_scope;
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+    (void)s1;
+    (void)s2;
 
     // Analyse the old type without generics, to ensure the base type exists.
     meta->save();
@@ -205,6 +210,13 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
     // Skip the class scope, and enter the type statement scope.
     sm->move_to_next_scope();
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+
+    if (dynamic_cast<ClassPrototypeAst*>(sm->current_scope->ast)) {
+        // Todo: there is a rare configuration where somehow the now "current_scope" is wrong.
+        //  - There must be an AST that isn't incrementing scopes for stage-4.
+        auto _ = 123;
+    }
 
     // Get the old type's symbol, without generics.
     const auto stripped_old_sym = sm->current_scope->get_type_symbol(old_type->without_generics(), false, true);

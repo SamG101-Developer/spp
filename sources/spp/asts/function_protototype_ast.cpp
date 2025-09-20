@@ -291,6 +291,7 @@ auto spp::asts::FunctionPrototypeAst::stage_3_gen_top_level_aliases(
     mixins::CompilerMetaData *) -> void {
     // Skip the function scope, as it is already generated.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     sm->move_out_of_current_scope();
 }
 
@@ -300,6 +301,7 @@ auto spp::asts::FunctionPrototypeAst::stage_4_qualify_types(
     mixins::CompilerMetaData *meta) -> void {
     // Skip the function scope, as it is already qualified.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     generic_param_group->stage_4_qualify_types(sm, meta);
     impl->stage_4_qualify_types(sm, meta);
     sm->move_out_of_current_scope();

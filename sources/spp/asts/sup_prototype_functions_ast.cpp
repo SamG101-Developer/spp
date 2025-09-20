@@ -96,6 +96,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_2_gen_top_level_scopes(
     // Create a new scope for the superimposition extension.
     auto scope_name = analyse::scopes::ScopeBlockName("<sup#" + static_cast<std::string>(*name) + "#" + std::to_string(pos_start()) + ">");
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
+    Ast::stage_2_gen_top_level_scopes(sm, meta);
 
     // Check there are optional generic parameters.
     if (const auto optional = generic_param_group->get_optional_params(); not optional.empty()) {
@@ -129,6 +130,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_3_gen_top_level_aliases(
     -> void {
     // Forward to the implementation.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     impl->stage_3_gen_top_level_aliases(sm, meta);
     sm->move_out_of_current_scope();
 }
@@ -140,6 +142,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_4_qualify_types(
     -> void {
     // Forward to the implementation.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     impl->stage_4_qualify_types(sm, meta);
     sm->move_out_of_current_scope();
 }
