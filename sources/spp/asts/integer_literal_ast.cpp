@@ -16,12 +16,14 @@ const auto INTEGER_TYPE_MIN_MAX = std::map<std::string, std::pair<CppBigInt, Cpp
     {"s16", {CppBigInt("-32768"), CppBigInt("32767")}},
     {"s32", {CppBigInt("-2147483648"), CppBigInt("2147483647")}},
     {"s64", {CppBigInt("-9223372036854775808"), CppBigInt("9223372036854775807")}},
+    {"sz", {CppBigInt("-9223372036854775808"), CppBigInt("9223372036854775807")}},
     {"s128", {CppBigInt("-170141183460469231731687303715884105728"), CppBigInt("170141183460469231731687303715884105727")}},
     {"s256", {CppBigInt("-57896044618658097711785492504343953926634992332820282019728792003956564819968"), CppBigInt("57896044618658097711785492504343953926634992332820282019728792003956564819967")}},
     {"u8", {CppBigInt("0"), CppBigInt("255")}},
     {"u16", {CppBigInt("0"), CppBigInt("65535")}},
     {"u32", {CppBigInt("0"), CppBigInt("4294967295")}},
     {"u64", {CppBigInt("0"), CppBigInt("18446744073709551615")}},
+    {"uz", {CppBigInt("0"), CppBigInt("18446744073709551615")}},
     {"u128", {CppBigInt("0"), CppBigInt("340282366841710300949128831971969468211455")}},
     {"u256", {CppBigInt("0"), CppBigInt("115792089237316195423570985008687907853269984665640564039457584007913129639935")}}
 };
@@ -138,7 +140,7 @@ auto spp::asts::IntegerLiteralAst::infer_type(
     if (type == "s256") {
         return generate::common_types::s256(pos_start());
     }
-    if (type == "ssize") {
+    if (type == "sz") {
         return generate::common_types::ssize(pos_start());
     }
     if (type == "u8") {
@@ -159,7 +161,7 @@ auto spp::asts::IntegerLiteralAst::infer_type(
     if (type == "u256") {
         return generate::common_types::u256(pos_start());
     }
-    if (type == "usize") {
+    if (type == "uz") {
         return generate::common_types::usize(pos_start());
     }
 

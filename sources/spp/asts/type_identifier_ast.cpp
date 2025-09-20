@@ -404,7 +404,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
 
     // Infer the generic arguments from information given from object initialization.
     const auto owner = analyse::utils::type_utils::get_type_part_symbol_with_error(
-        *type_scope, ast_cast<TypeIdentifierAst>(*without_generics()), *sm, meta, true)->fq_name();
+        *type_scope, ast_cast<TypeIdentifierAst>(*without_generics()), *sm, meta)->fq_name();
     const auto owner_sym = sm->current_scope->get_type_symbol(owner);
 
     analyse::utils::func_utils::infer_generic_args(

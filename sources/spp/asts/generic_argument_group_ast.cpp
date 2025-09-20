@@ -288,10 +288,7 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
     }
 
     // Analyse the arguments.
-    // args | genex::views::for_each([sm, meta](auto const &x) { x->stage_7_analyse_semantics(sm, meta); });
-    for (auto &&arg : args) {
-        arg->stage_7_analyse_semantics(sm, meta);
-    }
+    args | genex::views::for_each([sm, meta](auto const &x) { x->stage_7_analyse_semantics(sm, meta); });
 }
 
 
