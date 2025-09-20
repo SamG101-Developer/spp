@@ -1,3 +1,5 @@
+#include <print>
+
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
@@ -23,7 +25,7 @@
 
 #define PREP_SCOPE_MANAGER_AND_META(s) \
     PREP_SCOPE_MANAGER;\
-    move_scope_manager_to_ns(sm, mod_in_tree);\
+    spp::compiler::CompilerBoot::move_scope_manager_to_ns(sm, mod_in_tree);\
     auto meta = spp::asts::mixins::CompilerMetaData();\
     meta.current_stage = (s)
 
@@ -83,7 +85,7 @@ auto spp::compiler::CompilerBoot::stage_2_gen_top_level_scopes(
         bar.tick();
     }
 
-    std::cout << sm->global_scope->print_scope_tree() << std::endl;
+    // std::cout << sm->global_scope->print_scope_tree() << std::endl;
 }
 
 
@@ -217,7 +219,7 @@ auto spp::compiler::CompilerBoot::validate_entry_point(
 
 auto spp::compiler::CompilerBoot::move_scope_manager_to_ns(
     analyse::scopes::ScopeManager *sm,
-    Module const &mod) const
+    Module const &mod)
     -> void {
     using namespace std::string_literals;
     // Create the module namespace as a list of strings.
@@ -225,13 +227,11 @@ auto spp::compiler::CompilerBoot::move_scope_manager_to_ns(
     if (genex::algorithms::contains(mod_ns, "src"s)) {
         const auto src_index = genex::algorithms::find(mod_ns, "src"s) - mod_ns.begin() + 1;
         mod_ns |= genex::actions::drop(src_index);
+        mod_ns.back().erase(mod_ns.back().size() - 4);
     }
     else {
-        mod_ns = std::vector{mod_ns[1] + ".spp"};
+        mod_ns = std::vector{mod_ns[mod_ns.size() - 2]};
     }
-
-    // Strip ".spp" from the last element.
-    mod_ns.back().erase(mod_ns.back().size() - 4);
 
     // Iterate over the parts of the module namespace.
     for (auto const &part : mod_ns) {
@@ -239,7 +239,7 @@ auto spp::compiler::CompilerBoot::move_scope_manager_to_ns(
         auto identifier_part = std::make_shared<asts::IdentifierAst>(0, std::string(part));
 
         // If the part exists in the current scope (starting from the global scope), then move into it.
-        if (const auto quick_ns_sym = sm->current_scope->get_ns_symbol(identifier_part); quick_ns_sym != nullptr) {
+        if (const auto quick_ns_sym = sm->current_scope->get_ns_symbol(identifier_part, true); quick_ns_sym != nullptr) {
             const auto ns_scope = quick_ns_sym->scope;
             sm->reset(ns_scope);
         }

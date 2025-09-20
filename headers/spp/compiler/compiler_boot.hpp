@@ -27,7 +27,7 @@ struct spp::compiler::CompilerBoot {
 
 private:
     auto validate_entry_point(analyse::scopes::ScopeManager *sm) -> void;
-    auto move_scope_manager_to_ns(analyse::scopes::ScopeManager *sm, Module const&mod) const -> void;
+    static auto move_scope_manager_to_ns(analyse::scopes::ScopeManager *sm, Module const&mod) -> void;
 
     std::vector<asts::ModulePrototypeAst*> m_modules;
 };
