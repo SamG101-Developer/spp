@@ -23,10 +23,15 @@ spp::utils::errors::ErrorFormatter::ErrorFormatter(std::vector<lex::RawToken> to
 
 auto spp::utils::errors::ErrorFormatter::internal_parse_error_raw_pos(
     const std::size_t ast_start_pos,
-    const std::size_t ast_size, std::string &&tag_message)
+    std::size_t ast_size, std::string &&tag_message)
     -> std::tuple<std::string, std::string, std::string, std::string, std::string> {
     using lex::RawTokenType;
     using namespace std::string_literals;
+
+    // Check for bugs in the ast size (max number? => 1)
+    if (ast_size > 1000) {
+        ast_size = 1;
+    }
 
     const auto error_line_start_pos = genex::algorithms::position_last(
         m_tokens | genex::views::take(ast_start_pos) | genex::views::to<std::vector>(),
