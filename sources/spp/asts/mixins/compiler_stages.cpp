@@ -57,7 +57,7 @@ auto spp::asts::mixins::CompilerMetaData::save() -> void {
 
 
 auto spp::asts::mixins::CompilerMetaData::restore() -> void {
-    auto state = std::move(m_history.top());
+    auto state = std::move(m_history.top());  // *DO NOT* click "convert to structured bindings (CLion) -- LAG"
     m_history.pop();
     current_stage = state.current_stage;
     return_type_overload_resolver_type = std::move(state.return_type_overload_resolver_type);

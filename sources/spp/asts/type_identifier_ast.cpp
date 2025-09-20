@@ -346,11 +346,13 @@ auto spp::asts::TypeIdentifierAst::stage_4_qualify_types(
         try {
             meta->save();
             meta->skip_type_analysis_generic_checks = true;
+            meta->type_analysis_type_scope = nullptr;
             g->val->stage_7_analyse_semantics(sm, meta);
             meta->restore();
         }
 
-        catch (analyse::errors::SppIdentifierUnknownError const &e) {
+        catch (analyse::errors::SppIdentifierUnknownError const &) {
+            meta->restore();
             continue;
         }
 
