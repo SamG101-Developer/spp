@@ -757,13 +757,6 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
     }
     if (i > 0) { args |= genex::actions::drop(i); }
 
-    // Sort the arguments to match the parameter order.
-    // args |= genex::actions::sort([&](auto &&ident_a, auto &&ident_b) {
-    //     auto a = genex::algorithms::position(param_names, [&](auto &&x) { return *x == *std::dynamic_pointer_cast<asts::TypeIdentifierAst>(ident_a->name); });
-    //     auto b = genex::algorithms::position(param_names, [&](auto &&x) { return *x == *std::dynamic_pointer_cast<asts::TypeIdentifierAst>(ident_b->name); });
-    //     return a < b;
-    // });
-
     // Type-check the "comp" args. Only do this at the semantic analysis stage.
     if (meta->current_stage <= 5) {
         return;
@@ -776,7 +769,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
 
         auto a_type = comp_arg->val->infer_type(&sm, meta);
         auto p_type = comp_param->type->substitute_generics(args | genex::views::ptr | genex::views::cast_dynamic<asts::GenericArgumentAst*>() | genex::views::to<std::vector>());
-        p_type->stage_7_analyse_semantics(&sm, meta);
+        // p_type->stage_7_analyse_semantics(&sm, meta);
 
         // For a variadic comp argument, check every element of the args tuple.
         if (asts::ast_cast<asts::GenericParameterCompVariadicAst>(comp_param)) {
