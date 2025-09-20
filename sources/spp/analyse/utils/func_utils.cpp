@@ -413,11 +413,15 @@ auto spp::analyse::utils::func_utils::name_generic_args(
 
     // Split into "comp" and "type" arguments.
     auto comp_args = args
-        | genex::views::cast_smart_ptr<asts::GenericArgumentCompAst>()
+        | genex::views::ptr
+        | genex::views::cast_dynamic<asts::GenericArgumentCompAst*>()
+        | genex::views::transform([](auto *x) { return ast_clone(x); })
         | genex::views::to<std::vector>();
 
     auto type_args = args
-        | genex::views::cast_smart_ptr<asts::GenericArgumentTypeAst>()
+        | genex::views::ptr
+        | genex::views::cast_dynamic<asts::GenericArgumentTypeAst*>()
+        | genex::views::transform([](auto *x) { return ast_clone(x); })
         | genex::views::to<std::vector>();
 
     // Split into "comp" and "type" parameters.
@@ -542,7 +546,9 @@ auto spp::analyse::utils::func_utils::infer_generic_args(
 
     // Split into "comp" and "type" arguments.
     auto comp_args = args
-        | genex::views::cast_smart_ptr<asts::GenericArgumentCompKeywordAst>()
+        | genex::views::ptr
+        | genex::views::cast_dynamic<asts::GenericArgumentCompKeywordAst*>()
+        | genex::views::transform([](auto *x) { return ast_clone(x); })
         | genex::views::to<std::vector>();
 
     const auto comp_explicit_args = explicit_args
@@ -550,7 +556,9 @@ auto spp::analyse::utils::func_utils::infer_generic_args(
         | genex::views::to<std::vector>();
 
     auto type_args = args
-        | genex::views::cast_smart_ptr<asts::GenericArgumentTypeKeywordAst>()
+        | genex::views::ptr
+        | genex::views::cast_dynamic<asts::GenericArgumentTypeKeywordAst*>()
+        | genex::views::transform([](auto *x) { return ast_clone(x); })
         | genex::views::to<std::vector>();
 
     const auto type_explicit_args = explicit_args
