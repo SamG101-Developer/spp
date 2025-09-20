@@ -762,6 +762,12 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
         return;
     }
 
+    args |= genex::actions::sort([&](auto const &a, auto const &b) {
+        const auto a_index = genex::algorithms::position(params, [&](auto *p) { return *p->name == *dynamic_cast<asts::GenericArgumentCompKeywordAst*>(a.get())->name; });
+        const auto b_index = genex::algorithms::position(params, [&](auto *p) { return *p->name == *dynamic_cast<asts::GenericArgumentCompKeywordAst*>(b.get())->name; });
+        return a_index < b_index;
+    });
+
     for (auto &&[param, arg] : genex::views::zip(params, args | genex::views::ptr) | genex::views::to<std::vector>()) {
         auto comp_arg = asts::ast_cast<asts::GenericArgumentCompKeywordAst>(arg);
         auto comp_param = asts::ast_cast<asts::GenericParameterCompAst>(param);
@@ -923,4 +929,10 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
     if (i > 0) {
         args |= genex::actions::drop(i);
     }
+
+    args |= genex::actions::sort([&](auto const &a, auto const &b) {
+        const auto a_index = genex::algorithms::position(params, [&](auto *p) { return *p->name == *dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(a.get())->name; });
+        const auto b_index = genex::algorithms::position(params, [&](auto *p) { return *p->name == *dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(b.get())->name; });
+        return a_index < b_index;
+    });
 }
