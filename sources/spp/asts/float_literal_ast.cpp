@@ -89,10 +89,11 @@ auto spp::asts::FloatLiteralAst::equals(
 auto spp::asts::FloatLiteralAst::equals_float_literal(
     FloatLiteralAst const &other) const
     -> std::strong_ordering {
-    if (((not tok_sign and not other.tok_sign) or (tok_sign and other.tok_sign and *tok_sign == *other.tok_sign)) and
-        *int_val == *other.int_val and
-        *frac_val == *other.frac_val and
-        type == other.type) {
+    if (
+        ((not tok_sign and not other.tok_sign) or (tok_sign and other.tok_sign and *tok_sign == *other.tok_sign))
+        and int_val->token_data == other.int_val->token_data
+        and frac_val->token_data == other.frac_val->token_data
+        and type == other.type) {
         return std::strong_ordering::equal;
     }
     return std::strong_ordering::less;

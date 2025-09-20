@@ -87,7 +87,10 @@ auto spp::asts::IntegerLiteralAst::equals(
 auto spp::asts::IntegerLiteralAst::equals_integer_literal(
     IntegerLiteralAst const &other) const
     -> std::strong_ordering {
-    if (((sign == nullptr and other.sign == nullptr) or (sign != nullptr and other.sign != nullptr and *sign == *other.sign)) and *val == *other.val and  type == other.type) {
+    if (
+        ((sign == nullptr and other.sign == nullptr) or (sign != nullptr and other.sign != nullptr and *sign == *other.sign))
+        and val->token_data == other.val->token_data
+        and type == other.type) {
         return std::strong_ordering::equal;
     }
     return std::strong_ordering::less;

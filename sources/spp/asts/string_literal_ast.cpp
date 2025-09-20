@@ -54,7 +54,7 @@ auto spp::asts::StringLiteralAst::equals(
 auto spp::asts::StringLiteralAst::equals_string_literal(
     StringLiteralAst const &other) const
     -> std::strong_ordering {
-    if (*val == *other.val) {
+    if (val->token_data == other.val->token_data) {
         return std::strong_ordering::equal;
     }
     return std::strong_ordering::less;
