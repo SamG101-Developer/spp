@@ -184,7 +184,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
         // Register the super scope against the current scope.
         scope.m_direct_sup_scopes.emplace_back(new_sup_scope);
 
-        // Register the super scope's class scope against the current scope, if it is different. Ths "difference" check
+        // Register the super scope's class scope against the current scope, if it is different. This "difference" check
         // ensures that "sup [T] T ext A" doesn't create a "sup A ext A" link.
         if (new_cls_scope and scope.ty_sym != new_cls_scope->ty_sym) {
             scope.m_direct_sup_scopes.emplace_back(new_cls_scope);

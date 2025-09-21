@@ -718,7 +718,7 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
         super_cls_scope = new_cls_scope.get_type_symbol(new_fq_super_type)->scope;
     }
 
-    return std::make_tuple(&new_cls_scope, super_cls_scope);
+    return std::make_tuple(new_sup_scope_ptr, super_cls_scope);
 }
 
 
