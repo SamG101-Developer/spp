@@ -164,6 +164,7 @@ namespace spp::analyse::utils::type_utils {
         scopes::TypeSymbol const &old_cls_sym,
         std::vector<std::shared_ptr<scopes::Symbol>> const &external_generic_syms,
         bool is_tuple,
+        bool is_alias,
         scopes::ScopeManager *sm,
         asts::mixins::CompilerMetaData *meta)
         -> scopes::Scope*;

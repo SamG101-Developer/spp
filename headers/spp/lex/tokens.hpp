@@ -278,7 +278,7 @@ inline auto spp::lex::tok_to_string(const SppTokenType token) noexcept -> std::s
     case SppTokenType::TK_COMMA: return ",";
     case SppTokenType::TK_SEMICOLON: return ";";
     case SppTokenType::TK_ASSIGN: return "=";
-    case SppTokenType::TK_ARROW_RIGHT: return "=>";
+    case SppTokenType::TK_ARROW_RIGHT: return "->";
     case SppTokenType::TK_AT: return "@";
     case SppTokenType::TK_QUOTATION_MARK: return "\"";
     case SppTokenType::TK_UNDERSCORE: return "_";

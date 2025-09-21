@@ -429,8 +429,9 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     // If the generically filled type doesn't exist (Vec[Str]), but the base does (Vec[T]), create it.
     if (not type_scope->parent->has_type_symbol(shared_from_this())) {
         const auto external_generics = sm->current_scope->get_extended_generic_symbols(generic_arg_group->get_all_args());
+        const auto is_alias = dynamic_cast<analyse::scopes::AliasSymbol*>(type_sym) != nullptr;
         const auto new_scope = analyse::utils::type_utils::create_generic_cls_scope(
-            *this, *type_sym, external_generics, is_tuple, sm, meta);
+            *this, *type_sym, external_generics, is_tuple, is_alias, sm, meta);
 
         // Handle type aliasing (providing generics to the original type).
         if (const auto alias_sym = dynamic_cast<analyse::scopes::AliasSymbol*>(type_sym)) {
@@ -447,7 +448,6 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
                 sm->current_scope->get_type_symbol(old_type), new_scope->ty_sym->is_generic,
                 new_scope->ty_sym->is_copyable);
 
-            // new_scope->parent->rem_type_symbol(new_scope->ty_sym->name);
             new_scope->parent->add_type_symbol(new_alias_sym);
             new_scope->ty_sym = new_alias_sym;
         }
