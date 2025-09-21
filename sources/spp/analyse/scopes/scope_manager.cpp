@@ -101,7 +101,7 @@ auto spp::analyse::scopes::ScopeManager::attach_all_super_scopes(
     -> void {
     // Ensure the scope manager is at the global scope.
     reset();
-    for (auto *scope: iter()) {
+    for (auto *scope : iter()) {
         if (scope->ty_sym != nullptr) {
             attach_specific_super_scopes(*scope, meta);
         }
@@ -122,8 +122,9 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes(
     }
 
     // Handle type symbols.
-    else if (const auto type_sym = scope.ty_sym.get(); type_sym != nullptr) {
-        auto scopes = genex::views::concat(normal_sup_blocks[scope.non_generic_scope->ty_sym.get()], generic_sup_blocks) | genex::views::to<std::vector>();
+    else if (scope.ty_sym.get() != nullptr) {
+        const auto non_generic_sym = scope.ty_sym;
+        auto scopes = genex::views::concat(normal_sup_blocks[non_generic_sym.get()], generic_sup_blocks) | genex::views::to<std::vector>();
         attach_specific_super_scopes_impl(scope, std::move(scopes), meta);
     }
 }
