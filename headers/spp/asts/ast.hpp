@@ -46,7 +46,7 @@ namespace spp::asts {
     template <typename T>
     auto ast_clone_vec(std::vector<std::unique_ptr<T>> const &asts) -> std::vector<std::unique_ptr<T>> {
         return asts
-            | genex::views::transform([](auto &&x) { return ast_clone(x); })
+            | genex::views::transform([](auto const &x) { return ast_clone(x.get()); })
             | genex::views::to<std::vector>();
     }
 
