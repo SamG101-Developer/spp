@@ -138,7 +138,7 @@ auto spp::asts::ClassPrototypeAst::stage_2_gen_top_level_scopes(
     mixins::CompilerMetaData *meta)
     -> void {
     // Create the class scope, which is the scope for the class prototype.
-    sm->create_and_move_into_new_scope(ast_cast<TypeIdentifierAst>(name), this);
+    sm->create_and_move_into_new_scope(std::dynamic_pointer_cast<TypeIdentifierAst>(name), this);
     Ast::stage_2_gen_top_level_scopes(sm, meta);
 
     // Run the generation steps for the annotations.

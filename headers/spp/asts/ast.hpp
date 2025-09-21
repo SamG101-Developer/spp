@@ -84,6 +84,7 @@ namespace spp::asts {
 
     template <typename T, typename U>
     auto ast_cast(std::shared_ptr<U> const &ast) -> std::shared_ptr<T> {
+        throw std::runtime_error("FUNCTION IS NOT SAFE");
         return std::shared_ptr<T>(ast_cast<T>(ast.get()));
     }
 
