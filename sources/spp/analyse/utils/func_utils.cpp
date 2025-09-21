@@ -52,6 +52,7 @@
 #include <genex/actions/remove_if.hpp>
 #include <genex/actions/sort.hpp>
 #include <genex/actions/take.hpp>
+#include <genex/algorithms/all_of.hpp>
 #include <genex/algorithms/any_of.hpp>
 #include <genex/algorithms/contains.hpp>
 #include <genex/algorithms/position.hpp>
@@ -62,7 +63,6 @@
 #include <genex/views/drop.hpp>
 #include <genex/views/enumerate.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/indirect.hpp>
 #include <genex/views/map.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/move.hpp>
@@ -190,8 +190,8 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
     else {
         // If a class scope was provided, get all the sup scopes from it, otherwise use the specific sup scope.
         const auto sup_scopes = dynamic_cast<asts::ClassPrototypeAst*>(target_scope->ast) != nullptr
-            ? target_scope->direct_sup_scopes() | genex::views::transform([](auto x) -> const scopes::Scope* { return x; }) | genex::views::to<std::vector>()
-            : std::vector{target_scope};
+                                    ? target_scope->direct_sup_scopes() | genex::views::transform([](auto x) -> const scopes::Scope* { return x; }) | genex::views::to<std::vector>()
+                                    : std::vector{target_scope};
 
         // From the super scopes, check each one for "sup $Func ext FunXXX { ... }" super-impositions.
         for (auto *sup_scope : sup_scopes) {
@@ -300,6 +300,13 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_override(
     auto existing = get_all_function_scopes(*new_fn.orig_name, target_scope, true);
     auto existing_scopes = existing | genex::views::tuple_element<0>() | genex::views::to<std::vector>();
     auto existing_fns = existing | genex::views::tuple_element<1>() | genex::views::to<std::vector>();
+    auto param_names_eq = [](auto const &a, auto const &b) {
+        if (a.size() != b.size()) { return false; }
+        for (auto [x, y] : genex::views::zip(a, b) | genex::views::to<std::vector>()) {
+            if (*x != *y) { return false; }
+        }
+        return true;
+    };
 
     // Check for an overload conflict with all functions of the same name.
     for (auto [old_scope, old_fn] : genex::views::zip(existing_scopes, existing_fns) | genex::views::to<std::vector>()) {
@@ -317,7 +324,7 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_override(
         // All parameters must have the same names.
         if (genex::algorithms::any_of(
             genex::views::zip(params_new, params_old) | genex::views::materialize(),
-            [](auto pq) { return std::get<0>(pq)->extract_names() != std::get<1>(pq)->extract_names(); })) {
+            [&param_names_eq](auto pq) { return not param_names_eq(std::get<0>(pq)->extract_names(), std::get<1>(pq)->extract_names()); })) {
             continue;
         }
 
@@ -346,6 +353,7 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_override(
         // The functions must have identical signatures at this point, so return the old function.
         return old_fn;
     }
+
     return nullptr;
 }
 
