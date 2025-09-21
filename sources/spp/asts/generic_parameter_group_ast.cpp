@@ -32,8 +32,8 @@ spp::asts::GenericParameterGroupAst::GenericParameterGroupAst(
     tok_l(std::move(tok_l)),
     params(std::move(params)),
     tok_r(std::move(tok_r)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_l, lex::SppTokenType::TK_LEFT_PARENTHESIS, "(");
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_r, lex::SppTokenType::TK_RIGHT_PARENTHESIS, ")");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_l, lex::SppTokenType::TK_LEFT_SQUARE_BRACKET, "[");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_r, lex::SppTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
 }
 
 
@@ -182,18 +182,22 @@ auto spp::asts::GenericParameterGroupAst::clone() const -> std::unique_ptr<Ast> 
 
 spp::asts::GenericParameterGroupAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_l);
-    SPP_STRING_EXTEND(params);
-    SPP_STRING_APPEND(tok_r);
+    if (not params.empty()) {
+        SPP_STRING_APPEND(tok_l);
+        SPP_STRING_EXTEND(params);
+        SPP_STRING_APPEND(tok_r);
+    }
     SPP_STRING_END;
 }
 
 
 auto spp::asts::GenericParameterGroupAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(params);
-    SPP_PRINT_APPEND(tok_r);
+    if (not params.empty()) {
+        SPP_PRINT_APPEND(tok_l);
+        SPP_PRINT_EXTEND(params);
+        SPP_PRINT_APPEND(tok_r);
+    }
     SPP_PRINT_END;
 }
 

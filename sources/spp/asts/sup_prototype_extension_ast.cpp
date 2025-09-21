@@ -41,6 +41,7 @@ spp::asts::SupPrototypeExtensionAst::SupPrototypeExtensionAst(
     impl(std::move(impl)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_sup, lex::SppTokenType::KW_SUP, "sup");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_param_group);
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_ext, lex::SppTokenType::KW_EXT, "ext");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->impl);
 }
 
@@ -74,11 +75,11 @@ auto spp::asts::SupPrototypeExtensionAst::clone() const -> std::unique_ptr<Ast> 
 
 spp::asts::SupPrototypeExtensionAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_sup);
-    SPP_STRING_APPEND(generic_param_group);
-    SPP_STRING_APPEND(name);
-    SPP_STRING_APPEND(tok_ext);
-    SPP_STRING_APPEND(super_class);
+    SPP_STRING_APPEND(tok_sup).append(" ");
+    SPP_STRING_APPEND(generic_param_group).append(" ");
+    SPP_STRING_APPEND(name).append(" ");
+    SPP_STRING_APPEND(tok_ext).append(" ");
+    SPP_STRING_APPEND(super_class).append(" ");
     SPP_STRING_APPEND(impl);
     SPP_STRING_END;
 }
@@ -86,11 +87,11 @@ spp::asts::SupPrototypeExtensionAst::operator std::string() const {
 
 auto spp::asts::SupPrototypeExtensionAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_sup);
-    SPP_PRINT_APPEND(generic_param_group);
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(tok_ext);
-    SPP_PRINT_APPEND(super_class);
+    SPP_PRINT_APPEND(tok_sup).append(" ");
+    SPP_PRINT_APPEND(generic_param_group).append(" ");
+    SPP_PRINT_APPEND(name).append(" ");
+    SPP_PRINT_APPEND(tok_ext).append(" ");
+    SPP_PRINT_APPEND(super_class).append(" ");
     SPP_PRINT_APPEND(impl);
     SPP_PRINT_END;
 }

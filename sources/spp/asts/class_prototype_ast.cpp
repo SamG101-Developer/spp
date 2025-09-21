@@ -33,6 +33,7 @@ spp::asts::ClassPrototypeAst::ClassPrototypeAst(
     name(std::move(name)),
     generic_param_group(std::move(generic_param_group)),
     impl(std::move(impl)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_cls, lex::SppTokenType::KW_CLS, "cls");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_param_group);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->impl);
 }
@@ -71,9 +72,9 @@ auto spp::asts::ClassPrototypeAst::clone() const -> std::unique_ptr<Ast> {
 spp::asts::ClassPrototypeAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_EXTEND(annotations);
-    SPP_STRING_APPEND(tok_cls);
+    SPP_STRING_APPEND(tok_cls).append(" ");
     SPP_STRING_APPEND(name);
-    SPP_STRING_APPEND(generic_param_group);
+    SPP_STRING_APPEND(generic_param_group).append(" ");
     SPP_STRING_APPEND(impl);
     SPP_STRING_END;
 }
@@ -82,9 +83,9 @@ spp::asts::ClassPrototypeAst::operator std::string() const {
 auto spp::asts::ClassPrototypeAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_EXTEND(annotations);
-    SPP_PRINT_APPEND(tok_cls);
+    SPP_PRINT_APPEND(tok_cls).append(" ");
     SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(generic_param_group);
+    SPP_PRINT_APPEND(generic_param_group).append(" ");
     SPP_PRINT_APPEND(impl);
     SPP_PRINT_END;
 }
@@ -137,7 +138,7 @@ auto spp::asts::ClassPrototypeAst::stage_2_gen_top_level_scopes(
     mixins::CompilerMetaData *meta)
     -> void {
     // Create the class scope, which is the scope for the class prototype.
-    sm->create_and_move_into_new_scope(ast_cast<TypeIdentifierAst>(name.get()), this);
+    sm->create_and_move_into_new_scope(ast_cast<TypeIdentifierAst>(name), this);
     Ast::stage_2_gen_top_level_scopes(sm, meta);
 
     // Run the generation steps for the annotations.

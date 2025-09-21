@@ -21,6 +21,7 @@ spp::asts::ObjectInitializerAst::ObjectInitializerAst(
     PrimaryExpressionAst(),
     type(std::move(type)),
     arg_group(std::move(arg_group)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->arg_group);
 }
 
 

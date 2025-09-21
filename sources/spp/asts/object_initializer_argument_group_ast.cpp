@@ -21,7 +21,6 @@
 #include <genex/views/cast.hpp>
 #include <genex/views/duplicates.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/indirect.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/remove.hpp>
@@ -37,6 +36,17 @@ spp::asts::ObjectInitializerArgumentGroupAst::ObjectInitializerArgumentGroupAst(
     tok_l(std::move(tok_l)),
     args(std::move(args)),
     tok_r(std::move(tok_r)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_l, lex::SppTokenType::TK_LEFT_PARENTHESIS, "(");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_r, lex::SppTokenType::TK_RIGHT_PARENTHESIS, ")");
+}
+
+
+auto spp::asts::ObjectInitializerArgumentGroupAst::new_empty()
+    -> std::unique_ptr<ObjectInitializerArgumentGroupAst> {
+    return std::make_unique<ObjectInitializerArgumentGroupAst>(
+        nullptr,
+        std::vector<std::unique_ptr<ObjectInitializerArgumentAst>>{},
+        nullptr);
 }
 
 

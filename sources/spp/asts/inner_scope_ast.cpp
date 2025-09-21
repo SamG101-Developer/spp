@@ -31,6 +31,8 @@ spp::asts::InnerScopeAst<T>::InnerScopeAst(
     tok_l(std::move(tok_l)),
     members(std::move(members)),
     tok_r(std::move(tok_r)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_l, lex::SppTokenType::TK_LEFT_CURLY_BRACE, "{");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_r, lex::SppTokenType::TK_RIGHT_CURLY_BRACE, "}");
 }
 
 

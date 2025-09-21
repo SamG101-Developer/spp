@@ -110,12 +110,12 @@ auto spp::asts::FunctionPrototypeAst::clone() const -> std::unique_ptr<Ast> {
 spp::asts::FunctionPrototypeAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_EXTEND(annotations);
-    SPP_STRING_APPEND(tok_fun);
+    SPP_STRING_APPEND(tok_fun).append(" ");
     SPP_STRING_APPEND(name);
     SPP_STRING_APPEND(generic_param_group);
-    SPP_STRING_APPEND(param_group);
-    SPP_STRING_APPEND(tok_arrow);
-    SPP_STRING_APPEND(return_type);
+    SPP_STRING_APPEND(param_group).append(" ");
+    SPP_STRING_APPEND(tok_arrow).append(" ");
+    SPP_STRING_APPEND(return_type).append(" ");
     SPP_STRING_APPEND(impl);
     SPP_STRING_END;
 }
@@ -127,9 +127,9 @@ auto spp::asts::FunctionPrototypeAst::print(meta::AstPrinter &printer) const -> 
     SPP_PRINT_APPEND(tok_fun);
     SPP_PRINT_APPEND(name);
     SPP_PRINT_APPEND(generic_param_group);
-    SPP_PRINT_APPEND(param_group);
-    SPP_PRINT_APPEND(tok_arrow);
-    SPP_PRINT_APPEND(return_type);
+    SPP_PRINT_APPEND(param_group).append(" ");
+    SPP_PRINT_APPEND(tok_arrow).append(" ");
+    SPP_PRINT_APPEND(return_type).append(" ");
     SPP_PRINT_APPEND(impl);
     SPP_PRINT_END;
 }

@@ -42,6 +42,8 @@ struct spp::asts::ObjectInitializerArgumentGroupAst final : virtual Ast {
 
     ~ObjectInitializerArgumentGroupAst() override;
 
+    static auto new_empty() -> std::unique_ptr<ObjectInitializerArgumentGroupAst>;
+
     auto get_autofill_arg() -> ObjectInitializerArgumentShorthandAst*;
 
     auto get_non_autofill_args() -> std::vector<ObjectInitializerArgumentAst*>;

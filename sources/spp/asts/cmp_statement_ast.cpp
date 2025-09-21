@@ -30,6 +30,9 @@ spp::asts::CmpStatementAst::CmpStatementAst(
     type(std::move(type)),
     tok_assign(std::move(tok_assign)),
     value(std::move(value)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_cmp, lex::SppTokenType::KW_CMP, "cmp");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_colon, lex::SppTokenType::TK_COLON, ":");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
 }
 
 
@@ -66,11 +69,11 @@ auto spp::asts::CmpStatementAst::clone() const -> std::unique_ptr<Ast> {
 spp::asts::CmpStatementAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_EXTEND(annotations);
-    SPP_STRING_APPEND(tok_cmp);
+    SPP_STRING_APPEND(tok_cmp).append(" ");
     SPP_STRING_APPEND(name);
-    SPP_STRING_APPEND(tok_colon);
-    SPP_STRING_APPEND(type);
-    SPP_STRING_APPEND(tok_assign);
+    SPP_STRING_APPEND(tok_colon).append(" ");
+    SPP_STRING_APPEND(type).append(" ");
+    SPP_STRING_APPEND(tok_assign).append(" ");
     SPP_STRING_APPEND(value);
     SPP_STRING_END;
 }
@@ -79,11 +82,11 @@ spp::asts::CmpStatementAst::operator std::string() const {
 auto spp::asts::CmpStatementAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_EXTEND(annotations);
-    SPP_PRINT_APPEND(tok_cmp);
+    SPP_PRINT_APPEND(tok_cmp).append(" ");
     SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(tok_colon);
-    SPP_PRINT_APPEND(type);
-    SPP_PRINT_APPEND(tok_assign);
+    SPP_PRINT_APPEND(tok_colon).append(" ");
+    SPP_PRINT_APPEND(type).append(" ");
+    SPP_PRINT_APPEND(tok_assign).append(" ");
     SPP_PRINT_APPEND(value);
     SPP_PRINT_END;
 }
