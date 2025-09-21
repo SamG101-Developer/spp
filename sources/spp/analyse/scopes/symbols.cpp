@@ -24,7 +24,7 @@ spp::analyse::scopes::NamespaceSymbol::operator std::string() const {
     return nlohmann::json(std::map<std::string, std::string>{
         {"what", "type"},
         {"name", static_cast<std::string>(*name)},
-        {"scope", static_cast<std::string>(*std::get<asts::IdentifierAst*>(scope->name))}
+        {"scope", static_cast<std::string>(*std::get<std::shared_ptr<asts::IdentifierAst>>(scope->name))}
     }).dump();
 }
 
@@ -93,8 +93,8 @@ spp::analyse::scopes::TypeSymbol::operator std::string() const {
     return nlohmann::json(std::map<std::string, std::string>{
         {"what", "type"},
         {"name", static_cast<std::string>(*name)},
-        {"defined_in", static_cast<std::string>(*std::get<asts::IdentifierAst*>(scope_defined_in->name))},
-        {"scope", static_cast<std::string>(*std::get<asts::IdentifierAst*>(scope->name))}
+        {"defined_in", static_cast<std::string>(*std::get<std::shared_ptr<asts::IdentifierAst>>(scope_defined_in->name))},
+        {"scope", static_cast<std::string>(*std::get<std::shared_ptr<asts::IdentifierAst>>(scope->name))}
     }).dump();
 }
 
@@ -122,7 +122,7 @@ auto spp::analyse::scopes::TypeSymbol::fq_name() const
     auto qualifier_scope = scope->parent;
     auto qualified_name = std::dynamic_pointer_cast<asts::TypeAst>(name);
     while (qualifier_scope->parent != nullptr) {
-        const auto raw_ns_name = std::get<asts::IdentifierAst*>(qualifier_scope->name);
+        const auto raw_ns_name = std::get<std::shared_ptr<asts::IdentifierAst>>(qualifier_scope->name);
         auto ns_name = std::make_shared<asts::IdentifierAst>(raw_ns_name->pos_start(), raw_ns_name->val);
         auto ns_op = std::make_unique<asts::TypeUnaryExpressionOperatorNamespaceAst>(std::move(ns_name), nullptr);
         qualified_name = std::make_shared<asts::TypeUnaryExpressionAst>(std::move(ns_op), std::move(qualified_name));
@@ -153,8 +153,8 @@ spp::analyse::scopes::AliasSymbol::operator std::string() const {
     return nlohmann::json(std::map<std::string, std::string>{
         {"what", "alias"},
         {"name", static_cast<std::string>(*name)},
-        {"defined_in", static_cast<std::string>(*std::get<asts::IdentifierAst*>(scope_defined_in->name))},
-        {"scope", static_cast<std::string>(*std::get<asts::IdentifierAst*>(scope->name))},
+        {"defined_in", static_cast<std::string>(*std::get<std::shared_ptr<asts::IdentifierAst>>(scope_defined_in->name))},
+        {"scope", static_cast<std::string>(*std::get<std::shared_ptr<asts::IdentifierAst>>(scope->name))},
         {"old_sym", old_sym != nullptr ? static_cast<std::string>(*old_sym->name) : "<null>"}
     }).dump();
 }

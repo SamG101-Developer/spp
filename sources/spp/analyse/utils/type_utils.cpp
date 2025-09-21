@@ -551,7 +551,9 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     -> scopes::Scope* {
     // Create a new scope and symbol for the generic substituted type.
     const auto old_cls_scope = old_cls_sym.scope;
-    auto new_cls_scope = std::make_unique<scopes::Scope>(&type_part, old_cls_scope->parent, old_cls_scope->ast);
+    auto new_cls_scope = std::make_unique<scopes::Scope>(
+        std::dynamic_pointer_cast<asts::TypeIdentifierAst>(type_part.shared_from_this()),
+        old_cls_scope->parent, old_cls_scope->ast);
     const auto new_cls_symbol = std::make_shared<scopes::TypeSymbol>(
         ast_clone(&type_part),
         asts::ast_cast<asts::ClassPrototypeAst>(new_cls_scope->ast), new_cls_scope.get(), sm->current_scope,
@@ -615,7 +617,7 @@ auto spp::analyse::utils::type_utils::create_generic_fun_scope(
     asts::mixins::CompilerMetaData *meta)
     -> scopes::Scope* {
     // Create a new scope and symbol for the generic substituted function.
-    auto new_fun_scope_name = std::get<asts::IdentifierAst*>(old_fun_scope.name);
+    auto new_fun_scope_name = std::get<std::shared_ptr<asts::IdentifierAst>>(old_fun_scope.name);
     auto new_fun_scope = std::make_unique<scopes::Scope>(new_fun_scope_name, old_fun_scope.parent, old_fun_scope.ast);
     new_fun_scope->children = old_fun_scope.children
         | genex::views::transform([](auto &&scope) { return std::make_unique<scopes::Scope>(*scope); })

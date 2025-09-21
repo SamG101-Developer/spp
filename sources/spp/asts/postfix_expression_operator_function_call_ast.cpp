@@ -553,8 +553,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
         auto other_generics = std::vector<GenericArgumentAst*>();
         if (const auto cast_lhs = ast_cast<PostfixExpressionAst>(meta->postfix_expression_lhs); cast_lhs != nullptr) {
             const auto lhs_lhs_scope = sm->current_scope->get_type_symbol(cast_lhs->lhs->infer_type(sm, meta))->scope;
-            if (not analyse::utils::type_utils::is_type_tuple(*std::get<TypeIdentifierAst*>(lhs_lhs_scope->name), *sm->current_scope)) {
-                other_generics = std::get<TypeIdentifierAst*>(lhs_lhs_scope->name)->type_parts().back()->generic_arg_group->args
+            if (not analyse::utils::type_utils::is_type_tuple(*std::get<std::shared_ptr<TypeIdentifierAst>>(lhs_lhs_scope->name), *sm->current_scope)) {
+                other_generics = std::get<std::shared_ptr<TypeIdentifierAst>>(lhs_lhs_scope->name)->type_parts().back()->generic_arg_group->args
                     | genex::views::ptr
                     | genex::views::to<std::vector>();
             }

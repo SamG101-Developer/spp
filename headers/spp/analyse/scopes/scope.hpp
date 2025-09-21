@@ -10,7 +10,10 @@
 namespace spp::analyse::scopes {
     struct ScopeBlockName;
     class Scope;
-    using ScopeName = std::variant<asts::IdentifierAst*, asts::TypeIdentifierAst*, ScopeBlockName>;
+    using ScopeName = std::variant<
+        std::shared_ptr<asts::IdentifierAst>,
+        std::shared_ptr<asts::TypeIdentifierAst>,
+        ScopeBlockName>;
 }
 
 namespace spp::compiler {
@@ -79,8 +82,9 @@ public:
     SymbolTable table;
 
     /**
-     * The scope representing the non generic version of this scope. If this scope isn't a generic substitution, then
-     * the non-generic scope is the scope itself. For @code Vec[Str]@encode, the non-generic scope is @code Vec@code.
+     * The scope representing the non-generic version of this scope. If this scope isn't a generic substitution, then
+     * the non-generic scope is the scope itself. For @code Vec[Str]@endcode, the non-generic scope is
+     * @code Vec@endcode.
      */
     Scope *non_generic_scope;
 
@@ -88,7 +92,6 @@ private:
     std::vector<Scope*> m_direct_sup_scopes;
 
     std::vector<Scope*> m_direct_sub_scopes;
-
 
     spp::utils::errors::ErrorFormatter *m_error_formatter;
 

@@ -248,7 +248,7 @@ auto spp::compiler::CompilerBoot::move_scope_manager_to_ns(
         else {
             const auto ns_sym = std::make_shared<analyse::scopes::NamespaceSymbol>(identifier_part, nullptr);
             sm->current_scope->add_ns_symbol(ns_sym);
-            const auto ns_scope = sm->create_and_move_into_new_scope(identifier_part.get(), nullptr, mod.error_formatter.get());
+            const auto ns_scope = sm->create_and_move_into_new_scope(identifier_part, nullptr, mod.error_formatter.get());
             ns_sym->scope = ns_scope;
             ns_sym->scope->ns_sym = ns_sym;
             ns_sym->scope->ast = mod.module_ast.get();

@@ -166,16 +166,22 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
     // Get the function-type name from the function: "func()" => "$Func".
     const auto mapped_name = target_fn_name.to_function_identifier();
     auto overload_scopes = std::vector<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, std::unique_ptr<asts::GenericArgumentGroupAst>>>();
-    auto is_ext_scope = [](auto *scope) { return asts::ast_cast<asts::SupPrototypeExtensionAst>(scope->ast); };
+
+    auto is_valid_ext_scope = [target_fn_name](auto const *scope) {
+        const auto ext = dynamic_cast<asts::SupPrototypeExtensionAst*>(scope->ast);
+        if (ext == nullptr) { return false; }
+        const auto ext_name = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(ext->name);
+        return ext_name != nullptr and ext_name->name == target_fn_name.val;
+    };
 
     // Check for namespaced (module-level) functions (they will have no inheritable generics).
     if (target_scope->ns_sym != nullptr) {
         for (auto *ancestor_scope : target_scope->ancestors()) {
-            for (const auto *sup_scope : ancestor_scope->children | genex::views::ptr | genex::views::filter(is_ext_scope)) {
-                auto generics = nullptr;
-                auto scope = sup_scope->children[0].get();
-                auto proto = asts::ast_cast<asts::FunctionPrototypeAst>(ast_body(sup_scope->ast)[0]);
-                overload_scopes.emplace_back(scope, proto, generics);
+            for (auto const *sup_scope : ancestor_scope->children | genex::views::ptr | genex::views::filter(is_valid_ext_scope) | genex::views::to<std::vector>()) {
+                auto generics = asts::GenericArgumentGroupAst::new_empty();
+                auto scope = not for_override ? sup_scope->children[0].get() : sup_scope;
+                auto proto = dynamic_cast<asts::FunctionPrototypeAst*>(asts::ast_body(sup_scope->ast)[0]);
+                overload_scopes.emplace_back(scope, proto, std::move(generics));
             }
         }
     }
@@ -183,17 +189,17 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
     // Functions belonging to a type ill have inheritance generics from "sup [...] Type { ... }"
     else {
         // If a class scope was provided, get all the sup scopes from it, otherwise use the specific sup scope.
-        const auto sup_scopes = asts::ast_cast<asts::ClassPrototypeAst>(target_scope->ast) != nullptr
-                                    ? target_scope->direct_sup_scopes() | genex::views::transform([](auto x) -> const scopes::Scope* { return x; }) | genex::views::to<std::vector>()
-                                    : std::vector{target_scope};
+        const auto sup_scopes = dynamic_cast<asts::ClassPrototypeAst*>(target_scope->ast) != nullptr
+            ? target_scope->direct_sup_scopes() | genex::views::transform([](auto x) -> const scopes::Scope* { return x; }) | genex::views::to<std::vector>()
+            : std::vector{target_scope};
 
         // From the super scopes, check each one for "sup $Func ext FunXXX { ... }" super-impositions.
         for (auto *sup_scope : sup_scopes) {
             for (auto *sup_ast : asts::ast_body(sup_scope->ast) | genex::views::cast_dynamic<asts::SupPrototypeExtensionAst*>() | genex::views::to<std::vector>()) {
-                if (asts::ast_cast<asts::TypeIdentifierAst>(sup_ast->name)->name == mapped_name->val) {
+                if (std::dynamic_pointer_cast<asts::TypeIdentifierAst>(sup_ast->name)->name == mapped_name->val) {
                     auto generics = std::make_unique<asts::GenericArgumentGroupAst>(nullptr, sup_scope->get_generics(), nullptr);
                     auto scope = sup_scope;
-                    auto proto = asts::ast_cast<asts::FunctionPrototypeAst>(asts::ast_body(sup_ast)[0]);
+                    auto proto = dynamic_cast<asts::FunctionPrototypeAst*>(asts::ast_body(sup_ast)[0]);
                     overload_scopes.emplace_back(scope, proto, std::move(generics));
                 }
             }
@@ -323,13 +329,19 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_override(
         }
 
         // The function type (subroutines vs coroutine) must match.
-        if (new_fn.tok_fun->token_type != old_fn->tok_fun->token_type) { continue; }
+        if (new_fn.tok_fun->token_type != old_fn->tok_fun->token_type) {
+            continue;
+        }
 
         // The return types must be the same type.
-        if (not type_utils::symbolic_eq(*new_fn.return_type, *old_fn->return_type, this_scope, *old_scope)) { continue; }
+        if (not type_utils::symbolic_eq(*new_fn.return_type, *old_fn->return_type, this_scope, *old_scope)) {
+            continue;
+        }
 
         // Check the self parameters' conventions.
-        if (hs(&new_fn) != hs(old_fn) or sc(&new_fn) != sc(old_fn)) { continue; }
+        if (hs(&new_fn) != hs(old_fn) or (sc(&new_fn) and *sc(&new_fn) != sc(old_fn)) or (not sc(&new_fn) and sc(old_fn))) {
+            continue;
+        }
 
         // The functions must have identical signatures at this point, so return the old function.
         return old_fn;

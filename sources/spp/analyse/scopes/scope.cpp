@@ -153,19 +153,20 @@ auto spp::analyse::scopes::Scope::get_generics() const
     // Create the symbols list.
     auto syms = std::vector<std::unique_ptr<asts::GenericArgumentAst>>();
 
-    auto scopes = ancestors()
-        | genex::views::take_until([](auto &&scope) { return std::holds_alternative<asts::IdentifierAst*>(scope->name); });
+    const auto scopes = ancestors()
+        | genex::views::take_until([](auto *scope) { return std::holds_alternative<std::shared_ptr<asts::IdentifierAst>>(scope->name); })
+        | genex::views::to<std::vector>();
 
     // Check each ancestor scope, accumulating generic symbols.
     for (auto &&scope : scopes) {
         // Type symbols must be generic and have a "scope" ie the generic points to a concrete type.
         scope->all_type_symbols(true)
-            | genex::views::filter([](auto &&sym) { return sym->is_generic and sym->scope != nullptr; })
+            | genex::views::filter([](auto const &sym) { return sym->is_generic and sym->scope != nullptr; })
             | genex::views::for_each([&syms](auto const &sym) { syms.emplace_back(asts::GenericArgumentTypeKeywordAst::from_symbol(*sym)); });
 
         // Comp symbols must be generic.
         scope->all_var_symbols(true)
-            | genex::views::filter([](auto &&sym) { return sym->is_generic; })
+            | genex::views::filter([](auto const &sym) { return sym->is_generic; })
             | genex::views::for_each([&syms](auto const &sym) { syms.emplace_back(asts::GenericArgumentCompKeywordAst::from_symbol(*sym)); });
     }
 
@@ -177,7 +178,6 @@ auto spp::analyse::scopes::Scope::get_generics() const
 auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
     std::vector<asts::GenericArgumentAst*> generics)
     -> std::vector<std::shared_ptr<Symbol>> {
-
     // Convert the provided generic arguments into symbols.
     const auto type_syms = generics
         | genex::views::cast_dynamic<asts::GenericArgumentTypeAst*>()
@@ -196,7 +196,7 @@ auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
 
     // Re-use above logic to collect generic symbols from the ancestor scopes.
     auto scopes = ancestors()
-        | genex::views::take_until([](auto *scope) { return std::holds_alternative<asts::IdentifierAst*>(scope->name); })
+        | genex::views::take_until([](auto *scope) { return std::holds_alternative<std::shared_ptr<asts::IdentifierAst>>(scope->name); })
         | genex::views::to<std::vector>();
 
     for (auto *scope : scopes) {
@@ -388,7 +388,6 @@ auto spp::analyse::scopes::Scope::get_type_symbol(
     const bool exclusive,
     const bool ignore_alias) const
     -> std::shared_ptr<TypeSymbol> {
-
     // Adjust the scope for the namespace of the type identifier if there is one.
     auto [scope, sym_name_extracted] = shift_scope_for_namespaced_type(*this, *sym_name->without_convention());
 
@@ -539,7 +538,7 @@ auto spp::analyse::scopes::Scope::parent_module() const
     -> Scope const* {
     // Get the parent module scope, if it exists.
     for (auto *scope = this; scope != nullptr; scope = scope->parent) {
-        if (std::holds_alternative<asts::IdentifierAst*>(scope->name)) {
+        if (std::holds_alternative<std::shared_ptr<asts::IdentifierAst>>(scope->name)) {
             return scope;
         }
     }
@@ -593,10 +592,10 @@ auto spp::analyse::scopes::Scope::print_scope_tree() const
     auto func = [](this auto &&self, Scope const *scope, std::string const &indent) -> std::string {
         auto result = indent + std::visit(
             spp::utils::variants::overload{
-                [](asts::IdentifierAst *id) {
+                [](std::shared_ptr<asts::IdentifierAst> const &id) {
                     return id->val;
                 },
-                [](asts::TypeIdentifierAst *id) {
+                [](std::shared_ptr<asts::TypeIdentifierAst> const &id) {
                     return id->name;
                 },
                 [](ScopeBlockName const &block) {
