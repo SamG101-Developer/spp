@@ -122,8 +122,8 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes(
     }
 
     // Handle type symbols.
-    else if (scope.ty_sym.get() != nullptr) {
-        const auto non_generic_sym = scope.ty_sym;
+    else if (scope.ty_sym != nullptr) {
+        const auto non_generic_sym = scope.get_type_symbol(scope.ty_sym->name->without_generics());
         auto scopes = genex::views::concat(normal_sup_blocks[non_generic_sym.get()], generic_sup_blocks) | genex::views::to<std::vector>();
         attach_specific_super_scopes_impl(scope, std::move(scopes), meta);
     }
