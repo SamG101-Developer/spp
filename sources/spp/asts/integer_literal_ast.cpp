@@ -65,7 +65,7 @@ spp::asts::IntegerLiteralAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(sign);
     SPP_STRING_APPEND(val);
-    raw_string.append(type);
+    raw_string.append("_").append(type);
     SPP_STRING_END;
 }
 
@@ -74,7 +74,7 @@ auto spp::asts::IntegerLiteralAst::print(meta::AstPrinter &printer) const -> std
     SPP_PRINT_START;
     SPP_PRINT_APPEND(sign);
     SPP_PRINT_APPEND(val);
-    formatted_string.append(type);
+    formatted_string.append("_").append(type);
     SPP_PRINT_END;
 }
 

@@ -63,7 +63,7 @@ spp::asts::FloatLiteralAst::operator std::string() const {
     SPP_STRING_APPEND(int_val);
     SPP_STRING_APPEND(tok_dot);
     SPP_STRING_APPEND(frac_val);
-    raw_string += type;
+    raw_string.append("_").append(type);
     SPP_STRING_END;
 }
 
@@ -74,7 +74,7 @@ auto spp::asts::FloatLiteralAst::print(meta::AstPrinter &printer) const -> std::
     SPP_PRINT_APPEND(int_val);
     SPP_PRINT_APPEND(tok_dot);
     SPP_PRINT_APPEND(frac_val);
-    formatted_string += type;
+    formatted_string.append("_").append(type);
     SPP_PRINT_END;
 }
 
