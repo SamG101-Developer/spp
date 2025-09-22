@@ -70,7 +70,9 @@ auto spp::asts::GenericArgumentGroupAst::from_params(
     }
 
     // Place the arguments into a group AST.
-    return std::make_unique<GenericArgumentGroupAst>(nullptr, std::move(mapped_args), nullptr);
+    auto arg_group = new_empty();
+    arg_group->args = std::move(mapped_args);
+    return arg_group;
 }
 
 

@@ -36,7 +36,8 @@ auto spp::asts::GenericParameterCompAst::stage_2_gen_top_level_scopes(
     }
 
     // Create a variable symbol for this constant in the current scope (class / function).
-    auto sym = std::make_unique<analyse::scopes::VariableSymbol>(IdentifierAst::from_type(*name), type, false, true, utils::Visibility::PUBLIC);
+    auto sym = std::make_unique<analyse::scopes::VariableSymbol>(
+        IdentifierAst::from_type(*name), type, false, true, utils::Visibility::PUBLIC);
     sym->memory_info->ast_pins.emplace_back(name.get());
     sym->memory_info->ast_comptime = this;
     sym->memory_info->initialized_by(*this);
@@ -48,9 +49,10 @@ auto spp::asts::GenericParameterCompAst::stage_4_qualify_types(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
     -> void {
-    // Qualify the type on the generic parameter. Note: not possible to have a convention here.
+    // Qualify the type on the generic parameter (and in the symbol). Note: not possible to have a convention here.
     type->stage_7_analyse_semantics(sm, meta);
     type = sm->current_scope->get_type_symbol(type)->fq_name();
+    sm->current_scope->get_var_symbol(IdentifierAst::from_type(*name))->type = type;
 }
 
 
