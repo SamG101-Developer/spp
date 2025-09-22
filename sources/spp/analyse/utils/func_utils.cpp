@@ -335,12 +335,12 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_override(
             continue;
         }
 
-        // The function type (subroutines vs coroutine) must match.
+        // The function type (subroutine vs coroutine) must match.
         if (new_fn.tok_fun->token_type != old_fn->tok_fun->token_type) {
             continue;
         }
 
-        // The return types must be the same type.
+        // The return types must be symbolically equal.
         if (not type_utils::symbolic_eq(*new_fn.return_type, *old_fn->return_type, this_scope, *old_scope)) {
             continue;
         }

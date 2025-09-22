@@ -1,5 +1,3 @@
-#define _GLIBCXX_DEBUG
-
 #include <spp/cli.hpp>
 
 

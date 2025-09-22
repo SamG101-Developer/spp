@@ -12,3 +12,8 @@ Notes
 
 - `ast_cast` doesn't work properly for shared pointers; if one dies then they all die, because I copy the raw pointer
   in, instead of casting it using `dynamic_pointer_cast`.
+
+Optimizations
+- [ ] Where can `T&` and `T*` be used instead of `std::shared_ptr<T>`?
+- [ ] Reduce cloning where possible (i think this is minimal anyway)
+- [ ] Remove move `genex::views::to<std::vector>` (requires modifications to genex).
