@@ -673,22 +673,22 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
         | genex::views::to<std::vector>();
     auto new_sup_scope_ptr = new_sup_scope.get();
     old_sup_scope.parent->children.emplace_back(std::move(new_sup_scope));
+    auto tm = scopes::ScopeManager(sm->global_scope, new_sup_scope_ptr);
 
     // Register the generic symbols.
     auto generic_syms = external_generic_syms
-        | genex::views::concat(generic_args.args | genex::views::transform([&](auto &&g) { return create_generic_sym(*g, *sm, meta); }))
+        | genex::views::concat(generic_args.args | genex::views::transform([&](auto &&g) { return create_generic_sym(*g, tm, meta); }))
         | genex::views::to<std::vector>();
 
     generic_syms
         | genex::views::cast_smart_ptr<scopes::TypeSymbol>()
-        | genex::views::for_each([&old_sup_scope](auto &&e) { old_sup_scope.parent->add_type_symbol(std::move(e)); });
+        | genex::views::for_each([&](auto &&e) { new_sup_scope_ptr->add_type_symbol(std::move(e)); });
 
     generic_syms
         | genex::views::cast_smart_ptr<scopes::VariableSymbol>()
-        | genex::views::for_each([&old_sup_scope](auto &&e) { old_sup_scope.parent->add_var_symbol(std::move(e)); });
+        | genex::views::for_each([&](auto &&e) { new_sup_scope_ptr->add_var_symbol(std::move(e)); });
 
     // Add the "Self" symbol into the new scope.
-    auto tm = scopes::ScopeManager(sm->global_scope, new_sup_scope_ptr);
     self_type->stage_7_analyse_semantics(&tm, meta);
     auto old_self_sym = new_sup_scope_ptr->get_type_symbol(self_type);
     new_sup_scope_ptr->add_type_symbol(std::make_unique<scopes::AliasSymbol>(
