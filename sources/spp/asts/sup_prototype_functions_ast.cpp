@@ -143,6 +143,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_4_qualify_types(
     // Forward to the implementation.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
+    generic_param_group->stage_4_qualify_types(sm, meta);
     impl->stage_4_qualify_types(sm, meta);
     sm->move_out_of_current_scope();
 }
