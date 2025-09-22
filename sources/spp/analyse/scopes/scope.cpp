@@ -195,13 +195,13 @@ auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
         | genex::views::to<std::vector>();
 
     // Re-use above logic to collect generic symbols from the ancestor scopes.
-    auto scopes = ancestors()
+    const auto scopes = ancestors()
         | genex::views::take_until([](auto *scope) { return std::holds_alternative<std::shared_ptr<asts::IdentifierAst>>(scope->name); })
         | genex::views::to<std::vector>();
 
-    for (auto *scope : scopes) {
+    for (auto const *scope : scopes) {
         scope->all_type_symbols(true)
-            | genex::views::filter([](auto const &sym) { return sym->is_generic and sym->scope != nullptr; })
+            | genex::views::filter([](auto const &sym) { return sym->is_generic; })
             | genex::views::for_each([&syms](auto const &sym) { syms.emplace_back(sym); });
 
         scope->all_var_symbols(true)
