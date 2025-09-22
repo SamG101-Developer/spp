@@ -59,10 +59,9 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
     if (lhs_type.is_never_type()) { return rhs_type.is_never_type(); }
 
     // Do a convention check, and allow "&mut" to coerce to "&".
-    if (lhs_type.get_convention() != rhs_type.get_convention()) {
-        const auto lhs_conv = lhs_type.get_convention();
-        const auto rhs_conv = rhs_type.get_convention();
-
+    const auto lhs_conv = lhs_type.get_convention();
+    const auto rhs_conv = rhs_type.get_convention();
+    if ((lhs_conv and *lhs_conv != rhs_conv) or (not lhs_conv and rhs_conv)) {
         if (not((lhs_conv and *lhs_conv == asts::ConventionAst::ConventionTag::REF) and (rhs_conv and *rhs_conv == asts::ConventionAst::ConventionTag::MUT))) {
             return false;
         }
@@ -146,6 +145,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     scopes::Scope const *lhs_scope,
     scopes::Scope const *rhs_scope,
     std::map<std::shared_ptr<asts::TypeAst>, asts::ExpressionAst const*> &generic_args) -> bool {
+    // Todo: Convention check?
     // If the right-hand-side scope is nullptr, the scope is generic so auto-match it.
     if (rhs_scope == nullptr) {
         return true;
