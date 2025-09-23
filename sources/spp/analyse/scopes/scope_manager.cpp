@@ -46,7 +46,7 @@ auto spp::analyse::scopes::ScopeManager::reset(
 
 
 auto spp::analyse::scopes::ScopeManager::create_and_move_into_new_scope(
-    ScopeName name,
+    ScopeName const &name,
     asts::Ast *ast,
     spp::utils::errors::ErrorFormatter *error_formatter)
     -> Scope* {
@@ -112,7 +112,7 @@ auto spp::analyse::scopes::ScopeManager::attach_all_super_scopes(
 
 auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes(
     Scope &scope,
-    asts::mixins::CompilerMetaData *meta)
+    asts::mixins::CompilerMetaData *meta) const
     -> void {
     // Handle alias symbols.
     if (const auto alias_sym = dynamic_cast<AliasSymbol*>(scope.ty_sym.get()); alias_sym != nullptr and alias_sym->old_sym->scope != nullptr) {
@@ -133,7 +133,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes(
 auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
     Scope &scope,
     std::vector<Scope*> &&sup_scopes,
-    asts::mixins::CompilerMetaData *meta)
+    asts::mixins::CompilerMetaData *meta) const
     -> void {
     // Skip "$" identifiers (functions don't have substitutable members and take up lots of time).
     const auto scope_name = std::get<std::shared_ptr<asts::TypeIdentifierAst>>(scope.name);
@@ -256,103 +256,4 @@ auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statement
         errors::SemanticErrorBuilder<errors::SppIdentifierDuplicateError>().with_args(
             *d1, *d2, "comparison operator").with_scopes({d1->m_scope, d2->m_scope}).raise();
     }
-}
-
-
-spp::analyse::scopes::ScopeIterator::ScopeIterator(
-    Scope *root) :
-    m_root(root) {
-    if (m_root != nullptr) {
-        m_stack.push_back(m_root);
-        m_seen_children = m_root->children.size();
-    }
-}
-
-
-auto spp::analyse::scopes::ScopeIterator::operator*()
-    -> reference {
-    return m_stack.back();
-}
-
-
-auto spp::analyse::scopes::ScopeIterator::operator*() const
-    -> const_reference {
-    return m_stack.back();
-}
-
-
-auto spp::analyse::scopes::ScopeIterator::operator->()
-    -> pointer {
-    return &m_stack.back();
-}
-
-
-auto spp::analyse::scopes::ScopeIterator::operator->() const
-    -> const_pointer {
-    return &m_stack.back();
-}
-
-
-auto spp::analyse::scopes::ScopeIterator::operator++()
-    -> ScopeIterator& {
-    if (m_stack.empty()) { return *this; }
-
-    const auto cur = m_stack.back();
-    m_stack.pop_back();
-
-    // Push children of the current scope.
-    for (auto it = cur->children.rbegin(); it != cur->children.rend(); ++it) {
-        m_stack.push_back(it->get());
-    }
-
-    // If exhausted, but root got new children, pick them up.
-    if (m_stack.empty() and m_root != nullptr) {
-        for (auto i = m_seen_children; i < m_root->children.size(); ++i) {
-            m_stack.push_back(m_root->children[i].get());
-        }
-        m_seen_children = m_root->children.size();
-    }
-
-    // Return self
-    return *this;
-}
-
-
-auto spp::analyse::scopes::ScopeIterator::operator++(int)
-    -> ScopeIterator {
-    auto tmp = *this;
-    ++*this;
-    return tmp;
-}
-
-
-auto spp::analyse::scopes::ScopeIterator::operator==(
-    ScopeIterator const &other) const
-    -> bool {
-    return m_stack.empty() and other.m_stack.empty();
-}
-
-
-auto spp::analyse::scopes::ScopeIterator::operator!=(
-    ScopeIterator const &other) const
-    -> bool {
-    return not(*this == other);
-}
-
-
-spp::analyse::scopes::ScopeRange::ScopeRange(
-    Scope *root) :
-    m_root(root) {
-}
-
-
-auto spp::analyse::scopes::ScopeRange::begin() const
-    -> ScopeIterator {
-    return ScopeIterator(m_root);
-}
-
-
-auto spp::analyse::scopes::ScopeRange::end() const
-    -> ScopeIterator {
-    return ScopeIterator();
 }
