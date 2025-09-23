@@ -15,6 +15,7 @@
 #include <spp/asts/generic_argument_type_keyword_ast.hpp>
 #include <spp/asts/generic_argument_type_positional_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
+#include <spp/asts/generic_parameter_group_ast.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/inner_scope_expression_ast.hpp>
@@ -42,8 +43,6 @@
 #include <genex/views/remove_if.hpp>
 #include <genex/views/to.hpp>
 #include <opex/cast.hpp>
-
-#include "spp/asts/generic_parameter_group_ast.hpp"
 
 
 auto spp::analyse::utils::type_utils::symbolic_eq(
@@ -660,7 +659,7 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     scopes::Scope &new_cls_scope,
     asts::GenericArgumentGroupAst const &generic_args,
     std::vector<std::shared_ptr<scopes::Symbol>> const &external_generic_syms,
-    scopes::ScopeManager *sm,
+    scopes::ScopeManager const *sm,
     asts::mixins::CompilerMetaData *meta)
     -> std::tuple<scopes::Scope*, scopes::Scope*> {
     // Create a new scope for the generic substituted super scope.
@@ -732,11 +731,14 @@ auto spp::analyse::utils::type_utils::create_generic_sym(
     asts::mixins::CompilerMetaData *meta,
     scopes::ScopeManager *tm)
     -> std::shared_ptr<scopes::Symbol> {
+    // Intercept creating "Out = Bool".
+
     // Handle the generic type argument => creates a type symbol.
     if (const auto type_arg = asts::ast_cast<asts::GenericArgumentTypeKeywordAst>(&generic); type_arg != nullptr) {
         const auto true_val_sym = sm.current_scope->get_type_symbol(type_arg->val);
+
         auto sym = std::make_unique<scopes::TypeSymbol>(
-            ast_clone(type_arg->name->type_parts().back()), true_val_sym ? true_val_sym->type : nullptr,
+            type_arg->name->type_parts().back(), true_val_sym ? true_val_sym->type : nullptr,
             true_val_sym ? true_val_sym->scope : nullptr, sm.current_scope, true,
             true_val_sym ? true_val_sym->is_copyable : false, asts::utils::Visibility::PUBLIC,
             type_arg->val->get_convention());

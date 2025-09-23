@@ -302,7 +302,7 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_override(
     auto existing_fns = existing | genex::views::tuple_element<1>() | genex::views::to<std::vector>();
     auto param_names_eq = [](auto const &a, auto const &b) {
         if (a.size() != b.size()) { return false; }
-        for (auto [x, y] : genex::views::zip(a, b) | genex::views::to<std::vector>()) {
+        for (auto const &[x, y] : genex::views::zip(a, b) | genex::views::to<std::vector>()) {
             if (*x != *y) { return false; }
         }
         return true;
@@ -792,6 +792,10 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
         auto comp_arg = asts::ast_cast<asts::GenericArgumentCompKeywordAst>(arg);
         auto comp_param = asts::ast_cast<asts::GenericParameterCompAst>(param);
         if (comp_arg == nullptr) { continue; }
+
+        if (comp_arg->val->operator std::string() == "n") {
+            auto _ = 123;
+        }
 
         auto a_type = comp_arg->val->infer_type(&sm, meta);
         auto p_type = comp_param->type->substitute_generics(args | genex::views::ptr | genex::views::cast_dynamic<asts::GenericArgumentAst*>() | genex::views::to<std::vector>());

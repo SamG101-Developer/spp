@@ -182,7 +182,7 @@ namespace spp::analyse::utils::type_utils {
         scopes::Scope &new_cls_scope,
         asts::GenericArgumentGroupAst const &generic_args,
         std::vector<std::shared_ptr<scopes::Symbol>> const &external_generic_syms,
-        scopes::ScopeManager *sm,
+        scopes::ScopeManager const *sm,
         asts::mixins::CompilerMetaData *meta)
         -> std::tuple<scopes::Scope*, scopes::Scope*>;
 
