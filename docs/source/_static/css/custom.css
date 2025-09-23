@@ -1,0 +1,21 @@
+:root {
+    --font-sans: "Quicksand", "Helvetica", "Arial", sans-serif;
+    --font-mono: "Fira Code", "JetBrains Mono", monospace;
+}
+
+body {
+    font-family: var(--font-sans);
+}
+
+code, pre, .highlight {
+    font-family: var(--font-mono);
+}
+
+
+.cpp.function,
+.cpp.var {
+    border: 2px solid #1e2124;
+    border-radius: 8px;
+    padding: 1em;
+    margin: 1em 0;
+}
