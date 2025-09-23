@@ -2,6 +2,10 @@
 #include <spp/asts/ast.hpp>
 
 
+/**
+ * Shortcut to create an empty list of annotations for structs that contain an annotation list. The usual @c {} cannot
+ * be used, because it is interpreted as an "empty initializer list".
+ */
 #define SPP_NO_ANNOTATIONS std::vector<std::unique_ptr<asts::AnnotationAst>>()
 
 
