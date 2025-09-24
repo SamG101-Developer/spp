@@ -64,8 +64,9 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     tok_arrow(std::move(tok_arrow)),
     return_type(std::move(return_type)),
     impl(std::move(impl)) {
-    // Create any ASTs that are needed as "empty" if they are nullptr.
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_fun, lex::SppTokenType::KW_FUN, "fun");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_param_group);
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_arrow, lex::SppTokenType::TK_ARROW_RIGHT, "->");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->impl);
 }
 
@@ -79,7 +80,7 @@ auto spp::asts::FunctionPrototypeAst::pos_start() const -> std::size_t {
 
 
 auto spp::asts::FunctionPrototypeAst::pos_end() const -> std::size_t {
-    return impl->pos_end();
+    return return_type->pos_end();
 }
 
 
