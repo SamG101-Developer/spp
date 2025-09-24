@@ -34,15 +34,20 @@
 #include <genex/algorithms/contains.hpp>
 #include <genex/algorithms/position.hpp>
 #include <genex/views/cast.hpp>
+#include <genex/views/chunk.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/flatten.hpp>
 #include <genex/views/for_each.hpp>
+#include <genex/views/remove.hpp>
 #include <genex/views/transform.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/remove_if.hpp>
 #include <genex/views/to.hpp>
 #include <opex/cast.hpp>
+
+#include "spp/lex/lexer.hpp"
+#include "spp/parse/parser_spp.hpp"
 
 
 auto spp::analyse::utils::type_utils::symbolic_eq(
@@ -643,11 +648,11 @@ auto spp::analyse::utils::type_utils::create_generic_fun_scope(
 
     generic_syms
         | genex::views::cast_smart_ptr<scopes::TypeSymbol>()
-        | genex::views::for_each([&new_fun_scope](auto const &e) { new_fun_scope->add_type_symbol(e); });
+        | genex::views::for_each([&](auto const &e) { new_fun_scope->add_type_symbol(e); });
 
     generic_syms
         | genex::views::cast_smart_ptr<scopes::VariableSymbol>()
-        | genex::views::for_each([&new_fun_scope](auto const& e) { new_fun_scope->add_var_symbol(e); });
+        | genex::views::for_each([&](auto const &e) { new_fun_scope->add_var_symbol(e); });
 
     // Return the new function scope.
     return new_fun_scope.get();
@@ -674,18 +679,21 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     old_sup_scope.parent->children.emplace_back(std::move(new_sup_scope));
     auto tm = scopes::ScopeManager(sm->global_scope, new_sup_scope_ptr);
 
+    std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name =
+    substitute_sup_scope_name(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name, generic_args);
+
     // Register the generic symbols.
     auto generic_syms = external_generic_syms
-        | genex::views::concat(generic_args.args | genex::views::transform([&](auto &&g) { return create_generic_sym(*g, tm, meta); }))
+        | genex::views::concat(generic_args.args | genex::views::transform([&](auto const &g) { return create_generic_sym(*g, tm, meta); }))
         | genex::views::to<std::vector>();
 
     generic_syms
         | genex::views::cast_smart_ptr<scopes::TypeSymbol>()
-        | genex::views::for_each([&](auto &&e) { new_sup_scope_ptr->add_type_symbol(std::move(e)); });
+        | genex::views::for_each([&](auto const &e) { new_sup_scope_ptr->add_type_symbol(e); });
 
     generic_syms
         | genex::views::cast_smart_ptr<scopes::VariableSymbol>()
-        | genex::views::for_each([&](auto &&e) { new_sup_scope_ptr->add_var_symbol(std::move(e)); });
+        | genex::views::for_each([&](auto const &e) { new_sup_scope_ptr->add_var_symbol(e); });
 
     // Add the "Self" symbol into the new scope.
     self_type->stage_7_analyse_semantics(&tm, meta);
@@ -698,9 +706,7 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     for (auto &&scoped_sym : new_sup_scope_ptr->all_type_symbols() | genex::views::to<std::vector>()) {
         if (auto scoped_alias_sym = std::dynamic_pointer_cast<scopes::AliasSymbol>(scoped_sym); scoped_alias_sym != nullptr) {
             auto old_type_sub = scoped_alias_sym->old_sym->fq_name();
-            scoped_alias_sym->old_sym = old_sup_scope.get_type_symbol(old_type_sub)
-                                            ? old_sup_scope.get_type_symbol(old_type_sub)
-                                            : scoped_alias_sym->old_sym;
+            scoped_alias_sym->old_sym = old_sup_scope.get_type_symbol(old_type_sub) ? old_sup_scope.get_type_symbol(old_type_sub) : scoped_alias_sym->old_sym;
             if (genex::algorithms::contains(old_sup_scope.children | genex::views::ptr | genex::views::to<std::vector>(), scoped_alias_sym->scope)) {
                 scoped_alias_sym->scope = new_sup_scope_ptr->children[genex::algorithms::position(old_sup_scope.children | genex::views::ptr | genex::views::to<std::vector>(), [&](auto &&x) { return x == scoped_alias_sym->scope; }) as USize].get();
             }
@@ -835,6 +841,26 @@ auto spp::analyse::utils::type_utils::deduplicate_variant_inner_types(
 
     // Return the deduplicated list of types.
     return out;
+}
+
+
+auto spp::analyse::utils::type_utils::substitute_sup_scope_name(
+    std::string const &old_sup_scope_name,
+    asts::GenericArgumentGroupAst const &generic_args)
+    -> std::string {
+    const auto parts = old_sup_scope_name
+        | genex::views::chunk('#')
+        | genex::views::to<std::vector>()
+        | genex::views::transform([](auto &&x) { return std::string(x.begin(), x.end()); })
+        | genex::views::to<std::vector>();
+
+    if (not parts[1].contains(" ext ")) {
+        const auto t = parse::ParserSpp(lex::Lexer(parts[1]).lex()).parse_type_expression()->substitute_generics(generic_args.get_all_args());
+        return parts[0] + "#" + static_cast<std::string>(*t) + "#" + parts[2];
+    }
+    const auto t = parse::ParserSpp(lex::Lexer(parts[1].substr(0, parts[1].find(" ext "))).lex()).parse_type_expression()->substitute_generics(generic_args.get_all_args());
+    const auto u = parse::ParserSpp(lex::Lexer(parts[1].substr(parts[1].find(" ext ") + 5)).lex()).parse_type_expression()->substitute_generics(generic_args.get_all_args());
+    return parts[0] + "#" + static_cast<std::string>(*t) + " ext " + static_cast<std::string>(*u) + "#" + parts[2];
 }
 
 

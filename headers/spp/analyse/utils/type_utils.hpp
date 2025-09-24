@@ -18,6 +18,7 @@ namespace spp::analyse::scopes {
 namespace spp::asts::mixins {
     struct CompilerMetaData;
 }
+
 /// @endcond
 
 
@@ -211,4 +212,9 @@ namespace spp::analyse::utils::type_utils {
         asts::TypeAst const &type,
         scopes::Scope const &scope)
         -> std::vector<std::shared_ptr<asts::TypeAst>>;
+
+    auto substitute_sup_scope_name(
+        std::string const &old_sup_scope_name,
+        asts::GenericArgumentGroupAst const &generic_args)
+        -> std::string;
 }
