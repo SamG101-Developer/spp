@@ -138,7 +138,7 @@ struct spp::asts::mixins::CompilerMetaDataState {
     std::size_t current_loop_depth;
     LoopExpressionAst *current_loop_ast;
     std::map<std::size_t, std::tuple<ExpressionAst*, std::shared_ptr<TypeAst>, analyse::scopes::Scope*>> loop_return_types;
-    TypeAst *object_init_type;
+    std::shared_ptr<TypeAst> object_init_type;
     std::map<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>> infer_source;
     std::map<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>> infer_target;
     ExpressionAst *postfix_expression_lhs;

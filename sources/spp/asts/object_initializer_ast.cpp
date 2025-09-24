@@ -66,7 +66,10 @@ auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
     mixins::CompilerMetaData *meta)
     -> void {
     // Get the base class symbol (no generics) and check it exists.
+    meta->save();
+    meta->skip_type_analysis_generic_checks = true;
     type->without_generics()->stage_7_analyse_semantics(sm, meta);
+    meta->restore();
     const auto base_cls_sym = sm->current_scope->get_type_symbol(type->without_generics());
 
     // Generic types cannot have any attributes set | TODO: future with constraints will allow some.
@@ -77,7 +80,7 @@ auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
 
     // Prepare the object initializer arguments.
     meta->save();
-    meta->object_init_type = type.get();
+    meta->object_init_type = type->without_generics();
     arg_group->stage_6_pre_analyse_semantics(sm, meta);
     meta->restore();
 
@@ -99,8 +102,9 @@ auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
     meta->save();
     meta->infer_source = std::map(generic_infer_source.begin(), generic_infer_source.end());
     meta->infer_target = std::map(generic_infer_target.begin(), generic_infer_target.end());
-    arg_group->stage_7_analyse_semantics(sm, meta);
     type->stage_7_analyse_semantics(sm, meta);
+    meta->object_init_type = type;
+    arg_group->stage_7_analyse_semantics(sm, meta);
     meta->restore();
 }
 

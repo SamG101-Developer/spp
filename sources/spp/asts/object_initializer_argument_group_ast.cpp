@@ -92,11 +92,12 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::print(meta::AstPrinter &print
 auto spp::asts::ObjectInitializerArgumentGroupAst::get_autofill_arg()
     -> ObjectInitializerArgumentShorthandAst* {
     // Get the first shorthand argument tagged with the ".." token.
-    return args
+    const auto filtered = args
         | genex::views::ptr
         | genex::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr and x->tok_ellipsis != nullptr; })
-        | genex::operations::front;
+        | genex::views::to<std::vector>();
+    return filtered.empty() ? nullptr : filtered[0];
 }
 
 
@@ -180,7 +181,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
     mixins::CompilerMetaData *meta)
     -> void {
     // Get the attributes on the type and supertypes.
-    const auto cls_sym = sm->current_scope->get_type_symbol(meta->object_init_type->shared_from_this());
+    const auto cls_sym = sm->current_scope->get_type_symbol(meta->object_init_type);
     const auto all_attrs = analyse::utils::type_utils::get_all_attrs(*meta->object_init_type, sm);
     const auto all_attr_names = all_attrs
         | genex::views::transform([](auto &&x) { return x.first->name; })
