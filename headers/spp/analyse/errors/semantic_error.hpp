@@ -6,6 +6,7 @@
 #include <boost/multiprecision/cpp_int.hpp>
 
 
+/// @cond
 namespace spp::analyse::errors {
     struct SemanticError;
 
@@ -93,6 +94,7 @@ namespace spp::analyse::errors {
     struct SppGenericArgumentTooManyError;
     struct SppMissingMainFunctionError;
 }
+/// @endcond
 
 
 struct spp::analyse::errors::SemanticError : spp::utils::errors::AbstractError {

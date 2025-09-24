@@ -7,9 +7,9 @@
 #include <genex/views/cycle.hpp>
 #include <genex/views/take.hpp>
 #include <genex/views/transform.hpp>
-#include <genex/views/zip.hpp>
 
 
+/// @cond
 namespace spp::utils::errors {
     class ErrorFormatter;
 
@@ -22,6 +22,7 @@ namespace spp::utils::errors {
 namespace spp::analyse::scopes {
     class Scope;
 }
+/// @endcond
 
 
 struct spp::utils::errors::AbstractError : std::runtime_error {

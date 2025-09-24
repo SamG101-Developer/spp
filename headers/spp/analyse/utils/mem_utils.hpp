@@ -1,6 +1,7 @@
 #pragma once
 
 
+/// @cond
 namespace spp::analyse::utils::mem_utils {
     /**
      * The @c InconsistentCondMemState holds two @c CondMemState pairs, which have conflicting information about the
@@ -21,6 +22,7 @@ namespace spp::analyse::scopes {
 namespace spp::asts::mixins {
     struct CompilerMetaData;
 }
+/// @endcond
 
 
 /**
@@ -76,7 +78,7 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
 
     /**
      * The @c ast_comptime AST is the AST that represents the compile-time declaration of the symbol. This might be the
-     * @c cmp statement or @cmp generic parameter, wherever the symbol was declared with @c cmp.
+     * @c cmp statement or @c cmp generic parameter, wherever the symbol was declared with @c cmp.
      */
     asts::Ast const *ast_comptime;
 
@@ -100,14 +102,14 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
     bool is_borrow_ref = false;
 
     /**
-     * A symbol is inconsistently initialised if a symbol is @i changed into the initialised state in one branch, but
+     * A symbol is inconsistently initialised if a symbol is <i>changed</i> into the initialised state in one branch, but
      * not in another branch. This is used to track whether a symbol has been initialised in one branch, but not in
      * another branch.
      */
     std::optional<InconsistentCondMemState> is_inconsistently_initialized;
 
     /**
-     * A symbol is inconsistently moved if a symbol is @i changed into the moved state in one branch, but not in another
+     * A symbol is inconsistently moved if a symbol is <i>changed</i> into the moved state in one branch, but not in another
      * branch. This is used to track whether a symbol has been moved out of in one branch, but not in another branch.
      */
     std::optional<InconsistentCondMemState> is_inconsistently_moved;
@@ -204,8 +206,8 @@ namespace spp::analyse::utils::mem_utils {
      * The symbol @c a.b also overlaps with @c a, as @c a.b is a subset of @c a. However, @c a.b and @c a.c do not
      * overlap, as they are different parts of a common owning symbol, without any shared regions.
      *
-     * This function checks that both ASTs don't overlap each other, so both @code a.b OVERLAP? a@endcode and
-     * @code a OVERLAP? a.b@endcode will result in a positive match.
+     * This function checks that both ASTs don't overlap each other, so both @c {a.b OVERLAP? a} and @c {a OVERLAP? a.b}
+     * will result in a positive match.
      * @param ast_1 The lhs AST to check for overlap.
      * @param ast_2 The rhs AST to check for overlap.
      * @return Whether the two memory regions overlap.
@@ -217,8 +219,8 @@ namespace spp::analyse::utils::mem_utils {
 
     /**
      * This function is another, slightly more relaxed memory region overlap check. It does the same as
-     * @ref memory_region_overlap, but only checks one way. This means that @code a R_OVERLAP a.b@endcode will result in
-     * a positive match, but @code a.b R_OVERLAP a.b@endcode will not.
+     * @ref memory_region_overlap, but only checks one way. This means that @c {a R_OVERLAP a.b} will result in a
+     * positive match, but @c {a.b R_OVERLAP a.b} will not.
      * @param ast_1 The lhs AST to check for overlap.
      * @param ast_2 The rhs AST to check for overlap.
      * @return Whether the two memory regions overlap in the right direction.

@@ -2,15 +2,15 @@
 #include <spp/compiler/module_tree.hpp>
 #include <indicators/progress_bar.hpp>
 
-
+/// @cond
 namespace spp::compiler {
     struct CompilerBoot;
 }
 
-
 namespace spp::analyse::scopes {
     class ScopeManager;
 }
+/// @endcond
 
 
 struct spp::compiler::CompilerBoot {

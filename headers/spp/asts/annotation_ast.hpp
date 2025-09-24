@@ -11,7 +11,7 @@
 
 /**
  * An AnnotationAst is used to represent a non-code generated transformation of behaviour inside an AST. For example,
- * marking a method as @c @virtualmethod won't generate any code, but will tag the method as virtual, unlocking
+ * marking a method as @c \@virtualmethod won't generate any code, but will tag the method as virtual, unlocking
  * additional behaviour in the compiler.
  */
 struct spp::asts::AnnotationAst final : virtual Ast {
@@ -56,9 +56,9 @@ struct spp::asts::AnnotationAst final : virtual Ast {
     /**
      * There are three key checks that are performed in this stage:
      *      1. The context AST is checked to be of a compatible type for the annotation. For example, a
-     *      @c @virtualmethod annotation can only be applied to a method, and not a free function or class.
+     *      @c \@virtualmethod annotation can only be applied to a method, and not a free function or class.
      *      2. The annotation is checked for conflicting annotations on the same context AST. For example, a
-     *      @c @public annotation cannot be applied to a method that is already marked as @c @private.
+     *      @c \@public annotation cannot be applied to a method that is already marked as @c @private.
      *      3. The annotation is checked to be a builtin annotation, that is known to the compiler. Custom annotations
      *      are not supported.
      * @param[in] sm The scope manager to check the context AST against.

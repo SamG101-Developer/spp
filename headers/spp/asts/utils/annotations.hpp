@@ -4,10 +4,12 @@
 #include <map>
 #include <string_view>
 
-
+/// @cond
 namespace spp::asts::utils {
     enum class BuiltinAnnotations : std::uint8_t;
 }
+/// @endcond
+
 
 enum class spp::asts::utils::BuiltinAnnotations : std::uint8_t {
     /**

@@ -4,6 +4,7 @@
 #include <spp/analyse/scopes/scope_range.hpp>
 #include <spp/utils/error_formatter.hpp>
 
+/// @cond
 namespace spp::analyse::scopes {
     class ScopeManager;
     struct TypeSymbol;
@@ -12,6 +13,8 @@ namespace spp::analyse::scopes {
 namespace spp::asts::mixins {
     struct CompilerMetaData;
 }
+
+/// @endcond
 
 
 /**
@@ -39,8 +42,11 @@ public:
     inline static std::map<TypeSymbol*, std::vector<Scope*>> normal_sup_blocks = {};
 
     /**
-     * This list contains the pure generic sup blocks, such as @code sup [T] T { ... }@endcode. The list is separate as
-     * there is some special handilng required.
+     * This list contains the pure generic sup blocks, such as
+     * @code
+     * sup [T] T { ... }
+     * @endcode
+     * The list is separate as there is some special handling required.
      */
     inline static std::vector<Scope*> generic_sup_blocks = {};
 
@@ -131,7 +137,7 @@ public:
         -> Scope*;
 
     /**
-     * Take a list of identifiers that each represent sonsecutitve parts of a namespace, and move into the scope that
+     * Take a list of identifiers that each represent consecutive parts of a namespace, and move into the scope that
      * they represent. For example, given @c std::io::File, the list would contain three identifiers, one for
      * @c std, one for @c io and one for @c File. The scope manager would then move into the @c std scope, then the @c
      * io scope, and finally return the @c File scope. This is used to identify scopes that a namespaced type resides
@@ -158,8 +164,8 @@ public:
     /**
      * The public method to attach all the superscopes to an individual type, represented by its corresponding scope.
      * This is the function called by the type analysis code if the generic substitution is new. For example, of
-     * @code Vec[Str]@endcode has been discovered after the "attach all" was performed, then this function will be
-     * called to attach the superscopes of @code Vec[Str]@endcode.
+     * @c Vec[Str] has been discovered after the "attach all" was performed, then this function will be called to attach
+     * the superscopes of @c Vec[Str].
      * @param scope The scope representing the type to attach superscopes to.
      * @param meta The compiler metadata.
      */

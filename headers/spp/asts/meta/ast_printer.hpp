@@ -30,6 +30,7 @@ template <typename T, template <typename...> class C>
 inline constexpr auto is_same_template_v = is_same_template<T, C>::value;
 
 
+/// @cond
 namespace spp::asts {
     template <typename T>
     struct InnerScopeAst;
@@ -41,6 +42,7 @@ namespace spp::asts {
 namespace spp::asts::meta {
     class AstPrinter;
 }
+/// @endcond
 
 
 class spp::asts::meta::AstPrinter {

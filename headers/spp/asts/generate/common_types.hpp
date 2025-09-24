@@ -2,7 +2,13 @@
 #include <spp/asts/_fwd.hpp>
 
 
+/// @cond
 namespace spp::asts::generate::common_types {
+    /**
+     * Generate a TypeAst for the std:number::F8 type.
+     * @param pos The position of the type in the source code.
+     * @return The generated TypeAst.
+     */
     auto f8(std::size_t pos) -> std::unique_ptr<TypeAst>;
     auto f16(std::size_t pos) -> std::unique_ptr<TypeAst>;
     auto f32(std::size_t pos) -> std::unique_ptr<TypeAst>;
@@ -51,3 +57,4 @@ namespace spp::asts::generate::common_types {
 
     auto self_type(std::size_t pos) -> std::unique_ptr<TypeAst>;
 }
+/// @endcond

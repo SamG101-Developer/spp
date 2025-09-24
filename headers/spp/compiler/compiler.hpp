@@ -4,9 +4,12 @@
 #include <spp/pch.hpp>
 
 
+/// @cond
 namespace spp::compiler {
     struct Compiler;
 }
+
+/// @endcond
 
 
 inline constexpr auto COMPILER_STAGE_NAMES = std::array{

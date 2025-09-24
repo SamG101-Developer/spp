@@ -2,14 +2,19 @@
 #include <spp/pch.hpp>
 
 
+/// @cond
 namespace spp::lex {
     enum class RawTokenType : std::uint8_t;
     enum class SppTokenType : std::uint8_t;
     struct SppTokenSets;
     class RawToken;
+}
 
+namespace spp::lex {
     auto tok_to_string(SppTokenType token) noexcept -> std::string;
 }
+
+/// @endcond
 
 
 enum class spp::lex::RawTokenType : std::uint8_t {

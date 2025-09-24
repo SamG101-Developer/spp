@@ -2,6 +2,7 @@
 #include <spp/asts/ast.hpp>
 
 
+/// @cond
 namespace spp::asts::detail {
     template <typename GenericParameterType>
     struct make_required_param {
@@ -75,6 +76,7 @@ namespace spp::asts::detail {
     template <typename GenericParameterType>
     using value_type_t = typename generic_param_value_type<GenericParameterType>::type;
 }
+/// @endcond
 
 
 /**

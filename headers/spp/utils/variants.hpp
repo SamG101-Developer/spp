@@ -1,6 +1,7 @@
 #pragma once
 
 
+/// @cond
 namespace spp::utils::variants {
     template <typename... Ts>
     struct overload : Ts... {
@@ -10,3 +11,4 @@ namespace spp::utils::variants {
     template <typename... Ts>
     overload(Ts...) -> overload<Ts...>;
 }
+/// @endcond

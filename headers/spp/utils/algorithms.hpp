@@ -1,7 +1,7 @@
 #pragma once
 #include <utility>
 
-
+/// @cond
 namespace spp::utils::algorithms {
     template <typename InputIt, typename T, typename BinOp>
     auto move_accumulate(InputIt first, InputIt last, T &&init, BinOp &&op) -> decltype(init);
@@ -15,3 +15,4 @@ auto spp::utils::algorithms::move_accumulate(InputIt first, InputIt last, T &&in
     }
     return init;
 }
+/// @endcond

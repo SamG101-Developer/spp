@@ -3,11 +3,13 @@
 #include <spp/utils/errors.hpp>
 
 
+/// @cond
 namespace spp::parse::errors {
     struct SyntacticError;
-
     struct SppSyntaxError;
 }
+
+/// @endcond
 
 
 struct spp::parse::errors::SyntacticError : utils::errors::AbstractError {

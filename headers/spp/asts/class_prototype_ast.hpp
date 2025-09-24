@@ -4,10 +4,12 @@
 #include <spp/asts/sup_member_ast.hpp>
 #include <spp/asts/mixins/visbility_enabled_ast.hpp>
 
-
+/// @cond
 namespace spp::analyse::scopes {
     struct TypeSymbol;
 }
+/// @endcond
+
 
 /**
  * The ClassPrototypeAst represents the prototype of a class in the abstract syntax tree. It defines the structure of a

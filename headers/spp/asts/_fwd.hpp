@@ -2,6 +2,7 @@
 #include <spp/pch.hpp>
 
 
+/// @cond
 namespace spp::asts {
     struct AnnotationAst;
     struct AssignmentStatementAst;
@@ -204,3 +205,4 @@ namespace spp::asts {
 
     using FunctionMemberAst = StatementAst;
 }
+/// @endcond

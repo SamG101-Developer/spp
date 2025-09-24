@@ -10,7 +10,7 @@
  */
 struct spp::asts::FunctionCallArgumentAst : virtual Ast, mixins::OrderableAst, mixins::TypeInferrableAst {
     using Ast::Ast;
-    friend PostfixExpressionOperatorFunctionCallAst;
+    friend struct PostfixExpressionOperatorFunctionCallAst;
 
 protected:
     /**
@@ -36,6 +36,7 @@ public:
      * Construct the FunctionCallArgumentAst with the arguments matching the members.
      * @param conv The convention on the argument being passed into the function call.
      * @param val The expression that is being passed as the argument to the function call.
+     * @param order_tag The order tag for this argument, used to enforce ordering rules.
      */
     FunctionCallArgumentAst(
         decltype(conv) &&conv,

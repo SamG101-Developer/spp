@@ -5,6 +5,7 @@ spp.analyse.scopes
    :maxdepth: 1
 
    spp.analyse.scopes.scope
+   spp.analyse.scopes.scope_block_name
    spp.analyse.scopes.scope_iterator
    spp.analyse.scopes.scope_manager
    spp.analyse.scopes.scope_range

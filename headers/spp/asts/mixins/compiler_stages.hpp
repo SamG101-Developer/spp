@@ -5,6 +5,7 @@
 #include <spp/utils/errors.hpp>
 
 
+/// @cond
 namespace spp::analyse::scopes {
     struct TypeSymbol;
 }
@@ -22,6 +23,7 @@ namespace spp::asts::mixins {
     struct CompilerMetaDataState;
     struct CompilerMetaData;
 }
+/// @endcond
 
 
 /**

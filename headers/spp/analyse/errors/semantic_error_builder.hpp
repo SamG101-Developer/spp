@@ -2,18 +2,22 @@
 #include <spp/utils/errors.hpp>
 
 #include <colex/common.hpp>
+#include <genex/views/zip.hpp>
 
+
+/// @cond
 namespace spp::analyse::errors {
     template <typename T> requires std::derived_from<T, SemanticError>
     struct SemanticErrorBuilder;
 }
+/// @endcond
 
 
 template <typename T> requires std::derived_from<T, spp::analyse::errors::SemanticError>
 struct spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::AbstractErrorBuilder<T> {
     SemanticErrorBuilder() = default;
 
-    [[noreturn]] auto raise() -> void override {
+    SPP_ATTR_NORETURN auto raise() -> void override {
         const auto cast_error = dynamic_cast<SemanticError*>(this->m_err_obj.get());
 
         // Cycle the formatters to match the number of strings being formatted.
@@ -33,9 +37,9 @@ struct spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::Ab
     }
 
 private:
-    auto stringify_error_information(
+    static auto stringify_error_information(
         spp::utils::errors::ErrorFormatter *formatter,
-        decltype(SemanticError::m_error_info)::value_type const &info) const
+        std::tuple<asts::Ast const*, SemanticError::ErrorInformationType, std::string, std::string> const &info)
         -> std::string {
         using namespace std::string_literals;
         auto [ast, type, tag, msg] = info;

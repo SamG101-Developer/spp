@@ -9,16 +9,16 @@
 #include <genex/views/flatten.hpp>
 #include <genex/views/to.hpp>
 
-
+/// @cond
 namespace spp::parse {
     class ParserSpp;
 }
-
 
 namespace spp::parse::errors {
     template <typename T>
     struct SyntacticErrorBuilder;
 }
+/// @endcond
 
 
 template <typename T>

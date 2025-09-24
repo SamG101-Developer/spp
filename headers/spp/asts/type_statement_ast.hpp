@@ -5,9 +5,12 @@
 #include <spp/asts/sup_member_ast.hpp>
 
 
+/// @cond
 namespace spp::analyse::scopes {
     struct AliasSymbol;
 }
+/// @endcond
+
 
 /**
  * The TypeStatementAst is used to alias a type to a new name in this scope. It can also use generic parameters for more

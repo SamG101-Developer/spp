@@ -3,9 +3,11 @@
 #include <spp/parse/parser_base.hpp>
 
 
+/// @cond
 namespace spp::parse {
     class ParserSpp;
 }
+/// @endcond
 
 
 class spp::parse::ParserSpp final : public ParserBase {

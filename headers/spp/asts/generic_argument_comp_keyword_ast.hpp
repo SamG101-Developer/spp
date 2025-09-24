@@ -2,9 +2,12 @@
 #include <spp/asts/generic_argument_comp_ast.hpp>
 
 
+/// @cond
 namespace spp::analyse::scopes {
     struct VariableSymbol;
 }
+/// @endcond
+
 
 /**
  * The GenericArgumentCompKeywordAst represents a keyword argument in a generic argument context. It is forces the argument

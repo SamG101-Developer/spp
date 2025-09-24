@@ -3,15 +3,16 @@
 #include <map>
 
 
+/// @cond
 namespace spp::analyse::scopes {
     class Scope;
     class ScopeManager;
 }
 
-
 namespace spp::asts::mixins {
     struct CompilerMetaData;
 }
+/// @endcond
 
 
 namespace spp::analyse::utils::func_utils {
@@ -20,13 +21,13 @@ namespace spp::analyse::utils::func_utils {
      * to getting the overloads of a function. This function owner type is the type of the class the method belongs to
      * if the callable is a method rather than a free-function. The scope is for the function itself, not its owner. The
      * following cases are handled:
-     *      - @code object.method()@endcode: runtime access into an instance.
-     *      - @code Type::method()@endcode: static access into a type.
-     *      - @code namespace::function()@endcode: direct access into a namespaced free function.
-     *      - @code function()@endcode: direct free function call.
-     *      - @code<anything else>@endcode: closure identifier, or invalid function call.
+     *      - @c object.method(): runtime access into an instance.
+     *      - @c Type::method(): static access into a type.
+     *      - @c namespace::function(): direct access into a namespaced free function.
+     *      - @c function(): direct free function call.
+     *      - @c<anything else>: closure identifier, or invalid function call.
      * @param sm The scope manager to access function scopes.
-     * @param lhs The left-hand-side of the function call (ie remove the @code (...)@endcode part).
+     * @param lhs The left-hand-side of the function call (ie remove the @c (...) part).
      * @param meta Associated metadata.
      * @return A 3-tuple containing:
      *      1. The owner type of the function (method: class, free function: module, closure: nullptr)

@@ -21,32 +21,32 @@ struct spp::asts::FunctionPrototypeAst : virtual Ast, SupMemberAst, ModuleMember
 
 protected:
     /**
-     * Optional @c @abstractmethod annotation. This is used to indicate that the function is abstract and must be
+     * Optional @c \@abstractmethod annotation. This is used to indicate that the function is abstract and must be
      * implemented in subclasses.
      */
     AnnotationAst *m_abstract_annotation;
 
     /**
-     * Optional @c @virtualmethod annotation. This is used to indicate that the function is virtual and can be
+     * Optional @c \@virtualmethod annotation. This is used to indicate that the function is virtual and can be
      * overridden in subclasses.
      */
     AnnotationAst *m_virtual_annotation;
 
     /**
-     * Optional @c @hot or @c @cold annotation. This is used to indicate that the function is a hot/cold function,
+     * Optional @c \@hot or @c \@cold annotation. This is used to indicate that the function is a hot/cold function,
      * which means it is called frequently/infrequently and should be optimized for performance.
      */
     AnnotationAst *m_temperature_annotation;
 
     /**
-     * Optional @c @no_impl annotation. This is used to indicate that the function is not implemented, and the usual
+     * Optional @c \@no_impl annotation. This is used to indicate that the function is not implemented, and the usual
      * type checking rules can be suspended (but this function cannot be called).
      */
     AnnotationAst *m_no_impl_annotation;
 
     /**
-     * Optional @c @always_inline, @c @inline, or @c @no_inline annotation. This is used to indicate that the function
-     * should be inlined, or not inlined, or always inlined.
+     * Optional @c \@always_inline, @c \@inline, or @c \@no_inline annotation. This is used to indicate that the
+     * function should be inlined, or not inlined, or always inlined.
      */
     AnnotationAst *m_inline_annotation;
 
@@ -59,13 +59,13 @@ protected:
 public:
     /**
      * The list of annotations that are applied to this function prototype. There are quite a lot of annotations that
-     * can be applied here, including the typical access modifiers, but also @c @virtualmethod, @c @abstractmethod, and
-     * @c @hot/@cold.
+     * can be applied here, including the typical access modifiers, but also @c \@virtualmethod, @c \@abstractmethod,
+     * and @c \@hot/\@cold.
      */
     std::vector<std::unique_ptr<AnnotationAst>> annotations;
 
     /**
-     * The @c fun or @cor keyword that represents the start of the function prototype. This is used to indicate that a
+     * The @c fun or @c cor keyword that represents the start of the function prototype. This is used to indicate that a
      * function is being defined.
      */
     std::unique_ptr<TokenAst> tok_fun;
@@ -114,7 +114,7 @@ public:
     /**
      * Construct the FunctionPrototypeAst with the arguments matching the members.
      * @param annotations The list of annotations that are applied to this function prototype.
-     * @param tok_fun The @c fun or @cor keyword that represents the start of the function prototype.
+     * @param tok_fun The @c fun or @c cor keyword that represents the start of the function prototype.
      * @param name The name of the function prototype.
      * @param generic_param_group An optional generic parameter group for the function prototype.
      * @param param_group The parameter group for the function prototype.

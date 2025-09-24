@@ -3,7 +3,7 @@
 
 #include <genex/generator.hpp>
 
-
+/// @cond
 namespace spp::asts {
     struct IdentifierAst;
 }
@@ -11,6 +11,7 @@ namespace spp::asts {
 namespace spp::asts::mixins {
     struct AbstractTypeAst;
 }
+/// @endcond
 
 
 struct spp::asts::mixins::AbstractTypeAst {

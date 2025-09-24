@@ -3,6 +3,7 @@
 #include <spp/asts/utils/visbility.hpp>
 
 
+/// @cond
 namespace spp::analyse::scopes {
     class Scope;
     struct Symbol;
@@ -16,6 +17,7 @@ namespace spp::analyse::scopes {
 namespace spp::analyse::utils::mem_utils {
     struct MemoryInfo;
 }
+/// @endcond
 
 
 /**

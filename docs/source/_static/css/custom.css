@@ -1,10 +1,12 @@
 :root {
-    --font-sans: "Quicksand", "Helvetica", "Arial", sans-serif;
-    --font-mono: "Fira Code", "JetBrains Mono", monospace;
+    --font-sans: "Aptos", "Helvetica", "Arial", sans-serif;
+    --font-mono: "JetBrains Mono", "Fira Code", monospace;
 }
 
 body {
     font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 2.0;
 }
 
 code, pre, .highlight {

@@ -1,9 +1,11 @@
 #pragma once
 
 
+/// @cond
 namespace spp::asts::mixins {
     struct TempTypeAst;
 }
+/// @endcond
 
 
 struct spp::asts::mixins::TempTypeAst {

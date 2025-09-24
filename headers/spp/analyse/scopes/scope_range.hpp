@@ -2,10 +2,12 @@
 #include <spp/macros.hpp>
 
 
+/// @cond
 namespace spp::analyse::scopes {
     class Scope;
     class ScopeRange;
 }
+/// @endcond
 
 
 /**
@@ -28,7 +30,7 @@ public:
 
     /**
      * The @c begin iterator for the range. This creates a new iterator starting from the root scope, and can be
-     * incremented using the @code ++@endcode operator.
+     * incremented using the @c ++ operator.
      * @return The @c begin iterator for the @c ScopeManager.
      */
     SPP_ATTR_NODISCARD auto begin() const -> ScopeIterator;

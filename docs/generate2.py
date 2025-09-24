@@ -71,6 +71,7 @@ class DocumentGenerator:
                     module_file.write("-" * len(module) + "\n\n")
                     module_file.write(f".. doxygenfile:: {module.replace('.', '/')}.hpp\n")
                     module_file.write("   :project: s++\n")
+                    # module_file.write("   :sections: define enum func typedef var\n")
 
         # Compiler docs root index file.
         with open(self.api_dir / "index.rst", "w") as f:

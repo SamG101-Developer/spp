@@ -1,9 +1,12 @@
 #pragma once
 #include <spp/asts/inner_scope_ast.hpp>
 
+
+/// @cond
 namespace spp::parse {
     class ParserSpp;
 }
+/// @endcond
 
 
 struct spp::asts::SupImplementationAst final : InnerScopeAst<std::unique_ptr<SupMemberAst>> {

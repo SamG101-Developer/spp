@@ -10,11 +10,12 @@
 #include <genex/views/to.hpp>
 
 
-// #define ast_clone(ast) ((ast) != nullptr ? ast_cast<std::remove_cvref_t<decltype(*ast)>>((ast)->clone()) : nullptr)
-//
-// #define ast_clone_vec(asts) (asts) | genex::views::transform([](auto &&x) { return ast_clone(x); }) | genex::views::to<std::vector>()
-//
-// #define ast_clone_vec_shared(asts) (asts) | genex::views::transform([](auto x) { return x; }) | genex::views::to<std::vector>()
+/// @cond
+namespace spp::analyse::scopes {
+    class Scope;
+}
+/// @endcond
+
 
 #define SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(ast_attr, ...) \
     if ((ast_attr).get() == nullptr) { \
@@ -91,10 +92,6 @@ namespace spp::asts {
     auto ast_name(Ast *ast) -> std::shared_ptr<TypeAst>;
 
     auto ast_body(Ast *ast) -> std::vector<Ast*>;
-}
-
-namespace spp::analyse::scopes {
-    class Scope;
 }
 
 

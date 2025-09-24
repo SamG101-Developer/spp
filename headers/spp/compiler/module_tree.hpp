@@ -4,11 +4,12 @@
 #include <spp/pch.hpp>
 #include <spp/utils/error_formatter.hpp>
 
-
+/// @cond
 namespace spp::compiler {
     struct Module;
     struct ModuleTree;
 }
+/// @endcond
 
 
 struct spp::compiler::Module {

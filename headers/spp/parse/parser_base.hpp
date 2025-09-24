@@ -112,6 +112,7 @@
     spp::parse::ParserSpp(spp::lex::Lexer((code)).lex()).method()
 
 
+/// @cond
 namespace spp::utils::errors {
     class ErrorFormatter;
 }
@@ -120,6 +121,7 @@ namespace spp::utils::errors {
 namespace spp::parse {
     class ParserBase;
 }
+/// @endcond
 
 
 class spp::parse::ParserBase {

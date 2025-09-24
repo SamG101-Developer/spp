@@ -5,10 +5,11 @@
 #include <spp/macros.hpp>
 #include <spp/pch.hpp>
 #include <spp/utils/error_formatter.hpp>
+#include <spp/analyse/scopes/scope_block_name.hpp>
 
 
+/// @cond
 namespace spp::analyse::scopes {
-    struct ScopeBlockName;
     class Scope;
     using ScopeName = std::variant<
         std::shared_ptr<asts::IdentifierAst>,
@@ -19,14 +20,7 @@ namespace spp::analyse::scopes {
 namespace spp::compiler {
     struct Module;
 }
-
-
-struct spp::analyse::scopes::ScopeBlockName {
-    std::string name;
-    explicit ScopeBlockName(std::string &&name);
-    ScopeBlockName(ScopeBlockName const &) = default;
-    ScopeBlockName(ScopeBlockName &&) noexcept = default;
-};
+/// @endcond
 
 
 class spp::analyse::scopes::Scope {
@@ -38,8 +32,8 @@ class spp::analyse::scopes::Scope {
 public:
     /**
      * The name of the scope. This will be either an @c IdentifierAst* (functions, modules), an @c TypeIdentifierAst*
-     * (classes), or a @c ScopeBlockName (blocks: @c case, @c loop, etc). It is stored in an @c std::variant to allow
-     * for easy type-safe access to the underlying type.
+     * (classes), or a @c ScopeBlockName (blocks: @c case, @c loop, etc). It is stored in a @c std::variant to allow for
+     * easy type-safe access to the underlying type.
      */
     ScopeName name;
 
@@ -83,8 +77,7 @@ public:
 
     /**
      * The scope representing the non-generic version of this scope. If this scope isn't a generic substitution, then
-     * the non-generic scope is the scope itself. For @code Vec[Str]@endcode, the non-generic scope is
-     * @code Vec@endcode.
+     * the non-generic scope is the scope itself. For @c Vec[Str], the non-generic scope is @c Vec.
      */
     Scope *non_generic_scope;
 

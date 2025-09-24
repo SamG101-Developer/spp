@@ -2,7 +2,7 @@
 #include <spp/lex/tokens.hpp>
 #include <spp/pch.hpp>
 
-
+/// @cond
 namespace spp::asts {
     struct Ast;
 }
@@ -10,6 +10,7 @@ namespace spp::asts {
 namespace spp::utils::errors {
     class ErrorFormatter;
 }
+/// @endcond
 
 
 class spp::utils::errors::ErrorFormatter {

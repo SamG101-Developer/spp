@@ -7,6 +7,7 @@
 #include <tsl/robin_map.h>
 
 
+/// @cond
 namespace spp::analyse::scopes {
     template <typename I, typename S>
     class IndividualSymbolTable;
@@ -20,6 +21,7 @@ namespace spp::analyse::scopes {
     template <typename>
     struct SymNameCmp;
 }
+/// @endcond
 
 
 template <typename>

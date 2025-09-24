@@ -6,6 +6,7 @@
 #include <spp/macros.hpp>
 
 
+/// @cond
 namespace spp::analyse::scopes {
     class Scope;
     class ScopeManager;
@@ -17,6 +18,7 @@ namespace spp::analyse::scopes {
 namespace spp::asts::mixins {
     struct CompilerMetaData;
 }
+/// @endcond
 
 
 namespace spp::analyse::utils::type_utils {
@@ -26,13 +28,12 @@ namespace spp::analyse::utils::type_utils {
      * taken into account, as-well as the variadic generic variation.
      *
      * Variant type matching allows the rhs to match against the lhs side, when the lhs is a variant, such as
-     * @code Opt[T]@endcode, and the rhs is a inner type to the variant, such as @code Some[T]@endcode, or
-     * @code None@endcode.
+     * @c {Opt[T]}, and the rhs is a inner type to the variant, such as @c {Some[T]}, or @c {None}.
      *
-     * The type checking of generic types, such as @code Vec[Str]@endcode vs @code Vec[Str]@endcode, require the generic
-     * arguments to be symbolically equal too. A recursive algorithm is used to inspect arguments. However, non-type
-     * generic arguments (comp generic arguments) can't be "type-compared", so their values are compared instead. See
-     * the other overload of this function.
+     * The type checking of generic types, such as @c {Vec[Str]} vs @c {Vec[Str]}, require the generic arguments to be
+     * symbolically equal too. A recursive algorithm is used to inspect arguments. However, non-type generic arguments
+     * (comp generic arguments) can't be "type-compared", so their values are compared instead. See the other overload
+     * of this function.
      *
      * @param lhs_type The left hand side type to compare.
      * @param rhs_type The right hand side type to compare.

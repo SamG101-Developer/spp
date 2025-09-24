@@ -1,11 +1,12 @@
 #pragma once
 
 
-
+/// @cond
 namespace spp::asts::mixins {
     struct OrderableAst;
     enum class OrderableTag;
 }
+/// @endcond
 
 
 /**

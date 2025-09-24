@@ -1,9 +1,12 @@
 #pragma once
 #include <spp/asts/inner_scope_ast.hpp>
 
+
+/// @cond
 namespace spp::parse {
     class ParserSpp;
 }
+/// @endcond
 
 
 /**

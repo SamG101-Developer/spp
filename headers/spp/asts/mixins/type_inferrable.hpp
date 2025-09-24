@@ -1,7 +1,7 @@
 #pragma once
 #include <spp/asts/_fwd.hpp>
 
-
+/// @cond
 namespace spp::asts::mixins {
     class TypeInferrableAst;
     struct CompilerMetaData;
@@ -11,6 +11,7 @@ namespace spp::asts::mixins {
 namespace spp::analyse::scopes {
     class ScopeManager;
 }
+/// @endcond
 
 
 /**

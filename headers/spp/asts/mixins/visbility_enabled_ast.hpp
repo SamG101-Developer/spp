@@ -4,11 +4,12 @@
 #include <spp/asts/utils/visbility.hpp>
 #include <spp/pch.hpp>
 
-
+/// @cond
 namespace spp::asts::mixins {
     struct VisibilityEnabledAst;
     using VisibilityPair = std::pair<utils::Visibility, AnnotationAst*>;
 }
+/// @endcond
 
 
 struct spp::asts::mixins::VisibilityEnabledAst {

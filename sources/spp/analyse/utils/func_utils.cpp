@@ -300,6 +300,11 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_override(
     auto existing = get_all_function_scopes(*new_fn.orig_name, target_scope, true);
     auto existing_scopes = existing | genex::views::tuple_element<0>() | genex::views::to<std::vector>();
     auto existing_fns = existing | genex::views::tuple_element<1>() | genex::views::to<std::vector>();
+
+    if (new_fn.orig_name->val == "clone") {
+        auto _ = 123;
+    }
+
     auto param_names_eq = [](auto const &a, auto const &b) {
         if (a.size() != b.size()) { return false; }
         for (auto const &[x, y] : genex::views::zip(a, b) | genex::views::to<std::vector>()) {

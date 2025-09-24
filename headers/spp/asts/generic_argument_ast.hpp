@@ -2,6 +2,7 @@
 #include <spp/asts/ast.hpp>
 
 
+/// @cond
 namespace spp::asts::detail {
     template <typename GenericArgType>
     struct make_keyword_arg {
@@ -39,6 +40,7 @@ namespace spp::asts::detail {
     template <typename T>
     using make_positional_arg_t = typename make_positional_arg<T>::type;
 }
+/// @endcond
 
 
 /**

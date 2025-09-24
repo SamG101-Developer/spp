@@ -4,13 +4,17 @@
 #include <spp/asts/_fwd.hpp>
 #include <spp/lex/tokens.hpp>
 
-
+/// @cond
 namespace spp::analyse::scopes {
     class ScopeManager;
 }
 
 
 namespace spp::analyse::utils::bin_utils {
+    /**
+     * Define the precedence of binary operators. Higher numbers indicate higher precedence. This is used when
+     * re-balancing binary expressions to ensure that the correct order of operations is maintained.
+     */
     const static auto BIN_OP_PRECEDENCE = std::map<lex::SppTokenType, std::uint8_t>{
         {lex::SppTokenType::KW_OR, 1},
         {lex::SppTokenType::KW_AND, 2},
@@ -33,6 +37,10 @@ namespace spp::analyse::utils::bin_utils {
         {lex::SppTokenType::TK_POW, 9}
     };
 
+    /**
+     * The map of binary operators to their corresponding method names. This is used when converting binary expressions
+     * to function calls.
+     */
     const static auto BIN_METHODS = std::map<lex::SppTokenType, std::string>{
         {lex::SppTokenType::KW_OR, "ior_"},
         {lex::SppTokenType::KW_AND, "and_"},
@@ -66,6 +74,9 @@ namespace spp::analyse::utils::bin_utils {
         {lex::SppTokenType::TK_POW_ASSIGN, "pow_assign"}
     };
 
+    /**
+     * The list of binary compound assignment operators.
+     */
     constexpr static auto BIN_COMPOUND_ASSIGNMENT_OPS = std::array{
         lex::SppTokenType::TK_ADD_ASSIGN,
         lex::SppTokenType::TK_SUB_ASSIGN,
@@ -79,6 +90,9 @@ namespace spp::analyse::utils::bin_utils {
         lex::SppTokenType::TK_BIT_SHR_ASSIGN
     };
 
+    /**
+     * The list of binary comparison operators.
+     */
     constexpr static auto BIN_COMPARISON_OPS = std::array{
         lex::SppTokenType::TK_EQ,
         lex::SppTokenType::TK_NE,
@@ -88,6 +102,12 @@ namespace spp::analyse::utils::bin_utils {
         lex::SppTokenType::TK_GE
     };
 
+    /**
+     * Rebalance the binary expression AST to ensure correct order of operations based on operator precedence. The
+     * parser parses expressions in reverse precedence to avoid left hand recursion, so needs rebalancing.
+     * @param bin_expr The binary expression AST to rebalance.
+     * @return A new binary expression AST with correct order of operations.
+     */
     auto fix_associativity(
         asts::BinaryExpressionAst &bin_expr)
         -> std::unique_ptr<asts::BinaryExpressionAst>;
@@ -104,3 +124,5 @@ namespace spp::analyse::utils::bin_utils {
         asts::IsExpressionAst &is_expr)
         -> std::unique_ptr<asts::CaseExpressionAst>;
 }
+
+/// @endcond
