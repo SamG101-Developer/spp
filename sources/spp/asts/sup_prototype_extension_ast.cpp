@@ -264,7 +264,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_5_load_super_scopes(
     }
 
     // Add the "Self" symbol into the scope.
-    if (name->type_parts().back()->name[0] == '$') {
+    if (name->type_parts().back()->name[0] != '$') {
         const auto cls_sym = sm->current_scope->get_type_symbol(name);
         sm->current_scope->add_type_symbol(std::make_unique<analyse::scopes::AliasSymbol>(
             std::make_unique<TypeIdentifierAst>(name->pos_start(), "Self", nullptr), nullptr, cls_sym->scope,
