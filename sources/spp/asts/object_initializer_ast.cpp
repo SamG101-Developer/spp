@@ -6,10 +6,12 @@
 #include <spp/asts/class_member_ast.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
 #include <spp/asts/convention_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/object_initializer_ast.hpp>
 #include <spp/asts/object_initializer_argument_ast.hpp>
 #include <spp/asts/object_initializer_argument_group_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/utils/ptr_cmp.hpp>
 
 #include <genex/views/cast.hpp>
 #include <genex/views/to.hpp>
@@ -100,8 +102,8 @@ auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
     base_cls_sym->type->impl->stage_7_analyse_semantics(sm, meta);
 
     meta->save();
-    meta->infer_source = std::map(generic_infer_source.begin(), generic_infer_source.end());
-    meta->infer_target = std::map(generic_infer_target.begin(), generic_infer_target.end());
+    meta->infer_source = {generic_infer_source.begin(), generic_infer_source.end()};
+    meta->infer_target = {generic_infer_target.begin(), generic_infer_target.end()};
     type->stage_7_analyse_semantics(sm, meta);
     meta->object_init_type = type;
     arg_group->stage_7_analyse_semantics(sm, meta);

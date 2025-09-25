@@ -1,7 +1,7 @@
 #pragma once
 
 #include <spp/asts/_fwd.hpp>
-#include <spp/macros.hpp>
+#include <spp/utils/ptr_cmp.hpp>
 #include <spp/pch.hpp>
 
 #include <tsl/robin_map.h>
@@ -17,34 +17,16 @@ namespace spp::analyse::scopes {
     struct NamespaceSymbol;
     struct TypeSymbol;
     struct VariableSymbol;
-
-    template <typename>
-    struct SymNameCmp;
 }
 /// @endcond
 
 
-template <typename>
-struct spp::analyse::scopes::SymNameCmp {
-};
-
-
-template <>
-struct spp::analyse::scopes::SymNameCmp<std::shared_ptr<spp::asts::IdentifierAst>> {
-    auto operator()(std::shared_ptr<asts::IdentifierAst> const &lhs, std::shared_ptr<asts::IdentifierAst> const &rhs) const -> bool;
-};
-
-
-template <>
-struct spp::analyse::scopes::SymNameCmp<std::shared_ptr<spp::asts::TypeIdentifierAst>> {
-    auto operator()(std::shared_ptr<asts::TypeIdentifierAst> const &lhs, std::shared_ptr<asts::TypeIdentifierAst> const &rhs) const -> bool;
-};
 
 
 template <typename I, typename S>
 class spp::analyse::scopes::IndividualSymbolTable {
 private:
-    std::map<std::shared_ptr<I>, std::shared_ptr<S>, SymNameCmp<std::shared_ptr<I>>> m_table;
+    std::map<std::shared_ptr<I>, std::shared_ptr<S>, spp::utils::SymNameCmp<std::shared_ptr<I>>> m_table;
 
 public:
     IndividualSymbolTable();

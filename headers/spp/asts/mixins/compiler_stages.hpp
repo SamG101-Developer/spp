@@ -3,6 +3,7 @@
 #include <stack>
 
 #include <spp/utils/errors.hpp>
+#include <spp/utils/ptr_cmp.hpp>
 
 
 /// @cond
@@ -12,6 +13,8 @@ namespace spp::analyse::scopes {
 
 namespace spp::asts {
     struct Ast;
+    struct IdentifierAst;
+    struct TypeAst;
 }
 
 namespace spp::analyse::scopes {
@@ -139,8 +142,8 @@ struct spp::asts::mixins::CompilerMetaDataState {
     LoopExpressionAst *current_loop_ast;
     std::map<std::size_t, std::tuple<ExpressionAst*, std::shared_ptr<TypeAst>, analyse::scopes::Scope*>> loop_return_types;
     std::shared_ptr<TypeAst> object_init_type;
-    std::map<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>> infer_source;
-    std::map<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>> infer_target;
+    std::map<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<IdentifierAst>>> infer_source;
+    std::map<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<IdentifierAst>>> infer_target;
     ExpressionAst *postfix_expression_lhs;
     ExpressionAst *unary_expression_rhs;
     bool skip_type_analysis_generic_checks;
