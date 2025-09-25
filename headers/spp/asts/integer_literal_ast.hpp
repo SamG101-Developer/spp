@@ -9,7 +9,7 @@ struct spp::asts::IntegerLiteralAst final : LiteralAst {
      * The optionally provided sign token. This can be either a @c + or @c - sign, indicating the sign of the integer
      * literal. No sign means the integer is positive by default.
      */
-    std::unique_ptr<TokenAst> sign;
+    std::unique_ptr<TokenAst> tok_sign;
 
     /**
      * The token that represents the integer literal. This is the actual integer value in the source code.
@@ -29,12 +29,12 @@ protected:
 public:
     /**
      * Construct the IntegerLiteralAst with the arguments matching the members.
-     * @param[in] sign The optionally provided sign token.
+     * @param[in] tok_sign The optionally provided sign token.
      * @param[in] val The token that represents the integer literal.
      * @param[in] type The type of the integer literal.
      */
     IntegerLiteralAst(
-        decltype(sign) &&sign,
+        decltype(tok_sign) &&tok_sign,
         decltype(val) &&val,
         std::string &&type);
 

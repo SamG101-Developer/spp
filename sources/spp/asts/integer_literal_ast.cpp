@@ -30,11 +30,11 @@ const auto INTEGER_TYPE_MIN_MAX = std::map<std::string, std::pair<CppBigInt, Cpp
 
 
 spp::asts::IntegerLiteralAst::IntegerLiteralAst(
-    decltype(sign) &&sign,
+    decltype(tok_sign) &&tok_sign,
     decltype(val) &&val,
     std::string &&type) :
     LiteralAst(),
-    sign(std::move(sign)),
+    tok_sign(std::move(tok_sign)),
     val(std::move(val)),
     type(std::move(type)) {
 }
@@ -44,7 +44,7 @@ spp::asts::IntegerLiteralAst::~IntegerLiteralAst() = default;
 
 
 auto spp::asts::IntegerLiteralAst::pos_start() const -> std::size_t {
-    return sign ? sign->pos_start() : val->pos_start();
+    return tok_sign ? tok_sign->pos_start() : val->pos_start();
 }
 
 
@@ -55,7 +55,7 @@ auto spp::asts::IntegerLiteralAst::pos_end() const -> std::size_t {
 
 auto spp::asts::IntegerLiteralAst::clone() const -> std::unique_ptr<Ast> {
     return std::make_unique<IntegerLiteralAst>(
-        ast_clone(sign),
+        ast_clone(tok_sign),
         ast_clone(val),
         type.c_str());
 }
@@ -63,7 +63,7 @@ auto spp::asts::IntegerLiteralAst::clone() const -> std::unique_ptr<Ast> {
 
 spp::asts::IntegerLiteralAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(sign);
+    SPP_STRING_APPEND(tok_sign);
     SPP_STRING_APPEND(val);
     raw_string.append("_").append(type);
     SPP_STRING_END;
@@ -72,7 +72,7 @@ spp::asts::IntegerLiteralAst::operator std::string() const {
 
 auto spp::asts::IntegerLiteralAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(sign);
+    SPP_PRINT_APPEND(tok_sign);
     SPP_PRINT_APPEND(val);
     formatted_string.append("_").append(type);
     SPP_PRINT_END;
@@ -90,7 +90,7 @@ auto spp::asts::IntegerLiteralAst::equals_integer_literal(
     IntegerLiteralAst const &other) const
     -> std::strong_ordering {
     if (
-        ((sign == nullptr and other.sign == nullptr) or (sign != nullptr and other.sign != nullptr and *sign == *other.sign))
+        ((not tok_sign and not other.tok_sign) or (tok_sign and other.tok_sign and *tok_sign == *other.tok_sign))
         and val->token_data == other.val->token_data
         and type == other.type) {
         return std::strong_ordering::equal;
@@ -104,9 +104,12 @@ auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
     mixins::CompilerMetaData *)
     -> void {
     // Get the lower and upper bounds as big floats.
-    type = type == "" ? "s32" : type;
+    type = type.empty() ? "s32" : type;
     auto const &[lower, upper] = INTEGER_TYPE_MIN_MAX.at(type);
-    const auto mapped_val = CppBigInt(val->token_data.c_str());
+    auto mapped_val = CppBigInt(val->token_data.c_str());
+    if (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB) {
+        mapped_val = -mapped_val;
+    }
 
     // Check if the value is within the bounds.
     if (mapped_val < lower or mapped_val > upper) {
@@ -120,7 +123,7 @@ auto spp::asts::IntegerLiteralAst::infer_type(
     ScopeManager *,
     mixins::CompilerMetaData *) -> std::shared_ptr<TypeAst> {
     // Map the type string literal to the correct SPP type.
-    if (type == "") {
+    if (type.empty()) {
         return generate::common_types::s32(pos_start());
     }
     if (type == "s8") {

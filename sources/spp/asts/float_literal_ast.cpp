@@ -105,9 +105,12 @@ auto spp::asts::FloatLiteralAst::stage_7_analyse_semantics(
     mixins::CompilerMetaData *)
     -> void {
     // Get the lower and upper bounds as big floats.
-    type = type == "" ? "f32" : type;
+    type = type.empty() ? "f32" : type;
     auto const &[lower, upper] = FLOAT_TYPE_MIN_MAX.at(type);
-    const auto mapped_val = CppBigFloat((int_val->token_data + "." + frac_val->token_data).c_str());
+    auto mapped_val = CppBigFloat((int_val->token_data + "." + frac_val->token_data).c_str());
+    if (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB) {
+        mapped_val = -mapped_val;
+    }
 
     // Check if the value is within the bounds.
     if (mapped_val < lower or mapped_val > upper) {
@@ -121,7 +124,7 @@ auto spp::asts::FloatLiteralAst::infer_type(
     ScopeManager *,
     mixins::CompilerMetaData *) -> std::shared_ptr<TypeAst> {
     // Map the type string literal to the correct SPP type.
-    if (type == "") {
+    if (type.empty()) {
         return generate::common_types::f32(pos_start());
     }
     if (type == "f8") {
