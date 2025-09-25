@@ -105,6 +105,7 @@ auto spp::asts::FloatLiteralAst::stage_7_analyse_semantics(
     mixins::CompilerMetaData *)
     -> void {
     // Get the lower and upper bounds as big floats.
+    type = type == "" ? "f32" : type;
     auto const &[lower, upper] = FLOAT_TYPE_MIN_MAX.at(type);
     const auto mapped_val = CppBigFloat((int_val->token_data + "." + frac_val->token_data).c_str());
 

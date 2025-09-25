@@ -104,6 +104,7 @@ auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
     mixins::CompilerMetaData *)
     -> void {
     // Get the lower and upper bounds as big floats.
+    type = type == "" ? "s32" : type;
     auto const &[lower, upper] = INTEGER_TYPE_MIN_MAX.at(type);
     const auto mapped_val = CppBigInt(val->token_data.c_str());
 
