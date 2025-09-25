@@ -228,7 +228,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
             // Check the move doesn't overlap with any borrows. This is to ensure that "f(&x, x)" can never happen,
             // because the first argument requires the owned object to outlive the function call, and moving it as the
             // second argument breaks this. Doesn't apply to copyable types.
-            if (not sm->current_scope->get_type_symbol(arg->val->infer_type(sm, meta))->is_copyable) {
+            if (not sm->current_scope->get_type_symbol(arg->val->infer_type(sm, meta))->is_copyable()) {
                 auto overlaps = genex::views::concat(borrows_ref, borrows_mut)
                     | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
                     | genex::views::to<std::vector>();

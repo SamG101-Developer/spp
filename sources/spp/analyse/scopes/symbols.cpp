@@ -73,7 +73,7 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
     Scope *scope,
     Scope *scope_defined_in,
     const bool is_generic,
-    const bool is_copyable,
+    const bool is_directly_copyable,
     const asts::utils::Visibility visibility,
     asts::ConventionAst *convention) :
     name(std::move(name)),
@@ -81,7 +81,8 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
     scope(scope),
     scope_defined_in(scope_defined_in),
     is_generic(is_generic),
-    is_copyable(is_copyable),
+    is_directly_copyable(is_directly_copyable),
+    is_copyable([this] { return this->is_directly_copyable; }),
     visibility(visibility),
     convention(convention),
     generic_impl(this) {
@@ -141,10 +142,10 @@ spp::analyse::scopes::AliasSymbol::AliasSymbol(
     Scope *scope_defined_in,
     std::shared_ptr<TypeSymbol> const &old_sym,
     const bool is_generic,
-    const bool is_copyable,
+    const bool is_directly_copyable,
     const asts::utils::Visibility visibility,
     asts::ConventionAst *convention) :
-    TypeSymbol(std::move(name), type, scope, scope_defined_in, is_generic, is_copyable, visibility, convention),
+    TypeSymbol(std::move(name), type, scope, scope_defined_in, is_generic, is_directly_copyable, visibility, convention),
     old_sym(old_sym) {
 }
 

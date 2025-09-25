@@ -569,7 +569,8 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     const auto new_cls_symbol = std::make_shared<scopes::TypeSymbol>(
         ast_clone(&type_part),
         asts::ast_cast<asts::ClassPrototypeAst>(new_cls_scope->ast), new_cls_scope.get(), sm->current_scope,
-        old_cls_sym.is_generic, old_cls_sym.is_copyable, old_cls_sym.visibility);
+        old_cls_sym.is_generic, old_cls_sym.is_directly_copyable, old_cls_sym.visibility);
+    new_cls_symbol->is_copyable = [&old_cls_sym] { return old_cls_sym.is_copyable(); };
 
     // Configure the new scope based on the base (old) scope.
     if (not is_alias) {
@@ -680,7 +681,7 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     auto tm = scopes::ScopeManager(sm->global_scope, new_sup_scope_ptr);
 
     std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name =
-    substitute_sup_scope_name(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name, generic_args);
+        substitute_sup_scope_name(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name, generic_args);
 
     // Register the generic symbols.
     auto generic_syms = external_generic_syms
@@ -746,7 +747,7 @@ auto spp::analyse::utils::type_utils::create_generic_sym(
         auto sym = std::make_unique<scopes::TypeSymbol>(
             type_arg->name->type_parts().back(), true_val_sym ? true_val_sym->type : nullptr,
             true_val_sym ? true_val_sym->scope : nullptr, sm.current_scope, true,
-            true_val_sym ? true_val_sym->is_copyable : false, asts::utils::Visibility::PUBLIC,
+            true_val_sym ? true_val_sym->is_directly_copyable : false, asts::utils::Visibility::PUBLIC,
             type_arg->val->get_convention());
         return sym;
     }

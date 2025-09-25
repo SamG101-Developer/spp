@@ -93,7 +93,9 @@ struct spp::analyse::scopes::TypeSymbol : Symbol {
 
     bool is_generic = false;
 
-    bool is_copyable = false;
+    bool is_directly_copyable = false;
+
+    std::function<bool()> is_copyable;
 
     asts::utils::Visibility visibility = asts::utils::Visibility::PUBLIC;
 
@@ -107,7 +109,7 @@ struct spp::analyse::scopes::TypeSymbol : Symbol {
         Scope *scope,
         Scope *scope_defined_in,
         bool is_generic = false,
-        bool is_copyable = false,
+        bool is_directly_copyable = false,
         asts::utils::Visibility visibility = asts::utils::Visibility::PUBLIC,
         asts::ConventionAst *convention = nullptr);
 
@@ -129,7 +131,7 @@ struct spp::analyse::scopes::AliasSymbol final : TypeSymbol {
         Scope *scope_defined_in,
         std::shared_ptr<TypeSymbol> const &old_sym,
         bool is_generic = false,
-        bool is_copyable = false,
+        bool is_directly_copyable = false,
         asts::utils::Visibility visibility = asts::utils::Visibility::PUBLIC,
         asts::ConventionAst *convention = nullptr
     );

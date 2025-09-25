@@ -127,8 +127,8 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
     // Get the symbol representing the outermost part of the expression being moved. Non-symbolic => temporary value.
     auto [var_sym, var_scope] = sm.current_scope->get_var_symbol_outermost(value_ast);
     if (var_sym == nullptr) { return; }
-    const auto copies = var_scope->get_type_symbol(var_sym->type)->is_copyable;
-    const auto partial_copies = var_scope->get_type_symbol(value_ast.infer_type(&sm, meta))->is_copyable;
+    const auto copies = var_scope->get_type_symbol(var_sym->type)->is_copyable();
+    const auto partial_copies = var_scope->get_type_symbol(value_ast.infer_type(&sm, meta))->is_copyable();
 
     // Check for inconsistent memory moving (from branching).
     if (check_move and var_sym->memory_info->is_inconsistently_moved.has_value()) {

@@ -309,8 +309,8 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
     for (const auto sup_scope : sup_scopes) {
         auto fq_name = sup_scope->ty_sym->fq_name();
         if (analyse::utils::type_utils::symbolic_eq(*fq_name, *generate::common_types_precompiled::COPY, *sup_scope, *sm->current_scope)) {
-            sm->current_scope->get_type_symbol(name->without_generics())->is_copyable = true;
-            cls_sym->is_copyable = true;
+            sm->current_scope->get_type_symbol(name->without_generics())->is_directly_copyable = true;
+            cls_sym->is_directly_copyable = true;
             break;
         }
     }

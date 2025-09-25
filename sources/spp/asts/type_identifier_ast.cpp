@@ -446,7 +446,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
             const auto new_alias_sym = std::make_shared<analyse::scopes::AliasSymbol>(
                 new_scope->ty_sym->name, new_scope->ty_sym->type, new_scope, new_scope->ty_sym->scope_defined_in,
                 sm->current_scope->get_type_symbol(old_type), new_scope->ty_sym->is_generic,
-                new_scope->ty_sym->is_copyable);
+                new_scope->ty_sym->is_copyable());
 
             new_scope->parent->add_type_symbol(new_alias_sym);
             new_scope->ty_sym = new_alias_sym;
