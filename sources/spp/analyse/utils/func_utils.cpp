@@ -896,21 +896,23 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
                 if (auto def_val_type_sym = owner_scope->get_type_symbol(def_type); def_val_type_sym != nullptr) {
                     def_type = owner_scope->get_type_symbol(opt_param->default_val)->fq_name();
                 }
-                inferred_args[std::dynamic_pointer_cast<asts::TypeIdentifierAst>(opt_param->name)].emplace_back(def_type);
+
+                const auto cast_name = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(opt_param->name);
+                inferred_args[cast_name].emplace_back(def_type);
             }
         }
     }
 
     // Check each generic argument name only has one unique inferred type. "T" cannot infer to "Str" and "U32".
-    for (auto [arg_name, inferred_vals] : inferred_args) {
-        auto mismatches = inferred_vals
+    for (auto [arg_name, inferred_types] : inferred_args) {
+        auto mismatches = inferred_types
             | genex::views::drop(1)
-            | genex::views::filter([&](auto &&e) { return not type_utils::symbolic_eq(*e, *inferred_vals[0], *sm.current_scope, *sm.current_scope); })
+            | genex::views::filter([&](auto const &t) { return not type_utils::symbolic_eq(*t, *inferred_types[0], *sm.current_scope, *sm.current_scope); })
             | genex::views::to<std::vector>();
 
         if (not mismatches.empty()) {
             errors::SemanticErrorBuilder<errors::SppGenericParameterInferredConflictInferredError>().with_args(
-                *arg_name, *inferred_vals[0], *mismatches[0]).with_scopes({sm.current_scope}).raise();
+                *arg_name, *inferred_types[0], *mismatches[0]).with_scopes({sm.current_scope}).raise();
         }
     }
 
