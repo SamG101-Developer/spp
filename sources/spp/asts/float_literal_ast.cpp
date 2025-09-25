@@ -12,11 +12,11 @@ using CppBigFloat = boost::multiprecision::cpp_dec_float_100;
 
 
 const auto FLOAT_TYPE_MIN_MAX = std::map<std::string, std::pair<CppBigFloat, CppBigFloat>>{
-    {"f8", {CppBigFloat("-14"), CppBigFloat("14")}},
-    {"f16", {CppBigFloat("-65504"), CppBigFloat("65504")}},
-    {"f32", {CppBigFloat("-3402823466385288598117041"), CppBigFloat("3402823466385288598117041")}},
-    {"f64", {CppBigFloat("-1797693134862315708145274"), CppBigFloat("1797693134862315708145274")}},
-    {"f128", {CppBigFloat("-11897314953572317650212638530309737165e+4932"), CppBigFloat("11897314953572317650212638530309737165e+4932")}}
+    {"f8", {CppBigFloat("-5.7344e+4"), CppBigFloat("5.7344e+4")}},
+    {"f16", {CppBigFloat("-6.55e+4"), CppBigFloat("6.55e+4")}},
+    {"f32", {CppBigFloat("-3.4028235e+38"), CppBigFloat("3.4028235e+38")}},
+    {"f64", {CppBigFloat("-1.7976931348623157e+308"), CppBigFloat("1.7976931348623157e+308")}},
+    {"f128", {CppBigFloat("-1.189731495357231765e+4932"), CppBigFloat("1.189731495357231765e+4932")}}, // check this
 };
 
 
