@@ -292,7 +292,7 @@ auto spp::asts::TypeIdentifierAst::match_generic(
     TypeIdentifierAst const &generic_name) const
     -> const ExpressionAst* {
     // Precheck to skip processing.
-    if (static_cast<std::string>(*this) == static_cast<std::string>(other)) { return this; }
+    if (static_cast<std::string>(other) == static_cast<std::string>(generic_name)) { return this; }
 
     auto this_parts = custom_iterator(this, 0);
     auto that_parts = custom_iterator(&other, 0);

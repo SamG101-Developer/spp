@@ -196,6 +196,7 @@ auto spp::asts::TypeUnaryExpressionAst::match_generic(
     TypeAst const &other,
     TypeIdentifierAst const &generic_name) const
     -> const ExpressionAst* {
+    if (static_cast<std::string>(other) == static_cast<std::string>(generic_name)) { return this; }
     return rhs->match_generic(other, generic_name);
 }
 
