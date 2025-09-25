@@ -314,12 +314,14 @@ auto spp::asts::TypeIdentifierAst::match_generic(
         }
 
         // Check for the target generic.
-        if (static_cast<std::string>(*that_part) == static_cast<std::string>(generic_name)) {
-            if (auto &&type_generic = ast_cast<GenericArgumentTypeAst>(that_part)) {
-                return type_generic->val.get();
+        if (auto const *type_generic = ast_cast<GenericArgumentTypeAst>(that_part)) {
+            if (static_cast<std::string>(*type_generic->val) == static_cast<std::string>(generic_name)) {
+                return ast_cast<GenericArgumentTypeAst>(this_part)->val.get();
             }
-            if (auto &&comp_generic = ast_cast<GenericArgumentCompAst>(that_part)) {
-                return comp_generic->val.get();
+        }
+        if (auto const *comp_generic = ast_cast<GenericArgumentCompAst>(that_part)) {
+            if (static_cast<std::string>(*comp_generic->val) == static_cast<std::string>(generic_name)) {
+                return ast_cast<GenericArgumentCompAst>(this_part)->val.get();
             }
         }
     }
