@@ -17,6 +17,7 @@ namespace spp::analyse::scopes {
 namespace spp::analyse::utils::mem_utils {
     struct MemoryInfo;
 }
+
 /// @endcond
 
 
@@ -48,11 +49,18 @@ struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
 
     Scope *scope;
 
-    NamespaceSymbol(std::shared_ptr<asts::IdentifierAst> name, Scope *scope);
+    NamespaceSymbol(
+        std::shared_ptr<asts::IdentifierAst> name,
+        Scope *scope);
+
+    NamespaceSymbol(
+        NamespaceSymbol const &that);
 
     explicit operator std::string() const override;
 
-    auto operator==(NamespaceSymbol const &that) const -> bool;
+    auto operator==(
+        NamespaceSymbol const &that) const
+        -> bool;
 };
 
 
@@ -76,9 +84,14 @@ struct spp::analyse::scopes::VariableSymbol final : Symbol {
         bool is_generic = false,
         asts::utils::Visibility visibility = asts::utils::Visibility::PUBLIC);
 
+    VariableSymbol(
+        VariableSymbol const &that);
+
     explicit operator std::string() const override;
 
-    auto operator==(VariableSymbol const &that) const -> bool;
+    auto operator==(
+        VariableSymbol const &that) const
+        -> bool;
 };
 
 
@@ -113,11 +126,17 @@ struct spp::analyse::scopes::TypeSymbol : Symbol {
         asts::utils::Visibility visibility = asts::utils::Visibility::PUBLIC,
         asts::ConventionAst *convention = nullptr);
 
+    TypeSymbol(
+        TypeSymbol const &that);
+
     explicit operator std::string() const override;
 
-    auto operator==(TypeSymbol const &that) const -> bool;
+    auto operator==(
+        TypeSymbol const &that) const
+        -> bool;
 
-    virtual auto fq_name() const -> std::shared_ptr<asts::TypeAst>;
+    virtual auto fq_name() const
+        -> std::shared_ptr<asts::TypeAst>;
 };
 
 
@@ -136,9 +155,15 @@ struct spp::analyse::scopes::AliasSymbol final : TypeSymbol {
         asts::ConventionAst *convention = nullptr
     );
 
+    AliasSymbol(
+        AliasSymbol const &that);
+
     explicit operator std::string() const override;
 
-    auto operator==(AliasSymbol const &that) const -> bool;
+    auto operator==(
+        AliasSymbol const &that) const
+        -> bool;
 
-    auto fq_name() const -> std::shared_ptr<asts::TypeAst> override;
+    auto fq_name() const
+        -> std::shared_ptr<asts::TypeAst> override;
 };

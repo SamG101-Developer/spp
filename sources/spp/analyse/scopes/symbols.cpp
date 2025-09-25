@@ -20,6 +20,13 @@ spp::analyse::scopes::NamespaceSymbol::NamespaceSymbol(
 }
 
 
+spp::analyse::scopes::NamespaceSymbol::NamespaceSymbol(
+    NamespaceSymbol const &that) :
+    name(that.name),
+    scope(that.scope) {
+}
+
+
 spp::analyse::scopes::NamespaceSymbol::operator std::string() const {
     return nlohmann::json(std::map<std::string, std::string>{
         {"what", "type"},
@@ -48,6 +55,17 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
     is_generic(is_generic),
     visibility(visibility),
     memory_info(std::make_unique<utils::mem_utils::MemoryInfo>()) {
+}
+
+
+spp::analyse::scopes::VariableSymbol::VariableSymbol(
+    VariableSymbol const &that) :
+    name(ast_clone(that.name)),
+    type(ast_clone(that.type)),
+    is_mutable(that.is_mutable),
+    is_generic(that.is_generic),
+    visibility(that.visibility),
+    memory_info(that.memory_info->clone()) {
 }
 
 
@@ -87,6 +105,20 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
     convention(convention),
     generic_impl(this) {
     generic_impl = this;
+}
+
+
+spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
+    name(ast_clone(that.name)),
+    type(that.type),
+    scope(that.scope),
+    scope_defined_in(that.scope_defined_in),
+    is_generic(that.is_generic),
+    is_directly_copyable(that.is_directly_copyable),
+    is_copyable(that.is_copyable),
+    visibility(that.visibility),
+    convention(that.convention),
+    generic_impl(that.generic_impl) {
 }
 
 
@@ -147,6 +179,13 @@ spp::analyse::scopes::AliasSymbol::AliasSymbol(
     asts::ConventionAst *convention) :
     TypeSymbol(std::move(name), type, scope, scope_defined_in, is_generic, is_directly_copyable, visibility, convention),
     old_sym(old_sym) {
+}
+
+
+spp::analyse::scopes::AliasSymbol::AliasSymbol(
+    AliasSymbol const &that) :
+    TypeSymbol(that),
+    old_sym(that.old_sym) {
 }
 
 
