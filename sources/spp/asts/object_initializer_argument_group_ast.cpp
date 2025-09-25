@@ -215,8 +215,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
     for (auto &&arg : get_non_autofill_args()) {
         // Todo: what if there is > 1 matching attr?
         auto [attr, scope] = all_attrs
-            | genex::views::filter([&arg](auto &&x) { return x.first->name == arg->name; })
-            | genex::views::transform([](auto &&x) { return std::make_pair(x.first, x.second); })
+            | genex::views::filter([&arg](auto &&x) { return *x.first->name == *arg->name; })
+            | genex::views::to<std::vector>()
             | genex::operations::front;
 
         const auto attr_type = scope->get_type_symbol(cls_sym->scope->get_var_symbol(attr->name)->type)->fq_name();
