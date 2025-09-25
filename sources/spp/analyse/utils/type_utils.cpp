@@ -605,15 +605,17 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
         | genex::views::for_each([&](auto const &e) { new_cls_scope_ptr->add_var_symbol(e); });
 
     // Run generic substitution on the symbols in the scope.
-    auto tm = scopes::ScopeManager(sm->global_scope, new_cls_scope_ptr);
-    for (auto &&scoped_sym : new_cls_scope_ptr->all_var_symbols(true)) {
-        scoped_sym->type = scoped_sym->type->substitute_generics(type_part.generic_arg_group->args | genex::views::ptr | genex::views::to<std::vector>());
-        // scoped_sym->type->stage_7_analyse_semantics(&tm, meta);
+    const auto substitution_generics = type_part.generic_arg_group->args
+        | genex::views::ptr
+        | genex::views::to<std::vector>();
+
+    for (auto const &scoped_sym : new_cls_scope_ptr->all_var_symbols(true)) {
+        scoped_sym->type = scoped_sym->type->substitute_generics(substitution_generics);
     }
 
-    for (const auto attr : asts::ast_cast<asts::ClassPrototypeAst>(old_cls_scope->ast)->impl->members | genex::views::ptr | genex::views::cast_dynamic<asts::ClassAttributeAst*>() | genex::views::to<std::vector>()) {
+    for (const auto *attr : asts::ast_cast<asts::ClassPrototypeAst>(old_cls_scope->ast)->impl->members | genex::views::ptr | genex::views::cast_dynamic<asts::ClassAttributeAst*>() | genex::views::to<std::vector>()) {
         const auto new_attr = ast_clone(attr);
-        new_attr->type = new_attr->type->substitute_generics(type_part.generic_arg_group->args | genex::views::ptr | genex::views::to<std::vector>());
+        new_attr->type = new_attr->type->substitute_generics(substitution_generics);
         new_attr->stage_7_analyse_semantics(sm, meta);
     }
 
