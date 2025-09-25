@@ -3,6 +3,7 @@
 #include <spp/asts/generic_argument_type_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
+#include <spp/analyse/utils/mem_utils.hpp>
 
 
 template <typename I, typename S>
@@ -27,8 +28,10 @@ template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::operator=(
     IndividualSymbolTable const &that)
     -> IndividualSymbolTable& {
-    // Assignment operator.
-    m_table = that.m_table;
+    // Assignment operator (copy all symbols across).
+    for (auto const &[k, v] : that.m_table) {
+        m_table.insert({k, std::make_shared<S>(*v)});
+    }
     return *this;
 }
 
