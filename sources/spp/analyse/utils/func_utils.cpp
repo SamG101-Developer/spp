@@ -552,8 +552,8 @@ auto spp::analyse::utils::func_utils::infer_generic_args(
     std::vector<asts::GenericParameterAst*> params,
     std::vector<asts::GenericParameterAst*> opt_params,
     std::vector<asts::GenericArgumentAst*> explicit_args,
-    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_source,
-    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_target,
+    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_source,
+    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_target,
     std::shared_ptr<asts::Ast> owner,
     scopes::Scope const *owner_scope,
     std::shared_ptr<asts::IdentifierAst> variadic_param_identifier,
@@ -678,8 +678,8 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
     std::vector<std::unique_ptr<asts::GenericArgumentCompKeywordAst>> &args,
     std::vector<asts::GenericParameterCompAst*> params,
     std::vector<asts::GenericArgumentCompKeywordAst*> explicit_args,
-    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_source,
-    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_target,
+    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_source,
+    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_target,
     std::shared_ptr<asts::Ast> owner,
     scopes::Scope const *owner_scope,
     scopes::ScopeManager &sm,
@@ -715,7 +715,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
 
             // Handle the match if it exists.
             if (inferred_arg != nullptr) {
-                inferred_args.at(param_name).emplace_back(inferred_arg);
+                inferred_args[param_name].emplace_back(inferred_arg);
             }
         }
     }
@@ -837,8 +837,8 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
     std::vector<asts::GenericParameterTypeAst*> params,
     std::vector<asts::GenericParameterTypeAst*> opt_params,
     std::vector<asts::GenericArgumentTypeKeywordAst*> explicit_args,
-    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_source,
-    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>> const &infer_target,
+    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_source,
+    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_target,
     std::shared_ptr<asts::Ast> owner,
     scopes::Scope const *owner_scope,
     std::shared_ptr<asts::IdentifierAst> variadic_param_identifier,
@@ -870,20 +870,20 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
 
             // Check for a direct match ("a: T" & "a: Str") or an inner match ("a: Vec[T]" & "a: Vec[Str]").
             if (infer_source.contains(infer_target_name)) {
-                inferred_arg = dynamic_cast<const asts::TypeAst*>(infer_source.at(infer_target_name)->without_generics()->match_generic(*infer_target_type->without_convention(), *param_name))->shared_from_this();
+                inferred_arg = dynamic_cast<const asts::TypeAst*>(infer_source.at(infer_target_name)->without_convention()->match_generic(*infer_target_type->without_convention(), *param_name))->shared_from_this();
             }
 
             // Handle the match if it exists.
             if (inferred_arg != nullptr) {
-                inferred_args.at(param_name).emplace_back(inferred_arg);
+                inferred_args[param_name].emplace_back(inferred_arg);
             }
 
             // Handle the variadic parameter if it exists.
             if (variadic_param_identifier != nullptr and *infer_target_name == *variadic_param_identifier) {
-                auto temp1 = ast_clone(inferred_args.at(param_name).back()->type_parts().back()->generic_arg_group->args[0]);
+                auto temp1 = ast_clone(inferred_args[param_name].back()->type_parts().back()->generic_arg_group->args[0]);
                 auto temp2 = asts::ast_cast<asts::GenericArgumentTypeAst>(std::move(temp1))->val;
-                inferred_args.at(param_name).pop_back();
-                inferred_args.at(param_name).emplace_back(temp2);
+                inferred_args[param_name].pop_back();
+                inferred_args[param_name].emplace_back(temp2);
             }
         }
     }
