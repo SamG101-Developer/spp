@@ -213,12 +213,16 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
 
     // Type check the non-autofill arguments against the class attributes.
     for (auto &&arg : get_non_autofill_args()) {
-        // Todo: what if there is > 1 matching attr?
-        auto [attr, scope] = all_attrs
+        auto matching_attrs = all_attrs
             | genex::views::filter([&arg](auto &&x) { return *x.first->name == *arg->name; })
-            | genex::views::to<std::vector>()
-            | genex::operations::front;
+            | genex::views::to<std::vector>();
 
+        if (matching_attrs.size() > 1) {
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppAmbiguousMemberAccessError>().with_args(
+                *std::get<0>(matching_attrs[0]), *std::get<0>(matching_attrs[1]), *this).with_scopes({sm->current_scope}).raise();
+        }
+
+        auto [attr, scope] = matching_attrs[0];
         const auto attr_type = scope->get_type_symbol(cls_sym->scope->get_var_symbol(attr->name)->type)->fq_name();
         meta->save();
         meta->assignment_target_type = attr_type;
