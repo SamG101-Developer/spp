@@ -3,6 +3,12 @@
 #include <filesystem>
 #include <spp/asts/ast.hpp>
 
+/// @cond
+namespace spp::compiler {
+    struct CompilerBoot;
+}
+/// @endcond
+
 
 /**
  * The ModulePrototypeAst represents a prototype for a module in the SPP language. It contains a the implementation of
@@ -10,6 +16,7 @@
  */
 struct spp::asts::ModulePrototypeAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
+    friend struct compiler::CompilerBoot;
 
 private:
     std::filesystem::path m_file_path;
