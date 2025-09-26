@@ -35,7 +35,7 @@ auto spp::compiler::CompilerBoot::lex(
     ModuleTree &tree)
     -> void {
     // Lexing stage.
-    for (auto &&mod : tree) {
+    for (auto &mod : tree) {
         bar.tick();
         mod.code = utils::files::read_file(std::filesystem::current_path() / mod.path);
         mod.tokens = lex::Lexer(mod.code).lex();
@@ -49,7 +49,7 @@ auto spp::compiler::CompilerBoot::parse(
     ModuleTree &tree)
     -> void {
     // Parsing stage.
-    for (auto &&mod : tree) {
+    for (auto &mod : tree) {
         bar.tick();
         mod.module_ast = parse::ParserSpp(mod.tokens, mod.error_formatter).parse();
         m_modules.emplace_back(mod.module_ast.get());
@@ -63,9 +63,9 @@ auto spp::compiler::CompilerBoot::stage_1_pre_process(
     asts::Ast *ctx)
     -> void {
     // Pre-processing stage.
-    for (auto &&mod : m_modules) {
+    for (auto &mod : m_modules) {
         PREP_SCOPE_MANAGER;
-        mod->file_name()->val = mod_in_tree.path;
+        mod->m_file_path = mod_in_tree.path;
         mod->stage_1_pre_process(ctx);
         bar.tick();
     }
@@ -78,14 +78,12 @@ auto spp::compiler::CompilerBoot::stage_2_gen_top_level_scopes(
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Generate top-level scopes stage.
-    for (auto &&mod : m_modules) {
+    for (auto &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(4.0);
         mod->stage_2_gen_top_level_scopes(sm, &meta);
         sm->reset();
         bar.tick();
     }
-
-    // std::cout << sm->global_scope->print_scope_tree() << std::endl;
 }
 
 
@@ -95,7 +93,7 @@ auto spp::compiler::CompilerBoot::stage_3_gen_top_level_aliases(
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Generate top-level aliases stage.
-    for (auto &&mod : m_modules) {
+    for (auto &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(5.0);
         mod->stage_3_gen_top_level_aliases(sm, &meta);
         sm->reset();
@@ -110,7 +108,7 @@ auto spp::compiler::CompilerBoot::stage_4_qualify_types(
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Qualify types stage.
-    for (auto &&mod : m_modules) {
+    for (auto &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(6.0);
         mod->stage_4_qualify_types(sm, &meta);
         sm->reset();
@@ -125,7 +123,7 @@ auto spp::compiler::CompilerBoot::stage_5_load_super_scopes(
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Load super scopes stage.
-    for (auto &&mod : m_modules) {
+    for (auto &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(7.0);
         mod->stage_5_load_super_scopes(sm, &meta);
         sm->reset();
@@ -145,7 +143,7 @@ auto spp::compiler::CompilerBoot::stage_6_pre_analyse_semantics(
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Pre-analyse semantics stage.
-    for (auto &&mod : m_modules) {
+    for (auto &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(8.0);
         mod->stage_6_pre_analyse_semantics(sm, &meta);
         sm->reset();
@@ -160,7 +158,7 @@ auto spp::compiler::CompilerBoot::stage_7_analyse_semantics(
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Analyse semantics stage.
-    for (auto &&mod : m_modules) {
+    for (auto &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(9.0);
         mod->stage_7_analyse_semantics(sm, &meta);
         sm->reset();
@@ -178,7 +176,7 @@ auto spp::compiler::CompilerBoot::stage_8_check_memory(
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Check memory stage.
-    for (auto &&mod : m_modules) {
+    for (auto &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(10.0);
         mod->stage_8_check_memory(sm, &meta);
         sm->reset();
@@ -191,8 +189,8 @@ auto spp::compiler::CompilerBoot::validate_entry_point(
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Get the "main.spp" main module (entry point).
-    const auto main_mod = *genex::algorithms::find_if(m_modules, [](auto mod) {
-        return mod->file_name()->val == "main.spp";
+    const auto main_mod = *genex::algorithms::find_if(m_modules, [](auto const *mod) {
+        return mod->file_name()->val.ends_with("main.spp");
     });
 
     // Check whether the "main" function exists with the correct signature.
