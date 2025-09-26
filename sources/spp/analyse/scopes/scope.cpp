@@ -65,7 +65,7 @@ auto spp::analyse::scopes::Scope::new_global(
     -> std::unique_ptr<Scope> {
     // Create a new global scope.
     auto glob_scope_name = ScopeBlockName("<global>");
-    auto glob_scope = std::make_unique<Scope>(std::move(glob_scope_name), nullptr);
+    auto glob_scope = std::make_unique<Scope>(std::move(glob_scope_name), nullptr, nullptr, module.error_formatter.get());
 
     // Inject the "_global namespace symbol into this scope (makes lookups orthogonal).
     auto glob_ns_sym_name = std::make_unique<asts::IdentifierAst>(0, "_global");
@@ -365,6 +365,7 @@ auto spp::analyse::scopes::Scope::get_var_symbol(
     const bool exclusive) const
     -> std::shared_ptr<VariableSymbol> {
     // Get the symbol from the symbol table if it exists.
+    if (sym_name == nullptr) { return nullptr; }
     const auto scope = this;
     auto sym = table.var_tbl.get(sym_name);
 
@@ -389,6 +390,7 @@ auto spp::analyse::scopes::Scope::get_type_symbol(
     const bool ignore_alias) const
     -> std::shared_ptr<TypeSymbol> {
     // Adjust the scope for the namespace of the type identifier if there is one.
+    if (sym_name == nullptr) { return nullptr; }
     auto [scope, sym_name_extracted] = shift_scope_for_namespaced_type(*this, *sym_name->without_convention());
 
     // Get the symbol from the symbol table if it exists.
@@ -418,6 +420,7 @@ auto spp::analyse::scopes::Scope::get_ns_symbol(
     const bool exclusive) const
     -> std::shared_ptr<NamespaceSymbol> {
     // Get the symbol from the symbol table if it exists.
+    if (sym_name == nullptr) { return nullptr; }
     const auto scope = this;
     auto sym = table.ns_tbl.get(sym_name);
 
