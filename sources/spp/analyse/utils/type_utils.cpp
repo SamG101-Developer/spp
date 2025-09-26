@@ -404,11 +404,13 @@ auto spp::analyse::utils::type_utils::get_generator_and_yield_type(
     }
 
     // Discover the supertypes and add the current type to it.=.
-    auto sup_types = genex::views::concat(std::vector{type.shared_from_this()}, type_sym->scope->sup_types());
+    auto sup_types = std::vector{type.shared_from_this()}
+        | genex::views::concat(type_sym->scope->sup_types())
+        | genex::views::to<std::vector>();
 
     // Search through the supertypes for a direct generator type.
     const auto generator_type_candidates = sup_types
-        | genex::views::filter([&sm](auto &&sup_type) { return is_type_generator(*sup_type, *sm.current_scope); })
+        | genex::views::filter([&sm](auto const &sup_type) { return is_type_generator(*sup_type, *sm.current_scope); })
         | genex::views::to<std::vector>();
 
     if (generator_type_candidates.empty()) {
