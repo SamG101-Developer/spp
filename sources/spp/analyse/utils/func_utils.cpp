@@ -395,7 +395,8 @@ auto spp::analyse::utils::func_utils::name_args(
     // Name all the positional arguments with leftover parameter names.
     auto positional_args = args
         | genex::views::ptr
-        | genex::views::cast_dynamic<asts::FunctionCallArgumentPositionalAst*>();
+        | genex::views::cast_dynamic<asts::FunctionCallArgumentPositionalAst*>()
+        | genex::views::to<std::vector>();
 
     for (auto [i, positional_arg] : positional_args | genex::views::enumerate | genex::views::to<std::vector>()) {
         auto param_name = param_names.front();
