@@ -74,8 +74,9 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_7_analyse_semantic
     mixins::CompilerMetaData *meta)
     -> void {
     // Check the left-hand-side is a generator type (for specific errors).
-    const auto lhs_type = meta->let_stmt_value->infer_type(sm, meta);
-    analyse::utils::type_utils::get_generator_and_yield_type(*lhs_type, *sm, *meta->postfix_expression_lhs, "resume expression");
+    const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
+    analyse::utils::type_utils::get_generator_and_yield_type(
+        *lhs_type, *sm, *meta->postfix_expression_lhs, "resume expression");
 
     // Check the argument (send value) is valid, by passing it into the ".send" function call.
     auto send = std::make_unique<IdentifierAst>(pos_start(), "send");
