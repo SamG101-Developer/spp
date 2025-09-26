@@ -46,7 +46,6 @@
 #include <genex/views/filter.hpp>
 #include <genex/views/flatten.hpp>
 #include <genex/views/forward.hpp>
-#include <genex/views/indirect.hpp>
 #include <genex/views/intersperse.hpp>
 #include <genex/views/iota.hpp>
 #include <genex/views/materialize.hpp>
@@ -65,6 +64,7 @@ spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFu
     generic_arg_group(std::move(generic_arg_group)),
     arg_group(std::move(arg_group)),
     fold(std::move(fold)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_arg_group);
 }
 
 
@@ -118,7 +118,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     if (const auto cast_lhs = ast_cast<PostfixExpressionAst>(meta->postfix_expression_lhs); cast_lhs != nullptr and ast_cast<PostfixExpressionOperatorRuntimeMemberAccessAst>(cast_lhs->op.get())) {
         auto [transformed_lhs, transformed_fn_call] = analyse::utils::func_utils::convert_method_to_function_form(
             *fn_owner_type, *fn_name, *cast_lhs, *this, *sm, meta);
+        meta->save();
+        meta->postfix_expression_lhs = transformed_lhs.get();
         transformed_fn_call->determine_overload(sm, meta);
+        meta->restore();
         m_overload_info = std::move(transformed_fn_call->m_overload_info);
         arg_group = std::move(transformed_fn_call->arg_group);
         return;
@@ -183,7 +186,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
             // Remove the keyword argument names from the set of parameter names, and name the positional arguments.
             analyse::utils::func_utils::name_args(func_args, func_params, *sm);
-            analyse::utils::func_utils::name_generic_args(generic_args, generic_params, *ast_cast<Ast>(fn_proto->name), *sm, meta);
+            analyse::utils::func_utils::name_generic_args(generic_args, generic_params, *std::dynamic_pointer_cast<Ast>(fn_proto->name), *sm, meta);
             func_arg_names = func_args
                 | genex::views::ptr
                 | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>()

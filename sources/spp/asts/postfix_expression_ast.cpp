@@ -61,10 +61,13 @@ auto spp::asts::PostfixExpressionAst::stage_7_analyse_semantics(
     meta->return_type_overload_resolver_type = nullptr;
     meta->prevent_auto_generator_resume = false;
     lhs->stage_7_analyse_semantics(sm, meta);
+    meta->restore();
 
     // Re-attach the meta info, as it is targeting the lhs.
-    meta->restore();
+    meta->save();
+    meta->postfix_expression_lhs = lhs.get();
     op->stage_7_analyse_semantics(sm, meta);
+    meta->restore();
 }
 
 
