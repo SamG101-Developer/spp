@@ -13,6 +13,17 @@
 
 
 template <typename T>
+auto spp::asts::InnerScopeExpressionAst<T>::clone() const
+    -> std::unique_ptr<Ast> {
+    auto *c = dynamic_cast<InnerScopeAst<T>*>(InnerScopeAst<T>::clone().release());
+    return std::make_unique<InnerScopeExpressionAst>(
+        std::move(c->tok_l),
+        std::move(c->members),
+        std::move(c->tok_r));
+}
+
+
+template <typename T>
 auto spp::asts::InnerScopeExpressionAst<T>::stage_7_analyse_semantics(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)

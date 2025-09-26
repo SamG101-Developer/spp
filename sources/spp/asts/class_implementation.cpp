@@ -13,7 +13,8 @@
 #include <genex/views/to.hpp>
 
 
-auto spp::asts::ClassImplementationAst::new_empty() -> std::unique_ptr<ClassImplementationAst> {
+auto spp::asts::ClassImplementationAst::new_empty()
+    -> std::unique_ptr<ClassImplementationAst> {
     return std::make_unique<ClassImplementationAst>();
 }
 
@@ -21,14 +22,27 @@ auto spp::asts::ClassImplementationAst::new_empty() -> std::unique_ptr<ClassImpl
 spp::asts::ClassImplementationAst::~ClassImplementationAst() = default;
 
 
-auto spp::asts::ClassImplementationAst::stage_1_pre_process(Ast *ctx) -> void {
+auto spp::asts::ClassImplementationAst::clone() const
+    -> std::unique_ptr<Ast> {
+    auto *c = dynamic_cast<InnerScopeAst*>(InnerScopeAst::clone().release());
+    return std::make_unique<ClassImplementationAst>(
+        std::move(c->tok_l),
+        std::move(c->members),
+        std::move(c->tok_r));
+}
+
+
+auto spp::asts::ClassImplementationAst::stage_1_pre_process(
+    Ast *ctx)
+    -> void {
     members | genex::views::for_each([ctx](auto &&x) { x->stage_1_pre_process(ctx); });
 }
 
 
 auto spp::asts::ClassImplementationAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    mixins::CompilerMetaData *meta)
+    -> void {
     // Generate scopes for each member.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
 }
@@ -36,7 +50,8 @@ auto spp::asts::ClassImplementationAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::ClassImplementationAst::stage_3_gen_top_level_aliases(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    mixins::CompilerMetaData *meta)
+    -> void {
     // Generate aliases for each member.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_3_gen_top_level_aliases(sm, meta); });
 }
@@ -44,7 +59,8 @@ auto spp::asts::ClassImplementationAst::stage_3_gen_top_level_aliases(
 
 auto spp::asts::ClassImplementationAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    mixins::CompilerMetaData *meta)
+    -> void {
     // Qualify types for each member.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_4_qualify_types(sm, meta); });
 }
@@ -52,7 +68,8 @@ auto spp::asts::ClassImplementationAst::stage_4_qualify_types(
 
 auto spp::asts::ClassImplementationAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    mixins::CompilerMetaData *meta)
+    -> void {
     // Load super scopes for each member.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_5_load_super_scopes(sm, meta); });
 }
@@ -60,7 +77,8 @@ auto spp::asts::ClassImplementationAst::stage_5_load_super_scopes(
 
 auto spp::asts::ClassImplementationAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    mixins::CompilerMetaData *meta)
+    -> void {
     // Pre-analyse semantics for each member.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_6_pre_analyse_semantics(sm, meta); });
 
@@ -81,7 +99,8 @@ auto spp::asts::ClassImplementationAst::stage_6_pre_analyse_semantics(
 
 auto spp::asts::ClassImplementationAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    mixins::CompilerMetaData *meta)
+    -> void {
     // Analyse semantics for each member.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_7_analyse_semantics(sm, meta); });
 }
@@ -89,7 +108,8 @@ auto spp::asts::ClassImplementationAst::stage_7_analyse_semantics(
 
 auto spp::asts::ClassImplementationAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    mixins::CompilerMetaData *meta)
+    -> void {
     // Check memory for each member.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });
 }

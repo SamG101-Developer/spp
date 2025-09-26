@@ -85,26 +85,7 @@ auto spp::asts::FunctionPrototypeAst::pos_end() const -> std::size_t {
 
 
 auto spp::asts::FunctionPrototypeAst::clone() const -> std::unique_ptr<Ast> {
-    auto ast = std::make_unique<FunctionPrototypeAst>(
-        ast_clone_vec(annotations),
-        ast_clone(tok_fun),
-        ast_clone(name),
-        ast_clone(generic_param_group),
-        ast_clone(param_group),
-        ast_clone(tok_arrow),
-        ast_clone(return_type),
-        ast_clone(impl));
-    ast->orig_name = ast_clone(orig_name);
-    ast->m_ctx = m_ctx;
-    ast->m_scope = m_scope;
-    ast->m_abstract_annotation = m_abstract_annotation;
-    ast->m_virtual_annotation = m_virtual_annotation;
-    ast->m_temperature_annotation = m_temperature_annotation;
-    ast->m_no_impl_annotation = m_no_impl_annotation;
-    ast->m_inline_annotation = m_inline_annotation;
-    ast->m_visibility = m_visibility;
-    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->m_ctx = ast; });
-    return ast;
+    throw std::runtime_error("Use SubroutinePrototypeAst or CoroutinePrototypeAst instead");
 }
 
 

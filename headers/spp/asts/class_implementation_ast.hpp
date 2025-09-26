@@ -14,6 +14,8 @@ struct spp::asts::ClassImplementationAst final : InnerScopeAst<std::unique_ptr<C
 
     ~ClassImplementationAst() override;
 
+    auto clone() const -> std::unique_ptr<Ast> override;
+
 public:
     static auto new_empty() -> std::unique_ptr<ClassImplementationAst>;
 

@@ -8,8 +8,19 @@
 spp::asts::SupImplementationAst::~SupImplementationAst() = default;
 
 
-auto spp::asts::SupImplementationAst::new_empty() -> std::unique_ptr<SupImplementationAst> {
+auto spp::asts::SupImplementationAst::new_empty()
+    -> std::unique_ptr<SupImplementationAst> {
     return std::make_unique<SupImplementationAst>();
+}
+
+
+auto spp::asts::SupImplementationAst::clone() const
+    -> std::unique_ptr<Ast> {
+    auto *c = dynamic_cast<InnerScopeAst*>(InnerScopeAst::clone().release());
+    return std::make_unique<SupImplementationAst>(
+        std::move(c->tok_l),
+        std::move(c->members),
+        std::move(c->tok_r));
 }
 
 

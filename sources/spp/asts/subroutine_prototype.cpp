@@ -2,15 +2,47 @@
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
+#include <spp/asts/annotation_ast.hpp>
 #include <spp/asts/function_implementation_ast.hpp>
+#include <spp/asts/function_parameter_group_ast.hpp>
+#include <spp/asts/generic_parameter_group_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/ret_statement_ast.hpp>
 #include <spp/asts/subroutine_prototype_ast.hpp>
+#include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>
 #include <spp/pch.hpp>
 
+#include <genex/views/for_each.hpp>
+
 
 spp::asts::SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;
+
+
+auto spp::asts::SubroutinePrototypeAst::clone() const
+    -> std::unique_ptr<Ast> {
+    auto ast = std::make_unique<SubroutinePrototypeAst>(
+        ast_clone_vec(annotations),
+        ast_clone(tok_fun),
+        ast_clone(name),
+        ast_clone(generic_param_group),
+        ast_clone(param_group),
+        ast_clone(tok_arrow),
+        ast_clone(return_type),
+        ast_clone(impl));
+    ast->orig_name = ast_clone(orig_name);
+    ast->m_ctx = m_ctx;
+    ast->m_scope = m_scope;
+    ast->m_abstract_annotation = m_abstract_annotation;
+    ast->m_virtual_annotation = m_virtual_annotation;
+    ast->m_temperature_annotation = m_temperature_annotation;
+    ast->m_no_impl_annotation = m_no_impl_annotation;
+    ast->m_inline_annotation = m_inline_annotation;
+    ast->m_visibility = m_visibility;
+    ast->annotations | genex::views::for_each([ast=ast.get()](auto const &a) { a->m_ctx = ast; });
+    return ast;
+}
 
 
 auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(

@@ -17,6 +17,8 @@ struct spp::asts::SupImplementationAst final : InnerScopeAst<std::unique_ptr<Sup
 
     static auto new_empty() -> std::unique_ptr<SupImplementationAst>;
 
+    auto clone() const -> std::unique_ptr<Ast> override;
+
 public:
     auto stage_1_pre_process(Ast *ctx) -> void override;
 
