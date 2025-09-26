@@ -86,6 +86,8 @@ auto spp::asts::LetStatementInitializedAst::stage_7_analyse_semantics(
     // Add the type into the return type overload resolver.
     meta->save();
     meta->return_type_overload_resolver_type = type;
+    val->stage_7_analyse_semantics(sm, meta);
+
     meta->assignment_target = var->extract_name();
 
     // Ensure the value's type matches the type (if given), including variant matching.
@@ -99,6 +101,7 @@ auto spp::asts::LetStatementInitializedAst::stage_7_analyse_semantics(
     }
 
     meta->let_stmt_explicit_type = type;
+    meta->let_stmt_value = val.get();
     var->stage_7_analyse_semantics(sm, meta);
     meta->restore();
 }
