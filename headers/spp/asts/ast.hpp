@@ -113,6 +113,8 @@ struct spp::asts::Ast : mixins::CompilerStages {
     friend struct ClassPrototypeAst;
     friend struct CmpStatementAst;
     friend struct FunctionPrototypeAst;
+    friend struct SubroutinePrototypeAst;
+    friend struct CoroutinePrototypeAst;
     friend struct TypeStatementAst;
     friend struct UseStatementAst;
     friend class analyse::scopes::ScopeManager;
