@@ -111,9 +111,10 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
         }
     }
 
-    else if (const auto lhs_as_ident = ast_cast<IdentifierAst>(meta->postfix_expression_lhs)) {
-        const auto lhs_ns_sym = sm->current_scope->get_ns_symbol(lhs_as_ident->shared_from_this());
-        const auto lhs_var_sym = sm->current_scope->get_var_symbol(lhs_as_ident->shared_from_this());
+    else if (const auto lhs_as_ident_raw = ast_cast<IdentifierAst>(meta->postfix_expression_lhs)) {
+        const auto lhs_as_ident = std::make_shared<IdentifierAst>(lhs_as_ident_raw->pos_start(), lhs_as_ident_raw->val);
+        const auto lhs_ns_sym = sm->current_scope->get_ns_symbol(lhs_as_ident);
+        const auto lhs_var_sym = sm->current_scope->get_var_symbol(lhs_as_ident);
 
         // Check the lhs is a namespace and not a variable.
         if (lhs_ns_sym == nullptr and lhs_var_sym != nullptr) {
