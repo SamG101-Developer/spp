@@ -50,6 +50,13 @@ public:
     std::vector<std::unique_ptr<Scope>> children;
 
     /**
+     * Non child scopes that need an owner (currently from from generic substituted types from non-top-level (aliased)
+     * type scopes).
+     * @todo: Relocate these scopes at some point.
+     */
+    std::vector<std::unique_ptr<Scope>> temp_scopes;
+
+    /**
      * Top level scopes register their AST with the scope. This is useful for error reporting, as it allows for easy
      * access to the AST node that the scope represents. This will be @c nullptr for non-top level scopes. Typically,
      * the AST will need to be cast back to its original type.
