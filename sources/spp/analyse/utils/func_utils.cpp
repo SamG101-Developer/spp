@@ -83,6 +83,10 @@ auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
     const auto runtime_field = postfix_lhs ? asts::ast_cast<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(postfix_lhs->op.get()) : nullptr;
     const auto static_field = postfix_lhs ? asts::ast_cast<asts::PostfixExpressionOperatorStaticMemberAccessAst>(postfix_lhs->op.get()) : nullptr;
 
+    // Specific casts.
+    const auto postfix_lhs_as_type = postfix_lhs ? dynamic_cast<asts::TypeAst*>(postfix_lhs->lhs.get()) : nullptr;
+    const auto postfix_lhs_as_ident = dynamic_cast<asts::IdentifierAst const*>(&lhs);
+
     // Variables that will be set in each branch, and returned.
     auto function_owner_type = std::shared_ptr<asts::TypeAst>(nullptr);
     auto function_owner_scope = static_cast<scopes::Scope const*>(nullptr);
@@ -96,8 +100,8 @@ auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
     }
 
     // Static access into a type: "Type::method()" or "ns::Type::method()".
-    else if (const auto type_lhs = asts::ast_cast<asts::TypeAst>(postfix_lhs->lhs.get()); postfix_lhs != nullptr and static_field != nullptr and type_lhs != nullptr) {
-        function_owner_type = ast_clone(type_lhs);
+    else if (static_field != nullptr and postfix_lhs_as_type != nullptr) {
+        function_owner_type = ast_clone(postfix_lhs_as_type);
         function_name = static_field->name;
         function_owner_scope = sm.current_scope->get_type_symbol(function_owner_type)->scope;
     }
@@ -110,9 +114,9 @@ auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
     }
 
     // Direct access into a non-namespaced function: "function()":
-    else if (const auto id_lhs = asts::ast_cast<asts::IdentifierAst>(const_cast<asts::ExpressionAst*>(&lhs)); id_lhs != nullptr) {
+    else if (postfix_lhs_as_ident != nullptr) {
         function_owner_type = nullptr;
-        function_name = ast_clone(id_lhs);
+        function_name = ast_clone(postfix_lhs_as_ident);
         function_owner_scope = sm.current_scope->parent_module();
     }
 
