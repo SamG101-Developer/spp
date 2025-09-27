@@ -45,10 +45,10 @@ auto spp::asts::LetStatementInitializedAst::clone() const -> std::unique_ptr<Ast
 
 spp::asts::LetStatementInitializedAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_let);
+    SPP_STRING_APPEND(tok_let).append(" ");
     SPP_STRING_APPEND(var);
-    SPP_STRING_APPEND(type);
-    SPP_STRING_APPEND(tok_assign);
+    SPP_STRING_APPEND(type).append(" ");
+    SPP_STRING_APPEND(tok_assign).append(" ");
     SPP_STRING_APPEND(val);
     SPP_STRING_END;
 }
@@ -56,10 +56,10 @@ spp::asts::LetStatementInitializedAst::operator std::string() const {
 
 auto spp::asts::LetStatementInitializedAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_let);
+    SPP_PRINT_APPEND(tok_let).append(" ");
     SPP_PRINT_APPEND(var);
-    SPP_PRINT_APPEND(type);
-    SPP_PRINT_APPEND(tok_assign);
+    SPP_PRINT_APPEND(type).append(" ");
+    SPP_PRINT_APPEND(tok_assign).append(" ");
     SPP_PRINT_APPEND(val);
     SPP_PRINT_END;
 }
