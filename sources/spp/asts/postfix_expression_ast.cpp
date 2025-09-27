@@ -79,3 +79,15 @@ auto spp::asts::PostfixExpressionAst::stage_8_check_memory(
     lhs->stage_8_check_memory(sm, meta);
     op->stage_8_check_memory(sm, meta);
 }
+
+
+auto spp::asts::PostfixExpressionAst::infer_type(
+    analyse::scopes::ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> std::shared_ptr<TypeAst> {
+    meta->save();
+    meta->postfix_expression_lhs = lhs.get();
+    auto ret_type = op->infer_type(sm, meta);
+    meta->restore();
+    return ret_type;
+}
