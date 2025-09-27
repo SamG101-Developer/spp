@@ -130,6 +130,14 @@ auto spp::asts::FunctionPrototypeAst::print_signature(
 }
 
 
+auto spp::asts::FunctionPrototypeAst::register_generic_substituted_scope(
+    std::unique_ptr<analyse::scopes::Scope> &&scope)
+    -> void {
+    // Store the scope for object persistence (and codegen).
+    m_generic_substituted_scopes.emplace_back(std::move(scope));
+}
+
+
 auto spp::asts::FunctionPrototypeAst::m_deduce_mock_class_type() const
     -> std::shared_ptr<TypeAst> {
     // Extract the parameter types.
@@ -174,8 +182,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
         auto gen_sub = std::vector<GenericArgumentAst*>(1);
         gen_sub[0] = self_gen_sub.get();
 
-        param_group->get_self_param()->type = param_group->get_self_param()->type->substitute_generics(gen_sub);
-        param_group->params | genex::views::for_each([gen_sub](auto &&x) { x->type = x->type->substitute_generics(gen_sub); });
+        param_group->params | genex::views::for_each([gen_sub](auto const &x) { x->type = x->type->substitute_generics(gen_sub); });
         return_type = return_type->substitute_generics(gen_sub);
     }
 

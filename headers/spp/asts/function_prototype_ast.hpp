@@ -19,6 +19,9 @@ struct spp::asts::FunctionPrototypeAst : virtual Ast, SupMemberAst, ModuleMember
     friend struct PostfixExpressionOperatorFunctionCallAst;
     friend struct SupPrototypeExtensionAst;
 
+private:
+    std::vector<std::unique_ptr<analyse::scopes::Scope>> m_generic_substituted_scopes;
+
 protected:
     /**
      * Optional @c \@abstractmethod annotation. This is used to indicate that the function is abstract and must be
@@ -139,6 +142,8 @@ private:
 
 public:
     auto print_signature(std::string_view owner) const -> std::string;
+
+    auto register_generic_substituted_scope(std::unique_ptr<analyse::scopes::Scope> &&scope) -> void;
 
     auto stage_1_pre_process(Ast *ctx) -> void override;
 
