@@ -58,8 +58,12 @@ auto spp::asts::UnaryExpressionAst::stage_7_analyse_semantics(
     ENFORCE_EXPRESSION_SUBTYPE(expr.get());
 
     // Analyse the operator and right-hand-side expression.
-    op->stage_7_analyse_semantics(sm, meta);
     expr->stage_7_analyse_semantics(sm, meta);
+
+    meta->save();
+    meta->unary_expression_rhs = expr.get();
+    op->stage_7_analyse_semantics(sm, meta);
+    meta->restore();
 }
 
 
