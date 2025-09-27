@@ -194,6 +194,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
                                     : std::vector{target_scope};
 
         // From the super scopes, check each one for "sup $Func ext FunXXX { ... }" super-impositions.
+        // Todo: use the "is_valid_ext_scope"?
         for (auto *sup_scope : sup_scopes) {
             for (auto *sup_ast : asts::ast_body(sup_scope->ast) | genex::views::cast_dynamic<asts::SupPrototypeExtensionAst*>() | genex::views::to<std::vector>()) {
                 if (std::dynamic_pointer_cast<asts::TypeIdentifierAst>(sup_ast->name)->name == mapped_name->val) {
@@ -221,7 +222,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
         if (not for_override) {
             for (auto &&[i, info] : overload_scopes | genex::views::move | genex::views::enumerate | genex::views::to<std::vector>()) {
                 auto &[scope, proto, generics] = info;
-                scope = scope->children[0].get();
+                scope = (scope->children | genex::views::ptr | genex::views::filter(is_valid_ext_scope) | genex::views::to<std::vector>())[0];
                 overload_scopes[i] = std::make_tuple(scope, proto, std::move(generics));
             }
         }
