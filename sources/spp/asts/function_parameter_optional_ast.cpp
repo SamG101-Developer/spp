@@ -73,6 +73,9 @@ auto spp::asts::FunctionParameterOptionalAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
     -> void {
+    // Perform default analysis steps.
+    FunctionParameterAst::stage_7_analyse_semantics(sm, meta);
+
     // Make sure the default expression the correct type.
     const auto default_type = default_val->infer_type(sm, meta);
     if (not analyse::utils::type_utils::symbolic_eq(*type, *default_type, *sm->current_scope, *sm->current_scope)) {
@@ -86,6 +89,9 @@ auto spp::asts::FunctionParameterOptionalAst::stage_8_check_memory(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
     -> void {
+    // Perform default memory checking steps.
+    FunctionParameterAst::stage_8_check_memory(sm, meta);
+
     // Check the memory status of the default value expression.
     default_val->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
