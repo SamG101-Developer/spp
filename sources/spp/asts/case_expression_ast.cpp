@@ -37,6 +37,8 @@ spp::asts::CaseExpressionAst::CaseExpressionAst(
     cond(std::move(cond)),
     tok_of(std::move(tok_of)),
     branches(std::move(branches)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_case, lex::SppTokenType::KW_CASE, "case", cond ? cond->pos_start() : 0);
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_of, lex::SppTokenType::KW_OF, "of", cond ? cond->pos_end() : 0);
 }
 
 
