@@ -1,6 +1,15 @@
+#include <spp/analyse/scopes/scope_manager.hpp>
+#include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error_builder.hpp>
+#include <spp/analyse/utils/mem_utils.hpp>
+#include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/case_pattern_variant_destructure_object_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/let_statement_initialized_ast.hpp>
+#include <spp/asts/let_statement_uninitialized_ast.hpp>
 #include <spp/asts/local_variable_destructure_object_ast.hpp>
+#include <spp/asts/local_variable_single_identifier_ast.hpp>
+#include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/pch.hpp>
@@ -79,6 +88,38 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::convert_to_variable(
 auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta) -> void {
+    // Analyse the class type (required for flow typing).
+    type->stage_7_analyse_semantics(sm, meta);
+    type = sm->current_scope->get_type_symbol(type)->fq_name();
+
+    // Get the condition symbol if it exists.
+    auto cond_sym = sm->current_scope->get_var_symbol(ast_clone(ast_cast<IdentifierAst>(meta->case_condition)));
+    if (cond_sym == nullptr) {
+        auto cond_type = meta->case_condition->infer_type(sm, meta);
+
+        // Create a variable and let statement for the condition.
+        auto var_name = std::make_shared<IdentifierAst>(pos_start(), std::format("$_{}", reinterpret_cast<std::uintptr_t>(this)));
+        auto var_ast = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, var_name, nullptr);
+        const auto let_ast = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var_ast), cond_type, nullptr, ast_clone(meta->case_condition));
+        let_ast->stage_7_analyse_semantics(sm, meta);
+
+        // Set the memory information of the symbol based on the type of iteration.
+        cond_sym = sm->current_scope->get_var_symbol(var_name);
+    }
+
+    // Flow type the condition symbol if necessary.
+    const auto is_cond_type_variant = analyse::utils::type_utils::is_type_variant(*cond_sym->type, *sm->current_scope);
+    if (is_cond_type_variant) {
+        if (not analyse::utils::type_utils::symbolic_eq(*cond_sym->type, *type, *sm->current_scope, *sm->current_scope)) {
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
+                *meta->case_condition, *cond_sym->type, *type, *type).with_scopes({sm->current_scope}).raise();
+        }
+
+        const auto flow_sym = std::make_shared<analyse::scopes::VariableSymbol>(*cond_sym);
+        flow_sym->type = type;
+        sm->current_scope->add_var_symbol(flow_sym);
+    }
+
     // Create the new variable from the pattern in the patterns scope.
     auto var = convert_to_variable(meta);
     m_mapped_let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
