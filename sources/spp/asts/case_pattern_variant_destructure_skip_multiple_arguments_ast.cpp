@@ -54,7 +54,7 @@ auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::convert_t
     mixins::CompilerMetaData *meta)
     -> std::unique_ptr<LocalVariableAst> {
     // Create the local variable destructure attribute binding AST.
-    auto var = std::make_unique<LocalVariableDestructureSkipMultipleArgumentsAst>(nullptr, binding->convert_to_variable(meta));
+    auto var = std::make_unique<LocalVariableDestructureSkipMultipleArgumentsAst>(nullptr, binding ? binding->convert_to_variable(meta) : nullptr);
     var->m_from_pattern = true;
     return var;
 }
