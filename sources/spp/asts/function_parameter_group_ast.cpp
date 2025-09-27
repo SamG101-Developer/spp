@@ -122,7 +122,7 @@ auto spp::asts::FunctionParameterGroupAst::get_non_self_params() const -> std::v
 
 auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *)
+    mixins::CompilerMetaData *meta)
     -> void {
     // Check there is only 1 "self" parameter.
     const auto self_params = params
@@ -158,6 +158,11 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
     if (not unordered_args.empty()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>().with_args(
             unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second).with_scopes({sm->current_scope}).raise();
+    }
+
+    // Analyse the parameters.
+    for (auto const &param : params) {
+        param->stage_7_analyse_semantics(sm, meta);
     }
 }
 

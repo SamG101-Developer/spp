@@ -49,7 +49,7 @@ auto spp::asts::FunctionParameterAst::stage_7_analyse_semantics(
 
     // Mark the symbol as initialized.
     const auto conv = type->get_convention();
-    for (auto &&name : extract_names()) {
+    for (auto const &name : extract_names()) {
         const auto sym = sm->current_scope->get_var_symbol(name);
         sym->memory_info->initialized_by(*this);
         sym->memory_info->ast_borrowed = conv;
