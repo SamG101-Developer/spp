@@ -10,6 +10,7 @@ spp::asts::LocalVariableDestructureAttributeBindingAst::LocalVariableDestructure
     name(std::move(name)),
     tok_assign(std::move(tok_assign)),
     val(std::move(val)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
 }
 
 
