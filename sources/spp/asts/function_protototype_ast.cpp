@@ -123,8 +123,8 @@ auto spp::asts::FunctionPrototypeAst::print_signature(
     SPP_STRING_START;
     raw_string += owner;
     SPP_STRING_APPEND(generic_param_group);
-    SPP_STRING_APPEND(param_group);
-    SPP_STRING_APPEND(tok_arrow);
+    SPP_STRING_APPEND(param_group).append(" ");
+    SPP_STRING_APPEND(tok_arrow).append(" ");
     SPP_STRING_APPEND(return_type);
     SPP_STRING_END;
 }

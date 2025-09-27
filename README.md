@@ -18,3 +18,4 @@ Optimizations
 - [ ] Where can `T&` and `T*` be used instead of `std::shared_ptr<T>`?
 - [ ] Reduce cloning where possible (move and put back, shared_ptr -- i think this is minimal anyway)
 - [ ] Remove move `genex::views::to<std::vector>` (requires modifications to genex).
+- [ ] Remove `orig_name`, use `name` everywhere.

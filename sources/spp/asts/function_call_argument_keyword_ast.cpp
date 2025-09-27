@@ -6,7 +6,7 @@
 
 
 spp::asts::FunctionCallArgumentKeywordAst::FunctionCallArgumentKeywordAst(
-    decltype(name) &&name,
+    decltype(name) name,
     decltype(tok_assign) &&tok_assign,
     decltype(conv) &&conv,
     decltype(val) &&val) :

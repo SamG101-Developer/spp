@@ -29,7 +29,7 @@ struct spp::asts::FunctionCallArgumentKeywordAst final : FunctionCallArgumentAst
      * @param val The expression that is being passed as the argument to the function call.
      */
     FunctionCallArgumentKeywordAst(
-        decltype(name) &&name,
+        decltype(name) name,
         decltype(tok_assign) &&tok_assign,
         decltype(conv) &&conv,
         decltype(val) &&val);
