@@ -167,11 +167,11 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
     const auto mapped_name = target_fn_name.to_function_identifier();
     auto overload_scopes = std::vector<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, std::unique_ptr<asts::GenericArgumentGroupAst>>>();
 
-    auto is_valid_ext_scope = [target_fn_name](auto const *scope) {
+    auto is_valid_ext_scope = [mapped_name=mapped_name.get()](auto const *scope) {
         const auto ext = dynamic_cast<asts::SupPrototypeExtensionAst*>(scope->ast);
         if (ext == nullptr) { return false; }
         const auto ext_name = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(ext->name);
-        return ext_name != nullptr and ext_name->name == target_fn_name.val;
+        return ext_name != nullptr and ext_name->name == mapped_name->val;
     };
 
     // Check for namespaced (module-level) functions (they will have no inheritable generics).
@@ -190,7 +190,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
     else {
         // If a class scope was provided, get all the sup scopes from it, otherwise use the specific sup scope.
         const auto sup_scopes = dynamic_cast<asts::ClassPrototypeAst*>(target_scope->ast) != nullptr
-                                    ? target_scope->direct_sup_scopes() | genex::views::transform([](auto x) -> const scopes::Scope* { return x; }) | genex::views::to<std::vector>()
+                                    ? target_scope->sup_scopes() | genex::views::transform([](auto x) -> const scopes::Scope* { return x; }) | genex::views::to<std::vector>()
                                     : std::vector{target_scope};
 
         // From the super scopes, check each one for "sup $Func ext FunXXX { ... }" super-impositions.
