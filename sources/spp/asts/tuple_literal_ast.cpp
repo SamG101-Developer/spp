@@ -22,6 +22,8 @@ spp::asts::TupleLiteralAst::TupleLiteralAst(
     tok_l(std::move(tok_l)),
     elems(std::move(elements)),
     tok_r(std::move(tok_r)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_l, lex::SppTokenType::TK_LEFT_PARENTHESIS, "(", 0);
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_r, lex::SppTokenType::TK_RIGHT_PARENTHESIS, ")", 0);
 }
 
 
@@ -76,7 +78,7 @@ auto spp::asts::TupleLiteralAst::equals_tuple_literal(
     -> std::strong_ordering {
     if (elems.size() == other.elems.size() and genex::algorithms::all_of(
         genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::views::to<std::vector>(),
-        [](auto &&pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
+        [](auto const &pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
         return std::strong_ordering::equal;
     }
     return std::strong_ordering::less;
@@ -87,13 +89,13 @@ auto spp::asts::TupleLiteralAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta) -> void {
     // Analyse the elements in the tuple.
-    for (auto &&elem : elems) {
+    for (auto const &elem : elems) {
         ENFORCE_EXPRESSION_SUBTYPE(elem.get());
         elem->stage_7_analyse_semantics(sm, meta);
     }
 
     // Check all the elements are owned by the tuple, not borrowed.
-    for (auto &&elem : elems | genex::views::indirect) {
+    for (auto const &elem : elems | genex::views::indirect) {
         if (auto [elem_sym, _] = sm->current_scope->get_var_symbol_outermost(elem); elem_sym != nullptr) {
             if (const auto borrow_ast = elem_sym->memory_info->ast_borrowed) {
                 analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
