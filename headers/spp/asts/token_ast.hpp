@@ -34,7 +34,8 @@ struct spp::asts::TokenAst final : virtual Ast {
 
     static auto new_empty(
         lex::SppTokenType token_type,
-        std::string &&token_data)
+        std::string &&token_data,
+        std::size_t pos = 0)
         -> std::unique_ptr<TokenAst>;
 
     /**
