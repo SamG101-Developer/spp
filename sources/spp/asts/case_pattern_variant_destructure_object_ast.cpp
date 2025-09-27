@@ -74,8 +74,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::convert_to_variable(
     -> std::unique_ptr<LocalVariableAst> {
     // Recursively map the elements to their local variable counterparts.
     auto mapped_elems = elems
-        | genex::views::transform([meta](auto &&x) { return x->convert_to_variable(meta); })
-        | genex::views::transform([](auto &&x) { return ast_cast<LocalVariableAst>(std::move(x)); })
+        | genex::views::transform([meta](auto const &x) { return x->convert_to_variable(meta); })
         | genex::views::to<std::vector>();
 
     // Create the final local variable wrapping, tag it and return it.
