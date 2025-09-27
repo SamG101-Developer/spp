@@ -122,7 +122,7 @@ auto spp::asts::CaseExpressionAst::stage_7_analyse_semantics(
         }
 
         // Check the "else" branch is the last branch (also checks there is only 1 "else" branch).
-        if (ast_cast<CasePatternVariantAst>(branch->patterns[0].get()) and branch != branches.back()) {
+        if (ast_cast<CasePatternVariantElseAst>(branch->patterns[0].get()) and branch != branches.back()) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppCaseBranchElseNotLastError>().with_args(
                 *branch, *branches.back()).with_scopes({sm->current_scope}).raise();
         }
