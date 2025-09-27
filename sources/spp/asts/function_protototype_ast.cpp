@@ -118,7 +118,7 @@ auto spp::asts::FunctionPrototypeAst::print(meta::AstPrinter &printer) const -> 
 
 
 auto spp::asts::FunctionPrototypeAst::print_signature(
-    const std::string_view owner) const
+    std::string const &owner) const
     -> std::string {
     SPP_STRING_START;
     raw_string += owner;

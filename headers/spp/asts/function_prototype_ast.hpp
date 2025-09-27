@@ -141,7 +141,7 @@ private:
     auto m_deduce_mock_class_type() const -> std::shared_ptr<TypeAst>;
 
 public:
-    auto print_signature(std::string_view owner) const -> std::string;
+    auto print_signature(std::string const &owner) const -> std::string;
 
     auto register_generic_substituted_scope(std::unique_ptr<analyse::scopes::Scope> &&scope) -> void;
 
