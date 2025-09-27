@@ -106,7 +106,7 @@ auto spp::analyse::utils::bin_utils::convert_is_expr_to_function_call(
     asts::IsExpressionAst &is_expr)
     -> std::unique_ptr<asts::CaseExpressionAst> {
     // Construct the expression-pattern based on the right-hand-side of the "x is Type".
-    auto pattern = asts::ast_cast<asts::CasePatternVariantExpressionAst>(std::move(is_expr.rhs));
+    auto pattern = std::move(is_expr.rhs);
     auto patterns = std::vector<std::unique_ptr<asts::CasePatternVariantAst>>();
     patterns.emplace_back(std::move(pattern));
 
