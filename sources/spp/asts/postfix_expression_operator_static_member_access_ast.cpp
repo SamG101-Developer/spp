@@ -20,6 +20,7 @@ spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOper
     decltype(name) &&name) :
     tok_dbl_colon(std::move(tok_dbl_colon)),
     name(std::move(name)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_dbl_colon, lex::SppTokenType::TK_DOUBLE_COLON, "::", name ? name->pos_start() : 0);
 }
 
 
