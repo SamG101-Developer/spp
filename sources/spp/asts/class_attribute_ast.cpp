@@ -124,12 +124,10 @@ auto spp::asts::ClassAttributeAst::stage_7_analyse_semantics(
             *type, *conv, "attribute type").with_scopes({sm->current_scope}).raise();
     }
 
-
     // Todo: I hate this, yet it works.
     try {
         type->stage_7_analyse_semantics(sm, meta);
     }
-
     catch (analyse::errors::SppIdentifierUnknownError const &e) {
     }
 
