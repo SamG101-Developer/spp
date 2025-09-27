@@ -8,6 +8,7 @@
 #include <spp/asts/loop_expression_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/asts/generate/common_types.hpp>
 #include <spp/pch.hpp>
 
 
@@ -83,10 +84,13 @@ auto spp::asts::LoopControlFlowStatementAst::stage_7_analyse_semantics(
 
     // Save and compare the loop's "exiting" type against other nested loop's exit statement types.
     if (not has_skip) {
-        expr->stage_7_analyse_semantics(sm, meta);
-        const auto expr_type = expr != nullptr ? expr->infer_type(sm, meta) : nullptr;
+        auto expr_type = std::shared_ptr(generate::common_types::void_type(pos_start()));
+        if (expr != nullptr) {
+            expr->stage_7_analyse_semantics(sm, meta);
+            expr_type = expr->infer_type(sm, meta);
+        }
 
-        // Insert of check the depth's corresponding exit type.
+        // Insert or check the depth's corresponding exit type.
         const auto depth = nested_loop_depth - num_controls;
         if (meta->loop_return_types.contains(depth)) {
             // If the type is already set, check it matches the current expression's type.
@@ -95,6 +99,10 @@ auto spp::asts::LoopControlFlowStatementAst::stage_7_analyse_semantics(
                 analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
                     *expr, *expr_type, *that_expr, *that_expr_type).with_scopes({sm->current_scope, that_scope}).raise();
             }
+        }
+        else {
+            auto stored_expr = expr ? expr.get() : nullptr;
+            meta->loop_return_types[depth] = std::make_tuple(stored_expr, expr_type, sm->current_scope);
         }
     }
 }

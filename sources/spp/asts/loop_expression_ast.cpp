@@ -82,10 +82,12 @@ auto spp::asts::LoopExpressionAst::stage_7_analyse_semantics(
 
     // Set the loop level information into the "meta" object.
     meta->save();
-    meta->current_loop_depth = meta->current_loop_depth + 1;
+    meta->current_loop_depth += 1;
     meta->current_loop_ast = this;
     body->stage_7_analyse_semantics(sm, meta);
-    m_loop_exit_type_info = meta->loop_return_types[meta->current_loop_depth - 1];
+    if (meta->loop_return_types.contains(meta->current_loop_depth - 1)) {
+        m_loop_exit_type_info = meta->loop_return_types[meta->current_loop_depth - 1];
+    }
     meta->restore();
 
     // Analyse the else block if it exists.

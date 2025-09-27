@@ -80,8 +80,9 @@ auto spp::asts::LoopConditionIterableAst::stage_7_analyse_semantics(
         *iterable_type, *sm, *iterable, "loop condition");
 
     // Create a "let" statement to introduce the loop variable into the scope.
-    const auto let_ast = std::make_unique<LetStatementUninitializedAst>(nullptr, ast_clone(var), nullptr, std::move(yield_type));
+    const auto let_ast = std::make_unique<LetStatementUninitializedAst>(nullptr, std::move(var), nullptr, yield_type);
     let_ast->stage_7_analyse_semantics(sm, meta);
+    var = std::move(let_ast->var);
 
     // Set the memory information of the symbol based on the type of iteration.
     var->extract_names()
