@@ -27,6 +27,7 @@ spp::asts::CaseExpressionBranchAst::CaseExpressionBranchAst(
     patterns(std::move(patterns)),
     guard(std::move(guard)),
     body(std::move(body)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->body);
 }
 
 

@@ -9,6 +9,8 @@ struct spp::asts::InnerScopeExpressionAst final : InnerScopeAst<T>, PrimaryExpre
 
     auto clone() const -> std::unique_ptr<Ast> override;
 
+    static auto new_empty() -> std::unique_ptr<InnerScopeExpressionAst>;
+
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
