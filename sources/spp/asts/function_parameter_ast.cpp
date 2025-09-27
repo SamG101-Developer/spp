@@ -17,6 +17,7 @@ spp::asts::FunctionParameterAst::FunctionParameterAst(
     var(std::move(var)),
     tok_colon(std::move(tok_colon)),
     type(std::move(type)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_colon, lex::SppTokenType::TK_COLON, ":", var ? var->pos_end() : 0);
 }
 
 
@@ -39,13 +40,12 @@ auto spp::asts::FunctionParameterAst::stage_7_analyse_semantics(
     -> void {
     // Analyse the type.
     type->stage_7_analyse_semantics(sm, meta);
-    type = sm->current_scope->get_type_symbol(type)->fq_name();
+    type = sm->current_scope->get_type_symbol(type)->fq_name()->with_convention(ast_clone(type->get_convention()));
 
     // Create the variable for the parameter (use temp copies and put them back).
-    const auto ast = std::make_unique<LetStatementUninitializedAst>(nullptr, std::move(var), nullptr, std::move(type));
+    const auto ast = std::make_unique<LetStatementUninitializedAst>(nullptr, std::move(var), nullptr, type);
     ast->stage_7_analyse_semantics(sm, meta);
     var = std::move(ast->var);
-    type = std::move(ast->type);
 
     // Mark the symbol as initialized.
     const auto conv = type->get_convention();
