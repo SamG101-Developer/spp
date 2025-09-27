@@ -160,13 +160,9 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     mixins::CompilerMetaData *meta)
     -> void {
     // Skip the class scope, and enter the type statement scope.
-    const auto s1 = sm->current_scope;
     sm->move_to_next_scope();
-    const auto s2 = sm->current_scope;
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
-    (void)s1;
-    (void)s2;
 
     // Analyse the old type without generics, to ensure the base type exists.
     meta->save();
@@ -211,12 +207,6 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
     sm->move_to_next_scope();
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
-
-    if (dynamic_cast<ClassPrototypeAst*>(sm->current_scope->ast)) {
-        // Todo: there is a rare configuration where somehow the now "current_scope" is wrong.
-        //  - There must be an AST that isn't incrementing scopes for stage-4.
-        auto _ = 123;
-    }
 
     // Get the old type's symbol, without generics.
     const auto stripped_old_sym = sm->current_scope->get_type_symbol(old_type->without_generics(), false, true);
@@ -270,17 +260,19 @@ auto spp::asts::TypeStatementAst::stage_7_analyse_semantics(
         return;
     }
 
-    auto iter_copy_1 = sm->m_it;
-    auto iter_copy_2 = sm->m_it;
+    const auto current_scope = sm->current_scope;
+    auto iter_copy = sm->m_it;
 
     // Otherwise, run all generation steps.
-    const auto current_scope = sm->current_scope;
+    sm->reset(current_scope, iter_copy);
+    iter_copy = sm->m_it;
     stage_2_gen_top_level_scopes(sm, meta);
 
-    sm->reset(current_scope, std::move(iter_copy_1));
+    sm->reset(current_scope, iter_copy);
+    iter_copy = sm->m_it;
     stage_3_gen_top_level_aliases(sm, meta);
 
-    sm->reset(current_scope, std::move(iter_copy_2));
+    sm->reset(current_scope, iter_copy);
     stage_4_qualify_types(sm, meta);
 }
 
