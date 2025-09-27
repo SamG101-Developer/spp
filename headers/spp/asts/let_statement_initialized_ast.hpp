@@ -45,7 +45,7 @@ struct spp::asts::LetStatementInitializedAst final : LetStatementAst {
     LetStatementInitializedAst(
         decltype(tok_let) &&tok_let,
         decltype(var) &&var,
-        decltype(type) &&type,
+        decltype(type) type,
         decltype(tok_assign) &&tok_assign,
         decltype(val) &&val);
 

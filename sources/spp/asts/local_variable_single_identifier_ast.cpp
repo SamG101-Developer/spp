@@ -12,7 +12,7 @@
 
 spp::asts::LocalVariableSingleIdentifierAst::LocalVariableSingleIdentifierAst(
     decltype(tok_mut) &&tok_mut,
-    decltype(name) &&name,
+    decltype(name) name,
     decltype(alias) &&alias) :
     tok_mut(std::move(tok_mut)),
     name(std::move(name)),

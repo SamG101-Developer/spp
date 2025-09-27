@@ -8,7 +8,7 @@ spp::asts::LetStatementUninitializedAst::LetStatementUninitializedAst(
     decltype(tok_let) &&tok_let,
     decltype(var) &&var,
     decltype(tok_colon) &&tok_colon,
-    decltype(type) &&type) :
+    decltype(type) type) :
     LetStatementAst(),
     tok_let(std::move(tok_let)),
     var(std::move(var)),

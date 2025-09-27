@@ -45,7 +45,7 @@ struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVariableAst {
      */
     LocalVariableSingleIdentifierAst(
         decltype(tok_mut) &&tok_mut,
-        decltype(name) &&name,
+        decltype(name) name,
         decltype(alias) &&alias);
 
     ~LocalVariableSingleIdentifierAst() override;

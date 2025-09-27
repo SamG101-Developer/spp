@@ -12,7 +12,7 @@
 spp::asts::LetStatementInitializedAst::LetStatementInitializedAst(
     decltype(tok_let) &&tok_let,
     decltype(var) &&var,
-    decltype(type) &&type,
+    decltype(type) type,
     decltype(tok_assign) &&tok_assign,
     decltype(val) &&val) :
     tok_let(std::move(tok_let)),
