@@ -102,5 +102,5 @@ auto spp::asts::IsExpressionAst::infer_type(
     mixins::CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Always return a boolean type (successful or failed match).
-    return generate::common_types::boolean_type(pos_start());
+    return generate::common_types::boolean_type(m_mapped_func->pos_start());
 }
