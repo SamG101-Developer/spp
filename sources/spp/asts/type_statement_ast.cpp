@@ -174,7 +174,7 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     auto tm = ScopeManager(
         sm->global_scope, sm->current_scope->get_type_symbol(old_type->without_generics())->scope);
 
-    for (auto &&generic_arg : GenericArgumentGroupAst::from_params(*generic_param_group)->args) {
+    for (auto const &generic_arg : GenericArgumentGroupAst::from_params(*generic_param_group)->args) {
         const auto generic_sym = analyse::utils::type_utils::create_generic_sym(*generic_arg, *sm, meta, &tm);
         if (const auto generic_type_sym = std::dynamic_pointer_cast<analyse::scopes::TypeSymbol>(generic_sym)) {
             sm->current_scope->add_type_symbol(generic_type_sym);
