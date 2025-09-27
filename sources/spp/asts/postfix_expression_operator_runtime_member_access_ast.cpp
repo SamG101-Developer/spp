@@ -20,6 +20,7 @@ spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOpe
     decltype(name) &&name) :
     tok_dot(std::move(tok_dot)),
     name(std::move(name)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_dot, lex::SppTokenType::TK_DOT, ".");
 }
 
 
