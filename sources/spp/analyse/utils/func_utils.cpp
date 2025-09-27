@@ -77,7 +77,7 @@ auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
     asts::ExpressionAst const &lhs,
     scopes::ScopeManager &sm,
     asts::mixins::CompilerMetaData *meta)
-    -> std::tuple<asts::TypeAst*, scopes::Scope const*, asts::IdentifierAst*> {
+    -> std::tuple<asts::TypeAst*, scopes::Scope const*, std::shared_ptr<asts::IdentifierAst>> {
     // Define some expression casts that are used commonly.
     const auto postfix_lhs = asts::ast_cast<asts::PostfixExpressionAst>(&lhs);
     const auto runtime_field = postfix_lhs ? asts::ast_cast<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(postfix_lhs->op.get()) : nullptr;
@@ -127,7 +127,7 @@ auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
         function_owner_scope = nullptr;
     }
 
-    return std::make_tuple(function_owner_type.get(), function_owner_scope, function_name.get());
+    return std::make_tuple(function_owner_type.get(), function_owner_scope, function_name);
 }
 
 

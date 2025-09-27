@@ -38,7 +38,7 @@ namespace spp::analyse::utils::func_utils {
         asts::ExpressionAst const &lhs,
         scopes::ScopeManager &sm,
         asts::mixins::CompilerMetaData *meta)
-        -> std::tuple<asts::TypeAst*, scopes::Scope const*, asts::IdentifierAst*>;
+        -> std::tuple<asts::TypeAst*, scopes::Scope const*, std::shared_ptr<asts::IdentifierAst>>;
 
     auto convert_method_to_function_form(
         asts::TypeAst const &function_owner_type,
