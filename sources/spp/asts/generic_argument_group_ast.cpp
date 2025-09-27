@@ -118,7 +118,7 @@ auto spp::asts::GenericArgumentGroupAst::type_at(
     -> GenericArgumentTypeAst const* {
     // Iterate the type arguments to find the matching key.
     for (const auto *arg : get_type_args() | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()) {
-        if (asts::ast_cast<TypeIdentifierAst>(arg->name->type_parts().back())->name == key) {
+        if (std::dynamic_pointer_cast<TypeIdentifierAst>(arg->name->type_parts().back())->name == key) {
             return arg;
         }
     }
@@ -131,7 +131,7 @@ auto spp::asts::GenericArgumentGroupAst::comp_at(
     -> GenericArgumentCompAst const* {
     // Iterate the comptime arguments to find the matching key.
     for (const auto *arg : get_comp_args() | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()) {
-        if (asts::ast_cast<TypeIdentifierAst>(arg->name->type_parts().back())->name == key) {
+        if (std::dynamic_pointer_cast<TypeIdentifierAst>(arg->name->type_parts().back())->name == key) {
             return arg;
         }
     }
