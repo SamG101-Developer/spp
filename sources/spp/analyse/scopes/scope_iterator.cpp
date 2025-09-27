@@ -3,60 +3,65 @@
 
 
 spp::analyse::scopes::ScopeIterator::ScopeIterator(
-    Scope *root) :
-    m_root(root) {
-    if (m_root != nullptr) {
-        m_stack.push_back(m_root);
-        m_seen_children = m_root->children.size();
+    Scope *root) {
+    if (root != nullptr) {
+        m_stack.emplace_back(root, 0);
     }
 }
 
 
 auto spp::analyse::scopes::ScopeIterator::operator*()
     -> reference {
-    return m_stack.back();
+    return m_stack.back().node;
 }
 
 
 auto spp::analyse::scopes::ScopeIterator::operator*() const
     -> const_reference {
-    return m_stack.back();
+    return m_stack.back().node;
 }
 
 
 auto spp::analyse::scopes::ScopeIterator::operator->()
     -> pointer {
-    return &m_stack.back();
+    return &m_stack.back().node;
 }
 
 
 auto spp::analyse::scopes::ScopeIterator::operator->() const
     -> const_pointer {
-    return &m_stack.back();
+    return &m_stack.back().node;
 }
 
 
 auto spp::analyse::scopes::ScopeIterator::operator++()
     -> ScopeIterator& {
+    // Nothing in the stack means that no more iteration can be done.
     if (m_stack.empty()) { return *this; }
 
-    const auto cur = m_stack.back();
+    // Descend into unseen children of this node.
+    auto [node, idx] = m_stack.back();
+    if (idx < node->children.size()) {
+        m_stack.back().seen += 1;
+        m_stack.emplace_back(node->children[idx].get(), 0);
+        return *this;
+    }
+
+    // Otherwise, pop the stack to move up a level.
     m_stack.pop_back();
 
-    // Push children of the current scope.
-    for (auto it = cur->children.rbegin(); it != cur->children.rend(); ++it) {
-        m_stack.push_back(it->get());
-    }
-
-    // If exhausted, but root got new children, pick them up.
-    if (m_stack.empty() and m_root != nullptr) {
-        for (auto i = m_seen_children; i < m_root->children.size(); ++i) {
-            m_stack.push_back(m_root->children[i].get());
+    // Walk upwards until a parent with unseen children is found.
+    while (not m_stack.empty()) {
+        auto &top = m_stack.back();
+        if (top.seen < top.node->children.size()) {
+            top.seen += 1;
+            m_stack.emplace_back(top.node->children[top.seen - 1].get(), 0);
+            return *this;
         }
-        m_seen_children = m_root->children.size();
+        m_stack.pop_back();
     }
 
-    // Return self.
+    // At this point, the stack is empty, meaning the iteration is complete.
     return *this;
 }
 
@@ -81,4 +86,3 @@ auto spp::analyse::scopes::ScopeIterator::operator!=(
     -> bool {
     return not(*this == other);
 }
-
