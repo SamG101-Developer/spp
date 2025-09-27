@@ -45,7 +45,6 @@
 #include <genex/views/drop.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/flatten.hpp>
-#include <genex/views/forward.hpp>
 #include <genex/views/intersperse.hpp>
 #include <genex/views/iota.hpp>
 #include <genex/views/materialize.hpp>
@@ -269,27 +268,18 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 new_fn_proto->generic_param_group->params.clear();
 
                 // Substitute and analyse the function parameters and return type.
-                for (auto &&p : new_fn_proto->param_group->params | genex::views::forward) {
+                for (auto const &p : new_fn_proto->param_group->params) {
                     p->type = p->type->substitute_generics(generic_args_raw);
                     p->type->stage_7_analyse_semantics(&tm, meta);
                 }
                 new_fn_proto->return_type = new_fn_proto->return_type->substitute_generics(generic_args_raw);
                 new_fn_proto->return_type->stage_7_analyse_semantics(&tm, meta);
 
-                // Check he new return type isn't a borrow type.
+                // Check the new return type isn't a borrow type.
                 if (auto conv = new_fn_proto->return_type->get_convention(); conv != nullptr) {
                     analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
                         *new_fn_proto->return_type, *conv, "substituted function return type").with_scopes({sm->current_scope}).raise();
                 }
-
-                // Recreate the lists of function parameters and their names.
-                func_params = new_fn_proto->param_group->params | genex::views::ptr | genex::views::to<std::vector>();
-                func_param_names = new_fn_proto->param_group->params
-                    | genex::views::transform([](auto &&x) { return x->extract_name(); })
-                    | genex::views::to<std::vector>();
-                func_param_names_req = new_fn_proto->param_group->get_required_params()
-                    | genex::views::transform([](auto &&x) { return x->extract_name(); })
-                    | genex::views::to<std::vector>();
 
                 // Save the generic implementation against the base function, and update the active scope and prototype.
                 fn_proto->m_generic_implementations.emplace_back(std::move(new_fn_proto));
@@ -303,6 +293,15 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                     genex::actions::erase(fn_proto->param_group->params, fn_proto->param_group->params.begin() + (i as SSize));
                 }
             }
+
+            // Recreate the lists of function parameters and their names (Void removed, generics etc).
+            func_params = fn_proto->param_group->params | genex::views::ptr | genex::views::to<std::vector>();
+            func_param_names = fn_proto->param_group->params
+                | genex::views::transform([](auto &&x) { return x->extract_name(); })
+                | genex::views::to<std::vector>();
+            func_param_names_req = fn_proto->param_group->get_required_params()
+                | genex::views::transform([](auto &&x) { return x->extract_name(); })
+                | genex::views::to<std::vector>();
 
             // Check for any keyword arguments that don't have a corresponding parameter.
             const auto invalid_args = func_arg_names
