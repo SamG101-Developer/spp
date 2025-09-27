@@ -32,9 +32,11 @@ auto spp::asts::FunctionParameterSelfAst::pos_end() const -> std::size_t {
 
 
 auto spp::asts::FunctionParameterSelfAst::clone() const -> std::unique_ptr<Ast> {
-    return std::make_unique<FunctionParameterSelfAst>(
+    auto p = std::make_unique<FunctionParameterSelfAst>(
         ast_clone(conv),
         ast_clone(var));
+    p->type = ast_clone(type);
+    return p;
 }
 
 
