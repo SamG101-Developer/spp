@@ -28,10 +28,10 @@
 
 SPP_NO_ASAN
 static auto custom_iterator(const spp::asts::TypeAst *t, std::size_t depth) -> genex::generator<std::pair<spp::asts::GenericArgumentAst*, std::size_t>> {
-    for (auto &&g : t->type_parts().back()->generic_arg_group->args | genex::views::ptr) {
+    for (auto *g : t->type_parts().back()->generic_arg_group->args | genex::views::ptr) {
         co_yield std::make_pair(g, depth);
-        if (auto &&type_arg = ast_cast<spp::asts::GenericArgumentTypeAst>(g)) {
-            for (auto &&inner_ti : custom_iterator(type_arg->val.get(), depth + 1)) {
+        if (auto const *type_arg = ast_cast<spp::asts::GenericArgumentTypeAst>(g)) {
+            for (auto const &inner_ti : custom_iterator(type_arg->val.get(), depth + 1)) {
                 co_yield inner_ti;
             }
         }
@@ -416,6 +416,9 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
         generic_arg_group->get_all_args(),
         meta->infer_source, meta->infer_target,
         owner, owner_sym != nullptr ? owner_sym->scope : nullptr, nullptr, is_tuple, *sm, meta);
+
+    meta->infer_source = {};
+    meta->infer_target = {};
 
     // For variant types, collapse any duplicate generic arguments.
     if (analyse::utils::type_utils::symbolic_eq(*without_generics(), *generate::common_types_precompiled::VAR, *type_scope, *sm->current_scope, false, true)) {
