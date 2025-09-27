@@ -56,7 +56,7 @@ auto spp::analyse::scopes::ScopeIterator::operator++()
         m_seen_children = m_root->children.size();
     }
 
-    // Return self
+    // Return self.
     return *this;
 }
 

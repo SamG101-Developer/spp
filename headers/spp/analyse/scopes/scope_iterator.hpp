@@ -36,8 +36,8 @@ class spp::analyse::scopes::ScopeIterator {
     std::size_t m_seen_children;
 
 public:
-    using iterator_category = std::input_iterator_tag;
-    using iterator_concept = std::input_iterator_tag;
+    using iterator_category = std::forward_iterator_tag;
+    using iterator_concept = std::forward_iterator_tag;
     using value_type = Scope*;
     using difference_type = std::ptrdiff_t;
     using pointer = Scope**;
