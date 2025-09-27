@@ -7,6 +7,7 @@
 #include <spp/asts/class_implementation_ast.hpp>
 #include <spp/asts/class_member_ast.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
+#include <spp/asts/convention_ast.hpp>
 #include <spp/asts/generic_argument_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
