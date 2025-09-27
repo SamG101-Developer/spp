@@ -134,10 +134,12 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
     // Create a dummy overload for no-overload identifiers that are function types (closures etc).
     auto is_closure = false;
-    if (const auto lhs_type = analyse::utils::func_utils::is_target_callable(*lhs, *sm, meta); lhs_type != nullptr and all_overloads.empty()) {
-        const auto dummy_proto = analyse::utils::func_utils::create_callable_prototype(*lhs_type);
-        all_overloads.emplace_back(sm->current_scope, dummy_proto.get(), nullptr);
-        is_closure = true;
+    if (all_overloads.empty()) {
+        if (const auto lhs_type = analyse::utils::func_utils::is_target_callable(*lhs, *sm, meta); lhs_type != nullptr) {
+            const auto dummy_proto = analyse::utils::func_utils::create_callable_prototype(*lhs_type);
+            all_overloads.emplace_back(sm->current_scope, dummy_proto.get(), nullptr);
+            is_closure = true;
+        }
     }
 
     for (auto &&[fn_scope, fn_proto, ctx_generic_arg_group] : all_overloads) {
@@ -173,10 +175,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             }
 
             // Cannot call a not implemented function.
-            if (fn_proto->m_no_impl_annotation != nullptr) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallNotImplFunctionError>().with_args(
-                    *fn_proto, *this).with_scopes({fn_scope}).raise();
-            }
+            // if (fn_proto->m_no_impl_annotation != nullptr) {
+            //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallNotImplFunctionError>().with_args(
+            //         *fn_proto, *this).with_scopes({fn_scope}).raise();
+            // }
 
             // Check if there are too many arguments (for a non-variadic function).
             if (func_args.size() > func_params.size() and not is_variadic_fn) {
@@ -256,7 +258,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
             // Create a new overload with the generic arguments applied.
             auto generic_args_raw = generic_args | genex::views::ptr | genex::views::to<std::vector>();
-            if (not generic_arg_group->args.empty()) {
+            if (not generic_args_raw.empty()) {
                 auto new_fn_proto = ast_clone(fn_proto);
                 auto external_generics = sm->current_scope->get_extended_generic_symbols(generic_args_raw);
                 auto new_fn_scope = analyse::utils::type_utils::create_generic_fun_scope(
@@ -269,10 +271,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 // Substitute and analyse the function parameters and return type.
                 for (auto &&p : new_fn_proto->param_group->params | genex::views::forward) {
                     p->type = p->type->substitute_generics(generic_args_raw);
-                    p->type->stage_7_analyse_semantics(sm, meta);
+                    p->type->stage_7_analyse_semantics(&tm, meta);
                 }
                 new_fn_proto->return_type = new_fn_proto->return_type->substitute_generics(generic_args_raw);
-                new_fn_proto->return_type->stage_7_analyse_semantics(sm, meta);
+                new_fn_proto->return_type->stage_7_analyse_semantics(&tm, meta);
 
                 // Check he new return type isn't a borrow type.
                 if (auto conv = new_fn_proto->return_type->get_convention(); conv != nullptr) {
