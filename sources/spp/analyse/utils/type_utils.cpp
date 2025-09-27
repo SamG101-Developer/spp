@@ -583,7 +583,12 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     new_cls_scope->table = old_cls_scope->table;
     new_cls_scope->non_generic_scope = old_cls_scope;
     auto new_cls_scope_ptr = new_cls_scope.get();
-    old_cls_scope->parent->children.emplace_back(std::move(new_cls_scope));
+    if (not is_alias) {
+        old_cls_scope->parent->children.emplace_back(std::move(new_cls_scope));
+    }
+    else {
+        old_cls_scope->parent->temp_scopes.emplace_back(std::move(new_cls_scope));
+    }
 
     if (meta->current_stage > 7) {
         sm->attach_specific_super_scopes(*new_cls_scope_ptr, meta);
