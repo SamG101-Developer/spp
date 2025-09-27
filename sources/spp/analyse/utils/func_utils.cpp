@@ -183,7 +183,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
         for (auto *ancestor_scope : target_scope->ancestors()) {
             for (auto const *sup_scope : ancestor_scope->children | genex::views::ptr | genex::views::filter(is_valid_ext_scope) | genex::views::to<std::vector>()) {
                 auto generics = asts::GenericArgumentGroupAst::new_empty();
-                auto scope = not for_override ? sup_scope->children[0].get() : sup_scope;
+                auto scope = sup_scope;  // not for_override ? sup_scope->children[0].get() : sup_scope;
                 auto proto = dynamic_cast<asts::FunctionPrototypeAst*>(asts::ast_body(sup_scope->ast)[0]);
                 overload_scopes.emplace_back(scope, proto, std::move(generics));
             }
@@ -406,7 +406,7 @@ auto spp::analyse::utils::func_utils::name_args(
     for (auto [i, positional_arg] : positional_args | genex::views::enumerate | genex::views::to<std::vector>()) {
         auto param_name = param_names.front();
         param_names |= genex::actions::pop_front();
-        auto keyword_arg = std::make_unique<asts::FunctionCallArgumentKeywordAst>(std::move(param_name), nullptr, std::move(positional_arg->conv), nullptr);
+        auto keyword_arg = std::make_unique<asts::FunctionCallArgumentKeywordAst>(param_name, nullptr, ast_clone(positional_arg->conv), nullptr);
 
         // The variadic parameter requires a tuple of the remaining arguments.
         if (param_names.empty() and is_variadic) {
@@ -421,9 +421,9 @@ auto spp::analyse::utils::func_utils::name_args(
             break;
         }
 
-        keyword_arg->conv = std::move(positional_arg->conv);
+        keyword_arg->conv = ast_clone(positional_arg->conv);
         keyword_arg->set_self_type(positional_arg->get_self_type());
-        keyword_arg->val = std::move(positional_arg->val);
+        keyword_arg->val = ast_clone(positional_arg->val);
         args[i] = std::move(keyword_arg);
     }
 }
@@ -876,7 +876,11 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
 
             // Check for a direct match ("a: T" & "a: Str") or an inner match ("a: Vec[T]" & "a: Vec[Str]").
             if (infer_source.contains(infer_target_name)) {
-                inferred_arg = dynamic_cast<const asts::TypeAst*>(infer_source.at(infer_target_name)->without_convention()->match_generic(*infer_target_type->without_convention(), *param_name))->shared_from_this();
+                auto tmp1 = infer_source.at(infer_target_name)->without_convention();
+                auto tmp2 = infer_target_type->without_convention();
+                auto tmp3 = tmp1->match_generic(*tmp2, *param_name);
+                inferred_arg = tmp3 ? dynamic_cast<asts::TypeAst const*>(tmp3)->shared_from_this() : nullptr;
+                // inferred_arg = dynamic_cast<const asts::TypeAst*>(infer_source.at(infer_target_name)->without_convention()->match_generic(*infer_target_type->without_convention(), *param_name))->shared_from_this();
             }
 
             // Handle the match if it exists.
