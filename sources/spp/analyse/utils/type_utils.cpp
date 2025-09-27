@@ -634,7 +634,7 @@ auto spp::analyse::utils::type_utils::create_generic_fun_scope(
     asts::mixins::CompilerMetaData *meta)
     -> scopes::Scope* {
     // Create a new scope and symbol for the generic substituted function.
-    auto new_fun_scope_name = std::get<std::shared_ptr<asts::IdentifierAst>>(old_fun_scope.name);
+    auto new_fun_scope_name = std::get<std::shared_ptr<asts::TypeIdentifierAst>>(old_fun_scope.name);
     auto new_fun_scope = std::make_unique<scopes::Scope>(new_fun_scope_name, old_fun_scope.parent, old_fun_scope.ast);
     new_fun_scope->children = old_fun_scope.children
         | genex::views::transform([](auto &&scope) { return std::make_unique<scopes::Scope>(*scope); })
@@ -648,8 +648,8 @@ auto spp::analyse::utils::type_utils::create_generic_fun_scope(
 
     // Register the generic symbols.
     auto generic_syms = external_generic_syms
-        | genex::views::transform([&](auto &&g) { return std::shared_ptr<scopes::Symbol>(g); })
-        | genex::views::concat(generic_args.args | genex::views::transform([&](auto &&g) { return create_generic_sym(*g, *sm, meta); }));
+        | genex::views::concat(generic_args.args | genex::views::transform([&](auto &&g) { return create_generic_sym(*g, *sm, meta); }))
+        | genex::views::to<std::vector>();
 
     generic_syms
         | genex::views::cast_smart_ptr<scopes::TypeSymbol>()
@@ -752,7 +752,7 @@ auto spp::analyse::utils::type_utils::create_generic_sym(
             type_arg->name->type_parts().back(), true_val_sym ? true_val_sym->type : nullptr,
             true_val_sym ? true_val_sym->scope : nullptr, sm.current_scope, true,
             true_val_sym ? true_val_sym->is_directly_copyable : false, asts::utils::Visibility::PUBLIC,
-            type_arg->val->get_convention());
+            ast_clone(type_arg->val->get_convention()));
         return sym;
     }
 

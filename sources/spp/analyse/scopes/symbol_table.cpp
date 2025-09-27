@@ -1,4 +1,5 @@
 #include <spp/analyse/scopes/symbol_table.hpp>
+#include <spp/asts/convention_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_argument_type_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
