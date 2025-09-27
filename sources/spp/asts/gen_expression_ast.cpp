@@ -91,7 +91,7 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
 
         meta->assignment_target_type = meta->enclosing_function_ret_type.empty() ? nullptr : meta->enclosing_function_ret_type[0];
         expr->stage_7_analyse_semantics(sm, meta);
-        expr_type = expr->infer_type(sm, meta);
+        expr_type = expr->infer_type(sm, meta)->with_convention(ast_clone(conv));
         meta->restore();
     }
 
@@ -113,7 +113,7 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
     const auto fallible_match = is_fallible and analyse::utils::type_utils::symbolic_eq(*error_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
     if (not(direct_match or optional_match or fallible_match)) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppYieldedTypeMismatchError>().with_args(
-            *yield_type, *yield_type, *expr, *expr_type, is_optional, is_fallible, *error_type).with_scopes({sm->current_scope}).raise();
+            *yield_type, *yield_type, *expr, *expr_type, is_optional, is_fallible, error_type ? *error_type : *generate::common_types::void_type(0)).with_scopes({sm->current_scope}).raise();
     }
 }
 
