@@ -92,7 +92,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_8_check_memory(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
     -> void {
-    // Forward the memory check to the mapped function, which will check the arguments and the function call.
+    // Forward the memory check to the mapped function, which will check the arguments, and the function call.
     m_mapped_func->stage_8_check_memory(sm, meta);
 }
 
