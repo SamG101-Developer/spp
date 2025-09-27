@@ -191,16 +191,18 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             func_arg_names = func_args
                 | genex::views::ptr
                 | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>()
-                | genex::views::filter([](auto &&x) { return x != nullptr; })
-                | genex::views::transform([](auto &&x) { return x->name.get(); })
+                | genex::views::filter([](auto const &x) { return x != nullptr; }) // needed?
+                | genex::views::transform([](auto const &x) { return x->name.get(); })
                 | genex::views::to<std::vector>();
 
-            auto generic_infer_source = arg_group->get_keyword_args()
-                | genex::views::transform([sm, meta](auto &&x) { return std::make_pair(x->name, x->val->infer_type(sm, meta)); })
+            auto generic_infer_source = func_args
+                | genex::views::ptr
+                | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>()
+                | genex::views::transform([sm, meta](auto const &x) { return std::make_pair(x->name, x->val->infer_type(sm, meta)); })
                 | genex::views::to<std::vector>();
 
             auto generic_infer_target = func_params
-                | genex::views::transform([](auto &&x) { return std::make_pair(x->extract_name(), x->type); })
+                | genex::views::transform([](auto const &x) { return std::make_pair(x->extract_name(), x->type); })
                 | genex::views::to<std::vector>();
 
             analyse::utils::func_utils::infer_generic_args(
@@ -429,13 +431,13 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     using namespace std::string_literals;
     if (pass_overloads.empty()) {
         auto failed_signatures_and_errors = fail_overloads
-            | genex::views::transform([](auto &&f) { return std::get<1>(f)->print_signature(std::get<0>(f)->ast != nullptr ? static_cast<std::string>(*ast_name(std::get<0>(f)->ast)) : ""); })
+            | genex::views::transform([](auto const &f) { return std::get<1>(f)->print_signature(""); })
             | genex::views::intersperse("\n"s)
             | genex::views::flatten
             | genex::views::to<std::string>();
 
         auto arg_usage_signature = arg_group->args
-            | genex::views::transform([sm, meta](auto &&x) { return x->m_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
+            | genex::views::transform([sm, meta](auto const &x) { return x->m_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
             | genex::views::intersperse(", "s)
             | genex::views::flatten
             | genex::views::to<std::string>();
@@ -445,15 +447,16 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     }
 
     // If there are multiple pass overloads, raise an error.
-    else if (pass_overloads.size() > 1) {
+    // std::get<0>(x)->ast != nullptr ? static_cast<std::string>(*ast_name(std::get<0>(x)->ast)) : ""
+    if (pass_overloads.size() > 1) {
         auto signatures = pass_overloads
-            | genex::views::transform([](auto &&x) { return std::get<1>(x)->print_signature(std::get<0>(x)->ast != nullptr ? static_cast<std::string>(*ast_name(std::get<0>(x)->ast)) : ""); })
+            | genex::views::transform([](auto const &x) { return std::get<1>(x)->print_signature(""); })
             | genex::views::intersperse("\n"s)
             | genex::views::flatten
             | genex::views::to<std::string>();
 
         auto arg_usage_signature = arg_group->args
-            | genex::views::transform([sm, meta](auto &&x) { return x->m_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
+            | genex::views::transform([sm, meta](auto const &x) { return x->m_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
             | genex::views::intersperse(", "s)
             | genex::views::flatten
             | genex::views::to<std::string>();
