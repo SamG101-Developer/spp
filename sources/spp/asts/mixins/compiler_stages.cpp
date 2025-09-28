@@ -57,18 +57,18 @@ auto spp::asts::mixins::CompilerMetaData::save() -> void {
 
 
 auto spp::asts::mixins::CompilerMetaData::restore() -> void {
-    auto state = std::move(m_history.top());  // *DO NOT* click "convert to structured bindings (CLion) -- LAG"
+    auto state = std::move(m_history.top()); // *DO NOT* click "convert to structured bindings (CLion) -- LAG"
     m_history.pop();
     current_stage = state.current_stage;
-    return_type_overload_resolver_type = std::move(state.return_type_overload_resolver_type);
-    assignment_target = std::move(state.assignment_target);
-    assignment_target_type = std::move(state.assignment_target_type);
+    return_type_overload_resolver_type = state.return_type_overload_resolver_type;
+    assignment_target = state.assignment_target;
+    assignment_target_type = state.assignment_target_type;
     ignore_missing_else_branch_for_inference = state.ignore_missing_else_branch_for_inference;
     case_condition = state.case_condition;
     cls_sym = state.cls_sym;
     enclosing_function_scope = state.enclosing_function_scope;
     enclosing_function_flavour = state.enclosing_function_flavour;
-    enclosing_function_ret_type = std::move(state.enclosing_function_ret_type);
+    enclosing_function_ret_type = state.enclosing_function_ret_type;
     current_lambda_outer_scope = state.current_lambda_outer_scope;
     target_call_function_prototype = state.target_call_function_prototype;
     target_call_was_function_async = state.target_call_was_function_async;
@@ -78,10 +78,10 @@ auto spp::asts::mixins::CompilerMetaData::restore() -> void {
     loop_double_check_active = state.loop_double_check_active;
     current_loop_depth = state.current_loop_depth;
     current_loop_ast = state.current_loop_ast;
-    loop_return_types = std::move(state.loop_return_types);
+    loop_return_types = state.loop_return_types;
     object_init_type = state.object_init_type;
-    infer_source = std::move(state.infer_source);
-    infer_target = std::move(state.infer_target);
+    infer_source = state.infer_source;
+    infer_target = state.infer_target;
     postfix_expression_lhs = state.postfix_expression_lhs;
     unary_expression_rhs = state.unary_expression_rhs;
     skip_type_analysis_generic_checks = state.skip_type_analysis_generic_checks;

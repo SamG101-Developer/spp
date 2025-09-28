@@ -214,7 +214,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
     // Type check the non-autofill arguments against the class attributes.
     for (auto &&arg : get_non_autofill_args()) {
         auto matching_attrs = all_attrs
-            | genex::views::filter([&arg](auto &&x) { return *x.first->name == *arg->name; })
+            | genex::views::filter([&arg](auto const &x) { return *x.first->name == *arg->name; })
             | genex::views::to<std::vector>();
 
         if (matching_attrs.size() > 1) {

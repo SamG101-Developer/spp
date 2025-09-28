@@ -66,7 +66,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
     -> void {
     // Handle types on the left-hand-side of a static member access.
     if (const auto lhs_as_type = ast_cast<TypeIdentifierAst>(meta->postfix_expression_lhs)) {
-        const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_as_type->shared_from_this());
+        const auto lhs_type_sym = sm->current_scope->get_type_symbol(ast_clone(lhs_as_type));
 
         // Check the left-hand-side isn't a generic type. Todo: in the future, allow by constraints / intersection types?
         if (lhs_type_sym->is_generic) {
