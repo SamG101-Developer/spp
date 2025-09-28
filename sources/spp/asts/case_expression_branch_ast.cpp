@@ -35,7 +35,7 @@ spp::asts::CaseExpressionBranchAst::~CaseExpressionBranchAst() = default;
 
 
 auto spp::asts::CaseExpressionBranchAst::pos_start() const -> std::size_t {
-    return op->pos_start();
+    return op ? op->pos_start() : patterns.front()->pos_start();
 }
 
 
