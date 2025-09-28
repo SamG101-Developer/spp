@@ -44,6 +44,7 @@
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
+#include <spp/utils/ptr_cmp.hpp>
 #include <spp/macros.hpp>
 
 #include <genex/actions/clear.hpp>
@@ -307,10 +308,6 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_override(
     auto existing = get_all_function_scopes(*new_fn.orig_name, target_scope, true);
     auto existing_scopes = existing | genex::views::tuple_element<0>() | genex::views::to<std::vector>();
     auto existing_fns = existing | genex::views::tuple_element<1>() | genex::views::to<std::vector>();
-
-    if (new_fn.orig_name->val == "clone") {
-        auto _ = 123;
-    }
 
     auto param_names_eq = [](auto const &a, auto const &b) {
         if (a.size() != b.size()) { return false; }
@@ -724,7 +721,12 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
 
             // Check for a direct match ("a: T" & "a: Str") or an inner match ("a: Vec[T]" & "a: Vec[Str]").
             if (infer_source.contains(infer_target_name)) {
-                inferred_arg = infer_source.at(infer_target_name)->without_generics()->match_generic(*infer_target_type->without_convention(), *param_name);
+                auto temp_gs = std::map<std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<asts::TypeIdentifierAst>>>();
+                type_utils::relaxed_symbolic_eq(
+                    *infer_source.at(infer_target_name)->without_convention(),
+                    *infer_target_type->without_convention(),
+                    sm.current_scope, owner_scope, temp_gs);
+                inferred_arg = temp_gs[param_name];
             }
 
             // Handle the match if it exists.
@@ -880,11 +882,13 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
 
             // Check for a direct match ("a: T" & "a: Str") or an inner match ("a: Vec[T]" & "a: Vec[Str]").
             if (infer_source.contains(infer_target_name)) {
-                auto tmp1 = infer_source.at(infer_target_name)->without_convention();
-                auto tmp2 = infer_target_type->without_convention();
-                auto tmp3 = tmp1->match_generic(*tmp2, *param_name);
-                inferred_arg = tmp3 ? dynamic_cast<asts::TypeAst const*>(tmp3)->shared_from_this() : nullptr;
-                // inferred_arg = dynamic_cast<const asts::TypeAst*>(infer_source.at(infer_target_name)->without_convention()->match_generic(*infer_target_type->without_convention(), *param_name))->shared_from_this();
+                auto temp_gs = std::map<std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<asts::TypeIdentifierAst>>>();
+                type_utils::relaxed_symbolic_eq(
+                    *infer_source.at(infer_target_name)->without_convention(),
+                    *infer_target_type->without_convention(),
+                    sm.current_scope, owner_scope, temp_gs);
+                auto inferred_arg_raw = asts::ast_cast<asts::TypeAst>(temp_gs[param_name]);
+                inferred_arg = inferred_arg_raw ? inferred_arg_raw->shared_from_this() : nullptr;
             }
 
             // Handle the match if it exists.
@@ -952,7 +956,8 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
         }
 
         auto other_args = formatted_args
-            | genex::views::filter([&](auto &&p) { return *p.first != *arg_name; })
+            | genex::views::filter([&](auto const &p) { return *p.first != *arg_name; })
+            | genex::views::transform([](auto const &p) {return std::make_pair(std::dynamic_pointer_cast<asts::TypeIdentifierAst>(p.first), p.second); })
             | genex::views::to<std::vector>();
 
         auto other_args_group = asts::GenericArgumentGroupAst::from_map(std::map(other_args.begin(), other_args.end()));
