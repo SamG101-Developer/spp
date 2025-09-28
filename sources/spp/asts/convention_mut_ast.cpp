@@ -9,6 +9,8 @@ spp::asts::ConventionMutAst::ConventionMutAst(
     ConventionAst(ConventionTag::MUT),
     tok_borrow(std::move(tok_borrow)),
     tok_mut(std::move(tok_mut)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_borrow, lex::SppTokenType::TK_BORROW, "&");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_mut, lex::SppTokenType::KW_MUT, "mut");
 }
 
 
