@@ -45,13 +45,13 @@ auto spp::asts::mixins::CompilerStages::stage_10_code_gen_2() -> void {
 
 auto spp::asts::mixins::CompilerMetaData::save() -> void {
     m_history.emplace(
-        current_stage, std::move(return_type_overload_resolver_type), std::move(assignment_target),
-        std::move(assignment_target_type), ignore_missing_else_branch_for_inference, case_condition, cls_sym,
-        enclosing_function_scope, enclosing_function_flavour, std::move(enclosing_function_ret_type),
+        current_stage, return_type_overload_resolver_type, assignment_target,
+        assignment_target_type, ignore_missing_else_branch_for_inference, case_condition, cls_sym,
+        enclosing_function_scope, enclosing_function_flavour, enclosing_function_ret_type,
         current_lambda_outer_scope, target_call_function_prototype, target_call_was_function_async,
         prevent_auto_generator_resume, let_stmt_explicit_type, let_stmt_value, loop_double_check_active,
-        current_loop_depth, current_loop_ast, std::move(loop_return_types), object_init_type, std::move(infer_source),
-        std::move(infer_target), postfix_expression_lhs, unary_expression_rhs, skip_type_analysis_generic_checks,
+        current_loop_depth, current_loop_ast, loop_return_types, object_init_type, infer_source,
+        infer_target, postfix_expression_lhs, unary_expression_rhs, skip_type_analysis_generic_checks,
         type_analysis_type_scope);
 }
 
