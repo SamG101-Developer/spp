@@ -143,17 +143,16 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         }
 
         // Replace the tuple-expansion argument with the expanded arguments.
-        genex::actions::erase(args, args.begin() + static_cast<ssize_t>(i));
-
         const auto max = static_cast<ssize_t>(arg_type->type_parts().back()->generic_arg_group->args.size());
         for (auto j = max - 1; j > -1; --j) {
-            auto field = std::make_unique<IdentifierAst>(arg->val->pos_start(), std::to_string(i));
+            auto field = std::make_unique<IdentifierAst>(arg->val->pos_start(), std::to_string(j));
             auto new_ast = std::make_unique<PostfixExpressionAst>(
                 ast_clone(arg->val),
                 std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
             auto new_arg = std::make_unique<FunctionCallArgumentPositionalAst>(ast_clone(arg->conv), nullptr, std::move(new_ast));
             args.insert(args.begin() + static_cast<ssize_t>(i), std::move(new_arg));
         }
+        genex::actions::erase(args, args.begin() + static_cast<ssize_t>(i) + max);
     }
 
     // Analyse the arguments
