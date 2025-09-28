@@ -32,6 +32,7 @@
 #include <spp/asts/generic_parameter_type_ast.hpp>
 #include <spp/asts/generic_parameter_type_optional_ast.hpp>
 #include <spp/asts/generic_parameter_type_variadic_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/local_variable_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
 #include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
@@ -85,7 +86,8 @@ auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
 
     // Specific casts.
     const auto postfix_lhs_as_type = postfix_lhs ? dynamic_cast<asts::TypeAst*>(postfix_lhs->lhs.get()) : nullptr;
-    const auto postfix_lhs_as_ident = dynamic_cast<asts::IdentifierAst const*>(&lhs);
+    const auto postfix_lhs_as_ident = postfix_lhs ? dynamic_cast<asts::IdentifierAst*>(postfix_lhs->lhs.get()) : nullptr;
+    const auto lhs_as_ident = dynamic_cast<asts::IdentifierAst const*>(&lhs);
 
     // Variables that will be set in each branch, and returned.
     auto function_owner_type = std::shared_ptr<asts::TypeAst>(nullptr);
@@ -108,19 +110,19 @@ auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
 
     // Direct access into a namespaced free function: "std::io::print(variable)".
     else if (postfix_lhs != nullptr and static_field != nullptr) {
-        function_owner_scope = sm.current_scope->get_ns_symbol(static_field->name)->scope;
+        function_owner_scope = sm.current_scope->get_ns_symbol(asts::ast_clone(postfix_lhs_as_ident))->scope;
         function_name = static_field->name;
         function_owner_type = function_owner_scope->get_var_symbol(function_name)->type;
     }
 
     // Direct access into a non-namespaced function: "function()":
-    else if (postfix_lhs_as_ident != nullptr) {
+    else if (lhs_as_ident != nullptr) {
         function_owner_type = nullptr;
-        function_name = ast_clone(postfix_lhs_as_ident);
+        function_name = ast_clone(lhs_as_ident);
         function_owner_scope = sm.current_scope->parent_module();
     }
 
-    // Non-callable AST
+    // Non-callable AST.
     else {
         function_owner_type = nullptr;
         function_name = nullptr;
