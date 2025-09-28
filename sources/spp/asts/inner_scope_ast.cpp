@@ -50,7 +50,8 @@ spp::asts::InnerScopeAst<T>::~InnerScopeAst() = default;
 
 template <typename T>
 auto spp::asts::InnerScopeAst<T>::new_empty() -> std::unique_ptr<InnerScopeAst> {
-    return std::make_unique<InnerScopeAst>(nullptr, std::vector<T>(), nullptr);
+    return std::make_unique<InnerScopeAst>(
+        nullptr, decltype(members)(), nullptr);
 }
 
 

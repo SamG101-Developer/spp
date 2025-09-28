@@ -44,9 +44,7 @@ spp::asts::ObjectInitializerArgumentGroupAst::ObjectInitializerArgumentGroupAst(
 auto spp::asts::ObjectInitializerArgumentGroupAst::new_empty()
     -> std::unique_ptr<ObjectInitializerArgumentGroupAst> {
     return std::make_unique<ObjectInitializerArgumentGroupAst>(
-        nullptr,
-        std::vector<std::unique_ptr<ObjectInitializerArgumentAst>>(),
-        nullptr);
+        nullptr, decltype(args)(), nullptr);
 }
 
 

@@ -64,6 +64,7 @@ spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFu
     arg_group(std::move(arg_group)),
     fold(std::move(fold)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_arg_group);
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->arg_group);
 }
 
 

@@ -26,7 +26,8 @@ auto spp::asts::InnerScopeExpressionAst<T>::clone() const
 template <typename T>
 auto spp::asts::InnerScopeExpressionAst<T>::new_empty()
     -> std::unique_ptr<InnerScopeExpressionAst> {
-    return std::make_unique<InnerScopeExpressionAst>(nullptr, std::vector<T>(), nullptr);
+    return std::make_unique<InnerScopeExpressionAst>(
+        nullptr, decltype(InnerScopeExpressionAst::members)(), nullptr);
 }
 
 

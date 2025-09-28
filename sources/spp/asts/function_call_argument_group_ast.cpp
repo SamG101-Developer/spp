@@ -42,10 +42,19 @@ spp::asts::FunctionCallArgumentGroupAst::FunctionCallArgumentGroupAst(
     tok_l(std::move(tok_l)),
     args(std::move(args)),
     tok_r(std::move(tok_r)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_l, lex::SppTokenType::TK_LEFT_PARENTHESIS, "(", not args.empty() ? args.front()->pos_start() : 0);
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_r, lex::SppTokenType::TK_RIGHT_PARENTHESIS, ")", not args.empty() ? args.back()->pos_end() : 0);
 }
 
 
 spp::asts::FunctionCallArgumentGroupAst::~FunctionCallArgumentGroupAst() = default;
+
+
+auto spp::asts::FunctionCallArgumentGroupAst::new_empty()
+    -> std::unique_ptr<FunctionCallArgumentGroupAst> {
+    return std::make_unique<FunctionCallArgumentGroupAst>(
+        nullptr, decltype(args)(), nullptr);
+}
 
 
 auto spp::asts::FunctionCallArgumentGroupAst::pos_start() const -> std::size_t {

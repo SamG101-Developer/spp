@@ -45,7 +45,8 @@ spp::asts::GenericArgumentGroupAst::~GenericArgumentGroupAst() = default;
 
 auto spp::asts::GenericArgumentGroupAst::new_empty()
     -> std::unique_ptr<GenericArgumentGroupAst> {
-    return std::make_unique<GenericArgumentGroupAst>(nullptr, decltype(args)(), nullptr);
+    return std::make_unique<GenericArgumentGroupAst>(
+        nullptr, decltype(args)(), nullptr);
 }
 
 
