@@ -17,7 +17,7 @@
 
 spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOperatorRuntimeMemberAccessAst(
     decltype(tok_dot) &&tok_dot,
-    decltype(name) &&name) :
+    decltype(name) name) :
     tok_dot(std::move(tok_dot)),
     name(std::move(name)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_dot, lex::SppTokenType::TK_DOT, ".");
@@ -97,7 +97,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
     // Accessing a regular attribute/method on an instance.
     else {
         const auto lhs_as_ident_raw = ast_cast<IdentifierAst>(meta->postfix_expression_lhs);
-        const auto lhs_as_ident = std::make_shared<IdentifierAst>(lhs_as_ident_raw->pos_start(), lhs_as_ident_raw->val);
+        const auto lhs_as_ident = lhs_as_ident_raw ? std::make_shared<IdentifierAst>(lhs_as_ident_raw->pos_start(), lhs_as_ident_raw->val) : nullptr;
         const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
 
         const auto lhs_ns_sym = sm->current_scope->get_ns_symbol(lhs_as_ident);
@@ -119,10 +119,10 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
         // Check the target field exists on the type.
         if (not lhs_type_sym->scope->has_var_symbol(name, true)) {
             const auto alternatives = sm->current_scope->all_var_symbols(true, true)
-                | genex::views::transform([](auto &&x) { return x->name->val; })
+                | genex::views::transform([](auto const &x) { return x->name->val; })
                 | genex::views::to<std::vector>();
 
-            const auto closest_match = spp::utils::strings::closest_match(lhs_as_ident->val, alternatives);
+            const auto closest_match = spp::utils::strings::closest_match(name->val, alternatives);
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierUnknownError>().with_args(
                 *this, "instance member", closest_match).with_scopes({sm->current_scope}).raise();
         }
@@ -134,18 +134,18 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
 
         auto scopes_and_syms = std::vector{lhs_type_sym->scope}
             | genex::views::concat(lhs_type_sym->scope->sup_scopes())
-            | genex::views::transform([name=name.get()](auto &&x) { return std::make_pair(x, x->table.var_tbl.get(ast_clone(name))); })
-            | genex::views::filter([](auto &&x) { return x.second != nullptr; })
-            | genex::views::transform([lhs_type_sym](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
+            | genex::views::transform([name=name.get()](auto const &x) { return std::make_pair(x, x->table.var_tbl.get(ast_clone(name))); })
+            | genex::views::filter([](auto const &x) { return x.second != nullptr; })
+            | genex::views::transform([lhs_type_sym](auto const &x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
             | genex::views::to<std::vector>();
 
         auto min_depth = genex::algorithms::min_element(scopes_and_syms
-            | genex::views::transform([](auto &&x) { return std::get<0>(x); })
+            | genex::views::transform([](auto const &x) { return std::get<0>(x); })
             | genex::views::to<std::vector>());
 
         auto closest = scopes_and_syms
-            | genex::views::filter([min_depth](auto &&x) { return std::get<0>(x) == min_depth; })
-            | genex::views::transform([](auto &&x) { return std::make_pair(std::get<1>(x), std::get<2>(x)); })
+            | genex::views::filter([min_depth](auto const &x) { return std::get<0>(x) == min_depth; })
+            | genex::views::transform([](auto const &x) { return std::make_pair(std::get<1>(x), std::get<2>(x)); })
             | genex::views::to<std::vector>();
 
         if (closest.size() > 1) {

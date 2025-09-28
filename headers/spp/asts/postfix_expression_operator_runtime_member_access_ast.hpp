@@ -22,7 +22,7 @@ struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst final : Postfi
      */
     explicit PostfixExpressionOperatorRuntimeMemberAccessAst(
         decltype(tok_dot)&& tok_dot,
-        decltype(name) &&name);
+        decltype(name) name);
 
     ~PostfixExpressionOperatorRuntimeMemberAccessAst() override;
 
