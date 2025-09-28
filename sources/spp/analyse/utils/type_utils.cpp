@@ -179,6 +179,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     }
 
     // If the left-hand-side is a "Variant" type, check the composite types first.
+    // Todo: on the failure of a variant match in "any_of", does the generic map need rolling back?
     if (check_variant and symbolic_eq(*asts::generate::common_types_precompiled::VAR, *stripped_rhs_sym->fq_name()->without_generics(), *rhs_scope, *rhs_scope)) {
         auto rhs_composite_types = deduplicate_variant_inner_types(*rhs_scope->get_type_symbol(rhs_type.shared_from_this())->fq_name(), *rhs_scope);
         if (genex::algorithms::any_of(rhs_composite_types, [&](auto &&rhs_composite_type) { return relaxed_symbolic_eq(lhs_type, *rhs_composite_type, lhs_scope, rhs_scope, generic_args); })) {
