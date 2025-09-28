@@ -27,7 +27,7 @@ auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
     analyse::scopes::VariableSymbol const &sym)
     -> std::unique_ptr<GenericArgumentCompKeywordAst> {
     // Get the comptime value from the symbol's memory info.
-    const auto c = sym.memory_info->ast_comptime;
+    const auto c = sym.memory_info->ast_comptime.get();
     std::unique_ptr<ExpressionAst> value = nullptr;
 
     // Depending on that the comptime AST is, get the value.

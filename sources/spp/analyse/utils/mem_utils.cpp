@@ -71,6 +71,7 @@ auto spp::analyse::utils::mem_utils::MemoryInfo::clone() const
     out->ast_borrowed = ast_borrowed;
     out->ast_partial_moves = ast_partial_moves;
     out->ast_pins = ast_pins;
+    out->ast_comptime = ast_clone(ast_comptime);
     out->initialization_counter = initialization_counter;
     out->is_inconsistently_initialized = is_inconsistently_initialized;
     out->is_inconsistently_moved = is_inconsistently_moved;

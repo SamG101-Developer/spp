@@ -79,8 +79,9 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
     /**
      * The @c ast_comptime AST is the AST that represents the compile-time declaration of the symbol. This might be the
      * @c cmp statement or @c cmp generic parameter, wherever the symbol was declared with @c cmp.
+     * @note Must be a unique pointer due to generic arguments being dropped or converted (cheap to clone though).
      */
-    asts::Ast const *ast_comptime;
+    std::unique_ptr<asts::Ast> ast_comptime;
 
     /**
      * The @c initialization_counter is the number of times the symbol has been initialized. This is used for @c let
