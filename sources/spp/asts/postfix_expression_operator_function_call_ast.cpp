@@ -564,17 +564,18 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
             // Type scope for a variable/attribute left-hand-side (to extract generics).
             if (sm->current_scope->has_var_symbol(ast_cast<IdentifierAst>(ast_clone(cast_lhs->lhs)))) {
                 lhs_lhs_scope = sm->current_scope->get_type_symbol(cast_lhs->lhs->infer_type(sm, meta))->scope;
-                if (not analyse::utils::type_utils::is_type_tuple(*std::get<std::shared_ptr<TypeIdentifierAst>>(lhs_lhs_scope->name), *sm->current_scope)) {
-                    other_generics = std::get<std::shared_ptr<TypeIdentifierAst>>(lhs_lhs_scope->name)->type_parts().back()->generic_arg_group->args
+                const auto lhs_lhs_type = lhs_lhs_scope->ty_sym->fq_name();
+                if (not analyse::utils::type_utils::is_type_tuple(*lhs_lhs_type, *sm->current_scope)) {
+                    // std::get<std::shared_ptr<TypeIdentifierAst>>(lhs_lhs_scope->name)
+                    other_generics = lhs_lhs_type->type_parts().back()->generic_arg_group->args
                         | genex::views::ptr
                         | genex::views::to<std::vector>();
                 }
             }
 
-            ret_type = std::get<0>(*m_overload_info)
-                       ->get_type_symbol(ret_type)->fq_name()
-                       ->substitute_generics(other_generics)
-                       ->substitute_generics(std::get<0>(*m_overload_info)->get_generics() | genex::views::ptr | genex::views::to<std::vector>());
+            ret_type = std::get<0>(*m_overload_info)->get_type_symbol(ret_type)->fq_name();
+            ret_type = ret_type->substitute_generics(other_generics);
+            ret_type = ret_type->substitute_generics(std::get<0>(*m_overload_info)->get_generics() | genex::views::ptr | genex::views::to<std::vector>());
 
             // TODO: REMOVE CONST CAST
             auto tm = ScopeManager(sm->global_scope, const_cast<analyse::scopes::Scope*>(std::get<0>(*m_overload_info)));
