@@ -430,11 +430,11 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     // If there are no pass overloads, raise an error.
     using namespace std::string_literals;
     if (pass_overloads.empty()) {
-        auto failed_signatures_and_errors = fail_overloads
-            | genex::views::transform([](auto const &f) { return std::get<1>(f)->print_signature(""); })
+        auto failed_signatures_and_errors = "\n" + (fail_overloads
+            | genex::views::transform([](auto const &f) { return "    - "s + std::get<1>(f)->print_signature(""); })
             | genex::views::intersperse("\n"s)
             | genex::views::flatten
-            | genex::views::to<std::string>();
+            | genex::views::to<std::string>());
 
         auto arg_usage_signature = arg_group->args
             | genex::views::transform([sm, meta](auto const &x) { return x->m_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
@@ -449,11 +449,11 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     // If there are multiple pass overloads, raise an error.
     // std::get<0>(x)->ast != nullptr ? static_cast<std::string>(*ast_name(std::get<0>(x)->ast)) : ""
     if (pass_overloads.size() > 1) {
-        auto signatures = pass_overloads
-            | genex::views::transform([](auto const &x) { return std::get<1>(x)->print_signature(""); })
+        auto signatures = "\n" + (pass_overloads
+            | genex::views::transform([](auto const &x) { return "    - "s + std::get<1>(x)->print_signature(""); })
             | genex::views::intersperse("\n"s)
             | genex::views::flatten
-            | genex::views::to<std::string>();
+            | genex::views::to<std::string>());
 
         auto arg_usage_signature = arg_group->args
             | genex::views::transform([sm, meta](auto const &x) { return x->m_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })

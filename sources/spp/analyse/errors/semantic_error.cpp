@@ -1119,7 +1119,7 @@ spp::analyse::errors::SppFunctionCallNoValidSignaturesError::SppFunctionCallNoVa
         &call,
         "Function call defined here");
     add_footer(
-        "No valid signatures match this function call.\nAvailable signatures: " + std::string(sigs) + "\nAttempted: " + std::string(attempted),
+        "No valid signatures match this function call.\n\nAvailable signatures: " + std::string(sigs) + "\n\nAttempted: " + std::string(attempted),
         "Adjust the arguments to match one of the available signatures");
 }
 
@@ -1134,7 +1134,7 @@ spp::analyse::errors::SppFunctionCallOverloadAmbiguousError::SppFunctionCallOver
         &call,
         "Function call defined here");
     add_footer(
-        "The function call is ambiguous between multiple overloads.\nAvailable signatures: " + std::string(sigs) + "\nAttempted: " + std::string(attempted),
+        "The function call is ambiguous between multiple overloads.\n\nAvailable signatures: " + std::string(sigs) + "\n\nAttempted: " + std::string(attempted),
         "Specify types or adjust arguments to resolve the ambiguity");
 }
 
