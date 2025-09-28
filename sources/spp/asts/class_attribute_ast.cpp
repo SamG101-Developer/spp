@@ -125,10 +125,14 @@ auto spp::asts::ClassAttributeAst::stage_7_analyse_semantics(
     }
 
     // Todo: I hate this, yet it works.
+    auto meta_depth = meta->depth();
     try {
         type->stage_7_analyse_semantics(sm, meta);
     }
-    catch (analyse::errors::SppIdentifierUnknownError const &e) {
+    catch (analyse::errors::SppIdentifierUnknownError const &) {
+        while (meta->depth() > meta_depth) {
+            meta->restore();
+        }
     }
 
     if (default_val != nullptr) {
