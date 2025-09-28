@@ -185,7 +185,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
         for (auto *ancestor_scope : target_scope->ancestors()) {
             for (auto const *sup_scope : ancestor_scope->children | genex::views::ptr | genex::views::filter(is_valid_ext_scope) | genex::views::to<std::vector>()) {
                 auto generics = asts::GenericArgumentGroupAst::new_empty();
-                auto scope = sup_scope;  // not for_override ? sup_scope->children[0].get() : sup_scope;
+                auto scope = sup_scope; // not for_override ? sup_scope->children[0].get() : sup_scope;
                 auto proto = dynamic_cast<asts::FunctionPrototypeAst*>(asts::ast_body(sup_scope->ast)[0]);
                 overload_scopes.emplace_back(scope, proto, std::move(generics));
             }
@@ -474,6 +474,12 @@ auto spp::analyse::utils::func_utils::name_generic_args(
     args |= genex::actions::clear();
     args |= genex::actions::concat(comp_args | genex::views::cast_smart_ptr<asts::GenericArgumentAst>());
     args |= genex::actions::concat(type_args | genex::views::cast_smart_ptr<asts::GenericArgumentAst>());
+
+    args |= genex::actions::sort([&](auto const &a, auto const &b) {
+        const auto a_index = genex::algorithms::position(params, [&](auto *p) { return *p->name == *(dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(a.get()) ? dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(a.get())->name : dynamic_cast<asts::GenericArgumentCompKeywordAst*>(a.get())->name); });
+        const auto b_index = genex::algorithms::position(params, [&](auto *p) { return *p->name == *(dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(b.get()) ? dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(b.get())->name : dynamic_cast<asts::GenericArgumentCompKeywordAst*>(b.get())->name); });
+        return a_index < b_index;
+    });
 }
 
 
@@ -805,10 +811,6 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
         auto comp_arg = asts::ast_cast<asts::GenericArgumentCompKeywordAst>(arg);
         auto comp_param = asts::ast_cast<asts::GenericParameterCompAst>(param);
         if (comp_arg == nullptr) { continue; }
-
-        if (comp_arg->val->operator std::string() == "n") {
-            auto _ = 123;
-        }
 
         auto a_type = comp_arg->val->infer_type(&sm, meta);
         auto p_type = comp_param->type->substitute_generics(args | genex::views::ptr | genex::views::cast_dynamic<asts::GenericArgumentAst*>() | genex::views::to<std::vector>());
