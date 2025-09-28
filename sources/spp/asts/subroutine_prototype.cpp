@@ -71,7 +71,10 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
     // Check there is a return statement at the end (for non-void functions).
     const auto is_void = analyse::utils::type_utils::symbolic_eq(
         *return_type, *generate::common_types_precompiled::VOID, *sm->current_scope, *sm->current_scope);
-    if (not(is_void or is_never or m_no_impl_annotation or m_abstract_annotation or (not impl->members.empty() and not ast_cast<RetStatementAst>(impl->final_member())))) {
+
+    if (is_void or is_never or m_no_impl_annotation or m_abstract_annotation or (not impl->members.empty() and ast_cast<RetStatementAst>(impl->members.back().get()))) {
+    }
+    else {
         const auto final_member = impl->final_member();
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionSubroutineMissingReturnStatementError>().with_args(
             *final_member, *return_type).with_scopes({sm->current_scope}).raise();
