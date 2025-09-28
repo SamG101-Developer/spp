@@ -29,7 +29,6 @@
 #include <spp/asts/class_prototype_ast.hpp>
 #include <spp/asts/convention_ast.hpp>
 #include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/convention_mov_ast.hpp>
 #include <spp/asts/convention_mut_ast.hpp>
 #include <spp/asts/coroutine_prototype_ast.hpp>
 #include <spp/asts/closure_expression_ast.hpp>
