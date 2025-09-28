@@ -19,3 +19,4 @@ Optimizations
 - [ ] Reduce cloning where possible (move and put back, shared_ptr -- i think this is minimal anyway)
 - [ ] Remove move `genex::views::to<std::vector>` (requires modifications to genex).
 - [ ] Remove `orig_name`, use `name` everywhere.
+- [ ] Check `auto &&` vs `auto const &` for unique pointer vector iteration.
