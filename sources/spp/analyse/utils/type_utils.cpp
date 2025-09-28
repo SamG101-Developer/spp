@@ -509,11 +509,11 @@ auto spp::analyse::utils::type_utils::validate_inconsistent_types(
 
     // Remove the master branch pointer from the list of remaining branch types and check all types match.
     auto mismatch_branches_type_info = branches_type_info
-        | genex::views::remove_if([master_branch_type_info](auto &&x) { return x.first == master_branch_type_info.first; })
-        | genex::views::filter([master_branch_type_info, sm](auto &&x) { return not type_utils::symbolic_eq(*master_branch_type_info.second, *x.second, *sm->current_scope, *sm->current_scope); })
+        | genex::views::remove_if([master_branch_type_info](auto const &x) { return x.first == master_branch_type_info.first; })
+        | genex::views::filter([master_branch_type_info, sm](auto const &x) { return not type_utils::symbolic_eq(*master_branch_type_info.second, *x.second, *sm->current_scope, *sm->current_scope); })
         | genex::views::to<std::vector>();
 
-    if (mismatch_branches_type_info.empty()) {
+    if (not mismatch_branches_type_info.empty()) {
         auto [mismatch_branch, mismatch_branch_type] = std::move(mismatch_branches_type_info[0]);
         auto [master_branch, master_branch_type] = master_branch_type_info;
         analyse::errors::SemanticErrorBuilder<errors::SppTypeMismatchError>().with_args(

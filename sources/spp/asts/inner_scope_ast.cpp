@@ -114,7 +114,7 @@ auto spp::asts::InnerScopeAst<T>::stage_7_analyse_semantics(
     m_scope = sm->current_scope;
 
     // Analyse the members of the inner scope.
-    members | genex::views::for_each([sm, meta](auto &&x) { x->stage_7_analyse_semantics(sm, meta); });
+    members | genex::views::for_each([sm, meta](auto const &x) { x->stage_7_analyse_semantics(sm, meta); });
     sm->move_out_of_current_scope();
 }
 
