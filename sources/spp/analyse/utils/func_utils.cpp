@@ -79,7 +79,7 @@ auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
     asts::ExpressionAst const &lhs,
     scopes::ScopeManager &sm,
     asts::mixins::CompilerMetaData *meta)
-    -> std::tuple<asts::TypeAst*, scopes::Scope const*, std::shared_ptr<asts::IdentifierAst>> {
+    -> std::tuple<std::shared_ptr<asts::TypeAst>, scopes::Scope const*, std::shared_ptr<asts::IdentifierAst>> {
     // Define some expression casts that are used commonly.
     const auto postfix_lhs = asts::ast_cast<asts::PostfixExpressionAst>(&lhs);
     const auto runtime_field = postfix_lhs ? asts::ast_cast<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(postfix_lhs->op.get()) : nullptr;
@@ -91,46 +91,46 @@ auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
     const auto lhs_as_ident = dynamic_cast<asts::IdentifierAst const*>(&lhs);
 
     // Variables that will be set in each branch, and returned.
-    auto function_owner_type = std::shared_ptr<asts::TypeAst>(nullptr);
-    auto function_owner_scope = static_cast<scopes::Scope const*>(nullptr);
-    auto function_name = std::shared_ptr<asts::IdentifierAst>(nullptr);
+    auto fn_owner_type = std::shared_ptr<asts::TypeAst>(nullptr);
+    auto fn_owner_scope = static_cast<scopes::Scope const*>(nullptr);
+    auto fn_name = std::shared_ptr<asts::IdentifierAst>(nullptr);
 
     // Runtime access into an object: "object.method()".
     if (postfix_lhs != nullptr and runtime_field != nullptr) {
-        function_owner_type = postfix_lhs->lhs->infer_type(&sm, meta);
-        function_name = runtime_field->name;
-        function_owner_scope = sm.current_scope->get_type_symbol(function_owner_type)->scope;
+        fn_owner_type = postfix_lhs->lhs->infer_type(&sm, meta);
+        fn_name = runtime_field->name;
+        fn_owner_scope = sm.current_scope->get_type_symbol(fn_owner_type)->scope;
     }
 
     // Static access into a type: "Type::method()" or "ns::Type::method()".
     else if (static_field != nullptr and postfix_lhs_as_type != nullptr) {
-        function_owner_type = ast_clone(postfix_lhs_as_type);
-        function_name = static_field->name;
-        function_owner_scope = sm.current_scope->get_type_symbol(function_owner_type)->scope;
+        fn_owner_type = ast_clone(postfix_lhs_as_type);
+        fn_name = static_field->name;
+        fn_owner_scope = sm.current_scope->get_type_symbol(fn_owner_type)->scope;
     }
 
     // Direct access into a namespaced free function: "std::io::print(variable)".
     else if (postfix_lhs != nullptr and static_field != nullptr) {
-        function_owner_scope = sm.current_scope->get_ns_symbol(asts::ast_clone(postfix_lhs_as_ident))->scope;
-        function_name = static_field->name;
-        function_owner_type = function_owner_scope->get_var_symbol(function_name)->type;
+        fn_owner_scope = sm.current_scope->get_ns_symbol(asts::ast_clone(postfix_lhs_as_ident))->scope;
+        fn_name = static_field->name;
+        fn_owner_type = fn_owner_scope->get_var_symbol(fn_name)->type;
     }
 
     // Direct access into a non-namespaced function: "function()":
     else if (lhs_as_ident != nullptr) {
-        function_owner_type = nullptr;
-        function_name = ast_clone(lhs_as_ident);
-        function_owner_scope = sm.current_scope->parent_module();
+        fn_owner_type = nullptr;
+        fn_name = ast_clone(lhs_as_ident);
+        fn_owner_scope = sm.current_scope->parent_module();
     }
 
     // Non-callable AST.
     else {
-        function_owner_type = nullptr;
-        function_name = nullptr;
-        function_owner_scope = nullptr;
+        fn_owner_type = nullptr;
+        fn_name = nullptr;
+        fn_owner_scope = nullptr;
     }
 
-    return std::make_tuple(function_owner_type.get(), function_owner_scope, function_name);
+    return std::make_tuple(fn_owner_type, fn_owner_scope, fn_name);
 }
 
 
