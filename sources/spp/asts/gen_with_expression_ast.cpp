@@ -49,8 +49,8 @@ auto spp::asts::GenWithExpressionAst::clone() const -> std::unique_ptr<Ast> {
 
 spp::asts::GenWithExpressionAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_gen);
-    SPP_STRING_APPEND(tok_with);
+    SPP_STRING_APPEND(tok_gen).append(" ");
+    SPP_STRING_APPEND(tok_with).append(" ");
     SPP_STRING_APPEND(expr);
     SPP_STRING_END;
 }
@@ -58,8 +58,8 @@ spp::asts::GenWithExpressionAst::operator std::string() const {
 
 auto spp::asts::GenWithExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_gen);
-    SPP_PRINT_APPEND(tok_with);
+    SPP_PRINT_APPEND(tok_gen).append(" ");
+    SPP_PRINT_APPEND(tok_with).append(" ");
     SPP_PRINT_APPEND(expr);
     SPP_PRINT_END;
 }

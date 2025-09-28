@@ -84,7 +84,7 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
     if (expr != nullptr) {
         meta->save();
         RETURN_TYPE_OVERLOAD_HELPER(expr.get()) {
-            auto [gem_type, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(
+            auto [gen_type, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(
                 *meta->enclosing_function_ret_type[0], *sm, *meta->enclosing_function_ret_type[0], "coroutine");
             meta->return_type_overload_resolver_type = std::move(yield_type);
         }
