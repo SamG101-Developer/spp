@@ -105,6 +105,9 @@ auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
     meta->infer_source = {generic_infer_source.begin(), generic_infer_source.end()};
     meta->infer_target = {generic_infer_target.begin(), generic_infer_target.end()};
     type->stage_7_analyse_semantics(sm, meta);
+    meta->restore();
+
+    meta->save();
     meta->object_init_type = type;
     arg_group->stage_7_analyse_semantics(sm, meta);
     meta->restore();
