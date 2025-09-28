@@ -71,6 +71,14 @@ namespace spp::analyse::utils::type_utils {
         bool check_variant = false)
         -> bool;
 
+    auto relaxed_symbolic_eq(
+        asts::ExpressionAst const &lhs_expr,
+        asts::ExpressionAst const &rhs_expr,
+        scopes::Scope const &lhs_scope,
+        scopes::Scope const &rhs_scope,
+        std::map<std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<asts::TypeIdentifierAst>>> &generic_args)
+        -> bool;
+
     auto is_type_indexable(
         asts::TypeAst const &type,
         scopes::Scope const &scope)
@@ -196,6 +204,14 @@ namespace spp::analyse::utils::type_utils {
         asts::mixins::CompilerMetaData *meta,
         scopes::ScopeManager *tm = nullptr)
         -> std::shared_ptr<scopes::Symbol>;
+
+    auto register_generic_syms(
+        std::vector<std::shared_ptr<scopes::Symbol>> const &external_generic_syms,
+        std::vector<std::unique_ptr<asts::GenericArgumentAst>> const &generic_args,
+        scopes::Scope *scope,
+        scopes::ScopeManager *sm,
+        asts::mixins::CompilerMetaData *meta)
+        -> void;
 
     auto get_type_part_symbol_with_error(
         scopes::Scope const &scope,
