@@ -83,7 +83,7 @@ auto spp::analyse::scopes::Scope::search_sup_scopes_for_var(
     std::shared_ptr<asts::IdentifierAst> const &name)
     -> std::shared_ptr<VariableSymbol> {
     // Recursively search the super scopes for a variable symbol.
-    for (const auto sup_scope : scope.m_direct_sup_scopes) {
+    for (auto const *sup_scope : scope.m_direct_sup_scopes) {
         if (auto const sym = sup_scope->get_var_symbol(name, true); sym != nullptr) {
             return sym;
         }
@@ -100,7 +100,7 @@ auto spp::analyse::scopes::Scope::search_sup_scopes_for_type(
     const bool ignore_alias)
     -> std::shared_ptr<TypeSymbol> {
     // Recursively search the super scopes for a type symbol.
-    for (const auto sup_scope : scope.m_direct_sup_scopes) {
+    for (auto const *sup_scope : scope.m_direct_sup_scopes) {
         if (auto const sym = sup_scope->get_type_symbol(name, true, ignore_alias); sym != nullptr) {
             return sym;
         }
@@ -502,7 +502,7 @@ auto spp::analyse::scopes::Scope::depth_difference(
     // Create an internal function to call recursively with a counter.
     auto func = [](this auto &&self, const Scope *source, const Scope *target, const ssize_t depth) -> ssize_t {
         if (source == target) { return depth; }
-        for (const auto sup_scope : source->m_direct_sup_scopes) {
+        for (auto const *sup_scope : source->m_direct_sup_scopes) {
             if (const auto result = self(sup_scope, target, depth + 1z); result >= 0z) {
                 return result;
             }
