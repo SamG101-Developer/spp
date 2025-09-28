@@ -67,7 +67,8 @@ namespace spp::analyse::utils::type_utils {
         asts::TypeAst const &rhs_type,
         scopes::Scope const *lhs_scope,
         scopes::Scope const *rhs_scope,
-        std::map<std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<asts::TypeIdentifierAst>>> &generic_args)
+        std::map<std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<asts::TypeIdentifierAst>>> &generic_args,
+        bool check_variant = false)
         -> bool;
 
     auto is_type_indexable(

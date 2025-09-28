@@ -149,7 +149,8 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     asts::TypeAst const &rhs_type,
     scopes::Scope const *lhs_scope,
     scopes::Scope const *rhs_scope,
-    std::map<std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<asts::TypeIdentifierAst>>> &generic_args) -> bool {
+    std::map<std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<asts::TypeIdentifierAst>>> &generic_args,
+    const bool check_variant) -> bool {
     // Todo: Convention check?
     // If the right-hand-side scope is nullptr, the scope is generic so auto-match it.
     if (rhs_scope == nullptr) {
@@ -166,20 +167,26 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     }
 
     // Strip the generics from the right-hand-side type (possible generic).
+    const auto stripped_lhs = lhs_type.without_generics();
     const auto stripped_rhs = rhs_type.without_generics();
 
     // If the right-hand-side is generic, then return a match: "sup[T] T { ... }" matches all types.
+    const auto stripped_lhs_sym = lhs_scope->get_type_symbol(stripped_lhs);
     const auto stripped_rhs_sym = rhs_scope->get_type_symbol(stripped_rhs);
     if (stripped_rhs_sym->is_generic) {
         generic_args[std::dynamic_pointer_cast<asts::TypeIdentifierAst>(stripped_rhs)] = &lhs_type;
         return true;
     }
 
-    // Strip the generics from the left-hand-side type.
-    const auto stripped_lhs = lhs_type.without_generics();
+    // If the left-hand-side is a "Variant" type, check the composite types first.
+    if (check_variant and symbolic_eq(*asts::generate::common_types_precompiled::VAR, *stripped_rhs_sym->fq_name()->without_generics(), *rhs_scope, *rhs_scope)) {
+        auto rhs_composite_types = deduplicate_variant_inner_types(*rhs_scope->get_type_symbol(rhs_type.shared_from_this())->fq_name(), *rhs_scope);
+        if (genex::algorithms::any_of(rhs_composite_types, [&](auto &&rhs_composite_type) { return relaxed_symbolic_eq(lhs_type, *rhs_composite_type, lhs_scope, rhs_scope, generic_args); })) {
+            return true;
+        }
+    }
 
     // If the stripped types aren't equal, then return false.
-    const auto stripped_lhs_sym = lhs_scope->get_type_symbol(stripped_lhs);
     if (stripped_lhs_sym->type != stripped_rhs_sym->type) {
         return false;
     }
