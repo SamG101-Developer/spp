@@ -302,7 +302,7 @@ auto spp::asts::FunctionPrototypeAst::stage_5_load_super_scopes(
     mixins::CompilerMetaData *meta) -> void {
     // Analyse the parameter and return types before sup scopes are attached.
     sm->move_to_next_scope();
-    param_group->params | genex::views::for_each([sm, meta](auto &&x) { x->type->stage_7_analyse_semantics(sm, meta); });
+    param_group->stage_7_analyse_semantics(sm, meta);
     return_type->stage_7_analyse_semantics(sm, meta);
     sm->move_out_of_current_scope();
 }
