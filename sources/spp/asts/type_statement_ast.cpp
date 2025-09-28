@@ -211,7 +211,7 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
     // Get the old type's symbol, without generics.
     const auto stripped_old_sym = sm->current_scope->get_type_symbol(old_type->without_generics(), false, true);
     if (not stripped_old_sym->is_generic) {
-        auto tm = ScopeManager(sm->global_scope, stripped_old_sym->scope_defined_in);
+        auto tm = ScopeManager(sm->global_scope, stripped_old_sym->scope);
 
         // Qualify the generics, and the overall type.
         generic_param_group->stage_4_qualify_types(&tm, meta);
