@@ -163,4 +163,6 @@ public:
     auto save() -> void;
 
     auto restore() -> void;
+
+    auto depth() const -> std::size_t;
 };

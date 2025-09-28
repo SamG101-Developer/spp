@@ -87,3 +87,9 @@ auto spp::asts::mixins::CompilerMetaData::restore() -> void {
     skip_type_analysis_generic_checks = state.skip_type_analysis_generic_checks;
     type_analysis_type_scope = state.type_analysis_type_scope;
 }
+
+
+auto spp::asts::mixins::CompilerMetaData::depth() const
+    -> std::size_t {
+    return m_history.size();
+}
