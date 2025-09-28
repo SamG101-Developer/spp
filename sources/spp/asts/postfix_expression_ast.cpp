@@ -4,6 +4,7 @@
 #include <spp/asts/postfix_expression_ast.hpp>
 #include <spp/asts/postfix_expression_operator_ast.hpp>
 #include <spp/asts/token_ast.hpp>
+#include <spp/asts/type_ast.hpp>
 
 
 spp::asts::PostfixExpressionAst::PostfixExpressionAst(
@@ -57,10 +58,19 @@ auto spp::asts::PostfixExpressionAst::stage_7_analyse_semantics(
     // Analyse the lhs.
     ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TYPE(lhs.get());
 
+    // The "ast_clone" is required because the "lhs" could be a uniquely owned TypeAst, which must have access to
+    // "shared_from_this" (on a shared pointer, which "ast_clone" provides).
     meta->save();
     meta->return_type_overload_resolver_type = nullptr;
     meta->prevent_auto_generator_resume = false;
-    lhs->stage_7_analyse_semantics(sm, meta);
+    if (dynamic_cast<TypeAst*>(lhs.get()) != nullptr) {
+        auto temp_lhs = std::shared_ptr<TypeAst>(dynamic_cast<TypeAst*>(lhs.release()));
+        temp_lhs->stage_7_analyse_semantics(sm, meta);
+        lhs = ast_clone(std::move(temp_lhs));
+    }
+    else {
+        lhs->stage_7_analyse_semantics(sm, meta);
+    }
     meta->restore();
 
     // Re-attach the meta info, as it is targeting the lhs.
