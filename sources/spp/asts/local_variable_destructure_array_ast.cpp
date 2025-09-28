@@ -150,8 +150,10 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
     }
 
     // Create new indexes.
-    const auto skip_index = genex::algorithms::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize;
-    auto indexes = genex::views::iota(0uz, multi_arg_skips.empty() ? multi_arg_skips.size() : skip_index + 1)
+    const auto skip_index = not multi_arg_skips.empty()
+                                ? genex::algorithms::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize
+                                : elems.size() - 1;
+    auto indexes = genex::views::iota(0uz, skip_index + 1)
         | genex::views::concat(genex::views::iota(num_lhs_arr_elems, num_rhs_arr_elems) | genex::views::materialize())
         | genex::views::to<std::vector>();
 
