@@ -102,7 +102,7 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_cyclic_extension(
     analyse::scopes::Scope &check_scope)
     -> void {
     // Prevent double inheritance by checking if the scopes are already registered the other way around.
-    auto dummy = std::map<std::shared_ptr<TypeAst>, ExpressionAst const*>();
+    auto dummy = std::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<TypeIdentifierAst>>>();
     const auto existing_sup_scopes = sup_sym.scope->sup_scopes()
         | genex::views::filter([](auto &&x) { return ast_cast<SupPrototypeExtensionAst>(x->ast); })
         | genex::views::transform([](auto &&x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })
@@ -127,7 +127,7 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_double_extension(
     }
 
     // Prevent double inheritance by checking if the scopes are already registered the other way around.
-    auto dummy = std::map<std::shared_ptr<TypeAst>, ExpressionAst const*>();
+    auto dummy = std::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<TypeIdentifierAst>>>();
     const auto existing_sup_scopes = cls_sym.scope->sup_scopes()
         | genex::views::filter([](auto &&x) { return ast_cast<SupPrototypeExtensionAst>(x->ast); })
         | genex::views::transform([](auto &&x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })

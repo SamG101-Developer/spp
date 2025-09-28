@@ -149,7 +149,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     asts::TypeAst const &rhs_type,
     scopes::Scope const *lhs_scope,
     scopes::Scope const *rhs_scope,
-    std::map<std::shared_ptr<asts::TypeAst>, asts::ExpressionAst const*> &generic_args) -> bool {
+    std::map<std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<asts::TypeIdentifierAst>>> &generic_args) -> bool {
     // Todo: Convention check?
     // If the right-hand-side scope is nullptr, the scope is generic so auto-match it.
     if (rhs_scope == nullptr) {
@@ -166,12 +166,12 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     }
 
     // Strip the generics from the right-hand-side type (possible generic).
-    auto stripped_rhs = rhs_type.without_generics();
+    const auto stripped_rhs = rhs_type.without_generics();
 
     // If the right-hand-side is generic, then return a match: "sup[T] T { ... }" matches all types.
     const auto stripped_rhs_sym = rhs_scope->get_type_symbol(stripped_rhs);
     if (stripped_rhs_sym->is_generic) {
-        generic_args[std::move(stripped_rhs)] = &lhs_type;
+        generic_args[std::dynamic_pointer_cast<asts::TypeIdentifierAst>(stripped_rhs)] = &lhs_type;
         return true;
     }
 
@@ -831,7 +831,7 @@ auto spp::analyse::utils::type_utils::deduplicate_variant_inner_types(
     scopes::Scope const &scope)
     -> std::vector<std::shared_ptr<asts::TypeAst>> {
     // Create the list of types.
-    auto out = std::vector<std::shared_ptr<asts::TypeAst>>{};
+    auto out = std::vector<std::shared_ptr<asts::TypeAst>>();
     if (type.type_parts().back()->generic_arg_group->args.empty()) {
         return out;
     }

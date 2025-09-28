@@ -42,10 +42,10 @@ struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
         GenericParameterGroupAst const &generic_params) -> std::unique_ptr<GenericArgumentGroupAst>;
 
     static auto from_map(
-        std::map<std::shared_ptr<TypeAst>, ExpressionAst const*> &&map) -> std::unique_ptr<GenericArgumentGroupAst>;
+        std::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<TypeIdentifierAst>>> &&map) -> std::unique_ptr<GenericArgumentGroupAst>;
 
     static auto from_map(
-        std::map<std::shared_ptr<TypeAst>, std::shared_ptr<const TypeAst>> &&map) -> std::unique_ptr<GenericArgumentGroupAst>;
+        std::map<std::shared_ptr<TypeIdentifierAst>, std::shared_ptr<const TypeAst>> &&map) -> std::unique_ptr<GenericArgumentGroupAst>;
 
     auto type_at(const char *key) const -> GenericArgumentTypeAst const*;
 

@@ -77,7 +77,7 @@ auto spp::asts::GenericArgumentGroupAst::from_params(
 
 
 auto spp::asts::GenericArgumentGroupAst::from_map(
-    std::map<std::shared_ptr<TypeAst>, ExpressionAst const*> &&map)
+    std::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<TypeIdentifierAst>>> &&map)
     -> std::unique_ptr<GenericArgumentGroupAst> {
     // Create the list of arguments, initially empty.
     auto mapped_args = std::vector<std::unique_ptr<GenericArgumentAst>>();
@@ -102,10 +102,10 @@ auto spp::asts::GenericArgumentGroupAst::from_map(
 
 
 auto spp::asts::GenericArgumentGroupAst::from_map(
-    std::map<std::shared_ptr<TypeAst>, std::shared_ptr<const TypeAst>> &&map)
+    std::map<std::shared_ptr<TypeIdentifierAst>, std::shared_ptr<const TypeAst>> &&map)
     -> std::unique_ptr<GenericArgumentGroupAst> {
     // Cast the values to "ExpressionAst const*".
-    auto mapped_args = std::map<std::shared_ptr<TypeAst>, ExpressionAst const*>();
+    auto mapped_args = std::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<TypeIdentifierAst>>>();
     for (auto const &[k, v] : map) {
         mapped_args[k] = v.get();
     }

@@ -4,6 +4,7 @@
 
 #include <spp/asts/_fwd.hpp>
 #include <spp/macros.hpp>
+#include <spp/utils/ptr_cmp.hpp>
 
 
 /// @cond
@@ -66,7 +67,7 @@ namespace spp::analyse::utils::type_utils {
         asts::TypeAst const &rhs_type,
         scopes::Scope const *lhs_scope,
         scopes::Scope const *rhs_scope,
-        std::map<std::shared_ptr<asts::TypeAst>, asts::ExpressionAst const*> &generic_args)
+        std::map<std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<asts::TypeIdentifierAst>>> &generic_args)
         -> bool;
 
     auto is_type_indexable(
