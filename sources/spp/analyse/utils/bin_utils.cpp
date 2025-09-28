@@ -93,11 +93,11 @@ auto spp::analyse::utils::bin_utils::convert_bin_expr_to_function_call(
     auto field = std::make_unique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(method_name_wrapped));
     auto field_access = std::make_unique<asts::PostfixExpressionAst>(std::move(bin_expr.lhs), std::move(field));
     auto fn_call = std::make_unique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
-    auto new_ast = std::make_unique<asts::PostfixExpressionAst>(std::move(field_access), std::move(fn_call));
 
     // Set the arguments for the function call, and return the AST.
     auto arg = std::make_unique<asts::FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(bin_expr.rhs));
     fn_call->arg_group->args.emplace_back(std::move(arg));
+    auto new_ast = std::make_unique<asts::PostfixExpressionAst>(std::move(field_access), std::move(fn_call));
     return new_ast;
 }
 
