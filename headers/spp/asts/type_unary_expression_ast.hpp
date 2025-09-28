@@ -61,8 +61,6 @@ public:
 
     auto contains_generic(GenericParameterAst const &generic) const -> bool override;
 
-    auto match_generic(TypeAst const &other, TypeIdentifierAst const &generic_name) const -> const ExpressionAst* override;
-
     auto with_generics(std::unique_ptr<GenericArgumentGroupAst> &&arg_group) const -> std::shared_ptr<TypeAst> override;
 
     auto stage_4_qualify_types(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;

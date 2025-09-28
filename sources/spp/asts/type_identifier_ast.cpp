@@ -287,49 +287,6 @@ auto spp::asts::TypeIdentifierAst::contains_generic(
 }
 
 
-auto spp::asts::TypeIdentifierAst::match_generic(
-    TypeAst const &other,
-    TypeIdentifierAst const &generic_name) const
-    -> const ExpressionAst* {
-    // Precheck to skip processing.
-    if (static_cast<std::string>(other) == static_cast<std::string>(generic_name)) { return this; }
-
-    auto this_parts = custom_iterator(this, 0);
-    auto that_parts = custom_iterator(&other, 0);
-
-    auto this_part_info = this_parts.begin();
-    auto that_part_info = that_parts.begin();
-
-    while (this_part_info != this_parts.end() and that_part_info != that_parts.end()) {
-        // Decompose the type information into the part and its depth.
-        auto [this_part, this_depth] = *this_part_info;
-        auto [that_part, that_depth] = *that_part_info;
-        ++this_part_info;
-        ++that_part_info;
-
-        // Align in the type tree, by depth (handle nested generics on one side).
-        while (that_depth != this_depth) {
-            std::tie(that_part, that_depth) = *that_part_info;
-            ++that_part_info;
-        }
-
-        // Check for the target generic.
-        if (auto const *type_generic = ast_cast<GenericArgumentTypeAst>(that_part)) {
-            if (static_cast<std::string>(*type_generic->val) == static_cast<std::string>(generic_name)) {
-                return ast_cast<GenericArgumentTypeAst>(this_part)->val.get();
-            }
-        }
-        if (auto const *comp_generic = ast_cast<GenericArgumentCompAst>(that_part)) {
-            if (static_cast<std::string>(*comp_generic->val) == static_cast<std::string>(generic_name)) {
-                return ast_cast<GenericArgumentCompAst>(this_part)->val.get();
-            }
-        }
-    }
-
-    return nullptr;
-}
-
-
 auto spp::asts::TypeIdentifierAst::with_generics(
     std::unique_ptr<GenericArgumentGroupAst> &&arg_group) const
     -> std::shared_ptr<TypeAst> {

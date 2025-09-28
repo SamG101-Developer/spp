@@ -50,11 +50,6 @@ auto spp::asts::TypeUnaryExpressionAst::pos_end() const -> std::size_t {
 
 
 auto spp::asts::TypeUnaryExpressionAst::clone() const -> std::unique_ptr<Ast> {
-    // std::cout << COUNTER << std::endl;
-    // COUNTER++;
-
-    auto _ = 123;
-
     return std::make_unique<TypeUnaryExpressionAst>(
         ast_clone(op),
         ast_clone(rhs));
@@ -189,15 +184,6 @@ auto spp::asts::TypeUnaryExpressionAst::contains_generic(
     GenericParameterAst const &generic) const
     -> bool {
     return rhs->contains_generic(generic);
-}
-
-
-auto spp::asts::TypeUnaryExpressionAst::match_generic(
-    TypeAst const &other,
-    TypeIdentifierAst const &generic_name) const
-    -> const ExpressionAst* {
-    if (static_cast<std::string>(other) == static_cast<std::string>(generic_name)) { return this; }
-    return rhs->match_generic(other, generic_name);
 }
 
 

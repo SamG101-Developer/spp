@@ -201,16 +201,6 @@ auto spp::asts::TypePostfixExpressionAst::contains_generic(
 }
 
 
-auto spp::asts::TypePostfixExpressionAst::match_generic(
-    TypeAst const &other,
-    TypeIdentifierAst const &generic_name) const
-    -> const ExpressionAst* {
-    if (static_cast<std::string>(other) == static_cast<std::string>(generic_name)) { return this; }
-    const auto rhs = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
-    return rhs->name->match_generic(other, generic_name);
-}
-
-
 auto spp::asts::TypePostfixExpressionAst::with_generics(
     std::unique_ptr<GenericArgumentGroupAst> &&arg_group) const
     -> std::shared_ptr<TypeAst> {
