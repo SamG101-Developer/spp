@@ -156,22 +156,22 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
     }
 
     // Analyse the arguments
-    for (auto &&arg : args) {
+    for (auto const &arg : args) {
         arg->stage_7_analyse_semantics(sm, meta);
         const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*arg->val);
         if (sym == nullptr) { continue; }
-        if (arg->conv and *arg->conv != ConventionAst::ConventionTag::MUT) { continue; }
+        if (arg->conv == nullptr or *arg->conv == ConventionAst::ConventionTag::REF) { continue; }
 
         // Immutable symbols cannot be mutated.
         if (not sym->is_mutable) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
-                *arg->val, *arg->conv, *sym->memory_info->ast_initialization).with_scopes({sm->current_scope}).raise();
+                *arg->val, *arg->val, *sym->memory_info->ast_initialization).with_scopes({sm->current_scope}).raise();
         }
 
         // Immutable borrows, even if their symbol is mutable, cannot be mutated.
         if (sym->memory_info->ast_borrowed and sym->memory_info->is_borrow_ref) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
-                *arg->val, *arg->conv, *sym->memory_info->ast_borrowed).with_scopes({sm->current_scope}).raise();
+                *arg->val, *arg->val, *sym->memory_info->ast_borrowed).with_scopes({sm->current_scope}).raise();
         }
     }
 }
