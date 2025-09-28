@@ -164,7 +164,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_5_load_super_scopes(
     const auto base_cls_sym = sm->current_scope->get_type_symbol(name->without_generics());
     if (sm->current_scope->parent == sm->current_scope->parent_module()) {
         if (not base_cls_sym->is_generic) {
-            sm->normal_sup_blocks.try_emplace(base_cls_sym.get(), std::vector<analyse::scopes::Scope*>()).first->second.emplace_back(sm->current_scope);
+            sm->normal_sup_blocks[base_cls_sym.get()].emplace_back(sm->current_scope);
         }
         else {
             sm->generic_sup_blocks.emplace_back(sm->current_scope);
