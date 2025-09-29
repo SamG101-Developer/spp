@@ -11,8 +11,6 @@
  * anyway. Some checks are copied from this class (symbolic target, etc.).
  */
 struct spp::asts::AssignmentStatementAst final : StatementAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The list of left-hand side expressions in the assignment statement. These are the variables or properties that
      * are being assigned a value.
@@ -43,6 +41,8 @@ struct spp::asts::AssignmentStatementAst final : StatementAst {
         decltype(rhs) &&rhs);
 
     ~AssignmentStatementAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     /**
      * An assignment statement ast node must have symbolic left-hand-side nodes. This ensures that the left-hand-side

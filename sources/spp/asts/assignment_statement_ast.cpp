@@ -1,3 +1,4 @@
+#include <spp/pch.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
@@ -10,7 +11,6 @@
 #include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
-#include <spp/pch.hpp>
 
 #include <genex/views/address.hpp>
 #include <genex/views/enumerate.hpp>
@@ -25,23 +25,27 @@ spp::asts::AssignmentStatementAst::AssignmentStatementAst(
     lhs(std::move(lhs)),
     tok_assign(std::move(tok_assign)),
     rhs(std::move(rhs)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
 }
 
 
 spp::asts::AssignmentStatementAst::~AssignmentStatementAst() = default;
 
 
-auto spp::asts::AssignmentStatementAst::pos_start() const -> std::size_t {
+auto spp::asts::AssignmentStatementAst::pos_start() const
+    -> std::size_t {
     return lhs.front()->pos_start();
 }
 
 
-auto spp::asts::AssignmentStatementAst::pos_end() const -> std::size_t {
+auto spp::asts::AssignmentStatementAst::pos_end() const
+    -> std::size_t {
     return rhs.back()->pos_end();
 }
 
 
-auto spp::asts::AssignmentStatementAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::AssignmentStatementAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<AssignmentStatementAst>(
         ast_clone_vec(lhs),
         ast_clone(tok_assign),
@@ -59,7 +63,9 @@ spp::asts::AssignmentStatementAst::operator std::string() const {
 }
 
 
-auto spp::asts::AssignmentStatementAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::AssignmentStatementAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_EXTEND(lhs);
     formatted_string.append(" ");
@@ -113,13 +119,13 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
         }
 
         // Attribute assignment (ie "x.y = z"), for a non-borrowed symbol, requires an outermost "mut" symbol.
-        else if (is_attr(*lhs_expr) and not(lhs_sym->memory_info->ast_borrowed or lhs_sym->is_mutable)) {
+        if (is_attr(*lhs_expr) and not(lhs_sym->memory_info->ast_borrowed or lhs_sym->is_mutable)) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
                 *lhs_sym->name, *tok_assign, *lhs_sym->memory_info->ast_initialization).with_scopes({sm->current_scope}).raise();
         }
 
         // Attribute assignment (ie "x.y = z"), for a borrowed symbol, cannot contain an immutable borrow.
-        else if (is_attr(*lhs_expr) and lhs_sym->memory_info->is_borrow_ref) {
+        if (is_attr(*lhs_expr) and lhs_sym->memory_info->is_borrow_ref) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
                 *lhs_sym->name, *tok_assign, *lhs_sym->memory_info->ast_borrowed).with_scopes({sm->current_scope}).raise();
         }
