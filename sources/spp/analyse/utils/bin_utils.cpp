@@ -5,13 +5,13 @@
 #include <spp/asts/case_pattern_variant_expression_ast.hpp>
 #include <spp/asts/convention_mov_ast.hpp>
 #include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/is_expression_ast.hpp>
 #include <spp/asts/fold_expression_ast.hpp>
 #include <spp/asts/function_call_argument_group_ast.hpp>
 #include <spp/asts/function_call_argument_positional_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/inner_scope_expression_ast.hpp>
+#include <spp/asts/is_expression_ast.hpp>
 #include <spp/asts/let_statement_initialized_ast.hpp>
 #include <spp/asts/local_variable_ast.hpp>
 #include <spp/asts/pattern_guard_ast.hpp>
@@ -27,14 +27,13 @@ auto spp::analyse::utils::bin_utils::fix_associativity(
     asts::BinaryExpressionAst &bin_expr)
     -> std::unique_ptr<asts::BinaryExpressionAst> {
     // If the right-hand-side isn't a binary expression, then no handling is required; return it.
-    const auto bin_rhs = asts::ast_cast<asts::BinaryExpressionAst>(bin_expr.rhs.get());
-    if (bin_rhs == nullptr) {
+    if (asts::ast_cast<asts::BinaryExpressionAst>(bin_expr.rhs.get()) == nullptr) {
         return std::make_unique<asts::BinaryExpressionAst>(std::move(bin_expr.lhs), std::move(bin_expr.tok_op), std::move(bin_expr.rhs));
     }
 
     // If the ast precedence > the right-hand-side binary expression's operator's precedence, re-arrange the AST.
+    auto bin_rhs = asts::ast_cast<asts::BinaryExpressionAst>(std::move(bin_expr.rhs));
     if (BIN_OP_PRECEDENCE.at(bin_expr.tok_op->token_type) >= BIN_OP_PRECEDENCE.at(bin_rhs->tok_op->token_type)) {
-        auto rhs = std::move(bin_expr.rhs);
         bin_expr.rhs = std::move(bin_rhs->rhs);
         bin_rhs->rhs = std::move(bin_rhs->lhs);
         bin_rhs->lhs = std::move(bin_expr.lhs);
@@ -42,6 +41,7 @@ auto spp::analyse::utils::bin_utils::fix_associativity(
         auto temp = std::move(bin_rhs->tok_op);
         bin_rhs->tok_op = std::move(bin_expr.tok_op);
         bin_expr.tok_op = std::move(temp);
+        bin_expr.lhs = std::move(bin_rhs);
 
         return fix_associativity(bin_expr);
     }
@@ -85,18 +85,22 @@ auto spp::analyse::utils::bin_utils::combine_comp_ops(
 auto spp::analyse::utils::bin_utils::convert_bin_expr_to_function_call(
     asts::BinaryExpressionAst &bin_expr)
     -> std::unique_ptr<asts::PostfixExpressionAst> {
+    // Call other utility methods that may modify the binary expression AST.
+    auto new_bin_expr = fix_associativity(bin_expr);
+    new_bin_expr = combine_comp_ops(*new_bin_expr);
+
     // Get the method names based on the operator token.
-    auto method_name = BIN_METHODS.at(bin_expr.tok_op->token_type);
-    auto method_name_wrapped = std::make_unique<asts::IdentifierAst>(bin_expr.tok_op->pos_start(), std::move(method_name));
+    auto method_name = BIN_METHODS.at(new_bin_expr->tok_op->token_type);
+    auto method_name_wrapped = std::make_unique<asts::IdentifierAst>(new_bin_expr->tok_op->pos_start(), std::move(method_name));
 
     // Construct the function call AST.
     auto field = std::make_unique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(method_name_wrapped));
-    auto field_access = std::make_unique<asts::PostfixExpressionAst>(std::move(bin_expr.lhs), std::move(field));
+    auto field_access = std::make_unique<asts::PostfixExpressionAst>(std::move(new_bin_expr->lhs), std::move(field));
     auto fn_call = std::make_unique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
 
     // Set the arguments for the function call, and return the AST.
-    auto conv = genex::algorithms::contains(BIN_COMPARISON_OPS, bin_expr.tok_op->token_type) ? std::make_unique<asts::ConventionRefAst>(nullptr) : nullptr;
-    auto arg = std::make_unique<asts::FunctionCallArgumentPositionalAst>(std::move(conv), nullptr, std::move(bin_expr.rhs));
+    auto conv = genex::algorithms::contains(BIN_COMPARISON_OPS, new_bin_expr->tok_op->token_type) ? std::make_unique<asts::ConventionRefAst>(nullptr) : nullptr;
+    auto arg = std::make_unique<asts::FunctionCallArgumentPositionalAst>(std::move(conv), nullptr, std::move(new_bin_expr->rhs));
     fn_call->arg_group->args.emplace_back(std::move(arg));
     auto new_ast = std::make_unique<asts::PostfixExpressionAst>(std::move(field_access), std::move(fn_call));
     return new_ast;

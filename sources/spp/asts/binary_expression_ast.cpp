@@ -58,18 +58,20 @@ auto spp::asts::BinaryExpressionAst::clone() const -> std::unique_ptr<Ast> {
 
 spp::asts::BinaryExpressionAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(lhs);
-    SPP_STRING_APPEND(tok_op);
-    SPP_STRING_APPEND(rhs);
+    raw_string.append("(");
+    SPP_STRING_APPEND(lhs).append(" ");
+    SPP_STRING_APPEND(tok_op).append(" ");
+    SPP_STRING_APPEND(rhs).append(")");
     SPP_STRING_END;
 }
 
 
 auto spp::asts::BinaryExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(lhs);
-    SPP_PRINT_APPEND(tok_op);
-    SPP_PRINT_APPEND(rhs);
+    formatted_string.append("(");
+    SPP_PRINT_APPEND(lhs).append(" ");
+    SPP_PRINT_APPEND(tok_op).append(" ");
+    SPP_PRINT_APPEND(rhs).append(")");
     SPP_PRINT_END;
 }
 
