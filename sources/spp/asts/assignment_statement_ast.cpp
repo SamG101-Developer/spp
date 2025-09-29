@@ -105,7 +105,7 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
     // For each assignment, get the outermost symbol of the expression.
     auto lhs_syms = lhs
         | genex::views::indirect
-        | genex::views::transform([sm](auto &&x) { return sm->current_scope->get_var_symbol_outermost(x); })
+        | genex::views::transform([sm](auto const &x) { return sm->current_scope->get_var_symbol_outermost(x); })
         | genex::views::to<std::vector>();
 
     // Create quick access derefs for the looping.

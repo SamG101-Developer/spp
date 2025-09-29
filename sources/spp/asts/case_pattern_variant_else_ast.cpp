@@ -8,6 +8,7 @@
 spp::asts::CasePatternVariantElseAst::CasePatternVariantElseAst(
     decltype(tok_else) &&tok_else) :
     tok_else(std::move(tok_else)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_else, lex::SppTokenType::KW_ELSE, "else");
 }
 
 
