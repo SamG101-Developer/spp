@@ -176,7 +176,7 @@ auto spp::asts::TypePostfixExpressionAst::with_convention(
 auto spp::asts::TypePostfixExpressionAst::without_generics() const
     -> std::shared_ptr<TypeAst> {
     const auto rhs = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
-    auto new_lhs = lhs->without_generics();
+    auto new_lhs = ast_clone(lhs);
     auto new_rhs = std::make_unique<TypePostfixExpressionOperatorNestedTypeAst>(nullptr, std::dynamic_pointer_cast<TypeIdentifierAst>(rhs->name->without_generics()));
     return std::make_shared<TypePostfixExpressionAst>(std::move(new_lhs), std::move(new_rhs));
 }
