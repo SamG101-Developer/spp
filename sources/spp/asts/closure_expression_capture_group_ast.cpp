@@ -85,7 +85,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_7_analyse_semantics(
     // original asts from the argument group analysis.
     for (auto &&cap : captures) {
         // Create a "let" statement to insert the symbol into the current scope.
-        auto cap_val = ast_cast<IdentifierAst>(ast_clone(cap));
+        auto cap_val = ast_cast<IdentifierAst>(ast_clone(cap->val));
         auto var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(cap_val), nullptr);
         auto var_type = cap->val->infer_type(sm, meta);
         auto let_val = std::make_unique<ObjectInitializerAst>(std::move(var_type), nullptr);
@@ -93,7 +93,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_7_analyse_semantics(
         let->stage_7_analyse_semantics(sm, meta);
 
         // Apply the borrow to the symbol.
-        const auto sym = sm->current_scope->get_var_symbol(ast_cast<IdentifierAst>(std::move(let->val)));
+        const auto sym = sm->current_scope->get_var_symbol(ast_cast<IdentifierAst>(ast_clone(cap->val)));
         const auto conv = cap->conv.get();
         sym->memory_info->ast_borrowed = conv;
         sym->memory_info->is_borrow_mut = conv and *conv == ConventionAst::ConventionTag::MUT;
