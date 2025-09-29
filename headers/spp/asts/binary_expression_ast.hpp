@@ -12,7 +12,7 @@ struct spp::asts::BinaryExpressionAst final : ExpressionAst {
     SPP_AST_KEY_FUNCTIONS;
 
 private:
-    std::unique_ptr<PostfixExpressionAst> m_mapped_func;
+    std::shared_ptr<PostfixExpressionAst> m_mapped_func;
 
 public:
     /**

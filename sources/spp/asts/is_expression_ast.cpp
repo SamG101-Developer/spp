@@ -42,10 +42,12 @@ auto spp::asts::IsExpressionAst::pos_end() const -> std::size_t {
 
 
 auto spp::asts::IsExpressionAst::clone() const -> std::unique_ptr<Ast> {
-    return std::make_unique<IsExpressionAst>(
+    auto ast = std::make_unique<IsExpressionAst>(
         ast_clone(lhs),
         ast_clone(tok_op),
         ast_clone(rhs));
+    ast->m_mapped_func = m_mapped_func;
+    return ast;
 }
 
 

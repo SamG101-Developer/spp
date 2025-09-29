@@ -49,10 +49,12 @@ auto spp::asts::BinaryExpressionAst::pos_end() const -> std::size_t {
 
 
 auto spp::asts::BinaryExpressionAst::clone() const -> std::unique_ptr<Ast> {
-    return std::make_unique<BinaryExpressionAst>(
+    auto ast = std::make_unique<BinaryExpressionAst>(
         ast_clone(lhs),
         ast_clone(tok_op),
         ast_clone(rhs));
+    ast->m_mapped_func = m_mapped_func;
+    return ast;
 }
 
 

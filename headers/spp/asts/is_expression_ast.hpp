@@ -6,7 +6,7 @@ struct spp::asts::IsExpressionAst final : ExpressionAst {
     SPP_AST_KEY_FUNCTIONS;
 
 private:
-    std::unique_ptr<CaseExpressionAst> m_mapped_func;
+    std::shared_ptr<CaseExpressionAst> m_mapped_func;
 
 public:
     /**
