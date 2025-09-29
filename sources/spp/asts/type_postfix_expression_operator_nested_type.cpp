@@ -11,6 +11,7 @@ spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypePostfixExpressionOper
     TypePostfixExpressionOperatorAst(),
     tok_sep(std::move(tok_sep)),
     name(std::move(name)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_sep, lex::SppTokenType::TK_DOUBLE_COLON, "::");
 }
 
 
