@@ -52,7 +52,7 @@ auto spp::asts::InnerScopeExpressionAst<T>::stage_7_analyse_semantics(
     }
 
     // Analyse the members of the inner scope.
-    this->members | genex::views::for_each([sm, meta](auto &&x) { x->stage_7_analyse_semantics(sm, meta); });
+    this->members | genex::views::for_each([sm, meta](auto const &x) { x->stage_7_analyse_semantics(sm, meta); });
     sm->move_out_of_current_scope();
 }
 
