@@ -197,8 +197,8 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
     else {
         // If a class scope was provided, get all the sup scopes from it, otherwise use the specific sup scope.
         const auto sup_scopes = dynamic_cast<asts::ClassPrototypeAst*>(target_scope->ast) != nullptr
-                                    ? target_scope->sup_scopes() | genex::views::transform([](auto x) -> const scopes::Scope* { return x; }) | genex::views::to<std::vector>()
-                                    : std::vector{target_scope};
+            ? target_scope->sup_scopes() | genex::views::transform([](auto x) -> const scopes::Scope* { return x; }) | genex::views::to<std::vector>()
+            : std::vector{target_scope};
 
         // From the super scopes, check each one for "sup $Func ext FunXXX { ... }" super-impositions.
         // Todo: use the "is_valid_ext_scope"?
@@ -957,7 +957,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
 
         auto other_args = formatted_args
             | genex::views::filter([&](auto const &p) { return *p.first != *arg_name; })
-            | genex::views::transform([](auto const &p) {return std::make_pair(std::dynamic_pointer_cast<asts::TypeIdentifierAst>(p.first), p.second); })
+            | genex::views::transform([](auto const &p) { return std::make_pair(std::dynamic_pointer_cast<asts::TypeIdentifierAst>(p.first), p.second); })
             | genex::views::to<std::vector>();
 
         auto other_args_group = asts::GenericArgumentGroupAst::from_map(std::map(other_args.begin(), other_args.end()));

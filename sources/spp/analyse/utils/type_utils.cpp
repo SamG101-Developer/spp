@@ -698,8 +698,8 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     self_type->stage_7_analyse_semantics(&tm, meta);
     auto old_self_sym = new_sup_scope_ptr->get_type_symbol(self_type);
     new_sup_scope_ptr->add_type_symbol(std::make_unique<scopes::AliasSymbol>(
-        std::make_unique<asts::TypeIdentifierAst>(0, "Self", nullptr), nullptr, &new_cls_scope, new_sup_scope_ptr,
-        old_self_sym));
+        std::make_unique<asts::TypeIdentifierAst>(0, "Self", nullptr),
+        nullptr, &new_cls_scope, new_sup_scope_ptr, old_self_sym));
 
     // Run generic substitution on the aliases in the new scope.
     for (auto &&scoped_sym : new_sup_scope_ptr->all_type_symbols(true) | genex::views::to<std::vector>()) {
