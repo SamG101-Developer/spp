@@ -218,7 +218,7 @@ auto spp::analyse::scopes::Scope::add_var_symbol(
     std::shared_ptr<VariableSymbol> const &sym)
     -> void {
     // Add a type symbol to the corresponding symbol table.
-    table.var_tbl.add(sym->name, std::move(sym));
+    table.var_tbl.add(sym->name, sym);
 }
 
 
