@@ -61,6 +61,7 @@ auto spp::asts::IterPatternVariantVariableAst::stage_7_analyse_semantics(
     -> void {
     // Create a dummy type with the same type as the variable's type, to initialize it.
     auto dummy_type = meta->case_condition->infer_type(sm, meta)->type_parts().back()->generic_arg_group->type_at("Yield")->val;
+    const auto conv = dummy_type->get_convention();
     auto dummy = std::make_unique<ObjectInitializerAst>(std::move(dummy_type), nullptr);
 
     // Create a new AST node that initializes the variable with the dummy value.
@@ -68,8 +69,7 @@ auto spp::asts::IterPatternVariantVariableAst::stage_7_analyse_semantics(
     m_mapped_let->stage_7_analyse_semantics(sm, meta);
 
     // Update borrow flags if the "Yield" type has a borrow convention attached to it.
-    const auto conv = dummy_type->get_convention();
-    for (auto &&name : var->extract_names()) {
+    for (auto &&name : m_mapped_let->var->extract_names()) {
         // Apply the borrow to the symbol.
         const auto sym = sm->current_scope->get_var_symbol(name);
         sym->memory_info->ast_borrowed = conv;

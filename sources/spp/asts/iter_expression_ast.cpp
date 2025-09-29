@@ -130,28 +130,28 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
     const auto cond_type = cond->infer_type(sm, meta);
 
     // IterPatternNoValue -> must be a GenOpt condition.
-    if (genex::algorithms::any_of(branches, [](auto &&x) { return ast_cast<IterPatternVariantNoValueAst>(x.get()) == nullptr; })) {
+    {
         const auto pat = branches
             | genex::views::ptr
             | genex::views::cast_dynamic<IterPatternVariantNoValueAst*>()
             | genex::views::filter([](auto &&x) { return x != nullptr; })
             | genex::views::to<std::vector>();
 
-        if (not analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN_OPT, *cond_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
+        if (not pat.empty() and not analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN_OPT, *cond_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternIncompatibleError>().with_args(
                 *cond, *cond_type, *pat[0], *generate::common_types_precompiled::GEN_OPT).with_scopes({sm->current_scope}).raise();
         }
     }
 
     // IterPatternException -> Must be a GenRes condition.
-    if (genex::algorithms::any_of(branches, [](auto &&x) { return ast_cast<IterPatternVariantExceptionAst>(x.get()) == nullptr; })) {
+    {
         const auto pat = branches
             | genex::views::ptr
             | genex::views::cast_dynamic<IterPatternVariantExceptionAst*>()
             | genex::views::filter([](auto &&x) { return x != nullptr; })
             | genex::views::to<std::vector>();
 
-        if (not analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN_RES, *cond_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
+        if (not pat.empty() and not analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN_RES, *cond_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternIncompatibleError>().with_args(
                 *cond, *cond_type, *pat[0], *generate::common_types_precompiled::GEN_RES).with_scopes({sm->current_scope}).raise();
         }
