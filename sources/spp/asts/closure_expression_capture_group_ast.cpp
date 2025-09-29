@@ -1,19 +1,19 @@
+#include <spp/pch.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/convention_ref_ast.hpp>
 #include <spp/asts/closure_expression_capture_ast.hpp>
 #include <spp/asts/closure_expression_capture_group_ast.hpp>
+#include <spp/asts/convention_mut_ast.hpp>
+#include <spp/asts/convention_ref_ast.hpp>
 #include <spp/asts/expression_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
 #include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
-#include <spp/asts/object_initializer_ast.hpp>
+#include <spp/asts/local_variable_single_identifier_ast.hpp>
 #include <spp/asts/object_initializer_argument_group_ast.hpp>
+#include <spp/asts/object_initializer_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
-#include <spp/pch.hpp>
 
 #include <genex/views/filter.hpp>
 #include <genex/views/for_each.hpp>
@@ -25,23 +25,34 @@ spp::asts::ClosureExpressionCaptureGroupAst::ClosureExpressionCaptureGroupAst(
     decltype(captures) &&captures) :
     tok_caps(std::move(tok_caps)),
     captures(std::move(captures)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_caps, lex::SppTokenType::KW_CAPS, "caps");
 }
 
 
 spp::asts::ClosureExpressionCaptureGroupAst::~ClosureExpressionCaptureGroupAst() = default;
 
 
-auto spp::asts::ClosureExpressionCaptureGroupAst::pos_start() const -> std::size_t {
+auto spp::asts::ClosureExpressionCaptureGroupAst::new_empty()
+    -> std::unique_ptr<ClosureExpressionCaptureGroupAst> {
+    return std::make_unique<ClosureExpressionCaptureGroupAst>(
+        nullptr, decltype(captures)());
+}
+
+
+auto spp::asts::ClosureExpressionCaptureGroupAst::pos_start() const
+    -> std::size_t {
     return tok_caps->pos_start();
 }
 
 
-auto spp::asts::ClosureExpressionCaptureGroupAst::pos_end() const -> std::size_t {
+auto spp::asts::ClosureExpressionCaptureGroupAst::pos_end() const
+    -> std::size_t {
     return captures.back()->pos_end();
 }
 
 
-auto spp::asts::ClosureExpressionCaptureGroupAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::ClosureExpressionCaptureGroupAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<ClosureExpressionCaptureGroupAst>(
         ast_clone(tok_caps),
         ast_clone_vec(captures));
@@ -56,7 +67,9 @@ spp::asts::ClosureExpressionCaptureGroupAst::operator std::string() const {
 }
 
 
-auto spp::asts::ClosureExpressionCaptureGroupAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::ClosureExpressionCaptureGroupAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_caps);
     SPP_PRINT_EXTEND(captures);

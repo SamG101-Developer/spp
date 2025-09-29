@@ -27,6 +27,8 @@ struct spp::asts::ClosureExpressionCaptureGroupAst final : virtual Ast {
 
     ~ClosureExpressionCaptureGroupAst() override;
 
+    static auto new_empty() -> std::unique_ptr<ClosureExpressionCaptureGroupAst>;
+
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;

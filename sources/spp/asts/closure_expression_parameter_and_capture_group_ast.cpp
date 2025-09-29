@@ -1,3 +1,4 @@
+#include <spp/pch.hpp>
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/closure_expression_capture_ast.hpp>
@@ -11,7 +12,6 @@
 #include <spp/asts/function_parameter_group_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
-#include <spp/pch.hpp>
 
 #include <genex/views/cast.hpp>
 #include <genex/views/move.hpp>
@@ -28,6 +28,7 @@ spp::asts::ClosureExpressionParameterAndCaptureGroupAst::ClosureExpressionParame
     param_group(std::move(param_group)),
     capture_group(std::move(capture_group)),
     tok_r(std::move(tok_r)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->capture_group)
 }
 
 
