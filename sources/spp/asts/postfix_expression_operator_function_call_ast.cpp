@@ -82,10 +82,16 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::pos_end() const -> std
 
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::clone() const -> std::unique_ptr<Ast> {
-    return std::make_unique<PostfixExpressionOperatorFunctionCallAst>(
+    auto ast = std::make_unique<PostfixExpressionOperatorFunctionCallAst>(
         ast_clone(generic_arg_group),
         ast_clone(arg_group),
         ast_clone(fold));
+    ast->m_overload_info = m_overload_info;
+    ast->m_is_async = m_is_async;
+    ast->m_folded_args = m_folded_args;
+    ast->m_closure_dummy_arg = ast_clone(m_closure_dummy_arg);
+    ast->m_is_coro_and_auto_resume = m_is_coro_and_auto_resume;
+    return ast;
 }
 
 
@@ -362,7 +368,6 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             // Add the overload to the pass list.
             pass_overloads.emplace_back(fn_scope, fn_proto, std::move(generic_args_raw));
         }
-
 
         catch (const analyse::errors::SppFunctionCallAbstractFunctionError &e) {
             // If the overload is abstract, we cannot use it.

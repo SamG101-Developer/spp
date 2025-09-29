@@ -44,10 +44,12 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::pos_end() const -> std::
 
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::clone() const -> std::unique_ptr<Ast> {
-    return std::make_unique<PostfixExpressionOperatorKeywordResAst>(
+    auto ast = std::make_unique<PostfixExpressionOperatorKeywordResAst>(
         ast_clone(tok_dot),
         ast_clone(tok_res),
         ast_clone(arg_group));
+    ast->m_mapped_func = m_mapped_func;
+    return ast;
 }
 
 
