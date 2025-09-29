@@ -444,7 +444,7 @@ auto spp::analyse::scopes::Scope::get_var_symbol_outermost(
             return false;
         }
 
-        auto postfix_op = asts::ast_cast<OpType>(ast);
+        auto postfix_op = asts::ast_cast<OpType>(postfix_expr->op.get());
         return postfix_op != nullptr;
     };
 
