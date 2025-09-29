@@ -52,7 +52,8 @@ auto spp::asts::AssignmentStatementAst::clone() const -> std::unique_ptr<Ast> {
 spp::asts::AssignmentStatementAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_EXTEND(lhs);
-    SPP_STRING_APPEND(tok_assign);
+    raw_string.append(" ");
+    SPP_STRING_APPEND(tok_assign).append(" ");
     SPP_STRING_EXTEND(rhs);
     SPP_STRING_END;
 }
@@ -61,7 +62,8 @@ spp::asts::AssignmentStatementAst::operator std::string() const {
 auto spp::asts::AssignmentStatementAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_EXTEND(lhs);
-    SPP_PRINT_APPEND(tok_assign);
+    formatted_string.append(" ");
+    SPP_PRINT_APPEND(tok_assign).append(" ");
     SPP_PRINT_EXTEND(rhs);
     SPP_PRINT_END;
 }
