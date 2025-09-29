@@ -31,10 +31,19 @@ private:
 public:
     IndividualSymbolTable();
 
+    /**
+     * Light copy
+     * @param that
+     */
     IndividualSymbolTable(IndividualSymbolTable const &that);
 
     ~IndividualSymbolTable();
 
+    /**
+     * Deep copy
+     * @param that
+     * @return
+     */
     auto operator=(IndividualSymbolTable const &that) -> IndividualSymbolTable&;
 
     auto add(std::shared_ptr<I> const &sym_name, std::shared_ptr<S> const &sym) -> void;
@@ -53,10 +62,19 @@ class spp::analyse::scopes::SymbolTable {
 public:
     SymbolTable();
 
+    /**
+     * Light copy
+     * @param that
+     */
     SymbolTable(SymbolTable const &that);
 
     ~SymbolTable();
 
+    /**
+     * Deep copy
+     * @param that
+     * @return
+     */
     auto operator=(SymbolTable const &that) -> SymbolTable&;
 
     IndividualSymbolTable<asts::IdentifierAst, NamespaceSymbol> ns_tbl;

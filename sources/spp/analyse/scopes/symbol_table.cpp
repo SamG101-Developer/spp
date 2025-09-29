@@ -1,10 +1,10 @@
 #include <spp/analyse/scopes/symbol_table.hpp>
+#include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/asts/convention_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_argument_type_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
 
 
 template <typename I, typename S>
@@ -29,9 +29,24 @@ template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::operator=(
     IndividualSymbolTable const &that)
     -> IndividualSymbolTable& {
-    // Assignment operator (copy all symbols across).
-    for (auto const &[k, v] : that.m_table) {
-        m_table.insert({k, std::make_shared<S>(*v)});
+
+    // For the type table, account for alias symbols with casting.
+    if constexpr (std::same_as<S, TypeSymbol>) {
+        for (auto const &[k, v] : that.m_table) {
+            if (const auto alias = dynamic_cast<AliasSymbol*>(v.get()); alias != nullptr) {
+                m_table.insert({k, std::make_shared<AliasSymbol>(*alias)});
+            }
+            else {
+                m_table.insert({k, std::make_shared<TypeSymbol>(*v)});
+            }
+        }
+    }
+
+    // Otherwise, just copy all symbols across.
+    else {
+        for (auto const &[k, v] : that.m_table) {
+            m_table.insert({k, std::make_shared<S>(*v)});
+        }
     }
     return *this;
 }
@@ -45,7 +60,7 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::add(
     // Add a symbol to the table.
     if (has(asts::ast_clone(sym_name))) {
         for (auto it = m_table.begin(); it != m_table.end(); ++it) {
-            if (*(it->first) == *sym_name) {
+            if (*it->first == *sym_name) {
                 m_table.erase(it);
                 break;
             }
@@ -103,10 +118,7 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::all() const
 }
 
 
-spp::analyse::scopes::SymbolTable::SymbolTable() :
-    ns_tbl(),
-    type_tbl(),
-    var_tbl() {
+spp::analyse::scopes::SymbolTable::SymbolTable() {
 }
 
 
