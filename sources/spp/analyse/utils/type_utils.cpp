@@ -702,18 +702,23 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
         old_self_sym));
 
     // Run generic substitution on the aliases in the new scope.
-    for (auto &&scoped_sym : new_sup_scope_ptr->all_type_symbols() | genex::views::to<std::vector>()) {
-        if (auto scoped_alias_sym = std::dynamic_pointer_cast<scopes::AliasSymbol>(scoped_sym); scoped_alias_sym != nullptr) {
-            auto old_type_sub = scoped_alias_sym->old_sym->fq_name();
-            scoped_alias_sym->old_sym = old_sup_scope.get_type_symbol(old_type_sub) ? old_sup_scope.get_type_symbol(old_type_sub) : scoped_alias_sym->old_sym;
-            if (genex::algorithms::contains(old_sup_scope.children | genex::views::ptr | genex::views::to<std::vector>(), scoped_alias_sym->scope)) {
-                scoped_alias_sym->scope = new_sup_scope_ptr->children[genex::algorithms::position(old_sup_scope.children | genex::views::ptr | genex::views::to<std::vector>(), [&](auto &&x) { return x == scoped_alias_sym->scope; }) as USize].get();
+    for (auto &&scoped_sym : new_sup_scope_ptr->all_type_symbols(true) | genex::views::to<std::vector>()) {
+        if (auto scoped_alias_sym = std::dynamic_pointer_cast<scopes::AliasSymbol>(scoped_sym); scoped_alias_sym != nullptr and not scoped_sym->is_generic) {
+            auto old_type_sub = scoped_alias_sym->old_sym->fq_name()->substitute_generics(generic_args.args | genex::views::ptr | genex::views::to<std::vector>());
+
+            auto restore = scoped_alias_sym->old_sym;
+            scoped_alias_sym->old_sym = old_sup_scope.get_type_symbol(old_type_sub);
+            scoped_alias_sym->old_sym = scoped_alias_sym->old_sym ? scoped_alias_sym->old_sym : restore;
+
+            auto old_sup_scope_children = old_sup_scope.children | genex::views::ptr | genex::views::to<std::vector>();
+            if (genex::algorithms::contains(old_sup_scope_children, scoped_alias_sym->scope)) {
+                scoped_alias_sym->scope = new_sup_scope_ptr->children[genex::algorithms::position(old_sup_scope_children, [&](auto &&x) { return x == scoped_alias_sym->scope; }) as USize].get();
             }
         }
     }
 
     // Run generic substitution on the constants in the new scope.
-    for (auto const &scoped_sym : new_sup_scope_ptr->all_var_symbols()) {
+    for (auto const &scoped_sym : new_sup_scope_ptr->all_var_symbols(true)) {
         auto old_type_sub = scoped_sym->type->substitute_generics(generic_args.args | genex::views::ptr | genex::views::to<std::vector>());
         scoped_sym->type = std::move(old_type_sub);
     }
