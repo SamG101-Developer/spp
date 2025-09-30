@@ -126,7 +126,7 @@ auto spp::asts::ClosureExpressionAst::infer_type(
     mixins::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Create the type as a nullptr, so it can be analysed later.
-    std::unique_ptr<TypeAst> ty = nullptr;
+    std::shared_ptr<TypeAst> ty = nullptr;
 
     // If there are no captures, return a FunRef type with the parameters and return type.
     if (pc_group->capture_group->captures.empty()) {

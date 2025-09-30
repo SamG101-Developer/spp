@@ -10,7 +10,7 @@ spp::asts::TypeArrayShorthandAst::TypeArrayShorthandAst(
     decltype(element_type) &&element_type,
     decltype(tok_semicolon) &&tok_semicolon,
     decltype(size) &&size,
-    decltype(tok_r) &&tok_r):
+    decltype(tok_r) &&tok_r) :
     tok_l(std::move(tok_l)),
     element_type(std::move(element_type)),
     tok_semicolon(std::move(tok_semicolon)),
@@ -65,5 +65,6 @@ auto spp::asts::TypeArrayShorthandAst::print(meta::AstPrinter &printer) const ->
 
 
 auto spp::asts::TypeArrayShorthandAst::convert() -> std::unique_ptr<TypeAst> {
-    return generate::common_types::array_type(pos_start(), std::move(element_type), std::move(size));
+    const auto type = generate::common_types::array_type(pos_start(), std::move(element_type), std::move(size));
+    return ast_clone(type);
 }

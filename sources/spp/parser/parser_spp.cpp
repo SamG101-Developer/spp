@@ -1760,7 +1760,7 @@ auto spp::parse::ParserSpp::parse_type_parenthesised_expression() -> std::unique
 
 auto spp::parse::ParserSpp::parse_type_never() -> std::unique_ptr<asts::TypeAst> {
     PARSE_ONCE(p1, parse_token_exclamation_mark);
-    return asts::generate::common_types::never_type(p1->pos_start());
+    return asts::ast_clone(asts::generate::common_types::never_type(p1->pos_start()));
 }
 
 

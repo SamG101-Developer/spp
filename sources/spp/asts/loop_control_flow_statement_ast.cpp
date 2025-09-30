@@ -84,7 +84,7 @@ auto spp::asts::LoopControlFlowStatementAst::stage_7_analyse_semantics(
 
     // Save and compare the loop's "exiting" type against other nested loop's exit statement types.
     if (not has_skip) {
-        auto expr_type = std::shared_ptr(generate::common_types::void_type(pos_start()));
+        auto expr_type = generate::common_types::void_type(pos_start());
         if (expr != nullptr) {
             expr->stage_7_analyse_semantics(sm, meta);
             expr_type = expr->infer_type(sm, meta);

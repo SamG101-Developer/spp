@@ -61,10 +61,11 @@ auto spp::asts::TypeBinaryExpressionAst::convert() -> std::unique_ptr<TypeAst> {
 
     if (tok_op->token_type == lex::SppTokenType::KW_OR) {
         auto inner_types = std::vector<std::shared_ptr<TypeAst>>(2);
-        auto pos = pos_start();
+        const auto pos = pos_start();
         inner_types[0] = std::move(lhs);
         inner_types[1] = std::move(rhs);
-        return generate::common_types::variant_type(pos, std::move(inner_types));
+        auto type = generate::common_types::variant_type(pos, std::move(inner_types));
+        return ast_clone(type);
     }
 
     // todo: unsupported feature error for intersection ("and") types.

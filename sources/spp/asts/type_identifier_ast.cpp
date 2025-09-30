@@ -421,7 +421,7 @@ auto spp::asts::TypeIdentifierAst::infer_type(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
-    // Fully qualify name from the scope.
+    // Fully qualify this type name from the scope.
     const auto type_scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
     const auto type_sym = type_scope->get_type_symbol(shared_from_this());
     return type_sym->fq_name();
