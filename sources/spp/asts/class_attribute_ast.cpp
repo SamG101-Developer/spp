@@ -60,7 +60,7 @@ spp::asts::ClassAttributeAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_EXTEND(annotations);
     SPP_STRING_APPEND(name);
-    SPP_STRING_APPEND(tok_colon);
+    SPP_STRING_APPEND(tok_colon).append(" ");
     SPP_STRING_APPEND(type);
     SPP_STRING_APPEND(default_val);
     SPP_STRING_END;
@@ -71,7 +71,7 @@ auto spp::asts::ClassAttributeAst::print(meta::AstPrinter &printer) const -> std
     SPP_PRINT_START;
     SPP_PRINT_EXTEND(annotations);
     SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(tok_colon);
+    SPP_PRINT_APPEND(tok_colon).append(" ");
     SPP_PRINT_APPEND(type);
     SPP_PRINT_APPEND(default_val);
     SPP_PRINT_END;
@@ -111,6 +111,8 @@ auto spp::asts::ClassAttributeAst::stage_5_load_super_scopes(
     mixins::CompilerMetaData *meta) -> void {
     // Check the type is valid before scopes are attached.
     type->stage_7_analyse_semantics(sm, meta);
+    type = sm->current_scope->get_type_symbol(type)->fq_name();
+    sm->current_scope->get_var_symbol(name)->type = type;
 }
 
 
@@ -124,10 +126,12 @@ auto spp::asts::ClassAttributeAst::stage_7_analyse_semantics(
             *type, *conv, "attribute type").with_scopes({sm->current_scope}).raise();
     }
 
-    // Todo: I hate this, yet it works.
-    auto meta_depth = meta->depth();
+    // Todo: I hate this, yet it works. Will fix later.
+    const auto meta_depth = meta->depth();
     try {
         type->stage_7_analyse_semantics(sm, meta);
+        type = sm->current_scope->get_type_symbol(type)->fq_name();
+        sm->current_scope->get_var_symbol(name)->type = type;
     }
     catch (analyse::errors::SppIdentifierUnknownError const &) {
         while (meta->depth() > meta_depth) {

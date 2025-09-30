@@ -1,3 +1,4 @@
+#include <spp/pch.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
@@ -16,7 +17,6 @@
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
-#include <spp/pch.hpp>
 
 #include <genex/views/for_each.hpp>
 
@@ -53,7 +53,8 @@ auto spp::asts::ClassPrototypeAst::pos_end() const -> std::size_t {
 }
 
 
-auto spp::asts::ClassPrototypeAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::ClassPrototypeAst::clone() const
+    -> std::unique_ptr<Ast> {
     auto ast = std::make_unique<ClassPrototypeAst>(
         ast_clone_vec(annotations),
         ast_clone(tok_cls),
@@ -81,7 +82,9 @@ spp::asts::ClassPrototypeAst::operator std::string() const {
 }
 
 
-auto spp::asts::ClassPrototypeAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::ClassPrototypeAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_EXTEND(annotations);
     SPP_PRINT_APPEND(tok_cls).append(" ");
@@ -213,7 +216,6 @@ auto spp::asts::ClassPrototypeAst::stage_7_analyse_semantics(
     -> void {
     // Analyse semantics for the class body.
     sm->move_to_next_scope();
-    annotations | genex::views::for_each([sm, meta](auto &&x) { x->stage_7_analyse_semantics(sm, meta); });
     generic_param_group->stage_7_analyse_semantics(sm, meta);
     impl->stage_7_analyse_semantics(sm, meta);
     sm->move_out_of_current_scope();
