@@ -307,7 +307,8 @@ auto spp::analyse::utils::type_utils::is_type_generator(
     return
         symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::GEN, scope, scope) or
         symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::GEN_OPT, scope, scope) or
-        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::GEN_RES, scope, scope);
+        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::GEN_RES, scope, scope) or
+        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::GEN_ONCE, scope, scope);
 }
 
 
@@ -467,7 +468,9 @@ auto spp::analyse::utils::type_utils::get_try_type(
     }
 
     // Discover the supertypes and add the current type to it.
-    auto sup_types = genex::views::concat(std::vector{type.shared_from_this()}, type_sym->scope->sup_types());
+    auto sup_types = std::vector{type.shared_from_this()}
+        | genex::views::concat(type_sym->scope->sup_types())
+        | genex::views::to<std::vector>();
 
     // Search through the supertypes for a direct Try type.
     const auto try_type_candidates = sup_types
