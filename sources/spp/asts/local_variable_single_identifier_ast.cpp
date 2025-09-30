@@ -23,17 +23,20 @@ spp::asts::LocalVariableSingleIdentifierAst::LocalVariableSingleIdentifierAst(
 spp::asts::LocalVariableSingleIdentifierAst::~LocalVariableSingleIdentifierAst() = default;
 
 
-auto spp::asts::LocalVariableSingleIdentifierAst::pos_start() const -> std::size_t {
+auto spp::asts::LocalVariableSingleIdentifierAst::pos_start() const
+    -> std::size_t {
     return tok_mut ? tok_mut->pos_start() : name->pos_start();
 }
 
 
-auto spp::asts::LocalVariableSingleIdentifierAst::pos_end() const -> std::size_t {
+auto spp::asts::LocalVariableSingleIdentifierAst::pos_end() const
+    -> std::size_t {
     return alias->pos_end();
 }
 
 
-auto spp::asts::LocalVariableSingleIdentifierAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::LocalVariableSingleIdentifierAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<LocalVariableSingleIdentifierAst>(
         ast_clone(tok_mut),
         ast_clone(name),
@@ -50,7 +53,9 @@ spp::asts::LocalVariableSingleIdentifierAst::operator std::string() const {
 }
 
 
-auto spp::asts::LocalVariableSingleIdentifierAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::LocalVariableSingleIdentifierAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_mut);
     SPP_PRINT_APPEND(name);

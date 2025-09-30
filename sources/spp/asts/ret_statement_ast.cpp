@@ -23,17 +23,20 @@ spp::asts::RetStatementAst::RetStatementAst(
 spp::asts::RetStatementAst::~RetStatementAst() = default;
 
 
-auto spp::asts::RetStatementAst::pos_start() const -> std::size_t {
+auto spp::asts::RetStatementAst::pos_start() const
+    -> std::size_t {
     return tok_ret->pos_start();
 }
 
 
-auto spp::asts::RetStatementAst::pos_end() const -> std::size_t {
+auto spp::asts::RetStatementAst::pos_end() const
+    -> std::size_t {
     return expr ? expr->pos_end() : tok_ret->pos_end();
 }
 
 
-auto spp::asts::RetStatementAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::RetStatementAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<RetStatementAst>(
         ast_clone(tok_ret),
         ast_clone(expr));
@@ -42,15 +45,17 @@ auto spp::asts::RetStatementAst::clone() const -> std::unique_ptr<Ast> {
 
 spp::asts::RetStatementAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_ret);
+    SPP_STRING_APPEND(tok_ret).append(" ");
     SPP_STRING_APPEND(expr);
     SPP_STRING_END;
 }
 
 
-auto spp::asts::RetStatementAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::RetStatementAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_ret);
+    SPP_PRINT_APPEND(tok_ret).append(" ");
     SPP_PRINT_APPEND(expr);
     SPP_PRINT_END;
 }

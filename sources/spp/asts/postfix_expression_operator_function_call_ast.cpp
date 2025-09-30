@@ -274,7 +274,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                     external_generics, sm, meta);
 
                 auto tm = ScopeManager(sm->global_scope, new_fn_scope);
-                new_fn_proto->generic_param_group->params.clear();
+                new_fn_proto->generic_param_group->params = decltype(GenericParameterGroupAst::params)();
 
                 // Substitute and analyse the function parameters and return type.
                 for (auto const &p : new_fn_proto->param_group->params) {

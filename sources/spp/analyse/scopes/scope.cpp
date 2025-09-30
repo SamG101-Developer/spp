@@ -154,13 +154,10 @@ auto spp::analyse::scopes::Scope::get_generics() const
     -> std::vector<std::unique_ptr<asts::GenericArgumentAst>> {
     // Create the symbols list.
     auto syms = std::vector<std::unique_ptr<asts::GenericArgumentAst>>();
-
-    const auto scopes = ancestors()
-        | genex::views::take_until([](auto *scope) { return std::holds_alternative<std::shared_ptr<asts::IdentifierAst>>(scope->name); })
-        | genex::views::to<std::vector>();
+    const auto scopes = ancestors();
 
     // Check each ancestor scope, accumulating generic symbols.
-    for (auto &&scope : scopes) {
+    for (auto const *scope : scopes) {
         // Type symbols must be generic and have a "scope" ie the generic points to a concrete type.
         scope->all_type_symbols(true)
             | genex::views::filter([](auto const &sym) { return sym->is_generic and sym->scope != nullptr; })
