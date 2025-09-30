@@ -1,11 +1,12 @@
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/symbols.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
+#include <spp/analyse/scopes/symbols.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/asts/generic_argument_comp_keyword_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_parameter_comp_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 
@@ -36,6 +37,9 @@ auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
     }
     else if (const auto comptime_arg = ast_cast<GenericArgumentCompAst>(c)) {
         value = ast_clone(comptime_arg->val);
+    }
+    if (auto const *value_as_type = asts::ast_cast<TypeIdentifierAst>(value.get()); value_as_type != nullptr) {
+        value = IdentifierAst::from_type(*std::shared_ptr(ast_clone(value_as_type)));
     }
 
     // Create the GenericArgumentCompKeywordAst with the name and value.
