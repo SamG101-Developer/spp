@@ -600,7 +600,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     new_cls_scope->ty_sym = new_cls_symbol;
     new_cls_scope->table = old_cls_scope->table;
     new_cls_scope->non_generic_scope = old_cls_scope;
-    auto new_cls_scope_ptr = new_cls_scope.get();
+    const auto new_cls_scope_ptr = new_cls_scope.get();
     if (not is_alias) {
         old_cls_scope->parent->children.emplace_back(std::move(new_cls_scope));
     }
@@ -625,14 +625,20 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
         | genex::views::ptr
         | genex::views::to<std::vector>();
 
+    auto tm = scopes::ScopeManager(sm->global_scope, new_cls_scope_ptr);
     for (auto const &scoped_sym : new_cls_scope_ptr->all_var_symbols(true)) {
         scoped_sym->type = scoped_sym->type->substitute_generics(substitution_generics);
+        if (meta->current_stage > 5) {
+            scoped_sym->type->stage_7_analyse_semantics(&tm, meta);
+        }
     }
 
-    for (const auto *attr : asts::ast_cast<asts::ClassPrototypeAst>(old_cls_scope->ast)->impl->members | genex::views::ptr | genex::views::cast_dynamic<asts::ClassAttributeAst*>() | genex::views::to<std::vector>()) {
+    for (const auto *attr : asts::ast_body(old_cls_scope->ast) | genex::views::cast_dynamic<asts::ClassAttributeAst*>() | genex::views::to<std::vector>()) {
         const auto new_attr = ast_clone(attr);
         new_attr->type = new_attr->type->substitute_generics(substitution_generics);
-        new_attr->stage_7_analyse_semantics(sm, meta);
+        if (meta->current_stage > 5) {
+            new_attr->stage_7_analyse_semantics(&tm, meta);
+        }
     }
 
     // Return the new class scope.
