@@ -459,7 +459,7 @@ auto spp::analyse::scopes::Scope::get_var_symbol_outermost(
     if (is_valid_postfix_expression_runtime(&expr)) {
         // Keep moving into the left-hand-side until there is no left-hand-side: "a.b.c" becomes "a".
         while (is_valid_postfix_expression_runtime(adjusted_name)) {
-            adjusted_name = asts::ast_cast<asts::PostfixExpressionAst>(&expr)->lhs.get();
+            adjusted_name = asts::ast_cast<asts::PostfixExpressionAst>(adjusted_name)->lhs.get();
         }
 
         // Get the symbol (will be in this scope), and return it with the scope.
