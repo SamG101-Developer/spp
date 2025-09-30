@@ -687,6 +687,9 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     new_sup_scope->children = old_sup_scope.children
         | genex::views::transform([](auto &&scope) { return std::make_unique<scopes::Scope>(*scope); })
         | genex::views::to<std::vector>();
+    for (auto const &c : new_sup_scope->children) {
+        c->parent = new_sup_scope.get();
+    }
     auto new_sup_scope_ptr = new_sup_scope.get();
     old_sup_scope.parent->children.emplace_back(std::move(new_sup_scope));
     auto tm = scopes::ScopeManager(sm->global_scope, new_sup_scope_ptr);
