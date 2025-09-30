@@ -1,19 +1,19 @@
+#include <spp/pch.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/function_parameter_self_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
-#include <spp/asts/generic_parameter_comp_required_ast.hpp>
 #include <spp/asts/generic_parameter_comp_optional_ast.hpp>
+#include <spp/asts/generic_parameter_comp_required_ast.hpp>
 #include <spp/asts/generic_parameter_comp_variadic_ast.hpp>
-#include <spp/asts/generic_parameter_type_required_ast.hpp>
-#include <spp/asts/generic_parameter_type_optional_ast.hpp>
-#include <spp/asts/generic_parameter_type_variadic_ast.hpp>
-#include <spp/asts/generic_parameter_type_inline_constraints_ast.hpp>
 #include <spp/asts/generic_parameter_group_ast.hpp>
+#include <spp/asts/generic_parameter_type_inline_constraints_ast.hpp>
+#include <spp/asts/generic_parameter_type_optional_ast.hpp>
+#include <spp/asts/generic_parameter_type_required_ast.hpp>
+#include <spp/asts/generic_parameter_type_variadic_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
-#include <spp/pch.hpp>
 
 #include <genex/views/cast.hpp>
 #include <genex/views/concat.hpp>
@@ -162,17 +162,20 @@ auto spp::asts::GenericParameterGroupAst::opt_to_req() const
 }
 
 
-auto spp::asts::GenericParameterGroupAst::pos_start() const -> std::size_t {
+auto spp::asts::GenericParameterGroupAst::pos_start() const
+    -> std::size_t {
     return tok_l->pos_start();
 }
 
 
-auto spp::asts::GenericParameterGroupAst::pos_end() const -> std::size_t {
+auto spp::asts::GenericParameterGroupAst::pos_end() const
+    -> std::size_t {
     return tok_r->pos_end();
 }
 
 
-auto spp::asts::GenericParameterGroupAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::GenericParameterGroupAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<GenericParameterGroupAst>(
         ast_clone(tok_l),
         ast_clone_vec(params),
@@ -191,7 +194,9 @@ spp::asts::GenericParameterGroupAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenericParameterGroupAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::GenericParameterGroupAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     if (not params.empty()) {
         SPP_PRINT_APPEND(tok_l);

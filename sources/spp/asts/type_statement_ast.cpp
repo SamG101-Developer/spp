@@ -1,3 +1,4 @@
+#include <spp/pch.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
@@ -7,17 +8,16 @@
 #include <spp/asts/class_member_ast.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
 #include <spp/asts/convention_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
+#include <spp/asts/generic_parameter_group_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/sup_implementation_ast.hpp>
 #include <spp/asts/sup_prototype_extension_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/type_statement_ast.hpp>
-#include <spp/asts/generic_parameter_group_ast.hpp>
-#include <spp/pch.hpp>
 
 #include <genex/views/for_each.hpp>
 
@@ -29,6 +29,10 @@ spp::asts::TypeStatementAst::TypeStatementAst(
     decltype(generic_param_group) &&generic_param_group,
     decltype(tok_assign) &&tok_assign,
     decltype(old_type) old_type) :
+    m_generated(false),
+    m_alias_sym(nullptr),
+    m_generated_cls_ast(nullptr),
+    m_generated_ext_ast(nullptr),
     annotations(std::move(annotations)),
     tok_type(std::move(tok_type)),
     new_type(std::move(new_type)),
@@ -44,17 +48,20 @@ spp::asts::TypeStatementAst::TypeStatementAst(
 spp::asts::TypeStatementAst::~TypeStatementAst() = default;
 
 
-auto spp::asts::TypeStatementAst::pos_start() const -> std::size_t {
+auto spp::asts::TypeStatementAst::pos_start() const
+    -> std::size_t {
     return tok_type->pos_start();
 }
 
 
-auto spp::asts::TypeStatementAst::pos_end() const -> std::size_t {
+auto spp::asts::TypeStatementAst::pos_end() const
+    -> std::size_t {
     return old_type->pos_end();
 }
 
 
-auto spp::asts::TypeStatementAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::TypeStatementAst::clone() const
+    -> std::unique_ptr<Ast> {
     auto ast = std::make_unique<TypeStatementAst>(
         ast_clone_vec(annotations),
         ast_clone(tok_type),
@@ -82,7 +89,9 @@ spp::asts::TypeStatementAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypeStatementAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::TypeStatementAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_EXTEND(annotations);
     SPP_PRINT_APPEND(tok_type).append(" ");

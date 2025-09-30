@@ -22,7 +22,7 @@ struct spp::asts::TypeStatementAst final : StatementAst, mixins::VisibilityEnabl
     friend struct UseStatementAst;
 
 private:
-    bool m_generated = false;
+    bool m_generated;
 
     analyse::scopes::AliasSymbol *m_alias_sym;
 

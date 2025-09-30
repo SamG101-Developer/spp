@@ -65,7 +65,9 @@ spp::asts::UseStatementAst::operator std::string() const {
 }
 
 
-auto spp::asts::UseStatementAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::UseStatementAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_EXTEND(annotations);
     SPP_PRINT_APPEND(tok_use).append(" ");
@@ -112,7 +114,7 @@ auto spp::asts::UseStatementAst::stage_3_gen_top_level_aliases(
 
     // Get the symbol for the old type (as this is a use statement, it won't have generics).
     const auto old_type_sym = sm->current_scope->get_type_symbol(old_type, false, true);
-    auto generic_params = old_type_sym->type->generic_param_group;
+    const auto generic_params = old_type_sym->type->generic_param_group;
 
     // Add the generic parameters to the conversion AST, and add mock generic arguments to the old type.
     m_conversion->generic_param_group = generic_params;

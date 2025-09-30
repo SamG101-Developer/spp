@@ -1,5 +1,6 @@
 #include <print>
 
+#include <spp/macros.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope.hpp>
@@ -9,7 +10,7 @@
 #include <spp/asts/annotation_ast.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
 #include <spp/asts/convention_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
+#include <spp/asts/fold_expression_ast.hpp>
 #include <spp/asts/function_call_argument_keyword_ast.hpp>
 #include <spp/asts/function_call_argument_positional_ast.hpp>
 #include <spp/asts/function_implementation_ast.hpp>
@@ -19,25 +20,25 @@
 #include <spp/asts/function_parameter_self_ast.hpp>
 #include <spp/asts/function_parameter_variadic_ast.hpp>
 #include <spp/asts/function_prototype_ast.hpp>
-#include <spp/asts/fold_expression_ast.hpp>
 #include <spp/asts/generic_argument_ast.hpp>
 #include <spp/asts/generic_argument_comp_keyword_ast.hpp>
 #include <spp/asts/generic_argument_comp_positional_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_argument_type_keyword_ast.hpp>
 #include <spp/asts/generic_argument_type_positional_ast.hpp>
-#include <spp/asts/generic_parameter_group_ast.hpp>
 #include <spp/asts/generic_parameter_comp_ast.hpp>
 #include <spp/asts/generic_parameter_comp_variadic_ast.hpp>
+#include <spp/asts/generic_parameter_group_ast.hpp>
 #include <spp/asts/generic_parameter_type_ast.hpp>
 #include <spp/asts/generic_parameter_type_optional_ast.hpp>
 #include <spp/asts/generic_parameter_type_variadic_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/local_variable_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
+#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
 #include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
 #include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
 #include <spp/asts/sup_prototype_extension_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/tuple_literal_ast.hpp>
@@ -45,7 +46,6 @@
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
 #include <spp/utils/ptr_cmp.hpp>
-#include <spp/macros.hpp>
 
 #include <genex/actions/clear.hpp>
 #include <genex/actions/concat.hpp>
