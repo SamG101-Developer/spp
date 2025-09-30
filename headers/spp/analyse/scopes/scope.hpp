@@ -1,11 +1,11 @@
 #pragma once
+#include <spp/macros.hpp>
+#include <spp/pch.hpp>
+#include <spp/analyse/scopes/scope_block_name.hpp>
 #include <spp/analyse/scopes/symbols.hpp>
 #include <spp/analyse/scopes/symbol_table.hpp>
 #include <spp/asts/_fwd.hpp>
-#include <spp/macros.hpp>
-#include <spp/pch.hpp>
 #include <spp/utils/error_formatter.hpp>
-#include <spp/analyse/scopes/scope_block_name.hpp>
 
 
 /// @cond
@@ -20,6 +20,7 @@ namespace spp::analyse::scopes {
 namespace spp::compiler {
     struct Module;
 }
+
 /// @endcond
 
 

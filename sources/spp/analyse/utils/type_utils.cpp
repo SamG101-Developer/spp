@@ -828,7 +828,7 @@ auto spp::analyse::utils::type_utils::get_namespaced_scope_with_error(
     asts::IdentifierAst const &ns)
     -> scopes::Scope* {
     // If the namespace does not exist, raise an error.
-    const auto ns_scope = sm.get_namespaced_scope({&ns});
+    const auto ns_scope = sm.current_scope->get_ns_symbol(ns.shared_from_this())->scope;
     if (ns_scope == nullptr) {
         const auto alternatives = sm.current_scope->all_var_symbols()
             | genex::views::transform([](auto const &x) { return x->name->val; })

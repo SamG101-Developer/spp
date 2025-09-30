@@ -78,24 +78,6 @@ auto spp::analyse::scopes::ScopeManager::move_to_next_scope()
 }
 
 
-auto spp::analyse::scopes::ScopeManager::get_namespaced_scope(
-    std::vector<asts::IdentifierAst const*> const &names) const
-    -> Scope* {
-    // Find the first scope that matches the first part of the namespace.
-    auto ns_sym = current_scope->get_ns_symbol(names[0]->shared_from_this());
-    if (ns_sym == nullptr) { return nullptr; }
-
-    // Work inwards, getting the nested scopes for the namespace parts.
-    auto ns_scope = ns_sym->scope;
-    for (auto &&ns_part : names | genex::views::drop(1)) {
-        ns_sym = ns_scope->get_ns_symbol(ns_part->shared_from_this());
-        if (ns_sym == nullptr) { return nullptr; }
-        ns_scope = ns_sym->scope;
-    }
-    return ns_scope;
-}
-
-
 auto spp::analyse::scopes::ScopeManager::attach_all_super_scopes(
     asts::mixins::CompilerMetaData *meta)
     -> void {

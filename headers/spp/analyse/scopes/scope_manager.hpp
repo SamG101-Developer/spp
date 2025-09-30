@@ -137,20 +137,6 @@ public:
         -> Scope*;
 
     /**
-     * Take a list of identifiers that each represent consecutive parts of a namespace, and move into the scope that
-     * they represent. For example, given @c std::io::File, the list would contain three identifiers, one for
-     * @c std, one for @c io and one for @c File. The scope manager would then move into the @c std scope, then the @c
-     * io scope, and finally return the @c File scope. This is used to identify scopes that a namespaced type resides
-     * in.
-     * @param names The list of identifiers that represent the namespaced parts.
-     * @return The scope that the namespaced identifiers represent. If any part of the namespace does not exist,
-     * @c nullptr is returned.
-     */
-    SPP_ATTR_NODISCARD auto get_namespaced_scope(
-        std::vector<asts::IdentifierAst const*> const &names) const
-        -> Scope*;
-
-    /**
      * For every type discovered up until this point, attach the defined supertypes to them. At this point, all base
      * classes, and @c sup blocks, will have been injected into the symbol table, but possibly not all generic
      * substitutions of some of these type. This is fine because the @c TypeAst semantic analysis will call individual
