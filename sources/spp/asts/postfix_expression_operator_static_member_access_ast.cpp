@@ -1,16 +1,19 @@
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/scope.hpp>
-#include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
+#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/identifier_ast.hpp>
+#include <spp/asts/postfix_expression_ast.hpp>
+#include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
+#include <spp/analyse/utils/type_utils.hpp>
 #include <spp/utils/strings.hpp>
 
 #include <genex/algorithms/min_element.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/filter.hpp>
+#include <genex/views/reverse.hpp>
 #include <genex/views/to.hpp>
 #include <genex/views/transform.hpp>
 
@@ -124,7 +127,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
         }
 
         // Check the constant exists inside the namespace.
-        if (not lhs_ns_sym->scope->has_var_symbol(name, true)) {
+        if (not lhs_ns_sym->scope->has_var_symbol(name, true) and not lhs_ns_sym->scope->has_ns_symbol(name, true)) {
             const auto alternatives = sm->current_scope->all_var_symbols(false, true)
                 | genex::views::transform([](auto &&x) { return x->name->val; })
                 | genex::views::to<std::vector>();
@@ -142,18 +145,30 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::infer_type(
     mixins::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Get the left-hand-side type's member's type.
-    // Todo: have to use an "ast_clone" rather than "enable_from_shared" atm, unsure why.
     if (const auto lhs_as_type = ast_cast<TypeAst>(meta->postfix_expression_lhs)) {
         const auto lhs_type_sym = sm->current_scope->get_type_symbol(ast_clone(lhs_as_type));
         return lhs_type_sym->scope->get_var_symbol(name, true)->type;
     }
 
-    // Get the left-hand-side namespace's member's type.
+    // Get the left-hand-side namespace's member's type. Todo: remove this; bottom case handles single namespaces.
     if (const auto lhs_as_ident = ast_cast<IdentifierAst>(meta->postfix_expression_lhs)) {
         const auto lhs_ns_sym = sm->current_scope->get_ns_symbol(ast_clone(lhs_as_ident));
         return lhs_ns_sym->scope->get_var_symbol(name, true)->type;
     }
 
-    // Should never happen due to earlier checks.
-    std::unreachable();
+    // Postfix lhs -> get the ns scopes.
+    auto lhs = meta->postfix_expression_lhs;
+    auto namespaces = std::vector<IdentifierAst*>();
+    while (auto const *postfix_lhs = asts::ast_cast<PostfixExpressionAst>(lhs)) {
+        const auto op = ast_cast<PostfixExpressionOperatorStaticMemberAccessAst>(postfix_lhs->op.get());
+        namespaces.emplace_back(ast_cast<IdentifierAst>(op->name.get()));
+        lhs = postfix_lhs->lhs.get();
+    }
+
+    auto scope = sm->current_scope;
+    for (auto const *ns: namespaces | genex::views::reverse) {
+        scope = scope->get_ns_symbol(ast_clone(ns))->scope;
+    }
+    const auto type = scope->get_var_symbol(name, true)->type;
+    return scope->get_type_symbol(type)->fq_name();
 }

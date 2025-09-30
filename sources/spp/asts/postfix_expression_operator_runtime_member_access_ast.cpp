@@ -2,8 +2,8 @@
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
+#include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/utils/strings.hpp>
@@ -165,12 +165,13 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::infer_type(
 
     // Numeric index access (for tuples).
     if (std::isdigit(name->val[0])) {
-        const auto elem_type = analyse::utils::type_utils::get_nth_type_of_indexable_type(std::stoul(name->val), *lhs_type, *sm->current_scope);
+        const auto elem_type = analyse::utils::type_utils::get_nth_type_of_indexable_type(
+            std::stoul(name->val), *lhs_type, *sm->current_scope);
         return elem_type;
     }
 
     // Get the field symbol and return its type.
     const auto lhs_sym = sm->current_scope->get_type_symbol(lhs_type);
-    const auto field_sym = lhs_sym->scope->get_var_symbol(name);
-    return field_sym->type;
+    const auto field_type = lhs_sym->scope->get_var_symbol(name)->type;
+    return lhs_sym->scope->get_type_symbol(field_type)->fq_name();
 }
