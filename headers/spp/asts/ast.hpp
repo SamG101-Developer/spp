@@ -14,6 +14,7 @@
 namespace spp::analyse::scopes {
     class Scope;
 }
+
 /// @endcond
 
 
@@ -131,6 +132,13 @@ protected:
      */
     analyse::scopes::Scope *m_scope = nullptr;
 
+protected:
+    /**
+     * Create a new AST (base class for all derived ASTs). This constructor is protected to prevent direct instantiation
+     * as an AST should always be a specific type of AST, such as a TokenAst, IdentifierAst, etc.
+     */
+    explicit Ast();
+
 public:
     // /**
     //  * Ensure there is no copy constructor for the Ast class. This is to prevent accidental copies of ASTs, which would
@@ -206,11 +214,4 @@ public:
 
     auto stage_1_pre_process(Ast *ctx) -> void override;
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
-
-protected:
-    /**
-     * Create a new AST (base class for all derived ASTs). This constructor is protected to prevent direct instantiation
-     * as an AST should always be a specific type of AST, such as a TokenAst, IdentifierAst, etc.
-     */
-    explicit Ast();
 };

@@ -1,18 +1,18 @@
 #include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/ast.hpp>
 #include <spp/asts/annotation_ast.hpp>
+#include <spp/asts/ast.hpp>
 #include <spp/asts/class_implementation_ast.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
 #include <spp/asts/class_member_ast.hpp>
+#include <spp/asts/class_prototype_ast.hpp>
 #include <spp/asts/function_implementation_ast.hpp>
 #include <spp/asts/function_prototype_ast.hpp>
 #include <spp/asts/module_implementation_ast.hpp>
 #include <spp/asts/module_prototype_ast.hpp>
+#include <spp/asts/statement_ast.hpp>
 #include <spp/asts/sup_implementation_ast.hpp>
+#include <spp/asts/sup_member_ast.hpp>
 #include <spp/asts/sup_prototype_extension_ast.hpp>
 #include <spp/asts/sup_prototype_functions_ast.hpp>
-#include <spp/asts/sup_member_ast.hpp>
-#include <spp/asts/statement_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/mixins/compiler_stages.hpp>
 
@@ -57,9 +57,6 @@ auto spp::asts::ast_body(Ast *ast) -> std::vector<Ast*> {
 }
 
 
-spp::asts::Ast::Ast() = default;
-
-
 spp::asts::Ast::~Ast() = default;
 
 
@@ -81,3 +78,6 @@ auto spp::asts::Ast::stage_2_gen_top_level_scopes(
     -> void {
     m_scope = sm->current_scope;
 }
+
+
+spp::asts::Ast::Ast() = default;
