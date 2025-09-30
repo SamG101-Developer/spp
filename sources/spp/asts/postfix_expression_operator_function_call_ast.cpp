@@ -1,5 +1,6 @@
 #include <tuple>
 
+#include <spp/macros.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
@@ -18,24 +19,23 @@
 #include <spp/asts/function_parameter_self_ast.hpp>
 #include <spp/asts/function_parameter_variadic_ast.hpp>
 #include <spp/asts/function_prototype_ast.hpp>
-#include <spp/asts/generic_argument_type_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
+#include <spp/asts/generic_argument_type_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
 #include <spp/asts/generic_parameter_group_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
+#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
 #include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
 #include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>
-#include <spp/macros.hpp>
 
-#include <genex/actions/sort.hpp>
 #include <genex/actions/remove.hpp>
+#include <genex/actions/sort.hpp>
 #include <genex/algorithms/position.hpp>
 #include <genex/operations/cmp.hpp>
 #include <genex/operations/size.hpp>
@@ -49,8 +49,8 @@
 #include <genex/views/iota.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
-#include <genex/views/to.hpp>
 #include <genex/views/set_algorithms.hpp>
+#include <genex/views/to.hpp>
 #include <genex/views/zip.hpp>
 #include <opex/cast.hpp>
 
@@ -60,6 +60,11 @@ spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFu
     decltype(arg_group) &&arg_group,
     decltype(fold) &&fold) :
     PostfixExpressionOperatorAst(),
+    m_overload_info(std::nullopt),
+    m_is_async(nullptr),
+    m_folded_args(),
+    m_closure_dummy_arg(nullptr),
+    m_is_coro_and_auto_resume(false),
     generic_arg_group(std::move(generic_arg_group)),
     arg_group(std::move(arg_group)),
     fold(std::move(fold)) {
@@ -71,17 +76,20 @@ spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFu
 spp::asts::PostfixExpressionOperatorFunctionCallAst::~PostfixExpressionOperatorFunctionCallAst() = default;
 
 
-auto spp::asts::PostfixExpressionOperatorFunctionCallAst::pos_start() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::pos_start() const
+    -> std::size_t {
     return generic_arg_group->pos_start();
 }
 
 
-auto spp::asts::PostfixExpressionOperatorFunctionCallAst::pos_end() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::pos_end() const
+    -> std::size_t {
     return fold ? fold->pos_end() : arg_group->pos_end();
 }
 
 
-auto spp::asts::PostfixExpressionOperatorFunctionCallAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::clone() const
+    -> std::unique_ptr<Ast> {
     auto ast = std::make_unique<PostfixExpressionOperatorFunctionCallAst>(
         ast_clone(generic_arg_group),
         ast_clone(arg_group),
@@ -104,7 +112,9 @@ spp::asts::PostfixExpressionOperatorFunctionCallAst::operator std::string() cons
 }
 
 
-auto spp::asts::PostfixExpressionOperatorFunctionCallAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(generic_arg_group);
     SPP_PRINT_APPEND(arg_group);
