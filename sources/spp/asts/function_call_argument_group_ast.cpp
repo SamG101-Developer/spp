@@ -139,7 +139,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
     }
 
     // Expand tuple-expansion arguments ("..tuple" => "tuple.0, tuple.1, ...")
-    for (auto &&[i, arg] : args | genex::views::ptr | genex::views::enumerate) {
+    for (auto &&[i, arg] : args | genex::views::ptr | genex::views::enumerate | genex::views::to<std::vector>()) {
         // Only check position arguments that have ".." tokens.
         const auto pos_arg = ast_cast<FunctionCallArgumentPositionalAst>(arg);
         if (pos_arg == nullptr or pos_arg->tok_unpack == nullptr) { continue; }

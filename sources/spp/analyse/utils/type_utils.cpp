@@ -663,7 +663,7 @@ auto spp::analyse::utils::type_utils::create_generic_fun_scope(
         c->parent = new_fun_scope.get();
     }
 
-    auto new_fun_scope_ptr = new_fun_scope.get();
+    const auto new_fun_scope_ptr = new_fun_scope.get();
     const auto old_fn_proto = asts::ast_cast<asts::FunctionPrototypeAst>(asts::ast_body(old_fun_scope.ast)[0]);
     old_fn_proto->register_generic_substituted_scope(std::move(new_fun_scope));
 
@@ -795,6 +795,13 @@ auto spp::analyse::utils::type_utils::register_generic_syms(
     external_generic_syms
         | genex::views::cast_smart_ptr<scopes::VariableSymbol>()
         | genex::views::for_each([&](auto const &e) { scope->add_var_symbol(e); });
+
+#ifdef SPP_IS_DEBUG_BUILD
+    for (auto &&g : generic_args) {
+        const auto x = create_generic_sym(*g, *sm, meta);
+        (void)x;
+    }
+#endif
 
     auto generic_syms = generic_args
         | genex::views::transform([&](auto const &g) { return create_generic_sym(*g, *sm, meta); })
