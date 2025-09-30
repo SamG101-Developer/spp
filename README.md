@@ -20,3 +20,4 @@ Optimizations
 - [ ] Remove move `genex::views::to<std::vector>` (requires modifications to genex).
 - [ ] Remove `orig_name`, use `name` everywhere.
 - [ ] Check `auto &&` vs `auto const &` for unique pointer vector iteration.
+- [ ] Change `not all_of` to the new `none_of` in genex.
