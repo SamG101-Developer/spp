@@ -99,7 +99,7 @@ auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
 
     // Analyse the type and object argument group.
     auto tm = ScopeManager(sm->global_scope, base_cls_sym->scope);
-    base_cls_sym->type->impl->stage_7_analyse_semantics(sm, meta);
+    base_cls_sym->type->impl->stage_7_analyse_semantics(&tm, meta);
 
     meta->save();
     meta->infer_source = {generic_infer_source.begin(), generic_infer_source.end()};
