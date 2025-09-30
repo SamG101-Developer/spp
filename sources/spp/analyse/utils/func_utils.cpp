@@ -87,7 +87,6 @@ auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
 
     // Specific casts.
     const auto postfix_lhs_as_type = postfix_lhs ? dynamic_cast<asts::TypeAst*>(postfix_lhs->lhs.get()) : nullptr;
-    const auto postfix_lhs_as_ident = postfix_lhs ? dynamic_cast<asts::IdentifierAst*>(postfix_lhs->lhs.get()) : nullptr;
     const auto lhs_as_ident = dynamic_cast<asts::IdentifierAst const*>(&lhs);
 
     // Variables that will be set in each branch, and returned.
@@ -111,7 +110,7 @@ auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
 
     // Direct access into a namespaced free function: "std::io::print(variable)".
     else if (postfix_lhs != nullptr and static_field != nullptr) {
-        fn_owner_scope = sm.current_scope->get_ns_symbol(asts::ast_clone(postfix_lhs_as_ident))->scope;
+        fn_owner_scope = sm.current_scope->convert_postfix_to_nested_scope(postfix_lhs->lhs.get());
         fn_name = static_field->name;
         fn_owner_type = fn_owner_scope->get_var_symbol(fn_name)->type;
     }

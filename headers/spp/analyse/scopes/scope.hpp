@@ -11,10 +11,15 @@
 /// @cond
 namespace spp::analyse::scopes {
     class Scope;
+    class ScopeManager;
     using ScopeName = std::variant<
         std::shared_ptr<asts::IdentifierAst>,
         std::shared_ptr<asts::TypeIdentifierAst>,
         ScopeBlockName>;
+}
+
+namespace spp::asts::mixins {
+    struct CompilerMetaData;
 }
 
 namespace spp::compiler {
@@ -154,6 +159,8 @@ public:
     auto sub_scopes() -> std::vector<Scope*>;
 
     auto direct_sub_scopes() -> std::vector<Scope*>;
+
+    auto convert_postfix_to_nested_scope(asts::ExpressionAst const *postfix_ast) const -> Scope const*;
 
     auto print_scope_tree() const -> std::string;
 };

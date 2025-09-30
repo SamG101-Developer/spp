@@ -150,25 +150,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::infer_type(
         return lhs_type_sym->scope->get_var_symbol(name, true)->type;
     }
 
-    // Get the left-hand-side namespace's member's type. Todo: remove this; bottom case handles single namespaces.
-    if (const auto lhs_as_ident = ast_cast<IdentifierAst>(meta->postfix_expression_lhs)) {
-        const auto lhs_ns_sym = sm->current_scope->get_ns_symbol(ast_clone(lhs_as_ident));
-        return lhs_ns_sym->scope->get_var_symbol(name, true)->type;
-    }
-
-    // Postfix lhs -> get the ns scopes.
-    auto lhs = meta->postfix_expression_lhs;
-    auto namespaces = std::vector<IdentifierAst*>();
-    while (auto const *postfix_lhs = asts::ast_cast<PostfixExpressionAst>(lhs)) {
-        const auto op = ast_cast<PostfixExpressionOperatorStaticMemberAccessAst>(postfix_lhs->op.get());
-        namespaces.emplace_back(ast_cast<IdentifierAst>(op->name.get()));
-        lhs = postfix_lhs->lhs.get();
-    }
-
-    auto scope = sm->current_scope;
-    for (auto const *ns: namespaces | genex::views::reverse) {
-        scope = scope->get_ns_symbol(ast_clone(ns))->scope;
-    }
-    const auto type = scope->get_var_symbol(name, true)->type;
-    return scope->get_type_symbol(type)->fq_name();
+    // Get the left-hand-side namespace's member's type.
+    const auto lhs_ns_scope = sm->current_scope->convert_postfix_to_nested_scope(meta->postfix_expression_lhs);
+    const auto type = lhs_ns_scope->get_var_symbol(name, true)->type;
+    return lhs_ns_scope->get_type_symbol(type)->fq_name();
 }

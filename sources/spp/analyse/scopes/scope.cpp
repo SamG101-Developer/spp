@@ -1,14 +1,15 @@
 #include <spp/analyse/scopes/scope.hpp>
+#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/symbol_table.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
 #include <spp/asts/generic_argument_ast.hpp>
 #include <spp/asts/generic_argument_comp_keyword_ast.hpp>
 #include <spp/asts/generic_argument_type_keyword_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
+#include <spp/asts/module_prototype_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
 #include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
 #include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
-#include <spp/asts/module_prototype_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
@@ -24,6 +25,7 @@
 #include <genex/views/filter.hpp>
 #include <genex/views/for_each.hpp>
 #include <genex/views/ptr.hpp>
+#include <genex/views/reverse.hpp>
 #include <genex/views/take_until.hpp>
 #include <genex/views/to.hpp>
 #include <genex/views/transform.hpp>
@@ -586,6 +588,32 @@ auto spp::analyse::scopes::Scope::direct_sup_types() const
         | genex::views::filter([](auto *scope) { return asts::ast_cast<asts::ClassPrototypeAst>(scope->ast); })
         | genex::views::transform([](auto *scope) { return scope->ty_sym->fq_name(); })
         | genex::views::to<std::vector>();
+}
+
+
+auto spp::analyse::scopes::Scope::convert_postfix_to_nested_scope(
+    asts::ExpressionAst const *postfix_ast) const
+    -> Scope const* {
+
+    // Get the left-hand-side namespace's member's type.
+    if (const auto lhs_as_ident = ast_cast<asts::IdentifierAst>(postfix_ast)) {
+        return get_ns_symbol(ast_clone(lhs_as_ident))->scope;
+    }
+
+    // Postfix lhs -> get the ns scopes.
+    auto lhs = postfix_ast;
+    auto namespaces = std::vector<asts::IdentifierAst*>();
+    while (auto const *postfix_lhs = asts::ast_cast<asts::PostfixExpressionAst>(lhs)) {
+        const auto op = asts::ast_cast<asts::PostfixExpressionOperatorStaticMemberAccessAst>(postfix_lhs->op.get());
+        namespaces.emplace_back(asts::ast_cast<asts::IdentifierAst>(op->name.get()));
+        lhs = postfix_lhs->lhs.get();
+    }
+
+    auto scope = this;
+    for (auto const *ns : namespaces | genex::views::reverse) {
+        scope = scope->get_ns_symbol(asts::ast_clone(ns))->scope;
+    }
+    return scope;
 }
 
 
