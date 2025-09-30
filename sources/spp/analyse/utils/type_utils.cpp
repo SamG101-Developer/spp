@@ -439,20 +439,20 @@ auto spp::analyse::utils::type_utils::get_generator_and_yield_type(
             expr, type, what).with_scopes({sm.current_scope}).raise();
     }
 
-    // Extract the generator and yield type.
+    // Extract the generator and yield type. // Todo: error if there are multiple generator types?
     auto generator_type = generator_type_candidates[0];
-    auto yield_Type = generator_type->type_parts().back()->generic_arg_group->type_at("Yield")->val;
+    auto yield_type = generator_type->type_parts().back()->generic_arg_group->type_at("Yield")->val;
 
     // Extract the multiplicity, optionality and fallibility from the generator type.
-    auto is_once = symbolic_eq(*asts::generate::common_types_precompiled::GEN_ONCE, *generator_type, *sm.current_scope, *sm.current_scope);
-    auto is_optional = symbolic_eq(*asts::generate::common_types_precompiled::GEN_OPT, *generator_type, *sm.current_scope, *sm.current_scope);
-    auto is_fallible = symbolic_eq(*asts::generate::common_types_precompiled::GEN_RES, *generator_type, *sm.current_scope, *sm.current_scope);
+    auto is_once = symbolic_eq(*asts::generate::common_types_precompiled::GEN_ONCE, *generator_type->without_generics(), *sm.current_scope, *sm.current_scope);
+    auto is_optional = symbolic_eq(*asts::generate::common_types_precompiled::GEN_OPT, *generator_type->without_generics(), *sm.current_scope, *sm.current_scope);
+    auto is_fallible = symbolic_eq(*asts::generate::common_types_precompiled::GEN_RES, *generator_type->without_generics(), *sm.current_scope, *sm.current_scope);
 
     // Get the error type if the generator is fallible.
     auto error_type = is_fallible ? generator_type->type_parts().back()->generic_arg_group->type_at("Err")->val : nullptr;
 
     // Return all the information about the generator type.
-    return std::make_tuple(generator_type, yield_Type, is_once, is_optional, is_fallible, error_type);
+    return std::make_tuple(generator_type, yield_type, is_once, is_optional, is_fallible, error_type);
 }
 
 

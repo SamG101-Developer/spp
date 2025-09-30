@@ -4,15 +4,16 @@
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/gen_expression_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_argument_type_keyword_ast.hpp>
+#include <spp/asts/gen_expression_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
 #include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
+#include <spp/asts/generate/common_types_precompiled.hpp>
 
 
 spp::asts::GenExpressionAst::GenExpressionAst(
@@ -80,7 +81,7 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
     }
 
     // Analyse the expression if it exists, and determine the type of the expression.
-    std::shared_ptr expr_type = generate::common_types::void_type(pos_start());
+    auto expr_type = generate::common_types::void_type(pos_start());
     if (expr != nullptr) {
         meta->save();
         RETURN_TYPE_OVERLOAD_HELPER(expr.get()) {
@@ -109,11 +110,11 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
     auto [_, yield_type, _, is_optional, is_fallible, error_type] = analyse::utils::type_utils::get_generator_and_yield_type(
         *m_gen_type, *sm, *m_gen_type, "coroutine");
     const auto direct_match = analyse::utils::type_utils::symbolic_eq(*yield_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
-    const auto optional_match = is_optional and analyse::utils::type_utils::symbolic_eq(*generate::common_types::void_type(0), *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
+    const auto optional_match = is_optional and analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::VOID, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
     const auto fallible_match = is_fallible and analyse::utils::type_utils::symbolic_eq(*error_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
     if (not(direct_match or optional_match or fallible_match)) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppYieldedTypeMismatchError>().with_args(
-            *yield_type, *yield_type, *expr, *expr_type, is_optional, is_fallible, error_type ? *error_type : *generate::common_types::void_type(0)).with_scopes({sm->current_scope}).raise();
+            *yield_type, *yield_type, *expr, *expr_type, is_optional, is_fallible, error_type ? *error_type : *generate::common_types_precompiled::VOID).with_scopes({sm->current_scope}).raise();
     }
 }
 

@@ -520,9 +520,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_7_analyse_semant
     determine_overload(sm, meta);
 
     // Special case for GenOnce called as a coroutine => auto move into the "Yield" type.
-    if (std::get<1>(*m_overload_info)->tok_fun->token_type == lex::SppTokenType::KW_COR and meta->prevent_auto_generator_resume) {
+    if (std::get<1>(*m_overload_info)->tok_fun->token_type == lex::SppTokenType::KW_COR and not meta->prevent_auto_generator_resume) {
         m_is_coro_and_auto_resume = analyse::utils::type_utils::symbolic_eq(
-            *generate::common_types_precompiled::GEN_ONCE, *std::get<1>(*m_overload_info)->return_type,
+            *generate::common_types_precompiled::GEN_ONCE, *std::get<1>(*m_overload_info)->return_type->without_generics(),
             *sm->current_scope, *std::get<0>(*m_overload_info));
     }
     meta->prevent_auto_generator_resume = false;
@@ -600,7 +600,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
     }
 
     // For GenOnce coroutines, automatically resume the coroutine and return the "Yield" type.
-    if (m_is_coro_and_auto_resume and meta->prevent_auto_generator_resume) {
+    if (m_is_coro_and_auto_resume and not meta->prevent_auto_generator_resume) {
         auto [_, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(*ret_type, *sm, *meta->let_stmt_value, "function call");
         ret_type = yield_type;
     }
