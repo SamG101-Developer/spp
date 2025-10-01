@@ -605,6 +605,9 @@ auto spp::analyse::scopes::Scope::convert_postfix_to_nested_scope(
         namespaces.emplace_back(asts::ast_cast<asts::IdentifierAst>(op->name.get()));
         lhs = postfix_lhs->lhs.get();
     }
+    if (auto *lhs_as_ident = asts::ast_cast<asts::IdentifierAst>(lhs)) { // todo: is the condition requires? just body.
+        namespaces.emplace_back(const_cast<asts::IdentifierAst*>(lhs_as_ident));
+    }
 
     auto scope = this;
     for (auto const *ns : namespaces | genex::views::reverse) {
