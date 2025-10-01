@@ -108,6 +108,7 @@ auto spp::asts::LoopExpressionAst::stage_8_check_memory(
     sm->move_to_next_scope();
 
     // Check twice so that invalidation fails on the second loop.
+    // Todo: use the "reset" on "sm" like in TypeStatementAst?
     auto tm = ScopeManager(sm->global_scope, sm->current_scope);
     tm.reset(sm->current_scope, sm->m_it);
     for (auto &m : {sm, &tm}) {

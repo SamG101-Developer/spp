@@ -24,6 +24,7 @@ namespace spp::asts::mixins {
  */
 class spp::analyse::scopes::ScopeManager {
     friend struct asts::TypeStatementAst;
+    friend struct asts::LoopExpressionAst;
 
 private:
     /**
