@@ -170,15 +170,15 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
         // Extract the parameter names and argument names.
         auto func_param_names = fn_proto->param_group->params
-            | genex::views::transform([](auto &&x) { return x->extract_name(); })
+            | genex::views::transform([](auto const &x) { return x->extract_name(); })
             | genex::views::to<std::vector>();
 
         auto func_param_names_req = fn_proto->param_group->get_required_params()
-            | genex::views::transform([](auto &&x) { return x->extract_name(); })
+            | genex::views::transform([](auto const &x) { return x->extract_name(); })
             | genex::views::to<std::vector>();
 
         auto func_arg_names = arg_group->get_keyword_args()
-            | genex::views::transform([](auto &&x) { return x->name.get(); })
+            | genex::views::transform([](auto const &x) { return x->name.get(); })
             | genex::views::to<std::vector>();
 
         auto is_variadic_fn = fn_proto->param_group->get_variadic_param() != nullptr;

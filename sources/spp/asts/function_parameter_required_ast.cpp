@@ -16,17 +16,20 @@ spp::asts::FunctionParameterRequiredAst::FunctionParameterRequiredAst(
 spp::asts::FunctionParameterRequiredAst::~FunctionParameterRequiredAst() = default;
 
 
-auto spp::asts::FunctionParameterRequiredAst::pos_start() const -> std::size_t {
+auto spp::asts::FunctionParameterRequiredAst::pos_start() const
+    -> std::size_t {
     return var->pos_start();
 }
 
 
-auto spp::asts::FunctionParameterRequiredAst::pos_end() const -> std::size_t {
+auto spp::asts::FunctionParameterRequiredAst::pos_end() const
+    -> std::size_t {
     return type->pos_end();
 }
 
 
-auto spp::asts::FunctionParameterRequiredAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::FunctionParameterRequiredAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<FunctionParameterRequiredAst>(
         ast_clone(var),
         ast_clone(tok_colon),
@@ -43,7 +46,9 @@ spp::asts::FunctionParameterRequiredAst::operator std::string() const {
 }
 
 
-auto spp::asts::FunctionParameterRequiredAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::FunctionParameterRequiredAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(var);
     SPP_PRINT_APPEND(tok_colon);

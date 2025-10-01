@@ -53,8 +53,8 @@ auto spp::asts::CasePatternVariantLiteralAst::convert_to_variable(
     mixins::CompilerMetaData *)
     -> std::unique_ptr<LocalVariableAst> {
     // Create the local variable literal binding AST.
-    auto name = std::make_unique<IdentifierAst>(pos_start(), std::format("$_{}", reinterpret_cast<std::uintptr_t>(this)));
-    auto var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(name), nullptr);
+    auto var_name = std::make_unique<IdentifierAst>(pos_start(), std::format("$_{}", reinterpret_cast<std::uintptr_t>(this)));
+    auto var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
     var->m_from_pattern = true;
     return var;
 }

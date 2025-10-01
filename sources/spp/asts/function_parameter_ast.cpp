@@ -3,9 +3,11 @@
 #include <spp/asts/convention_mut_ast.hpp>
 #include <spp/asts/convention_ref_ast.hpp>
 #include <spp/asts/function_parameter_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/let_statement_initialized_ast.hpp>
 #include <spp/asts/let_statement_uninitialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
+#include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
+#include <spp/asts/local_variable_single_identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 
@@ -18,6 +20,10 @@ spp::asts::FunctionParameterAst::FunctionParameterAst(
     tok_colon(std::move(tok_colon)),
     type(std::move(type)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_colon, lex::SppTokenType::TK_COLON, ":", var ? var->pos_end() : 0);
+    if (this->var == nullptr) {
+        auto var_name = std::make_unique<IdentifierAst>(0, std::format("$_{}", reinterpret_cast<std::uintptr_t>(this)));
+        this->var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
+    }
 }
 
 
