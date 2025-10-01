@@ -12,6 +12,7 @@ private:
     Ast *m_is_async;
     std::vector<FunctionCallArgumentAst*> m_folded_args;
     std::unique_ptr<FunctionCallArgumentPositionalAst> m_closure_dummy_arg;
+    std::unique_ptr<FunctionPrototypeAst> m_closure_dummy_proto;
     bool m_is_coro_and_auto_resume;
 
 public:

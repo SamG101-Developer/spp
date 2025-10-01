@@ -64,6 +64,7 @@ spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFu
     m_is_async(nullptr),
     m_folded_args(),
     m_closure_dummy_arg(nullptr),
+    m_closure_dummy_proto(nullptr),
     m_is_coro_and_auto_resume(false),
     generic_arg_group(std::move(generic_arg_group)),
     arg_group(std::move(arg_group)),
@@ -98,6 +99,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::clone() const
     ast->m_is_async = m_is_async;
     ast->m_folded_args = m_folded_args;
     ast->m_closure_dummy_arg = ast_clone(m_closure_dummy_arg);
+    ast->m_closure_dummy_proto = ast_clone(m_closure_dummy_proto);
     ast->m_is_coro_and_auto_resume = m_is_coro_and_auto_resume;
     return ast;
 }
@@ -150,11 +152,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
     // Create a dummy overload for no-overload identifiers that are function types (closures etc).
     auto is_closure = false;
-    auto dummy_closure_proto = std::unique_ptr<FunctionPrototypeAst>(nullptr);
     if (all_overloads.empty()) {
         if (const auto lhs_type = analyse::utils::func_utils::is_target_callable(*lhs, *sm, meta); lhs_type != nullptr) {
-            dummy_closure_proto = analyse::utils::func_utils::create_callable_prototype(*lhs_type);
-            all_overloads.emplace_back(sm->current_scope, dummy_closure_proto.get(), GenericArgumentGroupAst::new_empty());
+            m_closure_dummy_proto = analyse::utils::func_utils::create_callable_prototype(*lhs_type);
+            all_overloads.emplace_back(sm->current_scope, m_closure_dummy_proto.get(), GenericArgumentGroupAst::new_empty());
             is_closure = true;
         }
     }
@@ -589,7 +590,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
                     }
                 }
             }
-            catch (const std::exception &) {  // todo: refine error
+            catch (const std::exception &) {
+                // todo: refine error
             }
 
             ret_type = std::get<0>(*m_overload_info)->get_type_symbol(ret_type)->fq_name();
