@@ -44,12 +44,12 @@ add_executable(spp main.cpp)
 target_link_libraries(spp PRIVATE spp_lib)
 
 # In debug mode, add address sanitizer
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    message(STATUS "Debug mode: Adding AddressSanitizer flags")
-    target_compile_options(spp_lib PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer -g -O0)
-    target_compile_options(spp PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer -g -O0)
-    target_link_options(spp PRIVATE -fsanitize=address,undefined)
-endif()
+#if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+#    message(STATUS "Debug mode: Adding AddressSanitizer flags")
+#    target_compile_options(spp_lib PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer -g -O0)
+#    target_compile_options(spp PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer -g -O0)
+#    target_link_options(spp PRIVATE -fsanitize=address,undefined)
+#endif()
 
 enable_testing()
 add_subdirectory(tests)
