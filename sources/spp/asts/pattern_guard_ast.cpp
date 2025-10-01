@@ -1,10 +1,10 @@
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/pattern_guard_ast.hpp>
+#include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/expression_ast.hpp>
+#include <spp/asts/pattern_guard_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 
@@ -14,6 +14,7 @@ spp::asts::PatternGuardAst::PatternGuardAst(
     decltype(expr) &&expression) :
     tok_and(std::move(tok_and)),
     expr(std::move(expression)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_and, lex::SppTokenType::KW_AND, "and", expr ? expr->pos_start() : 0);
 }
 
 
