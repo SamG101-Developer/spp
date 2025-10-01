@@ -38,17 +38,20 @@ spp::asts::BinaryExpressionAst::BinaryExpressionAst(
 spp::asts::BinaryExpressionAst::~BinaryExpressionAst() = default;
 
 
-auto spp::asts::BinaryExpressionAst::pos_start() const -> std::size_t {
+auto spp::asts::BinaryExpressionAst::pos_start() const
+    -> std::size_t {
     return lhs->pos_start();
 }
 
 
-auto spp::asts::BinaryExpressionAst::pos_end() const -> std::size_t {
-    return rhs->pos_end();
+auto spp::asts::BinaryExpressionAst::pos_end() const
+    -> std::size_t {
+    return rhs ? rhs->pos_end() : m_mapped_func->pos_end();
 }
 
 
-auto spp::asts::BinaryExpressionAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::BinaryExpressionAst::clone() const
+    -> std::unique_ptr<Ast> {
     auto ast = std::make_unique<BinaryExpressionAst>(
         ast_clone(lhs),
         ast_clone(tok_op),
@@ -68,7 +71,9 @@ spp::asts::BinaryExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::BinaryExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::BinaryExpressionAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     formatted_string.append("(");
     SPP_PRINT_APPEND(lhs).append(" ");
