@@ -100,7 +100,7 @@ template <typename T>
 auto spp::asts::InnerScopeAst<T>::final_member() const -> Ast* {
     return members.empty()
                ? ast_cast<Ast>(tok_r.get())
-               : ast_cast<Ast>(members.front().get());
+               : ast_cast<Ast>(members.back().get());
 }
 
 
