@@ -5,8 +5,8 @@
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/symbols.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/ast.hpp>
 #include <spp/asts/array_literal_explicit_elements_ast.hpp>
+#include <spp/asts/ast.hpp>
 #include <spp/asts/case_expression_branch_ast.hpp>
 #include <spp/asts/expression_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
@@ -16,9 +16,10 @@
 #include <genex/actions/remove.hpp>
 #include <genex/algorithms/contains.hpp>
 #include <genex/views/cast.hpp>
-#include <genex/views/transform.hpp>
+#include <genex/views/filter.hpp>
 #include <genex/views/for_each.hpp>
 #include <genex/views/to.hpp>
+#include <genex/views/transform.hpp>
 
 
 auto spp::analyse::utils::mem_utils::MemoryInfo::moved_by(
@@ -111,14 +112,14 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
     const bool check_linked_pins,
     const bool mark_moves,
     asts::mixins::CompilerMetaData *meta) -> void {
-    // For tuple and array literals, recursively analyse eac element.
-    if (const auto arr_literal = asts::ast_cast<asts::ArrayLiteralExplicitElementsAst>(&value_ast); arr_literal != nullptr) {
+    // For tuple and array literals, recursively analyse each element.
+    if (auto const *arr_literal = asts::ast_cast<asts::ArrayLiteralExplicitElementsAst>(&value_ast); arr_literal != nullptr) {
         arr_literal->elems
             | genex::views::ptr
             | genex::views::for_each([&](auto *x) { validate_symbol_memory(*x, move_ast, sm, true, true, true, true, true, mark_moves, meta); });
         return;
     }
-    if (const auto tup_literal = asts::ast_cast<asts::TupleLiteralAst>(&value_ast); tup_literal != nullptr) {
+    if (auto const *tup_literal = asts::ast_cast<asts::TupleLiteralAst>(&value_ast); tup_literal != nullptr) {
         tup_literal->elems
             | genex::views::ptr
             | genex::views::for_each([&](auto *x) { validate_symbol_memory(*x, move_ast, sm, true, true, true, true, true, mark_moves, meta); });
@@ -177,16 +178,21 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
 
     // Check the symbol doesn't have any outstanding partial moves (directly moving a partial move).
     if (check_partial_move and not var_sym->memory_info->ast_partial_moves.empty() and asts::ast_cast<asts::IdentifierAst>(&value_ast) == nullptr) {
-        const auto where_init = var_sym->memory_info->ast_initialization_origin;
-        const auto where_pm = var_sym->memory_info->ast_partial_moves.front();
-        errors::SemanticErrorBuilder<errors::SppUninitializedMemoryUseError>().with_args(
-            value_ast, *where_init, *where_pm).with_scopes({sm.current_scope}).raise();
+        const auto overlaps = var_sym->memory_info->ast_partial_moves
+            | genex::views::filter([&value_ast](auto &&x) { return memory_region_right_overlap(*x, value_ast); })
+            | genex::views::to<std::vector>();
+        if (not overlaps.empty()) {
+            const auto where_init = var_sym->memory_info->ast_initialization_origin;
+            const auto where_pm = overlaps.front();
+            errors::SemanticErrorBuilder<errors::SppUninitializedMemoryUseError>().with_args(
+                value_ast, *where_init, *where_pm).with_scopes({sm.current_scope}).raise();
+        }
     }
 
     // Check the symbol isn't being moved from a borrowed context.
-    if (check_move_from_borrowed_ctx and not var_sym->memory_info->ast_partial_moves.empty() and asts::ast_cast<asts::IdentifierAst>(&value_ast) == nullptr and not partial_copies) {
+    if (check_move_from_borrowed_ctx and var_sym->memory_info->ast_borrowed and asts::ast_cast<asts::IdentifierAst>(&value_ast) == nullptr and not partial_copies) {
         const auto where_borrow = var_sym->memory_info->ast_borrowed;
-        const auto where_pm = var_sym->memory_info->ast_partial_moves.front();
+        const auto where_pm = var_sym->memory_info->ast_borrowed;
         errors::SemanticErrorBuilder<errors::SppMoveFromBorrowedMemoryError>().with_args(
             value_ast, *where_pm, *where_borrow).with_scopes({sm.current_scope}).raise();
     }
@@ -216,6 +222,9 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
 
     // Mark the symbol as moved/partially-moved if it is not copyable.
     if (mark_moves and asts::ast_cast<asts::IdentifierAst>(&value_ast) != nullptr and not copies) {
+        if (value_ast.operator std::string() == "d") {
+            auto _ = 123;
+        }
         var_sym->memory_info->moved_by(value_ast);
     }
 
@@ -237,7 +246,9 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
     auto sym_mem_info = std::map<scopes::VariableSymbol*, SymbolMemoryList>();
     for (auto &&branch : branches) {
         // Make a record of the symbols' memory status in the scope before the branch is analysed.
-        auto var_symbols_in_scope = sm->current_scope->all_var_symbols();
+        auto var_symbols_in_scope = sm->current_scope->all_var_symbols()
+            | genex::views::to<std::vector>();
+
         auto old_symbol_mem_info = var_symbols_in_scope
             | genex::views::transform([sm](auto &&x) { return std::make_pair(x, sm->current_scope->get_var_symbol(x->name)->memory_info->snapshot()); })
             | genex::views::to<std::vector>();
