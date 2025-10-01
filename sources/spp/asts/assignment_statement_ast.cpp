@@ -90,8 +90,8 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
         meta->save();
 
         // Handle return type overloading matching for the lhs target types.
-        if (const auto pf = ast_cast<PostfixExpressionAst>(rhs_expr); pf) {
-            if (const auto fc = &ast_cast<PostfixExpressionOperatorFunctionCallAst>(*pf->op); fc) {
+        if (const auto pf = ast_cast<PostfixExpressionAst>(rhs_expr); pf != nullptr) {
+            if (const auto fc = ast_cast<PostfixExpressionOperatorFunctionCallAst>(pf->op.get()); fc != nullptr) {
                 meta->return_type_overload_resolver_type = lhs[i]->infer_type(sm, meta);
             }
         }
