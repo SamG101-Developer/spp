@@ -165,6 +165,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
     scopes::Scope const *target_scope,
     const bool for_override)
     -> std::vector<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, std::unique_ptr<asts::GenericArgumentGroupAst>>> {
+    // Todo: TIDY this function big time.
     // If the name is empty (non-symbolic call) then return "no scopes".
     // If the target scope is nullptr, then the functions are bein superimposed over a generic type.
     if (target_fn_name.val == "" or target_scope == nullptr) { return {}; }

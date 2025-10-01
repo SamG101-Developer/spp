@@ -80,7 +80,7 @@ auto spp::asts::GenWithExpressionAst::stage_7_analyse_semantics(
     }
 
     // Analyse the expression (guaranteed to exist), and determine the type of the expression.
-    std::shared_ptr expr_type = generate::common_types::void_type(pos_start());
+    auto expr_type = generate::common_types::void_type(pos_start());
     meta->save();
     RETURN_TYPE_OVERLOAD_HELPER(expr.get()) {
         meta->return_type_overload_resolver_type = meta->enclosing_function_ret_type[0];
