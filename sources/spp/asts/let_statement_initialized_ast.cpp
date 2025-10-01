@@ -116,6 +116,7 @@ auto spp::asts::LetStatementInitializedAst::stage_8_check_memory(
     // Check the variable's memory (which in turn checks the values memory - must be done this way for destructuring).
     meta->save();
     meta->assignment_target = var->extract_name();
+    meta->let_stmt_value = val.get();
     var->stage_8_check_memory(sm, meta);
     meta->restore();
 }

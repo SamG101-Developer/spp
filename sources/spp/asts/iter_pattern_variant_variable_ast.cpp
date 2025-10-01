@@ -25,17 +25,20 @@ spp::asts::IterPatternVariantVariableAst::IterPatternVariantVariableAst(
 spp::asts::IterPatternVariantVariableAst::~IterPatternVariantVariableAst() = default;
 
 
-auto spp::asts::IterPatternVariantVariableAst::pos_start() const -> std::size_t {
+auto spp::asts::IterPatternVariantVariableAst::pos_start() const
+    -> std::size_t {
     return var->pos_start();
 }
 
 
-auto spp::asts::IterPatternVariantVariableAst::pos_end() const -> std::size_t {
+auto spp::asts::IterPatternVariantVariableAst::pos_end() const
+    -> std::size_t {
     return var->pos_end();
 }
 
 
-auto spp::asts::IterPatternVariantVariableAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::IterPatternVariantVariableAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<IterPatternVariantVariableAst>(
         ast_clone(var));
 }
@@ -48,7 +51,9 @@ spp::asts::IterPatternVariantVariableAst::operator std::string() const {
 }
 
 
-auto spp::asts::IterPatternVariantVariableAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::IterPatternVariantVariableAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(var);
     SPP_PRINT_END;
