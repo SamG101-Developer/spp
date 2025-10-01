@@ -1,18 +1,18 @@
+#include <spp/pch.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
+#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/bin_utils.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
+#include <spp/asts/case_expression_ast.hpp>
 #include <spp/asts/case_pattern_variant_ast.hpp>
 #include <spp/asts/is_expression_ast.hpp>
 #include <spp/asts/let_statement_initialized_ast.hpp>
 #include <spp/asts/local_variable_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/case_expression_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
-#include <spp/pch.hpp>
 
 #include <genex/views/for_each.hpp>
 
@@ -31,17 +31,20 @@ spp::asts::IsExpressionAst::IsExpressionAst(
 spp::asts::IsExpressionAst::~IsExpressionAst() = default;
 
 
-auto spp::asts::IsExpressionAst::pos_start() const -> std::size_t {
+auto spp::asts::IsExpressionAst::pos_start() const
+    -> std::size_t {
     return lhs->pos_start();
 }
 
 
-auto spp::asts::IsExpressionAst::pos_end() const -> std::size_t {
-    return rhs->pos_end();
+auto spp::asts::IsExpressionAst::pos_end() const
+    -> std::size_t {
+    return rhs ? rhs->pos_end() : m_mapped_func->pos_end();
 }
 
 
-auto spp::asts::IsExpressionAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::IsExpressionAst::clone() const
+    -> std::unique_ptr<Ast> {
     auto ast = std::make_unique<IsExpressionAst>(
         ast_clone(lhs),
         ast_clone(tok_op),
@@ -60,7 +63,9 @@ spp::asts::IsExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::IsExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::IsExpressionAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(lhs);
     SPP_PRINT_APPEND(tok_op);
