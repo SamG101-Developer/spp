@@ -4,6 +4,8 @@
 #include <spp/asts/_fwd.hpp>
 #include <spp/lex/tokens.hpp>
 
+#include "spp/analyse/scopes/scope_manager.hpp"
+
 /// @cond
 namespace spp::analyse::scopes {
     class ScopeManager;
@@ -109,19 +111,27 @@ namespace spp::analyse::utils::bin_utils {
      * @return A new binary expression AST with correct order of operations.
      */
     auto fix_associativity(
-        asts::BinaryExpressionAst &bin_expr)
+        asts::BinaryExpressionAst &bin_expr,
+        scopes::ScopeManager *sm,
+        asts::mixins::CompilerMetaData *meta)
         -> std::unique_ptr<asts::BinaryExpressionAst>;
 
     auto combine_comp_ops(
-        asts::BinaryExpressionAst &bin_expr)
+        asts::BinaryExpressionAst &bin_expr,
+        scopes::ScopeManager *sm,
+        asts::mixins::CompilerMetaData *meta)
         -> std::unique_ptr<asts::BinaryExpressionAst>;
 
     auto convert_bin_expr_to_function_call(
-        asts::BinaryExpressionAst &bin_expr)
+        asts::BinaryExpressionAst &bin_expr,
+        scopes::ScopeManager *sm,
+        asts::mixins::CompilerMetaData *meta)
         -> std::unique_ptr<asts::PostfixExpressionAst>;
 
     auto convert_is_expr_to_function_call(
-        asts::IsExpressionAst &is_expr)
+        asts::IsExpressionAst &is_expr,
+        scopes::ScopeManager *sm,
+        asts::mixins::CompilerMetaData *meta)
         -> std::unique_ptr<asts::CaseExpressionAst>;
 }
 

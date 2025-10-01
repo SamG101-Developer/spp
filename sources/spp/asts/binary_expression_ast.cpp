@@ -121,7 +121,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
             lhs = std::make_unique<BinaryExpressionAst>(std::move(lhs), ast_clone(tok_op), std::move(rhs));
             rhs = std::move(new_ast);
         }
-        m_mapped_func = analyse::utils::bin_utils::convert_bin_expr_to_function_call(*this);
+        m_mapped_func = analyse::utils::bin_utils::convert_bin_expr_to_function_call(*this, sm, meta);
         m_mapped_func->stage_7_analyse_semantics(sm, meta);
     }
 
@@ -153,13 +153,13 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
             lhs = std::move(new_ast);
             rhs = std::make_unique<BinaryExpressionAst>(std::move(lhs), ast_clone(tok_op), std::move(rhs));
         }
-        m_mapped_func = analyse::utils::bin_utils::convert_bin_expr_to_function_call(*this);
+        m_mapped_func = analyse::utils::bin_utils::convert_bin_expr_to_function_call(*this, sm, meta);
         m_mapped_func->stage_7_analyse_semantics(sm, meta);
     }
 
     else {
         // Standard non-folding binary expression.
-        m_mapped_func = analyse::utils::bin_utils::convert_bin_expr_to_function_call(*this);
+        m_mapped_func = analyse::utils::bin_utils::convert_bin_expr_to_function_call(*this, sm, meta);
         m_mapped_func->stage_7_analyse_semantics(sm, meta);
     }
 }

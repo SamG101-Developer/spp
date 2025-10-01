@@ -13,7 +13,8 @@
 #include <spp/asts/inner_scope_expression_ast.hpp>
 #include <spp/asts/is_expression_ast.hpp>
 #include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
+#include <spp/asts/local_variable_single_identifier_ast.hpp>
+#include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
 #include <spp/asts/pattern_guard_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
 #include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
@@ -24,11 +25,16 @@
 
 
 auto spp::analyse::utils::bin_utils::fix_associativity(
-    asts::BinaryExpressionAst &bin_expr)
+    asts::BinaryExpressionAst &bin_expr,
+    scopes::ScopeManager *sm,
+    asts::mixins::CompilerMetaData *meta)
     -> std::unique_ptr<asts::BinaryExpressionAst> {
     // If the right-hand-side isn't a binary expression, then no handling is required; return it.
     if (asts::ast_cast<asts::BinaryExpressionAst>(bin_expr.rhs.get()) == nullptr) {
-        return std::make_unique<asts::BinaryExpressionAst>(std::move(bin_expr.lhs), std::move(bin_expr.tok_op), std::move(bin_expr.rhs));
+        return std::make_unique<asts::BinaryExpressionAst>(
+            std::move(bin_expr.lhs),
+            std::move(bin_expr.tok_op),
+            std::move(bin_expr.rhs));
     }
 
     // If the ast precedence > the right-hand-side binary expression's operator's precedence, re-arrange the AST.
@@ -43,7 +49,7 @@ auto spp::analyse::utils::bin_utils::fix_associativity(
         bin_expr.tok_op = std::move(temp);
         bin_expr.lhs = std::move(bin_rhs);
 
-        return fix_associativity(bin_expr);
+        return fix_associativity(bin_expr, sm, meta);
     }
 
     // Otherwise, the AST is in the correct order; return it.
@@ -55,10 +61,12 @@ auto spp::analyse::utils::bin_utils::fix_associativity(
 
 
 auto spp::analyse::utils::bin_utils::combine_comp_ops(
-    asts::BinaryExpressionAst &bin_expr)
+    asts::BinaryExpressionAst &bin_expr,
+    scopes::ScopeManager *sm,
+    asts::mixins::CompilerMetaData *meta)
     -> std::unique_ptr<asts::BinaryExpressionAst> {
     // Check the left-hand-side is a binary expression with a comparison operator.
-    const auto bin_lhs = asts::ast_cast<asts::BinaryExpressionAst>(bin_expr.lhs.get());
+    auto bin_lhs = asts::ast_cast<asts::BinaryExpressionAst>(bin_expr.lhs.get());
     if (
         bin_lhs == nullptr or
         not genex::algorithms::contains(BIN_COMPARISON_OPS, bin_expr.tok_op->token_type) or
@@ -69,25 +77,34 @@ auto spp::analyse::utils::bin_utils::combine_comp_ops(
             std::move(bin_expr.rhs));
     }
 
+    // Non-symbolic value being re-used -> put it into a variable first.
+    if (sm->current_scope->get_var_symbol_outermost(*bin_lhs->rhs).first == nullptr) {
+        auto temp_var_name = std::make_shared<asts::IdentifierAst>(bin_lhs->rhs->pos_start(), std::format("$_{}", reinterpret_cast<std::uintptr_t>(bin_lhs->rhs.get())));
+        auto temp_var_ast = std::make_unique<asts::LocalVariableSingleIdentifierAst>(nullptr, temp_var_name, nullptr);
+        auto temp_let = std::make_unique<asts::LetStatementInitializedAst>(nullptr, std::move(temp_var_ast), nullptr, nullptr, std::move(bin_lhs->rhs));
+        temp_let->stage_7_analyse_semantics(sm, meta);
+        bin_lhs->rhs = ast_clone(temp_var_name);
+    }
+
     // Otherwise, re-arrange the ASTs, with an "and" combinator binary expression.
-    auto lhs = std::move(bin_lhs->rhs);
+    auto lhs = asts::ast_clone(bin_lhs->rhs);
     auto rhs = std::move(bin_expr.rhs);
+    auto op_pos = bin_expr.tok_op->pos_start();
     bin_expr.rhs = std::make_unique<asts::BinaryExpressionAst>(std::move(lhs), std::move(bin_expr.tok_op), std::move(rhs));
-    bin_expr.tok_op = std::make_unique<asts::TokenAst>(bin_expr.tok_op->pos_start(), lex::SppTokenType::KW_AND, "and");
-    combine_comp_ops(bin_expr);
-    return std::make_unique<asts::BinaryExpressionAst>(
-        std::move(bin_lhs->lhs),
-        std::move(bin_expr.tok_op),
-        std::move(bin_expr.rhs));
+    bin_expr.tok_op = std::make_unique<asts::TokenAst>(op_pos, lex::SppTokenType::KW_AND, "and");
+
+    return combine_comp_ops(bin_expr, sm, meta);
 }
 
 
 auto spp::analyse::utils::bin_utils::convert_bin_expr_to_function_call(
-    asts::BinaryExpressionAst &bin_expr)
+    asts::BinaryExpressionAst &bin_expr,
+    scopes::ScopeManager *sm,
+    asts::mixins::CompilerMetaData *meta)
     -> std::unique_ptr<asts::PostfixExpressionAst> {
     // Call other utility methods that may modify the binary expression AST.
-    auto new_bin_expr = fix_associativity(bin_expr);
-    new_bin_expr = combine_comp_ops(*new_bin_expr);
+    auto new_bin_expr = fix_associativity(bin_expr, sm, meta);
+    new_bin_expr = combine_comp_ops(*new_bin_expr, sm, meta);
 
     // Get the method names based on the operator token.
     auto method_name = BIN_METHODS.at(new_bin_expr->tok_op->token_type);
@@ -108,7 +125,9 @@ auto spp::analyse::utils::bin_utils::convert_bin_expr_to_function_call(
 
 
 auto spp::analyse::utils::bin_utils::convert_is_expr_to_function_call(
-    asts::IsExpressionAst &is_expr)
+    asts::IsExpressionAst &is_expr,
+    scopes::ScopeManager *,
+    asts::mixins::CompilerMetaData *)
     -> std::unique_ptr<asts::CaseExpressionAst> {
     // Construct the expression-pattern based on the right-hand-side of the "x is Type".
     auto pattern = std::move(is_expr.rhs);

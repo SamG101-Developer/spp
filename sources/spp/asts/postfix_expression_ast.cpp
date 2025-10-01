@@ -64,9 +64,9 @@ auto spp::asts::PostfixExpressionAst::stage_7_analyse_semantics(
     meta->return_type_overload_resolver_type = nullptr;
     meta->prevent_auto_generator_resume = false;
     if (dynamic_cast<TypeAst*>(lhs.get()) != nullptr) {
-        auto temp_lhs = std::shared_ptr<TypeAst>(dynamic_cast<TypeAst*>(lhs.release()));
+        const auto temp_lhs = std::shared_ptr<TypeAst>(dynamic_cast<TypeAst*>(lhs.release()));
         temp_lhs->stage_7_analyse_semantics(sm, meta);
-        lhs = ast_clone(std::move(temp_lhs));
+        lhs = ast_clone(temp_lhs);
     }
     else {
         lhs->stage_7_analyse_semantics(sm, meta);

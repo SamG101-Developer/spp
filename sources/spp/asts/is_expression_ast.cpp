@@ -79,7 +79,7 @@ auto spp::asts::IsExpressionAst::stage_7_analyse_semantics(
 
     // Convert to a "case" destructure and analyse it.
     const auto n = sm->current_scope->children.size();
-    m_mapped_func = analyse::utils::bin_utils::convert_is_expr_to_function_call(*this);
+    m_mapped_func = analyse::utils::bin_utils::convert_is_expr_to_function_call(*this, sm, meta);
     m_mapped_func->stage_7_analyse_semantics(sm, meta);
 
     // Add the destructure symbols to the current scope.
