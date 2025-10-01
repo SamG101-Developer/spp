@@ -50,7 +50,7 @@ auto spp::analyse::utils::bin_utils::fix_associativity(
     return std::make_unique<asts::BinaryExpressionAst>(
         std::move(bin_expr.lhs),
         std::move(bin_expr.tok_op),
-        std::move(bin_expr.rhs));
+        std::move(bin_rhs));
 }
 
 
