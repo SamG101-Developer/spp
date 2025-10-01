@@ -93,6 +93,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantic
 
     // Get the condition symbol if it exists.
     auto cond_sym = sm->current_scope->get_var_symbol(ast_clone(ast_cast<IdentifierAst>(meta->case_condition)));
+    auto cond = meta->case_condition;
     if (cond_sym == nullptr) {
         auto cond_type = meta->case_condition->infer_type(sm, meta);
 
@@ -103,6 +104,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantic
         let_ast->stage_7_analyse_semantics(sm, meta);
 
         // Set the memory information of the symbol based on the type of iteration.
+        cond = var_name.get();
         cond_sym = sm->current_scope->get_var_symbol(var_name);
     }
 
@@ -121,7 +123,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantic
 
     // Create the new variable from the pattern in the patterns scope.
     auto var = convert_to_variable(meta);
-    m_mapped_let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
+    m_mapped_let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, ast_clone(cond));
     m_mapped_let->stage_7_analyse_semantics(sm, meta);
 }
 

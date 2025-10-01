@@ -132,7 +132,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
     const auto val_type = val->infer_type(sm, meta)->type_parts().back();
 
     // Create expanded "let" statements for each part of the destructure.
-    for (auto elem : elems | genex::views::ptr) {
+    for (const auto elem : elems | genex::views::ptr) {
         // Skip any conversion for unbound multi argument skipping.
         if (ast_cast<LocalVariableDestructureSkipMultipleArgumentsAst>(elem) != nullptr) {
         }
