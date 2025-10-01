@@ -111,7 +111,7 @@ auto spp::asts::InnerScopeAst<T>::stage_7_analyse_semantics(
     -> void {
     // Create a scope for the InnerScopeAst node.
     auto scope_name = analyse::scopes::ScopeBlockName("<inner-scope#" + std::to_string(pos_start()) + ">");
-    sm->create_and_move_into_new_scope(scope_name, this);
+    sm->create_and_move_into_new_scope(std::move(scope_name), this);
     m_scope = sm->current_scope;
 
     // Analyse the members of the inner scope.

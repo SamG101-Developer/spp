@@ -109,6 +109,7 @@ auto spp::asts::LoopExpressionAst::stage_8_check_memory(
 
     // Check twice so that invalidation fails on the second loop.
     auto tm = ScopeManager(sm->global_scope, sm->current_scope);
+    tm.reset(sm->current_scope, sm->m_it);
     for (auto &m : {sm, &tm}) {
         meta->save();
         meta->loop_double_check_active = true;
