@@ -575,18 +575,20 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
         // Get the other generics
         auto other_generics = std::vector<GenericArgumentAst*>();
         if (const auto cast_lhs = ast_cast<PostfixExpressionAst>(meta->postfix_expression_lhs); cast_lhs != nullptr) {
-            auto lhs_lhs_scope = static_cast<analyse::scopes::Scope*>(nullptr);
-
-            // Type scope for a variable/attribute left-hand-side (to extract generics).
-            if (sm->current_scope->has_var_symbol(ast_cast<IdentifierAst>(ast_clone(cast_lhs->lhs)))) {
-                lhs_lhs_scope = sm->current_scope->get_type_symbol(cast_lhs->lhs->infer_type(sm, meta))->scope;
-                const auto lhs_lhs_type = lhs_lhs_scope->ty_sym->fq_name();
-                if (not analyse::utils::type_utils::is_type_tuple(*lhs_lhs_type, *sm->current_scope)) {
-                    // std::get<std::shared_ptr<TypeIdentifierAst>>(lhs_lhs_scope->name)
-                    other_generics = lhs_lhs_type->type_parts().back()->generic_arg_group->args
-                        | genex::views::ptr
-                        | genex::views::to<std::vector>();
+            try {
+                if (ast_cast<PostfixExpressionOperatorStaticMemberAccessAst>(cast_lhs->op.get()) == nullptr) {
+                    const auto lhs_lhs_sym = sm->current_scope->get_type_symbol(cast_lhs->lhs->infer_type(sm, meta));
+                    if (sm->current_scope->get_type_symbol(cast_lhs->lhs->infer_type(sm, meta)) != nullptr) {
+                        auto const *lhs_lhs_scope = lhs_lhs_sym->scope;
+                        if (not analyse::utils::type_utils::is_type_tuple(*lhs_lhs_scope->ty_sym->fq_name(), *sm->current_scope)) {
+                            other_generics = lhs_lhs_scope->ty_sym->fq_name()->type_parts().back()->generic_arg_group->args
+                                | genex::views::ptr
+                                | genex::views::to<std::vector>();
+                        }
+                    }
                 }
+            }
+            catch (const std::exception &) {  // todo: refine error
             }
 
             ret_type = std::get<0>(*m_overload_info)->get_type_symbol(ret_type)->fq_name();
