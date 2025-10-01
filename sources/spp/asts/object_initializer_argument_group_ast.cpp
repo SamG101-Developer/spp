@@ -157,7 +157,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics
             RETURN_TYPE_OVERLOAD_HELPER(arg->val.get()) {
                 // Multiple attributes with same name (via base classes) -> can't infer the one to use.
                 auto attrs = all_attrs
-                    | genex::views::filter([kw_arg](auto &&x) { return x.first->name == kw_arg->name; })
+                    | genex::views::filter([kw_arg](auto &&x) { return *x.first->name == *kw_arg->name; })
                     | genex::views::to<std::vector>();
                 if (attrs.size() > 1) { continue; }
 
