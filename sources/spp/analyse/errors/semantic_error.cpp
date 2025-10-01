@@ -1392,20 +1392,20 @@ spp::analyse::errors::SppAsyncTargetNotFunctionCallError::SppAsyncTargetNotFunct
 }
 
 
-spp::analyse::errors::SppDereferenceInvalidExpressionNonBorrowableTypeError::SppDereferenceInvalidExpressionNonBorrowableTypeError(
+spp::analyse::errors::SppDereferenceInvalidExpressionNonBorrowedTypeError::SppDereferenceInvalidExpressionNonBorrowedTypeError(
     asts::TokenAst const &tok_deref,
     asts::ExpressionAst const &expr,
     asts::TypeAst const &type) {
     add_header(
-        75, "SPP Dereference Invalid Expression Non-Borrowable Type Error");
+        75, "SPP Dereference Invalid Expression Non-Borrowed Type Error");
     add_context_for_error(
         &tok_deref,
         "Dereference operator defined here");
     add_error(
         &expr,
-        "Expression with non-borrowable type: " + static_cast<std::string>(type) + " defined here");
+        "Expression with non-borrowed type: " + static_cast<std::string>(type) + " defined here");
     add_footer(
-        "Cannot dereference an expression of a non-borrowable type.",
+        "Cannot dereference an expression of a non-borrowed type.",
         "Ensure the expression has a borrowable type (e.g., a reference)");
 }
 

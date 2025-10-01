@@ -498,7 +498,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
     // Set the overload to the only pass overload.
     m_overload_info = std::move(pass_overloads[0]);
-    if (auto self_param = std::get<1>(*m_overload_info)->param_group->get_self_param()) {
+    if (const auto self_param = std::get<1>(*m_overload_info)->param_group->get_self_param()) {
         arg_group->args[0]->conv = ast_clone(self_param->conv);
     }
 }

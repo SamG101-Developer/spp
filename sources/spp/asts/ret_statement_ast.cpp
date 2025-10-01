@@ -76,7 +76,7 @@ auto spp::asts::RetStatementAst::stage_7_analyse_semantics(
     }
 
     // Analyse the expression if it exists, and determine the type of the expression.
-    std::shared_ptr expr_type = generate::common_types::void_type(pos_start());
+    auto expr_type = generate::common_types::void_type(pos_start());
     if (expr != nullptr) {
         meta->save();
         RETURN_TYPE_OVERLOAD_HELPER(expr.get()) {

@@ -3,9 +3,9 @@
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/expression_ast.hpp>
-#include <spp/asts/unary_expression_operator_deref_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/asts/unary_expression_operator_deref_ast.hpp>
 
 
 spp::asts::UnaryExpressionOperatorDerefAst::UnaryExpressionOperatorDerefAst(
@@ -17,17 +17,20 @@ spp::asts::UnaryExpressionOperatorDerefAst::UnaryExpressionOperatorDerefAst(
 spp::asts::UnaryExpressionOperatorDerefAst::~UnaryExpressionOperatorDerefAst() = default;
 
 
-auto spp::asts::UnaryExpressionOperatorDerefAst::pos_start() const -> std::size_t {
+auto spp::asts::UnaryExpressionOperatorDerefAst::pos_start() const
+    -> std::size_t {
     return tok_deref->pos_start();
 }
 
 
-auto spp::asts::UnaryExpressionOperatorDerefAst::pos_end() const -> std::size_t {
+auto spp::asts::UnaryExpressionOperatorDerefAst::pos_end() const
+    -> std::size_t {
     return tok_deref->pos_end();
 }
 
 
-auto spp::asts::UnaryExpressionOperatorDerefAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::UnaryExpressionOperatorDerefAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<UnaryExpressionOperatorDerefAst>(
         ast_clone(tok_deref));
 }
@@ -40,7 +43,9 @@ spp::asts::UnaryExpressionOperatorDerefAst::operator std::string() const {
 }
 
 
-auto spp::asts::UnaryExpressionOperatorDerefAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::UnaryExpressionOperatorDerefAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_deref);
     SPP_PRINT_END;
@@ -57,7 +62,7 @@ auto spp::asts::UnaryExpressionOperatorDerefAst::stage_7_analyse_semantics(
 
     // Check the right-hand-side expression is a borrowable type.
     if (rhs_type->get_convention() == nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppDereferenceInvalidExpressionNonBorrowableTypeError>().with_args(
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppDereferenceInvalidExpressionNonBorrowedTypeError>().with_args(
             *tok_deref, *rhs, *rhs_type).with_scopes({sm->current_scope}).raise();
     }
 
