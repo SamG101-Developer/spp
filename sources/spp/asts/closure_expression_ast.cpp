@@ -83,7 +83,7 @@ auto spp::asts::ClosureExpressionAst::stage_7_analyse_semantics(
     // Update the meta args with the closure information for body analysis.
     meta->save();
     meta->enclosing_function_scope = sm->current_scope;
-    auto scope_name = analyse::scopes::ScopeBlockName("<lambda-inner#" + std::to_string(pos_start()));
+    auto scope_name = analyse::scopes::ScopeBlockName("<lambda-inner#" + std::to_string(pos_start()) + ">");
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
     meta->enclosing_function_flavour = tok.get();
     meta->enclosing_function_ret_type = {};
