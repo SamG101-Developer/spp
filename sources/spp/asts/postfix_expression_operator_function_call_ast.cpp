@@ -150,10 +150,11 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
     // Create a dummy overload for no-overload identifiers that are function types (closures etc).
     auto is_closure = false;
+    auto dummy_closure_proto = std::unique_ptr<FunctionPrototypeAst>(nullptr);
     if (all_overloads.empty()) {
         if (const auto lhs_type = analyse::utils::func_utils::is_target_callable(*lhs, *sm, meta); lhs_type != nullptr) {
-            const auto dummy_proto = analyse::utils::func_utils::create_callable_prototype(*lhs_type);
-            all_overloads.emplace_back(sm->current_scope, dummy_proto.get(), nullptr);
+            dummy_closure_proto = analyse::utils::func_utils::create_callable_prototype(*lhs_type);
+            all_overloads.emplace_back(sm->current_scope, dummy_closure_proto.get(), GenericArgumentGroupAst::new_empty());
             is_closure = true;
         }
     }
