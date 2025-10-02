@@ -5,7 +5,7 @@ set(BUILD_GTEST ON)
 set(BUILD_GMOCK OFF)
 
 # Build the test executable.
-file(GLOB_RECURSE TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 add_executable(spp_tests ${TEST_SOURCES})
 target_link_libraries(spp_tests PRIVATE spp_lib GTest::gtest_main)
 

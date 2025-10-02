@@ -1,6 +1,42 @@
 #pragma once
+#include <spp/cli.hpp>
+#include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/lex/lexer.hpp>
 #include <spp/parse/parser_spp.hpp>
+
+#include <gtest/gtest.h>
+
+
+inline auto build_temp_project(std::string code, const bool add_main = true) {
+    auto cwd = std::filesystem::current_path();
+    auto fp = "../../tests/test_outputs";
+
+    std::cout << (cwd / fp).string() << std::endl;
+
+    if (add_main) {
+        code = "fun main(args: std::vector::Vec[std::string::Str]) -> std::void::Void { }\n" + code;
+    }
+
+    // Build the temporary project directory if it doesn't exist.
+    if (not std::filesystem::exists(cwd / fp)) {
+        std::filesystem::create_directory(cwd / fp);
+        std::filesystem::current_path(cwd / fp);
+        spp::cli::handle_init();
+        spp::cli::handle_vcs();
+        std::filesystem::current_path(cwd);
+    }
+
+    // Write the code to "cwd / fp / src / main.spp".
+    std::filesystem::create_directories(cwd / fp / "src");
+    std::ofstream ofs(cwd / fp / "src" / "main.spp");
+    ofs << code;
+    ofs.close();
+
+    // Build the project.
+    std::filesystem::current_path(cwd / fp);
+    spp::cli::handle_build("rel");
+    std::filesystem::current_path(cwd);
+}
 
 
 #define SPP_TEST_SHOULD_PASS_SYNTACTIC(what, code) \
@@ -15,4 +51,18 @@
         EXPECT_THROW({ \
             INJECT_CODE(code, parse); \
         }, spp::parse::errors::SppSyntaxError); \
+    }
+
+
+#define SPP_TEST_SHOULD_PASS_SEMANTIC(what, code) \
+    TEST(SppAnalyse, what) { \
+        build_temp_project(code); \
+    }
+
+
+#define SPP_TEST_SHOULD_FAIL_SEMANTIC(what, code, error) \
+    TEST(SppAnalyse, what) { \
+        EXPECT_THROW({ \
+            build_temp_project(code); \
+        }, spp::analyse::errors::error); \
     }

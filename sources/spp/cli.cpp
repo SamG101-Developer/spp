@@ -31,8 +31,8 @@ inline const std::string MAIN_FILE_CONTENTS = R"(
 
 const auto CONFIG_FILE_CONTENTS = R"(
     [project]
-    name = $
-    version = 0.1.0
+    name = "$"
+    version = "0.1.0"
 
     [vcs]
     std = { git = "https://github.com/SamG101-Developer/SPP-STL", branch = "master" })";
@@ -103,8 +103,6 @@ auto spp::cli::handle_init()
 
     // Add the key files into the directory structure.
     std::filesystem::create_directory(cwd / SRC_FOLDER / cwd.filename());
-    std::filesystem::create_directory(cwd / SRC_FOLDER / MAIN_FILE);
-    std::filesystem::create_directory(cwd / CONFIG_FILE);
 
     // Fill in "main.spp" and "spp.toml" with template content.
     utils::files::write_file(cwd / SRC_FOLDER / MAIN_FILE, MAIN_FILE_CONTENTS);
