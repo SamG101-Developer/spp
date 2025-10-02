@@ -117,7 +117,7 @@ auto spp::asts::ClosureExpressionAst::stage_8_check_memory(
 
     // Set the scope back.
     sm->current_scope = parent_scope;
-    pc_group->stage_8_check_memory(sm, meta);
+    // pc_group->stage_8_check_memory(sm, meta);
 }
 
 

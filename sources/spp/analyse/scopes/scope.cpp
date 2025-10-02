@@ -470,7 +470,7 @@ auto spp::analyse::scopes::Scope::get_var_symbol_outermost(
     if (is_valid_postfix_expression_static(&expr)) {
         // This is possible with a left-hand-side type or namespace.
         const auto postfix_expr = asts::ast_cast<asts::PostfixExpressionAst>(&expr);
-        const auto postfix_op = asts::ast_cast<asts::PostfixExpressionOperatorStaticMemberAccessAst>(&expr);
+        const auto postfix_op = asts::ast_cast<asts::PostfixExpressionOperatorStaticMemberAccessAst>(postfix_expr->op.get());
 
         // Type based left-hand-side, such as "some_namespace::Type::static_member()"
         if (const auto type_lhs = asts::ast_cast<asts::TypeAst>(postfix_expr->lhs.get())) {
@@ -483,8 +483,7 @@ auto spp::analyse::scopes::Scope::get_var_symbol_outermost(
         auto namespace_scope = this;
         while (is_valid_postfix_expression_static(adjusted_name)) {
             adjusted_name = asts::ast_cast<asts::PostfixExpressionAst>(adjusted_name)->lhs.get();
-            const auto namespace_sym = namespace_scope->get_ns_symbol(asts::ast_cast<asts::IdentifierAst>(asts::ast_clone(adjusted_name)));
-            namespace_scope = namespace_sym->scope;
+            namespace_scope = namespace_scope->convert_postfix_to_nested_scope(asts::ast_cast<asts::ExpressionAst>(adjusted_name));
         }
         return std::make_pair(namespace_scope->get_var_symbol(postfix_op->name), namespace_scope);
     }

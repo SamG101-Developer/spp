@@ -15,6 +15,7 @@
 #include <genex/views/address.hpp>
 #include <genex/views/enumerate.hpp>
 #include <genex/views/indirect.hpp>
+#include <genex/views/ptr.hpp>
 #include <genex/views/zip.hpp>
 
 
@@ -80,13 +81,13 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
     mixins::CompilerMetaData *meta)
     -> void {
     // Ensure the LHS is semantically valid.
-    auto is_attr = [](Ast const &x) -> bool { return not ast_cast<IdentifierAst>(&x); };
+    auto is_attr = [](Ast const *x) -> bool { return not ast_cast<IdentifierAst>(x); };
     for (auto &&lhs_expr : lhs) {
         lhs_expr->stage_7_analyse_semantics(sm, meta);
     }
 
     // Ensure the RHS is semantically valid.
-    for (auto [i, rhs_expr] : rhs | genex::views::transform(&std::unique_ptr<ExpressionAst>::get) | genex::views::enumerate) {
+    for (auto [i, rhs_expr] : rhs | genex::views::ptr | genex::views::enumerate) {
         meta->save();
 
         // Handle return type overloading matching for the lhs target types.
@@ -113,19 +114,19 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
         auto &&[lhs_sym, _] = lhs_sym_and_scope;
 
         // Full assignment (ie "x" = "y") requires the "x" symbol to be marked as "mut" or never initialized.
-        if (not is_attr(*lhs_expr) and not(lhs_sym->is_mutable or lhs_sym->memory_info->initialization_counter == 0)) {
+        if (not is_attr(lhs_expr) and not(lhs_sym->is_mutable or lhs_sym->memory_info->initialization_counter == 0)) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
                 *lhs_sym->name, *tok_assign, *lhs_sym->memory_info->ast_initialization).with_scopes({sm->current_scope}).raise();
         }
 
         // Attribute assignment (ie "x.y = z"), for a non-borrowed symbol, requires an outermost "mut" symbol.
-        if (is_attr(*lhs_expr) and not(lhs_sym->memory_info->ast_borrowed or lhs_sym->is_mutable)) {
+        if (is_attr(lhs_expr) and not(lhs_sym->memory_info->ast_borrowed or lhs_sym->is_mutable)) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
                 *lhs_sym->name, *tok_assign, *lhs_sym->memory_info->ast_initialization).with_scopes({sm->current_scope}).raise();
         }
 
         // Attribute assignment (ie "x.y = z"), for a borrowed symbol, cannot contain an immutable borrow.
-        if (is_attr(*lhs_expr) and lhs_sym->memory_info->is_borrow_ref) {
+        if (is_attr(lhs_expr) and lhs_sym->memory_info->is_borrow_ref) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
                 *lhs_sym->name, *tok_assign, *lhs_sym->memory_info->ast_borrowed).with_scopes({sm->current_scope}).raise();
         }
@@ -145,18 +146,19 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta) -> void {
     // For each assignment, check the memory status and resolve any (partial-)moves.
-    auto is_attr = [](Ast const &x) -> bool { return not ast_cast<IdentifierAst>(&x); };
+    auto is_attr = [](Ast const *x) -> bool { return not ast_cast<IdentifierAst>(x); };
     auto lhs_syms = lhs
         | genex::views::indirect
         | genex::views::transform([sm](auto &&x) { return sm->current_scope->get_var_symbol_outermost(x); })
         | genex::views::to<std::vector>();
 
-    for (auto &&[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(lhs | genex::views::ptr, rhs | genex::views::ptr, lhs_syms)) {
+    for (auto &&[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(lhs | genex::views::ptr, rhs | genex::views::ptr, lhs_syms) | genex::views::to<std::vector>()) {
         auto &&[lhs_sym, _] = lhs_sym_and_scope;
 
         // Partially validate the memory of the right-hand-side expression, if it is an attribute being set. Don't mark
         // the move, but do some checks before calling the internal memory checker on the postfix expression.
-        analyse::utils::mem_utils::validate_symbol_memory(*rhs_expr, *tok_assign, *sm, is_attr(*lhs_expr), false, true, true, true, false, meta);
+        analyse::utils::mem_utils::validate_symbol_memory(
+            *rhs_expr, *tok_assign, *sm, is_attr(lhs_expr), false, true, true, true, false, meta);
 
         meta->save();
         meta->assignment_target = ast_clone(ast_cast<IdentifierAst>(lhs_expr));
@@ -164,16 +166,18 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
         meta->restore();
 
         // Fully validate the memory of the right-hand-side expression, marking the move.
-        analyse::utils::mem_utils::validate_symbol_memory(*rhs_expr, *tok_assign, *sm, true, true, true, true, true, true, meta);
+        analyse::utils::mem_utils::validate_symbol_memory(
+            *rhs_expr, *tok_assign, *sm, true, true, true, true, true, true, meta);
 
-        if (is_attr(*lhs_expr)) {
+        if (is_attr(lhs_expr)) {
             const auto pf = ast_cast<PostfixExpressionAst>(lhs_expr);
-            analyse::utils::mem_utils::validate_symbol_memory(*lhs_expr, *tok_assign, *sm, true, is_attr(*pf->lhs), false, true, true, false, meta);
+            analyse::utils::mem_utils::validate_symbol_memory(
+                *lhs_expr, *tok_assign, *sm, true, is_attr(pf->lhs.get()), false, true, true, false, meta);
         }
 
         // Resolve moved identifiers to the "initialised" state, otherwise resolve a partial move.
-        is_attr(*lhs_expr)
-            ? lhs_sym->memory_info->initialized_by(*this)
-            : lhs_sym->memory_info->remove_partial_move(*lhs_expr);
+        is_attr(lhs_expr)
+            ? lhs_sym->memory_info->remove_partial_move(*lhs_expr)
+            : lhs_sym->memory_info->initialized_by(*this);
     }
 }

@@ -39,6 +39,7 @@
 #include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
 #include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
 #include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
+#include <spp/asts/subroutine_prototype_ast.hpp>
 #include <spp/asts/sup_prototype_extension_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/tuple_literal_ast.hpp>
@@ -659,9 +660,10 @@ auto spp::analyse::utils::func_utils::create_callable_prototype(
         | genex::views::to<std::vector>();
 
     // Create a function prototype based off of the parameter and return type.
+    // Todo: When might it be a coroutine, not a subroutine?
     auto dummy_param_group = std::make_unique<asts::FunctionParameterGroupAst>(nullptr, std::move(dummy_param_types), nullptr);
     auto dummy_name = std::make_unique<asts::IdentifierAst>(0, "<anonymous>");
-    auto dummy_overload = std::make_unique<asts::FunctionPrototypeAst>(
+    auto dummy_overload = std::make_unique<asts::SubroutinePrototypeAst>(
         SPP_NO_ANNOTATIONS, nullptr, std::move(dummy_name), nullptr, std::move(dummy_param_group), nullptr,
         std::move(dummy_return_type), nullptr);
 

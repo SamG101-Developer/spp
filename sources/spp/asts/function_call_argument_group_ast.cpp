@@ -269,8 +269,10 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 sym->memory_info->ast_pins.emplace_back(arg->val.get());
                 sym->memory_info->is_borrow_mut = true;
                 sym->memory_info->borrow_refers_to.emplace_back(arg->val.get(), arg.get(), true, sm->current_scope);
-                sym->memory_info->borrow_refers_to.emplace_back(meta->assignment_target.get(), arg.get(), true, sm->current_scope);
-                sm->current_scope->get_var_symbol(meta->assignment_target)->memory_info->ast_pins.emplace_back(arg->val.get());
+                if (meta->assignment_target != nullptr) {
+                    sym->memory_info->borrow_refers_to.emplace_back(meta->assignment_target.get(), arg.get(), true, sm->current_scope);
+                    sm->current_scope->get_var_symbol(meta->assignment_target)->memory_info->ast_pins.emplace_back(arg->val.get());
+                }
             }
 
             // Add the mutable borrow to the mutable borrow set.
@@ -296,8 +298,10 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 sym->memory_info->ast_pins.emplace_back(arg->val.get());
                 sym->memory_info->is_borrow_ref = true;
                 sym->memory_info->borrow_refers_to.emplace_back(arg->val.get(), arg.get(), false, sm->current_scope);
-                sym->memory_info->borrow_refers_to.emplace_back(meta->assignment_target.get(), arg.get(), false, sm->current_scope);
-                sm->current_scope->get_var_symbol(meta->assignment_target)->memory_info->ast_pins.emplace_back(arg->val.get());
+                if (meta->assignment_target != nullptr) {
+                    sym->memory_info->borrow_refers_to.emplace_back(meta->assignment_target.get(), arg.get(), false, sm->current_scope);
+                    sm->current_scope->get_var_symbol(meta->assignment_target)->memory_info->ast_pins.emplace_back(arg->val.get());
+                }
             }
 
             // Add the mutable borrow to the mutable borrow set.

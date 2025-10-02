@@ -119,7 +119,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_8_check_memory(
     for (auto &&cap : captures) {
         if (cap->conv != nullptr) {
             const auto cap_val = ast_cast<IdentifierAst>(cap->val.get());
-            const auto cap_sym = sm->current_scope->get_var_symbol(cap_val->shared_from_this());
+            const auto cap_sym = sm->current_scope->get_var_symbol(ast_clone(cap_val));
             cap_sym->memory_info->ast_pins.emplace_back(cap->val.get());
         }
     }
