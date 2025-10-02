@@ -1,7 +1,7 @@
 #pragma once
+#include <spp/pch.hpp>
 #include <spp/compiler/compiler_boot.hpp>
 #include <spp/compiler/module_tree.hpp>
-#include <spp/pch.hpp>
 
 
 /// @cond
