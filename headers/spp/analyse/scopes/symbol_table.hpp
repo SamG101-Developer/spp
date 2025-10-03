@@ -1,10 +1,12 @@
 #pragma once
 
+#include <spp/pch.hpp>
 #include <spp/asts/_fwd.hpp>
 #include <spp/utils/ptr_cmp.hpp>
-#include <spp/pch.hpp>
 
+#include <absl/container/flat_hash_map.h>
 #include <tsl/robin_map.h>
+#include <boost/container/flat_map.hpp>
 
 
 /// @cond
@@ -18,15 +20,14 @@ namespace spp::analyse::scopes {
     struct TypeSymbol;
     struct VariableSymbol;
 }
+
 /// @endcond
-
-
 
 
 template <typename I, typename S>
 class spp::analyse::scopes::IndividualSymbolTable {
 private:
-    std::map<std::shared_ptr<I>, std::shared_ptr<S>, spp::utils::SymNameCmp<std::shared_ptr<I>>> m_table;
+    boost::container::flat_map<std::shared_ptr<I>, std::shared_ptr<S>, spp::utils::SymNameCmp<std::shared_ptr<I>>> m_table;
 
 public:
     IndividualSymbolTable();

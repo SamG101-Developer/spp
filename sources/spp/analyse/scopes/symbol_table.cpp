@@ -34,10 +34,10 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::operator=(
     if constexpr (std::same_as<S, TypeSymbol>) {
         for (auto const &[k, v] : that.m_table) {
             if (const auto alias = dynamic_cast<AliasSymbol*>(v.get()); alias != nullptr) {
-                m_table.insert({k, std::make_shared<AliasSymbol>(*alias)});
+                m_table[k] = std::make_shared<AliasSymbol>(*alias);
             }
             else {
-                m_table.insert({k, std::make_shared<TypeSymbol>(*v)});
+                m_table[k] = std::make_shared<TypeSymbol>(*v);
             }
         }
     }
@@ -45,7 +45,7 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::operator=(
     // Otherwise, just copy all symbols across.
     else {
         for (auto const &[k, v] : that.m_table) {
-            m_table.insert({k, std::make_shared<S>(*v)});
+            m_table[k] = std::make_shared<S>(*v);
         }
     }
     return *this;
@@ -66,7 +66,7 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::add(
             }
         }
     }
-    m_table.insert({asts::ast_clone(sym_name), sym});
+    m_table[asts::ast_clone(sym_name)] = sym;
 }
 
 
