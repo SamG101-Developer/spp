@@ -72,7 +72,7 @@ public:
         return *this;
     }
 
-    [[noreturn]] virtual auto raise() -> void {
+    SPP_ATTR_NORETURN virtual auto raise() -> void {
         // Throw the error object.
         this->m_err_obj->final_message = this->m_err_obj->messages
             | genex::views::join_with('\n')

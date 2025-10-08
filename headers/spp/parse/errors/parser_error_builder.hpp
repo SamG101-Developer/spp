@@ -32,8 +32,7 @@ private:
 public:
     SyntacticErrorBuilder() = default;
 
-    SPP_ATTR_NORETURN
-    auto raise() -> void override {
+    SPP_ATTR_NORETURN auto raise() -> void override {
         using namespace std::string_literals;
         const auto cast_error = dynamic_cast<SyntacticError*>(this->m_err_obj.get());
 
