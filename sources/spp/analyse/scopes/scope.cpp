@@ -99,7 +99,7 @@ auto spp::analyse::scopes::Scope::search_sup_scopes_for_var(
 
 auto spp::analyse::scopes::Scope::search_sup_scopes_for_type(
     Scope const &scope,
-    std::shared_ptr<asts::TypeAst> const &name,
+    std::shared_ptr<const asts::TypeAst> const &name,
     const bool ignore_alias)
     -> std::shared_ptr<TypeSymbol> {
     // Recursively search the super scopes for a type symbol.
@@ -117,7 +117,7 @@ auto spp::analyse::scopes::Scope::search_sup_scopes_for_type(
 auto spp::analyse::scopes::Scope::shift_scope_for_namespaced_type(
     Scope const &scope,
     asts::TypeAst const &fq_type)
-    -> std::pair<const Scope*, std::shared_ptr<asts::TypeIdentifierAst>> {
+    -> std::pair<const Scope*, std::shared_ptr<const asts::TypeIdentifierAst>> {
     // Get the namespace and type parts, to get the scopes.
     const auto ns_parts = fq_type.ns_parts();
     const auto type_parts = fq_type.type_parts();
@@ -138,7 +138,7 @@ auto spp::analyse::scopes::Scope::shift_scope_for_namespaced_type(
     }
 
     // Return the type scope, and the final type part.
-    auto final = asts::ast_clone(type_parts.back());
+    auto final = type_parts.back();
     return std::make_pair(shifted_scope, std::move(final));
 }
 
@@ -391,7 +391,17 @@ auto spp::analyse::scopes::Scope::get_type_symbol(
     -> std::shared_ptr<TypeSymbol> {
     // Adjust the scope for the namespace of the type identifier if there is one.
     if (sym_name == nullptr) { return nullptr; }
-    auto [scope, sym_name_extracted] = shift_scope_for_namespaced_type(*this, *sym_name->without_convention());
+
+    auto scope = this;
+    std::shared_ptr<const asts::TypeIdentifierAst> sym_name_extracted;
+    if (const auto sym_name_as_identifier = std::dynamic_pointer_cast<const asts::TypeIdentifierAst>(sym_name)) {
+        sym_name_extracted = std::const_pointer_cast<asts::TypeIdentifierAst>(sym_name_as_identifier);
+    }
+    else {
+        auto [scope_, sym_name_extracted_] = shift_scope_for_namespaced_type(*this, *sym_name);
+        scope = scope_;
+        sym_name_extracted = sym_name_extracted_;
+    }
 
     // Get the symbol from the symbol table if it exists.
     auto sym = scope->table.type_tbl.get(sym_name_extracted);

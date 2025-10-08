@@ -99,64 +99,62 @@ auto spp::asts::TypePostfixExpressionAst::equals_type_postfix_expression(
 }
 
 
-auto spp::asts::TypePostfixExpressionAst::iterator(
-    ) const
+auto spp::asts::TypePostfixExpressionAst::iterator() const
     -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> {
     // Iterate from the left-hand-side.
     return lhs->iterator();
 }
 
 
-auto spp::asts::TypePostfixExpressionAst::is_never_type(
-    ) const
+auto spp::asts::TypePostfixExpressionAst::is_never_type() const
     -> bool {
     return false;
 }
 
 
-auto spp::asts::TypePostfixExpressionAst::ns_parts(
-    ) const
+auto spp::asts::TypePostfixExpressionAst::ns_parts() const
     -> std::vector<std::shared_ptr<const IdentifierAst>> {
     // Concatenate the lhs and rhs namespace parts.
-    auto a = const_cast<const TypeAst*>(lhs.get())->ns_parts();
-    auto b = const_cast<const TypePostfixExpressionOperatorAst*>(tok_op.get())->ns_parts();
-    return genex::views::concat(std::move(a), std::move(b)) | genex::to<std::vector>();
+    auto parts = std::const_pointer_cast<const TypeAst>(lhs)->ns_parts();
+    parts.append_range(tok_op->ns_parts());
+    return parts;
 }
 
 
-auto spp::asts::TypePostfixExpressionAst::ns_parts(
-    ) -> std::vector<std::shared_ptr<IdentifierAst>> {
+auto spp::asts::TypePostfixExpressionAst::ns_parts()
+    -> std::vector<std::shared_ptr<IdentifierAst>> {
     // Concatenate the lhs and rhs namespace parts.
-    return genex::views::concat(lhs->ns_parts(), tok_op->ns_parts()) | genex::to<std::vector>();
+    auto parts = lhs->ns_parts();
+    parts.append_range(tok_op->ns_parts());
+    return parts;
 }
 
 
-auto spp::asts::TypePostfixExpressionAst::type_parts(
-    ) const
+auto spp::asts::TypePostfixExpressionAst::type_parts() const
     -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
     // Concatenate the lhs and rhs type parts.
-    auto a = const_cast<const TypeAst*>(lhs.get())->type_parts();
-    auto b = const_cast<const TypePostfixExpressionOperatorAst*>(tok_op.get())->type_parts();
-    return genex::views::concat(std::move(a), std::move(b)) | genex::to<std::vector>();
+    auto parts = std::const_pointer_cast<const TypeAst>(lhs)->type_parts();
+    parts.append_range(tok_op->type_parts());
+    return parts;
 }
 
 
-auto spp::asts::TypePostfixExpressionAst::type_parts(
-    ) -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
+auto spp::asts::TypePostfixExpressionAst::type_parts()
+    -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
     // Concatenate the lhs and rhs type parts.
-    return genex::views::concat(lhs->type_parts(), tok_op->type_parts()) | genex::to<std::vector>();
+    auto parts = lhs->type_parts();
+    parts.append_range(tok_op->type_parts());
+    return parts;
 }
 
 
-auto spp::asts::TypePostfixExpressionAst::without_convention(
-    ) const
+auto spp::asts::TypePostfixExpressionAst::without_convention() const
     -> std::shared_ptr<const TypeAst> {
     return shared_from_this();
 }
 
 
-auto spp::asts::TypePostfixExpressionAst::get_convention(
-    ) const
+auto spp::asts::TypePostfixExpressionAst::get_convention() const
     -> ConventionAst* {
     // This type AST will never have a convention directly applied to it.
     return nullptr;

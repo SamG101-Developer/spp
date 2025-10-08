@@ -109,8 +109,8 @@ public:
     static auto new_global(compiler::Module const &module) -> std::unique_ptr<Scope>;
 
     static auto search_sup_scopes_for_var(Scope const &scope, std::shared_ptr<asts::IdentifierAst> const &name) -> std::shared_ptr<VariableSymbol>;
-    static auto search_sup_scopes_for_type(Scope const &scope, std::shared_ptr<asts::TypeAst> const &name, bool ignore_alias) -> std::shared_ptr<TypeSymbol>;
-    static auto shift_scope_for_namespaced_type(Scope const &scope, asts::TypeAst const &fq_type) -> std::pair<const Scope*, std::shared_ptr<asts::TypeIdentifierAst>>;
+    static auto search_sup_scopes_for_type(Scope const &scope, std::shared_ptr<const asts::TypeAst> const &name, bool ignore_alias) -> std::shared_ptr<TypeSymbol>;
+    static auto shift_scope_for_namespaced_type(Scope const &scope, asts::TypeAst const &fq_type) -> std::pair<const Scope*, std::shared_ptr<const asts::TypeIdentifierAst>>;
 
     auto get_error_formatter() const -> spp::utils::errors::ErrorFormatter*;
 

@@ -106,29 +106,33 @@ auto spp::asts::TypeUnaryExpressionAst::is_never_type() const
 
 auto spp::asts::TypeUnaryExpressionAst::ns_parts() const
     -> std::vector<std::shared_ptr<const IdentifierAst>> {
-    auto a = const_cast<const TypeUnaryExpressionOperatorAst*>(op.get())->ns_parts();
-    auto b = const_cast<const TypeAst*>(rhs.get())->ns_parts();
-    return genex::views::concat(std::move(a), std::move(b)) | genex::to<std::vector>();
+    auto parts = std::const_pointer_cast<const TypeUnaryExpressionOperatorAst>(op)->ns_parts();
+    parts.append_range(rhs->ns_parts());
+    return parts;
 }
 
 
 auto spp::asts::TypeUnaryExpressionAst::ns_parts()
     -> std::vector<std::shared_ptr<IdentifierAst>> {
-    return genex::views::concat(op->ns_parts(), rhs->ns_parts()) | genex::to<std::vector>();
+    auto parts = op->ns_parts();
+    parts.append_range(rhs->ns_parts());
+    return parts;
 }
 
 
 auto spp::asts::TypeUnaryExpressionAst::type_parts() const
     -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
-    auto a = const_cast<const TypeUnaryExpressionOperatorAst*>(op.get())->type_parts();
-    auto b = const_cast<const TypeAst*>(rhs.get())->type_parts();
-    return genex::views::concat(std::move(a), std::move(b)) | genex::to<std::vector>();
+    auto parts = std::const_pointer_cast<const TypeUnaryExpressionOperatorAst>(op)->type_parts();
+    parts.append_range(rhs->type_parts());
+    return parts;
 }
 
 
 auto spp::asts::TypeUnaryExpressionAst::type_parts()
     -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
-    return genex::views::concat(op->type_parts(), rhs->type_parts()) | genex::to<std::vector>();
+    auto parts = op->type_parts();
+    parts.append_range(rhs->type_parts());
+    return parts;
 }
 
 
@@ -154,16 +158,16 @@ auto spp::asts::TypeUnaryExpressionAst::with_convention(
     std::unique_ptr<ConventionAst> &&conv) const
     -> std::shared_ptr<TypeAst> {
     if (conv == nullptr) {
-        return std::make_shared<TypeUnaryExpressionAst>(ast_clone(op), ast_clone(rhs));
+        return std::make_shared<TypeUnaryExpressionAst>(op, rhs);
     }
     if (ast_cast<TypeUnaryExpressionOperatorBorrowAst>(op.get())) {
         return std::make_shared<TypeUnaryExpressionAst>(
             std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)),
-            ast_clone(rhs));
+            rhs);
     }
     return std::make_shared<TypeUnaryExpressionAst>(
         std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)),
-        ast_clone(this));
+        std::make_shared<TypeUnaryExpressionAst>(op, rhs));
 }
 
 
