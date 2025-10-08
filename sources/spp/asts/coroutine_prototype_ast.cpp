@@ -1,3 +1,4 @@
+#include <spp/pch.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
@@ -10,12 +11,11 @@
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
-#include <spp/pch.hpp>
 
+#include <genex/to_container.hpp>
 #include <genex/algorithms/none_of.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/for_each.hpp>
-#include <genex/views/to.hpp>
 
 
 spp::asts::CoroutinePrototypeAst::~CoroutinePrototypeAst() = default;
@@ -67,7 +67,7 @@ auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
     auto superimposed_types = ret_type_sym->scope->sup_types()
         | genex::views::concat(std::move(temp))
         | genex::views::transform([](auto &&x) { return x->without_generics(); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     if (genex::algorithms::none_of(superimposed_types, [sm](auto &&x) { return analyse::utils::type_utils::is_type_generator(*x->without_generics(), *sm->current_scope); })) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppCoroutineInvalidReturnTypeError>().with_args(

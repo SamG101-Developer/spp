@@ -1,13 +1,13 @@
 #include <spp/asts/identifier_ast.hpp>
+#include <spp/asts/module_implementation_ast.hpp>
 #include <spp/asts/module_member_ast.hpp>
 #include <spp/asts/module_prototype_ast.hpp>
-#include <spp/asts/module_implementation_ast.hpp>
 
 #include <genex/algorithms/contains.hpp>
 #include <genex/algorithms/position.hpp>
 #include <genex/views/drop.hpp>
-#include <genex/views/flatten.hpp>
 #include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
 
 
 spp::asts::ModulePrototypeAst::ModulePrototypeAst(
@@ -65,14 +65,14 @@ auto spp::asts::ModulePrototypeAst::name() const
         name = parts
             | genex::views::drop(genex::algorithms::position(parts, [](auto &&x) { return x == "src"; }))
             | genex::views::intersperse("::"s)
-            | genex::views::flatten
-            | genex::views::to<std::string>();
+            | genex::views::join
+            | genex::to<std::string>();
     }
     else {
         name = std::vector{parts[0], parts[1] + ".spp"}
             | genex::views::intersperse("::"s)
-            | genex::views::flatten
-            | genex::views::to<std::string>();
+            | genex::views::join
+            | genex::to<std::string>();
     }
 
     return std::make_unique<IdentifierAst>(pos_start(), std::move(name));

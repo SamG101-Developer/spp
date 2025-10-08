@@ -1,15 +1,15 @@
 #include <spp/asts/module_prototype_ast.hpp>
 #include <spp/compiler/module_tree.hpp>
 
+#include <genex/to_container.hpp>
 #include <genex/actions/remove_if.hpp>
 #include <genex/views/borrow.hpp>
-#include <genex/views/chunk.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/drop.hpp>
-#include <genex/views/flatten_with.hpp>
+#include <genex/views/join_with.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/move.hpp>
-#include <genex/views/to.hpp>
+#include <genex/views/split.hpp>
 #include <genex/views/transform.hpp>
 #include <Glob-1.0/glob/glob.h>
 
@@ -32,16 +32,16 @@ spp::compiler::ModuleTree::ModuleTree(
     // Get all the modules from the src and vcs path.
     auto src_modules = glob::rglob(m_src_path / "**/*.spp")
         | genex::views::transform([](auto const &p) { return Module::from_path(p); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     auto test = glob::rglob(m_vcs_path / "**/*.spp");
     auto vcs_modules = glob::rglob(m_vcs_path / "**/*.spp")
         | genex::views::transform([](auto const &p) { return Module::from_path(p); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     auto ffi_modules = glob::rglob(m_ffi_path / "**/*.spp")
         | genex::views::transform([](auto const &p) { return Module::from_path(p); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     // Remove the "main.spp" files from the vcs modules.
     auto filtered_vcs_modules = std::vector<Module>();
@@ -49,7 +49,7 @@ spp::compiler::ModuleTree::ModuleTree(
         auto relative_path = std::filesystem::relative(m.path, m_vcs_path);
         auto inner_path = std::filesystem::path();
         constexpr auto sep = std::filesystem::path::preferred_separator;
-        for (auto const &part : std::filesystem::path(relative_path.string() | genex::views::chunk(sep) | genex::views::drop(1) | genex::views::materialize() | genex::views::flatten_with(sep) | genex::views::to<std::string>())) {
+        for (auto const &part : std::filesystem::path(relative_path.string() | genex::views::split(sep) | genex::views::drop(1) | genex::views::materialize | genex::views::join_with(sep) | genex::to<std::string>())) {
             inner_path /= part;
         }
 
@@ -60,7 +60,7 @@ spp::compiler::ModuleTree::ModuleTree(
     }
 
     // Merge the src, vcs and ffi modules together.
-    m_modules = genex::views::concat(src_modules | genex::views::move, filtered_vcs_modules | genex::views::move, ffi_modules | genex::views::move) | genex::views::to<std::vector>();
+    m_modules = genex::views::concat(src_modules | genex::views::move, filtered_vcs_modules | genex::views::move, ffi_modules | genex::views::move) | genex::to<std::vector>();
 }
 
 

@@ -22,10 +22,10 @@
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/pch.hpp>
 
+#include <genex/to_container.hpp>
 #include <genex/actions/remove.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/ptr.hpp>
-#include <genex/views/to.hpp>
 
 
 spp::asts::CaseExpressionAst::CaseExpressionAst(
@@ -149,7 +149,7 @@ auto spp::asts::CaseExpressionAst::stage_8_check_memory(
     // Move into the "case" scope and check the memory satus of the symbols in the branches.
     sm->move_to_next_scope();
     analyse::utils::mem_utils::validate_inconsistent_memory(
-        branches | genex::views::ptr | genex::views::to<std::vector>(), sm, meta);
+        branches | genex::views::ptr | genex::to<std::vector>(), sm, meta);
 
     // Move out of the case expression scope.
     sm->move_out_of_current_scope();
@@ -162,7 +162,7 @@ auto spp::asts::CaseExpressionAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Ensure consistency across branches.
     auto [master_branch_type_info, branches_type_info] = analyse::utils::type_utils::validate_inconsistent_types(
-        branches | genex::views::ptr | genex::views::to<std::vector>(), sm, meta);
+        branches | genex::views::ptr | genex::to<std::vector>(), sm, meta);
 
     // Ensure there is an "else" branch if the branches are not exhaustive. Todo: Need to investigate how to detect exhaustion.
     if (ast_cast<CasePatternVariantElseAst>(branches.back()->patterns[0].get()) == nullptr and not meta->ignore_missing_else_branch_for_inference) {

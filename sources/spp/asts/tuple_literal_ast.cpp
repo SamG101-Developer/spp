@@ -77,7 +77,7 @@ auto spp::asts::TupleLiteralAst::equals_tuple_literal(
     TupleLiteralAst const &other) const
     -> std::strong_ordering {
     if (elems.size() == other.elems.size() and genex::algorithms::all_of(
-        genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::views::to<std::vector>(),
+        genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::to<std::vector>(),
         [](auto const &pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
         return std::strong_ordering::equal;
     }
@@ -128,7 +128,7 @@ auto spp::asts::TupleLiteralAst::infer_type(
     // Create a "..Ts" type, for the tuple type.
     auto types_gen = elems
         | genex::views::transform([sm, meta](auto &&elem) { return elem->infer_type(sm, meta); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     // Create a tuple type with the inferred element types.
     auto tuple_type = generate::common_types::tuple_type(pos_start(), std::move(types_gen));

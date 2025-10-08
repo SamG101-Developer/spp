@@ -15,11 +15,11 @@
 #include <spp/asts/type_unary_expression_ast.hpp>
 #include <spp/asts/type_unary_expression_operator_borrow_ast.hpp>
 
+#include <genex/to_container.hpp>
 #include <genex/algorithms/min_element.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/transform.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/to.hpp>
 
 
 spp::asts::TypePostfixExpressionAst::TypePostfixExpressionAst(
@@ -120,14 +120,14 @@ auto spp::asts::TypePostfixExpressionAst::ns_parts(
     // Concatenate the lhs and rhs namespace parts.
     auto a = const_cast<const TypeAst*>(lhs.get())->ns_parts();
     auto b = const_cast<const TypePostfixExpressionOperatorAst*>(tok_op.get())->ns_parts();
-    return genex::views::concat(std::move(a), std::move(b)) | genex::views::to<std::vector>();
+    return genex::views::concat(std::move(a), std::move(b)) | genex::to<std::vector>();
 }
 
 
 auto spp::asts::TypePostfixExpressionAst::ns_parts(
     ) -> std::vector<std::shared_ptr<IdentifierAst>> {
     // Concatenate the lhs and rhs namespace parts.
-    return genex::views::concat(lhs->ns_parts(), tok_op->ns_parts()) | genex::views::to<std::vector>();
+    return genex::views::concat(lhs->ns_parts(), tok_op->ns_parts()) | genex::to<std::vector>();
 }
 
 
@@ -137,14 +137,14 @@ auto spp::asts::TypePostfixExpressionAst::type_parts(
     // Concatenate the lhs and rhs type parts.
     auto a = const_cast<const TypeAst*>(lhs.get())->type_parts();
     auto b = const_cast<const TypePostfixExpressionOperatorAst*>(tok_op.get())->type_parts();
-    return genex::views::concat(std::move(a), std::move(b)) | genex::views::to<std::vector>();
+    return genex::views::concat(std::move(a), std::move(b)) | genex::to<std::vector>();
 }
 
 
 auto spp::asts::TypePostfixExpressionAst::type_parts(
     ) -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
     // Concatenate the lhs and rhs type parts.
-    return genex::views::concat(lhs->type_parts(), tok_op->type_parts()) | genex::views::to<std::vector>();
+    return genex::views::concat(lhs->type_parts(), tok_op->type_parts()) | genex::to<std::vector>();
 }
 
 
@@ -188,7 +188,7 @@ auto spp::asts::TypePostfixExpressionAst::substitute_generics(
     const auto rhs = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
     auto new_lhs = lhs->substitute_generics(args);
     auto new_rhs = std::make_unique<TypePostfixExpressionOperatorNestedTypeAst>(
-        nullptr, ast_cast<TypeIdentifierAst>(rhs->name->substitute_generics(std::move(args))));
+        nullptr, std::dynamic_pointer_cast<TypeIdentifierAst>(rhs->name->substitute_generics(std::move(args))));
     return std::make_shared<TypePostfixExpressionAst>(std::move(new_lhs), std::move(new_rhs));
 }
 
@@ -238,16 +238,16 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
         | genex::views::transform([name=op_nested->name.get()](auto &&x) { return std::make_pair(x, x->table.type_tbl.get(ast_clone(name))); })
         | genex::views::filter([](auto &&x) { return x.second != nullptr; })
         | genex::views::transform([lhs_type_sym](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     auto min_depth = genex::algorithms::min_element(scopes_and_syms
         | genex::views::transform([](auto &&x) { return std::get<0>(x); })
-        | genex::views::to<std::vector>());
+        | genex::to<std::vector>());
 
     auto closest = scopes_and_syms
         | genex::views::filter([min_depth](auto &&x) { return std::get<0>(x) == min_depth; })
         | genex::views::transform([](auto &&x) { return std::make_pair(std::get<1>(x), std::get<2>(x)); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     if (closest.size() > 1) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppAmbiguousMemberAccessError>().with_args(

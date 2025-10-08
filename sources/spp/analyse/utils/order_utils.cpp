@@ -2,11 +2,11 @@
 #include <spp/asts/ast.hpp>
 #include <spp/asts/mixins/orderable_ast.hpp>
 
+#include <genex/to_container.hpp>
 #include <genex/algorithms/position.hpp>
 #include <genex/algorithms/sorted.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/transform.hpp>
-#include <genex/views/to.hpp>
 #include <genex/views/zip.hpp>
 #include <magic_enum/magic_enum.hpp>
 
@@ -32,7 +32,7 @@ auto spp::analyse::utils::order_utils::order(
     // Tag each argument with its "order tag".
     auto tagged_args = args
         | genex::views::transform([](auto *x) { return std::make_pair(x->get_order_tag(), x); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     // Sort the arguments based on the correct order.
     auto args_sorted = genex::algorithms::sorted(tagged_args, [&](auto &&arg_a, auto &&arg_b) {
@@ -50,7 +50,7 @@ auto spp::analyse::utils::order_utils::order(
                 std::string(magic_enum::enum_name(std::get<0>(x))),
                 dynamic_cast<asts::Ast*>(std::get<1>(x)));
         })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
     return out_of_order;
 }
 

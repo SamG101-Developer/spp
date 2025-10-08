@@ -20,7 +20,7 @@
 #include <spp/asts/generate/common_types.hpp>
 
 #include <genex/algorithms/any_of.hpp>
-#include <genex/views/cast.hpp>
+#include <genex/views/cast_dynamic.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/ptr.hpp>
@@ -242,24 +242,24 @@ auto spp::asts::TypeIdentifierAst::substitute_generics(
     // Get the generic type arguments.
     auto gen_type_args = args
         | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()
-        | genex::views::transform([](auto &&g) { return std::make_pair(g->name, dynamic_cast<ExpressionAst const*>(g->val.get())); })
-        | genex::views::to<std::vector>();
+        | genex::views::transform([](auto &&g) { return std::make_pair(g->name, ast_cast<ExpressionAst>(g->val.get())); })
+        | genex::to<std::vector>();
 
     // Get the generic comp arguments.
     auto gen_comp_args = args
         | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()
         | genex::views::transform([](auto &&g) { return std::make_pair(g->name, g->val.get()); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     // Check if this type directly matches any generic type argument name.
     for (auto &&[gen_arg_name, gen_arg_val] : gen_type_args) {
         if (*this == *ast_cast<TypeIdentifierAst>(gen_arg_name.get())) {
-            return ast_clone(dynamic_cast<TypeAst const*>(gen_arg_val));
+            return ast_clone(ast_cast<TypeAst>(gen_arg_val));
         }
     }
 
     // Substitute generics in the comp arguments' types.
-    for (auto &&[gen_arg_name, gen_arg_val] : genex::views::concat(gen_type_args, gen_comp_args) | genex::views::to<std::vector>()) {
+    for (auto &&[gen_arg_name, gen_arg_val] : genex::views::concat(gen_type_args, gen_comp_args) | genex::to<std::vector>()) {
         for (auto const &g : name_clone->generic_arg_group->get_comp_args() | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()) {
             if (auto const *ident_val = ast_cast<IdentifierAst>(g->val.get()); ident_val != nullptr and *ident_val == *IdentifierAst::from_type(*gen_arg_name)) {
                 g->val = ast_clone(gen_arg_val);
@@ -283,7 +283,7 @@ auto spp::asts::TypeIdentifierAst::contains_generic(
     // Check if the parameter's name is in the type parts iterated from this type.
     auto cast_name = ast_cast<TypeIdentifierAst>(generic.name.get());
     return genex::algorithms::any_of(
-        iterator() | genex::views::to<std::vector>(), [&cast_name](auto ti) { return *ti == *cast_name; });
+        iterator() | genex::to<std::vector>(), [&cast_name](auto ti) { return *ti == *cast_name; });
 }
 
 

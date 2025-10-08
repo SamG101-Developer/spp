@@ -108,13 +108,13 @@ auto spp::asts::TypeUnaryExpressionAst::ns_parts() const
     -> std::vector<std::shared_ptr<const IdentifierAst>> {
     auto a = const_cast<const TypeUnaryExpressionOperatorAst*>(op.get())->ns_parts();
     auto b = const_cast<const TypeAst*>(rhs.get())->ns_parts();
-    return genex::views::concat(std::move(a), std::move(b)) | genex::views::to<std::vector>();
+    return genex::views::concat(std::move(a), std::move(b)) | genex::to<std::vector>();
 }
 
 
 auto spp::asts::TypeUnaryExpressionAst::ns_parts()
     -> std::vector<std::shared_ptr<IdentifierAst>> {
-    return genex::views::concat(op->ns_parts(), rhs->ns_parts()) | genex::views::to<std::vector>();
+    return genex::views::concat(op->ns_parts(), rhs->ns_parts()) | genex::to<std::vector>();
 }
 
 
@@ -122,13 +122,13 @@ auto spp::asts::TypeUnaryExpressionAst::type_parts() const
     -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
     auto a = const_cast<const TypeUnaryExpressionOperatorAst*>(op.get())->type_parts();
     auto b = const_cast<const TypeAst*>(rhs.get())->type_parts();
-    return genex::views::concat(std::move(a), std::move(b)) | genex::views::to<std::vector>();
+    return genex::views::concat(std::move(a), std::move(b)) | genex::to<std::vector>();
 }
 
 
 auto spp::asts::TypeUnaryExpressionAst::type_parts()
     -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
-    return genex::views::concat(op->type_parts(), rhs->type_parts()) | genex::views::to<std::vector>();
+    return genex::views::concat(op->type_parts(), rhs->type_parts()) | genex::to<std::vector>();
 }
 
 

@@ -2,8 +2,8 @@
 #include <spp/pch.hpp>
 #include <spp/utils/strings.hpp>
 
+#include <genex/to_container.hpp>
 #include <genex/views/transform.hpp>
-#include <genex/views/to.hpp>
 #include <magic_enum/magic_enum.hpp>
 
 
@@ -24,7 +24,7 @@ auto spp::lex::Lexer::lex() const -> std::vector<RawToken> {
         if (kw_string.starts_with("KW_")) {
             keywords[kw] = kw_string.substr(3)
                 | genex::views::transform([](auto c) { return std::tolower(c); })
-                | genex::views::to<std::string>();
+                | genex::to<std::string>();
         }
     }
 

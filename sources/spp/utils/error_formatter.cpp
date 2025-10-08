@@ -3,15 +3,14 @@
 #include <spp/utils/error_formatter.hpp>
 
 #include <colex/common.hpp>
+#include <genex/to_container.hpp>
 #include <genex/algorithms/fold_left.hpp>
 #include <genex/algorithms/position.hpp>
 #include <genex/algorithms/position_last.hpp>
 #include <genex/operations/size.hpp>
 #include <genex/views/drop.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/materialize.hpp>
 #include <genex/views/take.hpp>
-#include <genex/views/to.hpp>
 #include <opex/cast.hpp>
 
 
@@ -34,11 +33,11 @@ auto spp::utils::errors::ErrorFormatter::internal_parse_error_raw_pos(
     }
 
     const auto error_line_start_pos = genex::algorithms::position_last(
-        m_tokens | genex::views::take(ast_start_pos) | genex::views::to<std::vector>(),
+        m_tokens | genex::views::take(ast_start_pos) | genex::to<std::vector>(),
         [](auto &&token) { return token.type == RawTokenType::TK_LINE_FEED; }) + 1;
 
     const auto error_line_end_pos = genex::algorithms::position(
-        m_tokens | genex::views::drop(ast_start_pos) | genex::views::to<std::vector>(),
+        m_tokens | genex::views::drop(ast_start_pos) | genex::to<std::vector>(),
         [](auto &&token) { return token.type == RawTokenType::TK_LINE_FEED; }, {}, m_tokens.size() - ast_start_pos) + ast_start_pos;
 
     auto error_line_tokens = std::vector(
@@ -53,7 +52,7 @@ auto spp::utils::errors::ErrorFormatter::internal_parse_error_raw_pos(
     auto error_line_number = std::to_string(genex::operations::size(m_tokens
         | genex::views::take(ast_start_pos)
         | genex::views::filter([](const lex::RawToken &token) { return token.type == RawTokenType::TK_LINE_FEED; })
-        | genex::views::materialize()));
+        | genex::to<std::vector>()));
 
     // The number of "^" is the length of the token data where the error is.
     const auto num_tokens_before_ast_pos = ast_start_pos - (error_line_start_pos as USize) + 1;

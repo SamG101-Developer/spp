@@ -1,11 +1,10 @@
 #pragma once
-#include <spp/analyse/scopes/scope.hpp>
 #include <spp/pch.hpp>
+#include <spp/analyse/scopes/scope.hpp>
 
-#include <genex/views/flatten_with.hpp>
-#include <genex/views/to.hpp>
+#include <genex/to_container.hpp>
 #include <genex/views/cycle.hpp>
-#include <genex/views/take.hpp>
+#include <genex/views/join_with.hpp>
 #include <genex/views/transform.hpp>
 
 
@@ -63,7 +62,7 @@ public:
 
     auto with_scopes(std::vector<analyse::scopes::Scope const*> scopes) -> AbstractErrorBuilder& {
         // Extract error formatters from a list of scopes.
-        m_error_formatters = scopes | genex::views::transform(&analyse::scopes::Scope::get_error_formatter) | genex::views::to<std::vector>();
+        m_error_formatters = scopes | genex::views::transform(&analyse::scopes::Scope::get_error_formatter) | genex::to<std::vector>();
         return *this;
     }
 
@@ -76,8 +75,8 @@ public:
     [[noreturn]] virtual auto raise() -> void {
         // Throw the error object.
         this->m_err_obj->final_message = this->m_err_obj->messages
-            | genex::views::flatten_with('\n')
-            | genex::views::to<std::string>();
+            | genex::views::join_with('\n')
+            | genex::to<std::string>();
 
         throw T(*m_err_obj);
     }

@@ -4,8 +4,8 @@
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/function_prototype_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/module_prototype_ast.hpp>
 #include <spp/asts/sup_prototype_extension_ast.hpp>
 #include <spp/asts/token_ast.hpp>

@@ -1,12 +1,13 @@
+#include <spp/pch.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/order_utils.hpp>
-#include <spp/asts/function_parameter_group_ast.hpp>
 #include <spp/asts/function_parameter_ast.hpp>
+#include <spp/asts/function_parameter_group_ast.hpp>
 #include <spp/asts/function_parameter_optional_ast.hpp>
-#include <spp/asts/function_parameter_self_ast.hpp>
 #include <spp/asts/function_parameter_required_ast.hpp>
+#include <spp/asts/function_parameter_self_ast.hpp>
 #include <spp/asts/function_parameter_variadic_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/let_statement_initialized_ast.hpp>
@@ -14,15 +15,13 @@
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/mixins/orderable_ast.hpp>
-#include <spp/pch.hpp>
 
-#include <genex/views/cast.hpp>
+#include <genex/to_container.hpp>
 #include <genex/views/duplicates.hpp>
+#include <genex/views/cast_dynamic.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/flatten.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
-#include <genex/views/to.hpp>
 
 
 spp::asts::FunctionParameterGroupAst::FunctionParameterGroupAst(
@@ -79,7 +78,7 @@ auto spp::asts::FunctionParameterGroupAst::get_self_param() const -> FunctionPar
         | genex::views::ptr
         | genex::views::cast_dynamic<FunctionParameterSelfAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
     return ps.empty() ? nullptr : ps[0];
 }
 
@@ -89,7 +88,7 @@ auto spp::asts::FunctionParameterGroupAst::get_required_params() const -> std::v
         | genex::views::ptr
         | genex::views::cast_dynamic<FunctionParameterRequiredAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 }
 
 
@@ -98,7 +97,7 @@ auto spp::asts::FunctionParameterGroupAst::get_optional_params() const -> std::v
         | genex::views::ptr
         | genex::views::cast_dynamic<FunctionParameterOptionalAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 }
 
 
@@ -107,7 +106,7 @@ auto spp::asts::FunctionParameterGroupAst::get_variadic_param() const -> Functio
         | genex::views::ptr
         | genex::views::cast_dynamic<FunctionParameterVariadicAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
     return ps.empty() ? nullptr : ps[0];
 }
 
@@ -116,7 +115,7 @@ auto spp::asts::FunctionParameterGroupAst::get_non_self_params() const -> std::v
     return params
         | genex::views::ptr
         | genex::views::filter([](auto &&x) { return not ast_cast<FunctionParameterSelfAst>(x); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 }
 
 
@@ -129,7 +128,7 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
         | genex::views::ptr
         | genex::views::cast_dynamic<FunctionParameterSelfAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     if (self_params.size() > 1) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppMultipleSelfParametersError>().with_args(
@@ -139,10 +138,10 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
     // Check there are no duplicate parameter names.
     const auto param_names = params
         | genex::views::transform([](auto &&x) { return x->extract_names(); })
-        | genex::views::flatten
-        | genex::views::materialize()
+        | genex::views::join
+        | genex::views::materialize
         | genex::views::duplicates()
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     if (not param_names.empty()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
@@ -153,7 +152,7 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
     const auto unordered_args = analyse::utils::order_utils::order_args(params
         | genex::views::ptr
         | genex::views::cast_dynamic<mixins::OrderableAst*>()
-        | genex::views::to<std::vector>());
+        | genex::to<std::vector>());
 
     if (not unordered_args.empty()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>().with_args(

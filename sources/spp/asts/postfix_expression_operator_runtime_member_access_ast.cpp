@@ -8,10 +8,10 @@
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/utils/strings.hpp>
 
+#include <genex/to_container.hpp>
 #include <genex/algorithms/min_element.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/to.hpp>
 #include <genex/views/transform.hpp>
 
 
@@ -120,7 +120,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
         if (not lhs_type_sym->scope->has_var_symbol(name, true)) {
             const auto alternatives = sm->current_scope->all_var_symbols(true, true)
                 | genex::views::transform([](auto const &x) { return x->name->val; })
-                | genex::views::to<std::vector>();
+                | genex::to<std::vector>();
 
             const auto closest_match = spp::utils::strings::closest_match(name->val, alternatives);
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierUnknownError>().with_args(
@@ -137,16 +137,16 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
             | genex::views::transform([name=name.get()](auto const &x) { return std::make_pair(x, x->table.var_tbl.get(ast_clone(name))); })
             | genex::views::filter([](auto const &x) { return x.second != nullptr; })
             | genex::views::transform([lhs_type_sym](auto const &x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
-            | genex::views::to<std::vector>();
+            | genex::to<std::vector>();
 
         auto min_depth = genex::algorithms::min_element(scopes_and_syms
             | genex::views::transform([](auto const &x) { return std::get<0>(x); })
-            | genex::views::to<std::vector>());
+            | genex::to<std::vector>());
 
         auto closest = scopes_and_syms
             | genex::views::filter([min_depth](auto const &x) { return std::get<0>(x) == min_depth; })
             | genex::views::transform([](auto const &x) { return std::make_pair(std::get<1>(x), std::get<2>(x)); })
-            | genex::views::to<std::vector>();
+            | genex::to<std::vector>();
 
         if (closest.size() > 1) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppAmbiguousMemberAccessError>().with_args(

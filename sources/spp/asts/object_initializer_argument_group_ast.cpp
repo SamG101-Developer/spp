@@ -17,15 +17,15 @@
 #include <spp/macros.hpp>
 #include <spp/pch.hpp>
 
+#include <genex/to_container.hpp>
 #include <genex/operations/access.hpp>
-#include <genex/views/cast.hpp>
+#include <genex/views/cast_dynamic.hpp>
 #include <genex/views/duplicates.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/remove.hpp>
 #include <genex/views/set_algorithms.hpp>
-#include <genex/views/to.hpp>
 #include <genex/views/transform.hpp>
 
 
@@ -94,7 +94,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::get_autofill_arg()
         | genex::views::ptr
         | genex::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr and x->tok_ellipsis != nullptr; })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
     return filtered.empty() ? nullptr : filtered[0];
 }
 
@@ -105,7 +105,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::get_non_autofill_args()
     return args
         | genex::views::ptr
         | genex::views::remove(get_autofill_arg())
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 }
 
 
@@ -115,7 +115,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::get_shorthand_args()
     return args
         | genex::views::ptr
         | genex::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>()
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 }
 
 
@@ -125,7 +125,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::get_keyword_args()
     return args
         | genex::views::ptr
         | genex::views::cast_dynamic<ObjectInitializerArgumentKeywordAst*>()
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 }
 
 
@@ -137,9 +137,9 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics
     // try reading a duplicate attribute before an error is raised.
     const auto duplicates = get_keyword_args()
         | genex::views::transform([](auto &&x) { return x->name; })
-        | genex::views::materialize()
-        | genex::views::duplicates()
-        | genex::views::to<std::vector>();
+        | genex::views::materialize
+        | genex::views::duplicates
+        | genex::to<std::vector>();
 
     if (not duplicates.empty()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
@@ -158,7 +158,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics
                 // Multiple attributes with same name (via base classes) -> can't infer the one to use.
                 auto attrs = all_attrs
                     | genex::views::filter([kw_arg](auto &&x) { return *x.first->name == *kw_arg->name; })
-                    | genex::views::to<std::vector>();
+                    | genex::to<std::vector>();
                 if (attrs.size() > 1) { continue; }
 
                 // Use the type off the single matching attribute.
@@ -183,12 +183,12 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
     const auto all_attrs = analyse::utils::type_utils::get_all_attrs(*meta->object_init_type, sm);
     const auto all_attr_names = all_attrs
         | genex::views::transform([](auto &&x) { return x.first->name; })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     // Check there is at most 1 autofill argument.
     const auto af_args = get_shorthand_args()
         | genex::views::filter([](auto &&x) { return x->tok_ellipsis != nullptr; })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     if (af_args.size() > 1) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError>().with_args(
@@ -198,11 +198,11 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
     // Check there are no invalidly named arguments.
     auto arg_names = get_non_autofill_args()
         | genex::views::transform([](auto &&x) { return x->name.get(); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     const auto invalid_args = arg_names
         | genex::views::set_difference_unsorted(all_attr_names, SPP_INSTANT_INDIRECT, SPP_INSTANT_INDIRECT)
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     if (not invalid_args.empty()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppArgumentNameInvalidError>().with_args(
@@ -213,7 +213,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
     for (auto &&arg : get_non_autofill_args()) {
         auto matching_attrs = all_attrs
             | genex::views::filter([&arg](auto const &x) { return *x.first->name == *arg->name; })
-            | genex::views::to<std::vector>();
+            | genex::to<std::vector>();
 
         if (matching_attrs.size() > 1) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppAmbiguousMemberAccessError>().with_args(

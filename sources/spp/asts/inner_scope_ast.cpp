@@ -19,7 +19,6 @@
 #include <genex/actions/remove.hpp>
 #include <genex/actions/remove_if.hpp>
 #include <genex/views/enumerate.hpp>
-#include <genex/views/for_each.hpp>
 #include <genex/views/view.hpp>
 
 
@@ -115,7 +114,7 @@ auto spp::asts::InnerScopeAst<T>::stage_7_analyse_semantics(
     m_scope = sm->current_scope;
 
     // Analyse the members of the inner scope.
-    members | genex::views::for_each([sm, meta](auto const &x) { x->stage_7_analyse_semantics(sm, meta); });
+    for (auto const &x : members) { x->stage_7_analyse_semantics(sm, meta); }
     sm->move_out_of_current_scope();
 }
 
@@ -129,15 +128,15 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
     sm->move_to_next_scope();
 
     // Check the memory of each member.
-    members | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });
+    for (auto const &x : members) { x->stage_8_check_memory(sm, meta); }
     auto all_syms = sm->current_scope->all_var_symbols();
     auto inner_syms = sm->current_scope->all_var_symbols(true);
 
     // Invalidate yielded borrows that are linked.
     for (auto &&sym : inner_syms) {
-        for (auto *pin : sym->memory_info->ast_pins | genex::views::view | genex::views::to<std::vector>()) {
+        for (auto *pin : sym->memory_info->ast_pins | genex::views::view | genex::to<std::vector>()) {
             const auto pin_sym = sm->current_scope->get_var_symbol(ast_clone(ast_cast<IdentifierAst>(pin)));
-            for (auto &&info : pin_sym->memory_info->borrow_refers_to | genex::views::view | genex::views::to<std::vector>()) {
+            for (auto &&info : pin_sym->memory_info->borrow_refers_to | genex::views::view | genex::to<std::vector>()) {
                 pin_sym->memory_info->borrow_refers_to |= genex::actions::remove_if([sym](auto &&x) { return *ast_cast<IdentifierAst>(std::get<0>(x)) == *sym->name; });
                 pin_sym->memory_info->borrow_refers_to |= genex::actions::remove_if([info](auto &&x) { return std::get<0>(x) == std::get<0>(info); });
             }
@@ -145,7 +144,7 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
     }
 
     for (auto &&sym : all_syms) {
-        for (auto &&bor : sym->memory_info->borrow_refers_to | genex::views::view | genex::views::to<std::vector>()) {
+        for (auto &&bor : sym->memory_info->borrow_refers_to | genex::views::view | genex::to<std::vector>()) {
             auto [a, b, _, scope] = bor;
             if (scope == sm->current_scope) {
                 sym->memory_info->borrow_refers_to |= genex::actions::remove_if([bor](auto &&x) { return x == bor; });

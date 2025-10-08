@@ -1,3 +1,4 @@
+#include <spp/pch.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/asts/binary_expression_ast.hpp>
 #include <spp/asts/case_expression_branch_ast.hpp>
@@ -6,14 +7,13 @@
 #include <spp/asts/inner_scope_expression_ast.hpp>
 #include <spp/asts/let_statement_initialized_ast.hpp>
 #include <spp/asts/local_variable_ast.hpp>
+#include <spp/asts/object_initializer_argument_group_ast.hpp>
+#include <spp/asts/object_initializer_ast.hpp>
 #include <spp/asts/pattern_guard_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
 #include <spp/asts/postfix_expression_operator_ast.hpp>
-#include <spp/asts/object_initializer_argument_group_ast.hpp>
-#include <spp/asts/object_initializer_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
-#include <spp/pch.hpp>
 
 #include <genex/views/for_each.hpp>
 

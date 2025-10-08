@@ -16,8 +16,8 @@
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 
+#include <genex/to_container.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/to.hpp>
 
 
 spp::asts::SupPrototypeFunctionsAst::SupPrototypeFunctionsAst(
@@ -105,7 +105,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_2_gen_top_level_scopes(
     }
 
     // Check every generic parameter is constrained by the type.
-    if (const auto unconstrained = generic_param_group->get_all_params() | genex::views::filter([this](auto &&x) { return not name->contains_generic(*x); }) | genex::views::to<std::vector>(); not unconstrained.empty()) {
+    if (const auto unconstrained = generic_param_group->get_all_params() | genex::views::filter([this](auto &&x) { return not name->contains_generic(*x); }) | genex::to<std::vector>(); not unconstrained.empty()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError>().with_args(
             *unconstrained[0]).with_scopes({sm->current_scope}).raise();
     }

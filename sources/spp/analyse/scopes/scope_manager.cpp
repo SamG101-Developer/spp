@@ -5,20 +5,20 @@
 #include <spp/asts/cmp_statement_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/sup_prototype_functions_ast.hpp>
 #include <spp/asts/sup_prototype_extension_ast.hpp>
+#include <spp/asts/sup_prototype_functions_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/type_statement_ast.hpp>
 
+#include <genex/to_container.hpp>
 #include <genex/algorithms/contains.hpp>
 #include <genex/algorithms/position.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/duplicates.hpp>
 #include <genex/views/drop.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/flatten.hpp>
+#include <genex/views/join.hpp>
 #include <genex/views/ptr.hpp>
-#include <genex/views/to.hpp>
 #include <opex/cast.hpp>
 
 
@@ -100,7 +100,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes(
     if (const auto alias_sym = dynamic_cast<AliasSymbol*>(scope.ty_sym.get()); alias_sym != nullptr) {
         if (alias_sym->old_sym->scope != nullptr) {
             const auto old_scope = alias_sym->old_sym->scope;
-            auto scopes = genex::views::concat(normal_sup_blocks[old_scope->ty_sym.get()], generic_sup_blocks) | genex::views::to<std::vector>();
+            auto scopes = genex::views::concat(normal_sup_blocks[old_scope->ty_sym.get()], generic_sup_blocks) | genex::to<std::vector>();
             attach_specific_super_scopes_impl(scope, std::move(scopes), meta);
         }
     }
@@ -108,7 +108,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes(
     // Handle type symbols.
     else if (scope.ty_sym != nullptr) {
         const auto non_generic_sym = scope.get_type_symbol(scope.ty_sym->name->without_generics());
-        auto scopes = genex::views::concat(normal_sup_blocks[non_generic_sym.get()], generic_sup_blocks) | genex::views::to<std::vector>();
+        auto scopes = genex::views::concat(normal_sup_blocks[non_generic_sym.get()], generic_sup_blocks) | genex::to<std::vector>();
         attach_specific_super_scopes_impl(scope, std::move(scopes), meta);
     }
 }
@@ -146,7 +146,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
         auto sup_sym = static_cast<TypeSymbol*>(nullptr);
 
         if (not scope_generics->args.empty() and not genex::algorithms::contains(generic_sup_blocks, sup_scope)) {
-            const auto external_generics = scope.ty_sym->scope_defined_in->get_extended_generic_symbols(scope_generics->args | genex::views::ptr | genex::views::to<std::vector>());
+            const auto external_generics = scope.ty_sym->scope_defined_in->get_extended_generic_symbols(scope_generics->args | genex::views::ptr | genex::to<std::vector>());
             std::tie(new_sup_scope, new_cls_scope) = utils::type_utils::create_generic_sup_scope(*sup_scope, scope, *scope_generics, external_generics, this, meta);
             sup_sym = new_cls_scope ? new_cls_scope->ty_sym.get() : nullptr;
         }
@@ -191,22 +191,22 @@ auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statement
     auto existing_scopes = cls_sym.scope->m_direct_sup_scopes
         | genex::views::filter([&](auto *scope) { return asts::ast_cast<asts::SupPrototypeExtensionAst>(scope->ast) or asts::ast_cast<asts::SupPrototypeFunctionsAst>(scope->ast); })
         | genex::views::filter([&](auto *scope) { return utils::type_utils::relaxed_symbolic_eq(*ast_name(sup_scope.ast), *ast_name(scope->ast), &sup_scope, scope->ast->m_scope, dummy); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     // Check for conflicting "type" statements.
     auto existing_types = existing_scopes
         | genex::views::transform([](auto *scope) { return asts::ast_body(scope->ast); })
-        | genex::views::flatten
+        | genex::views::join
         | genex::views::filter([](auto *member) { return asts::ast_cast<asts::TypeStatementAst>(member); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     auto existing_type_names = existing_types
         | genex::views::transform([](auto *type_stmt) { return asts::ast_cast<asts::TypeStatementAst>(type_stmt)->new_type->name; })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     auto duplicate_type_names = existing_type_names
-        | genex::views::duplicates()
-        | genex::views::to<std::vector>();
+        | genex::views::duplicates
+        | genex::to<std::vector>();
 
     if (not duplicate_type_names.empty()) {
         const auto i1 = genex::algorithms::position(existing_type_names, [&](auto &&x) { return x == duplicate_type_names[0]; });
@@ -220,17 +220,17 @@ auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statement
     // Check for conflicting "cmp" statements.
     auto existing_cmps = existing_scopes
         | genex::views::transform([](auto *scope) { return asts::ast_body(scope->ast); })
-        | genex::views::flatten
+        | genex::views::join
         | genex::views::filter([](auto *member) { return asts::ast_cast<asts::CmpStatementAst>(member); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     auto existing_cmp_names = existing_cmps
         | genex::views::transform([](auto *cmp_stmt) { return asts::ast_cast<asts::CmpStatementAst>(cmp_stmt)->name; })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     auto duplicate_cmp_names = existing_cmp_names
-        | genex::views::duplicates()
-        | genex::views::to<std::vector>();
+        | genex::views::duplicates
+        | genex::to<std::vector>();
 
     if (not duplicate_cmp_names.empty()) {
         const auto i1 = genex::algorithms::position(existing_cmp_names, [&](auto &&x) { return x == duplicate_cmp_names[0]; });

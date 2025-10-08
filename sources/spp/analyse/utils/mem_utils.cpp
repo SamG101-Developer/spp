@@ -13,12 +13,12 @@
 #include <spp/asts/iter_expression_branch_ast.hpp>
 #include <spp/asts/tuple_literal_ast.hpp>
 
+#include <genex/to_container.hpp>
 #include <genex/actions/remove.hpp>
 #include <genex/algorithms/contains.hpp>
-#include <genex/views/cast.hpp>
-#include <genex/views/filter.hpp>
+#include <genex/views/cast_dynamic.hpp>
 #include <genex/views/for_each.hpp>
-#include <genex/views/to.hpp>
+#include <genex/views/filter.hpp>
 #include <genex/views/transform.hpp>
 
 
@@ -179,8 +179,8 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
     // Check the symbol doesn't have any outstanding partial moves (directly moving a partial move).
     if (check_partial_move and not var_sym->memory_info->ast_partial_moves.empty() and asts::ast_cast<asts::IdentifierAst>(&value_ast) == nullptr) {
         const auto overlaps = var_sym->memory_info->ast_partial_moves
-            | genex::views::filter([&value_ast](auto &&x) { return memory_region_right_overlap(*x, value_ast); })
-            | genex::views::to<std::vector>();
+            | genex::views::filter([&value_ast](auto const &x) { return memory_region_right_overlap(*x, value_ast); })
+            | genex::to<std::vector>();
         if (not overlaps.empty()) {
             const auto where_init = var_sym->memory_info->ast_initialization_origin;
             const auto where_pm = overlaps.front();
@@ -200,7 +200,7 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
     // Check the object being moved isn't pinned.
     const auto symbolic_pins = var_sym->memory_info->ast_pins
         | genex::views::cast_dynamic<asts::IdentifierAst const*>()
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     if (not symbolic_pins.empty() and not copies) {
         const auto pin_sym = var_scope->get_var_symbol(ast_clone(symbolic_pins.front()));
@@ -247,17 +247,17 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
     for (auto &&branch : branches) {
         // Make a record of the symbols' memory status in the scope before the branch is analysed.
         auto var_symbols_in_scope = sm->current_scope->all_var_symbols()
-            | genex::views::to<std::vector>();
+            | genex::to<std::vector>();
 
         auto old_symbol_mem_info = var_symbols_in_scope
             | genex::views::transform([sm](auto &&x) { return std::make_pair(x, sm->current_scope->get_var_symbol(x->name)->memory_info->snapshot()); })
-            | genex::views::to<std::vector>();
+            | genex::to<std::vector>();
 
         // Analyse the memory and then recheck the symbols' memory status.
         branch->stage_8_check_memory(sm, meta);
         auto new_symbol_mem_info = var_symbols_in_scope
             | genex::views::transform([sm](auto &&x) { return std::make_pair(x, sm->current_scope->get_var_symbol(x->name)->memory_info->snapshot()); })
-            | genex::views::to<std::vector>();
+            | genex::to<std::vector>();
 
         // Reset the memory status of the symbols for the next branch to analyse with the same original memory states.
         for (auto &&[sym, old_mem_status] : old_symbol_mem_info) {

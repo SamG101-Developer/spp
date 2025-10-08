@@ -16,9 +16,11 @@
 #include <spp/compiler/module_tree.hpp>
 #include <spp/utils/variants.hpp>
 
+#include <genex/to_container.hpp>
 #include <genex/actions/concat.hpp>
 #include <genex/actions/push_back.hpp>
-#include <genex/views/cast.hpp>
+#include <genex/views/cast_dynamic.hpp>
+#include <genex/views/cast_smart.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/drop.hpp>
 #include <genex/views/drop_last.hpp>
@@ -26,8 +28,7 @@
 #include <genex/views/for_each.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/reverse.hpp>
-#include <genex/views/take_until.hpp>
-#include <genex/views/to.hpp>
+#include <genex/views/take_while.hpp>
 #include <genex/views/transform.hpp>
 
 
@@ -181,22 +182,22 @@ auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
     const auto type_syms = generics
         | genex::views::cast_dynamic<asts::GenericArgumentTypeAst*>()
         | genex::views::transform([this](auto &&gen_arg) { return get_type_symbol(gen_arg->val); })
-        | genex::views::cast_smart_ptr<Symbol>()
-        | genex::views::to<std::vector>();
+        | genex::views::cast_smart<Symbol>()
+        | genex::to<std::vector>();
 
     const auto comp_syms = generics
         | genex::views::cast_dynamic<asts::GenericArgumentCompAst*>()
         | genex::views::transform([this](auto &&gen_arg) { return get_var_symbol(asts::ast_cast<asts::IdentifierAst>(asts::ast_clone(gen_arg->val))); })
-        | genex::views::cast_smart_ptr<Symbol>()
-        | genex::views::to<std::vector>();
+        | genex::views::cast_smart<Symbol>()
+        | genex::to<std::vector>();
 
     auto syms = genex::views::concat(type_syms, comp_syms)
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     // Re-use above logic to collect generic symbols from the ancestor scopes.
     const auto scopes = ancestors()
-        | genex::views::take_until([](auto *scope) { return std::holds_alternative<std::shared_ptr<asts::IdentifierAst>>(scope->name); })
-        | genex::views::to<std::vector>();
+        | genex::views::take_while([](auto *scope) { return not std::holds_alternative<std::shared_ptr<asts::IdentifierAst>>(scope->name); })
+        | genex::to<std::vector>();
 
     for (auto const *scope : scopes) {
         scope->all_type_symbols(true)
@@ -566,7 +567,7 @@ auto spp::analyse::scopes::Scope::sup_types() const
     return sup_scopes()
         | genex::views::filter([](auto *scope) { return asts::ast_cast<asts::ClassPrototypeAst>(scope->ast); })
         | genex::views::transform([](auto *scope) { return scope->ty_sym->fq_name(); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 }
 
 
@@ -583,7 +584,7 @@ auto spp::analyse::scopes::Scope::direct_sup_types() const
     return m_direct_sup_scopes
         | genex::views::filter([](auto *scope) { return asts::ast_cast<asts::ClassPrototypeAst>(scope->ast); })
         | genex::views::transform([](auto *scope) { return scope->ty_sym->fq_name(); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 }
 
 

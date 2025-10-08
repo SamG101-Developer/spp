@@ -12,10 +12,10 @@
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
 
+#include <genex/to_container.hpp>
 #include <genex/algorithms/all_of.hpp>
 #include <genex/algorithms/any_of.hpp>
 #include <genex/views/address.hpp>
-#include <genex/views/to.hpp>
 #include <genex/views/zip.hpp>
 
 
@@ -72,7 +72,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::equals_array_literal_explicit_e
     ArrayLiteralExplicitElementsAst const &other) const
     -> std::strong_ordering {
     if (genex::algorithms::all_of(
-        genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::views::to<std::vector>(),
+        genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::to<std::vector>(),
         [](auto &&pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
         return std::strong_ordering::equal;
     }
@@ -102,16 +102,16 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_7_analyse_semantics(
     // Check all elements have the same type as the 0th element.
     const auto elem_types = elems
         | genex::views::transform([sm, meta](auto &&elem) { return elem->infer_type(sm, meta); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
-    for (auto &&[elem, elem_type] : genex::views::zip(elems | genex::views::ptr, elem_types) | genex::views::to<std::vector>()) {
+    for (auto &&[elem, elem_type] : genex::views::zip(elems | genex::views::ptr, elem_types) | genex::to<std::vector>()) {
         if (not analyse::utils::type_utils::symbolic_eq(*zeroth_type, *elem_type, *sm->current_scope, *sm->current_scope))
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
                 *zeroth_elem, *zeroth_type, *elem, *elem_type).with_scopes({sm->current_scope}).raise();
     }
 
     // Check all the elements are owned by the array, not borrowed.
-    for (auto &&elem : elems | genex::views::ptr | genex::views::to<std::vector>()) {
+    for (auto &&elem : elems | genex::views::ptr | genex::to<std::vector>()) {
         if (auto [elem_sym, _] = sm->current_scope->get_var_symbol_outermost(*elem); elem_sym != nullptr) {
             if (const auto borrow_ast = elem_sym->memory_info->ast_borrowed) {
                 analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(

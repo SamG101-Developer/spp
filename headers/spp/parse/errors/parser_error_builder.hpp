@@ -1,13 +1,13 @@
 #pragma once
 #include <set>
-#include <spp/utils/errors.hpp>
 #include <spp/lex/tokens.hpp>
 #include <spp/parse/errors/parser_error.hpp>
+#include <spp/utils/errors.hpp>
 
-#include <genex/views/transform.hpp>
+#include <genex/to_container.hpp>
 #include <genex/views/intersperse.hpp>
-#include <genex/views/flatten.hpp>
-#include <genex/views/to.hpp>
+#include <genex/views/join.hpp>
+#include <genex/views/transform.hpp>
 
 /// @cond
 namespace spp::parse {
@@ -32,7 +32,7 @@ private:
 public:
     SyntacticErrorBuilder() = default;
 
-    [[noreturn]]
+    SPP_ATTR_NORETURN
     auto raise() -> void override {
         using namespace std::string_literals;
         const auto cast_error = dynamic_cast<SyntacticError*>(this->m_err_obj.get());
@@ -40,8 +40,8 @@ public:
         auto token_set_str = tokens
             | genex::views::transform(&lex::tok_to_string)
             | genex::views::intersperse(", "s)
-            | genex::views::flatten
-            | genex::views::to<std::string>();;
+            | genex::views::join
+            | genex::to<std::string>();;
         token_set_str = "'" + token_set_str + "'";
 
         // Replace the "£" with the string tokens.

@@ -21,17 +21,18 @@
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/pch.hpp>
 
+#include <genex/to_container.hpp>
 #include <genex/algorithms/count.hpp>
 #include <genex/algorithms/position.hpp>
-#include <genex/views/cast.hpp>
+#include <genex/views/cast_dynamic.hpp>
+#include <genex/views/cast_smart.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/flatten.hpp>
 #include <genex/views/for_each.hpp>
 #include <genex/views/iota.hpp>
+#include <genex/views/join.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
-#include <genex/views/to.hpp>
 #include <genex/views/zip.hpp>
 #include <opex/cast.hpp>
 
@@ -97,8 +98,8 @@ auto spp::asts::LocalVariableDestructureTupleAst::extract_names() const
     -> std::vector<std::shared_ptr<IdentifierAst>> {
     return elems
         | genex::views::transform(&LocalVariableAst::extract_names)
-        | genex::views::flatten
-        | genex::views::to<std::vector>();
+        | genex::views::join
+        | genex::to<std::vector>();
 }
 
 
@@ -111,7 +112,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
         | genex::views::ptr
         | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     if (multi_arg_skips.size() > 1) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppMultipleSkipMultiArgumentsError>().with_args(
@@ -145,8 +146,8 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
                 auto postfix = std::make_unique<PostfixExpressionAst>(ast_clone(val), std::move(field));
                 return postfix;
             })
-            | genex::views::cast_smart_ptr<ExpressionAst>()
-            | genex::views::to<std::vector>();
+            | genex::views::cast_smart<ExpressionAst>()
+            | genex::to<std::vector>();
 
         bound_multi_skip = std::make_unique<TupleLiteralAst>(nullptr, std::move(new_elems), nullptr);
     }
@@ -156,11 +157,11 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
                                 ? genex::algorithms::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize
                                 : elems.size() - 1;
     auto indexes = genex::views::iota(0uz, skip_index + 1)
-        | genex::views::concat(genex::views::iota(num_lhs_arr_elems, num_rhs_arr_elems) | genex::views::materialize())
-        | genex::views::to<std::vector>();
+        | genex::views::concat(genex::views::iota(num_lhs_arr_elems, num_rhs_arr_elems) | genex::views::materialize)
+        | genex::to<std::vector>();
 
     // Create expanded "let" statements for each part of the destructure.
-    for (auto &&[i, elem] : genex::views::zip(indexes, elems | genex::views::ptr) | genex::views::to<std::vector>()) {
+    for (auto &&[i, elem] : genex::views::zip(indexes, elems | genex::views::ptr) | genex::to<std::vector>()) {
         const auto cast_elem = ast_cast<LocalVariableDestructureSkipMultipleArgumentsAst>(elem);
 
         // Handle bound multi argument skipping, by assigning the skipped elements into a variable.

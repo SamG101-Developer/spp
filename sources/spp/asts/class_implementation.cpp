@@ -1,8 +1,8 @@
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/class_implementation_ast.hpp>
 #include <spp/asts/class_attribute_ast.hpp>
+#include <spp/asts/class_implementation_ast.hpp>
 #include <spp/asts/class_member_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
@@ -10,7 +10,7 @@
 #include <genex/views/for_each.hpp>
 #include <genex/views/duplicates.hpp>
 #include <genex/views/materialize.hpp>
-#include <genex/views/to.hpp>
+#include <genex/to_container.hpp>
 
 
 auto spp::asts::ClassImplementationAst::new_empty()
@@ -24,7 +24,7 @@ spp::asts::ClassImplementationAst::~ClassImplementationAst() = default;
 
 auto spp::asts::ClassImplementationAst::clone() const
     -> std::unique_ptr<Ast> {
-    auto *c = dynamic_cast<InnerScopeAst*>(InnerScopeAst::clone().release());
+    auto *c = ast_cast<InnerScopeAst>(InnerScopeAst::clone().release());
     return std::make_unique<ClassImplementationAst>(
         std::move(c->tok_l),
         std::move(c->members),
@@ -86,9 +86,9 @@ auto spp::asts::ClassImplementationAst::stage_6_pre_analyse_semantics(
     // try reading a duplicate attribute before an error is raised.
     const auto duplicates = members
         | genex::views::transform([](auto &&x) { return ast_cast<ClassAttributeAst>(*x).name.get(); })
-        | genex::views::materialize()
-        | genex::views::duplicates()
-        | genex::views::to<std::vector>();
+        | genex::views::materialize
+        | genex::views::duplicates
+        | genex::to<std::vector>();
 
     if (not duplicates.empty()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(

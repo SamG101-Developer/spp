@@ -1,3 +1,4 @@
+#include <spp/pch.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
@@ -21,17 +22,16 @@
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/mixins/orderable_ast.hpp>
-#include <spp/pch.hpp>
 
 #include <genex/actions/erase.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/cast.hpp>
+#include <genex/to_container.hpp>
 #include <genex/views/duplicates.hpp>
+#include <genex/views/cast_dynamic.hpp>
+#include <genex/views/concat.hpp>
 #include <genex/views/enumerate.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
-#include <genex/views/to.hpp>
+#include <genex/views/materialize.hpp>
 #include <genex/views/transform.hpp>
 
 
@@ -98,7 +98,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::get_keyword_args() const -> std::v
         | genex::views::ptr
         | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 }
 
 
@@ -107,7 +107,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::get_positional_args() const -> std
         | genex::views::ptr
         | genex::views::cast_dynamic<FunctionCallArgumentPositionalAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 }
 
 
@@ -118,9 +118,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
     // Check there are no duplicate argument names.
     const auto arg_names = get_keyword_args()
         | genex::views::transform([](auto &&x) { return x->name.get(); })
-        | genex::views::materialize()
-        | genex::views::duplicates()
-        | genex::views::to<std::vector>();
+        | genex::views::materialize
+        | genex::views::duplicates
+        | genex::to<std::vector>();
 
     if (not arg_names.empty()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
@@ -131,7 +131,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
     const auto unordered_args = analyse::utils::order_utils::order_args(args
         | genex::views::ptr
         | genex::views::cast_dynamic<mixins::OrderableAst*>()
-        | genex::views::to<std::vector>());
+        | genex::to<std::vector>());
 
     if (not unordered_args.empty()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>().with_args(
@@ -139,7 +139,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
     }
 
     // Expand tuple-expansion arguments ("..tuple" => "tuple.0, tuple.1, ...")
-    for (auto &&[i, arg] : args | genex::views::ptr | genex::views::enumerate | genex::views::to<std::vector>()) {
+    // Must use "materialize" because the list gets updates from within the loop.
+    for (auto &&[i, arg] : args | genex::views::ptr | genex::views::enumerate | genex::views::materialize) {
         // Only check position arguments that have ".." tokens.
         const auto pos_arg = ast_cast<FunctionCallArgumentPositionalAst>(arg);
         if (pos_arg == nullptr or pos_arg->tok_unpack == nullptr) { continue; }
@@ -239,7 +240,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
             if (not sm->current_scope->get_type_symbol(arg->val->infer_type(sm, meta))->is_copyable()) {
                 auto overlaps = genex::views::concat(borrows_ref, borrows_mut)
                     | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
-                    | genex::views::to<std::vector>();
+                    | genex::to<std::vector>();
                 if (not overlaps.empty()) {
                     analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemoryOverlapUsageError>().with_args(
                         *overlaps[0], *arg->val).with_scopes({sm->current_scope}).raise();
@@ -251,7 +252,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
             // Check the mutable borrow doesn't overlap with any other borrow in the same scope.
             auto overlaps = genex::views::concat(borrows_ref, borrows_mut)
                 | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
-                | genex::views::to<std::vector>();
+                | genex::to<std::vector>();
             if (not overlaps.empty()) {
                 analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemoryOverlapUsageError>().with_args(
                     *overlaps[0], *arg->val).with_scopes({sm->current_scope}).raise();
@@ -283,7 +284,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
             // Check the immutable borrow doesn't overlap with any other mutable borrow in the same scope.
             auto overlaps = borrows_mut
                 | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
-                | genex::views::to<std::vector>();
+                | genex::to<std::vector>();
             if (not overlaps.empty()) {
                 analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemoryOverlapUsageError>().with_args(
                     *overlaps[0], *arg->val).with_scopes({sm->current_scope}).raise();

@@ -62,7 +62,7 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::convert_to_variable(
     auto mapped_elems = elems
         | genex::views::transform([meta](auto &&x) { return x->convert_to_variable(meta); })
         | genex::views::transform([](auto &&x) { return ast_cast<LocalVariableAst>(std::move(x)); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     // Create the final local variable wrapping, tag it and return it.
     auto var = std::make_unique<LocalVariableDestructureTupleAst>(nullptr, std::move(mapped_elems), nullptr);

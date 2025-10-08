@@ -19,13 +19,13 @@
 #include <spp/asts/mixins/orderable_ast.hpp>
 #include <spp/pch.hpp>
 
-#include <genex/views/cast.hpp>
+#include <genex/to_container.hpp>
+#include <genex/views/cast_dynamic.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/duplicates.hpp>
 #include <genex/views/for_each.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
-#include <genex/views/to.hpp>
 
 
 spp::asts::GenericArgumentGroupAst::GenericArgumentGroupAst(
@@ -146,7 +146,7 @@ auto spp::asts::GenericArgumentGroupAst::get_type_args() const
     return args
         | genex::views::ptr
         | genex::views::cast_dynamic<GenericArgumentTypeAst*>()
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 }
 
 
@@ -156,7 +156,7 @@ auto spp::asts::GenericArgumentGroupAst::get_comp_args() const
     return args
         | genex::views::ptr
         | genex::views::cast_dynamic<GenericArgumentCompAst*>()
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 }
 
 
@@ -167,16 +167,16 @@ auto spp::asts::GenericArgumentGroupAst::get_keyword_args() const
         | genex::views::ptr
         | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()
         | genex::views::cast_dynamic<GenericArgumentAst*>()
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     auto keyword_comps = args
         | genex::views::ptr
         | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()
         | genex::views::cast_dynamic<GenericArgumentAst*>()
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     return genex::views::concat(keyword_types, keyword_comps)
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 }
 
 
@@ -187,16 +187,16 @@ auto spp::asts::GenericArgumentGroupAst::get_positional_args() const
         | genex::views::ptr
         | genex::views::cast_dynamic<GenericArgumentTypePositionalAst*>()
         | genex::views::cast_dynamic<GenericArgumentAst*>()
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     auto positional_comps = args
         | genex::views::ptr
         | genex::views::cast_dynamic<GenericArgumentCompPositionalAst*>()
         | genex::views::cast_dynamic<GenericArgumentAst*>()
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     return genex::views::concat(positional_types, positional_comps)
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 }
 
 
@@ -205,7 +205,7 @@ auto spp::asts::GenericArgumentGroupAst::get_all_args() const
     // Convert args to raw pointers.
     return args
         | genex::views::ptr
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 }
 
 
@@ -257,9 +257,9 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
     const auto type_arg_names = get_keyword_args()
         | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()
         | genex::views::transform([](auto &&x) { return x->name.get(); })
-        | genex::views::materialize()
-        | genex::views::duplicates()
-        | genex::views::to<std::vector>();
+        | genex::views::materialize
+        | genex::views::duplicates
+        | genex::to<std::vector>();
 
     if (not type_arg_names.empty()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
@@ -270,9 +270,9 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
     const auto comp_arg_names = get_keyword_args()
         | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()
         | genex::views::transform([](auto &&x) { return x->name.get(); })
-        | genex::views::materialize()
-        | genex::views::duplicates()
-        | genex::views::to<std::vector>();
+        | genex::views::materialize
+        | genex::views::duplicates
+        | genex::to<std::vector>();
 
     if (not comp_arg_names.empty()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
@@ -283,7 +283,7 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
     const auto unordered_args = analyse::utils::order_utils::order_args(args
         | genex::views::ptr
         | genex::views::cast_dynamic<mixins::OrderableAst*>()
-        | genex::views::to<std::vector>());
+        | genex::to<std::vector>());
 
     if (not unordered_args.empty()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>().with_args(

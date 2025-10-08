@@ -9,13 +9,12 @@
 #include <spp/asts/generate/common_types.hpp>
 
 #include <genex/views/enumerate.hpp>
-#include <genex/views/for_each.hpp>
 
 
 template <typename T>
 auto spp::asts::InnerScopeExpressionAst<T>::clone() const
     -> std::unique_ptr<Ast> {
-    auto *c = dynamic_cast<InnerScopeAst<T>*>(InnerScopeAst<T>::clone().release());
+    auto *c = ast_cast<InnerScopeAst<T>>(InnerScopeAst<T>::clone().release());
     return std::make_unique<InnerScopeExpressionAst>(
         std::move(c->tok_l),
         std::move(c->members),
@@ -52,7 +51,7 @@ auto spp::asts::InnerScopeExpressionAst<T>::stage_7_analyse_semantics(
     }
 
     // Analyse the members of the inner scope.
-    this->members | genex::views::for_each([sm, meta](auto const &x) { x->stage_7_analyse_semantics(sm, meta); });
+    for (auto const &x: this->members) { x->stage_7_analyse_semantics(sm, meta); }
     sm->move_out_of_current_scope();
 }
 

@@ -6,7 +6,7 @@
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/utils/strings.hpp>
 
-#include <genex/views/to.hpp>
+#include <genex/to_container.hpp>
 #include <genex/views/transform.hpp>
 
 
@@ -122,7 +122,7 @@ auto spp::asts::IdentifierAst::stage_7_analyse_semantics(
     if (not sm->current_scope->has_var_symbol(shared) and not sm->current_scope->has_ns_symbol(shared)) {
         const auto alternatives = sm->current_scope->all_var_symbols()
             | genex::views::transform([](auto &&x) { return x->name->val; })
-            | genex::views::to<std::vector>();
+            | genex::to<std::vector>();
 
         const auto closest_match = spp::utils::strings::closest_match(val, alternatives);
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierUnknownError>().with_args(

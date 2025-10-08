@@ -37,9 +37,8 @@
 
 #include <genex/actions/remove.hpp>
 #include <genex/actions/remove_if.hpp>
-#include <genex/views/cast.hpp>
+#include <genex/views/cast_dynamic.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/for_each.hpp>
 
 
 spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
@@ -143,7 +142,7 @@ auto spp::asts::FunctionPrototypeAst::m_deduce_mock_class_type() const
     // Extract the parameter types.
     auto param_types = param_group->params
         | genex::views::transform([](auto &&x) { return x->type; })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     // Module level functions, and static methods, are always FunRef.
     if (ast_cast<ModulePrototypeAst>(m_ctx) == nullptr or param_group->get_self_param() == nullptr) {
@@ -182,7 +181,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
         auto gen_sub = std::vector<GenericArgumentAst*>(1);
         gen_sub[0] = self_gen_sub.get();
 
-        param_group->params | genex::views::for_each([gen_sub](auto const &x) { x->type = x->type->substitute_generics(gen_sub); });
+        for (auto const &x : param_group->params) { x->type = x->type->substitute_generics(gen_sub); }
         return_type = return_type->substitute_generics(gen_sub);
     }
 
@@ -196,7 +195,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
         | genex::views::cast_dynamic<ClassPrototypeAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::views::filter([&mock_class_name](auto &&x) { return x->name->without_generics() == mock_class_name->without_generics(); })
-        | genex::views::to<std::vector>()).empty();
+        | genex::to<std::vector>()).empty();
     if (needs_generation) {
         auto mock_class_ast = std::make_unique<ClassPrototypeAst>(SPP_NO_ANNOTATIONS, nullptr, ast_clone(mock_class_name), nullptr, nullptr);
         auto mock_constant_value = std::make_unique<ObjectInitializerAst>(ast_clone(mock_class_name), nullptr);
@@ -220,7 +219,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     orig_name = ast_clone(name);
     auto sup_ext_impl_members = std::vector<std::unique_ptr<SupMemberAst>>();
     auto clone = ast_clone(this);
-    clone->annotations | genex::views::for_each([clone=clone.get()](auto &&x) { x->stage_1_pre_process(clone); });
+    for (auto const &x: clone->annotations) { x->stage_1_pre_process(clone.get()); }
     sup_ext_impl_members.emplace_back(std::move(clone));
     auto mock_sup_ext_impl = std::make_unique<SupImplementationAst>(nullptr, std::move(sup_ext_impl_members), nullptr);
     auto mock_sup_ext = std::make_unique<SupPrototypeExtensionAst>(

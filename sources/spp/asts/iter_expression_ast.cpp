@@ -1,3 +1,4 @@
+#include <spp/pch.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
@@ -5,22 +6,21 @@
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/iter_expression_ast.hpp>
 #include <spp/asts/iter_expression_branch_ast.hpp>
+#include <spp/asts/iter_pattern_variant_else_ast.hpp>
 #include <spp/asts/iter_pattern_variant_exception_ast.hpp>
 #include <spp/asts/iter_pattern_variant_exhausted_ast.hpp>
 #include <spp/asts/iter_pattern_variant_no_value_ast.hpp>
 #include <spp/asts/iter_pattern_variant_variable_ast.hpp>
-#include <spp/asts/iter_pattern_variant_else_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>
-#include <spp/pch.hpp>
 
+#include <genex/to_container.hpp>
 #include <genex/algorithms/any_of.hpp>
-#include <genex/views/cast.hpp>
+#include <genex/views/cast_dynamic.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/for_each.hpp>
 #include <genex/views/ptr.hpp>
-#include <genex/views/to.hpp>
 
 
 spp::asts::IterExpressionAst::IterExpressionAst(
@@ -94,7 +94,7 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
         | genex::views::ptr
         | genex::views::cast_dynamic<IterPatternVariantExceptionAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
-        | genex::views::to<std::vector>(); bs.size() > 1) {
+        | genex::to<std::vector>(); bs.size() > 1) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternTypeDuplicateError>().with_args(
             *bs[0], *bs[1]).with_scopes({sm->current_scope}).raise();
     }
@@ -103,7 +103,7 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
         | genex::views::ptr
         | genex::views::cast_dynamic<IterPatternVariantExhaustedAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
-        | genex::views::to<std::vector>(); bs.size() > 1) {
+        | genex::to<std::vector>(); bs.size() > 1) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternTypeDuplicateError>().with_args(
             *bs[0], *bs[1]).with_scopes({sm->current_scope}).raise();
     }
@@ -112,7 +112,7 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
         | genex::views::ptr
         | genex::views::cast_dynamic<IterPatternVariantNoValueAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
-        | genex::views::to<std::vector>(); bs.size() > 1) {
+        | genex::to<std::vector>(); bs.size() > 1) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternTypeDuplicateError>().with_args(
             *bs[0], *bs[1]).with_scopes({sm->current_scope}).raise();
     }
@@ -121,7 +121,7 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
         | genex::views::ptr
         | genex::views::cast_dynamic<IterPatternVariantVariableAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
-        | genex::views::to<std::vector>(); bs.size() > 1) {
+        | genex::to<std::vector>(); bs.size() > 1) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternTypeDuplicateError>().with_args(
             *bs[0], *bs[1]).with_scopes({sm->current_scope}).raise();
     }
@@ -135,7 +135,7 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
             | genex::views::ptr
             | genex::views::cast_dynamic<IterPatternVariantNoValueAst*>()
             | genex::views::filter([](auto &&x) { return x != nullptr; })
-            | genex::views::to<std::vector>();
+            | genex::to<std::vector>();
 
         if (not pat.empty() and not analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN_OPT, *cond_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternIncompatibleError>().with_args(
@@ -149,7 +149,7 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
             | genex::views::ptr
             | genex::views::cast_dynamic<IterPatternVariantExceptionAst*>()
             | genex::views::filter([](auto &&x) { return x != nullptr; })
-            | genex::views::to<std::vector>();
+            | genex::to<std::vector>();
 
         if (not pat.empty() and not analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN_RES, *cond_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternIncompatibleError>().with_args(
@@ -160,7 +160,7 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
     // Analyse each branch of the case expression.
     meta->save();
     meta->case_condition = cond.get();
-    branches | genex::views::for_each([sm, meta](auto &&x) { x->stage_7_analyse_semantics(sm, meta); });
+    for (auto const &x: branches) { x->stage_7_analyse_semantics(sm, meta); }
     meta->restore();
 
     // Exit the iteration expression scope.
@@ -179,7 +179,7 @@ auto spp::asts::IterExpressionAst::stage_8_check_memory(
     // Move into the "case" scope and check the memory satus of the symbols in the branches.
     sm->move_to_next_scope();
     analyse::utils::mem_utils::validate_inconsistent_memory(
-        branches | genex::views::ptr | genex::views::to<std::vector>(), sm, meta);
+        branches | genex::views::ptr | genex::to<std::vector>(), sm, meta);
 
     // Move out of the case expression scope.
     sm->move_out_of_current_scope();
@@ -192,7 +192,7 @@ auto spp::asts::IterExpressionAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Ensure consistency across branches.
     auto [master_branch_type_info, branches_type_info] = analyse::utils::type_utils::validate_inconsistent_types(
-        branches | genex::views::ptr | genex::views::to<std::vector>(), sm, meta);
+        branches | genex::views::ptr | genex::to<std::vector>(), sm, meta);
 
     // Ensure there is a full set of branches for the corresponding generator type (unless there is an "else" present).
     const auto cond_type = cond->infer_type(sm, meta);

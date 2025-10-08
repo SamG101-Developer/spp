@@ -107,10 +107,10 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
     auto lhs_syms = lhs
         | genex::views::indirect
         | genex::views::transform([sm](auto const &x) { return sm->current_scope->get_var_symbol_outermost(x); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     // Create quick access derefs for the looping.
-    for (auto &&[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(lhs | genex::views::ptr, rhs | genex::views::ptr, lhs_syms) | genex::views::to<std::vector>()) {
+    for (auto &&[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(lhs | genex::views::ptr, rhs | genex::views::ptr, lhs_syms) | genex::to<std::vector>()) {
         auto &&[lhs_sym, _] = lhs_sym_and_scope;
 
         // Full assignment (ie "x" = "y") requires the "x" symbol to be marked as "mut" or never initialized.
@@ -150,9 +150,9 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
     auto lhs_syms = lhs
         | genex::views::indirect
         | genex::views::transform([sm](auto &&x) { return sm->current_scope->get_var_symbol_outermost(x); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
-    for (auto &&[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(lhs | genex::views::ptr, rhs | genex::views::ptr, lhs_syms) | genex::views::to<std::vector>()) {
+    for (auto &&[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(lhs | genex::views::ptr, rhs | genex::views::ptr, lhs_syms) | genex::to<std::vector>()) {
         auto &&[lhs_sym, _] = lhs_sym_and_scope;
 
         // Partially validate the memory of the right-hand-side expression, if it is an attribute being set. Don't mark

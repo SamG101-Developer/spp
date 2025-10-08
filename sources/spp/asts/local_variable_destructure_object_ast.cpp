@@ -1,11 +1,12 @@
+#include <spp/pch.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/array_literal_explicit_elements_ast.hpp>
 #include <spp/asts/expression_ast.hpp>
-#include <spp/asts/generic_argument_type_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
+#include <spp/asts/generic_argument_type_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/integer_literal_ast.hpp>
 #include <spp/asts/let_statement_initialized_ast.hpp>
@@ -15,23 +16,20 @@
 #include <spp/asts/local_variable_destructure_skip_single_argument_ast.hpp>
 #include <spp/asts/local_variable_single_identifier_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
 #include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
+#include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
-#include <spp/pch.hpp>
 
-#include <genex/algorithms/count.hpp>
-#include <genex/algorithms/position.hpp>
+#include <genex/to_container.hpp>
 #include <genex/actions/concat.hpp>
-#include <genex/views/cast.hpp>
+#include <genex/algorithms/count.hpp>
+#include <genex/views/cast_dynamic.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/flatten.hpp>
 #include <genex/views/for_each.hpp>
-#include <genex/views/iota.hpp>
+#include <genex/views/join.hpp>
 #include <genex/views/ptr.hpp>
-#include <genex/views/to.hpp>
 #include <genex/views/zip.hpp>
 
 
@@ -101,8 +99,8 @@ auto spp::asts::LocalVariableDestructureObjectAst::extract_names() const
     -> std::vector<std::shared_ptr<IdentifierAst>> {
     return elems
         | genex::views::transform(&LocalVariableAst::extract_names)
-        | genex::views::flatten
-        | genex::views::to<std::vector>();
+        | genex::views::join
+        | genex::to<std::vector>();
 }
 
 
@@ -115,7 +113,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
         | genex::views::ptr
         | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>()
         | genex::views::filter([](auto &&x) { return x != nullptr; })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     if (multi_arg_skips.size() > 1) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppMultipleSkipMultiArgumentsError>().with_args(

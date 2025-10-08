@@ -5,9 +5,9 @@
 #include <spp/macros.hpp>
 #include <spp/pch.hpp>
 
+#include <genex/to_container.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/transform.hpp>
-#include <genex/views/to.hpp>
 
 
 /// @cond
@@ -28,66 +28,70 @@ namespace spp::asts {
     struct Ast;
 
     template <typename T>
+    SPP_ATTR_ALWAYS_INLINE
     auto ast_clone(std::unique_ptr<T> const &ast) -> std::unique_ptr<std::remove_cvref_t<T>> {
         if (ast == nullptr) { return nullptr; }
         return ast_cast<std::remove_cvref_t<T>>(ast->clone());
     }
 
     template <typename T>
+    SPP_ATTR_ALWAYS_INLINE
     auto ast_clone(std::shared_ptr<T> const &ast) -> std::unique_ptr<std::remove_cvref_t<T>> {
         if (ast == nullptr) { return nullptr; }
         return ast_cast<std::remove_cvref_t<T>>(ast->clone());
     }
 
     template <typename T>
+    SPP_ATTR_ALWAYS_INLINE
     auto ast_clone(T *ast) -> std::unique_ptr<std::remove_cvref_t<T>> {
         if (ast == nullptr) { return nullptr; }
         return ast_cast<std::remove_cvref_t<T>>(ast->clone());
     }
 
     template <typename T>
+    SPP_ATTR_ALWAYS_INLINE
     auto ast_clone_vec(std::vector<std::unique_ptr<T>> const &asts) -> std::vector<std::unique_ptr<T>> {
         return asts
             | genex::views::transform([](auto const &x) { return ast_clone(x.get()); })
-            | genex::views::to<std::vector>();
+            | genex::to<std::vector>();
     }
 
     template <typename T>
+    SPP_ATTR_ALWAYS_INLINE
     auto ast_clone_vec_shared(std::vector<std::shared_ptr<T>> const &asts) -> std::vector<std::shared_ptr<T>> {
         return asts
             | genex::views::transform([](auto x) { return x; })
-            | genex::views::to<std::vector>();
+            | genex::to<std::vector>();
     }
 
     template <typename T>
+    SPP_ATTR_ALWAYS_INLINE
     auto ast_cast(Ast *ast) -> T* {
         return dynamic_cast<T*>(ast);
     }
 
     template <typename T>
+    SPP_ATTR_ALWAYS_INLINE
     auto ast_cast(Ast &ast) -> T& {
         return dynamic_cast<T&>(ast);
     }
 
     template <typename T>
+    SPP_ATTR_ALWAYS_INLINE
     auto ast_cast(Ast const *ast) -> T const* {
         return dynamic_cast<T const*>(ast);
     }
 
     template <typename T>
+    SPP_ATTR_ALWAYS_INLINE
     auto ast_cast(Ast const &ast) -> T const& {
         return dynamic_cast<T const&>(ast);
     }
 
     template <typename T, typename U>
+    SPP_ATTR_ALWAYS_INLINE
     auto ast_cast(std::unique_ptr<U> &&ast) -> std::unique_ptr<T> {
         return std::unique_ptr<T>(ast_cast<T>(ast.release()));
-    }
-
-    template <typename T, typename U>
-    auto ast_cast(std::shared_ptr<U> const &ast) -> std::shared_ptr<T> {
-        throw std::runtime_error("FUNCTION IS NOT SAFE");
-        return std::shared_ptr<T>(ast_cast<T>(ast.get()));
     }
 
     auto ast_name(Ast *ast) -> std::shared_ptr<TypeAst>;

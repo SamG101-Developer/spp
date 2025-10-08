@@ -12,7 +12,6 @@
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>
-#include <spp/pch.hpp>
 
 #include <genex/views/for_each.hpp>
 

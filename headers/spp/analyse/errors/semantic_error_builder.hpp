@@ -2,6 +2,7 @@
 #include <spp/utils/errors.hpp>
 
 #include <colex/common.hpp>
+#include <genex/views/take.hpp>
 #include <genex/views/zip.hpp>
 
 
@@ -24,13 +25,13 @@ struct spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::Ab
         auto formatters = this->m_error_formatters
             | genex::views::cycle
             | genex::views::take(cast_error->m_error_info.size())
-            | genex::views::to<std::vector>();
+            | genex::to<std::vector>();
 
         // Format all the error strings by the correct formatter (file agnostic).
         cast_error->messages = cast_error->m_error_info
             | genex::views::zip(std::move(formatters))
             | genex::views::transform([this](auto &&x) { return stringify_error_information(std::get<1>(x), std::get<0>(x)); })
-            | genex::views::to<std::vector>();
+            | genex::to<std::vector>();
 
         // Throw the error object.
         spp::utils::errors::AbstractErrorBuilder<T>::raise();

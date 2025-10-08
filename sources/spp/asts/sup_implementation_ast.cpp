@@ -2,7 +2,9 @@
 #include <spp/asts/sup_member_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 
+#include <genex/to_container.hpp>
 #include <genex/views/for_each.hpp>
+#include <genex/views/ptr.hpp>
 
 
 spp::asts::SupImplementationAst::~SupImplementationAst() = default;
@@ -16,7 +18,7 @@ auto spp::asts::SupImplementationAst::new_empty()
 
 auto spp::asts::SupImplementationAst::clone() const
     -> std::unique_ptr<Ast> {
-    auto *c = dynamic_cast<InnerScopeAst*>(InnerScopeAst::clone().release());
+    auto *c = ast_cast<InnerScopeAst>(InnerScopeAst::clone().release());
     return std::make_unique<SupImplementationAst>(
         std::move(c->tok_l),
         std::move(c->members),
@@ -30,8 +32,8 @@ auto spp::asts::SupImplementationAst::stage_1_pre_process(
     // Shift to members.
     members
         | genex::views::ptr
-        | genex::views::to<std::vector>()
-        | genex::views::for_each([ctx](auto *member) { member->stage_1_pre_process(ctx); });
+        | genex::to<std::vector>()
+        | genex::views::for_each([ctx](auto *m) { m->stage_1_pre_process(ctx); });
 }
 
 

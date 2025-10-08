@@ -21,9 +21,9 @@
 #include <spp/asts/generate/common_types.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>
 
+#include <genex/to_container.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/to.hpp>
 
 
 spp::asts::SupPrototypeExtensionAst::SupPrototypeExtensionAst(
@@ -108,7 +108,7 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_cyclic_extension(
         | genex::views::transform([](auto &&x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })
         | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::relaxed_symbolic_eq(*super_class, *x.second->name, &check_scope, x.first, dummy); })
         | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::symbolic_eq(*x.second->super_class, *name, *x.first, check_scope); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     if (not existing_sup_scopes.empty()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionCyclicExtensionError>().with_args(
@@ -133,7 +133,7 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_double_extension(
         | genex::views::transform([](auto &&x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })
         | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::relaxed_symbolic_eq(*super_class, *x.second->name, &check_scope, x.first, dummy); })
         | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::symbolic_eq(*x.second->super_class, *name, *x.first, check_scope); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     if (not existing_sup_scopes.empty()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionCyclicExtensionError>().with_args(
@@ -191,7 +191,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_2_gen_top_level_scopes(
 
     // Check every generic parameter is constrained by the type.
     if (name->type_parts().back()->name[0] != '$') {
-        if (const auto unconstrained = generic_param_group->get_all_params() | genex::views::filter([this](auto &&x) { return not(name->contains_generic(*x) or super_class->contains_generic(*x)); }) | genex::views::to<std::vector>(); not unconstrained.empty()) {
+        if (const auto unconstrained = generic_param_group->get_all_params() | genex::views::filter([this](auto &&x) { return not(name->contains_generic(*x) or super_class->contains_generic(*x)); }) | genex::to<std::vector>(); not unconstrained.empty()) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError>().with_args(
                 *unconstrained[0]).with_scopes({sm->current_scope}).raise();
         }
@@ -303,7 +303,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
     const auto sup_scopes = std::vector{sup_sym->scope}
         | genex::views::concat(sm->current_scope->get_type_symbol(super_class)->scope->sup_scopes())
         | genex::views::filter([](auto &&x) { return ast_cast<ClassPrototypeAst>(x->ast); })
-        | genex::views::to<std::vector>();
+        | genex::to<std::vector>();
 
     // Mark the class as copyable if the "Copy" type is the supertype.
     for (const auto sup_scope : sup_scopes) {
