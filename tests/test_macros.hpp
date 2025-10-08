@@ -34,35 +34,35 @@ inline auto build_temp_project(std::string code, const bool add_main = true) {
 
     // Build the project.
     std::filesystem::current_path(cwd / fp);
-    spp::cli::handle_build("rel");
+    spp::cli::handle_build("rel", true);
     std::filesystem::current_path(cwd);
 }
 
 
-#define SPP_TEST_SHOULD_PASS_SYNTACTIC(what, code) \
-    TEST(SppParser, what) { \
-        auto ast = INJECT_CODE(code, parse); \
+#define SPP_TEST_SHOULD_PASS_SYNTACTIC(name, code)                        \
+    TEST(SppParser, name) {                                               \
+        auto ast = INJECT_CODE(code, parse);                              \
         std::cout << "AST: " << ast->operator std::string() << std::endl; \
     }
 
 
-#define SPP_TEST_SHOULD_FAIL_SYNTACTIC(what, code) \
-    TEST(SppParser, what) { \
-        EXPECT_THROW({ \
-            INJECT_CODE(code, parse); \
-        }, spp::parse::errors::SppSyntaxError); \
+#define SPP_TEST_SHOULD_FAIL_SYNTACTIC(name, code) \
+    TEST(SppParser, name) {                        \
+        EXPECT_THROW({                             \
+            INJECT_CODE(code, parse);              \
+        }, spp::parse::errors::SppSyntaxError);    \
     }
 
 
-#define SPP_TEST_SHOULD_PASS_SEMANTIC(what, code) \
-    TEST(SppAnalyse, what) { \
-        build_temp_project(code); \
+#define SPP_TEST_SHOULD_PASS_SEMANTIC(name, code) \
+    TEST(SppAnalyse, name) {                      \
+        build_temp_project(code);                 \
     }
 
 
-#define SPP_TEST_SHOULD_FAIL_SEMANTIC(what, code, error) \
-    TEST(SppAnalyse, what) { \
-        EXPECT_THROW({ \
-            build_temp_project(code); \
-        }, spp::analyse::errors::error); \
+#define SPP_TEST_SHOULD_FAIL_SEMANTIC(name, code, error) \
+    TEST(SppAnalyse, name) {                             \
+        EXPECT_THROW({                                   \
+            build_temp_project(code);                    \
+        }, spp::analyse::errors::error);                 \
     }
