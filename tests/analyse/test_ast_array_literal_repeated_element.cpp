@@ -2,7 +2,8 @@
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_array_literal_repeated_element_ref_borrow,
+    ArrayLiteralRepeatedElementAst,
+    test_invalid_immutably_borrowed_element,
     SppSecondClassBorrowViolationError, R"(
     fun f(a: &std::boolean::Bool) -> std::void::Void {
         let b = [a; 1_uz]
@@ -11,7 +12,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_array_literal_repeated_element_mut_borrow,
+    ArrayLiteralRepeatedElementAst,
+    test_invalid_mutably_borrowed_element,
     SppSecondClassBorrowViolationError, R"(
     fun f(a: &mut std::boolean::Bool) -> std::void::Void {
         let b = [a; 1_uz]
@@ -20,7 +22,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_array_literal_repeated_element_non_copyable_element,
+    ArrayLiteralRepeatedElementAst,
+    test_invalid_non_copyable_element,
     SppInvalidExpressionNonCopyableTypeError, R"(
     fun f() -> std::void::Void {
         let a = ["hello"; 1_uz]
@@ -29,7 +32,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_array_literal_repeated_element_non_cmp_value,
+    ArrayLiteralRepeatedElementAst,
+    test_invalid_non_constant_size,
     SppCompileTimeConstantError, R"(
     fun f() -> std::void::Void {
         let b = 100_u32
@@ -39,7 +43,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_array_literal_repeated_element_wrong_size_type,
+    ArrayLiteralRepeatedElementAst,
+    test_invalid_size_type,
     SppTypeMismatchError, R"(
     fun f() -> std::void::Void {
         let a = [false; 1]
@@ -48,7 +53,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    test_valid_array_literal_repeated_element_cmp_size_literal, R"(
+    ArrayLiteralRepeatedElementAst,
+    test_valid_size_literal, R"(
     fun f() -> std::void::Void {
         let a = [false; 1_uz]
     }
@@ -56,7 +62,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    test_valid_array_literal_repeated_element_cmp_size_var, R"(
+    ArrayLiteralRepeatedElementAst,
+    test_valid_size_constant, R"(
     use std::number::USize
     fun f[cmp n: USize]() -> std::void::Void {
         let a = [false; n]

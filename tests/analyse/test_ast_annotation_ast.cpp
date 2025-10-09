@@ -2,7 +2,8 @@
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    test_valid_annotation_virtual_method, R"(
+    AnnotationAst,
+    test_valid_virtual_method, R"(
     cls A { }
     sup A {
         @virtual_method
@@ -12,7 +13,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    test_valid_annotation_abstract_method, R"(
+    AnnotationAst,
+    test_valid_abstract_method, R"(
     cls A { }
     sup A {
         @abstract_method
@@ -22,7 +24,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    test_valid_annotation_no_impl, R"(
+    AnnotationAst,
+    test_valid_no_impl, R"(
     cls A { }
     sup A {
         @no_impl
@@ -35,7 +38,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    test_valid_annotation_public, R"(
+    AnnotationAst,
+    test_valid_public, R"(
     @public
     cls A { }
 
@@ -50,7 +54,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    test_valid_annotation_protected, R"(
+    AnnotationAst,
+    test_valid_protected, R"(
     @protected
     cls A { }
 
@@ -65,7 +70,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    test_valid_annotation_private, R"(
+    AnnotationAst,
+    test_valid_private, R"(
     @private
     cls A { }
 
@@ -80,7 +86,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    test_valid_annotation_cold, R"(
+    AnnotationAst,
+    test_valid_cold, R"(
     cls A { }
 
     sup A {
@@ -94,7 +101,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    test_valid_annotation_hot, R"(
+    AnnotationAst,
+    test_valid_hot, R"(
     cls A { }
 
     sup A {
@@ -108,7 +116,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_annotation_virtual_method_outside_sup,
+    AnnotationAst,
+    test_invalid_virtual_method_outside_sup,
     SppAnnotationInvalidApplicationError, R"(
     cls A { }
 
@@ -118,7 +127,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_annotation_abstract_method_outside_sup,
+    AnnotationAst,
+    test_invalid_abstract_method_outside_sup,
     SppAnnotationInvalidApplicationError, R"(
     cls A { }
 
@@ -128,7 +138,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_annotation_virtual_method_on_non_function,
+    AnnotationAst,
+    test_invalid_virtual_method_on_non_function,
     SppAnnotationInvalidApplicationError, R"(
     @virtual_method
     cls A { }
@@ -136,7 +147,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_annotation_abstract_method_on_non_function,
+    AnnotationAst,
+    test_invalid_abstract_method_on_non_function,
     SppAnnotationInvalidApplicationError, R"(
     @abstract_method
     cls A { }
@@ -144,7 +156,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_annotation_no_impl_on_non_function,
+    AnnotationAst,
+    test_invalid_no_impl_on_non_function,
     SppAnnotationInvalidApplicationError, R"(
     @no_impl
     cls A { }
@@ -152,7 +165,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_annotation_cold_on_non_function,
+    AnnotationAst,
+    test_invalid_cold_on_non_function,
     SppAnnotationInvalidApplicationError, R"(
     @cold
     cls A { }
@@ -160,7 +174,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_annotation_hot_on_non_function,
+    AnnotationAst,
+    test_invalid_hot_on_non_function,
     SppAnnotationInvalidApplicationError, R"(
     @hot
     cls A { }
@@ -168,7 +183,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_annotation_access_modifier_inside_sup_ext,
+    AnnotationAst,
+    test_invalid_access_modifier_inside_sup_ext,
     SppAnnotationInvalidApplicationError, R"(
     cls A { }
     sup A {
@@ -185,7 +201,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_annotation,
+    AnnotationAst,
+    test_invalid_annotation_identifier,
     SppAnnotationInvalidError, R"(
     cls A { }
 
@@ -195,7 +212,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_annotation_conflicting_1,
+    AnnotationAst,
+    test_invalid_conflicting_access_modifiers_1,
     SppAnnotationConflictError, R"(
     cls A { }
 
@@ -206,7 +224,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_annotation_conflicting_2,
+    AnnotationAst,
+    test_invalid_conflicting_access_modifiers_2,
     SppAnnotationConflictError, R"(
     cls A { }
 
@@ -217,7 +236,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_annotation_conflicting_3,
+    AnnotationAst,
+    test_invalid_conflicting_access_modifiers_3,
     SppAnnotationConflictError, R"(
     cls A { }
 
@@ -228,7 +248,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_annotation_conflicting_4,
+    AnnotationAst,
+    test_invalid_conflicting_temperature_1,
     SppAnnotationConflictError, R"(
     cls A { }
 
@@ -239,7 +260,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_annotation_conflicting_5,
+    AnnotationAst,
+    test_invalid_conflicting_temperature_2,
     SppAnnotationConflictError, R"(
     cls A { }
 
@@ -250,7 +272,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_annotation_conflicting_6,
+    AnnotationAst,
+    test_invalid_conflicting_function_modifier_1,
     SppAnnotationConflictError, R"(
     cls A { }
     sup A {
@@ -262,7 +285,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    test_invalid_annotation_conflicting_7,
+    AnnotationAst,
+    test_invalid_conflicting_function_modifier_2,
     SppAnnotationConflictError, R"(
     cls A { }
     sup A {
