@@ -355,12 +355,12 @@ spp::analyse::errors::SppInconsistentlyPinnedMemoryUseError::SppInconsistentlyPi
 spp::analyse::errors::SppCompoundAssignmentTargetError::SppCompoundAssignmentTargetError(
     asts::ExpressionAst const &lhs) {
     add_header(
-        15, "SPP Compound Assignment Target Error");
+        15, "SPP Assignment Target Error");
     add_error(
         &lhs,
-        "Left-hand side of compound assignment defined here");
+        "Left-hand side of assignment defined here");
     add_footer(
-        "The left-hand side of a compound assignment must be a valid assignable target.",
+        "The left-hand side of a assignment must be a valid assignable target.",
         "Ensure the left-hand side is a variable, field, or indexable element");
 }
 

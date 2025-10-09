@@ -196,7 +196,7 @@ struct spp::analyse::errors::SppInconsistentlyPinnedMemoryUseError final : Seman
 
 
 struct spp::analyse::errors::SppCompoundAssignmentTargetError final : SemanticError {
-    explicit SppCompoundAssignmentTargetError(asts::ExpressionAst const &lhs);
+    explicit SppCompoundAssignmentTargetError(asts::ExpressionAst const &lhs);  // todo: rename to SppAssignmentTargetError
 };
 
 
