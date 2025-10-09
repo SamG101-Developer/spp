@@ -606,7 +606,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
 
     // For GenOnce coroutines, automatically resume the coroutine and return the "Yield" type.
     if (m_is_coro_and_auto_resume and not meta->prevent_auto_generator_resume) {
-        auto [_, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(*ret_type, *sm, *meta->let_stmt_value, "function call");
+        auto [_, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(*ret_type, *sm, *meta->postfix_expression_lhs, "function call");
         ret_type = yield_type;
     }
 

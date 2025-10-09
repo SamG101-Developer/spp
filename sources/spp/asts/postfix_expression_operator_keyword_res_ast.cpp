@@ -105,7 +105,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Get the generator type.
     const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
-    auto [gen_type, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(*lhs_type, *sm, *meta->let_stmt_value, "resume expression");
+    auto [gen_type, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(*lhs_type, *sm, *meta->postfix_expression_lhs, "resume expression");
 
     // Convert the type Gen[Yield] => Generated[Yield]
     if (analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN, *gen_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
