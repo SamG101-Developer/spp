@@ -60,9 +60,14 @@ inline auto build_temp_project(std::string code, const bool add_main = true) {
     }
 
 
-#define SPP_TEST_SHOULD_FAIL_SEMANTIC(name, code, error) \
-    TEST(SppAnalyse, name) {                             \
-        EXPECT_THROW({                                   \
-            build_temp_project(code);                    \
-        }, spp::analyse::errors::error);                 \
+#define SPP_TEST_SHOULD_FAIL_SEMANTIC(name, error, code)     \
+    TEST(SppAnalyse, name) {                                 \
+        EXPECT_THROW({                                       \
+            try {                                            \
+                build_temp_project(code);                    \
+            } catch (const spp::analyse::errors::error &e) { \
+                std::cout << e.what() << std::endl;          \
+                throw;                                       \
+            }                                                \
+        }, spp::analyse::errors::error);                     \
     }
