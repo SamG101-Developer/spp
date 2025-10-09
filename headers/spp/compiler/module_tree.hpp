@@ -1,7 +1,7 @@
 #pragma once
-#include <spp/lex/tokens.hpp>
-#include <spp/asts/_fwd.hpp>
 #include <spp/pch.hpp>
+#include <spp/asts/_fwd.hpp>
+#include <spp/lex/tokens.hpp>
 #include <spp/utils/error_formatter.hpp>
 
 /// @cond
