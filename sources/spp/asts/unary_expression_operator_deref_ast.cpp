@@ -68,8 +68,8 @@ auto spp::asts::UnaryExpressionOperatorDerefAst::stage_7_analyse_semantics(
 
     // Check the right-hand-side expression is a "Copy" type.
     if (not sm->current_scope->get_type_symbol(rhs_type)->is_copyable()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppDereferenceInvalidExpressionNonCopyableTypeError>().with_args(
-            *tok_deref, *rhs, *rhs_type).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidExpressionNonCopyableTypeError>().with_args(
+            *rhs, *rhs_type).with_scopes({sm->current_scope}).raise();
     }
 }
 

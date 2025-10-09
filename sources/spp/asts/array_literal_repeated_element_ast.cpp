@@ -101,8 +101,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
 
     // Ensure the element type is copyable, so that is can be repeated in the array.
     if (not elem_type_sym->is_copyable()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppUninitializedMemoryUseError>().with_args(
-            *elem, *this, *size).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidExpressionNonCopyableTypeError>().with_args(
+            *elem, *elem_type).with_scopes({sm->current_scope}).raise();
     }
 
     // Ensure the element's type is not a borrow type, as array elements cannot be borrows.
