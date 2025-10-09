@@ -13,6 +13,8 @@ spp::asts::CasePatternVariantDestructureArrayAst::CasePatternVariantDestructureA
     tok_l(std::move(tok_l)),
     elems(std::move(elems)),
     tok_r(std::move(tok_r)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_l, lex::SppTokenType::TK_LEFT_SQUARE_BRACKET, "[");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_r, lex::SppTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
 }
 
 
@@ -61,7 +63,6 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::convert_to_variable(
     // Recursively map the elements to their local variable counterparts.
     auto mapped_elems = elems
         | genex::views::transform([meta](auto &&x) { return x->convert_to_variable(meta); })
-        | genex::views::transform([](auto &&x) { return ast_cast<LocalVariableAst>(std::move(x)); })
         | genex::to<std::vector>();
 
     // Create the final local variable wrapping, tag it and return it.
