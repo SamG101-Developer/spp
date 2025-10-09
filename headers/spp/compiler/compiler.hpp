@@ -6,7 +6,7 @@
 
 /// @cond
 namespace spp::compiler {
-    struct Compiler;
+    class Compiler;
 }
 
 /// @endcond
@@ -26,7 +26,8 @@ inline constexpr auto COMPILER_STAGE_NAMES = std::array{
 };
 
 
-struct spp::compiler::Compiler {
+class spp::compiler::Compiler {
+public:
     enum class Mode {
         DEV, REL
     };
@@ -46,4 +47,6 @@ public:
     explicit Compiler(Mode mode);
 
     auto compile() -> void;
+
+    static auto cleanup() -> void;
 };

@@ -46,4 +46,10 @@ auto spp::compiler::Compiler::compile() -> void {
     m_boot.stage_6_pre_analyse_semantics(**ps++, m_modules, m_scope_manager.get());
     m_boot.stage_7_analyse_semantics(**ps++, m_modules, m_scope_manager.get());
     m_boot.stage_8_check_memory(**ps++, m_modules, m_scope_manager.get());
+    cleanup();
+}
+
+
+auto spp::compiler::Compiler::cleanup() -> void {
+    analyse::scopes::ScopeManager::cleanup();
 }

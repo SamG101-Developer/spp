@@ -4,7 +4,12 @@
 #include <spp/analyse/scopes/scope_range.hpp>
 #include <spp/utils/error_formatter.hpp>
 
+
 /// @cond
+namespace spp::compiler {
+    class Compiler;
+}
+
 namespace spp::analyse::scopes {
     class ScopeManager;
     struct TypeSymbol;
@@ -13,7 +18,6 @@ namespace spp::analyse::scopes {
 namespace spp::asts::mixins {
     struct CompilerMetaData;
 }
-
 /// @endcond
 
 
@@ -25,6 +29,7 @@ namespace spp::asts::mixins {
 class spp::analyse::scopes::ScopeManager {
     friend struct asts::TypeStatementAst;
     friend struct asts::LoopExpressionAst;
+    friend struct compiler::Compiler;
 
 private:
     /**
@@ -188,4 +193,12 @@ private:
         TypeSymbol const &cls_sym,
         Scope const &sup_scope)
         -> void;
+
+public:
+    /**
+     * Reset the static state of the @c ScopeManager. This clears the static lists of sup blocks, so that a new
+     * compilation can be started from a clean state. This should be called at the end of a full compilation. This is
+     * required so that the unit tests can run different code as "main" in the same process.
+     */
+    static auto cleanup() -> void;
 };

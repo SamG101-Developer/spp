@@ -4,7 +4,6 @@
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/cmp_statement_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/sup_prototype_extension_ast.hpp>
 #include <spp/asts/sup_prototype_functions_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
@@ -15,7 +14,6 @@
 #include <genex/algorithms/position.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/duplicates.hpp>
-#include <genex/views/drop.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/join.hpp>
 #include <genex/views/ptr.hpp>
@@ -240,4 +238,10 @@ auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statement
         errors::SemanticErrorBuilder<errors::SppIdentifierDuplicateError>().with_args(
             *d1, *d2, "comparison operator").with_scopes({d1->m_scope, d2->m_scope}).raise();
     }
+}
+
+
+auto spp::analyse::scopes::ScopeManager::cleanup() -> void {
+    normal_sup_blocks.clear();
+    generic_sup_blocks.clear();
 }
