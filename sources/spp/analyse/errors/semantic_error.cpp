@@ -10,18 +10,18 @@
 #include <spp/asts/function_prototype_ast.hpp>
 #include <spp/asts/generic_argument_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
+#include <spp/asts/iter_pattern_variant_ast.hpp>
 #include <spp/asts/literal_ast.hpp>
 #include <spp/asts/local_variable_ast.hpp>
 #include <spp/asts/local_variable_destructure_array_ast.hpp>
 #include <spp/asts/local_variable_destructure_object_ast.hpp>
-#include <spp/asts/local_variable_destructure_tuple_ast.hpp>
 #include <spp/asts/local_variable_destructure_skip_multiple_arguments_ast.hpp>
+#include <spp/asts/local_variable_destructure_tuple_ast.hpp>
 #include <spp/asts/loop_control_flow_statement_ast.hpp>
 #include <spp/asts/module_prototype_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/object_initializer_argument_ast.hpp>
 #include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/iter_pattern_variant_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_statement_ast.hpp>
@@ -1410,15 +1410,11 @@ spp::analyse::errors::SppDereferenceInvalidExpressionNonBorrowedTypeError::SppDe
 }
 
 
-spp::analyse::errors::SppDereferenceInvalidExpressionNonCopyableTypeError::SppDereferenceInvalidExpressionNonCopyableTypeError(
-    asts::TokenAst const &tok_deref,
+spp::analyse::errors::SppInvalidExpressionNonCopyableTypeError::SppInvalidExpressionNonCopyableTypeError(
     asts::ExpressionAst const &expr,
     asts::TypeAst const &type) {
     add_header(
         76, "SPP Dereference Invalid Expression Non-Copyable Type Error");
-    add_context_for_error(
-        &tok_deref,
-        "Dereference operator defined here");
     add_error(
         &expr,
         "Expression with non-copyable type: " + static_cast<std::string>(type) + " defined here");

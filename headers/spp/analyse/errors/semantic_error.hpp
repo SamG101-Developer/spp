@@ -87,7 +87,7 @@ namespace spp::analyse::errors {
     struct SppSuperimpositionExtensionCmpStatementInvalidError;
     struct SppAsyncTargetNotFunctionCallError;
     struct SppDereferenceInvalidExpressionNonBorrowedTypeError;
-    struct SppDereferenceInvalidExpressionNonCopyableTypeError;
+    struct SppInvalidExpressionNonCopyableTypeError;
     struct SppGenericParameterInferredConflictInferredError;
     struct SppGenericParameterInferredConflictExplicitError;
     struct SppGenericParameterNotInferredError;
@@ -505,8 +505,8 @@ struct spp::analyse::errors::SppDereferenceInvalidExpressionNonBorrowedTypeError
 };
 
 
-struct spp::analyse::errors::SppDereferenceInvalidExpressionNonCopyableTypeError final : SemanticError {
-    explicit SppDereferenceInvalidExpressionNonCopyableTypeError(asts::TokenAst const &tok_deref, asts::ExpressionAst const &expr, asts::TypeAst const &type);
+struct spp::analyse::errors::SppInvalidExpressionNonCopyableTypeError final : SemanticError {
+    explicit SppInvalidExpressionNonCopyableTypeError(asts::ExpressionAst const &expr, asts::TypeAst const &type);
 };
 
 
