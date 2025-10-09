@@ -30,17 +30,20 @@ spp::asts::TupleLiteralAst::TupleLiteralAst(
 spp::asts::TupleLiteralAst::~TupleLiteralAst() = default;
 
 
-auto spp::asts::TupleLiteralAst::pos_start() const -> std::size_t {
+auto spp::asts::TupleLiteralAst::pos_start() const
+    -> std::size_t {
     return tok_l->pos_start();
 }
 
 
-auto spp::asts::TupleLiteralAst::pos_end() const -> std::size_t {
+auto spp::asts::TupleLiteralAst::pos_end() const
+    -> std::size_t {
     return tok_r->pos_end();
 }
 
 
-auto spp::asts::TupleLiteralAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::TupleLiteralAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<TupleLiteralAst>(
         ast_clone(tok_l),
         ast_clone_vec(elems),
@@ -57,7 +60,8 @@ spp::asts::TupleLiteralAst::operator std::string() const {
 }
 
 
-auto spp::asts::TupleLiteralAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::TupleLiteralAst::print(meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);
     SPP_PRINT_EXTEND(elems);
@@ -87,7 +91,8 @@ auto spp::asts::TupleLiteralAst::equals_tuple_literal(
 
 auto spp::asts::TupleLiteralAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    mixins::CompilerMetaData *meta)
+    -> void {
     // Analyse the elements in the tuple.
     for (auto const &elem : elems) {
         ENFORCE_EXPRESSION_SUBTYPE(elem.get());

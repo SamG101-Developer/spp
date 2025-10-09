@@ -31,7 +31,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::pos_start() const
 
 auto spp::asts::LocalVariableSingleIdentifierAst::pos_end() const
     -> std::size_t {
-    return alias->pos_end();
+    return alias ? alias->pos_end() : name->pos_end();
 }
 
 
