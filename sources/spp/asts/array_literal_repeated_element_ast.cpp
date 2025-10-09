@@ -24,23 +24,29 @@ spp::asts::ArrayLiteralRepeatedElementAst::ArrayLiteralRepeatedElementAst(
     tok_semicolon(std::move(tok_semicolon)),
     size(std::move(size)),
     tok_r(std::move(tok_r)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_l, lex::SppTokenType::TK_LEFT_SQUARE_BRACKET, "[");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_semicolon, lex::SppTokenType::TK_SEMICOLON, ";");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_r, lex::SppTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
 }
 
 
 spp::asts::ArrayLiteralRepeatedElementAst::~ArrayLiteralRepeatedElementAst() = default;
 
 
-auto spp::asts::ArrayLiteralRepeatedElementAst::pos_start() const -> std::size_t {
+auto spp::asts::ArrayLiteralRepeatedElementAst::pos_start() const
+    -> std::size_t {
     return tok_l->pos_start();
 }
 
 
-auto spp::asts::ArrayLiteralRepeatedElementAst::pos_end() const -> std::size_t {
+auto spp::asts::ArrayLiteralRepeatedElementAst::pos_end() const
+    -> std::size_t {
     return tok_r->pos_end();
 }
 
 
-auto spp::asts::ArrayLiteralRepeatedElementAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::ArrayLiteralRepeatedElementAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<ArrayLiteralRepeatedElementAst>(
         ast_clone(tok_l),
         ast_clone(elem),
@@ -61,7 +67,9 @@ spp::asts::ArrayLiteralRepeatedElementAst::operator std::string() const {
 }
 
 
-auto spp::asts::ArrayLiteralRepeatedElementAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::ArrayLiteralRepeatedElementAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);
     SPP_PRINT_APPEND(elem);

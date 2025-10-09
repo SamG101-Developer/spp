@@ -1,11 +1,10 @@
 #include <spp/pch.hpp>
-
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
+#include <spp/analyse/utils/mem_utils.hpp>
+#include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/array_literal_explicit_elements_ast.hpp>
 #include <spp/asts/integer_literal_ast.hpp>
 #include <spp/asts/token_ast.hpp>
@@ -14,7 +13,6 @@
 
 #include <genex/to_container.hpp>
 #include <genex/algorithms/all_of.hpp>
-#include <genex/algorithms/any_of.hpp>
 #include <genex/views/address.hpp>
 #include <genex/views/zip.hpp>
 
@@ -26,23 +24,28 @@ spp::asts::ArrayLiteralExplicitElementsAst::ArrayLiteralExplicitElementsAst(
     tok_l(std::move(tok_l)),
     elems(std::move(elements)),
     tok_r(std::move(tok_r)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_l, lex::SppTokenType::TK_LEFT_SQUARE_BRACKET, "[");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_r, lex::SppTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
 }
 
 
 spp::asts::ArrayLiteralExplicitElementsAst::~ArrayLiteralExplicitElementsAst() = default;
 
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::pos_start() const -> std::size_t {
+auto spp::asts::ArrayLiteralExplicitElementsAst::pos_start() const
+    -> std::size_t {
     return tok_l->pos_start();
 }
 
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::pos_end() const -> std::size_t {
+auto spp::asts::ArrayLiteralExplicitElementsAst::pos_end() const
+    -> std::size_t {
     return tok_r->pos_end();
 }
 
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::ArrayLiteralExplicitElementsAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<ArrayLiteralExplicitElementsAst>(
         ast_clone(tok_l),
         ast_clone_vec(elems),
@@ -59,7 +62,9 @@ spp::asts::ArrayLiteralExplicitElementsAst::operator std::string() const {
 }
 
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::ArrayLiteralExplicitElementsAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);
     SPP_PRINT_EXTEND(elems);
@@ -89,7 +94,9 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::equals(
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    mixins::CompilerMetaData *meta)
+    -> void {
+
     // Analyse the element inside the array.
     for (auto &&elem : elems) {
         ENFORCE_EXPRESSION_SUBTYPE(elem.get());
@@ -141,6 +148,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_8_check_memory(
 auto spp::asts::ArrayLiteralExplicitElementsAst::infer_type(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> {
+
     // Create a "T" type and "n" size, for the array type.
     auto size_tok = std::make_unique<TokenAst>(tok_l->pos_start(), lex::SppTokenType::LX_NUMBER, std::to_string(elems.size()));
     auto size_gen = std::make_unique<IntegerLiteralAst>(nullptr, std::move(size_tok), "uz");
