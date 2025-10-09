@@ -90,28 +90,29 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::equals(
 auto spp::asts::ArrayLiteralExplicitElementsAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta) -> void {
-    const auto zeroth_elem = elems[0].get();
-    const auto zeroth_type = zeroth_elem->infer_type(sm, meta);
-
     // Analyse the element inside the array.
     for (auto &&elem : elems) {
         ENFORCE_EXPRESSION_SUBTYPE(elem.get());
         elem->stage_7_analyse_semantics(sm, meta);
     }
 
+    // Get the 0th element information for comparisons (always exists due to parser rules).
+    const auto zeroth_elem = elems[0].get();
+    const auto zeroth_type = zeroth_elem->infer_type(sm, meta);
+
     // Check all elements have the same type as the 0th element.
     const auto elem_types = elems
         | genex::views::transform([sm, meta](auto &&elem) { return elem->infer_type(sm, meta); })
         | genex::to<std::vector>();
 
-    for (auto &&[elem, elem_type] : genex::views::zip(elems | genex::views::ptr, elem_types) | genex::to<std::vector>()) {
+    for (auto &&[elem, elem_type] : genex::views::zip(elems | genex::views::ptr, elem_types)) {
         if (not analyse::utils::type_utils::symbolic_eq(*zeroth_type, *elem_type, *sm->current_scope, *sm->current_scope))
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
                 *zeroth_elem, *zeroth_type, *elem, *elem_type).with_scopes({sm->current_scope}).raise();
     }
 
     // Check all the elements are owned by the array, not borrowed.
-    for (auto &&elem : elems | genex::views::ptr | genex::to<std::vector>()) {
+    for (auto &&elem : elems | genex::views::ptr) {
         if (auto [elem_sym, _] = sm->current_scope->get_var_symbol_outermost(*elem); elem_sym != nullptr) {
             if (const auto borrow_ast = elem_sym->memory_info->ast_borrowed) {
                 analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
