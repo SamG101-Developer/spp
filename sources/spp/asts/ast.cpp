@@ -14,6 +14,7 @@
 #include <spp/asts/sup_prototype_extension_ast.hpp>
 #include <spp/asts/sup_prototype_functions_ast.hpp>
 #include <spp/asts/token_ast.hpp>
+#include <spp/asts/type_ast.hpp>
 #include <spp/asts/mixins/compiler_stages.hpp>
 
 #include <genex/to_container.hpp>
@@ -32,7 +33,7 @@ auto spp::asts::ast_name(Ast *ast) -> std::shared_ptr<TypeAst> {
         return ast_cast<SupPrototypeExtensionAst>(ast)->name;
     }
 
-    throw std::runtime_error("ast_name: Unsupported AST type");
+    throw std::runtime_error("ast_name: Unsupported AST type " + std::string(typeid(*ast).name()));
 }
 
 

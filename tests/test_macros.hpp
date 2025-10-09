@@ -1,13 +1,14 @@
 #pragma once
 #include <spp/cli.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/lex/lexer.hpp>
 #include <spp/parse/parser_spp.hpp>
 
 #include <gtest/gtest.h>
 
 
-inline auto build_temp_project(std::string code, const bool add_main = true) {
+inline auto build_temp_project(std::string code, const bool add_main = true) -> void {
     auto cwd = std::filesystem::current_path();
     auto fp = "../../tests/test_outputs";
 
@@ -34,7 +35,14 @@ inline auto build_temp_project(std::string code, const bool add_main = true) {
 
     // Build the project.
     std::filesystem::current_path(cwd / fp);
-    spp::cli::handle_build("rel", true);
+    try {
+        spp::cli::handle_build("rel", true);
+    }
+    catch (const spp::analyse::errors::SemanticError &e) {
+        std::cout << e.what() << std::endl;
+        spp::analyse::scopes::ScopeManager::cleanup();
+        throw;
+    }
     std::filesystem::current_path(cwd);
 }
 
@@ -63,11 +71,6 @@ inline auto build_temp_project(std::string code, const bool add_main = true) {
 #define SPP_TEST_SHOULD_FAIL_SEMANTIC(name, error, code)     \
     TEST(SppAnalyse, name) {                                 \
         EXPECT_THROW({                                       \
-            try {                                            \
-                build_temp_project(code);                    \
-            } catch (const spp::analyse::errors::error &e) { \
-                std::cout << e.what() << std::endl;          \
-                throw;                                       \
-            }                                                \
+            build_temp_project(code);                        \
         }, spp::analyse::errors::error);                     \
     }
