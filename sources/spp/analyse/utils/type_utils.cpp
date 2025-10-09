@@ -380,7 +380,7 @@ auto spp::analyse::utils::type_utils::is_index_within_type_bound(
     // For arrays, check the size argument.
     if (is_type_array(type, sm)) {
         const auto size_arg = type.type_parts().back()->generic_arg_group->comp_at("n");
-        const auto size_arg_cast = asts::ast_cast<asts::IntegerLiteralAst>(size_arg);
+        const auto size_arg_cast = asts::ast_cast<asts::IntegerLiteralAst>(size_arg->val.get());
         return index < std::stoull(size_arg_cast->val->token_data);
     }
 
