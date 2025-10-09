@@ -105,13 +105,17 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
 
     // For each assignment, get the outermost symbol of the expression.
     auto lhs_syms = lhs
-        | genex::views::indirect
-        | genex::views::transform([sm](auto const &x) { return sm->current_scope->get_var_symbol_outermost(x); })
-        | genex::to<std::vector>();
+        | genex::views::transform([sm](auto const &x) { return sm->current_scope->get_var_symbol_outermost(*x); });
 
     // Create quick access derefs for the looping.
-    for (auto &&[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(lhs | genex::views::ptr, rhs | genex::views::ptr, lhs_syms) | genex::to<std::vector>()) {
+    for (auto &&[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(lhs | genex::views::ptr, rhs | genex::views::ptr, lhs_syms)) {
         auto &&[lhs_sym, _] = lhs_sym_and_scope;
+
+        // Check if the left-hand-side is non-symbolic (can't do "1 = 2").
+        if (lhs_sym == nullptr) {
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppCompoundAssignmentTargetError>().with_args(
+                *lhs_expr).with_scopes({sm->current_scope}).raise();
+        }
 
         // Full assignment (ie "x" = "y") requires the "x" symbol to be marked as "mut" or never initialized.
         if (not is_attr(lhs_expr) and not(lhs_sym->is_mutable or lhs_sym->memory_info->initialization_counter == 0)) {
