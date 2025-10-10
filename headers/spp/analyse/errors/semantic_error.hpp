@@ -445,7 +445,7 @@ struct spp::analyse::errors::SppAmbiguousMemberAccessError final : SemanticError
 };
 
 
-struct spp::analyse::errors::SppFunctionCoroutineContainsRetExprExpressionError final : SemanticError {
+struct spp::analyse::errors::SppFunctionCoroutineContainsRetExprExpressionError final : SemanticError { // Todo: rename to remove "Function"
     explicit SppFunctionCoroutineContainsRetExprExpressionError(asts::TokenAst const &fun_tag, asts::TokenAst const &ret_stmt);
 };
 

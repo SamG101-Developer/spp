@@ -98,12 +98,14 @@ auto spp::asts::RetStatementAst::stage_7_analyse_semantics(
         m_ret_type = meta->enclosing_function_ret_type[0];
     }
 
-    // Type check the expression type against the return type of the enclosing function.
-    const auto direct_match = analyse::utils::type_utils::symbolic_eq(*m_ret_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
-    if (not direct_match) {
-        const auto expr_for_err = expr ? ast_cast<Ast>(expr.get()) : ast_cast<Ast>(tok_ret.get());
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-            *expr_type, *expr_type, *expr_for_err, *m_ret_type).with_scopes({sm->current_scope}).raise();
+    // Type check the expression type against the return type of the enclosing subroutine.
+    if (function_flavour->token_type == lex::SppTokenType::KW_FUN) {
+        const auto direct_match = analyse::utils::type_utils::symbolic_eq(*m_ret_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
+        if (not direct_match) {
+            const auto expr_for_err = expr ? ast_cast<Ast>(expr.get()) : ast_cast<Ast>(tok_ret.get());
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
+                *expr_type, *expr_type, *expr_for_err, *m_ret_type).with_scopes({sm->current_scope}).raise();
+        }
     }
 }
 
