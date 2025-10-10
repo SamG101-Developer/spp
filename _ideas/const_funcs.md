@@ -1,4 +1,6 @@
-# Const functions
+# Const Upgrades
+
+## Const Functions
 
 Functions will not be "markable" as `cmp`, the standard "compile time" keyword marker. What is going to happen, is that
 every function will be assumed to be compile-time executable, in all contexts of that function being called. The
@@ -16,3 +18,9 @@ If a parameter should always be `cmp`, use it as a non-type generic parameter, l
 
 The numeric addition functions will not have any `cmp` parameters, but can be called either as compile time executable,
 like `1 + 2`, or runtime executable, like `a + b`, where `a` and `b` are variables.
+
+## Const Variables
+
+Currently `cmp` can only be used at the module level, superimposition level, or to define generic comp parameters. They
+could also be allowed as function statements, like `let`. If this were the case, they could then be used as generic comp
+args, and when constant functions are ready, they can be manipulated as arguments to constant functions.
