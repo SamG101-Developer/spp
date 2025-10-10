@@ -202,11 +202,11 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
         | genex::views::cast_dynamic<asts::IdentifierAst const*>()
         | genex::to<std::vector>();
 
-    if (not symbolic_pins.empty() and not copies) {
+    if (not symbolic_pins.empty() and not copies) {  // todo: ast_clone or shared_from_this?
         const auto pin_sym = var_scope->get_var_symbol(ast_clone(symbolic_pins.front()));
         const auto where_init = var_sym->memory_info->ast_initialization_origin;
         const auto where_move = &move_ast;
-        const auto where_pin = pin_sym->memory_info->ast_pins.front();
+        const auto where_pin = symbolic_pins.front();
 
         if (check_linked_pins and var_sym != pin_sym) {
             const auto where_pin_init = pin_sym->memory_info->ast_initialization_origin;
@@ -222,9 +222,6 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
 
     // Mark the symbol as moved/partially-moved if it is not copyable.
     if (mark_moves and asts::ast_cast<asts::IdentifierAst>(&value_ast) != nullptr and not copies) {
-        if (value_ast.operator std::string() == "d") {
-            auto _ = 123;
-        }
         var_sym->memory_info->moved_by(value_ast);
     }
 
