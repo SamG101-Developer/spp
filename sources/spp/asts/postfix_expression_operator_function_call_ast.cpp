@@ -97,6 +97,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::clone() const
     ast->m_overload_info = m_overload_info;
     ast->m_is_async = m_is_async;
     ast->m_folded_args = m_folded_args;
+    ast->m_closure_dummy_arg_group = ast_clone(m_closure_dummy_arg_group);
     ast->m_closure_dummy_arg = ast_clone(m_closure_dummy_arg);
     ast->m_closure_dummy_proto = ast_clone(m_closure_dummy_proto);
     ast->m_is_coro_and_auto_resume = m_is_coro_and_auto_resume;
@@ -483,6 +484,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     }
 
     // Special case for closures; apply the convention the closure name to ensure is it movable/mutable etc.
+    // Todo: move this from overload selection to semantic_analysis?
     if (is_closure) {
         const auto lhs_type = analyse::utils::func_utils::is_target_callable(*lhs, *sm, meta);
         auto dummy_self_arg = std::make_unique<FunctionCallArgumentPositionalAst>(nullptr, nullptr, ast_clone(lhs));
@@ -550,8 +552,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_8_check_memory(
     if (m_closure_dummy_arg != nullptr) {
         auto closure_args = std::vector<std::unique_ptr<FunctionCallArgumentAst>>();
         closure_args.emplace_back(std::move(m_closure_dummy_arg));
-        auto group = FunctionCallArgumentGroupAst(nullptr, std::move(closure_args), nullptr);
-        group.stage_8_check_memory(sm, meta);
+        m_closure_dummy_arg_group = std::make_unique<FunctionCallArgumentGroupAst>(nullptr, std::move(closure_args), nullptr);
+        m_closure_dummy_arg_group->stage_8_check_memory(sm, meta);
     }
 
     // Check the argument group, now the old borrows hae been invalidated.
