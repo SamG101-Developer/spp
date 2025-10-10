@@ -258,7 +258,7 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
         | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()
         | genex::views::transform([](auto &&x) { return x->name.get(); })
         | genex::views::materialize
-        | genex::views::duplicates
+        | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
     if (not type_arg_names.empty()) {
@@ -271,7 +271,7 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
         | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()
         | genex::views::transform([](auto &&x) { return x->name.get(); })
         | genex::views::materialize
-        | genex::views::duplicates
+        | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
     if (not comp_arg_names.empty()) {

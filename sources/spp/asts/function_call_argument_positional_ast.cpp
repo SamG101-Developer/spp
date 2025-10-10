@@ -17,17 +17,20 @@ spp::asts::FunctionCallArgumentPositionalAst::FunctionCallArgumentPositionalAst(
 spp::asts::FunctionCallArgumentPositionalAst::~FunctionCallArgumentPositionalAst() = default;
 
 
-auto spp::asts::FunctionCallArgumentPositionalAst::pos_start() const -> std::size_t {
-    return tok_unpack->pos_start();
+auto spp::asts::FunctionCallArgumentPositionalAst::pos_start() const
+    -> std::size_t {
+    return tok_unpack ? tok_unpack->pos_start() : val->pos_start();
 }
 
 
-auto spp::asts::FunctionCallArgumentPositionalAst::pos_end() const -> std::size_t {
+auto spp::asts::FunctionCallArgumentPositionalAst::pos_end() const
+    -> std::size_t {
     return val->pos_end();
 }
 
 
-auto spp::asts::FunctionCallArgumentPositionalAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::FunctionCallArgumentPositionalAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<FunctionCallArgumentPositionalAst>(
         ast_clone(conv),
         ast_clone(tok_unpack),
@@ -44,7 +47,9 @@ spp::asts::FunctionCallArgumentPositionalAst::operator std::string() const {
 }
 
 
-auto spp::asts::FunctionCallArgumentPositionalAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::FunctionCallArgumentPositionalAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_unpack);
     SPP_PRINT_APPEND(conv);

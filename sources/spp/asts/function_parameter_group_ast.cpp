@@ -140,7 +140,7 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
         | genex::views::transform([](auto &&x) { return x->extract_names(); })
         | genex::views::join
         | genex::views::materialize
-        | genex::views::duplicates()
+        | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
     if (not param_names.empty()) {
@@ -148,7 +148,7 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
             *param_names[0], *param_names[1], "keyword function-argument").with_scopes({sm->current_scope}).raise();
     }
 
-    // Check the arguments are in the correct order.
+    // Check the parameters are in the correct order.
     const auto unordered_args = analyse::utils::order_utils::order_args(params
         | genex::views::ptr
         | genex::views::cast_dynamic<mixins::OrderableAst*>()

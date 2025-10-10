@@ -245,7 +245,7 @@ auto spp::asts::GenericParameterGroupAst::stage_7_analyse_semantics(
     const auto param_names = params
         | genex::views::transform([](auto &&x) { return x->name.get(); })
         | genex::views::materialize
-        | genex::views::duplicates
+        | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
     if (not param_names.empty()) {

@@ -138,7 +138,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics
     const auto duplicates = get_keyword_args()
         | genex::views::transform([](auto &&x) { return x->name; })
         | genex::views::materialize
-        | genex::views::duplicates
+        | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
     if (not duplicates.empty()) {
