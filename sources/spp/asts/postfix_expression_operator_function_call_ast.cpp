@@ -553,6 +553,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_8_check_memory(
         auto closure_args = std::vector<std::unique_ptr<FunctionCallArgumentAst>>();
         closure_args.emplace_back(std::move(m_closure_dummy_arg));
         m_closure_dummy_arg_group = std::make_unique<FunctionCallArgumentGroupAst>(nullptr, std::move(closure_args), nullptr);
+        m_closure_dummy_arg_group->stage_7_analyse_semantics(sm, meta);
         m_closure_dummy_arg_group->stage_8_check_memory(sm, meta);
     }
 
