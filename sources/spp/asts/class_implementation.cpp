@@ -87,7 +87,7 @@ auto spp::asts::ClassImplementationAst::stage_6_pre_analyse_semantics(
     const auto duplicates = members
         | genex::views::transform([](auto &&x) { return ast_cast<ClassAttributeAst>(*x).name.get(); })
         | genex::views::materialize
-        | genex::views::duplicates
+        | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
     if (not duplicates.empty()) {
