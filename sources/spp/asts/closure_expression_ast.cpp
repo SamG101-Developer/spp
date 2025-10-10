@@ -36,17 +36,20 @@ spp::asts::ClosureExpressionAst::ClosureExpressionAst(
 spp::asts::ClosureExpressionAst::~ClosureExpressionAst() = default;
 
 
-auto spp::asts::ClosureExpressionAst::pos_start() const -> std::size_t {
+auto spp::asts::ClosureExpressionAst::pos_start() const
+    -> std::size_t {
     return tok ? tok->pos_start() : pc_group->pos_start();
 }
 
 
-auto spp::asts::ClosureExpressionAst::pos_end() const -> std::size_t {
+auto spp::asts::ClosureExpressionAst::pos_end() const
+    -> std::size_t {
     return body->pos_end();
 }
 
 
-auto spp::asts::ClosureExpressionAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::ClosureExpressionAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<ClosureExpressionAst>(
         ast_clone(tok),
         ast_clone(pc_group),
@@ -56,17 +59,19 @@ auto spp::asts::ClosureExpressionAst::clone() const -> std::unique_ptr<Ast> {
 
 spp::asts::ClosureExpressionAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok);
-    SPP_STRING_APPEND(pc_group);
+    SPP_STRING_APPEND(tok).append(" ");
+    SPP_STRING_APPEND(pc_group).append(" ");
     SPP_STRING_APPEND(body);
     SPP_STRING_END;
 }
 
 
-auto spp::asts::ClosureExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::ClosureExpressionAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok);
-    SPP_PRINT_APPEND(pc_group);
+    SPP_PRINT_APPEND(tok).append(" ");
+    SPP_PRINT_APPEND(pc_group).append(" ");
     SPP_PRINT_APPEND(body);
     SPP_PRINT_END;
 }
@@ -130,25 +135,33 @@ auto spp::asts::ClosureExpressionAst::infer_type(
 
     // If there are no captures, return a FunRef type with the parameters and return type.
     if (pc_group->capture_group->captures.empty()) {
-        auto param_types = pc_group->param_group->params | genex::views::transform([](auto &&x) { return x->type; }) | genex::to<std::vector>();
+        auto param_types = pc_group->param_group->params
+            | genex::views::transform([](auto const &x) { return x->type; })
+            | genex::to<std::vector>();
         ty = generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 
-    else if (genex::algorithms::any_of(pc_group->capture_group->captures, [](auto &&x) { return x->conv == nullptr; })) {
+    else if (genex::algorithms::any_of(pc_group->capture_group->captures, [](auto const &x) { return x->conv == nullptr; })) {
         // If there are captures, but no borrowed captures, return a FunMov type with the parameters and return type.
-        auto param_types = pc_group->param_group->params | genex::views::transform([](auto &&x) { return x->type; }) | genex::to<std::vector>();
+        auto param_types = pc_group->param_group->params
+            | genex::views::transform([](auto const &x) { return x->type; })
+            | genex::to<std::vector>();
         ty = generate::common_types::fun_mov_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 
-    else if (genex::algorithms::any_of(pc_group->capture_group->captures, [](auto &&x) { return x->conv and *x->conv == ConventionAst::ConventionTag::MUT; })) {
+    else if (genex::algorithms::any_of(pc_group->capture_group->captures, [](auto const &x) { return x->conv and *x->conv == ConventionAst::ConventionTag::MUT; })) {
         // If there are mutably borrowed captures, return a FunMut type with the parameters and return type.
-        auto param_types = pc_group->param_group->params | genex::views::transform([](auto &&x) { return x->type; }) | genex::to<std::vector>();
+        auto param_types = pc_group->param_group->params
+            | genex::views::transform([](auto const &x) { return x->type; })
+            | genex::to<std::vector>();
         ty = generate::common_types::fun_mut_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 
-    else if (genex::algorithms::any_of(pc_group->capture_group->captures, [](auto &&x) { return x->conv and *x->conv == ConventionAst::ConventionTag::REF; })) {
+    else if (genex::algorithms::any_of(pc_group->capture_group->captures, [](auto const &x) { return x->conv and *x->conv == ConventionAst::ConventionTag::REF; })) {
         // If there are immutable borrowed captures, return a FunRef type with the parameters and return type.
-        auto param_types = pc_group->param_group->params | genex::views::transform([](auto &&x) { return x->type; }) | genex::to<std::vector>();
+        auto param_types = pc_group->param_group->params
+            | genex::views::transform([](auto const &x) { return x->type; })
+            | genex::to<std::vector>();
         ty = generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 
