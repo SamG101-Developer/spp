@@ -45,11 +45,7 @@ auto spp::analyse::utils::order_utils::order(
     auto out_of_order = genex::views::zip(tagged_args, args_sorted)
         | genex::views::filter([](auto &&x) { return std::get<0>(x) != std::get<1>(x); })
         | genex::views::transform([](auto &&x) { return std::get<1>(x); })
-        | genex::views::transform([](auto &&x) {
-            return std::make_pair(
-                std::string(magic_enum::enum_name(std::get<0>(x))),
-                dynamic_cast<asts::Ast*>(std::get<1>(x)));
-        })
+        | genex::views::transform([](auto &&x) {return std::make_pair(std::string(magic_enum::enum_name(std::get<0>(x))), dynamic_cast<asts::Ast*>(std::get<1>(x))); })
         | genex::to<std::vector>();
     return out_of_order;
 }
