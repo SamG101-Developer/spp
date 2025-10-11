@@ -97,7 +97,6 @@ auto spp::asts::FunctionCallArgumentGroupAst::get_keyword_args() const -> std::v
     return args
         | genex::views::ptr
         | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>()
-        | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::to<std::vector>();
 }
 
@@ -106,7 +105,6 @@ auto spp::asts::FunctionCallArgumentGroupAst::get_positional_args() const -> std
     return args
         | genex::views::ptr
         | genex::views::cast_dynamic<FunctionCallArgumentPositionalAst*>()
-        | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::to<std::vector>();
 }
 
@@ -225,14 +223,15 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
         // Ensure the argument isn't moved or partially moved (applies to all conventions). For non-symbolic arguments,
         // nested checking is done via the argument itself.
         arg->stage_8_check_memory(sm, meta);
-        analyse::utils::mem_utils::validate_symbol_memory(*arg->val, *arg, *sm, true, true, false, false, false, false, meta);
+        analyse::utils::mem_utils::validate_symbol_memory(
+            *arg->val, *arg, *sm, true, true, false, false, false, false, meta);
 
         if (arg->conv == nullptr) {
-            // Don't bother rechecking the moves or partial moves, but ensure that attributes aren't being moved off of
-            // a borrowed value and that pins are maintained. Mark the move or partial move of the argument. Note the
-            // "check_pins_linked=False" because function calls can only imply an inner scope, so it is guaranteed that
-            // lifetimes aren't being extended.
-            analyse::utils::mem_utils::validate_symbol_memory(*arg->val, *arg, *sm, true, true, true, true, false, true, meta);
+            // Ensure that attributes aren't being moved off of a borrowed value and that pins are maintained. Mark the
+            // move or partial move of the argument. Note the "check_pins_linked=False" because function calls can only
+            // imply an inner scope, so it is guaranteed that lifetimes aren't being extended.
+            analyse::utils::mem_utils::validate_symbol_memory(
+                *arg->val, *arg, *sm, true, true, true, true, false, true, meta);
 
             // Check the move doesn't overlap with any borrows. This is to ensure that "f(&x, x)" can never happen,
             // because the first argument requires the owned object to outlive the function call, and moving it as the

@@ -77,7 +77,6 @@ auto spp::asts::FunctionParameterGroupAst::get_self_param() const -> FunctionPar
     const auto ps = params
         | genex::views::ptr
         | genex::views::cast_dynamic<FunctionParameterSelfAst*>()
-        | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::to<std::vector>();
     return ps.empty() ? nullptr : ps[0];
 }
@@ -87,7 +86,6 @@ auto spp::asts::FunctionParameterGroupAst::get_required_params() const -> std::v
     return params
         | genex::views::ptr
         | genex::views::cast_dynamic<FunctionParameterRequiredAst*>()
-        | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::to<std::vector>();
 }
 
@@ -96,7 +94,6 @@ auto spp::asts::FunctionParameterGroupAst::get_optional_params() const -> std::v
     return params
         | genex::views::ptr
         | genex::views::cast_dynamic<FunctionParameterOptionalAst*>()
-        | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::to<std::vector>();
 }
 
@@ -105,7 +102,6 @@ auto spp::asts::FunctionParameterGroupAst::get_variadic_param() const -> Functio
     const auto ps = params
         | genex::views::ptr
         | genex::views::cast_dynamic<FunctionParameterVariadicAst*>()
-        | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::to<std::vector>();
     return ps.empty() ? nullptr : ps[0];
 }
@@ -123,19 +119,18 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
     -> void {
-    // Check there is only 1 "self" parameter.
+
+    // Create sets of parameters based on conditions.
     const auto self_params = params
         | genex::views::ptr
         | genex::views::cast_dynamic<FunctionParameterSelfAst*>()
-        | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::to<std::vector>();
 
-    if (self_params.size() > 1) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMultipleSelfParametersError>().with_args(
-            *self_params[0], *self_params[1]).with_scopes({sm->current_scope}).raise();
-    }
+    const auto variadic_params = params
+        | genex::views::ptr
+        | genex::views::cast_dynamic<FunctionParameterVariadicAst*>()
+        | genex::to<std::vector>();
 
-    // Check there are no duplicate parameter names.
     const auto param_names = params
         | genex::views::transform([](auto &&x) { return x->extract_names(); })
         | genex::views::join
@@ -143,17 +138,30 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
+    const auto unordered_args = analyse::utils::order_utils::order_args(params
+        | genex::views::ptr
+        | genex::views::cast_dynamic<mixins::OrderableAst*>()
+        | genex::to<std::vector>());
+
+    // Check there is only 1 "self" parameter.
+    if (self_params.size() > 1) {
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMultipleSelfParametersError>().with_args(
+            *self_params[0], *self_params[1]).with_scopes({sm->current_scope}).raise();
+    }
+
+    // Check there is only 1 variadic parameter, and it is last.
+    if (variadic_params.size() > 1) {
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMultipleVariadicParametersError>().with_args(
+            *variadic_params[0], *variadic_params[1]).with_scopes({sm->current_scope}).raise();
+    }
+
+    // Check there are no duplicate parameter names.
     if (not param_names.empty()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
             *param_names[0], *param_names[1], "keyword function-argument").with_scopes({sm->current_scope}).raise();
     }
 
     // Check the parameters are in the correct order.
-    const auto unordered_args = analyse::utils::order_utils::order_args(params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<mixins::OrderableAst*>()
-        | genex::to<std::vector>());
-
     if (not unordered_args.empty()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>().with_args(
             unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second).with_scopes({sm->current_scope}).raise();

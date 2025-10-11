@@ -111,7 +111,6 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
     const auto multi_arg_skips = elems
         | genex::views::ptr
         | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>()
-        | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::to<std::vector>();
 
     if (multi_arg_skips.size() > 1) {

@@ -93,7 +93,6 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
     if (const auto bs = branches
         | genex::views::ptr
         | genex::views::cast_dynamic<IterPatternVariantExceptionAst*>()
-        | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::to<std::vector>(); bs.size() > 1) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternTypeDuplicateError>().with_args(
             *bs[0], *bs[1]).with_scopes({sm->current_scope}).raise();
@@ -102,7 +101,6 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
     if (const auto bs = branches
         | genex::views::ptr
         | genex::views::cast_dynamic<IterPatternVariantExhaustedAst*>()
-        | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::to<std::vector>(); bs.size() > 1) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternTypeDuplicateError>().with_args(
             *bs[0], *bs[1]).with_scopes({sm->current_scope}).raise();
@@ -111,7 +109,6 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
     if (const auto bs = branches
         | genex::views::ptr
         | genex::views::cast_dynamic<IterPatternVariantNoValueAst*>()
-        | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::to<std::vector>(); bs.size() > 1) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternTypeDuplicateError>().with_args(
             *bs[0], *bs[1]).with_scopes({sm->current_scope}).raise();
@@ -120,7 +117,6 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
     if (const auto bs = branches
         | genex::views::ptr
         | genex::views::cast_dynamic<IterPatternVariantVariableAst*>()
-        | genex::views::filter([](auto &&x) { return x != nullptr; })
         | genex::to<std::vector>(); bs.size() > 1) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternTypeDuplicateError>().with_args(
             *bs[0], *bs[1]).with_scopes({sm->current_scope}).raise();
@@ -134,7 +130,6 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
         const auto pat = branches
             | genex::views::ptr
             | genex::views::cast_dynamic<IterPatternVariantNoValueAst*>()
-            | genex::views::filter([](auto &&x) { return x != nullptr; })
             | genex::to<std::vector>();
 
         if (not pat.empty() and not analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN_OPT, *cond_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
@@ -148,7 +143,6 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
         const auto pat = branches
             | genex::views::ptr
             | genex::views::cast_dynamic<IterPatternVariantExceptionAst*>()
-            | genex::views::filter([](auto &&x) { return x != nullptr; })
             | genex::to<std::vector>();
 
         if (not pat.empty() and not analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN_RES, *cond_type->without_generics(), *sm->current_scope, *sm->current_scope)) {

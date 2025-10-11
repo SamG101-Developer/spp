@@ -229,25 +229,14 @@ auto spp::asts::GenericParameterGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
     -> void {
-    // Check there is only 1 "self" parameter.
-    const auto self_params = params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<FunctionParameterSelfAst*>()
-        | genex::views::filter([](auto &&x) { return x != nullptr; })
-        | genex::to<std::vector>();
 
-    if (self_params.size() > 1) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMultipleSelfParametersError>().with_args(
-            *self_params[0], *self_params[1]).with_scopes({sm->current_scope}).raise();
-    }
-
-    // Check there are no duplicate parameter names.
     const auto param_names = params
         | genex::views::transform([](auto &&x) { return x->name.get(); })
         | genex::views::materialize
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
+    // Check there are no duplicate parameter names.
     if (not param_names.empty()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
             *param_names[0], *param_names[1], "keyword function-argument").with_scopes({sm->current_scope}).raise();
