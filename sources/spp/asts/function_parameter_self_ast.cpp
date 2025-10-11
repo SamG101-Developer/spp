@@ -12,7 +12,7 @@
 spp::asts::FunctionParameterSelfAst::FunctionParameterSelfAst(
     decltype(conv) &&conv,
     decltype(var) &&var) :
-    FunctionParameterAst(std::move(var), nullptr, nullptr),
+    FunctionParameterAst(std::move(var), nullptr, nullptr, mixins::OrderableTag::SELF_PARAM),
     conv(std::move(conv)) {
     type = generate::common_types::self_type(pos_start());
 }

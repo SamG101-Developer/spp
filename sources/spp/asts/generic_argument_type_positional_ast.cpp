@@ -8,7 +8,7 @@
 
 spp::asts::GenericArgumentTypePositionalAst::GenericArgumentTypePositionalAst(
     decltype(val) val) :
-    GenericArgumentTypeAst(std::move(val)) {
+    GenericArgumentTypeAst(std::move(val), mixins::OrderableTag::POSITIONAL_ARG) {
 }
 
 

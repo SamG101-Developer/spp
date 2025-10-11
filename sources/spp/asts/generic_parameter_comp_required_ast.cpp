@@ -8,7 +8,7 @@ spp::asts::GenericParameterCompRequiredAst::GenericParameterCompRequiredAst(
     decltype(name) &&name,
     decltype(tok_colon) &&tok_colon,
     decltype(type) &&type):
-    GenericParameterCompAst(std::move(tok_cmp), std::move(name), std::move(tok_colon), std::move(type)) {
+    GenericParameterCompAst(std::move(tok_cmp), std::move(name), std::move(tok_colon), std::move(type), mixins::OrderableTag::REQUIRED_PARAM) {
 }
 
 

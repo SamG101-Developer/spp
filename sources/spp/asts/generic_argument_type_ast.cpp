@@ -3,7 +3,9 @@
 
 
 spp::asts::GenericArgumentTypeAst::GenericArgumentTypeAst(
-    decltype(val) val) :
+    decltype(val) val,
+    const decltype(m_order_tag) order_tag) :
+    GenericArgumentAst(order_tag),
     val(std::move(val)) {
 }
 

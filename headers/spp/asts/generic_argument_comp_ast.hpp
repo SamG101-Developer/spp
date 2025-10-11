@@ -18,7 +18,8 @@ struct spp::asts::GenericArgumentCompAst : GenericArgumentAst {
      * @param val The value of the generic comp argument.
      */
     explicit GenericArgumentCompAst(
-        decltype(val) &&val);
+        decltype(val) &&val,
+        decltype(m_order_tag) order_tag);
 
     ~GenericArgumentCompAst() override;
 };

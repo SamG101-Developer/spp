@@ -15,7 +15,9 @@
 spp::asts::FunctionParameterAst::FunctionParameterAst(
     decltype(var) &&var,
     decltype(tok_colon) &&tok_colon,
-    decltype(type) type) :
+    decltype(type) type,
+    const decltype(m_order_tag) order_tag) :
+    OrderableAst(order_tag),
     var(std::move(var)),
     tok_colon(std::move(tok_colon)),
     type(std::move(type)) {

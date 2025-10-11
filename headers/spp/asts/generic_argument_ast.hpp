@@ -1,5 +1,6 @@
 #pragma once
 #include <spp/asts/ast.hpp>
+#include <spp/asts/mixins/orderable_ast.hpp>
 
 
 /// @cond
@@ -48,7 +49,7 @@ namespace spp::asts::detail {
  * and @c GenericArgumentTypeAst, which represent the two types of generic arguments in the language. These in turn are
  * inherited for the positional and keyword variants.
  */
-struct spp::asts::GenericArgumentAst : virtual Ast {
+struct spp::asts::GenericArgumentAst : virtual Ast, mixins::OrderableAst {
     using Ast::Ast;
     friend struct GenericArgumentCompKeywordAst;
     friend struct GenericArgumentCompPositionalAst;
@@ -63,6 +64,7 @@ protected:
     virtual auto equals(GenericArgumentAst const &other) const -> std::strong_ordering = 0;
 
 public:
+    GenericArgumentAst(decltype(m_order_tag) order_tag);
     ~GenericArgumentAst() override;
     auto operator<=>(GenericArgumentAst const &other) const -> std::strong_ordering;
     auto operator==(GenericArgumentAst const &other) const -> bool;

@@ -3,7 +3,6 @@
 
 
 struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
-
     /**
      * The optional inline constraints for the generic type parameter. This is used to specify constraints on the type
      * parameter, such as @c I32 or @c F64 . An example is @code fun func[T: Copy]()@endcode, where @c T is the
@@ -18,7 +17,8 @@ struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
      */
     GenericParameterTypeAst(
         decltype(name) name,
-        decltype(constraints) &&constraints);
+        decltype(constraints) &&constraints,
+        decltype(m_order_tag) order_tag);
 
     ~GenericParameterTypeAst() override;
 

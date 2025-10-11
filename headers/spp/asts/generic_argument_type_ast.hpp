@@ -17,7 +17,8 @@ struct spp::asts::GenericArgumentTypeAst : GenericArgumentAst {
      * @param val The value of the generic type argument.
      */
     explicit GenericArgumentTypeAst(
-        decltype(val) val);
+        decltype(val) val,
+        decltype(m_order_tag) order_tag);
 
     ~GenericArgumentTypeAst() override;
 };

@@ -7,7 +7,7 @@
 spp::asts::GenericParameterTypeRequiredAst::GenericParameterTypeRequiredAst(
     decltype(name) &&name,
     decltype(constraints) &&constraints) :
-    GenericParameterTypeAst(std::move(name), std::move(constraints)) {
+    GenericParameterTypeAst(std::move(name), std::move(constraints), mixins::OrderableTag::REQUIRED_PARAM) {
 }
 
 

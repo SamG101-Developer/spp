@@ -9,8 +9,9 @@
 
 spp::asts::GenericParameterTypeAst::GenericParameterTypeAst(
     decltype(name) name,
-    decltype(constraints) &&constraints) :
-    GenericParameterAst(std::move(name)),
+    decltype(constraints) &&constraints,
+    const decltype(m_order_tag) order_tag) :
+    GenericParameterAst(std::move(name), order_tag),
     constraints(std::move(constraints)) {
 }
 

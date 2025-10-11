@@ -1,6 +1,12 @@
 #include <spp/asts/generic_argument_ast.hpp>
 
 
+spp::asts::GenericArgumentAst::GenericArgumentAst(
+    const decltype(m_order_tag) order_tag) :
+    OrderableAst(order_tag) {
+}
+
+
 spp::asts::GenericArgumentAst::~GenericArgumentAst() = default;
 
 

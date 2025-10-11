@@ -15,7 +15,7 @@ spp::asts::GenericParameterCompOptionalAst::GenericParameterCompOptionalAst(
     decltype(type) &&type,
     decltype(tok_assign) &&tok_assign,
     decltype(default_val) &&default_val) :
-    GenericParameterCompAst(std::move(tok_cmp), std::move(name), std::move(tok_colon), std::move(type)),
+    GenericParameterCompAst(std::move(tok_cmp), std::move(name), std::move(tok_colon), std::move(type), mixins::OrderableTag::OPTIONAL_PARAM),
     tok_assign(std::move(tok_assign)),
     default_val(std::move(default_val)) {
 }

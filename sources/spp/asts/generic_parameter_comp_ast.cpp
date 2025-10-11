@@ -14,8 +14,9 @@ spp::asts::GenericParameterCompAst::GenericParameterCompAst(
     decltype(tok_cmp) &&tok_cmp,
     decltype(name) name,
     decltype(tok_colon) &&tok_colon,
-    decltype(type) type) :
-    GenericParameterAst(std::move(name)),
+    decltype(type) type,
+    const decltype(m_order_tag) order_tag) :
+    GenericParameterAst(std::move(name), order_tag),
     tok_cmp(std::move(tok_cmp)),
     tok_colon(std::move(tok_colon)),
     type(std::move(type)) {

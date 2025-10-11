@@ -1,12 +1,13 @@
 #pragma once
 #include <spp/asts/ast.hpp>
+#include <spp/asts/mixins/orderable_ast.hpp>
 
 
 /**
  * The FunctionParameterAst provides a common base to all parameter types in a function prototype. It is inherited by
  * the required, optional, variadic and self parameters, and provides the common functionality for all of them.
  */
-struct spp::asts::FunctionParameterAst : virtual Ast {
+struct spp::asts::FunctionParameterAst : virtual Ast, mixins::OrderableAst {
     /**
      * The local variable declaration for this parameter. This is used to create a local variable for the parameter,
      * using the same syntax as variables, such as destructuring.
@@ -34,7 +35,8 @@ struct spp::asts::FunctionParameterAst : virtual Ast {
     FunctionParameterAst(
         decltype(var) &&var,
         decltype(tok_colon) &&tok_colon,
-        decltype(type) type);
+        decltype(type) type,
+        decltype(m_order_tag) order_tag);
 
     ~FunctionParameterAst() override;
 

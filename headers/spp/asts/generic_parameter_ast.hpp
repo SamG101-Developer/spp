@@ -1,5 +1,6 @@
 #pragma once
 #include <spp/asts/ast.hpp>
+#include <spp/asts/mixins/orderable_ast.hpp>
 
 
 /// @cond
@@ -83,7 +84,7 @@ namespace spp::asts::detail {
  * The GenericParameterAst is the base class for all generic parameters. It is inherited by the GenericParameterCompAst
  * and GenericParameterTypeAst, which represent the two types of generic parameters in the language.
  */
-struct spp::asts::GenericParameterAst : virtual Ast {
+struct spp::asts::GenericParameterAst : virtual Ast, mixins::OrderableAst {
     using Ast::Ast;
 
     /**
@@ -92,5 +93,7 @@ struct spp::asts::GenericParameterAst : virtual Ast {
      */
     std::shared_ptr<TypeAst> name;
 
-    explicit GenericParameterAst(std::shared_ptr<TypeAst> name);
+    explicit GenericParameterAst(
+        std::shared_ptr<TypeAst> name,
+        decltype(m_order_tag) order_tag);
 };

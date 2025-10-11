@@ -32,7 +32,8 @@ struct spp::asts::GenericParameterCompAst : GenericParameterAst {
         decltype(tok_cmp) &&tok_cmp,
         decltype(name) name,
         decltype(tok_colon) &&tok_colon,
-        decltype(type) type);
+        decltype(type) type,
+        decltype(m_order_tag) order_tag);
 
     ~GenericParameterCompAst() override;
 

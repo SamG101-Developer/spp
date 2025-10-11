@@ -8,7 +8,7 @@ spp::asts::GenericParameterTypeVariadicAst::GenericParameterTypeVariadicAst(
     decltype(tok_ellipsis) &&tok_ellipsis,
     decltype(name) &&name,
     decltype(constraints) &&constraints) :
-    GenericParameterTypeAst(std::move(name), std::move(constraints)),
+    GenericParameterTypeAst(std::move(name), std::move(constraints), mixins::OrderableTag::VARIADIC_PARAM),
     tok_ellipsis(std::move(tok_ellipsis)) {
 }
 
