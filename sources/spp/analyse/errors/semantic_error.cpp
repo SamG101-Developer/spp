@@ -7,6 +7,7 @@
 #include <spp/asts/cmp_statement_ast.hpp>
 #include <spp/asts/coroutine_prototype_ast.hpp>
 #include <spp/asts/function_parameter_self_ast.hpp>
+#include <spp/asts/function_parameter_variadic_ast.hpp>
 #include <spp/asts/function_prototype_ast.hpp>
 #include <spp/asts/generic_argument_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
@@ -826,6 +827,23 @@ spp::analyse::errors::SppMultipleSelfParametersError::SppMultipleSelfParametersE
     add_footer(
         "A function cannot have multiple 'self' parameters.",
         "Remove one of the 'self' parameters");
+}
+
+
+spp::analyse::errors::SppMultipleVariadicParametersError::SppMultipleVariadicParametersError(
+    asts::FunctionParameterVariadicAst const &first_variadic,
+    asts::FunctionParameterVariadicAst const &second_variadic) {
+    add_header(
+        43, "SPP Multiple Variadic Parameters Error");
+    add_context_for_error(
+        &first_variadic,
+        "First variadic parameter defined here");
+    add_error(
+        &second_variadic,
+        "Second variadic parameter defined here");
+    add_footer(
+        "A function cannot have multiple variadic parameters.",
+        "Remove one of the variadic parameters");
 }
 
 

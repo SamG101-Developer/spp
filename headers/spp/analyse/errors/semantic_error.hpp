@@ -40,6 +40,7 @@ namespace spp::analyse::errors {
     struct SppExpansionOfNonTupleError;
     struct SppMemoryOverlapUsageError;
     struct SppMultipleSelfParametersError;
+    struct SppMultipleVariadicParametersError;
     struct SppSelfParamInFreeFunctionError;
     struct SppFunctionPrototypeConflictError;
     struct SppFunctionSubroutineContainsGenExpressionError;
@@ -267,6 +268,11 @@ struct spp::analyse::errors::SppMemoryOverlapUsageError final : SemanticError {
 
 struct spp::analyse::errors::SppMultipleSelfParametersError final : SemanticError {
     explicit SppMultipleSelfParametersError(asts::FunctionParameterSelfAst const &first_self, asts::FunctionParameterSelfAst const &second_self);
+};
+
+
+struct spp::analyse::errors::SppMultipleVariadicParametersError final : SemanticError {
+    explicit SppMultipleVariadicParametersError(asts::FunctionParameterVariadicAst const &first_variadic, asts::FunctionParameterVariadicAst const &second_variadic);
 };
 
 
