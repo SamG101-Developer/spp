@@ -16,7 +16,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_missing_value,
     SppVariableTupleDestructureTupleSizeMismatchError, R"(
     fun f(p: (std::bignum::bigint::BigInt, std::bignum::bigint::BigInt)) -> std::void::Void {
-        case p is (x,) { }
+        case p is (x) { }
     }
 )")
 
@@ -62,7 +62,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     CasePatternVariantDestructureTupleAst,
     test_valid_value_and_bound_multi_skip, R"(
     fun f(p: (std::bignum::bigint::BigInt, std::bignum::bigint::BigInt)) -> std::void::Void {
-        case p is (..x,) { }
+        case p is (..x) { }
     }
 )")
 

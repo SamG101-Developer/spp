@@ -262,13 +262,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_mov_attr_and_mut_value,
-    SppMemoryOverlapUsageError, R"(
+    SppPartiallyInitializedMemoryUseError, R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        a: std::bignum::bigint::BigInt
+        b: std::bignum::bigint::BigInt
     }
 
-    fun f(a: std::boolean::Bool, b: &mut A) -> std::void::Void { }
+    fun f(a: std::bignum::bigint::BigInt, b: &mut A) -> std::void::Void { }
 
     fun g(mut a: A) -> std::void::Void {
         f(a.b, &mut a)
@@ -279,13 +279,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_mov_attr_and_ref_value,
-    SppMemoryOverlapUsageError, R"(
+    SppPartiallyInitializedMemoryUseError, R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        a: std::bignum::bigint::BigInt
+        b: std::bignum::bigint::BigInt
     }
 
-    fun f(a: std::boolean::Bool, b: &A) -> std::void::Void { }
+    fun f(a: std::bignum::bigint::BigInt, b: &A) -> std::void::Void { }
 
     fun g(mut a: A) -> std::void::Void {
         f(a.b, &a)

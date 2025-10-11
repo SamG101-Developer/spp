@@ -118,9 +118,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f(p: Point1 or Point2) -> std::void::Void {
-        case p of
+        case p of {
             is Point1(x, y) { }
             is Point2(x, y) { }
+        }
     }
 )");
 
@@ -134,9 +135,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f(p: Point1) -> std::void::Void {
-        case p of
+        case p of {
             is Point1(x as x_value, ..) { let xxx = x_value }
             is Point1(y as y_value, ..) { let yyy = y_value }
+        }
     }
 )");
 
@@ -181,6 +183,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f(p: Line) -> std::void::Void {
-        case p is Line(start=Point(x=a, y=b), end=Point(x=c, y=d)) { }
+        case p is Line(start=Point(x, y), end=Point(x2, y2)) { }
     }
 )");
