@@ -2,8 +2,8 @@
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/object_initializer_argument_ast.hpp>
 #include <spp/asts/expression_ast.hpp>
+#include <spp/asts/object_initializer_argument_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 

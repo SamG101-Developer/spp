@@ -1503,7 +1503,7 @@ auto spp::parse::ParserSpp::parse_local_variable_nested_for_destructure_array() 
 
 auto spp::parse::ParserSpp::parse_local_variable_nested_for_destructure_object() -> std::unique_ptr<asts::LocalVariableAst> {
     PARSE_ALTERNATE(
-        p1, asts::LocalVariableAst, parse_local_variable_destructure_skip_single_argument,
+        p1, asts::LocalVariableAst, parse_local_variable_destructure_skip_multiple_arguments,
         parse_local_variable_destructure_attribute_binding, parse_local_variable_single_identifier);
     return FORWARD_AST(p1);
 }

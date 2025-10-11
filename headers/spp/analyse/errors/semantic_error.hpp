@@ -521,7 +521,7 @@ struct spp::analyse::errors::SppGenericParameterInferredConflictInferredError fi
 };
 
 
-struct spp::analyse::errors::SppGenericParameterInferredConflictExplicitError final : SemanticError {
+struct spp::analyse::errors::SppGenericParameterInferredConflictExplicitError final : SemanticError { // todo: unused, so remove
     explicit SppGenericParameterInferredConflictExplicitError(asts::Ast const &param, asts::Ast const &first_infer, asts::Ast const &second_infer);
 };
 

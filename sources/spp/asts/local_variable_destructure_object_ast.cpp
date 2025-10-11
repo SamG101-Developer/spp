@@ -4,6 +4,10 @@
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/array_literal_explicit_elements_ast.hpp>
+#include <spp/asts/class_attribute_ast.hpp>
+#include <spp/asts/class_implementation_ast.hpp>
+#include <spp/asts/class_member_ast.hpp>
+#include <spp/asts/class_prototype_ast.hpp>
 #include <spp/asts/expression_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_argument_type_ast.hpp>
@@ -29,8 +33,9 @@
 #include <genex/views/filter.hpp>
 #include <genex/views/for_each.hpp>
 #include <genex/views/join.hpp>
+#include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
-#include <genex/views/zip.hpp>
+#include <genex/views/set_algorithms.hpp>
 
 
 spp::asts::LocalVariableDestructureObjectAst::LocalVariableDestructureObjectAst(
@@ -108,12 +113,41 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
     -> void {
-    // Only 1 "multi-skip" allowed in a destructure.
+
+    // Get the value and analyse it and the type.
+    const auto val = meta->let_stmt_value;
+    const auto val_type = val->infer_type(sm, meta);
+    type->stage_7_analyse_semantics(sm, meta);
+
+    const auto attributes = sm->current_scope->get_type_symbol(type)->type->impl->members
+        | genex::views::ptr
+        | genex::views::cast_dynamic<LocalVariableDestructureAttributeBindingAst*>()
+        | genex::to<std::vector>();
+
     const auto multi_arg_skips = elems
         | genex::views::ptr
         | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>()
         | genex::to<std::vector>();
 
+    const auto assigned_attributes = elems
+        | genex::views::ptr
+        | genex::views::filter([](auto const &x) { return ast_cast<LocalVariableDestructureSkipMultipleArgumentsAst>(x) != nullptr; })
+        | genex::views::transform([](auto const &x) { return x->extract_name(); })
+        | genex::to<std::vector>();
+
+    const auto missing_attributes = attributes
+        | genex::views::transform([](auto const &x) { return x->name; })
+        | genex::views::materialize
+        | genex::views::set_difference_unsorted(assigned_attributes, genex::meta::deref, genex::meta::deref)
+        | genex::to<std::vector>();
+
+    // Check the type matches.
+    if (not analyse::utils::type_utils::symbolic_eq(*val_type, *type, *sm->current_scope, *sm->current_scope, m_from_pattern)) {
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
+            *val, *val_type, *type, *type).with_scopes({sm->current_scope}).raise();
+    }
+
+    // Only 1 "multi-skip" allowed in a destructure.
     if (multi_arg_skips.size() > 1) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppMultipleSkipMultiArgumentsError>().with_args(
             *this, *multi_arg_skips[0], *multi_arg_skips[1]).with_scopes({sm->current_scope}).raise();
@@ -125,8 +159,11 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
             *this, *multi_arg_skips[0]).with_scopes({sm->current_scope}).raise();
     }
 
-    const auto val = meta->let_stmt_value;
-    const auto val_type = val->infer_type(sm, meta)->type_parts().back();
+    // Check all attributes are provided unless there is a multi-skip.
+    if (not missing_attributes.empty() and multi_arg_skips.empty()) {
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppArgumentMissingError>().with_args(
+            *missing_attributes[0], "attribute", *this, "destructure argument").with_scopes({sm->current_scope}).raise();
+    }
 
     // Create expanded "let" statements for each part of the destructure.
     for (const auto elem : elems | genex::views::ptr) {
@@ -156,6 +193,8 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
             m_new_asts.emplace_back(std::move(new_ast));
         }
     }
+
+    //
 }
 
 

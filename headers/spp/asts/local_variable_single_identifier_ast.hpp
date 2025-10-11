@@ -18,8 +18,8 @@ struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVariableAst {
     friend struct CasePatternVariantSingleIdentifierAst;
 
     /**
-     * The optional mutability token. If the "@c mut keyword was provided, then this will be given a value. Otherwise,
-     * it will be @c nullptr. This is used to indicate that the variable is mutable, and can be modified after being
+     * The optional mutability token. If the @c mut keyword was provided, then this will be given a value. Otherwise, it
+     * will be @c nullptr. This is used to indicate that the variable is mutable, and can be modified after being
      * assigned its initial value.
      */
     std::unique_ptr<TokenAst> tok_mut;
