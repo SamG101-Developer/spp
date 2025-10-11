@@ -114,7 +114,7 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
     const auto fallible_match = is_fallible and analyse::utils::type_utils::symbolic_eq(*error_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
     if (not(direct_match or optional_match or fallible_match)) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppYieldedTypeMismatchError>().with_args(
-            *yield_type, *yield_type, *expr, *expr_type, is_optional, is_fallible, error_type ? *error_type : *generate::common_types_precompiled::VOID).with_scopes({sm->current_scope}).raise();
+            *yield_type, *yield_type, expr ? *ast_cast<Ast>(expr.get()) : *ast_cast<Ast>(tok_gen.get()), *expr_type, is_optional, is_fallible, error_type ? *error_type : *generate::common_types_precompiled::VOID).with_scopes({sm->current_scope}).raise();
     }
 }
 
