@@ -75,6 +75,7 @@ auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
     }
 
     // Analyse the semantics of the function body, and move out the scope.
-    meta->restore();
     sm->move_out_of_current_scope();
+    meta->restore();
+    meta->loop_return_types->clear();
 }

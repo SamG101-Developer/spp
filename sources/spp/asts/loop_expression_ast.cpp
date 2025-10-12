@@ -53,9 +53,9 @@ auto spp::asts::LoopExpressionAst::clone() const -> std::unique_ptr<Ast> {
 
 spp::asts::LoopExpressionAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_loop);
-    SPP_STRING_APPEND(cond);
-    SPP_STRING_APPEND(body);
+    SPP_STRING_APPEND(tok_loop).append(" ");
+    SPP_STRING_APPEND(cond).append(" ");
+    SPP_STRING_APPEND(body).append("\n");
     SPP_STRING_APPEND(else_block);
     SPP_STRING_END;
 }
@@ -63,9 +63,9 @@ spp::asts::LoopExpressionAst::operator std::string() const {
 
 auto spp::asts::LoopExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_loop);
-    SPP_PRINT_APPEND(cond);
-    SPP_PRINT_APPEND(body);
+    SPP_PRINT_APPEND(tok_loop).append(" ");
+    SPP_PRINT_APPEND(cond).append(" ");
+    SPP_PRINT_APPEND(body).append("\n");
     SPP_PRINT_APPEND(else_block);
     SPP_PRINT_END;
 }
@@ -85,8 +85,8 @@ auto spp::asts::LoopExpressionAst::stage_7_analyse_semantics(
     meta->current_loop_depth += 1;
     meta->current_loop_ast = this;
     body->stage_7_analyse_semantics(sm, meta);
-    if (meta->loop_return_types.contains(meta->current_loop_depth - 1)) {
-        m_loop_exit_type_info = meta->loop_return_types[meta->current_loop_depth - 1];
+    if (meta->loop_return_types->contains(meta->current_loop_depth - 1)) {
+        m_loop_exit_type_info = (*meta->loop_return_types)[meta->current_loop_depth - 1];
     }
     meta->restore();
 
