@@ -25,7 +25,7 @@ namespace spp::analyse::errors {
     struct SppMoveFromPinLinkedMemoryError;
     struct SppInconsistentlyInitializedMemoryUseError;
     struct SppInconsistentlyPinnedMemoryUseError;
-    struct SppCompoundAssignmentTargetError;
+    struct SppAssignmentTargetError;
     struct SppMemberAccessNonIndexableError;
     struct SppMemberAccessOutOfBoundsError;
     struct SppCaseBranchMultipleDestructuresError;
@@ -62,6 +62,8 @@ namespace spp::analyse::errors {
     struct SppExpressionAmbiguousGeneratorError;
     struct SppLoopTooManyControlFlowStatementsError;
     struct SppObjectInitializerMultipleAutofillArgumentsError;
+    struct SppObjectInitializerInvalidArgumentError;
+    struct SppObjectInitializerGenericWithArgsError;
     struct SppArgumentNameInvalidError;
     struct SppArgumentMissingError;
     struct SppEarlyReturnRequiresTryTypeError;
@@ -76,7 +78,7 @@ namespace spp::analyse::errors {
     struct SppMemberAccessRuntimeOperatorExpectedError;
     struct SppGenericTypeInvalidUsageError;
     struct SppAmbiguousMemberAccessError;
-    struct SppFunctionCoroutineContainsRetExprExpressionError;
+    struct SppCoroutineContainsRetExprExpressionError;
     struct SppFunctionSubroutineMissingReturnStatementError;
     struct SppSuperimpositionCyclicExtensionError;
     struct SppSuperimpositionSelfExtensionError;
@@ -90,11 +92,11 @@ namespace spp::analyse::errors {
     struct SppDereferenceInvalidExpressionNonBorrowedTypeError;
     struct SppInvalidExpressionNonCopyableTypeError;
     struct SppGenericParameterInferredConflictInferredError;
-    struct SppGenericParameterInferredConflictExplicitError;
     struct SppGenericParameterNotInferredError;
     struct SppGenericArgumentTooManyError;
     struct SppMissingMainFunctionError;
 }
+
 /// @endcond
 
 
@@ -196,8 +198,8 @@ struct spp::analyse::errors::SppInconsistentlyPinnedMemoryUseError final : Seman
 };
 
 
-struct spp::analyse::errors::SppCompoundAssignmentTargetError final : SemanticError {
-    explicit SppCompoundAssignmentTargetError(asts::ExpressionAst const &lhs);  // todo: rename to SppAssignmentTargetError
+struct spp::analyse::errors::SppAssignmentTargetError final : SemanticError {
+    explicit SppAssignmentTargetError(asts::ExpressionAst const &lhs);
 };
 
 
@@ -381,6 +383,16 @@ struct spp::analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError 
 };
 
 
+struct spp::analyse::errors::SppObjectInitializerInvalidArgumentError final : SemanticError {
+    explicit SppObjectInitializerInvalidArgumentError(asts::ObjectInitializerArgumentAst const &arg);
+};
+
+
+struct spp::analyse::errors::SppObjectInitializerGenericWithArgsError final : SemanticError {
+    explicit SppObjectInitializerGenericWithArgsError(asts::TypeAst const &type, asts::ObjectInitializerArgumentAst const &arg);
+};
+
+
 struct spp::analyse::errors::SppArgumentNameInvalidError final : SemanticError {
     explicit SppArgumentNameInvalidError(asts::Ast const &target, std::string_view target_what, asts::Ast const &source, std::string_view source_what);
 };
@@ -451,8 +463,8 @@ struct spp::analyse::errors::SppAmbiguousMemberAccessError final : SemanticError
 };
 
 
-struct spp::analyse::errors::SppFunctionCoroutineContainsRetExprExpressionError final : SemanticError { // Todo: rename to remove "Function"
-    explicit SppFunctionCoroutineContainsRetExprExpressionError(asts::TokenAst const &fun_tag, asts::TokenAst const &ret_stmt);
+struct spp::analyse::errors::SppCoroutineContainsRetExprExpressionError final : SemanticError {
+    explicit SppCoroutineContainsRetExprExpressionError(asts::TokenAst const &fun_tag, asts::TokenAst const &ret_stmt);
 };
 
 
@@ -518,11 +530,6 @@ struct spp::analyse::errors::SppInvalidExpressionNonCopyableTypeError final : Se
 
 struct spp::analyse::errors::SppGenericParameterInferredConflictInferredError final : SemanticError {
     explicit SppGenericParameterInferredConflictInferredError(asts::Ast const &param, asts::Ast const &first_infer, asts::Ast const &second_infer);
-};
-
-
-struct spp::analyse::errors::SppGenericParameterInferredConflictExplicitError final : SemanticError { // todo: unused, so remove
-    explicit SppGenericParameterInferredConflictExplicitError(asts::Ast const &param, asts::Ast const &first_infer, asts::Ast const &second_infer);
 };
 
 

@@ -353,7 +353,7 @@ spp::analyse::errors::SppInconsistentlyPinnedMemoryUseError::SppInconsistentlyPi
 }
 
 
-spp::analyse::errors::SppCompoundAssignmentTargetError::SppCompoundAssignmentTargetError(
+spp::analyse::errors::SppAssignmentTargetError::SppAssignmentTargetError(
     asts::ExpressionAst const &lhs) {
     add_header(
         15, "SPP Assignment Target Error");
@@ -988,6 +988,36 @@ spp::analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError::SppObj
 }
 
 
+spp::analyse::errors::SppObjectInitializerInvalidArgumentError::SppObjectInitializerInvalidArgumentError(
+    asts::ObjectInitializerArgumentAst const &arg) {
+    add_header(
+        50, "SPP Object Initializer Invalid Argument Error");
+    add_error(
+        &arg,
+        "Non-identifier shorthand argument defined here");
+    add_footer(
+        "This argument in the object initializer is invalid.",
+        "Ensure the shorthand argument is an identifier");
+}
+
+
+spp::analyse::errors::SppObjectInitializerGenericWithArgsError::SppObjectInitializerGenericWithArgsError(
+    asts::TypeAst const &type,
+    asts::ObjectInitializerArgumentAst const &arg) {
+    add_header(
+        51, "SPP Object Initializer Generic With Arguments Error");
+    add_context_for_error(
+        &type,
+        "Generic type initialized here");
+    add_error(
+        &arg,
+        "Argument provided here");
+    add_footer(
+        "A generic type cannot be initialized with arguments.",
+        "Remove the arguments from the object initializer");
+}
+
+
 spp::analyse::errors::SppArgumentNameInvalidError::SppArgumentNameInvalidError(
     asts::Ast const &target,
     const std::string_view target_what,
@@ -1230,7 +1260,7 @@ spp::analyse::errors::SppAmbiguousMemberAccessError::SppAmbiguousMemberAccessErr
 }
 
 
-spp::analyse::errors::SppFunctionCoroutineContainsRetExprExpressionError::SppFunctionCoroutineContainsRetExprExpressionError(
+spp::analyse::errors::SppCoroutineContainsRetExprExpressionError::SppCoroutineContainsRetExprExpressionError(
     asts::TokenAst const &fun_tag,
     asts::TokenAst const &ret_stmt) {
     add_header(
@@ -1460,27 +1490,6 @@ spp::analyse::errors::SppGenericParameterInferredConflictInferredError::SppGener
     add_footer(
         "There is a conflict between inferred types for this generic parameter.",
         "Resolve the inference conflict");
-}
-
-
-spp::analyse::errors::SppGenericParameterInferredConflictExplicitError::SppGenericParameterInferredConflictExplicitError(
-    asts::Ast const &param,
-    asts::Ast const &first_infer,
-    asts::Ast const &second_infer) {
-    add_header(
-        78, "SPP Generic Parameter Inferred Conflict Explicit Error");
-    add_context_for_error(
-        &param,
-        "Generic parameter defined here");
-    add_context_for_error(
-        &first_infer,
-        "First explicit or inferred type defined here");
-    add_error(
-        &second_infer,
-        "Conflicting explicit or inferred type defined here");
-    add_footer(
-        "There is a conflict between explicit and inferred types for this generic parameter.",
-        "Resolve the type conflict");
 }
 
 

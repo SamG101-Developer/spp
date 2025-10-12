@@ -93,7 +93,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
     // Check compound assignment (for example "+=") has a symbolic lhs target.
     if (genex::algorithms::contains(analyse::utils::bin_utils::BIN_COMPOUND_ASSIGNMENT_OPS, tok_op->token_type)) {
         if (not sm->current_scope->get_var_symbol_outermost(*lhs).first) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppCompoundAssignmentTargetError>().with_args(
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppAssignmentTargetError>().with_args(
                 *lhs).with_scopes({sm->current_scope}).raise();
         }
     }

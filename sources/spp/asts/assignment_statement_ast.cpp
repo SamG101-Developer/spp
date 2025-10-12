@@ -113,7 +113,7 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
 
         // Check if the left-hand-side is non-symbolic (can't do "1 = 2").
         if (lhs_sym == nullptr) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppCompoundAssignmentTargetError>().with_args(
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppAssignmentTargetError>().with_args(
                 *lhs_expr).with_scopes({sm->current_scope}).raise();
         }
 
