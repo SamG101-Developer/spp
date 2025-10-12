@@ -141,7 +141,7 @@ struct spp::asts::mixins::CompilerMetaDataState {
     bool loop_double_check_active;
     std::size_t current_loop_depth;
     LoopExpressionAst *current_loop_ast;
-    std::map<std::size_t, std::tuple<ExpressionAst*, std::shared_ptr<TypeAst>, analyse::scopes::Scope*>> loop_return_types;
+    std::shared_ptr<std::map<std::size_t, std::tuple<ExpressionAst*, std::shared_ptr<TypeAst>, analyse::scopes::Scope*>>> loop_return_types;
     std::shared_ptr<TypeAst> object_init_type;
     std::map<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<IdentifierAst>>> infer_source;
     std::map<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<IdentifierAst>>> infer_target;
@@ -161,6 +161,8 @@ private:
     std::stack<CompilerMetaDataState> m_history;
 
 public:
+    CompilerMetaData();
+
     auto save() -> void;
 
     auto restore() -> void;

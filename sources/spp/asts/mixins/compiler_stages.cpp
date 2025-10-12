@@ -43,6 +43,38 @@ auto spp::asts::mixins::CompilerStages::stage_10_code_gen_2() -> void {
 }
 
 
+spp::asts::mixins::CompilerMetaData::CompilerMetaData() {
+    current_stage = 0;
+    return_type_overload_resolver_type = nullptr;
+    assignment_target = nullptr;
+    assignment_target_type = nullptr;
+    ignore_missing_else_branch_for_inference = false;
+    case_condition = nullptr;
+    cls_sym = nullptr;
+    enclosing_function_scope = nullptr;
+    enclosing_function_flavour = nullptr;
+    enclosing_function_ret_type = {};
+    current_lambda_outer_scope = nullptr;
+    target_call_function_prototype = nullptr;
+    target_call_was_function_async = false;
+    prevent_auto_generator_resume = false;
+    let_stmt_explicit_type = nullptr;
+    let_stmt_value = nullptr;
+    let_stmt_from_uninitialized = false;
+    loop_double_check_active = false;
+    current_loop_depth = 0;
+    current_loop_ast = nullptr;
+    loop_return_types = std::make_unique<std::map<std::size_t, std::tuple<ExpressionAst*, std::shared_ptr<TypeAst>, analyse::scopes::Scope*>>>();
+    object_init_type = nullptr;
+    infer_source = {};
+    infer_target = {};
+    postfix_expression_lhs = nullptr;
+    unary_expression_rhs = nullptr;
+    skip_type_analysis_generic_checks = false;
+    type_analysis_type_scope = nullptr;
+}
+
+
 auto spp::asts::mixins::CompilerMetaData::save() -> void {
     m_history.emplace(
         current_stage, return_type_overload_resolver_type, assignment_target,
