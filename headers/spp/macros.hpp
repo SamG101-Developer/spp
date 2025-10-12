@@ -25,6 +25,10 @@
 
 #define SPP_ATTR_UNREACHABLE [[gnu::unreachable]]
 
+#define SPP_ATTR_HOT [[gnu::hot]]
+
+#define SPP_ATTR_COLD [[gnu::cold]]
+
 #define SPP_INSTANT_INDIRECT [](auto &&x) -> decltype(auto) { return *x; }
 
 #define SPP_NO_ASAN __attribute__((no_sanitize_address))
