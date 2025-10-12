@@ -5,11 +5,14 @@ set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_C_COMPILER_LAUNCHER ccache)
 set(CMAKE_CXX_COMPILER_LAUNCHER ccache)
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
 
 # Add the "pg" option to enable profile-guided optimization in debug builds
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -pg -g -fno-omit-frame-pointer -fno-inline -fno-inline-functions-called-once -fno-optimize-sibling-calls")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
+#elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
+#    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif ()
 
 find_package(ColEx REQUIRED)
@@ -33,8 +36,8 @@ target_compile_options(spp_lib PRIVATE
         -Wcast-align -Wcast-qual -Wconversion -Wsign-conversion -Wsign-promo -Wctor-dtor-privacy -Winit-self
         -Wold-style-cast -Woverloaded-virtual -Wundef -Wdisabled-optimization -Wmissing-declarations -Wmissing-include-dirs
         -Wnull-dereference -Wformat=2 -Wduplicated-cond -Wduplicated-branches -Wredundant-decls -Wlogical-op
-        -Wuseless-cast -Wdouble-promotion -Wstrict-null-sentinel -Wswitch-default -Wswitch-enum -Wswitch-default
-        -Wno-null-dereference -Wno-maybe-uninitialized)
+        -Wuseless-cast -Wdouble-promotion -Wstrict-null-sentinel -Wswitch-default -Wswitch-enum -Wno-null-dereference
+        -Wno-maybe-uninitialized)
 #  -Wno-nonnull-compare -Wno-unused)
 # Deliberately don't have -Wshadow (pain to re-do all AST constructors)
 # Deliberately don't have -Wstrict-overflow=5 (errors in linked libraries)

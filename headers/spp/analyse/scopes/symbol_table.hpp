@@ -46,11 +46,13 @@ public:
      */
     auto operator=(IndividualSymbolTable const &that) -> IndividualSymbolTable&;
 
-    SPP_ATTR_HOT auto add(std::shared_ptr<I> const &sym_name, std::shared_ptr<S> const &sym) -> void;
+    SPP_ATTR_HOT
+    auto add(std::shared_ptr<I> const &sym_name, std::shared_ptr<S> const &sym) -> void;
 
     auto rem(std::shared_ptr<I> const &sym_name) -> void;
 
-    SPP_ATTR_HOT auto get(std::shared_ptr<const I> const &sym_name) const -> std::shared_ptr<S>;
+    SPP_ATTR_HOT
+    auto get(std::shared_ptr<const I> const &sym_name) const -> std::shared_ptr<S>;
 
     auto has(std::shared_ptr<I> const &sym_name) const -> bool;
 

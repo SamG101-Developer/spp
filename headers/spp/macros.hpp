@@ -19,7 +19,7 @@
 
 #define SPP_ATTR_ASSUME(x) [[assume(x)]]
 
-#define SPP_ATTR_ALWAYS_INLINE [[gnu::always_inline]] inline __attribute__((always_inline))
+#define SPP_ATTR_ALWAYS_INLINE [[gnu::always_inline]] inline
 
 #define SPP_ATTR_NOINLINE [[gnu::noinline]]
 

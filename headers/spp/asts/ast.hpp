@@ -51,38 +51,38 @@ namespace spp::asts {
     template <typename T>
     SPP_ATTR_ALWAYS_INLINE
     auto ast_clone_vec(std::vector<std::unique_ptr<T>> const &asts) -> std::vector<std::unique_ptr<T>> {
-        return asts
-            | genex::views::transform([](auto const &x) { return ast_clone(x.get()); })
-            | genex::to<std::vector>();
+        return asts | genex::views::transform([](auto const &x) { return ast_clone(x.get()); }) | genex::to<std::vector>();
     }
 
     template <typename T>
     SPP_ATTR_ALWAYS_INLINE
     auto ast_clone_vec_shared(std::vector<std::shared_ptr<T>> const &asts) -> std::vector<std::shared_ptr<T>> {
-        return asts
-            | genex::views::transform([](auto x) { return x; })
-            | genex::to<std::vector>();
+        return asts | genex::views::transform([](auto x) { return x; }) | genex::to<std::vector>();
     }
 
     template <typename T>
+    SPP_ATTR_HOT
     SPP_ATTR_ALWAYS_INLINE
     auto ast_cast(Ast *ast) -> T* {
         return dynamic_cast<T*>(ast);
     }
 
     template <typename T>
+    SPP_ATTR_HOT
     SPP_ATTR_ALWAYS_INLINE
     auto ast_cast(Ast &ast) -> T& {
         return dynamic_cast<T&>(ast);
     }
 
     template <typename T>
+    SPP_ATTR_HOT
     SPP_ATTR_ALWAYS_INLINE
     auto ast_cast(Ast const *ast) -> T const* {
         return dynamic_cast<T const*>(ast);
     }
 
     template <typename T>
+    SPP_ATTR_HOT
     SPP_ATTR_ALWAYS_INLINE
     auto ast_cast(Ast const &ast) -> T const& {
         return dynamic_cast<T const&>(ast);
