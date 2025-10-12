@@ -137,6 +137,7 @@ struct spp::asts::mixins::CompilerMetaDataState {
     bool prevent_auto_generator_resume;
     std::shared_ptr<TypeAst> let_stmt_explicit_type;
     ExpressionAst *let_stmt_value;
+    bool let_stmt_from_uninitialized;
     bool loop_double_check_active;
     std::size_t current_loop_depth;
     LoopExpressionAst *current_loop_ast;
