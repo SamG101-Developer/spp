@@ -81,8 +81,8 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_7_analyse_semantics(
     mixins::CompilerMetaData *meta)
     -> void {
     // Get the value and its type from the "meta" information.
-    const auto val = meta->let_stmt_value;
-    const auto val_type = val != nullptr ? val->infer_type(sm, meta) : nullptr;
+    const auto val = meta->let_stmt_from_uninitialized ? nullptr :  meta->let_stmt_value;
+    const auto val_type = meta->let_stmt_value != nullptr ? meta->let_stmt_value->infer_type(sm, meta) : nullptr;
 
     // Create a variable symbol for this identifier and value.
     auto sym = std::make_unique<analyse::scopes::VariableSymbol>(
@@ -121,7 +121,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_8_check_memory(
     mixins::CompilerMetaData *meta)
     -> void {
     // No value => nothing to check.
-    if (meta->let_stmt_value == nullptr) { return; }
+    if (meta->let_stmt_from_uninitialized) { return; }
 
     // Check the value's memory.
     meta->let_stmt_value->stage_8_check_memory(sm, meta);

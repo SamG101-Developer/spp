@@ -22,7 +22,7 @@ struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst {
      * @param arg_group The object initializer argument group that contains the arguments for the object initializer.
      */
     ObjectInitializerAst(
-        decltype(type) &&type,
+        decltype(type) type,
         decltype(arg_group) &&arg_group);
 
     ~ObjectInitializerAst() override;

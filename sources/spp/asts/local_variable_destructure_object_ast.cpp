@@ -121,7 +121,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
 
     const auto attributes = sm->current_scope->get_type_symbol(type)->type->impl->members
         | genex::views::ptr
-        | genex::views::cast_dynamic<LocalVariableDestructureAttributeBindingAst*>()
+        | genex::views::cast_dynamic<ClassAttributeAst*>()
         | genex::to<std::vector>();
 
     const auto multi_arg_skips = elems
@@ -131,7 +131,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
 
     const auto assigned_attributes = elems
         | genex::views::ptr
-        | genex::views::filter([](auto const &x) { return ast_cast<LocalVariableDestructureSkipMultipleArgumentsAst>(x) != nullptr; })
+        | genex::views::filter([](auto const &x) { return ast_cast<LocalVariableDestructureSkipMultipleArgumentsAst>(x) == nullptr; })
         | genex::views::transform([](auto const &x) { return x->extract_name(); })
         | genex::to<std::vector>();
 

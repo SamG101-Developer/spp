@@ -7,9 +7,9 @@
 #include <spp/asts/class_prototype_ast.hpp>
 #include <spp/asts/convention_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/object_initializer_ast.hpp>
 #include <spp/asts/object_initializer_argument_ast.hpp>
 #include <spp/asts/object_initializer_argument_group_ast.hpp>
+#include <spp/asts/object_initializer_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/utils/ptr_cmp.hpp>
 
@@ -18,7 +18,7 @@
 
 
 spp::asts::ObjectInitializerAst::ObjectInitializerAst(
-    decltype(type) &&type,
+    decltype(type) type,
     decltype(arg_group) &&arg_group) :
     PrimaryExpressionAst(),
     type(std::move(type)),
@@ -30,17 +30,20 @@ spp::asts::ObjectInitializerAst::ObjectInitializerAst(
 spp::asts::ObjectInitializerAst::~ObjectInitializerAst() = default;
 
 
-auto spp::asts::ObjectInitializerAst::pos_start() const -> std::size_t {
+auto spp::asts::ObjectInitializerAst::pos_start() const
+    -> std::size_t {
     return type->pos_start();
 }
 
 
-auto spp::asts::ObjectInitializerAst::pos_end() const -> std::size_t {
+auto spp::asts::ObjectInitializerAst::pos_end() const
+    -> std::size_t {
     return arg_group->pos_end();
 }
 
 
-auto spp::asts::ObjectInitializerAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::ObjectInitializerAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<ObjectInitializerAst>(
         ast_clone(type),
         ast_clone(arg_group));
@@ -55,7 +58,9 @@ spp::asts::ObjectInitializerAst::operator std::string() const {
 }
 
 
-auto spp::asts::ObjectInitializerAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::ObjectInitializerAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(type);
     SPP_PRINT_APPEND(arg_group);

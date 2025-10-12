@@ -1,10 +1,11 @@
+#include <spp/pch.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/expression_ast.hpp>
-#include <spp/asts/generic_argument_type_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
+#include <spp/asts/generic_argument_type_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/integer_literal_ast.hpp>
 #include <spp/asts/let_statement_initialized_ast.hpp>
@@ -13,13 +14,12 @@
 #include <spp/asts/local_variable_destructure_tuple_ast.hpp>
 #include <spp/asts/local_variable_single_identifier_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
 #include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
+#include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/tuple_literal_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
-#include <spp/pch.hpp>
 
 #include <genex/to_container.hpp>
 #include <genex/algorithms/count.hpp>

@@ -25,17 +25,20 @@ spp::asts::LetStatementInitializedAst::LetStatementInitializedAst(
 }
 
 
-auto spp::asts::LetStatementInitializedAst::pos_start() const -> std::size_t {
+auto spp::asts::LetStatementInitializedAst::pos_start() const
+    -> std::size_t {
     return tok_let->pos_start();
 }
 
 
-auto spp::asts::LetStatementInitializedAst::pos_end() const -> std::size_t {
+auto spp::asts::LetStatementInitializedAst::pos_end() const
+    -> std::size_t {
     return val->pos_end();
 }
 
 
-auto spp::asts::LetStatementInitializedAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::LetStatementInitializedAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<LetStatementInitializedAst>(
         ast_clone(tok_let),
         ast_clone(var),
@@ -56,7 +59,9 @@ spp::asts::LetStatementInitializedAst::operator std::string() const {
 }
 
 
-auto spp::asts::LetStatementInitializedAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::LetStatementInitializedAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_let).append(" ");
     SPP_PRINT_APPEND(var);

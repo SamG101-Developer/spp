@@ -1,12 +1,12 @@
-#include <spp/asts/local_variable_destructure_attribute_binding_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
+#include <spp/asts/local_variable_destructure_attribute_binding_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 
 
 spp::asts::LocalVariableDestructureAttributeBindingAst::LocalVariableDestructureAttributeBindingAst(
     decltype(name) &&name,
     decltype(tok_assign) &&tok_assign,
-    decltype(val) &&val):
+    decltype(val) &&val) :
     name(std::move(name)),
     tok_assign(std::move(tok_assign)),
     val(std::move(val)) {
@@ -17,17 +17,20 @@ spp::asts::LocalVariableDestructureAttributeBindingAst::LocalVariableDestructure
 spp::asts::LocalVariableDestructureAttributeBindingAst::~LocalVariableDestructureAttributeBindingAst() = default;
 
 
-auto spp::asts::LocalVariableDestructureAttributeBindingAst::pos_start() const -> std::size_t {
+auto spp::asts::LocalVariableDestructureAttributeBindingAst::pos_start() const
+    -> std::size_t {
     return name->pos_start();
 }
 
 
-auto spp::asts::LocalVariableDestructureAttributeBindingAst::pos_end() const -> std::size_t {
+auto spp::asts::LocalVariableDestructureAttributeBindingAst::pos_end() const
+    -> std::size_t {
     return val->pos_end();
 }
 
 
-auto spp::asts::LocalVariableDestructureAttributeBindingAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::LocalVariableDestructureAttributeBindingAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<LocalVariableDestructureAttributeBindingAst>(
         ast_clone(name),
         ast_clone(tok_assign),
@@ -44,7 +47,8 @@ spp::asts::LocalVariableDestructureAttributeBindingAst::operator std::string() c
 }
 
 
-auto spp::asts::LocalVariableDestructureAttributeBindingAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::LocalVariableDestructureAttributeBindingAst::print(meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(name);
     SPP_PRINT_APPEND(tok_assign);

@@ -5,8 +5,8 @@
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/array_literal_explicit_elements_ast.hpp>
 #include <spp/asts/expression_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_argument_comp_ast.hpp>
+#include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/integer_literal_ast.hpp>
 #include <spp/asts/let_statement_initialized_ast.hpp>
@@ -51,17 +51,20 @@ spp::asts::LocalVariableDestructureArrayAst::LocalVariableDestructureArrayAst(
 spp::asts::LocalVariableDestructureArrayAst::~LocalVariableDestructureArrayAst() = default;
 
 
-auto spp::asts::LocalVariableDestructureArrayAst::pos_start() const -> std::size_t {
+auto spp::asts::LocalVariableDestructureArrayAst::pos_start() const
+-> std::size_t {
     return tok_l->pos_start();
 }
 
 
-auto spp::asts::LocalVariableDestructureArrayAst::pos_end() const -> std::size_t {
+auto spp::asts::LocalVariableDestructureArrayAst::pos_end() const
+-> std::size_t {
     return tok_r->pos_end();
 }
 
 
-auto spp::asts::LocalVariableDestructureArrayAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::LocalVariableDestructureArrayAst::clone() const
+-> std::unique_ptr<Ast> {
     return std::make_unique<LocalVariableDestructureArrayAst>(
         ast_clone(tok_l),
         ast_clone_vec(elems),
@@ -78,7 +81,9 @@ spp::asts::LocalVariableDestructureArrayAst::operator std::string() const {
 }
 
 
-auto spp::asts::LocalVariableDestructureArrayAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::LocalVariableDestructureArrayAst::print(
+    meta::AstPrinter &printer) const
+-> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);
     SPP_PRINT_EXTEND(elems);
