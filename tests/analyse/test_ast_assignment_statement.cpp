@@ -223,7 +223,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AssignmentStatementAst,
     test_invalid_non_symbolic_target,
-    SppCompoundAssignmentTargetError, R"(
+    SppAssignmentTargetError, R"(
         fun f() -> std::void::Void {
             1 = 2
         }

@@ -118,7 +118,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     CoroutinePrototypeAst,
     test_invalid_contains_ret_statement_with_val,
-    SppFunctionCoroutineContainsRetExprExpressionError, R"(
+    SppCoroutineContainsRetExprExpressionError, R"(
     cor c() -> std::generator::Gen[&std::number::S32] {
         ret 123
     }
