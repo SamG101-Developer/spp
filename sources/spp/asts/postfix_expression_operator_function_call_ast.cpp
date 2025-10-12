@@ -44,6 +44,7 @@
 #include <genex/views/concat.hpp>
 #include <genex/views/drop.hpp>
 #include <genex/views/filter.hpp>
+#include <genex/views/for_each.hpp>
 #include <genex/views/intersperse.hpp>
 #include <genex/views/iota.hpp>
 #include <genex/views/join.hpp>
@@ -97,6 +98,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::clone() const
     ast->m_overload_info = m_overload_info;
     ast->m_is_async = m_is_async;
     ast->m_folded_args = m_folded_args;
+    ast->m_folded_arg_group = ast_clone(m_folded_arg_group);
     ast->m_closure_dummy_arg_group = ast_clone(m_closure_dummy_arg_group);
     ast->m_closure_dummy_arg = ast_clone(m_closure_dummy_arg);
     ast->m_closure_dummy_proto = ast_clone(m_closure_dummy_proto);
@@ -146,7 +148,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     }
 
     // Record the "pass" and "fail" overloads.
-    auto all_overloads = analyse::utils::func_utils::get_all_function_scopes(*fn_name, fn_owner_scope);
+    auto all_overloads = std::vector<std::tuple<analyse::scopes::Scope const*, FunctionPrototypeAst*, std::unique_ptr<GenericArgumentGroupAst>>>{};
+    if (fn_name != nullptr) {
+        all_overloads = analyse::utils::func_utils::get_all_function_scopes(*fn_name, fn_owner_scope);
+    }
     auto pass_overloads = std::vector<std::tuple<analyse::scopes::Scope const*, FunctionPrototypeAst*, std::vector<GenericArgumentAst*>>>();
     auto fail_overloads = std::vector<std::tuple<analyse::scopes::Scope const*, FunctionPrototypeAst*, std::unique_ptr<analyse::errors::SemanticError>>>();
 
@@ -241,12 +246,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 // Populate the list of arguments to fold.
                 for (auto &&arg : func_args | genex::views::ptr | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>()) {
                     if (analyse::utils::type_utils::is_type_tuple(*arg->infer_type(sm, meta), *sm->current_scope)) {
-                        if (genex::operations::empty(func_params
+                        func_params
+                            | genex::views::filter([arg](auto &&x) { return *x->extract_name() == *arg->name; })
                             | genex::views::filter([sm](auto &&x) { return not analyse::utils::type_utils::is_type_tuple(*x->type, *sm->current_scope); })
-                            | genex::views::filter([arg](auto &&p) { return p->extract_name() == arg->name; })
-                            | genex::to<std::vector>())) {
-                            m_folded_args.emplace_back(arg);
-                        }
+                            | genex::views::for_each([this, arg](auto &&) { m_folded_args.emplace_back(arg); });
                     }
                 }
 
@@ -351,14 +354,14 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 auto p_type = fn_scope->get_type_symbol(param->type)->fq_name()->with_convention(ast_clone(param->type->get_convention()));
                 auto a_type = arg->infer_type(sm, meta);
 
-                // Special case for variadic parameters.
+                // Special case for variadic parameters (updates p_type so don't follow with "else if").
                 if (ast_cast<FunctionParameterVariadicAst>(param)) {
                     p_type = generate::common_types::tuple_type(param->pos_start(), std::vector(a_type->type_parts().back()->generic_arg_group->args.size(), p_type));
                     p_type->stage_7_analyse_semantics(sm, meta);
                 }
 
                 // Special case for "self" parameters.
-                else if (auto self_param = ast_cast<FunctionParameterSelfAst>(param); self_param != nullptr) {
+                if (auto self_param = ast_cast<FunctionParameterSelfAst>(param); self_param != nullptr) {
                     arg->conv = ast_clone(self_param->conv);
                 }
 
@@ -539,8 +542,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_8_check_memory(
             | genex::views::set_difference_unsorted(m_folded_args)
             | genex::views::transform([](auto &&x) { return ast_clone(x); })
             | genex::to<std::vector>();
-        auto group = FunctionCallArgumentGroupAst(nullptr, std::move(non_folding_args), nullptr);
-        group.stage_8_check_memory(sm, meta);
+        m_folded_arg_group = std::make_unique<FunctionCallArgumentGroupAst>(nullptr, std::move(non_folding_args), nullptr);
+        m_folded_arg_group->stage_7_analyse_semantics(sm, meta);
+        m_folded_arg_group->stage_8_check_memory(sm, meta);
     }
 
     // If a closure is being called, apply memory rules to the symbolic target.

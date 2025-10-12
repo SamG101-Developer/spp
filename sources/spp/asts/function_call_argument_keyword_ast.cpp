@@ -13,23 +13,27 @@ spp::asts::FunctionCallArgumentKeywordAst::FunctionCallArgumentKeywordAst(
     FunctionCallArgumentAst(std::move(conv), std::move(val), mixins::OrderableTag::KEYWORD_ARG),
     name(std::move(name)),
     tok_assign(std::move(tok_assign)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
 }
 
 
 spp::asts::FunctionCallArgumentKeywordAst::~FunctionCallArgumentKeywordAst() = default;
 
 
-auto spp::asts::FunctionCallArgumentKeywordAst::pos_start() const -> std::size_t {
+auto spp::asts::FunctionCallArgumentKeywordAst::pos_start() const
+    -> std::size_t {
     return name->pos_start();
 }
 
 
-auto spp::asts::FunctionCallArgumentKeywordAst::pos_end() const -> std::size_t {
+auto spp::asts::FunctionCallArgumentKeywordAst::pos_end() const
+    -> std::size_t {
     return val->pos_end();
 }
 
 
-auto spp::asts::FunctionCallArgumentKeywordAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::FunctionCallArgumentKeywordAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<FunctionCallArgumentKeywordAst>(
         ast_clone(name),
         ast_clone(tok_assign),
@@ -48,7 +52,9 @@ spp::asts::FunctionCallArgumentKeywordAst::operator std::string() const {
 }
 
 
-auto spp::asts::FunctionCallArgumentKeywordAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::FunctionCallArgumentKeywordAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(name);
     SPP_PRINT_APPEND(tok_assign);
