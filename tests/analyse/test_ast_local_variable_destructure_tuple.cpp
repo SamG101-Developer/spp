@@ -24,7 +24,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     LocalVariableDestructureTupleAst,
     test_invalid_array_missing_element,
-    SppArgumentMissingError, R"(
+    SppVariableTupleDestructureTupleSizeMismatchError, R"(
     fun f() -> std::void::Void {
         let (a, b) = (1, 2, 3)
     }
@@ -54,7 +54,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     LocalVariableDestructureTupleAst,
     test_valid_with_single_skip, R"(
     fun f() -> std::void::Void {
-        let (mut a, _, mut d) = (1, 2, 3)
+        let (mut a, _, mut c) = (1, 2, 3)
         a = 5
         c = 6
     }
@@ -105,7 +105,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_nested_array, R"(
     fun f() -> std::void::Void {
         let t = (1, 2)
-        let ([a, mut b], c) = (t, [3, 4])
+        let ((a, mut b), c) = (t, [3, 4])
         b = 4
     }
 )")
@@ -126,8 +126,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     LocalVariableDestructureTupleAst,
     test_valid_nested_object, R"(
     cls Point {
-        x: std::bignum::bigint::BigInt
-        y: std::bignum::bigint::BigInt
+        x: std::number::S32
+        y: std::number::S32
     }
 
     fun f() -> std::void::Void {
