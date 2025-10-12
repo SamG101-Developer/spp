@@ -71,7 +71,7 @@ auto spp::asts::RetStatementAst::stage_7_analyse_semantics(
     // Check the enclosing function is a subroutine and not a subroutine, if a value is being returned.
     const auto function_flavour = meta->enclosing_function_flavour;
     if (function_flavour->token_type != lex::SppTokenType::KW_FUN and expr != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCoroutineContainsRetExprExpressionError>().with_args(
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppCoroutineContainsRetExprExpressionError>().with_args(
             *function_flavour, *tok_ret).with_scopes({sm->current_scope}).raise();
     }
 

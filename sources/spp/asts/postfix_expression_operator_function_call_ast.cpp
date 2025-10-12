@@ -416,11 +416,6 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
         }
 
-        catch (const analyse::errors::SppGenericParameterInferredConflictExplicitError &e) {
-            // If the overload has an explicit generic parameter conflict, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
-        }
-
         catch (const analyse::errors::SppGenericParameterNotInferredError &e) {
             // If the overload has a generic parameter that is not inferred, we cannot use it.
             fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
