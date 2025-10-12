@@ -28,4 +28,6 @@ struct spp::asts::ObjectInitializerArgumentShorthandAst final : ObjectInitialize
         std::unique_ptr<ExpressionAst> &&val);
 
     ~ObjectInitializerArgumentShorthandAst() override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
