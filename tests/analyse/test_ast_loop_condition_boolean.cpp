@@ -23,8 +23,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     LoopConditionBooleanAst,
-    test_valid_simple,
-    R"(
+    test_valid_simple, R"(
     fun f() -> std::void::Void {
         let x = false
         loop x { }
@@ -34,8 +33,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     LoopConditionBooleanAst,
-    test_valid_never_return,
-    R"(
+    test_valid_never_return, R"(
     fun f() -> ! {
         loop true { }
     }
