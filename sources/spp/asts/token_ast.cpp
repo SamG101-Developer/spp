@@ -23,27 +23,32 @@ auto spp::asts::TokenAst::new_empty(
 }
 
 
-auto spp::asts::TokenAst::operator==(TokenAst const &that) const -> bool {
+auto spp::asts::TokenAst::operator==(TokenAst const &that) const
+    -> bool {
     return token_type == that.token_type;
 }
 
 
-auto spp::asts::TokenAst::pos_start() const -> std::size_t {
+auto spp::asts::TokenAst::pos_start() const
+    -> std::size_t {
     return m_pos;
 }
 
 
-auto spp::asts::TokenAst::pos_end() const -> std::size_t {
+auto spp::asts::TokenAst::pos_end() const
+    -> std::size_t {
     return m_pos + token_data.length();
 }
 
 
-auto spp::asts::TokenAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::TokenAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<TokenAst>(m_pos, token_type, token_data.c_str());
 }
 
 
-auto spp::asts::TokenAst::print(meta::AstPrinter &) const -> std::string {
+auto spp::asts::TokenAst::print(meta::AstPrinter &) const
+    -> std::string {
     return token_data;
 }
 

@@ -697,8 +697,8 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     auto new_sup_scope_ptr = new_sup_scope.get();
     old_sup_scope.parent->children.emplace_back(std::move(new_sup_scope));
 
-    std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name =
-        substitute_sup_scope_name(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name, generic_args);
+    // std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name =
+    //     substitute_sup_scope_name(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name, generic_args);
 
     // Register the generic symbols.
     auto tm = scopes::ScopeManager(sm->global_scope, new_sup_scope_ptr);
