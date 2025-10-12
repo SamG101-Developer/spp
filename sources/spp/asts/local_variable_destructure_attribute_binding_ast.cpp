@@ -40,8 +40,8 @@ auto spp::asts::LocalVariableDestructureAttributeBindingAst::clone() const
 
 spp::asts::LocalVariableDestructureAttributeBindingAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(name);
-    SPP_STRING_APPEND(tok_assign);
+    SPP_STRING_APPEND(name).append(" ");
+    SPP_STRING_APPEND(tok_assign).append(" ");
     SPP_STRING_APPEND(val);
     SPP_STRING_END;
 }
@@ -50,8 +50,14 @@ spp::asts::LocalVariableDestructureAttributeBindingAst::operator std::string() c
 auto spp::asts::LocalVariableDestructureAttributeBindingAst::print(meta::AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(tok_assign);
+    SPP_PRINT_APPEND(name).append(" ");
+    SPP_PRINT_APPEND(tok_assign).append(" ");
     SPP_PRINT_APPEND(val);
     SPP_PRINT_END;
+}
+
+
+auto spp::asts::LocalVariableDestructureAttributeBindingAst::extract_name() const
+    -> std::shared_ptr<IdentifierAst> {
+    return name;
 }

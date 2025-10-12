@@ -34,4 +34,6 @@ struct spp::asts::LocalVariableDestructureAttributeBindingAst final : LocalVaria
         decltype(val) &&val);
 
     ~LocalVariableDestructureAttributeBindingAst() override;
+
+    auto extract_name() const -> std::shared_ptr<IdentifierAst> override;
 };
