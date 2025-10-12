@@ -93,6 +93,8 @@ auto spp::asts::LetStatementUninitializedAst::stage_8_check_memory(
     // Check the variable for memory issues.
     meta->save();
     meta->let_stmt_value = nullptr;
+    meta->let_stmt_explicit_type = type;
+    meta->let_stmt_from_uninitialized = true;
     var->stage_8_check_memory(sm, meta);
     meta->restore();
 }
