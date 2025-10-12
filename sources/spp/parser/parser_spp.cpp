@@ -1579,7 +1579,7 @@ auto spp::parse::ParserSpp::parse_object_initializer_argument_keyword() -> std::
 
 auto spp::parse::ParserSpp::parse_object_initializer_argument_shorthand() -> std::unique_ptr<asts::ObjectInitializerArgumentShorthandAst> {
     PARSE_OPTIONAL(p1, parse_token_double_dot);
-    PARSE_ONCE(p2, parse_identifier);
+    PARSE_ONCE(p2, parse_expression);
     return CREATE_AST(asts::ObjectInitializerArgumentShorthandAst, p1, p2);
 }
 
