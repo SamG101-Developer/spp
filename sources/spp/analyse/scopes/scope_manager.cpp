@@ -157,7 +157,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
         auto cls_sym = scope.ty_sym;
 
         // Prevent double inheritance, cyclic inheritance and self extension.
-        if (const auto ext_ast = asts::ast_cast<asts::SupPrototypeExtensionAst>(scope.ast); ext_ast != nullptr) {
+        if (const auto ext_ast = asts::ast_cast<asts::SupPrototypeExtensionAst>(sup_scope->ast); ext_ast != nullptr) {
             ext_ast->m_check_cyclic_extension(*sup_sym, *sup_scope);
             ext_ast->m_check_double_extension(*cls_sym, *sup_scope);
             ext_ast->m_check_self_extension(*sup_scope);

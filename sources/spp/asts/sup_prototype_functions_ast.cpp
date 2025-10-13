@@ -38,17 +38,20 @@ spp::asts::SupPrototypeFunctionsAst::SupPrototypeFunctionsAst(
 spp::asts::SupPrototypeFunctionsAst::~SupPrototypeFunctionsAst() = default;
 
 
-auto spp::asts::SupPrototypeFunctionsAst::pos_start() const -> std::size_t {
+auto spp::asts::SupPrototypeFunctionsAst::pos_start() const
+    -> std::size_t {
     return tok_sup->pos_start();
 }
 
 
-auto spp::asts::SupPrototypeFunctionsAst::pos_end() const -> std::size_t {
-    return impl->pos_end();
+auto spp::asts::SupPrototypeFunctionsAst::pos_end() const
+    -> std::size_t {
+    return impl->pos_start();
 }
 
 
-auto spp::asts::SupPrototypeFunctionsAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::SupPrototypeFunctionsAst::clone() const
+    -> std::unique_ptr<Ast> {
     auto ast = std::make_unique<SupPrototypeFunctionsAst>(
         ast_clone(tok_sup),
         ast_clone(generic_param_group),
@@ -70,7 +73,9 @@ spp::asts::SupPrototypeFunctionsAst::operator std::string() const {
 }
 
 
-auto spp::asts::SupPrototypeFunctionsAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::SupPrototypeFunctionsAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_sup).append(" ");
     SPP_PRINT_APPEND(generic_param_group).append(" ");
@@ -115,7 +120,6 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_2_gen_top_level_scopes(
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
             *name, *conv, "superimposition type").with_scopes({sm->current_scope}).raise();
     }
-
 
     // Generate symbols for the generic parameter group, and the self type.
     generic_param_group->stage_2_gen_top_level_scopes(sm, meta);

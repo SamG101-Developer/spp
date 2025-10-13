@@ -1,7 +1,7 @@
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/scope.hpp>
+#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/symbols.hpp>
 #include <spp/analyse/utils/func_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
@@ -13,13 +13,14 @@
 #include <spp/asts/generic_argument_type_keyword_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
 #include <spp/asts/generic_parameter_group_ast.hpp>
-#include <spp/asts/sup_prototype_extension_ast.hpp>
 #include <spp/asts/sup_implementation_ast.hpp>
+#include <spp/asts/sup_prototype_extension_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/type_statement_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>
+#include <spp/utils/traits.hpp>
 
 #include <genex/to_container.hpp>
 #include <genex/views/concat.hpp>
@@ -49,17 +50,20 @@ spp::asts::SupPrototypeExtensionAst::SupPrototypeExtensionAst(
 spp::asts::SupPrototypeExtensionAst::~SupPrototypeExtensionAst() = default;
 
 
-auto spp::asts::SupPrototypeExtensionAst::pos_start() const -> std::size_t {
+auto spp::asts::SupPrototypeExtensionAst::pos_start() const
+    -> std::size_t {
     return tok_sup->pos_start();
 }
 
 
-auto spp::asts::SupPrototypeExtensionAst::pos_end() const -> std::size_t {
-    return impl->pos_end();
+auto spp::asts::SupPrototypeExtensionAst::pos_end() const
+    -> std::size_t {
+    return impl->pos_start();
 }
 
 
-auto spp::asts::SupPrototypeExtensionAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::SupPrototypeExtensionAst::clone() const
+    -> std::unique_ptr<Ast> {
     auto ast = std::make_unique<SupPrototypeExtensionAst>(
         ast_clone(tok_sup),
         ast_clone(generic_param_group),
@@ -85,7 +89,9 @@ spp::asts::SupPrototypeExtensionAst::operator std::string() const {
 }
 
 
-auto spp::asts::SupPrototypeExtensionAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::SupPrototypeExtensionAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_sup).append(" ");
     SPP_PRINT_APPEND(generic_param_group).append(" ");
@@ -99,15 +105,20 @@ auto spp::asts::SupPrototypeExtensionAst::print(meta::AstPrinter &printer) const
 
 auto spp::asts::SupPrototypeExtensionAst::m_check_cyclic_extension(
     analyse::scopes::TypeSymbol const &sup_sym,
-    analyse::scopes::Scope &check_scope)
+    analyse::scopes::Scope &check_scope) const
     -> void {
+    auto check_cycle = [this, &check_scope](analyse::scopes::Scope const *sc) {
+        auto dummy = std::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<TypeIdentifierAst>>>();
+        const auto ext = ast_cast<SupPrototypeExtensionAst>(sc->ast);
+        return ext and
+            analyse::utils::type_utils::relaxed_symbolic_eq(*ext->name, *super_class, sc, &check_scope, dummy, false) and
+            analyse::utils::type_utils::symbolic_eq(*ext->super_class, *name, *sc, check_scope, false);
+    };
+
     // Prevent double inheritance by checking if the scopes are already registered the other way around.
-    auto dummy = std::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<TypeIdentifierAst>>>();
     const auto existing_sup_scopes = sup_sym.scope->sup_scopes()
-        | genex::views::filter([](auto &&x) { return ast_cast<SupPrototypeExtensionAst>(x->ast); })
-        | genex::views::transform([](auto &&x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })
-        | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::relaxed_symbolic_eq(*super_class, *x.second->name, &check_scope, x.first, dummy); })
-        | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::symbolic_eq(*x.second->super_class, *name, *x.first, check_scope); })
+        | genex::views::filter(check_cycle)
+        | genex::views::transform([](auto *x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })
         | genex::to<std::vector>();
 
     if (not existing_sup_scopes.empty()) {
@@ -119,24 +130,30 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_cyclic_extension(
 
 auto spp::asts::SupPrototypeExtensionAst::m_check_double_extension(
     analyse::scopes::TypeSymbol const &cls_sym,
-    analyse::scopes::Scope &check_scope)
+    analyse::scopes::Scope &check_scope) const
     -> void {
     // Early return for function-classes.
     if (cls_sym.name->name[0] == '$') {
         return;
     }
 
+    auto check_double = [this, &check_scope](analyse::scopes::Scope const *sc) {
+        auto dummy = std::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<TypeIdentifierAst>>>();
+        const auto ext = ast_cast<SupPrototypeExtensionAst>(sc->ast);
+        return ext and
+            analyse::utils::type_utils::relaxed_symbolic_eq(*ext->name, *name, sc, &check_scope, dummy, false) and
+            analyse::utils::type_utils::symbolic_eq(*ext->super_class, *super_class, *sc, check_scope, false);
+    };
+
     // Prevent double inheritance by checking if the scopes are already registered the other way around.
     auto dummy = std::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<TypeIdentifierAst>>>();
     const auto existing_sup_scopes = cls_sym.scope->sup_scopes()
-        | genex::views::filter([](auto &&x) { return ast_cast<SupPrototypeExtensionAst>(x->ast); })
-        | genex::views::transform([](auto &&x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })
-        | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::relaxed_symbolic_eq(*super_class, *x.second->name, &check_scope, x.first, dummy); })
-        | genex::views::filter([&](auto &&x) { return analyse::utils::type_utils::symbolic_eq(*x.second->super_class, *name, *x.first, check_scope); })
+        | genex::views::filter(check_double)
+        | genex::views::transform([](auto *x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })
         | genex::to<std::vector>();
 
     if (not existing_sup_scopes.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionCyclicExtensionError>().with_args(
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionDoubleExtensionError>().with_args(
             *existing_sup_scopes[0].second->super_class, *name).with_scopes({&check_scope}).raise();
     }
 }
