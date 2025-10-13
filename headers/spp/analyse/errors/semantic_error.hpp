@@ -81,6 +81,7 @@ namespace spp::analyse::errors {
     struct SppCoroutineContainsRetExprExpressionError;
     struct SppFunctionSubroutineMissingReturnStatementError;
     struct SppSuperimpositionCyclicExtensionError;
+    struct SppSuperimpositionDoubleExtensionError;
     struct SppSuperimpositionSelfExtensionError;
     struct SppSuperimpositionExtensionMethodInvalidError;
     struct SppSuperimpositionExtensionNonVirtualMethodOverriddenError;
@@ -475,6 +476,11 @@ struct spp::analyse::errors::SppFunctionSubroutineMissingReturnStatementError fi
 
 struct spp::analyse::errors::SppSuperimpositionCyclicExtensionError final : SemanticError {
     explicit SppSuperimpositionCyclicExtensionError(asts::TypeAst const &first_extension, asts::TypeAst const &second_extension);
+};
+
+
+struct spp::analyse::errors::SppSuperimpositionDoubleExtensionError final : SemanticError {
+    explicit SppSuperimpositionDoubleExtensionError(asts::TypeAst const &first_extension, asts::TypeAst const &second_extension);
 };
 
 

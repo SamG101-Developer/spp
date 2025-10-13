@@ -1308,6 +1308,23 @@ spp::analyse::errors::SppSuperimpositionCyclicExtensionError::SppSuperimposition
 }
 
 
+spp::analyse::errors::SppSuperimpositionDoubleExtensionError::SppSuperimpositionDoubleExtensionError(
+    asts::TypeAst const &first_extension,
+    asts::TypeAst const &second_extension) {
+    add_header(
+        66, "SPP Superimposition Double Extension Error");
+    add_context_for_error(
+        &first_extension,
+        "First extension defined here");
+    add_error(
+        &second_extension,
+        "Second extension defined here");
+    add_footer(
+        "A type cannot superimpose the same type more than once.",
+        "Remove one of the extensions / merge the blocks");
+}
+
+
 spp::analyse::errors::SppSuperimpositionSelfExtensionError::SppSuperimpositionSelfExtensionError(
     asts::TypeAst const &first_extension,
     asts::TypeAst const &second_extension) {
