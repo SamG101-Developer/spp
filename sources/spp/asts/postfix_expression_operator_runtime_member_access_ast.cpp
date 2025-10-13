@@ -27,17 +27,20 @@ spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOpe
 spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::~PostfixExpressionOperatorRuntimeMemberAccessAst() = default;
 
 
-auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::pos_start() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::pos_start() const
+    -> std::size_t {
     return tok_dot->pos_start();
 }
 
 
-auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::pos_end() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::pos_end() const
+    -> std::size_t {
     return name->pos_end();
 }
 
 
-auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
         ast_clone(tok_dot),
         ast_clone(name));
@@ -52,7 +55,9 @@ spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::operator std::string
 }
 
 
-auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_dot);
     SPP_PRINT_APPEND(name);
@@ -64,6 +69,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
     -> void {
+
     // Prevent types on the left-hand-side of a runtime member access.
     if (ast_cast<TypeAst>(meta->postfix_expression_lhs)) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessStaticOperatorExpectedError>().with_args(
