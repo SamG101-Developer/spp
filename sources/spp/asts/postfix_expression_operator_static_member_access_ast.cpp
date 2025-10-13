@@ -73,7 +73,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
     mixins::CompilerMetaData *meta)
     -> void {
     // Handle types on the left-hand-side of a static member access.
-    if (const auto lhs_as_type = ast_cast<TypeIdentifierAst>(meta->postfix_expression_lhs)) {
+    if (const auto lhs_as_type = ast_cast<TypeAst>(meta->postfix_expression_lhs)) {
         const auto lhs_type_sym = sm->current_scope->get_type_symbol(ast_clone(lhs_as_type));
 
         // Check the left-hand-side isn't a generic type. Todo: in the future, allow by constraints / intersection types?
@@ -88,7 +88,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
                 | genex::views::transform([](auto &&x) { return x->name->name; })
                 | genex::to<std::vector>();
 
-            const auto closest_match = spp::utils::strings::closest_match(lhs_as_type->name, alternatives);
+            const auto closest_match = spp::utils::strings::closest_match(name->val, alternatives);
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierUnknownError>().with_args(
                 *this, "type member", closest_match).with_scopes({sm->current_scope}).raise();
         }
