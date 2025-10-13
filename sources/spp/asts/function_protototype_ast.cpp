@@ -195,6 +195,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
         | genex::views::cast_dynamic<ClassPrototypeAst*>()
         | genex::views::filter([&mock_class_name](auto &&x) { return x->name->without_generics() == mock_class_name->without_generics(); })
         | genex::to<std::vector>()).empty();
+
     if (needs_generation) {
         auto mock_class_ast = std::make_unique<ClassPrototypeAst>(SPP_NO_ANNOTATIONS, nullptr, ast_clone(mock_class_name), nullptr, nullptr);
         auto mock_constant_value = std::make_unique<ObjectInitializerAst>(ast_clone(mock_class_name), nullptr);
@@ -228,15 +229,15 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
 
     // Manipulate the context body with the new mock superimposition extension.
     if (const auto mod_ctx = ast_cast<ModulePrototypeAst>(ctx)) {
-        mod_ctx->impl->members.emplace_back(std::move(mock_sup_ext));
+        mod_ctx->impl->members.insert(mod_ctx->impl->members.begin(), std::move(mock_sup_ext));
         mod_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return x.get() == this; });
     }
     else if (const auto sup_ctx = ast_cast<SupPrototypeFunctionsAst>(ctx)) {
-        sup_ctx->impl->members.emplace_back(std::move(mock_sup_ext));
+        sup_ctx->impl->members.insert(sup_ctx->impl->members.begin(), std::move(mock_sup_ext));
         sup_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return x.get() == this; });
     }
     else if (const auto ext_ctx = ast_cast<SupPrototypeExtensionAst>(ctx)) {
-        ext_ctx->impl->members.emplace_back(std::move(mock_sup_ext));
+        ext_ctx->impl->members.insert(ext_ctx->impl->members.begin(), std::move(mock_sup_ext));
         ext_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return x.get() == this; });
     }
 }
