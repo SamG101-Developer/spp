@@ -30,17 +30,20 @@ spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOper
 spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::~PostfixExpressionOperatorStaticMemberAccessAst() = default;
 
 
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::pos_start() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::pos_start() const
+    -> std::size_t {
     return tok_dbl_colon->pos_start();
 }
 
 
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::pos_end() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::pos_end() const
+    -> std::size_t {
     return name->pos_end();
 }
 
 
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<PostfixExpressionOperatorStaticMemberAccessAst>(
         ast_clone(tok_dbl_colon),
         ast_clone(name));
@@ -55,7 +58,9 @@ spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::operator std::string(
 }
 
 
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_dbl_colon);
     SPP_PRINT_APPEND(name);
@@ -115,10 +120,10 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
         }
     }
 
-    else if (const auto lhs_as_ident_raw = ast_cast<IdentifierAst>(meta->postfix_expression_lhs)) {
-        const auto lhs_as_ident = std::make_shared<IdentifierAst>(lhs_as_ident_raw->pos_start(), lhs_as_ident_raw->val);
-        const auto lhs_ns_sym = sm->current_scope->get_ns_symbol(lhs_as_ident);
-        const auto lhs_var_sym = sm->current_scope->get_var_symbol(lhs_as_ident);
+    else {
+        const auto lhs_as_ident = ast_cast<IdentifierAst>(meta->postfix_expression_lhs);
+        const auto lhs_ns_sym = sm->current_scope->convert_postfix_to_nested_scope(meta->postfix_expression_lhs)->ns_sym;
+        const auto lhs_var_sym = sm->current_scope->get_var_symbol(ast_clone(lhs_as_ident));
 
         // Check the lhs is a namespace and not a variable.
         if (lhs_ns_sym == nullptr and lhs_var_sym != nullptr) {
@@ -132,7 +137,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
                 | genex::views::transform([](auto &&x) { return x->name->val; })
                 | genex::to<std::vector>();
 
-            const auto closest_match = spp::utils::strings::closest_match(lhs_as_ident->val, alternatives);
+            // Todo: get the last part of postfix otherwise identifier value for string.
+            const auto closest_match = spp::utils::strings::closest_match(static_cast<std::string>(*meta->postfix_expression_lhs), alternatives);
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierUnknownError>().with_args(
                 *this, "namespace member", closest_match).with_scopes({sm->current_scope}).raise();
         }
