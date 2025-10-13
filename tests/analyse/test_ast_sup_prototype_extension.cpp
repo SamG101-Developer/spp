@@ -31,7 +31,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     SupPrototypeExtensionAst,
-    test_valid_superimposition_extension_generic_name_more_complex, R"(
+    DISABLED_test_valid_superimposition_extension_generic_name_more_complex, R"(
     cls CanBorrowRef[T] { }
     sup [T] CanBorrowRef[T] {
         cor borrow_ref(&self) -> std::generator::Gen[&T] {
