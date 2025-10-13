@@ -485,7 +485,7 @@ auto spp::analyse::scopes::Scope::get_var_symbol_outermost(
 
         // Type based left-hand-side, such as "some_namespace::Type::static_member()"
         if (const auto type_lhs = asts::ast_cast<asts::TypeAst>(postfix_expr->lhs.get())) {
-            const auto type_sym = get_type_symbol(type_lhs->shared_from_this());
+            const auto type_sym = get_type_symbol(ast_clone(type_lhs));
             const auto var_sym = type_sym->scope->get_var_symbol(postfix_op->name);
             return std::make_pair(var_sym, type_sym->scope);
         }

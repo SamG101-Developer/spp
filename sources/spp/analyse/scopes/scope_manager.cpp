@@ -133,7 +133,8 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
     for (auto *sup_scope : sup_scopes) {
         // Perform a relaxed comparison between the two types (allows for specializations to match bases).
         auto scope_generics_map = std::map<std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<asts::TypeIdentifierAst>>>();
-        if (not utils::type_utils::relaxed_symbolic_eq(*scope.ty_sym->fq_name(), *asts::ast_name(sup_scope->ast), scope.ty_sym->scope_defined_in, sup_scope, scope_generics_map)) {
+        auto fq_type = scope.ty_sym->fq_name();
+        if (not utils::type_utils::relaxed_symbolic_eq(*fq_type, *asts::ast_name(sup_scope->ast), scope.ty_sym->scope_defined_in, sup_scope, scope_generics_map)) {
             continue;
         }
         auto scope_generics = asts::GenericArgumentGroupAst::from_map(std::move(scope_generics_map));
