@@ -71,9 +71,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut c: std::number::S32) -> std::void::Void {
         let mut a = g()
         let mut b = a.res("123")
-        c = iter b of
+        c = iter b of {
             value { value }
             !! { c }
+        }
     }
 )")
 
@@ -88,9 +89,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut c: &std::number::S32) -> std::void::Void {
         let mut a = g()
         let mut b = a.res("123")
-        c = iter b of
+        c = iter b of {
             value { value }
             !! { c }
+        }
     }
 )")
 
@@ -105,9 +107,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut c: &mut std::number::S32) -> std::void::Void {
         let mut a = g()
         let mut b = a.res("123")
-        c = iter b of
+        c = iter b of {
             value { value }
             !! { c }
+        }
     }
 )")
 
