@@ -76,7 +76,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
     if (const auto lhs_as_type = ast_cast<TypeAst>(meta->postfix_expression_lhs)) {
         const auto lhs_type_sym = sm->current_scope->get_type_symbol(ast_clone(lhs_as_type));
 
-        // Check the left-hand-side isn't a generic type. Todo: in the future, allow by constraints / intersection types?
+        // Check the left-hand-side isn't a generic type. Todo: until constraints.
         if (lhs_type_sym->is_generic) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppGenericTypeInvalidUsageError>().with_args(
                 *lhs_as_type, *lhs_as_type, "member access").with_scopes({sm->current_scope}).raise();

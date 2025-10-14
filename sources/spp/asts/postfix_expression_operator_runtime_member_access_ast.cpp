@@ -81,7 +81,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
         const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
         const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_type);
 
-        // Check the left-hand-side isn't a generic type.
+        // Check the left-hand-side isn't a generic type. Todo: until constraints.
         if (lhs_type_sym->is_generic) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppGenericTypeInvalidUsageError>().with_args(
                 *meta->postfix_expression_lhs, *lhs_type, "member access").with_scopes({sm->current_scope}).raise();
