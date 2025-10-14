@@ -270,6 +270,19 @@ auto spp::asts::generate::common_types::future_type(std::size_t pos, std::shared
 }
 
 
+auto spp::asts::generate::common_types::option_type(std::size_t pos, std::shared_ptr<TypeAst> inner_type) -> std::shared_ptr<TypeAst> {
+    auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(1);
+    generics_lst[0] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(inner_type));
+    auto generics = std::make_unique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+
+    std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("Opt"), std::move(generics));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("option")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
+    return type;
+}
+
+
+
 auto spp::asts::generate::common_types::gen_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type, std::shared_ptr<TypeAst> send_type) -> std::shared_ptr<TypeAst> {
     auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(2);
     generics_lst[0] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(yield_type));
