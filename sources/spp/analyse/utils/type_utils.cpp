@@ -840,7 +840,7 @@ auto spp::analyse::utils::type_utils::get_type_part_symbol_with_error(
 }
 
 
-auto spp::analyse::utils::type_utils::get_namespaced_scope_with_error(
+auto spp::analyse::utils::type_utils::get_namespaced_scope_with_error( // todo: change to accept a scope like above function
     scopes::ScopeManager const &sm,
     asts::IdentifierAst const &ns)
     -> scopes::Scope* {
