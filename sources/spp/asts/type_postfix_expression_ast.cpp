@@ -238,7 +238,7 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
         | genex::views::transform([lhs_type_sym](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
         | genex::to<std::vector>();
 
-    auto min_depth = genex::algorithms::min_element(scopes_and_syms
+    auto min_depth = scopes_and_syms.empty() ? 0 : genex::algorithms::min_element(scopes_and_syms
         | genex::views::transform([](auto &&x) { return std::get<0>(x); })
         | genex::to<std::vector>());
 
