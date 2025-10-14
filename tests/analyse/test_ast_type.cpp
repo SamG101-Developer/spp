@@ -46,7 +46,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestTypeAst,
     test_invalid_type_generic_nested_type,
-    SppIdentifierUnknownError, R"(
+    SppGenericTypeInvalidUsageError, R"(
     fun f[T]() -> std::void::Void {
         let x: T::Type
     }
