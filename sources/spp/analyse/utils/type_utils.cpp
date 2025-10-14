@@ -697,8 +697,10 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     auto new_sup_scope_ptr = new_sup_scope.get();
     old_sup_scope.parent->children.emplace_back(std::move(new_sup_scope));
 
-    // std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name =
-    //     substitute_sup_scope_name(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name, generic_args);
+#ifdef SPP_IS_DEBUG_BUILD
+    std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name =
+        substitute_sup_scope_name(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name, generic_args);
+#endif
 
     // Register the generic symbols.
     auto tm = scopes::ScopeManager(sm->global_scope, new_sup_scope_ptr);
@@ -711,14 +713,17 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
         std::make_unique<asts::TypeIdentifierAst>(0, "Self", nullptr),
         nullptr, &new_cls_scope, new_sup_scope_ptr, old_self_sym));
 
+    if (std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name.contains("TypeC")) {
+        auto _ = 123;
+    }
+
     // Run generic substitution on the aliases in the new scope.
-    for (auto &&scoped_sym : new_sup_scope_ptr->all_type_symbols(true) | genex::to<std::vector>()) {
+    for (auto const &scoped_sym : new_sup_scope_ptr->all_type_symbols(true) | genex::to<std::vector>()) {
         if (auto scoped_alias_sym = std::dynamic_pointer_cast<scopes::AliasSymbol>(scoped_sym); scoped_alias_sym != nullptr and not scoped_sym->is_generic) {
             auto old_type_sub = scoped_alias_sym->old_sym->fq_name()->substitute_generics(generic_args.args | genex::views::ptr | genex::to<std::vector>());
 
-            auto restore = scoped_alias_sym->old_sym;
-            scoped_alias_sym->old_sym = old_sup_scope.get_type_symbol(old_type_sub);
-            scoped_alias_sym->old_sym = scoped_alias_sym->old_sym ? scoped_alias_sym->old_sym : restore;
+            auto temp = old_sup_scope.get_type_symbol(old_type_sub);
+            if (temp != nullptr) { scoped_alias_sym->old_sym = temp; }
 
             auto old_sup_scope_children = old_sup_scope.children | genex::views::ptr | genex::to<std::vector>();
             if (genex::algorithms::contains(old_sup_scope_children, scoped_alias_sym->scope)) {

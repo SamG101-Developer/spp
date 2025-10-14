@@ -48,17 +48,20 @@ auto spp::asts::TypePostfixExpressionAst::operator==(
 }
 
 
-auto spp::asts::TypePostfixExpressionAst::pos_start() const -> std::size_t {
+auto spp::asts::TypePostfixExpressionAst::pos_start() const
+    -> std::size_t {
     return lhs->pos_start();
 }
 
 
-auto spp::asts::TypePostfixExpressionAst::pos_end() const -> std::size_t {
+auto spp::asts::TypePostfixExpressionAst::pos_end() const
+    -> std::size_t {
     return tok_op->pos_end();
 }
 
 
-auto spp::asts::TypePostfixExpressionAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::TypePostfixExpressionAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<TypePostfixExpressionAst>(
         ast_clone(lhs),
         ast_clone(tok_op));
@@ -73,7 +76,9 @@ spp::asts::TypePostfixExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypePostfixExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::TypePostfixExpressionAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(lhs);
     SPP_PRINT_APPEND(tok_op);
@@ -175,7 +180,7 @@ auto spp::asts::TypePostfixExpressionAst::with_convention(
 auto spp::asts::TypePostfixExpressionAst::without_generics() const
     -> std::shared_ptr<TypeAst> {
     const auto rhs = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
-    auto new_lhs = ast_clone(lhs);
+    auto new_lhs = ast_clone(lhs); // Todo: clone needed?
     auto new_rhs = std::make_unique<TypePostfixExpressionOperatorNestedTypeAst>(nullptr, std::dynamic_pointer_cast<TypeIdentifierAst>(rhs->name->without_generics()));
     return std::make_shared<TypePostfixExpressionAst>(std::move(new_lhs), std::move(new_rhs));
 }
@@ -262,7 +267,11 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
     }
 
     // Ensure the type exists on the "lhs" part.
-    analyse::utils::type_utils::get_type_part_symbol_with_error(*lhs_type_scope, *op_nested->name, *sm, meta, true);
+
+    meta->save();
+    meta->type_analysis_type_scope = lhs_type_scope;
+    op_nested->name->stage_7_analyse_semantics(sm, meta);
+    meta->restore();
 }
 
 
@@ -281,6 +290,4 @@ auto spp::asts::TypePostfixExpressionAst::infer_type(
     const auto part = analyse::utils::type_utils::get_type_part_symbol_with_error(*lhs_type_scope, *op_nested->name, *sm, meta, true)->fq_name();
     const auto sym = lhs_type_scope->get_type_symbol(part);
     return sym->fq_name();
-
-    std::unreachable();
 }

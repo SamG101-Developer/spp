@@ -334,6 +334,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     -> void {
     // Get the type scope for this type.
     auto type_scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
+    const auto original_scope = type_scope;  // this is needed for postfix types (getting generics from the lhs).
 
     // Determine the type scope and type symbol.
     const auto type_sym = analyse::utils::type_utils::get_type_part_symbol_with_error(
@@ -398,7 +399,11 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
         // Handle type aliasing (providing generics to the original type).
         if (const auto alias_sym = dynamic_cast<analyse::scopes::AliasSymbol*>(type_sym)) {
             // Substitute the old type: "Opt[Str]" => "Var[Some[Str], None]"
-            const auto old_type = alias_sym->old_sym->fq_name()->substitute_generics(generic_arg_group->get_all_args());
+            auto outer_generics = original_scope->get_generics();
+            auto generics = generic_arg_group->get_all_args();
+            generics.append_range(outer_generics | genex::views::ptr);
+
+            const auto old_type = alias_sym->old_sym->fq_name()->substitute_generics(std::move(generics));
             meta->save();
             meta->type_analysis_type_scope = type_scope->parent;
             old_type->stage_7_analyse_semantics(sm, meta);
