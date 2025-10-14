@@ -2,8 +2,8 @@
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/convention_ast.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
+#include <spp/asts/convention_ast.hpp>
 #include <spp/asts/generic_argument_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/token_ast.hpp>
@@ -12,14 +12,16 @@
 #include <spp/asts/type_postfix_expression_ast.hpp>
 #include <spp/asts/type_postfix_expression_operator_ast.hpp>
 #include <spp/asts/type_postfix_expression_operator_nested_type_ast.hpp>
+#include <spp/asts/type_postfix_expression_operator_optional_ast.hpp>
 #include <spp/asts/type_unary_expression_ast.hpp>
 #include <spp/asts/type_unary_expression_operator_borrow_ast.hpp>
+#include <spp/asts/generate/common_types.hpp>
 
 #include <genex/to_container.hpp>
 #include <genex/algorithms/min_element.hpp>
 #include <genex/views/concat.hpp>
-#include <genex/views/transform.hpp>
 #include <genex/views/filter.hpp>
+#include <genex/views/transform.hpp>
 
 
 spp::asts::TypePostfixExpressionAst::TypePostfixExpressionAst(
@@ -227,35 +229,47 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
     lhs->stage_7_analyse_semantics(sm, meta);
     const auto lhs_type = lhs->infer_type(sm, meta);
     const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_type);
+
+    // Check the left-hand-side isn't a generic type. Todo: until constraints
+    if (lhs_type_sym->is_generic) {
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppGenericTypeInvalidUsageError>().with_args(
+            *lhs, *lhs_type, "postfix type").with_scopes({sm->current_scope}).raise();
+    }
+
     const auto lhs_type_scope = lhs_type_sym->scope;
 
     // Check there is only 1 target field on the lhs at the highest level.
-    const auto op_nested = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
-    auto scopes_and_syms = std::vector{lhs_type_sym->scope}
-        | genex::views::concat(lhs_type_sym->scope->sup_scopes())
-        | genex::views::transform([name=op_nested->name.get()](auto &&x) { return std::make_pair(x, x->table.type_tbl.get(ast_clone(name))); })
-        | genex::views::filter([](auto &&x) { return x.second != nullptr; })
-        | genex::views::transform([lhs_type_sym](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
-        | genex::to<std::vector>();
+    if (const auto op_nested = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get()); op_nested != nullptr) {
+        auto scopes_and_syms = std::vector{lhs_type_sym->scope}
+            | genex::views::concat(lhs_type_sym->scope->sup_scopes())
+            | genex::views::transform([name=op_nested->name.get()](auto &&x) { return std::make_pair(x, x->table.type_tbl.get(ast_clone(name))); })
+            | genex::views::filter([](auto &&x) { return x.second != nullptr; })
+            | genex::views::transform([lhs_type_sym](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
+            | genex::to<std::vector>();
 
-    auto min_depth = scopes_and_syms.empty() ? 0 : genex::algorithms::min_element(scopes_and_syms
-        | genex::views::transform([](auto &&x) { return std::get<0>(x); })
-        | genex::to<std::vector>());
+        auto min_depth = scopes_and_syms.empty() ? 0 : genex::algorithms::min_element(scopes_and_syms
+            | genex::views::transform([](auto &&x) { return std::get<0>(x); })
+            | genex::to<std::vector>());
 
-    auto closest = scopes_and_syms
-        | genex::views::filter([min_depth](auto &&x) { return std::get<0>(x) == min_depth; })
-        | genex::views::transform([](auto &&x) { return std::make_pair(std::get<1>(x), std::get<2>(x)); })
-        | genex::to<std::vector>();
+        auto closest = scopes_and_syms
+            | genex::views::filter([min_depth](auto &&x) { return std::get<0>(x) == min_depth; })
+            | genex::views::transform([](auto &&x) { return std::make_pair(std::get<1>(x), std::get<2>(x)); })
+            | genex::to<std::vector>();
 
-    if (closest.size() > 1) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppAmbiguousMemberAccessError>().with_args(
-            *closest[0].second->name, *closest[1].second->name, *op_nested->name).with_scopes({closest[0].first, closest[1].first, sm->current_scope}).raise();
+        if (closest.size() > 1) {
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppAmbiguousMemberAccessError>().with_args(
+                *closest[0].second->name, *closest[1].second->name, *op_nested->name).with_scopes({closest[0].first, closest[1].first, sm->current_scope}).raise();
+        }
+
+        // Ensure the type exists on the "lhs" part.
+        analyse::utils::type_utils::get_type_part_symbol_with_error(*lhs_type_scope, *op_nested->name, *sm, meta, true);
     }
 
-    meta->save();
-    meta->type_analysis_type_scope = lhs_type_scope;
-    op_nested->stage_7_analyse_semantics(sm, meta);
-    meta->restore();
+    // Otherwise, the "?" operator is being used, so analyse the optional type.
+    else {
+        const auto opt_type = generate::common_types::option_type(pos_start(), lhs);
+        opt_type->stage_7_analyse_semantics(sm, meta);
+    }
 }
 
 
@@ -265,13 +279,19 @@ auto spp::asts::TypePostfixExpressionAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Infer the type of the left-hand-side.
     lhs->stage_7_analyse_semantics(sm, meta);
-    const auto lhs_type = lhs->infer_type(sm, meta);
-    const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_type);
-    const auto lhs_type_scope = lhs_type_sym->scope;
 
-    // Infer the type of the postfix operation.
-    const auto op_nested = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
-    const auto part = analyse::utils::type_utils::get_type_part_symbol_with_error(*lhs_type_scope, *op_nested->name, *sm, meta, true)->fq_name();
-    const auto sym = lhs_type_scope->get_type_symbol(part);
-    return sym->fq_name();
+    if (const auto op_nested = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get()); op_nested != nullptr) {
+        const auto lhs_type = lhs->infer_type(sm, meta);
+        const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_type);
+        const auto lhs_type_scope = lhs_type_sym->scope;
+
+        // Infer the type of the postfix operation.
+        const auto part = analyse::utils::type_utils::get_type_part_symbol_with_error(*lhs_type_scope, *op_nested->name, *sm, meta, true)->fq_name();
+        const auto sym = lhs_type_scope->get_type_symbol(part);
+        return sym->fq_name();
+    }
+    else {
+        const auto opt_type = generate::common_types::option_type(pos_start(), lhs);
+        return opt_type;
+    }
 }
