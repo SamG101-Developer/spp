@@ -1,8 +1,8 @@
 #include <spp/asts/generic_argument_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_postfix_expression_operator_nested_type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
+#include <spp/asts/type_postfix_expression_operator_nested_type_ast.hpp>
 
 
 spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypePostfixExpressionOperatorNestedTypeAst(
@@ -89,6 +89,7 @@ auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::type_parts() const
 }
 
 
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
+auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::type_parts()
+    -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
     return {name};
 }

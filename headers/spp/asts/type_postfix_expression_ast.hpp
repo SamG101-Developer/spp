@@ -37,7 +37,6 @@ protected:
     auto equals_type_postfix_expression(TypePostfixExpressionAst const &) const -> std::strong_ordering override;
 
 public:
-    SPP_NO_ASAN
     auto iterator() const -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> override;
 
     auto is_never_type() const -> bool override;

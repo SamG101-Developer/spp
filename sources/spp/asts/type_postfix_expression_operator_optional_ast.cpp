@@ -12,17 +12,20 @@ spp::asts::TypePostfixExpressionOperatorOptionalAst::TypePostfixExpressionOperat
 spp::asts::TypePostfixExpressionOperatorOptionalAst::~TypePostfixExpressionOperatorOptionalAst() = default;
 
 
-auto spp::asts::TypePostfixExpressionOperatorOptionalAst::pos_start() const -> std::size_t {
+auto spp::asts::TypePostfixExpressionOperatorOptionalAst::pos_start() const
+    -> std::size_t {
     return tok_qst->pos_start();
 }
 
 
-auto spp::asts::TypePostfixExpressionOperatorOptionalAst::pos_end() const -> std::size_t {
+auto spp::asts::TypePostfixExpressionOperatorOptionalAst::pos_end() const
+    -> std::size_t {
     return tok_qst->pos_end();
 }
 
 
-auto spp::asts::TypePostfixExpressionOperatorOptionalAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::TypePostfixExpressionOperatorOptionalAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<TypePostfixExpressionOperatorOptionalAst>(
         ast_clone(tok_qst));
 }
@@ -35,7 +38,9 @@ spp::asts::TypePostfixExpressionOperatorOptionalAst::operator std::string() cons
 }
 
 
-auto spp::asts::TypePostfixExpressionOperatorOptionalAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::TypePostfixExpressionOperatorOptionalAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_qst);
     SPP_PRINT_END;
