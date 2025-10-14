@@ -185,7 +185,6 @@ namespace spp::asts {
 
     struct TypePostfixExpressionOperatorAst;
     struct TypePostfixExpressionOperatorNestedTypeAst;
-    struct TypePostfixExpressionOperatorOptionalAst;
 
     struct TypeUnaryExpressionOperatorAst;
     struct TypeUnaryExpressionOperatorBorrowAst;

@@ -69,20 +69,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
-    test_valid_type_shorthand_optional, R"(
-    fun f(mut a: std::string::Str?) -> std::void::Void { a = std::option::Some(val="hello") }
-)")
-
-
-SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestTypeAst,
-    test_valid_type_shorthand_optional_default, R"(
-    fun f(a: std::string::Str? = std::option::Some(val="hello")) -> std::void::Void { }
-)")
-
-
-SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestTypeAst,
     test_valid_type_shorthand_variant, R"(
     fun f(mut a: std::string::Str or std::boolean::Bool) -> std::void::Void { a = "hello" }
 )")
@@ -182,7 +168,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> std::void::Void {
-        let x: MyType[std::bignum::bigint::BigInt]::X
+        let x: MyType[std::number::S32]::X
         x = 10
     }
 )")
@@ -208,7 +194,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> std::void::Void {
-        let x: TypeC[std::bignum::bigint::BigInt]::InnerC[std::string::Str]::InnerB[std::boolean::Bool]::InnerA[std::number::U64]
+        let x: TypeC[std::number::S32]::InnerC[std::string::Str]::InnerB[std::boolean::Bool]::InnerA[std::number::U64]
         x = (10, "hello", false, 10_u64)
     }
 )")

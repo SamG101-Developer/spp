@@ -16,8 +16,6 @@ protected:
 
     virtual auto equals_nested_type(TypePostfixExpressionOperatorNestedTypeAst const &) const -> std::strong_ordering;
 
-    virtual auto equals_optional(TypePostfixExpressionOperatorOptionalAst const &) const -> std::strong_ordering;
-
 public:
     virtual auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> = 0;
 

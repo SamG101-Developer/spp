@@ -134,7 +134,6 @@
 #include <spp/asts/type_postfix_expression_ast.hpp>
 #include <spp/asts/type_postfix_expression_operator_ast.hpp>
 #include <spp/asts/type_postfix_expression_operator_nested_type_ast.hpp>
-#include <spp/asts/type_postfix_expression_operator_optional_ast.hpp>
 #include <spp/asts/type_tuple_shorthand_ast.hpp>
 #include <spp/asts/type_unary_expression_ast.hpp>
 #include <spp/asts/type_unary_expression_operator_borrow_ast.hpp>
@@ -1728,15 +1727,9 @@ auto spp::parse::ParserSpp::parse_postfix_type_expression() -> std::unique_ptr<a
 
 auto spp::parse::ParserSpp::parse_postfix_type_expression_op() -> std::unique_ptr<asts::TypePostfixExpressionOperatorAst> {
     PARSE_ALTERNATE(
-        p1, asts::TypePostfixExpressionOperatorAst, parse_postfix_type_expression_op_optional,
+        p1, asts::TypePostfixExpressionOperatorAst,
         parse_postfix_type_expression_op_nested);
     return FORWARD_AST(p1);
-}
-
-
-auto spp::parse::ParserSpp::parse_postfix_type_expression_op_optional() -> std::unique_ptr<asts::TypePostfixExpressionOperatorOptionalAst> {
-    PARSE_ONCE(p1, parse_token_question_mark);
-    return CREATE_AST(asts::TypePostfixExpressionOperatorOptionalAst, p1);
 }
 
 
