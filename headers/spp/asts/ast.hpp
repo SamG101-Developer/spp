@@ -27,6 +27,8 @@ namespace spp::analyse::scopes {
 namespace spp::asts {
     struct Ast;
 
+    // todo: maybe an ast_clone overload for shared_ptr&& (not const &) - where the parts are moved not cloned?
+
     template <typename T>
     SPP_ATTR_ALWAYS_INLINE
     auto ast_clone(std::unique_ptr<T> const &ast) -> std::unique_ptr<std::remove_cvref_t<T>> {

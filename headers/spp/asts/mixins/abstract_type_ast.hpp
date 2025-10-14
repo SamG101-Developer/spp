@@ -3,6 +3,7 @@
 
 #include <genex/generator.hpp>
 
+
 /// @cond
 namespace spp::asts {
     struct IdentifierAst;
