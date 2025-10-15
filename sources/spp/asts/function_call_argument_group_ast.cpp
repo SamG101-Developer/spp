@@ -210,7 +210,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
         for (auto &&[assignment, b, m, _] : sym->memory_info->borrow_refers_to) {
             if (assignment == nullptr) { continue; }
             (m ? borrows_mut : borrows_ref).emplace_back(assignment);
-            (m ? preexisting_borrows_mut : preexisting_borrows_ref)[assignment].emplace_back(ast_cast<IdentifierAst>(assignment));
+            (m ? preexisting_borrows_mut : preexisting_borrows_ref)[assignment].emplace_back(ast_clone(ast_cast<IdentifierAst>(assignment)));
         }
     }
 

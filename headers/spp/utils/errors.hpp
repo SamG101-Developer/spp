@@ -33,7 +33,7 @@ public:
     std::string final_message;
 
 public:
-    AbstractError(AbstractError const &) noexcept = default;
+    AbstractError(AbstractError const &) = default;
     ~AbstractError() override = default;
 
     [[nodiscard]]
