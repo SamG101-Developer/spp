@@ -105,20 +105,21 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_8_check_memory(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
     -> void {
-    // Pin the lambda symbol if it is assigned to a variable and has borrowed captures.
-    if (meta->assignment_target != nullptr) {
-        captures
-            | genex::views::ptr
-            | genex::views::filter([](auto &&x) { return x->conv != nullptr; })
-            | genex::views::for_each([&](auto &&x) { meta->current_lambda_outer_scope->get_var_symbol(meta->assignment_target)->memory_info->ast_pins.emplace_back(x->val.get()); });
-    }
 
-    // Pin any values that have been captured by the closure as borrows.
-    for (auto &&cap : captures) {
+    // Any borrowed captures need pinning and marking as extended borrows.
+    const auto [ass_sym, _] = meta->current_lambda_outer_scope->get_var_symbol_outermost(*meta->assignment_target);
+    for (auto const &cap : captures) {
         if (cap->conv != nullptr) {
+            // Mark the pins on the capture and the target.
             const auto cap_val = ast_cast<IdentifierAst>(cap->val.get());
             const auto cap_sym = sm->current_scope->get_var_symbol(ast_clone(cap_val));
-            cap_sym->memory_info->ast_pins.emplace_back(cap->val.get());
+            if (ass_sym != nullptr) { ass_sym->memory_info->ast_pins.emplace_back(cap->val.get()); }
+            if (cap_sym != nullptr) { cap_sym->memory_info->ast_pins.emplace_back(cap->val.get()); }
+
+            // Mark the extended borrow.
+            auto is_mut = *cap->conv == ConventionAst::ConventionTag::MUT;
+            cap_sym->memory_info->extended_borrows.emplace_back(
+                cap->val.get(), is_mut, meta->current_lambda_outer_scope);
         }
     }
 }

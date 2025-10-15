@@ -1,7 +1,4 @@
-#include <format>
-
 #include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/generate/common_types.hpp>
 #include <spp/asts/closure_expression_ast.hpp>
 #include <spp/asts/closure_expression_capture_ast.hpp>
 #include <spp/asts/closure_expression_capture_group_ast.hpp>
@@ -14,6 +11,7 @@
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/asts/generate/common_types.hpp>
 
 #include <genex/to_container.hpp>
 #include <genex/algorithms/any_of.hpp>
@@ -97,7 +95,7 @@ auto spp::asts::ClosureExpressionAst::stage_7_analyse_semantics(
     // Analyse the body of the closure.
     body->stage_7_analyse_semantics(sm, meta);
     const auto body_type = body->infer_type(sm, meta);
-    m_ret_type = std::move(not meta->enclosing_function_ret_type.empty() ? meta->enclosing_function_ret_type[0] : body_type);
+    m_ret_type = not meta->enclosing_function_ret_type.empty() ? meta->enclosing_function_ret_type[0] : body_type;
     meta->restore();
 
     // Set the scope back.
@@ -133,6 +131,14 @@ auto spp::asts::ClosureExpressionAst::infer_type(
     // Create the type as a nullptr, so it can be analysed later.
     std::shared_ptr<TypeAst> ty = nullptr;
 
+    auto is_ref_cap = [](auto const &cap) {
+        return cap->conv and *cap->conv == ConventionAst::ConventionTag::REF;
+    };
+
+    auto is_mut_cap = [](auto const &cap) {
+        return cap->conv and *cap->conv == ConventionAst::ConventionTag::MUT;
+    };
+
     // If there are no captures, return a FunRef type with the parameters and return type.
     if (pc_group->capture_group->captures.empty()) {
         auto param_types = pc_group->param_group->params
@@ -149,7 +155,7 @@ auto spp::asts::ClosureExpressionAst::infer_type(
         ty = generate::common_types::fun_mov_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 
-    else if (genex::algorithms::any_of(pc_group->capture_group->captures, [](auto const &x) { return x->conv and *x->conv == ConventionAst::ConventionTag::MUT; })) {
+    else if (genex::algorithms::any_of(pc_group->capture_group->captures, is_mut_cap)) {
         // If there are mutably borrowed captures, return a FunMut type with the parameters and return type.
         auto param_types = pc_group->param_group->params
             | genex::views::transform([](auto const &x) { return x->type; })
@@ -157,7 +163,7 @@ auto spp::asts::ClosureExpressionAst::infer_type(
         ty = generate::common_types::fun_mut_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 
-    else if (genex::algorithms::any_of(pc_group->capture_group->captures, [](auto const &x) { return x->conv and *x->conv == ConventionAst::ConventionTag::REF; })) {
+    else if (genex::algorithms::any_of(pc_group->capture_group->captures, is_ref_cap)) {
         // If there are immutable borrowed captures, return a FunRef type with the parameters and return type.
         auto param_types = pc_group->param_group->params
             | genex::views::transform([](auto const &x) { return x->type; })

@@ -19,6 +19,9 @@
 #include <genex/actions/remove.hpp>
 #include <genex/actions/remove_if.hpp>
 #include <genex/views/enumerate.hpp>
+#include <genex/views/filter.hpp>
+#include <genex/views/for_each.hpp>
+#include <genex/views/tuple_nth.hpp>
 #include <genex/views/view.hpp>
 
 
@@ -132,24 +135,13 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
     auto all_syms = sm->current_scope->all_var_symbols();
     auto inner_syms = sm->current_scope->all_var_symbols(true);
 
-    // Invalidate yielded borrows that are linked.
-    for (auto &&sym : inner_syms) {
-        for (auto *pin : sym->memory_info->ast_pins | genex::views::view | genex::to<std::vector>()) {
-            const auto pin_sym = sm->current_scope->get_var_symbol(ast_clone(ast_cast<IdentifierAst>(pin)));
-            for (auto &&info : pin_sym->memory_info->borrow_refers_to | genex::views::view | genex::to<std::vector>()) {
-                pin_sym->memory_info->borrow_refers_to |= genex::actions::remove_if([sym](auto &&x) { return *ast_cast<IdentifierAst>(std::get<0>(x)) == *sym->name; });
-                pin_sym->memory_info->borrow_refers_to |= genex::actions::remove_if([info](auto &&x) { return std::get<0>(x) == std::get<0>(info); });
-            }
-        }
-    }
-
-    for (auto &&sym : all_syms) {
-        for (auto &&bor : sym->memory_info->borrow_refers_to | genex::views::view | genex::to<std::vector>()) {
-            auto [a, b, _, scope] = bor;
-            if (scope == sm->current_scope) {
-                sym->memory_info->borrow_refers_to |= genex::actions::remove_if([bor](auto &&x) { return x == bor; });
-            }
-        }
+    // Invalidate pins and extended borrows that have now gone out of scope.
+    for (auto const &sym : all_syms) {
+        auto &ebs = sym->memory_info->extended_borrows;
+        sym->memory_info->extended_borrows
+            | genex::to<std::vector>()
+            | genex::views::filter([sm](auto const &x) { return std::get<2>(x) == sm->current_scope->parent; })
+            | genex::views::for_each([&ebs](auto const &x) { ebs |= genex::actions::remove_if([x](auto const &y) { return y == x; }); });
     }
 
     // If the final expression of the inner scope is being used (ie assigned ot outer variable), then memory check it.

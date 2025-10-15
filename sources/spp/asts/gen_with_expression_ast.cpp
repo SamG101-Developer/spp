@@ -4,9 +4,9 @@
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/gen_with_expression_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_argument_type_keyword_ast.hpp>
+#include <spp/asts/gen_with_expression_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
 #include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
 #include <spp/asts/token_ast.hpp>
@@ -23,23 +23,28 @@ spp::asts::GenWithExpressionAst::GenWithExpressionAst(
     tok_gen(std::move(tok_gen)),
     tok_with(std::move(tok_with)),
     expr(std::move(expr)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_gen, lex::SppTokenType::KW_GEN, "gen");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_with, lex::SppTokenType::KW_WITH, "with");
 }
 
 
 spp::asts::GenWithExpressionAst::~GenWithExpressionAst() = default;
 
 
-auto spp::asts::GenWithExpressionAst::pos_start() const -> std::size_t {
+auto spp::asts::GenWithExpressionAst::pos_start() const
+    -> std::size_t {
     return tok_gen->pos_start();
 }
 
 
-auto spp::asts::GenWithExpressionAst::pos_end() const -> std::size_t {
+auto spp::asts::GenWithExpressionAst::pos_end() const
+    -> std::size_t {
     return expr->pos_end();
 }
 
 
-auto spp::asts::GenWithExpressionAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::GenWithExpressionAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<GenWithExpressionAst>(
         ast_clone(tok_gen),
         ast_clone(tok_with),
@@ -56,7 +61,9 @@ spp::asts::GenWithExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenWithExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::GenWithExpressionAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_gen).append(" ");
     SPP_PRINT_APPEND(tok_with).append(" ");
