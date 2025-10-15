@@ -60,11 +60,12 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
     impl->stage_7_analyse_semantics(sm, meta);
 
     // Handle the "!" never type.
+    auto tm = ScopeManager(sm->global_scope, sm->current_scope->children[0].get());
     meta->save();
     meta->ignore_missing_else_branch_for_inference = true;
     const auto is_never = not impl->members.empty() and analyse::utils::type_utils::symbolic_eq(
-        *ast_cast<StatementAst>(impl->final_member())->infer_type(sm, meta), *generate::common_types_precompiled::NEVER,
-        *sm->current_scope, *sm->current_scope);
+        *ast_cast<StatementAst>(impl->final_member())->infer_type(&tm, meta), *generate::common_types_precompiled::NEVER,
+        *tm.current_scope, *sm->current_scope);
     meta->restore();
 
     // Check there is a return statement at the end (for non-void functions).

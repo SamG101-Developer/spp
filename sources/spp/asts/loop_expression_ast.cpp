@@ -113,7 +113,7 @@ auto spp::asts::LoopExpressionAst::stage_8_check_memory(
     tm.reset(sm->current_scope, sm->m_it);
     for (auto &m : {sm, &tm}) {
         meta->save();
-        meta->loop_double_check_active = true;
+        meta->loop_double_check_active = m == &tm;
         cond->stage_8_check_memory(m, meta);
         meta->restore();
 
