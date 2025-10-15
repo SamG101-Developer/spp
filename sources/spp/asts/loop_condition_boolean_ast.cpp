@@ -20,17 +20,20 @@ spp::asts::LoopConditionBooleanAst::LoopConditionBooleanAst(
 spp::asts::LoopConditionBooleanAst::~LoopConditionBooleanAst() = default;
 
 
-auto spp::asts::LoopConditionBooleanAst::pos_start() const -> std::size_t {
+auto spp::asts::LoopConditionBooleanAst::pos_start() const
+    -> std::size_t {
     return cond->pos_start();
 }
 
 
-auto spp::asts::LoopConditionBooleanAst::pos_end() const -> std::size_t {
+auto spp::asts::LoopConditionBooleanAst::pos_end() const
+    -> std::size_t {
     return cond->pos_end();
 }
 
 
-auto spp::asts::LoopConditionBooleanAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::LoopConditionBooleanAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<LoopConditionBooleanAst>(ast_clone(cond));
 }
 
@@ -42,7 +45,9 @@ spp::asts::LoopConditionBooleanAst::operator std::string() const {
 }
 
 
-auto spp::asts::LoopConditionBooleanAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::LoopConditionBooleanAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(cond);
     SPP_PRINT_END;

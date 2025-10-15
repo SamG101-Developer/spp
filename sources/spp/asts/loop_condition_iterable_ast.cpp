@@ -14,6 +14,7 @@
 
 #include <genex/views/for_each.hpp>
 
+
 spp::asts::LoopConditionIterableAst::LoopConditionIterableAst(
     decltype(var) &&var,
     decltype(tok_in) &&tok_in,
@@ -28,17 +29,20 @@ spp::asts::LoopConditionIterableAst::LoopConditionIterableAst(
 spp::asts::LoopConditionIterableAst::~LoopConditionIterableAst() = default;
 
 
-auto spp::asts::LoopConditionIterableAst::pos_start() const -> std::size_t {
+auto spp::asts::LoopConditionIterableAst::pos_start() const
+    -> std::size_t {
     return var->pos_start();
 }
 
 
-auto spp::asts::LoopConditionIterableAst::pos_end() const -> std::size_t {
+auto spp::asts::LoopConditionIterableAst::pos_end() const
+    -> std::size_t {
     return iterable->pos_end();
 }
 
 
-auto spp::asts::LoopConditionIterableAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::LoopConditionIterableAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<LoopConditionIterableAst>(
         ast_clone(var),
         ast_clone(tok_in),
@@ -55,7 +59,9 @@ spp::asts::LoopConditionIterableAst::operator std::string() const {
 }
 
 
-auto spp::asts::LoopConditionIterableAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::LoopConditionIterableAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(var);
     SPP_PRINT_APPEND(tok_in);
@@ -84,8 +90,8 @@ auto spp::asts::LoopConditionIterableAst::stage_7_analyse_semantics(
 
     // Set the memory information of the symbol based on the type of iteration.
     var->extract_names()
-        | genex::views::transform([sm](auto &&x) { return sm->current_scope->get_var_symbol(x); })
-        | genex::views::for_each([this, yield_type](auto &&x) {
+        | genex::views::transform([sm](auto const &x) { return sm->current_scope->get_var_symbol(x); })
+        | genex::views::for_each([this, yield_type](auto const &x) {
             const auto conv = yield_type->get_convention();
             x->memory_info->initialized_by(*this);
             x->memory_info->ast_borrowed = conv != nullptr ? this : nullptr;
