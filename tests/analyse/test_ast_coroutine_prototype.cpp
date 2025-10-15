@@ -132,3 +132,44 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         ret
     }
 )")
+
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    CoroutinePrototypeAst,
+    test_auto_unwrap_vector, R"(
+    use std::string::Str
+    use std::vector::Vec
+    use std::void::Void
+
+    fun f() -> Void {
+        let mut vec = Vec[Str]()
+        vec.push("hello")
+        vec.push("world")
+
+        let mut elem1 = vec.index_ref(0_uz)
+        let mut elem2 = vec.index_ref(1_uz)
+        let mut value = elem1 + elem2.clone()
+        value = "hello world !!!"
+    }
+)")
+
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    CoroutinePrototypeAst,
+    test_auto_unwrap_vector_wrong_gen_type,
+    SppFunctionCallNoValidSignaturesError, R"(
+    use std::string::Str
+    use std::vector::Vec
+    use std::void::Void
+
+    fun f() -> Void {
+        let mut vec = Vec[Str]()
+        vec.push("hello")
+        vec.push("world")
+
+        let mut elem1 = vec.index_ref(0_uz)
+        let mut elem2 = vec.index_ref(1_uz)
+        let mut value = elem1 + elem2
+        value = "hello world !!!"
+    }
+)")
