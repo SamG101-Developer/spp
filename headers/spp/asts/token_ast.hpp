@@ -58,7 +58,8 @@ struct std::hash<spp::asts::TokenAst> {
      * @param[in] t The TokenAst to hash.
      * @return The numeric mapped hash value.
      */
-    auto operator()(spp::asts::TokenAst const &t) const noexcept -> std::size_t {
-        return std::hash<std::string>()(magic_enum::enum_name(t.token_type).data());
+    auto operator()(spp::asts::TokenAst const &t) const noexcept -> std::size_t {  // todo: this looks very slow.
+        using UT = std::underlying_type_t<spp::lex::SppTokenType>;
+        return std::hash<UT>()(std::bit_cast<UT>(t.token_type));
     }
 };
