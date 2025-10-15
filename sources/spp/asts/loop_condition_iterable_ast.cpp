@@ -52,8 +52,8 @@ auto spp::asts::LoopConditionIterableAst::clone() const
 
 spp::asts::LoopConditionIterableAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(var);
-    SPP_STRING_APPEND(tok_in);
+    SPP_STRING_APPEND(var).append(" ");
+    SPP_STRING_APPEND(tok_in).append(" ");
     SPP_STRING_APPEND(iterable);
     SPP_STRING_END;
 }
@@ -63,8 +63,8 @@ auto spp::asts::LoopConditionIterableAst::print(
     meta::AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(var);
-    SPP_PRINT_APPEND(tok_in);
+    SPP_PRINT_APPEND(var).append(" ");
+    SPP_PRINT_APPEND(tok_in).append(" ");
     SPP_PRINT_APPEND(iterable);
     SPP_PRINT_END;
 }
@@ -95,8 +95,6 @@ auto spp::asts::LoopConditionIterableAst::stage_7_analyse_semantics(
             const auto conv = yield_type->get_convention();
             x->memory_info->initialized_by(*this);
             x->memory_info->ast_borrowed = conv != nullptr ? this : nullptr;
-            x->memory_info->is_borrow_mut = conv and *conv == ConventionAst::ConventionTag::MUT;
-            x->memory_info->is_borrow_ref = conv and *conv == ConventionAst::ConventionTag::REF;
         });
 }
 
