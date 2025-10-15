@@ -133,7 +133,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_uninitialized_symbol_in_array_repeated,
     SppUninitializedMemoryUseError, R"(
     fun f() -> std::void::Void {
-        let elem: std::string::Str
+        let elem: std::number::S32
         let a = [elem; 3_uz]
     }
 )")
