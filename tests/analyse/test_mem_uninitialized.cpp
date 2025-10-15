@@ -467,6 +467,17 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryUninitialized,
+    test_uninitialized_symbol_in_postfix_expression_operator_func_call,
+    SppUninitializedMemoryUseError, R"(
+    fun f() -> std::void::Void {
+        let func: std::function::FunRef[(std::boolean::Bool,), std::void::Void]
+        func(false)
+    }
+)")
+
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstMemoryUninitialized,
     test_uninitialized_symbol_in_ret_statement,
     SppUninitializedMemoryUseError, R"(
     fun f() -> std::string::Str {
