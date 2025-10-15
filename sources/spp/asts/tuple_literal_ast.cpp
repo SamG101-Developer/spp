@@ -115,14 +115,14 @@ auto spp::asts::TupleLiteralAst::stage_7_analyse_semantics(
 
 
 auto spp::asts::TupleLiteralAst::stage_8_check_memory(
-    ScopeManager *,
-    mixins::CompilerMetaData *)
+    ScopeManager * sm,
+    mixins::CompilerMetaData * meta)
     -> void {
     // Check the memory of each element in the array literal.
-    // for (auto &&elem : elems) {
-    //     elem->stage_8_check_memory(sm, meta);
-    //     analyse::utils::mem_utils::validate_symbol_memory(*elem, *elem, *sm, true, true, true, true, true, true, meta);
-    // }
+    for (auto &&elem : elems) {
+        elem->stage_8_check_memory(sm, meta);
+        analyse::utils::mem_utils::validate_symbol_memory(*elem, *elem, *sm, true, true, true, true, true, false, meta);
+    }
 }
 
 

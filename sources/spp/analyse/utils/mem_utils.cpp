@@ -113,6 +113,11 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
     const bool mark_moves,
     asts::mixins::CompilerMetaData *meta) -> void {
     // For tuple and array literals, recursively analyse each element.
+    if (auto const *arr_literal = asts::ast_cast<asts::ArrayLiteralRepeatedElementAst>(&value_ast); arr_literal != nullptr) {
+        const auto x = arr_literal->elem.get();
+        validate_symbol_memory(*x, move_ast, sm, true, true, true, true, true, mark_moves, meta);
+        return;
+    }
     if (auto const *arr_literal = asts::ast_cast<asts::ArrayLiteralExplicitElementsAst>(&value_ast); arr_literal != nullptr) {
         arr_literal->elems
             | genex::views::ptr

@@ -139,7 +139,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_8_check_memory(
     // Check the memory of the repeated element (is it initialized etc).
     elem->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
-        *elem, *tok_semicolon, *sm, true, true, true, true, true, true, meta);
+        *elem, *tok_semicolon, *sm, true, true, true, true, true, false, meta);
 }
 
 
