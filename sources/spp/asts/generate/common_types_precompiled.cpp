@@ -9,6 +9,10 @@ auto spp::asts::generate::common_types_precompiled::initialize_types() -> void {
     GEN_RES = common_types::gen_res_type(0, common_types::void_type(0), common_types::void_type(0), common_types::void_type(0))->without_generics();
     GEN_ONCE = common_types::gen_once_type(0, common_types::void_type(0))->without_generics();
 
+    GENERATED = common_types::generated_type(0, common_types::void_type(0))->without_generics();
+    GENERATED_OPT = common_types::generated_opt_type(0, common_types::void_type(0))->without_generics();
+    GENERATED_RES = common_types::generated_res_type(0, common_types::void_type(0), common_types::void_type(0))->without_generics();
+
     FUN_MOV = common_types::fun_mov_type(0, common_types::tuple_type(0, {}), common_types::void_type(0))->without_generics();
     FUN_MUT = common_types::fun_mut_type(0, common_types::tuple_type(0, {}), common_types::void_type(0))->without_generics();
     FUN_REF = common_types::fun_ref_type(0, common_types::tuple_type(0, {}), common_types::void_type(0))->without_generics();

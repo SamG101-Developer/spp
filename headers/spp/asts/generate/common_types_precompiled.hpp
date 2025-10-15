@@ -11,6 +11,10 @@ namespace spp::asts::generate::common_types_precompiled {
     inline std::shared_ptr<TypeAst> GEN_RES;
     inline std::shared_ptr<TypeAst> GEN_ONCE;
 
+    inline std::shared_ptr<TypeAst> GENERATED;
+    inline std::shared_ptr<TypeAst> GENERATED_OPT;
+    inline std::shared_ptr<TypeAst> GENERATED_RES;
+
     inline std::shared_ptr<TypeAst> FUN_MOV;
     inline std::shared_ptr<TypeAst> FUN_MUT;
     inline std::shared_ptr<TypeAst> FUN_REF;
