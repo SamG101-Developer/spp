@@ -5,6 +5,7 @@
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/assignment_statement_ast.hpp>
+#include <spp/asts/convention_ast.hpp>
 #include <spp/asts/expression_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
@@ -130,7 +131,7 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
         }
 
         // Attribute assignment (ie "x.y = z"), for a borrowed symbol, cannot contain an immutable borrow.
-        if (is_attr(lhs_expr) and lhs_sym->memory_info->is_borrow_ref) {
+        if (is_attr(lhs_expr) and lhs_sym->type->get_convention() and *lhs_sym->type->get_convention() == ConventionAst::ConventionTag::REF) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
                 *lhs_sym->name, *tok_assign, *lhs_sym->memory_info->ast_borrowed).with_scopes({sm->current_scope}).raise();
         }

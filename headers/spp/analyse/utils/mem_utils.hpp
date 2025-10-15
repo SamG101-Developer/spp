@@ -22,6 +22,7 @@ namespace spp::analyse::scopes {
 namespace spp::asts::mixins {
     struct CompilerMetaData;
 }
+
 /// @endcond
 
 
@@ -91,18 +92,6 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
     std::size_t initialization_counter = 0;
 
     /**
-     * If the symbol is borrowed mutably, then this is set to @c true. This causes restrictions by employing the law of
-     * exclusivity on overlapping symbols to ensure there are no data races.
-     */
-    bool is_borrow_mut = false;
-
-    /**
-     * If the symbol is borrowed immutably, then this is set to @c true. This causes restrictions by employing the law
-     * of exclusivity on overlapping symbols to ensure there are no data races.
-     */
-    bool is_borrow_ref = false;
-
-    /**
      * A symbol is inconsistently initialised if a symbol is <i>changed</i> into the initialised state in one branch, but
      * not in another branch. This is used to track whether a symbol has been initialised in one branch, but not in
      * another branch.
@@ -128,10 +117,11 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
     std::optional<InconsistentCondMemState> is_inconsistently_pinned;
 
     /**
-     * The @c borrow_refers_to is a list of tuples that represent the borrows that this AST refers to having been
-     * pinned. Todo: expand this doc more.
+     * The @c extended_borrows is a list of tuples that represent the potential long-term borrow state of the symbol,
+     * such as being created from an @c async function call, coroutine call, or iteration based loop. The tuple stores
+     * target, definition, mutability and scope information.
      */
-    std::vector<std::tuple<asts::Ast*, asts::FunctionCallArgumentAst*, bool, scopes::Scope*>> borrow_refers_to;
+    std::vector<std::tuple<asts::Ast*, bool, scopes::Scope*>> extended_borrows;
 
     /**
      * Set the @c ast_initialization AST to the given AST, reset the @c ast_moved AST to @c nullptr, and remove all
@@ -160,7 +150,7 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
      * time.
      * @return The snapshot of the memory information.
      */
-    auto snapshot() const -> MemoryInfoSnapshot;
+    SPP_ATTR_NODISCARD auto snapshot() const -> MemoryInfoSnapshot;
 
     /**
      * Provide a clone method for the @c MemoryInfo struct. This is used to create a clone of the memory information for
@@ -168,7 +158,7 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
      * @return A unique pointer to the cloned @c MemoryInfo.
      * @note The clone is not a deep copy, so pointers will be shared between the original and the clone.
      */
-    auto clone() const -> std::unique_ptr<MemoryInfo>;
+    SPP_ATTR_NODISCARD auto clone() const -> std::unique_ptr<MemoryInfo>;
 };
 
 
