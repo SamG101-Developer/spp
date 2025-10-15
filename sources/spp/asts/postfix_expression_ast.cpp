@@ -18,17 +18,20 @@ spp::asts::PostfixExpressionAst::PostfixExpressionAst(
 spp::asts::PostfixExpressionAst::~PostfixExpressionAst() = default;
 
 
-auto spp::asts::PostfixExpressionAst::pos_start() const -> std::size_t {
+auto spp::asts::PostfixExpressionAst::pos_start() const
+    -> std::size_t {
     return lhs->pos_start();
 }
 
 
-auto spp::asts::PostfixExpressionAst::pos_end() const -> std::size_t {
+auto spp::asts::PostfixExpressionAst::pos_end() const
+    -> std::size_t {
     return op->pos_end();
 }
 
 
-auto spp::asts::PostfixExpressionAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::PostfixExpressionAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<PostfixExpressionAst>(
         ast_clone(lhs),
         ast_clone(op));
@@ -43,7 +46,9 @@ spp::asts::PostfixExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::PostfixExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::PostfixExpressionAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(lhs);
     SPP_PRINT_APPEND(op);
