@@ -67,12 +67,9 @@ auto spp::asts::IterExpressionBranchAst::stage_7_analyse_semantics(
     auto scope_name = analyse::scopes::ScopeBlockName("<iter-branch#" + std::to_string(pos_start()) + ">");
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
 
-
     // Analyse the pattern, guard and body.
     pattern->stage_7_analyse_semantics(sm, meta);
-    if (guard) {
-        guard->stage_7_analyse_semantics(sm, meta);
-    }
+    if (guard) { guard->stage_7_analyse_semantics(sm, meta); }
     body->stage_7_analyse_semantics(sm, meta);
 
     // Exit the scope.
@@ -88,9 +85,7 @@ auto spp::asts::IterExpressionBranchAst::stage_8_check_memory(
 
     // Check the patterns, guard and body.
     pattern->stage_8_check_memory(sm, meta);
-    if (guard) {
-        guard->stage_8_check_memory(sm, meta);
-    }
+    if (guard) { guard->stage_8_check_memory(sm, meta); }
     body->stage_8_check_memory(sm, meta);
 
     // Move out of the branch's scope.
