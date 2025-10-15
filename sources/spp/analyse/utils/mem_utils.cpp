@@ -6,6 +6,7 @@
 #include <spp/analyse/scopes/symbols.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/asts/array_literal_explicit_elements_ast.hpp>
+#include <spp/asts/array_literal_repeated_element_ast.hpp>
 #include <spp/asts/ast.hpp>
 #include <spp/asts/case_expression_branch_ast.hpp>
 #include <spp/asts/expression_ast.hpp>
@@ -15,10 +16,9 @@
 
 #include <genex/to_container.hpp>
 #include <genex/actions/remove.hpp>
-#include <genex/algorithms/contains.hpp>
 #include <genex/views/cast_dynamic.hpp>
-#include <genex/views/for_each.hpp>
 #include <genex/views/filter.hpp>
+#include <genex/views/for_each.hpp>
 #include <genex/views/transform.hpp>
 
 
@@ -207,7 +207,7 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
         | genex::views::cast_dynamic<asts::IdentifierAst const*>()
         | genex::to<std::vector>();
 
-    if (not symbolic_pins.empty() and not copies) {
+    if (not symbolic_pins.empty() and not copies and not partial_copies) {
         // todo: ast_clone or shared_from_this?
         const auto pin_sym = var_scope->get_var_symbol(ast_clone(symbolic_pins.front()));
         const auto where_init = var_sym->memory_info->ast_initialization_origin;
