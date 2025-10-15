@@ -39,7 +39,7 @@ auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
         value = ast_clone(comptime_arg->val);
     }
     if (auto const *value_as_type = asts::ast_cast<TypeIdentifierAst>(value.get()); value_as_type != nullptr) {
-        value = IdentifierAst::from_type(*std::shared_ptr(ast_clone(value_as_type)));
+        value = IdentifierAst::from_type(*std::shared_ptr(ast_clone(value_as_type)));  // Don't remove "shared_ptr"
     }
 
     // Create the GenericArgumentCompKeywordAst with the name and value.

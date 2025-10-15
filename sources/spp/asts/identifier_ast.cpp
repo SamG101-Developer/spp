@@ -30,17 +30,20 @@ spp::asts::IdentifierAst::IdentifierAst(
 spp::asts::IdentifierAst::~IdentifierAst() = default;
 
 
-auto spp::asts::IdentifierAst::pos_start() const -> std::size_t {
+auto spp::asts::IdentifierAst::pos_start() const
+    -> std::size_t {
     return m_pos;
 }
 
 
-auto spp::asts::IdentifierAst::pos_end() const -> std::size_t {
+auto spp::asts::IdentifierAst::pos_end() const
+    -> std::size_t {
     return m_pos + val.length();
 }
 
 
-auto spp::asts::IdentifierAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::IdentifierAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<IdentifierAst>(m_pos, std::string(val));
 }
 
@@ -50,7 +53,9 @@ spp::asts::IdentifierAst::operator std::string() const {
 }
 
 
-auto spp::asts::IdentifierAst::print(meta::AstPrinter &) const -> std::string {
+auto spp::asts::IdentifierAst::print(
+    meta::AstPrinter &) const
+    -> std::string {
     return val;
 }
 
@@ -137,5 +142,5 @@ auto spp::asts::IdentifierAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Extract the symbol from the current scope, as a variable symbol.
     const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));
-    return var_sym ? var_sym->type : nullptr;  // ? var_sym->type : nullptr;
+    return var_sym ? var_sym->type : nullptr; // ? var_sym->type : nullptr;
 }

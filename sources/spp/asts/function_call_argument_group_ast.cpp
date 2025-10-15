@@ -203,14 +203,14 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
 
     // Merge the preexisting borrows into the borrow lists.
     for (auto &&arg : args) {
-        auto arg_val = ast_cast<IdentifierAst>(ast_clone(arg->val));
-        const auto sym = sm->current_scope->get_var_symbol(std::move(arg_val));
-        if (sym == nullptr) { continue; }
+        const auto arg_val = ast_cast<IdentifierAst>(arg->val.get());
+        if (arg_val == nullptr) { continue; }
+        const auto sym = sm->current_scope->get_var_symbol(ast_clone(arg_val));
 
         for (auto &&[assignment, b, m, _] : sym->memory_info->borrow_refers_to) {
             if (assignment == nullptr) { continue; }
             (m ? borrows_mut : borrows_ref).emplace_back(assignment);
-            (m ? preexisting_borrows_mut : preexisting_borrows_ref).try_emplace(assignment, std::vector<std::shared_ptr<IdentifierAst>>()).first->second.emplace_back(ast_cast<IdentifierAst>(assignment));
+            (m ? preexisting_borrows_mut : preexisting_borrows_ref)[assignment].emplace_back(ast_cast<IdentifierAst>(assignment));
         }
     }
 
@@ -248,7 +248,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
         }
 
         else if (arg->conv and *arg->conv == ConventionAst::ConventionTag::REF) {
-            // Check the mutable borrow doesn't overlap with any other borrow in the same scope.
+            // Check the immutable borrow doesn't overlap with any other mutable borrows in the same scope.
             auto overlaps = borrows_mut
                 | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
                 | genex::to<std::vector>();
@@ -275,12 +275,12 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 }
             }
 
-            // Add the mutable borrow to the mutable borrow set.
+            // Add the immutable borrow to the immutable borrow set.
             borrows_ref.emplace_back(arg->val.get());
         }
 
         else if (arg->conv and *arg->conv == ConventionAst::ConventionTag::MUT) {
-            // Check the immutable borrow doesn't overlap with any other mutable borrow in the same scope.
+            // Check the mutable borrow doesn't overlap with any other borrows in the same scope.
             auto overlaps = genex::views::concat(borrows_ref, borrows_mut)
                 | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
                 | genex::to<std::vector>();

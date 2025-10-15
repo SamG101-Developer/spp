@@ -56,17 +56,20 @@ spp::asts::TypeIdentifierAst::TypeIdentifierAst(
 spp::asts::TypeIdentifierAst::~TypeIdentifierAst() = default;
 
 
-auto spp::asts::TypeIdentifierAst::pos_start() const -> std::size_t {
+auto spp::asts::TypeIdentifierAst::pos_start() const
+    -> std::size_t {
     return m_pos;
 }
 
 
-auto spp::asts::TypeIdentifierAst::pos_end() const -> std::size_t {
+auto spp::asts::TypeIdentifierAst::pos_end() const
+    -> std::size_t {
     return generic_arg_group ? generic_arg_group->pos_end() : m_pos + name.length();
 }
 
 
-auto spp::asts::TypeIdentifierAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::TypeIdentifierAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<TypeIdentifierAst>(
         m_pos,
         std::string(name),
@@ -82,7 +85,9 @@ spp::asts::TypeIdentifierAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypeIdentifierAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::TypeIdentifierAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     formatted_string.append(name);
     SPP_PRINT_APPEND(generic_arg_group);
@@ -130,8 +135,7 @@ auto spp::asts::TypeIdentifierAst::equals_type_identifier(
 }
 
 
-auto spp::asts::TypeIdentifierAst::iterator(
-    ) const
+auto spp::asts::TypeIdentifierAst::iterator() const
     -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> {
     // First yield is the original type being iterated over.
     co_yield std::dynamic_pointer_cast<const TypeIdentifierAst>(shared_from_this());
@@ -168,48 +172,43 @@ auto spp::asts::TypeIdentifierAst::iterator(
 }
 
 
-auto spp::asts::TypeIdentifierAst::is_never_type(
-    ) const
+auto spp::asts::TypeIdentifierAst::is_never_type() const
     -> bool {
     return m_is_never_type;
 }
 
 
-auto spp::asts::TypeIdentifierAst::ns_parts(
-    ) const
+auto spp::asts::TypeIdentifierAst::ns_parts() const
     -> std::vector<std::shared_ptr<const IdentifierAst>> {
     return {};
 }
 
 
-auto spp::asts::TypeIdentifierAst::ns_parts(
-    ) -> std::vector<std::shared_ptr<IdentifierAst>> {
+auto spp::asts::TypeIdentifierAst::ns_parts()
+    -> std::vector<std::shared_ptr<IdentifierAst>> {
     return {};
 }
 
 
-auto spp::asts::TypeIdentifierAst::type_parts(
-    ) const
+auto spp::asts::TypeIdentifierAst::type_parts() const
     -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
     return std::vector{std::dynamic_pointer_cast<const TypeIdentifierAst>(shared_from_this())};
 }
 
 
-auto spp::asts::TypeIdentifierAst::type_parts(
-    ) -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
+auto spp::asts::TypeIdentifierAst::type_parts()
+    -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
     return std::vector{std::dynamic_pointer_cast<TypeIdentifierAst>(shared_from_this())};
 }
 
 
-auto spp::asts::TypeIdentifierAst::without_convention(
-    ) const
+auto spp::asts::TypeIdentifierAst::without_convention() const
     -> std::shared_ptr<const TypeAst> {
     return shared_from_this();
 }
 
 
-auto spp::asts::TypeIdentifierAst::get_convention(
-    ) const
+auto spp::asts::TypeIdentifierAst::get_convention() const
     -> ConventionAst* {
     return nullptr;
 }
@@ -334,7 +333,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     -> void {
     // Get the type scope for this type.
     auto type_scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
-    const auto original_scope = type_scope;  // this is needed for postfix types (getting generics from the lhs).
+    const auto original_scope = type_scope; // this is needed for postfix types (getting generics from the lhs).
 
     // Determine the type scope and type symbol.
     const auto type_sym = analyse::utils::type_utils::get_type_part_symbol_with_error(

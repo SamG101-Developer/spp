@@ -202,7 +202,8 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
         | genex::views::cast_dynamic<asts::IdentifierAst const*>()
         | genex::to<std::vector>();
 
-    if (not symbolic_pins.empty() and not copies) {  // todo: ast_clone or shared_from_this?
+    if (not symbolic_pins.empty() and not copies) {
+        // todo: ast_clone or shared_from_this?
         const auto pin_sym = var_scope->get_var_symbol(ast_clone(symbolic_pins.front()));
         const auto where_init = var_sym->memory_info->ast_initialization_origin;
         const auto where_move = &move_ast;
@@ -247,13 +248,13 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
             | genex::to<std::vector>();
 
         auto old_symbol_mem_info = var_symbols_in_scope
-            | genex::views::transform([sm](auto &&x) { return std::make_pair(x, sm->current_scope->get_var_symbol(x->name)->memory_info->snapshot()); })
+            | genex::views::transform([](auto const &x) { return std::make_pair(x.get(), x->memory_info->snapshot()); })
             | genex::to<std::vector>();
 
         // Analyse the memory and then recheck the symbols' memory status.
         branch->stage_8_check_memory(sm, meta);
         auto new_symbol_mem_info = var_symbols_in_scope
-            | genex::views::transform([sm](auto &&x) { return std::make_pair(x, sm->current_scope->get_var_symbol(x->name)->memory_info->snapshot()); })
+            | genex::views::transform([](auto const &x) { return std::make_pair(x.get(), x->memory_info->snapshot()); })
             | genex::to<std::vector>();
 
         // Reset the memory status of the symbols for the next branch to analyse with the same original memory states.
@@ -265,7 +266,8 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
             sym->memory_info->initialization_counter = old_mem_status.initialization_counter;
 
             // Save this memory status for subsequent inter-branch status comparisons.
-            sym_mem_info.try_emplace(sym.get(), SymbolMemoryList()).first->second.emplace_back(branch, old_mem_status);
+            auto new_symbol_mem_info_map = std::map(new_symbol_mem_info.begin(), new_symbol_mem_info.end());
+            sym_mem_info[sym].emplace_back(branch, new_symbol_mem_info_map[sym]);
         }
     }
 
