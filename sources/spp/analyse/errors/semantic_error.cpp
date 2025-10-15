@@ -265,7 +265,7 @@ spp::analyse::errors::SppMoveFromPinnedMemoryError::SppMoveFromPinnedMemoryError
         11, "SPP Move From Pinned Memory Error");
     add_context_for_error(
         &ast,
-        "Expression attempting to move from pinned memory defined here");
+        "Expression attempting to move from pinned memory");
     add_context_for_error(
         &init_location,
         "Memory was initialized here");
@@ -291,7 +291,7 @@ spp::analyse::errors::SppMoveFromPinLinkedMemoryError::SppMoveFromPinLinkedMemor
         12, "SPP Move From Pin-Linked Memory Error");
     add_context_for_error(
         &ast,
-        "Expression attempting to move from pin-linked memory defined here");
+        "Expression attempting to move from pin-linked memory");
     add_context_for_error(
         &init_location,
         "Memory was initialized here");
