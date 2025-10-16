@@ -135,3 +135,62 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         g[false, true, false]()
     }
 )")
+
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstGenericArgumentGroup,
+    test_type_match_same_type_same_generic_order, R"(
+    cls Type[T, U] { }
+
+    fun f() -> std::void::Void {
+        let mut type1 = Type[std::boolean::Bool, std::string::Str]()
+        type1 = Type[T=std::boolean::Bool, U=std::string::Str]()
+    }
+)")
+
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstGenericArgumentGroup,
+    test_type_match_same_type_different_generic_order, R"(
+    cls Type[T, U] { }
+
+    fun f() -> std::void::Void {
+        let mut type1 = Type[std::boolean::Bool, std::string::Str]()
+        type1 = Type[U=std::string::Str, T=std::boolean::Bool]()
+    }
+)")
+
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstGenericArgumentGroup,
+    test_generic_replaced_with_generic, R"(
+    use std::string::Str
+    use std::vector::Vec
+
+    fun g[U]() -> Vec[U] {
+        ret Vec[U]()
+    }
+
+    fun f() -> std::void::Void {
+        let mut x = g[std::string::Str]()
+        x.push(element="hello")
+    }
+)")
+
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstGenericArgumentGroup,
+    test_generic_replaced_with_generic_stateful, R"(
+    use std::option::Opt
+    use std::option::Some
+    use std::string::Str
+
+    fun g[U]() -> Opt[U] {
+        ret Some[U]()
+    }
+
+    fun f() -> std::void::Void {
+        let mut x = g[std::string::Str]()
+        x = Some(val="hello")
+    }
+)")
