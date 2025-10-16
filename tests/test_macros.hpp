@@ -68,9 +68,23 @@ inline auto build_temp_project(std::string code, const bool add_main = true) -> 
     }
 
 
+#define SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(group, name, code) \
+    TEST(group, name) {                                          \
+        build_temp_project(code, false);                         \
+    }
+
+
 #define SPP_TEST_SHOULD_FAIL_SEMANTIC(group, name, error, code) \
     TEST(group, name) {                                         \
         EXPECT_THROW({                                          \
             build_temp_project(code);                           \
         }, spp::analyse::errors::error);                        \
+    }
+
+
+#define SPP_TEST_SHOULD_FAIL_SEMANTIC_NO_MAIN(group, name, error, code) \
+    TEST(group, name) {                                                 \
+        EXPECT_THROW({                                                  \
+            build_temp_project(code, false);                            \
+        }, spp::analyse::errors::error);                                \
     }
