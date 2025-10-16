@@ -4,6 +4,7 @@
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/cmp_statement_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/sup_prototype_extension_ast.hpp>
 #include <spp/asts/sup_prototype_functions_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
@@ -12,6 +13,7 @@
 #include <genex/to_container.hpp>
 #include <genex/algorithms/contains.hpp>
 #include <genex/algorithms/position.hpp>
+#include <genex/views/cast_dynamic.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/duplicates.hpp>
 #include <genex/views/filter.hpp>
@@ -196,48 +198,33 @@ auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statement
     auto existing_types = existing_scopes
         | genex::views::transform([](auto *scope) { return asts::ast_body(scope->ast); })
         | genex::views::join
-        | genex::views::filter([](auto *member) { return asts::ast_cast<asts::TypeStatementAst>(member); })
+        | genex::views::cast_dynamic<asts::TypeStatementAst*>()
         | genex::to<std::vector>();
 
-    auto existing_type_names = existing_types
-        | genex::views::transform([](auto *type_stmt) { return asts::ast_cast<asts::TypeStatementAst>(type_stmt)->new_type->name; })
+    const auto duplicate_types = existing_types
+        | genex::views::duplicates({}, [](auto *x) -> decltype(auto) { return *x->new_type; })
         | genex::to<std::vector>();
 
-    auto duplicate_type_names = existing_type_names
-        | genex::views::duplicates
-        | genex::to<std::vector>();
-
-    if (not duplicate_type_names.empty()) {
-        const auto i1 = genex::algorithms::position(existing_type_names, [&](auto &&x) { return x == duplicate_type_names[0]; });
-        const auto i2 = genex::algorithms::position(existing_type_names, [&](auto &&x) { return x == duplicate_type_names[1]; }, {}, -1, i1 + 1);
-        const auto d1 = existing_types[i1 as USize];
-        const auto d2 = existing_types[i2 as USize];
+    if (not duplicate_types.empty()) {
         errors::SemanticErrorBuilder<errors::SppIdentifierDuplicateError>().with_args(
-            *d1, *d2, "associated type").with_scopes({d1->m_scope, d2->m_scope}).raise();
+            *duplicate_types[0], *duplicate_types[1], "associated type").with_scopes({duplicate_types[0]->m_scope, duplicate_types[1]->m_scope}).raise();
     }
 
     // Check for conflicting "cmp" statements.
     auto existing_cmps = existing_scopes
         | genex::views::transform([](auto *scope) { return asts::ast_body(scope->ast); })
         | genex::views::join
-        | genex::views::filter([](auto *member) { return asts::ast_cast<asts::CmpStatementAst>(member); })
+        | genex::views::cast_dynamic<asts::CmpStatementAst*>()
+        | genex::views::filter([](auto const *cmp) { return cmp->type->type_parts().back()->name[0] != '$'; })
         | genex::to<std::vector>();
 
-    auto existing_cmp_names = existing_cmps
-        | genex::views::transform([](auto *cmp_stmt) { return asts::ast_cast<asts::CmpStatementAst>(cmp_stmt)->name; })
+    const auto duplicate_cmps = existing_cmps
+        | genex::views::duplicates({}, [](auto *cmp) -> decltype(auto) { return *cmp->name; })
         | genex::to<std::vector>();
 
-    auto duplicate_cmp_names = existing_cmp_names
-        | genex::views::duplicates
-        | genex::to<std::vector>();
-
-    if (not duplicate_cmp_names.empty()) {
-        const auto i1 = genex::algorithms::position(existing_cmp_names, [&](auto &&x) { return x == duplicate_cmp_names[0]; });
-        const auto i2 = genex::algorithms::position(existing_cmp_names, [&](auto &&x) { return x == duplicate_cmp_names[1]; }, {}, -1, i1 + 1);
-        const auto d1 = existing_cmps[i1 as USize];
-        const auto d2 = existing_cmps[i2 as USize];
+    if (not duplicate_cmps.empty()) {
         errors::SemanticErrorBuilder<errors::SppIdentifierDuplicateError>().with_args(
-            *d1, *d2, "comparison operator").with_scopes({d1->m_scope, d2->m_scope}).raise();
+            *duplicate_cmps[0], *duplicate_cmps[1], "comptime constant").with_scopes({duplicate_cmps[0]->m_scope, duplicate_cmps[1]->m_scope}).raise();
     }
 }
 
