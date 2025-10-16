@@ -1,16 +1,16 @@
+#include <spp/pch.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/generate/common_types.hpp>
 #include <spp/asts/boolean_literal_ast.hpp>
 #include <spp/asts/case_expression_ast.hpp>
 #include <spp/asts/case_expression_branch_ast.hpp>
 #include <spp/asts/case_pattern_variant_ast.hpp>
-#include <spp/asts/case_pattern_variant_expression_ast.hpp>
 #include <spp/asts/case_pattern_variant_else_ast.hpp>
+#include <spp/asts/case_pattern_variant_expression_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_argument_type_ast.hpp>
 #include <spp/asts/inner_scope_expression_ast.hpp>
@@ -20,7 +20,7 @@
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
-#include <spp/pch.hpp>
+#include <spp/asts/generate/common_types.hpp>
 
 #include <genex/to_container.hpp>
 #include <genex/actions/remove.hpp>
@@ -62,17 +62,20 @@ auto spp::asts::CaseExpressionAst::new_non_pattern_match(
 }
 
 
-auto spp::asts::CaseExpressionAst::pos_start() const -> std::size_t {
+auto spp::asts::CaseExpressionAst::pos_start() const
+    -> std::size_t {
     return tok_case->pos_start();
 }
 
 
-auto spp::asts::CaseExpressionAst::pos_end() const -> std::size_t {
+auto spp::asts::CaseExpressionAst::pos_end() const
+    -> std::size_t {
     return cond->pos_end();
 }
 
 
-auto spp::asts::CaseExpressionAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::CaseExpressionAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<CaseExpressionAst>(
         ast_clone(tok_case),
         ast_clone(cond),
@@ -91,7 +94,9 @@ spp::asts::CaseExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::CaseExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::CaseExpressionAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_case);
     SPP_PRINT_APPEND(cond);
@@ -141,7 +146,8 @@ auto spp::asts::CaseExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::CaseExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    mixins::CompilerMetaData *meta)
+    -> void {
     // Check the memory state of the condition.
     cond->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(*cond, *cond, *sm, true, true, true, false, false, false, meta);
@@ -171,12 +177,7 @@ auto spp::asts::CaseExpressionAst::infer_type(
     }
 
     // Return the branches' return type. If there are any branches, otherwise Void.
-    if (branches_type_info.empty()) {
-        return generate::common_types::void_type(pos_start());
-    }
-
-    if (not branches_type_info.empty()) {
-        return std::get<1>(master_branch_type_info);
-    }
-    return generate::common_types::void_type(pos_start());
+    return branches_type_info.empty()
+        ? generate::common_types::void_type(pos_start())
+        : std::get<1>(master_branch_type_info);
 }

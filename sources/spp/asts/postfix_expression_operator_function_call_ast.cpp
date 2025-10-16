@@ -215,7 +215,6 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             func_arg_names = func_args
                 | genex::views::ptr
                 | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>()
-                | genex::views::filter([](auto const &x) { return x != nullptr; }) // needed?
                 | genex::views::transform([](auto const &x) { return x->name.get(); })
                 | genex::to<std::vector>();
 

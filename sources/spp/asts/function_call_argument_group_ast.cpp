@@ -23,15 +23,15 @@
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/mixins/orderable_ast.hpp>
 
-#include <genex/actions/erase.hpp>
 #include <genex/to_container.hpp>
-#include <genex/views/duplicates.hpp>
+#include <genex/actions/erase.hpp>
 #include <genex/views/cast_dynamic.hpp>
 #include <genex/views/concat.hpp>
+#include <genex/views/duplicates.hpp>
 #include <genex/views/enumerate.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/ptr.hpp>
 #include <genex/views/materialize.hpp>
+#include <genex/views/ptr.hpp>
 #include <genex/views/transform.hpp>
 
 

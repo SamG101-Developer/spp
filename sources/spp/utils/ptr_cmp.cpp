@@ -1,6 +1,6 @@
-#include <spp/utils/ptr_cmp.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
+#include <spp/utils/ptr_cmp.hpp>
 
 
 auto spp::utils::SymNameCmp<std::shared_ptr<spp::asts::IdentifierAst>>::operator()(

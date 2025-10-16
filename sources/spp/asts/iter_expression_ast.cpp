@@ -13,6 +13,7 @@
 #include <spp/asts/iter_pattern_variant_variable_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/asts/generate/common_types.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>
 
 #include <genex/to_container.hpp>
@@ -217,5 +218,7 @@ auto spp::asts::IterExpressionAst::infer_type(
     }
 
     // Return the branch's return type (there is always 1+ branch).
-    return branches[0]->infer_type(sm, meta);
+    return branches_type_info.empty()
+        ? generate::common_types::void_type(pos_start())
+        : std::get<1>(master_branch_type_info);
 }

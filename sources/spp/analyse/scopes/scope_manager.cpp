@@ -129,7 +129,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
     // Clear the sup scopes list.
     scope.m_direct_sup_scopes.clear();
 
-    // Iterator through all the super scopes and check if the name matches.
+    // Iterate through all the super scopes and check if the name matches.
     for (auto *sup_scope : sup_scopes) {
         // Perform a relaxed comparison between the two types (allows for specializations to match bases).
         auto scope_generics_map = std::map<std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<asts::TypeIdentifierAst>>>();
