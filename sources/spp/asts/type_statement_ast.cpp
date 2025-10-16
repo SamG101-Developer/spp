@@ -129,6 +129,7 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
     mixins::CompilerMetaData *meta)
     -> void {
     // Run top level scope generation for the annotations.
+    Ast::stage_2_gen_top_level_scopes(sm, meta);
     annotations | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
 
     // Check there are no conventions on the old type.

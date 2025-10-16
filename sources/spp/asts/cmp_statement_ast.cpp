@@ -106,6 +106,7 @@ auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
     mixins::CompilerMetaData *meta)
     -> void {
     // No top-level scopes needed for cmp statements.
+    Ast::stage_2_gen_top_level_scopes(sm, meta);
     annotations | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
 
     // Ensure that the convention type doesn't have a convention.
