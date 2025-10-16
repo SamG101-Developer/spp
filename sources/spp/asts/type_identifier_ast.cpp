@@ -22,21 +22,7 @@
 #include <genex/algorithms/any_of.hpp>
 #include <genex/views/cast_dynamic.hpp>
 #include <genex/views/concat.hpp>
-#include <genex/views/filter.hpp>
 #include <genex/views/ptr.hpp>
-
-
-SPP_NO_ASAN
-static auto custom_iterator(const spp::asts::TypeAst *t, std::size_t depth) -> genex::generator<std::pair<spp::asts::GenericArgumentAst*, std::size_t>> {
-    for (auto *g : t->type_parts().back()->generic_arg_group->args | genex::views::ptr) {
-        co_yield std::make_pair(g, depth);
-        if (auto const *type_arg = ast_cast<spp::asts::GenericArgumentTypeAst>(g)) {
-            for (auto const &inner_ti : custom_iterator(type_arg->val.get(), depth + 1)) {
-                co_yield inner_ti;
-            }
-        }
-    }
-}
 
 
 spp::asts::TypeIdentifierAst::TypeIdentifierAst(
