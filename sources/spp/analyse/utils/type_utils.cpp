@@ -165,7 +165,8 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     const auto stripped_lhs_sym = lhs_scope->get_type_symbol(stripped_lhs);
     const auto stripped_rhs_sym = rhs_scope->get_type_symbol(stripped_rhs);
     if (stripped_rhs_sym->is_generic) {
-        generic_args[std::dynamic_pointer_cast<asts::TypeIdentifierAst>(stripped_rhs)] = &lhs_type;
+        const auto t = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(stripped_rhs);
+        generic_args.insert({t, &lhs_type});
         return true;
     }
 
@@ -697,10 +698,10 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     auto new_sup_scope_ptr = new_sup_scope.get();
     old_sup_scope.parent->children.emplace_back(std::move(new_sup_scope));
 
-#ifdef SPP_IS_DEBUG_BUILD
+// #ifdef SPP_IS_DEBUG_BUILD
     std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name =
         substitute_sup_scope_name(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name, generic_args);
-#endif
+// #endif
 
     // Register the generic symbols.
     auto tm = scopes::ScopeManager(sm->global_scope, new_sup_scope_ptr);
@@ -712,10 +713,6 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     new_sup_scope_ptr->add_type_symbol(std::make_unique<scopes::AliasSymbol>(
         std::make_unique<asts::TypeIdentifierAst>(0, "Self", nullptr),
         nullptr, &new_cls_scope, new_sup_scope_ptr, old_self_sym));
-
-    if (std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name.contains("TypeC")) {
-        auto _ = 123;
-    }
 
     // Run generic substitution on the aliases in the new scope.
     for (auto const &scoped_sym : new_sup_scope_ptr->all_type_symbols(true) | genex::to<std::vector>()) {
@@ -798,13 +795,6 @@ auto spp::analyse::utils::type_utils::register_generic_syms(
     external_generic_syms
         | genex::views::cast_smart<scopes::VariableSymbol>()
         | genex::views::for_each([&](auto const &e) { scope->add_var_symbol(e); });
-
-#ifdef SPP_IS_DEBUG_BUILD
-    for (auto &&g : generic_args) {
-        const auto x = create_generic_sym(*g, *sm, meta);
-        (void)x;
-    }
-#endif
 
     auto generic_syms = generic_args
         | genex::views::transform([&](auto const &g) { return create_generic_sym(*g, *sm, meta); })
