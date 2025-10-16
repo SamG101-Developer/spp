@@ -48,6 +48,7 @@
 #include <spp/asts/generate/common_types.hpp>
 #include <spp/utils/ptr_cmp.hpp>
 
+#include <genex/meta.hpp>
 #include <genex/actions/clear.hpp>
 #include <genex/actions/concat.hpp>
 #include <genex/actions/drop.hpp>
@@ -58,6 +59,7 @@
 #include <genex/algorithms/all_of.hpp>
 #include <genex/algorithms/any_of.hpp>
 #include <genex/algorithms/contains.hpp>
+#include <genex/algorithms/equals.hpp>
 #include <genex/algorithms/position.hpp>
 #include <genex/operations/empty.hpp>
 #include <genex/views/cast_dynamic.hpp>
@@ -271,8 +273,8 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_overload(
         // Remove all the required parameters on the first parameter list off of the other parameter list.
         for (auto [p, q] : genex::views::zip(new_fn.param_group->params | genex::views::ptr, old_fn->param_group->params | genex::views::ptr)) {
             if (type_utils::symbolic_eq(*p->type, *q->type, this_scope, *old_scope)) {
-                params_new |= genex::actions::remove_if([pe=p->extract_names()](auto &&x) { return x->extract_names() == std::move(pe); });
-                params_old |= genex::actions::remove_if([qe=q->extract_names()](auto &&x) { return x->extract_names() == std::move(qe); });
+                params_new |= genex::actions::remove_if([pe=p->extract_names()](auto &&x) { return genex::algorithms::equals(x->extract_names(), std::move(pe), {}, genex::meta::deref, genex::meta::deref); });
+                params_old |= genex::actions::remove_if([qe=q->extract_names()](auto &&x) { return genex::algorithms::equals(x->extract_names(), std::move(qe), {}, genex::meta::deref, genex::meta::deref); });
             }
         }
 
@@ -621,8 +623,8 @@ auto spp::analyse::utils::func_utils::infer_generic_args(
 
     // Sort the new arguments to match the parameter order.
     auto final_args = genex::views::concat(
-        comp_args | genex::views::cast_smart<asts::GenericArgumentAst>(),
-        type_args | genex::views::cast_smart<asts::GenericArgumentAst>()
+        comp_args | genex::views::move | genex::views::cast_smart<asts::GenericArgumentAst>(),
+        type_args | genex::views::move | genex::views::cast_smart<asts::GenericArgumentAst>()
     ) | genex::to<std::vector>();
 
     final_args |= genex::actions::sort([&](auto const &a, auto const &b) {
