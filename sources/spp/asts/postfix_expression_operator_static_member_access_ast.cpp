@@ -122,16 +122,16 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
 
     else {
         const auto lhs_as_ident = ast_cast<IdentifierAst>(meta->postfix_expression_lhs);
-        const auto lhs_ns_sym = sm->current_scope->convert_postfix_to_nested_scope(meta->postfix_expression_lhs)->ns_sym;
         const auto lhs_var_sym = sm->current_scope->get_var_symbol(ast_clone(lhs_as_ident));
 
         // Check the lhs is a namespace and not a variable.
-        if (lhs_ns_sym == nullptr and lhs_var_sym != nullptr) {
+        if (lhs_var_sym != nullptr) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessRuntimeOperatorExpectedError>().with_args(
                 *meta->postfix_expression_lhs, *tok_dbl_colon).with_scopes({sm->current_scope}).raise();
         }
 
         // Check the constant exists inside the namespace.
+        const auto lhs_ns_sym = sm->current_scope->convert_postfix_to_nested_scope(meta->postfix_expression_lhs)->ns_sym;
         if (not lhs_ns_sym->scope->has_var_symbol(name, true) and not lhs_ns_sym->scope->has_ns_symbol(name, true)) {
             const auto alternatives = sm->current_scope->all_var_symbols(false, true)
                 | genex::views::transform([](auto &&x) { return x->name->val; })
