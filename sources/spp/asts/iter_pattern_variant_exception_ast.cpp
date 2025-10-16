@@ -74,5 +74,5 @@ auto spp::asts::IterPatternVariantExceptionAst::stage_8_check_memory(
     mixins::CompilerMetaData *meta)
     -> void {
     // Check the memory state of the variable.
-    var->stage_8_check_memory(sm, meta);
+    m_mapped_let->stage_8_check_memory(sm, meta);
 }
