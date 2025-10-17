@@ -31,10 +31,6 @@ auto spp::utils::errors::ErrorFormatter::internal_parse_error_raw_pos(
     if (ast_size > 1000 or ast_size < 1) {
         ast_size = 1;
     }
-    ast_start_pos = std::min(ast_start_pos, m_tokens.size() - 1);
-    // if (ast_start_pos >= m_tokens.size()) {
-    //     throw std::runtime_error("ErrorFormatter: ast_start_pos is out of bounds: "s + std::to_string(ast_start_pos) + " >= "s + std::to_string(m_tokens.size()));
-    // }
 
     const auto error_line_start_pos = genex::algorithms::position_last(
         m_tokens | genex::views::take(ast_start_pos) | genex::to<std::vector>(),
