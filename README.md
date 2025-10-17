@@ -17,7 +17,9 @@
 
 The S++ Compiler is currently in development and has not reached its first official release.
 
-- `ast_cast` doesn't work properly for shared pointers; if one dies then they all die, because I copy the raw pointer
-  in, instead of casting it using `dynamic_pointer_cast`.
+- The [**S++ Compiler License**](LISCENSE.md), and the [**Commercial License**](LICENSE_COMMERCIAL.md), will apply
+  starting with the first official release.
+- Until that time, use of the compiler is at your own discretion and no license enforcement will be applied.
+- By using pre-release versions, you acknowledge that features are incomplete and subject to change.
 
 
