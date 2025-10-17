@@ -24,22 +24,26 @@ spp::asts::AnnotationAst::AnnotationAst(
 spp::asts::AnnotationAst::~AnnotationAst() = default;
 
 
-auto spp::asts::AnnotationAst::operator==(AnnotationAst const &that) const -> bool {
+auto spp::asts::AnnotationAst::operator==(AnnotationAst const &that) const
+    -> bool {
     return *name == *that.name;
 }
 
 
-auto spp::asts::AnnotationAst::pos_start() const -> std::size_t {
+auto spp::asts::AnnotationAst::pos_start() const
+    -> std::size_t {
     return tok_at_sign->pos_start();
 }
 
 
-auto spp::asts::AnnotationAst::pos_end() const -> std::size_t {
+auto spp::asts::AnnotationAst::pos_end() const
+    -> std::size_t {
     return name->pos_end();
 }
 
 
-auto spp::asts::AnnotationAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::AnnotationAst::clone() const
+    -> std::unique_ptr<Ast> {
     auto ast = std::make_unique<AnnotationAst>(
         ast_clone(tok_at_sign),
         ast_clone(name));
@@ -57,7 +61,9 @@ spp::asts::AnnotationAst::operator std::string() const {
 }
 
 
-auto spp::asts::AnnotationAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::AnnotationAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_at_sign);
     SPP_PRINT_APPEND(name);
@@ -236,7 +242,7 @@ auto spp::asts::AnnotationAst::stage_2_gen_top_level_scopes(
         }
 
         // The "hot" and "cold" annotations cannot be applied already temperate functions.
-        if (fun_ctx and fun_ctx->m_temperature_annotation) {
+        if (fun_ctx and fun_ctx->m_temperature_annotation and fun_ctx->m_temperature_annotation != this) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppAnnotationConflictError>().with_args(
                 *this, *fun_ctx->m_temperature_annotation, *m_ctx).with_scopes({m_scope}).raise();
         }
