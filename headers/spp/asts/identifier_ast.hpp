@@ -11,9 +11,16 @@ struct spp::asts::IdentifierAst final : PrimaryExpressionAst, std::enable_shared
     std::string val;
 
 protected:
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+    SPP_ATTR_ALWAYS_INLINE auto equals(ExpressionAst const &other) const -> std::strong_ordering override {
+        return other.equals_identifier(*this);
+    }
 
-    auto equals_identifier(IdentifierAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_ALWAYS_INLINE auto equals_identifier(IdentifierAst const & other) const -> std::strong_ordering override {
+        if (val == other.val) {
+            return std::strong_ordering::equal;
+        }
+        return std::strong_ordering::less;
+    }
 
 public:
     /**
@@ -29,9 +36,13 @@ public:
 
     ~IdentifierAst() override;
 
-    auto operator<=>(IdentifierAst const&) const -> std::strong_ordering;
+    SPP_ATTR_ALWAYS_INLINE auto operator<=>(IdentifierAst const& that) const -> std::strong_ordering {
+        return val <=> that.val;
+    }
 
-    auto operator==(IdentifierAst const&) const -> bool;
+    SPP_ATTR_ALWAYS_INLINE auto operator==(IdentifierAst const& that) const -> bool {
+        return equals(that) == std::strong_ordering::equal;
+    }
 
     auto operator+(IdentifierAst const &that) const -> IdentifierAst;
 

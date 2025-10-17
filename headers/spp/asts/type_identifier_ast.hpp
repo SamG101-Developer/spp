@@ -42,9 +42,13 @@ public:
 
     static auto from_identifier(IdentifierAst const &identifier) -> std::shared_ptr<TypeIdentifierAst>;
 
-    auto operator<=>(const TypeIdentifierAst &that) const -> std::strong_ordering;
+    SPP_ATTR_ALWAYS_INLINE auto operator<=>(const TypeIdentifierAst &that) const -> std::strong_ordering {
+        return equals(that);
+    }
 
-    auto operator==(const TypeIdentifierAst &that) const -> bool;
+    SPP_ATTR_ALWAYS_INLINE auto operator==(const TypeIdentifierAst &that) const -> bool {
+        return equals(that) == std::strong_ordering::equal;
+    }
 
 private:
     std::size_t m_pos;

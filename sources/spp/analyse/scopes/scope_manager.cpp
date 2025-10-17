@@ -189,42 +189,43 @@ auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statement
     -> void {
     // Get the scopes to check for conflicts in.
     auto dummy = std::map<std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<asts::TypeIdentifierAst>>>();
-    auto existing_scopes = cls_sym.scope->m_direct_sup_scopes
+    const auto existing_scopes = cls_sym.scope->m_direct_sup_scopes
         | genex::views::filter([&](auto *scope) { return asts::ast_cast<asts::SupPrototypeExtensionAst>(scope->ast) or asts::ast_cast<asts::SupPrototypeFunctionsAst>(scope->ast); })
         | genex::views::filter([&](auto *scope) { return utils::type_utils::relaxed_symbolic_eq(*ast_name(sup_scope.ast), *ast_name(scope->ast), &sup_scope, scope->ast->m_scope, dummy); })
         | genex::to<std::vector>();
 
     // Check for conflicting "type" statements.
-    auto existing_types = existing_scopes
-        | genex::views::transform([](auto *scope) { return asts::ast_body(scope->ast); })
-        | genex::views::join
-        | genex::views::cast_dynamic<asts::TypeStatementAst*>()
-        | genex::to<std::vector>();
-
-    const auto duplicate_types = existing_types
-        | genex::views::duplicates({}, [](auto *x) -> decltype(auto) { return *x->new_type; })
-        | genex::to<std::vector>();
-
-    if (not duplicate_types.empty()) {
-        errors::SemanticErrorBuilder<errors::SppIdentifierDuplicateError>().with_args(
-            *duplicate_types[0], *duplicate_types[1], "associated type").with_scopes({duplicate_types[0]->m_scope, duplicate_types[1]->m_scope}).raise();
+    std::vector<std::shared_ptr<asts::TypeIdentifierAst>> new_types;
+    for (auto scope: existing_scopes) {
+        auto body = asts::ast_body(scope->ast);
+        for (const auto member: body) {
+            if (const auto type_stmt = asts::ast_cast<asts::TypeStatementAst>(member); type_stmt != nullptr) {
+                for (const auto &new_type: new_types) {
+                    if (*new_type == *type_stmt->new_type) {
+                        errors::SemanticErrorBuilder<errors::SppIdentifierDuplicateError>().with_args(
+                            *new_type, *type_stmt->new_type, "associated type").with_scopes({scope, &sup_scope}).raise();
+                    }
+                }
+                new_types.emplace_back(type_stmt->new_type);
+            }
+        }
     }
 
     // Check for conflicting "cmp" statements.
-    auto existing_cmps = existing_scopes
-        | genex::views::transform([](auto *scope) { return asts::ast_body(scope->ast); })
-        | genex::views::join
-        | genex::views::cast_dynamic<asts::CmpStatementAst*>()
-        | genex::views::filter([](auto const *cmp) { return cmp->type->type_parts().back()->name[0] != '$'; })
-        | genex::to<std::vector>();
-
-    const auto duplicate_cmps = existing_cmps
-        | genex::views::duplicates({}, [](auto *cmp) -> decltype(auto) { return *cmp->name; })
-        | genex::to<std::vector>();
-
-    if (not duplicate_cmps.empty()) {
-        errors::SemanticErrorBuilder<errors::SppIdentifierDuplicateError>().with_args(
-            *duplicate_cmps[0], *duplicate_cmps[1], "comptime constant").with_scopes({duplicate_cmps[0]->m_scope, duplicate_cmps[1]->m_scope}).raise();
+    std::vector<std::shared_ptr<asts::IdentifierAst>> new_cmps;
+    for (auto scope: existing_scopes) {
+        auto body = asts::ast_body(scope->ast);
+        for (const auto member: body) {
+            if (const auto cmp_stmt = asts::ast_cast<asts::CmpStatementAst>(member); cmp_stmt != nullptr and cmp_stmt->type->type_parts().back()->name[0] != '$') {
+                for (const auto &new_cmp: new_cmps) {
+                    if (*new_cmp == *cmp_stmt->name) {
+                        errors::SemanticErrorBuilder<errors::SppIdentifierDuplicateError>().with_args(
+                            *new_cmp, *cmp_stmt->name, "comptime constant").with_scopes({scope, &sup_scope}).raise();
+                    }
+                }
+                new_cmps.emplace_back(cmp_stmt->name);
+            }
+        }
     }
 }
 

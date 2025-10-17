@@ -3,6 +3,12 @@
 
 
 struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
+protected:
+    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+
+    auto equals_type_unary_expression(TypeUnaryExpressionAst const &other) const -> std::strong_ordering override;
+
+public:
     SPP_AST_KEY_FUNCTIONS;
 
     /**
@@ -26,16 +32,14 @@ struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
 
     ~TypeUnaryExpressionAst() override;
 
-    auto operator<=>(TypeUnaryExpressionAst const &) const -> std::strong_ordering;
+    SPP_ATTR_ALWAYS_INLINE auto operator<=>(TypeUnaryExpressionAst const &other) const -> std::strong_ordering {
+        return equals(other);
+    }
 
-    auto operator==(TypeUnaryExpressionAst const &) const -> bool;
+    SPP_ATTR_ALWAYS_INLINE auto operator==(TypeUnaryExpressionAst const &other) const -> bool {
+        return equals(other) == std::strong_ordering::equal;
+    }
 
-protected:
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-
-    auto equals_type_unary_expression(TypeUnaryExpressionAst const &other) const -> std::strong_ordering override;
-
-public:
     auto iterator() const -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> override;
 
     auto is_never_type() const -> bool override;

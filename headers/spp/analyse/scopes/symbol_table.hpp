@@ -5,7 +5,7 @@
 #include <spp/asts/_fwd.hpp>
 #include <spp/utils/ptr_cmp.hpp>
 
-#include <boost/container/flat_map.hpp>
+#include <hash_table8.hpp>
 
 
 /// @cond
@@ -26,7 +26,7 @@ namespace spp::analyse::scopes {
 template <typename I, typename S>
 class spp::analyse::scopes::IndividualSymbolTable {
 private:
-    boost::container::flat_map<std::shared_ptr<I>, std::shared_ptr<S>, spp::utils::SymNameCmp<std::shared_ptr<I>>> m_table;
+    emhash8::HashMap<std::shared_ptr<I>, std::shared_ptr<S>, spp::utils::PtrHash<std::shared_ptr<I>>, spp::utils::PtrEq<std::shared_ptr<I>>> m_table;
 
 public:
     IndividualSymbolTable();

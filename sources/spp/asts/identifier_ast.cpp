@@ -60,37 +60,6 @@ auto spp::asts::IdentifierAst::print(
 }
 
 
-auto spp::asts::IdentifierAst::equals(
-    ExpressionAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_identifier(*this);
-}
-
-
-auto spp::asts::IdentifierAst::equals_identifier(
-    IdentifierAst const &other) const
-    -> std::strong_ordering {
-    if (val == other.val) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
-}
-
-
-auto spp::asts::IdentifierAst::operator<=>(
-    IdentifierAst const &that) const
-    -> std::strong_ordering {
-    return val <=> that.val;
-}
-
-
-auto spp::asts::IdentifierAst::operator==(
-    IdentifierAst const &that) const
-    -> bool {
-    return equals(that) == std::strong_ordering::equal;
-}
-
-
 auto spp::asts::IdentifierAst::operator+(
     IdentifierAst const &that) const
     -> IdentifierAst {

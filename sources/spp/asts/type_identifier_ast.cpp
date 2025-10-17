@@ -88,20 +88,6 @@ auto spp::asts::TypeIdentifierAst::from_identifier(
 }
 
 
-auto spp::asts::TypeIdentifierAst::operator<=>(
-    const TypeIdentifierAst &that) const
-    -> std::strong_ordering {
-    return equals(that);
-}
-
-
-auto spp::asts::TypeIdentifierAst::operator==(
-    const TypeIdentifierAst &that) const
-    -> bool {
-    return equals(that) == std::strong_ordering::equal;
-}
-
-
 auto spp::asts::TypeIdentifierAst::equals(
     ExpressionAst const &other) const
     -> std::strong_ordering {
@@ -388,7 +374,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
             auto generics = generic_arg_group->get_all_args();
             generics.append_range(outer_generics | genex::views::ptr);
 
-            const auto old_type = alias_sym->old_sym->fq_name()->substitute_generics(std::move(generics));
+            const auto old_type = alias_sym->old_sym->fq_name()->substitute_generics(generics);
             meta->save();
             meta->type_analysis_type_scope = type_scope->parent;
             old_type->stage_7_analyse_semantics(sm, meta);

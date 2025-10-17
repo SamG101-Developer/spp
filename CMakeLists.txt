@@ -11,6 +11,7 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
 # Find dependencies.
 find_package(ColEx REQUIRED)
 find_package(GenEx REQUIRED)
+find_package(absl REQUIRED)
 find_package(indicators REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(magic_enum REQUIRED)
@@ -45,7 +46,7 @@ endif ()
 
 # Link dependencies.
 target_link_libraries(spp_lib PRIVATE
-        ColEx::ColExLib GenEx::GenExLib
+        ColEx::ColExLib GenEx::GenExLib absl::hash absl::strings
         nlohmann_json::nlohmann_json tsl::robin_map magic_enum::magic_enum rapidfuzz::rapidfuzz Boost::boost Glob)
 
 target_include_directories(spp_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/headers)

@@ -25,20 +25,6 @@ spp::asts::TypeUnaryExpressionAst::TypeUnaryExpressionAst(
 spp::asts::TypeUnaryExpressionAst::~TypeUnaryExpressionAst() = default;
 
 
-auto spp::asts::TypeUnaryExpressionAst::operator<=>(
-    TypeUnaryExpressionAst const &other) const
-    -> std::strong_ordering {
-    return equals(other);
-}
-
-
-auto spp::asts::TypeUnaryExpressionAst::operator==(
-    TypeUnaryExpressionAst const &other) const
-    -> bool {
-    return equals(other) == std::strong_ordering::equal;
-}
-
-
 auto spp::asts::TypeUnaryExpressionAst::pos_start() const -> std::size_t {
     return op->pos_start();
 }
