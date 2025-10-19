@@ -5,6 +5,8 @@
 #include <spp/utils/errors.hpp>
 #include <spp/utils/ptr_cmp.hpp>
 
+#include <llvm/IR/Module.h>
+
 
 /// @cond
 namespace spp::analyse::scopes {
@@ -109,14 +111,20 @@ struct spp::asts::mixins::CompilerStages {
     /**
      * Generate some LLVM IR code from the ASTs. This is IR that is needed for the rest of the program to be generated.
      * Required to make the ASTs order-agnostic.
+     * @param[in, out] sm The scope manager to get symbol's memory information from.
+     * @param[in, out] meta Metadata to pass between ASTs.
+     * @param[in, out] llvm_mod The LLVM module to generate code into.
      */
-    virtual auto stage_9_code_gen_1() -> void;
+    virtual auto stage_9_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, llvm::Module &llvm_mod) -> void;
 
     /**
      * Finish the LLVM IR generation for the remaining (majority) of the ASTs. This will then all get linked together
      * by the compiler to produce an executable, with internal modules based on the SPP code structure.
+     * @param[in, out] sm The scope manager to get symbol's memory information from.
+     * @param[in, out] meta Metadata to pass between ASTs.
+     * @param[in, out] llvm_mod The LLVM module to generate code into.
      */
-    virtual auto stage_10_code_gen_2() -> void;
+    virtual auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, llvm::Module &llvm_mod) -> void;
 };
 
 

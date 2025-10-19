@@ -346,8 +346,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
             // Type check the arguments against the parameters. Sort the arguments into parameter order first.
             auto sorted_func_arguments = func_args | genex::views::ptr | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>() | genex::to<std::vector>();
-            genex::actions::sort(sorted_func_arguments,
-                                 {}, [&func_param_names](FunctionCallArgumentKeywordAst *arg) { return genex::algorithms::position(func_param_names, [&arg](auto const &param) { return *arg->name == *param; }); });
+            genex::actions::sort(
+                sorted_func_arguments,
+                {}, [&func_param_names](FunctionCallArgumentKeywordAst *arg) { return genex::algorithms::position(func_param_names, [&arg](auto const &param) { return *arg->name == *param; }); });
 
             for (auto &&[arg, param] : sorted_func_arguments | genex::views::zip(func_params)) {
                 auto p_type = fn_scope->get_type_symbol(param->type)->fq_name()->with_convention(ast_clone(param->type->get_convention()));

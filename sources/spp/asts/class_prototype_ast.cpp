@@ -231,3 +231,48 @@ auto spp::asts::ClassPrototypeAst::stage_8_check_memory(
     impl->stage_8_check_memory(sm, meta);
     sm->move_out_of_current_scope();
 }
+
+
+auto spp::asts::ClassPrototypeAst::stage_9_code_gen_1(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *,
+    llvm::Module &llvm_mod)
+    -> void {
+    // Get the class symbol.
+    sm->move_to_next_scope();
+    const auto cls_sym = sm->current_scope->ty_sym;
+
+    // No generation for alias symbols.
+    if (const auto alias_sym = dynamic_cast<analyse::scopes::AliasSymbol*>(cls_sym.get()); alias_sym != nullptr) {
+        sm->move_out_of_current_scope();
+        return;
+    }
+
+    // No generation for "$" types.
+    if (name->type_parts().back()->name[0] == '$') {
+        sm->move_out_of_current_scope();
+        return;
+    }
+
+    // If this is a raw generic class like Vec[T], then generate the generic implementations.
+    if (genex::algorithms::any_of(sm->current_scope->all_type_symbols() | genex::views::materialize, [](auto const &sym) { return sym->scope == nullptr; })) {
+        for (auto &&[generic_scope, generic_ast] : m_generic_substituted_scopes) {
+            generic_ast->m_fill_llvm_mem_layout(generic_scope->ty_sym.get(), llvm_mod);
+        }
+    }
+
+    m_fill_llvm_mem_layout(cls_sym.get(), llvm_mod);
+    sm->move_out_of_current_scope();
+}
+
+
+auto spp::asts::ClassPrototypeAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *,
+    llvm::Module &)
+    -> void {
+    // Skip the scope.
+    sm->move_to_next_scope();
+    sm->move_out_of_current_scope();
+
+}
