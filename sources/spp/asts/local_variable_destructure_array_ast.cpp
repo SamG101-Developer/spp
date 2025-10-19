@@ -164,7 +164,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
         | genex::to<std::vector>();
 
     // Create expanded "let" statements for each part of the destructure.
-    for (auto &&[i, elem] : genex::views::zip(indexes, elems | genex::views::ptr) | genex::to<std::vector>()) {
+    for (auto &&[i, elem] : genex::views::zip(indexes, elems | genex::views::ptr)) {
         const auto cast_elem = ast_cast<LocalVariableDestructureSkipMultipleArgumentsAst>(elem);
 
         // Handle bound multi argument skipping, by assigning the skipped elements into a variable.

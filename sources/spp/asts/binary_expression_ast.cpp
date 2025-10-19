@@ -122,7 +122,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
         // Convert "t = (0, 1, 2, 3)", ".. + t" into "(((t.0 + t.1) + t.2) + t.3)".
         lhs = std::move(new_asts[0]);
         rhs = std::move(new_asts[1]);
-        for (auto &&new_ast : new_asts | genex::views::move | genex::views::drop(2) | genex::to<std::vector>()) {
+        for (auto &&new_ast : new_asts | genex::views::move | genex::views::drop(2)) {
             lhs = std::make_unique<BinaryExpressionAst>(std::move(lhs), ast_clone(tok_op), std::move(rhs));
             rhs = std::move(new_ast);
         }
@@ -154,7 +154,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
         // Convert "t = (0, 1, 2, 3)", "t + .." into "(t.0 + (t.1 + (t.2 + t.3)))".
         rhs = std::move(new_asts[new_asts.size() - 2]);
         lhs = std::move(new_asts[new_asts.size() - 1]);
-        for (auto &&new_ast : new_asts | genex::views::move | genex::views::take(new_asts.size() - 1) | genex::to<std::vector>()) {
+        for (auto &&new_ast : new_asts | genex::views::move | genex::views::take(new_asts.size() - 1)) {
             lhs = std::move(new_ast);
             rhs = std::make_unique<BinaryExpressionAst>(std::move(lhs), ast_clone(tok_op), std::move(rhs));
         }

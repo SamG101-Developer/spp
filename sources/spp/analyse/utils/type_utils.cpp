@@ -50,7 +50,6 @@
 #include <opex/cast.hpp>
 
 
-
 auto spp::analyse::utils::type_utils::symbolic_eq(
     asts::TypeAst const &lhs_type,
     asts::TypeAst const &rhs_type,
@@ -111,7 +110,7 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
     }
 
     // Ensure each generic argument is symbolically equal to the other.
-    for (auto [lhs_generic, rhs_generic] : genex::views::zip(lhs_generics | genex::views::ptr, rhs_generics | genex::views::ptr) | genex::to<std::vector>()) {
+    for (auto [lhs_generic, rhs_generic] : genex::views::zip(lhs_generics | genex::views::ptr, rhs_generics | genex::views::ptr)) {
         if (asts::ast_cast<asts::GenericArgumentTypeAst>(lhs_generic)) {
             const auto lhs_generic_part = asts::ast_cast<asts::GenericArgumentTypeAst>(lhs_generic);
             const auto rhs_generic_part = asts::ast_cast<asts::GenericArgumentTypeAst>(rhs_generic);
@@ -202,7 +201,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     }
 
     // Ensure each generic argument is symbolically equal to the other.
-    for (auto [lhs_generic, rhs_generic] : genex::views::zip(lhs_generics | genex::views::ptr, rhs_generics | genex::views::ptr) | genex::to<std::vector>()) {
+    for (auto [lhs_generic, rhs_generic] : genex::views::zip(lhs_generics | genex::views::ptr, rhs_generics | genex::views::ptr)) {
         if (asts::ast_cast<asts::GenericArgumentTypeAst>(rhs_generic)) {
             const auto lhs_generic_part = asts::ast_cast<asts::GenericArgumentTypeAst>(lhs_generic);
             const auto rhs_generic_part = asts::ast_cast<asts::GenericArgumentTypeAst>(rhs_generic);
@@ -634,13 +633,16 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
         }
     }
 
-    for (const auto *attr : asts::ast_body(old_cls_scope->ast) | genex::views::cast_dynamic<asts::ClassAttributeAst*>() | genex::to<std::vector>()) {
-        const auto new_attr = ast_clone(attr);
-        new_attr->type = new_attr->type->substitute_generics(substitution_generics);
+    auto new_ast = asts::ast_cast<asts::ClassPrototypeAst>(asts::ast_clone(old_cls_scope->ast));
+    new_ast->generic_param_group->params.clear();
+    for (auto *attr : new_ast->impl->members | genex::views::ptr | genex::views::cast_dynamic<asts::ClassAttributeAst*>()) {
+        attr->type = attr->type->substitute_generics(substitution_generics);
         if (meta->current_stage > 5) {
-            new_attr->stage_7_analyse_semantics(&tm, meta);
+            attr->stage_7_analyse_semantics(&tm, meta);
         }
     }
+
+    old_cls_sym.type->register_generic_substituted_scope(new_cls_scope_ptr, std::move(new_ast));
 
     // Return the new class scope.
     return new_cls_scope_ptr;
@@ -715,7 +717,7 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
         nullptr, &new_cls_scope, new_sup_scope_ptr, old_self_sym));
 
     // Run generic substitution on the aliases in the new scope.
-    for (auto const &scoped_sym : new_sup_scope_ptr->all_type_symbols(true) | genex::to<std::vector>()) {
+    for (auto const &scoped_sym : new_sup_scope_ptr->all_type_symbols(true)) {
         if (auto scoped_alias_sym = std::dynamic_pointer_cast<scopes::AliasSymbol>(scoped_sym); scoped_alias_sym != nullptr and not scoped_sym->is_generic) {
             auto old_type_sub = scoped_alias_sym->old_sym->fq_name()->substitute_generics(generic_args.args | genex::views::ptr | genex::to<std::vector>());
 

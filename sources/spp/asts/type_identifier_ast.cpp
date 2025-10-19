@@ -230,7 +230,7 @@ auto spp::asts::TypeIdentifierAst::substitute_generics(
     }
 
     // Substitute generics in the comp arguments' types.
-    for (auto &&[gen_arg_name, gen_arg_val] : genex::views::concat(gen_type_args, gen_comp_args) | genex::to<std::vector>()) {
+    for (auto &&[gen_arg_name, gen_arg_val] : genex::views::concat(gen_type_args, gen_comp_args)) {
         for (auto const &g : name_clone->generic_arg_group->get_comp_args() | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()) {
             if (auto const *ident_val = ast_cast<IdentifierAst>(g->val.get()); ident_val != nullptr and *ident_val == *IdentifierAst::from_type(*gen_arg_name)) {
                 g->val = ast_clone(gen_arg_val);

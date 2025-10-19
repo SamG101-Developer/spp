@@ -187,7 +187,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
     // Check for namespaced (module-level) functions (they will have no inheritable generics).
     if (target_scope->ns_sym != nullptr) {
         for (auto *ancestor_scope : target_scope->ancestors()) {
-            for (auto const *sup_scope : ancestor_scope->children | genex::views::ptr | genex::views::filter(is_valid_ext_scope) | genex::to<std::vector>()) {
+            for (auto const *sup_scope : ancestor_scope->children | genex::views::ptr | genex::views::filter(is_valid_ext_scope)) {
                 auto generics = asts::GenericArgumentGroupAst::new_empty();
                 auto scope = sup_scope; // not for_override ? sup_scope->children[0].get() : sup_scope;
                 auto proto = dynamic_cast<asts::FunctionPrototypeAst*>(asts::ast_body(sup_scope->ast)[0]);
@@ -206,7 +206,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
         // From the super scopes, check each one for "sup $Func ext FunXXX { ... }" super-impositions.
         // Todo: use the "is_valid_ext_scope"?
         for (auto *sup_scope : sup_scopes) {
-            for (auto *sup_ast : asts::ast_body(sup_scope->ast) | genex::views::cast_dynamic<asts::SupPrototypeExtensionAst*>() | genex::to<std::vector>()) {
+            for (auto *sup_ast : asts::ast_body(sup_scope->ast) | genex::views::cast_dynamic<asts::SupPrototypeExtensionAst*>()) {
                 if (std::dynamic_pointer_cast<asts::TypeIdentifierAst>(sup_ast->name)->name == mapped_name->val) {
                     auto generics = std::make_unique<asts::GenericArgumentGroupAst>(nullptr, sup_scope->get_generics(), nullptr);
                     auto scope = sup_scope;
@@ -254,7 +254,7 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_overload(
     auto existing_fns = existing | genex::views::tuple_nth<1>() | genex::to<std::vector>();
 
     // Check for an overload conflict with all functions of the same name.
-    for (auto [old_scope, old_fn] : genex::views::zip(existing_scopes, existing_fns) | genex::to<std::vector>()) {
+    for (auto [old_scope, old_fn] : genex::views::zip(existing_scopes, existing_fns)) {
         // Ignore if the method is an identical match on a base class (override) or is the same object.
         if (old_fn == &new_fn) { continue; }
         if (old_fn == check_for_conflicting_override(this_scope, old_scope, new_fn, old_scope)) { continue; }
@@ -314,14 +314,14 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_override(
 
     auto param_names_eq = [](auto const &a, auto const &b) {
         if (a.size() != b.size()) { return false; }
-        for (auto const &[x, y] : genex::views::zip(a, b) | genex::to<std::vector>()) {
+        for (auto const &[x, y] : genex::views::zip(a, b)) {
             if (*x != *y) { return false; }
         }
         return true;
     };
 
     // Check for an overload conflict with all functions of the same name.
-    for (auto [old_scope, old_fn] : genex::views::zip(existing_scopes, existing_fns) | genex::to<std::vector>()) {
+    for (auto [old_scope, old_fn] : genex::views::zip(existing_scopes, existing_fns)) {
         // Ignore if the method is the same object.
         if (old_fn == &new_fn) { continue; }
         if (old_scope == exclude_scope) { continue; }
@@ -405,7 +405,7 @@ auto spp::analyse::utils::func_utils::name_args(
         | genex::views::cast_dynamic<asts::FunctionCallArgumentPositionalAst*>()
         | genex::to<std::vector>();
 
-    for (auto [i, positional_arg] : positional_args | genex::views::enumerate | genex::to<std::vector>()) {
+    for (auto [i, positional_arg] : positional_args | genex::views::enumerate) {
         auto param_name = param_names.front();
         param_names |= genex::actions::pop_front();
         auto keyword_arg = std::make_unique<asts::FunctionCallArgumentKeywordAst>(param_name, nullptr, ast_clone(positional_arg->conv), nullptr);
@@ -521,7 +521,7 @@ auto spp::analyse::utils::func_utils::name_generic_args_impl(
         | genex::views::cast_dynamic<asts::detail::make_positional_arg_t<GenericArgType>*>()
         | genex::to<std::vector>();
 
-    for (auto [i, positional_arg] : positional_args | genex::views::enumerate | genex::to<std::vector>()) {
+    for (auto [i, positional_arg] : positional_args | genex::views::enumerate) {
         // Error if there are too many generic arguments.
         if (param_names.empty()) {
             errors::SemanticErrorBuilder<errors::SppGenericArgumentTooManyError>().with_args(
@@ -814,7 +814,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
         return a_index < b_index;
     });
 
-    for (auto &&[param, arg] : genex::views::zip(params, args | genex::views::ptr) | genex::to<std::vector>()) {
+    for (auto &&[param, arg] : genex::views::zip(params, args | genex::views::ptr)) {
         auto comp_arg = asts::ast_cast<asts::GenericArgumentCompKeywordAst>(arg);
         auto comp_param = asts::ast_cast<asts::GenericParameterCompAst>(param);
         if (comp_arg == nullptr) { continue; }
@@ -914,7 +914,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
     // Fully qualify and type arguments (replaced within the inference map).
     if (const auto owner_sym = sm.current_scope->get_type_symbol(std::dynamic_pointer_cast<asts::TypeAst>(owner)); owner_sym != nullptr) {
         for (auto *opt_param : opt_params | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
-            if (not genex::algorithms::contains(inferred_args | genex::views::keys | genex::views::cast_smart<asts::TypeAst>() | genex::to<std::vector>(), *opt_param->name, SPP_INSTANT_INDIRECT)) {
+            if (not genex::algorithms::contains(inferred_args | genex::views::keys | genex::views::cast_smart<asts::TypeAst>() | genex::views::materialize, *opt_param->name, SPP_INSTANT_INDIRECT)) {
                 auto def_type = opt_param->default_val;
                 if (auto def_val_type_sym = owner_scope->get_type_symbol(def_type); def_val_type_sym != nullptr) {
                     def_type = owner_scope->get_type_symbol(opt_param->default_val)->fq_name();
