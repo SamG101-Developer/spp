@@ -9,18 +9,18 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
 
 # Find dependencies.
-find_package(ColEx REQUIRED)
-find_package(GenEx REQUIRED)
-find_package(absl REQUIRED)
-find_package(indicators REQUIRED)
-find_package(nlohmann_json REQUIRED)
-find_package(magic_enum REQUIRED)
-find_package(rapidfuzz REQUIRED)
-find_package(tomlplusplus REQUIRED)
-find_package(tsl-robin-map REQUIRED)
-find_package(Boost REQUIRED)
-find_package(Glob)
-find_package(CLI11 REQUIRED)
+find_package(ColEx REQUIRED) # colored console output
+find_package(GenEx REQUIRED) # std::generate based iteration utilities
+find_package(absl REQUIRED) # hashing and string utilities
+find_package(indicators REQUIRED) # progress bars
+find_package(nlohmann_json REQUIRED) # json parsing
+find_package(tomlplusplus REQUIRED) # toml parsing
+find_package(magic_enum REQUIRED) # enum reflection
+find_package(rapidfuzz REQUIRED) # fuzzy string matching
+find_package(Boost REQUIRED) # various utilities
+find_package(Glob) # file globbing
+find_package(CLI11 REQUIRED) # command line parsing
+find_package(LLVM REQUIRED CONFIG) # LLVM libraries
 
 # Collect all source files and create the library.
 file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS "sources/*.cpp")
@@ -40,14 +40,10 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
             -fno-optimize-sibling-calls)
     target_link_options(spp_lib PRIVATE -pg)
 endif ()
-#  -Wno-nonnull-compare -Wno-unused)
-# Deliberately don't have -Wshadow (pain to re-do all AST constructors)
-# Deliberately don't have -Wstrict-overflow=5 (errors in linked libraries)
 
-# Link dependencies.
 target_link_libraries(spp_lib PRIVATE
-        ColEx::ColExLib GenEx::GenExLib absl::hash absl::strings
-        nlohmann_json::nlohmann_json tsl::robin_map magic_enum::magic_enum rapidfuzz::rapidfuzz Boost::boost Glob)
+        absl::hash absl::strings nlohmann_json::nlohmann_json magic_enum::magic_enum rapidfuzz::rapidfuzz Boost::boost
+        Glob LLVMCore LLVMIRReader LLVMSupport)
 
 target_include_directories(spp_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/headers)
 # target_precompile_headers(spp_lib PUBLIC "pch.hpp")
