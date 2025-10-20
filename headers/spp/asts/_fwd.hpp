@@ -159,10 +159,11 @@ namespace spp::asts {
     struct PostfixExpressionOperatorAst;
     struct PostfixExpressionOperatorEarlyReturnAst;
     struct PostfixExpressionOperatorFunctionCallAst;
-    struct PostfixExpressionOperatorRuntimeMemberAccessAst;
-    struct PostfixExpressionOperatorStaticMemberAccessAst;
+    struct PostfixExpressionOperatorIndexAst;
     struct PostfixExpressionOperatorKeywordNotAst;
     struct PostfixExpressionOperatorKeywordResAst;
+    struct PostfixExpressionOperatorRuntimeMemberAccessAst;
+    struct PostfixExpressionOperatorStaticMemberAccessAst;
 
     struct UnaryExpressionAst;
     struct UnaryExpressionOperatorAst;
