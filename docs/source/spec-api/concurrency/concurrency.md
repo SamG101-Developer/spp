@@ -146,7 +146,7 @@ cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&mut S32] {
 
 
 fun main() -> Void {
-    let generator = coroutine(1, 2, 3)
+    let mut generator = coroutine(1, 2, 3)
     let a = generator.res()
     let b = generator.res()  # a is invalidated here (mutable borrow)
     let c = generator.res()  # b is invalidated here (mutable borrow)
@@ -155,10 +155,10 @@ fun main() -> Void {
 
 For mutable borrows, there is a stricter invalidation policy. Yielding a mutable borrow invalidates the previous
 mutable borrow that was yielded, otherwise there is no guarantee that there isn't an overlap in data being yielded.
-There is an argument to check all yields in the yielder are non-overlapping, and then the receiver will never have to
-invalidate previous yields, but this would prevent the same object being yielded twice from the yielder, which is a
-common use-case. However, because control is regained per yield in the yielder, it is known that the object is singly
-owned in the coroutine, meaning yielded symbols are only pinned until the following yield.
+There is an alternative model, to check all yields in the yielder are non-overlapping, and then the receiver will never
+have to invalidate previous yields, but this would prevent the same object being yielded twice from the yielder, which
+is a common use-case. However, because control is regained per yield in the yielder, it is known that the object is
+singly owned in the coroutine, meaning yielded symbols are only pinned until the following yield.
 
 ## Passing Data Into a Coroutine
 
@@ -179,7 +179,7 @@ cor coroutine() -> Gen[Yield=S32, Send=S32] {
 }
 
 fun main() -> Void {
-    let generator = coroutine()
+    let mut generator = coroutine()
     let a = generator.res(1)
     let b = generator.res(2)
     let c = generator.res(3)
