@@ -1,6 +1,7 @@
 #pragma once
 #include <spp/asts/_fwd.hpp>
 #include <spp/asts/utils/visbility.hpp>
+#include <spp/codegen/llvm_sym_info.hpp>
 
 
 /// @cond
@@ -98,7 +99,7 @@ struct spp::analyse::scopes::VariableSymbol final : Symbol {
 struct spp::analyse::scopes::TypeSymbol : Symbol {
     std::shared_ptr<asts::TypeIdentifierAst> name;
 
-    asts::ClassPrototypeAst const *type;
+    asts::ClassPrototypeAst *type;
 
     Scope *scope;
 
@@ -116,9 +117,11 @@ struct spp::analyse::scopes::TypeSymbol : Symbol {
 
     TypeSymbol *generic_impl;
 
+    std::unique_ptr<codegen::LlvmSymInfo> llvm_info;
+
     TypeSymbol(
         std::shared_ptr<asts::TypeIdentifierAst> name,
-        asts::ClassPrototypeAst const *type,
+        asts::ClassPrototypeAst *type,
         Scope *scope,
         Scope *scope_defined_in,
         bool is_generic = false,
@@ -135,7 +138,7 @@ struct spp::analyse::scopes::TypeSymbol : Symbol {
         TypeSymbol const &that) const
         -> bool;
 
-    virtual auto fq_name() const
+    SPP_ATTR_NODISCARD virtual auto fq_name() const
         -> std::shared_ptr<asts::TypeAst>;
 };
 
@@ -145,7 +148,7 @@ struct spp::analyse::scopes::AliasSymbol final : TypeSymbol {
 
     AliasSymbol(
         std::shared_ptr<asts::TypeIdentifierAst> name,
-        asts::ClassPrototypeAst const *type,
+        asts::ClassPrototypeAst *type,
         Scope *scope,
         Scope *scope_defined_in,
         std::shared_ptr<TypeSymbol> const &old_sym,
@@ -164,6 +167,6 @@ struct spp::analyse::scopes::AliasSymbol final : TypeSymbol {
         AliasSymbol const &that) const
         -> bool;
 
-    auto fq_name() const
+    SPP_ATTR_NODISCARD auto fq_name() const
         -> std::shared_ptr<asts::TypeAst> override;
 };

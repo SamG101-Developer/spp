@@ -87,7 +87,7 @@ auto spp::analyse::scopes::VariableSymbol::operator==(
 
 spp::analyse::scopes::TypeSymbol::TypeSymbol(
     std::shared_ptr<asts::TypeIdentifierAst> name,
-    asts::ClassPrototypeAst const *type,
+    asts::ClassPrototypeAst *type,
     Scope *scope,
     Scope *scope_defined_in,
     const bool is_generic,
@@ -103,8 +103,8 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
     is_copyable([this] { return this->is_directly_copyable; }),
     visibility(visibility),
     convention(std::move(convention)),
-    generic_impl(this) {
-    generic_impl = this;
+    generic_impl(this),
+    llvm_info(std::make_unique<codegen::LlvmSymInfo>()) {
 }
 
 
@@ -169,7 +169,7 @@ auto spp::analyse::scopes::TypeSymbol::fq_name() const
 
 spp::analyse::scopes::AliasSymbol::AliasSymbol(
     std::shared_ptr<asts::TypeIdentifierAst> name,
-    asts::ClassPrototypeAst const *type,
+    asts::ClassPrototypeAst *type,
     Scope *scope,
     Scope *scope_defined_in,
     std::shared_ptr<TypeSymbol> const &old_sym,
