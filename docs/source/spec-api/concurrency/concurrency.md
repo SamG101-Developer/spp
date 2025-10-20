@@ -220,3 +220,53 @@ cor coroutine_chain() -> Gen[Yield=S32] {
     gen with coroutine()
 }
 ```
+
+## The `GenOnce` type.
+
+The generator types `Gen`, `GenOpt` and `GenRes` all create wrapper `GeneratedXXX` types, that may contain the yielded
+value, and can be inspected in the `iter` block, as mentioned earlier. However, methods like `.index_ref()`, where there
+will only be one value yielded, which may be a borrow, and would always require an `iter` block matching on a present
+value, cause inconvenience. Therefore, the `GenOnce` type exists to allow for a single value to be yielded and
+automatically unwrapped. Automatic unwrapping also bypasses the need for `.res()`. Without and with `GenOnce`:
+
+```S++
+cor get_value() -> GenOnce[Yield=&S32] {
+    gen 42
+}
+
+fun main() -> Void {
+    let val: &Str
+    iter t = get_value().res() of {
+        val { val }
+    }
+}
+```
+```S++
+cor get_value() -> GenOnce[Yield=&S32] {
+    gen 42
+}
+
+fun main() -> Void {
+    let val = get_value()
+}
+```
+
+In order to make this compatible with the memory model, the pinning is based not just off the generator (ie directly
+left of `.res()`), but the entire expression the generator is part of. This means that the following code is valid:
+
+```S++
+cls MyType {}
+
+sup MyType {
+    cor get_value(&mut self) -> GenOnce[Yield=&mut S32] {
+        let value: S32 = 42
+        gen &mut value
+    }
+}
+
+fun main() -> Void {
+    let t = MyType()
+    let val_1 = t.get_value()  # t is pinned here and marked as an extended borrow
+    let val_2 = t.get_value()  # t is a conflicting borrow here, so this is invalid
+}
+```
