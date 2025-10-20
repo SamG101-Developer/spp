@@ -103,8 +103,8 @@ caller. Therefore, each yield must be isolated, and invalidate the previous yiel
 ```S++
 cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&S32] {
     gen &a
-    gen &b  # control of "a" is maintained here (immutable borrow)
-    gen &c  # control of "b" is maintained here (immutable borrow)
+    gen &b  # control of "a" is maintained here (immutable borrow) + pinned
+    gen &c  # control of "b" is maintained here (immutable borrow) + pinned
     
     # The variables "a", "b" and "c" are pinned here as they may be used in the yieldee context.
 }
@@ -113,8 +113,8 @@ cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&S32] {
 fun main() -> Void {
     let generator = coroutine(1, 2, 3)
     let a = generator.res()
-    let b = generator.res()  # a internal value still valid here (immutable borrow)
-    let c = generator.res()  # b internal value still valid here (immutable borrow)
+    let b = generator.res()  # a internal value still valid here (immutable borrow) + pin "a" released
+    let c = generator.res()  # b internal value still valid here (immutable borrow) + pin "b" released
 }
 ```
 
