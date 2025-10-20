@@ -48,20 +48,22 @@ subroutine's return type must always be explicitly given, despite is being infer
 
 A convention can be applied to the generic argument for the `Yield` parameter. Because borrows can be yielded from
 coroutines, the yielding convention must match the convention of the `Yield` argument. For example, if the gen
-expressions look like `gen &mut 123`, then the generator type would be `Gen[&mut BigInt]`. This allows for the full
+expressions look like `gen &mut 123`, then the generator type would be `Gen[&mut S32]`. This allows for the full
 convention and type knowledge of the generated values to be accessible from the function signature alone.
 
 The `Send` generic parameter represents the type being sent back to the coroutine. This defaults to `Void`, disallowing
 data to be sent back (cannot have a `Void` variable), but can be set to any type. Only owned objects can be sent back
-into a coroutine.
+into a coroutine. Note that having `Void` as the parameter type causes it to be removed, so the `.res()` method will
+take no arguments, producing an argument free `.send()` internal call.
 
 ## Advancing a Generator
 
 A generator is advanced by using the `.res()` method. As this requires a special compiler intrinsic, `res` is a callable
-postfix keyword, rather than a method.
+postfix keyword, rather than a method alone. Internally, this calls the private `.send()` method on the generator,
+passing in any data if the `Send` type is not `Void`.
 
 ```S++
-cor coroutine(a: BigInt, b: BigInt, c: BigInt) -> Gen[Yield=&BigInt] {
+cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&S32] {
     gen &a
     gen &b
     gen &c
@@ -74,8 +76,6 @@ fun main() -> Void {
     let c = generator.res()
 }
 ```
-
-See the [](#invalidating-borrows) section for how and why earlier generated borrows are invalidated.
 
 ## Passing Data Out of a Coroutine
 
@@ -84,46 +84,68 @@ borrows to be yielded from coroutines is the basis for iteration, as it allows e
 borrowed and used in the caller.
 
 ```S++
-cor coroutine(a: BigInt, b: BigInt, c: BigInt) -> Gen[Yield=&BigInt] {
+cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&S32] {
     gen &a
     gen &b
     gen &c
 }
 ```
 
-### Invalidating Borrows [SECTION SUBJECT TO CHANGE]
+## Invalidating Borrows [SECTION SUBJECT TO CHANGE]
 
-Yielded borrowed belong to the generator they are yielded from. That being said, the law of exclusivity is applied to
-them, to prevent accessing multiple mutable parts of a generator, which could be overlapping. So a mutably borrowed
-yield will invalidate the previous mutably borrowed yield.
+Yielded borrowed belong to the generator they are yielded from. Like function arguments coming _into_ a function, the
+law of exclusivity is applied to them, to prevent accessing multiple mutable parts of a generator, which could be
+overlapping. So a mutably borrowed yield will invalidate the previous mutably borrowed yield.
 
 Further to this, a borrow could be yielded, then its corresponding owned object consumed in the next resuming of the
 caller. Therefore, each yield must be isolated, and invalidate the previous yield.
 
 ```S++
-
-cor coroutine(a: BigInt, b: BigInt, c: BigInt) -> Gen[Yield=&BigInt] {
+cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&S32] {
     gen &a
-
-    let s = a + b
-    gen &s
-
+    gen &b  # control of "a" is maintained here (immutable borrow)
+    gen &c  # control of "b" is maintained here (immutable borrow)
+    
+    # The variables "a", "b" and "c" are pinned here as they may be used in the yieldee context.
 }
 
 
 fun main() -> Void {
     let generator = coroutine(1, 2, 3)
     let a = generator.res()
-    let b = generator.res()
-    let c = generator.res()
+    let b = generator.res()  # a internal value still valid here (immutable borrow)
+    let c = generator.res()  # b internal value still valid here (immutable borrow)
 }
-
 ```
 
-In this example it can be seen that `a` is consumed in the coroutine. As there is no guarantee whether a variable is
-consumed or not in the coroutine after being yielded as a borrow, it must be assumed that a worst-cast scenario occurs,
-and that every variable yielded as a borrow might subsequently be consumed. As such, every time another borrowed value
-is yielded, the previous borrow will be invalidated in the caller.
+With immutable borrows, multiple yielded values can be taken and all remain valid, as they cannot be used to mutate the
+underlying data, and so overlaps are fine; there will never be a conflict with mutability. In the "yielder" context,
+these values are pinned, so they cannot be consumed in the yielder whilst being borrowed in the yieldee.
+
+```S++
+cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&mut S32] {
+    gen &mut a
+    gen &mut b  # control of "a" is regained here
+    gen &mut c  # control of "b" is regained here
+    
+    # Because control is regained, "a" is pinned until the next yield ("b").
+}
+
+
+fun main() -> Void {
+    let generator = coroutine(1, 2, 3)
+    let a = generator.res()
+    let b = generator.res()  # a is invalidated here (mutable borrow)
+    let c = generator.res()  # b is invalidated here (mutable borrow)
+}
+```
+
+For mutable borrows, there is a stricter invalidation policy. Yielding a mutable borrow invalidates the previous
+mutable borrow that was yielded, otherwise there is no guarantee that there isn't an overlap in data being yielded.
+There is an argument to check all yields in the yielder are non-overlapping, and then the yieldee will never have to
+invalidate previous yields, but this would prevent the same object being yielded twice from the yielder, which is a
+common use-case. However, because control is regained per yield in the yielder, it is known that the object is singly
+owned in the coroutine, meaning yielded symbols are only pinned until the following yield.
 
 ## Passing Data Into a Coroutine
 
@@ -136,7 +158,7 @@ are always moved into a coroutine, not borrowed. This means that receiving a sec
 invalidate the first one.
 
 ```S++
-cor coroutine() -> Gen[Yield=BigInt, Send=BigInt] {
+cor coroutine() -> Gen[Yield=S32, Send=S32] {
     let a = gen 1
     let b = gen 2
     let c = gen 3
@@ -158,9 +180,10 @@ A problem is presented when trying to use borrows with coroutines; a borrow coul
 coroutine suspends, the owned object in the caller context is consumed, and the borrow is subsequently used in the
 coroutine. To prevent this, memory pinning is used.
 
-All borrows into a coroutine must be pinned. This prevents them from being consumed in the caller context, until they
-are manually released. Releasing a pin will invalidate any object relying on the pin. Therefore, if a coroutine received
-a borrow, and the memory of that borrow is released, the coroutine is marked as consumed and is non-usable.
+All borrows into a coroutine are automatically pinned. This prevents them from being consumed in the caller context,
+until they are manually released. Releasing a pin will invalidate any object relying on the pin. Therefore, if a
+coroutine received a borrow, and the memory of that borrow is released, the coroutine is marked as consumed and is
+non-usable.
 
 ## Chaining Coroutines
 
@@ -171,13 +194,13 @@ coroutine.
 The following example shows equivalent code using a loop and coroutine chaining:
 
 ```S++
-cor coroutine() -> Gen[Yield=BigInt] {
+cor coroutine() -> Gen[Yield=S32] {
     gen 1
     gen 2
     gen 3
 }
 
-cor coroutine_chain() -> Gen[Yield=BigInt] {
+cor coroutine_chain() -> Gen[Yield=S32] {
     gen 0
     for i in coroutine() {
         gen i
@@ -186,13 +209,13 @@ cor coroutine_chain() -> Gen[Yield=BigInt] {
 ```
 
 ```S++
-cor coroutine() -> Gen[Yield=BigInt] {
+cor coroutine() -> Gen[Yield=S32] {
     gen 1
     gen 2
     gen 3
 }
 
-cor coroutine_chain() -> Gen[Yield=BigInt] {
+cor coroutine_chain() -> Gen[Yield=S32] {
     gen 0
     gen with coroutine()
 }
