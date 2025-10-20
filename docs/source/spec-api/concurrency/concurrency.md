@@ -113,8 +113,8 @@ cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&S32] {
 fun main() -> Void {
     let generator = coroutine(1, 2, 3)
     let a = generator.res()
-    let b = generator.res()  # a internal value still valid here (immutable borrow) + pin "a" released
-    let c = generator.res()  # b internal value still valid here (immutable borrow) + pin "b" released
+    let b = generator.res()  # a internal value still valid here (immutable borrow)
+    let c = generator.res()  # b internal value still valid here (immutable borrow)
 }
 ```
 
@@ -125,8 +125,8 @@ these values are pinned, so they cannot be consumed in the yielder whilst being 
 ```S++
 cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&mut S32] {
     gen &mut a
-    gen &mut b  # control of "a" is regained here
-    gen &mut c  # control of "b" is regained here
+    gen &mut b  # control of "a" is regained here + pin "a" released
+    gen &mut c  # control of "b" is regained here + pin "b" released
     
     # Because control is regained, "a" is pinned until the next yield ("b").
 }
