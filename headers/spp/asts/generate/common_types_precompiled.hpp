@@ -1,5 +1,9 @@
 #pragma once
 
+namespace spp::asts {
+    struct TypeAst;
+}
+
 
 /// @cond
 namespace spp::asts::generate::common_types_precompiled {
@@ -14,6 +18,9 @@ namespace spp::asts::generate::common_types_precompiled {
     inline std::shared_ptr<TypeAst> GENERATED;
     inline std::shared_ptr<TypeAst> GENERATED_OPT;
     inline std::shared_ptr<TypeAst> GENERATED_RES;
+
+    inline std::shared_ptr<TypeAst> INDEX_REF;
+    inline std::shared_ptr<TypeAst> INDEX_MUT;
 
     inline std::shared_ptr<TypeAst> FUN_MOV;
     inline std::shared_ptr<TypeAst> FUN_MUT;
