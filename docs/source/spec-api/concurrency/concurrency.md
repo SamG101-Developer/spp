@@ -91,36 +91,46 @@ cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&S32] {
 }
 ```
 
-## Invalidating Borrows [SECTION SUBJECT TO CHANGE]
+## Invalidating Borrows
 
-Yielded borrowed belong to the generator they are yielded from. Like function arguments coming _into_ a function, the
-law of exclusivity is applied to them, to prevent accessing multiple mutable parts of a generator, which could be
-overlapping. So a mutably borrowed yield will invalidate the previous mutably borrowed yield.
+Yielded borrowed belong to the generator they are yielded from (the **yielder** context). Like function arguments coming
+_into_ a function, the law of exclusivity is applied to yields, to prevent accessing multiple mutable parts of a
+generator, which could be overlapping. So a mutably borrowed yield will invalidate the previous mutably borrowed yield
+in the **receiver** context.
 
-Further to this, a borrow could be yielded, then its corresponding owned object consumed in the next resuming of the
-caller. Therefore, each yield must be isolated, and invalidate the previous yield.
+Immutable borrows are always owned by the yielder, where-as mutable borrows' ownership is temporarily transferred to the
+receiver (standard borrow semantics). Therefore, each consecutive mutable yield will invalidate the previous one in the
+receiver, and relinquish ownership back to the yielder, making the symbol available again in the yielder. Immutable
+borrows don't invalidate each other in the receiver, so they remain pinned in the yielder until the end of the
+coroutine.
+
+---
 
 ```S++
 cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&S32] {
     gen &a
-    gen &b  # control of "a" is maintained here (immutable borrow) + pinned
-    gen &c  # control of "b" is maintained here (immutable borrow) + pinned
+    gen &b  # symbol "a" is usable but is pinned.
+    gen &c  # symbol "b" is usable but is pinned.
     
-    # The variables "a", "b" and "c" are pinned here as they may be used in the yieldee context.
+    # At this point, all 3 symbols, "a", "b" and "c" are pinned in the this 
+    # function. They remain fully initialized, and valid in both this function
+    # (the yielder) and the receiver function.
 }
 
 
 fun main() -> Void {
     let generator = coroutine(1, 2, 3)
     let a = generator.res()
-    let b = generator.res()  # a internal value still valid here (immutable borrow)
-    let c = generator.res()  # b internal value still valid here (immutable borrow)
+    let b = generator.res()  # "a" internal value still valid here (immutable borrow)
+    let c = generator.res()  # "b" internal value still valid here (immutable borrow)
 }
 ```
 
 With immutable borrows, multiple yielded values can be taken and all remain valid, as they cannot be used to mutate the
 underlying data, and so overlaps are fine; there will never be a conflict with mutability. In the "yielder" context,
-these values are pinned, so they cannot be consumed in the yielder whilst being borrowed in the yieldee.
+these values are pinned, so they cannot be consumed in the yielder whilst being borrowed in the receiver.
+
+---
 
 ```S++
 cor coroutine(a: S32, b: S32, c: S32) -> Gen[Yield=&mut S32] {
@@ -145,7 +155,7 @@ fun main() -> Void {
 
 For mutable borrows, there is a stricter invalidation policy. Yielding a mutable borrow invalidates the previous
 mutable borrow that was yielded, otherwise there is no guarantee that there isn't an overlap in data being yielded.
-There is an argument to check all yields in the yielder are non-overlapping, and then the yieldee will never have to
+There is an argument to check all yields in the yielder are non-overlapping, and then the receiver will never have to
 invalidate previous yields, but this would prevent the same object being yielded twice from the yielder, which is a
 common use-case. However, because control is regained per yield in the yielder, it is known that the object is singly
 owned in the coroutine, meaning yielded symbols are only pinned until the following yield.
@@ -244,6 +254,7 @@ fun main() -> Void {
     }
 }
 ```
+
 ```S++
 cor get_value() -> GenOnce[Yield=&S32] {
     gen 42
