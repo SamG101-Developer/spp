@@ -610,6 +610,36 @@ spp::analyse::errors::SppExpressionAmbiguousGeneratorError::SppExpressionAmbiguo
 }
 
 
+spp::analyse::errors::SppExpressionNotIndexableError::SppExpressionNotIndexableError(
+    asts::Ast const &expr,
+    asts::TypeAst const &expr_type,
+    const std::string_view what) {
+    add_header(
+        38, "SPP Expression Not Indexable Error");
+    add_error(
+        &expr,
+        "Expression defined here with type: " + static_cast<std::string>(expr_type));
+    add_footer(
+        "This expression must be of an indexable type to be used in a " + std::string(what) + " context.",
+        "Ensure the expression evaluates to an indexable type (e.g., superimposes IndexRef/IndexMut)");
+}
+
+
+spp::analyse::errors::SppExpressionAmbiguousIndexableError::SppExpressionAmbiguousIndexableError(
+    asts::Ast const &expr,
+    asts::TypeAst const &expr_type,
+    const std::string_view what) {
+    add_header(
+        39, "SPP Expression Ambiguous Indexable Error");
+    add_error(
+        &expr,
+        "Expression defined here with type: " + static_cast<std::string>(expr_type));
+    add_footer(
+        "This expression has an ambiguous indexable type in a " + std::string(what) + " context.",
+        "Ensure the expression has a clear and unambiguous indexable type");
+}
+
+
 spp::analyse::errors::SppIterExpressionPatternTypeDuplicateError::SppIterExpressionPatternTypeDuplicateError(
     asts::IterPatternVariantAst const &first_branch,
     asts::IterPatternVariantAst const &second_branch) {

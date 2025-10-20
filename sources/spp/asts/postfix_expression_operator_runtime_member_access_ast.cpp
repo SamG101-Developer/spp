@@ -88,7 +88,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
         }
 
         // Check the lhs is a tuple/array (the only indexable types).
-        if (not analyse::utils::type_utils::is_type_indexable(*lhs_type, *sm->current_scope)) {
+        if (not analyse::utils::type_utils::is_type_comptime_indexable(*lhs_type, *sm->current_scope)) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessNonIndexableError>().with_args(
                 *meta->postfix_expression_lhs, *lhs_type, *tok_dot).with_scopes({sm->current_scope}).raise();
         }

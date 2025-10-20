@@ -117,6 +117,7 @@
 #include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
 #include <spp/asts/postfix_expression_operator_keyword_not_ast.hpp>
 #include <spp/asts/postfix_expression_operator_keyword_res_ast.hpp>
+#include <spp/asts/postfix_expression_operator_index_ast.hpp>
 #include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
 #include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
 #include <spp/asts/ret_statement_ast.hpp>
@@ -954,7 +955,7 @@ auto spp::parse::ParserSpp::parse_postfix_expression_op()
         p1, asts::PostfixExpressionOperatorAst, parse_postfix_expression_op_early_return,
         parse_postfix_expression_op_function_call, parse_postfix_expression_op_runtime_member_access,
         parse_postfix_expression_op_static_member_access, parse_postfix_expression_op_keyword_not,
-        parse_postfix_expression_op_keyword_res);
+        parse_postfix_expression_op_keyword_res, parse_postfix_expression_op_index);
     return FORWARD_AST(p1);
 }
 
@@ -1005,6 +1006,16 @@ auto spp::parse::ParserSpp::parse_postfix_expression_op_keyword_res()
     PARSE_ONCE(p2, parse_keyword_res);
     PARSE_ONCE(p3, parse_function_call_argument_group)
     return CREATE_AST(asts::PostfixExpressionOperatorKeywordResAst, p1, p2, p3);
+}
+
+
+auto spp::parse::ParserSpp::parse_postfix_expression_op_index()
+    -> std::unique_ptr<asts::PostfixExpressionOperatorIndexAst> {
+    PARSE_ONCE(p1, parse_token_left_square_bracket);
+    PARSE_OPTIONAL(p2, parse_keyword_mut);
+    PARSE_ONCE(p3, parse_expression);
+    PARSE_ONCE(p4, parse_token_right_square_bracket);
+    return CREATE_AST(asts::PostfixExpressionOperatorIndexAst, p1, p2, p3, p4);
 }
 
 

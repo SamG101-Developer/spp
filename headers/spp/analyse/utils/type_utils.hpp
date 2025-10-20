@@ -79,7 +79,7 @@ namespace spp::analyse::utils::type_utils {
         std::map<std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<asts::TypeIdentifierAst>>> &generic_args)
         -> bool;
 
-    auto is_type_indexable(
+    auto is_type_comptime_indexable(
         asts::TypeAst const &type,
         scopes::Scope const &scope)
         -> bool;
@@ -110,6 +110,11 @@ namespace spp::analyse::utils::type_utils {
         -> bool;
 
     auto is_type_generator(
+        asts::TypeAst const &type,
+        scopes::Scope const &scope)
+        -> bool;
+
+    auto is_type_runtime_indexable(
         asts::TypeAst const &type,
         scopes::Scope const &scope)
         -> bool;

@@ -120,6 +120,7 @@ public:
     auto parse_postfix_expression_op_static_member_access() -> std::unique_ptr<asts::PostfixExpressionOperatorStaticMemberAccessAst>;
     auto parse_postfix_expression_op_keyword_not() -> std::unique_ptr<asts::PostfixExpressionOperatorKeywordNotAst>;
     auto parse_postfix_expression_op_keyword_res() -> std::unique_ptr<asts::PostfixExpressionOperatorKeywordResAst>;
+    auto parse_postfix_expression_op_index() -> std::unique_ptr<asts::PostfixExpressionOperatorIndexAst>;
 
     auto parse_primary_expression() -> std::unique_ptr<asts::ExpressionAst>;
 

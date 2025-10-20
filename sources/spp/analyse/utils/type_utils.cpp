@@ -239,7 +239,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
 }
 
 
-auto spp::analyse::utils::type_utils::is_type_indexable(
+auto spp::analyse::utils::type_utils::is_type_comptime_indexable(
     asts::TypeAst const &type,
     scopes::Scope const &scope)
     -> bool {
@@ -309,6 +309,17 @@ auto spp::analyse::utils::type_utils::is_type_generator(
         symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::GEN_OPT, scope, scope) or
         symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::GEN_RES, scope, scope) or
         symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::GEN_ONCE, scope, scope);
+}
+
+
+auto spp::analyse::utils::type_utils::is_type_runtime_indexable(
+    asts::TypeAst const &type,
+    scopes::Scope const &scope)
+    -> bool {
+    // Test for the type against "std::iter::IndexRef[T]/IndexMut[T]".
+    return
+        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::INDEX_REF, scope, scope) or
+        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::INDEX_MUT, scope, scope);
 }
 
 
@@ -421,9 +432,8 @@ auto spp::analyse::utils::type_utils::get_generator_and_yield_type(
     }
 
     // Discover the supertypes and add the current type to it.=.
-    auto sup_types = std::vector{type.shared_from_this()}
-        | genex::views::concat(type_sym->scope->sup_types())
-        | genex::to<std::vector>();
+    auto sup_types = std::vector{type.shared_from_this()};
+    sup_types.append_range(type_sym->scope->sup_types());
 
     // Search through the supertypes for a direct generator type.
     const auto generator_type_candidates = sup_types
@@ -439,14 +449,22 @@ auto spp::analyse::utils::type_utils::get_generator_and_yield_type(
             expr, type, what).with_scopes({sm.current_scope}).raise();
     }
 
-    // Extract the generator and yield type. // Todo: error if there are multiple generator types?
+    // Extract the generator and yield type.
     auto generator_type = generator_type_candidates[0];
     auto yield_type = generator_type->type_parts().back()->generic_arg_group->type_at("Yield")->val;
 
     // Extract the multiplicity, optionality and fallibility from the generator type.
-    auto is_once = symbolic_eq(*asts::generate::common_types_precompiled::GEN_ONCE, *generator_type->without_generics(), *sm.current_scope, *sm.current_scope);
-    auto is_optional = symbolic_eq(*asts::generate::common_types_precompiled::GEN_OPT, *generator_type->without_generics(), *sm.current_scope, *sm.current_scope);
-    auto is_fallible = symbolic_eq(*asts::generate::common_types_precompiled::GEN_RES, *generator_type->without_generics(), *sm.current_scope, *sm.current_scope);
+    auto is_once = symbolic_eq(
+        *asts::generate::common_types_precompiled::GEN_ONCE, *generator_type->without_generics(),
+        *sm.current_scope, *sm.current_scope);
+
+    auto is_optional = symbolic_eq(
+        *asts::generate::common_types_precompiled::GEN_OPT, *generator_type->without_generics(),
+        *sm.current_scope, *sm.current_scope);
+
+    auto is_fallible = symbolic_eq(
+        *asts::generate::common_types_precompiled::GEN_RES, *generator_type->without_generics(),
+        *sm.current_scope, *sm.current_scope);
 
     // Get the error type if the generator is fallible.
     auto error_type = is_fallible ? generator_type->type_parts().back()->generic_arg_group->type_at("Err")->val : nullptr;
