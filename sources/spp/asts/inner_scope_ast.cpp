@@ -19,10 +19,6 @@
 #include <genex/actions/remove.hpp>
 #include <genex/actions/remove_if.hpp>
 #include <genex/views/enumerate.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/for_each.hpp>
-#include <genex/views/tuple_nth.hpp>
-#include <genex/views/view.hpp>
 
 
 template <typename T>
@@ -137,11 +133,9 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
 
     // Invalidate pins and extended borrows that have now gone out of scope.
     for (auto const &sym : all_syms) {
-        auto &ebs = sym->memory_info->extended_borrows;
-        sym->memory_info->extended_borrows
-            | genex::to<std::vector>()
-            | genex::views::filter([sm](auto const &x) { return std::get<2>(x) == sm->current_scope->parent; })
-            | genex::views::for_each([&ebs](auto const &x) { ebs |= genex::actions::remove_if([x](auto const &y) { return y == x; }); });
+        // Remove the linked pins that were created in this scope as they are now going out of scope and will therefore
+        // no longer be valid.
+        sym->memory_info->ast_linked_pins |= genex::actions::remove_if([sm](auto const &x) { return std::get<2>(x) == sm->current_scope; });
     }
 
     // If the final expression of the inner scope is being used (ie assigned ot outer variable), then memory check it.
