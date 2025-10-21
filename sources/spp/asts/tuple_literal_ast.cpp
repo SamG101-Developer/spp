@@ -102,7 +102,7 @@ auto spp::asts::TupleLiteralAst::stage_7_analyse_semantics(
     // Check all the elements are owned by the tuple, not borrowed.
     for (auto const &elem : elems | genex::views::indirect) {
         if (auto [elem_sym, _] = sm->current_scope->get_var_symbol_outermost(elem); elem_sym != nullptr) {
-            if (const auto borrow_ast = elem_sym->memory_info->ast_borrowed) {
+            if (const auto borrow_ast = std::get<0>(elem_sym->memory_info->ast_borrowed)) {
                 analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
                     elem, *borrow_ast, "explicit array element type").with_scopes({sm->current_scope}).raise();
             }

@@ -38,7 +38,7 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
      * the symbol, this attribute will be set to @c nullptr. This attribute is mutually exclusive with the @c ast_moved
      * attribute.
      */
-    asts::Ast const *ast_initialization;
+    std::tuple<asts::Ast const*, scopes::Scope*> ast_initialization = {nullptr, nullptr};
 
     /**
      * The @c ast_moved AST is the AST that moved the value out of the symbol this memory information struct is attached
@@ -46,7 +46,7 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
      * this attribute will be set to @c nullptr. This attribute is mutually exclusive with the @c ast_initialization
      * attribute.
      */
-    asts::Ast const *ast_moved;
+    std::tuple<asts::Ast const *, scopes::Scope*> ast_moved = {nullptr, nullptr};
 
     /**
      * The @c ast_initialization_origin AST is the same as the @c ast_initialization, but it isn't set to nullptr when
@@ -54,14 +54,14 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
      * value is moved out of the symbol, the initialization origin can still be tracked and used for further analysis
      * and error formatting.
      */
-    asts::Ast const *ast_initialization_origin;
+    std::tuple<asts::Ast const *, scopes::Scope*> ast_initialization_origin = {nullptr, nullptr};
 
     /**
      * The @c ast_borrowed AST is the AST that is set if the value symbol is declared with a borrow type. This will be
      * set from a function parameter's convention. If this attribute is @c nullptr, then the convention is the "mov"
      * convention.
      */
-    asts::Ast const *ast_borrowed;
+    std::tuple<asts::Ast const *, scopes::Scope*> ast_borrowed = {nullptr, nullptr};
 
     /**
      * The @c ast_partial_moves ASTs are the ASTs that represent partial moves of the value out of the symbol. For the
@@ -129,21 +129,21 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
      * initialized state.
      * @param ast The AST that initialized the symbol.
      */
-    auto initialized_by(asts::Ast const &ast) -> void;
+    auto initialized_by(asts::Ast const &ast, scopes::Scope* scope) -> void;
 
     /**
      * Set the @c ast_moved AST to the given AST, reset the @c ast_initialization AST to @c nullptr. This marks the
      * symbol as being in the moved state.
      * @param ast The AST that moved the value out of the symbol.
      */
-    auto moved_by(asts::Ast const &ast) -> void;
+    auto moved_by(asts::Ast const &ast, scopes::Scope* scope) -> void;
 
     /**
      * Remove a partial move from the symbol's memory information. This is used when a partial move is re-assigned to
      * the symbol, so that the symbol is no longer in a partially moved state.
      * @param ast The AST that represents the partial move to remove.
      */
-    auto remove_partial_move(asts::Ast const &ast) -> void;
+    auto remove_partial_move(asts::Ast const &ast, scopes::Scope* scope) -> void;
 
     /**
      * Create a snapshot of the current memory information. This is used to capture the state of the memory at a given

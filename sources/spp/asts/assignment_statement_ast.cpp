@@ -121,19 +121,19 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
         // Full assignment (ie "x" = "y") requires the "x" symbol to be marked as "mut" or never initialized.
         if (not is_attr(lhs_expr) and not(lhs_sym->is_mutable or lhs_sym->memory_info->initialization_counter == 0)) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
-                *lhs_sym->name, *tok_assign, *lhs_sym->memory_info->ast_initialization).with_scopes({sm->current_scope}).raise();
+                *lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_initialization)).with_scopes({sm->current_scope}).raise();
         }
 
         // Attribute assignment (ie "x.y = z"), for a non-borrowed symbol, requires an outermost "mut" symbol.
-        if (is_attr(lhs_expr) and not(lhs_sym->memory_info->ast_borrowed or lhs_sym->is_mutable)) {
+        if (is_attr(lhs_expr) and not(std::get<0>(lhs_sym->memory_info->ast_borrowed) or lhs_sym->is_mutable)) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
-                *lhs_sym->name, *tok_assign, *lhs_sym->memory_info->ast_initialization).with_scopes({sm->current_scope}).raise();
+                *lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_initialization)).with_scopes({sm->current_scope}).raise();
         }
 
         // Attribute assignment (ie "x.y = z"), for a borrowed symbol, cannot contain an immutable borrow.
         if (is_attr(lhs_expr) and lhs_sym->type->get_convention() and *lhs_sym->type->get_convention() == ConventionAst::ConventionTag::REF) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
-                *lhs_sym->name, *tok_assign, *lhs_sym->memory_info->ast_borrowed).with_scopes({sm->current_scope}).raise();
+                *lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_borrowed)).with_scopes({sm->current_scope}).raise();
         }
 
         // Ensure the lhs and rhs have the same type.
@@ -182,7 +182,7 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
 
         // Resolve moved identifiers to the "initialised" state, otherwise resolve a partial move.
         is_attr(lhs_expr)
-            ? lhs_sym->memory_info->remove_partial_move(*lhs_expr)
-            : lhs_sym->memory_info->initialized_by(*this);
+            ? lhs_sym->memory_info->remove_partial_move(*lhs_expr, sm->current_scope)
+            : lhs_sym->memory_info->initialized_by(*this, sm->current_scope);
     }
 }

@@ -128,15 +128,8 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
 
     // Check the memory of each member.
     for (auto const &x : members) { x->stage_8_check_memory(sm, meta); }
-    auto all_syms = sm->current_scope->all_var_symbols();
+    auto all_syms = sm->current_scope->all_var_symbols() | genex::to<std::vector>();
     auto inner_syms = sm->current_scope->all_var_symbols(true);
-
-    // Invalidate pins and extended borrows that have now gone out of scope.
-    for (auto const &sym : all_syms) {
-        // Remove the linked pins that were created in this scope as they are now going out of scope and will therefore
-        // no longer be valid.
-        sym->memory_info->ast_linked_pins |= genex::actions::remove_if([sm](auto const &x) { return std::get<2>(x) == sm->current_scope; });
-    }
 
     // If the final expression of the inner scope is being used (ie assigned ot outer variable), then memory check it.
     if (const auto move = meta->assignment_target; not members.empty() and move != nullptr) {

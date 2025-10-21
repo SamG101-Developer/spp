@@ -173,13 +173,13 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         // Immutable symbols cannot be mutated.
         if (not sym->is_mutable) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
-                *arg->val, *arg->val, *sym->memory_info->ast_initialization).with_scopes({sm->current_scope}).raise();
+                *arg->val, *arg->val, *std::get<0>(sym->memory_info->ast_initialization)).with_scopes({sm->current_scope}).raise();
         }
 
         // Immutable borrows, even if their symbol is mutable, cannot be mutated.
-        if (sym->memory_info->ast_borrowed and *sym->type->get_convention() == ConventionAst::ConventionTag::REF) {
+        if (std::get<0>(sym->memory_info->ast_borrowed) and *sym->type->get_convention() == ConventionAst::ConventionTag::REF) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
-                *arg->val, *arg->val, *sym->memory_info->ast_borrowed).with_scopes({sm->current_scope}).raise();
+                *arg->val, *arg->val, *std::get<0>(sym->memory_info->ast_borrowed)).with_scopes({sm->current_scope}).raise();
         }
     }
 }
@@ -251,7 +251,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
 
             // Invalidate any linked pins.
             for (auto const &pin : linked_pin_syms) {
-                sm->current_scope->get_var_symbol(pin->name)->memory_info->moved_by(*this);
+                if (sm->current_scope->get_var_symbol(pin->name)) {
+                    sm->current_scope->get_var_symbol(pin->name)->memory_info->moved_by(*this, sm->current_scope);
+                }
             }
 
             // Auto-pin the argument and the assignment target if required.
@@ -285,7 +287,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
 
             // Invalidate any linked pins.
             for (auto const &pin : linked_pin_syms) {
-                sm->current_scope->get_var_symbol(pin->name)->memory_info->moved_by(*this);
+                if (sm->current_scope->get_var_symbol(pin->name)) {
+                    sm->current_scope->get_var_symbol(pin->name)->memory_info->moved_by(*this, sm->current_scope);
+                }
             }
 
             // Auto-pin the argument and the assignment target if required.
