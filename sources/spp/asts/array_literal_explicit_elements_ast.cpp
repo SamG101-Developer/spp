@@ -141,7 +141,8 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_8_check_memory(
     // Check the memory of each element in the array literal.
     for (auto const& elem: elems) {
         elem->stage_8_check_memory(sm, meta);
-        analyse::utils::mem_utils::validate_symbol_memory(*elem, *elem, *sm, true, true, true, true, true, false, meta);
+        analyse::utils::mem_utils::validate_symbol_memory(
+            *elem, *elem, *sm, true, true, true, true, true, false, meta);
     }
 }
 

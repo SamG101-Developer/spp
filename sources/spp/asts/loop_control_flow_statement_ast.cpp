@@ -117,7 +117,8 @@ auto spp::asts::LoopControlFlowStatementAst::stage_8_check_memory(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
     -> void {
-    // Check the memory state of the expression if it is present.
+    // Check the memory state of the expression if it is present. Expression is being moved into outer context, so
+    // strict memory checks.
     if (expr != nullptr) {
         expr->stage_8_check_memory(sm, meta);
         analyse::utils::mem_utils::validate_symbol_memory(

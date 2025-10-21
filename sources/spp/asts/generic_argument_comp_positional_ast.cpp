@@ -79,5 +79,6 @@ auto spp::asts::GenericArgumentCompPositionalAst::stage_8_check_memory(
     -> void {
     // Ensure the argument isn't moved or partially moved (for all conventions)
     val->stage_8_check_memory(sm, meta);
-    analyse::utils::mem_utils::validate_symbol_memory(*val, *val, *sm, true, true, true, true, true, true, meta);
+    analyse::utils::mem_utils::validate_symbol_memory(
+        *val, *val, *sm, true, true, true, true, true, true, meta);
 }
