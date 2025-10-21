@@ -78,6 +78,13 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
     std::vector<asts::Ast const*> ast_pins;
 
     /**
+     * A linked pin in a pin that is caused via assignment. For example, @code let x = coro(&y)@endcode will cause @c x
+     * to be a linked pin for @y, because @c y is pinned due to being borrowed into the coroutine that is assigned to
+     * @c x. The boolean determines if the pin from a mutable borrow.
+     */
+    std::vector<std::tuple<scopes::VariableSymbol*, bool, scopes::Scope*>> ast_linked_pins;
+
+    /**
      * The @c ast_comptime AST is the AST that represents the compile-time declaration of the symbol. This might be the
      * @c cmp statement or @c cmp generic parameter, wherever the symbol was declared with @c cmp.
      * @note Must be a unique pointer due to generic arguments being dropped or converted (cheap to clone though).
@@ -115,13 +122,6 @@ struct spp::analyse::utils::mem_utils::MemoryInfo {
      * symbol in different pinned states.
      */
     std::optional<InconsistentCondMemState> is_inconsistently_pinned;
-
-    /**
-     * The @c extended_borrows is a list of tuples that represent the potential long-term borrow state of the symbol,
-     * such as being created from an @c async function call, coroutine call, or iteration based loop. The tuple stores
-     * target, definition, mutability and scope information.
-     */
-    std::vector<std::tuple<asts::Ast*, bool, scopes::Scope*>> extended_borrows;
 
     /**
      * Set the @c ast_initialization AST to the given AST, reset the @c ast_moved AST to @c nullptr, and remove all
@@ -182,6 +182,11 @@ struct spp::analyse::utils::mem_utils::MemoryInfoSnapshot {
      * List of pins that were present in the owning @c MemoryInfo at the time of the snapshot.
      */
     std::vector<asts::Ast const*> ast_pins;
+
+    /**
+     * List of linked pins that were present in the owning @c MemoryInfo at the time of the snapshot.
+     */
+    std::vector<std::tuple<scopes::VariableSymbol*, bool, scopes::Scope*>> ast_linked_pins;
 
     /**
      * The @c initialization_counter that was present in the owning @c MemoryInfo at the time of the snapshot.

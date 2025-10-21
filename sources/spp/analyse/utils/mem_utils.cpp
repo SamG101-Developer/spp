@@ -59,7 +59,7 @@ auto spp::analyse::utils::mem_utils::MemoryInfo::snapshot() const
     -> MemoryInfoSnapshot {
     // Create and return the snapshot.
     return MemoryInfoSnapshot(
-        ast_initialization, ast_moved, ast_partial_moves, ast_pins, initialization_counter);
+        ast_initialization, ast_moved, ast_partial_moves, ast_pins, ast_linked_pins, initialization_counter);
 }
 
 

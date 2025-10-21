@@ -197,23 +197,6 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
     auto borrows_ref = std::vector<Ast*>();
     auto borrows_mut = std::vector<Ast*>();
 
-    // Create the pre-existing borrows (from coroutines, async calls) that are already in scope.
-    auto extended_borrows_ref = std::map<Ast*, std::vector<std::shared_ptr<IdentifierAst>>>();
-    auto extended_borrows_mut = std::map<Ast*, std::vector<std::shared_ptr<IdentifierAst>>>();
-
-    // Merge the preexisting borrows into the borrow lists (for symbolic arguments only).
-    for (auto const &arg : args) {
-        const auto arg_val = ast_cast<IdentifierAst>(arg->val.get());
-        if (arg_val == nullptr) { continue; }
-        const auto sym = sm->current_scope->get_var_symbol(ast_clone(arg_val));
-
-        for (auto const &[assignment, is_mut, _] : sym->memory_info->extended_borrows) {
-            if (assignment == nullptr) { continue; }
-            (is_mut ? borrows_mut : borrows_ref).emplace_back(assignment);
-            (is_mut ? extended_borrows_mut : extended_borrows_ref)[assignment].emplace_back(ast_clone(ast_cast<IdentifierAst>(assignment)));
-        }
-    }
-
     for (auto const &arg : args) {
         // Get the outermost part of the argument as a symbol. If the argument is non-symbolic then there is no need to
         // track borrows to it, as it is a temporary value.
@@ -222,7 +205,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
         if (sym == nullptr) { continue; }
 
         // Ensure the argument isn't moved or partially moved (applies to all conventions). For non-symbolic arguments,
-        // nested checking is done via the argument itself (tuples, arrays, etc).
+        // nested checking is done via the argument itself (tuples, arrays, etc). Can borrow attributes so don't check
+        // for moving from borrowed context right here.
         analyse::utils::mem_utils::validate_symbol_memory(
             *arg->val, *arg, *sm, true, true, false, false, false, false, meta);
 
@@ -231,7 +215,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
             // move or partial move of the argument. Note the "check_pins_linked=False" because function calls can only
             // imply an inner scope, so it is guaranteed that lifetimes aren't being extended.
             analyse::utils::mem_utils::validate_symbol_memory(
-                *arg->val, *arg, *sm, true, true, true, true, false, true, meta);
+                *arg->val, *arg, *sm, true, true, true, true, true, true, meta);
 
             // Check the move doesn't overlap with any borrows. This is to ensure that "f(&x, x)" can never happen,
             // because the first argument requires the owned object to outlive the function call, and moving it as the
@@ -254,19 +238,28 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
                 | genex::to<std::vector>();
 
+            auto linked_pin_syms = sym->memory_info->ast_linked_pins
+                | genex::views::filter([](auto const &tuple) { return std::get<1>(tuple); })
+                | genex::views::transform([](auto const &tuple) { return std::get<0>(tuple); })
+                | genex::to<std::vector>();
+
             // Check the immutable borrow doesn't overlap with any other mutable borrows in the same scope.
             if (not overlaps.empty()) {
                 analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemoryOverlapUsageError>().with_args(
                     *overlaps[0], *arg->val).with_scopes({sm->current_scope}).raise();
             }
 
+            // Invalidate any linked pins.
+            for (auto const &pin : linked_pin_syms) {
+                sm->current_scope->get_var_symbol(pin->name)->memory_info->moved_by(*this);
+            }
+
             // Auto-pin the argument and the assignment target if required.
             if (pins_required) {
                 sym->memory_info->ast_pins.emplace_back(arg->val.get());
-                sym->memory_info->extended_borrows.emplace_back(arg->val.get(), false, sm->current_scope);
                 if (meta->assignment_target != nullptr) {
                     const auto [ass_sym, _] = sm->current_scope->get_var_symbol_outermost(*meta->assignment_target);
-                    ass_sym->memory_info->ast_pins.emplace_back(arg->val.get());
+                    sym->memory_info->ast_linked_pins.emplace_back(ass_sym.get(), false, sm->current_scope);
                 }
             }
 
@@ -280,19 +273,27 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
                 | genex::to<std::vector>();
 
+            auto linked_pin_syms = sym->memory_info->ast_linked_pins
+                | genex::views::transform([](auto const &tuple) { return std::get<0>(tuple); })
+                | genex::to<std::vector>();
+
             // Check the mutable borrow doesn't overlap with any other borrows in the same scope.
             if (not overlaps.empty()) {
                 analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemoryOverlapUsageError>().with_args(
                     *overlaps[0], *arg->val).with_scopes({sm->current_scope}).raise();
             }
 
+            // Invalidate any linked pins.
+            for (auto const &pin : linked_pin_syms) {
+                sm->current_scope->get_var_symbol(pin->name)->memory_info->moved_by(*this);
+            }
+
             // Auto-pin the argument and the assignment target if required.
             if (pins_required) {
                 sym->memory_info->ast_pins.emplace_back(arg->val.get());
-                sym->memory_info->extended_borrows.emplace_back(arg->val.get(), true, sm->current_scope);
                 if (meta->assignment_target != nullptr) {
                     const auto [ass_sym, _] = sm->current_scope->get_var_symbol_outermost(*meta->assignment_target);
-                    ass_sym->memory_info->ast_pins.emplace_back(arg->val.get());
+                    sym->memory_info->ast_linked_pins.emplace_back(ass_sym.get(), true, sm->current_scope);
                 }
             }
 
