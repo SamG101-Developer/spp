@@ -187,7 +187,7 @@ struct spp::analyse::errors::SppMoveFromPinnedMemoryError final : SemanticError 
 
 
 struct spp::analyse::errors::SppMoveFromPinLinkedMemoryError final : SemanticError {
-    explicit SppMoveFromPinLinkedMemoryError(asts::ExpressionAst const &ast, asts::Ast const &init_location, asts::Ast const &move_location, asts::Ast const &pin_location, asts::Ast const &pin_init_location);
+    explicit SppMoveFromPinLinkedMemoryError(asts::ExpressionAst const &ast, asts::Ast const &init_location, asts::Ast const &move_location, asts::Ast const &pin_location);
 };
 
 
