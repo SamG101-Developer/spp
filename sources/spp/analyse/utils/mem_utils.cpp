@@ -211,23 +211,24 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
         | genex::views::cast_dynamic<asts::IdentifierAst const*>()
         | genex::to<std::vector>();
 
-    if (not symbolic_pins.empty() and not copies and not partial_copies) {
-        // todo: ast_clone or shared_from_this?
-        const auto pin_sym = var_scope->get_var_symbol(ast_clone(symbolic_pins.front()));
+    const auto symbolic_pin_links = var_sym->memory_info->ast_linked_pins
+        | genex::views::transform([](auto const &x) { return std::get<0>(x)->name; })
+        | genex::to<std::vector>();
+
+    if (check_pins and not symbolic_pins.empty() and not copies and not partial_copies) {
         const auto [where_init, _] = var_sym->memory_info->ast_initialization_origin;
         const auto where_move = &move_ast;
         const auto where_pin = symbolic_pins.front();
+        errors::SemanticErrorBuilder<errors::SppMoveFromPinnedMemoryError>().with_args(
+            value_ast, *where_init, *where_move, *where_pin).with_scopes({sm.current_scope}).raise();
+    }
 
-        if (check_linked_pins and var_sym != pin_sym) {
-            const auto [where_pin_init, _] = pin_sym->memory_info->ast_initialization_origin;
-            errors::SemanticErrorBuilder<errors::SppMoveFromPinLinkedMemoryError>().with_args(
-                value_ast, *where_init, *where_move, *where_pin, *where_pin_init).with_scopes({sm.current_scope}).raise();
-        }
-
-        if (check_pins and var_sym == pin_sym) {
-            errors::SemanticErrorBuilder<errors::SppMoveFromPinnedMemoryError>().with_args(
-                value_ast, *where_init, *where_move, *where_pin).with_scopes({sm.current_scope}).raise();
-        }
+    if (check_linked_pins and not symbolic_pin_links.empty()) {
+        const auto [where_init, _] = var_sym->memory_info->ast_initialization_origin;
+        const auto where_move = &move_ast;
+        const auto where_pin = symbolic_pin_links.front().get();
+        errors::SemanticErrorBuilder<errors::SppMoveFromPinLinkedMemoryError>().with_args(
+            value_ast, *where_init, *where_move, *where_pin).with_scopes({sm.current_scope}).raise();
     }
 
     // Mark the symbol as moved/partially-moved if it is not copyable.
