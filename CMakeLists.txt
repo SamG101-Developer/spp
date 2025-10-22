@@ -52,14 +52,14 @@ add_executable(spp main.cpp)
 target_link_libraries(spp PRIVATE spp_lib)
 
 # In debug mode, add the sanitizers.
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    message(STATUS "Debug mode: Adding AddressSanitizer flags")
-    set(SANITIZER_FLAGS -fsanitize=address,leak -fno-omit-frame-pointer -fno-optimize-sibling-calls -g -O0)
-    target_compile_options(spp_lib PRIVATE ${SANITIZER_FLAGS})
-    target_compile_options(spp PRIVATE ${SANITIZER_FLAGS})
-    target_link_options(spp_lib PRIVATE ${SANITIZER_FLAGS})
-    target_link_options(spp PRIVATE ${SANITIZER_FLAGS})
-endif ()
+#if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+#    message(STATUS "Debug mode: Adding AddressSanitizer flags")
+#    set(SANITIZER_FLAGS -fsanitize=address,leak -fno-omit-frame-pointer -fno-optimize-sibling-calls -g -O0)
+#    target_compile_options(spp_lib PRIVATE ${SANITIZER_FLAGS})
+#    target_compile_options(spp PRIVATE ${SANITIZER_FLAGS})
+#    target_link_options(spp_lib PRIVATE ${SANITIZER_FLAGS})
+#    target_link_options(spp PRIVATE ${SANITIZER_FLAGS})
+#endif ()
 
 # Unit test support.
 enable_testing()
