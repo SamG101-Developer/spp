@@ -7,6 +7,7 @@
 #include <spp/analyse/utils/bin_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/binary_expression_ast.hpp>
+#include <spp/asts/fold_expression_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
@@ -99,7 +100,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
     }
 
     // Handle lhs-folding.
-    if (ast_cast<TokenAst>(lhs.get())) {
+    if (ast_cast<FoldExpressionAst>(lhs.get())) {
         // Check the rhs is a tuple.
         const auto rhs_tuple_type = rhs->infer_type(sm, meta);
         if (not analyse::utils::type_utils::is_type_tuple(*rhs_tuple_type, *sm->current_scope)) {
@@ -113,7 +114,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
         for (auto i = 0u; i < rhs_num_elems; ++i) {
             auto field = std::make_unique<IdentifierAst>(rhs->pos_start(), std::to_string(i));
             auto new_ast = std::make_unique<PostfixExpressionAst>(
-                ast_clone(lhs),
+                ast_clone(rhs),
                 std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
             new_ast->stage_7_analyse_semantics(sm, meta);
             new_asts.emplace_back(std::move(new_ast));
@@ -131,7 +132,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
     }
 
     // Handle rhs-folding.
-    if (ast_cast<TokenAst>(rhs.get())) {
+    else if (ast_cast<FoldExpressionAst>(rhs.get())) {
         // Check the lhs is a tuple.
         const auto lhs_tuple_type = lhs->infer_type(sm, meta);
         if (not analyse::utils::type_utils::is_type_tuple(*lhs_tuple_type, *sm->current_scope)) {
@@ -145,7 +146,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
         for (auto i = 0u; i < lhs_num_elems; ++i) {
             auto field = std::make_unique<IdentifierAst>(rhs->pos_start(), std::to_string(i));
             auto new_ast = std::make_unique<PostfixExpressionAst>(
-                ast_clone(rhs),
+                ast_clone(lhs),
                 std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
             new_ast->stage_7_analyse_semantics(sm, meta);
             new_asts.emplace_back(std::move(new_ast));

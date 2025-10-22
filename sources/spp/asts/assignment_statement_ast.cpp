@@ -130,10 +130,15 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
                 *lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_initialization)).with_scopes({sm->current_scope}).raise();
         }
 
-        // Attribute assignment (ie "x.y = z"), for a borrowed symbol, cannot contain an immutable borrow.
+        // Attribute assignment (ie "x.y = z"), for a borrowed symbol, cannot be immutably borrowed.
         if (is_attr(lhs_expr) and lhs_sym->type->get_convention() and *lhs_sym->type->get_convention() == ConventionAst::ConventionTag::REF) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
                 *lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_borrowed)).with_scopes({sm->current_scope}).raise();
+        }
+
+        // Prevent double initializations to immutable uninitialized let statements.
+        if (not is_attr(lhs_expr)) {
+            lhs_sym->memory_info->initialized_by(*this, sm->current_scope);
         }
 
         // Ensure the lhs and rhs have the same type.
