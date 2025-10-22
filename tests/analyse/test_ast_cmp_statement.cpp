@@ -45,7 +45,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_value_comp_identifier_noncopyanle,
     SppInvalidExpressionNonCopyableTypeError, R"(
     cls MyClass {
-        x: std::string::String
+        x: std::string::Str
     }
     cmp x: MyClass = MyClass(x="hello")
     cmp y: MyClass = x

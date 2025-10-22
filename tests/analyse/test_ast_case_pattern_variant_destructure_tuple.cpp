@@ -106,7 +106,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         y: std::number::S32
     }
     fun f(p: (Point, Point)) -> std::void::Void {
-        case p is (Point(x=a, y=b), Point(x=c, y=d)) { }
+        case p is (Point(x as a, y as b), Point(x as c, y as d)) { }
     }
 )")
 

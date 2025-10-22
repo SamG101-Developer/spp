@@ -74,7 +74,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         y: T
     }
     fun f() -> std::void::Void {
-        let a: std::option::Opt[std::string::Str] = std::option::Some("hello world")
+        let a: std::option::Opt[std::string::Str] = std::option::Some(val="hello world")
         case a is std::option::Some(mut val) { val = "bye" }
     }
 )")

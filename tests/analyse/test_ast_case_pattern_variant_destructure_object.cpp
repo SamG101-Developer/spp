@@ -183,6 +183,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f(p: Line) -> std::void::Void {
-        case p is Line(start=Point(x, y), end=Point(x2, y2)) { }
+        case p is Line(start=Point(x as x1, y as y1), end=Point(x as x2, y as y2)) { }
     }
 )");

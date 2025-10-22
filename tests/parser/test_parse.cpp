@@ -1171,14 +1171,6 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_type_optional, R"(
-    fun my_function() -> Void {
-        let a: I32?
-    }
-)")
-
-
-SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_type_tuple, R"(
     fun my_function() -> Void {
         let a: (I32, I32)
