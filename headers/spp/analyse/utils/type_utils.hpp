@@ -1,10 +1,10 @@
 #pragma once
 
-#include <map>
-
-#include <spp/asts/_fwd.hpp>
 #include <spp/macros.hpp>
+#include <spp/asts/_fwd.hpp>
 #include <spp/utils/ptr_cmp.hpp>
+
+#include <ankerl/unordered_dense.h>
 
 
 /// @cond
@@ -24,6 +24,11 @@ namespace spp::asts::mixins {
 
 
 namespace spp::analyse::utils::type_utils {
+    using GenericInferenceMap = ankerl::unordered_dense::map<
+        std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*,
+        spp::utils::PtrHash<std::shared_ptr<asts::TypeIdentifierAst>>,
+        spp::utils::PtrEq<std::shared_ptr<asts::TypeIdentifierAst>>>;
+
     /**
      * The symbolic equality type checker is a complex type checking algorithm that takes namespacing, scopes, aliases,
      * variants, etc, all into account, and returns whether two types are indeed the same. Generic arguments are also
@@ -67,7 +72,7 @@ namespace spp::analyse::utils::type_utils {
         asts::TypeAst const &rhs_type,
         scopes::Scope const *lhs_scope,
         scopes::Scope const *rhs_scope,
-        std::map<std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<asts::TypeIdentifierAst>>> &generic_args,
+        GenericInferenceMap &generic_args,
         bool check_variant = false)
         -> bool;
 
@@ -76,7 +81,7 @@ namespace spp::analyse::utils::type_utils {
         asts::ExpressionAst const &rhs_expr,
         scopes::Scope const &lhs_scope,
         scopes::Scope const &rhs_scope,
-        std::map<std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<asts::TypeIdentifierAst>>> &generic_args)
+        GenericInferenceMap &generic_args)
         -> bool;
 
     auto is_type_comptime_indexable(

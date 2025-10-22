@@ -6,6 +6,7 @@
 #include <spp/utils/ptr_cmp.hpp>
 
 #include <hash_table8.hpp>
+#include <ankerl/unordered_dense.h>
 
 
 /// @cond
@@ -26,7 +27,7 @@ namespace spp::analyse::scopes {
 template <typename I, typename S>
 class spp::analyse::scopes::IndividualSymbolTable {
 private:
-    emhash8::HashMap<std::shared_ptr<I>, std::shared_ptr<S>, spp::utils::PtrHash<std::shared_ptr<I>>, spp::utils::PtrEq<std::shared_ptr<I>>> m_table;
+    ankerl::unordered_dense::map<std::shared_ptr<I>, std::shared_ptr<S>, spp::utils::PtrHash<std::shared_ptr<I>>, spp::utils::PtrEq<std::shared_ptr<I>>> m_table;
 
 public:
     IndividualSymbolTable();

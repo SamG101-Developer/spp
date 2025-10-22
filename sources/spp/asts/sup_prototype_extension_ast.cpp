@@ -108,7 +108,7 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_cyclic_extension(
     analyse::scopes::Scope &check_scope) const
     -> void {
     auto check_cycle = [this, &check_scope](analyse::scopes::Scope const *sc) {
-        auto dummy = std::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<TypeIdentifierAst>>>();
+        auto dummy = analyse::utils::type_utils::GenericInferenceMap();
         const auto ext = ast_cast<SupPrototypeExtensionAst>(sc->ast);
         return ext and
             analyse::utils::type_utils::relaxed_symbolic_eq(*ext->name, *super_class, sc, &check_scope, dummy, false) and
@@ -138,7 +138,7 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_double_extension(
     }
 
     auto check_double = [this, &check_scope](analyse::scopes::Scope const *sc) {
-        auto dummy = std::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<TypeIdentifierAst>>>();
+        auto dummy = analyse::utils::type_utils::GenericInferenceMap();
         const auto ext = ast_cast<SupPrototypeExtensionAst>(sc->ast);
         return ext and
             analyse::utils::type_utils::relaxed_symbolic_eq(*ext->name, *name, sc, &check_scope, dummy, false) and
@@ -146,7 +146,7 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_double_extension(
     };
 
     // Prevent double inheritance by checking if the scopes are already registered the other way around.
-    auto dummy = std::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<TypeIdentifierAst>>>();
+    auto dummy = analyse::utils::type_utils::GenericInferenceMap();
     const auto existing_sup_scopes = cls_sym.scope->sup_scopes()
         | genex::views::filter(check_double)
         | genex::views::transform([](auto *x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })

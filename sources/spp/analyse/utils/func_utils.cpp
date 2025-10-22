@@ -726,7 +726,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
 
             // Check for a direct match ("a: T" & "a: Str") or an inner match ("a: Vec[T]" & "a: Vec[Str]").
             if (infer_source.contains(infer_target_name)) {
-                auto temp_gs = std::map<std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<asts::TypeIdentifierAst>>>();
+                auto temp_gs = type_utils::GenericInferenceMap();
                 type_utils::relaxed_symbolic_eq(
                     *infer_source.at(infer_target_name)->without_convention(),
                     *infer_target_type->without_convention(),
@@ -887,7 +887,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
 
             // Check for a direct match ("a: T" & "a: Str") or an inner match ("a: Vec[T]" & "a: Vec[Str]").
             if (infer_source.contains(infer_target_name)) {
-                auto temp_gs = std::map<std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<asts::TypeIdentifierAst>>>();
+                auto temp_gs = type_utils::GenericInferenceMap();
                 type_utils::relaxed_symbolic_eq(
                     *infer_source.at(infer_target_name)->without_convention(),
                     *infer_target_type->without_convention(),
@@ -964,8 +964,8 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
             | genex::views::filter([&](auto const &p) { return *p.first != *arg_name; })
             | genex::views::transform([](auto const &p) { return std::make_pair(std::dynamic_pointer_cast<asts::TypeIdentifierAst>(p.first), p.second); })
             | genex::to<std::vector>();
-
-        auto other_args_group = asts::GenericArgumentGroupAst::from_map(std::map(other_args.begin(), other_args.end()));
+        auto other_args_map = ankerl::unordered_dense::map<std::shared_ptr<asts::TypeIdentifierAst>, std::shared_ptr<const asts::TypeAst>>(other_args.begin(), other_args.end());
+        auto other_args_group = asts::GenericArgumentGroupAst::from_map(std::move(other_args_map));
         auto other_args_vec = other_args_group->args | genex::views::ptr | genex::to<std::vector>();
 
         auto t = formatted_args[arg_name]->substitute_generics(other_args_vec);

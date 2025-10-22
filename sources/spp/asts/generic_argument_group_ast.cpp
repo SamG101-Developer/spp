@@ -1,23 +1,24 @@
+#include <spp/pch.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/order_utils.hpp>
+#include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/generic_argument_ast.hpp>
 #include <spp/asts/generic_argument_comp_keyword_ast.hpp>
 #include <spp/asts/generic_argument_comp_positional_ast.hpp>
+#include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_argument_type_keyword_ast.hpp>
 #include <spp/asts/generic_argument_type_positional_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
 #include <spp/asts/generic_parameter_comp_ast.hpp>
-#include <spp/asts/generic_parameter_type_ast.hpp>
 #include <spp/asts/generic_parameter_group_ast.hpp>
+#include <spp/asts/generic_parameter_type_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/mixins/orderable_ast.hpp>
-#include <spp/pch.hpp>
 
 #include <genex/to_container.hpp>
 #include <genex/views/cast_dynamic.hpp>
@@ -78,7 +79,7 @@ auto spp::asts::GenericArgumentGroupAst::from_params(
 
 
 auto spp::asts::GenericArgumentGroupAst::from_map(
-    std::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<TypeIdentifierAst>>> &&map)
+    analyse::utils::type_utils::GenericInferenceMap &&map)
     -> std::unique_ptr<GenericArgumentGroupAst> {
     // Create the list of arguments, initially empty.
     auto mapped_args = std::vector<std::unique_ptr<GenericArgumentAst>>();
@@ -103,14 +104,26 @@ auto spp::asts::GenericArgumentGroupAst::from_map(
 
 
 auto spp::asts::GenericArgumentGroupAst::from_map(
-    std::map<std::shared_ptr<TypeIdentifierAst>, std::shared_ptr<const TypeAst>> &&map)
+    ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, std::shared_ptr<const TypeAst>> &&map)
     -> std::unique_ptr<GenericArgumentGroupAst> {
     // Cast the values to "ExpressionAst const*".
-    auto mapped_args = std::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<TypeIdentifierAst>>>();
+    auto mapped_args = analyse::utils::type_utils::GenericInferenceMap();
     for (auto const &[k, v] : map) {
         mapped_args[k] = v.get();
     }
     return from_map(std::move(mapped_args));
+}
+
+auto spp::asts::GenericArgumentGroupAst::operator==(GenericArgumentGroupAst const &other) const -> bool {
+    if (args.size() != other.args.size()) {
+        return false;
+    }
+
+    for (std::size_t i = 0; i < args.size(); i++) {
+        if (*args[i] != *other.args[i]) { return false; }
+    }
+
+    return true;
 }
 
 
@@ -209,17 +222,20 @@ auto spp::asts::GenericArgumentGroupAst::get_all_args() const
 }
 
 
-auto spp::asts::GenericArgumentGroupAst::pos_start() const -> std::size_t {
+auto spp::asts::GenericArgumentGroupAst::pos_start() const
+    -> std::size_t {
     return tok_l->pos_start();
 }
 
 
-auto spp::asts::GenericArgumentGroupAst::pos_end() const -> std::size_t {
+auto spp::asts::GenericArgumentGroupAst::pos_end() const
+    -> std::size_t {
     return tok_r->pos_end();
 }
 
 
-auto spp::asts::GenericArgumentGroupAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::GenericArgumentGroupAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<GenericArgumentGroupAst>(
         ast_clone(tok_l),
         ast_clone_vec(args),
@@ -238,7 +254,9 @@ spp::asts::GenericArgumentGroupAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenericArgumentGroupAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::GenericArgumentGroupAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     if (not args.empty()) {
         SPP_PRINT_APPEND(tok_l);
@@ -301,22 +319,4 @@ auto spp::asts::GenericArgumentGroupAst::stage_8_check_memory(
     -> void {
     // Check the arguments for memory issues.
     args | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });
-}
-
-
-auto operator==(
-    spp::asts::GenericArgumentGroupAst const &lhs,
-    spp::asts::GenericArgumentGroupAst const &rhs)
-    -> bool {
-    if (lhs.args.size() != rhs.args.size()) {
-        return false;
-    }
-
-    for (std::size_t i = 0; i < lhs.args.size(); i++) {
-        if (*lhs.args[i] != *rhs.args[i]) {
-            return false;
-        }
-    }
-
-    return true;
 }
