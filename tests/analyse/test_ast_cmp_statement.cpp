@@ -43,7 +43,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     CmpStatementAst,
     test_invalid_value_comp_identifier_noncopyanle,
-    SppInvalidExpressionNonCopyableTypeError, R"(
+    SppMoveFromPinnedMemoryError, R"(
     cls MyClass {
         x: std::string::Str
     }

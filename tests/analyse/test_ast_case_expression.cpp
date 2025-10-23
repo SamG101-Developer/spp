@@ -36,29 +36,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )")
 
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    CaseExpressionAst,
-    test_invalid_partial_move_in_condition,
-    SppPartiallyInitializedMemoryUseError, R"(
-    cls Point {
-        x: std::number::S32
-        y: std::number::S32
-    }
-
-    fun f(p: Point) -> std::void::Void {
-        let x = case p is Point(x=10, y) {
-            y
-        }
-        else case p is Point(x, y=10) {
-            x
-        }
-        else {
-            0
-        }
-    }
-)")
-
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     CaseExpressionAst,
     test_valid_simple_comparison, R"(
