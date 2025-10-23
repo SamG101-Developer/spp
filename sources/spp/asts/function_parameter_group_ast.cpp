@@ -148,7 +148,7 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
-    const auto unordered_args = analyse::utils::order_utils::order_args(params
+    const auto unordered_params = analyse::utils::order_utils::order_params(params
         | genex::views::ptr
         | genex::views::cast_dynamic<mixins::OrderableAst*>()
         | genex::to<std::vector>());
@@ -172,9 +172,9 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
     }
 
     // Check the parameters are in the correct order.
-    if (not unordered_args.empty()) {
+    if (not unordered_params.empty()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>().with_args(
-            unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second).with_scopes({sm->current_scope}).raise();
+            unordered_params[0].first, *unordered_params[0].second, unordered_params[1].first, *unordered_params[1].second).with_scopes({sm->current_scope}).raise();
     }
 
     // Analyse the parameters.

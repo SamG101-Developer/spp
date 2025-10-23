@@ -2,6 +2,7 @@
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
+#include <spp/analyse/utils/order_utils.hpp>
 #include <spp/asts/function_parameter_self_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
 #include <spp/asts/generic_parameter_comp_optional_ast.hpp>
@@ -236,10 +237,21 @@ auto spp::asts::GenericParameterGroupAst::stage_7_analyse_semantics(
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
+    const auto unordered_params = analyse::utils::order_utils::order_params(params
+        | genex::views::ptr
+        | genex::views::cast_dynamic<mixins::OrderableAst*>()
+        | genex::to<std::vector>());
+
     // Check there are no duplicate parameter names.
     if (not param_names.empty()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
             *param_names[0], *param_names[1], "keyword function-argument").with_scopes({sm->current_scope}).raise();
+    }
+
+    // Check the parameters are in the correct order.
+    if (not unordered_params.empty()) {
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>().with_args(
+            unordered_params[0].first, *unordered_params[0].second, unordered_params[1].first, *unordered_params[1].second).with_scopes({sm->current_scope}).raise();
     }
 
     // Run the semantic analysis steps on each parameter in the group.
