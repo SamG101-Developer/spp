@@ -22,7 +22,7 @@ struct spp::asts::ClassAttributeAst final : virtual Ast, mixins::VisibilityEnabl
     std::shared_ptr<IdentifierAst> name;
 
     /**
-     * The token that represents the colon \c : in the class attribute definition. This separates the name from the type.
+     * The token that represents the colon @c : in the class attribute definition. This separates the name from the type.
      */
     std::unique_ptr<TokenAst> tok_colon;
 
@@ -42,7 +42,7 @@ struct spp::asts::ClassAttributeAst final : virtual Ast, mixins::VisibilityEnabl
      * Construct the ClassAttributeAst with the arguments matching the members.
      * @param[in] annotations The list of annotations that are applied to this class attribute.
      * @param[in] name The name of the class attribute.
-     * @param[in] tok_colon The token that represents the colon \c : in the class attribute definition.
+     * @param[in] tok_colon The token that represents the colon @c : in the class attribute definition.
      * @param[in] type The type of the class attribute.
      * @param[in] default_val An optional default value for the class attribute.
      */

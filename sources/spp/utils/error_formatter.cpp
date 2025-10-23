@@ -47,6 +47,9 @@ auto spp::utils::errors::ErrorFormatter::internal_parse_error_raw_pos(
     auto error_line_as_string = genex::algorithms::fold_left(
         error_line_tokens, std::string(),
         [](std::string const &acc, const lex::RawToken &token) { return acc + token.data; });
+    while (!error_line_as_string.empty() and error_line_as_string.back() == ' ') {
+        error_line_as_string.pop_back();
+    }
 
     // Get the line number of the error.
     auto error_line_number = std::to_string(genex::operations::size(m_tokens

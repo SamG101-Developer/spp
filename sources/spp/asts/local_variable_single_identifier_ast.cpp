@@ -91,8 +91,8 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_7_analyse_semantics(
         tok_mut != nullptr);
 
     // Set the initialization AST (for errors).
-    sym->memory_info->ast_initialization = name.get();
-    sym->memory_info->ast_initialization_origin = name.get();
+    sym->memory_info->ast_initialization = {name.get(), sm->current_scope};
+    sym->memory_info->ast_initialization_origin = {name.get(), sm->current_scope};
 
     // Increment the initialization counter for initialized statements.
     if (val != nullptr) {
@@ -100,13 +100,13 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_7_analyse_semantics(
 
         // Set borrow asts based on the value's type's convention.
         if (const auto conv = val_type->get_convention(); conv != nullptr) {
-            sym->memory_info->ast_borrowed = val;
+            sym->memory_info->ast_borrowed = {val, sm->current_scope};
         }
     }
 
     else {
         // Mark an uninitialized variable as "moved"
-        sym->memory_info->ast_moved = this;
+        sym->memory_info->ast_moved = {this, sm->current_scope};
     }
 
     // Add the symbol to the current scope.
@@ -124,9 +124,9 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_8_check_memory(
     // Check the value's memory.
     meta->let_stmt_value->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
-        *meta->let_stmt_value, *this, *sm, true, true, true, true, false, true, meta);
+        *meta->let_stmt_value, *this, *sm, true, true, true, true, true, true, meta);
 
     // Get the name or alias symbol to mark it as initialized.
     const auto sym = sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name);
-    sym->memory_info->initialized_by(*name);
+    sym->memory_info->initialized_by(*name, sm->current_scope);
 }

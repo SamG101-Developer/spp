@@ -128,6 +128,7 @@ auto spp::asts::GenWithExpressionAst::stage_8_check_memory(
     -> void {
     // Check the expression for memory issues.
     // Ensure the argument isn't moved or partially moved (for all conventions)
+    // Todo: Investigate pin checks here.
     expr->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
         *expr, *tok_gen, *sm, true, true, false, false, false, false, meta);

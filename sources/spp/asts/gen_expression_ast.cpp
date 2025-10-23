@@ -145,7 +145,7 @@ auto spp::asts::GenExpressionAst::stage_8_check_memory(
     else if (*conv == ConventionAst::ConventionTag::MUT and not sym->is_mutable) {
         // Check the argument's symbol is mutable, if the symbol exists.
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
-            *expr, *conv, *sym->memory_info->ast_initialization).with_scopes({sm->current_scope}).raise();
+            *expr, *conv, *std::get<0>(sym->memory_info->ast_initialization)).with_scopes({sm->current_scope}).raise();
     }
 }
 

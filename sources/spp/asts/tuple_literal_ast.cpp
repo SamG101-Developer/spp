@@ -102,7 +102,7 @@ auto spp::asts::TupleLiteralAst::stage_7_analyse_semantics(
     // Check all the elements are owned by the tuple, not borrowed.
     for (auto const &elem : elems | genex::views::indirect) {
         if (auto [elem_sym, _] = sm->current_scope->get_var_symbol_outermost(elem); elem_sym != nullptr) {
-            if (const auto borrow_ast = elem_sym->memory_info->ast_borrowed) {
+            if (const auto borrow_ast = std::get<0>(elem_sym->memory_info->ast_borrowed)) {
                 analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
                     elem, *borrow_ast, "explicit array element type").with_scopes({sm->current_scope}).raise();
             }
@@ -121,7 +121,8 @@ auto spp::asts::TupleLiteralAst::stage_8_check_memory(
     // Check the memory of each element in the array literal.
     for (auto &&elem : elems) {
         elem->stage_8_check_memory(sm, meta);
-        analyse::utils::mem_utils::validate_symbol_memory(*elem, *elem, *sm, true, true, true, true, true, false, meta);
+        analyse::utils::mem_utils::validate_symbol_memory(
+            *elem, *elem, *sm, true, true, true, true, true, false, meta);
     }
 }
 

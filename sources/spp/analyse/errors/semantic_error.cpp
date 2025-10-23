@@ -200,14 +200,14 @@ spp::analyse::errors::SppUninitializedMemoryUseError::SppUninitializedMemoryUseE
     add_header(
         8, "SPP Uninitialized Memory Use Error");
     add_context_for_error(
-        &ast,
-        "Expression using uninitialized memory defined here");
-    add_context_for_error(
         &init_location,
-        "Memory was expected to be initialized here");
-    add_error(
+        "Memory was initialized here");
+    add_context_for_error(
         &move_location,
-        "Memory was moved from here");
+        "Memory was moved here (possibly via linked pin)");
+    add_error(
+        &ast,
+        "Expression using uninitialized memory");
     add_footer(
         "This expression uses memory that may not have been initialized.",
         "Ensure the memory is properly initialized before use");
@@ -237,19 +237,16 @@ spp::analyse::errors::SppPartiallyInitializedMemoryUseError::SppPartiallyInitial
 
 spp::analyse::errors::SppMoveFromBorrowedMemoryError::SppMoveFromBorrowedMemoryError(
     asts::ExpressionAst const &ast,
-    asts::Ast const &move_location,
+    asts::Ast const &,
     asts::Ast const &borrow_location) {
     add_header(
         10, "SPP Move From Borrowed Memory Error");
     add_context_for_error(
-        &ast,
-        "Expression attempting to move from borrowed memory defined here");
-    add_context_for_error(
         &borrow_location,
         "Memory was borrowed here");
     add_error(
-        &move_location,
-        "Move attempted here");
+        &ast,
+        "Expression attempting to move from borrowed memory");
     add_footer(
         "This expression attempts to move from memory that is currently borrowed.",
         "Ensure the memory is not borrowed when moving from it");
@@ -285,8 +282,7 @@ spp::analyse::errors::SppMoveFromPinLinkedMemoryError::SppMoveFromPinLinkedMemor
     asts::ExpressionAst const &ast,
     asts::Ast const &init_location,
     asts::Ast const &move_location,
-    asts::Ast const &pin_location,
-    asts::Ast const &pin_init_location) {
+    asts::Ast const &pin_location) {
     add_header(
         12, "SPP Move From Pin-Linked Memory Error");
     add_context_for_error(
@@ -295,9 +291,9 @@ spp::analyse::errors::SppMoveFromPinLinkedMemoryError::SppMoveFromPinLinkedMemor
     add_context_for_error(
         &init_location,
         "Memory was initialized here");
-    add_context_for_error(
-        &pin_init_location,
-        "Pin was initialized here");
+    // add_context_for_error(
+    //     &pin_init_location,
+    //     "Pin was initialized here");
     add_context_for_error(
         &pin_location,
         "Memory was pinned here");

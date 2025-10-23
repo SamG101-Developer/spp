@@ -1,10 +1,10 @@
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/generate/common_types.hpp>
+#include <spp/asts/float_literal_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/float_literal_ast.hpp>
+#include <spp/asts/generate/common_types.hpp>
 
 #include <boost/multiprecision/cpp_dec_float.hpp>
 
@@ -37,17 +37,20 @@ spp::asts::FloatLiteralAst::FloatLiteralAst(
 spp::asts::FloatLiteralAst::~FloatLiteralAst() = default;
 
 
-auto spp::asts::FloatLiteralAst::pos_start() const -> std::size_t {
+auto spp::asts::FloatLiteralAst::pos_start() const
+    -> std::size_t {
     return tok_sign ? tok_sign->pos_start() : int_val->pos_start();
 }
 
 
-auto spp::asts::FloatLiteralAst::pos_end() const -> std::size_t {
+auto spp::asts::FloatLiteralAst::pos_end() const
+    -> std::size_t {
     return frac_val->pos_end();
 }
 
 
-auto spp::asts::FloatLiteralAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::FloatLiteralAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<FloatLiteralAst>(
         ast_clone(tok_sign),
         ast_clone(int_val),
@@ -68,7 +71,9 @@ spp::asts::FloatLiteralAst::operator std::string() const {
 }
 
 
-auto spp::asts::FloatLiteralAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::FloatLiteralAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_sign);
     SPP_PRINT_APPEND(int_val);
@@ -122,7 +127,8 @@ auto spp::asts::FloatLiteralAst::stage_7_analyse_semantics(
 
 auto spp::asts::FloatLiteralAst::infer_type(
     ScopeManager *,
-    mixins::CompilerMetaData *) -> std::shared_ptr<TypeAst> {
+    mixins::CompilerMetaData *)
+    -> std::shared_ptr<TypeAst> {
     // Map the type string literal to the correct SPP type.
     if (type.empty()) {
         return generate::common_types::f32(pos_start());

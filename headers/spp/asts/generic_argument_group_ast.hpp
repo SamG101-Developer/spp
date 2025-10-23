@@ -1,6 +1,6 @@
 #pragma once
-#include <spp/asts/ast.hpp>
 #include <spp/pch.hpp>
+#include <spp/asts/ast.hpp>
 
 
 struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
@@ -36,16 +36,22 @@ struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
 
     ~GenericArgumentGroupAst() override;
 
-    static auto new_empty() -> std::unique_ptr<GenericArgumentGroupAst>;
+    static auto new_empty()
+        -> std::unique_ptr<GenericArgumentGroupAst>;
 
     static auto from_params(
-        GenericParameterGroupAst const &generic_params) -> std::unique_ptr<GenericArgumentGroupAst>;
+        GenericParameterGroupAst const &generic_params)
+        -> std::unique_ptr<GenericArgumentGroupAst>;
 
     static auto from_map(
-        std::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<TypeIdentifierAst>>> &&map) -> std::unique_ptr<GenericArgumentGroupAst>;
+        ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst const*, spp::utils::PtrHash<std::shared_ptr<TypeIdentifierAst>>, spp::utils::PtrEq<std::shared_ptr<TypeIdentifierAst>>> &&map)
+        -> std::unique_ptr<GenericArgumentGroupAst>;
 
     static auto from_map(
-        std::map<std::shared_ptr<TypeIdentifierAst>, std::shared_ptr<const TypeAst>> &&map) -> std::unique_ptr<GenericArgumentGroupAst>;
+        ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, std::shared_ptr<const TypeAst>> &&map)
+        -> std::unique_ptr<GenericArgumentGroupAst>;
+
+    auto operator==(GenericArgumentGroupAst const &other) const -> bool;
 
     auto type_at(const char *key) const -> GenericArgumentTypeAst const*;
 
@@ -65,6 +71,3 @@ struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };
-
-
-auto operator==(spp::asts::GenericArgumentGroupAst const &lhs, spp::asts::GenericArgumentGroupAst const &rhs) -> bool;

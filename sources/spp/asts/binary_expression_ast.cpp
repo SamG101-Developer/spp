@@ -7,6 +7,7 @@
 #include <spp/analyse/utils/bin_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/binary_expression_ast.hpp>
+#include <spp/asts/fold_expression_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
@@ -15,13 +16,14 @@
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
-#include <spp/lex/tokens.hpp>
 #include <spp/parse/parser_base.hpp>
 
 #include <genex/algorithms/contains.hpp>
 #include <genex/views/drop.hpp>
+#include <genex/views/drop_last.hpp>
+#include <genex/views/materialize.hpp>
 #include <genex/views/move.hpp>
-#include <genex/views/take.hpp>
+#include <genex/views/move_reverse.hpp>
 
 
 spp::asts::BinaryExpressionAst::BinaryExpressionAst(
@@ -63,10 +65,15 @@ auto spp::asts::BinaryExpressionAst::clone() const
 
 spp::asts::BinaryExpressionAst::operator std::string() const {
     SPP_STRING_START;
-    raw_string.append("(");
-    SPP_STRING_APPEND(lhs).append(" ");
-    SPP_STRING_APPEND(tok_op).append(" ");
-    SPP_STRING_APPEND(rhs).append(")");
+    if (lhs != nullptr) {
+        raw_string.append("(");
+        SPP_STRING_APPEND(lhs).append(" ");
+        SPP_STRING_APPEND(tok_op).append(" ");
+        SPP_STRING_APPEND(rhs).append(")");
+    }
+    else {
+        SPP_STRING_APPEND(m_mapped_func);
+    }
     SPP_STRING_END;
 }
 
@@ -75,10 +82,15 @@ auto spp::asts::BinaryExpressionAst::print(
     meta::AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
-    formatted_string.append("(");
-    SPP_PRINT_APPEND(lhs).append(" ");
-    SPP_PRINT_APPEND(tok_op).append(" ");
-    SPP_PRINT_APPEND(rhs).append(")");
+    if (lhs != nullptr) {
+        formatted_string.append("(");
+        SPP_PRINT_APPEND(lhs).append(" ");
+        SPP_PRINT_APPEND(tok_op).append(" ");
+        SPP_PRINT_APPEND(rhs).append(")");
+    }
+    else {
+        SPP_PRINT_APPEND(m_mapped_func);
+    }
     SPP_PRINT_END;
 }
 
@@ -99,7 +111,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
     }
 
     // Handle lhs-folding.
-    if (ast_cast<TokenAst>(lhs.get())) {
+    if (ast_cast<FoldExpressionAst>(lhs.get())) {
         // Check the rhs is a tuple.
         const auto rhs_tuple_type = rhs->infer_type(sm, meta);
         if (not analyse::utils::type_utils::is_type_tuple(*rhs_tuple_type, *sm->current_scope)) {
@@ -113,7 +125,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
         for (auto i = 0u; i < rhs_num_elems; ++i) {
             auto field = std::make_unique<IdentifierAst>(rhs->pos_start(), std::to_string(i));
             auto new_ast = std::make_unique<PostfixExpressionAst>(
-                ast_clone(lhs),
+                ast_clone(rhs),
                 std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
             new_ast->stage_7_analyse_semantics(sm, meta);
             new_asts.emplace_back(std::move(new_ast));
@@ -131,7 +143,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
     }
 
     // Handle rhs-folding.
-    if (ast_cast<TokenAst>(rhs.get())) {
+    else if (ast_cast<FoldExpressionAst>(rhs.get())) {
         // Check the lhs is a tuple.
         const auto lhs_tuple_type = lhs->infer_type(sm, meta);
         if (not analyse::utils::type_utils::is_type_tuple(*lhs_tuple_type, *sm->current_scope)) {
@@ -143,20 +155,20 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
         const auto lhs_num_elems = lhs_tuple_type->type_parts()[0]->generic_arg_group->args.size();
         auto new_asts = std::vector<std::unique_ptr<PostfixExpressionAst>>();
         for (auto i = 0u; i < lhs_num_elems; ++i) {
-            auto field = std::make_unique<IdentifierAst>(rhs->pos_start(), std::to_string(i));
+            auto field = std::make_unique<IdentifierAst>(lhs->pos_start(), std::to_string(i));
             auto new_ast = std::make_unique<PostfixExpressionAst>(
-                ast_clone(rhs),
+                ast_clone(lhs),
                 std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
             new_ast->stage_7_analyse_semantics(sm, meta);
             new_asts.emplace_back(std::move(new_ast));
         }
 
         // Convert "t = (0, 1, 2, 3)", "t + .." into "(t.0 + (t.1 + (t.2 + t.3)))".
-        rhs = std::move(new_asts[new_asts.size() - 2]);
-        lhs = std::move(new_asts[new_asts.size() - 1]);
-        for (auto &&new_ast : new_asts | genex::views::move | genex::views::take(new_asts.size() - 1)) {
-            lhs = std::move(new_ast);
+        lhs = std::move(new_asts[new_asts.size() - 2]);
+        rhs = std::move(new_asts[new_asts.size() - 1]);
+        for (auto &&new_ast : new_asts | genex::views::move_reverse | genex::views::drop(2)) {
             rhs = std::make_unique<BinaryExpressionAst>(std::move(lhs), ast_clone(tok_op), std::move(rhs));
+            lhs = std::move(new_ast);
         }
         m_mapped_func = analyse::utils::bin_utils::convert_bin_expr_to_function_call(*this, sm, meta);
         m_mapped_func->stage_7_analyse_semantics(sm, meta);

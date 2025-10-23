@@ -95,7 +95,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_7_analyse_semantics(
         // Apply the borrow to the symbol.
         const auto sym = sm->current_scope->get_var_symbol(ast_cast<IdentifierAst>(ast_clone(cap->val)));
         const auto conv = cap->conv.get();
-        sym->memory_info->ast_borrowed = conv;
+        sym->memory_info->ast_borrowed = {conv, sm->current_scope};
         sym->type = sym->type->with_convention(ast_clone(cap->conv));
     }
 }
@@ -116,10 +116,10 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_8_check_memory(
             if (ass_sym != nullptr) { ass_sym->memory_info->ast_pins.emplace_back(cap->val.get()); }
             if (cap_sym != nullptr) { cap_sym->memory_info->ast_pins.emplace_back(cap->val.get()); }
 
-            // Mark the extended borrow.
-            auto is_mut = *cap->conv == ConventionAst::ConventionTag::MUT;
-            cap_sym->memory_info->extended_borrows.emplace_back(
-                cap->val.get(), is_mut, meta->current_lambda_outer_scope);
+            // Mark the extended borrow. TODO
+            // auto is_mut = *cap->conv == ConventionAst::ConventionTag::MUT;
+            // cap_sym->memory_info->extended_borrows.emplace_back(
+            //     cap->val.get(), is_mut, meta->current_lambda_outer_scope);
         }
     }
 }

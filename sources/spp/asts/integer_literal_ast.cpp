@@ -43,17 +43,20 @@ spp::asts::IntegerLiteralAst::IntegerLiteralAst(
 spp::asts::IntegerLiteralAst::~IntegerLiteralAst() = default;
 
 
-auto spp::asts::IntegerLiteralAst::pos_start() const -> std::size_t {
+auto spp::asts::IntegerLiteralAst::pos_start() const
+    -> std::size_t {
     return tok_sign ? tok_sign->pos_start() : val->pos_start();
 }
 
 
-auto spp::asts::IntegerLiteralAst::pos_end() const -> std::size_t {
+auto spp::asts::IntegerLiteralAst::pos_end() const
+    -> std::size_t {
     return val->pos_end();
 }
 
 
-auto spp::asts::IntegerLiteralAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::IntegerLiteralAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<IntegerLiteralAst>(
         ast_clone(tok_sign),
         ast_clone(val),
@@ -70,7 +73,9 @@ spp::asts::IntegerLiteralAst::operator std::string() const {
 }
 
 
-auto spp::asts::IntegerLiteralAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::IntegerLiteralAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_sign);
     SPP_PRINT_APPEND(val);
@@ -121,7 +126,8 @@ auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
 
 auto spp::asts::IntegerLiteralAst::infer_type(
     ScopeManager *,
-    mixins::CompilerMetaData *) -> std::shared_ptr<TypeAst> {
+    mixins::CompilerMetaData *)
+    -> std::shared_ptr<TypeAst> {
     // Map the type string literal to the correct SPP type.
     if (type.empty()) {
         return generate::common_types::s32(pos_start());

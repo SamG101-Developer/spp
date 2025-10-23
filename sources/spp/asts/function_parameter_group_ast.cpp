@@ -37,17 +37,20 @@ spp::asts::FunctionParameterGroupAst::FunctionParameterGroupAst(
 spp::asts::FunctionParameterGroupAst::~FunctionParameterGroupAst() = default;
 
 
-auto spp::asts::FunctionParameterGroupAst::pos_start() const -> std::size_t {
+auto spp::asts::FunctionParameterGroupAst::pos_start() const
+    -> std::size_t {
     return tok_l->pos_start();
 }
 
 
-auto spp::asts::FunctionParameterGroupAst::pos_end() const -> std::size_t {
+auto spp::asts::FunctionParameterGroupAst::pos_end() const
+    -> std::size_t {
     return tok_r->pos_end();
 }
 
 
-auto spp::asts::FunctionParameterGroupAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::FunctionParameterGroupAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<FunctionParameterGroupAst>(
         ast_clone(tok_l),
         ast_clone_vec(params),
@@ -64,7 +67,9 @@ spp::asts::FunctionParameterGroupAst::operator std::string() const {
 }
 
 
-auto spp::asts::FunctionParameterGroupAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::FunctionParameterGroupAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);
     SPP_PRINT_EXTEND(params);
@@ -73,7 +78,8 @@ auto spp::asts::FunctionParameterGroupAst::print(meta::AstPrinter &printer) cons
 }
 
 
-auto spp::asts::FunctionParameterGroupAst::get_self_param() const -> FunctionParameterSelfAst* {
+auto spp::asts::FunctionParameterGroupAst::get_self_param() const
+    -> FunctionParameterSelfAst* {
     const auto ps = params
         | genex::views::ptr
         | genex::views::cast_dynamic<FunctionParameterSelfAst*>()
@@ -82,7 +88,8 @@ auto spp::asts::FunctionParameterGroupAst::get_self_param() const -> FunctionPar
 }
 
 
-auto spp::asts::FunctionParameterGroupAst::get_required_params() const -> std::vector<FunctionParameterRequiredAst*> {
+auto spp::asts::FunctionParameterGroupAst::get_required_params() const
+    -> std::vector<FunctionParameterRequiredAst*> {
     return params
         | genex::views::ptr
         | genex::views::cast_dynamic<FunctionParameterRequiredAst*>()
@@ -90,7 +97,8 @@ auto spp::asts::FunctionParameterGroupAst::get_required_params() const -> std::v
 }
 
 
-auto spp::asts::FunctionParameterGroupAst::get_optional_params() const -> std::vector<FunctionParameterOptionalAst*> {
+auto spp::asts::FunctionParameterGroupAst::get_optional_params() const
+    -> std::vector<FunctionParameterOptionalAst*> {
     return params
         | genex::views::ptr
         | genex::views::cast_dynamic<FunctionParameterOptionalAst*>()
@@ -98,7 +106,8 @@ auto spp::asts::FunctionParameterGroupAst::get_optional_params() const -> std::v
 }
 
 
-auto spp::asts::FunctionParameterGroupAst::get_variadic_param() const -> FunctionParameterVariadicAst* {
+auto spp::asts::FunctionParameterGroupAst::get_variadic_param() const
+    -> FunctionParameterVariadicAst* {
     const auto ps = params
         | genex::views::ptr
         | genex::views::cast_dynamic<FunctionParameterVariadicAst*>()
@@ -107,7 +116,8 @@ auto spp::asts::FunctionParameterGroupAst::get_variadic_param() const -> Functio
 }
 
 
-auto spp::asts::FunctionParameterGroupAst::get_non_self_params() const -> std::vector<FunctionParameterAst*> {
+auto spp::asts::FunctionParameterGroupAst::get_non_self_params() const
+    -> std::vector<FunctionParameterAst*> {
     return params
         | genex::views::ptr
         | genex::views::filter([](auto &&x) { return not ast_cast<FunctionParameterSelfAst>(x); })
@@ -138,7 +148,7 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
-    const auto unordered_args = analyse::utils::order_utils::order_args(params
+    const auto unordered_params = analyse::utils::order_utils::order_params(params
         | genex::views::ptr
         | genex::views::cast_dynamic<mixins::OrderableAst*>()
         | genex::to<std::vector>());
@@ -162,9 +172,9 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
     }
 
     // Check the parameters are in the correct order.
-    if (not unordered_args.empty()) {
+    if (not unordered_params.empty()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>().with_args(
-            unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second).with_scopes({sm->current_scope}).raise();
+            unordered_params[0].first, *unordered_params[0].second, unordered_params[1].first, *unordered_params[1].second).with_scopes({sm->current_scope}).raise();
     }
 
     // Analyse the parameters.

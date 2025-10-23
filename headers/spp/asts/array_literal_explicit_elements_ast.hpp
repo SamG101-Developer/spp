@@ -40,9 +40,9 @@ public:
 
     /**
      * Construct the ArrayLiteralNElements with the arguments matching the members.
-     * @param[in] tok_l The token that represents the left square bracket \c [ in the array literal.
+     * @param[in] tok_l The token that represents the left square bracket @c [ in the array literal.
      * @param[in] elements The list of expressions that are the elements of the array.
-     * @param[in] tok_r The token that represents the right square bracket \c ] in the array literal.
+     * @param[in] tok_r The token that represents the right square bracket @c ] in the array literal.
      */
     ArrayLiteralExplicitElementsAst(
         decltype(tok_l) &&tok_l,

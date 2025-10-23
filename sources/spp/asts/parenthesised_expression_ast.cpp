@@ -21,17 +21,20 @@ spp::asts::ParenthesisedExpressionAst::ParenthesisedExpressionAst(
 spp::asts::ParenthesisedExpressionAst::~ParenthesisedExpressionAst() = default;
 
 
-auto spp::asts::ParenthesisedExpressionAst::pos_start() const -> std::size_t {
+auto spp::asts::ParenthesisedExpressionAst::pos_start() const
+    -> std::size_t {
     return tok_open_paren->pos_start();
 }
 
 
-auto spp::asts::ParenthesisedExpressionAst::pos_end() const -> std::size_t {
+auto spp::asts::ParenthesisedExpressionAst::pos_end() const
+    -> std::size_t {
     return tok_close_paren->pos_end();
 }
 
 
-auto spp::asts::ParenthesisedExpressionAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::ParenthesisedExpressionAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<ParenthesisedExpressionAst>(
         ast_clone(tok_open_paren),
         ast_clone(expr),
@@ -48,7 +51,9 @@ spp::asts::ParenthesisedExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::ParenthesisedExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::ParenthesisedExpressionAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_open_paren);
     SPP_PRINT_APPEND(expr);
@@ -71,7 +76,8 @@ auto spp::asts::ParenthesisedExpressionAst::stage_8_check_memory(
     mixins::CompilerMetaData *meta) -> void {
     // Check the memory of the expression.
     expr->stage_8_check_memory(sm, meta);
-    analyse::utils::mem_utils::validate_symbol_memory(*expr, *this, *sm, true, true, true, false, false, true, meta);
+    analyse::utils::mem_utils::validate_symbol_memory(
+        *expr, *this, *sm, true, true, true, false, false, false, meta);
 }
 
 

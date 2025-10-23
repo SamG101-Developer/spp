@@ -77,7 +77,7 @@ auto spp::asts::IterPatternVariantVariableAst::stage_7_analyse_semantics(
     for (auto &&name : m_mapped_let->var->extract_names()) {
         // Apply the borrow to the symbol.
         const auto sym = sm->current_scope->get_var_symbol(name);
-        sym->memory_info->ast_borrowed = conv;
+        sym->memory_info->ast_borrowed = {conv, sm->current_scope};
         sym->type = sym->type->with_convention(ast_clone(conv));
     }
 }

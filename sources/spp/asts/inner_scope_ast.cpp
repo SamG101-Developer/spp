@@ -19,10 +19,6 @@
 #include <genex/actions/remove.hpp>
 #include <genex/actions/remove_if.hpp>
 #include <genex/views/enumerate.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/for_each.hpp>
-#include <genex/views/tuple_nth.hpp>
-#include <genex/views/view.hpp>
 
 
 template <typename T>
@@ -132,22 +128,14 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
 
     // Check the memory of each member.
     for (auto const &x : members) { x->stage_8_check_memory(sm, meta); }
-    auto all_syms = sm->current_scope->all_var_symbols();
+    auto all_syms = sm->current_scope->all_var_symbols() | genex::to<std::vector>();
     auto inner_syms = sm->current_scope->all_var_symbols(true);
-
-    // Invalidate pins and extended borrows that have now gone out of scope.
-    for (auto const &sym : all_syms) {
-        auto &ebs = sym->memory_info->extended_borrows;
-        sym->memory_info->extended_borrows
-            | genex::to<std::vector>()
-            | genex::views::filter([sm](auto const &x) { return std::get<2>(x) == sm->current_scope->parent; })
-            | genex::views::for_each([&ebs](auto const &x) { ebs |= genex::actions::remove_if([x](auto const &y) { return y == x; }); });
-    }
 
     // If the final expression of the inner scope is being used (ie assigned ot outer variable), then memory check it.
     if (const auto move = meta->assignment_target; not members.empty() and move != nullptr) {
         if (const auto expr_member = ast_cast<ExpressionAst>(final_member())) {
-            analyse::utils::mem_utils::validate_symbol_memory(*expr_member, *move, *sm, true, true, true, true, true, true, meta);
+            analyse::utils::mem_utils::validate_symbol_memory(
+                *expr_member, *move, *sm, true, true, true, true, true, true, meta);
         }
     }
 

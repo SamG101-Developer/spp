@@ -119,5 +119,6 @@ auto spp::asts::RetStatementAst::stage_8_check_memory(
 
     // Ensure the argument isn't moved or partially moved (for all conventions)
     expr->stage_8_check_memory(sm, meta);
-    analyse::utils::mem_utils::validate_symbol_memory(*expr, *tok_ret, *sm, true, true, true, true, true, true, meta);
+    analyse::utils::mem_utils::validate_symbol_memory(
+        *expr, *tok_ret, *sm, true, true, true, true, true, true, meta);
 }

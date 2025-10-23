@@ -120,7 +120,7 @@ auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
         name, type, false, false, m_visibility.first);
     sym->memory_info->ast_pins.emplace_back(name.get());
     sym->memory_info->ast_comptime = ast_clone(this);
-    sym->memory_info->initialized_by(*this);
+    sym->memory_info->initialized_by(*this, sm->current_scope);
     sm->current_scope->add_var_symbol(std::move(sym));
 }
 
@@ -159,5 +159,6 @@ auto spp::asts::CmpStatementAst::stage_8_check_memory(
     -> void {
     // Check the memory of the type.
     value->stage_8_check_memory(sm, meta);
-    analyse::utils::mem_utils::validate_symbol_memory(*value, *value, *sm, true, true, true, true, true, true, meta);
+    analyse::utils::mem_utils::validate_symbol_memory(
+        *value, *value, *sm, true, true, true, true, true, true, meta);
 }

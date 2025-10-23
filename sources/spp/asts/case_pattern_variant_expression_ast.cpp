@@ -62,7 +62,8 @@ auto spp::asts::CasePatternVariantExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
     -> void {
-    // Check the memory of the expression.
+    // Check the memory of the expression. todo: maybe do this via generated == function?
     expr->stage_8_check_memory(sm, meta);
-    analyse::utils::mem_utils::validate_symbol_memory(*expr, *expr, *sm, true, true, true, true, true, true, meta);
+    analyse::utils::mem_utils::validate_symbol_memory(
+        *expr, *expr, *sm, true, true, true, true, true, true, meta);
 }

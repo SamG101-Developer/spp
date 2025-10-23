@@ -53,13 +53,23 @@ namespace spp::asts {
     template <typename T>
     SPP_ATTR_ALWAYS_INLINE
     auto ast_clone_vec(std::vector<std::unique_ptr<T>> const &asts) -> std::vector<std::unique_ptr<T>> {
-        return asts | genex::views::transform([](auto const &x) { return ast_clone(x.get()); }) | genex::to<std::vector>();
+        std::vector<std::unique_ptr<T>> cloned_asts;
+        cloned_asts.reserve(asts.size());
+        for (auto const &x : asts) {
+            cloned_asts.emplace_back(ast_clone(x));
+        }
+        return cloned_asts;
     }
 
     template <typename T>
     SPP_ATTR_ALWAYS_INLINE
     auto ast_clone_vec_shared(std::vector<std::shared_ptr<T>> const &asts) -> std::vector<std::shared_ptr<T>> {
-        return asts | genex::views::transform([](auto x) { return x; }) | genex::to<std::vector>();
+        std::vector<std::shared_ptr<T>> cloned_asts;
+        cloned_asts.reserve(asts.size());
+        for (auto const &x : asts) {
+            cloned_asts.emplace_back(x);
+        }
+        return cloned_asts;
     }
 
     template <typename T>

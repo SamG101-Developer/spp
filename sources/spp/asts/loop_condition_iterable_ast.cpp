@@ -91,10 +91,10 @@ auto spp::asts::LoopConditionIterableAst::stage_7_analyse_semantics(
     // Set the memory information of the symbol based on the type of iteration.
     var->extract_names()
         | genex::views::transform([sm](auto const &x) { return sm->current_scope->get_var_symbol(x); })
-        | genex::views::for_each([this, yield_type](auto const &x) {
+        | genex::views::for_each([this, yield_type, sm](auto const &x) {
             const auto conv = yield_type->get_convention();
-            x->memory_info->initialized_by(*this);
-            x->memory_info->ast_borrowed = conv != nullptr ? this : nullptr;
+            x->memory_info->initialized_by(*this, sm->current_scope);
+            x->memory_info->ast_borrowed = conv != nullptr ? std::tuple(this, sm->current_scope) : std::tuple(nullptr, nullptr);
         });
 }
 
@@ -107,11 +107,11 @@ auto spp::asts::LoopConditionIterableAst::stage_8_check_memory(
     if (not meta->loop_double_check_active) {
         iterable->stage_8_check_memory(sm, meta);
         analyse::utils::mem_utils::validate_symbol_memory(
-            *iterable, *iterable, *sm, true, true, true, true, true, false, meta);
+            *iterable, *iterable, *sm, true, true, false, false, false, false, meta);
     }
 
     // Re-initialize for the double loop analysis.
     var->extract_names()
         | genex::views::transform([sm](auto &&x) { return sm->current_scope->get_var_symbol(x); })
-        | genex::views::for_each([this](auto &&x) { x->memory_info->initialized_by(*this); });
+        | genex::views::for_each([this, sm](auto &&x) { x->memory_info->initialized_by(*this, sm->current_scope); });
 }

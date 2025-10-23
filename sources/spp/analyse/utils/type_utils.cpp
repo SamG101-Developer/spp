@@ -148,7 +148,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     asts::TypeAst const &rhs_type,
     scopes::Scope const *lhs_scope,
     scopes::Scope const *rhs_scope,
-    std::map<std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<asts::TypeIdentifierAst>>> &generic_args,
+    GenericInferenceMap &generic_args,
     const bool check_variant) -> bool {
     // Todo: Convention check?
     // If the right-hand-side scope is nullptr, the scope is generic so auto-match it.
@@ -228,7 +228,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     asts::ExpressionAst const &rhs_expr,
     scopes::Scope const &,
     scopes::Scope const &,
-    std::map<std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*, spp::utils::SymNameCmp<std::shared_ptr<asts::TypeIdentifierAst>>> &generic_args)
+    GenericInferenceMap &generic_args)
     -> bool {
     // Simple equality between the expressions, with generic matching.
     if (const auto rhs_expr_as_identifier = asts::ast_cast<asts::IdentifierAst>(&rhs_expr)) {
@@ -718,10 +718,10 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     auto new_sup_scope_ptr = new_sup_scope.get();
     old_sup_scope.parent->children.emplace_back(std::move(new_sup_scope));
 
-#ifdef SPP_IS_DEBUG_BUILD
-    std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name =
-        substitute_sup_scope_name(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name, generic_args);
-#endif
+// #ifdef SPP_IS_DEBUG_BUILD
+//     std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name =
+//         substitute_sup_scope_name(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name, generic_args);
+// #endif
 
     // Register the generic symbols.
     auto tm = scopes::ScopeManager(sm->global_scope, new_sup_scope_ptr);

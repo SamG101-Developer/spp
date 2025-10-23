@@ -6,9 +6,9 @@
 
 
 /**
- * A TokenAST represents a low level token created by the lexer. This includes \c = or \c + for example, seen in
+ * A TokenAST represents a low level token created by the lexer. This includes @c = or @c + for example, seen in
  * statements and expressions. Associated token data is needed when strings or numbers are created for example. This AST
- * is also the terminator for \c pos_end() recursive calls; the end position is the length of the associated data added
+ * is also the terminator for @c pos_end() recursive calls; the end position is the length of the associated data added
  * to is the sart position.
  */
 struct spp::asts::TokenAst final : virtual Ast {
@@ -54,7 +54,7 @@ template <>
 struct std::hash<spp::asts::TokenAst> {
     /**
      * To make a TokenAst hashable, the token type's string-converted name is used as the key, which is then used by
-     * \c std::hash<std::string> or a primitive equivalent.
+     * @c std::hash<std::string> or a primitive equivalent.
      * @param[in] t The TokenAst to hash.
      * @return The numeric mapped hash value.
      */
