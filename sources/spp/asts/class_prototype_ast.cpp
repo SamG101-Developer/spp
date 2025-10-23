@@ -5,6 +5,7 @@
 #include <spp/analyse/scopes/symbols.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/annotation_ast.hpp>
+#include <spp/asts/class_attribute_ast.hpp>
 #include <spp/asts/class_implementation_ast.hpp>
 #include <spp/asts/class_member_ast.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
@@ -18,7 +19,13 @@
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 
+#include <genex/to_container.hpp>
+#include <genex/algorithms/any_of.hpp>
+#include <genex/views/cast_dynamic.hpp>
+#include <genex/views/concat.hpp>
 #include <genex/views/for_each.hpp>
+#include <genex/views/join.hpp>
+#include <genex/views/materialize.hpp>
 
 
 spp::asts::ClassPrototypeAst::ClassPrototypeAst(
@@ -125,6 +132,32 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
         return ret_sym;
     }
     return m_cls_sym.get();
+}
+
+
+auto spp::asts::ClassPrototypeAst::m_fill_llvm_mem_layout(
+    analyse::scopes::TypeSymbol *type_sym,
+    llvm::Module &llvm_mod)
+    -> void {
+    // Collect the scope and sup scopes to get all attributes.
+    auto types = std::vector{type_sym->scope}
+        | genex::views::concat(type_sym->scope->sup_scopes())
+        | genex::views::transform([](auto *x) { return x->ast; })
+        | genex::views::cast_dynamic<ClassPrototypeAst*>()
+        | genex::views::transform([](auto *x) { return x->impl->members | genex::views::ptr | genex::to<std::vector>(); })
+        | genex::views::join
+        | genex::views::cast_dynamic<ClassAttributeAst*>()
+        | genex::views::transform([](auto *x) { return x->type; });
+    // type_sym->llvm_info->llvm_struct_type
+    (void)llvm_mod;
+}
+
+
+auto spp::asts::ClassPrototypeAst::register_generic_substituted_scope(
+    analyse::scopes::Scope *scope,
+    std::unique_ptr<ClassPrototypeAst> &&new_ast)
+    -> void {
+    m_generic_substituted_scopes.emplace_back(scope, std::move(new_ast));
 }
 
 
