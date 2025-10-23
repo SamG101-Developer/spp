@@ -92,7 +92,7 @@ public:
     std::unique_ptr<FunctionParameterGroupAst> param_group;
 
     /**
-     * The token that represents the arrow \c -> in the function prototype. This separates the parameters from the
+     * The token that represents the arrow @c -> in the function prototype. This separates the parameters from the
      * return type.
      */
     std::unique_ptr<TokenAst> tok_arrow;
@@ -121,7 +121,7 @@ public:
      * @param name The name of the function prototype.
      * @param generic_param_group An optional generic parameter group for the function prototype.
      * @param param_group The parameter group for the function prototype.
-     * @param tok_arrow The token that represents the arrow \c -> in the function prototype.
+     * @param tok_arrow The token that represents the arrow @c -> in the function prototype.
      * @param return_type The return type of the function prototype.
      * @param impl The implementation of the function prototype.
      */

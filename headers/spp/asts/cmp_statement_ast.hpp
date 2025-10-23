@@ -30,7 +30,7 @@ struct spp::asts::CmpStatementAst final : virtual Ast, mixins::VisibilityEnabled
     std::shared_ptr<IdentifierAst> name;
 
     /**
-     * The token that represents the colon \c : in the cmp statement definition. This separates the name from the type.
+     * The token that represents the colon @c : in the cmp statement definition. This separates the name from the type.
      */
     std::unique_ptr<TokenAst> tok_colon;
 
@@ -42,7 +42,7 @@ struct spp::asts::CmpStatementAst final : virtual Ast, mixins::VisibilityEnabled
     std::shared_ptr<TypeAst> type;
 
     /**
-     * The token that represents the assignment operator \c = in the cmp statement definition. This separates the type
+     * The token that represents the assignment operator @c = in the cmp statement definition. This separates the type
      * from the value.
      */
     std::unique_ptr<TokenAst> tok_assign;
@@ -59,9 +59,9 @@ struct spp::asts::CmpStatementAst final : virtual Ast, mixins::VisibilityEnabled
      * @param[in] annotations The list of annotations that are applied to this cmp statement.
      * @param[in] tok_cmp The token that represents the @c cmp keyword in the cmp statement.
      * @param[in] name The name of the cmp statement.
-     * @param[in] tok_colon The token that represents the colon \c : in the cmp statement definition.
+     * @param[in] tok_colon The token that represents the colon @c : in the cmp statement definition.
      * @param[in] type The type of the cmp statement.
-     * @param[in] tok_assign The token that represents the assignment operator \c = in the cmp statement definition.
+     * @param[in] tok_assign The token that represents the assignment operator @c = in the cmp statement definition.
      * @param[in] value The value of the cmp statement.
      */
     CmpStatementAst(

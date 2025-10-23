@@ -57,17 +57,20 @@ auto spp::asts::FunctionCallArgumentGroupAst::new_empty()
 }
 
 
-auto spp::asts::FunctionCallArgumentGroupAst::pos_start() const -> std::size_t {
+auto spp::asts::FunctionCallArgumentGroupAst::pos_start() const
+    -> std::size_t {
     return tok_l->pos_start();
 }
 
 
-auto spp::asts::FunctionCallArgumentGroupAst::pos_end() const -> std::size_t {
+auto spp::asts::FunctionCallArgumentGroupAst::pos_end() const
+    -> std::size_t {
     return tok_r->pos_end();
 }
 
 
-auto spp::asts::FunctionCallArgumentGroupAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::FunctionCallArgumentGroupAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<FunctionCallArgumentGroupAst>(
         ast_clone(tok_l),
         ast_clone_vec(args),
@@ -84,7 +87,9 @@ spp::asts::FunctionCallArgumentGroupAst::operator std::string() const {
 }
 
 
-auto spp::asts::FunctionCallArgumentGroupAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::FunctionCallArgumentGroupAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);
     SPP_PRINT_EXTEND(args);
@@ -93,7 +98,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::print(meta::AstPrinter &printer) c
 }
 
 
-auto spp::asts::FunctionCallArgumentGroupAst::get_keyword_args() const -> std::vector<FunctionCallArgumentKeywordAst*> {
+auto spp::asts::FunctionCallArgumentGroupAst::get_keyword_args() const
+    -> std::vector<FunctionCallArgumentKeywordAst*> {
     return args
         | genex::views::ptr
         | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>()
@@ -101,7 +107,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::get_keyword_args() const -> std::v
 }
 
 
-auto spp::asts::FunctionCallArgumentGroupAst::get_positional_args() const -> std::vector<FunctionCallArgumentPositionalAst*> {
+auto spp::asts::FunctionCallArgumentGroupAst::get_positional_args() const
+    -> std::vector<FunctionCallArgumentPositionalAst*> {
     return args
         | genex::views::ptr
         | genex::views::cast_dynamic<FunctionCallArgumentPositionalAst*>()

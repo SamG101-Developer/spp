@@ -10,7 +10,7 @@ struct spp::asts::ObjectInitializerArgumentKeywordAst final : ObjectInitializerA
     SPP_AST_KEY_FUNCTIONS;
 
     /**
-     * The token that represents the assignment operator \c = in the keyword argument. This separates the name of the
+     * The token that represents the assignment operator @c = in the keyword argument. This separates the name of the
      * argument from the expression that is being passed as the argument's value.
      */
     std::unique_ptr<TokenAst> tok_assign;
@@ -18,7 +18,7 @@ struct spp::asts::ObjectInitializerArgumentKeywordAst final : ObjectInitializerA
     /**
      * Construct the ObjectInitializerArgumentKeywordAst with the arguments matching the members.
      * @param name The name of the keyword argument.
-     * @param tok_assign The token that represents the assignment operator \c = in the keyword argument.
+     * @param tok_assign The token that represents the assignment operator @c = in the keyword argument.
      * @param val The expression that is being passed as the argument to the object initializer.
      */
     ObjectInitializerArgumentKeywordAst(

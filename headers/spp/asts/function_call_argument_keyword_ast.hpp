@@ -16,7 +16,7 @@ struct spp::asts::FunctionCallArgumentKeywordAst final : FunctionCallArgumentAst
     std::shared_ptr<IdentifierAst> name;
 
     /**
-     * The token that represents the assignment operator \c = in the keyword argument. This separates the name of the
+     * The token that represents the assignment operator @c = in the keyword argument. This separates the name of the
      * argument from the expression that is being passed as the argument's value.
      */
     std::unique_ptr<TokenAst> tok_assign;
@@ -24,7 +24,7 @@ struct spp::asts::FunctionCallArgumentKeywordAst final : FunctionCallArgumentAst
     /**
      * Construct the FunctionCallArgumentKeywordAst with the arguments matching the members.
      * @param name The name of the keyword argument.
-     * @param tok_assign The token that represents the assignment operator \c = in the keyword argument.
+     * @param tok_assign The token that represents the assignment operator @c = in the keyword argument.
      * @param conv The convention on the argument being passed into the function call.
      * @param val The expression that is being passed as the argument to the function call.
      */
