@@ -35,6 +35,8 @@
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/local_variable_ast.hpp>
+#include <spp/asts/object_initializer_ast.hpp>
+#include <spp/asts/object_initializer_argument_group_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
 #include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
 #include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
@@ -144,8 +146,13 @@ auto spp::analyse::utils::func_utils::convert_method_to_function_form(
     scopes::ScopeManager &sm,
     asts::mixins::CompilerMetaData *meta)
     -> std::pair<std::unique_ptr<asts::PostfixExpressionAst>, std::unique_ptr<asts::PostfixExpressionOperatorFunctionCallAst>> {
+    // The "self" argument will be the lhs.lhs if is symbolic, otherwise just a mock object initializer.
+    auto self_arg_val = sm.current_scope->get_var_symbol_outermost(*lhs.lhs).first != nullptr ?
+        ast_clone(lhs.lhs) :
+        std::make_unique<asts::ObjectInitializerAst>(lhs.lhs->infer_type(&sm, meta), nullptr);
+
     // Create an argument for "self" and inject it into the current arguments.
-    auto self_arg = std::make_unique<asts::FunctionCallArgumentPositionalAst>(nullptr, nullptr, ast_clone(lhs.lhs));
+    auto self_arg = std::make_unique<asts::FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(self_arg_val));
     auto fn_args = std::move(fn_call.arg_group->args);
     fn_args.insert(fn_args.begin(), std::move(self_arg));
 
