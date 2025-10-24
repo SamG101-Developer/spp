@@ -14,7 +14,6 @@
  * analysis checks.
  */
 struct spp::asts::FunctionPrototypeAst : virtual Ast, SupMemberAst, ModuleMemberAst, mixins::VisibilityEnabledAst {
-    SPP_AST_KEY_FUNCTIONS;
     friend struct AnnotationAst;
     friend struct PostfixExpressionOperatorFunctionCallAst;
     friend struct SupPrototypeExtensionAst;
@@ -137,6 +136,8 @@ public:
 
     ~FunctionPrototypeAst() override;
 
+    SPP_AST_KEY_FUNCTIONS;
+
 private:
     auto m_deduce_mock_class_type() const -> std::shared_ptr<TypeAst>;
 
@@ -160,4 +161,6 @@ public:
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value * override;
 };

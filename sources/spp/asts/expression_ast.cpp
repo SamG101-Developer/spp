@@ -1,23 +1,6 @@
 #include <spp/asts/expression_ast.hpp>
 
 
-spp::asts::ExpressionAst::ExpressionAst(ExpressionAst const &) = default;
-
-
-auto spp::asts::ExpressionAst::operator<=>(
-    const ExpressionAst &rhs_expr) const
-    -> std::strong_ordering {
-    return equals(rhs_expr);
-}
-
-
-auto spp::asts::ExpressionAst::operator==(
-    const ExpressionAst &rhs_expr) const
-    -> bool {
-    return equals(rhs_expr) == std::strong_ordering::equal;
-}
-
-
 auto spp::asts::ExpressionAst::equals_array_literal_explicit_elements(
     ArrayLiteralExplicitElementsAst const &) const
     -> std::strong_ordering {
@@ -102,11 +85,18 @@ auto spp::asts::ExpressionAst::equals(
 }
 
 
-// auto operator<=>(spp::asts::ExpressionAst const &lhs_expr, spp::asts::ExpressionAst const &rhs_expr) -> std::strong_ordering {
-//     return lhs_expr.equals(rhs_expr);
-// }
-//
-//
-// auto operator==(spp::asts::ExpressionAst const &lhs_expr, spp::asts::ExpressionAst const &rhs_expr) -> bool {
-//     return (lhs_expr.equals(rhs_expr) == std::strong_ordering::equal);
-// }
+spp::asts::ExpressionAst::ExpressionAst(ExpressionAst const &) = default;
+
+
+auto spp::asts::ExpressionAst::operator<=>(
+    const ExpressionAst &rhs_expr) const
+    -> std::strong_ordering {
+    return equals(rhs_expr);
+}
+
+
+auto spp::asts::ExpressionAst::operator==(
+    const ExpressionAst &rhs_expr) const
+    -> bool {
+    return equals(rhs_expr) == std::strong_ordering::equal;
+}

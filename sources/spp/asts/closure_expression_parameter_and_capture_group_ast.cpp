@@ -23,7 +23,6 @@ spp::asts::ClosureExpressionParameterAndCaptureGroupAst::ClosureExpressionParame
     decltype(param_group) &&param_group,
     decltype(capture_group) &&capture_group,
     decltype(tok_r) &&tok_r) :
-    Ast(),
     tok_l(std::move(tok_l)),
     param_group(std::move(param_group)),
     capture_group(std::move(capture_group)),
@@ -35,17 +34,20 @@ spp::asts::ClosureExpressionParameterAndCaptureGroupAst::ClosureExpressionParame
 spp::asts::ClosureExpressionParameterAndCaptureGroupAst::~ClosureExpressionParameterAndCaptureGroupAst() = default;
 
 
-auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::pos_start() const -> std::size_t {
+auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::pos_start() const
+    -> std::size_t {
     return tok_l->pos_start();
 }
 
 
-auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::pos_end() const -> std::size_t {
+auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::pos_end() const
+    -> std::size_t {
     return tok_r->pos_end();
 }
 
 
-auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<ClosureExpressionParameterAndCaptureGroupAst>(
         ast_clone(tok_l),
         ast_clone(param_group),
@@ -64,7 +66,9 @@ spp::asts::ClosureExpressionParameterAndCaptureGroupAst::operator std::string() 
 }
 
 
-auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);
     SPP_PRINT_APPEND(param_group);

@@ -79,7 +79,7 @@ public:
 private:
     auto m_generate_symbols(ScopeManager *sm) -> analyse::scopes::TypeSymbol*;
 
-    auto m_fill_llvm_mem_layout(analyse::scopes::TypeSymbol *type_sym, llvm::Module &llvm_mod) -> void;
+    auto m_fill_llvm_mem_layout(analyse::scopes::ScopeManager *sm, analyse::scopes::TypeSymbol const *type_sym, codegen::LLvmCtx *ctx) -> void;
 
 public:
     auto register_generic_substituted_scope(analyse::scopes::Scope *scope, std::unique_ptr<ClassPrototypeAst> &&new_ast) -> void;

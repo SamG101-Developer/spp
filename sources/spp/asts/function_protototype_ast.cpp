@@ -5,17 +5,17 @@
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/func_utils.hpp>
 #include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
 #include <spp/asts/class_implementation_ast.hpp>
 #include <spp/asts/class_member_ast.hpp>
+#include <spp/asts/class_prototype_ast.hpp>
+#include <spp/asts/cmp_statement_ast.hpp>
 #include <spp/asts/convention_mut_ast.hpp>
 #include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/cmp_statement_ast.hpp>
-#include <spp/asts/function_prototype_ast.hpp>
 #include <spp/asts/function_implementation_ast.hpp>
 #include <spp/asts/function_parameter_ast.hpp>
-#include <spp/asts/function_parameter_self_ast.hpp>
 #include <spp/asts/function_parameter_group_ast.hpp>
+#include <spp/asts/function_parameter_self_ast.hpp>
+#include <spp/asts/function_prototype_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_argument_type_keyword_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
@@ -23,17 +23,18 @@
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/let_statement_initialized_ast.hpp>
 #include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/object_initializer_ast.hpp>
-#include <spp/asts/object_initializer_argument_group_ast.hpp>
-#include <spp/asts/module_prototype_ast.hpp>
 #include <spp/asts/module_implementation_ast.hpp>
+#include <spp/asts/module_prototype_ast.hpp>
+#include <spp/asts/object_initializer_argument_group_ast.hpp>
+#include <spp/asts/object_initializer_ast.hpp>
+#include <spp/asts/sup_implementation_ast.hpp>
 #include <spp/asts/sup_prototype_extension_ast.hpp>
 #include <spp/asts/sup_prototype_functions_ast.hpp>
-#include <spp/asts/sup_implementation_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
+#include <spp/codegen/llvm_mangle.hpp>
 
 #include <genex/actions/remove.hpp>
 #include <genex/actions/remove_if.hpp>
@@ -73,17 +74,20 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
 spp::asts::FunctionPrototypeAst::~FunctionPrototypeAst() = default;
 
 
-auto spp::asts::FunctionPrototypeAst::pos_start() const -> std::size_t {
+auto spp::asts::FunctionPrototypeAst::pos_start() const
+    -> std::size_t {
     return tok_fun->pos_start();
 }
 
 
-auto spp::asts::FunctionPrototypeAst::pos_end() const -> std::size_t {
+auto spp::asts::FunctionPrototypeAst::pos_end() const
+    -> std::size_t {
     return return_type->pos_end();
 }
 
 
-auto spp::asts::FunctionPrototypeAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::FunctionPrototypeAst::clone() const
+    -> std::unique_ptr<Ast> {
     throw std::runtime_error("Use SubroutinePrototypeAst or CoroutinePrototypeAst instead");
 }
 
@@ -102,7 +106,9 @@ spp::asts::FunctionPrototypeAst::operator std::string() const {
 }
 
 
-auto spp::asts::FunctionPrototypeAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::FunctionPrototypeAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_EXTEND(annotations);
     SPP_PRINT_APPEND(tok_fun);
@@ -113,27 +119,6 @@ auto spp::asts::FunctionPrototypeAst::print(meta::AstPrinter &printer) const -> 
     SPP_PRINT_APPEND(return_type).append(" ");
     SPP_PRINT_APPEND(impl);
     SPP_PRINT_END;
-}
-
-
-auto spp::asts::FunctionPrototypeAst::print_signature(
-    std::string const &owner) const
-    -> std::string {
-    SPP_STRING_START;
-    raw_string += owner;
-    SPP_STRING_APPEND(generic_param_group);
-    SPP_STRING_APPEND(param_group).append(" ");
-    SPP_STRING_APPEND(tok_arrow).append(" ");
-    SPP_STRING_APPEND(return_type);
-    SPP_STRING_END;
-}
-
-
-auto spp::asts::FunctionPrototypeAst::register_generic_substituted_scope(
-    std::unique_ptr<analyse::scopes::Scope> &&scope)
-    -> void {
-    // Store the scope for object persistence (and codegen).
-    m_generic_substituted_scopes.emplace_back(std::move(scope));
 }
 
 
@@ -165,6 +150,27 @@ auto spp::asts::FunctionPrototypeAst::m_deduce_mock_class_type() const
     }
 
     std::unreachable();
+}
+
+
+auto spp::asts::FunctionPrototypeAst::print_signature(
+    std::string const &owner) const
+    -> std::string {
+    SPP_STRING_START;
+    raw_string += owner;
+    SPP_STRING_APPEND(generic_param_group);
+    SPP_STRING_APPEND(param_group).append(" ");
+    SPP_STRING_APPEND(tok_arrow).append(" ");
+    SPP_STRING_APPEND(return_type);
+    SPP_STRING_END;
+}
+
+
+auto spp::asts::FunctionPrototypeAst::register_generic_substituted_scope(
+    std::unique_ptr<analyse::scopes::Scope> &&scope)
+    -> void {
+    // Store the scope for object persistence (and codegen).
+    m_generic_substituted_scopes.emplace_back(std::move(scope));
 }
 
 
@@ -219,7 +225,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     orig_name = ast_clone(name);
     auto sup_ext_impl_members = std::vector<std::unique_ptr<SupMemberAst>>();
     auto clone = ast_clone(this);
-    for (auto const &x: clone->annotations) { x->stage_1_pre_process(clone.get()); }
+    for (auto const &x : clone->annotations) { x->stage_1_pre_process(clone.get()); }
     sup_ext_impl_members.emplace_back(std::move(clone));
     auto mock_sup_ext_impl = std::make_unique<SupImplementationAst>(nullptr, std::move(sup_ext_impl_members), nullptr);
     auto mock_sup_ext = std::make_unique<SupPrototypeExtensionAst>(
@@ -245,7 +251,8 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
 
 auto spp::asts::FunctionPrototypeAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    mixins::CompilerMetaData *meta)
+    -> void {
     // Create a new scope for the function prototype, and move into it.
     auto scope_name = analyse::scopes::ScopeBlockName("<function#" + orig_name->val + "#" + std::to_string(pos_start()) + ">");
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
@@ -276,7 +283,8 @@ auto spp::asts::FunctionPrototypeAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::FunctionPrototypeAst::stage_3_gen_top_level_aliases(
     ScopeManager *sm,
-    mixins::CompilerMetaData *) -> void {
+    mixins::CompilerMetaData *)
+    -> void {
     // Skip the function scope, as it is already generated.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
@@ -286,7 +294,8 @@ auto spp::asts::FunctionPrototypeAst::stage_3_gen_top_level_aliases(
 
 auto spp::asts::FunctionPrototypeAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    mixins::CompilerMetaData *meta)
+    -> void {
     // Skip the function scope, as it is already qualified.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
@@ -309,7 +318,8 @@ auto spp::asts::FunctionPrototypeAst::stage_5_load_super_scopes(
 
 auto spp::asts::FunctionPrototypeAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *) -> void {
+    mixins::CompilerMetaData *)
+    -> void {
     // Perform conflict checking before standard semantic analysis errors due to multiple possible prototypes.
     sm->move_to_next_scope();
     const auto type_scope = ast_cast<ModulePrototypeAst>(m_ctx)
@@ -350,7 +360,8 @@ auto spp::asts::FunctionPrototypeAst::stage_7_analyse_semantics(
 
 auto spp::asts::FunctionPrototypeAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    mixins::CompilerMetaData *meta)
+    -> void {
     // Move into the function scope, as it is now ready for memory checking.
     sm->move_to_next_scope();
 
@@ -360,4 +371,44 @@ auto spp::asts::FunctionPrototypeAst::stage_8_check_memory(
 
     // Move out of the function scope, as it is now complete.
     sm->move_out_of_current_scope();
+}
+
+
+auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate the return and parameter types.
+    sm->move_to_next_scope();
+    const auto llvm_ret_type = sm->current_scope->get_type_symbol(return_type)->llvm_info->llvm_type;
+    const auto llvm_param_types = param_group->params
+        | genex::views::transform([sm](auto const &x) { return sm->current_scope->get_type_symbol(x->type)->llvm_info->llvm_type; })
+        | genex::to<std::vector>();
+
+    // Create the LLVM function type.
+    const auto is_var_arg = param_group->get_variadic_param() != nullptr;
+    const auto llvm_fun_type = llvm::FunctionType::get(llvm_ret_type, llvm_param_types, is_var_arg);
+
+    // Create the LLVM function and add it to the context.
+    const auto is_extern = m_no_impl_annotation || m_abstract_annotation;
+    const auto linkage = is_extern ? llvm::Function::ExternalLinkage : llvm::Function::InternalLinkage;
+    const auto llvm_fun = llvm::Function::Create(
+        llvm_fun_type, linkage, codegen::mangle::mangle_fun_name(*sm->current_scope, *this), ctx->module.get());
+
+    // Name the parameters from the ASTs.
+    auto llvm_param_iter = llvm_fun->arg_begin();
+    for (const auto &param : param_group->params) {
+        llvm_param_iter->setName(param->extract_name()->val);
+        ++llvm_param_iter;
+    }
+
+    // If there is an implementation, generate its code.
+    if (not is_extern) {
+        impl->stage_10_code_gen_2(sm, meta, ctx);
+    }
+
+    // Move out of the function scope.
+    sm->move_out_of_current_scope();
+    return llvm_fun;
 }

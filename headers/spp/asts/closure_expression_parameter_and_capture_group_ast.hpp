@@ -3,8 +3,6 @@
 
 
 struct spp::asts::ClosureExpressionParameterAndCaptureGroupAst final : virtual Ast {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c | token that indicates the start of the closure parameter and capture group.
      */
@@ -40,6 +38,8 @@ struct spp::asts::ClosureExpressionParameterAndCaptureGroupAst final : virtual A
         decltype(tok_r) &&tok_r);
 
     ~ClosureExpressionParameterAndCaptureGroupAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

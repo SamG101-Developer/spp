@@ -14,17 +14,20 @@ spp::asts::ClosureExpressionCaptureAst::ClosureExpressionCaptureAst(
 spp::asts::ClosureExpressionCaptureAst::~ClosureExpressionCaptureAst() = default;
 
 
-auto spp::asts::ClosureExpressionCaptureAst::pos_start() const -> std::size_t {
+auto spp::asts::ClosureExpressionCaptureAst::pos_start() const
+    -> std::size_t {
     return conv ? conv->pos_start() : val->pos_start();
 }
 
 
-auto spp::asts::ClosureExpressionCaptureAst::pos_end() const -> std::size_t {
+auto spp::asts::ClosureExpressionCaptureAst::pos_end() const
+    -> std::size_t {
     return val->pos_end();
 }
 
 
-auto spp::asts::ClosureExpressionCaptureAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::ClosureExpressionCaptureAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<ClosureExpressionCaptureAst>(
         ast_clone(conv),
         ast_clone(val));
@@ -39,7 +42,9 @@ spp::asts::ClosureExpressionCaptureAst::operator std::string() const {
 }
 
 
-auto spp::asts::ClosureExpressionCaptureAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::ClosureExpressionCaptureAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(conv);
     SPP_PRINT_APPEND(val);

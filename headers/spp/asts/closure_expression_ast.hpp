@@ -3,8 +3,6 @@
 
 
 struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst {
-    SPP_AST_KEY_FUNCTIONS;
-
 protected:
     std::shared_ptr<TypeAst> m_ret_type;
 
@@ -39,6 +37,8 @@ public:
         decltype(body) &&body);
 
     ~ClosureExpressionAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

@@ -11,6 +11,7 @@
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/codegen/llvm_coros.hpp>
 
 #include <genex/to_container.hpp>
 #include <genex/algorithms/none_of.hpp>
@@ -41,6 +42,7 @@ auto spp::asts::CoroutinePrototypeAst::clone() const
     ast->m_no_impl_annotation = m_no_impl_annotation;
     ast->m_inline_annotation = m_inline_annotation;
     ast->m_visibility = m_visibility;
+    ast->m_coro_frame = m_coro_frame;
     ast->annotations | genex::views::for_each([ast=ast.get()](auto const &a) { a->m_ctx = ast; });
     return ast;
 }
@@ -78,4 +80,36 @@ auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
     sm->move_out_of_current_scope();
     meta->restore();
     meta->loop_return_types->clear();
+}
+
+
+auto spp::asts::CoroutinePrototypeAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Use the default FunctionPrototypeAst then use coroutine intrinsics ("id", "begin", "end", "destroy")
+    const auto func = FunctionPrototypeAst::stage_10_code_gen_2(sm, meta, ctx);
+
+    // Use the coro.id intrinsic.
+    auto coro_id = ctx->builder.CreateCall(
+        llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), llvm::Intrinsic::coro_id),
+        {
+            llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx->context), 0),
+            llvm::ConstantPointerNull::get(llvm::cast<llvm::PointerType>(llvm::Type::getVoidTy(ctx->context))),
+            llvm::ConstantPointerNull::get(llvm::cast<llvm::PointerType>(llvm::Type::getVoidTy(ctx->context))),
+            llvm::ConstantPointerNull::get(llvm::cast<llvm::PointerType>(llvm::Type::getVoidTy(ctx->context))),
+        });
+
+    // Use the coro.begin intrinsic.
+    auto coro_begin = ctx->builder.CreateCall(
+        llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), llvm::Intrinsic::coro_begin),
+        {
+            llvm::ConstantPointerNull::get(llvm::cast<llvm::PointerType>(llvm::Type::getVoidTy(ctx->context))),
+            coro_id,
+        });
+
+    // Store the information into the coroutine context.
+    m_coro_frame = std::make_unique<codegen::LlvmCoroFrame>(coro_id, coro_begin);
+    return func;
 }

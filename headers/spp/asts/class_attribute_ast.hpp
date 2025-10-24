@@ -8,8 +8,6 @@
  * add "state" to a type.
  */
 struct spp::asts::ClassAttributeAst final : virtual Ast, mixins::VisibilityEnabledAst, ClassMemberAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The list of annotations that are applied to this class attribute. Typically, access modifiers in this context.
      */
@@ -54,6 +52,8 @@ struct spp::asts::ClassAttributeAst final : virtual Ast, mixins::VisibilityEnabl
         decltype(default_val) &&default_val);
 
     ~ClassAttributeAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_1_pre_process(Ast *ctx) -> void override;
 

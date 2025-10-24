@@ -1,5 +1,6 @@
 #include <genex/views/reverse.hpp>
 #include <spp/analyse/scopes/symbols.hpp>
+#include <spp/asts/cmp_statement_ast.hpp>
 #include <spp/asts/function_parameter_ast.hpp>
 #include <spp/asts/function_parameter_group_ast.hpp>
 #include <spp/asts/function_prototype_ast.hpp>
@@ -33,6 +34,17 @@ auto spp::codegen::mangle::mangle_mod_name(
         | genex::views::materialize
         | genex::views::join_with('#')
         | genex::to<std::string>();
+}
+
+
+auto spp::codegen::mangle::mangle_cmp_name(
+    analyse::scopes::Scope const &owner_scope,
+    asts::CmpStatementAst const &cmp_stmt)
+    -> std::string {
+    // Qualify the "cmp" name and return the whole thing.
+    const auto mod_name = mangle_mod_name(owner_scope);
+    const auto cmp_name = cmp_stmt.name->val;
+    return mod_name + "#" + cmp_name;
 }
 
 

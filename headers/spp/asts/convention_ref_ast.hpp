@@ -7,8 +7,6 @@
  * mutable values.
  */
 struct spp::asts::ConventionRefAst final : ConventionAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The token that represents the @c & borrow marker. This is used to indicate that a borrow of some convention is
      * being made.
@@ -23,4 +21,6 @@ struct spp::asts::ConventionRefAst final : ConventionAst {
         decltype(tok_borrow) &&tok_borrow);
 
     ~ConventionRefAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 };

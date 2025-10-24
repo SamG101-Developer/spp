@@ -141,8 +141,9 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
 
 
 auto spp::asts::ClassPrototypeAst::m_fill_llvm_mem_layout(
-    analyse::scopes::TypeSymbol *type_sym,
-    llvm::Module &llvm_mod)
+    analyse::scopes::ScopeManager *sm,
+    analyse::scopes::TypeSymbol const *type_sym,
+    codegen::LLvmCtx *ctx)
     -> void {
     // Collect the scope and sup scopes to get all attributes.
     auto types = std::vector{type_sym->scope}
@@ -152,9 +153,12 @@ auto spp::asts::ClassPrototypeAst::m_fill_llvm_mem_layout(
         | genex::views::transform([](auto *x) { return x->impl->members | genex::views::ptr | genex::to<std::vector>(); })
         | genex::views::join
         | genex::views::cast_dynamic<ClassAttributeAst*>()
-        | genex::views::transform([](auto *x) { return x->type; });
-    // type_sym->llvm_info->llvm_struct_type
-    (void)llvm_mod;
+        | genex::views::transform([sm](auto *x) { return sm->current_scope->get_type_symbol(x->type)->llvm_info->llvm_type; })
+        | genex::to<std::vector>();
+
+    const auto llvm_type_struct = llvm::StructType::create(
+        ctx->context, std::move(types), codegen::mangle::mangle_type_name(*type_sym));
+    type_sym->llvm_info->llvm_type = llvm_type_struct;
 }
 
 

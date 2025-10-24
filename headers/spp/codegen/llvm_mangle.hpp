@@ -20,6 +20,11 @@ namespace spp::codegen::mangle {
         analyse::scopes::Scope const &mod_scope)
         -> std::string;
 
+    auto mangle_cmp_name(
+        analyse::scopes::Scope const &owner_scope,
+        asts::CmpStatementAst const &cmp_stmt)
+        -> std::string;
+
     auto mangle_fun_name(
         analyse::scopes::Scope const &owner_scope,
         asts::FunctionPrototypeAst const &fun_proto)

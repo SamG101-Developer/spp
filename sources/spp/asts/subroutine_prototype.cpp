@@ -4,6 +4,7 @@
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/annotation_ast.hpp>
 #include <spp/asts/function_implementation_ast.hpp>
+#include <spp/asts/function_parameter_ast.hpp>
 #include <spp/asts/function_parameter_group_ast.hpp>
 #include <spp/asts/generic_parameter_group_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
@@ -12,6 +13,7 @@
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>
+#include <spp/codegen/llvm_mangle.hpp>
 
 #include <genex/views/for_each.hpp>
 

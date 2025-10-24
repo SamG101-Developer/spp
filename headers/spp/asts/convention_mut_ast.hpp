@@ -7,8 +7,6 @@
  * be mutably defined.
  */
 struct spp::asts::ConventionMutAst final : ConventionAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The token that represents the @c & borrow marker. This is used to indicate that a borrow of some convention is
      * being made.
@@ -31,4 +29,6 @@ struct spp::asts::ConventionMutAst final : ConventionAst {
         decltype(tok_mut) &&tok_mut);
 
     ~ConventionMutAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 };
