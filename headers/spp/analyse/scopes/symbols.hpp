@@ -1,4 +1,5 @@
 #pragma once
+#include <spp/macros.hpp>
 #include <spp/asts/_fwd.hpp>
 #include <spp/asts/utils/visbility.hpp>
 #include <spp/codegen/llvm_sym_info.hpp>
