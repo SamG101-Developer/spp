@@ -18,7 +18,6 @@ namespace spp::analyse::scopes {
  * ast for this class, allowing for scoping rules to be made easier.
  */
 struct spp::asts::ClassPrototypeAst final : virtual Ast, mixins::VisibilityEnabledAst, SupMemberAst, ModuleMemberAst {
-    SPP_AST_KEY_FUNCTIONS;
     friend struct TypeStatementAst;
 
 private:
@@ -75,6 +74,8 @@ public:
 
     ~ClassPrototypeAst() override;
 
+    SPP_AST_KEY_FUNCTIONS;
+
 private:
     auto m_generate_symbols(ScopeManager *sm) -> analyse::scopes::TypeSymbol*;
 
@@ -99,7 +100,7 @@ public:
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
-    auto stage_9_code_gen_1(ScopeManager *sm, mixins::CompilerMetaData *meta, llvm::Module &llvm_mod) -> void override;
+    auto stage_9_code_gen_1(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, llvm::Module &llvm_mod) -> void override;
 };

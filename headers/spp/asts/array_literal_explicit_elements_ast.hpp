@@ -71,6 +71,15 @@ public:
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     /**
+     * Create an array type based on the internal element type and the number of elements.
+     * @param sm The scope manager to use for code generation.
+     * @param meta Associated metadata.
+     * @param ctx The LLVM context to use for code generation.
+     * @return The LLVM value representing the array literal.
+     */
+    auto stage_9_code_gen_1(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+
+    /**
      * The inferred type of an array literal is always @code std::array::Arr[T, n]@endcode, where @c T is the type of
      * the elements in the array literal, and @c n is the number of elements in the array literal.
      * @param [in] sm The scope manager to use for type inference.

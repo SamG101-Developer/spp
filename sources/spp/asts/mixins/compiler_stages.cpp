@@ -61,8 +61,9 @@ auto spp::asts::mixins::CompilerStages::stage_8_check_memory(
 auto spp::asts::mixins::CompilerStages::stage_9_code_gen_1(
     ScopeManager *,
     CompilerMetaData *,
-    llvm::Module &)
-    -> void {
+    codegen::LLvmCtx *)
+    -> llvm::Value* {
+    return nullptr;
 }
 
 

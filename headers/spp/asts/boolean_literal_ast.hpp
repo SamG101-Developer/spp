@@ -7,8 +7,6 @@
  * This AST is used to represent boolean values in expressions and statements.
  */
 struct spp::asts::BooleanLiteralAst final : LiteralAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The token that represents the boolean literal, either @c true or @code false@endcode.
      */
@@ -29,6 +27,8 @@ public:
 
     ~BooleanLiteralAst() override;
 
+    SPP_AST_KEY_FUNCTIONS;
+
     /**
      * A static constructor to create a @c BooleanLiteralAst with a @c true value.
      * @param pos The position to create this AST at.
@@ -42,6 +42,16 @@ public:
      * @return The created @c BooleanLiteralAst as a unique pointer.
      */
     static auto False(std::size_t pos) -> std::unique_ptr<BooleanLiteralAst>;
+
+    /**
+     * Generate the LLVM IR code for the boolean literal. This will produce an LLVM constant integer value of 1 for
+     * @c true and 0 for @c false.
+     * @param sm The scope manager to use for code generation.
+     * @param meta Associated metadata.
+     * @param ctx The LLVM context to generate code in.
+     * @return The generated LLVM value representing the boolean literal.
+     */
+    auto stage_9_code_gen_1(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value * override;
 
     /**
      * The boolean literal's type is always @c std::boolean::Bool, the compiler known type that represents a boolean

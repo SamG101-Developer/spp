@@ -2,10 +2,9 @@
 #include <map>
 #include <stack>
 
+#include <spp/codegen/llvm_ctx.hpp>
 #include <spp/utils/errors.hpp>
 #include <spp/utils/ptr_cmp.hpp>
-
-#include <llvm/IR/Module.h>
 
 
 /// @cond
@@ -28,6 +27,7 @@ namespace spp::asts::mixins {
     struct CompilerMetaDataState;
     struct CompilerMetaData;
 }
+
 /// @endcond
 
 
@@ -113,9 +113,10 @@ struct spp::asts::mixins::CompilerStages {
      * Required to make the ASTs order-agnostic.
      * @param[in, out] sm The scope manager to get symbol's memory information from.
      * @param[in, out] meta Metadata to pass between ASTs.
-     * @param[in, out] llvm_mod The LLVM module to generate code into.
+     * @param[in, out] ctx The LLVM context to generate code into.
+     * @return The LLVM value generated from this AST.
      */
-    virtual auto stage_9_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, llvm::Module &llvm_mod) -> void;
+    virtual auto stage_9_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value*;
 
     /**
      * Finish the LLVM IR generation for the remaining (majority) of the ASTs. This will then all get linked together
@@ -156,7 +157,7 @@ struct spp::asts::mixins::CompilerMetaDataState {
     ExpressionAst *postfix_expression_lhs;
     ExpressionAst *unary_expression_rhs;
     bool skip_type_analysis_generic_checks;
-    analyse::scopes::Scope* type_analysis_type_scope;
+    analyse::scopes::Scope *type_analysis_type_scope;
 };
 
 
