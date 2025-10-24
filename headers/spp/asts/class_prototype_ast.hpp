@@ -102,5 +102,5 @@ public:
 
     auto stage_9_code_gen_1(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, llvm::Module &llvm_mod) -> void override;
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

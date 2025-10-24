@@ -77,7 +77,7 @@ public:
      * @param ctx The LLVM context to use for code generation.
      * @return The LLVM value representing the array literal.
      */
-    auto stage_9_code_gen_1(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     /**
      * The inferred type of an array literal is always @code std::array::Arr[T, n]@endcode, where @c T is the type of

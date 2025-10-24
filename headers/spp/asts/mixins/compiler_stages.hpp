@@ -123,9 +123,10 @@ struct spp::asts::mixins::CompilerStages {
      * by the compiler to produce an executable, with internal modules based on the SPP code structure.
      * @param[in, out] sm The scope manager to get symbol's memory information from.
      * @param[in, out] meta Metadata to pass between ASTs.
-     * @param[in, out] llvm_mod The LLVM module to generate code into.
+     * @param[in, out] ctx The LLVM context to generate code into.
+     * @returns The LLVM value generated from this AST.
      */
-    virtual auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, llvm::Module &llvm_mod) -> void;
+    virtual auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value*;
 };
 
 

@@ -70,8 +70,9 @@ auto spp::asts::mixins::CompilerStages::stage_9_code_gen_1(
 auto spp::asts::mixins::CompilerStages::stage_10_code_gen_2(
     ScopeManager *,
     CompilerMetaData *,
-    llvm::Module &)
-    -> void {
+    codegen::LLvmCtx *)
+    -> llvm::Value* {
+    return nullptr;
 }
 
 

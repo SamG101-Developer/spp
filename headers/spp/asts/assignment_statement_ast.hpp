@@ -102,5 +102,5 @@ struct spp::asts::AssignmentStatementAst final : StatementAst {
      * @param ctx The LLVM context to use for code generation.
      * @return The LLVM value representing the assignment operation.
      */
-    auto stage_9_code_gen_1(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value * override;
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value * override;
 };

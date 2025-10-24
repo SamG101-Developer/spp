@@ -149,7 +149,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::stage_9_code_gen_1(
+auto spp::asts::ArrayLiteralExplicitElementsAst::stage_10_code_gen_2(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)

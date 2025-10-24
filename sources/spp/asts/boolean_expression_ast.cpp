@@ -82,14 +82,14 @@ auto spp::asts::BooleanLiteralAst::False(
 }
 
 
-auto spp::asts::BooleanLiteralAst::stage_9_code_gen_1(
+auto spp::asts::BooleanLiteralAst::stage_10_code_gen_2(
     ScopeManager *,
     mixins::CompilerMetaData *,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Map the boolean literal to an LLVM constant integer.
     const auto value = tok_bool->token_type == lex::SppTokenType::KW_TRUE ? 1ul : 0ul;
-    return llvm::ConstantInt::get(ctx->builder.getInt1Ty(), value);
+    return llvm::ConstantInt::get(ctx->builder.getIntNTy(1), value);
 }
 
 

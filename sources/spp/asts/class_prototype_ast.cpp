@@ -28,6 +28,9 @@
 #include <genex/views/join.hpp>
 #include <genex/views/materialize.hpp>
 
+#include <llvm/ADT/APFloat.h>
+#include <llvm/IR/Type.h>
+
 
 spp::asts::ClassPrototypeAst::ClassPrototypeAst(
     decltype(annotations) &&annotations,
@@ -132,6 +135,7 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
         sm->current_scope->parent->add_type_symbol(symbol_2);
         return ret_sym;
     }
+
     return m_cls_sym.get();
 }
 
@@ -270,32 +274,9 @@ auto spp::asts::ClassPrototypeAst::stage_8_check_memory(
 auto spp::asts::ClassPrototypeAst::stage_9_code_gen_1(
     ScopeManager *sm,
     mixins::CompilerMetaData *,
-    codegen::LLvmCtx *ctx)
+    codegen::LLvmCtx *)
     -> llvm::Value* {
-    // Get the class symbol.
     sm->move_to_next_scope();
-    const auto cls_sym = sm->current_scope->ty_sym;
-
-    // No generation for alias symbols.
-    if (const auto alias_sym = dynamic_cast<analyse::scopes::AliasSymbol*>(cls_sym.get()); alias_sym != nullptr) {
-        sm->move_out_of_current_scope();
-        return nullptr;
-    }
-
-    // No generation for "$" types.
-    if (name->type_parts().back()->name[0] == '$') {
-        sm->move_out_of_current_scope();
-        return nullptr;
-    }
-
-    // If this is a raw generic class like Vec[T], then generate the generic implementations.
-    if (genex::algorithms::any_of(sm->current_scope->all_type_symbols() | genex::views::materialize, [](auto const &sym) { return sym->scope == nullptr; })) {
-        for (auto &&[generic_scope, generic_ast] : m_generic_substituted_scopes) {
-            generic_ast->m_fill_llvm_mem_layout(generic_scope->ty_sym.get(), *ctx->module);
-        }
-    }
-
-    m_fill_llvm_mem_layout(cls_sym.get(), *ctx->module);
     sm->move_out_of_current_scope();
     return nullptr;
 }
@@ -304,10 +285,124 @@ auto spp::asts::ClassPrototypeAst::stage_9_code_gen_1(
 auto spp::asts::ClassPrototypeAst::stage_10_code_gen_2(
     ScopeManager *sm,
     mixins::CompilerMetaData *,
-    llvm::Module &)
-    -> void {
-    // Skip the scope.
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Get the class symbol.
     sm->move_to_next_scope();
-    sm->move_out_of_current_scope();
+    const auto cls_sym = sm->current_scope->ty_sym;
 
+    // For compiler known types, specialize the llvm type symbols.
+    const auto ancestor_names = sm->current_scope->ancestors()
+        | genex::views::transform([](auto *x) { return std::dynamic_pointer_cast<TypeIdentifierAst>(x->ty_sym->name)->name; })
+        | genex::to<std::vector>();
+
+    if (ancestor_names == std::vector<std::string>{"std", "void", "Void"}) {
+        // S++ Void uses the llvm "void" type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getVoidTy(ctx->context);
+    }
+    if (ancestor_names == std::vector<std::string>{"std", "boolean", "Bool"}) {
+        // S++ Bool uses the llvm "i1" type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getInt1Ty(ctx->context);
+    }
+    else if (ancestor_names == std::vector<std::string>{"std", "number", "S8"}) {
+        // S++ S8 uses the llvm "i8" type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getInt8Ty(ctx->context);
+    }
+    else if (ancestor_names == std::vector<std::string>{"std", "number", "S16"}) {
+        // S++ S16 uses the llvm "i16" type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getInt16Ty(ctx->context);
+    }
+    else if (ancestor_names == std::vector<std::string>{"std", "number", "S32"}) {
+        // S++ S32 uses the llvm "i32" type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getInt32Ty(ctx->context);
+    }
+    else if (ancestor_names == std::vector<std::string>{"std", "number", "S64"}) {
+        // S++ S64 uses the llvm "i64" type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getInt64Ty(ctx->context);
+    }
+    else if (ancestor_names == std::vector<std::string>{"std", "number", "S128"}) {
+        // S++ S128 uses the llvm "i128" type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getInt128Ty(ctx->context);
+    }
+    else if (ancestor_names == std::vector<std::string>{"std", "number", "S256"}) {
+        // S++ Bool uses the llvm "i1" type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getIntNTy(ctx->context, 256);
+    }
+    else if (ancestor_names == std::vector<std::string>{"std", "number", "SSize"}) {
+        // S++ SSize uses the operating system's pointer size type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getIntNTy(ctx->context, ctx->module->getDataLayout().getPointerSizeInBits());
+    }
+    else if (ancestor_names == std::vector<std::string>{"std", "number", "U8"}) {
+        // S++ U8 uses the llvm "i8" type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getInt8Ty(ctx->context);
+    }
+    else if (ancestor_names == std::vector<std::string>{"std", "number", "U16"}) {
+        // S++ U16 uses the llvm "i16" type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getInt16Ty(ctx->context);
+    }
+    else if (ancestor_names == std::vector<std::string>{"std", "number", "U32"}) {
+        // S++ U32 uses the llvm "i32" type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getInt32Ty(ctx->context);
+    }
+    else if (ancestor_names == std::vector<std::string>{"std", "number", "U64"}) {
+        // S++ U64 uses the llvm "i64" type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getInt64Ty(ctx->context);
+    }
+    else if (ancestor_names == std::vector<std::string>{"std", "number", "U128"}) {
+        // S++ U128 uses the llvm "i128" type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getInt128Ty(ctx->context);
+    }
+    else if (ancestor_names == std::vector<std::string>{"std", "number", "U256"}) {
+        // S++ U256 uses the llvm "i256" type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getIntNTy(ctx->context, 256);
+    }
+    else if (ancestor_names == std::vector<std::string>{"std", "number", "USize"}) {
+        // S++ USize uses the operating system's pointer size type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getIntNTy(ctx->context, ctx->module->getDataLayout().getPointerSizeInBits());
+    }
+    else if (ancestor_names == std::vector<std::string>{"std", "number", "F8"}) {
+        // S++ F8 uses the llvm "quarter" type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getFloatingPointTy(ctx->context, llvm::APFloatBase::Float8E4M3());
+    }
+    else if (ancestor_names == std::vector<std::string>{"std", "number", "F16"}) {
+        // S++ F16 uses the llvm "half" type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getHalfTy(ctx->context);
+    }
+    else if (ancestor_names == std::vector<std::string>{"std", "number", "F32"}) {
+        // S++ F32 uses the llvm "float" type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getFloatTy(ctx->context);
+    }
+    else if (ancestor_names == std::vector<std::string>{"std", "number", "F64"}) {
+        // S++ F64 uses the llvm "double" type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getDoubleTy(ctx->context);
+    }
+    else if (ancestor_names == std::vector<std::string>{"std", "number", "F128"}) {
+        // S++ F128 uses the llvm "fp128" type.
+        cls_sym->llvm_info->llvm_type = llvm::Type::getFP128Ty(ctx->context);
+    }
+    else {
+        // No generation for alias symbols.
+        if (const auto alias_sym = dynamic_cast<analyse::scopes::AliasSymbol*>(cls_sym.get()); alias_sym != nullptr) {
+            sm->move_out_of_current_scope();
+            return nullptr;
+        }
+
+        // No generation for "$" types.
+        if (name->type_parts().back()->name[0] == '$') {
+            sm->move_out_of_current_scope();
+            return nullptr;
+        }
+
+        // If this is a raw generic class like Vec[T], then generate the generic implementations.
+        if (genex::algorithms::any_of(sm->current_scope->all_type_symbols() | genex::views::materialize, [](auto const &sym) { return sym->scope == nullptr; })) {
+            for (auto &&[generic_scope, generic_ast] : m_generic_substituted_scopes) {
+                generic_ast->m_fill_llvm_mem_layout(generic_scope->ty_sym.get(), *ctx->module);
+            }
+        }
+
+        m_fill_llvm_mem_layout(cls_sym.get(), *ctx->module);
+    }
+
+    sm->move_out_of_current_scope();
+    return nullptr;
 }

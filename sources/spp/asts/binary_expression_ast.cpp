@@ -191,7 +191,7 @@ auto spp::asts::BinaryExpressionAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::BinaryExpressionAst::stage_9_code_gen_1(
+auto spp::asts::BinaryExpressionAst::stage_10_code_gen_2(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)

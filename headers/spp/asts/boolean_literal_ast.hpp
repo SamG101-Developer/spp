@@ -51,7 +51,7 @@ public:
      * @param ctx The LLVM context to generate code in.
      * @return The generated LLVM value representing the boolean literal.
      */
-    auto stage_9_code_gen_1(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value * override;
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     /**
      * The boolean literal's type is always @c std::boolean::Bool, the compiler known type that represents a boolean

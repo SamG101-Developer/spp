@@ -67,7 +67,7 @@ public:
      * @param ctx The LLVM context to use for code generation.
      * @return The LLVM value generated from this AST.
      */
-    auto stage_9_code_gen_1(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value * override;
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value * override;
 
     /**
      * Forward the type checking to the mapped function. This just applies standard type inference from a function call.
