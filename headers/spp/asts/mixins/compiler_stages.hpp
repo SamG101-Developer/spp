@@ -6,6 +6,9 @@
 #include <spp/utils/errors.hpp>
 #include <spp/utils/ptr_cmp.hpp>
 
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Instruction.h>
+
 
 /// @cond
 namespace spp::analyse::scopes {
@@ -159,6 +162,8 @@ struct spp::asts::mixins::CompilerMetaDataState {
     ExpressionAst *unary_expression_rhs;
     bool skip_type_analysis_generic_checks;
     analyse::scopes::Scope *type_analysis_type_scope;
+    llvm::PHINode *phi_node;
+    llvm::BasicBlock *end_bb;
 };
 
 

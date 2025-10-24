@@ -3,8 +3,6 @@
 
 
 struct spp::asts::CasePatternVariantDestructureObjectAst final : CasePatternVariantAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The type of the object being destructured. This is used to determine the type of the destructured elements (by
      * attribute type inference)
@@ -42,9 +40,13 @@ struct spp::asts::CasePatternVariantDestructureObjectAst final : CasePatternVari
 
     ~CasePatternVariantDestructureObjectAst() override;
 
+    SPP_AST_KEY_FUNCTIONS;
+
     auto convert_to_variable(mixins::CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value * override;
 };

@@ -169,8 +169,9 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the condition architecture.
+    sm->move_to_next_scope();
     const auto func = ctx->builder.GetInsertBlock()->getParent();
-    const auto end_block = llvm::BasicBlock::Create(ctx->context, "case.end", func);
+    const auto end_bb = llvm::BasicBlock::Create(ctx->context, "case.end", func);
     auto phi = static_cast<llvm::PHINode*>(nullptr);
 
     // If this expression is being used for assignment, allocate space.
@@ -180,12 +181,16 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
     }
 
     // Generate each branch.
+    meta->save();
+    std::tie(meta->phi_node, meta->end_bb, meta->case_condition) = std::make_tuple(phi, end_bb, cond.get());
     for (auto &&branch : branches) {
         branch->stage_10_code_gen_2(sm, meta, ctx);
     }
+    meta->restore();
 
     // Finish the case expression.
-    ctx->builder.SetInsertPoint(end_block);
+    ctx->builder.SetInsertPoint(end_bb);
+    sm->move_out_of_current_scope();
     return phi;
 }
 

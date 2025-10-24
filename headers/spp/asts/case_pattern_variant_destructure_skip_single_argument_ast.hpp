@@ -3,8 +3,6 @@
 
 
 struct spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst final : CasePatternVariantAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c _ token that indicates the skip single argument pattern. This is used to indicate the next element
      * sequentially is being skipped, and is often seen in array and tuple destructuring. Invalid in object
@@ -20,6 +18,8 @@ struct spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst final : Cas
         decltype(tok_underscore) &&tok_underscore);
 
     ~CasePatternVariantDestructureSkipSingleArgumentAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto convert_to_variable(mixins::CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
 };

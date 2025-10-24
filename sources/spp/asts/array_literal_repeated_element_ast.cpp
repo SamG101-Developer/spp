@@ -153,7 +153,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_10_code_gen_2(
     auto vals = std::vector<llvm::Value*>{};
     vals.reserve(std::stoull(asts::ast_cast<IntegerLiteralAst>(size.get())->val->token_data));
     for (auto i = 0uz; i < vals.capacity(); ++i) {
-        vals.emplace_back(elem->stage_9_code_gen_1(sm, meta, ctx));
+        vals.emplace_back(elem->stage_10_code_gen_2(sm, meta, ctx));
     }
 
     // Create the array type and allocation.

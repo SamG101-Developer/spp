@@ -158,7 +158,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_10_code_gen_2(
     auto vals = std::vector<llvm::Value*>{};
     vals.reserve(elems.size());
     for (auto const &elem : elems) {
-        vals.emplace_back(elem->stage_9_code_gen_1(sm, meta, ctx));
+        vals.emplace_back(elem->stage_10_code_gen_2(sm, meta, ctx));
     }
 
     // Create the array type and allocation.

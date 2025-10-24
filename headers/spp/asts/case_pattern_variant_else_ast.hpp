@@ -3,8 +3,6 @@
 
 
 struct spp::asts::CasePatternVariantElseAst final : CasePatternVariantAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c else keyword that indicates this is an else branch of the case pattern variant.
      */
@@ -18,4 +16,8 @@ struct spp::asts::CasePatternVariantElseAst final : CasePatternVariantAst {
         decltype(tok_else) &&tok_else);
 
     ~CasePatternVariantElseAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value * override;
 };

@@ -197,7 +197,7 @@ auto spp::asts::BinaryExpressionAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Forward the code generation to the mapped function.
-    return m_mapped_func->stage_9_code_gen_1(sm, meta, ctx);
+    return m_mapped_func->stage_10_code_gen_2(sm, meta, ctx);
 }
 
 

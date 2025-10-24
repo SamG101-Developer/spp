@@ -3,8 +3,6 @@
 
 
 struct spp::asts::CasePatternVariantLiteralAst final : CasePatternVariantAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The literal value of the case pattern variant. This can be a string, integer, float, boolean, but not a tuple or
      * array; special destructure syntax exists for those literals.
@@ -20,9 +18,13 @@ struct spp::asts::CasePatternVariantLiteralAst final : CasePatternVariantAst {
 
     ~CasePatternVariantLiteralAst() override;
 
+    SPP_AST_KEY_FUNCTIONS;
+
     auto convert_to_variable(mixins::CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value * override;
 };

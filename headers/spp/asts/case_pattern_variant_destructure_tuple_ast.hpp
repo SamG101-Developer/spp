@@ -3,8 +3,6 @@
 
 
 struct spp::asts::CasePatternVariantDestructureTupleAst final : CasePatternVariantAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @code (@endcode token that indicates the start of a tuple destructuring pattern.
      */
@@ -34,9 +32,13 @@ struct spp::asts::CasePatternVariantDestructureTupleAst final : CasePatternVaria
 
     ~CasePatternVariantDestructureTupleAst() override;
 
+    SPP_AST_KEY_FUNCTIONS;
+
     auto convert_to_variable(mixins::CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

@@ -4,8 +4,6 @@
 
 
 struct spp::asts::CaseExpressionBranchAst final : virtual Ast, mixins::TypeInferrableAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The optional comparison operator. This is for cases pattern matching cases that look something like
      * @code== 123 { ... }@endcode.
@@ -45,9 +43,26 @@ struct spp::asts::CaseExpressionBranchAst final : virtual Ast, mixins::TypeInfer
 
     ~CaseExpressionBranchAst() override;
 
+private:
+    /**
+     * If there are multiple patterns, then the llvm output value is a logical OR of all the pattern matches. This is
+     * because the semantic analysis will have guaranteed that all the expressions are boolean. If there is only 1
+     * pattern, such as with case-of patterns, then this pattern's codegen is returned directly.
+     * @param sm The scope manager.
+     * @param meta Associated metadata.
+     * @param ctx The llvm code generation context.
+     * @return The llvm value representing the combined pattern matches.
+     */
+    auto m_codegen_combine_patterns(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value*;
+
+public:
+    SPP_AST_KEY_FUNCTIONS;
+
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

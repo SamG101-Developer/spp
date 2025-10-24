@@ -14,17 +14,20 @@ spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::CasePatternVarian
 spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::~CasePatternVariantDestructureSkipSingleArgumentAst() = default;
 
 
-auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::pos_start() const -> std::size_t {
+auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::pos_start() const
+    -> std::size_t {
     return tok_underscore->pos_start();
 }
 
 
-auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::pos_end() const -> std::size_t {
+auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::pos_end() const
+    -> std::size_t {
     return tok_underscore->pos_end();
 }
 
 
-auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<CasePatternVariantDestructureSkipSingleArgumentAst>(ast_clone(tok_underscore));
 }
 
@@ -36,7 +39,9 @@ spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::operator std::str
 }
 
 
-auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_underscore);
     SPP_PRINT_END;
