@@ -34,17 +34,20 @@ spp::asts::CaseExpressionBranchAst::CaseExpressionBranchAst(
 spp::asts::CaseExpressionBranchAst::~CaseExpressionBranchAst() = default;
 
 
-auto spp::asts::CaseExpressionBranchAst::pos_start() const -> std::size_t {
+auto spp::asts::CaseExpressionBranchAst::pos_start() const
+    -> std::size_t {
     return op ? op->pos_start() : patterns.front()->pos_start();
 }
 
 
-auto spp::asts::CaseExpressionBranchAst::pos_end() const -> std::size_t {
+auto spp::asts::CaseExpressionBranchAst::pos_end() const
+    -> std::size_t {
     return body->pos_end();
 }
 
 
-auto spp::asts::CaseExpressionBranchAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::CaseExpressionBranchAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<CaseExpressionBranchAst>(
         ast_clone(op),
         ast_clone_vec(patterns),
@@ -63,7 +66,9 @@ spp::asts::CaseExpressionBranchAst::operator std::string() const {
 }
 
 
-auto spp::asts::CaseExpressionBranchAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::CaseExpressionBranchAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(op);
     SPP_PRINT_EXTEND(patterns);
@@ -107,7 +112,8 @@ auto spp::asts::CaseExpressionBranchAst::stage_7_analyse_semantics(
 
 auto spp::asts::CaseExpressionBranchAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    mixins::CompilerMetaData *meta)
+    -> void {
     // Move into the branch's scope.
     sm->move_to_next_scope();
 
