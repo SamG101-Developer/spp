@@ -21,6 +21,21 @@ spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(
 spp::asts::FunctionCallArgumentAst::~FunctionCallArgumentAst() = default;
 
 
+auto spp::asts::FunctionCallArgumentAst::set_self_type(
+    std::shared_ptr<TypeAst> self_type)
+    -> void {
+    // Set the self type to the given type.
+    m_self_type = std::move(self_type);
+}
+
+
+auto spp::asts::FunctionCallArgumentAst::get_self_type()
+    -> std::shared_ptr<TypeAst> {
+    // Get the self type.
+    return m_self_type;
+}
+
+
 auto spp::asts::FunctionCallArgumentAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
@@ -40,6 +55,16 @@ auto spp::asts::FunctionCallArgumentAst::stage_8_check_memory(
 }
 
 
+auto spp::asts::FunctionCallArgumentAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Delegate to the value.
+    return val->stage_10_code_gen_2(sm, meta, ctx);
+}
+
+
 auto spp::asts::FunctionCallArgumentAst::infer_type(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
@@ -48,19 +73,4 @@ auto spp::asts::FunctionCallArgumentAst::infer_type(
     return m_self_type != nullptr
                ? m_self_type
                : val->infer_type(sm, meta)->with_convention(ast_clone(conv));
-}
-
-
-auto spp::asts::FunctionCallArgumentAst::set_self_type(
-    std::shared_ptr<TypeAst> self_type)
-    -> void {
-    // Set the self type to the given type.
-    m_self_type = std::move(self_type);
-}
-
-
-auto spp::asts::FunctionCallArgumentAst::get_self_type()
-    -> std::shared_ptr<TypeAst> {
-    // Get the self type.
-    return m_self_type;
 }

@@ -400,11 +400,11 @@ auto spp::asts::ClassPrototypeAst::stage_10_code_gen_2(
         // If this is a raw generic class like Vec[T], then generate the generic implementations.
         if (genex::algorithms::any_of(sm->current_scope->all_type_symbols() | genex::views::materialize, [](auto const &sym) { return sym->scope == nullptr; })) {
             for (auto &&[generic_scope, generic_ast] : m_generic_substituted_scopes) {
-                generic_ast->m_fill_llvm_mem_layout(generic_scope->ty_sym.get(), *ctx->module);
+                generic_ast->m_fill_llvm_mem_layout(sm, generic_scope->ty_sym.get(), ctx);
             }
         }
 
-        m_fill_llvm_mem_layout(cls_sym.get(), *ctx->module);
+        m_fill_llvm_mem_layout(sm, cls_sym.get(), ctx);
     }
 
     sm->move_out_of_current_scope();

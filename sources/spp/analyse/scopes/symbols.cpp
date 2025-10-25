@@ -1,7 +1,7 @@
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/analyse/scopes/symbols.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/convention_mov_ast.hpp>
+#include <spp/asts/convention_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>

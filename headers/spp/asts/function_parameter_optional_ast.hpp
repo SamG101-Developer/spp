@@ -7,8 +7,6 @@
  * parameters that are not required, and can be omitted when calling the function.
  */
 struct spp::asts::FunctionParameterOptionalAst final : FunctionParameterAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The token that separates the parameter name from the default value.
      */
@@ -35,6 +33,8 @@ struct spp::asts::FunctionParameterOptionalAst final : FunctionParameterAst {
         decltype(default_val) &&default_val);
 
     ~FunctionParameterOptionalAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

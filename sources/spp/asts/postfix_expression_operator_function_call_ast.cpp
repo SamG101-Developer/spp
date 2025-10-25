@@ -567,6 +567,22 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_8_check_memory(
 }
 
 
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx) -> llvm::Value* {
+    // Get the llvm function target.
+    const auto llvm_func = std::get<1>(*m_overload_info)->m_llvm_func;
+    const auto llvm_func_args = arg_group->args
+        | genex::views::transform([sm, meta, ctx](auto const &x) { return x->stage_10_code_gen_2(sm, meta, ctx); })
+        | genex::to<std::vector>();
+
+    // Create the call instruction and return it.
+    const auto llvm_func_call = ctx->builder.CreateCall(llvm_func, llvm_func_args, "func_call");
+    return llvm_func_call;
+}
+
+
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)

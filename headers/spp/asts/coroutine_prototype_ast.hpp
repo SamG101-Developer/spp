@@ -7,10 +7,13 @@ namespace spp::codegen {
 
 
 struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst {
+    friend struct GenExpressionAst;
     using FunctionPrototypeAst::FunctionPrototypeAst;
 
 private:
-    std::shared_ptr<codegen::LlvmCoroFrame> m_coro_frame;
+    std::shared_ptr<codegen::LlvmCoroFrame> m_llvm_coro_frame;
+
+    llvm::Value* m_llvm_coro_yield_slot;
 
 public:
     ~CoroutinePrototypeAst() override;

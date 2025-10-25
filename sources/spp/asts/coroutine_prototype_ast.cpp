@@ -42,7 +42,7 @@ auto spp::asts::CoroutinePrototypeAst::clone() const
     ast->m_no_impl_annotation = m_no_impl_annotation;
     ast->m_inline_annotation = m_inline_annotation;
     ast->m_visibility = m_visibility;
-    ast->m_coro_frame = m_coro_frame;
+    ast->m_llvm_coro_frame = m_llvm_coro_frame;
     ast->annotations | genex::views::for_each([ast=ast.get()](auto const &a) { a->m_ctx = ast; });
     return ast;
 }
@@ -110,6 +110,6 @@ auto spp::asts::CoroutinePrototypeAst::stage_10_code_gen_2(
         });
 
     // Store the information into the coroutine context.
-    m_coro_frame = std::make_unique<codegen::LlvmCoroFrame>(coro_id, coro_begin);
+    m_llvm_coro_frame = std::make_unique<codegen::LlvmCoroFrame>(coro_id, coro_begin);
     return func;
 }

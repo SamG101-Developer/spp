@@ -4,6 +4,7 @@
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/convention_mut_ast.hpp>
+#include <spp/asts/coroutine_prototype_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_argument_type_keyword_ast.hpp>
 #include <spp/asts/gen_expression_ast.hpp>
@@ -147,6 +148,43 @@ auto spp::asts::GenExpressionAst::stage_8_check_memory(
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
             *expr, *conv, *std::get<0>(sym->memory_info->ast_initialization)).with_scopes({sm->current_scope}).raise();
     }
+}
+
+
+auto spp::asts::GenExpressionAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate the expression.
+    const auto llvm_yield_val = expr == nullptr ? nullptr : expr->stage_10_code_gen_2(sm, meta, ctx);
+
+    // Insert the suspension intrinsic call for LLVM.
+    const auto llvm_suspend = llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), llvm::Intrinsic::coro_suspend);
+
+    const auto none_token = llvm::ConstantTokenNone::get(ctx->context);
+    const auto false_val = llvm::ConstantInt::get(llvm::Type::getInt1Ty(ctx->context), 0);
+    const auto suspend_result_val = ctx->builder.CreateCall(llvm_suspend, {none_token, false_val}, "coro.suspend");
+
+    // Model the branch control.
+    const auto enclosing_fn_proto = ast_cast<FunctionPrototypeAst>(meta->enclosing_function_scope->ast);
+    const auto resume_bb = llvm::BasicBlock::Create(ctx->context, "resume", enclosing_fn_proto->m_llvm_func);
+    const auto cleanup_bb = llvm::BasicBlock::Create(ctx->context, "cleanup", enclosing_fn_proto->m_llvm_func);
+    const auto suspend_bb = llvm::BasicBlock::Create(ctx->context, "suspend", enclosing_fn_proto->m_llvm_func);
+    ctx->builder.CreateSwitch(suspend_result_val, resume_bb, 2);
+
+    // Store the yielded value into the coroutine frame.
+    const auto coro_proto = ast_cast<CoroutinePrototypeAst>(enclosing_fn_proto);
+    if (llvm_yield_val != nullptr) {
+        ctx->builder.CreateStore(llvm_yield_val, coro_proto->m_llvm_coro_yield_slot);
+    }
+
+    ctx->builder.SetInsertPoint(cleanup_bb);
+    ctx->builder.CreateRetVoid();
+    ctx->builder.SetInsertPoint(suspend_bb);
+    ctx->builder.CreateRetVoid();
+    ctx->builder.SetInsertPoint(resume_bb);
+    return nullptr;
 }
 
 

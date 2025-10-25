@@ -20,6 +20,27 @@ const auto FLOAT_TYPE_MIN_MAX = std::map<std::string, std::pair<CppBigFloat, Cpp
 };
 
 
+auto spp::asts::FloatLiteralAst::equals(
+    ExpressionAst const &other) const
+    -> std::strong_ordering {
+    return other.equals_float_literal(*this);
+}
+
+
+auto spp::asts::FloatLiteralAst::equals_float_literal(
+    FloatLiteralAst const &other) const
+    -> std::strong_ordering {
+    if (
+        ((not tok_sign and not other.tok_sign) or (tok_sign and other.tok_sign and *tok_sign == *other.tok_sign))
+        and int_val->token_data == other.int_val->token_data
+        and frac_val->token_data == other.frac_val->token_data
+        and type == other.type) {
+        return std::strong_ordering::equal;
+    }
+    return std::strong_ordering::less;
+}
+
+
 spp::asts::FloatLiteralAst::FloatLiteralAst(
     decltype(tok_sign) &&tok_sign,
     decltype(int_val) &&int_val,
@@ -84,27 +105,6 @@ auto spp::asts::FloatLiteralAst::print(
 }
 
 
-auto spp::asts::FloatLiteralAst::equals(
-    ExpressionAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_float_literal(*this);
-}
-
-
-auto spp::asts::FloatLiteralAst::equals_float_literal(
-    FloatLiteralAst const &other) const
-    -> std::strong_ordering {
-    if (
-        ((not tok_sign and not other.tok_sign) or (tok_sign and other.tok_sign and *tok_sign == *other.tok_sign))
-        and int_val->token_data == other.int_val->token_data
-        and frac_val->token_data == other.frac_val->token_data
-        and type == other.type) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
-}
-
-
 auto spp::asts::FloatLiteralAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     mixins::CompilerMetaData *)
@@ -122,6 +122,21 @@ auto spp::asts::FloatLiteralAst::stage_7_analyse_semantics(
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppFloatOutOfBoundsError>().with_args(
             *this, mapped_val, lower, upper, "float").with_scopes({sm->current_scope}).raise();
     }
+}
+
+
+auto spp::asts::FloatLiteralAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Map the float literal to the correct LLVM type.
+    const auto llvm_type = sm->current_scope->get_type_symbol(infer_type(sm, meta))->llvm_info->llvm_type;
+    const auto full_val = (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB ? "-" : "") + int_val->token_data + "." + frac_val->token_data;
+    const auto llvm_const = llvm::ConstantFP::get(
+        ctx->context,
+        llvm::APFloat(llvm_type->getFltSemantics(), full_val));
+    return llvm_const;
 }
 
 

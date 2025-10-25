@@ -143,6 +143,26 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
 }
 
 
+template <typename T>
+auto spp::asts::InnerScopeAst<T>::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Add all the expressions/statements into the current scope.
+    sm->move_to_next_scope();
+    for (auto *member : members | genex::views::ptr) {
+        if (ast_cast<ExpressionAst>(member) != nullptr) {
+            member->stage_10_code_gen_2(sm, meta, ctx);
+        }
+    }
+
+    // Exit the scope.
+    sm->move_out_of_current_scope();
+    return nullptr;
+}
+
+
 template struct spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::ClassMemberAst>>;
 template struct spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::FunctionMemberAst>>;
 template struct spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::SupMemberAst>>;

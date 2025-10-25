@@ -17,8 +17,8 @@
 #include <spp/asts/mixins/orderable_ast.hpp>
 
 #include <genex/to_container.hpp>
-#include <genex/views/duplicates.hpp>
 #include <genex/views/cast_dynamic.hpp>
+#include <genex/views/duplicates.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>

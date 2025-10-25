@@ -17,6 +17,7 @@
 
 #include <genex/views/drop.hpp>
 #include <genex/views/for_each.hpp>
+#include <genex/views/ptr.hpp>
 
 
 spp::asts::CaseExpressionBranchAst::CaseExpressionBranchAst(
@@ -86,7 +87,7 @@ auto spp::asts::CaseExpressionBranchAst::m_codegen_combine_patterns(
     // If there is only one pattern, generate its condition directly.
     // Otherwise, collect all the pattern conditions and combine them with OR.
     auto combined_cond = patterns.front()->stage_10_code_gen_2(sm, meta, ctx);
-    for (auto const &pattern : patterns | genex::views::drop(1)) {
+    for (auto const &pattern : patterns | genex::views::ptr | genex::views::drop(1)) {
         const auto pattern_cond = pattern->stage_10_code_gen_2(sm, meta, ctx);
         combined_cond = ctx->builder.CreateOr(combined_cond, pattern_cond);
     }

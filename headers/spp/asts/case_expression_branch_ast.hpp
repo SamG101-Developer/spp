@@ -43,6 +43,8 @@ struct spp::asts::CaseExpressionBranchAst final : virtual Ast, mixins::TypeInfer
 
     ~CaseExpressionBranchAst() override;
 
+    SPP_AST_KEY_FUNCTIONS;
+
 private:
     /**
      * If there are multiple patterns, then the llvm output value is a logical OR of all the pattern matches. This is
@@ -56,8 +58,6 @@ private:
     auto m_codegen_combine_patterns(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value*;
 
 public:
-    SPP_AST_KEY_FUNCTIONS;
-
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;

@@ -3,8 +3,6 @@
 
 
 struct spp::asts::FoldExpressionAst final : PrimaryExpressionAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c .. fold token that indicates a fold operation. Used in binary and function call contexts.
      */
@@ -18,4 +16,6 @@ struct spp::asts::FoldExpressionAst final : PrimaryExpressionAst {
         decltype(tok_ellipsis) &&tok_ellipsis);
 
     ~FoldExpressionAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 };

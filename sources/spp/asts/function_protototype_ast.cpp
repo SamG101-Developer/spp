@@ -1,5 +1,4 @@
 #include <spp/pch.hpp>
-
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
@@ -56,6 +55,7 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     m_temperature_annotation(nullptr),
     m_no_impl_annotation(nullptr),
     m_inline_annotation(nullptr),
+    m_llvm_func(nullptr),
     annotations(std::move(annotations)),
     tok_fun(std::move(tok_fun)),
     name(std::move(name)),
@@ -395,6 +395,7 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
     const auto linkage = is_extern ? llvm::Function::ExternalLinkage : llvm::Function::InternalLinkage;
     const auto llvm_fun = llvm::Function::Create(
         llvm_fun_type, linkage, codegen::mangle::mangle_fun_name(*sm->current_scope, *this), ctx->module.get());
+    m_llvm_func = llvm_fun;
 
     // Name the parameters from the ASTs.
     auto llvm_param_iter = llvm_fun->arg_begin();

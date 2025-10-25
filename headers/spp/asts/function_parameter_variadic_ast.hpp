@@ -7,8 +7,6 @@
  * parameters that can accept an arbitrary number of arguments, such as @c *args in Python.
  */
 struct spp::asts::FunctionParameterVariadicAst final : FunctionParameterAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The token that represents the @c .. ellipsis in the function parameter. This indicates that the parameter is
      * variadic, meaning it can accept a variable number of arguments.
@@ -29,4 +27,6 @@ struct spp::asts::FunctionParameterVariadicAst final : FunctionParameterAst {
         decltype(type) type);
 
     ~FunctionParameterVariadicAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 };
