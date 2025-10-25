@@ -7,8 +7,6 @@
  * argument to be matched by an index rather than a keyword.
  */
 struct spp::asts::GenericArgumentCompPositionalAst final : GenericArgumentCompAst {
-    SPP_AST_KEY_FUNCTIONS;
-
 protected:
     auto equals(GenericArgumentAst const &other) const -> std::strong_ordering override;
 
@@ -23,6 +21,8 @@ public:
         decltype(val) &&val);
 
     ~GenericArgumentCompPositionalAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

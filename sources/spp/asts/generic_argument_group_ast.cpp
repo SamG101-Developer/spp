@@ -44,6 +44,50 @@ spp::asts::GenericArgumentGroupAst::GenericArgumentGroupAst(
 spp::asts::GenericArgumentGroupAst::~GenericArgumentGroupAst() = default;
 
 
+auto spp::asts::GenericArgumentGroupAst::pos_start() const
+    -> std::size_t {
+    return tok_l->pos_start();
+}
+
+
+auto spp::asts::GenericArgumentGroupAst::pos_end() const
+    -> std::size_t {
+    return tok_r->pos_end();
+}
+
+
+auto spp::asts::GenericArgumentGroupAst::clone() const
+    -> std::unique_ptr<Ast> {
+    return std::make_unique<GenericArgumentGroupAst>(
+        ast_clone(tok_l),
+        ast_clone_vec(args),
+        ast_clone(tok_r));
+}
+
+
+spp::asts::GenericArgumentGroupAst::operator std::string() const {
+    SPP_STRING_START;
+    if (not args.empty()) {
+        SPP_STRING_APPEND(tok_l);
+        SPP_STRING_EXTEND(args);
+        SPP_STRING_APPEND(tok_r);
+    }
+    SPP_STRING_END;
+}
+
+auto spp::asts::GenericArgumentGroupAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
+    SPP_PRINT_START;
+    if (not args.empty()) {
+        SPP_PRINT_APPEND(tok_l);
+        SPP_PRINT_EXTEND(args);
+        SPP_PRINT_APPEND(tok_r);
+    }
+    SPP_PRINT_END;
+}
+
+
 auto spp::asts::GenericArgumentGroupAst::new_empty()
     -> std::unique_ptr<GenericArgumentGroupAst> {
     return std::make_unique<GenericArgumentGroupAst>(
@@ -104,7 +148,8 @@ auto spp::asts::GenericArgumentGroupAst::from_map(
 
 
 auto spp::asts::GenericArgumentGroupAst::from_map(
-    ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, std::shared_ptr<const TypeAst>> &&map)
+    ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>,
+                                 std::shared_ptr<const TypeAst>> &&map)
     -> std::unique_ptr<GenericArgumentGroupAst> {
     // Cast the values to "ExpressionAst const*".
     auto mapped_args = analyse::utils::type_utils::GenericInferenceMap();
@@ -114,7 +159,10 @@ auto spp::asts::GenericArgumentGroupAst::from_map(
     return from_map(std::move(mapped_args));
 }
 
-auto spp::asts::GenericArgumentGroupAst::operator==(GenericArgumentGroupAst const &other) const -> bool {
+
+auto spp::asts::GenericArgumentGroupAst::operator==(
+    GenericArgumentGroupAst const &other) const
+    -> bool {
     if (args.size() != other.args.size()) {
         return false;
     }
@@ -219,51 +267,6 @@ auto spp::asts::GenericArgumentGroupAst::get_all_args() const
     return args
         | genex::views::ptr
         | genex::to<std::vector>();
-}
-
-
-auto spp::asts::GenericArgumentGroupAst::pos_start() const
-    -> std::size_t {
-    return tok_l->pos_start();
-}
-
-
-auto spp::asts::GenericArgumentGroupAst::pos_end() const
-    -> std::size_t {
-    return tok_r->pos_end();
-}
-
-
-auto spp::asts::GenericArgumentGroupAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<GenericArgumentGroupAst>(
-        ast_clone(tok_l),
-        ast_clone_vec(args),
-        ast_clone(tok_r));
-}
-
-
-spp::asts::GenericArgumentGroupAst::operator std::string() const {
-    SPP_STRING_START;
-    if (not args.empty()) {
-        SPP_STRING_APPEND(tok_l);
-        SPP_STRING_EXTEND(args);
-        SPP_STRING_APPEND(tok_r);
-    }
-    SPP_STRING_END;
-}
-
-
-auto spp::asts::GenericArgumentGroupAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    if (not args.empty()) {
-        SPP_PRINT_APPEND(tok_l);
-        SPP_PRINT_EXTEND(args);
-        SPP_PRINT_APPEND(tok_r);
-    }
-    SPP_PRINT_END;
 }
 
 

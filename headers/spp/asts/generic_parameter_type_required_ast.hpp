@@ -3,8 +3,6 @@
 
 
 struct spp::asts::GenericParameterTypeRequiredAst final : GenericParameterTypeAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * Construct the GenericParameterTypeRequiredAst with the arguments matching the members.
      * @param name The name of the generic type parameter.
@@ -18,4 +16,6 @@ struct spp::asts::GenericParameterTypeRequiredAst final : GenericParameterTypeAs
         decltype(constraints) &&constraints);
 
     ~GenericParameterTypeRequiredAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 };

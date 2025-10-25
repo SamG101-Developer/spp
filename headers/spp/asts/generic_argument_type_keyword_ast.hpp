@@ -7,8 +7,6 @@
  * argument to be matched by a keyword rather than an index.
  */
 struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgumentTypeAst {
-    SPP_AST_KEY_FUNCTIONS;
-
 protected:
     auto equals(GenericArgumentAst const &other) const -> std::strong_ordering override;
 
@@ -38,6 +36,8 @@ public:
         decltype(val) val);
 
     ~GenericArgumentTypeKeywordAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     static auto from_symbol(analyse::scopes::TypeSymbol const &sym) -> std::unique_ptr<GenericArgumentTypeKeywordAst>;
 

@@ -6,6 +6,23 @@
 #include <spp/asts/type_ast.hpp>
 
 
+auto spp::asts::GenericArgumentTypePositionalAst::equals(
+    GenericArgumentAst const &other) const
+    -> std::strong_ordering {
+    return other.equals_generic_argument_type_positional(*this);
+}
+
+
+auto spp::asts::GenericArgumentTypePositionalAst::equals_generic_argument_type_positional(
+    GenericArgumentTypePositionalAst const &other) const
+    -> std::strong_ordering {
+    if (*val == *other.val) {
+        return std::strong_ordering::equal;
+    }
+    return std::strong_ordering::less;
+}
+
+
 spp::asts::GenericArgumentTypePositionalAst::GenericArgumentTypePositionalAst(
     decltype(val) val) :
     GenericArgumentTypeAst(std::move(val), mixins::OrderableTag::POSITIONAL_ARG) {
@@ -47,23 +64,6 @@ auto spp::asts::GenericArgumentTypePositionalAst::print(
     SPP_PRINT_START;
     SPP_PRINT_APPEND(val);
     SPP_PRINT_END;
-}
-
-
-auto spp::asts::GenericArgumentTypePositionalAst::equals(
-    GenericArgumentAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_generic_argument_type_positional(*this);
-}
-
-
-auto spp::asts::GenericArgumentTypePositionalAst::equals_generic_argument_type_positional(
-    GenericArgumentTypePositionalAst const &other) const
-    -> std::strong_ordering {
-    if (*val == *other.val) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
 }
 
 

@@ -3,8 +3,6 @@
 
 
 struct spp::asts::IntegerLiteralAst final : LiteralAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The optionally provided sign token. This can be either a @c + or @c - sign, indicating the sign of the integer
      * literal. No sign means the integer is positive by default.
@@ -39,6 +37,8 @@ public:
         std::string &&type);
 
     ~IntegerLiteralAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

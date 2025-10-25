@@ -6,6 +6,7 @@
 namespace spp::analyse::scopes {
     struct VariableSymbol;
 }
+
 /// @endcond
 
 
@@ -14,8 +15,6 @@ namespace spp::analyse::scopes {
  * to be matched by a keyword rather than an index.
  */
 struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgumentCompAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The name of the keyword argument. This is the identifier that is used to refer to the argument in the generic
      * call.
@@ -46,6 +45,8 @@ public:
         decltype(val) &&val);
 
     ~GenericArgumentCompKeywordAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     static auto from_symbol(
         analyse::scopes::VariableSymbol const &sym)

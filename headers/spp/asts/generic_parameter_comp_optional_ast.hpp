@@ -3,8 +3,6 @@
 
 
 struct spp::asts::GenericParameterCompOptionalAst final : GenericParameterCompAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The token that separates the parameter name from the default value.
      */
@@ -33,6 +31,8 @@ struct spp::asts::GenericParameterCompOptionalAst final : GenericParameterCompAs
         decltype(default_val) &&default_val);
 
     ~GenericParameterCompOptionalAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

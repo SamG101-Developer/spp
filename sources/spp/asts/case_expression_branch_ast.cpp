@@ -157,7 +157,7 @@ auto spp::asts::CaseExpressionBranchAst::stage_10_code_gen_2(
     const auto func = ctx->builder.GetInsertBlock()->getParent();
     const auto branch_bb = llvm::BasicBlock::Create(ctx->context, "case.branch", func);
 
-    // Get the condition.
+    // Get the condition. Todo: Attach the guard condition if it exists.
     const auto match_cond = m_codegen_combine_patterns(sm, meta, ctx);
     const auto next_bb = llvm::BasicBlock::Create(ctx->context, "case.next", func);
     ctx->builder.CreateCondBr(match_cond, branch_bb, next_bb);

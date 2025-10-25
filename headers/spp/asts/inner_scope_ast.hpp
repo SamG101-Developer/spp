@@ -11,8 +11,6 @@
  */
 template <typename T>
 struct spp::asts::InnerScopeAst : virtual Ast {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c { token that represents the start of the inner scope. This is used to indicate the beginning of the scope
      * and is typically followed by a list of members or statements that belong to this scope.
@@ -48,6 +46,8 @@ public:
         decltype(tok_r) &&tok_r);
 
     ~InnerScopeAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     static auto new_empty() -> std::unique_ptr<InnerScopeAst>;
 

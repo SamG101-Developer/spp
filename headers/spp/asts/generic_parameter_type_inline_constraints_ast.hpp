@@ -3,8 +3,6 @@
 
 
 struct spp::asts::GenericParameterTypeInlineConstraintsAst final : virtual Ast {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @code :@endcode token that introduces the inline constraints.
      */
@@ -26,4 +24,6 @@ struct spp::asts::GenericParameterTypeInlineConstraintsAst final : virtual Ast {
         decltype(constraints) &&constraints);
 
     ~GenericParameterTypeInlineConstraintsAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 };

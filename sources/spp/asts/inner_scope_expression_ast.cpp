@@ -59,7 +59,8 @@ auto spp::asts::InnerScopeExpressionAst<T>::stage_7_analyse_semantics(
 template <typename T>
 auto spp::asts::InnerScopeExpressionAst<T>::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> {
+    mixins::CompilerMetaData *meta)
+    -> std::shared_ptr<TypeAst> {
     // If there are any members, return the last member's inferred type.
     if (not this->members.empty()) {
         auto tm = ScopeManager(sm->global_scope, m_scope);

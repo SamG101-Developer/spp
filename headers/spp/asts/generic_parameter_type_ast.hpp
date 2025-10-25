@@ -14,6 +14,7 @@ struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
      * Construct the GenericParameterTypeAst with the arguments matching the members.
      * @param name The name of the generic type parameter.
      * @param constraints The optional inline constraints for the generic type parameter.
+     * @param order_tag The order tag for the generic parameter.
      */
     GenericParameterTypeAst(
         decltype(name) name,

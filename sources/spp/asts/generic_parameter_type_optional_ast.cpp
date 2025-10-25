@@ -20,17 +20,20 @@ spp::asts::GenericParameterTypeOptionalAst::GenericParameterTypeOptionalAst(
 spp::asts::GenericParameterTypeOptionalAst::~GenericParameterTypeOptionalAst() = default;
 
 
-auto spp::asts::GenericParameterTypeOptionalAst::pos_start() const -> std::size_t {
+auto spp::asts::GenericParameterTypeOptionalAst::pos_start() const
+    -> std::size_t {
     return name->pos_start();
 }
 
 
-auto spp::asts::GenericParameterTypeOptionalAst::pos_end() const -> std::size_t {
+auto spp::asts::GenericParameterTypeOptionalAst::pos_end() const
+    -> std::size_t {
     return default_val->pos_end();
 }
 
 
-auto spp::asts::GenericParameterTypeOptionalAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::GenericParameterTypeOptionalAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<GenericParameterTypeOptionalAst>(
         ast_clone(name),
         ast_clone(constraints),
@@ -49,7 +52,9 @@ spp::asts::GenericParameterTypeOptionalAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenericParameterTypeOptionalAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::GenericParameterTypeOptionalAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(name);
     SPP_PRINT_APPEND(constraints);

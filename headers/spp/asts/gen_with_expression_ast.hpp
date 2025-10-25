@@ -3,8 +3,6 @@
 
 
 struct spp::asts::GenWithExpressionAst final : PrimaryExpressionAst {
-    SPP_AST_KEY_FUNCTIONS;
-
 private:
     std::shared_ptr<TypeAst> m_generator_type;
 
@@ -39,9 +37,13 @@ public:
 
     ~GenWithExpressionAst() override;
 
+    SPP_AST_KEY_FUNCTIONS;
+
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value * override;
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

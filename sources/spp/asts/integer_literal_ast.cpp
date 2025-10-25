@@ -29,6 +29,26 @@ const auto INTEGER_TYPE_MIN_MAX = std::map<std::string, std::pair<CppBigInt, Cpp
 };
 
 
+auto spp::asts::IntegerLiteralAst::equals(
+    ExpressionAst const &other) const
+    -> std::strong_ordering {
+    return other.equals_integer_literal(*this);
+}
+
+
+auto spp::asts::IntegerLiteralAst::equals_integer_literal(
+    IntegerLiteralAst const &other) const
+    -> std::strong_ordering {
+    if (
+        ((not tok_sign and not other.tok_sign) or (tok_sign and other.tok_sign and *tok_sign == *other.tok_sign))
+        and val->token_data == other.val->token_data
+        and type == other.type) {
+        return std::strong_ordering::equal;
+    }
+    return std::strong_ordering::less;
+}
+
+
 spp::asts::IntegerLiteralAst::IntegerLiteralAst(
     decltype(tok_sign) &&tok_sign,
     decltype(val) &&val,
@@ -81,26 +101,6 @@ auto spp::asts::IntegerLiteralAst::print(
     SPP_PRINT_APPEND(val);
     formatted_string.append("_").append(type);
     SPP_PRINT_END;
-}
-
-
-auto spp::asts::IntegerLiteralAst::equals(
-    ExpressionAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_integer_literal(*this);
-}
-
-
-auto spp::asts::IntegerLiteralAst::equals_integer_literal(
-    IntegerLiteralAst const &other) const
-    -> std::strong_ordering {
-    if (
-        ((not tok_sign and not other.tok_sign) or (tok_sign and other.tok_sign and *tok_sign == *other.tok_sign))
-        and val->token_data == other.val->token_data
-        and type == other.type) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
 }
 
 

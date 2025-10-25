@@ -1,5 +1,6 @@
-#include <spp/analyse/scopes/scope_manager.hpp>
+#include <spp/pch.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/asts/class_member_ast.hpp>
 #include <spp/asts/expression_ast.hpp>
@@ -14,11 +15,17 @@
 #include <spp/asts/sup_member_ast.hpp>
 #include <spp/asts/sup_prototype_extension_ast.hpp>
 #include <spp/asts/token_ast.hpp>
-#include <spp/pch.hpp>
 
 #include <genex/actions/remove.hpp>
-#include <genex/actions/remove_if.hpp>
 #include <genex/views/enumerate.hpp>
+
+
+template <typename T>
+spp::asts::InnerScopeAst<T>::InnerScopeAst() :
+    tok_l(nullptr),
+    members(),
+    tok_r(nullptr) {
+}
 
 
 template <typename T>
@@ -35,38 +42,26 @@ spp::asts::InnerScopeAst<T>::InnerScopeAst(
 
 
 template <typename T>
-spp::asts::InnerScopeAst<T>::InnerScopeAst() :
-    tok_l(nullptr),
-    members(),
-    tok_r(nullptr) {
-}
-
-
-template <typename T>
 spp::asts::InnerScopeAst<T>::~InnerScopeAst() = default;
 
 
 template <typename T>
-auto spp::asts::InnerScopeAst<T>::new_empty() -> std::unique_ptr<InnerScopeAst> {
-    return std::make_unique<InnerScopeAst>(
-        nullptr, decltype(members)(), nullptr);
-}
-
-
-template <typename T>
-auto spp::asts::InnerScopeAst<T>::pos_start() const -> std::size_t {
+auto spp::asts::InnerScopeAst<T>::pos_start() const
+    -> std::size_t {
     return tok_l->pos_start();
 }
 
 
 template <typename T>
-auto spp::asts::InnerScopeAst<T>::pos_end() const -> std::size_t {
+auto spp::asts::InnerScopeAst<T>::pos_end() const
+    -> std::size_t {
     return tok_r->pos_end();
 }
 
 
 template <typename T>
-auto spp::asts::InnerScopeAst<T>::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::InnerScopeAst<T>::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<InnerScopeAst>(
         ast_clone(tok_l),
         ast_clone_vec(members),
@@ -85,7 +80,9 @@ spp::asts::InnerScopeAst<T>::operator std::string() const {
 
 
 template <typename T>
-auto spp::asts::InnerScopeAst<T>::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::InnerScopeAst<T>::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);
     SPP_PRINT_EXTEND(members);
@@ -95,7 +92,16 @@ auto spp::asts::InnerScopeAst<T>::print(meta::AstPrinter &printer) const -> std:
 
 
 template <typename T>
-auto spp::asts::InnerScopeAst<T>::final_member() const -> Ast* {
+auto spp::asts::InnerScopeAst<T>::new_empty()
+    -> std::unique_ptr<InnerScopeAst> {
+    return std::make_unique<InnerScopeAst>(
+        nullptr, decltype(members)(), nullptr);
+}
+
+
+template <typename T>
+auto spp::asts::InnerScopeAst<T>::final_member() const
+    -> Ast* {
     return members.empty()
                ? ast_cast<Ast>(tok_r.get())
                : ast_cast<Ast>(members.back().get());
