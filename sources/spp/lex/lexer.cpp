@@ -17,6 +17,7 @@ auto spp::lex::Lexer::lex() const -> std::vector<RawToken> {
     auto tokens = std::vector<RawToken>();
     auto in_string = false;
     auto in_single_line_comment = false;
+    auto in_multi_line_comment = false;
 
     // Save keywords.
     auto keywords = std::map<RawTokenType, std::string>();
@@ -42,6 +43,24 @@ auto spp::lex::Lexer::lex() const -> std::vector<RawToken> {
         // Append any characters in a string literal as a character token (except terminating quotation mark).
         if (in_string and c != '"') {
             tokens.emplace_back(RawTokenType::LX_CHARACTER, std::string(1, c));
+            ++i;
+            continue;
+        }
+
+        // Multiline comments.
+        if (not in_multi_line_comment and c == '#' and m_code[i + 1] == '#') {
+            in_multi_line_comment = true;
+            i += 2;
+            continue;
+        }
+
+        if (in_multi_line_comment and c == '#' and m_code[i + 1] == '#') {
+            in_multi_line_comment = false;
+            i += 2;
+            continue;
+        }
+
+        if (in_multi_line_comment) {
             ++i;
             continue;
         }
