@@ -42,12 +42,6 @@ struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLiteralAst {
      */
     std::unique_ptr<TokenAst> tok_r;
 
-protected:
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-
-    auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> std::strong_ordering override;
-
-public:
     /**
      * Construct the ArrayLiteral0Elements with the arguments matching the members.
      * @param[in] tok_l The token that represents the left square bracket @code [@endcode in the array literal.
@@ -65,6 +59,12 @@ public:
 
     ~ArrayLiteralRepeatedElementAst() override;
 
+protected:
+    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+
+    auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> std::strong_ordering override;
+
+public:
     SPP_AST_KEY_FUNCTIONS;
 
     /**

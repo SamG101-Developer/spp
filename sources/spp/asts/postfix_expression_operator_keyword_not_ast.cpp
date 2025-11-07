@@ -20,17 +20,20 @@ spp::asts::PostfixExpressionOperatorKeywordNotAst::PostfixExpressionOperatorKeyw
 spp::asts::PostfixExpressionOperatorKeywordNotAst::~PostfixExpressionOperatorKeywordNotAst() = default;
 
 
-auto spp::asts::PostfixExpressionOperatorKeywordNotAst::pos_start() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorKeywordNotAst::pos_start() const
+    -> std::size_t {
     return tok_dot->pos_start();
 }
 
 
-auto spp::asts::PostfixExpressionOperatorKeywordNotAst::pos_end() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorKeywordNotAst::pos_end() const
+    -> std::size_t {
     return tok_not->pos_end();
 }
 
 
-auto spp::asts::PostfixExpressionOperatorKeywordNotAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::PostfixExpressionOperatorKeywordNotAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<PostfixExpressionOperatorKeywordNotAst>(
         ast_clone(tok_dot),
         ast_clone(tok_not));
@@ -45,7 +48,9 @@ spp::asts::PostfixExpressionOperatorKeywordNotAst::operator std::string() const 
 }
 
 
-auto spp::asts::PostfixExpressionOperatorKeywordNotAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::PostfixExpressionOperatorKeywordNotAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_dot);
     SPP_PRINT_APPEND(tok_not);

@@ -9,14 +9,6 @@
  * IdentifierAst of the ExpressionAst.
  */
 struct spp::asts::TypeIdentifierAst final : TypeAst {
-    SPP_AST_KEY_FUNCTIONS;
-
-protected:
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-
-    auto equals_type_identifier(TypeIdentifierAst const &other) const -> std::strong_ordering override;
-
-public:
     /**
      * The name for the type. This is the name of the type, such as @c Str or @code Vec[BigInt]@endcode.
      */
@@ -39,6 +31,14 @@ public:
         decltype(generic_arg_group) generic_arg_group);
 
     ~TypeIdentifierAst() override;
+
+protected:
+    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+
+    auto equals_type_identifier(TypeIdentifierAst const &other) const -> std::strong_ordering override;
+
+public:
+    SPP_AST_KEY_FUNCTIONS;
 
     static auto from_identifier(IdentifierAst const &identifier) -> std::shared_ptr<TypeIdentifierAst>;
 

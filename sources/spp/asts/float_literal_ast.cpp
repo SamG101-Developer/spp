@@ -6,8 +6,6 @@
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
 
-#include <boost/multiprecision/cpp_dec_float.hpp>
-
 using CppBigFloat = boost::multiprecision::cpp_dec_float_100;
 
 
@@ -18,6 +16,23 @@ const auto FLOAT_TYPE_MIN_MAX = std::map<std::string, std::pair<CppBigFloat, Cpp
     {"f64", {CppBigFloat("-1.7976931348623157e+308"), CppBigFloat("1.7976931348623157e+308")}},
     {"f128", {CppBigFloat("-1.189731495357231765e+4932"), CppBigFloat("1.189731495357231765e+4932")}}, // check this
 };
+
+
+spp::asts::FloatLiteralAst::FloatLiteralAst(
+    decltype(tok_sign) &&tok_sign,
+    decltype(int_val) &&int_val,
+    decltype(tok_dot) &&tok_dot,
+    decltype(frac_val) &&frac_val,
+    std::string &&type) :
+    tok_sign(std::move(tok_sign)),
+    int_val(std::move(int_val)),
+    tok_dot(std::move(tok_dot)),
+    frac_val(std::move(frac_val)),
+    type(std::move(type)) {
+}
+
+
+spp::asts::FloatLiteralAst::~FloatLiteralAst() = default;
 
 
 auto spp::asts::FloatLiteralAst::equals(
@@ -39,23 +54,6 @@ auto spp::asts::FloatLiteralAst::equals_float_literal(
     }
     return std::strong_ordering::less;
 }
-
-
-spp::asts::FloatLiteralAst::FloatLiteralAst(
-    decltype(tok_sign) &&tok_sign,
-    decltype(int_val) &&int_val,
-    decltype(tok_dot) &&tok_dot,
-    decltype(frac_val) &&frac_val,
-    std::string &&type) :
-    tok_sign(std::move(tok_sign)),
-    int_val(std::move(int_val)),
-    tok_dot(std::move(tok_dot)),
-    frac_val(std::move(frac_val)),
-    type(std::move(type)) {
-}
-
-
-spp::asts::FloatLiteralAst::~FloatLiteralAst() = default;
 
 
 auto spp::asts::FloatLiteralAst::pos_start() const

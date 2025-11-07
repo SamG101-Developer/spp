@@ -3,8 +3,6 @@
 
 
 struct spp::asts::PostfixExpressionOperatorKeywordNotAst final : PostfixExpressionOperatorAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c . token that indicates a member access operation.
      */
@@ -25,6 +23,8 @@ struct spp::asts::PostfixExpressionOperatorKeywordNotAst final : PostfixExpressi
         decltype(tok_not) &&tok_not);
 
     ~PostfixExpressionOperatorKeywordNotAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

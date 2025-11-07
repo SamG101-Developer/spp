@@ -1,13 +1,13 @@
+#include <spp/pch.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/scope.hpp>
+#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/tuple_literal_ast.hpp>
 #include <spp/asts/token_ast.hpp>
+#include <spp/asts/tuple_literal_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
-#include <spp/pch.hpp>
 
 #include <genex/algorithms/all_of.hpp>
 #include <genex/views/indirect.hpp>
@@ -28,6 +28,25 @@ spp::asts::TupleLiteralAst::TupleLiteralAst(
 
 
 spp::asts::TupleLiteralAst::~TupleLiteralAst() = default;
+
+
+auto spp::asts::TupleLiteralAst::equals(
+    ExpressionAst const &other) const
+    -> std::strong_ordering {
+    return other.equals_tuple_literal(*this);
+}
+
+
+auto spp::asts::TupleLiteralAst::equals_tuple_literal(
+    TupleLiteralAst const &other) const
+    -> std::strong_ordering {
+    if (elems.size() == other.elems.size() and genex::algorithms::all_of(
+        genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::to<std::vector>(),
+        [](auto const &pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
+        return std::strong_ordering::equal;
+    }
+    return std::strong_ordering::less;
+}
 
 
 auto spp::asts::TupleLiteralAst::pos_start() const
@@ -67,25 +86,6 @@ auto spp::asts::TupleLiteralAst::print(meta::AstPrinter &printer) const
     SPP_PRINT_EXTEND(elems);
     SPP_PRINT_APPEND(tok_r);
     SPP_PRINT_END;
-}
-
-
-auto spp::asts::TupleLiteralAst::equals(
-    ExpressionAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_tuple_literal(*this);
-}
-
-
-auto spp::asts::TupleLiteralAst::equals_tuple_literal(
-    TupleLiteralAst const &other) const
-    -> std::strong_ordering {
-    if (elems.size() == other.elems.size() and genex::algorithms::all_of(
-        genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::to<std::vector>(),
-        [](auto const &pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
 }
 
 

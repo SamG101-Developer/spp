@@ -12,14 +12,6 @@
  * respective analysis functions will be called by inheritance/vtable logic.
  */
 struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiteralAst {
-    SPP_AST_KEY_FUNCTIONS;
-
-protected:
-    auto equals_array_literal_explicit_elements(ArrayLiteralExplicitElementsAst const &) const -> std::strong_ordering override;
-
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-
-public:
     /**
      * The token that represents the left square bracket @code [@endcode in the array literal. This introduces the array
      * literal.
@@ -50,6 +42,14 @@ public:
         decltype(tok_r) &&tok_r);
 
     ~ArrayLiteralExplicitElementsAst() override;
+
+protected:
+    auto equals_array_literal_explicit_elements(ArrayLiteralExplicitElementsAst const &) const -> std::strong_ordering override;
+
+    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+
+public:
+    SPP_AST_KEY_FUNCTIONS;
 
     /**
      * Semantic analysis for an array with explicit elements ensures that all elements are of the same type, and that

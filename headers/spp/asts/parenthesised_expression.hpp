@@ -3,8 +3,6 @@
 
 
 struct spp::asts::ParenthesisedExpressionAst final : PrimaryExpressionAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c ( token that indicates the start of a parenthesised expression.
      */
@@ -32,6 +30,8 @@ struct spp::asts::ParenthesisedExpressionAst final : PrimaryExpressionAst {
         decltype(tok_close_paren) &&tok_close_paren);
 
     ~ParenthesisedExpressionAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

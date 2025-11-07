@@ -1,6 +1,6 @@
-#include <spp/asts/type_binary_expression_temp_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/asts/type_binary_expression_temp_ast.hpp>
 
 
 spp::asts::TypeBinaryExpressionTempAst::TypeBinaryExpressionTempAst(

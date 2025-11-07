@@ -4,8 +4,6 @@
 
 
 struct spp::asts::TypeBinaryExpressionAst final : virtual Ast, mixins::TempTypeAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The left-hand side expression of the type binary expression. This is the first operand.
      */
@@ -34,6 +32,8 @@ struct spp::asts::TypeBinaryExpressionAst final : virtual Ast, mixins::TempTypeA
         decltype(rhs) &&rhs);
 
     ~TypeBinaryExpressionAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto convert() -> std::unique_ptr<TypeAst> override;
 };

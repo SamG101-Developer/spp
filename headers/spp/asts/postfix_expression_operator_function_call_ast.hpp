@@ -4,7 +4,6 @@
 
 
 struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : PostfixExpressionOperatorAst {
-    SPP_AST_KEY_FUNCTIONS;
     friend struct UnaryExpressionOperatorAsyncAst;
 
 private:
@@ -48,6 +47,8 @@ public:
         decltype(fold) &&fold);
 
     ~PostfixExpressionOperatorFunctionCallAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto determine_overload(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void;
 

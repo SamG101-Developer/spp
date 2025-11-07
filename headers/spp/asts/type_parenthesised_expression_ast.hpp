@@ -4,8 +4,6 @@
 
 
 struct spp::asts::TypeParenthesisedExpressionAst final : virtual Ast, mixins::TempTypeAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The left parenthesis token that represents the start of the parenthesised expression.
      */
@@ -33,6 +31,8 @@ struct spp::asts::TypeParenthesisedExpressionAst final : virtual Ast, mixins::Te
         decltype(tok_r) &&tok_r);
 
     ~TypeParenthesisedExpressionAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto convert() -> std::unique_ptr<TypeAst> override;
 };

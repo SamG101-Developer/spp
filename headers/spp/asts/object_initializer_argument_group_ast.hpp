@@ -7,8 +7,6 @@
  * multiple shorthand or keyword arguments together in a object initializer.
  */
 struct spp::asts::ObjectInitializerArgumentGroupAst final : virtual Ast {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The token that represents the left parenthesis @code (@endcode in the object initializer argument group. This
      * introduces the object initializer argument group.
@@ -41,6 +39,8 @@ struct spp::asts::ObjectInitializerArgumentGroupAst final : virtual Ast {
         decltype(tok_r) &&tok_r);
 
     ~ObjectInitializerArgumentGroupAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     static auto new_empty() -> std::unique_ptr<ObjectInitializerArgumentGroupAst>;
 

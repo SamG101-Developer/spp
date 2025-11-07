@@ -13,7 +13,6 @@
  * @endcode
  */
 struct spp::asts::SupPrototypeExtensionAst final : virtual Ast, SupMemberAst, ModuleMemberAst {
-    SPP_AST_KEY_FUNCTIONS;
     friend class analyse::scopes::ScopeManager;
 
     /**
@@ -70,6 +69,8 @@ struct spp::asts::SupPrototypeExtensionAst final : virtual Ast, SupMemberAst, Mo
         decltype(impl) &&impl);
 
     ~SupPrototypeExtensionAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
 private:
     auto m_check_cyclic_extension(

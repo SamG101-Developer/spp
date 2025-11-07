@@ -27,12 +27,6 @@ struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgumentCompAst {
      */
     std::unique_ptr<TokenAst> tok_assign;
 
-protected:
-    auto equals(GenericArgumentAst const &other) const -> std::strong_ordering override;
-
-    auto equals_generic_argument_comp_keyword(GenericArgumentCompKeywordAst const &) const -> std::strong_ordering override;
-
-public:
     /**
      * Construct the GenericArgumentCompKeywordAst with the arguments matching the members.
      * @param name The name of the keyword argument.
@@ -46,6 +40,12 @@ public:
 
     ~GenericArgumentCompKeywordAst() override;
 
+protected:
+    auto equals(GenericArgumentAst const &other) const -> std::strong_ordering override;
+
+    auto equals_generic_argument_comp_keyword(GenericArgumentCompKeywordAst const &) const -> std::strong_ordering override;
+
+public:
     SPP_AST_KEY_FUNCTIONS;
 
     static auto from_symbol(

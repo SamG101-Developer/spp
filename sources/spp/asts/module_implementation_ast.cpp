@@ -14,17 +14,20 @@ spp::asts::ModuleImplementationAst::ModuleImplementationAst(
 spp::asts::ModuleImplementationAst::~ModuleImplementationAst() = default;
 
 
-auto spp::asts::ModuleImplementationAst::pos_start() const -> std::size_t {
+auto spp::asts::ModuleImplementationAst::pos_start() const
+    -> std::size_t {
     return members.empty() ? 0 : members.front()->pos_start();
 }
 
 
-auto spp::asts::ModuleImplementationAst::pos_end() const -> std::size_t {
+auto spp::asts::ModuleImplementationAst::pos_end() const
+    -> std::size_t {
     return members.empty() ? 0 : members.back()->pos_end();
 }
 
 
-auto spp::asts::ModuleImplementationAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::ModuleImplementationAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<ModuleImplementationAst>(
         ast_clone_vec(members));
 }
@@ -37,7 +40,9 @@ spp::asts::ModuleImplementationAst::operator std::string() const {
 }
 
 
-auto spp::asts::ModuleImplementationAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::ModuleImplementationAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_EXTEND(members);
     SPP_PRINT_END;

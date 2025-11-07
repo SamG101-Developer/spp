@@ -7,6 +7,15 @@
 #include <spp/asts/type_ast.hpp>
 
 
+spp::asts::GenericArgumentCompPositionalAst::GenericArgumentCompPositionalAst(
+    decltype(val) &&val) :
+    GenericArgumentCompAst(std::move(val), mixins::OrderableTag::POSITIONAL_ARG) {
+}
+
+
+spp::asts::GenericArgumentCompPositionalAst::~GenericArgumentCompPositionalAst() = default;
+
+
 auto spp::asts::GenericArgumentCompPositionalAst::equals(
     GenericArgumentAst const &other) const
     -> std::strong_ordering {
@@ -22,15 +31,6 @@ auto spp::asts::GenericArgumentCompPositionalAst::equals_generic_argument_comp_p
     }
     return std::strong_ordering::less;
 }
-
-
-spp::asts::GenericArgumentCompPositionalAst::GenericArgumentCompPositionalAst(
-    decltype(val) &&val) :
-    GenericArgumentCompAst(std::move(val), mixins::OrderableTag::POSITIONAL_ARG) {
-}
-
-
-spp::asts::GenericArgumentCompPositionalAst::~GenericArgumentCompPositionalAst() = default;
 
 
 auto spp::asts::GenericArgumentCompPositionalAst::pos_start() const

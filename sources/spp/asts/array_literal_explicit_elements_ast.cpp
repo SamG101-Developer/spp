@@ -35,6 +35,25 @@ spp::asts::ArrayLiteralExplicitElementsAst::ArrayLiteralExplicitElementsAst(
 spp::asts::ArrayLiteralExplicitElementsAst::~ArrayLiteralExplicitElementsAst() = default;
 
 
+auto spp::asts::ArrayLiteralExplicitElementsAst::equals_array_literal_explicit_elements(
+    ArrayLiteralExplicitElementsAst const &other) const
+    -> std::strong_ordering {
+    if (genex::algorithms::all_of(
+        genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::to<std::vector>(),
+        [](auto &&pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
+        return std::strong_ordering::equal;
+    }
+    return std::strong_ordering::less;
+}
+
+
+auto spp::asts::ArrayLiteralExplicitElementsAst::equals(
+    ExpressionAst const &other) const
+    -> std::strong_ordering {
+    return other.equals_array_literal_explicit_elements(*this);
+}
+
+
 auto spp::asts::ArrayLiteralExplicitElementsAst::pos_start() const
     -> std::size_t {
     return tok_l->pos_start();
@@ -73,25 +92,6 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::print(
     SPP_PRINT_EXTEND(elems);
     SPP_PRINT_APPEND(tok_r);
     SPP_PRINT_END;
-}
-
-
-auto spp::asts::ArrayLiteralExplicitElementsAst::equals_array_literal_explicit_elements(
-    ArrayLiteralExplicitElementsAst const &other) const
-    -> std::strong_ordering {
-    if (genex::algorithms::all_of(
-        genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::to<std::vector>(),
-        [](auto &&pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
-}
-
-
-auto spp::asts::ArrayLiteralExplicitElementsAst::equals(
-    ExpressionAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_array_literal_explicit_elements(*this);
 }
 
 

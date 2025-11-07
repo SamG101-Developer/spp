@@ -9,8 +9,6 @@
  * @code type Str = std::Str@endcode.
  */
 struct spp::asts::UseStatementAst final : StatementAst, ModuleMemberAst {
-    SPP_AST_KEY_FUNCTIONS;
-
 private:
     /**
      * The @c m_generated flag indicates whether this use statement has been generated yet. This is required, because
@@ -54,6 +52,8 @@ public:
         decltype(old_type) old_type);
 
     ~UseStatementAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_1_pre_process(Ast *ctx) -> void override;
 

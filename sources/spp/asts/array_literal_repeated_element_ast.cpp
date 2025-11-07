@@ -34,6 +34,23 @@ spp::asts::ArrayLiteralRepeatedElementAst::ArrayLiteralRepeatedElementAst(
 spp::asts::ArrayLiteralRepeatedElementAst::~ArrayLiteralRepeatedElementAst() = default;
 
 
+auto spp::asts::ArrayLiteralRepeatedElementAst::equals(
+    ExpressionAst const &other) const
+    -> std::strong_ordering {
+    return other.equals_array_literal_repeated_elements(*this);
+}
+
+
+auto spp::asts::ArrayLiteralRepeatedElementAst::equals_array_literal_repeated_elements(
+    ArrayLiteralRepeatedElementAst const &other) const
+    -> std::strong_ordering {
+    if (*elem == *other.elem and *size == *other.size) {
+        return std::strong_ordering::equal;
+    }
+    return std::strong_ordering::less;
+}
+
+
 auto spp::asts::ArrayLiteralRepeatedElementAst::pos_start() const
     -> std::size_t {
     return tok_l->pos_start();
@@ -78,23 +95,6 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::print(
     SPP_PRINT_APPEND(size);
     SPP_PRINT_APPEND(tok_r);
     SPP_PRINT_END;
-}
-
-
-auto spp::asts::ArrayLiteralRepeatedElementAst::equals(
-    ExpressionAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_array_literal_repeated_elements(*this);
-}
-
-
-auto spp::asts::ArrayLiteralRepeatedElementAst::equals_array_literal_repeated_elements(
-    ArrayLiteralRepeatedElementAst const &other) const
-    -> std::strong_ordering {
-    if (*elem == *other.elem and *size == *other.size) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
 }
 
 

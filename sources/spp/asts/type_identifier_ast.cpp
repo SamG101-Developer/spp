@@ -42,6 +42,25 @@ spp::asts::TypeIdentifierAst::TypeIdentifierAst(
 spp::asts::TypeIdentifierAst::~TypeIdentifierAst() = default;
 
 
+auto spp::asts::TypeIdentifierAst::equals(
+    ExpressionAst const &other) const
+    -> std::strong_ordering {
+    // Double dispatch to the appropriate equals method.
+    return other.equals_type_identifier(*this);
+}
+
+
+auto spp::asts::TypeIdentifierAst::equals_type_identifier(
+    TypeIdentifierAst const &other) const
+    -> std::strong_ordering {
+    // Check the name and args are equal.
+    if (name == other.name and *generic_arg_group == *other.generic_arg_group) {
+        return std::strong_ordering::equal;
+    }
+    return std::strong_ordering::less;
+}
+
+
 auto spp::asts::TypeIdentifierAst::pos_start() const
     -> std::size_t {
     return m_pos;
@@ -85,25 +104,6 @@ auto spp::asts::TypeIdentifierAst::from_identifier(
     IdentifierAst const &identifier)
     -> std::shared_ptr<TypeIdentifierAst> {
     return std::make_shared<TypeIdentifierAst>(identifier.pos_start(), std::string(identifier.val), nullptr);
-}
-
-
-auto spp::asts::TypeIdentifierAst::equals(
-    ExpressionAst const &other) const
-    -> std::strong_ordering {
-    // Double dispatch to the appropriate equals method.
-    return other.equals_type_identifier(*this);
-}
-
-
-auto spp::asts::TypeIdentifierAst::equals_type_identifier(
-    TypeIdentifierAst const &other) const
-    -> std::strong_ordering {
-    // Check the name and args are equal.
-    if (name == other.name and *generic_arg_group == *other.generic_arg_group) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
 }
 
 

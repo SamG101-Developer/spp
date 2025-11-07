@@ -14,7 +14,6 @@
 #include <spp/asts/type_postfix_expression_operator_nested_type_ast.hpp>
 #include <spp/asts/type_unary_expression_ast.hpp>
 #include <spp/asts/type_unary_expression_operator_borrow_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
 
 #include <genex/to_container.hpp>
 #include <genex/algorithms/min_element.hpp>
@@ -32,6 +31,25 @@ spp::asts::TypePostfixExpressionAst::TypePostfixExpressionAst(
 
 
 spp::asts::TypePostfixExpressionAst::~TypePostfixExpressionAst() = default;
+
+
+auto spp::asts::TypePostfixExpressionAst::equals(
+    const ExpressionAst &other) const
+    -> std::strong_ordering {
+    // Double dispatch to the appropriate equals method.
+    return other.equals_type_postfix_expression(*this);
+}
+
+
+auto spp::asts::TypePostfixExpressionAst::equals_type_postfix_expression(
+    TypePostfixExpressionAst const &other) const
+    -> std::strong_ordering {
+    // Check the lhs and operator are the same.
+    if (*lhs == *other.lhs && *tok_op == *other.tok_op) {
+        return std::strong_ordering::equal;
+    }
+    return std::strong_ordering::less;
+}
 
 
 auto spp::asts::TypePostfixExpressionAst::pos_start() const
@@ -69,25 +87,6 @@ auto spp::asts::TypePostfixExpressionAst::print(
     SPP_PRINT_APPEND(lhs);
     SPP_PRINT_APPEND(tok_op);
     SPP_PRINT_END;
-}
-
-
-auto spp::asts::TypePostfixExpressionAst::equals(
-    const ExpressionAst &other) const
-    -> std::strong_ordering {
-    // Double dispatch to the appropriate equals method.
-    return other.equals_type_postfix_expression(*this);
-}
-
-
-auto spp::asts::TypePostfixExpressionAst::equals_type_postfix_expression(
-    TypePostfixExpressionAst const &other) const
-    -> std::strong_ordering {
-    // Check the lhs and operator are the same.
-    if (*lhs == *other.lhs && *tok_op == *other.tok_op) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
 }
 
 
@@ -239,8 +238,8 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
         | genex::to<std::vector>();
 
     auto min_depth = scopes_and_syms.empty() ? 0 : genex::algorithms::min_element(scopes_and_syms
-        | genex::views::transform([](auto &&x) { return std::get<0>(x); })
-        | genex::to<std::vector>());
+                             | genex::views::transform([](auto &&x) { return std::get<0>(x); })
+                             | genex::to<std::vector>());
 
     auto closest = scopes_and_syms
         | genex::views::filter([min_depth](auto &&x) { return std::get<0>(x) == min_depth; })

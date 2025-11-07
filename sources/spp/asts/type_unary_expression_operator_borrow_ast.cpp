@@ -11,6 +11,25 @@ spp::asts::TypeUnaryExpressionOperatorBorrowAst::TypeUnaryExpressionOperatorBorr
 spp::asts::TypeUnaryExpressionOperatorBorrowAst::~TypeUnaryExpressionOperatorBorrowAst() = default;
 
 
+auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::equals(
+    TypeUnaryExpressionOperatorAst const &other) const
+    -> std::strong_ordering {
+    // Double dispatch to the appropriate equals method.
+    return other.equals_op_borrow(*this);
+}
+
+
+auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::equals_op_borrow(
+    TypeUnaryExpressionOperatorBorrowAst const &other) const
+    -> std::strong_ordering {
+    // Check if the conventions are the same.
+    if (*conv == other.conv.get()) {
+        return std::strong_ordering::equal;
+    }
+    return std::strong_ordering::less;
+}
+
+
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::pos_start() const
     -> std::size_t {
     return conv->pos_start();
@@ -43,25 +62,6 @@ auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::print(
     SPP_PRINT_START;
     SPP_PRINT_APPEND(conv);
     SPP_PRINT_END;
-}
-
-
-auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::equals(
-    TypeUnaryExpressionOperatorAst const &other) const
-    -> std::strong_ordering {
-    // Double dispatch to the appropriate equals method.
-    return other.equals_op_borrow(*this);
-}
-
-
-auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::equals_op_borrow(
-    TypeUnaryExpressionOperatorBorrowAst const &other) const
-    -> std::strong_ordering {
-    // Check if the conventions are the same.
-    if (*conv == other.conv.get()) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
 }
 
 

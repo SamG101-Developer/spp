@@ -3,19 +3,11 @@
 
 
 struct spp::asts::StringLiteralAst final : LiteralAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The string value of the string literal. This is the actual string that is represented by the literal.
      */
     std::unique_ptr<TokenAst> val;
 
-protected:
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-
-    auto equals_string_literal(StringLiteralAst const &) const -> std::strong_ordering override;
-
-public:
     /**
      * Construct the StringLiteralAst with the arguments matching the members.
      * @param[in] val The string value of the string literal.
@@ -24,6 +16,14 @@ public:
         decltype(val) &&val);
 
     ~StringLiteralAst() override;
+
+protected:
+    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+
+    auto equals_string_literal(StringLiteralAst const &) const -> std::strong_ordering override;
+
+public:
+    SPP_AST_KEY_FUNCTIONS;
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

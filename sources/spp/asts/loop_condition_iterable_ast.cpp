@@ -79,6 +79,7 @@ auto spp::asts::LoopConditionIterableAst::stage_7_analyse_semantics(
     iterable->stage_7_analyse_semantics(sm, meta);
 
     // Get the generator and yielded type from the iterable.
+    // Todo: Change to only allow Gen, not GenOpt/GenRes.
     const auto iterable_type = iterable->infer_type(sm, meta);
     auto [gen_type, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(
         *iterable_type, *sm, *iterable, "loop condition");

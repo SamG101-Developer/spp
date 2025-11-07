@@ -18,6 +18,21 @@ spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypePostfixExpressionOper
 spp::asts::TypePostfixExpressionOperatorNestedTypeAst::~TypePostfixExpressionOperatorNestedTypeAst() = default;
 
 
+auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::equals(
+    const TypePostfixExpressionOperatorAst &other) const
+    -> std::strong_ordering {
+    return other.equals_nested_type(*this);
+}
+
+
+auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::equals_nested_type(
+    TypePostfixExpressionOperatorNestedTypeAst const &other) const
+    -> std::strong_ordering {
+    // Compare the members for equality.
+    return *name <=> *other.name;
+}
+
+
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::pos_start() const
     -> std::size_t {
     return tok_sep->pos_start();
@@ -53,21 +68,6 @@ auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::print(
     SPP_PRINT_APPEND(tok_sep);
     SPP_PRINT_APPEND(name);
     SPP_PRINT_END;
-}
-
-
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::equals(
-    const TypePostfixExpressionOperatorAst &other) const
-    -> std::strong_ordering {
-    return other.equals_nested_type(*this);
-}
-
-
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::equals_nested_type(
-    TypePostfixExpressionOperatorNestedTypeAst const &other) const
-    -> std::strong_ordering {
-    // Compare the members for equality.
-    return *name <=> *other.name;
 }
 
 

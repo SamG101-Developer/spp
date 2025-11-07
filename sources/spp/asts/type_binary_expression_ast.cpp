@@ -1,6 +1,6 @@
-#include <spp/asts/type_binary_expression_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/asts/type_binary_expression_ast.hpp>
 #include <spp/lex/tokens.hpp>
 
 #include <spp/asts/generate/common_types.hpp>
@@ -64,7 +64,7 @@ auto spp::asts::TypeBinaryExpressionAst::convert() -> std::unique_ptr<TypeAst> {
         const auto pos = pos_start();
         inner_types[0] = std::move(lhs);
         inner_types[1] = std::move(rhs);
-        auto type = generate::common_types::variant_type(pos, std::move(inner_types));
+        const auto type = generate::common_types::variant_type(pos, std::move(inner_types));
         return ast_clone(type);
     }
 

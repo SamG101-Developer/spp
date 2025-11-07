@@ -7,12 +7,6 @@
  * argument to be matched by a keyword rather than an index.
  */
 struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgumentTypeAst {
-protected:
-    auto equals(GenericArgumentAst const &other) const -> std::strong_ordering override;
-
-    auto equals_generic_argument_type_keyword(GenericArgumentTypeKeywordAst const &) const -> std::strong_ordering override;
-
-public:
     /**
      * The name of the keyword argument. This is the type that is used to refer to the argument in the generic call.
      */
@@ -37,6 +31,12 @@ public:
 
     ~GenericArgumentTypeKeywordAst() override;
 
+protected:
+    auto equals(GenericArgumentAst const &other) const -> std::strong_ordering override;
+
+    auto equals_generic_argument_type_keyword(GenericArgumentTypeKeywordAst const &) const -> std::strong_ordering override;
+
+public:
     SPP_AST_KEY_FUNCTIONS;
 
     static auto from_symbol(analyse::scopes::TypeSymbol const &sym) -> std::unique_ptr<GenericArgumentTypeKeywordAst>;

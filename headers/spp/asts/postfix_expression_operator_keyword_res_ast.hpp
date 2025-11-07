@@ -3,8 +3,6 @@
 
 
 struct spp::asts::PostfixExpressionOperatorKeywordResAst final : PostfixExpressionOperatorAst {
-    SPP_AST_KEY_FUNCTIONS;
-
 private:
     std::shared_ptr<PostfixExpressionAst> m_mapped_func;
 
@@ -37,6 +35,8 @@ public:
         decltype(arg_group) &&arg_group);
 
     ~PostfixExpressionOperatorKeywordResAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

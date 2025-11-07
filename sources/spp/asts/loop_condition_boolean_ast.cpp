@@ -3,8 +3,8 @@
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/loop_condition_boolean_ast.hpp>
 #include <spp/asts/expression_ast.hpp>
+#include <spp/asts/loop_condition_boolean_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>

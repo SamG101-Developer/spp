@@ -7,8 +7,6 @@
  * argument to be matched by shorthand value rather than a keyword.
  */
 struct spp::asts::ObjectInitializerArgumentShorthandAst final : ObjectInitializerArgumentAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The optional @c .. token that indicates an "else" argument. This fills all the missing attributes in the object
      * with the corresponding attributes from this argument.
@@ -28,6 +26,8 @@ struct spp::asts::ObjectInitializerArgumentShorthandAst final : ObjectInitialize
         std::unique_ptr<ExpressionAst> &&val);
 
     ~ObjectInitializerArgumentShorthandAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };

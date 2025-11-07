@@ -3,8 +3,6 @@
 
 
 struct spp::asts::RetStatementAst final : StatementAst {
-    SPP_AST_KEY_FUNCTIONS;
-
 private:
     std::shared_ptr<TypeAst> m_ret_type;
 
@@ -30,6 +28,8 @@ public:
         decltype(expr) &&val);
 
     ~RetStatementAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

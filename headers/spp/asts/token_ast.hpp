@@ -12,7 +12,6 @@
  * to is the sart position.
  */
 struct spp::asts::TokenAst final : virtual Ast {
-    SPP_AST_KEY_FUNCTIONS;
     friend struct TypeIdentifierAst;
 
     /**
@@ -32,6 +31,8 @@ struct spp::asts::TokenAst final : virtual Ast {
 
     ~TokenAst() override;
 
+    SPP_AST_KEY_FUNCTIONS;
+
     static auto new_empty(
         lex::SppTokenType token_type,
         std::string &&token_data,
@@ -43,7 +44,7 @@ struct spp::asts::TokenAst final : virtual Ast {
      * @param[in] that The other TokenAst to compare with.
      * @return Whether the two ASTs are equal or not.
      */
-    auto operator==(TokenAst const &that) const -> bool;  // todo: do as friend
+    auto operator==(TokenAst const &that) const -> bool; // todo: do as friend
 
 private:
     std::size_t m_pos;
@@ -58,7 +59,8 @@ struct std::hash<spp::asts::TokenAst> {
      * @param[in] t The TokenAst to hash.
      * @return The numeric mapped hash value.
      */
-    auto operator()(spp::asts::TokenAst const &t) const noexcept -> std::size_t {  // todo: this looks very slow.
+    auto operator()(spp::asts::TokenAst const &t) const noexcept
+        -> std::size_t {
         using UT = std::underlying_type_t<spp::lex::SppTokenType>;
         return std::hash<UT>()(std::bit_cast<UT>(t.token_type));
     }

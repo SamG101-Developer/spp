@@ -3,6 +3,9 @@
 #include <spp/asts/generate/common_types.hpp>
 
 
+spp::asts::LoopConditionAst::~LoopConditionAst() = default;
+
+
 auto spp::asts::LoopConditionAst::infer_type(
     ScopeManager *,
     mixins::CompilerMetaData *)
@@ -10,6 +13,3 @@ auto spp::asts::LoopConditionAst::infer_type(
     // Loop conditions are always boolean (analysis prevents non-boolean expressions).
     return generate::common_types::boolean_type(pos_start());
 }
-
-
-spp::asts::LoopConditionAst::~LoopConditionAst() = default;

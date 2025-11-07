@@ -1,19 +1,19 @@
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/scope.hpp>
+#include <spp/analyse/scopes/scope_manager.hpp>
+#include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/loop_expression_ast.hpp>
-#include <spp/asts/loop_condition_boolean_ast.hpp>
-#include <spp/asts/loop_else_statement_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/inner_scope_expression_ast.hpp>
+#include <spp/asts/loop_condition_boolean_ast.hpp>
+#include <spp/asts/loop_condition_iterable_ast.hpp>
+#include <spp/asts/loop_else_statement_ast.hpp>
+#include <spp/asts/loop_expression_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>
-
-#include "spp/analyse/utils/mem_utils.hpp"
 
 
 spp::asts::LoopExpressionAst::LoopExpressionAst(
@@ -32,17 +32,20 @@ spp::asts::LoopExpressionAst::LoopExpressionAst(
 spp::asts::LoopExpressionAst::~LoopExpressionAst() = default;
 
 
-auto spp::asts::LoopExpressionAst::pos_start() const -> std::size_t {
+auto spp::asts::LoopExpressionAst::pos_start() const
+    -> std::size_t {
     return tok_loop->pos_start();
 }
 
 
-auto spp::asts::LoopExpressionAst::pos_end() const -> std::size_t {
+auto spp::asts::LoopExpressionAst::pos_end() const
+    -> std::size_t {
     return cond->pos_end();
 }
 
 
-auto spp::asts::LoopExpressionAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::LoopExpressionAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<LoopExpressionAst>(
         ast_clone(tok_loop),
         ast_clone(cond),
@@ -61,13 +64,130 @@ spp::asts::LoopExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::LoopExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::LoopExpressionAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_loop).append(" ");
     SPP_PRINT_APPEND(cond).append(" ");
     SPP_PRINT_APPEND(body).append("\n");
     SPP_PRINT_APPEND(else_block);
     SPP_PRINT_END;
+}
+
+
+auto spp::asts::LoopExpressionAst::m_codegen_condition_bool(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx) const
+    -> llvm::Value* {
+    // Create the building blocks.
+    const auto func = ctx->builder.GetInsertBlock()->getParent();
+    const auto cond_bb = llvm::BasicBlock::Create(ctx->context, "loop.cond", func);
+    const auto body_bb = llvm::BasicBlock::Create(ctx->context, "loop.body");
+    const auto exit_bb = llvm::BasicBlock::Create(ctx->context, "loop.exit");
+    const auto else_bb = else_block ? llvm::BasicBlock::Create(ctx->context, "loop.else") : nullptr;
+
+    // Jump to the condition block.
+    ctx->builder.CreateBr(cond_bb);
+    ctx->builder.SetInsertPoint(cond_bb);
+
+    // Generate the condition.
+    const auto llvm_cond = cond->stage_10_code_gen_2(sm, meta, ctx);
+    const auto false_target = else_bb ? else_bb : exit_bb;
+    ctx->builder.CreateCondBr(llvm_cond, body_bb, false_target);
+
+    // Attach the remaining blocks.
+    func->insert(func->end(), body_bb);
+    func->insert(func->end(), exit_bb);
+    if (else_bb) { func->insert(func->end(), else_bb); }
+
+    // Handle the body block.
+    ctx->builder.SetInsertPoint(body_bb);
+    const auto llvm_body = body->stage_10_code_gen_2(sm, meta, ctx);
+    ctx->builder.CreateBr(cond_bb);
+
+    // Handle the else block if it exists.
+    auto llvm_else = static_cast<llvm::Value*>(nullptr);
+    if (else_bb) {
+        ctx->builder.SetInsertPoint(else_bb);
+        llvm_else = else_block->stage_10_code_gen_2(sm, meta, ctx);
+        ctx->builder.CreateBr(exit_bb);
+    }
+
+    // Handle the exit block.
+    ctx->builder.SetInsertPoint(exit_bb);
+    const auto phi = ctx->builder.CreatePHI(llvm_body->getType(), else_bb ? 2 : 1, "loop.exit.phi");
+
+    // Add the incoming values to the phi node.
+    phi->addIncoming(llvm_body, body_bb);
+    if (else_bb) {
+        phi->addIncoming(llvm_else, else_bb);
+    }
+    else {
+        phi->addIncoming(llvm::Constant::getNullValue(llvm_body->getType()), cond_bb);
+    }
+    return phi;
+}
+
+
+auto spp::asts::LoopExpressionAst::m_codegen_condition_iter(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx) const
+    -> llvm::Value* {
+    // // Evaluate the iterable with coroutine intrinsics.
+    // const auto llvm_iter = cond->stage_10_code_gen_2(sm, meta, ctx);
+    // const auto llvm_coro_handle = llvm_iter;
+    //
+    // // Create the building blocks.
+    // const auto func = ctx->builder.GetInsertBlock()->getParent();
+    // const auto entry_bb = ctx->builder.GetInsertBlock();
+    // const auto pre_bb = llvm::BasicBlock::Create(ctx->context, "loop.pre", func);
+    // const auto body_bb = llvm::BasicBlock::Create(ctx->context, "loop.body", func);
+    // const auto resume_bb = llvm::BasicBlock::Create(ctx->context, "loop.resume", func);
+    // const auto done_bb = llvm::BasicBlock::Create(ctx->context, "loop.done", func);
+    // const auto exit_bb = llvm::BasicBlock::Create(ctx->context, "loop.exit", func);
+    // const auto else_bb = else_block ? llvm::BasicBlock::Create(ctx->context, "loop.else", func) : nullptr;
+    //
+    // // Jump to the pre block from the entry block.
+    // ctx->builder.CreateBr(pre_bb);
+    //
+    // // Generate the iterable handle in the pre block.
+    // ctx->builder.SetInsertPoint(pre_bb);
+    // const auto hdl = cond->stage_10_code_gen_2(sm, meta, ctx);
+    //
+    // // First resume.
+    // ctx->builder.CreateIntrinsic(llvm::Intrinsic::coro_resume, {}, {hdl});
+    //
+    // // Get the promise pointer.
+    // const auto align_val = llvm::ConstantInt::get(ctx->context, llvm::APInt(32, 8));
+    // const auto from_val = llvm::ConstantInt::get(ctx->context, llvm::APInt(1, 0));
+    // const auto promise = ctx->builder.CreateIntrinsic(llvm::Intrinsic::coro_promise, {}, {hdl, align_val, from_val});
+    //
+    // // The pointer points to `struct { yielded_type val, i1 done }.
+    // const auto value_ptr = ctx->builder.CreateStructGEP(promise->getType(), promise, 0, "iter.promise.value.ptr");
+    // const auto done_ptr = ctx->builder.CreateStructGEP(promise->getType(), promise, 1, "iter.promise.done.ptr");
+    //
+    // // Load done.
+    // const auto is_done = ctx->builder.CreateLoad(done_ptr->getType(), done_ptr, "iter.done");
+    //
+    // // False target for the first resume (else_bb or done_bb).
+    // const auto false_target = else_bb ? else_bb : done_bb;
+    // ctx->builder.CreateCondBr(is_done, false_target, body_bb);
+    //
+    // // Handle the body block.
+    // ctx->builder.SetInsertPoint(body_bb);
+    //
+    // // Load the yielded value.
+    // const auto llvm_value = ctx->builder.CreateLoad(value_ptr->getType(), value_ptr, "iter.yielded.value");
+    //
+    // // Declare the loop variable (LocalVariableAst's codegen will have alloca the variable).
+    // cond->stage_10_code_gen_2(sm, meta, ctx);
+    (void)sm;
+    (void)meta;
+    (void)ctx;
+    return nullptr;
 }
 
 
@@ -130,14 +250,26 @@ auto spp::asts::LoopExpressionAst::stage_8_check_memory(
 }
 
 
+auto spp::asts::LoopExpressionAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate code based on the condition type.
+    return ast_cast<LoopConditionBooleanAst>(cond.get())
+               ? m_codegen_condition_bool(sm, meta, ctx)
+               : m_codegen_condition_iter(sm, meta, ctx);
+}
+
+
 auto spp::asts::LoopExpressionAst::infer_type(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Get the loop's exit type (or Void if there are no exits fro inside the loop).
     auto [exit_expr, loop_type, _] = m_loop_exit_type_info.has_value()
-        ? *m_loop_exit_type_info
-        : std::make_tuple(nullptr, generate::common_types::void_type(pos_start()), nullptr);
+                                         ? *m_loop_exit_type_info
+                                         : std::make_tuple(nullptr, generate::common_types::void_type(pos_start()), nullptr);
     exit_expr = exit_expr ? exit_expr : this;
 
     // Check the else block's type is the same as the loop exit type.

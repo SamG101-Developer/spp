@@ -6,8 +6,6 @@
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
 
-#include <boost/multiprecision/cpp_int.hpp>
-
 using CppBigInt = boost::multiprecision::cpp_int;
 
 
@@ -29,6 +27,20 @@ const auto INTEGER_TYPE_MIN_MAX = std::map<std::string, std::pair<CppBigInt, Cpp
 };
 
 
+spp::asts::IntegerLiteralAst::IntegerLiteralAst(
+    decltype(tok_sign) &&tok_sign,
+    decltype(val) &&val,
+    std::string &&type) :
+    LiteralAst(),
+    tok_sign(std::move(tok_sign)),
+    val(std::move(val)),
+    type(std::move(type)) {
+}
+
+
+spp::asts::IntegerLiteralAst::~IntegerLiteralAst() = default;
+
+
 auto spp::asts::IntegerLiteralAst::equals(
     ExpressionAst const &other) const
     -> std::strong_ordering {
@@ -47,20 +59,6 @@ auto spp::asts::IntegerLiteralAst::equals_integer_literal(
     }
     return std::strong_ordering::less;
 }
-
-
-spp::asts::IntegerLiteralAst::IntegerLiteralAst(
-    decltype(tok_sign) &&tok_sign,
-    decltype(val) &&val,
-    std::string &&type) :
-    LiteralAst(),
-    tok_sign(std::move(tok_sign)),
-    val(std::move(val)),
-    type(std::move(type)) {
-}
-
-
-spp::asts::IntegerLiteralAst::~IntegerLiteralAst() = default;
 
 
 auto spp::asts::IntegerLiteralAst::pos_start() const

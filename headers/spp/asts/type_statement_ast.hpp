@@ -18,7 +18,6 @@ namespace spp::analyse::scopes {
  * @code type SecureByteMap[T] = std::collections::HashMap[K=Byte, V=T, A=SecureAlloc[(K, V)]]@endcode
  */
 struct spp::asts::TypeStatementAst final : StatementAst, mixins::VisibilityEnabledAst, SupMemberAst, ModuleMemberAst {
-    SPP_AST_KEY_FUNCTIONS;
     friend struct UseStatementAst;
 
 private:
@@ -83,6 +82,8 @@ public:
         decltype(old_type) old_type);
 
     ~TypeStatementAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
 private:
     auto m_skip_all_scopes(ScopeManager *sm) -> void;

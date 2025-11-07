@@ -19,17 +19,20 @@ spp::asts::ModulePrototypeAst::ModulePrototypeAst(
 spp::asts::ModulePrototypeAst::~ModulePrototypeAst() = default;
 
 
-auto spp::asts::ModulePrototypeAst::pos_start() const -> std::size_t {
+auto spp::asts::ModulePrototypeAst::pos_start() const
+    -> std::size_t {
     return impl->pos_start();
 }
 
 
-auto spp::asts::ModulePrototypeAst::pos_end() const -> std::size_t {
+auto spp::asts::ModulePrototypeAst::pos_end() const
+    -> std::size_t {
     return impl->pos_end();
 }
 
 
-auto spp::asts::ModulePrototypeAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::ModulePrototypeAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<ModulePrototypeAst>(ast_clone(impl));
 }
 
@@ -41,7 +44,9 @@ spp::asts::ModulePrototypeAst::operator std::string() const {
 }
 
 
-auto spp::asts::ModulePrototypeAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::ModulePrototypeAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(impl);
     SPP_PRINT_END;

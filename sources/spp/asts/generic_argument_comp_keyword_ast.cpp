@@ -13,6 +13,20 @@
 #include <spp/asts/type_identifier_ast.hpp>
 
 
+spp::asts::GenericArgumentCompKeywordAst::GenericArgumentCompKeywordAst(
+    decltype(name) &&name,
+    decltype(tok_assign) &&tok_assign,
+    decltype(val) &&val) :
+    GenericArgumentCompAst(std::move(val), mixins::OrderableTag::KEYWORD_ARG),
+    name(std::move(name)),
+    tok_assign(std::move(tok_assign)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
+}
+
+
+spp::asts::GenericArgumentCompKeywordAst::~GenericArgumentCompKeywordAst() = default;
+
+
 auto spp::asts::GenericArgumentCompKeywordAst::equals(
     GenericArgumentAst const &other) const
     -> std::strong_ordering {
@@ -28,20 +42,6 @@ auto spp::asts::GenericArgumentCompKeywordAst::equals_generic_argument_comp_keyw
     }
     return std::strong_ordering::less;
 }
-
-
-spp::asts::GenericArgumentCompKeywordAst::GenericArgumentCompKeywordAst(
-    decltype(name) &&name,
-    decltype(tok_assign) &&tok_assign,
-    decltype(val) &&val) :
-    GenericArgumentCompAst(std::move(val), mixins::OrderableTag::KEYWORD_ARG),
-    name(std::move(name)),
-    tok_assign(std::move(tok_assign)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
-}
-
-
-spp::asts::GenericArgumentCompKeywordAst::~GenericArgumentCompKeywordAst() = default;
 
 
 auto spp::asts::GenericArgumentCompKeywordAst::pos_start() const

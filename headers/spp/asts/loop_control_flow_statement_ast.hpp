@@ -3,8 +3,6 @@
 
 
 struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The list of @c exit tokens. This allows for a statement to exit an arbitrary number of loops. If there are no
      * @c exit tokens, then the @c skip token will be present, in @c tok_skip_or_expr. This is ensured by the parser.
@@ -37,6 +35,8 @@ struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
         decltype(expr) &&expr);
 
     ~LoopControlFlowStatementAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

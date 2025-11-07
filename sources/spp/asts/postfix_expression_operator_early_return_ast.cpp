@@ -2,8 +2,8 @@
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/generic_argument_type_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
+#include <spp/asts/generic_argument_type_ast.hpp>
 #include <spp/asts/postfix_expression_operator_early_return_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
@@ -20,17 +20,20 @@ spp::asts::PostfixExpressionOperatorEarlyReturnAst::PostfixExpressionOperatorEar
 spp::asts::PostfixExpressionOperatorEarlyReturnAst::~PostfixExpressionOperatorEarlyReturnAst() = default;
 
 
-auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::pos_start() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::pos_start() const
+    -> std::size_t {
     return tok_qst->pos_start();
 }
 
 
-auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::pos_end() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::pos_end() const
+    -> std::size_t {
     return tok_qst->pos_end();
 }
 
 
-auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<PostfixExpressionOperatorEarlyReturnAst>(
         ast_clone(tok_qst));
 }
@@ -43,7 +46,9 @@ spp::asts::PostfixExpressionOperatorEarlyReturnAst::operator std::string() const
 }
 
 
-auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_qst);
     SPP_PRINT_END;

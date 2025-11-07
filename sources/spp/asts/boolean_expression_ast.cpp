@@ -5,6 +5,15 @@
 #include <spp/lex/tokens.hpp>
 
 
+spp::asts::BooleanLiteralAst::BooleanLiteralAst(
+    decltype(tok_bool) &&tok_bool) :
+    tok_bool(std::move(tok_bool)) {
+}
+
+
+spp::asts::BooleanLiteralAst::~BooleanLiteralAst() = default;
+
+
 auto spp::asts::BooleanLiteralAst::equals(
     ExpressionAst const &other) const
     -> std::strong_ordering {
@@ -20,15 +29,6 @@ auto spp::asts::BooleanLiteralAst::equals_boolean_literal(
     }
     return std::strong_ordering::less;
 }
-
-
-spp::asts::BooleanLiteralAst::BooleanLiteralAst(
-    decltype(tok_bool) &&tok_bool) :
-    tok_bool(std::move(tok_bool)) {
-}
-
-
-spp::asts::BooleanLiteralAst::~BooleanLiteralAst() = default;
 
 
 auto spp::asts::BooleanLiteralAst::pos_start() const

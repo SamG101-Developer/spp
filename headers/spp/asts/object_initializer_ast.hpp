@@ -3,8 +3,6 @@
 
 
 struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The type being initialized by the object initializer. This is the type of the object being created.
      */
@@ -26,6 +24,8 @@ struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst {
         decltype(arg_group) &&arg_group);
 
     ~ObjectInitializerAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

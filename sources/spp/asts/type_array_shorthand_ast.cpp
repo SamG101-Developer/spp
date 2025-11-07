@@ -22,17 +22,20 @@ spp::asts::TypeArrayShorthandAst::TypeArrayShorthandAst(
 spp::asts::TypeArrayShorthandAst::~TypeArrayShorthandAst() = default;
 
 
-auto spp::asts::TypeArrayShorthandAst::pos_start() const -> std::size_t {
+auto spp::asts::TypeArrayShorthandAst::pos_start() const
+    -> std::size_t {
     return tok_l->pos_start();
 }
 
 
-auto spp::asts::TypeArrayShorthandAst::pos_end() const -> std::size_t {
+auto spp::asts::TypeArrayShorthandAst::pos_end() const
+    -> std::size_t {
     return tok_r->pos_end();
 }
 
 
-auto spp::asts::TypeArrayShorthandAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::TypeArrayShorthandAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<TypeArrayShorthandAst>(
         ast_clone(tok_l),
         ast_clone(element_type),
@@ -53,7 +56,9 @@ spp::asts::TypeArrayShorthandAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypeArrayShorthandAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::TypeArrayShorthandAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);
     SPP_PRINT_APPEND(element_type);
@@ -64,7 +69,8 @@ auto spp::asts::TypeArrayShorthandAst::print(meta::AstPrinter &printer) const ->
 }
 
 
-auto spp::asts::TypeArrayShorthandAst::convert() -> std::unique_ptr<TypeAst> {
+auto spp::asts::TypeArrayShorthandAst::convert()
+    -> std::unique_ptr<TypeAst> {
     const auto type = generate::common_types::array_type(pos_start(), std::move(element_type), std::move(size));
     return ast_clone(type);
 }

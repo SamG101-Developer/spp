@@ -3,8 +3,6 @@
 
 
 struct spp::asts::UnaryExpressionOperatorAsyncAst final : UnaryExpressionOperatorAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c async keyword that indicates an asynchronous operation. This is used to mark the following function call
      * as called asynchronously.
@@ -19,6 +17,8 @@ struct spp::asts::UnaryExpressionOperatorAsyncAst final : UnaryExpressionOperato
         decltype(tok_async) &&tok_async);
 
     ~UnaryExpressionOperatorAsyncAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

@@ -41,13 +41,6 @@ spp::asts::ObjectInitializerArgumentGroupAst::ObjectInitializerArgumentGroupAst(
 }
 
 
-auto spp::asts::ObjectInitializerArgumentGroupAst::new_empty()
-    -> std::unique_ptr<ObjectInitializerArgumentGroupAst> {
-    return std::make_unique<ObjectInitializerArgumentGroupAst>(
-        nullptr, decltype(args)(), nullptr);
-}
-
-
 spp::asts::ObjectInitializerArgumentGroupAst::~ObjectInitializerArgumentGroupAst() = default;
 
 
@@ -84,6 +77,13 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::print(meta::AstPrinter &print
     SPP_PRINT_EXTEND(args);
     SPP_PRINT_APPEND(tok_r);
     SPP_PRINT_END;
+}
+
+
+auto spp::asts::ObjectInitializerArgumentGroupAst::new_empty()
+    -> std::unique_ptr<ObjectInitializerArgumentGroupAst> {
+    return std::make_unique<ObjectInitializerArgumentGroupAst>(
+        nullptr, decltype(args)(), nullptr);
 }
 
 

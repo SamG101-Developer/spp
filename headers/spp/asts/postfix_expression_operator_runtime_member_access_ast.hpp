@@ -3,8 +3,6 @@
 
 
 struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst final : PostfixExpressionOperatorAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c . token that indicates a runtime member access operation in a postfix expression.
      */
@@ -25,6 +23,8 @@ struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst final : Postfi
         decltype(name) name);
 
     ~PostfixExpressionOperatorRuntimeMemberAccessAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

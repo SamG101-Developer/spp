@@ -12,12 +12,6 @@ struct spp::asts::BooleanLiteralAst final : LiteralAst {
      */
     std::unique_ptr<TokenAst> tok_bool;
 
-protected:
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-
-    auto equals_boolean_literal(BooleanLiteralAst const &) const -> std::strong_ordering override;
-
-public:
     /**
      * Construct the BooleanLiteralAst with the arguments matching the members.
      * @param[in] tok_bool The token that represents the boolean literal.
@@ -27,6 +21,12 @@ public:
 
     ~BooleanLiteralAst() override;
 
+protected:
+    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+
+    auto equals_boolean_literal(BooleanLiteralAst const &) const -> std::strong_ordering override;
+
+public:
     SPP_AST_KEY_FUNCTIONS;
 
     /**
