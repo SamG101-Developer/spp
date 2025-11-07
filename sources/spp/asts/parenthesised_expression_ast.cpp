@@ -83,10 +83,20 @@ auto spp::asts::ParenthesisedExpressionAst::stage_8_check_memory(
 }
 
 
+auto spp::asts::ParenthesisedExpressionAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate the inner expression.
+    return expr->stage_10_code_gen_2(sm, meta, ctx);
+}
+
+
 auto spp::asts::ParenthesisedExpressionAst::infer_type(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
-    // The type of a parenthesised expression is the type of the inner expression.
+    // Get the inner expression's type.
     return expr->infer_type(sm, meta);
 }

@@ -91,6 +91,10 @@ auto spp::asts::CaseExpressionBranchAst::m_codegen_combine_patterns(
         const auto pattern_cond = pattern->stage_10_code_gen_2(sm, meta, ctx);
         combined_cond = ctx->builder.CreateOr(combined_cond, pattern_cond);
     }
+    if (guard) {
+        const auto guard_cond = guard->stage_10_code_gen_2(sm, meta, ctx);
+        combined_cond = ctx->builder.CreateAnd(combined_cond, guard_cond);
+    }
     return combined_cond;
 }
 
@@ -157,7 +161,7 @@ auto spp::asts::CaseExpressionBranchAst::stage_10_code_gen_2(
     const auto func = ctx->builder.GetInsertBlock()->getParent();
     const auto branch_bb = llvm::BasicBlock::Create(ctx->context, "case.branch", func);
 
-    // Get the condition. Todo: Attach the guard condition if it exists.
+    // Get the condition.
     const auto match_cond = m_codegen_combine_patterns(sm, meta, ctx);
     const auto next_bb = llvm::BasicBlock::Create(ctx->context, "case.next", func);
     ctx->builder.CreateCondBr(match_cond, branch_bb, next_bb);

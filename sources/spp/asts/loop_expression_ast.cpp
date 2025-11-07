@@ -81,14 +81,35 @@ auto spp::asts::LoopExpressionAst::m_codegen_condition_bool(
     mixins::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) const
     -> llvm::Value* {
-    // Create the building blocks.
-    const auto func = ctx->builder.GetInsertBlock()->getParent();
-    const auto cond_bb = llvm::BasicBlock::Create(ctx->context, "loop.cond", func);
-    const auto body_bb = llvm::BasicBlock::Create(ctx->context, "loop.body");
-    const auto exit_bb = llvm::BasicBlock::Create(ctx->context, "loop.exit");
-    const auto else_bb = else_block ? llvm::BasicBlock::Create(ctx->context, "loop.else") : nullptr;
+    /*
+    let x = loop cond { body } else { else_block }
 
-    // Jump to the condition block.
+    br label %loop.cond
+
+    loop.cond:
+        %cond_val = ... ; bool
+        br i1 %cond_val, label %loop.body, label %loop.else
+
+    loop.body:
+        %body_val = ... ; body codegen value
+        br label %loop.cond
+
+    loop.else:
+        %else_val = ... ; else block result
+        br label %loop.exit
+
+    loop.exit:
+        %result = phi <type> [ %else_val, %loop.else ]
+     */
+
+    // Create the building blocks.
+    const auto fn = ctx->builder.GetInsertBlock()->getParent();
+    const auto cond_bb = llvm::BasicBlock::Create(ctx->context, "loop.cond", fn);
+    const auto body_bb = llvm::BasicBlock::Create(ctx->context, "loop.body");
+    const auto else_bb = else_block ? llvm::BasicBlock::Create(ctx->context, "loop.else") : nullptr;
+    const auto exit_bb = llvm::BasicBlock::Create(ctx->context, "loop.exit");
+
+    // Jump to the cond block, and insert from there.
     ctx->builder.CreateBr(cond_bb);
     ctx->builder.SetInsertPoint(cond_bb);
 
@@ -98,35 +119,34 @@ auto spp::asts::LoopExpressionAst::m_codegen_condition_bool(
     ctx->builder.CreateCondBr(llvm_cond, body_bb, false_target);
 
     // Attach the remaining blocks.
-    func->insert(func->end(), body_bb);
-    func->insert(func->end(), exit_bb);
-    if (else_bb) { func->insert(func->end(), else_bb); }
-
-    // Handle the body block.
+    fn->insert(fn->end(), body_bb);
     ctx->builder.SetInsertPoint(body_bb);
+
+    // Generate the body value and resume the loop (back to the check).
     const auto llvm_body = body->stage_10_code_gen_2(sm, meta, ctx);
     ctx->builder.CreateBr(cond_bb);
 
     // Handle the else block if it exists.
     auto llvm_else = static_cast<llvm::Value*>(nullptr);
-    if (else_bb) {
+    auto else_end_bb = static_cast<llvm::BasicBlock*>(nullptr);
+    if (else_bb != nullptr) {
+        fn->insert(fn->end(), else_bb);
         ctx->builder.SetInsertPoint(else_bb);
         llvm_else = else_block->stage_10_code_gen_2(sm, meta, ctx);
         ctx->builder.CreateBr(exit_bb);
+        else_end_bb = ctx->builder.GetInsertBlock();
     }
 
-    // Handle the exit block.
+    // Exit block and phi node.
+    fn->insert(fn->end(), exit_bb);
     ctx->builder.SetInsertPoint(exit_bb);
-    const auto phi = ctx->builder.CreatePHI(llvm_body->getType(), else_bb ? 2 : 1, "loop.exit.phi");
-
-    // Add the incoming values to the phi node.
+    const auto phi_type = llvm_body->getType();
+    const auto phi = ctx->builder.CreatePHI(phi_type, else_bb ? 2 : 1, "loop.exit.phi");
     phi->addIncoming(llvm_body, body_bb);
-    if (else_bb) {
-        phi->addIncoming(llvm_else, else_bb);
-    }
-    else {
-        phi->addIncoming(llvm::Constant::getNullValue(llvm_body->getType()), cond_bb);
-    }
+    else_bb
+        ? phi->addIncoming(llvm_else, else_end_bb)
+        : phi->addIncoming(llvm::Constant::getNullValue(phi_type), cond_bb);
+
     return phi;
 }
 
@@ -136,58 +156,95 @@ auto spp::asts::LoopExpressionAst::m_codegen_condition_iter(
     mixins::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) const
     -> llvm::Value* {
-    // // Evaluate the iterable with coroutine intrinsics.
-    // const auto llvm_iter = cond->stage_10_code_gen_2(sm, meta, ctx);
-    // const auto llvm_coro_handle = llvm_iter;
-    //
-    // // Create the building blocks.
-    // const auto func = ctx->builder.GetInsertBlock()->getParent();
-    // const auto entry_bb = ctx->builder.GetInsertBlock();
-    // const auto pre_bb = llvm::BasicBlock::Create(ctx->context, "loop.pre", func);
-    // const auto body_bb = llvm::BasicBlock::Create(ctx->context, "loop.body", func);
-    // const auto resume_bb = llvm::BasicBlock::Create(ctx->context, "loop.resume", func);
-    // const auto done_bb = llvm::BasicBlock::Create(ctx->context, "loop.done", func);
-    // const auto exit_bb = llvm::BasicBlock::Create(ctx->context, "loop.exit", func);
-    // const auto else_bb = else_block ? llvm::BasicBlock::Create(ctx->context, "loop.else", func) : nullptr;
-    //
-    // // Jump to the pre block from the entry block.
-    // ctx->builder.CreateBr(pre_bb);
-    //
-    // // Generate the iterable handle in the pre block.
-    // ctx->builder.SetInsertPoint(pre_bb);
-    // const auto hdl = cond->stage_10_code_gen_2(sm, meta, ctx);
-    //
-    // // First resume.
-    // ctx->builder.CreateIntrinsic(llvm::Intrinsic::coro_resume, {}, {hdl});
-    //
-    // // Get the promise pointer.
-    // const auto align_val = llvm::ConstantInt::get(ctx->context, llvm::APInt(32, 8));
-    // const auto from_val = llvm::ConstantInt::get(ctx->context, llvm::APInt(1, 0));
-    // const auto promise = ctx->builder.CreateIntrinsic(llvm::Intrinsic::coro_promise, {}, {hdl, align_val, from_val});
-    //
-    // // The pointer points to `struct { yielded_type val, i1 done }.
-    // const auto value_ptr = ctx->builder.CreateStructGEP(promise->getType(), promise, 0, "iter.promise.value.ptr");
-    // const auto done_ptr = ctx->builder.CreateStructGEP(promise->getType(), promise, 1, "iter.promise.done.ptr");
-    //
-    // // Load done.
-    // const auto is_done = ctx->builder.CreateLoad(done_ptr->getType(), done_ptr, "iter.done");
-    //
-    // // False target for the first resume (else_bb or done_bb).
-    // const auto false_target = else_bb ? else_bb : done_bb;
-    // ctx->builder.CreateCondBr(is_done, false_target, body_bb);
-    //
-    // // Handle the body block.
-    // ctx->builder.SetInsertPoint(body_bb);
-    //
-    // // Load the yielded value.
-    // const auto llvm_value = ctx->builder.CreateLoad(value_ptr->getType(), value_ptr, "iter.yielded.value");
-    //
-    // // Declare the loop variable (LocalVariableAst's codegen will have alloca the variable).
-    // cond->stage_10_code_gen_2(sm, meta, ctx);
-    (void)sm;
-    (void)meta;
-    (void)ctx;
-    return nullptr;
+
+    /*
+    # loop y in range_coro() { y * 2 } else { -1 };
+    # ============================================
+
+    br label %loop.check
+
+    loop.check:
+        call void @llvm.coro.resume(ptr %iter)
+        %done = call i1 @llvm.coro.done(ptr %iter)
+        br i1 %done, label %loop.else, label %loop.body
+
+    loop.body:
+        %yield = call i32 @coro.yield.load(ptr %iter)
+        %mul = mul i32 %yield, 2
+        br label %loop.check
+
+    loop.else:
+        %elseval = add i32 -1, 0
+        br label %loop.exit
+
+    loop.exit:
+        %phi = phi i32 [ %mul, %loop.body ], [ %elseval, %loop.else ]
+        call void @llvm.coro.destroy(ptr %iter)
+     */
+
+    const auto fn = ctx->builder.GetInsertBlock()->getParent();
+
+    // Evaluate the iterable (coroutine handle).
+    const auto iterable_val = cond->stage_10_code_gen_2(sm, meta, ctx);
+    const auto coro_handle = iterable_val;
+
+    // Prepare the blocks that form the loop.
+    const auto cond_bb = llvm::BasicBlock::Create(ctx->context, "loop.check", fn);
+    const auto body_bb = llvm::BasicBlock::Create(ctx->context, "loop.body");
+    const auto else_bb = else_block ? llvm::BasicBlock::Create(ctx->context, "loop.else") : nullptr;
+    const auto exit_bb = llvm::BasicBlock::Create(ctx->context, "loop.exit");
+
+    // Jump to the cond block, and insert from there.
+    ctx->builder.CreateBr(cond_bb);
+    ctx->builder.SetInsertPoint(cond_bb);
+
+    // Resume the coroutine to get the next value.
+    const auto coro_resume_decl = llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), llvm::Intrinsic::coro_resume);
+    ctx->builder.CreateCall(coro_resume_decl, {coro_handle});
+
+    // Check if the coroutine is done.
+    const auto coro_done_decl = llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), llvm::Intrinsic::coro_done);
+    const auto is_done = ctx->builder.CreateCall(coro_done_decl, {coro_handle}, "loop.is_done"); // todo: change this to an "iter" block-like analysis
+    const auto false_target = else_bb ? else_bb : exit_bb;
+    ctx->builder.CreateCondBr(is_done, false_target, body_bb);
+
+    // Handle the body block, and insert from there.
+    fn->insert(fn->end(), body_bb);
+    ctx->builder.SetInsertPoint(body_bb);
+
+    // Load the yielded value. Todo: hook into "iter" to extract value from the coroutine.
+    const auto coro_yield_load_decl = llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), llvm::Intrinsic::coro_yield_load);
+    const auto yielded_value = ctx->builder.CreateCall(coro_yield_load_decl, {coro_handle}, "loop.yielded_value");
+
+    // Generate the body value and resume the loop (back to the check).
+    const auto llvm_body = body->stage_10_code_gen_2(sm, meta, ctx);
+    ctx->builder.CreateBr(cond_bb);
+
+    // Handle the else block if it exists.
+    auto llvm_else = static_cast<llvm::Value*>(nullptr);
+    auto else_end_bb = static_cast<llvm::BasicBlock*>(nullptr);
+    if (else_bb != nullptr) {
+        fn->insert(fn->end(), else_bb);
+        ctx->builder.SetInsertPoint(else_bb);
+        llvm_else = else_block->stage_10_code_gen_2(sm, meta, ctx);
+        ctx->builder.CreateBr(exit_bb);
+        else_end_bb = ctx->builder.GetInsertBlock();
+    }
+
+    // Exit block and phi node.
+    fn->insert(fn->end(), exit_bb);
+    ctx->builder.SetInsertPoint(exit_bb);
+    const auto phi_type = llvm_body->getType();
+    const auto phi = ctx->builder.CreatePHI(phi_type, else_bb ? 2 : 1, "loop.exit.phi");
+    phi->addIncoming(llvm_body, body_bb);
+    else_bb
+        ? phi->addIncoming(llvm_else, else_end_bb)
+        : phi->addIncoming(llvm::Constant::getNullValue(phi_type), cond_bb);
+
+    // Cleanup the coroutine.
+    const auto coro_destroy_decl = llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), llvm::Intrinsic::coro_destroy);
+    ctx->builder.CreateCall(coro_destroy_decl, {coro_handle});
+    return phi;
 }
 
 

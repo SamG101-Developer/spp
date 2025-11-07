@@ -2,12 +2,22 @@
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
+#include <spp/asts/fold_expression_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_argument_type_ast.hpp>
+#include <spp/asts/identifier_ast.hpp>
+#include <spp/asts/inner_scope_expression_ast.hpp>
+#include <spp/asts/postfix_expression_ast.hpp>
 #include <spp/asts/postfix_expression_operator_early_return_ast.hpp>
+#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
+#include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
+#include <spp/asts/ret_statement_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
+
+#include "spp/asts/case_expression_ast.hpp"
+#include "spp/asts/case_expression_branch_ast.hpp"
 
 
 spp::asts::PostfixExpressionOperatorEarlyReturnAst::PostfixExpressionOperatorEarlyReturnAst(
@@ -72,6 +82,42 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_7_analyse_semanti
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
             *meta->enclosing_function_ret_type[0], *meta->enclosing_function_ret_type[0], *lhs, *residual_type).with_scopes({meta->enclosing_function_scope, sm->current_scope}).raise();
     }
+}
+
+
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Convert the unwrapping into a case structure.
+
+    // Create the condition by calling the inspection method on the lhs.
+    auto postfix_call = ( {
+        auto field_name = std::make_unique<IdentifierAst>(pos_start(), "op_is_output");
+        auto field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
+        auto postfix_field = std::make_unique<PostfixExpressionAst>(ast_clone(meta->postfix_expression_lhs), std::move(field));
+        auto call = std::make_unique<PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
+        std::make_unique<PostfixExpressionAst>(std::move(postfix_field), std::move(call));
+    });
+
+    // Create the case arm.
+    auto case_branch = ( {
+        auto output_field_name = std::make_unique<IdentifierAst>(pos_start(), "op_as_output");
+        auto output_field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(output_field_name));
+        auto postfix_output_field = std::make_unique<PostfixExpressionAst>(ast_clone(meta->postfix_expression_lhs), std::move(output_field));
+        auto call_output = std::make_unique<PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
+        auto postfix_call_output = std::make_unique<PostfixExpressionAst>(std::move(postfix_output_field), std::move(call_output));
+        auto ret_stmt = std::make_unique<RetStatementAst>(nullptr, std::move(postfix_call_output));
+        auto inner_scope_members = std::vector<std::unique_ptr<StatementAst>>{};
+        inner_scope_members.emplace_back(std::move(ret_stmt));
+        std::make_unique<decltype(CaseExpressionBranchAst::body)::element_type>(nullptr, std::move(inner_scope_members), nullptr);
+    });
+
+    // Create the case expression.
+    const auto case_expr = CaseExpressionAst::new_non_pattern_match(
+        nullptr, std::move(postfix_call), std::move(case_branch), {});
+    return case_expr->stage_10_code_gen_2(sm, meta, ctx);
 }
 
 

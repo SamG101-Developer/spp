@@ -86,3 +86,13 @@ auto spp::asts::PatternGuardAst::stage_8_check_memory(
     analyse::utils::mem_utils::validate_symbol_memory(
         *expr, *this, *sm, true, true, false, false, false, false, meta);
 }
+
+
+auto spp::asts::PatternGuardAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate the expression.
+    return expr->stage_10_code_gen_2(sm, meta, ctx);
+}
