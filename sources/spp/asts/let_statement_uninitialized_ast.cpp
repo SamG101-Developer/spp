@@ -98,3 +98,21 @@ auto spp::asts::LetStatementUninitializedAst::stage_8_check_memory(
     var->stage_8_check_memory(sm, meta);
     meta->restore();
 }
+
+
+
+auto spp::asts::LetStatementUninitializedAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Delegate the code generation to the variable, after setting up the meta.
+    meta->save();
+    meta->let_stmt_value = nullptr;
+    meta->let_stmt_explicit_type = type;
+    meta->let_stmt_from_uninitialized = true;
+    const auto alloca = var->stage_10_code_gen_2(sm, meta, ctx);
+    meta->restore();
+    return alloca;
+}
+

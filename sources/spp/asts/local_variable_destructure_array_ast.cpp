@@ -52,19 +52,19 @@ spp::asts::LocalVariableDestructureArrayAst::~LocalVariableDestructureArrayAst()
 
 
 auto spp::asts::LocalVariableDestructureArrayAst::pos_start() const
--> std::size_t {
+    -> std::size_t {
     return tok_l->pos_start();
 }
 
 
 auto spp::asts::LocalVariableDestructureArrayAst::pos_end() const
--> std::size_t {
+    -> std::size_t {
     return tok_r->pos_end();
 }
 
 
 auto spp::asts::LocalVariableDestructureArrayAst::clone() const
--> std::unique_ptr<Ast> {
+    -> std::unique_ptr<Ast> {
     return std::make_unique<LocalVariableDestructureArrayAst>(
         ast_clone(tok_l),
         ast_clone_vec(elems),
@@ -83,7 +83,7 @@ spp::asts::LocalVariableDestructureArrayAst::operator std::string() const {
 
 auto spp::asts::LocalVariableDestructureArrayAst::print(
     meta::AstPrinter &printer) const
--> std::string {
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);
     SPP_PRINT_EXTEND(elems);
@@ -201,4 +201,17 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_8_check_memory(
     -> void {
     // Check the memory state of the elements.
     m_new_asts | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });
+}
+
+
+auto spp::asts::LocalVariableDestructureArrayAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate the "let" statements for each element.
+    for (auto &&ast : m_new_asts) {
+        ast->stage_10_code_gen_2(sm, meta, ctx);
+    }
+    return nullptr;
 }

@@ -4,8 +4,6 @@
 
 
 struct spp::asts::IterExpressionBranchAst final : virtual Ast, mixins::TypeInferrableAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The pattern that this branch matches against. This can only be a single pattern due to different @c iter patterns
      * introducing different variables and symbols (same as case-of destructuring).
@@ -36,6 +34,8 @@ struct spp::asts::IterExpressionBranchAst final : virtual Ast, mixins::TypeInfer
         decltype(guard) &&guard);
 
     ~IterExpressionBranchAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 

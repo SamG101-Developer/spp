@@ -1,12 +1,9 @@
 #pragma once
 #include <spp/asts/ast.hpp>
-#include <spp/asts/mixins/type_inferrable.hpp>
 
 
-struct spp::asts::LoopConditionAst : virtual Ast, mixins::TypeInferrableAst {
+struct spp::asts::LoopConditionAst : virtual Ast {
     using Ast::Ast;
 
     ~LoopConditionAst() override;
-
-    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

@@ -79,6 +79,8 @@ struct spp::analyse::scopes::VariableSymbol final : Symbol {
 
     std::unique_ptr<utils::mem_utils::MemoryInfo> memory_info;
 
+    std::unique_ptr<codegen::LlvmVarSymInfo> llvm_info;
+
     VariableSymbol(
         std::shared_ptr<asts::IdentifierAst> name,
         std::shared_ptr<asts::TypeAst> type,
@@ -118,7 +120,7 @@ struct spp::analyse::scopes::TypeSymbol : Symbol {
 
     TypeSymbol *generic_impl;
 
-    std::unique_ptr<codegen::LlvmSymInfo> llvm_info;
+    std::unique_ptr<codegen::LlvmTypeSymInfo> llvm_info;
 
     TypeSymbol(
         std::shared_ptr<asts::TypeIdentifierAst> name,

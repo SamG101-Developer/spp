@@ -13,7 +13,6 @@
  * be introducing a symbol into the local scope.
  */
 struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVariableAst {
-    SPP_AST_KEY_FUNCTIONS;
     friend struct CasePatternVariantLiteralAst;
     friend struct CasePatternVariantSingleIdentifierAst;
 
@@ -50,6 +49,8 @@ struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVariableAst {
 
     ~LocalVariableSingleIdentifierAst() override;
 
+    SPP_AST_KEY_FUNCTIONS;
+
     auto extract_name() const -> std::shared_ptr<IdentifierAst> override;
 
     auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>> override;
@@ -57,4 +58,6 @@ struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVariableAst {
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

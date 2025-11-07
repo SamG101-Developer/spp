@@ -65,7 +65,8 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
     is_mutable(that.is_mutable),
     is_generic(that.is_generic),
     visibility(that.visibility),
-    memory_info(that.memory_info->clone()) {
+    memory_info(that.memory_info->clone()),
+    llvm_info(std::make_unique<codegen::LlvmVarSymInfo>()) {
 }
 
 
@@ -104,7 +105,7 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
     visibility(visibility),
     convention(std::move(convention)),
     generic_impl(this),
-    llvm_info(std::make_unique<codegen::LlvmSymInfo>()) {
+    llvm_info(std::make_unique<codegen::LlvmTypeSymInfo>()) {
 }
 
 

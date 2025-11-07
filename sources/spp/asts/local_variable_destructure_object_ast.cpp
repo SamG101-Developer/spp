@@ -205,3 +205,16 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_8_check_memory(
     // Check the memory state of the elements.
     m_new_asts | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });
 }
+
+
+auto spp::asts::LocalVariableDestructureObjectAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate the "let" statements for each element.
+    for (auto &&ast : m_new_asts) {
+        ast->stage_10_code_gen_2(sm, meta, ctx);
+    }
+    return nullptr;
+}

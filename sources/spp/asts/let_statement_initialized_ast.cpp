@@ -25,6 +25,9 @@ spp::asts::LetStatementInitializedAst::LetStatementInitializedAst(
 }
 
 
+spp::asts::LetStatementInitializedAst::~LetStatementInitializedAst() = default;
+
+
 auto spp::asts::LetStatementInitializedAst::pos_start() const
     -> std::size_t {
     return tok_let->pos_start();
@@ -124,4 +127,19 @@ auto spp::asts::LetStatementInitializedAst::stage_8_check_memory(
     meta->let_stmt_value = val.get();
     var->stage_8_check_memory(sm, meta);
     meta->restore();
+}
+
+
+auto spp::asts::LetStatementInitializedAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Delegate the code generation to the variable, after setting up the meta.
+    meta->save();
+    meta->assignment_target = var->extract_name();
+    meta->let_stmt_value = val.get();
+    const auto alloca = var->stage_10_code_gen_2(sm, meta, ctx);
+    meta->restore();
+    return alloca;
 }

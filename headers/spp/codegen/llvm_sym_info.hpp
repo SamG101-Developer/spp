@@ -5,8 +5,12 @@
 
 
 namespace spp::codegen {
-    struct LlvmSymInfo {
+    struct LlvmTypeSymInfo {
         llvm::Type *llvm_type;
         llvm::Module *llvm_mod;
+    };
+
+    struct LlvmVarSymInfo {
+        llvm::Value *alloca;
     };
 }

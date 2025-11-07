@@ -81,7 +81,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_7_analyse_semantics(
     mixins::CompilerMetaData *meta)
     -> void {
     // Get the value and its type from the "meta" information.
-    const auto val = meta->let_stmt_from_uninitialized ? nullptr :  meta->let_stmt_value;
+    const auto val = meta->let_stmt_from_uninitialized ? nullptr : meta->let_stmt_value;
     const auto val_type = meta->let_stmt_value != nullptr ? meta->let_stmt_value->infer_type(sm, meta) : nullptr;
 
     // Create a variable symbol for this identifier and value.
@@ -129,4 +129,25 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_8_check_memory(
     // Get the name or alias symbol to mark it as initialized.
     const auto sym = sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name);
     sym->memory_info->initialized_by(*name, sm->current_scope);
+}
+
+
+auto spp::asts::LocalVariableSingleIdentifierAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Create the alloca for the variable.
+    const auto llvm_type = sm->current_scope->get_type_symbol(meta->let_stmt_explicit_type)->llvm_info->llvm_type;
+    const auto alloca = ctx->builder.CreateAlloca(llvm_type, nullptr, alias != nullptr ? alias->name->val : name->val);
+    sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name)->llvm_info->alloca = alloca;
+
+    // Generate the initializer expression.
+    if (not meta->let_stmt_from_uninitialized) {
+        const auto val = meta->let_stmt_value->stage_10_code_gen_2(sm, meta, ctx);
+        ctx->builder.CreateStore(val, alloca);
+    }
+
+    // Alloca already added; return nullptr.
+    return nullptr;
 }

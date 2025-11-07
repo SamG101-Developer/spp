@@ -182,7 +182,9 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
 
     // Generate each branch.
     meta->save();
-    std::tie(meta->phi_node, meta->end_bb, meta->case_condition) = std::make_tuple(phi, end_bb, cond.get());
+    meta->phi_node = phi;
+    meta->end_bb = end_bb;
+    meta->case_condition = cond.get();
     for (auto &&branch : branches) {
         branch->stage_10_code_gen_2(sm, meta, ctx);
     }
