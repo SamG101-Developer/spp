@@ -200,11 +200,6 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     old_type->stage_7_analyse_semantics(sm, meta);
     m_alias_sym->old_sym = sm->current_scope->get_type_symbol(old_type);
     dynamic_cast<analyse::scopes::AliasSymbol*>(m_alias_sym->generic_impl)->old_sym = m_alias_sym->old_sym;
-
-    // Create a "sup" block, to allow for attribute and method access.
-    m_generated_ext_ast = std::make_unique<SupPrototypeExtensionAst>(
-        nullptr, generic_param_group->opt_to_req(), new_type, nullptr, old_type, nullptr);
-    m_generated_ext_ast->stage_2_gen_top_level_scopes(sm, meta);
     sm->move_out_of_current_scope();
 }
 
@@ -225,19 +220,21 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
 
         // Qualify the generics, and the overall type.
         generic_param_group->stage_4_qualify_types(&tm, meta);
-        old_type->stage_4_qualify_types(&tm, meta);
-        old_type->stage_7_analyse_semantics(sm, meta);
+        old_type->stage_4_qualify_types(&tm, meta);  // Extends generics into fq from the old symbols scope.
+        old_type->stage_7_analyse_semantics(sm, meta);  // Analyse the fq old type in this scope (for generics)
 
         // Update the parameter groups on the generated ASTs.
         m_generated_cls_ast->generic_param_group = ast_clone(generic_param_group);
-        m_generated_ext_ast->generic_param_group = generic_param_group->opt_to_req();
         m_alias_sym->old_sym = sm->current_scope->get_type_symbol(old_type);
         dynamic_cast<analyse::scopes::AliasSymbol*>(m_alias_sym->generic_impl)->old_sym = m_alias_sym->old_sym;
     }
 
-    // Exit the scopes (skipping the sup-ext block's scope).
-    sm->move_to_next_scope();
-    sm->move_out_of_current_scope();
+    // Create a "sup" block, to allow for attribute and method access.
+    m_generated_ext_ast = std::make_unique<SupPrototypeExtensionAst>(
+        nullptr, generic_param_group->opt_to_req(), new_type, nullptr, old_type, nullptr);
+    m_generated_ext_ast->stage_2_gen_top_level_scopes(sm, meta);
+
+    // Exit the scopes.
     sm->move_out_of_current_scope();
 }
 

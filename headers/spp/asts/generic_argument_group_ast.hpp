@@ -67,6 +67,8 @@ struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
 
     auto get_all_args() const -> std::vector<GenericArgumentAst*>;
 
+    auto stage_4_qualify_types(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;

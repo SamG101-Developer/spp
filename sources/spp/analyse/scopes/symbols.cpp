@@ -156,6 +156,9 @@ auto spp::analyse::scopes::TypeSymbol::fq_name() const
     auto qualifier_scope = scope->parent;
     auto qualified_name = std::dynamic_pointer_cast<asts::TypeAst>(name);
     while (qualifier_scope->parent != nullptr) {
+        while (std::holds_alternative<ScopeBlockName>(qualifier_scope->name)) {
+            qualifier_scope = qualifier_scope->parent;
+        }
         const auto raw_ns_name = std::get<std::shared_ptr<asts::IdentifierAst>>(qualifier_scope->name);
         auto ns_name = std::make_shared<asts::IdentifierAst>(raw_ns_name->pos_start(), raw_ns_name->val);
         auto ns_op = std::make_unique<asts::TypeUnaryExpressionOperatorNamespaceAst>(std::move(ns_name), nullptr);
@@ -211,6 +214,7 @@ auto spp::analyse::scopes::AliasSymbol::operator==(
 auto spp::analyse::scopes::AliasSymbol::fq_name(
     ) const
     -> std::shared_ptr<asts::TypeAst> {
-    // Alias symbols' qualified names are just the symbol's name (die to alias mapping).
-    return name;
+    // Alias symbols' qualified names are just the symbol's name (due to alias mapping) if there is an old type,
+    // otherwise its the fq new type.
+    return old_sym ? ast_clone(name) : TypeSymbol::fq_name();
 }

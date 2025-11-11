@@ -272,29 +272,7 @@ auto spp::asts::TypeIdentifierAst::stage_4_qualify_types(
     -> void {
     // Qualify the generic argument types.
     for (auto &&g : generic_arg_group->get_type_args()) {
-        g->val->stage_4_qualify_types(sm, meta);
-        try {
-            meta->save();
-            meta->skip_type_analysis_generic_checks = true;
-            meta->type_analysis_type_scope = nullptr;
-            g->val->stage_7_analyse_semantics(sm, meta);
-            meta->restore();
-        }
-
-        catch (analyse::errors::SppIdentifierUnknownError const &) {
-            meta->restore();
-            continue;
-        }
-
-        std::unique_ptr<GenericArgumentGroupAst> generics = nullptr;
-        if (const auto sym = sm->current_scope->get_type_symbol(g->val); sym != nullptr) {
-            generics = ast_clone(sym->fq_name()->type_parts().back()->generic_arg_group);
-        }
-        else {
-            generics = ast_clone(g->val->type_parts().back()->generic_arg_group);
-        }
-
-        g->val = sm->current_scope->get_type_symbol(g->val->without_generics())->fq_name()->with_generics(std::move(generics))->with_convention(ast_clone(g->val->get_convention()));
+        g->stage_4_qualify_types(sm, meta);
     }
 }
 
@@ -330,6 +308,8 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     }
 
     // Analyse the generic arguments.
+    // if (meta->current_stage == 6)
+    //     stage_4_qualify_types(sm, meta);
     meta->type_analysis_type_scope = nullptr;
     generic_arg_group->stage_7_analyse_semantics(sm, meta);
 
@@ -368,7 +348,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
             *this, *type_sym, external_generics, is_tuple, is_alias, sm, meta);
 
         // Handle type aliasing (providing generics to the original type).
-        if (const auto alias_sym = dynamic_cast<analyse::scopes::AliasSymbol*>(type_sym)) {
+        if (const auto alias_sym = dynamic_cast<analyse::scopes::AliasSymbol*>(type_sym); alias_sym and alias_sym->old_sym) {
             // Substitute the old type: "Opt[Str]" => "Var[Some[Str], None]"
             auto outer_generics = original_scope->get_generics();
             auto generics = generic_arg_group->get_all_args();

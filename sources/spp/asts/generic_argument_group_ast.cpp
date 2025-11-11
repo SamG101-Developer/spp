@@ -270,6 +270,14 @@ auto spp::asts::GenericArgumentGroupAst::get_all_args() const
 }
 
 
+auto spp::asts::GenericArgumentGroupAst::stage_4_qualify_types(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> void {
+    args | genex::views::for_each([sm, meta](auto const &x) { x->stage_4_qualify_types(sm, meta); });
+}
+
+
 auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
