@@ -116,4 +116,6 @@ loop it in generator {
 ```
 
 This will use the same number of instructions as C++ comparing iterators per iteration, but the iterator itself is a
-coroutine state machine.
+coroutine state machine. The generator internals are managed in raw LLVM IR, so the `!!` exhaustion check will hook into
+the IR state tracker. Instead of checking whether two pointers are equal, the state of the coroutine is checked to see
+if it is exhausted (a flag will be set).
