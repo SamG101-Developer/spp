@@ -200,23 +200,35 @@ namespace spp::codegen::func_impls {
 
     auto std_intrinsic_eq(LLvmCtx *ctx, llvm::Type *ty) -> void;
 
+    auto std_intrinsic_oeq(LLvmCtx *ctx, llvm::Type *ty) -> void;
+
     auto std_intrinsic_ne(LLvmCtx *ctx, llvm::Type *ty) -> void;
+
+    auto std_intrinsic_one(LLvmCtx *ctx, llvm::Type *ty) -> void;
 
     auto std_intrinsic_slt(LLvmCtx *ctx, llvm::Type *ty) -> void;
 
     auto std_intrinsic_ult(LLvmCtx *ctx, llvm::Type *ty) -> void;
 
+    auto std_intrinsic_olt(LLvmCtx *ctx, llvm::Type *ty) -> void;
+
     auto std_intrinsic_sle(LLvmCtx *ctx, llvm::Type *ty) -> void;
 
     auto std_intrinsic_ule(LLvmCtx *ctx, llvm::Type *ty) -> void;
+
+    auto std_intrinsic_ole(LLvmCtx *ctx, llvm::Type *ty) -> void;
 
     auto std_intrinsic_sgt(LLvmCtx *ctx, llvm::Type *ty) -> void;
 
     auto std_intrinsic_ugt(LLvmCtx *ctx, llvm::Type *ty) -> void;
 
+    auto std_intrinsic_ogt(LLvmCtx *ctx, llvm::Type *ty) -> void;
+
     auto std_intrinsic_sge(LLvmCtx *ctx, llvm::Type *ty) -> void;
 
     auto std_intrinsic_uge(LLvmCtx *ctx, llvm::Type *ty) -> void;
+
+    auto std_intrinsic_oge(LLvmCtx *ctx, llvm::Type *ty) -> void;
 
     auto std_intrinsic_max_val(LLvmCtx *ctx, llvm::Type *ty) -> void;
 

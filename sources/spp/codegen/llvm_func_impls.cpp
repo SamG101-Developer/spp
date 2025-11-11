@@ -294,9 +294,21 @@ auto spp::codegen::func_impls::std_intrinsic_eq(LLvmCtx *ctx, llvm::Type *ty) ->
 }
 
 
+auto spp::codegen::func_impls::std_intrinsic_oeq(LLvmCtx *ctx, llvm::Type *ty) -> void {
+    const auto closure = MAKE_BIN_OP_CLOSURE(CreateFCmpOEQ);
+    simple_intrinsic_binop(ctx, ty, "oeq", closure);
+}
+
+
 auto spp::codegen::func_impls::std_intrinsic_ne(LLvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateICmpNE);
     simple_intrinsic_binop(ctx, ty, "ne", closure);
+}
+
+
+auto spp::codegen::func_impls::std_intrinsic_one(LLvmCtx *ctx, llvm::Type *ty) -> void {
+    const auto closure = MAKE_BIN_OP_CLOSURE(CreateFCmpONE);
+    simple_intrinsic_binop(ctx, ty, "one", closure);
 }
 
 
@@ -312,6 +324,12 @@ auto spp::codegen::func_impls::std_intrinsic_ult(LLvmCtx *ctx, llvm::Type *ty) -
 }
 
 
+auto spp::codegen::func_impls::std_intrinsic_olt(LLvmCtx *ctx, llvm::Type *ty) -> void {
+    const auto closure = MAKE_BIN_OP_CLOSURE(CreateFCmpOLT);
+    simple_intrinsic_binop(ctx, ty, "olt", closure);
+}
+
+
 auto spp::codegen::func_impls::std_intrinsic_sle(LLvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateICmpSLE);
     simple_intrinsic_binop(ctx, ty, "sle", closure);
@@ -321,6 +339,12 @@ auto spp::codegen::func_impls::std_intrinsic_sle(LLvmCtx *ctx, llvm::Type *ty) -
 auto spp::codegen::func_impls::std_intrinsic_ule(LLvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateICmpULE);
     simple_intrinsic_binop(ctx, ty, "ule", closure);
+}
+
+
+auto spp::codegen::func_impls::std_intrinsic_ole(LLvmCtx *ctx, llvm::Type *ty) -> void {
+    const auto closure = MAKE_BIN_OP_CLOSURE(CreateFCmpOLE);
+    simple_intrinsic_binop(ctx, ty, "ole", closure);
 }
 
 
@@ -336,6 +360,12 @@ auto spp::codegen::func_impls::std_intrinsic_ugt(LLvmCtx *ctx, llvm::Type *ty) -
 }
 
 
+auto spp::codegen::func_impls::std_intrinsic_ogt(LLvmCtx *ctx, llvm::Type *ty) -> void {
+    const auto closure = MAKE_BIN_OP_CLOSURE(CreateFCmpOGT);
+    simple_intrinsic_binop(ctx, ty, "ogt", closure);
+}
+
+
 auto spp::codegen::func_impls::std_intrinsic_sge(LLvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateICmpSGE);
     simple_intrinsic_binop(ctx, ty, "sge", closure);
@@ -345,6 +375,12 @@ auto spp::codegen::func_impls::std_intrinsic_sge(LLvmCtx *ctx, llvm::Type *ty) -
 auto spp::codegen::func_impls::std_intrinsic_uge(LLvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateICmpUGE);
     simple_intrinsic_binop(ctx, ty, "uge", closure);
+}
+
+
+auto spp::codegen::func_impls::std_intrinsic_oge(LLvmCtx *ctx, llvm::Type *ty) -> void {
+    const auto closure = MAKE_BIN_OP_CLOSURE(CreateFCmpOGE);
+    simple_intrinsic_binop(ctx, ty, "oge", closure);
 }
 
 
