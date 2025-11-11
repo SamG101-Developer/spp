@@ -178,7 +178,7 @@ auto spp::analyse::scopes::Scope::get_generics() const
 auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
     std::vector<asts::GenericArgumentAst*> generics)
     -> std::vector<std::shared_ptr<Symbol>> {
-    // Convert the provided generic arguments into symbols.
+    // Convert the provided generic arguments into symbols. Todo: filter to "is_generic"?
     const auto type_syms = generics
         | genex::views::cast_dynamic<asts::GenericArgumentTypeAst*>()
         | genex::views::transform([this](auto &&gen_arg) { return get_type_symbol(gen_arg->val); })
@@ -218,6 +218,9 @@ auto spp::analyse::scopes::Scope::add_var_symbol(
     std::shared_ptr<VariableSymbol> const &sym)
     -> void {
     // Add a type symbol to the corresponding symbol table.
+    if (sym->name->val == "aaaa") {
+        auto _ = 123;
+    }
     table.var_tbl.add(sym->name, sym);
 }
 
