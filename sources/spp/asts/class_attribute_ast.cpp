@@ -114,7 +114,7 @@ auto spp::asts::ClassAttributeAst::stage_2_gen_top_level_scopes(
 auto spp::asts::ClassAttributeAst::stage_5_load_super_scopes(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
--> void {
+    -> void {
     // Check the type is valid before scopes are attached.
     type->stage_7_analyse_semantics(sm, meta);
     type = sm->current_scope->get_type_symbol(type)->fq_name();
