@@ -78,7 +78,7 @@ spp::asts::ArrayLiteralRepeatedElementAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_l);
     SPP_STRING_APPEND(elem);
-    SPP_STRING_APPEND(tok_semicolon);
+    SPP_STRING_APPEND(tok_semicolon).append(" ");
     SPP_STRING_APPEND(size);
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;

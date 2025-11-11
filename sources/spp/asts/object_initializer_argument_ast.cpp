@@ -38,14 +38,6 @@ auto spp::asts::ObjectInitializerArgumentAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::ObjectInitializerArgumentAst::stage_10_code_gen_2(
-    ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
-    -> llvm::Value* {
-}
-
-
 auto spp::asts::ObjectInitializerArgumentAst::infer_type(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)

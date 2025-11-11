@@ -158,7 +158,7 @@ auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
         | genex::to<std::vector>();
 
     // Sort the arguments (by name) to match the type's attributes.
-    const auto sorted_args = arg_group->args
+    auto sorted_args = arg_group->args
         | genex::views::ptr
         | genex::to<std::vector>();
 
