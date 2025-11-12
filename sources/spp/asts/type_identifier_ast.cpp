@@ -308,8 +308,6 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     }
 
     // Analyse the generic arguments.
-    // if (meta->current_stage == 6)
-    //     stage_4_qualify_types(sm, meta);
     meta->type_analysis_type_scope = nullptr;
     generic_arg_group->stage_7_analyse_semantics(sm, meta);
 
