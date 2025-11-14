@@ -33,6 +33,7 @@
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
+#include <spp/codegen/llvm_func_impls.hpp>
 #include <spp/codegen/llvm_mangle.hpp>
 
 #include <genex/actions/remove.hpp>
@@ -405,6 +406,9 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
     }
 
     // If there is an implementation, generate its code.
+    if (m_no_impl_annotation and m_no_impl_annotation->name->val == "compiler_builtin") {
+        // auto manual_ir =
+    }
     if (not is_extern) {
         impl->stage_10_code_gen_2(sm, meta, ctx);
     }
