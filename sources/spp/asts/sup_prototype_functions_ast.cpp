@@ -15,6 +15,7 @@
 #include <spp/asts/sup_prototype_functions_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
+#include <spp/asts/type_statement_ast.hpp>
 
 #include <genex/to_container.hpp>
 #include <genex/views/filter.hpp>
@@ -178,9 +179,9 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_5_load_super_scopes(
     // Add the "Self" symbol into the scope.
     if (name->type_parts().back()->name[0] != '$') {
         const auto cls_sym = sm->current_scope->get_type_symbol(name);
-        sm->current_scope->add_type_symbol(std::make_unique<analyse::scopes::AliasSymbol>(
-            std::make_unique<TypeIdentifierAst>(name->pos_start(), "Self", nullptr), cls_sym->type, cls_sym->scope,
-            sm->current_scope, cls_sym));
+        sm->current_scope->add_type_symbol(std::make_unique<analyse::scopes::TypeSymbol>(
+            std::make_unique<TypeIdentifierAst>(name->pos_start(), "Self", nullptr),
+            cls_sym->type, cls_sym->scope, sm->current_scope));
     }
 
     // Load the implementation and move out of the scope.

@@ -96,17 +96,8 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes(
     Scope &scope,
     asts::mixins::CompilerMetaData *meta) const
     -> void {
-    // Handle alias symbols.
-    if (const auto alias_sym = dynamic_cast<AliasSymbol*>(scope.ty_sym.get()); alias_sym != nullptr) {
-        if (alias_sym->old_sym->scope != nullptr) {
-            const auto old_scope = alias_sym->old_sym->scope;
-            auto scopes = genex::views::concat(normal_sup_blocks[old_scope->ty_sym.get()], generic_sup_blocks) | genex::to<std::vector>();
-            attach_specific_super_scopes_impl(scope, std::move(scopes), meta);
-        }
-    }
-
     // Handle type symbols.
-    else if (scope.ty_sym != nullptr) {
+    if (scope.ty_sym != nullptr) {
         const auto non_generic_sym = scope.get_type_symbol(scope.ty_sym->fq_name()->without_generics());
         auto scopes = genex::views::concat(normal_sup_blocks[non_generic_sym.get()], generic_sup_blocks) | genex::to<std::vector>();
         attach_specific_super_scopes_impl(scope, std::move(scopes), meta);

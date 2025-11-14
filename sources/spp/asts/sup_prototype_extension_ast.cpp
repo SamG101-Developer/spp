@@ -283,9 +283,9 @@ auto spp::asts::SupPrototypeExtensionAst::stage_5_load_super_scopes(
     // Add the "Self" symbol into the scope.
     if (name->type_parts().back()->name[0] != '$') {
         const auto cls_sym = sm->current_scope->get_type_symbol(name);
-        sm->current_scope->add_type_symbol(std::make_unique<analyse::scopes::AliasSymbol>(
-            std::make_unique<TypeIdentifierAst>(name->pos_start(), "Self", nullptr), cls_sym->type, cls_sym->scope,
-            sm->current_scope, cls_sym));
+        sm->current_scope->add_type_symbol(std::make_unique<analyse::scopes::TypeSymbol>(
+            std::make_unique<TypeIdentifierAst>(name->pos_start(), "Self", nullptr),
+            cls_sym->type, cls_sym->scope, sm->current_scope));
     }
 
     // Analyse the supertype after Self has been added (allows use in generic arguments to the superclass).

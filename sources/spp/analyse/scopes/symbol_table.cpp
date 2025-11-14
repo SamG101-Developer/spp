@@ -5,6 +5,7 @@
 #include <spp/asts/generic_argument_type_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
+#include <spp/asts/type_statement_ast.hpp>
 
 
 template <typename I, typename S>
@@ -29,24 +30,8 @@ template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::operator=(
     IndividualSymbolTable const &that)
     -> IndividualSymbolTable& {
-
-    // For the type table, account for alias symbols with casting.
-    if constexpr (std::same_as<S, TypeSymbol>) {
-        for (auto const &[k, v] : that.m_table) {
-            if (const auto alias = dynamic_cast<AliasSymbol*>(v.get()); alias != nullptr) {
-                m_table[k] = std::make_shared<AliasSymbol>(*alias);
-            }
-            else {
-                m_table[k] = std::make_shared<TypeSymbol>(*v);
-            }
-        }
-    }
-
-    // Otherwise, just copy all symbols across.
-    else {
-        for (auto const &[k, v] : that.m_table) {
-            m_table[k] = std::make_shared<S>(*v);
-        }
+    for (auto const &[k, v] : that.m_table) {
+        m_table[k] = std::make_shared<S>(*v);
     }
     return *this;
 }

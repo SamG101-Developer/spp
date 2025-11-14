@@ -18,6 +18,7 @@
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
+#include <spp/asts/type_statement_ast.hpp>
 #include <spp/codegen/llvm_mangle.hpp>
 
 #include <genex/to_container.hpp>
@@ -38,7 +39,6 @@ spp::asts::ClassPrototypeAst::ClassPrototypeAst(
     decltype(name) name,
     decltype(generic_param_group) &&generic_param_group,
     decltype(impl) &&impl) :
-    m_for_alias(false),
     m_cls_sym(nullptr),
     annotations(std::move(annotations)),
     tok_cls(std::move(tok_cls)),
@@ -74,7 +74,6 @@ auto spp::asts::ClassPrototypeAst::clone() const
         ast_clone(impl));
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
-    ast->m_for_alias = m_for_alias;
     ast->m_cls_sym = m_cls_sym;
     ast->m_visibility = m_visibility;
     ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->m_ctx = ast; });
@@ -117,18 +116,17 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
     std::shared_ptr<analyse::scopes::TypeSymbol> symbol_2 = nullptr;
 
     // Create the symbol for the type, include generics if applicable, like Vec[T].
-    symbol_1 = m_for_alias
-                   ? std::make_unique<analyse::scopes::AliasSymbol>(std::move(sym_name), this, sm->current_scope, sm->current_scope, nullptr)
-                   : std::make_unique<analyse::scopes::TypeSymbol>(std::move(sym_name), this, sm->current_scope, sm->current_scope);
+    symbol_1 = std::make_unique<analyse::scopes::TypeSymbol>(
+        std::move(sym_name), this, sm->current_scope, sm->current_scope, sm->current_scope->parent_module());
     sm->current_scope->ty_sym = symbol_1;
     sm->current_scope->parent->add_type_symbol(symbol_1);
     m_cls_sym = sm->current_scope->ty_sym;
 
     // If the type was generic, like Vec[T], also create a base Vec symbol.
     if (not generic_param_group->params.empty()) {
-        symbol_2 = m_for_alias
-                       ? std::make_unique<analyse::scopes::AliasSymbol>(ast_clone(name->type_parts()[0]), this, sm->current_scope, sm->current_scope, nullptr)
-                       : std::make_unique<analyse::scopes::TypeSymbol>(ast_clone(name->type_parts()[0]), this, sm->current_scope, sm->current_scope);
+        symbol_2 = std::make_unique<analyse::scopes::TypeSymbol>(
+            ast_clone(name->type_parts()[0]), this, sm->current_scope, sm->current_scope,
+            sm->current_scope->parent_module());
         symbol_2->generic_impl = symbol_1.get();
         sm->current_scope->ty_sym = symbol_2;
         const auto ret_sym = symbol_2.get();
@@ -385,12 +383,6 @@ auto spp::asts::ClassPrototypeAst::stage_10_code_gen_2(
         cls_sym->llvm_info->llvm_type = llvm::Type::getFP128Ty(ctx->context);
     }
     else {
-        // No generation for alias symbols.
-        if (const auto alias_sym = dynamic_cast<analyse::scopes::AliasSymbol*>(cls_sym.get()); alias_sym != nullptr) {
-            sm->move_out_of_current_scope();
-            return nullptr;
-        }
-
         // No generation for "$" types.
         if (name->type_parts().back()->name[0] == '$') {
             sm->move_out_of_current_scope();

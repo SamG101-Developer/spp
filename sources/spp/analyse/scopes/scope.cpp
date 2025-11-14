@@ -99,12 +99,11 @@ auto spp::analyse::scopes::Scope::search_sup_scopes_for_var(
 
 auto spp::analyse::scopes::Scope::search_sup_scopes_for_type(
     Scope const &scope,
-    std::shared_ptr<const asts::TypeAst> const &name,
-    const bool ignore_alias)
+    std::shared_ptr<const asts::TypeAst> const &name)
     -> std::shared_ptr<TypeSymbol> {
     // Recursively search the super scopes for a type symbol.
     for (auto const *sup_scope : scope.m_direct_sup_scopes) {
-        if (auto const sym = sup_scope->get_type_symbol(name, true, ignore_alias); sym != nullptr) {
+        if (auto const sym = sup_scope->get_type_symbol(name, true); sym != nullptr) {
             return sym;
         }
     }
@@ -182,12 +181,14 @@ auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
     const auto type_syms = generics
         | genex::views::cast_dynamic<asts::GenericArgumentTypeAst*>()
         | genex::views::transform([this](auto &&gen_arg) { return get_type_symbol(gen_arg->val); })
+        | genex::views::filter([](auto &&sym) { return sym != nullptr and sym->is_generic; })
         | genex::views::cast_smart<Symbol>()
         | genex::to<std::vector>();
 
     const auto comp_syms = generics
         | genex::views::cast_dynamic<asts::GenericArgumentCompAst*>()
         | genex::views::transform([this](auto &&gen_arg) { return get_var_symbol(asts::ast_cast<asts::IdentifierAst>(asts::ast_clone(gen_arg->val))); })
+        | genex::views::filter([](auto &&sym) { return sym != nullptr and sym->is_generic; })
         | genex::views::cast_smart<Symbol>()
         | genex::to<std::vector>();
 
@@ -218,9 +219,6 @@ auto spp::analyse::scopes::Scope::add_var_symbol(
     std::shared_ptr<VariableSymbol> const &sym)
     -> void {
     // Add a type symbol to the corresponding symbol table.
-    if (sym->name->val == "aaaa") {
-        auto _ = 123;
-    }
     table.var_tbl.add(sym->name, sym);
 }
 
@@ -389,13 +387,15 @@ auto spp::analyse::scopes::Scope::get_var_symbol(
 
 auto spp::analyse::scopes::Scope::get_type_symbol(
     std::shared_ptr<const asts::TypeAst> const &sym_name,
-    const bool exclusive,
-    const bool ignore_alias) const
+    const bool exclusive) const
     -> std::shared_ptr<TypeSymbol> {
     // Adjust the scope for the namespace of the type identifier if there is one.
     if (sym_name == nullptr) { return nullptr; }
 
     auto scope = this;
+    if (scope == nullptr) {
+        auto _ = 123;
+    }
     std::shared_ptr<const asts::TypeIdentifierAst> sym_name_extracted;
     if (const auto sym_name_as_identifier = std::dynamic_pointer_cast<const asts::TypeIdentifierAst>(sym_name)) {
         sym_name_extracted = std::const_pointer_cast<asts::TypeIdentifierAst>(sym_name_as_identifier);
@@ -403,6 +403,9 @@ auto spp::analyse::scopes::Scope::get_type_symbol(
     else {
         auto [scope_, sym_name_extracted_] = shift_scope_for_namespaced_type(*this, *sym_name);
         scope = scope_;
+        if (scope == nullptr) {
+            auto _ = 123;
+        }
         sym_name_extracted = sym_name_extracted_;
     }
 
@@ -411,17 +414,12 @@ auto spp::analyse::scopes::Scope::get_type_symbol(
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym == nullptr and not exclusive and scope->parent != nullptr) {
-        sym = scope->parent->get_type_symbol(sym_name_extracted, exclusive, ignore_alias);
+        sym = scope->parent->get_type_symbol(sym_name_extracted, exclusive);
     }
 
     // If the symbol still hasn't been found, check the super scopes for it.
     if (sym == nullptr) {
-        sym = search_sup_scopes_for_type(*scope, sym_name_extracted, ignore_alias);
-    }
-
-    // Handle any possible type aliases; sometimes the original type needs retrieving.
-    if (const auto alias_sym = std::dynamic_pointer_cast<AliasSymbol>(sym); alias_sym != nullptr and alias_sym->old_sym and not ignore_alias) {
-        return alias_sym->old_sym;
+        sym = search_sup_scopes_for_type(*scope, sym_name_extracted);
     }
 
     return sym;
@@ -550,11 +548,11 @@ auto spp::analyse::scopes::Scope::ancestors() const
 
 
 auto spp::analyse::scopes::Scope::parent_module() const
-    -> Scope const* {
+    -> Scope* {
     // Get the parent module scope, if it exists.
     for (auto *scope = this; scope != nullptr; scope = scope->parent) {
         if (std::holds_alternative<std::shared_ptr<asts::IdentifierAst>>(scope->name)) {
-            return scope;
+            return const_cast<Scope*>(scope);  // TODO: REMOVE CONST CAST
         }
     }
     return nullptr;
@@ -655,3 +653,18 @@ auto spp::analyse::scopes::Scope::print_scope_tree() const
 
     return func(this, "");
 }
+
+
+auto spp::analyse::scopes::Scope::name_as_string() const -> std::string {
+    if (auto const name_as_id = std::get_if<std::shared_ptr<asts::IdentifierAst>>(&name)) {
+        return (*name_as_id)->operator std::string();
+    }
+    if (auto const name_as_type_id = std::get_if<std::shared_ptr<asts::TypeIdentifierAst>>(&name)) {
+        return (*name_as_type_id)->operator std::string();
+    }
+    if (auto const name_as_block = std::get_if<ScopeBlockName>(&name)) {
+        return name_as_block->name;
+    }
+    std::unreachable();
+}
+

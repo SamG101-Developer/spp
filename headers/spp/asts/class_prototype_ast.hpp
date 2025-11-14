@@ -23,8 +23,6 @@ struct spp::asts::ClassPrototypeAst final : virtual Ast, mixins::VisibilityEnabl
 private:
     std::vector<std::pair<analyse::scopes::Scope*, std::unique_ptr<ClassPrototypeAst>>> m_generic_substituted_scopes;
 
-    bool m_for_alias;
-
     std::shared_ptr<analyse::scopes::TypeSymbol> m_cls_sym;
 
 public:

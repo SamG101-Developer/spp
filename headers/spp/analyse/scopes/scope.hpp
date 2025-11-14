@@ -56,13 +56,6 @@ public:
     std::vector<std::unique_ptr<Scope>> children;
 
     /**
-     * Non child scopes that need an owner (currently from from generic substituted types from non-top-level (aliased)
-     * type scopes).
-     * @todo: Relocate these scopes at some point.
-     */
-    std::vector<std::unique_ptr<Scope>> temp_scopes;
-
-    /**
      * Top level scopes register their AST with the scope. This is useful for error reporting, as it allows for easy
      * access to the AST node that the scope represents. This will be @c nullptr for non-top level scopes. Typically,
      * the AST will need to be cast back to its original type.
@@ -109,7 +102,7 @@ public:
     static auto new_global(compiler::Module const &module) -> std::unique_ptr<Scope>;
 
     static auto search_sup_scopes_for_var(Scope const &scope, std::shared_ptr<asts::IdentifierAst> const &name) -> std::shared_ptr<VariableSymbol>;
-    static auto search_sup_scopes_for_type(Scope const &scope, std::shared_ptr<const asts::TypeAst> const &name, bool ignore_alias) -> std::shared_ptr<TypeSymbol>;
+    static auto search_sup_scopes_for_type(Scope const &scope, std::shared_ptr<const asts::TypeAst> const &name) -> std::shared_ptr<TypeSymbol>;
     static auto shift_scope_for_namespaced_type(Scope const &scope, asts::TypeAst const &fq_type) -> std::pair<const Scope*, std::shared_ptr<const asts::TypeIdentifierAst>>;
 
     auto get_error_formatter() const -> spp::utils::errors::ErrorFormatter*;
@@ -135,7 +128,7 @@ public:
     auto has_ns_symbol(std::shared_ptr<asts::IdentifierAst> const &sym_name, bool exclusive = false) const -> bool;
 
     SPP_ATTR_HOT auto get_var_symbol(std::shared_ptr<asts::IdentifierAst> const &sym_name, bool exclusive = false) const -> std::shared_ptr<VariableSymbol>;
-    SPP_ATTR_HOT auto get_type_symbol(std::shared_ptr<const asts::TypeAst> const &sym_name, bool exclusive = false, bool ignore_alias = false) const -> std::shared_ptr<TypeSymbol>;
+    SPP_ATTR_HOT auto get_type_symbol(std::shared_ptr<const asts::TypeAst> const &sym_name, bool exclusive = false) const -> std::shared_ptr<TypeSymbol>;
     SPP_ATTR_HOT auto get_ns_symbol(std::shared_ptr<const asts::IdentifierAst> const &sym_name, bool exclusive = false) const -> std::shared_ptr<NamespaceSymbol>;
 
     auto get_var_symbol_outermost(asts::Ast const &expr) const -> std::pair<std::shared_ptr<VariableSymbol>, Scope const*>;
@@ -146,7 +139,7 @@ public:
 
     auto ancestors() const -> std::vector<Scope const*>;
 
-    auto parent_module() const -> Scope const*;
+    auto parent_module() const -> Scope*;
 
     auto sup_scopes() const -> std::vector<Scope*>;
 
@@ -163,4 +156,6 @@ public:
     auto convert_postfix_to_nested_scope(asts::ExpressionAst const *postfix_ast) const -> Scope const*;
 
     auto print_scope_tree() const -> std::string;
+
+    auto name_as_string() const -> std::string;
 };
