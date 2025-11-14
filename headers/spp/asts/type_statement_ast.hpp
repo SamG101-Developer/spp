@@ -9,6 +9,7 @@
 namespace spp::analyse::scopes {
     struct AliasSymbol;
 }
+
 /// @endcond
 
 
@@ -23,11 +24,11 @@ struct spp::asts::TypeStatementAst final : StatementAst, mixins::VisibilityEnabl
 private:
     bool m_generated;
 
-    analyse::scopes::AliasSymbol *m_alias_sym;
+    bool m_for_use_statement;
 
-    std::unique_ptr<ClassPrototypeAst> m_generated_cls_ast;
+    std::shared_ptr<analyse::scopes::TypeSymbol> m_type_symbol;
 
-    std::unique_ptr<SupPrototypeExtensionAst> m_generated_ext_ast;
+    analyse::scopes::Scope *m_temp_scope;
 
 public:
     /**
@@ -85,10 +86,6 @@ public:
 
     SPP_AST_KEY_FUNCTIONS;
 
-private:
-    auto m_skip_all_scopes(ScopeManager *sm) -> void;
-
-public:
     auto stage_1_pre_process(Ast *ctx) -> void override;
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *) -> void override;
