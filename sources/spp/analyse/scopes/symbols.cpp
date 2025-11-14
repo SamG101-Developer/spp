@@ -153,11 +153,6 @@ auto spp::analyse::scopes::TypeSymbol::fq_name() const
         return ast_clone(name);
     }
 
-    // Map "Self" types to the fully qualified name of the type via the scope.
-    if (name->name == "Self") {
-        return scope->ty_sym->fq_name();
-    }
-
     // For aliases, return the fully qualified name of the aliased type.
     if (alias_stmt != nullptr) {
         return asts::ast_clone(alias_stmt->old_type);

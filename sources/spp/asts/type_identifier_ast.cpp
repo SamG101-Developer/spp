@@ -110,6 +110,13 @@ auto spp::asts::TypeIdentifierAst::from_identifier(
 }
 
 
+auto spp::asts::TypeIdentifierAst::from_string(
+    std::string const &identifier)
+    -> std::shared_ptr<TypeIdentifierAst> {
+    return std::make_shared<TypeIdentifierAst>(0, std::string(identifier), nullptr);
+}
+
+
 auto spp::asts::TypeIdentifierAst::iterator() const
     -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> {
     // First yield is the original type being iterated over.
@@ -319,7 +326,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
         *scope, ast_cast<TypeIdentifierAst>(*without_generics()), *sm, meta)->fq_name();
     const auto owner_sym = sm->current_scope->get_type_symbol(owner);
 
-    analyse::utils::func_utils::infer_generic_args(  // todo: error here because "->generic_param_group" can be for aliased type
+    analyse::utils::func_utils::infer_generic_args( // todo: error here because "->generic_param_group" can be for aliased type
         generic_arg_group->args,
         type_sym->alias_stmt ? type_sym->alias_stmt->generic_param_group->get_all_params() : type_sym->type->generic_param_group->get_all_params(),
         type_sym->alias_stmt ? type_sym->alias_stmt->generic_param_group->get_optional_params() : type_sym->type->generic_param_group->get_optional_params(),

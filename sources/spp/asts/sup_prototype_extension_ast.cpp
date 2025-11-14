@@ -5,6 +5,7 @@
 #include <spp/analyse/scopes/symbols.hpp>
 #include <spp/analyse/utils/func_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
+#include <spp/asts/annotation_ast.hpp>
 #include <spp/asts/class_prototype_ast.hpp>
 #include <spp/asts/cmp_statement_ast.hpp>
 #include <spp/asts/convention_ast.hpp>
@@ -273,19 +274,23 @@ auto spp::asts::SupPrototypeExtensionAst::stage_5_load_super_scopes(
     const auto base_cls_sym = sm->current_scope->get_type_symbol(name->without_generics());
     if (sm->current_scope->parent == sm->current_scope->parent_module()) {
         if (not base_cls_sym->is_generic) {
-            sm->normal_sup_blocks[base_cls_sym.get()].emplace_back(sm->current_scope);
+            analyse::scopes::ScopeManager::normal_sup_blocks[base_cls_sym.get()].emplace_back(sm->current_scope);
         }
         else {
-            sm->generic_sup_blocks.emplace_back(sm->current_scope);
+            analyse::scopes::ScopeManager::generic_sup_blocks.emplace_back(sm->current_scope);
         }
     }
 
     // Add the "Self" symbol into the scope.
     if (name->type_parts().back()->name[0] != '$') {
         const auto cls_sym = sm->current_scope->get_type_symbol(name);
-        sm->current_scope->add_type_symbol(std::make_unique<analyse::scopes::TypeSymbol>(
+        const auto self_sym = std::make_shared<analyse::scopes::TypeSymbol>(
             std::make_unique<TypeIdentifierAst>(name->pos_start(), "Self", nullptr),
-            cls_sym->type, cls_sym->scope, sm->current_scope));
+            cls_sym->type, cls_sym->scope, sm->current_scope);
+        self_sym->alias_stmt = std::make_unique<TypeStatementAst>(
+            SPP_NO_ANNOTATIONS, nullptr,
+            TypeIdentifierAst::from_string("Self"), nullptr, nullptr, name);
+        sm->current_scope->add_type_symbol(self_sym);
     }
 
     // Analyse the supertype after Self has been added (allows use in generic arguments to the superclass).

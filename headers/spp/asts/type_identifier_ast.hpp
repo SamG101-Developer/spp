@@ -42,6 +42,8 @@ public:
 
     static auto from_identifier(IdentifierAst const &identifier) -> std::shared_ptr<TypeIdentifierAst>;
 
+    static auto from_string(std::string const& identifier) -> std::shared_ptr<TypeIdentifierAst>;
+
     SPP_ATTR_ALWAYS_INLINE auto operator<=>(const TypeIdentifierAst &that) const -> std::strong_ordering {
         return equals(that);
     }

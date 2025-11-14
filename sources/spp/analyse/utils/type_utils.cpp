@@ -31,6 +31,8 @@
 #include <spp/lex/lexer.hpp>
 #include <spp/parse/parser_spp.hpp>
 #include <spp/utils/strings.hpp>
+#include <spp/asts/annotation_ast.hpp>
+#include <spp/asts/generic_parameter_type_ast.hpp>
 
 #include <genex/to_container.hpp>
 #include <genex/actions/concat.hpp>
@@ -47,8 +49,6 @@
 #include <genex/views/remove_if.hpp>
 #include <genex/views/split.hpp>
 #include <genex/views/transform.hpp>
-
-#include "spp/asts/generic_parameter_type_ast.hpp"
 
 
 auto spp::analyse::utils::type_utils::symbolic_eq(
@@ -727,14 +727,18 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     // Add the "Self" symbol into the new scope.
     self_type->stage_7_analyse_semantics(&tm, meta);
     auto old_self_sym = new_sup_scope_ptr->get_type_symbol(self_type);
-    new_sup_scope_ptr->add_type_symbol(std::make_unique<scopes::TypeSymbol>(
-        std::make_unique<asts::TypeIdentifierAst>(0, "Self", nullptr),
-        new_cls_scope.ty_sym->type, &new_cls_scope, new_sup_scope_ptr));
+    const auto new_self_sym = std::make_shared<scopes::TypeSymbol>(
+        std::make_unique<asts::TypeIdentifierAst>(0, "Self", nullptr), new_cls_scope.ty_sym->type, &new_cls_scope, new_sup_scope_ptr);
+    new_self_sym->alias_stmt = std::make_unique<asts::TypeStatementAst>(
+        SPP_NO_ANNOTATIONS, nullptr, asts::TypeIdentifierAst::from_string("Self"), nullptr, nullptr, self_type);
+    new_sup_scope_ptr->add_type_symbol(new_self_sym);
+
+    // std::cout << new_self_sym->alias_stmt->operator std::string() << std::endl;
 
     // Run generic substitution on the aliases in the new scope.
     for (auto const &scoped_sym : new_sup_scope_ptr->all_type_symbols(true)) {
         if (scoped_sym->alias_stmt != nullptr) {
-            const auto old_type_sub = scoped_sym->alias_stmt->old_type->substitute_generics(generic_args.args | genex::views::ptr | genex::to<std::vector>());
+            auto old_type_sub = scoped_sym->alias_stmt->old_type->substitute_generics(generic_args.args | genex::views::ptr | genex::to<std::vector>());
             scoped_sym->alias_stmt->old_type = std::move(old_type_sub);
             // const auto replacement = old_sup_scope.get_type_symbol(old_type_sub);
             // scoped_sym->type = replacement->type;
