@@ -44,6 +44,10 @@ public:
         return equals(that) == std::strong_ordering::equal;
     }
 
+    SPP_ATTR_ALWAYS_INLINE auto operator==(ExpressionAst const &that) const -> bool {
+        return equals(that) == std::strong_ordering::equal;
+    }
+
     auto operator+(IdentifierAst const &that) const -> IdentifierAst;
 
     auto operator+(std::string const &that) const -> IdentifierAst;
