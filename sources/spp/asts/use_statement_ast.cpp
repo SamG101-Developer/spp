@@ -34,17 +34,20 @@ spp::asts::UseStatementAst::UseStatementAst(
 spp::asts::UseStatementAst::~UseStatementAst() = default;
 
 
-auto spp::asts::UseStatementAst::pos_start() const -> std::size_t {
+auto spp::asts::UseStatementAst::pos_start() const
+    -> std::size_t {
     return tok_use->pos_start();
 }
 
 
-auto spp::asts::UseStatementAst::pos_end() const -> std::size_t {
+auto spp::asts::UseStatementAst::pos_end() const
+    -> std::size_t {
     return old_type->pos_end();
 }
 
 
-auto spp::asts::UseStatementAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::UseStatementAst::clone() const
+    -> std::unique_ptr<Ast> {
     auto ast = std::make_unique<UseStatementAst>(
         ast_clone_vec(annotations),
         ast_clone(tok_use),
@@ -97,6 +100,7 @@ auto spp::asts::UseStatementAst::stage_2_gen_top_level_scopes(
     const auto new_type = std::dynamic_pointer_cast<TypeIdentifierAst>(old_type->type_parts().back()->without_generics());
     m_conversion = std::make_unique<TypeStatementAst>(
         std::move(annotations), nullptr, new_type, nullptr, nullptr, old_type);
+    m_conversion->m_for_use_statement = true;
     m_conversion->stage_2_gen_top_level_scopes(sm, meta);
     m_generated = true;
 }
@@ -107,19 +111,19 @@ auto spp::asts::UseStatementAst::stage_3_gen_top_level_aliases(
     mixins::CompilerMetaData *meta)
     -> void {
     // Analyse the old type of the use statement, to ensure it is valid.
-    meta->save();
-    meta->skip_type_analysis_generic_checks = true;
-    old_type->stage_7_analyse_semantics(sm, meta);
-    meta->restore();
-
-    // Get the symbol for the old type (as this is a use statement, it won't have generics).
-    const auto old_type_sym = sm->current_scope->get_type_symbol(old_type, false, true);
-    const auto generic_params = old_type_sym->type->generic_param_group;
-
-    // Add the generic parameters to the conversion AST, and add mock generic arguments to the old type.
-    m_conversion->generic_param_group = generic_params;
-    m_conversion->old_type->type_parts().back()->generic_arg_group->args = std::move(GenericArgumentGroupAst::from_params(*generic_params)->args);
-    m_conversion->m_generated_cls_ast->generic_param_group = generic_params;
+    // meta->save();
+    // meta->skip_type_analysis_generic_checks = true;
+    // old_type->stage_7_analyse_semantics(sm, meta);
+    // meta->restore();
+    //
+    // // Get the symbol for the old type (as this is a use statement, it won't have generics).
+    // // For "use" statements, it is guaranteed the "old type" has been processed as a class.
+    // const auto old_type_sym = sm->current_scope->get_type_symbol(old_type);
+    // const auto generic_params = old_type_sym->type->generic_param_group;
+    //
+    // // Add the generic parameters to the conversion AST, and add mock generic arguments to the old type.
+    // m_conversion->generic_param_group = generic_params;
+    // m_conversion->old_type->type_parts().back()->generic_arg_group->args = std::move(GenericArgumentGroupAst::from_params(*generic_params)->args);
 
     // Generate the top-level alias for the converted type statement.
     m_conversion->stage_3_gen_top_level_aliases(sm, meta);
