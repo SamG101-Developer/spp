@@ -3,7 +3,7 @@
 #include <spp/asts/generic_parameter_type_inline_constraints_ast.hpp>
 #include <spp/asts/generic_parameter_type_optional_ast.hpp>
 #include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+#include <spp/asts/type_identifier_ast.hpp>
 
 
 spp::asts::GenericParameterTypeOptionalAst::GenericParameterTypeOptionalAst(
@@ -70,7 +70,12 @@ auto spp::asts::GenericParameterTypeOptionalAst::stage_4_qualify_types(
     -> void {
     // Handle the default type.
     default_val->stage_7_analyse_semantics(sm, meta);
-    default_val = sm->current_scope->get_type_symbol(default_val)->fq_name()->with_convention(ast_clone(default_val->get_convention()));
+    const auto raw = default_val->without_generics();
+    if (const auto sym = sm->current_scope->get_type_symbol(raw); sym != nullptr) {
+        auto temp = sym->fq_name()->with_convention(ast_clone(default_val->get_convention()));
+        temp = temp->with_generics(std::move(default_val->type_parts().back()->generic_arg_group));
+        default_val = std::move(temp);
+    }
 }
 
 
