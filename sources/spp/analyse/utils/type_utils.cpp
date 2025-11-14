@@ -3,6 +3,7 @@
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/utils/mem_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
+#include <spp/asts/annotation_ast.hpp>
 #include <spp/asts/case_expression_branch_ast.hpp>
 #include <spp/asts/class_attribute_ast.hpp>
 #include <spp/asts/class_implementation_ast.hpp>
@@ -18,6 +19,7 @@
 #include <spp/asts/generic_parameter_comp_ast.hpp>
 #include <spp/asts/generic_parameter_group_ast.hpp>
 #include <spp/asts/generic_parameter_type_ast.hpp>
+#include <spp/asts/generic_parameter_type_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/inner_scope_expression_ast.hpp>
 #include <spp/asts/integer_literal_ast.hpp>
@@ -31,8 +33,6 @@
 #include <spp/lex/lexer.hpp>
 #include <spp/parse/parser_spp.hpp>
 #include <spp/utils/strings.hpp>
-#include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/generic_parameter_type_ast.hpp>
 
 #include <genex/to_container.hpp>
 #include <genex/actions/concat.hpp>
@@ -618,7 +618,6 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
 
     // Configure the new scope based on the base (old) scope.
     new_cls_scope->parent->add_type_symbol(new_cls_symbol);
-    // old_cls_sym.scope_module->add_type_symbol(new_cls_symbol);
     new_cls_scope->ty_sym = new_cls_symbol;
     new_cls_scope->table = old_cls_scope->table;
     new_cls_scope->non_generic_scope = old_cls_scope;
@@ -733,16 +732,11 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
         SPP_NO_ANNOTATIONS, nullptr, asts::TypeIdentifierAst::from_string("Self"), nullptr, nullptr, self_type);
     new_sup_scope_ptr->add_type_symbol(new_self_sym);
 
-    // std::cout << new_self_sym->alias_stmt->operator std::string() << std::endl;
-
     // Run generic substitution on the aliases in the new scope.
     for (auto const &scoped_sym : new_sup_scope_ptr->all_type_symbols(true)) {
         if (scoped_sym->alias_stmt != nullptr) {
             auto old_type_sub = scoped_sym->alias_stmt->old_type->substitute_generics(generic_args.args | genex::views::ptr | genex::to<std::vector>());
             scoped_sym->alias_stmt->old_type = std::move(old_type_sub);
-            // const auto replacement = old_sup_scope.get_type_symbol(old_type_sub);
-            // scoped_sym->type = replacement->type;
-            // scoped_sym->scope = replacement->scope;
         }
     }
 

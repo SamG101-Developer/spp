@@ -32,6 +32,7 @@ spp::asts::TypeStatementAst::TypeStatementAst(
     decltype(old_type) old_type) :
     m_generated(false),
     m_for_use_statement(false),
+    m_temp_scope(nullptr),
     annotations(std::move(annotations)),
     tok_type(std::move(tok_type)),
     new_type(std::move(new_type)),
@@ -155,14 +156,7 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
 
-    // Recursively discover the actual type being mapped to. For example, if we have:
-    // - use std::number::S32
-    // - type A = B
-    // - type B = C
-    // - type C = S32
-    // Then for A, want to find S32. This is done by following the old_type chain until we reach a type whose type
-    // symbol has a "->type" that is not nullptr. This allows statements to be order-agnostic.
-
+    // Recursively discover the actual type being mapped to.
     auto [actual_old_type, attach_generics, scope] = analyse::utils::type_utils::recursive_alias_search(
         sm->current_scope->parent, old_type, sm, meta);
     m_temp_scope = scope;
@@ -171,40 +165,15 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     m_type_symbol->type = final_sym->type;
     m_type_symbol->scope = sm->current_scope;  // final_sym->scope?
     m_type_symbol->scope->ast = final_sym->scope ? final_sym->scope->ast : nullptr;  // allow for generics (no scope => no ast)
+    m_type_symbol->is_directly_copyable = final_sym->is_directly_copyable;
     old_type = actual_old_type;
 
     if (attach_generics != nullptr and not attach_generics->params.empty()) {
         generic_param_group = attach_generics;
-        // old_type->type_parts().back()->generic_arg_group->args = std::move(GenericArgumentGroupAst::from_params(*attach_generics)->args);
         generic_param_group->stage_2_gen_top_level_scopes(sm, meta);
     }
 
-    // std::cout << operator std::string() << std::endl;
-    // std::cout << "\n" << operator std::string() << std::endl;
-
-    // // For "use" statements, extra processing.
-    // if (m_for_use_statement) {
-    //     const auto old_type_sym = sm->current_scope->get_type_symbol(old_type->without_generics());
-    //     const auto old_type_type = analyse::utils::type_utils::recursive_alias_search(old_type_sym->scope_defined_in, old_type, sm, meta);
-    //     const auto generic_params = sm->current_scope->get_type_symbol(old_type_type)->type->generic_param_group;
-    //     old_type = actual_old_type;
-    //     generic_param_group = generic_params;
-    //     old_type->type_parts().back()->generic_arg_group = GenericArgumentGroupAst::from_params(*generic_params);
-    //     generic_param_group->stage_2_gen_top_level_scopes(sm, meta);
-    // }
-
     sm->move_out_of_current_scope();
-
-    // Analyse the old type without generics, to ensure the base type exists.
-    // meta->save();
-    // meta->skip_type_analysis_generic_checks = true;
-    // old_type->without_generics()->stage_7_analyse_semantics(sm, meta);
-    // meta->restore();
-
-    //todo: move the generic param generation from stage 2 to this stage (use statememt ready now)
-
-    // Check the (full) old type is valid, and get the new symbol.
-    // old_type->stage_7_analyse_semantics(sm, meta);
 }
 
 
@@ -221,16 +190,6 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
     if (not stripped_old_sym->is_generic) {
         auto tm_1 = ScopeManager(sm->global_scope, stripped_old_sym->scope);
         auto tm_2 = ScopeManager(sm->global_scope, m_temp_scope);
-
-        // if (m_for_use_statement and generic_param_group->params.empty()) {
-        //     const auto old_type_sym = sm->current_scope->get_type_symbol(m_original_old_type);
-        //     const auto generic_params = old_type_sym->type->generic_param_group;
-        //
-        //     // Add the generic parameters to the conversion AST, and add mock generic arguments to the old type.
-        //     generic_param_group = generic_params;
-        //     old_type->type_parts().back()->generic_arg_group->args = std::move(GenericArgumentGroupAst::from_params(*generic_params)->args);
-        //     generic_param_group->stage_2_gen_top_level_scopes(sm, meta);
-        // }
 
         // Qualify the generics, and the overall type.
         generic_param_group->stage_4_qualify_types(&tm_1, meta);
