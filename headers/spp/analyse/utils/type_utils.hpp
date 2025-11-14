@@ -241,4 +241,11 @@ namespace spp::analyse::utils::type_utils {
         std::string const &old_sup_scope_name,
         asts::GenericArgumentGroupAst const &generic_args)
         -> std::string;
+
+    auto recursive_alias_search(
+        scopes::Scope *tracking_scope,
+        std::shared_ptr<asts::TypeAst> actual_old_type,
+        scopes::ScopeManager *sm,
+        asts::mixins::CompilerMetaData *meta)
+        -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>, scopes::Scope*>;
 }
