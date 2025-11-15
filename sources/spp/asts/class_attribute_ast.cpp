@@ -33,19 +33,19 @@ spp::asts::ClassAttributeAst::~ClassAttributeAst() = default;
 
 
 auto spp::asts::ClassAttributeAst::pos_start() const
--> std::size_t {
+    -> std::size_t {
     return name->pos_start();
 }
 
 
 auto spp::asts::ClassAttributeAst::pos_end() const
--> std::size_t {
+    -> std::size_t {
     return type->pos_end();
 }
 
 
 auto spp::asts::ClassAttributeAst::clone() const
--> std::unique_ptr<Ast> {
+    -> std::unique_ptr<Ast> {
     auto ast = std::make_unique<ClassAttributeAst>(
         ast_clone_vec(annotations),
         ast_clone(name),
@@ -72,7 +72,7 @@ spp::asts::ClassAttributeAst::operator std::string() const {
 
 auto spp::asts::ClassAttributeAst::print(
     meta::AstPrinter &printer) const
--> std::string {
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_EXTEND(annotations);
     SPP_PRINT_APPEND(name);
@@ -137,7 +137,8 @@ auto spp::asts::ClassAttributeAst::stage_7_analyse_semantics(
     try {
         type->stage_7_analyse_semantics(sm, meta);
         type = sm->current_scope->get_type_symbol(type)->fq_name();
-        sm->current_scope->get_var_symbol(name)->type = type;
+        const auto var_sym = sm->current_scope->get_var_symbol(name);
+        var_sym->type = type;
     }
     catch (analyse::errors::SppIdentifierUnknownError const &) {
         while (meta->depth() > meta_depth) {
