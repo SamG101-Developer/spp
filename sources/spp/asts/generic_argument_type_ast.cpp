@@ -27,7 +27,12 @@ auto spp::asts::GenericArgumentTypeAst::stage_4_qualify_types(
 
     // The value could be a generic from another scope, so only modify if it exists.
     const auto raw = val->without_generics();
-    if (const auto sym = sm->current_scope->get_type_symbol(raw); sym != nullptr) {
+    const auto sym = sm->current_scope->get_type_symbol(raw);
+    if (sym and sym->alias_stmt != nullptr) {
+        auto temp = sym->fq_name()->with_convention(ast_clone(val->get_convention()));
+        val = std::move(temp);
+    }
+    else if (sym != nullptr) {
         auto temp = sym->fq_name()->with_convention(ast_clone(val->get_convention()));
         temp = temp->with_generics(std::move(val->type_parts().back()->generic_arg_group));
         val = std::move(temp);

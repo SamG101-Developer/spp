@@ -610,21 +610,28 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     const auto new_cls_symbol = std::make_shared<scopes::TypeSymbol>(
         ast_clone(&type_part), asts::ast_cast<asts::ClassPrototypeAst>(new_cls_scope->ast), new_cls_scope.get(),
         sm->current_scope, old_cls_scope->parent, old_cls_sym.is_generic, old_cls_sym.is_directly_copyable, old_cls_sym.visibility);
+    const auto new_cls_scope_ptr = new_cls_scope.get();
+
     new_cls_symbol->is_copyable = [&old_cls_sym] { return old_cls_sym.is_copyable(); };
     new_cls_symbol->alias_stmt = asts::ast_clone(old_cls_sym.alias_stmt);
     if (new_cls_symbol->alias_stmt) {
         new_cls_symbol->alias_stmt->old_type = new_cls_symbol->alias_stmt->old_type->substitute_generics(
             type_part.generic_arg_group->args | genex::views::ptr | genex::to<std::vector>());
         new_cls_symbol->alias_stmt->old_type->stage_7_analyse_semantics(sm, meta);
+        sm->current_scope->add_type_symbol(new_cls_symbol);
+        new_cls_symbol->alias_stmt->m_temp_scope->add_type_symbol(new_cls_symbol);
+        new_cls_symbol->alias_stmt->m_temp_scope->children.emplace_back(std::move(new_cls_scope));
     }
 
     // Configure the new scope based on the base (old) scope.
-    new_cls_scope->parent->add_type_symbol(new_cls_symbol);
-    new_cls_scope->ty_sym = new_cls_symbol;
-    new_cls_scope->table = old_cls_scope->table;
-    new_cls_scope->non_generic_scope = old_cls_scope;
-    const auto new_cls_scope_ptr = new_cls_scope.get();
-    old_cls_scope->parent->children.emplace_back(std::move(new_cls_scope));
+    else {
+        new_cls_scope->parent->add_type_symbol(new_cls_symbol);
+        new_cls_scope->parent->children.emplace_back(std::move(new_cls_scope));
+    }
+    new_cls_scope_ptr->ty_sym = new_cls_symbol;
+    new_cls_scope_ptr->table = old_cls_scope->table;
+    new_cls_scope_ptr->non_generic_scope = old_cls_scope;
+
 
     if (meta->current_stage > 7) {
         sm->attach_specific_super_scopes(*new_cls_scope_ptr, meta);

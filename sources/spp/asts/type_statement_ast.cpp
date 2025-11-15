@@ -164,8 +164,8 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
 
     const auto final_sym = sm->current_scope->get_type_symbol(actual_old_type->without_generics());
     m_type_symbol->type = final_sym->type;
-    m_type_symbol->scope = sm->current_scope;  // final_sym->scope?
-    m_type_symbol->scope->ast = final_sym->scope ? final_sym->scope->ast : nullptr;  // allow for generics (no scope => no ast)
+    m_type_symbol->scope = final_sym->scope;
+    // m_type_symbol->scope->ast = final_sym->scope ? final_sym->scope->ast : nullptr;  // allow for generics (no scope => no ast)
     m_type_symbol->is_copyable = [final_sym] { return final_sym->is_copyable(); };
     old_type = actual_old_type;
 

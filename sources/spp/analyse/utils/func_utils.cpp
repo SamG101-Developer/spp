@@ -811,7 +811,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
     if (i > 0) { args |= genex::actions::drop(i); }
 
     // Type-check the "comp" args. Only do this at the semantic analysis stage.
-    if (meta->current_stage <= 5) {
+    if (meta->current_stage <= 7) {
         return;
     }
 
@@ -826,7 +826,8 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
         auto comp_param = asts::ast_cast<asts::GenericParameterCompAst>(param);
         if (comp_arg == nullptr) { continue; }
 
-        auto a_type = comp_arg->val->infer_type(&sm, meta);
+        // Not convinces owner_scope mapping is correct here (see scopes for equality below)
+        auto a_type = owner_scope->get_type_symbol(comp_arg->val->infer_type(&sm, meta))->fq_name();
         auto p_type = comp_param->type->substitute_generics(args | genex::views::ptr | genex::views::cast_dynamic<asts::GenericArgumentAst*>() | genex::to<std::vector>());
         // p_type->stage_7_analyse_semantics(&sm, meta);
 
@@ -867,7 +868,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
     scopes::Scope const *owner_scope,
     std::shared_ptr<asts::IdentifierAst> variadic_param_identifier,
     scopes::ScopeManager &sm,
-    asts::mixins::CompilerMetaData *) -> void {
+    asts::mixins::CompilerMetaData *meta) -> void {
     // Get the parameter names for ease of use.
     auto param_names = params
         | genex::views::transform([](auto &&x) { return std::dynamic_pointer_cast<asts::TypeIdentifierAst>(x->name); })
@@ -923,8 +924,14 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
         for (auto *opt_param : opt_params | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
             if (not genex::algorithms::contains(inferred_args | genex::views::keys | genex::views::cast_smart<asts::TypeAst>() | genex::views::materialize, *opt_param->name, SPP_INSTANT_INDIRECT)) {
                 auto def_type = opt_param->default_val;
-                if (auto def_val_type_sym = owner_scope->get_type_symbol(def_type); def_val_type_sym != nullptr) {
-                    def_type = owner_scope->get_type_symbol(opt_param->default_val)->fq_name();
+                // if (auto def_val_type_sym = owner_scope->get_type_symbol(def_type); def_val_type_sym != nullptr) {
+                //     def_type = owner_scope->get_type_symbol(opt_param->default_val)->fq_name();
+                // }
+                auto def_type_raw = def_type->without_generics();
+                if (auto def_val_type_sym = owner_scope->get_type_symbol(def_type_raw); def_val_type_sym != nullptr and meta->current_stage > 4) {
+                    auto temp = def_val_type_sym->fq_name()->with_convention(asts::ast_clone(def_type->get_convention()));
+                    temp = temp->with_generics(asts::ast_clone(def_type->type_parts().back()->generic_arg_group));
+                    def_type = std::move(temp);
                 }
 
                 const auto cast_name = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(opt_param->name);

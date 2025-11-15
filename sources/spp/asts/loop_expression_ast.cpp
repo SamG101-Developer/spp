@@ -213,8 +213,8 @@ auto spp::asts::LoopExpressionAst::m_codegen_condition_iter(
     ctx->builder.SetInsertPoint(body_bb);
 
     // Load the yielded value. Todo: hook into "iter" to extract value from the coroutine.
-    const auto coro_yield_load_decl = llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), llvm::Intrinsic::coro_yield_load);
-    const auto yielded_value = ctx->builder.CreateCall(coro_yield_load_decl, {coro_handle}, "loop.yielded_value");
+    // const auto coro_yield_load_decl = llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), llvm::Intrinsic::coro_yield_load);
+    // const auto yielded_value = ctx->builder.CreateCall(coro_yield_load_decl, {coro_handle}, "loop.yielded_value");
 
     // Generate the body value and resume the loop (back to the check).
     const auto llvm_body = body->stage_10_code_gen_2(sm, meta, ctx);
