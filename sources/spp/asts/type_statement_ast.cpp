@@ -71,6 +71,7 @@ auto spp::asts::TypeStatementAst::clone() const
         ast_clone(old_type));
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
+    ast->m_temp_scope = m_temp_scope;
     ast->m_visibility = m_visibility;
     ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->m_ctx = ast; });
     return ast;
