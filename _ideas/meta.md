@@ -17,12 +17,11 @@ General compiler design
 
 - [ ] Where can `T&` and `T*` be used instead of `std::shared_ptr<T>`?
 - [ ] Reduce cloning where possible (move and put back, shared_ptr -- i think this is minimal anyway)
-- [ ] Remove move `genex::to<std::vector>` (requires modifications to genex).
 - [ ] Remove `orig_name`, use `name` everywhere.
 - [ ] Check `auto &&` vs `auto const &` for unique pointer vector iteration.
 - [ ] Change `not all_of` to the new `none_of` in genex.
 
 ## Profile determined optimizations:
 
-- [ ] Use the `robin_map` for symbol tables instead of `std::map`.
-- [ ] Remove most of `genex::to<std::vector>
+- [x] Use the `robin_map` for symbol tables instead of `std::map`.
+- [x] Remove most of `genex::to<std::vector>` calls.

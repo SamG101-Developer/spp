@@ -164,6 +164,7 @@ auto spp::asts::ClassPrototypeAst::register_generic_substituted_scope(
     analyse::scopes::Scope *scope,
     std::unique_ptr<ClassPrototypeAst> &&new_ast)
     -> void {
+    // Just somewhere to store the new_ast as a unique_ptr.
     m_generic_substituted_scopes.emplace_back(scope, std::move(new_ast));
 }
 
