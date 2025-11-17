@@ -1,9 +1,9 @@
 #pragma once
+#include <spp/macros.hpp>
+#include <spp/pch.hpp>
 #include <spp/asts/_fwd.hpp>
 #include <spp/asts/meta/ast_printer.hpp>
 #include <spp/asts/mixins/compiler_stages.hpp>
-#include <spp/macros.hpp>
-#include <spp/pch.hpp>
 
 #include <genex/to_container.hpp>
 #include <genex/views/ptr.hpp>
@@ -230,4 +230,12 @@ public:
 
     auto stage_1_pre_process(Ast *ctx) -> void override;
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto get_ast_scope() const -> analyse::scopes::Scope* {
+        return m_scope;
+    }
+
+    auto set_ast_scope(analyse::scopes::Scope *scope) -> void {
+        m_scope = scope;
+    }
 };
