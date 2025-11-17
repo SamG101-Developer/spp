@@ -687,9 +687,7 @@ auto spp::analyse::utils::type_utils::create_generic_fun_scope(
     new_fun_scope->children = old_fun_scope.children
         | genex::views::transform([](auto &&scope) { return std::make_unique<scopes::Scope>(*scope); })
         | genex::to<std::vector>();
-    for (auto const &c : new_fun_scope->children) {
-        c->parent = new_fun_scope.get();
-    }
+    new_fun_scope->fix_children_parent_pointers();
 
     const auto new_fun_scope_ptr = new_fun_scope.get();
     const auto old_fn_proto = asts::ast_cast<asts::FunctionPrototypeAst>(asts::ast_body(old_fun_scope.ast)[0]);
@@ -711,20 +709,16 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     scopes::ScopeManager const *sm,
     asts::mixins::CompilerMetaData *meta)
     -> std::tuple<scopes::Scope*, scopes::Scope*> {
-    if (std::get<scopes::ScopeBlockName>(old_sup_scope.name).name == "<sup#Single[T]#306>") {
-        auto _ = 123;
-    }
     // Create a new scope for the generic substituted super scope.
     const auto self_type = asts::ast_name(old_sup_scope.ast)->substitute_generics(generic_args.args | genex::views::ptr | genex::to<std::vector>());
     auto new_sup_scope_name = old_sup_scope.name;
     auto new_sup_scope = std::make_unique<scopes::Scope>(new_sup_scope_name, old_sup_scope.parent, old_sup_scope.ast);
+
     new_sup_scope->table = old_sup_scope.table;
     new_sup_scope->children = old_sup_scope.children
         | genex::views::transform([](auto &&scope) { return std::make_unique<scopes::Scope>(*scope); })
         | genex::to<std::vector>();
-    for (auto const &c : new_sup_scope->children) {
-        c->parent = new_sup_scope.get();
-    }
+    new_sup_scope->fix_children_parent_pointers();
     auto new_sup_scope_ptr = new_sup_scope.get();
     old_sup_scope.parent->children.emplace_back(std::move(new_sup_scope));
 

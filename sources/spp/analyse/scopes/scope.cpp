@@ -552,7 +552,7 @@ auto spp::analyse::scopes::Scope::parent_module() const
     // Get the parent module scope, if it exists.
     for (auto *scope = this; scope != nullptr; scope = scope->parent) {
         if (std::holds_alternative<std::shared_ptr<asts::IdentifierAst>>(scope->name)) {
-            return const_cast<Scope*>(scope);  // TODO: REMOVE CONST CAST
+            return const_cast<Scope*>(scope); // TODO: REMOVE CONST CAST
         }
     }
     return nullptr;
@@ -616,7 +616,8 @@ auto spp::analyse::scopes::Scope::convert_postfix_to_nested_scope(
         namespaces.emplace_back(asts::ast_cast<asts::IdentifierAst>(op->name.get()));
         lhs = postfix_lhs->lhs.get();
     }
-    if (auto *lhs_as_ident = asts::ast_cast<asts::IdentifierAst>(lhs)) { // todo: is the condition requires? just body.
+    if (auto *lhs_as_ident = asts::ast_cast<asts::IdentifierAst>(lhs)) {
+        // todo: is the condition requires? just body.
         namespaces.emplace_back(const_cast<asts::IdentifierAst*>(lhs_as_ident));
     }
 
@@ -655,7 +656,8 @@ auto spp::analyse::scopes::Scope::print_scope_tree() const
 }
 
 
-auto spp::analyse::scopes::Scope::name_as_string() const -> std::string {
+auto spp::analyse::scopes::Scope::name_as_string() const
+    -> std::string {
     if (auto const name_as_id = std::get_if<std::shared_ptr<asts::IdentifierAst>>(&name)) {
         return (*name_as_id)->operator std::string();
     }
@@ -668,3 +670,12 @@ auto spp::analyse::scopes::Scope::name_as_string() const -> std::string {
     std::unreachable();
 }
 
+
+auto spp::analyse::scopes::Scope::fix_children_parent_pointers()
+    -> void {
+    // Iterate all children, setting their parent pointer to this scope. Recurse into them.
+    for (auto const &child : children) {
+        child->parent = this;
+        child->fix_children_parent_pointers();
+    }
+}

@@ -94,6 +94,8 @@ private:
 
     spp::utils::errors::ErrorFormatter *m_error_formatter;
 
+    std::vector<std::unique_ptr<asts::Ast>> m_temp_asts;
+
 public:
     Scope(ScopeName name, Scope *parent, asts::Ast *ast = nullptr, spp::utils::errors::ErrorFormatter *error_formatter = nullptr);
 
@@ -158,4 +160,6 @@ public:
     auto print_scope_tree() const -> std::string;
 
     auto name_as_string() const -> std::string;
+
+    auto fix_children_parent_pointers() -> void;
 };
