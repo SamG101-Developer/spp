@@ -618,8 +618,9 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
         new_cls_sym->alias_stmt->old_type = new_cls_sym->alias_stmt->old_type->substitute_generics(
             type_part.generic_arg_group->args | genex::views::ptr | genex::to<std::vector>());
         new_cls_sym->alias_stmt->old_type->stage_7_analyse_semantics(sm, meta);
-        sm->current_scope->add_type_symbol(new_cls_sym);
-        std::cout << "ADDED GENERIC ALIAS SYMBOL: " << new_cls_sym->name->operator std::string() << " TO " << sm->current_scope->name_as_string() << "\n";
+
+        const auto target_scope = new_cls_sym->alias_stmt->get_ast_scope()->parent;
+        target_scope->add_type_symbol(new_cls_sym);
         new_cls_sym->alias_stmt->m_temp_scope->add_type_symbol(new_cls_sym);
         new_cls_sym->alias_stmt->m_temp_scope->children.emplace_back(std::move(new_cls_scope));
     }
