@@ -206,6 +206,7 @@ auto spp::asts::ClassPrototypeAst::stage_3_gen_top_level_aliases(
     -> void {
     // Skip the class scope.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     sm->move_out_of_current_scope();
 }
 
@@ -216,6 +217,7 @@ auto spp::asts::ClassPrototypeAst::stage_4_qualify_types(
     -> void {
     // Qualify the types in the class body.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     generic_param_group->stage_4_qualify_types(sm, meta);
     impl->stage_4_qualify_types(sm, meta);
     sm->move_out_of_current_scope();
@@ -228,6 +230,7 @@ auto spp::asts::ClassPrototypeAst::stage_5_load_super_scopes(
     -> void {
     // Load the super scopes for the class body.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     impl->stage_5_load_super_scopes(sm, meta);
     sm->move_out_of_current_scope();
 }
@@ -239,6 +242,7 @@ auto spp::asts::ClassPrototypeAst::stage_6_pre_analyse_semantics(
     -> void {
     // Pre-analyse semantics for the class body.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     impl->stage_6_pre_analyse_semantics(sm, meta);
 
     // Check the type isn't recursive.
@@ -257,6 +261,7 @@ auto spp::asts::ClassPrototypeAst::stage_7_analyse_semantics(
     -> void {
     // Analyse semantics for the class body.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     generic_param_group->stage_7_analyse_semantics(sm, meta);
     impl->stage_7_analyse_semantics(sm, meta);
     sm->move_out_of_current_scope();
@@ -269,6 +274,7 @@ auto spp::asts::ClassPrototypeAst::stage_8_check_memory(
     -> void {
     // Check memory for the class body.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     impl->stage_8_check_memory(sm, meta);
     sm->move_out_of_current_scope();
 }
@@ -280,6 +286,7 @@ auto spp::asts::ClassPrototypeAst::stage_9_code_gen_1(
     codegen::LLvmCtx *)
     -> llvm::Value* {
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     sm->move_out_of_current_scope();
     return nullptr;
 }
@@ -292,6 +299,7 @@ auto spp::asts::ClassPrototypeAst::stage_10_code_gen_2(
     -> llvm::Value* {
     // Get the class symbol.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     const auto cls_sym = sm->current_scope->ty_sym;
 
     // For compiler known types, specialize the llvm type symbols.
