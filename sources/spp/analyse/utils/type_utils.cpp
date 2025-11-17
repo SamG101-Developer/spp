@@ -602,36 +602,36 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     asts::mixins::CompilerMetaData *meta)
     -> scopes::Scope* {
     // Create a new scope and symbol for the generic substituted type.
-    const auto old_cls_scope = old_cls_sym.scope ?: old_cls_sym.scope_defined_in;
+    const auto old_cls_scope = old_cls_sym.scope ? : old_cls_sym.scope_defined_in;
     auto new_cls_scope = std::make_unique<scopes::Scope>(
         std::dynamic_pointer_cast<asts::TypeIdentifierAst>(type_part.shared_from_this()),
-        old_cls_scope->parent, old_cls_scope->ast);
+        old_cls_sym.alias_stmt ? old_cls_sym.alias_stmt->m_temp_scope : old_cls_scope->parent, old_cls_scope->ast);
 
-    const auto new_cls_symbol = std::make_shared<scopes::TypeSymbol>(
+    const auto new_cls_sym = std::make_shared<scopes::TypeSymbol>(
         ast_clone(&type_part), asts::ast_cast<asts::ClassPrototypeAst>(new_cls_scope->ast), new_cls_scope.get(),
         sm->current_scope, old_cls_scope->parent, old_cls_sym.is_generic, old_cls_sym.is_directly_copyable, old_cls_sym.visibility);
     const auto new_cls_scope_ptr = new_cls_scope.get();
 
-    new_cls_symbol->is_copyable = [&old_cls_sym] { return old_cls_sym.is_copyable(); };
-    new_cls_symbol->alias_stmt = asts::ast_clone(old_cls_sym.alias_stmt);
-    if (new_cls_symbol->alias_stmt) {
-        new_cls_symbol->alias_stmt->old_type = new_cls_symbol->alias_stmt->old_type->substitute_generics(
+    new_cls_sym->is_copyable = [&old_cls_sym] { return old_cls_sym.is_copyable(); };
+    new_cls_sym->alias_stmt = asts::ast_clone(old_cls_sym.alias_stmt);
+    if (new_cls_sym->alias_stmt) {
+        new_cls_sym->alias_stmt->old_type = new_cls_sym->alias_stmt->old_type->substitute_generics(
             type_part.generic_arg_group->args | genex::views::ptr | genex::to<std::vector>());
-        new_cls_symbol->alias_stmt->old_type->stage_7_analyse_semantics(sm, meta);
-        sm->current_scope->add_type_symbol(new_cls_symbol);
-        new_cls_symbol->alias_stmt->m_temp_scope->add_type_symbol(new_cls_symbol);
-        new_cls_symbol->alias_stmt->m_temp_scope->children.emplace_back(std::move(new_cls_scope));
+        new_cls_sym->alias_stmt->old_type->stage_7_analyse_semantics(sm, meta);
+        sm->current_scope->add_type_symbol(new_cls_sym);
+        std::cout << "ADDED GENERIC ALIAS SYMBOL: " << new_cls_sym->name->operator std::string() << " TO " << sm->current_scope->name_as_string() << "\n";
+        new_cls_sym->alias_stmt->m_temp_scope->add_type_symbol(new_cls_sym);
+        new_cls_sym->alias_stmt->m_temp_scope->children.emplace_back(std::move(new_cls_scope));
     }
 
     // Configure the new scope based on the base (old) scope.
     else {
-        new_cls_scope->parent->add_type_symbol(new_cls_symbol);
+        new_cls_scope->parent->add_type_symbol(new_cls_sym);
         new_cls_scope->parent->children.emplace_back(std::move(new_cls_scope));
     }
-    new_cls_scope_ptr->ty_sym = new_cls_symbol;
+    new_cls_scope_ptr->ty_sym = new_cls_sym;
     new_cls_scope_ptr->table = old_cls_scope->table;
     new_cls_scope_ptr->non_generic_scope = old_cls_scope;
-
 
     if (meta->current_stage > 7) {
         sm->attach_specific_super_scopes(*new_cls_scope_ptr, meta);
@@ -650,7 +650,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
         | genex::views::ptr
         | genex::to<std::vector>();
 
-    auto tm = scopes::ScopeManager(sm->global_scope, new_cls_scope_ptr);
+    auto tm = scopes::ScopeManager(sm->global_scope, new_cls_sym->alias_stmt ? sm->current_scope->get_type_symbol(new_cls_sym->alias_stmt->old_type)->scope : new_cls_scope_ptr);
     for (auto const &scoped_sym : new_cls_scope_ptr->all_var_symbols(true)) {
         scoped_sym->type = scoped_sym->type->substitute_generics(substitution_generics);
         if (meta->current_stage > 5) {
@@ -934,6 +934,9 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
     scopes::ScopeManager *sm,
     asts::mixins::CompilerMetaData *meta)
     -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>, scopes::Scope*> {
+    if (actual_old_type->operator std::string().contains("Mem")) {
+        auto _ = 123;
+    }
     // Todo: Detect cycles to prevent infinite loops of type aliasing.
     // Create lists for tracking chains.
     auto type_list = std::vector<std::shared_ptr<asts::TypeAst>>{};
@@ -1012,7 +1015,7 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
         meta->restore();
     }
 
-    auto strip_params = [](asts::GenericParameterGroupAst& params, asts::GenericArgumentGroupAst& args) {
+    auto strip_params = [](asts::GenericParameterGroupAst &params, asts::GenericArgumentGroupAst &args) {
         // Remove type parameters who have been given arguments in the type part's generic argument group.
         for (auto *p : params.get_type_params()) {
             for (auto *q : args.get_type_args() | genex::views::cast_dynamic<asts::GenericArgumentTypeKeywordAst*>()) {
