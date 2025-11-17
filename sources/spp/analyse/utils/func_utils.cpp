@@ -173,9 +173,9 @@ auto spp::analyse::utils::func_utils::convert_method_to_function_form(
 auto spp::analyse::utils::func_utils::get_all_function_scopes(
     asts::IdentifierAst const &target_fn_name,
     scopes::Scope const *target_scope,
-    const bool for_override)
+    const bool)
     -> std::vector<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, std::unique_ptr<asts::GenericArgumentGroupAst>>> {
-    // Todo: TIDY this function big time.
+    // Todo: TIDY this function big time. I WANT TO VOMIT.
     // If the name is empty (non-symbolic call) then return "no scopes".
     // If the target scope is nullptr, then the functions are bein superimposed over a generic type.
     if (target_fn_name.val == "" or target_scope == nullptr) { return {}; }
@@ -203,7 +203,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
         }
     }
 
-    // Functions belonging to a type ill have inheritance generics from "sup [...] Type { ... }"
+    // Functions belonging to a type will have inheritance generics from "sup [...] Type { ... }"
     else {
         // If a class scope was provided, get all the sup scopes from it, otherwise use the specific sup scope.
         const auto sup_scopes = dynamic_cast<asts::ClassPrototypeAst*>(target_scope->ast) != nullptr
@@ -236,13 +236,13 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
         }
 
         // Adjust the scope in the tuple to the inner function scope.
-        if (not for_override) {
-            for (auto &&[i, info] : overload_scopes | genex::views::move | genex::views::enumerate | genex::to<std::vector>()) {
-                auto &[scope, proto, generics] = info;
-                scope = (scope->children | genex::views::ptr | genex::views::filter(is_valid_ext_scope) | genex::to<std::vector>())[0];
-                overload_scopes[i] = std::make_tuple(scope, proto, std::move(generics));
-            }
+        // if (not for_override) {
+        for (auto &&[i, info] : overload_scopes | genex::views::move | genex::views::enumerate | genex::to<std::vector>()) {
+            auto &[scope, proto, generics] = info;
+            scope = (scope->children | genex::views::ptr | genex::views::filter(is_valid_ext_scope) | genex::to<std::vector>())[0];
+            overload_scopes[i] = std::make_tuple(scope, proto, std::move(generics));
         }
+        // }
     }
 
     // Return all the found function scopes.
