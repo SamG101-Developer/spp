@@ -40,6 +40,25 @@ spp::asts::GenericParameterGroupAst::GenericParameterGroupAst(
 spp::asts::GenericParameterGroupAst::~GenericParameterGroupAst() = default;
 
 
+auto spp::asts::GenericParameterGroupAst::operator+(
+    GenericParameterGroupAst const &other) const
+    -> std::unique_ptr<GenericParameterGroupAst> {
+    auto new_params = ast_clone(this);
+    *new_params += other;
+    return new_params;
+}
+
+
+auto spp::asts::GenericParameterGroupAst::operator+=(
+    GenericParameterGroupAst const &other)
+    -> GenericParameterGroupAst& {
+    for (auto &&p : other.params) {
+        params.push_back(ast_clone(p));
+    }
+    return *this;
+}
+
+
 auto spp::asts::GenericParameterGroupAst::pos_start() const
     -> std::size_t {
     return tok_l->pos_start();
