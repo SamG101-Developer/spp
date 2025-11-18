@@ -161,6 +161,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_5_load_super_scopes(
     -> void {
     // Move into the superimposition scope.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
 
     // Analyse the type being superimposed over.
     name->stage_7_analyse_semantics(sm, meta);
@@ -201,6 +202,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_6_pre_analyse_semantics(
     -> void {
     // Move to the next scope.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     name->stage_7_analyse_semantics(sm, meta);
     impl->stage_6_pre_analyse_semantics(sm, meta);
     sm->move_out_of_current_scope();
@@ -213,6 +215,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_7_analyse_semantics(
     -> void {
     // Move to the next scope.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     name->stage_7_analyse_semantics(sm, meta);
     impl->stage_7_analyse_semantics(sm, meta);
     sm->move_out_of_current_scope();
@@ -225,6 +228,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_8_check_memory(
     -> void {
     // Move to the next scope.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     impl->stage_8_check_memory(sm, meta);
     sm->move_out_of_current_scope();
 }

@@ -311,6 +311,7 @@ auto spp::asts::FunctionPrototypeAst::stage_5_load_super_scopes(
     mixins::CompilerMetaData *meta) -> void {
     // Analyse the parameter and return types before sup scopes are attached.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     param_group->stage_7_analyse_semantics(sm, meta);
     return_type->stage_7_analyse_semantics(sm, meta);
     sm->move_out_of_current_scope();
@@ -323,6 +324,7 @@ auto spp::asts::FunctionPrototypeAst::stage_6_pre_analyse_semantics(
     -> void {
     // Perform conflict checking before standard semantic analysis errors due to multiple possible prototypes.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     const auto type_scope = ast_cast<ModulePrototypeAst>(m_ctx)
                                 ? sm->current_scope->parent_module()
                                 : m_ctx->m_scope->get_type_symbol(ast_name(m_ctx))->scope;
@@ -344,6 +346,7 @@ auto spp::asts::FunctionPrototypeAst::stage_7_analyse_semantics(
     -> void {
     // Move into the function scope, as it is now ready for semantic analysis.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
 
     // Repeated convention check for generic substitutions.
     if (const auto conv = return_type->get_convention(); conv != nullptr) {
@@ -365,6 +368,7 @@ auto spp::asts::FunctionPrototypeAst::stage_8_check_memory(
     -> void {
     // Move into the function scope, as it is now ready for memory checking.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
 
     // Check the memory for the parameter group and implementation.
     param_group->stage_8_check_memory(sm, meta);
@@ -382,6 +386,8 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
     -> llvm::Value* {
     // Generate the return and parameter types.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+
     const auto llvm_ret_type = sm->current_scope->get_type_symbol(return_type)->llvm_info->llvm_type;
     const auto llvm_param_types = param_group->params
         | genex::views::transform([sm](auto const &x) { return sm->current_scope->get_type_symbol(x->type)->llvm_info->llvm_type; })
