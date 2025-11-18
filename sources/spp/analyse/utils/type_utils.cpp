@@ -923,14 +923,13 @@ auto spp::analyse::utils::type_utils::substitute_sup_scope_name(
 
 
 auto spp::analyse::utils::type_utils::recursive_alias_search(
+    asts::TypeStatementAst const& alias_stmt,
     scopes::Scope *tracking_scope,
     std::shared_ptr<asts::TypeAst> actual_old_type,
     scopes::ScopeManager *sm,
     asts::mixins::CompilerMetaData *meta)
     -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>, scopes::Scope*> {
-    if (actual_old_type->operator std::string().contains("Mem")) {
-        auto _ = 123;
-    }
+    // Todo: Contender for worst function is the program, second to "func_utils::get_all_function_scopes"
     // Todo: Detect cycles to prevent infinite loops of type aliasing.
     // Create lists for tracking chains.
     auto type_list = std::vector<std::shared_ptr<asts::TypeAst>>{};
@@ -980,7 +979,7 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
         const auto generics = type_list[layer]->type_parts().back()->generic_arg_group->get_all_args();
         const auto alias = alias_list[layer - 1];
 
-        if (alias->old_type->type_parts().back()->generic_arg_group->args.size() == 0) {
+        if (alias->old_type->type_parts().back()->generic_arg_group->args.empty()) {
             alias->generic_param_group = cls_proto->generic_param_group;
             alias->old_type->type_parts().back()->generic_arg_group = asts::GenericArgumentGroupAst::from_params(*cls_proto->generic_param_group);
         }
@@ -1009,10 +1008,10 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
         meta->restore();
     }
 
-    auto strip_params = [](asts::GenericParameterGroupAst &params, asts::GenericArgumentGroupAst &args) {
+    auto strip_params = [](asts::GenericParameterGroupAst &params, asts::GenericArgumentGroupAst const &args) {
         // Remove type parameters who have been given arguments in the type part's generic argument group.
         for (auto *p : params.get_type_params()) {
-            for (auto *q : args.get_type_args() | genex::views::cast_dynamic<asts::GenericArgumentTypeKeywordAst*>()) {
+            for (auto const *q : args.get_type_args() | genex::views::cast_dynamic<asts::GenericArgumentTypeKeywordAst*>()) {
                 if (*p->name == *q->name and *p->name != *q->val) {
                     params.params |= genex::actions::remove_if([&p](auto &&x) { return x.get() == p; });
                     break;
@@ -1022,7 +1021,7 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
 
         // Remove comp parameters who have been given arguments in the type part's generic argument group.
         for (auto *p : params.get_comp_params()) {
-            for (auto *q : args.get_comp_args() | genex::views::cast_dynamic<asts::GenericArgumentCompKeywordAst*>()) {
+            for (auto const *q : args.get_comp_args() | genex::views::cast_dynamic<asts::GenericArgumentCompKeywordAst*>()) {
                 if (*p->name == *q->name and *asts::IdentifierAst::from_type(*p->name) != *q->val) {
                     params.params |= genex::actions::remove_if([&p](auto &&x) { return x.get() == p; });
                     break;
@@ -1044,11 +1043,16 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
         auto params = asts::ast_clone(cls_proto->generic_param_group);
         auto args = asts::ast_clone(type_list.back()->type_parts().back()->generic_arg_group);
         func_utils::name_generic_args(args->args, params->get_all_params(), *cls_proto->name, *sm, meta);
+        for (auto *p: params->get_all_params() | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
+            p->default_val = p->default_val->substitute_generics(args->get_all_args());
+        }
+        // todo: comp param's type's need substituting?
 
         strip_params(*params, *args);
         auto base_args = asts::GenericArgumentGroupAst::from_params(*cls_proto->generic_param_group);
+        params = *asts::ast_clone(alias_stmt.generic_param_group) + *params;
 
-        const auto t = type_list.back()->with_generics(std::move(base_args))->substitute_generics(args->args | genex::views::ptr | genex::to<std::vector>());
+        const auto t = type_list.back()->with_generics(std::move(base_args))->substitute_generics(args->get_all_args());
         return {t, std::move(params), scope_list.back()};
     }
     return {type_list.back(), nullptr, scope_list.back()};

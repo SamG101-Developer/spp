@@ -159,7 +159,7 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
 
     // Recursively discover the actual type being mapped to.
     auto [actual_old_type, attach_generics, scope] = analyse::utils::type_utils::recursive_alias_search(
-        sm->current_scope->parent, old_type, sm, meta);
+        *this, sm->current_scope->parent, old_type, sm, meta);
     m_temp_scope = scope;
 
     const auto final_sym = sm->current_scope->get_type_symbol(actual_old_type->without_generics());
@@ -192,7 +192,7 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
         auto tm_2 = ScopeManager(sm->global_scope, m_temp_scope);
 
         // Qualify the generics, and the overall type.
-        generic_param_group->stage_4_qualify_types(&tm_1, meta);
+        // generic_param_group->stage_4_qualify_types(&tm_1, meta);
         old_type->stage_4_qualify_types(&tm_1, meta); // Extends generics into fq from the old symbols scope.
         old_type->stage_4_qualify_types(&tm_2, meta); // Extends generics into fq from the old symbols scope.
         old_type->stage_7_analyse_semantics(sm, meta); // Analyse the fq old type in this scope (for generics)

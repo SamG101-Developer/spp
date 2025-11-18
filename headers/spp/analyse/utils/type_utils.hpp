@@ -243,6 +243,7 @@ namespace spp::analyse::utils::type_utils {
         -> std::string;
 
     auto recursive_alias_search(
+        asts::TypeStatementAst const& alias_stmt,
         scopes::Scope *tracking_scope,
         std::shared_ptr<asts::TypeAst> actual_old_type,
         scopes::ScopeManager *sm,
