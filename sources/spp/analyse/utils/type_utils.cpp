@@ -19,7 +19,7 @@
 #include <spp/asts/generic_parameter_comp_ast.hpp>
 #include <spp/asts/generic_parameter_group_ast.hpp>
 #include <spp/asts/generic_parameter_type_ast.hpp>
-#include <spp/asts/generic_parameter_type_ast.hpp>
+#include <spp/asts/generic_parameter_type_optional_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/inner_scope_expression_ast.hpp>
 #include <spp/asts/integer_literal_ast.hpp>
@@ -739,7 +739,14 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     for (auto const &scoped_sym : new_sup_scope_ptr->all_type_symbols(true)) {
         if (scoped_sym->alias_stmt != nullptr) {
             auto old_type_sub = scoped_sym->alias_stmt->old_type->substitute_generics(generic_args.args | genex::views::ptr | genex::to<std::vector>());
+            // old_type_sub->stage_7_analyse_semantics(&tm, meta);
+            const auto old_type_sub_sym = new_sup_scope_ptr->get_type_symbol(old_type_sub);
+
             scoped_sym->alias_stmt->old_type = std::move(old_type_sub);
+            if (old_type_sub_sym != nullptr) {
+                scoped_sym->type = old_type_sub_sym->type;
+                scoped_sym->scope = old_type_sub_sym->scope;
+            }
         }
     }
 
