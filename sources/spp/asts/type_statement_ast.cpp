@@ -205,6 +205,7 @@ auto spp::asts::TypeStatementAst::stage_5_load_super_scopes(
     ScopeManager *sm,
     mixins::CompilerMetaData *) -> void {
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     sm->move_out_of_current_scope();
 }
 
@@ -213,6 +214,7 @@ auto spp::asts::TypeStatementAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
     mixins::CompilerMetaData *) -> void {
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     sm->move_out_of_current_scope();
 }
 
@@ -224,6 +226,7 @@ auto spp::asts::TypeStatementAst::stage_7_analyse_semantics(
     // If this is a pre-generated AST (mod/sup context), skip any generation steps.
     if (m_generated) {
         sm->move_to_next_scope();
+        SPP_ASSERT(sm->current_scope == m_scope);
         sm->move_out_of_current_scope();
         return;
     }
@@ -249,5 +252,6 @@ auto spp::asts::TypeStatementAst::stage_8_check_memory(
     ScopeManager *sm,
     mixins::CompilerMetaData *) -> void {
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     sm->move_out_of_current_scope();
 }
