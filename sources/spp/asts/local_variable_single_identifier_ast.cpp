@@ -47,6 +47,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::clone() const
 spp::asts::LocalVariableSingleIdentifierAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_mut);
+    raw_string.append(tok_mut ? " " : "");
     SPP_STRING_APPEND(name);
     SPP_STRING_APPEND(alias);
     SPP_STRING_END;
@@ -58,6 +59,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::print(
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_mut);
+    formatted_string.append(tok_mut ? " " : "");
     SPP_PRINT_APPEND(name);
     SPP_PRINT_APPEND(alias);
     SPP_PRINT_END;
