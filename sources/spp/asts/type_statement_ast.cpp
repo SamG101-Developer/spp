@@ -196,6 +196,10 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
         old_type->stage_4_qualify_types(&tm_1, meta); // Extends generics into fq from the old symbols scope.
         old_type->stage_4_qualify_types(&tm_2, meta); // Extends generics into fq from the old symbols scope.
         old_type->stage_7_analyse_semantics(sm, meta); // Analyse the fq old type in this scope (for generics)
+
+        const auto old_sym = sm->current_scope->get_type_symbol(old_type);
+        m_type_symbol->type = old_sym->type;
+        m_type_symbol->scope = old_sym->scope;
     }
     sm->move_out_of_current_scope();
 }
