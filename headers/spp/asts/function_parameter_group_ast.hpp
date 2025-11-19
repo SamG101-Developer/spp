@@ -38,6 +38,8 @@ struct spp::asts::FunctionParameterGroupAst final : virtual Ast {
 
     SPP_AST_KEY_FUNCTIONS;
 
+    auto get_all_params() const -> std::vector<FunctionParameterAst*>;
+
     auto get_self_param() const -> FunctionParameterSelfAst*;
 
     auto get_required_params() const -> std::vector<FunctionParameterRequiredAst*>;

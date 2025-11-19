@@ -78,6 +78,14 @@ auto spp::asts::FunctionParameterGroupAst::print(
 }
 
 
+auto spp::asts::FunctionParameterGroupAst::get_all_params() const
+    -> std::vector<FunctionParameterAst*> {
+    return params
+        | genex::views::ptr
+        | genex::to<std::vector>();
+}
+
+
 auto spp::asts::FunctionParameterGroupAst::get_self_param() const
     -> FunctionParameterSelfAst* {
     const auto ps = params
