@@ -164,11 +164,11 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     }
 
     for (auto &&[fn_scope, fn_proto, ctx_generic_arg_group] : all_overloads) {
-        auto ctx_generic_args = ctx_generic_arg_group->args | genex::views::ptr | genex::to<std::vector>();
+        auto ctx_generic_args = ctx_generic_arg_group->get_all_args();
 
         // Extract generic/function parameter information from the overload.
-        auto func_params = fn_proto->param_group->params | genex::views::ptr | genex::to<std::vector>();
-        auto generic_params = fn_proto->generic_param_group->params | genex::views::ptr | genex::to<std::vector>();
+        auto func_params = fn_proto->param_group->get_all_params();
+        auto generic_params = fn_proto->generic_param_group->get_all_params();
         auto func_args = ast_clone_vec(arg_group->args);
         auto generic_args = ast_clone_vec(generic_arg_group->args);
 
@@ -228,7 +228,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
             analyse::utils::func_utils::infer_generic_args(
                 generic_args,
-                fn_proto->generic_param_group->params | genex::views::ptr | genex::to<std::vector>(),
+                fn_proto->generic_param_group->get_all_params(),
                 fn_proto->generic_param_group->get_optional_params(),
                 genex::views::concat(generic_args | genex::views::ptr, ctx_generic_args) | genex::to<std::vector>(),
                 {generic_infer_source.begin(), generic_infer_source.end()},
