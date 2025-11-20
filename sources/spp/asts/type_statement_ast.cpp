@@ -32,7 +32,7 @@ spp::asts::TypeStatementAst::TypeStatementAst(
     decltype(old_type) old_type) :
     m_generated(false),
     m_for_use_statement(false),
-    m_temp_scope(nullptr),
+    m_temp_scope_1(nullptr),
     annotations(std::move(annotations)),
     tok_type(std::move(tok_type)),
     new_type(std::move(new_type)),
@@ -71,7 +71,7 @@ auto spp::asts::TypeStatementAst::clone() const
         ast_clone(old_type));
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
-    ast->m_temp_scope = m_temp_scope;
+    ast->m_temp_scope_1 = m_temp_scope_1;
     ast->m_visibility = m_visibility;
     ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->m_ctx = ast; });
     return ast;
@@ -158,9 +158,10 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     SPP_ASSERT(sm->current_scope == m_scope);
 
     // Recursively discover the actual type being mapped to.
-    auto [actual_old_type, attach_generics, scope] = analyse::utils::type_utils::recursive_alias_search(
+    auto [actual_old_type, attach_generics, scope1, scope2] = analyse::utils::type_utils::recursive_alias_search(
         *this, sm->current_scope->parent, old_type, sm, meta);
-    m_temp_scope = scope;
+    m_temp_scope_1 = scope1;
+    m_temp_scope_2 = scope2;
 
     const auto final_sym = sm->current_scope->get_type_symbol(actual_old_type->without_generics());
     m_type_symbol->type = final_sym->type;
@@ -189,10 +190,14 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
     const auto stripped_old_sym = sm->current_scope->get_type_symbol(old_type->without_generics(), false);
     if (not stripped_old_sym->is_generic) {
         auto tm_1 = ScopeManager(sm->global_scope, stripped_old_sym->scope);
-        auto tm_2 = ScopeManager(sm->global_scope, m_temp_scope);
+        auto tm_2 = ScopeManager(sm->global_scope, m_temp_scope_1);
+
+        auto temp_scope = std::make_unique<analyse::scopes::Scope>(*m_temp_scope_2->parent);
+        auto tm_3 = ScopeManager(sm->global_scope, temp_scope.get());
+        generic_param_group->stage_2_gen_top_level_scopes(&tm_3, meta);
 
         // Qualify the generics, and the overall type.
-        // generic_param_group->stage_4_qualify_types(&tm_1, meta);
+        generic_param_group->stage_4_qualify_types(&tm_3, meta);
         old_type->stage_4_qualify_types(&tm_1, meta); // Extends generics into fq from the old symbols scope.
         old_type->stage_4_qualify_types(&tm_2, meta); // Extends generics into fq from the old symbols scope.
         old_type->stage_7_analyse_semantics(sm, meta); // Analyse the fq old type in this scope (for generics)
@@ -200,6 +205,7 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
         const auto old_sym = sm->current_scope->get_type_symbol(old_type);
         m_type_symbol->type = old_sym->type;
         m_type_symbol->scope = old_sym->scope;
+        m_temp_scope_3 = std::move(temp_scope);
     }
     sm->move_out_of_current_scope();
 }

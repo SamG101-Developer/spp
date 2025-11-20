@@ -575,8 +575,8 @@ auto spp::analyse::utils::type_utils::get_all_attrs(
     const auto cls_sym = sm->current_scope->get_type_symbol(type.shared_from_this());
 
     // Get the attribute information from the class type and all super types.
-    auto all_scopes = cls_sym->scope->sup_scopes();
-    all_scopes |= genex::actions::concat(std::vector{cls_sym->scope});
+    auto all_scopes = std::vector{cls_sym->scope};
+    all_scopes.append_range(cls_sym->scope->sup_scopes());
     auto all_attrs = all_scopes
         | genex::views::filter([](auto &&sup_scope) { return ast_cast<asts::ClassPrototypeAst>(sup_scope->ast) != nullptr; })
         | genex::views::transform([](auto &&sup_scope) {
@@ -605,7 +605,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     const auto old_cls_scope = old_cls_sym.scope ? : old_cls_sym.scope_defined_in;
     auto new_cls_scope = std::make_unique<scopes::Scope>(
         std::dynamic_pointer_cast<asts::TypeIdentifierAst>(type_part.shared_from_this()),
-        old_cls_sym.alias_stmt ? old_cls_sym.alias_stmt->m_temp_scope : old_cls_scope->parent, old_cls_scope->ast);
+        old_cls_sym.alias_stmt ? old_cls_sym.alias_stmt->m_temp_scope_1 : old_cls_scope->parent, old_cls_scope->ast);
 
     const auto new_cls_sym = std::make_shared<scopes::TypeSymbol>(
         ast_clone(&type_part), asts::ast_cast<asts::ClassPrototypeAst>(new_cls_scope->ast), new_cls_scope.get(),
@@ -620,8 +620,8 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
 
         const auto target_scope = new_cls_sym->alias_stmt->get_ast_scope()->parent;
         target_scope->add_type_symbol(new_cls_sym);
-        new_cls_sym->alias_stmt->m_temp_scope->add_type_symbol(new_cls_sym);
-        new_cls_sym->alias_stmt->m_temp_scope->children.emplace_back(std::move(new_cls_scope));
+        new_cls_sym->alias_stmt->m_temp_scope_1->add_type_symbol(new_cls_sym);
+        new_cls_sym->alias_stmt->m_temp_scope_1->children.emplace_back(std::move(new_cls_scope));
     }
 
     // Configure the new scope based on the base (old) scope.
@@ -722,6 +722,9 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     auto new_sup_scope_ptr = new_sup_scope.get();
     old_sup_scope.parent->children.emplace_back(std::move(new_sup_scope));
 
+    std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name =
+         substitute_sup_scope_name(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name, generic_args);
+
     // Register the generic symbols.
     auto tm = scopes::ScopeManager(sm->global_scope, new_sup_scope_ptr);
     register_generic_syms(external_generic_syms, generic_args.args, new_sup_scope_ptr, &tm, meta);
@@ -774,8 +777,6 @@ auto spp::analyse::utils::type_utils::create_generic_sym(
     asts::mixins::CompilerMetaData *meta,
     scopes::ScopeManager *tm)
     -> std::shared_ptr<scopes::Symbol> {
-    // Intercept creating "Out = Bool".
-
     // Handle the generic type argument => creates a type symbol.
     if (const auto type_arg = asts::ast_cast<asts::GenericArgumentTypeKeywordAst>(&generic); type_arg != nullptr) {
         const auto true_val_sym = sm.current_scope->get_type_symbol(type_arg->val);
@@ -935,7 +936,7 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
     std::shared_ptr<asts::TypeAst> actual_old_type,
     scopes::ScopeManager *sm,
     asts::mixins::CompilerMetaData *meta)
-    -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>, scopes::Scope*> {
+    -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>, scopes::Scope*, scopes::Scope*> {
     // Todo: Contender for worst function is the program, second to "func_utils::get_all_function_scopes"
     // Todo: Detect cycles to prevent infinite loops of type aliasing.
     // Create lists for tracking chains.
@@ -949,7 +950,6 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
     auto ts_proto = static_cast<asts::TypeStatementAst*>(nullptr);
 
     while (true) {
-        auto tm = scopes::ScopeManager(sm->global_scope, tracking_scope);
         const auto sym = tracking_scope->get_type_symbol(actual_old_type->without_generics());
 
         type_list.emplace_back(actual_old_type);
@@ -974,7 +974,7 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
 
         // If the aliased type is generic, then just return it as-is.
         else {
-            return {actual_old_type, nullptr, scope_list.back()};
+            return {actual_old_type, nullptr, scope_list.back(), sym_list.back()->scope};
         }
     }
 
@@ -1043,7 +1043,7 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
         func_utils::name_generic_args(args->args, sym_list.back()->type->generic_param_group->get_all_params(), *ts_proto->old_type, *sm, meta);
 
         strip_params(*params, *args);
-        return {type_list.back(), std::move(params), scope_list.back()};
+        return {type_list.back(), std::move(params), scope_list.back(), sym_list.back()->scope};
     }
 
     if (cls_proto != nullptr) {
@@ -1060,9 +1060,9 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
         params = *asts::ast_clone(alias_stmt.generic_param_group) + *params;
 
         const auto t = type_list.back()->with_generics(std::move(base_args))->substitute_generics(args->get_all_args());
-        return {t, std::move(params), scope_list.back()};
+        return {t, std::move(params), scope_list.back(), sym_list.back()->scope};
     }
-    return {type_list.back(), nullptr, scope_list.back()};
+    return {type_list.back(), nullptr, scope_list.back(), sym_list.back()->scope};
 }
 
 

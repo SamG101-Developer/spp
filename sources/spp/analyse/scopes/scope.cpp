@@ -393,9 +393,6 @@ auto spp::analyse::scopes::Scope::get_type_symbol(
     if (sym_name == nullptr) { return nullptr; }
 
     auto scope = this;
-    if (scope == nullptr) {
-        auto _ = 123;
-    }
     std::shared_ptr<const asts::TypeIdentifierAst> sym_name_extracted;
     if (const auto sym_name_as_identifier = std::dynamic_pointer_cast<const asts::TypeIdentifierAst>(sym_name)) {
         sym_name_extracted = std::const_pointer_cast<asts::TypeIdentifierAst>(sym_name_as_identifier);
@@ -403,9 +400,6 @@ auto spp::analyse::scopes::Scope::get_type_symbol(
     else {
         auto [scope_, sym_name_extracted_] = shift_scope_for_namespaced_type(*this, *sym_name);
         scope = scope_;
-        if (scope == nullptr) {
-            auto _ = 123;
-        }
         sym_name_extracted = sym_name_extracted_;
     }
 

@@ -29,7 +29,10 @@ private:
     std::shared_ptr<analyse::scopes::TypeSymbol> m_type_symbol;
 
 public:
-    analyse::scopes::Scope *m_temp_scope;
+    analyse::scopes::Scope *m_temp_scope_1;
+    analyse::scopes::Scope *m_temp_scope_2;
+    std::unique_ptr<analyse::scopes::Scope> m_temp_scope_3;
+
     /**
      * The list of annotations that are applied to this type statement. Typically, access modifiers in this context.
      */

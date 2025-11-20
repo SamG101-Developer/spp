@@ -248,5 +248,5 @@ namespace spp::analyse::utils::type_utils {
         std::shared_ptr<asts::TypeAst> actual_old_type,
         scopes::ScopeManager *sm,
         asts::mixins::CompilerMetaData *meta)
-        -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>, scopes::Scope*>;
+        -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>, scopes::Scope*, scopes::Scope*>;
 }
