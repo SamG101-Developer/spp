@@ -159,15 +159,21 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     }
 
     // Strip the generics from the right-hand-side type (possible generic).
-    const auto stripped_lhs = lhs_type.without_generics();
-    const auto stripped_rhs = rhs_type.without_generics();
+    const auto stripped_lhs = std::const_pointer_cast<asts::TypeAst>(lhs_type.without_generics()->without_convention());
+    const auto stripped_rhs = std::const_pointer_cast<asts::TypeAst>(rhs_type.without_generics()->without_convention());
 
     // If the right-hand-side is generic, then return a match: "sup[T] T { ... }" matches all types.
-    const auto stripped_lhs_sym = lhs_scope->get_type_symbol(stripped_lhs);
     const auto stripped_rhs_sym = rhs_scope->get_type_symbol(stripped_rhs);
     if (stripped_rhs_sym->is_generic) {
         const auto t = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(stripped_rhs);
         generic_args.insert({t, &lhs_type});
+        return true;
+    }
+
+    const auto stripped_lhs_sym = lhs_scope->get_type_symbol(stripped_lhs);
+    if (stripped_lhs_sym->is_generic) {
+        const auto t = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(stripped_lhs);
+        generic_args.insert({t, &rhs_type});
         return true;
     }
 
@@ -666,7 +672,6 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
             attr->stage_7_analyse_semantics(&tm, meta);
         }
     }
-
     old_cls_sym.type->register_generic_substituted_scope(new_cls_scope_ptr, std::move(new_ast));
 
     // Return the new class scope.

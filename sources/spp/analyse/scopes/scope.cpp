@@ -268,13 +268,13 @@ auto spp::analyse::scopes::Scope::all_var_symbols(
     const bool sup_scope_search) const
     -> std::generator<std::shared_ptr<VariableSymbol>> {
     // Yield all symbols from the var symbol table.
-    for (auto sym : table.var_tbl.all()) {
+    for (auto const &sym : table.var_tbl.all()) {
         co_yield sym;
     }
 
     // For non-exclusive searches where a parent is present, yield from the parent scope.
     if (not exclusive and parent != nullptr) {
-        for (auto sym : parent->all_var_symbols(exclusive, sup_scope_search)) {
+        for (auto const &sym : parent->all_var_symbols(exclusive, sup_scope_search)) {
             co_yield sym;
         }
     }
@@ -282,7 +282,7 @@ auto spp::analyse::scopes::Scope::all_var_symbols(
     // For super scope searches, yield from all direct super scopes.
     if (sup_scope_search) {
         for (auto const *sup_scope : m_direct_sup_scopes) {
-            for (auto sym : sup_scope->all_var_symbols(true, false)) {
+            for (auto const &sym : sup_scope->all_var_symbols(true, false)) {
                 co_yield sym;
             }
         }
@@ -295,13 +295,13 @@ auto spp::analyse::scopes::Scope::all_type_symbols(
     const bool sup_scope_search) const
     -> std::generator<std::shared_ptr<TypeSymbol>> {
     // Yield all symbols from the type symbol table.
-    for (auto sym : table.type_tbl.all()) {
+    for (auto const &sym : table.type_tbl.all()) {
         co_yield sym;
     }
 
     // For non-exclusive searches where a parent is present, yield from the parent scope.
     if (not exclusive and parent != nullptr) {
-        for (auto sym : parent->all_type_symbols(exclusive, sup_scope_search)) {
+        for (auto const &sym : parent->all_type_symbols(exclusive, sup_scope_search)) {
             co_yield sym;
         }
     }
@@ -309,7 +309,7 @@ auto spp::analyse::scopes::Scope::all_type_symbols(
     // For super scope searches, yield from all direct super scopes.
     if (sup_scope_search) {
         for (auto const *sup_scope : m_direct_sup_scopes) {
-            for (auto sym : sup_scope->all_type_symbols(true, false)) {
+            for (auto const &sym : sup_scope->all_type_symbols(true, false)) {
                 co_yield sym;
             }
         }
@@ -321,13 +321,13 @@ auto spp::analyse::scopes::Scope::all_ns_symbols(
     const bool exclusive, bool) const
     -> std::generator<std::shared_ptr<NamespaceSymbol>> {
     // Yield all symbols from the var symbol table.
-    for (auto sym : table.ns_tbl.all()) {
+    for (auto const &sym : table.ns_tbl.all()) {
         co_yield sym;
     }
 
     // For non-exclusive searches where a parent is present, yield from the parent scope.
     if (not exclusive and parent != nullptr) {
-        for (auto sym : parent->all_ns_symbols(exclusive)) {
+        for (auto const &sym : parent->all_ns_symbols(exclusive)) {
             co_yield sym;
         }
     }

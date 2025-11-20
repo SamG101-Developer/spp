@@ -122,15 +122,18 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
     if (utils::type_utils::is_type_function(*scope_name, scope)) {
         return;
     }
+    if (sup_scopes.empty()) {
+        return;
+    }
 
     // Clear the sup scopes list.
     scope.m_direct_sup_scopes.clear();
+    const auto fq_type = scope.ty_sym->fq_name();
 
     // Iterate through all the super scopes and check if the name matches.
     for (auto *sup_scope : sup_scopes) {
         // Perform a relaxed comparison between the two types (allows for specializations to match bases).
         auto scope_generics_map = utils::type_utils::GenericInferenceMap();
-        auto fq_type = scope.ty_sym->fq_name();
         if (not utils::type_utils::relaxed_symbolic_eq(*fq_type, *asts::ast_name(sup_scope->ast), scope.ty_sym->scope_defined_in, sup_scope, scope_generics_map)) {
             continue;
         }
