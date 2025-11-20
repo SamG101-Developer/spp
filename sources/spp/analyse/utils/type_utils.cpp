@@ -605,7 +605,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     const auto old_cls_scope = old_cls_sym.scope ? : old_cls_sym.scope_defined_in;
     auto new_cls_scope = std::make_unique<scopes::Scope>(
         std::dynamic_pointer_cast<asts::TypeIdentifierAst>(type_part.shared_from_this()),
-        old_cls_sym.alias_stmt ? old_cls_sym.alias_stmt->m_temp_scope_1 : old_cls_scope->parent, old_cls_scope->ast);
+        old_cls_scope->parent, old_cls_scope->ast);
 
     const auto new_cls_sym = std::make_shared<scopes::TypeSymbol>(
         ast_clone(&type_part), asts::ast_cast<asts::ClassPrototypeAst>(new_cls_scope->ast), new_cls_scope.get(),

@@ -114,7 +114,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
     asts::mixins::CompilerMetaData *meta) const
     -> void {
     // Skip "$" identifiers (functions don't have substitutable members and take up lots of time).
-    const auto scope_name = std::get<std::shared_ptr<asts::TypeIdentifierAst>>(scope.name);
+    const auto scope_name = scope.ty_sym->fq_name();
     if (scope_name->type_parts().back()->name[0] == '$') {
         return;
     }
