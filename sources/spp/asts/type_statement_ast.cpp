@@ -33,6 +33,7 @@ spp::asts::TypeStatementAst::TypeStatementAst(
     m_generated(false),
     m_for_use_statement(false),
     m_temp_scope_1(nullptr),
+    m_temp_scope_2(nullptr),
     annotations(std::move(annotations)),
     tok_type(std::move(tok_type)),
     new_type(std::move(new_type)),
@@ -264,4 +265,10 @@ auto spp::asts::TypeStatementAst::stage_8_check_memory(
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
     sm->move_out_of_current_scope();
+
+    // Because the TypeStatementAst is passed as a unique pointer to the TypeSymbol, we need to clear it from the type
+    // symbol without destroying it, otherwise there is a use after free because of a double destruction; the unique
+    // pointer destroying the type statement, then the type statement destroying itself (via the destructor). Releasing
+    // it here prevents the type symbol from destroying it.
+    m_type_symbol->alias_stmt.release();
 }

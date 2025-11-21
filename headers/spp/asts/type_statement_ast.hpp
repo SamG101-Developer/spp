@@ -1,8 +1,8 @@
 #pragma once
-#include <spp/asts/statement_ast.hpp>
-#include <spp/asts/mixins/visbility_enabled_ast.hpp>
 #include <spp/asts/module_member_ast.hpp>
+#include <spp/asts/statement_ast.hpp>
 #include <spp/asts/sup_member_ast.hpp>
+#include <spp/asts/mixins/visbility_enabled_ast.hpp>
 
 
 /// @cond
