@@ -591,7 +591,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
     // If there is a scope present (non-closure), then fully qualify the return type.
     if (std::get<0>(*m_overload_info) != nullptr) {
         // Get the other generics
-        auto other_generics = std::vector<GenericArgumentAst*>();
+        auto other_generics = std::unique_ptr<GenericArgumentGroupAst>(nullptr);
         if (const auto cast_lhs = ast_cast<PostfixExpressionAst>(meta->postfix_expression_lhs); cast_lhs != nullptr) {
             try {
                 if (ast_cast<PostfixExpressionOperatorStaticMemberAccessAst>(cast_lhs->op.get()) == nullptr) {
@@ -599,9 +599,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
                     if (sm->current_scope->get_type_symbol(cast_lhs->lhs->infer_type(sm, meta)) != nullptr) {
                         auto const *lhs_lhs_scope = lhs_lhs_sym->scope;
                         if (not analyse::utils::type_utils::is_type_tuple(*lhs_lhs_scope->ty_sym->fq_name(), *sm->current_scope)) {
-                            other_generics = lhs_lhs_scope->ty_sym->fq_name()->type_parts().back()->generic_arg_group->args
-                                | genex::views::ptr
-                                | genex::to<std::vector>();
+                            other_generics = ast_clone(lhs_lhs_scope->ty_sym->fq_name()->type_parts().back()->generic_arg_group);
                         }
                     }
                 }
@@ -611,7 +609,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
             }
 
             ret_type = std::get<0>(*m_overload_info)->get_type_symbol(ret_type)->fq_name();
-            ret_type = ret_type->substitute_generics(other_generics);
+            if (other_generics != nullptr) {
+                ret_type = ret_type->substitute_generics(other_generics->get_all_args());
+            }
             ret_type = ret_type->substitute_generics(std::get<0>(*m_overload_info)->get_generics() | genex::views::ptr | genex::to<std::vector>());
 
             // TODO: REMOVE CONST CAST
