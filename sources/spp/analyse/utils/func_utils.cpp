@@ -625,8 +625,11 @@ auto spp::analyse::utils::func_utils::infer_generic_args(
         | genex::to<std::vector>();
 
     // Call the two individual inference functions.
-    infer_generic_args_impl_comp(comp_args, comp_params, comp_explicit_args, infer_source, infer_target, owner, owner_scope, sm, meta);
+    // Todo: These need to move left-to-right no matter type vs comp
+    // Todo: Because of cross substitution left to right between type and comp
+    // Todo: Or do type, comp, type-cross-substitution again
     infer_generic_args_impl_type(type_args, type_params, type_opt_params, type_explicit_args, infer_source, infer_target, owner, owner_scope, variadic_param_identifier, sm, meta);
+    infer_generic_args_impl_comp(comp_args, comp_params, comp_explicit_args, infer_source, infer_target, owner, owner_scope, sm, meta);
 
     // Sort the new arguments to match the parameter order.
     auto final_args = genex::views::concat(
