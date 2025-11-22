@@ -53,16 +53,6 @@ target_include_directories(spp_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/headers)
 add_executable(spp main.cpp)
 target_link_libraries(spp PRIVATE spp_lib)
 
-# Attach ASAN for debug builds.
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    message(STATUS "Debug mode: Adding AddressSanitizer flags")
-    set(SANITIZER_FLAGS -fsanitize=address,leak,undefined -fno-omit-frame-pointer -fno-optimize-sibling-calls -g -O0)
-    target_compile_options(spp_lib PRIVATE ${SANITIZER_FLAGS})
-    target_compile_options(spp PRIVATE ${SANITIZER_FLAGS})
-    target_link_options(spp_lib PRIVATE ${SANITIZER_FLAGS})
-    target_link_options(spp PRIVATE ${SANITIZER_FLAGS})
-endif ()
-
 # Unit test support.
 enable_testing()
 add_subdirectory(tests)
