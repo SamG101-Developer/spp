@@ -955,6 +955,11 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
     auto ts_proto = static_cast<asts::TypeStatementAst*>(nullptr);
 
     while (true) {
+        auto tm = scopes::ScopeManager(sm->global_scope, tracking_scope);
+        meta->save();
+        meta->skip_type_analysis_generic_checks = true;
+        actual_old_type->without_generics()->stage_7_analyse_semantics(&tm, meta);
+        meta->restore();
         const auto sym = tracking_scope->get_type_symbol(actual_old_type->without_generics());
 
         type_list.emplace_back(actual_old_type);
