@@ -135,6 +135,8 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
         // Perform a relaxed comparison between the two types (allows for specializations to match bases).
         auto scope_generics_map = utils::type_utils::GenericInferenceMap();
         if (not utils::type_utils::relaxed_symbolic_eq(*fq_type, *asts::ast_name(sup_scope->ast), scope.ty_sym->scope_defined_in, sup_scope, scope_generics_map)) {
+            // Todo: Is this eliminating too many cases?
+            // Todo: For example, superimposing a type will be omitted here because the type won't be the same.
             continue;
         }
         auto scope_generics = asts::GenericArgumentGroupAst::from_map(std::move(scope_generics_map));
@@ -144,6 +146,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
         auto new_cls_scope = static_cast<Scope*>(nullptr);
         auto sup_sym = static_cast<TypeSymbol*>(nullptr);
 
+        // Todo: Is this "if-else" quite correct? 2 conditions in the "if", then no "else if" block.
         if (not scope_generics->args.empty() and not genex::algorithms::contains(generic_sup_blocks, sup_scope)) {
             const auto external_generics = scope.ty_sym->scope_defined_in->get_extended_generic_symbols(scope_generics->args | genex::views::ptr | genex::to<std::vector>());
             std::tie(new_sup_scope, new_cls_scope) = utils::type_utils::create_generic_sup_scope(*sup_scope, scope, *scope_generics, external_generics, this, meta);
@@ -170,6 +173,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
         // Register the super scope's class scope against the current scope, if it is different. This "difference" check
         // ensures that "sup [T] T ext A" doesn't create a "sup A ext A" link.
         if (new_cls_scope and scope.ty_sym != new_cls_scope->ty_sym) {
+            // Todo: is this definitely the generically substituted "new_cls_scope"?
             scope.m_direct_sup_scopes.emplace_back(new_cls_scope);
         }
 
