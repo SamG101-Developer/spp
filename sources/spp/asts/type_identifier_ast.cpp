@@ -249,7 +249,7 @@ auto spp::asts::TypeIdentifierAst::substitute_generics(
     }
 
     // Substitute generics in the type arguments' types.
-    for (auto const &g : name_clone->generic_arg_group->get_type_args() | genex::views::cast_dynamic<GenericArgumentTypeAst*>()) {
+    for (auto const &g : name_clone->generic_arg_group->get_type_args()) {
         g->val = g->val->substitute_generics(args);
     }
 
