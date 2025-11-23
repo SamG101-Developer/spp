@@ -236,13 +236,11 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
         }
 
         // Adjust the scope in the tuple to the inner function scope.
-        // if (not for_override) {
         for (auto &&[i, info] : overload_scopes | genex::views::move | genex::views::enumerate | genex::to<std::vector>()) {
             auto &[scope, proto, generics] = info;
             scope = (scope->children | genex::views::ptr | genex::views::filter(is_valid_ext_scope) | genex::to<std::vector>())[0];
             overload_scopes[i] = std::make_tuple(scope, proto, std::move(generics));
         }
-        // }
     }
 
     // Return all the found function scopes.
