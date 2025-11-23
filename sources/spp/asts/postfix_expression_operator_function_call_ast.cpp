@@ -351,6 +351,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             for (auto &&[arg, param] : sorted_func_arguments | genex::views::zip(func_params)) {
                 auto p_type = fn_scope->get_type_symbol(param->type)->fq_name()->with_convention(ast_clone(param->type->get_convention()));
                 auto a_type = arg->infer_type(sm, meta);
+                auto temp = analyse::utils::type_utils::GenericInferenceMap();
 
                 // Special case for variadic parameters (updates p_type so don't follow with "else if").
                 if (ast_cast<FunctionParameterVariadicAst>(param)) {
@@ -371,10 +372,16 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                     }
                 }
 
-                // Regular parameter without arg folding.
+                // Regular parameter without arg folding. The double check is required for generics applied to the
+                // superclass in sup-ext that cannot be substituted because they can be anything, so reverse type check
+                // them with the "relaxed" variation. This is the only place this is required. Check testing with type
+                // aliases to be sure.
+                // Todo: Is this needed for the arg folding variation?
                 else if (not analyse::utils::type_utils::symbolic_eq(*p_type, *a_type, *fn_scope, *sm->current_scope)) {
-                    analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-                        *param, *p_type, *arg, *a_type).with_scopes({fn_scope, sm->current_scope}).raise();
+                    if (not analyse::utils::type_utils::relaxed_symbolic_eq(*a_type, *p_type, sm->current_scope, fn_scope, temp)) {
+                        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
+                            *param, *p_type, *arg, *a_type).with_scopes({fn_scope, sm->current_scope}).raise();
+                    }
                 }
             }
 
