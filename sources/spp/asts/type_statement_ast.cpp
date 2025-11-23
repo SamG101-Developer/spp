@@ -208,7 +208,7 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
         generic_param_group->stage_2_gen_top_level_scopes(&tm_3, meta);
 
         // Qualify the generics, and the overall type.
-        generic_param_group->stage_4_qualify_types(&tm_3, meta);
+        // generic_param_group->stage_4_qualify_types(&tm_3, meta);
         old_type->stage_4_qualify_types(&tm_1, meta); // Extends generics into fq from the old symbols scope.
         old_type->stage_4_qualify_types(&tm_2, meta); // Extends generics into fq from the old symbols scope.
         old_type->stage_7_analyse_semantics(sm, meta); // Analyse the fq old type in this scope (for generics)
