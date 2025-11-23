@@ -962,7 +962,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
         | genex::to<std::vector>();
     if (not uninferred_args.empty()) {
         errors::SemanticErrorBuilder<errors::SppGenericParameterNotInferredError>().with_args(
-            *uninferred_args[0], *owner).with_scopes({sm.current_scope, owner_scope}).raise();
+            *uninferred_args[0], *owner).with_scopes({sm.current_scope, owner_scope ? owner_scope : sm.current_scope}).raise();
     }
 
     // At this point, all conflicts have been checked, so it is safe to only use the first inferred value.
