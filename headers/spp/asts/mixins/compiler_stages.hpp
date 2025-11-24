@@ -162,6 +162,7 @@ struct spp::asts::mixins::CompilerMetaDataState {
     ExpressionAst *unary_expression_rhs;
     bool skip_type_analysis_generic_checks;
     analyse::scopes::Scope *type_analysis_type_scope;
+    std::shared_ptr<TypeAst> ignore_cmp_generic;
     llvm::PHINode *phi_node;
     llvm::BasicBlock *end_bb;
 };

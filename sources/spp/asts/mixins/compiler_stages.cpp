@@ -117,7 +117,7 @@ auto spp::asts::mixins::CompilerMetaData::save() -> void {
         prevent_auto_generator_resume, let_stmt_explicit_type, let_stmt_value, let_stmt_from_uninitialized,
         loop_double_check_active, current_loop_depth, current_loop_ast, loop_return_types, object_init_type,
         infer_source, infer_target, postfix_expression_lhs, unary_expression_rhs, skip_type_analysis_generic_checks,
-        type_analysis_type_scope);
+        type_analysis_type_scope, ignore_cmp_generic);
 }
 
 
@@ -152,6 +152,7 @@ auto spp::asts::mixins::CompilerMetaData::restore() -> void {
     unary_expression_rhs = state.unary_expression_rhs;
     skip_type_analysis_generic_checks = state.skip_type_analysis_generic_checks;
     type_analysis_type_scope = state.type_analysis_type_scope;
+    ignore_cmp_generic = state.ignore_cmp_generic;
 }
 
 
