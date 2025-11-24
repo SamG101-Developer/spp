@@ -20,6 +20,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestClassAttributeAlias,
     test_valid_complex, R"(
     type Vec[ZZ] = std::vector::Vec[ZZ]
+    use std::boolean::Bool
 
     cls A {
         b: Vec[Bool]
