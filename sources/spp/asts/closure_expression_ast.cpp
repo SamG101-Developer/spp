@@ -25,9 +25,7 @@ spp::asts::ClosureExpressionAst::ClosureExpressionAst(
     tok(std::move(tok)),
     pc_group(std::move(pc_group)),
     body(std::move(body)) {
-    if (this->tok == nullptr) {
-        this->tok = std::make_unique<TokenAst>(pos_start(), lex::SppTokenType::KW_FUN, "fun");
-    }
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok, lex::SppTokenType::KW_FUN, "fun");
 }
 
 
@@ -84,19 +82,20 @@ auto spp::asts::ClosureExpressionAst::stage_7_analyse_semantics(
     pc_group->stage_7_analyse_semantics(sm, meta);
 
     // Update the meta args with the closure information for body analysis.
+    // The closure-wide save/restore allows for the "ret" to match the closure's inferred return type.
     meta->save();
-    meta->enclosing_function_scope = sm->current_scope;
-    auto scope_name = analyse::scopes::ScopeBlockName("<lambda-inner#" + std::to_string(pos_start()) + ">");
+    meta->enclosing_function_scope = sm->current_scope;  // this will be the closure-outer scope
+    sm->current_scope->parent = sm->current_scope->parent_module();
+
+    auto scope_name = analyse::scopes::ScopeBlockName("<closure-inner#" + std::to_string(pos_start()) + ">");
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
     meta->enclosing_function_flavour = tok.get();
     meta->enclosing_function_ret_type = {};
-    meta->current_lambda_outer_scope = parent_scope;
 
     // Analyse the body of the closure.
     body->stage_7_analyse_semantics(sm, meta);
-    const auto body_type = body->infer_type(sm, meta);
-    m_ret_type = not meta->enclosing_function_ret_type.empty() ? meta->enclosing_function_ret_type[0] : body_type;
-    meta->restore();
+    m_ret_type = not meta->enclosing_function_ret_type.empty() ? meta->enclosing_function_ret_type[0] : body->infer_type(sm, meta);
+    meta->restore(true);
 
     // Set the scope back.
     sm->current_scope = parent_scope;
@@ -110,17 +109,15 @@ auto spp::asts::ClosureExpressionAst::stage_8_check_memory(
     // Save the current scope for later resetting.
     const auto parent_scope = sm->current_scope;
     meta->save();
-    meta->current_lambda_outer_scope = parent_scope;
     pc_group->stage_8_check_memory(sm, meta);
 
     // Check the memory of the body of the closure.
     sm->move_to_next_scope();
     body->stage_8_check_memory(sm, meta);
-    meta->restore();
 
     // Set the scope back.
+    meta->restore();
     sm->current_scope = parent_scope;
-    // pc_group->stage_8_check_memory(sm, meta);
 }
 
 

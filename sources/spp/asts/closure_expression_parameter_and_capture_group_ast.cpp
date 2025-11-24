@@ -91,7 +91,7 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_7_analyse_se
     cap_group->stage_7_analyse_semantics(sm, meta);
 
     // New scope for parameters.
-    auto scope_name = analyse::scopes::ScopeBlockName("<lambda-outer#" + std::to_string(pos_start()) + ">");
+    auto scope_name = analyse::scopes::ScopeBlockName("<closure-outer#" + std::to_string(pos_start()) + ">");
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
     capture_group->captures = cap_group->args
         | genex::views::move
@@ -109,6 +109,7 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_8_check_memo
     mixins::CompilerMetaData *meta)
     -> void {
     // Analyse the arguments against the outer scope's symbols (temp move asts).
+    meta->current_lambda_outer_scope = sm->current_scope;
     auto caps = capture_group->captures
         | genex::views::move
         | genex::views::cast_smart<FunctionCallArgumentAst>()
