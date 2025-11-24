@@ -3,8 +3,6 @@
 
 
 struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeUnaryExpressionOperatorAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The convention token representing the borrowing convention. This indicates how the type is borrowed, immutably or
      * mutably.
@@ -26,6 +24,8 @@ protected:
     auto equals_op_borrow(TypeUnaryExpressionOperatorBorrowAst const &) const -> std::strong_ordering override;
 
 public:
+    SPP_AST_KEY_FUNCTIONS;
+
     auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
 
     auto ns_parts() -> std::vector<std::shared_ptr<IdentifierAst>> override;

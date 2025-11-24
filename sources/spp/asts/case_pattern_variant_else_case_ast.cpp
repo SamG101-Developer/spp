@@ -19,17 +19,20 @@ spp::asts::CasePatternVariantElseCaseAst::CasePatternVariantElseCaseAst(
 spp::asts::CasePatternVariantElseCaseAst::~CasePatternVariantElseCaseAst() = default;
 
 
-auto spp::asts::CasePatternVariantElseCaseAst::pos_start() const -> std::size_t {
+auto spp::asts::CasePatternVariantElseCaseAst::pos_start() const
+    -> std::size_t {
     return tok_else->pos_start();
 }
 
 
-auto spp::asts::CasePatternVariantElseCaseAst::pos_end() const -> std::size_t {
+auto spp::asts::CasePatternVariantElseCaseAst::pos_end() const
+    -> std::size_t {
     return case_expr->pos_end();
 }
 
 
-auto spp::asts::CasePatternVariantElseCaseAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::CasePatternVariantElseCaseAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<CasePatternVariantElseCaseAst>(
         ast_clone(tok_else),
         ast_clone(case_expr));
@@ -44,7 +47,9 @@ spp::asts::CasePatternVariantElseCaseAst::operator std::string() const {
 }
 
 
-auto spp::asts::CasePatternVariantElseCaseAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::CasePatternVariantElseCaseAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_else);
     SPP_PRINT_APPEND(case_expr);
@@ -67,4 +72,13 @@ auto spp::asts::CasePatternVariantElseCaseAst::stage_8_check_memory(
     -> void {
     // Forward memory checks into the case expression.
     case_expr->stage_8_check_memory(sm, meta);
+}
+
+
+auto spp::asts::CasePatternVariantElseCaseAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx) -> llvm::Value* {
+    // Delegate code generation to the case expression.
+    return case_expr->stage_10_code_gen_2(sm, meta, ctx);
 }

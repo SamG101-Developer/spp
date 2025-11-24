@@ -1,7 +1,7 @@
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/loop_else_statement_ast.hpp>
 #include <spp/asts/inner_scope_expression_ast.hpp>
+#include <spp/asts/loop_else_statement_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 
 
@@ -16,17 +16,20 @@ spp::asts::LoopElseStatementAst::LoopElseStatementAst(
 spp::asts::LoopElseStatementAst::~LoopElseStatementAst() = default;
 
 
-auto spp::asts::LoopElseStatementAst::pos_start() const -> std::size_t {
+auto spp::asts::LoopElseStatementAst::pos_start() const
+    -> std::size_t {
     return tok_else->pos_start();
 }
 
 
-auto spp::asts::LoopElseStatementAst::pos_end() const -> std::size_t {
+auto spp::asts::LoopElseStatementAst::pos_end() const
+    -> std::size_t {
     return tok_else->pos_end();
 }
 
 
-auto spp::asts::LoopElseStatementAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::LoopElseStatementAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<LoopElseStatementAst>(
         ast_clone(tok_else),
         ast_clone(body));
@@ -41,7 +44,9 @@ spp::asts::LoopElseStatementAst::operator std::string() const {
 }
 
 
-auto spp::asts::LoopElseStatementAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::LoopElseStatementAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_else);
     SPP_PRINT_APPEND(body);

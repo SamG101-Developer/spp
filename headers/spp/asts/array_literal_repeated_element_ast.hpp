@@ -12,8 +12,6 @@
  * information is required on declaration, the element type and size must be specified.
  */
 struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLiteralAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The token that represents the left square bracket @code [@endcode in the array literal. This introduces the array
      * literal.
@@ -44,13 +42,6 @@ struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLiteralAst {
      */
     std::unique_ptr<TokenAst> tok_r;
 
-protected:
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-
-    auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> std::strong_ordering override;
-
-public:
-
     /**
      * Construct the ArrayLiteral0Elements with the arguments matching the members.
      * @param[in] tok_l The token that represents the left square bracket @code [@endcode in the array literal.
@@ -68,6 +59,13 @@ public:
 
     ~ArrayLiteralRepeatedElementAst() override;
 
+protected:
+    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+
+    auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> std::strong_ordering override;
+
+public:
+    SPP_AST_KEY_FUNCTIONS;
 
     /**
      * Ensure that the element given is both copyable and not a borrow type, allowing it to be stored as multiple
@@ -86,6 +84,15 @@ public:
      * @param meta Associated metadata.
      */
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    /**
+     * Create an array type based on the internal element type and the number of elements.
+     * @param sm The scope manager to use for code generation.
+     * @param meta Associated metadata.
+     * @param ctx The LLVM context to use for code generation.
+     * @return The LLVM value representing the array literal.
+     */
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     /**
      * The inferred type of an array literal is always @code std::array::Arr[T, n]@endcode, where @c T is the type of

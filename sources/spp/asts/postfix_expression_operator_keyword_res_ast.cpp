@@ -1,23 +1,21 @@
-#include <spp/analyse/utils/type_utils.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
+#include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/convention_ast.hpp>
+#include <spp/asts/fold_expression_ast.hpp>
 #include <spp/asts/function_call_argument_ast.hpp>
 #include <spp/asts/function_call_argument_group_ast.hpp>
-#include <spp/asts/fold_expression_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_argument_type_keyword_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_keyword_res_ast.hpp>
 #include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
+#include <spp/asts/postfix_expression_operator_keyword_res_ast.hpp>
 #include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>
-
-#include <genex/actions/remove.hpp>
 
 
 spp::asts::PostfixExpressionOperatorKeywordResAst::PostfixExpressionOperatorKeywordResAst(
@@ -33,17 +31,20 @@ spp::asts::PostfixExpressionOperatorKeywordResAst::PostfixExpressionOperatorKeyw
 spp::asts::PostfixExpressionOperatorKeywordResAst::~PostfixExpressionOperatorKeywordResAst() = default;
 
 
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::pos_start() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::pos_start() const
+    -> std::size_t {
     return tok_dot->pos_start();
 }
 
 
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::pos_end() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::pos_end() const
+    -> std::size_t {
     return arg_group ? arg_group->pos_end() : tok_res->pos_end();
 }
 
 
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::clone() const
+    -> std::unique_ptr<Ast> {
     auto ast = std::make_unique<PostfixExpressionOperatorKeywordResAst>(
         ast_clone(tok_dot),
         ast_clone(tok_res),
@@ -62,7 +63,9 @@ spp::asts::PostfixExpressionOperatorKeywordResAst::operator std::string() const 
 }
 
 
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_dot);
     SPP_PRINT_APPEND(tok_res);

@@ -14,8 +14,8 @@
  * analysis checks.
  */
 struct spp::asts::FunctionPrototypeAst : virtual Ast, SupMemberAst, ModuleMemberAst, mixins::VisibilityEnabledAst {
-    SPP_AST_KEY_FUNCTIONS;
     friend struct AnnotationAst;
+    friend struct GenExpressionAst;
     friend struct PostfixExpressionOperatorFunctionCallAst;
     friend struct SupPrototypeExtensionAst;
 
@@ -58,6 +58,12 @@ protected:
      * generation.
      */
     std::vector<std::unique_ptr<FunctionPrototypeAst>> m_generic_implementations;
+
+    /**
+     * The LLVM generated function for this prototype. This is set during the first pass of code generation, and used
+     * for further codegen in the second pass (for function calls, etc).
+     */
+    llvm::Function *m_llvm_func;
 
 public:
     /**
@@ -137,6 +143,8 @@ public:
 
     ~FunctionPrototypeAst() override;
 
+    SPP_AST_KEY_FUNCTIONS;
+
 private:
     auto m_deduce_mock_class_type() const -> std::shared_ptr<TypeAst>;
 
@@ -160,4 +168,6 @@ public:
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value * override;
 };

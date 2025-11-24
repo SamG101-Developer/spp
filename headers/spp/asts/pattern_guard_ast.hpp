@@ -3,8 +3,6 @@
 
 
 struct spp::asts::PatternGuardAst final : virtual Ast {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c and keyword token. This is used to indicate that the pattern guard is being introduced, following a
      * pattern.
@@ -28,7 +26,11 @@ struct spp::asts::PatternGuardAst final : virtual Ast {
 
     ~PatternGuardAst() override;
 
+    SPP_AST_KEY_FUNCTIONS;
+
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

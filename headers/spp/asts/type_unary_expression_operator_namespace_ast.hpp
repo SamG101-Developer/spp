@@ -3,8 +3,6 @@
 
 
 struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : TypeUnaryExpressionOperatorAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The namespace token that represents the namespace in which the type is defined.
      */
@@ -32,6 +30,8 @@ protected:
     auto equals_op_namespace(TypeUnaryExpressionOperatorNamespaceAst const &) const -> std::strong_ordering override;
 
 public:
+    SPP_AST_KEY_FUNCTIONS;
+
     auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
 
     auto ns_parts() -> std::vector<std::shared_ptr<IdentifierAst>> override;

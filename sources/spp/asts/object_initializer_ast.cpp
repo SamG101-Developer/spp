@@ -14,7 +14,12 @@
 #include <spp/utils/ptr_cmp.hpp>
 
 #include <genex/to_container.hpp>
+#include <genex/actions/sort.hpp>
 #include <genex/views/cast_dynamic.hpp>
+#include <genex/views/concat.hpp>
+#include <genex/views/join.hpp>
+#include <genex/views/transform.hpp>
+#include <genex/algorithms/position.hpp>
 
 
 spp::asts::ObjectInitializerAst::ObjectInitializerAst(
@@ -130,6 +135,49 @@ auto spp::asts::ObjectInitializerAst::stage_8_check_memory(
     -> void {
     // Check the memory of the object argument group.
     arg_group->stage_8_check_memory(sm, meta);
+}
+
+
+auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Create an empty struct based on the llvm type.
+    const auto llvm_type = sm->current_scope->get_type_symbol(type)->llvm_info->llvm_type;
+    const auto aggregate = ctx->builder.CreateAlloca(llvm_type, nullptr, "obj_init.aggregate");
+
+    // Re-order the arguments to match the fields on the type.
+    const auto cls_sym = sm->current_scope->get_type_symbol(type);
+    const auto attributes = std::vector{cls_sym->scope}
+        | genex::views::concat(cls_sym->scope->sup_scopes())
+        | genex::views::transform([](auto const &scope) { return ast_cast<ClassPrototypeAst>(scope->ast)->impl.get(); })
+        | genex::views::transform([](auto const &impl) { return impl->members | genex::views::ptr | genex::to<std::vector>(); })
+        | genex::views::join
+        | genex::views::cast_dynamic<ClassAttributeAst*>()
+        | genex::to<std::vector>();
+
+    // Sort the arguments (by name) to match the type's attributes.
+    auto sorted_args = arg_group->args
+        | genex::views::ptr
+        | genex::to<std::vector>();
+
+    sorted_args |= genex::actions::sort([&attributes](auto const &a, auto const &b) {
+        const auto a_index = genex::algorithms::position(attributes, [&a](auto const &attr) { return *attr->name == *a->name; });
+        const auto b_index = genex::algorithms::position(attributes, [&b](auto const &attr) { return *attr->name == *b->name; });
+        return a_index < b_index;
+    });
+
+    // Set each attribute value in the aggregate.
+    for (auto i = 0uz; i < sorted_args.size(); ++i) {
+        const auto &arg = sorted_args[i];
+        const auto attr_ptr = ctx->builder.CreateStructGEP(llvm_type, aggregate, static_cast<std::uint32_t>(i), arg->name->val);
+        const auto val = arg->val->stage_10_code_gen_2(sm, meta, ctx);
+        ctx->builder.CreateStore(val, attr_ptr);
+    }
+
+    // Return the aggregate.
+    return ctx->builder.CreateLoad(llvm_type, aggregate, "obj_init.result");
 }
 
 

@@ -17,8 +17,8 @@
 #include <spp/asts/mixins/orderable_ast.hpp>
 
 #include <genex/to_container.hpp>
-#include <genex/views/duplicates.hpp>
 #include <genex/views/cast_dynamic.hpp>
+#include <genex/views/duplicates.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
@@ -75,6 +75,14 @@ auto spp::asts::FunctionParameterGroupAst::print(
     SPP_PRINT_EXTEND(params);
     SPP_PRINT_APPEND(tok_r);
     SPP_PRINT_END;
+}
+
+
+auto spp::asts::FunctionParameterGroupAst::get_all_params() const
+    -> std::vector<FunctionParameterAst*> {
+    return params
+        | genex::views::ptr
+        | genex::to<std::vector>();
 }
 
 

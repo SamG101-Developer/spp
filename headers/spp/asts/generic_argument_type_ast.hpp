@@ -21,4 +21,6 @@ struct spp::asts::GenericArgumentTypeAst : GenericArgumentAst {
         decltype(m_order_tag) order_tag);
 
     ~GenericArgumentTypeAst() override;
+
+    auto stage_4_qualify_types(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };

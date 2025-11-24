@@ -8,6 +8,8 @@
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/asts/type_identifier_ast.hpp>
+
 
 
 spp::asts::GenericParameterCompAst::GenericParameterCompAst(
@@ -51,8 +53,11 @@ auto spp::asts::GenericParameterCompAst::stage_4_qualify_types(
     mixins::CompilerMetaData *meta)
     -> void {
     // Qualify the type on the generic parameter (and in the symbol). Note: not possible to have a convention here.
+    meta->save();
+    meta->ignore_cmp_generic = name;
     type->stage_7_analyse_semantics(sm, meta);
     type = sm->current_scope->get_type_symbol(type)->fq_name();
+    meta->restore();
     sm->current_scope->get_var_symbol(IdentifierAst::from_type(*name))->type = type;
 }
 

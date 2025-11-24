@@ -67,6 +67,15 @@
     }
 
 
+// ensure the next token isn't of the given type
+#define PARSE_NEGATE(invalid)                  \
+    if (m_pos < m_tokens_len) {                \
+        if (m_tokens[m_pos].type == invalid) { \
+            return nullptr;                    \
+        }                                      \
+    }
+
+
 #define MAKE_METHOD_VECTOR(...) std::vector{                                                    \
     BOOST_PP_SEQ_FOR_EACH(WRAP_METHOD, BOOST_PP_EMPTY(), BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)) \
 }

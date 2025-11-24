@@ -2,8 +2,8 @@
 #include <spp/asts/token_ast.hpp>
 
 
-spp::asts::FoldExpressionAst::FoldExpressionAst(decltype(tok_ellipsis) &&tok_ellipsis) :
-    PrimaryExpressionAst(),
+spp::asts::FoldExpressionAst::FoldExpressionAst(
+    decltype(tok_ellipsis) &&tok_ellipsis) :
     tok_ellipsis(std::move(tok_ellipsis)) {
 }
 
@@ -11,17 +11,20 @@ spp::asts::FoldExpressionAst::FoldExpressionAst(decltype(tok_ellipsis) &&tok_ell
 spp::asts::FoldExpressionAst::~FoldExpressionAst() = default;
 
 
-auto spp::asts::FoldExpressionAst::pos_start() const -> std::size_t {
+auto spp::asts::FoldExpressionAst::pos_start() const
+    -> std::size_t {
     return tok_ellipsis->pos_start();
 }
 
 
-auto spp::asts::FoldExpressionAst::pos_end() const -> std::size_t {
+auto spp::asts::FoldExpressionAst::pos_end() const
+    -> std::size_t {
     return tok_ellipsis->pos_end();
 }
 
 
-auto spp::asts::FoldExpressionAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::FoldExpressionAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<FoldExpressionAst>(
         ast_clone(tok_ellipsis));
 }
@@ -34,7 +37,9 @@ spp::asts::FoldExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::FoldExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::FoldExpressionAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_ellipsis);
     SPP_PRINT_END;

@@ -3,7 +3,6 @@
 
 
 struct spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst final : LocalVariableAst {
-    SPP_AST_KEY_FUNCTIONS;
     friend struct CasePatternVariantDestructureSkipMultipleArgumentsAst;
 
     /**
@@ -30,6 +29,8 @@ struct spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst final : Local
         std::unique_ptr<LocalVariableAst> &&binding); // cast in ctor
 
     ~LocalVariableDestructureSkipMultipleArgumentsAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto extract_name() const -> std::shared_ptr<IdentifierAst> override;
 

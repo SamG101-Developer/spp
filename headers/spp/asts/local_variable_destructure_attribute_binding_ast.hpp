@@ -3,7 +3,6 @@
 
 
 struct spp::asts::LocalVariableDestructureAttributeBindingAst final : LocalVariableAst {
-    SPP_AST_KEY_FUNCTIONS;
     friend struct CasePatternVariantDestructureAttributeBindingAst;
 
     /**
@@ -34,6 +33,8 @@ struct spp::asts::LocalVariableDestructureAttributeBindingAst final : LocalVaria
         decltype(val) &&val);
 
     ~LocalVariableDestructureAttributeBindingAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto extract_name() const -> std::shared_ptr<IdentifierAst> override;
 };

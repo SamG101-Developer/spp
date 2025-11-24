@@ -3,7 +3,6 @@
 
 
 struct spp::asts::LoopExpressionAst final : PrimaryExpressionAst {
-    SPP_AST_KEY_FUNCTIONS;
 private:
     std::optional<std::tuple<ExpressionAst*, std::shared_ptr<TypeAst>, analyse::scopes::Scope*>> m_loop_exit_type_info;
 
@@ -44,9 +43,19 @@ public:
 
     ~LoopExpressionAst() override;
 
+    SPP_AST_KEY_FUNCTIONS;
+
+private:
+    auto m_codegen_condition_bool(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) const -> llvm::Value*;
+
+    auto m_codegen_condition_iter(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) const -> llvm::Value*;
+
+public:
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

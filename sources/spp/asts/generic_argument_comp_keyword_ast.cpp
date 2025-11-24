@@ -24,67 +24,7 @@ spp::asts::GenericArgumentCompKeywordAst::GenericArgumentCompKeywordAst(
 }
 
 
-auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
-    analyse::scopes::VariableSymbol const &sym)
-    -> std::unique_ptr<GenericArgumentCompKeywordAst> {
-    // Get the comptime value from the symbol's memory info.
-    const auto c = sym.memory_info->ast_comptime.get();
-    std::unique_ptr<ExpressionAst> value = nullptr;
-
-    // Depending on that the comptime AST is, get the value.
-    if (const auto comptime_param = ast_cast<GenericParameterCompAst>(c)) {
-        value = asts::ast_cast<ExpressionAst>(ast_clone(comptime_param->name));
-    }
-    else if (const auto comptime_arg = ast_cast<GenericArgumentCompAst>(c)) {
-        value = ast_clone(comptime_arg->val);
-    }
-    if (auto const *value_as_type = asts::ast_cast<TypeIdentifierAst>(value.get()); value_as_type != nullptr) {
-        value = IdentifierAst::from_type(*std::shared_ptr(ast_clone(value_as_type)));  // Don't remove "shared_ptr"
-    }
-
-    // Create the GenericArgumentCompKeywordAst with the name and value.
-    return std::make_unique<GenericArgumentCompKeywordAst>(
-        TypeIdentifierAst::from_identifier(*sym.name), nullptr, std::move(value));
-}
-
-
 spp::asts::GenericArgumentCompKeywordAst::~GenericArgumentCompKeywordAst() = default;
-
-
-auto spp::asts::GenericArgumentCompKeywordAst::pos_start() const -> std::size_t {
-    return name->pos_start();
-}
-
-
-auto spp::asts::GenericArgumentCompKeywordAst::pos_end() const -> std::size_t {
-    return val->pos_end();
-}
-
-
-auto spp::asts::GenericArgumentCompKeywordAst::clone() const -> std::unique_ptr<Ast> {
-    return std::make_unique<GenericArgumentCompKeywordAst>(
-        ast_clone(name),
-        ast_clone(tok_assign),
-        ast_clone(val));
-}
-
-
-spp::asts::GenericArgumentCompKeywordAst::operator std::string() const {
-    SPP_STRING_START;
-    SPP_STRING_APPEND(name);
-    SPP_STRING_APPEND(tok_assign);
-    SPP_STRING_APPEND(val);
-    SPP_STRING_END;
-}
-
-
-auto spp::asts::GenericArgumentCompKeywordAst::print(meta::AstPrinter &printer) const -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(tok_assign);
-    SPP_PRINT_APPEND(val);
-    SPP_PRINT_END;
-}
 
 
 auto spp::asts::GenericArgumentCompKeywordAst::equals(
@@ -101,6 +41,71 @@ auto spp::asts::GenericArgumentCompKeywordAst::equals_generic_argument_comp_keyw
         return std::strong_ordering::equal;
     }
     return std::strong_ordering::less;
+}
+
+
+auto spp::asts::GenericArgumentCompKeywordAst::pos_start() const
+    -> std::size_t {
+    return name->pos_start();
+}
+
+
+auto spp::asts::GenericArgumentCompKeywordAst::pos_end() const
+    -> std::size_t {
+    return val->pos_end();
+}
+
+
+auto spp::asts::GenericArgumentCompKeywordAst::clone() const
+    -> std::unique_ptr<Ast> {
+    return std::make_unique<GenericArgumentCompKeywordAst>(
+        ast_clone(name),
+        ast_clone(tok_assign),
+        ast_clone(val));
+}
+
+
+spp::asts::GenericArgumentCompKeywordAst::operator std::string() const {
+    SPP_STRING_START;
+    SPP_STRING_APPEND(name);
+    SPP_STRING_APPEND(tok_assign);
+    SPP_STRING_APPEND(val);
+    SPP_STRING_END;
+}
+
+
+auto spp::asts::GenericArgumentCompKeywordAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
+    SPP_PRINT_START;
+    SPP_PRINT_APPEND(name);
+    SPP_PRINT_APPEND(tok_assign);
+    SPP_PRINT_APPEND(val);
+    SPP_PRINT_END;
+}
+
+
+auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
+    analyse::scopes::VariableSymbol const &sym)
+    -> std::unique_ptr<GenericArgumentCompKeywordAst> {
+    // Get the comptime value from the symbol's memory info.
+    const auto c = sym.memory_info->ast_comptime.get();
+    std::unique_ptr<ExpressionAst> value = nullptr;
+
+    // Depending on that the comptime AST is, get the value.
+    if (const auto comptime_param = ast_cast<GenericParameterCompAst>(c)) {
+        value = asts::ast_cast<ExpressionAst>(ast_clone(comptime_param->name));
+    }
+    else if (const auto comptime_arg = ast_cast<GenericArgumentCompAst>(c)) {
+        value = ast_clone(comptime_arg->val);
+    }
+    if (auto const *value_as_type = asts::ast_cast<TypeIdentifierAst>(value.get()); value_as_type != nullptr) {
+        value = IdentifierAst::from_type(*std::shared_ptr(ast_clone(value_as_type))); // Don't remove "shared_ptr"
+    }
+
+    // Create the GenericArgumentCompKeywordAst with the name and value.
+    return std::make_unique<GenericArgumentCompKeywordAst>(
+        TypeIdentifierAst::from_identifier(*sym.name), nullptr, std::move(value));
 }
 
 

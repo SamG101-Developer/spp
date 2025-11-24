@@ -3,8 +3,6 @@
 
 
 struct spp::asts::GenericParameterCompVariadicAst final : GenericParameterCompAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The token that represents the @c .. ellipsis in the generic parameter. This indicates that the parameter is
      * variadic, meaning it can accept multiple values.
@@ -27,4 +25,6 @@ struct spp::asts::GenericParameterCompVariadicAst final : GenericParameterCompAs
         decltype(type) &&type);
 
     ~GenericParameterCompVariadicAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 };

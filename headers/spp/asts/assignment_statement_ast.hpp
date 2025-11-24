@@ -92,4 +92,15 @@ struct spp::asts::AssignmentStatementAst final : StatementAst {
      * @param[in,out] meta Associated metadata.
      */
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    /**
+     * Create the LLVM IR code to perform the assignment operation. This involves generating the code for both the
+     * left-hand-side and right-hand-side expressions, and then creating the appropriate store instructions to
+     * assign the values.
+     * @param sm The scope manager to get symbol's memory information from.
+     * @param meta Associated metadata.
+     * @param ctx The LLVM context to use for code generation.
+     * @return The LLVM value representing the assignment operation.
+     */
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value * override;
 };

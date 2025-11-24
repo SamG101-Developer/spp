@@ -3,8 +3,6 @@
 
 
 struct spp::asts::CasePatternVariantDestructureAttributeBindingAst final : CasePatternVariantAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The name of the attribute. This is the identifier that is used to refer to the attribute of the object being
      * destructured.
@@ -33,6 +31,8 @@ struct spp::asts::CasePatternVariantDestructureAttributeBindingAst final : CaseP
         decltype(val) &&val);
 
     ~CasePatternVariantDestructureAttributeBindingAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto convert_to_variable(mixins::CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
 };

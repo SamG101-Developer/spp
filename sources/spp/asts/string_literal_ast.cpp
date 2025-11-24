@@ -14,6 +14,23 @@ spp::asts::StringLiteralAst::StringLiteralAst(
 spp::asts::StringLiteralAst::~StringLiteralAst() = default;
 
 
+auto spp::asts::StringLiteralAst::equals(
+    ExpressionAst const &other) const
+    -> std::strong_ordering {
+    return other.equals_string_literal(*this);
+}
+
+
+auto spp::asts::StringLiteralAst::equals_string_literal(
+    StringLiteralAst const &other) const
+    -> std::strong_ordering {
+    if (val->token_data == other.val->token_data) {
+        return std::strong_ordering::equal;
+    }
+    return std::strong_ordering::less;
+}
+
+
 auto spp::asts::StringLiteralAst::pos_start() const -> std::size_t {
     return val->pos_start();
 }
@@ -41,23 +58,6 @@ auto spp::asts::StringLiteralAst::print(meta::AstPrinter &printer) const -> std:
     SPP_PRINT_START;
     SPP_PRINT_APPEND(val);
     SPP_PRINT_END;
-}
-
-
-auto spp::asts::StringLiteralAst::equals(
-    ExpressionAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_string_literal(*this);
-}
-
-
-auto spp::asts::StringLiteralAst::equals_string_literal(
-    StringLiteralAst const &other) const
-    -> std::strong_ordering {
-    if (val->token_data == other.val->token_data) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
 }
 
 

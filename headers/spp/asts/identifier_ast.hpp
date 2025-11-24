@@ -3,26 +3,11 @@
 
 
 struct spp::asts::IdentifierAst final : PrimaryExpressionAst, std::enable_shared_from_this<IdentifierAst> {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The internal value of the identifier. This is the name of the identifier, such as @c variable or @c my_function.
      */
     std::string val;
 
-protected:
-    SPP_ATTR_ALWAYS_INLINE auto equals(ExpressionAst const &other) const -> std::strong_ordering override {
-        return other.equals_identifier(*this);
-    }
-
-    SPP_ATTR_ALWAYS_INLINE auto equals_identifier(IdentifierAst const & other) const -> std::strong_ordering override {
-        if (val == other.val) {
-            return std::strong_ordering::equal;
-        }
-        return std::strong_ordering::less;
-    }
-
-public:
     /**
      * Construct the IdentifierAst with the arguments matching the members.
      * @param[in] pos The position of the identifier in the source code.
@@ -36,11 +21,30 @@ public:
 
     ~IdentifierAst() override;
 
-    SPP_ATTR_ALWAYS_INLINE auto operator<=>(IdentifierAst const& that) const -> std::strong_ordering {
+protected:
+    SPP_ATTR_ALWAYS_INLINE auto equals(ExpressionAst const &other) const -> std::strong_ordering override {
+        return other.equals_identifier(*this);
+    }
+
+    SPP_ATTR_ALWAYS_INLINE auto equals_identifier(IdentifierAst const &other) const -> std::strong_ordering override {
+        if (val == other.val) {
+            return std::strong_ordering::equal;
+        }
+        return std::strong_ordering::less;
+    }
+
+public:
+    SPP_AST_KEY_FUNCTIONS;
+
+    SPP_ATTR_ALWAYS_INLINE auto operator<=>(IdentifierAst const &that) const -> std::strong_ordering {
         return val <=> that.val;
     }
 
-    SPP_ATTR_ALWAYS_INLINE auto operator==(IdentifierAst const& that) const -> bool {
+    SPP_ATTR_ALWAYS_INLINE auto operator==(IdentifierAst const &that) const -> bool {
+        return equals(that) == std::strong_ordering::equal;
+    }
+
+    SPP_ATTR_ALWAYS_INLINE auto operator==(ExpressionAst const &that) const -> bool {
         return equals(that) == std::strong_ordering::equal;
     }
 

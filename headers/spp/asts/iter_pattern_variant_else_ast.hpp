@@ -4,8 +4,6 @@
 
 
 struct spp::asts::IterPatternVariantElseAst final : IterPatternVariantAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c else token that indicates the pattern variant is a "catch-all". This is used with any generator.
      */
@@ -19,4 +17,6 @@ struct spp::asts::IterPatternVariantElseAst final : IterPatternVariantAst {
         decltype(tok_else) &&tok_else);
 
     ~IterPatternVariantElseAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 };

@@ -23,17 +23,20 @@ spp::asts::IterExpressionBranchAst::IterExpressionBranchAst(
 spp::asts::IterExpressionBranchAst::~IterExpressionBranchAst() = default;
 
 
-auto spp::asts::IterExpressionBranchAst::pos_start() const -> std::size_t {
+auto spp::asts::IterExpressionBranchAst::pos_start() const
+    -> std::size_t {
     return pattern->pos_start();
 }
 
 
-auto spp::asts::IterExpressionBranchAst::pos_end() const -> std::size_t {
+auto spp::asts::IterExpressionBranchAst::pos_end() const
+    -> std::size_t {
     return body->pos_end();
 }
 
 
-auto spp::asts::IterExpressionBranchAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::IterExpressionBranchAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<IterExpressionBranchAst>(
         ast_clone(pattern),
         ast_clone(body),
@@ -50,12 +53,23 @@ spp::asts::IterExpressionBranchAst::operator std::string() const {
 }
 
 
-auto spp::asts::IterExpressionBranchAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::IterExpressionBranchAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(pattern);
     SPP_PRINT_APPEND(body);
     SPP_PRINT_APPEND(guard);
     SPP_PRINT_END;
+}
+
+
+auto spp::asts::IterExpressionBranchAst::infer_type(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
+    -> std::shared_ptr<TypeAst> {
+    // The type of the branch is the type of the body.
+    return body->infer_type(sm, meta);
 }
 
 
@@ -79,7 +93,8 @@ auto spp::asts::IterExpressionBranchAst::stage_7_analyse_semantics(
 
 auto spp::asts::IterExpressionBranchAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    mixins::CompilerMetaData *meta)
+    -> void {
     // Move into the branch's scope.
     sm->move_to_next_scope();
 
@@ -90,13 +105,4 @@ auto spp::asts::IterExpressionBranchAst::stage_8_check_memory(
 
     // Move out of the branch's scope.
     sm->move_out_of_current_scope();
-}
-
-
-auto spp::asts::IterExpressionBranchAst::infer_type(
-    ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
-    -> std::shared_ptr<TypeAst> {
-    // The type of the branch is the type of the body.
-    return body->infer_type(sm, meta);
 }

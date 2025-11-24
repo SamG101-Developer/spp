@@ -7,8 +7,6 @@
  * module members that define the functionality and structure of the module.
  */
 struct spp::asts::ModuleImplementationAst final : virtual Ast {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The list of module members in the implementation. This can include function implementations, class implementations,
      * and other module-level constructs.
@@ -23,6 +21,8 @@ struct spp::asts::ModuleImplementationAst final : virtual Ast {
         decltype(members) &&members);
 
     ~ModuleImplementationAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_1_pre_process(Ast *ctx) -> void override;
 

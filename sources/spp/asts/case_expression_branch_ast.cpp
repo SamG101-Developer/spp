@@ -15,7 +15,9 @@
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 
+#include <genex/views/drop.hpp>
 #include <genex/views/for_each.hpp>
+#include <genex/views/ptr.hpp>
 
 
 spp::asts::CaseExpressionBranchAst::CaseExpressionBranchAst(
@@ -34,17 +36,20 @@ spp::asts::CaseExpressionBranchAst::CaseExpressionBranchAst(
 spp::asts::CaseExpressionBranchAst::~CaseExpressionBranchAst() = default;
 
 
-auto spp::asts::CaseExpressionBranchAst::pos_start() const -> std::size_t {
+auto spp::asts::CaseExpressionBranchAst::pos_start() const
+    -> std::size_t {
     return op ? op->pos_start() : patterns.front()->pos_start();
 }
 
 
-auto spp::asts::CaseExpressionBranchAst::pos_end() const -> std::size_t {
+auto spp::asts::CaseExpressionBranchAst::pos_end() const
+    -> std::size_t {
     return body->pos_end();
 }
 
 
-auto spp::asts::CaseExpressionBranchAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::CaseExpressionBranchAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<CaseExpressionBranchAst>(
         ast_clone(op),
         ast_clone_vec(patterns),
@@ -63,7 +68,9 @@ spp::asts::CaseExpressionBranchAst::operator std::string() const {
 }
 
 
-auto spp::asts::CaseExpressionBranchAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::CaseExpressionBranchAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(op);
     SPP_PRINT_EXTEND(patterns);
@@ -73,9 +80,29 @@ auto spp::asts::CaseExpressionBranchAst::print(meta::AstPrinter &printer) const 
 }
 
 
+auto spp::asts::CaseExpressionBranchAst::m_codegen_combine_patterns(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx) -> llvm::Value* {
+    // If there is only one pattern, generate its condition directly.
+    // Otherwise, collect all the pattern conditions and combine them with OR.
+    auto combined_cond = patterns.front()->stage_10_code_gen_2(sm, meta, ctx);
+    for (auto const &pattern : patterns | genex::views::ptr | genex::views::drop(1)) {
+        const auto pattern_cond = pattern->stage_10_code_gen_2(sm, meta, ctx);
+        combined_cond = ctx->builder.CreateOr(combined_cond, pattern_cond);
+    }
+    if (guard) {
+        const auto guard_cond = guard->stage_10_code_gen_2(sm, meta, ctx);
+        combined_cond = ctx->builder.CreateAnd(combined_cond, guard_cond);
+    }
+    return combined_cond;
+}
+
+
 auto spp::asts::CaseExpressionBranchAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    mixins::CompilerMetaData *meta)
+    -> void {
     auto scope_name = analyse::scopes::ScopeBlockName("<case-pattern#" + std::to_string(pos_start()) + ">");
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
 
@@ -107,7 +134,8 @@ auto spp::asts::CaseExpressionBranchAst::stage_7_analyse_semantics(
 
 auto spp::asts::CaseExpressionBranchAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    mixins::CompilerMetaData *meta)
+    -> void {
     // Move into the branch's scope.
     sm->move_to_next_scope();
 
@@ -120,6 +148,34 @@ auto spp::asts::CaseExpressionBranchAst::stage_8_check_memory(
 
     // Move out of the branch's scope.
     sm->move_out_of_current_scope();
+}
+
+
+auto spp::asts::CaseExpressionBranchAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate the branch architecture.
+    sm->move_to_next_scope();
+    const auto func = ctx->builder.GetInsertBlock()->getParent();
+    const auto branch_bb = llvm::BasicBlock::Create(ctx->context, "case.branch", func);
+
+    // Get the condition.
+    const auto match_cond = m_codegen_combine_patterns(sm, meta, ctx);
+    const auto next_bb = llvm::BasicBlock::Create(ctx->context, "case.next", func);
+    ctx->builder.CreateCondBr(match_cond, branch_bb, next_bb);
+    ctx->builder.SetInsertPoint(branch_bb);
+
+    // Generate the body.
+    const auto branch_val = body->stage_10_code_gen_2(sm, meta, ctx);
+    meta->phi_node->addIncoming(branch_val, branch_bb);
+    ctx->builder.CreateBr(meta->end_bb);
+    ctx->builder.SetInsertPoint(next_bb);
+
+    // Move out of the branch's scope.
+    sm->move_out_of_current_scope();
+    return nullptr;
 }
 
 

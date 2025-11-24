@@ -3,8 +3,6 @@
 
 
 struct spp::asts::GenericParameterTypeOptionalAst final : GenericParameterTypeAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The token that separates the parameter name from the default value.
      */
@@ -29,6 +27,8 @@ struct spp::asts::GenericParameterTypeOptionalAst final : GenericParameterTypeAs
         decltype(default_val) &&default_val);
 
     ~GenericParameterTypeOptionalAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_4_qualify_types(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

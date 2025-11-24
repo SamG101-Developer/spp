@@ -3,8 +3,6 @@
 
 
 struct spp::asts::LoopConditionBooleanAst final : LoopConditionAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The expression that represents the condition of the loop. This is a boolean expression that evaluates to a
      * boolean value.
@@ -19,6 +17,8 @@ struct spp::asts::LoopConditionBooleanAst final : LoopConditionAst {
         decltype(cond) &&cond);
 
     ~LoopConditionBooleanAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

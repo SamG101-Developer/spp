@@ -1,7 +1,7 @@
+#include <spp/pch.hpp>
 #include <spp/asts/generic_parameter_type_inline_constraints_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
-#include <spp/pch.hpp>
 
 
 spp::asts::GenericParameterTypeInlineConstraintsAst::GenericParameterTypeInlineConstraintsAst(
@@ -15,17 +15,20 @@ spp::asts::GenericParameterTypeInlineConstraintsAst::GenericParameterTypeInlineC
 spp::asts::GenericParameterTypeInlineConstraintsAst::~GenericParameterTypeInlineConstraintsAst() = default;
 
 
-auto spp::asts::GenericParameterTypeInlineConstraintsAst::pos_start() const -> std::size_t {
+auto spp::asts::GenericParameterTypeInlineConstraintsAst::pos_start() const
+    -> std::size_t {
     return tok_colon->pos_start();
 }
 
 
-auto spp::asts::GenericParameterTypeInlineConstraintsAst::pos_end() const -> std::size_t {
+auto spp::asts::GenericParameterTypeInlineConstraintsAst::pos_end() const
+    -> std::size_t {
     return constraints.empty() ? tok_colon->pos_end() : constraints.back()->pos_end();
 }
 
 
-auto spp::asts::GenericParameterTypeInlineConstraintsAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::GenericParameterTypeInlineConstraintsAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<GenericParameterTypeInlineConstraintsAst>(
         ast_clone(tok_colon),
         ast_clone_vec(constraints));
@@ -40,7 +43,9 @@ spp::asts::GenericParameterTypeInlineConstraintsAst::operator std::string() cons
 }
 
 
-auto spp::asts::GenericParameterTypeInlineConstraintsAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::GenericParameterTypeInlineConstraintsAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_colon);
     SPP_PRINT_EXTEND(constraints);

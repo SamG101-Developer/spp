@@ -17,6 +17,8 @@
 #include <genex/views/for_each.hpp>
 #include <genex/views/zip.hpp>
 
+#include <llvm/IR/Type.h>
+
 
 spp::asts::ArrayLiteralExplicitElementsAst::ArrayLiteralExplicitElementsAst(
     decltype(tok_l) &&tok_l,
@@ -31,6 +33,25 @@ spp::asts::ArrayLiteralExplicitElementsAst::ArrayLiteralExplicitElementsAst(
 
 
 spp::asts::ArrayLiteralExplicitElementsAst::~ArrayLiteralExplicitElementsAst() = default;
+
+
+auto spp::asts::ArrayLiteralExplicitElementsAst::equals_array_literal_explicit_elements(
+    ArrayLiteralExplicitElementsAst const &other) const
+    -> std::strong_ordering {
+    if (genex::algorithms::all_of(
+        genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::to<std::vector>(),
+        [](auto &&pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
+        return std::strong_ordering::equal;
+    }
+    return std::strong_ordering::less;
+}
+
+
+auto spp::asts::ArrayLiteralExplicitElementsAst::equals(
+    ExpressionAst const &other) const
+    -> std::strong_ordering {
+    return other.equals_array_literal_explicit_elements(*this);
+}
 
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::pos_start() const
@@ -71,25 +92,6 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::print(
     SPP_PRINT_EXTEND(elems);
     SPP_PRINT_APPEND(tok_r);
     SPP_PRINT_END;
-}
-
-
-auto spp::asts::ArrayLiteralExplicitElementsAst::equals_array_literal_explicit_elements(
-    ArrayLiteralExplicitElementsAst const &other) const
-    -> std::strong_ordering {
-    if (genex::algorithms::all_of(
-        genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::to<std::vector>(),
-        [](auto &&pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
-}
-
-
-auto spp::asts::ArrayLiteralExplicitElementsAst::equals(
-    ExpressionAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_array_literal_explicit_elements(*this);
 }
 
 
@@ -135,15 +137,45 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_7_analyse_semantics(
 
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::stage_8_check_memory(
-    ScopeManager * sm,
-    mixins::CompilerMetaData * meta)
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta)
     -> void {
     // Check the memory of each element in the array literal.
-    for (auto const& elem: elems) {
+    for (auto const &elem : elems) {
         elem->stage_8_check_memory(sm, meta);
         analyse::utils::mem_utils::validate_symbol_memory(
             *elem, *elem, *sm, true, true, true, true, true, false, meta);
     }
+}
+
+
+auto spp::asts::ArrayLiteralExplicitElementsAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Collect the generated versions of the elements.
+    auto vals = std::vector<llvm::Value*>{};
+    vals.reserve(elems.size());
+    for (auto const &elem : elems) {
+        vals.emplace_back(elem->stage_10_code_gen_2(sm, meta, ctx));
+    }
+
+    // Create the array type and allocation.
+    const auto elem_ty = vals[0]->getType();
+    const auto arr_ty = llvm::ArrayType::get(elem_ty, vals.size());
+    const auto arr_alloc = ctx->builder.CreateAlloca(arr_ty);
+
+    // Store the elements in the array allocation.
+    for (auto i = 0uz; i < vals.size(); ++i) {
+        const auto idx0 = llvm::ConstantInt::get(ctx->context, llvm::APInt(64, 0));
+        const auto idx1 = llvm::ConstantInt::get(ctx->context, llvm::APInt(64, i));
+        const auto elem_ptr = ctx->builder.CreateGEP(arr_ty, arr_alloc, {idx0, idx1});
+        ctx->builder.CreateStore(vals[i], elem_ptr);
+    }
+
+    // Return the array allocation.
+    return arr_alloc;
 }
 
 

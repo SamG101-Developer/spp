@@ -1,10 +1,10 @@
+#include <spp/asts/generic_argument_group_ast.hpp>
+#include <spp/asts/generic_argument_type_ast.hpp>
 #include <spp/asts/iter_pattern_variant_exception_ast.hpp>
 #include <spp/asts/let_statement_initialized_ast.hpp>
 #include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_ast.hpp>
-#include <spp/asts/object_initializer_ast.hpp>
 #include <spp/asts/object_initializer_argument_group_ast.hpp>
+#include <spp/asts/object_initializer_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
@@ -22,17 +22,20 @@ spp::asts::IterPatternVariantExceptionAst::IterPatternVariantExceptionAst(
 spp::asts::IterPatternVariantExceptionAst::~IterPatternVariantExceptionAst() = default;
 
 
-auto spp::asts::IterPatternVariantExceptionAst::pos_start() const -> std::size_t {
+auto spp::asts::IterPatternVariantExceptionAst::pos_start() const
+    -> std::size_t {
     return tok_exc->pos_start();
 }
 
 
-auto spp::asts::IterPatternVariantExceptionAst::pos_end() const -> std::size_t {
+auto spp::asts::IterPatternVariantExceptionAst::pos_end() const
+    -> std::size_t {
     return var->pos_end();
 }
 
 
-auto spp::asts::IterPatternVariantExceptionAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::IterPatternVariantExceptionAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<IterPatternVariantExceptionAst>(
         ast_clone(tok_exc),
         ast_clone(var));
@@ -47,7 +50,9 @@ spp::asts::IterPatternVariantExceptionAst::operator std::string() const {
 }
 
 
-auto spp::asts::IterPatternVariantExceptionAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::IterPatternVariantExceptionAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_exc);
     SPP_PRINT_APPEND(var);

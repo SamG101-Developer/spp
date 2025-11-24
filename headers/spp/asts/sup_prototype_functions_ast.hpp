@@ -13,8 +13,6 @@
  * @endcode
  */
 struct spp::asts::SupPrototypeFunctionsAst final : virtual Ast, ModuleMemberAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c sup keyword that represents the start of the superimposition. This is used to indicate that a type is
      * being extended with additional methods.
@@ -53,6 +51,8 @@ struct spp::asts::SupPrototypeFunctionsAst final : virtual Ast, ModuleMemberAst 
         decltype(impl) &&impl);
 
     ~SupPrototypeFunctionsAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_1_pre_process(Ast *ctx) -> void override;
 

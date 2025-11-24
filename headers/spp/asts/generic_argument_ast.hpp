@@ -64,7 +64,7 @@ protected:
     virtual auto equals(GenericArgumentAst const &other) const -> std::strong_ordering = 0;
 
 public:
-    GenericArgumentAst(decltype(m_order_tag) order_tag);
+    explicit GenericArgumentAst(decltype(m_order_tag) order_tag);
     ~GenericArgumentAst() override;
     auto operator<=>(GenericArgumentAst const &other) const -> std::strong_ordering;
     auto operator==(GenericArgumentAst const &other) const -> bool;

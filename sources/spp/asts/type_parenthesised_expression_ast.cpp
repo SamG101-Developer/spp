@@ -17,17 +17,20 @@ spp::asts::TypeParenthesisedExpressionAst::TypeParenthesisedExpressionAst(
 spp::asts::TypeParenthesisedExpressionAst::~TypeParenthesisedExpressionAst() = default;
 
 
-auto spp::asts::TypeParenthesisedExpressionAst::pos_start() const -> std::size_t {
+auto spp::asts::TypeParenthesisedExpressionAst::pos_start() const
+    -> std::size_t {
     return tok_l->pos_start();
 }
 
 
-auto spp::asts::TypeParenthesisedExpressionAst::pos_end() const -> std::size_t {
+auto spp::asts::TypeParenthesisedExpressionAst::pos_end() const
+    -> std::size_t {
     return tok_r->pos_end();
 }
 
 
-auto spp::asts::TypeParenthesisedExpressionAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::TypeParenthesisedExpressionAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<TypeParenthesisedExpressionAst>(
         ast_clone(tok_l),
         ast_clone(expr),
@@ -44,7 +47,9 @@ spp::asts::TypeParenthesisedExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypeParenthesisedExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::TypeParenthesisedExpressionAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);
     SPP_PRINT_APPEND(expr);
@@ -53,6 +58,7 @@ auto spp::asts::TypeParenthesisedExpressionAst::print(meta::AstPrinter &printer)
 }
 
 
-auto spp::asts::TypeParenthesisedExpressionAst::convert() -> std::unique_ptr<TypeAst> {
+auto spp::asts::TypeParenthesisedExpressionAst::convert()
+    -> std::unique_ptr<TypeAst> {
     return std::unique_ptr<TypeAst>(expr.get());
 }

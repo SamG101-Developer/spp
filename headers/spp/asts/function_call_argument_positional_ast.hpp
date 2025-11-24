@@ -7,8 +7,6 @@
  * to be matched by an index rather than a keyword. It also support for unpacking a tuple into arguments.
  */
 struct spp::asts::FunctionCallArgumentPositionalAst : FunctionCallArgumentAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The token that represents the @c .. unpacking operator. This is used to indicate that the argument is a tuple
      * being unpacked into the resulting arguments.
@@ -27,4 +25,6 @@ struct spp::asts::FunctionCallArgumentPositionalAst : FunctionCallArgumentAst {
         decltype(val) &&val);
 
     ~FunctionCallArgumentPositionalAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 };

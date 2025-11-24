@@ -32,13 +32,6 @@ spp::asts::ClosureExpressionCaptureGroupAst::ClosureExpressionCaptureGroupAst(
 spp::asts::ClosureExpressionCaptureGroupAst::~ClosureExpressionCaptureGroupAst() = default;
 
 
-auto spp::asts::ClosureExpressionCaptureGroupAst::new_empty()
-    -> std::unique_ptr<ClosureExpressionCaptureGroupAst> {
-    return std::make_unique<ClosureExpressionCaptureGroupAst>(
-        nullptr, decltype(captures)());
-}
-
-
 auto spp::asts::ClosureExpressionCaptureGroupAst::pos_start() const
     -> std::size_t {
     return tok_caps->pos_start();
@@ -74,6 +67,13 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::print(
     SPP_PRINT_APPEND(tok_caps).append(" ");
     SPP_PRINT_EXTEND(captures);
     SPP_PRINT_END;
+}
+
+
+auto spp::asts::ClosureExpressionCaptureGroupAst::new_empty()
+    -> std::unique_ptr<ClosureExpressionCaptureGroupAst> {
+    return std::make_unique<ClosureExpressionCaptureGroupAst>(
+        nullptr, decltype(captures)());
 }
 
 

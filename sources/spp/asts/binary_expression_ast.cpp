@@ -191,6 +191,16 @@ auto spp::asts::BinaryExpressionAst::stage_8_check_memory(
 }
 
 
+auto spp::asts::BinaryExpressionAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Forward the code generation to the mapped function.
+    return m_mapped_func->stage_10_code_gen_2(sm, meta, ctx);
+}
+
+
 auto spp::asts::BinaryExpressionAst::infer_type(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)

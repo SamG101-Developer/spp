@@ -1,4 +1,5 @@
 #pragma once
+#include <spp/macros.hpp>
 #include <spp/asts/_fwd.hpp>
 #include <spp/asts/utils/visbility.hpp>
 #include <spp/codegen/llvm_sym_info.hpp>
@@ -78,6 +79,8 @@ struct spp::analyse::scopes::VariableSymbol final : Symbol {
 
     std::unique_ptr<utils::mem_utils::MemoryInfo> memory_info;
 
+    std::unique_ptr<codegen::LlvmVarSymInfo> llvm_info;
+
     VariableSymbol(
         std::shared_ptr<asts::IdentifierAst> name,
         std::shared_ptr<asts::TypeAst> type,
@@ -96,14 +99,18 @@ struct spp::analyse::scopes::VariableSymbol final : Symbol {
 };
 
 
-struct spp::analyse::scopes::TypeSymbol : Symbol {
+struct spp::analyse::scopes::TypeSymbol final : Symbol {
     std::shared_ptr<asts::TypeIdentifierAst> name;
 
     asts::ClassPrototypeAst *type;
 
+    std::unique_ptr<asts::TypeStatementAst> alias_stmt;
+
     Scope *scope;
 
     Scope *scope_defined_in;
+
+    Scope *scope_module;
 
     bool is_generic = false;
 
@@ -117,13 +124,14 @@ struct spp::analyse::scopes::TypeSymbol : Symbol {
 
     TypeSymbol *generic_impl;
 
-    std::unique_ptr<codegen::LlvmSymInfo> llvm_info;
+    std::unique_ptr<codegen::LlvmTypeSymInfo> llvm_info;
 
     TypeSymbol(
         std::shared_ptr<asts::TypeIdentifierAst> name,
         asts::ClassPrototypeAst *type,
         Scope *scope,
         Scope *scope_defined_in,
+        Scope *scope_module = nullptr,
         bool is_generic = false,
         bool is_directly_copyable = false,
         asts::utils::Visibility visibility = asts::utils::Visibility::PUBLIC,
@@ -138,35 +146,35 @@ struct spp::analyse::scopes::TypeSymbol : Symbol {
         TypeSymbol const &that) const
         -> bool;
 
-    SPP_ATTR_NODISCARD virtual auto fq_name() const
+    SPP_ATTR_NODISCARD auto fq_name() const
         -> std::shared_ptr<asts::TypeAst>;
 };
 
 
-struct spp::analyse::scopes::AliasSymbol final : TypeSymbol {
-    std::shared_ptr<TypeSymbol> old_sym = nullptr;
-
-    AliasSymbol(
-        std::shared_ptr<asts::TypeIdentifierAst> name,
-        asts::ClassPrototypeAst *type,
-        Scope *scope,
-        Scope *scope_defined_in,
-        std::shared_ptr<TypeSymbol> const &old_sym,
-        bool is_generic = false,
-        bool is_directly_copyable = false,
-        asts::utils::Visibility visibility = asts::utils::Visibility::PUBLIC,
-        std::unique_ptr<asts::ConventionAst> &&convention = nullptr
-    );
-
-    AliasSymbol(
-        AliasSymbol const &that);
-
-    explicit operator std::string() const override;
-
-    auto operator==(
-        AliasSymbol const &that) const
-        -> bool;
-
-    SPP_ATTR_NODISCARD auto fq_name() const
-        -> std::shared_ptr<asts::TypeAst> override;
-};
+// struct spp::analyse::scopes::AliasSymbol final : TypeSymbol {
+//     std::shared_ptr<TypeSymbol> old_sym = nullptr;
+//
+//     AliasSymbol(
+//         std::shared_ptr<asts::TypeIdentifierAst> name,
+//         asts::ClassPrototypeAst *type,
+//         Scope *scope,
+//         Scope *scope_defined_in,
+//         std::shared_ptr<TypeSymbol> const &old_sym,
+//         bool is_generic = false,
+//         bool is_directly_copyable = false,
+//         asts::utils::Visibility visibility = asts::utils::Visibility::PUBLIC,
+//         std::unique_ptr<asts::ConventionAst> &&convention = nullptr
+//     );
+//
+//     AliasSymbol(
+//         AliasSymbol const &that);
+//
+//     explicit operator std::string() const override;
+//
+//     auto operator==(
+//         AliasSymbol const &that) const
+//         -> bool;
+//
+//     SPP_ATTR_NODISCARD auto fq_name() const
+//         -> std::shared_ptr<asts::TypeAst> override;
+// };

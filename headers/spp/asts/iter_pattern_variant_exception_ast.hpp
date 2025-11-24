@@ -3,8 +3,6 @@
 
 
 struct spp::asts::IterPatternVariantExceptionAst final : IterPatternVariantAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c ! token that indicates the pattern variant is an exception. This is used with @c GenRes generators.
      */
@@ -26,6 +24,8 @@ struct spp::asts::IterPatternVariantExceptionAst final : IterPatternVariantAst {
         decltype(var) &&var);
 
     ~IterPatternVariantExceptionAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

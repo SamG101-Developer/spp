@@ -1,12 +1,16 @@
 #pragma once
 
-#include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
 
 
 namespace spp::codegen {
-    struct LlvmSymInfo {
-        std::unique_ptr<llvm::StructType> llvm_struct_type;
+    struct LlvmTypeSymInfo {
+        llvm::Type *llvm_type;
         llvm::Module *llvm_mod;
+    };
+
+    struct LlvmVarSymInfo {
+        llvm::Value *alloca;
     };
 }

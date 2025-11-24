@@ -6,8 +6,6 @@
  * A FunctionParameterGroupAst is used to represent a group of function parameters in a function prototype.
  */
 struct spp::asts::FunctionParameterGroupAst final : virtual Ast {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The token that represents the left parenthesis @code (@endcode in the function parameter group. This introduces
      * the function parameter group.
@@ -37,6 +35,10 @@ struct spp::asts::FunctionParameterGroupAst final : virtual Ast {
         decltype(tok_r) &&tok_r);
 
     ~FunctionParameterGroupAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
+
+    auto get_all_params() const -> std::vector<FunctionParameterAst*>;
 
     auto get_self_param() const -> FunctionParameterSelfAst*;
 

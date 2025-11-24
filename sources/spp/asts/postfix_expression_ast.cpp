@@ -96,10 +96,25 @@ auto spp::asts::PostfixExpressionAst::stage_8_check_memory(
 }
 
 
+auto spp::asts::PostfixExpressionAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Forward into the operator AST.
+    meta->save();
+    meta->postfix_expression_lhs = lhs.get();
+    const auto ret_val = op->stage_10_code_gen_2(sm, meta, ctx);
+    meta->restore();
+    return ret_val;
+}
+
+
 auto spp::asts::PostfixExpressionAst::infer_type(
     analyse::scopes::ScopeManager *sm,
     mixins::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
+    // Forward into the operator AST.
     meta->save();
     meta->postfix_expression_lhs = lhs.get();
     auto ret_type = op->infer_type(sm, meta);

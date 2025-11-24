@@ -8,8 +8,6 @@
  * fragments that are the branches.
  */
 struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The token that represents the @c case keyword in the case expression.
      */
@@ -55,9 +53,13 @@ struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
         std::unique_ptr<InnerScopeExpressionAst<std::unique_ptr<StatementAst>>> &&first,
         decltype(branches) &&branches) -> std::unique_ptr<CaseExpressionAst>;
 
+    SPP_AST_KEY_FUNCTIONS;
+
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value * override;
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

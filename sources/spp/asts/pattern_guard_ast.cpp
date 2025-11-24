@@ -21,17 +21,20 @@ spp::asts::PatternGuardAst::PatternGuardAst(
 spp::asts::PatternGuardAst::~PatternGuardAst() = default;
 
 
-auto spp::asts::PatternGuardAst::pos_start() const -> std::size_t {
+auto spp::asts::PatternGuardAst::pos_start() const
+    -> std::size_t {
     return tok_and->pos_start();
 }
 
 
-auto spp::asts::PatternGuardAst::pos_end() const -> std::size_t {
+auto spp::asts::PatternGuardAst::pos_end() const
+    -> std::size_t {
     return expr->pos_end();
 }
 
 
-auto spp::asts::PatternGuardAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::PatternGuardAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<PatternGuardAst>(
         ast_clone(tok_and),
         ast_clone(expr));
@@ -46,7 +49,9 @@ spp::asts::PatternGuardAst::operator std::string() const {
 }
 
 
-auto spp::asts::PatternGuardAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::PatternGuardAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_and);
     SPP_PRINT_APPEND(expr);
@@ -80,4 +85,14 @@ auto spp::asts::PatternGuardAst::stage_8_check_memory(
     expr->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
         *expr, *this, *sm, true, true, false, false, false, false, meta);
+}
+
+
+auto spp::asts::PatternGuardAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate the expression.
+    return expr->stage_10_code_gen_2(sm, meta, ctx);
 }

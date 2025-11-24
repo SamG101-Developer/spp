@@ -24,8 +24,8 @@
 
 #include <genex/to_container.hpp>
 #include <genex/actions/remove.hpp>
-#include <genex/views/filter.hpp>
 #include <genex/views/ptr.hpp>
+#include <opex/cast.hpp>
 
 
 spp::asts::CaseExpressionAst::CaseExpressionAst(
@@ -163,6 +163,40 @@ auto spp::asts::CaseExpressionAst::stage_8_check_memory(
 }
 
 
+auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate the condition architecture.
+    sm->move_to_next_scope();
+    const auto func = ctx->builder.GetInsertBlock()->getParent();
+    const auto end_bb = llvm::BasicBlock::Create(ctx->context, "case.end", func);
+    auto phi = static_cast<llvm::PHINode*>(nullptr);
+
+    // If this expression is being used for assignment, allocate space.
+    if (meta->assignment_target != nullptr) {
+        const auto ret_type_sym = sm->current_scope->get_type_symbol(infer_type(sm, meta))->llvm_info->llvm_type;
+        phi = ctx->builder.CreatePHI(ret_type_sym, branches.size() as U32, "case.phi");
+    }
+
+    // Generate each branch.
+    meta->save();
+    meta->phi_node = phi;
+    meta->end_bb = end_bb;
+    meta->case_condition = cond.get();
+    for (auto &&branch : branches) {
+        branch->stage_10_code_gen_2(sm, meta, ctx);
+    }
+    meta->restore();
+
+    // Finish the case expression.
+    ctx->builder.SetInsertPoint(end_bb);
+    sm->move_out_of_current_scope();
+    return phi;
+}
+
+
 auto spp::asts::CaseExpressionAst::infer_type(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
@@ -179,6 +213,6 @@ auto spp::asts::CaseExpressionAst::infer_type(
 
     // Return the branches' return type. If there are any branches, otherwise Void.
     return branches_type_info.empty()
-        ? generate::common_types::void_type(pos_start())
-        : std::get<1>(master_branch_type_info);
+               ? generate::common_types::void_type(pos_start())
+               : std::get<1>(master_branch_type_info);
 }

@@ -191,3 +191,20 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
             : lhs_sym->memory_info->initialized_by(*this, sm->current_scope);
     }
 }
+
+
+auto spp::asts::AssignmentStatementAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate code for each assignment in sequence.
+    for (auto i = 0uz; i < lhs.size(); ++i) {
+        const auto lhs_val = lhs[i]->stage_10_code_gen_2(sm, meta, ctx);
+        const auto rhs_val = rhs[i]->stage_10_code_gen_2(sm, meta, ctx);
+        ctx->builder.CreateStore(rhs_val, lhs_val);  // todo: this will fail
+    }
+
+    // Statements are always generated into a builder so no need to return anything.
+    return nullptr;
+}

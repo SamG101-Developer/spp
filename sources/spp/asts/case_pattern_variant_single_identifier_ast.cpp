@@ -1,8 +1,8 @@
 #include <spp/asts/case_pattern_variant_single_identifier_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
 #include <spp/asts/let_statement_initialized_ast.hpp>
+#include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
+#include <spp/asts/local_variable_single_identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 
 
@@ -19,17 +19,20 @@ spp::asts::CasePatternVariantSingleIdentifierAst::CasePatternVariantSingleIdenti
 spp::asts::CasePatternVariantSingleIdentifierAst::~CasePatternVariantSingleIdentifierAst() = default;
 
 
-auto spp::asts::CasePatternVariantSingleIdentifierAst::pos_start() const -> std::size_t {
+auto spp::asts::CasePatternVariantSingleIdentifierAst::pos_start() const
+    -> std::size_t {
     return tok_mut->pos_start();
 }
 
 
-auto spp::asts::CasePatternVariantSingleIdentifierAst::pos_end() const -> std::size_t {
+auto spp::asts::CasePatternVariantSingleIdentifierAst::pos_end() const
+    -> std::size_t {
     return alias->pos_end();
 }
 
 
-auto spp::asts::CasePatternVariantSingleIdentifierAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::CasePatternVariantSingleIdentifierAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<CasePatternVariantSingleIdentifierAst>(
         ast_clone(tok_mut),
         ast_clone(name),
@@ -46,7 +49,9 @@ spp::asts::CasePatternVariantSingleIdentifierAst::operator std::string() const {
 }
 
 
-auto spp::asts::CasePatternVariantSingleIdentifierAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::CasePatternVariantSingleIdentifierAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_mut);
     SPP_PRINT_APPEND(name);
@@ -71,7 +76,8 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::stage_7_analyse_semantics
     -> void {
     // Forward analysis into the name and alias.
     auto var = convert_to_variable(meta);
-    m_mapped_let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
+    m_mapped_let = std::make_unique<LetStatementInitializedAst>(
+        nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
     m_mapped_let->stage_7_analyse_semantics(sm, meta);
 }
 

@@ -15,6 +15,25 @@ spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypeUnaryExpressionOperatorN
 spp::asts::TypeUnaryExpressionOperatorNamespaceAst::~TypeUnaryExpressionOperatorNamespaceAst() = default;
 
 
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::equals(
+    TypeUnaryExpressionOperatorAst const &other) const
+    -> std::strong_ordering {
+    // Double dispatch to the appropriate equals method.
+    return other.equals_op_namespace(*this);
+}
+
+
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::equals_op_namespace(
+    TypeUnaryExpressionOperatorNamespaceAst const &other) const
+    -> std::strong_ordering {
+    // Check if the namespace identifiers are the same.
+    if (*ns == *other.ns) {
+        return std::strong_ordering::equal;
+    }
+    return std::strong_ordering::less;
+}
+
+
 auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::pos_start() const
     -> std::size_t {
     return ns->pos_start();
@@ -50,25 +69,6 @@ auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::print(
     SPP_PRINT_APPEND(ns);
     formatted_string.append("::");
     SPP_PRINT_END;
-}
-
-
-auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::equals(
-    TypeUnaryExpressionOperatorAst const &other) const
-    -> std::strong_ordering {
-    // Double dispatch to the appropriate equals method.
-    return other.equals_op_namespace(*this);
-}
-
-
-auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::equals_op_namespace(
-    TypeUnaryExpressionOperatorNamespaceAst const &other) const
-    -> std::strong_ordering {
-    // Check if the namespace identifiers are the same.
-    if (*ns == *other.ns) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
 }
 
 

@@ -3,8 +3,6 @@
 
 
 struct spp::asts::IterPatternVariantNoValueAst final : IterPatternVariantAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c _ token that indicates the pattern variant does not have a value. This is used with @c GenOpt generators.
      */
@@ -18,4 +16,6 @@ struct spp::asts::IterPatternVariantNoValueAst final : IterPatternVariantAst {
         decltype(tok_underscore) &&tok_underscore);
 
     ~IterPatternVariantNoValueAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 };

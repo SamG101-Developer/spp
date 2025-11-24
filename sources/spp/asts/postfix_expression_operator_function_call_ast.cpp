@@ -1,5 +1,3 @@
-#include <tuple>
-
 #include <spp/macros.hpp>
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
@@ -166,11 +164,11 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     }
 
     for (auto &&[fn_scope, fn_proto, ctx_generic_arg_group] : all_overloads) {
-        auto ctx_generic_args = ctx_generic_arg_group->args | genex::views::ptr | genex::to<std::vector>();
+        auto ctx_generic_args = ctx_generic_arg_group->get_all_args();
 
         // Extract generic/function parameter information from the overload.
-        auto func_params = fn_proto->param_group->params | genex::views::ptr | genex::to<std::vector>();
-        auto generic_params = fn_proto->generic_param_group->params | genex::views::ptr | genex::to<std::vector>();
+        auto func_params = fn_proto->param_group->get_all_params();
+        auto generic_params = fn_proto->generic_param_group->get_all_params();
         auto func_args = ast_clone_vec(arg_group->args);
         auto generic_args = ast_clone_vec(generic_arg_group->args);
 
@@ -230,7 +228,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
             analyse::utils::func_utils::infer_generic_args(
                 generic_args,
-                fn_proto->generic_param_group->params | genex::views::ptr | genex::to<std::vector>(),
+                fn_proto->generic_param_group->get_all_params(),
                 fn_proto->generic_param_group->get_optional_params(),
                 genex::views::concat(generic_args | genex::views::ptr, ctx_generic_args) | genex::to<std::vector>(),
                 {generic_infer_source.begin(), generic_infer_source.end()},
@@ -353,6 +351,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             for (auto &&[arg, param] : sorted_func_arguments | genex::views::zip(func_params)) {
                 auto p_type = fn_scope->get_type_symbol(param->type)->fq_name()->with_convention(ast_clone(param->type->get_convention()));
                 auto a_type = arg->infer_type(sm, meta);
+                auto temp = analyse::utils::type_utils::GenericInferenceMap();
 
                 // Special case for variadic parameters (updates p_type so don't follow with "else if").
                 if (ast_cast<FunctionParameterVariadicAst>(param)) {
@@ -373,10 +372,16 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                     }
                 }
 
-                // Regular parameter without arg folding.
+                // Regular parameter without arg folding. The double check is required for generics applied to the
+                // superclass in sup-ext that cannot be substituted because they can be anything, so reverse type check
+                // them with the "relaxed" variation. This is the only place this is required. Check testing with type
+                // aliases to be sure.
+                // Todo: Is this needed for the arg folding variation?
                 else if (not analyse::utils::type_utils::symbolic_eq(*p_type, *a_type, *fn_scope, *sm->current_scope)) {
-                    analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-                        *param, *p_type, *arg, *a_type).with_scopes({fn_scope, sm->current_scope}).raise();
+                    if (not analyse::utils::type_utils::relaxed_symbolic_eq(*a_type, *p_type, sm->current_scope, fn_scope, temp)) {
+                        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
+                            *param, *p_type, *arg, *a_type).with_scopes({fn_scope, sm->current_scope}).raise();
+                    }
                 }
             }
 
@@ -567,6 +572,22 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_8_check_memory(
 }
 
 
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx) -> llvm::Value* {
+    // Get the llvm function target.
+    const auto llvm_func = std::get<1>(*m_overload_info)->m_llvm_func;
+    const auto llvm_func_args = arg_group->args
+        | genex::views::transform([sm, meta, ctx](auto const &x) { return x->stage_10_code_gen_2(sm, meta, ctx); })
+        | genex::to<std::vector>();
+
+    // Create the call instruction and return it.
+    const auto llvm_func_call = ctx->builder.CreateCall(llvm_func, llvm_func_args, "func_call");
+    return llvm_func_call;
+}
+
+
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
     ScopeManager *sm,
     mixins::CompilerMetaData *meta)
@@ -577,7 +598,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
     // If there is a scope present (non-closure), then fully qualify the return type.
     if (std::get<0>(*m_overload_info) != nullptr) {
         // Get the other generics
-        auto other_generics = std::vector<GenericArgumentAst*>();
+        auto other_generics = std::unique_ptr<GenericArgumentGroupAst>(nullptr);
         if (const auto cast_lhs = ast_cast<PostfixExpressionAst>(meta->postfix_expression_lhs); cast_lhs != nullptr) {
             try {
                 if (ast_cast<PostfixExpressionOperatorStaticMemberAccessAst>(cast_lhs->op.get()) == nullptr) {
@@ -585,9 +606,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
                     if (sm->current_scope->get_type_symbol(cast_lhs->lhs->infer_type(sm, meta)) != nullptr) {
                         auto const *lhs_lhs_scope = lhs_lhs_sym->scope;
                         if (not analyse::utils::type_utils::is_type_tuple(*lhs_lhs_scope->ty_sym->fq_name(), *sm->current_scope)) {
-                            other_generics = lhs_lhs_scope->ty_sym->fq_name()->type_parts().back()->generic_arg_group->args
-                                | genex::views::ptr
-                                | genex::to<std::vector>();
+                            other_generics = ast_clone(lhs_lhs_scope->ty_sym->fq_name()->type_parts().back()->generic_arg_group);
                         }
                     }
                 }
@@ -597,7 +616,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
             }
 
             ret_type = std::get<0>(*m_overload_info)->get_type_symbol(ret_type)->fq_name();
-            ret_type = ret_type->substitute_generics(other_generics);
+            if (other_generics != nullptr) {
+                ret_type = ret_type->substitute_generics(other_generics->get_all_args());
+            }
             ret_type = ret_type->substitute_generics(std::get<0>(*m_overload_info)->get_generics() | genex::views::ptr | genex::to<std::vector>());
 
             // TODO: REMOVE CONST CAST

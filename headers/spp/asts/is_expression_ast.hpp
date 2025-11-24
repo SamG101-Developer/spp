@@ -3,8 +3,6 @@
 
 
 struct spp::asts::IsExpressionAst final : ExpressionAst {
-    SPP_AST_KEY_FUNCTIONS;
-
 private:
     std::shared_ptr<CaseExpressionAst> m_mapped_func;
 
@@ -36,6 +34,8 @@ public:
         decltype(rhs) &&rhs);
 
     ~IsExpressionAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

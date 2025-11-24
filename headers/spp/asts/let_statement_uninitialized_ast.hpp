@@ -3,8 +3,6 @@
 
 
 struct spp::asts::LetStatementUninitializedAst final : LetStatementAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c let token that starts this statement. It is used to indicate the beginning of a let statement.
      */
@@ -43,7 +41,11 @@ struct spp::asts::LetStatementUninitializedAst final : LetStatementAst {
 
     ~LetStatementUninitializedAst() override;
 
+    SPP_AST_KEY_FUNCTIONS;
+
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value * override;
 };

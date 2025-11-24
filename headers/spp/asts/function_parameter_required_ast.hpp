@@ -3,8 +3,6 @@
 
 
 struct spp::asts::FunctionParameterRequiredAst final : FunctionParameterAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * Construct the FunctionParameterRequiredAst with the arguments matching the members.
      * @param var The local variable declaration for this parameter.
@@ -20,4 +18,6 @@ struct spp::asts::FunctionParameterRequiredAst final : FunctionParameterAst {
         decltype(type) type);
 
     ~FunctionParameterRequiredAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 };

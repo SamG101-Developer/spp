@@ -3,7 +3,7 @@
 #include <spp/asts/generic_parameter_type_inline_constraints_ast.hpp>
 #include <spp/asts/generic_parameter_type_optional_ast.hpp>
 #include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+#include <spp/asts/type_identifier_ast.hpp>
 
 
 spp::asts::GenericParameterTypeOptionalAst::GenericParameterTypeOptionalAst(
@@ -20,17 +20,20 @@ spp::asts::GenericParameterTypeOptionalAst::GenericParameterTypeOptionalAst(
 spp::asts::GenericParameterTypeOptionalAst::~GenericParameterTypeOptionalAst() = default;
 
 
-auto spp::asts::GenericParameterTypeOptionalAst::pos_start() const -> std::size_t {
+auto spp::asts::GenericParameterTypeOptionalAst::pos_start() const
+    -> std::size_t {
     return name->pos_start();
 }
 
 
-auto spp::asts::GenericParameterTypeOptionalAst::pos_end() const -> std::size_t {
+auto spp::asts::GenericParameterTypeOptionalAst::pos_end() const
+    -> std::size_t {
     return default_val->pos_end();
 }
 
 
-auto spp::asts::GenericParameterTypeOptionalAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::GenericParameterTypeOptionalAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<GenericParameterTypeOptionalAst>(
         ast_clone(name),
         ast_clone(constraints),
@@ -49,7 +52,9 @@ spp::asts::GenericParameterTypeOptionalAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenericParameterTypeOptionalAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::GenericParameterTypeOptionalAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(name);
     SPP_PRINT_APPEND(constraints);
@@ -65,7 +70,12 @@ auto spp::asts::GenericParameterTypeOptionalAst::stage_4_qualify_types(
     -> void {
     // Handle the default type.
     default_val->stage_7_analyse_semantics(sm, meta);
-    default_val = sm->current_scope->get_type_symbol(default_val)->fq_name()->with_convention(ast_clone(default_val->get_convention()));
+    const auto raw = default_val->without_generics();
+    if (const auto sym = sm->current_scope->get_type_symbol(raw); sym != nullptr) {
+        auto temp = sym->fq_name()->with_convention(ast_clone(default_val->get_convention()));
+        temp = temp->with_generics(std::move(default_val->type_parts().back()->generic_arg_group));
+        default_val = std::move(temp);
+    }
 }
 
 

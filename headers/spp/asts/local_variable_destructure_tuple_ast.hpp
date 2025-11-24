@@ -3,7 +3,6 @@
 
 
 struct spp::asts::LocalVariableDestructureTupleAst final : LocalVariableAst {
-    SPP_AST_KEY_FUNCTIONS;
     friend struct CasePatternVariantDestructureTupleAst;
 
 private:
@@ -39,6 +38,8 @@ public:
 
     ~LocalVariableDestructureTupleAst() override;
 
+    SPP_AST_KEY_FUNCTIONS;
+
     auto extract_name() const -> std::shared_ptr<IdentifierAst> override;
 
     auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>> override;
@@ -46,4 +47,6 @@ public:
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value * override;
 };

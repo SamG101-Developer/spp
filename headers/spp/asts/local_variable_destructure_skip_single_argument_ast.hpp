@@ -3,7 +3,6 @@
 
 
 struct spp::asts::LocalVariableDestructureSkipSingleArgumentAst final : LocalVariableAst {
-    SPP_AST_KEY_FUNCTIONS;
     friend struct CasePatternVariantDestructureSkipSingleArgumentAst;
 
     /**
@@ -21,6 +20,8 @@ struct spp::asts::LocalVariableDestructureSkipSingleArgumentAst final : LocalVar
         decltype(tok_underscore) &&tok_underscore);
 
     ~LocalVariableDestructureSkipSingleArgumentAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto extract_name() const -> std::shared_ptr<IdentifierAst> override;
 

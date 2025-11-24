@@ -18,13 +18,10 @@ namespace spp::analyse::scopes {
  * ast for this class, allowing for scoping rules to be made easier.
  */
 struct spp::asts::ClassPrototypeAst final : virtual Ast, mixins::VisibilityEnabledAst, SupMemberAst, ModuleMemberAst {
-    SPP_AST_KEY_FUNCTIONS;
     friend struct TypeStatementAst;
 
 private:
     std::vector<std::pair<analyse::scopes::Scope*, std::unique_ptr<ClassPrototypeAst>>> m_generic_substituted_scopes;
-
-    bool m_for_alias;
 
     std::shared_ptr<analyse::scopes::TypeSymbol> m_cls_sym;
 
@@ -75,10 +72,12 @@ public:
 
     ~ClassPrototypeAst() override;
 
+    SPP_AST_KEY_FUNCTIONS;
+
 private:
     auto m_generate_symbols(ScopeManager *sm) -> analyse::scopes::TypeSymbol*;
 
-    auto m_fill_llvm_mem_layout(analyse::scopes::TypeSymbol *type_sym, llvm::Module &llvm_mod) -> void;
+    auto m_fill_llvm_mem_layout(analyse::scopes::ScopeManager *sm, analyse::scopes::TypeSymbol const *type_sym, codegen::LLvmCtx *ctx) -> void;
 
 public:
     auto register_generic_substituted_scope(analyse::scopes::Scope *scope, std::unique_ptr<ClassPrototypeAst> &&new_ast) -> void;
@@ -99,7 +98,7 @@ public:
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
-    auto stage_9_code_gen_1(ScopeManager *sm, mixins::CompilerMetaData *meta, llvm::Module &llvm_mod) -> void override;
+    auto stage_9_code_gen_1(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, llvm::Module &llvm_mod) -> void override;
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

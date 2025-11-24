@@ -3,8 +3,6 @@
 
 
 struct spp::asts::TupleLiteralAst final : LiteralAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The left parenthesis token that represents the start of the tuple literal.
      */
@@ -20,13 +18,6 @@ struct spp::asts::TupleLiteralAst final : LiteralAst {
      */
     std::unique_ptr<TokenAst> tok_r;
 
-protected:
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-
-    auto equals_tuple_literal(TupleLiteralAst const &) const -> std::strong_ordering override;
-
-public:
-
     /**
      * Construct the TupleLiteralAst with the arguments matching the members.
      * @param tok_l The left parenthesis token.
@@ -39,6 +30,14 @@ public:
         decltype(tok_r) &&tok_r);
 
     ~TupleLiteralAst() override;
+
+protected:
+    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+
+    auto equals_tuple_literal(TupleLiteralAst const &) const -> std::strong_ordering override;
+
+public:
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

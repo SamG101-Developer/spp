@@ -1,14 +1,15 @@
 #pragma once
-#include <spp/asts/statement_ast.hpp>
-#include <spp/asts/mixins/visbility_enabled_ast.hpp>
 #include <spp/asts/module_member_ast.hpp>
+#include <spp/asts/statement_ast.hpp>
 #include <spp/asts/sup_member_ast.hpp>
+#include <spp/asts/mixins/visbility_enabled_ast.hpp>
 
 
 /// @cond
 namespace spp::analyse::scopes {
     struct AliasSymbol;
 }
+
 /// @endcond
 
 
@@ -18,19 +19,20 @@ namespace spp::analyse::scopes {
  * @code type SecureByteMap[T] = std::collections::HashMap[K=Byte, V=T, A=SecureAlloc[(K, V)]]@endcode
  */
 struct spp::asts::TypeStatementAst final : StatementAst, mixins::VisibilityEnabledAst, SupMemberAst, ModuleMemberAst {
-    SPP_AST_KEY_FUNCTIONS;
     friend struct UseStatementAst;
 
 private:
     bool m_generated;
 
-    analyse::scopes::AliasSymbol *m_alias_sym;
+    bool m_for_use_statement;
 
-    std::unique_ptr<ClassPrototypeAst> m_generated_cls_ast;
-
-    std::unique_ptr<SupPrototypeExtensionAst> m_generated_ext_ast;
+    std::shared_ptr<analyse::scopes::TypeSymbol> m_type_symbol;
 
 public:
+    analyse::scopes::Scope *m_temp_scope_1;
+    analyse::scopes::Scope *m_temp_scope_2;
+    std::unique_ptr<analyse::scopes::Scope> m_temp_scope_3;
+
     /**
      * The list of annotations that are applied to this type statement. Typically, access modifiers in this context.
      */
@@ -84,10 +86,8 @@ public:
 
     ~TypeStatementAst() override;
 
-private:
-    auto m_skip_all_scopes(ScopeManager *sm) -> void;
+    SPP_AST_KEY_FUNCTIONS;
 
-public:
     auto stage_1_pre_process(Ast *ctx) -> void override;
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, mixins::CompilerMetaData *) -> void override;

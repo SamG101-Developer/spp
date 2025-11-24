@@ -21,14 +21,20 @@ spp::asts::GenericArgumentTypeKeywordAst::GenericArgumentTypeKeywordAst(
 spp::asts::GenericArgumentTypeKeywordAst::~GenericArgumentTypeKeywordAst() = default;
 
 
-auto spp::asts::GenericArgumentTypeKeywordAst::from_symbol(
-    analyse::scopes::TypeSymbol const &sym)
-    -> std::unique_ptr<GenericArgumentTypeKeywordAst> {
-    // Extract the value from the symbol's scope, if it exists.
-    auto value = sym.scope ? sym.scope->ty_sym->fq_name()->with_convention(ast_clone(sym.convention.get())) : nullptr;
+auto spp::asts::GenericArgumentTypeKeywordAst::equals(
+    GenericArgumentAst const &other) const
+    -> std::strong_ordering {
+    return other.equals_generic_argument_type_keyword(*this);
+}
 
-    // Wrap the value into a type argument.
-    return std::make_unique<GenericArgumentTypeKeywordAst>(sym.name, nullptr, std::move(value));
+
+auto spp::asts::GenericArgumentTypeKeywordAst::equals_generic_argument_type_keyword(
+    GenericArgumentTypeKeywordAst const &other) const
+    -> std::strong_ordering {
+    if (*name == *other.name and *val == *other.val) {
+        return std::strong_ordering::equal;
+    }
+    return std::strong_ordering::less;
 }
 
 
@@ -73,20 +79,14 @@ auto spp::asts::GenericArgumentTypeKeywordAst::print(
 }
 
 
-auto spp::asts::GenericArgumentTypeKeywordAst::equals(
-    GenericArgumentAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_generic_argument_type_keyword(*this);
-}
+auto spp::asts::GenericArgumentTypeKeywordAst::from_symbol(
+    analyse::scopes::TypeSymbol const &sym)
+    -> std::unique_ptr<GenericArgumentTypeKeywordAst> {
+    // Extract the value from the symbol's scope, if it exists.
+    auto value = sym.scope ? sym.scope->ty_sym->fq_name()->with_convention(ast_clone(sym.convention.get())) : nullptr;
 
-
-auto spp::asts::GenericArgumentTypeKeywordAst::equals_generic_argument_type_keyword(
-    GenericArgumentTypeKeywordAst const &other) const
-    -> std::strong_ordering {
-    if (*name == *other.name and *val == *other.val) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
+    // Wrap the value into a type argument.
+    return std::make_unique<GenericArgumentTypeKeywordAst>(sym.name, nullptr, std::move(value));
 }
 
 

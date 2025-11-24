@@ -61,16 +61,18 @@ auto spp::asts::mixins::CompilerStages::stage_8_check_memory(
 auto spp::asts::mixins::CompilerStages::stage_9_code_gen_1(
     ScopeManager *,
     CompilerMetaData *,
-    llvm::Module &)
-    -> void {
+    codegen::LLvmCtx *)
+    -> llvm::Value* {
+    return nullptr;
 }
 
 
 auto spp::asts::mixins::CompilerStages::stage_10_code_gen_2(
     ScopeManager *,
     CompilerMetaData *,
-    llvm::Module &)
-    -> void {
+    codegen::LLvmCtx *)
+    -> llvm::Value* {
+    return nullptr;
 }
 
 
@@ -115,11 +117,11 @@ auto spp::asts::mixins::CompilerMetaData::save() -> void {
         prevent_auto_generator_resume, let_stmt_explicit_type, let_stmt_value, let_stmt_from_uninitialized,
         loop_double_check_active, current_loop_depth, current_loop_ast, loop_return_types, object_init_type,
         infer_source, infer_target, postfix_expression_lhs, unary_expression_rhs, skip_type_analysis_generic_checks,
-        type_analysis_type_scope);
+        type_analysis_type_scope, ignore_cmp_generic);
 }
 
 
-auto spp::asts::mixins::CompilerMetaData::restore() -> void {
+auto spp::asts::mixins::CompilerMetaData::restore(bool heavy) -> void {
     auto state = std::move(m_history.top()); // *DO NOT* click "convert to structured bindings" (CLion) -- LAG
     m_history.pop();
     current_stage = state.current_stage;
@@ -129,9 +131,11 @@ auto spp::asts::mixins::CompilerMetaData::restore() -> void {
     ignore_missing_else_branch_for_inference = state.ignore_missing_else_branch_for_inference;
     case_condition = state.case_condition;
     cls_sym = state.cls_sym;
-    enclosing_function_scope = state.enclosing_function_scope;
-    enclosing_function_flavour = state.enclosing_function_flavour;
-    enclosing_function_ret_type = state.enclosing_function_ret_type;
+    if (heavy) {
+        enclosing_function_scope = state.enclosing_function_scope;
+        enclosing_function_flavour = state.enclosing_function_flavour;
+        enclosing_function_ret_type = state.enclosing_function_ret_type;
+    }
     current_lambda_outer_scope = state.current_lambda_outer_scope;
     target_call_function_prototype = state.target_call_function_prototype;
     target_call_was_function_async = state.target_call_was_function_async;
@@ -150,6 +154,7 @@ auto spp::asts::mixins::CompilerMetaData::restore() -> void {
     unary_expression_rhs = state.unary_expression_rhs;
     skip_type_analysis_generic_checks = state.skip_type_analysis_generic_checks;
     type_analysis_type_scope = state.type_analysis_type_scope;
+    ignore_cmp_generic = state.ignore_cmp_generic;
 }
 
 

@@ -3,8 +3,6 @@
 
 
 struct spp::asts::FunctionParameterSelfAst final : FunctionParameterAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The convention is attached to the self parameter rather than its type, as it is required before the type is
      * necessarily attached.
@@ -21,6 +19,8 @@ struct spp::asts::FunctionParameterSelfAst final : FunctionParameterAst {
         decltype(var) &&var);
 
     ~FunctionParameterSelfAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 };

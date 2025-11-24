@@ -1,8 +1,8 @@
+#include <spp/pch.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/type_tuple_shorthand_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
-#include <spp/pch.hpp>
 
 
 spp::asts::TypeTupleShorthandAst::TypeTupleShorthandAst(
@@ -19,17 +19,20 @@ spp::asts::TypeTupleShorthandAst::TypeTupleShorthandAst(
 spp::asts::TypeTupleShorthandAst::~TypeTupleShorthandAst() = default;
 
 
-auto spp::asts::TypeTupleShorthandAst::pos_start() const -> std::size_t {
+auto spp::asts::TypeTupleShorthandAst::pos_start() const
+    -> std::size_t {
     return tok_l->pos_start();
 }
 
 
-auto spp::asts::TypeTupleShorthandAst::pos_end() const -> std::size_t {
+auto spp::asts::TypeTupleShorthandAst::pos_end() const
+    -> std::size_t {
     return tok_r->pos_end();
 }
 
 
-auto spp::asts::TypeTupleShorthandAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::TypeTupleShorthandAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<TypeTupleShorthandAst>(
         ast_clone(tok_l),
         ast_clone_vec_shared(element_types),
@@ -46,7 +49,9 @@ spp::asts::TypeTupleShorthandAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypeTupleShorthandAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::TypeTupleShorthandAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);
     SPP_PRINT_EXTEND(element_types);
@@ -55,7 +60,8 @@ auto spp::asts::TypeTupleShorthandAst::print(meta::AstPrinter &printer) const ->
 }
 
 
-auto spp::asts::TypeTupleShorthandAst::convert() -> std::unique_ptr<TypeAst> {
+auto spp::asts::TypeTupleShorthandAst::convert()
+    -> std::unique_ptr<TypeAst> {
     const auto type = generate::common_types::tuple_type(pos_start(), std::move(element_types));
     return ast_clone(type);
 }

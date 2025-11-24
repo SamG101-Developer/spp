@@ -3,8 +3,6 @@
 
 
 struct spp::asts::UnaryExpressionAst final : ExpressionAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The operator token that represents the unary operation. This indicates the type of operation being performed.
      */
@@ -25,6 +23,8 @@ struct spp::asts::UnaryExpressionAst final : ExpressionAst {
         decltype(expr) &&expr);
 
     ~UnaryExpressionAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

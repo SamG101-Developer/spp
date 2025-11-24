@@ -7,8 +7,6 @@
  * superimpositions etc. They look like: @code cls MyClass[cmp n: USize] { ... }@endcode.
  */
 struct spp::asts::GenericParameterCompRequiredAst final : GenericParameterCompAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * Construct the GenericParameterCompAst with the arguments matching the members.
      * @param tok_cmp The @c cmp token that represents the generic comp parameter.
@@ -26,4 +24,6 @@ struct spp::asts::GenericParameterCompRequiredAst final : GenericParameterCompAs
         decltype(type) &&type);
 
     ~GenericParameterCompRequiredAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 };

@@ -43,6 +43,11 @@ namespace spp::asts::generate::common_types {
     auto try_type(std::size_t pos, std::shared_ptr<TypeAst> output_type, std::shared_ptr<TypeAst> residual_type) -> std::shared_ptr<TypeAst>;
     auto future_type(std::size_t pos, std::shared_ptr<TypeAst> inner_type) -> std::shared_ptr<TypeAst>;
     auto option_type(std::size_t pos, std::shared_ptr<TypeAst> inner_type) -> std::shared_ptr<TypeAst>;
+    auto memory_type(std::size_t pos, std::shared_ptr<TypeAst> inner_type) -> std::shared_ptr<TypeAst>;
+    auto single_type(std::size_t pos, std::shared_ptr<TypeAst> inner_type) -> std::shared_ptr<TypeAst>;
+
+    auto some_type(std::size_t pos, std::shared_ptr<TypeAst> inner_type) -> std::shared_ptr<TypeAst>;
+    auto none_type(std::size_t pos) -> std::shared_ptr<TypeAst>;
 
     auto gen_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type, std::shared_ptr<TypeAst> send_type = nullptr) -> std::shared_ptr<TypeAst>;
     auto gen_once_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type) -> std::shared_ptr<TypeAst>;
@@ -62,4 +67,5 @@ namespace spp::asts::generate::common_types {
 
     auto self_type(std::size_t pos) -> std::shared_ptr<TypeAst>;
 }
+
 /// @endcond

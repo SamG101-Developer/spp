@@ -6,8 +6,6 @@
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/generate/common_types.hpp>
 
-#include <boost/multiprecision/cpp_int.hpp>
-
 using CppBigInt = boost::multiprecision::cpp_int;
 
 
@@ -41,6 +39,26 @@ spp::asts::IntegerLiteralAst::IntegerLiteralAst(
 
 
 spp::asts::IntegerLiteralAst::~IntegerLiteralAst() = default;
+
+
+auto spp::asts::IntegerLiteralAst::equals(
+    ExpressionAst const &other) const
+    -> std::strong_ordering {
+    return other.equals_integer_literal(*this);
+}
+
+
+auto spp::asts::IntegerLiteralAst::equals_integer_literal(
+    IntegerLiteralAst const &other) const
+    -> std::strong_ordering {
+    if (
+        ((not tok_sign and not other.tok_sign) or (tok_sign and other.tok_sign and *tok_sign == *other.tok_sign))
+        and val->token_data == other.val->token_data
+        and type == other.type) {
+        return std::strong_ordering::equal;
+    }
+    return std::strong_ordering::less;
+}
 
 
 auto spp::asts::IntegerLiteralAst::pos_start() const
@@ -81,26 +99,6 @@ auto spp::asts::IntegerLiteralAst::print(
     SPP_PRINT_APPEND(val);
     formatted_string.append("_").append(type);
     SPP_PRINT_END;
-}
-
-
-auto spp::asts::IntegerLiteralAst::equals(
-    ExpressionAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_integer_literal(*this);
-}
-
-
-auto spp::asts::IntegerLiteralAst::equals_integer_literal(
-    IntegerLiteralAst const &other) const
-    -> std::strong_ordering {
-    if (
-        ((not tok_sign and not other.tok_sign) or (tok_sign and other.tok_sign and *tok_sign == *other.tok_sign))
-        and val->token_data == other.val->token_data
-        and type == other.type) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
 }
 
 

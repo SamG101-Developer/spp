@@ -3,8 +3,6 @@
 
 
 struct spp::asts::IterExpressionAst final : PrimaryExpressionAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c iter token that indicates the start of an iteration expression.
      */
@@ -41,6 +39,8 @@ struct spp::asts::IterExpressionAst final : PrimaryExpressionAst {
         decltype(branches) &&branches);
 
     ~IterExpressionAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

@@ -12,14 +12,6 @@
  * respective analysis functions will be called by inheritance/vtable logic.
  */
 struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiteralAst {
-    SPP_AST_KEY_FUNCTIONS;
-
-protected:
-    auto equals_array_literal_explicit_elements(ArrayLiteralExplicitElementsAst const &) const -> std::strong_ordering override;
-
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-
-public:
     /**
      * The token that represents the left square bracket @code [@endcode in the array literal. This introduces the array
      * literal.
@@ -51,6 +43,14 @@ public:
 
     ~ArrayLiteralExplicitElementsAst() override;
 
+protected:
+    auto equals_array_literal_explicit_elements(ArrayLiteralExplicitElementsAst const &) const -> std::strong_ordering override;
+
+    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+
+public:
+    SPP_AST_KEY_FUNCTIONS;
+
     /**
      * Semantic analysis for an array with explicit elements ensures that all elements are of the same type, and that
      * none of the elements are borrowed (ie the type of all the elements is not a borrow type). This is because it
@@ -69,6 +69,15 @@ public:
      * @param meta Associated metadata.
      */
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    /**
+     * Create an array type based on the internal element type and the number of elements.
+     * @param sm The scope manager to use for code generation.
+     * @param meta Associated metadata.
+     * @param ctx The LLVM context to use for code generation.
+     * @return The LLVM value representing the array literal.
+     */
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     /**
      * The inferred type of an array literal is always @code std::array::Arr[T, n]@endcode, where @c T is the type of

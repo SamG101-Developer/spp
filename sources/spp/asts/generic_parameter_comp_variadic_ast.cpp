@@ -17,17 +17,20 @@ spp::asts::GenericParameterCompVariadicAst::GenericParameterCompVariadicAst(
 spp::asts::GenericParameterCompVariadicAst::~GenericParameterCompVariadicAst() = default;
 
 
-auto spp::asts::GenericParameterCompVariadicAst::pos_start() const -> std::size_t {
+auto spp::asts::GenericParameterCompVariadicAst::pos_start() const
+    -> std::size_t {
     return tok_cmp->pos_start();
 }
 
 
-auto spp::asts::GenericParameterCompVariadicAst::pos_end() const -> std::size_t {
+auto spp::asts::GenericParameterCompVariadicAst::pos_end() const
+    -> std::size_t {
     return tok_ellipsis->pos_end();
 }
 
 
-auto spp::asts::GenericParameterCompVariadicAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::GenericParameterCompVariadicAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<GenericParameterCompVariadicAst>(
         ast_clone(tok_cmp),
         ast_clone(tok_ellipsis),
@@ -48,7 +51,9 @@ spp::asts::GenericParameterCompVariadicAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenericParameterCompVariadicAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::GenericParameterCompVariadicAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_cmp).append(" ");
     SPP_PRINT_APPEND(tok_ellipsis);

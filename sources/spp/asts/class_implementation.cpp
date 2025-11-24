@@ -7,16 +7,10 @@
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 
-#include <genex/views/for_each.hpp>
-#include <genex/views/duplicates.hpp>
-#include <genex/views/materialize.hpp>
 #include <genex/to_container.hpp>
-
-
-auto spp::asts::ClassImplementationAst::new_empty()
-    -> std::unique_ptr<ClassImplementationAst> {
-    return std::make_unique<ClassImplementationAst>();
-}
+#include <genex/views/duplicates.hpp>
+#include <genex/views/for_each.hpp>
+#include <genex/views/materialize.hpp>
 
 
 spp::asts::ClassImplementationAst::~ClassImplementationAst() = default;
@@ -29,6 +23,12 @@ auto spp::asts::ClassImplementationAst::clone() const
         std::move(c->tok_l),
         std::move(c->members),
         std::move(c->tok_r));
+}
+
+
+auto spp::asts::ClassImplementationAst::new_empty()
+    -> std::unique_ptr<ClassImplementationAst> {
+    return std::make_unique<ClassImplementationAst>();
 }
 
 

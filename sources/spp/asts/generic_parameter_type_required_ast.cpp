@@ -14,17 +14,20 @@ spp::asts::GenericParameterTypeRequiredAst::GenericParameterTypeRequiredAst(
 spp::asts::GenericParameterTypeRequiredAst::~GenericParameterTypeRequiredAst() = default;
 
 
-auto spp::asts::GenericParameterTypeRequiredAst::pos_start() const -> std::size_t {
+auto spp::asts::GenericParameterTypeRequiredAst::pos_start() const
+    -> std::size_t {
     return name->pos_start();
 }
 
 
-auto spp::asts::GenericParameterTypeRequiredAst::pos_end() const -> std::size_t {
+auto spp::asts::GenericParameterTypeRequiredAst::pos_end() const
+    -> std::size_t {
     return name->pos_end();
 }
 
 
-auto spp::asts::GenericParameterTypeRequiredAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::GenericParameterTypeRequiredAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<GenericParameterTypeRequiredAst>(
         ast_clone(name),
         ast_clone(constraints));
@@ -39,7 +42,9 @@ spp::asts::GenericParameterTypeRequiredAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenericParameterTypeRequiredAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::GenericParameterTypeRequiredAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(name);
     SPP_PRINT_APPEND(constraints);

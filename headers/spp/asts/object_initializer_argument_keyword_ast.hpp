@@ -7,8 +7,6 @@
  * argument to be matched by a keyword rather than shorthand value.
  */
 struct spp::asts::ObjectInitializerArgumentKeywordAst final : ObjectInitializerArgumentAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The token that represents the assignment operator @c = in the keyword argument. This separates the name of the
      * argument from the expression that is being passed as the argument's value.
@@ -27,4 +25,6 @@ struct spp::asts::ObjectInitializerArgumentKeywordAst final : ObjectInitializerA
         decltype(val) &&val);
 
     ~ObjectInitializerArgumentKeywordAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 };

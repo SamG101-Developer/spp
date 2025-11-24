@@ -47,7 +47,6 @@ namespace spp::analyse::utils::type_utils {
      * @param lhs_scope The scope to identify the lhs type in. This is used to resolve aliases and namespaces.
      * @param rhs_scope The scope to identify the rhs type in. This is used to resolve aliases and namespaces.
      * @param check_variant Whether to allow "variant matches" for types.
-     * @param lhs_ignore_alias Whether the lhs symbol retrieval should not move into the alias.
      * @return If the two types are symbolically equal, meaning they are the same type, or one is a variant of the
      * other.
      */
@@ -56,8 +55,7 @@ namespace spp::analyse::utils::type_utils {
         asts::TypeAst const &rhs_type,
         scopes::Scope const &lhs_scope,
         scopes::Scope const &rhs_scope,
-        bool check_variant = true,
-        bool lhs_ignore_alias = false)
+        bool check_variant = true)
         -> bool;
 
     auto symbolic_eq(
@@ -186,7 +184,6 @@ namespace spp::analyse::utils::type_utils {
         scopes::TypeSymbol const &old_cls_sym,
         std::vector<std::shared_ptr<scopes::Symbol>> const &external_generic_syms,
         bool is_tuple,
-        bool is_alias,
         scopes::ScopeManager *sm,
         asts::mixins::CompilerMetaData *meta)
         -> scopes::Scope*;
@@ -227,8 +224,7 @@ namespace spp::analyse::utils::type_utils {
         scopes::Scope const &scope,
         asts::TypeIdentifierAst const &type_part,
         scopes::ScopeManager const &sm,
-        asts::mixins::CompilerMetaData *meta,
-        bool ignore_alias = false)
+        asts::mixins::CompilerMetaData *meta)
         -> scopes::TypeSymbol*;
 
     auto get_namespaced_scope_with_error(
@@ -245,4 +241,12 @@ namespace spp::analyse::utils::type_utils {
         std::string const &old_sup_scope_name,
         asts::GenericArgumentGroupAst const &generic_args)
         -> std::string;
+
+    auto recursive_alias_search(
+        asts::TypeStatementAst const& alias_stmt,
+        scopes::Scope *tracking_scope,
+        std::shared_ptr<asts::TypeAst> actual_old_type,
+        scopes::ScopeManager *sm,
+        asts::mixins::CompilerMetaData *meta)
+        -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>, scopes::Scope*, scopes::Scope*>;
 }

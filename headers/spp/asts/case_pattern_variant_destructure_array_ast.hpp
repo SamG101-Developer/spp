@@ -3,8 +3,6 @@
 
 
 struct spp::asts::CasePatternVariantDestructureArrayAst final : CasePatternVariantAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @code [@endcode token that indicates the start of an array destructuring pattern.
      */
@@ -34,9 +32,15 @@ struct spp::asts::CasePatternVariantDestructureArrayAst final : CasePatternVaria
 
     ~CasePatternVariantDestructureArrayAst() override;
 
+    SPP_AST_KEY_FUNCTIONS;
+
+private:
     auto convert_to_variable(mixins::CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
 
+public:
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value * override;
 };

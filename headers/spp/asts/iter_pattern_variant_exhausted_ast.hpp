@@ -3,8 +3,6 @@
 
 
 struct spp::asts::IterPatternVariantExhaustedAst final : IterPatternVariantAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c !! token that indicates the pattern variant is exhausted. This is used with any @c GenXXX generators.
      */
@@ -18,4 +16,6 @@ struct spp::asts::IterPatternVariantExhaustedAst final : IterPatternVariantAst {
         decltype(tok_exhausted) &&tok_exhausted);
 
     ~IterPatternVariantExhaustedAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 };

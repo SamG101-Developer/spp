@@ -3,8 +3,6 @@
 
 
 struct spp::asts::IterPatternVariantVariableAst final : IterPatternVariantAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The variable that the generator's yielded value is bound to. This allows the internal value inside the
      * @c Generated container to be inspected.
@@ -19,6 +17,8 @@ struct spp::asts::IterPatternVariantVariableAst final : IterPatternVariantAst {
         decltype(var) &&var);
 
     ~IterPatternVariantVariableAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

@@ -3,8 +3,6 @@
 
 
 struct spp::asts::PostfixExpressionAst final : ExpressionAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The left-hand side expression of the postfix expression. This is the base expression on which the postfix operation
      * is applied.
@@ -27,9 +25,13 @@ struct spp::asts::PostfixExpressionAst final : ExpressionAst {
 
     ~PostfixExpressionAst() override;
 
+    SPP_AST_KEY_FUNCTIONS;
+
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(analyse::scopes::ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

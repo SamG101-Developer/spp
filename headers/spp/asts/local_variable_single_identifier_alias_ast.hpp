@@ -3,8 +3,6 @@
 
 
 struct spp::asts::LocalVariableSingleIdentifierAliasAst final : virtual Ast {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c as token that indicates the alias for the local variable. This separates the identifier from the alias.
      */
@@ -26,4 +24,6 @@ struct spp::asts::LocalVariableSingleIdentifierAliasAst final : virtual Ast {
         decltype(name) &&name);
 
     ~LocalVariableSingleIdentifierAliasAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 };

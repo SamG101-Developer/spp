@@ -115,9 +115,9 @@
 #include <spp/asts/postfix_expression_operator_ast.hpp>
 #include <spp/asts/postfix_expression_operator_early_return_ast.hpp>
 #include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
+#include <spp/asts/postfix_expression_operator_index_ast.hpp>
 #include <spp/asts/postfix_expression_operator_keyword_not_ast.hpp>
 #include <spp/asts/postfix_expression_operator_keyword_res_ast.hpp>
-#include <spp/asts/postfix_expression_operator_index_ast.hpp>
 #include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
 #include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
 #include <spp/asts/ret_statement_ast.hpp>
@@ -634,6 +634,7 @@ auto spp::parse::ParserSpp::parse_generic_argument_type()
     -> std::unique_ptr<asts::GenericArgumentTypeAst> {
     PARSE_ALTERNATE(
         p1, asts::GenericArgumentTypeAst, parse_generic_argument_type_keyword, parse_generic_argument_type_positional);
+    PARSE_NEGATE(lex::RawTokenType::TK_LEFT_PARENTHESIS)
     return FORWARD_AST(p1);
 }
 

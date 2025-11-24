@@ -9,8 +9,6 @@
  * @code 1.add(2)@endcode.
  */
 struct spp::asts::BinaryExpressionAst final : ExpressionAst {
-    SPP_AST_KEY_FUNCTIONS;
-
 private:
     std::shared_ptr<PostfixExpressionAst> m_mapped_func;
 
@@ -43,6 +41,8 @@ public:
 
     ~BinaryExpressionAst() override;
 
+    SPP_AST_KEY_FUNCTIONS;
+
     /**
      * Ensure the operator exists over the left-hand-side type, compatible with the right-hand-side type. This is done
      * by. Also handle any binary fold operations, like @code a + ..@endcode.
@@ -58,6 +58,16 @@ public:
      * @param[in,out] meta Associated metadata.
      */
     auto stage_8_check_memory(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    /**
+     * Forward the code generation to the mapped function. This just generates a standard function call. Some functions
+     * like @code (1 + 2)@endcode will map to LLVM IR directly.
+     * @param sm The scope manager to use for code generation.
+     * @param meta Associated metadata.
+     * @param ctx The LLVM context to use for code generation.
+     * @return The LLVM value generated from this AST.
+     */
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value * override;
 
     /**
      * Forward the type checking to the mapped function. This just applies standard type inference from a function call.

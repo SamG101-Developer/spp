@@ -4,8 +4,6 @@
 
 
 struct spp::asts::TypeTupleShorthandAst final : virtual Ast, mixins::TempTypeAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The left parenthesis token that represents the start of the tuple type.
      */
@@ -33,6 +31,8 @@ struct spp::asts::TypeTupleShorthandAst final : virtual Ast, mixins::TempTypeAst
         decltype(tok_r) &&tok_r);
 
     ~TypeTupleShorthandAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto convert() -> std::unique_ptr<TypeAst> override;
 };

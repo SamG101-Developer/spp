@@ -3,8 +3,6 @@
 
 
 struct spp::asts::LoopConditionIterableAst final : LoopConditionAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The variable for iteration. This is filled with each element of the iterable as the loop iterates.
      */
@@ -34,6 +32,8 @@ struct spp::asts::LoopConditionIterableAst final : LoopConditionAst {
         decltype(iterable) &&iterable);
 
     ~LoopConditionIterableAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

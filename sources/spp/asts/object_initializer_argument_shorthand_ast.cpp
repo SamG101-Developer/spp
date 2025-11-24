@@ -66,4 +66,3 @@ auto spp::asts::ObjectInitializerArgumentShorthandAst::stage_7_analyse_semantics
     }
     ObjectInitializerArgumentAst::stage_7_analyse_semantics(sm, meta);
 }
-

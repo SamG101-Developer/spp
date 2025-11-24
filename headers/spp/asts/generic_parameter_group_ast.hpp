@@ -3,8 +3,6 @@
 
 
 struct spp::asts::GenericParameterGroupAst final : virtual Ast {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The token that represents the left bracket @code [@endcode in the generic parameter group. This introduces the
      * generic parameter group.
@@ -33,9 +31,15 @@ struct spp::asts::GenericParameterGroupAst final : virtual Ast {
         decltype(params) &&params,
         decltype(tok_r) &&tok_r);
 
-    static auto new_empty() -> std::unique_ptr<GenericParameterGroupAst>;
-
     ~GenericParameterGroupAst() override;
+
+    auto operator+(GenericParameterGroupAst const &other) const -> std::unique_ptr<GenericParameterGroupAst>;
+
+    auto operator +=(GenericParameterGroupAst const &other) -> GenericParameterGroupAst&;
+
+    SPP_AST_KEY_FUNCTIONS;
+
+    static auto new_empty() -> std::unique_ptr<GenericParameterGroupAst>;
 
     auto get_required_params() const -> std::vector<GenericParameterAst*>;
 

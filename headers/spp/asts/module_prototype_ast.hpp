@@ -7,6 +7,7 @@
 namespace spp::compiler {
     struct CompilerBoot;
 }
+
 /// @endcond
 
 
@@ -15,7 +16,6 @@ namespace spp::compiler {
  * the module.
  */
 struct spp::asts::ModulePrototypeAst final : virtual Ast {
-    SPP_AST_KEY_FUNCTIONS;
     friend struct compiler::CompilerBoot;
 
 private:
@@ -35,6 +35,8 @@ public:
         decltype(impl) &&impl);
 
     ~ModulePrototypeAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto name() const -> std::unique_ptr<IdentifierAst>;
 

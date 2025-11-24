@@ -3,11 +3,11 @@
 
 
 struct spp::asts::ClosureExpressionCaptureAst final : FunctionCallArgumentPositionalAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     ClosureExpressionCaptureAst(
         decltype(conv) &&conv,
         decltype(val) &&val);
 
     ~ClosureExpressionCaptureAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 };

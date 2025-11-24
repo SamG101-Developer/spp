@@ -3,8 +3,6 @@
 
 
 struct spp::asts::IntegerLiteralAst final : LiteralAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The optionally provided sign token. This can be either a @c + or @c - sign, indicating the sign of the integer
      * literal. No sign means the integer is positive by default.
@@ -21,12 +19,6 @@ struct spp::asts::IntegerLiteralAst final : LiteralAst {
      */
     std::string type;
 
-protected:
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-
-    auto equals_integer_literal(IntegerLiteralAst const &) const -> std::strong_ordering override;
-
-public:
     /**
      * Construct the IntegerLiteralAst with the arguments matching the members.
      * @param[in] tok_sign The optionally provided sign token.
@@ -39,6 +31,14 @@ public:
         std::string &&type);
 
     ~IntegerLiteralAst() override;
+
+protected:
+    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+
+    auto equals_integer_literal(IntegerLiteralAst const &) const -> std::strong_ordering override;
+
+public:
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

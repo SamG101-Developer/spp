@@ -3,8 +3,6 @@
 
 
 struct spp::asts::CasePatternVariantSingleIdentifierAst final : CasePatternVariantAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The optional @c mut token that indicates the pattern is mutable. If no @c mut token is present, the introduced
      * variable is not mutable.
@@ -35,6 +33,8 @@ struct spp::asts::CasePatternVariantSingleIdentifierAst final : CasePatternVaria
         decltype(alias) &&alias);
 
     ~CasePatternVariantSingleIdentifierAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto convert_to_variable(mixins::CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
 

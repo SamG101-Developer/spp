@@ -2,8 +2,6 @@
 #include <spp/asts/ast.hpp>
 
 struct spp::asts::ClosureExpressionCaptureGroupAst final : virtual Ast {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c caps token that indicates the start of the closure capture group. This is used to indicate that the
      * closure has moved on from parameter definitions and is now capturing variables from the outer scope.
@@ -26,6 +24,8 @@ struct spp::asts::ClosureExpressionCaptureGroupAst final : virtual Ast {
         decltype(captures) &&captures);
 
     ~ClosureExpressionCaptureGroupAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     static auto new_empty() -> std::unique_ptr<ClosureExpressionCaptureGroupAst>;
 

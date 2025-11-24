@@ -11,6 +11,7 @@
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
+#include <spp/codegen/llvm_mangle.hpp>
 
 #include <genex/views/for_each.hpp>
 
@@ -39,17 +40,20 @@ spp::asts::CmpStatementAst::CmpStatementAst(
 spp::asts::CmpStatementAst::~CmpStatementAst() = default;
 
 
-auto spp::asts::CmpStatementAst::pos_start() const -> std::size_t {
+auto spp::asts::CmpStatementAst::pos_start() const
+    -> std::size_t {
     return name->pos_start();
 }
 
 
-auto spp::asts::CmpStatementAst::pos_end() const -> std::size_t {
+auto spp::asts::CmpStatementAst::pos_end() const
+    -> std::size_t {
     return value->pos_end();
 }
 
 
-auto spp::asts::CmpStatementAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::CmpStatementAst::clone() const
+    -> std::unique_ptr<Ast> {
     auto ast = std::make_unique<CmpStatementAst>(
         ast_clone_vec(annotations),
         ast_clone(tok_cmp),
@@ -79,7 +83,9 @@ spp::asts::CmpStatementAst::operator std::string() const {
 }
 
 
-auto spp::asts::CmpStatementAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::CmpStatementAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_EXTEND(annotations);
     SPP_PRINT_APPEND(tok_cmp).append(" ");
@@ -161,4 +167,16 @@ auto spp::asts::CmpStatementAst::stage_8_check_memory(
     value->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
         *value, *value, *sm, true, true, true, true, true, true, meta);
+}
+
+
+auto spp::asts::CmpStatementAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    mixins::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate the value and store the constant.
+    const auto val = value->stage_10_code_gen_2(sm, meta, ctx);
+    ctx->global_constants[codegen::mangle::mangle_cmp_name(*sm->current_scope, *this)] = llvm::cast<llvm::Constant>(val);
+    return nullptr;
 }

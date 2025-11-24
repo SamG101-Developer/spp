@@ -3,8 +3,6 @@
 
 
 struct spp::asts::UnaryExpressionOperatorDerefAst final : UnaryExpressionOperatorAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c * token that indicates a dereference operation. This is used to extract a copyable value from a borrow.
      */
@@ -18,6 +16,8 @@ struct spp::asts::UnaryExpressionOperatorDerefAst final : UnaryExpressionOperato
         decltype(tok_deref) &&tok_deref);
 
     ~UnaryExpressionOperatorDerefAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

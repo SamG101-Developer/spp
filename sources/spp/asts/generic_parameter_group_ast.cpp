@@ -20,7 +20,6 @@
 #include <genex/views/cast_dynamic.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/duplicates.hpp>
-#include <genex/views/filter.hpp>
 #include <genex/views/for_each.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
@@ -39,6 +38,70 @@ spp::asts::GenericParameterGroupAst::GenericParameterGroupAst(
 
 
 spp::asts::GenericParameterGroupAst::~GenericParameterGroupAst() = default;
+
+
+auto spp::asts::GenericParameterGroupAst::operator+(
+    GenericParameterGroupAst const &other) const
+    -> std::unique_ptr<GenericParameterGroupAst> {
+    auto new_params = ast_clone(this);
+    *new_params += other;
+    return new_params;
+}
+
+
+auto spp::asts::GenericParameterGroupAst::operator+=(
+    GenericParameterGroupAst const &other)
+    -> GenericParameterGroupAst& {
+    for (auto &&p : other.params) {
+        params.push_back(ast_clone(p));
+    }
+    return *this;
+}
+
+
+auto spp::asts::GenericParameterGroupAst::pos_start() const
+    -> std::size_t {
+    return tok_l->pos_start();
+}
+
+
+auto spp::asts::GenericParameterGroupAst::pos_end() const
+    -> std::size_t {
+    return tok_r->pos_end();
+}
+
+
+auto spp::asts::GenericParameterGroupAst::clone() const
+    -> std::unique_ptr<Ast> {
+    return std::make_unique<GenericParameterGroupAst>(
+        ast_clone(tok_l),
+        ast_clone_vec(params),
+        ast_clone(tok_r));
+}
+
+
+spp::asts::GenericParameterGroupAst::operator std::string() const {
+    SPP_STRING_START;
+    if (not params.empty()) {
+        SPP_STRING_APPEND(tok_l);
+        SPP_STRING_EXTEND(params);
+        SPP_STRING_APPEND(tok_r);
+    }
+    SPP_STRING_END;
+}
+
+
+auto spp::asts::GenericParameterGroupAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
+    SPP_PRINT_START;
+    if (not params.empty()) {
+        SPP_PRINT_APPEND(tok_l);
+        SPP_PRINT_EXTEND(params);
+        SPP_PRINT_APPEND(tok_r);
+    }
+    SPP_PRINT_END;
+}
 
 
 auto spp::asts::GenericParameterGroupAst::new_empty()
@@ -160,51 +223,6 @@ auto spp::asts::GenericParameterGroupAst::opt_to_req() const
     }
 
     return std::make_unique<GenericParameterGroupAst>(nullptr, std::move(new_params), nullptr);
-}
-
-
-auto spp::asts::GenericParameterGroupAst::pos_start() const
-    -> std::size_t {
-    return tok_l->pos_start();
-}
-
-
-auto spp::asts::GenericParameterGroupAst::pos_end() const
-    -> std::size_t {
-    return tok_r->pos_end();
-}
-
-
-auto spp::asts::GenericParameterGroupAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<GenericParameterGroupAst>(
-        ast_clone(tok_l),
-        ast_clone_vec(params),
-        ast_clone(tok_r));
-}
-
-
-spp::asts::GenericParameterGroupAst::operator std::string() const {
-    SPP_STRING_START;
-    if (not params.empty()) {
-        SPP_STRING_APPEND(tok_l);
-        SPP_STRING_EXTEND(params);
-        SPP_STRING_APPEND(tok_r);
-    }
-    SPP_STRING_END;
-}
-
-
-auto spp::asts::GenericParameterGroupAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    if (not params.empty()) {
-        SPP_PRINT_APPEND(tok_l);
-        SPP_PRINT_EXTEND(params);
-        SPP_PRINT_APPEND(tok_r);
-    }
-    SPP_PRINT_END;
 }
 
 

@@ -1,10 +1,11 @@
 #include <spp/analyse/errors/semantic_error.hpp>
 #include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/scope.hpp>
+#include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/analyse/scopes/symbols.hpp>
 #include <spp/analyse/utils/func_utils.hpp>
 #include <spp/analyse/utils/type_utils.hpp>
+#include <spp/asts/annotation_ast.hpp>
 #include <spp/asts/convention_ast.hpp>
 #include <spp/asts/generic_argument_group_ast.hpp>
 #include <spp/asts/generic_parameter_ast.hpp>
@@ -15,6 +16,7 @@
 #include <spp/asts/sup_prototype_functions_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
+#include <spp/asts/type_statement_ast.hpp>
 
 #include <genex/to_container.hpp>
 #include <genex/views/filter.hpp>
@@ -159,6 +161,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_5_load_super_scopes(
     -> void {
     // Move into the superimposition scope.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
 
     // Analyse the type being superimposed over.
     name->stage_7_analyse_semantics(sm, meta);
@@ -178,9 +181,13 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_5_load_super_scopes(
     // Add the "Self" symbol into the scope.
     if (name->type_parts().back()->name[0] != '$') {
         const auto cls_sym = sm->current_scope->get_type_symbol(name);
-        sm->current_scope->add_type_symbol(std::make_unique<analyse::scopes::AliasSymbol>(
-            std::make_unique<TypeIdentifierAst>(name->pos_start(), "Self", nullptr), cls_sym->type, cls_sym->scope,
-            sm->current_scope, cls_sym));
+        const auto self_sym = std::make_shared<analyse::scopes::TypeSymbol>(
+            std::make_unique<TypeIdentifierAst>(name->pos_start(), "Self", nullptr),
+            cls_sym->type, cls_sym->scope, sm->current_scope);
+        self_sym->alias_stmt = std::make_unique<TypeStatementAst>(
+            SPP_NO_ANNOTATIONS, nullptr,
+            TypeIdentifierAst::from_string("Self"), nullptr, nullptr, name);
+        sm->current_scope->add_type_symbol(self_sym);
     }
 
     // Load the implementation and move out of the scope.
@@ -195,6 +202,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_6_pre_analyse_semantics(
     -> void {
     // Move to the next scope.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     name->stage_7_analyse_semantics(sm, meta);
     impl->stage_6_pre_analyse_semantics(sm, meta);
     sm->move_out_of_current_scope();
@@ -207,6 +215,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_7_analyse_semantics(
     -> void {
     // Move to the next scope.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     name->stage_7_analyse_semantics(sm, meta);
     impl->stage_7_analyse_semantics(sm, meta);
     sm->move_out_of_current_scope();
@@ -219,6 +228,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_8_check_memory(
     -> void {
     // Move to the next scope.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
     impl->stage_8_check_memory(sm, meta);
     sm->move_out_of_current_scope();
 }

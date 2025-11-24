@@ -4,6 +4,7 @@
 #include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/annotation_ast.hpp>
 #include <spp/asts/function_implementation_ast.hpp>
+#include <spp/asts/function_parameter_ast.hpp>
 #include <spp/asts/function_parameter_group_ast.hpp>
 #include <spp/asts/generic_parameter_group_ast.hpp>
 #include <spp/asts/identifier_ast.hpp>
@@ -12,6 +13,7 @@
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_ast.hpp>
 #include <spp/asts/generate/common_types_precompiled.hpp>
+#include <spp/codegen/llvm_mangle.hpp>
 
 #include <genex/views/for_each.hpp>
 
@@ -39,6 +41,7 @@ auto spp::asts::SubroutinePrototypeAst::clone() const
     ast->m_no_impl_annotation = m_no_impl_annotation;
     ast->m_inline_annotation = m_inline_annotation;
     ast->m_visibility = m_visibility;
+    ast->m_llvm_func = m_llvm_func;
     ast->annotations | genex::views::for_each([ast=ast.get()](auto const &a) { a->m_ctx = ast; });
     return ast;
 }
@@ -81,6 +84,6 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
     }
 
     sm->move_out_of_current_scope();
-    meta->restore();
+    meta->restore(true);
     meta->loop_return_types->clear();
 }

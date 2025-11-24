@@ -3,8 +3,6 @@
 
 
 struct spp::asts::PostfixExpressionOperatorEarlyReturnAst final : PostfixExpressionOperatorAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c ? token that indicates an early return in a postfix expression. This token is used to signify that the
      * expression should be checked for its result-type failure type, and if it matches, the expression will lift the
@@ -21,7 +19,11 @@ struct spp::asts::PostfixExpressionOperatorEarlyReturnAst final : PostfixExpress
 
     ~PostfixExpressionOperatorEarlyReturnAst() override;
 
+    SPP_AST_KEY_FUNCTIONS;
+
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, mixins::CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

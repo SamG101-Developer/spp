@@ -8,42 +8,12 @@
 
 
 spp::asts::GenericArgumentCompPositionalAst::GenericArgumentCompPositionalAst(
-    decltype(val) &&val):
+    decltype(val) &&val) :
     GenericArgumentCompAst(std::move(val), mixins::OrderableTag::POSITIONAL_ARG) {
 }
 
 
 spp::asts::GenericArgumentCompPositionalAst::~GenericArgumentCompPositionalAst() = default;
-
-
-auto spp::asts::GenericArgumentCompPositionalAst::pos_start() const -> std::size_t {
-    return val->pos_start();
-}
-
-
-auto spp::asts::GenericArgumentCompPositionalAst::pos_end() const -> std::size_t {
-    return val->pos_end();
-}
-
-
-auto spp::asts::GenericArgumentCompPositionalAst::clone() const -> std::unique_ptr<Ast> {
-    return std::make_unique<GenericArgumentCompPositionalAst>(
-        ast_clone(val));
-}
-
-
-spp::asts::GenericArgumentCompPositionalAst::operator std::string() const {
-    SPP_STRING_START;
-    SPP_STRING_APPEND(val);
-    SPP_STRING_END;
-}
-
-
-auto spp::asts::GenericArgumentCompPositionalAst::print(meta::AstPrinter &printer) const -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(val);
-    SPP_PRINT_END;
-}
 
 
 auto spp::asts::GenericArgumentCompPositionalAst::equals(
@@ -60,6 +30,41 @@ auto spp::asts::GenericArgumentCompPositionalAst::equals_generic_argument_comp_p
         return std::strong_ordering::equal;
     }
     return std::strong_ordering::less;
+}
+
+
+auto spp::asts::GenericArgumentCompPositionalAst::pos_start() const
+    -> std::size_t {
+    return val->pos_start();
+}
+
+
+auto spp::asts::GenericArgumentCompPositionalAst::pos_end() const
+    -> std::size_t {
+    return val->pos_end();
+}
+
+
+auto spp::asts::GenericArgumentCompPositionalAst::clone() const
+    -> std::unique_ptr<Ast> {
+    return std::make_unique<GenericArgumentCompPositionalAst>(
+        ast_clone(val));
+}
+
+
+spp::asts::GenericArgumentCompPositionalAst::operator std::string() const {
+    SPP_STRING_START;
+    SPP_STRING_APPEND(val);
+    SPP_STRING_END;
+}
+
+
+auto spp::asts::GenericArgumentCompPositionalAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
+    SPP_PRINT_START;
+    SPP_PRINT_APPEND(val);
+    SPP_PRINT_END;
 }
 
 

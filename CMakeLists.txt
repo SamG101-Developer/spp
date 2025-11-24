@@ -17,10 +17,10 @@ find_package(nlohmann_json REQUIRED) # json parsing
 find_package(tomlplusplus REQUIRED) # toml parsing
 find_package(magic_enum REQUIRED) # enum reflection
 find_package(rapidfuzz REQUIRED) # fuzzy string matching
-find_package(Boost REQUIRED) # various utilities
+find_package(Boost 1.89.0 REQUIRED) # various utilities
 find_package(Glob) # file globbing
 find_package(CLI11 REQUIRED) # command line parsing
-find_package(LLVM REQUIRED CONFIG) # LLVM libraries
+find_package(LLVM 21.1.0 REQUIRED CONFIG) # LLVM libraries
 
 # Collect all source files and create the library.
 file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS "sources/*.cpp")
@@ -33,7 +33,7 @@ target_compile_options(spp_lib PRIVATE
         -Wold-style-cast -Woverloaded-virtual -Wundef -Wdisabled-optimization -Wmissing-declarations -Wmissing-include-dirs
         -Wnull-dereference -Wformat=2 -Wduplicated-cond -Wduplicated-branches -Wredundant-decls -Wlogical-op
         -Wuseless-cast -Wdouble-promotion -Wstrict-null-sentinel -Wswitch-default -Wswitch-enum -Wno-null-dereference
-        -Wno-maybe-uninitialized)
+        -Wno-maybe-uninitialized -Wno-error=array-bounds)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(spp_lib PRIVATE
             -O0 -pg -g -fno-omit-frame-pointer -fno-inline -fno-inline-functions-called-once
@@ -41,25 +41,17 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_link_options(spp_lib PRIVATE -pg)
 endif ()
 
+separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
+add_definitions(${LLVM_DEFINITIONS_LIST})
 target_link_libraries(spp_lib PRIVATE
         absl::hash absl::strings nlohmann_json::nlohmann_json magic_enum::magic_enum rapidfuzz::rapidfuzz Boost::boost
-        Glob LLVMCore LLVMIRReader LLVMSupport)
+        Glob LLVMCore LLVMSupport LLVMCodeGen LLVMScalarOpts LLVMTransformUtils)
 
 target_include_directories(spp_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/headers)
 # target_precompile_headers(spp_lib PUBLIC "pch.hpp")
 
 add_executable(spp main.cpp)
 target_link_libraries(spp PRIVATE spp_lib)
-
-# In debug mode, add the sanitizers.
-#if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-#    message(STATUS "Debug mode: Adding AddressSanitizer flags")
-#    set(SANITIZER_FLAGS -fsanitize=address,leak -fno-omit-frame-pointer -fno-optimize-sibling-calls -g -O0)
-#    target_compile_options(spp_lib PRIVATE ${SANITIZER_FLAGS})
-#    target_compile_options(spp PRIVATE ${SANITIZER_FLAGS})
-#    target_link_options(spp_lib PRIVATE ${SANITIZER_FLAGS})
-#    target_link_options(spp PRIVATE ${SANITIZER_FLAGS})
-#endif ()
 
 # Unit test support.
 enable_testing()

@@ -4,8 +4,6 @@
 
 
 struct spp::asts::LoopElseStatementAst final : virtual Ast, mixins::TypeInferrableAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c else keyword that indicates this is an else statement for the loop.
      */
@@ -27,6 +25,8 @@ struct spp::asts::LoopElseStatementAst final : virtual Ast, mixins::TypeInferrab
         decltype(body) &&body);
 
     ~LoopElseStatementAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

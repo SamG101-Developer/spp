@@ -4,8 +4,6 @@
 
 
 struct spp::asts::TypeArrayShorthandAst final : virtual Ast, mixins::TempTypeAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The left square bracket token that represents the start of the array type.
      */
@@ -47,6 +45,8 @@ struct spp::asts::TypeArrayShorthandAst final : virtual Ast, mixins::TempTypeAst
         decltype(tok_r) &&tok_r);
 
     ~TypeArrayShorthandAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     auto convert() -> std::unique_ptr<TypeAst> override;
 };

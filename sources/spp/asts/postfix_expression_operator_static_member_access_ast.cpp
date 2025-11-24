@@ -2,12 +2,12 @@
 #include <spp/analyse/errors/semantic_error_builder.hpp>
 #include <spp/analyse/scopes/scope.hpp>
 #include <spp/analyse/scopes/scope_manager.hpp>
+#include <spp/analyse/utils/type_utils.hpp>
 #include <spp/asts/identifier_ast.hpp>
 #include <spp/asts/postfix_expression_ast.hpp>
 #include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
 #include <spp/asts/token_ast.hpp>
 #include <spp/asts/type_identifier_ast.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
 #include <spp/utils/strings.hpp>
 
 #include <genex/to_container.hpp>

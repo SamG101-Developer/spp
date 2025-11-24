@@ -4,8 +4,6 @@
 
 
 struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The token that represents the left bracket @code [@endcode in the generic argument group. This introduces the
      * generic argument group.
@@ -35,6 +33,8 @@ struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
         decltype(tok_r) &&tok_r);
 
     ~GenericArgumentGroupAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     static auto new_empty()
         -> std::unique_ptr<GenericArgumentGroupAst>;
@@ -66,6 +66,8 @@ struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
     auto get_positional_args() const -> std::vector<GenericArgumentAst*>;
 
     auto get_all_args() const -> std::vector<GenericArgumentAst*>;
+
+    auto stage_4_qualify_types(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
 

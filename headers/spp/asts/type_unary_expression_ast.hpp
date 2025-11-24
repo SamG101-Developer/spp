@@ -3,14 +3,6 @@
 
 
 struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
-protected:
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-
-    auto equals_type_unary_expression(TypeUnaryExpressionAst const &other) const -> std::strong_ordering override;
-
-public:
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The operator token that represents the unary operation. This indicates the type of operation being performed.
      */
@@ -31,6 +23,14 @@ public:
         decltype(rhs) rhs);
 
     ~TypeUnaryExpressionAst() override;
+
+protected:
+    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+
+    auto equals_type_unary_expression(TypeUnaryExpressionAst const &other) const -> std::strong_ordering override;
+
+public:
+    SPP_AST_KEY_FUNCTIONS;
 
     SPP_ATTR_ALWAYS_INLINE auto operator<=>(TypeUnaryExpressionAst const &other) const -> std::strong_ordering {
         return equals(other);

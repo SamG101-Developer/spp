@@ -17,17 +17,20 @@ spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::CasePatternVar
 spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::~CasePatternVariantDestructureSkipMultipleArgumentsAst() = default;
 
 
-auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::pos_start() const -> std::size_t {
+auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::pos_start() const
+    -> std::size_t {
     return tok_ellipsis->pos_start();
 }
 
 
-auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::pos_end() const -> std::size_t {
+auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::pos_end() const
+    -> std::size_t {
     return binding ? binding->pos_end() : tok_ellipsis->pos_end();
 }
 
 
-auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<CasePatternVariantDestructureSkipMultipleArgumentsAst>(
         ast_clone(tok_ellipsis),
         ast_clone(binding));
@@ -42,7 +45,9 @@ spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::operator std::
 }
 
 
-auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_ellipsis);
     SPP_PRINT_APPEND(binding);
@@ -54,7 +59,8 @@ auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::convert_t
     mixins::CompilerMetaData *meta)
     -> std::unique_ptr<LocalVariableAst> {
     // Create the local variable destructure attribute binding AST.
-    auto var = std::make_unique<LocalVariableDestructureSkipMultipleArgumentsAst>(nullptr, binding ? binding->convert_to_variable(meta) : nullptr);
+    auto var = std::make_unique<LocalVariableDestructureSkipMultipleArgumentsAst>(
+        nullptr, binding ? binding->convert_to_variable(meta) : nullptr);
     var->m_from_pattern = true;
     return var;
 }

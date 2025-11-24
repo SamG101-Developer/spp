@@ -10,9 +10,6 @@
 #include <spp/asts/type_unary_expression_operator_borrow_ast.hpp>
 #include <spp/asts/type_unary_expression_operator_namespace_ast.hpp>
 
-#include <genex/views/concat.hpp>
-
-// static auto COUNTER = 0;
 
 spp::asts::TypeUnaryExpressionAst::TypeUnaryExpressionAst(
     decltype(op) op,
@@ -23,39 +20,6 @@ spp::asts::TypeUnaryExpressionAst::TypeUnaryExpressionAst(
 
 
 spp::asts::TypeUnaryExpressionAst::~TypeUnaryExpressionAst() = default;
-
-
-auto spp::asts::TypeUnaryExpressionAst::pos_start() const -> std::size_t {
-    return op->pos_start();
-}
-
-
-auto spp::asts::TypeUnaryExpressionAst::pos_end() const -> std::size_t {
-    return rhs->pos_end();
-}
-
-
-auto spp::asts::TypeUnaryExpressionAst::clone() const -> std::unique_ptr<Ast> {
-    return std::make_unique<TypeUnaryExpressionAst>(
-        ast_clone(op),
-        ast_clone(rhs));
-}
-
-
-spp::asts::TypeUnaryExpressionAst::operator std::string() const {
-    SPP_STRING_START;
-    SPP_STRING_APPEND(op);
-    SPP_STRING_APPEND(rhs);
-    SPP_STRING_END;
-}
-
-
-auto spp::asts::TypeUnaryExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(op);
-    SPP_PRINT_APPEND(rhs);
-    SPP_PRINT_END;
-}
 
 
 auto spp::asts::TypeUnaryExpressionAst::equals(
@@ -74,6 +38,44 @@ auto spp::asts::TypeUnaryExpressionAst::equals_type_unary_expression(
         return std::strong_ordering::equal;
     }
     return std::strong_ordering::less;
+}
+
+
+auto spp::asts::TypeUnaryExpressionAst::pos_start() const
+    -> std::size_t {
+    return op->pos_start();
+}
+
+
+auto spp::asts::TypeUnaryExpressionAst::pos_end() const
+    -> std::size_t {
+    return rhs->pos_end();
+}
+
+
+auto spp::asts::TypeUnaryExpressionAst::clone() const
+    -> std::unique_ptr<Ast> {
+    return std::make_unique<TypeUnaryExpressionAst>(
+        ast_clone(op),
+        ast_clone(rhs));
+}
+
+
+spp::asts::TypeUnaryExpressionAst::operator std::string() const {
+    SPP_STRING_START;
+    SPP_STRING_APPEND(op);
+    SPP_STRING_APPEND(rhs);
+    SPP_STRING_END;
+}
+
+
+auto spp::asts::TypeUnaryExpressionAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
+    SPP_PRINT_START;
+    SPP_PRINT_APPEND(op);
+    SPP_PRINT_APPEND(rhs);
+    SPP_PRINT_END;
 }
 
 

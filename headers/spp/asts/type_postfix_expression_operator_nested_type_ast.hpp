@@ -3,8 +3,6 @@
 
 
 struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final : TypePostfixExpressionOperatorAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The @c :: operator token that represents the namespace operator.
      */
@@ -24,13 +22,15 @@ struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final : TypePostfix
         decltype(tok_sep) &&tok_sep,
         decltype(name) &&name);
 
+    ~TypePostfixExpressionOperatorNestedTypeAst() override;
+
 protected:
     auto equals(TypePostfixExpressionOperatorAst const &) const -> std::strong_ordering override;
 
     auto equals_nested_type(TypePostfixExpressionOperatorNestedTypeAst const &) const -> std::strong_ordering override;
 
 public:
-    ~TypePostfixExpressionOperatorNestedTypeAst() override;
+    SPP_AST_KEY_FUNCTIONS;
 
     auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
 

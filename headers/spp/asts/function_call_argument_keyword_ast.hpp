@@ -7,8 +7,6 @@
  * to be matched by a keyword rather than an index.
  */
 struct spp::asts::FunctionCallArgumentKeywordAst final : FunctionCallArgumentAst {
-    SPP_AST_KEY_FUNCTIONS;
-
     /**
      * The name of the keyword argument. This is the identifier that is used to refer to the argument in the function
      * call.
@@ -35,4 +33,6 @@ struct spp::asts::FunctionCallArgumentKeywordAst final : FunctionCallArgumentAst
         decltype(val) &&val);
 
     ~FunctionCallArgumentKeywordAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 };

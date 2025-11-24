@@ -16,17 +16,20 @@ spp::asts::ObjectInitializerArgumentKeywordAst::ObjectInitializerArgumentKeyword
 spp::asts::ObjectInitializerArgumentKeywordAst::~ObjectInitializerArgumentKeywordAst() = default;
 
 
-auto spp::asts::ObjectInitializerArgumentKeywordAst::pos_start() const -> std::size_t {
+auto spp::asts::ObjectInitializerArgumentKeywordAst::pos_start() const
+    -> std::size_t {
     return name->pos_start();
 }
 
 
-auto spp::asts::ObjectInitializerArgumentKeywordAst::pos_end() const -> std::size_t {
+auto spp::asts::ObjectInitializerArgumentKeywordAst::pos_end() const
+    -> std::size_t {
     return val->pos_end();
 }
 
 
-auto spp::asts::ObjectInitializerArgumentKeywordAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::ObjectInitializerArgumentKeywordAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<ObjectInitializerArgumentKeywordAst>(
         ast_clone(name),
         ast_clone(tok_assign),
@@ -43,7 +46,9 @@ spp::asts::ObjectInitializerArgumentKeywordAst::operator std::string() const {
 }
 
 
-auto spp::asts::ObjectInitializerArgumentKeywordAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::ObjectInitializerArgumentKeywordAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(name);
     SPP_PRINT_APPEND(tok_assign);

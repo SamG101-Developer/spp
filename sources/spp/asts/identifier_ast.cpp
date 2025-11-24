@@ -111,5 +111,5 @@ auto spp::asts::IdentifierAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Extract the symbol from the current scope, as a variable symbol.
     const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));
-    return var_sym ? var_sym->type : nullptr; // ? var_sym->type : nullptr;
+    return var_sym ? var_sym->type : nullptr;
 }

@@ -3,13 +3,13 @@
 #include <spp/asts/token_ast.hpp>
 
 
+spp::asts::FunctionImplementationAst::~FunctionImplementationAst() = default;
+
+
 auto spp::asts::FunctionImplementationAst::new_empty()
     -> std::unique_ptr<FunctionImplementationAst> {
     return std::make_unique<FunctionImplementationAst>();
 }
-
-
-spp::asts::FunctionImplementationAst::~FunctionImplementationAst() = default;
 
 
 auto spp::asts::FunctionImplementationAst::clone() const
