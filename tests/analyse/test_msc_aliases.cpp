@@ -118,7 +118,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     use std::cast::From
     use std::number::S32
 
-    sup S32 ext From[std::string::Str] {
+    sup S32 ext From[S32, std::string::Str] {
         fun from(that: std::string::Str) -> S32 {
             ret 0
         }
@@ -139,7 +139,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     use std::cast::From
     use std::number::S32
 
-    sup Vec[S32] ext From[std::string::Str] {
+    sup Vec[S32] ext From[Vec[S32], std::string::Str] {
         fun from(that: std::string::Str) -> Vec[S32] {
             ret Vec[S32]::new()
         }
@@ -164,7 +164,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     use std::number::S32
     use std::string::Str
 
-    sup Str ext From[S32] {
+    sup Str ext From[Str, S32] {
         fun from(that: S32) -> Str {
             ret "test"
         }
