@@ -84,6 +84,6 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
     }
 
     sm->move_out_of_current_scope();
-    meta->restore();
+    meta->restore(true);
     meta->loop_return_types->clear();
 }

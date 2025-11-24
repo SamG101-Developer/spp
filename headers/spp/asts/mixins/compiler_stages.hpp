@@ -181,7 +181,7 @@ public:
 
     auto save() -> void;
 
-    auto restore() -> void;
+    auto restore(bool heavy = false) -> void;
 
     auto depth() const -> std::size_t;
 };
