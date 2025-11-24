@@ -111,7 +111,7 @@ public:
 
     auto get_generics() const -> std::vector<std::unique_ptr<asts::GenericArgumentAst>>;
 
-    auto get_extended_generic_symbols(std::vector<asts::GenericArgumentAst*> generics) -> std::vector<std::shared_ptr<Symbol>>;
+    auto get_extended_generic_symbols(std::vector<asts::GenericArgumentAst*> generics, std::shared_ptr<asts::TypeAst> ignore = nullptr) -> std::vector<std::shared_ptr<Symbol>>;
 
     auto add_var_symbol(std::shared_ptr<VariableSymbol> const &sym) -> void;
     auto add_type_symbol(std::shared_ptr<TypeSymbol> const &sym) -> void;

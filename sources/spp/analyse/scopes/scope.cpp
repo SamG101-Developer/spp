@@ -175,7 +175,8 @@ auto spp::analyse::scopes::Scope::get_generics() const
 
 
 auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
-    std::vector<asts::GenericArgumentAst*> generics)
+    std::vector<asts::GenericArgumentAst*> generics,
+    std::shared_ptr<asts::TypeAst> ignore)
     -> std::vector<std::shared_ptr<Symbol>> {
     // Convert the provided generic arguments into symbols. Todo: filter to "is_generic"?
     const auto type_syms = generics
@@ -187,6 +188,7 @@ auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
 
     const auto comp_syms = generics
         | genex::views::cast_dynamic<asts::GenericArgumentCompAst*>()
+        | genex::views::filter([&ignore](auto &&gen_arg) { return ignore == nullptr or *gen_arg->val != *ignore; })
         | genex::views::transform([this](auto &&gen_arg) { return get_var_symbol(asts::ast_cast<asts::IdentifierAst>(asts::ast_clone(gen_arg->val))); })
         | genex::views::filter([](auto &&sym) { return sym != nullptr and sym->is_generic; })
         | genex::views::cast_smart<Symbol>()
@@ -207,6 +209,7 @@ auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
 
         scope->all_var_symbols(true)
             | genex::views::filter([](auto const &sym) { return sym->is_generic; })
+            | genex::views::filter([&ignore](auto const &sym) { return ignore == nullptr or *sym->name == *ignore; })
             | genex::views::for_each([&syms](auto const &sym) { syms.emplace_back(sym); });
     }
 
