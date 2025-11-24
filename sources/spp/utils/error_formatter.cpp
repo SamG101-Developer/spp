@@ -68,7 +68,8 @@ auto spp::utils::errors::ErrorFormatter::internal_parse_error_raw_pos(
     while ((pos = error_line_as_string.find("  "s, pos)) != std::string::npos) {
         error_line_as_string.replace(pos, 2, "");
     }
-    carets = carets.substr(l1 - error_line_as_string.length()) + (colex::fg_bright_white & colex::st_bold) + " <- " + tag_message;
+    const auto temp = std::min(carets.length(), l1 - error_line_as_string.length());
+    carets = carets.substr(temp) + (colex::fg_bright_white & colex::st_bold) + " <- " + tag_message;
     auto left_padding = std::string(error_line_number.length(), ' ');
 
     // Remove "\n" from the start and end of the error line string.

@@ -974,11 +974,11 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
         type_list.emplace_back(actual_old_type);
         scope_list.emplace_back(tracking_scope);
         alias_list.emplace_back(sym->alias_stmt.get());
-        generic_list.emplace_back(sym->alias_stmt ? asts::ast_clone(sym->alias_stmt->generic_param_group) : nullptr);
         sym_list.emplace_back(sym.get());
 
         // Always check for alias first, because type might have been set by prev alias analysis.
         if (sym->alias_stmt != nullptr) {
+            generic_list.emplace_back(asts::ast_clone(sym->alias_stmt->generic_param_group));
             actual_old_type = sym->alias_stmt->old_type;
             tracking_scope = sym->scope_defined_in;
             const auto new_sym = tracking_scope->get_type_symbol(actual_old_type->without_generics());
@@ -988,6 +988,7 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
         // See if we have found a non-alias type (concrete class definition).
         else if (sym->type != nullptr) {
             cls_proto = sym->type;
+            generic_list.emplace_back(asts::ast_clone(cls_proto->generic_param_group));
             break;
         }
 
@@ -1002,14 +1003,13 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
     // "type Vec[T, A] = std::vector::Vec[T, A]". This only needs to happen for the lowest level alias, which maps to a
     // class (see the immediate "break")
     for (auto layer = type_list.size() - 1; layer > 0; --layer) {
-        const auto generics = type_list[layer]->type_parts().back()->generic_arg_group->get_all_args();
+        auto generics = generic_list[layer] ? std::move(generic_list[layer]) : asts::GenericParameterGroupAst::new_empty();
         const auto alias = alias_list[layer - 1];
 
         if (alias->old_type->type_parts().back()->generic_arg_group->args.empty()) {
-            alias->generic_param_group = cls_proto->generic_param_group;
-            alias->old_type->type_parts().back()->generic_arg_group = asts::GenericArgumentGroupAst::from_params(*cls_proto->generic_param_group);
+            alias->generic_param_group = std::move(generics);
+            alias->old_type->type_parts().back()->generic_arg_group = asts::GenericArgumentGroupAst::from_params(*alias->generic_param_group);
         }
-        break;
     }
 
     // At this point, we have the lowest level type that the type alias has mapped to, potentially via other aliases.
