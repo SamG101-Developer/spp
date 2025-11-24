@@ -871,6 +871,8 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
     scopes::ScopeManager &sm,
     asts::mixins::CompilerMetaData *meta) -> void {
     // Get the parameter names for ease of use.
+    owner_scope = owner_scope ?: sm.current_scope;
+
     auto param_names = params
         | genex::views::transform([](auto &&x) { return std::dynamic_pointer_cast<asts::TypeIdentifierAst>(x->name); })
         | genex::to<std::vector>();
@@ -921,7 +923,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
     }
 
     // Fully qualify and type arguments (replaced within the inference map).
-    if (const auto owner_sym = sm.current_scope->get_type_symbol(std::dynamic_pointer_cast<asts::TypeAst>(owner)); owner_sym != nullptr) {
+    // if (const auto owner_sym = sm.current_scope->get_type_symbol(std::dynamic_pointer_cast<asts::TypeAst>(owner)); owner_sym != nullptr) {
         for (auto *opt_param : opt_params | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
             if (not genex::algorithms::contains(inferred_args | genex::views::keys | genex::views::cast_smart<asts::TypeAst>() | genex::views::materialize, *opt_param->name, SPP_INSTANT_INDIRECT)) {
                 auto def_type = opt_param->default_val;
@@ -939,7 +941,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
                 inferred_args[cast_name].emplace_back(def_type);
             }
         }
-    }
+    // }
 
     // Check each generic argument name only has one unique inferred type. "T" cannot infer to "Str" and "U32".
     for (auto [arg_name, inferred_types] : inferred_args) {
@@ -960,7 +962,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
         | genex::to<std::vector>();
     if (not uninferred_args.empty()) {
         errors::SemanticErrorBuilder<errors::SppGenericParameterNotInferredError>().with_args(
-            *uninferred_args[0], *owner).with_scopes({sm.current_scope, owner_scope ? owner_scope : sm.current_scope}).raise();
+            *uninferred_args[0], *owner).with_scopes({sm.current_scope, owner_scope}).raise();
     }
 
     // At this point, all conflicts have been checked, so it is safe to only use the first inferred value.

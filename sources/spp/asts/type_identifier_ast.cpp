@@ -332,7 +332,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
         type_sym->alias_stmt ? type_sym->alias_stmt->generic_param_group->get_optional_params() : type_sym->type->generic_param_group->get_optional_params(),
         generic_arg_group->get_all_args(),
         meta->infer_source, meta->infer_target,
-        owner, owner_sym != nullptr ? owner_sym->scope : nullptr, nullptr, is_tuple, *sm, meta);
+        owner, owner_sym != nullptr ? owner_sym->scope : type_sym->scope, nullptr, is_tuple, *sm, meta);
     meta->infer_source = {};
     meta->infer_target = {};
     generic_arg_group->stage_7_analyse_semantics(sm, meta);
