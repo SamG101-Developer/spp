@@ -1,8 +1,13 @@
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/function_call_argument_keyword_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.function_call_argument_keyword_ast;
+import spp.asts.ast;
+import spp.asts.convention_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.mixins.orderable_ast;
+import spp.lex.tokens;
 
 
 spp::asts::FunctionCallArgumentKeywordAst::FunctionCallArgumentKeywordAst(

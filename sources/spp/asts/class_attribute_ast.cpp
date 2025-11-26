@@ -1,18 +1,23 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/class_attribute_ast.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-
+module;
+#include <genex/to_container.hpp>
 #include <genex/views/for_each.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
+#include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.class_attribute_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.annotation_ast;
+import spp.asts.convention_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
 
 
 spp::asts::ClassAttributeAst::ClassAttributeAst(
@@ -94,7 +99,7 @@ auto spp::asts::ClassAttributeAst::stage_1_pre_process(
 
 auto spp::asts::ClassAttributeAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Run the generation steps for the annotations.
     annotations | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
@@ -113,7 +118,7 @@ auto spp::asts::ClassAttributeAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::ClassAttributeAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the type is valid before scopes are attached.
     type->stage_7_analyse_semantics(sm, meta);
@@ -124,7 +129,7 @@ auto spp::asts::ClassAttributeAst::stage_5_load_super_scopes(
 
 auto spp::asts::ClassAttributeAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Repeated convention check for generic substitutions.
     if (const auto conv = type->get_convention()) {
@@ -161,7 +166,7 @@ auto spp::asts::ClassAttributeAst::stage_7_analyse_semantics(
 
 auto spp::asts::ClassAttributeAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // If there is a default value, check it for memory errors.
     if (default_val != nullptr) {

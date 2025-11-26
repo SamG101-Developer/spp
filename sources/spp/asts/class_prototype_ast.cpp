@@ -1,36 +1,34 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/scopes/symbols.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/class_attribute_ast.hpp>
-#include <spp/asts/class_implementation_ast.hpp>
-#include <spp/asts/class_member_ast.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/generic_argument_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_parameter_ast.hpp>
-#include <spp/asts/generic_parameter_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/type_statement_ast.hpp>
-#include <spp/codegen/llvm_mangle.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/algorithms/any_of.hpp>
 #include <genex/views/cast_dynamic.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/for_each.hpp>
+#include <genex/views/intersperse.hpp>
 #include <genex/views/join.hpp>
 #include <genex/views/materialize.hpp>
+#include <genex/views/ptr.hpp>
+#include <genex/views/transform.hpp>
 
-#include <llvm/ADT/APFloat.h>
-#include <llvm/IR/Type.h>
+#include <spp/macros.hpp>
+
+module spp.asts.class_prototype_ast;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.asts.annotation_ast;
+import spp.asts.class_attribute_ast;
+import spp.asts.class_implementation_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_parameter_group_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.codegen.llvm_mangle;
+import spp.lex.tokens;
+
+import llvm;
 
 
 spp::asts::ClassPrototypeAst::ClassPrototypeAst(
@@ -181,7 +179,7 @@ auto spp::asts::ClassPrototypeAst::stage_1_pre_process(
 
 auto spp::asts::ClassPrototypeAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Create the class scope, which is the scope for the class prototype.
     sm->create_and_move_into_new_scope(std::dynamic_pointer_cast<TypeIdentifierAst>(name), this);
@@ -202,7 +200,7 @@ auto spp::asts::ClassPrototypeAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::ClassPrototypeAst::stage_3_gen_top_level_aliases(
     ScopeManager *sm,
-    mixins::CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> void {
     // Skip the class scope.
     sm->move_to_next_scope();
@@ -213,7 +211,7 @@ auto spp::asts::ClassPrototypeAst::stage_3_gen_top_level_aliases(
 
 auto spp::asts::ClassPrototypeAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Qualify the types in the class body.
     sm->move_to_next_scope();
@@ -226,7 +224,7 @@ auto spp::asts::ClassPrototypeAst::stage_4_qualify_types(
 
 auto spp::asts::ClassPrototypeAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Load the super scopes for the class body.
     sm->move_to_next_scope();
@@ -238,7 +236,7 @@ auto spp::asts::ClassPrototypeAst::stage_5_load_super_scopes(
 
 auto spp::asts::ClassPrototypeAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Pre-analyse semantics for the class body.
     sm->move_to_next_scope();
@@ -257,7 +255,7 @@ auto spp::asts::ClassPrototypeAst::stage_6_pre_analyse_semantics(
 
 auto spp::asts::ClassPrototypeAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse semantics for the class body.
     sm->move_to_next_scope();
@@ -270,7 +268,7 @@ auto spp::asts::ClassPrototypeAst::stage_7_analyse_semantics(
 
 auto spp::asts::ClassPrototypeAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check memory for the class body.
     sm->move_to_next_scope();
@@ -282,7 +280,7 @@ auto spp::asts::ClassPrototypeAst::stage_8_check_memory(
 
 auto spp::asts::ClassPrototypeAst::stage_9_code_gen_1(
     ScopeManager *sm,
-    mixins::CompilerMetaData *,
+    meta::CompilerMetaData *,
     codegen::LLvmCtx *)
     -> llvm::Value* {
     sm->move_to_next_scope();
@@ -294,7 +292,7 @@ auto spp::asts::ClassPrototypeAst::stage_9_code_gen_1(
 
 auto spp::asts::ClassPrototypeAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *,
+    meta::CompilerMetaData *,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Get the class symbol.

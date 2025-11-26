@@ -1,6 +1,10 @@
-#include <spp/pch.hpp>
-#include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.convention_ref_ast;
+import spp.asts.ast;
+import spp.asts.token_ast;
+import spp.lex.tokens;
 
 
 spp::asts::ConventionRefAst::ConventionRefAst(

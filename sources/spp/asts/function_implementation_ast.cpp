@@ -1,6 +1,5 @@
-#include <spp/asts/function_implementation_ast.hpp>
-#include <spp/asts/statement_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module spp.asts.function_implementation_ast;
+import spp.asts.ast;
 
 
 spp::asts::FunctionImplementationAst::~FunctionImplementationAst() = default;

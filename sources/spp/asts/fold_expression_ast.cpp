@@ -1,5 +1,9 @@
-#include <spp/asts/fold_expression_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.fold_expression_ast;
+import spp.asts.ast;
+import spp.asts.token_ast;
 
 
 spp::asts::FoldExpressionAst::FoldExpressionAst(

@@ -1,10 +1,17 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/float_literal_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.float_literal_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.asts.ast;
+import spp.asts.token_ast;
+import spp.asts.generate.common_types;
+import spp.lex.tokens;
+
+import boost;
+import llvm;
+
 
 using CppBigFloat = boost::multiprecision::cpp_dec_float_100;
 
@@ -105,7 +112,7 @@ auto spp::asts::FloatLiteralAst::print(
 
 auto spp::asts::FloatLiteralAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> void {
     // Get the lower and upper bounds as big floats.
     type = type.empty() ? "f32" : type;
@@ -125,7 +132,7 @@ auto spp::asts::FloatLiteralAst::stage_7_analyse_semantics(
 
 auto spp::asts::FloatLiteralAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Map the float literal to the correct LLVM type.
@@ -140,7 +147,7 @@ auto spp::asts::FloatLiteralAst::stage_10_code_gen_2(
 
 auto spp::asts::FloatLiteralAst::infer_type(
     ScopeManager *,
-    mixins::CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Map the type string literal to the correct SPP type.
     if (type.empty()) {

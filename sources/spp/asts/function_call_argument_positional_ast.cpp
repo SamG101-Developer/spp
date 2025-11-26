@@ -1,8 +1,12 @@
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/function_call_argument_positional_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.function_call_argument_positional_ast;
+import spp.asts.ast;
+import spp.asts.convention_ast;
+import spp.asts.expression_ast;
+import spp.asts.token_ast;
+import spp.asts.mixins.orderable_ast;
 
 
 spp::asts::FunctionCallArgumentPositionalAst::FunctionCallArgumentPositionalAst(

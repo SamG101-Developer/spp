@@ -1,4 +1,4 @@
-#include <spp/asts/expression_ast.hpp>
+module spp.asts.expression_ast;
 
 
 auto spp::asts::ExpressionAst::equals_array_literal_explicit_elements(

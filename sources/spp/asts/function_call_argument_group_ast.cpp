@@ -1,28 +1,4 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/scopes/symbols.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/order_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/coroutine_prototype_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/function_call_argument_ast.hpp>
-#include <spp/asts/function_call_argument_group_ast.hpp>
-#include <spp/asts/function_call_argument_keyword_ast.hpp>
-#include <spp/asts/function_call_argument_positional_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/mixins/orderable_ast.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/actions/erase.hpp>
 #include <genex/views/cast_dynamic.hpp>
@@ -30,9 +6,33 @@
 #include <genex/views/duplicates.hpp>
 #include <genex/views/enumerate.hpp>
 #include <genex/views/filter.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.function_call_argument_group_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.order_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.convention_ast;
+import spp.asts.function_prototype_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.function_call_argument_ast;
+import spp.asts.function_call_argument_positional_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.mixins.orderable_ast;
+import spp.lex.tokens;
 
 
 spp::asts::FunctionCallArgumentGroupAst::FunctionCallArgumentGroupAst(
@@ -118,7 +118,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::get_positional_args() const
 
 auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check there are no duplicate argument names.
     const auto arg_names = get_keyword_args()
@@ -135,7 +135,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
     // Check the arguments are in the correct order.
     const auto unordered_args = analyse::utils::order_utils::order_args(args
         | genex::views::ptr
-        | genex::views::cast_dynamic<mixins::OrderableAst*>()
+        | genex::views::cast_dynamic<meta::OrderableAst*>()
         | genex::to<std::vector>());
 
     if (not unordered_args.empty()) {
@@ -194,7 +194,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
 
 auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // If the target is a coroutine, or the target is called as "async", then pins are required.
     const auto is_target_coro = ast_cast<CoroutinePrototypeAst>(meta->target_call_function_prototype) != nullptr;

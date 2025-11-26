@@ -1,23 +1,23 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/closure_expression_capture_ast.hpp>
-#include <spp/asts/closure_expression_capture_group_ast.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
-#include <spp/asts/object_initializer_argument_group_ast.hpp>
-#include <spp/asts/object_initializer_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-
-#include <genex/views/filter.hpp>
+module;
+#include <genex/to_container.hpp>
 #include <genex/views/for_each.hpp>
-#include <genex/views/ptr.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
+#include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.closure_expression_capture_group_ast;
+import spp.analyse.utils.mem_utils;
+import spp.asts.closure_expression_capture_ast;
+import spp.asts.expression_ast;
+import spp.asts.identifier_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.object_initializer_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.lex.tokens;
 
 
 spp::asts::ClosureExpressionCaptureGroupAst::ClosureExpressionCaptureGroupAst(
@@ -79,7 +79,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::new_empty()
 
 auto spp::asts::ClosureExpressionCaptureGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Add the capture variables after analysis, otherwise their symbol checks refer to the new captures, not the
     // original asts from the argument group analysis.
@@ -103,7 +103,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_7_analyse_semantics(
 
 auto spp::asts::ClosureExpressionCaptureGroupAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
 
     // Any borrowed captures need pinning and marking as extended borrows.

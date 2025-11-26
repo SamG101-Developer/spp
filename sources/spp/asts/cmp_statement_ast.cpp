@@ -1,19 +1,25 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/cmp_statement_ast.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/codegen/llvm_mangle.hpp>
-
+module;
+#include <genex/to_container.hpp>
 #include <genex/views/for_each.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
+#include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.cmp_statement_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.annotation_ast;
+import spp.asts.convention_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.codegen.llvm_mangle;
+import spp.lex.tokens;
 
 
 spp::asts::CmpStatementAst::CmpStatementAst(
@@ -109,7 +115,7 @@ auto spp::asts::CmpStatementAst::stage_1_pre_process(
 
 auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // No top-level scopes needed for cmp statements.
     Ast::stage_2_gen_top_level_scopes(sm, meta);
@@ -133,7 +139,7 @@ auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::CmpStatementAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the type exists before attaching super scopes
     type->stage_7_analyse_semantics(sm, meta);
@@ -142,7 +148,7 @@ auto spp::asts::CmpStatementAst::stage_5_load_super_scopes(
 
 auto spp::asts::CmpStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the type and value.
     type->stage_7_analyse_semantics(sm, meta);
@@ -161,7 +167,7 @@ auto spp::asts::CmpStatementAst::stage_7_analyse_semantics(
 
 auto spp::asts::CmpStatementAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory of the type.
     value->stage_8_check_memory(sm, meta);
@@ -172,7 +178,7 @@ auto spp::asts::CmpStatementAst::stage_8_check_memory(
 
 auto spp::asts::CmpStatementAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the value and store the constant.

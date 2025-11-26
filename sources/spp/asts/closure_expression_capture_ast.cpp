@@ -1,7 +1,10 @@
-#include <spp/asts/closure_expression_capture_ast.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.closure_expression_capture_ast;
+import spp.asts.ast;
+import spp.asts.convention_ast;
+import spp.asts.expression_ast;
 
 
 spp::asts::ClosureExpressionCaptureAst::ClosureExpressionCaptureAst(

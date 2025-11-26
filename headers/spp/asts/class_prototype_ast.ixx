@@ -8,17 +8,10 @@ import spp.asts.module_member_ast;
 import spp.asts.sup_member_ast;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 
 import llvm;
 import std;
-
-
-/// @cond
-namespace spp::analyse::scopes {
-    struct TypeSymbol;
-}
-
-/// @endcond
 
 
 /**

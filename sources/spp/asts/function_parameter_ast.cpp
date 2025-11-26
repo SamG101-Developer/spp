@@ -1,15 +1,14 @@
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/function_parameter_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/let_statement_uninitialized_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.function_parameter_ast;
+import spp.analyse.utils.mem_utils;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.let_statement_uninitialized_ast;
+import spp.asts.type_ast;
+import spp.lex.tokens;
 
 
 spp::asts::FunctionParameterAst::FunctionParameterAst(
@@ -46,7 +45,7 @@ auto spp::asts::FunctionParameterAst::extract_name() const
 
 auto spp::asts::FunctionParameterAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the type.
     type->stage_7_analyse_semantics(sm, meta);
@@ -69,7 +68,7 @@ auto spp::asts::FunctionParameterAst::stage_7_analyse_semantics(
 
 auto spp::asts::FunctionParameterAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> void {
     // Check the memory of each name.
     for (auto &&name : extract_names()) {

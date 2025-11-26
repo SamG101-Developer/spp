@@ -1,4 +1,4 @@
-#include <spp/asts/convention_ast.hpp>
+module spp.asts.convention_ast;
 
 
 spp::asts::ConventionAst::ConventionAst(

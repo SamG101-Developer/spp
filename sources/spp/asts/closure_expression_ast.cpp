@@ -1,20 +1,22 @@
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/closure_expression_ast.hpp>
-#include <spp/asts/closure_expression_capture_ast.hpp>
-#include <spp/asts/closure_expression_capture_group_ast.hpp>
-#include <spp/asts/closure_expression_parameter_and_capture_group_ast.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/function_call_argument_group_ast.hpp>
-#include <spp/asts/function_parameter_ast.hpp>
-#include <spp/asts/function_parameter_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/algorithms/any_of.hpp>
+#include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.closure_expression_ast;
+import spp.analyse.scopes.scope_block_name;
+import spp.asts.ast;
+import spp.asts.convention_ast;
+import spp.asts.closure_expression_capture_ast;
+import spp.asts.closure_expression_capture_group_ast;
+import spp.asts.closure_expression_parameter_and_capture_group_ast;
+import spp.asts.function_parameter_group_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.generate.common_types;
+import spp.lex.tokens;
 
 
 spp::asts::ClosureExpressionAst::ClosureExpressionAst(
@@ -75,7 +77,7 @@ auto spp::asts::ClosureExpressionAst::print(
 
 auto spp::asts::ClosureExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Save the current scope for later resetting.
     const auto parent_scope = sm->current_scope;
@@ -104,7 +106,7 @@ auto spp::asts::ClosureExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::ClosureExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Save the current scope for later resetting.
     const auto parent_scope = sm->current_scope;
@@ -123,7 +125,7 @@ auto spp::asts::ClosureExpressionAst::stage_8_check_memory(
 
 auto spp::asts::ClosureExpressionAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Create the type as a nullptr, so it can be analysed later.
     std::shared_ptr<TypeAst> ty = nullptr;

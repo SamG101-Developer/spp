@@ -9,21 +9,27 @@ export module llvm;
 
 
 export namespace llvm {
+    using ::llvm::cast;
+    using ::llvm::APInt;
+    using ::llvm::APFloat;
+    using ::llvm::APFloatBase;
+    using ::llvm::ArrayType;
     using ::llvm::BasicBlock;
-    using ::llvm::Instruction;
-    using ::llvm::Value;
-    using ::llvm::LLVMContext;
-    using ::llvm::Module;
-    using ::llvm::IRBuilder;
-    using ::llvm::PHINode;
+    using ::llvm::Constant;
+    using ::llvm::ConstantInt;
+    using ::llvm::ConstantFP;
+    using ::llvm::ConstantPointerNull;
     using ::llvm::Function;
     using ::llvm::FunctionType;
-    using ::llvm::Type;
-    using ::llvm::Constant;
+    using ::llvm::IRBuilder;
+    using ::llvm::Instruction;
+    using ::llvm::LLVMContext;
+    using ::llvm::Module;
     using ::llvm::PointerType;
-    using ::llvm::ArrayType;
-    using ::llvm::ConstantInt;
-    using ::llvm::APInt;
+    using ::llvm::PHINode;
+    using ::llvm::StructType;
+    using ::llvm::Type;
+    using ::llvm::Value;
 
     namespace Intrinsic {
         using ::llvm::Intrinsic::getOrInsertDeclaration;
