@@ -1,32 +1,26 @@
-#include <spp/analyse/utils/bin_utils.hpp>
-#include <spp/asts/binary_expression_ast.hpp>
-#include <spp/asts/case_expression_ast.hpp>
-#include <spp/asts/case_expression_branch_ast.hpp>
-#include <spp/asts/case_pattern_variant_expression_ast.hpp>
-#include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/fold_expression_ast.hpp>
-#include <spp/asts/function_call_argument_group_ast.hpp>
-#include <spp/asts/function_call_argument_positional_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/inner_scope_expression_ast.hpp>
-#include <spp/asts/is_expression_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
-#include <spp/asts/pattern_guard_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-
+module;
 #include <genex/algorithms/contains.hpp>
+
+module spp.analyse.utils.bin_utils;
+import spp.analyse.scopes.scope_manager;
+import spp.asts.ast;
+import spp.asts.binary_expression_ast;
+import spp.asts.case_expression_ast;
+import spp.asts.case_expression_branch_ast;
+import spp.asts.convention_ref_ast;
+import spp.asts.function_call_argument_group_ast;
+import spp.asts.identifier_ast;
+import spp.asts.is_expression_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.token_ast;
 
 
 auto spp::analyse::utils::bin_utils::fix_associativity(
     asts::BinaryExpressionAst &bin_expr,
     scopes::ScopeManager *sm,
-    asts::mixins::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData *meta)
     -> std::unique_ptr<asts::BinaryExpressionAst> {
     // If the right-hand-side isn't a binary expression, then no handling is required; return it.
     if (asts::ast_cast<asts::BinaryExpressionAst>(bin_expr.rhs.get()) == nullptr) {
@@ -62,10 +56,10 @@ auto spp::analyse::utils::bin_utils::fix_associativity(
 auto spp::analyse::utils::bin_utils::combine_comp_ops(
     asts::BinaryExpressionAst &bin_expr,
     scopes::ScopeManager *sm,
-    asts::mixins::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData *meta)
     -> std::unique_ptr<asts::BinaryExpressionAst> {
     // Check the left-hand-side is a binary expression with a comparison operator.
-    auto bin_lhs = asts::ast_cast<asts::BinaryExpressionAst>(bin_expr.lhs.get());
+    const auto bin_lhs = asts::ast_cast<asts::BinaryExpressionAst>(bin_expr.lhs.get());
     if (
         bin_lhs == nullptr or
         not genex::algorithms::contains(BIN_COMPARISON_OPS, bin_expr.tok_op->token_type) or
@@ -99,7 +93,7 @@ auto spp::analyse::utils::bin_utils::combine_comp_ops(
 auto spp::analyse::utils::bin_utils::convert_bin_expr_to_function_call(
     asts::BinaryExpressionAst &bin_expr,
     scopes::ScopeManager *sm,
-    asts::mixins::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData *meta)
     -> std::unique_ptr<asts::PostfixExpressionAst> {
     // Call other utility methods that may modify the binary expression AST.
     auto new_bin_expr = fix_associativity(bin_expr, sm, meta);
@@ -126,7 +120,7 @@ auto spp::analyse::utils::bin_utils::convert_bin_expr_to_function_call(
 auto spp::analyse::utils::bin_utils::convert_is_expr_to_function_call(
     asts::IsExpressionAst &is_expr,
     scopes::ScopeManager *,
-    asts::mixins::CompilerMetaData *)
+    asts::meta::CompilerMetaData *)
     -> std::unique_ptr<asts::CaseExpressionAst> {
     // Construct the expression-pattern based on the right-hand-side of the "x is Type".
     auto pattern = std::move(is_expr.rhs);

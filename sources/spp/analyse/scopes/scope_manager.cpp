@@ -1,25 +1,24 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/cmp_statement_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/sup_prototype_extension_ast.hpp>
-#include <spp/asts/sup_prototype_functions_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/type_statement_ast.hpp>
+module spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.cmp_statement_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.identifier_ast;
+import spp.asts.sup_prototype_extension_ast;
+import spp.asts.sup_prototype_functions_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.type_statement_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
 
 #include <genex/to_container.hpp>
 #include <genex/algorithms/contains.hpp>
-#include <genex/algorithms/position.hpp>
 #include <genex/views/cast_dynamic.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/duplicates.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/join.hpp>
 #include <genex/views/ptr.hpp>
-#include <opex/cast.hpp>
 
 
 spp::analyse::scopes::ScopeManager::ScopeManager(

@@ -1,38 +1,5 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/case_expression_branch_ast.hpp>
-#include <spp/asts/class_attribute_ast.hpp>
-#include <spp/asts/class_implementation_ast.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/function_parameter_variadic_ast.hpp>
-#include <spp/asts/function_prototype_ast.hpp>
-#include <spp/asts/generic_argument_comp_ast.hpp>
-#include <spp/asts/generic_argument_comp_keyword_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_keyword_ast.hpp>
-#include <spp/asts/generic_argument_type_positional_ast.hpp>
-#include <spp/asts/generic_parameter_comp_ast.hpp>
-#include <spp/asts/generic_parameter_group_ast.hpp>
-#include <spp/asts/generic_parameter_type_ast.hpp>
-#include <spp/asts/generic_parameter_type_optional_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/inner_scope_expression_ast.hpp>
-#include <spp/asts/integer_literal_ast.hpp>
-#include <spp/asts/iter_expression_branch_ast.hpp>
-#include <spp/asts/sup_prototype_extension_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/type_statement_ast.hpp>
-#include <spp/asts/generate/common_types_precompiled.hpp>
-#include <spp/asts/mixins/compiler_stages.hpp>
-#include <spp/lex/lexer.hpp>
-#include <spp/parse/parser_spp.hpp>
-#include <spp/utils/strings.hpp>
+module;
+#include <spp/macros.hpp>
 
 #include <genex/to_container.hpp>
 #include <genex/actions/concat.hpp>
@@ -49,8 +16,40 @@
 #include <genex/views/remove_if.hpp>
 #include <genex/views/split.hpp>
 #include <genex/views/transform.hpp>
+#include <genex/views/zip.hpp>
 
-#include "spp/analyse/utils/func_utils.hpp"
+module spp.analyse.utils.type_utils;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_block_name;
+import spp.analyse.utils.func_utils;
+import spp.analyse.utils.mem_utils;
+import spp.asts.ast;
+import spp.asts.class_prototype_ast;
+import spp.asts.class_implementation_ast;
+import spp.asts.convention_ast;
+import spp.asts.function_prototype_ast;
+import spp.asts.generic_argument_comp_ast;
+import spp.asts.generic_argument_comp_keyword_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
+import spp.asts.generic_argument_type_keyword_ast;
+import spp.asts.generic_parameter_ast;
+import spp.asts.generic_parameter_comp_ast;
+import spp.asts.generic_parameter_type_ast;
+import spp.asts.generic_parameter_group_ast;
+import spp.asts.identifier_ast;
+import spp.asts.integer_literal_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.type_statement_ast;
+import spp.asts.generate.common_types_precompiled;
+import spp.asts.utils.visibility;
+import spp.lex.lexer;
+import spp.parse.parser_spp;
+import spp.utils.strings;
 
 
 auto spp::analyse::utils::type_utils::symbolic_eq(
@@ -517,7 +516,7 @@ template <typename T>
 auto spp::analyse::utils::type_utils::validate_inconsistent_types(
     std::vector<T> const &branches,
     scopes::ScopeManager *sm,
-    asts::mixins::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData *meta)
     -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>> {
     // Collect type information for each branch, pairing the branch with its inferred type.
     auto branches_type_info = branches
@@ -605,7 +604,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     std::vector<std::shared_ptr<scopes::Symbol>> const &external_generic_syms,
     const bool is_tuple,
     scopes::ScopeManager *sm,
-    asts::mixins::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData *meta)
     -> scopes::Scope* {
     // Create a new scope and symbol for the generic substituted type.
     const auto old_cls_scope = old_cls_sym.scope ? : old_cls_sym.scope_defined_in;
@@ -688,7 +687,7 @@ auto spp::analyse::utils::type_utils::create_generic_fun_scope(
     asts::GenericArgumentGroupAst const &generic_args,
     std::vector<std::shared_ptr<scopes::Symbol>> const &external_generic_syms,
     scopes::ScopeManager *sm,
-    asts::mixins::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData *meta)
     -> scopes::Scope* {
     // Create a new scope and symbol for the generic substituted function.
     auto new_fun_scope_name = std::get<scopes::ScopeBlockName>(old_fun_scope.name);
@@ -716,7 +715,7 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     asts::GenericArgumentGroupAst const &generic_args,
     std::vector<std::shared_ptr<scopes::Symbol>> const &external_generic_syms,
     scopes::ScopeManager const *sm,
-    asts::mixins::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData *meta)
     -> std::tuple<scopes::Scope*, scopes::Scope*> {
     // Create a new scope for the generic substituted super scope.
     const auto self_type = asts::ast_name(old_sup_scope.ast)->substitute_generics(generic_args.args | genex::views::ptr | genex::to<std::vector>());
@@ -783,7 +782,7 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
 auto spp::analyse::utils::type_utils::create_generic_sym(
     asts::GenericArgumentAst const &generic,
     scopes::ScopeManager &sm,
-    asts::mixins::CompilerMetaData *meta,
+    asts::meta::CompilerMetaData *meta,
     scopes::ScopeManager *tm)
     -> std::shared_ptr<scopes::Symbol> {
     // Handle the generic type argument => creates a type symbol.
@@ -794,7 +793,7 @@ auto spp::analyse::utils::type_utils::create_generic_sym(
             type_arg->name->type_parts().back(), true_val_sym ? true_val_sym->type : nullptr,
             true_val_sym ? true_val_sym->scope : nullptr, sm.current_scope, sm.current_scope->parent_module(), true,
             true_val_sym ? true_val_sym->is_directly_copyable : false, asts::utils::Visibility::PUBLIC,
-            ast_clone(type_arg->val->get_convention()));
+            asts::ast_clone(type_arg->val->get_convention()));
         return sym;
     }
 
@@ -817,7 +816,7 @@ auto spp::analyse::utils::type_utils::register_generic_syms(
     std::vector<std::unique_ptr<asts::GenericArgumentAst>> const &generic_args,
     scopes::Scope *scope,
     scopes::ScopeManager *sm,
-    asts::mixins::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData *meta)
     -> void {
     // Register the type symbols to the scope.
     external_generic_syms
@@ -850,7 +849,7 @@ auto spp::analyse::utils::type_utils::get_type_part_symbol_with_error(
     scopes::Scope const &scope,
     asts::TypeIdentifierAst const &type_part,
     scopes::ScopeManager const &sm,
-    asts::mixins::CompilerMetaData *)
+    asts::meta::CompilerMetaData *)
     -> scopes::TypeSymbol* {
     // Get the type part's symbol, and raise an error if it doesn't exist.
     const auto type_sym = scope.get_type_symbol(type_part.shared_from_this(), false);
@@ -934,6 +933,7 @@ auto spp::analyse::utils::type_utils::substitute_sup_scope_name(
         | genex::views::transform([](auto &&x) { return std::string(x.begin(), x.end()); })
         | genex::to<std::vector>();
 
+    // Todo: use the code injection macro?
     if (not parts[1].contains(" ext ")) {
         const auto t = parse::ParserSpp(lex::Lexer(parts[1]).lex()).parse_type_expression()->substitute_generics(generic_args.get_all_args());
         return parts[0] + "#" + static_cast<std::string>(*t) + "#" + parts[2];
@@ -949,7 +949,7 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
     scopes::Scope *tracking_scope,
     std::shared_ptr<asts::TypeAst> actual_old_type,
     scopes::ScopeManager *sm,
-    asts::mixins::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData *meta)
     -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>, scopes::Scope*, scopes::Scope*> {
     // Todo: Contender for worst function is the program, second to "func_utils::get_all_function_scopes"
     // Todo: Detect cycles to prevent infinite loops of type aliasing.
@@ -1092,12 +1092,12 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
 template auto spp::analyse::utils::type_utils::validate_inconsistent_types<spp::asts::CaseExpressionBranchAst*>(
     std::vector<asts::CaseExpressionBranchAst*> const &,
     scopes::ScopeManager *,
-    asts::mixins::CompilerMetaData *)
+    asts::meta::CompilerMetaData *)
     -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>>;
 
 
 template auto spp::analyse::utils::type_utils::validate_inconsistent_types<spp::asts::IterExpressionBranchAst*>(
     std::vector<asts::IterExpressionBranchAst*> const &,
     scopes::ScopeManager *,
-    asts::mixins::CompilerMetaData *)
+    asts::meta::CompilerMetaData *)
     -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>>;

@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.31)
+set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
 project(spp)
 
 # Set the C++ standard and other compiler options.
 set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_CXX_MODULE_STD ON)
 set(CMAKE_C_COMPILER_LAUNCHER ccache)
 set(CMAKE_CXX_COMPILER_LAUNCHER ccache)
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
@@ -33,13 +35,15 @@ target_compile_options(spp_lib PRIVATE
         -Wold-style-cast -Woverloaded-virtual -Wundef -Wdisabled-optimization -Wmissing-declarations -Wmissing-include-dirs
         -Wnull-dereference -Wformat=2 -Wduplicated-cond -Wduplicated-branches -Wredundant-decls -Wlogical-op
         -Wuseless-cast -Wdouble-promotion -Wstrict-null-sentinel -Wswitch-default -Wswitch-enum -Wno-null-dereference
-        -Wno-maybe-uninitialized -Wno-error=array-bounds)
+        -Wno-maybe-uninitialized -Wno-error=array-bounds -fmodules-ts)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(spp_lib PRIVATE
             -O0 -pg -g -fno-omit-frame-pointer -fno-inline -fno-inline-functions-called-once
             -fno-optimize-sibling-calls)
     target_link_options(spp_lib PRIVATE -pg)
 endif ()
+
+target_compile_features(spp_lib PRIVATE cxx_std_26)
 
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_definitions(${LLVM_DEFINITIONS_LIST})
@@ -48,7 +52,6 @@ target_link_libraries(spp_lib PRIVATE
         Glob LLVMCore LLVMSupport LLVMCodeGen LLVMScalarOpts LLVMTransformUtils)
 
 target_include_directories(spp_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/headers)
-# target_precompile_headers(spp_lib PUBLIC "pch.hpp")
 
 add_executable(spp main.cpp)
 target_link_libraries(spp PRIVATE spp_lib)

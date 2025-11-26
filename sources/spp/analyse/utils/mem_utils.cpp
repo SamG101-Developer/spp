@@ -1,25 +1,26 @@
-#include <map>
-
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/scopes/symbols.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/array_literal_explicit_elements_ast.hpp>
-#include <spp/asts/array_literal_repeated_element_ast.hpp>
-#include <spp/asts/ast.hpp>
-#include <spp/asts/case_expression_branch_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/iter_expression_branch_ast.hpp>
-#include <spp/asts/tuple_literal_ast.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/actions/remove.hpp>
 #include <genex/views/cast_dynamic.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/for_each.hpp>
+#include <genex/views/ptr.hpp>
 #include <genex/views/transform.hpp>
+
+module spp.analyse.utils.mem_utils;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.symbols;
+import spp.asts.array_literal_explicit_elements_ast;
+import spp.asts.array_literal_repeated_element_ast;
+import spp.asts.ast;
+import spp.asts.case_expression_branch_ast;
+import spp.asts.expression_ast;
+import spp.asts.identifier_ast;
+import spp.asts.iter_expression_branch_ast;
+import spp.asts.tuple_literal_ast;
 
 
 auto spp::analyse::utils::mem_utils::MemoryInfo::moved_by(
@@ -115,7 +116,7 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
     const bool check_pins,
     const bool check_linked_pins,
     const bool mark_moves,
-    asts::mixins::CompilerMetaData *meta) -> void {
+    asts::meta::CompilerMetaData *meta) -> void {
     // For tuple and array literals, recursively analyse each element.
     if (auto const *arr_literal = asts::ast_cast<asts::ArrayLiteralRepeatedElementAst>(&value_ast); arr_literal != nullptr) {
         const auto x = arr_literal->elem.get();
@@ -246,7 +247,7 @@ template <typename T>
 auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
     std::vector<T> const &branches,
     scopes::ScopeManager *sm,
-    asts::mixins::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData *meta)
     -> void {
     // Define a simple alias for a list of symbols and their memory.
     using SymbolMemoryList = std::vector<std::pair<T, MemoryInfoSnapshot>>;
@@ -322,12 +323,12 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
 template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
     std::vector<asts::CaseExpressionBranchAst*> const &branches,
     scopes::ScopeManager *sm,
-    asts::mixins::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData *meta)
     -> void;
 
 
 template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
     std::vector<asts::IterExpressionBranchAst*> const &branches,
     scopes::ScopeManager *sm,
-    asts::mixins::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData *meta)
     -> void;

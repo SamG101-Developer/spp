@@ -1,56 +1,63 @@
-#include <print>
-
+module;
 #include <spp/macros.hpp>
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/func_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/fold_expression_ast.hpp>
-#include <spp/asts/function_call_argument_keyword_ast.hpp>
-#include <spp/asts/function_call_argument_positional_ast.hpp>
-#include <spp/asts/function_implementation_ast.hpp>
-#include <spp/asts/function_parameter_ast.hpp>
-#include <spp/asts/function_parameter_group_ast.hpp>
-#include <spp/asts/function_parameter_required_ast.hpp>
-#include <spp/asts/function_parameter_self_ast.hpp>
-#include <spp/asts/function_parameter_variadic_ast.hpp>
-#include <spp/asts/function_prototype_ast.hpp>
-#include <spp/asts/generic_argument_ast.hpp>
-#include <spp/asts/generic_argument_comp_keyword_ast.hpp>
-#include <spp/asts/generic_argument_comp_positional_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_keyword_ast.hpp>
-#include <spp/asts/generic_argument_type_positional_ast.hpp>
-#include <spp/asts/generic_parameter_comp_ast.hpp>
-#include <spp/asts/generic_parameter_comp_variadic_ast.hpp>
-#include <spp/asts/generic_parameter_group_ast.hpp>
-#include <spp/asts/generic_parameter_type_ast.hpp>
-#include <spp/asts/generic_parameter_type_optional_ast.hpp>
-#include <spp/asts/generic_parameter_type_variadic_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/object_initializer_ast.hpp>
-#include <spp/asts/object_initializer_argument_group_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
-#include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
-#include <spp/asts/subroutine_prototype_ast.hpp>
-#include <spp/asts/sup_prototype_extension_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/tuple_literal_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
-#include <spp/utils/ptr_cmp.hpp>
 
-#include <genex/meta.hpp>
+module spp.analyse.utils.func_utils;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.type_utils;
+import spp.asts.annotation_ast;
+import spp.asts.ast;
+import spp.asts.class_prototype_ast;
+import spp.asts.convention_ast;
+import spp.asts.expression_ast;
+import spp.asts.fold_expression_ast;
+import spp.asts.function_call_argument_group_ast;
+import spp.asts.function_call_argument_keyword_ast;
+import spp.asts.function_call_argument_positional_ast;
+import spp.asts.function_implementation_ast;
+import spp.asts.function_parameter_ast;
+import spp.asts.function_parameter_group_ast;
+import spp.asts.function_parameter_required_ast;
+import spp.asts.function_parameter_self_ast;
+import spp.asts.function_parameter_variadic_ast;
+import spp.asts.function_prototype_ast;
+import spp.asts.generic_argument_ast;
+import spp.asts.generic_argument_comp_ast;
+import spp.asts.generic_argument_comp_keyword_ast;
+import spp.asts.generic_argument_comp_positional_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
+import spp.asts.generic_argument_type_keyword_ast;
+import spp.asts.generic_argument_type_positional_ast;
+import spp.asts.generic_parameter_comp_ast;
+import spp.asts.generic_parameter_comp_variadic_ast;
+import spp.asts.generic_parameter_group_ast;
+import spp.asts.generic_parameter_type_ast;
+import spp.asts.generic_parameter_type_optional_ast;
+import spp.asts.generic_parameter_type_variadic_ast;
+import spp.asts.identifier_ast;
+import spp.asts.identifier_ast;
+import spp.asts.local_variable_ast;
+import spp.asts.object_initializer_ast;
+import spp.asts.object_initializer_argument_group_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.postfix_expression_operator_static_member_access_ast;
+import spp.asts.subroutine_prototype_ast;
+import spp.asts.sup_prototype_extension_ast;
+import spp.asts.token_ast;
+import spp.asts.tuple_literal_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.generate.common_types;
+import spp.utils.ptr_cmp;
+
+import ankerl;
+
+#include <genex/to_container.hpp>
 #include <genex/actions/clear.hpp>
 #include <genex/actions/concat.hpp>
 #include <genex/actions/drop.hpp>
@@ -58,7 +65,6 @@
 #include <genex/actions/remove_if.hpp>
 #include <genex/actions/sort.hpp>
 #include <genex/actions/take.hpp>
-#include <genex/algorithms/all_of.hpp>
 #include <genex/algorithms/any_of.hpp>
 #include <genex/algorithms/contains.hpp>
 #include <genex/algorithms/equals.hpp>
@@ -83,7 +89,7 @@
 auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
     asts::ExpressionAst const &lhs,
     scopes::ScopeManager &sm,
-    asts::mixins::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData *meta)
     -> std::tuple<std::shared_ptr<asts::TypeAst>, scopes::Scope const*, std::shared_ptr<asts::IdentifierAst>> {
     // Define some expression casts that are used commonly.
     const auto postfix_lhs = asts::ast_cast<asts::PostfixExpressionAst>(&lhs);
@@ -144,7 +150,7 @@ auto spp::analyse::utils::func_utils::convert_method_to_function_form(
     asts::PostfixExpressionAst const &lhs,
     asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
     scopes::ScopeManager &sm,
-    asts::mixins::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData *meta)
     -> std::pair<std::unique_ptr<asts::PostfixExpressionAst>, std::unique_ptr<asts::PostfixExpressionOperatorFunctionCallAst>> {
     // The "self" argument will be the lhs.lhs if is symbolic, otherwise just a mock object initializer.
     auto self_arg_val = sm.current_scope->get_var_symbol_outermost(*lhs.lhs).first != nullptr ?
@@ -255,8 +261,8 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_overload(
     -> asts::FunctionPrototypeAst* {
     // Get the methods that belong to this type, or any of its supertypes.
     auto existing = get_all_function_scopes(*new_fn.orig_name, target_scope);
-    auto existing_scopes = existing | genex::views::tuple_nth<0>() | genex::to<std::vector>();
-    auto existing_fns = existing | genex::views::tuple_nth<1>() | genex::to<std::vector>();
+    auto existing_scopes = existing | genex::views::tuple_nth<0>();
+    auto existing_fns = existing | genex::views::tuple_nth<1>();
 
     // Check for an overload conflict with all functions of the same name.
     for (auto [old_scope, old_fn] : genex::views::zip(existing_scopes, existing_fns)) {
@@ -441,7 +447,7 @@ auto spp::analyse::utils::func_utils::name_generic_args(
     std::vector<asts::GenericParameterAst*> params,
     asts::Ast const &owner,
     scopes::ScopeManager &sm,
-    asts::mixins::CompilerMetaData *meta,
+    asts::meta::CompilerMetaData *meta,
     const bool is_tuple_owner)
     -> void {
     // Special case for tuples to prevent an infinite recursion.
@@ -494,7 +500,7 @@ auto spp::analyse::utils::func_utils::name_generic_args_impl(
     std::vector<GenericParamType*> params,
     asts::Ast const &owner,
     scopes::ScopeManager &sm,
-    asts::mixins::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData *meta)
     -> void {
     // Get the argument names and parameter names, and check for the existence of a variadic parameter.
     auto arg_names = args
@@ -578,7 +584,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args(
     std::shared_ptr<asts::IdentifierAst> variadic_param_identifier,
     const bool is_tuple_owner,
     scopes::ScopeManager &sm,
-    asts::mixins::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData *meta)
     -> void {
     // Special case for tuples to prevent an infinite recursion, or there is nothing to infer.
     if (is_tuple_owner or params.empty()) {
@@ -650,7 +656,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args(
 auto spp::analyse::utils::func_utils::is_target_callable(
     asts::ExpressionAst &expr,
     scopes::ScopeManager &sm,
-    asts::mixins::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData *meta)
     -> std::shared_ptr<asts::TypeAst> {
     // Get the type of the expression.
     auto expr_type = expr.infer_type(&sm, meta);
@@ -687,7 +693,7 @@ template auto spp::analyse::utils::func_utils::name_generic_args_impl<spp::asts:
     std::vector<asts::GenericParameterCompAst*> params,
     asts::Ast const &owner,
     scopes::ScopeManager &sm,
-    asts::mixins::CompilerMetaData *meta) -> void;
+    asts::meta::CompilerMetaData *meta) -> void;
 
 
 template auto spp::analyse::utils::func_utils::name_generic_args_impl<spp::asts::GenericArgumentTypeAst, spp::asts::GenericParameterTypeAst>(
@@ -695,7 +701,7 @@ template auto spp::analyse::utils::func_utils::name_generic_args_impl<spp::asts:
     std::vector<asts::GenericParameterTypeAst*> params,
     asts::Ast const &owner,
     scopes::ScopeManager &sm,
-    asts::mixins::CompilerMetaData *meta) -> void;
+    asts::meta::CompilerMetaData *meta) -> void;
 
 
 auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
@@ -707,7 +713,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
     std::shared_ptr<asts::Ast> owner,
     scopes::Scope const *owner_scope,
     scopes::ScopeManager &sm,
-    asts::mixins::CompilerMetaData *meta) -> void {
+    asts::meta::CompilerMetaData *meta) -> void {
     // Get the parameter names for ease of use.
     auto param_names = params
         | genex::views::transform([](auto &&x) { return std::dynamic_pointer_cast<asts::TypeIdentifierAst>(x->name); })
@@ -869,7 +875,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
     scopes::Scope const *owner_scope,
     std::shared_ptr<asts::IdentifierAst> variadic_param_identifier,
     scopes::ScopeManager &sm,
-    asts::mixins::CompilerMetaData *meta) -> void {
+    asts::meta::CompilerMetaData *meta) -> void {
     // Get the parameter names for ease of use.
     owner_scope = owner_scope ?: sm.current_scope;
 

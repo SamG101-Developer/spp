@@ -1,31 +1,33 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/case_expression_ast.hpp>
-#include <spp/asts/case_expression_branch_ast.hpp>
-#include <spp/asts/case_pattern_variant_ast.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
-#include <spp/asts/cmp_statement_ast.hpp>
-#include <spp/asts/coroutine_prototype_ast.hpp>
-#include <spp/asts/function_parameter_self_ast.hpp>
-#include <spp/asts/function_parameter_variadic_ast.hpp>
-#include <spp/asts/function_prototype_ast.hpp>
-#include <spp/asts/generic_argument_ast.hpp>
-#include <spp/asts/generic_parameter_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/iter_pattern_variant_ast.hpp>
-#include <spp/asts/literal_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/local_variable_destructure_array_ast.hpp>
-#include <spp/asts/local_variable_destructure_object_ast.hpp>
-#include <spp/asts/local_variable_destructure_skip_multiple_arguments_ast.hpp>
-#include <spp/asts/local_variable_destructure_tuple_ast.hpp>
-#include <spp/asts/loop_control_flow_statement_ast.hpp>
-#include <spp/asts/module_prototype_ast.hpp>
-#include <spp/asts/object_initializer_argument_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_statement_ast.hpp>
+module spp.analyse.errors.semantic_error;
+import spp.asts.annotation_ast;
+import spp.asts.case_expression_ast;
+import spp.asts.case_expression_branch_ast;
+import spp.asts.case_pattern_variant_ast;
+import spp.asts.class_prototype_ast;
+import spp.asts.coroutine_prototype_ast;
+import spp.asts.cmp_statement_ast;
+import spp.asts.expression_ast;
+import spp.asts.function_prototype_ast;
+import spp.asts.function_parameter_self_ast;
+import spp.asts.function_parameter_variadic_ast;
+import spp.asts.generic_argument_ast;
+import spp.asts.generic_parameter_ast;
+import spp.asts.identifier_ast;
+import spp.asts.iter_expression_ast;
+import spp.asts.iter_pattern_variant_ast;
+import spp.asts.literal_ast;
+import spp.asts.local_variable_destructure_array_ast;
+import spp.asts.local_variable_destructure_object_ast;
+import spp.asts.local_variable_destructure_tuple_ast;
+import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
+import spp.asts.loop_condition_iterable_ast;
+import spp.asts.loop_control_flow_statement_ast;
+import spp.asts.module_prototype_ast;
+import spp.asts.object_initializer_argument_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_statement_ast;
 
 
 // TODO: READ ALL ERRORS: CURRENTLY WRITTEN BY AI
@@ -432,260 +434,6 @@ spp::analyse::errors::SppCaseBranchElseNotLastError::SppCaseBranchElseNotLastErr
 }
 
 
-spp::analyse::errors::SppInvalidTypeAnnotationError::SppInvalidTypeAnnotationError(
-    asts::TypeAst const &type,
-    asts::LocalVariableAst const &var) {
-    add_header(
-        21, "SPP Invalid Type Annotation Error");
-    add_context_for_error(
-        &var,
-        "Variable defined here");
-    add_error(
-        &type,
-        "Invalid type annotation defined here");
-    add_footer(
-        "The type annotation for this variable is invalid.",
-        "Correct or remove the type annotation");
-}
-
-
-spp::analyse::errors::SppMultipleSkipMultiArgumentsError::SppMultipleSkipMultiArgumentsError(
-    asts::LocalVariableAst const &var,
-    asts::LocalVariableDestructureSkipMultipleArgumentsAst const &first_arg,
-    asts::LocalVariableDestructureSkipMultipleArgumentsAst const &second_arg) {
-    add_header(
-        22, "SPP Multiple Skip Multi-Arguments Error");
-    add_context_for_error(
-        &var,
-        "Variable defined here");
-    add_context_for_error(
-        &first_arg,
-        "First skip multi-argument defined here");
-    add_error(
-        &second_arg,
-        "Second skip multi-argument defined here");
-    add_footer(
-        "A destructure cannot contain multiple skip multi-arguments.",
-        "Remove one of the skip multi-arguments");
-}
-
-
-spp::analyse::errors::SppVariableArrayDestructureArrayTypeMismatchError::SppVariableArrayDestructureArrayTypeMismatchError(
-    asts::LocalVariableDestructureArrayAst const &var,
-    asts::ExpressionAst const &val,
-    asts::TypeAst const &val_type) {
-    add_header(
-        23, "SPP Variable Array Destructure Array Type Mismatch Error");
-    add_context_for_error(
-        &var,
-        "Array destructure variable defined here");
-    add_error(
-        &val,
-        "Value being destructured defined here with type: " + static_cast<std::string>(val_type));
-    add_footer(
-        "The type of the value being destructured does not match the expected array type.",
-        "Ensure the value is of an array type compatible with the destructure");
-}
-
-
-spp::analyse::errors::SppVariableArrayDestructureArraySizeMismatchError::SppVariableArrayDestructureArraySizeMismatchError(
-    asts::LocalVariableDestructureArrayAst const &var,
-    const std::size_t var_size,
-    asts::ExpressionAst const &val,
-    const std::size_t val_size) {
-    add_header(
-        24, "SPP Variable Array Destructure Array Size Mismatch Error");
-    add_context_for_error(
-        &var,
-        "Array destructure variable defined here with size: " + std::to_string(var_size));
-    add_error(
-        &val,
-        "Value being destructured defined here with size: " + std::to_string(val_size));
-    add_footer(
-        "The size of the value being destructured does not match the expected array size.",
-        "Ensure the value has the same size as the destructure variable");
-}
-
-
-spp::analyse::errors::SppVariableTupleDestructureTupleTypeMismatchError::SppVariableTupleDestructureTupleTypeMismatchError(
-    asts::LocalVariableDestructureTupleAst const &var,
-    asts::ExpressionAst const &val,
-    asts::TypeAst const &val_type) {
-    add_header(
-        25, "SPP Variable Tuple Destructure Tuple Type Mismatch Error");
-    add_context_for_error(
-        &var,
-        "Tuple destructure variable defined here");
-    add_error(
-        &val,
-        "Value being destructured defined here with type: " + static_cast<std::string>(val_type));
-    add_footer(
-        "The type of the value being destructured does not match the expected tuple type.",
-        "Ensure the value is of a tuple type compatible with the destructure");
-}
-
-
-spp::analyse::errors::SppVariableTupleDestructureTupleSizeMismatchError::SppVariableTupleDestructureTupleSizeMismatchError(
-    asts::LocalVariableDestructureTupleAst const &var,
-    const std::size_t var_size,
-    asts::ExpressionAst const &val,
-    const std::size_t val_size) {
-    add_header(
-        26, "SPP Variable Tuple Destructure Tuple Size Mismatch Error");
-    add_context_for_error(
-        &var,
-        "Tuple destructure variable defined here with size: " + std::to_string(var_size));
-    add_error(
-        &val,
-        "Value being destructured defined here with size: " + std::to_string(val_size));
-    add_footer(
-        "The size of the value being destructured does not match the expected tuple size.",
-        "Ensure the value has the same size as the destructure variable");
-}
-
-
-spp::analyse::errors::SppVariableObjectDestructureWithBoundMultiSkipError::SppVariableObjectDestructureWithBoundMultiSkipError(
-    asts::LocalVariableDestructureObjectAst const &var,
-    asts::LocalVariableDestructureSkipMultipleArgumentsAst const &multi_skip) {
-    add_header(
-        27, "SPP Variable Object Destructure With Bound Multi-Skip Error");
-    add_context_for_error(
-        &var,
-        "Object destructure variable defined here");
-    add_error(
-        &multi_skip,
-        "Bound skip multi-argument defined here");
-    add_footer(
-        "An object destructure cannot contain a bound skip multi-argument.",
-        "Remove the bound skip multi-argument from the destructure");
-}
-
-
-spp::analyse::errors::SppExpressionNotBooleanError::SppExpressionNotBooleanError(
-    asts::Ast const &expr,
-    asts::TypeAst const &expr_type,
-    const std::string_view what) {
-    add_header(
-        28, "SPP Expression Not Boolean Error");
-    add_error(
-        &expr,
-        "Expression defined here with type: " + static_cast<std::string>(expr_type));
-    add_footer(
-        "This expression must be of boolean type to be used in a " + std::string(what) + " context.",
-        "Ensure the expression evaluates to a boolean value");
-}
-
-
-spp::analyse::errors::SppExpressionNotGeneratorError::SppExpressionNotGeneratorError(
-    asts::Ast const &expr,
-    asts::TypeAst const &expr_type,
-    const std::string_view what) {
-    add_header(
-        29, "SPP Expression Not Generator Error");
-    add_error(
-        &expr,
-        "Expression defined here with type: " + static_cast<std::string>(expr_type));
-    add_footer(
-        "This expression must be of generator type to be used in a " + std::string(what) + " context.",
-        "Ensure the expression evaluates to a generator type");
-}
-
-
-spp::analyse::errors::SppExpressionAmbiguousGeneratorError::SppExpressionAmbiguousGeneratorError(
-    asts::Ast const &expr,
-    asts::TypeAst const &expr_type,
-    const std::string_view what) {
-    add_header(
-        30, "SPP Expression Ambiguous Generator Error");
-    add_error(
-        &expr,
-        "Expression defined here with type: " + static_cast<std::string>(expr_type));
-    add_footer(
-        "This expression has an ambiguous generator type in a " + std::string(what) + " context.",
-        "Ensure the expression has a clear and unambiguous generator type");
-}
-
-
-spp::analyse::errors::SppExpressionNotIndexableError::SppExpressionNotIndexableError(
-    asts::Ast const &expr,
-    asts::TypeAst const &expr_type,
-    const std::string_view what) {
-    add_header(
-        38, "SPP Expression Not Indexable Error");
-    add_error(
-        &expr,
-        "Expression defined here with type: " + static_cast<std::string>(expr_type));
-    add_footer(
-        "This expression must be of an indexable type to be used in a " + std::string(what) + " context.",
-        "Ensure the expression evaluates to an indexable type (e.g., superimposes IndexRef/IndexMut)");
-}
-
-
-spp::analyse::errors::SppExpressionAmbiguousIndexableError::SppExpressionAmbiguousIndexableError(
-    asts::Ast const &expr,
-    asts::TypeAst const &expr_type,
-    const std::string_view what) {
-    add_header(
-        39, "SPP Expression Ambiguous Indexable Error");
-    add_error(
-        &expr,
-        "Expression defined here with type: " + static_cast<std::string>(expr_type));
-    add_footer(
-        "This expression has an ambiguous indexable type in a " + std::string(what) + " context.",
-        "Ensure the expression has a clear and unambiguous indexable type");
-}
-
-
-spp::analyse::errors::SppIterExpressionPatternTypeDuplicateError::SppIterExpressionPatternTypeDuplicateError(
-    asts::IterPatternVariantAst const &first_branch,
-    asts::IterPatternVariantAst const &second_branch) {
-    add_header(
-        34, "SPP Iter Expression Pattern Type Duplicate Error");
-    add_context_for_error(
-        &first_branch,
-        "First pattern branch defined here");
-    add_error(
-        &second_branch,
-        "Second pattern branch defined here");
-    add_footer(
-        "These two pattern branches have the same type, which is not allowed.",
-        "Ensure each pattern branch has a unique type");
-}
-
-
-spp::analyse::errors::SppIterExpressionPatternIncompatibleError::SppIterExpressionPatternIncompatibleError(
-    asts::ExpressionAst const &cond,
-    asts::TypeAst const &cond_type,
-    asts::IterPatternVariantAst const &pattern,
-    asts::TypeAst const &required_generator_type) {
-    add_header(
-        31, "SPP Iter Expression Pattern Incompatible Error");
-    add_context_for_error(
-        &cond,
-        "Condition expression defined here with type: " + static_cast<std::string>(cond_type));
-    add_error(
-        &pattern,
-        "Pattern defined here");
-    add_footer(
-        "The pattern is incompatible with the generator type required for the condition expression.",
-        "Ensure the pattern matches the required generator type: " + static_cast<std::string>(required_generator_type));
-}
-
-
-spp::analyse::errors::SppIterExpressionPatternMissingError::SppIterExpressionPatternMissingError(
-    asts::ExpressionAst const &cond,
-    asts::TypeAst const &cond_type) {
-    add_header(
-        32, "SPP Iter Expression Pattern Missing Error");
-    add_error(
-        &cond,
-        "Condition expression defined here with type: " + static_cast<std::string>(cond_type));
-    add_footer(
-        "A pattern is required for the generator type of the condition expression.",
-        "Provide a suitable pattern for the generator type");
-}
-
-
 spp::analyse::errors::SppCaseBranchMissingElseError::SppCaseBranchMissingElseError(
     asts::CaseExpressionAst const &case_expr,
     asts::CaseExpressionBranchAst const &last_branch) {
@@ -975,6 +723,260 @@ spp::analyse::errors::SppUnreachableCodeError::SppUnreachableCodeError(
     add_footer(
         "This code is unreachable due to preceding control flow statements.",
         "Remove or modify the unreachable code");
+}
+
+
+spp::analyse::errors::SppIterExpressionPatternTypeDuplicateError::SppIterExpressionPatternTypeDuplicateError(
+    asts::IterPatternVariantAst const &first_branch,
+    asts::IterPatternVariantAst const &second_branch) {
+    add_header(
+        34, "SPP Iter Expression Pattern Type Duplicate Error");
+    add_context_for_error(
+        &first_branch,
+        "First pattern branch defined here");
+    add_error(
+        &second_branch,
+        "Second pattern branch defined here");
+    add_footer(
+        "These two pattern branches have the same type, which is not allowed.",
+        "Ensure each pattern branch has a unique type");
+}
+
+
+spp::analyse::errors::SppIterExpressionPatternIncompatibleError::SppIterExpressionPatternIncompatibleError(
+    asts::ExpressionAst const &cond,
+    asts::TypeAst const &cond_type,
+    asts::IterPatternVariantAst const &pattern,
+    asts::TypeAst const &required_generator_type) {
+    add_header(
+        31, "SPP Iter Expression Pattern Incompatible Error");
+    add_context_for_error(
+        &cond,
+        "Condition expression defined here with type: " + static_cast<std::string>(cond_type));
+    add_error(
+        &pattern,
+        "Pattern defined here");
+    add_footer(
+        "The pattern is incompatible with the generator type required for the condition expression.",
+        "Ensure the pattern matches the required generator type: " + static_cast<std::string>(required_generator_type));
+}
+
+
+spp::analyse::errors::SppIterExpressionPatternMissingError::SppIterExpressionPatternMissingError(
+    asts::ExpressionAst const &cond,
+    asts::TypeAst const &cond_type) {
+    add_header(
+        32, "SPP Iter Expression Pattern Missing Error");
+    add_error(
+        &cond,
+        "Condition expression defined here with type: " + static_cast<std::string>(cond_type));
+    add_footer(
+        "A pattern is required for the generator type of the condition expression.",
+        "Provide a suitable pattern for the generator type");
+}
+
+
+spp::analyse::errors::SppInvalidTypeAnnotationError::SppInvalidTypeAnnotationError(
+    asts::TypeAst const &type,
+    asts::LocalVariableAst const &var) {
+    add_header(
+        21, "SPP Invalid Type Annotation Error");
+    add_context_for_error(
+        &var,
+        "Variable defined here");
+    add_error(
+        &type,
+        "Invalid type annotation defined here");
+    add_footer(
+        "The type annotation for this variable is invalid.",
+        "Correct or remove the type annotation");
+}
+
+
+spp::analyse::errors::SppMultipleSkipMultiArgumentsError::SppMultipleSkipMultiArgumentsError(
+    asts::LocalVariableAst const &var,
+    asts::LocalVariableDestructureSkipMultipleArgumentsAst const &first_arg,
+    asts::LocalVariableDestructureSkipMultipleArgumentsAst const &second_arg) {
+    add_header(
+        22, "SPP Multiple Skip Multi-Arguments Error");
+    add_context_for_error(
+        &var,
+        "Variable defined here");
+    add_context_for_error(
+        &first_arg,
+        "First skip multi-argument defined here");
+    add_error(
+        &second_arg,
+        "Second skip multi-argument defined here");
+    add_footer(
+        "A destructure cannot contain multiple skip multi-arguments.",
+        "Remove one of the skip multi-arguments");
+}
+
+
+spp::analyse::errors::SppVariableArrayDestructureArrayTypeMismatchError::SppVariableArrayDestructureArrayTypeMismatchError(
+    asts::LocalVariableDestructureArrayAst const &var,
+    asts::ExpressionAst const &val,
+    asts::TypeAst const &val_type) {
+    add_header(
+        23, "SPP Variable Array Destructure Array Type Mismatch Error");
+    add_context_for_error(
+        &var,
+        "Array destructure variable defined here");
+    add_error(
+        &val,
+        "Value being destructured defined here with type: " + static_cast<std::string>(val_type));
+    add_footer(
+        "The type of the value being destructured does not match the expected array type.",
+        "Ensure the value is of an array type compatible with the destructure");
+}
+
+
+spp::analyse::errors::SppVariableArrayDestructureArraySizeMismatchError::SppVariableArrayDestructureArraySizeMismatchError(
+    asts::LocalVariableDestructureArrayAst const &var,
+    const std::size_t var_size,
+    asts::ExpressionAst const &val,
+    const std::size_t val_size) {
+    add_header(
+        24, "SPP Variable Array Destructure Array Size Mismatch Error");
+    add_context_for_error(
+        &var,
+        "Array destructure variable defined here with size: " + std::to_string(var_size));
+    add_error(
+        &val,
+        "Value being destructured defined here with size: " + std::to_string(val_size));
+    add_footer(
+        "The size of the value being destructured does not match the expected array size.",
+        "Ensure the value has the same size as the destructure variable");
+}
+
+
+spp::analyse::errors::SppVariableTupleDestructureTupleTypeMismatchError::SppVariableTupleDestructureTupleTypeMismatchError(
+    asts::LocalVariableDestructureTupleAst const &var,
+    asts::ExpressionAst const &val,
+    asts::TypeAst const &val_type) {
+    add_header(
+        25, "SPP Variable Tuple Destructure Tuple Type Mismatch Error");
+    add_context_for_error(
+        &var,
+        "Tuple destructure variable defined here");
+    add_error(
+        &val,
+        "Value being destructured defined here with type: " + static_cast<std::string>(val_type));
+    add_footer(
+        "The type of the value being destructured does not match the expected tuple type.",
+        "Ensure the value is of a tuple type compatible with the destructure");
+}
+
+
+spp::analyse::errors::SppVariableTupleDestructureTupleSizeMismatchError::SppVariableTupleDestructureTupleSizeMismatchError(
+    asts::LocalVariableDestructureTupleAst const &var,
+    const std::size_t var_size,
+    asts::ExpressionAst const &val,
+    const std::size_t val_size) {
+    add_header(
+        26, "SPP Variable Tuple Destructure Tuple Size Mismatch Error");
+    add_context_for_error(
+        &var,
+        "Tuple destructure variable defined here with size: " + std::to_string(var_size));
+    add_error(
+        &val,
+        "Value being destructured defined here with size: " + std::to_string(val_size));
+    add_footer(
+        "The size of the value being destructured does not match the expected tuple size.",
+        "Ensure the value has the same size as the destructure variable");
+}
+
+
+spp::analyse::errors::SppVariableObjectDestructureWithBoundMultiSkipError::SppVariableObjectDestructureWithBoundMultiSkipError(
+    asts::LocalVariableDestructureObjectAst const &var,
+    asts::LocalVariableDestructureSkipMultipleArgumentsAst const &multi_skip) {
+    add_header(
+        27, "SPP Variable Object Destructure With Bound Multi-Skip Error");
+    add_context_for_error(
+        &var,
+        "Object destructure variable defined here");
+    add_error(
+        &multi_skip,
+        "Bound skip multi-argument defined here");
+    add_footer(
+        "An object destructure cannot contain a bound skip multi-argument.",
+        "Remove the bound skip multi-argument from the destructure");
+}
+
+
+spp::analyse::errors::SppExpressionNotBooleanError::SppExpressionNotBooleanError(
+    asts::Ast const &expr,
+    asts::TypeAst const &expr_type,
+    const std::string_view what) {
+    add_header(
+        28, "SPP Expression Not Boolean Error");
+    add_error(
+        &expr,
+        "Expression defined here with type: " + static_cast<std::string>(expr_type));
+    add_footer(
+        "This expression must be of boolean type to be used in a " + std::string(what) + " context.",
+        "Ensure the expression evaluates to a boolean value");
+}
+
+
+spp::analyse::errors::SppExpressionNotGeneratorError::SppExpressionNotGeneratorError(
+    asts::Ast const &expr,
+    asts::TypeAst const &expr_type,
+    const std::string_view what) {
+    add_header(
+        29, "SPP Expression Not Generator Error");
+    add_error(
+        &expr,
+        "Expression defined here with type: " + static_cast<std::string>(expr_type));
+    add_footer(
+        "This expression must be of generator type to be used in a " + std::string(what) + " context.",
+        "Ensure the expression evaluates to a generator type");
+}
+
+
+spp::analyse::errors::SppExpressionAmbiguousGeneratorError::SppExpressionAmbiguousGeneratorError(
+    asts::Ast const &expr,
+    asts::TypeAst const &expr_type,
+    const std::string_view what) {
+    add_header(
+        30, "SPP Expression Ambiguous Generator Error");
+    add_error(
+        &expr,
+        "Expression defined here with type: " + static_cast<std::string>(expr_type));
+    add_footer(
+        "This expression has an ambiguous generator type in a " + std::string(what) + " context.",
+        "Ensure the expression has a clear and unambiguous generator type");
+}
+
+
+spp::analyse::errors::SppExpressionNotIndexableError::SppExpressionNotIndexableError(
+    asts::Ast const &expr,
+    asts::TypeAst const &expr_type,
+    const std::string_view what) {
+    add_header(
+        38, "SPP Expression Not Indexable Error");
+    add_error(
+        &expr,
+        "Expression defined here with type: " + static_cast<std::string>(expr_type));
+    add_footer(
+        "This expression must be of an indexable type to be used in a " + std::string(what) + " context.",
+        "Ensure the expression evaluates to an indexable type (e.g., superimposes IndexRef/IndexMut)");
+}
+
+
+spp::analyse::errors::SppExpressionAmbiguousIndexableError::SppExpressionAmbiguousIndexableError(
+    asts::Ast const &expr,
+    asts::TypeAst const &expr_type,
+    const std::string_view what) {
+    add_header(
+        39, "SPP Expression Ambiguous Indexable Error");
+    add_error(
+        &expr,
+        "Expression defined here with type: " + static_cast<std::string>(expr_type));
+    add_footer(
+        "This expression has an ambiguous indexable type in a " + std::string(what) + " context.",
+        "Ensure the expression has a clear and unambiguous indexable type");
 }
 
 

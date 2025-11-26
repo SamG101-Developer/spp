@@ -1,7 +1,4 @@
-#include <spp/analyse/utils/order_utils.hpp>
-#include <spp/asts/ast.hpp>
-#include <spp/asts/mixins/orderable_ast.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/algorithms/position.hpp>
 #include <genex/algorithms/sorted.hpp>
@@ -9,6 +6,10 @@
 #include <genex/views/transform.hpp>
 #include <genex/views/zip.hpp>
 #include <magic_enum/magic_enum.hpp>
+
+module spp.analyse.utils.order_utils;
+import spp.asts.ast;
+import spp.asts.mixins.orderable_ast;
 
 
 inline const auto ARG_ORDER = std::vector{
@@ -45,7 +46,7 @@ auto spp::analyse::utils::order_utils::order(
     auto out_of_order = genex::views::zip(tagged_args, args_sorted)
         | genex::views::filter([](auto &&x) { return std::get<0>(x) != std::get<1>(x); })
         | genex::views::transform([](auto &&x) { return std::get<1>(x); })
-        | genex::views::transform([](auto &&x) {return std::make_pair(std::string(magic_enum::enum_name(std::get<0>(x))), dynamic_cast<asts::Ast*>(std::get<1>(x))); })
+        | genex::views::transform([](auto &&x) { return std::make_pair(std::string(magic_enum::enum_name(std::get<0>(x))), dynamic_cast<asts::Ast*>(std::get<1>(x))); })
         | genex::to<std::vector>();
     return out_of_order;
 }

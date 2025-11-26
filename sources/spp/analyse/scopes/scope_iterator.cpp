@@ -1,5 +1,5 @@
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_iterator.hpp>
+module spp.analyse.scopes.scope_iterator;
+import spp.analyse.scopes.scope;
 
 
 spp::analyse::scopes::ScopeIterator::ScopeIterator(

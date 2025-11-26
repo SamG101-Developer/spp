@@ -1,16 +1,16 @@
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/symbols.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/type_statement_ast.hpp>
-#include <spp/asts/type_unary_expression_ast.hpp>
-#include <spp/asts/type_unary_expression_operator_namespace_ast.hpp>
-
-#include <nlohmann/json.hpp>
+module spp.analyse.scopes.symbols;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_block_name;
+import spp.analyse.utils.mem_utils;
+import spp.asts.ast;
+import spp.asts.identifier_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.type_unary_expression_ast;
+import spp.asts.type_unary_expression_operator_namespace_ast;
+import spp.asts.type_statement_ast;
+import spp.codegen.llvm_sym_info;
+import nlohmann.json;
 
 
 spp::analyse::scopes::NamespaceSymbol::NamespaceSymbol(
@@ -175,49 +175,3 @@ auto spp::analyse::scopes::TypeSymbol::fq_name() const
     // Re-add the convention of the type if it exists.
     return convention ? qualified_name->with_convention(ast_clone(convention)) : qualified_name;
 }
-
-
-// spp::analyse::scopes::AliasSymbol::AliasSymbol(
-//     std::shared_ptr<asts::TypeIdentifierAst> name,
-//     asts::ClassPrototypeAst *type,
-//     Scope *scope,
-//     Scope *scope_defined_in,
-//     std::shared_ptr<TypeSymbol> const &old_sym,
-//     const bool is_generic,
-//     const bool is_directly_copyable,
-//     const asts::utils::Visibility visibility,
-//     std::unique_ptr<asts::ConventionAst> &&convention) :
-//     TypeSymbol(std::move(name), type, scope, scope_defined_in, is_generic, is_directly_copyable, visibility, std::move(convention)),
-//     old_sym(old_sym) {
-// }
-//
-//
-// spp::analyse::scopes::AliasSymbol::AliasSymbol(
-//     AliasSymbol const &that) :
-//     TypeSymbol(that),
-//     old_sym(that.old_sym) {
-// }
-//
-//
-// spp::analyse::scopes::AliasSymbol::operator std::string() const {
-//     return nlohmann::json(std::map<std::string, std::string>{
-//         {"what", "alias"},
-//         {"name", static_cast<std::string>(*name)},
-//         {"defined_in", static_cast<std::string>(*std::get<std::shared_ptr<asts::IdentifierAst>>(scope_defined_in->name))},
-//         {"scope", static_cast<std::string>(*std::get<std::shared_ptr<asts::IdentifierAst>>(scope->name))},
-//         {"old_sym", old_sym != nullptr ? static_cast<std::string>(*old_sym->name) : "<null>"}
-//     }).dump();
-// }
-//
-//
-// auto spp::analyse::scopes::AliasSymbol::operator==(
-//     AliasSymbol const &that) const
-//     -> bool {
-//     return this == &that;
-// }
-//
-//
-// auto spp::analyse::scopes::AliasSymbol::fq_name() const
-//     -> std::shared_ptr<asts::TypeAst> {
-//     return old_sym ? ast_clone(name) : TypeSymbol::fq_name();
-// }

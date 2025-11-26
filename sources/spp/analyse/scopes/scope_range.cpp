@@ -1,5 +1,5 @@
-#include <spp/analyse/scopes/scope_iterator.hpp>
-#include <spp/analyse/scopes/scope_range.hpp>
+module spp.analyse.scopes.scope_range;
+import spp.analyse.scopes.scope;
 
 
 spp::analyse::scopes::ScopeRange::ScopeRange(
@@ -14,7 +14,7 @@ auto spp::analyse::scopes::ScopeRange::begin() const
 }
 
 
-auto spp::analyse::scopes::ScopeRange::end() const
+auto spp::analyse::scopes::ScopeRange::end() const // NOLINT(readability-convert-member-functions-to-static)
     -> ScopeIterator {
     return ScopeIterator();
 }

@@ -1,6 +1,6 @@
 #pragma once
 #include <spp/cli.hpp>
-#include <spp/analyse/errors/semantic_error.hpp>
+#include <spp/analyse/errors/semantic_error.ixx>
 #include <spp/analyse/scopes/scope_manager.hpp>
 #include <spp/lex/lexer.hpp>
 #include <spp/parse/parser_spp.hpp>

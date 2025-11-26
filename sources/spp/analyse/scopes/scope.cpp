@@ -1,20 +1,11 @@
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/scopes/symbol_table.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
-#include <spp/asts/generic_argument_ast.hpp>
-#include <spp/asts/generic_argument_comp_keyword_ast.hpp>
-#include <spp/asts/generic_argument_type_keyword_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/module_prototype_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
-#include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/compiler/module_tree.hpp>
-#include <spp/utils/variants.hpp>
+module spp.analyse.scopes.scope;
+import spp.asts.ast;
+import spp.asts.generic_argument_type_ast;
+import spp.asts.identifier_ast;
+import spp.asts.module_prototype_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.compiler.module_tree;
 
 #include <genex/to_container.hpp>
 #include <genex/actions/concat.hpp>
@@ -22,7 +13,6 @@
 #include <genex/views/cast_dynamic.hpp>
 #include <genex/views/cast_smart.hpp>
 #include <genex/views/concat.hpp>
-#include <genex/views/drop.hpp>
 #include <genex/views/drop_last.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/for_each.hpp>

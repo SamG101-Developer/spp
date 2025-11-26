@@ -1,11 +1,5 @@
-#include <spp/analyse/scopes/symbol_table.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/type_statement_ast.hpp>
+module spp.analyse.scopes.symbol_table;
+import spp.asts.ast;
 
 
 template <typename I, typename S>

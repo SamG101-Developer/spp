@@ -1,5 +1,5 @@
-#include <spp/asts/meta/ast_printer.hpp>
-#include <spp/pch.hpp>
+module spp.asts.meta.ast_printer;
+import std;
 
 
 spp::asts::meta::AstPrinter::AstPrinter(

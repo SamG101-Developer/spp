@@ -1,0 +1,26 @@
+module;
+#include <spp/macros.hpp>
+
+export module spp.asts.mixins.temp_type_ast;
+import spp.asts._fwd;
+
+import std;
+
+
+namespace spp::asts::mixins {
+    SPP_EXP struct TempTypeAst;
+}
+
+
+SPP_EXP struct spp::asts::mixins::TempTypeAst {
+    TempTypeAst() = default;
+
+    virtual ~TempTypeAst() = default;
+
+    /**
+     * Convert this temporary type ast into a different type ast. For example, converting the array type st, parsed from
+     * @code [Type, 3_uz]@endcode to @code std::array::Arr[T=Type, n=3_uz]@endcode.
+     * @return
+     */
+    virtual auto convert() -> std::unique_ptr<TypeAst> = 0;
+};

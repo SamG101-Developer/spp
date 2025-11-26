@@ -1,6 +1,6 @@
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
-#include <spp/asts/generate/common_types_precompiled.hpp>
+module spp.asts.generate.common_types_precompiled;
+import spp.asts.generate.common_types;
+import spp.asts.ast;
 
 
 auto spp::asts::generate::common_types_precompiled::initialize_types() -> void {
