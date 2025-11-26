@@ -21,6 +21,9 @@ export namespace llvm {
     using ::llvm::Type;
     using ::llvm::Constant;
     using ::llvm::PointerType;
+    using ::llvm::ArrayType;
+    using ::llvm::ConstantInt;
+    using ::llvm::APInt;
 
     namespace Intrinsic {
         using ::llvm::Intrinsic::getOrInsertDeclaration;

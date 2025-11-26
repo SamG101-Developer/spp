@@ -1,23 +1,29 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/array_literal_explicit_elements_ast.hpp>
-#include <spp/asts/integer_literal_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/algorithms/all_of.hpp>
 #include <genex/views/address.hpp>
 #include <genex/views/for_each.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
+#include <genex/views/ptr.hpp>
+#include <genex/views/transform.hpp>
 #include <genex/views/zip.hpp>
 
-#include <llvm/IR/Type.h>
+#include <spp/macros.hpp>
+
+module spp.asts.array_literal_explicit_elements_ast;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.asts.ast;
+import spp.asts.integer_literal_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.generate.common_types;
+import spp.lex.tokens;
+
+import llvm;
 
 
 spp::asts::ArrayLiteralExplicitElementsAst::ArrayLiteralExplicitElementsAst(
@@ -97,12 +103,12 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::print(
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
 
     // Analyse the element inside the array.
     for (auto &&elem : elems) {
-        ENFORCE_EXPRESSION_SUBTYPE(elem.get());
+        SPP_ENFORCE_EXPRESSION_SUBTYPE(elem.get());
         elem->stage_7_analyse_semantics(sm, meta);
     }
 
@@ -138,7 +144,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_7_analyse_semantics(
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory of each element in the array literal.
     for (auto const &elem : elems) {
@@ -151,7 +157,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_8_check_memory(
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Collect the generated versions of the elements.
@@ -181,7 +187,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_10_code_gen_2(
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> {
+    meta::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> {
 
     // Create a "T" type and "n" size, for the array type.
     auto size_tok = std::make_unique<TokenAst>(tok_l->pos_start(), lex::SppTokenType::LX_NUMBER, std::to_string(elems.size()));

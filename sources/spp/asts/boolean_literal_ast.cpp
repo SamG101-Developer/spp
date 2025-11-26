@@ -1,8 +1,5 @@
-#include <spp/asts/boolean_literal_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
-#include <spp/lex/tokens.hpp>
+module spp.asts.boolean_literal_ast;
+import spp.asts.expression_ast;
 
 
 spp::asts::BooleanLiteralAst::BooleanLiteralAst(

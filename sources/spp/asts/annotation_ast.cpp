@@ -1,16 +1,14 @@
-#include <memory>
+module;
+#include <spp/macros.hpp>
 
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/function_prototype_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/module_prototype_ast.hpp>
-#include <spp/asts/sup_prototype_extension_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/mixins/visbility_enabled_ast.hpp>
-#include <spp/utils/errors.hpp>
+module spp.asts.annotation_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.function_prototype_ast;
+import spp.asts.mixins.visibility_enabled_ast;
+import spp.asts.utils.visibility;
 
 
 spp::asts::AnnotationAst::AnnotationAst(
@@ -22,12 +20,6 @@ spp::asts::AnnotationAst::AnnotationAst(
 
 
 spp::asts::AnnotationAst::~AnnotationAst() = default;
-
-
-auto spp::asts::AnnotationAst::operator==(AnnotationAst const &that) const
-    -> bool {
-    return *name == *that.name;
-}
 
 
 auto spp::asts::AnnotationAst::pos_start() const
@@ -68,6 +60,12 @@ auto spp::asts::AnnotationAst::print(
     SPP_PRINT_APPEND(tok_at_sign);
     SPP_PRINT_APPEND(name);
     SPP_PRINT_END;
+}
+
+
+auto spp::asts::AnnotationAst::operator==(AnnotationAst const &that) const
+    -> bool {
+    return *name == *that.name;
 }
 
 
@@ -136,7 +134,7 @@ auto spp::asts::AnnotationAst::stage_1_pre_process(
 
 auto spp::asts::AnnotationAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Default AST processing (sets scope).
     Ast::stage_2_gen_top_level_scopes(sm, meta);

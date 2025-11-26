@@ -1,29 +1,26 @@
-#include <tuple>
-
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/bin_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/binary_expression_ast.hpp>
-#include <spp/asts/fold_expression_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_ast.hpp>
-#include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/parse/parser_base.hpp>
-
+module;
 #include <genex/algorithms/contains.hpp>
 #include <genex/views/drop.hpp>
 #include <genex/views/drop_last.hpp>
-#include <genex/views/materialize.hpp>
 #include <genex/views/move.hpp>
 #include <genex/views/move_reverse.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.binary_expression_ast;
+import spp.analyse.utils.bin_utils;
+import spp.analyse.utils.type_utils;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.asts.ast;
+import spp.asts.function_prototype_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.identifier_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
 
 
 spp::asts::BinaryExpressionAst::BinaryExpressionAst(
@@ -97,10 +94,10 @@ auto spp::asts::BinaryExpressionAst::print(
 
 auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    meta::CompilerMetaData *meta) -> void {
     // Ensure TypeAst's aren't used for expression for binary operands.
-    ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(lhs.get());
-    ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(rhs.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(lhs.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(rhs.get());
 
     // Check compound assignment (for example "+=") has a symbolic lhs target.
     if (genex::algorithms::contains(analyse::utils::bin_utils::BIN_COMPOUND_ASSIGNMENT_OPS, tok_op->token_type)) {
@@ -184,7 +181,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::BinaryExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward the memory checking to the mapped function.
     m_mapped_func->stage_8_check_memory(sm, meta);
@@ -193,7 +190,7 @@ auto spp::asts::BinaryExpressionAst::stage_8_check_memory(
 
 auto spp::asts::BinaryExpressionAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Forward the code generation to the mapped function.
@@ -203,7 +200,7 @@ auto spp::asts::BinaryExpressionAst::stage_10_code_gen_2(
 
 auto spp::asts::BinaryExpressionAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Infer the type from the function mapping of the binary expression.
     if (m_mapped_func == nullptr) {

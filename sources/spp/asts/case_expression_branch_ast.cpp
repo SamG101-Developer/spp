@@ -1,23 +1,25 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/binary_expression_ast.hpp>
-#include <spp/asts/case_expression_branch_ast.hpp>
-#include <spp/asts/case_pattern_variant_ast.hpp>
-#include <spp/asts/case_pattern_variant_expression_ast.hpp>
-#include <spp/asts/inner_scope_expression_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/object_initializer_argument_group_ast.hpp>
-#include <spp/asts/object_initializer_ast.hpp>
-#include <spp/asts/pattern_guard_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-
+module;
+#include <genex/to_container.hpp>
 #include <genex/views/drop.hpp>
 #include <genex/views/for_each.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
 #include <genex/views/ptr.hpp>
+#include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.case_expression_branch_ast;
+import spp.analyse.scopes.scope_block_name;
+import spp.asts.binary_expression_ast;
+import spp.asts.case_pattern_variant_ast;
+import spp.asts.case_pattern_variant_expression_ast;
+import spp.asts.inner_scope_expression_ast;
+import spp.asts.object_initializer_ast;
+import spp.asts.pattern_guard_ast;
+import spp.asts.statement_ast;
+import spp.asts.token_ast;
+import spp.lex.tokens;
 
 
 spp::asts::CaseExpressionBranchAst::CaseExpressionBranchAst(
@@ -82,7 +84,7 @@ auto spp::asts::CaseExpressionBranchAst::print(
 
 auto spp::asts::CaseExpressionBranchAst::m_codegen_combine_patterns(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) -> llvm::Value* {
     // If there is only one pattern, generate its condition directly.
     // Otherwise, collect all the pattern conditions and combine them with OR.
@@ -101,7 +103,7 @@ auto spp::asts::CaseExpressionBranchAst::m_codegen_combine_patterns(
 
 auto spp::asts::CaseExpressionBranchAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     auto scope_name = analyse::scopes::ScopeBlockName("<case-pattern#" + std::to_string(pos_start()) + ">");
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
@@ -134,7 +136,7 @@ auto spp::asts::CaseExpressionBranchAst::stage_7_analyse_semantics(
 
 auto spp::asts::CaseExpressionBranchAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Move into the branch's scope.
     sm->move_to_next_scope();
@@ -153,7 +155,7 @@ auto spp::asts::CaseExpressionBranchAst::stage_8_check_memory(
 
 auto spp::asts::CaseExpressionBranchAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the branch architecture.
@@ -181,7 +183,7 @@ auto spp::asts::CaseExpressionBranchAst::stage_10_code_gen_2(
 
 auto spp::asts::CaseExpressionBranchAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Forward type inference to the body.
     return body->infer_type(sm, meta);

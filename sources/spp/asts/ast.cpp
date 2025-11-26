@@ -1,25 +1,19 @@
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/ast.hpp>
-#include <spp/asts/class_implementation_ast.hpp>
-#include <spp/asts/class_member_ast.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
-#include <spp/asts/function_implementation_ast.hpp>
-#include <spp/asts/function_prototype_ast.hpp>
-#include <spp/asts/module_implementation_ast.hpp>
-#include <spp/asts/module_prototype_ast.hpp>
-#include <spp/asts/statement_ast.hpp>
-#include <spp/asts/sup_implementation_ast.hpp>
-#include <spp/asts/sup_member_ast.hpp>
-#include <spp/asts/sup_prototype_extension_ast.hpp>
-#include <spp/asts/sup_prototype_functions_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/mixins/compiler_stages.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/views/cast_dynamic.hpp>
 #include <genex/views/ptr.hpp>
+
+module spp.asts.ast;
+import spp.asts.class_implementation_ast;
+import spp.asts.class_prototype_ast;
+import spp.asts.function_implementation_ast;
+import spp.asts.function_prototype_ast;
+import spp.asts.module_implementation_ast;
+import spp.asts.module_prototype_ast;
+import spp.asts.sup_implementation_ast;
+import spp.asts.sup_prototype_extension_ast;
+import spp.asts.sup_prototype_functions_ast;
+
 
 
 auto spp::asts::ast_name(Ast *ast) -> std::shared_ptr<TypeAst> {
@@ -73,6 +67,9 @@ auto spp::asts::ast_body(Ast *ast) -> std::vector<Ast*> {
 }
 
 
+spp::asts::Ast::Ast() = default;
+
+
 spp::asts::Ast::~Ast() = default;
 
 
@@ -90,10 +87,7 @@ auto spp::asts::Ast::stage_1_pre_process(
 
 auto spp::asts::Ast::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> void {
     m_scope = sm->current_scope;
 }
-
-
-spp::asts::Ast::Ast() = default;

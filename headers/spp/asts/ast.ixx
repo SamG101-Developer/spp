@@ -100,6 +100,8 @@ namespace spp::asts {
  * and end position identification.
  */
 SPP_EXP struct spp::asts::Ast : mixins::CompilerStages {
+    friend struct spp::asts::AnnotationAst;
+
 protected:
     using CompilerMetaData = meta::CompilerMetaData;
 

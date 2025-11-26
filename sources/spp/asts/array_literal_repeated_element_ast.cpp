@@ -1,17 +1,16 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/scopes/symbols.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/array_literal_repeated_element_ast.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/integer_literal_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.array_literal_repeated_element_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.mem_utils;
+import spp.asts.ast;
+import spp.asts.integer_literal_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.generate.common_types;
+import spp.lex.tokens;
 
 
 spp::asts::ArrayLiteralRepeatedElementAst::ArrayLiteralRepeatedElementAst(
@@ -100,10 +99,10 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::print(
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the repeated element.
-    ENFORCE_EXPRESSION_SUBTYPE(elem.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(elem.get());
     elem->stage_7_analyse_semantics(sm, meta);
     const auto elem_type = elem->infer_type(sm, meta);
     const auto elem_type_sym = sm->current_scope->get_type_symbol(elem_type);
@@ -121,7 +120,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
     }
 
     // Ensure the size is a constant expression (if symbolic).
-    ENFORCE_EXPRESSION_SUBTYPE(size.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(size.get());
     auto symbolic_size = asts::ast_cast<IdentifierAst>(ast_clone(size));
     const auto size_sym = sm->current_scope->get_var_symbol(std::move(symbolic_size));
     if (size_sym != nullptr) {
@@ -135,7 +134,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory of the repeated element (is it initialized etc).
     elem->stage_8_check_memory(sm, meta);
@@ -146,7 +145,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_8_check_memory(
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Collect the generated versions of the elements.
@@ -176,7 +175,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_10_code_gen_2(
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Create the standard "std::array::Arr[T, n]" type, with generic arguments.
     auto elem_type = elem->infer_type(sm, meta);

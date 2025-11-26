@@ -12,9 +12,7 @@ import std;
  * marking a method as @c \@virtualmethod won't generate any code, but will tag the method as virtual, unlocking
  * additional behaviour in the compiler.
  */
-SPP_EXP struct spp::asts::AnnotationAst final : virtual Ast {
-    SPP_AST_KEY_FUNCTIONS;
-
+SPP_EXP struct spp::asts::AnnotationAst final : virtual Ast {;
     /**
      * The token that represents the @c @ sign in the annotation. This introduces the annotation.
      */
@@ -35,6 +33,8 @@ SPP_EXP struct spp::asts::AnnotationAst final : virtual Ast {
         decltype(name) &&name);
 
     ~AnnotationAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     /**
      * Custom comparison involves comparing the identifier of the annotation. This makes checking for duplicate

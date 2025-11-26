@@ -1,23 +1,29 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/assignment_statement_ast.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
 
-#include <genex/views/address.hpp>
+#include <genex/to_container.hpp>
 #include <genex/views/enumerate.hpp>
 #include <genex/views/indirect.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
 #include <genex/views/ptr.hpp>
+#include <genex/views/transform.hpp>
 #include <genex/views/zip.hpp>
+
+module spp.asts.assignment_statement_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.convention_ast;
+import spp.asts.expression_ast;
+import spp.asts.identifier_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.lex.tokens;
 
 
 spp::asts::AssignmentStatementAst::AssignmentStatementAst(
@@ -79,7 +85,7 @@ auto spp::asts::AssignmentStatementAst::print(
 
 auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Ensure the LHS is semantically valid.
     auto is_attr = [](Ast const *x) -> bool { return not ast_cast<IdentifierAst>(x); };
@@ -154,7 +160,7 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
 
 auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    meta::CompilerMetaData *meta) -> void {
     // For each assignment, check the memory status and resolve any (partial-)moves.
     auto is_attr = [](Ast const *x) -> bool { return not ast_cast<IdentifierAst>(x); };
     auto lhs_syms = lhs
@@ -195,14 +201,14 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
 
 auto spp::asts::AssignmentStatementAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate code for each assignment in sequence.
     for (auto i = 0uz; i < lhs.size(); ++i) {
         const auto lhs_val = lhs[i]->stage_10_code_gen_2(sm, meta, ctx);
         const auto rhs_val = rhs[i]->stage_10_code_gen_2(sm, meta, ctx);
-        ctx->builder.CreateStore(rhs_val, lhs_val);  // todo: this will fail
+        ctx->builder.CreateStore(rhs_val, lhs_val); // todo: this will fail
     }
 
     // Statements are always generated into a builder so no need to return anything.

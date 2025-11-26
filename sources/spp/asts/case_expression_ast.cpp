@@ -1,31 +1,28 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/boolean_literal_ast.hpp>
-#include <spp/asts/case_expression_ast.hpp>
-#include <spp/asts/case_expression_branch_ast.hpp>
-#include <spp/asts/case_pattern_variant_ast.hpp>
-#include <spp/asts/case_pattern_variant_else_ast.hpp>
-#include <spp/asts/case_pattern_variant_expression_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_ast.hpp>
-#include <spp/asts/inner_scope_expression_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/pattern_guard_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/actions/remove.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
 #include <genex/views/ptr.hpp>
+#include <genex/views/transform.hpp>
 #include <opex/cast.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.case_expression_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_block_name;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.boolean_literal_ast;
+import spp.asts.case_expression_branch_ast;
+import spp.asts.case_pattern_variant_ast;
+import spp.asts.case_pattern_variant_expression_ast;
+import spp.asts.token_ast;
+import spp.asts.generate.common_types;
+import spp.lex.tokens;
 
 
 spp::asts::CaseExpressionAst::CaseExpressionAst(
@@ -108,10 +105,10 @@ auto spp::asts::CaseExpressionAst::print(
 
 auto spp::asts::CaseExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the condition expression.
-    ENFORCE_EXPRESSION_SUBTYPE(cond.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(cond.get());
     cond->stage_7_analyse_semantics(sm, meta);
 
     // Create the scope for the case expression.
@@ -146,7 +143,7 @@ auto spp::asts::CaseExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::CaseExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory state of the condition.
     cond->stage_8_check_memory(sm, meta);
@@ -165,7 +162,7 @@ auto spp::asts::CaseExpressionAst::stage_8_check_memory(
 
 auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the condition architecture.
@@ -199,7 +196,7 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
 
 auto spp::asts::CaseExpressionAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Ensure consistency across branches.
     auto [master_branch_type_info, branches_type_info] = analyse::utils::type_utils::validate_inconsistent_types(

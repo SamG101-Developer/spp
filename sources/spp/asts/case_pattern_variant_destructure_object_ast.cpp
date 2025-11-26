@@ -1,29 +1,34 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/case_pattern_variant_destructure_attribute_binding_ast.hpp>
-#include <spp/asts/case_pattern_variant_destructure_object_ast.hpp>
-#include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/fold_expression_ast.hpp>
-#include <spp/asts/function_call_argument_positional_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/let_statement_uninitialized_ast.hpp>
-#include <spp/asts/local_variable_destructure_object_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-
+module;
+#include <genex/to_container.hpp>
 #include <genex/views/enumerate.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
 #include <genex/views/ptr.hpp>
+#include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.case_pattern_variant_destructure_object_ast;
+import spp.analyse.utils.type_utils;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.symbols;
+import spp.lex.tokens;
+import spp.asts.ast;
+import spp.asts.case_pattern_variant_destructure_attribute_binding_ast;
+import spp.asts.convention_ref_ast;
+import spp.asts.expression_ast;
+import spp.asts.function_call_argument_group_ast;
+import spp.asts.function_call_argument_positional_ast;
+import spp.asts.identifier_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.local_variable_destructure_object_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
 
 
 spp::asts::CasePatternVariantDestructureObjectAst::CasePatternVariantDestructureObjectAst(
@@ -88,7 +93,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::print(
 
 
 auto spp::asts::CasePatternVariantDestructureObjectAst::convert_to_variable(
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::unique_ptr<LocalVariableAst> {
     // Recursively map the elements to their local variable counterparts.
     auto mapped_elems = elems
@@ -104,7 +109,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::convert_to_variable(
 
 auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the class type (required for flow typing).
     type->stage_7_analyse_semantics(sm, meta);
@@ -148,7 +153,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantic
 
 auto spp::asts::CasePatternVariantDestructureObjectAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward memory checking to the mapped let statement.
     m_mapped_let->stage_8_check_memory(sm, meta);
@@ -157,7 +162,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_8_check_memory(
 
 auto spp::asts::CasePatternVariantDestructureObjectAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     /*
