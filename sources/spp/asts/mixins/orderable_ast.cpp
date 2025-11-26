@@ -1,7 +1,8 @@
-#include <spp/asts/mixins/orderable_ast.hpp>
+module spp.asts.mixins.orderable_ast;
 
 
-spp::asts::mixins::OrderableAst::OrderableAst(const OrderableTag order_tag) :
+spp::asts::mixins::OrderableAst::OrderableAst(
+    const OrderableTag order_tag) :
     m_order_tag(order_tag) {
 }
 
