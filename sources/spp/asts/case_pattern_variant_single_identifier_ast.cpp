@@ -1,9 +1,13 @@
-#include <spp/asts/case_pattern_variant_single_identifier_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.case_pattern_variant_single_identifier_ast;
+import spp.asts.ast;
+import spp.asts.identifier_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.token_ast;
 
 
 spp::asts::CasePatternVariantSingleIdentifierAst::CasePatternVariantSingleIdentifierAst(
@@ -61,7 +65,7 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::print(
 
 
 auto spp::asts::CasePatternVariantSingleIdentifierAst::convert_to_variable(
-    mixins::CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> std::unique_ptr<LocalVariableAst> {
     // Create the local variable single identifier binding AST.
     auto var = std::make_unique<LocalVariableSingleIdentifierAst>(ast_clone(tok_mut), ast_clone(name), ast_clone(alias));
@@ -72,7 +76,7 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::convert_to_variable(
 
 auto spp::asts::CasePatternVariantSingleIdentifierAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward analysis into the name and alias.
     auto var = convert_to_variable(meta);
@@ -84,7 +88,7 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::stage_7_analyse_semantics
 
 auto spp::asts::CasePatternVariantSingleIdentifierAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward memory checks into the name and alias.
     m_mapped_let->stage_8_check_memory(sm, meta);

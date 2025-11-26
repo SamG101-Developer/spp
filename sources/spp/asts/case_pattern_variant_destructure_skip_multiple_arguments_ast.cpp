@@ -1,9 +1,12 @@
-#include <spp/asts/case_pattern_variant_destructure_skip_multiple_arguments_ast.hpp>
-#include <spp/asts/case_pattern_variant_single_identifier_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_destructure_skip_multiple_arguments_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.case_pattern_variant_destructure_skip_multiple_arguments_ast;
+import spp.asts.ast;
+import spp.asts.case_pattern_variant_ast;
+import spp.asts.case_pattern_variant_single_identifier_ast;
+import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
+import spp.asts.token_ast;
 
 
 spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::CasePatternVariantDestructureSkipMultipleArgumentsAst(
@@ -56,7 +59,7 @@ auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::print(
 
 
 auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::convert_to_variable(
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::unique_ptr<LocalVariableAst> {
     // Create the local variable destructure attribute binding AST.
     auto var = std::make_unique<LocalVariableDestructureSkipMultipleArgumentsAst>(

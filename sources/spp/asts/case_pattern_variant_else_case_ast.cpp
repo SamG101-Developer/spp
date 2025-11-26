@@ -1,11 +1,10 @@
-#include <spp/asts/case_expression_ast.hpp>
-#include <spp/asts/case_expression_branch_ast.hpp>
-#include <spp/asts/case_pattern_variant_else_case_ast.hpp>
-#include <spp/asts/inner_scope_expression_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/pattern_guard_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.case_pattern_variant_else_case_ast;
+import spp.asts.case_expression_ast;
+import spp.asts.ast;
+import spp.asts.token_ast;
 
 
 spp::asts::CasePatternVariantElseCaseAst::CasePatternVariantElseCaseAst(
@@ -59,7 +58,7 @@ auto spp::asts::CasePatternVariantElseCaseAst::print(
 
 auto spp::asts::CasePatternVariantElseCaseAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward analysis into the case expression.
     case_expr->stage_7_analyse_semantics(sm, meta);
@@ -68,7 +67,7 @@ auto spp::asts::CasePatternVariantElseCaseAst::stage_7_analyse_semantics(
 
 auto spp::asts::CasePatternVariantElseCaseAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward memory checks into the case expression.
     case_expr->stage_8_check_memory(sm, meta);
@@ -77,7 +76,7 @@ auto spp::asts::CasePatternVariantElseCaseAst::stage_8_check_memory(
 
 auto spp::asts::CasePatternVariantElseCaseAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) -> llvm::Value* {
     // Delegate code generation to the case expression.
     return case_expr->stage_10_code_gen_2(sm, meta, ctx);

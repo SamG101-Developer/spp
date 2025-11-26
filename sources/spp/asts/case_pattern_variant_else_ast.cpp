@@ -1,8 +1,10 @@
-#include <spp/asts/case_pattern_variant_else_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.case_pattern_variant_else_ast;
+import spp.lex.tokens;
+import spp.asts.ast;
+import spp.asts.token_ast;
 
 
 spp::asts::CasePatternVariantElseAst::CasePatternVariantElseAst(
@@ -52,7 +54,7 @@ auto spp::asts::CasePatternVariantElseAst::print(
 
 auto spp::asts::CasePatternVariantElseAst::stage_10_code_gen_2(
     ScopeManager *,
-    mixins::CompilerMetaData *,
+    meta::CompilerMetaData *,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // The "else" pattern always matches, so return "true".
