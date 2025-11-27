@@ -1,21 +1,22 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/utils/strings.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/algorithms/min_element.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/filter.hpp>
-#include <genex/views/reverse.hpp>
 #include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.postfix_expression_operator_static_member_access_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.asts.ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.lex.tokens;
+import spp.utils.strings;
 
 
 spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOperatorStaticMemberAccessAst(
@@ -70,7 +71,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::print(
 
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Handle types on the left-hand-side of a static member access.
     if (const auto lhs_as_type = ast_cast<TypeAst>(meta->postfix_expression_lhs)) {
@@ -148,7 +149,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
 
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Get the left-hand-side type's member's type.
     if (const auto lhs_as_type = ast_cast<TypeAst>(meta->postfix_expression_lhs)) {

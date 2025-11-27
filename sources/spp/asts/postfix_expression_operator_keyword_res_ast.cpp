@@ -1,21 +1,21 @@
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/fold_expression_ast.hpp>
-#include <spp/asts/function_call_argument_ast.hpp>
-#include <spp/asts/function_call_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_keyword_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/postfix_expression_operator_keyword_res_ast.hpp>
-#include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
-#include <spp/asts/generate/common_types_precompiled.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.postfix_expression_operator_keyword_res_ast;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
+import spp.asts.identifier_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.function_call_argument_group_ast;
+import spp.asts.generate.common_types;
+import spp.asts.generate.common_types_precompiled;
 
 
 spp::asts::PostfixExpressionOperatorKeywordResAst::PostfixExpressionOperatorKeywordResAst(
@@ -76,7 +76,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::print(
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the left-hand-side is a generator type (for specific errors).
     const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
@@ -95,7 +95,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_7_analyse_semantic
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward the memory check to the mapped function, which will check the arguments, and the function call.
     m_mapped_func->stage_8_check_memory(sm, meta);
@@ -104,7 +104,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_8_check_memory(
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Get the generator type.
     const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);

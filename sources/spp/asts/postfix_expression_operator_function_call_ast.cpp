@@ -1,43 +1,8 @@
-#include <spp/macros.hpp>
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/func_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/fold_expression_ast.hpp>
-#include <spp/asts/function_call_argument_ast.hpp>
-#include <spp/asts/function_call_argument_group_ast.hpp>
-#include <spp/asts/function_call_argument_keyword_ast.hpp>
-#include <spp/asts/function_call_argument_positional_ast.hpp>
-#include <spp/asts/function_parameter_ast.hpp>
-#include <spp/asts/function_parameter_group_ast.hpp>
-#include <spp/asts/function_parameter_required_ast.hpp>
-#include <spp/asts/function_parameter_self_ast.hpp>
-#include <spp/asts/function_parameter_variadic_ast.hpp>
-#include <spp/asts/function_prototype_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_ast.hpp>
-#include <spp/asts/generic_parameter_ast.hpp>
-#include <spp/asts/generic_parameter_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
-#include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
-#include <spp/asts/generate/common_types_precompiled.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/actions/remove.hpp>
 #include <genex/actions/sort.hpp>
 #include <genex/algorithms/position.hpp>
-#include <genex/operations/cmp.hpp>
-#include <genex/operations/empty.hpp>
 #include <genex/views/cast_dynamic.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/drop.hpp>
@@ -49,8 +14,41 @@
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/set_algorithms.hpp>
+#include <genex/views/transform.hpp>
 #include <genex/views/zip.hpp>
 #include <opex/cast.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.postfix_expression_operator_function_call_ast;
+import spp.analyse.utils.func_utils;
+import spp.analyse.utils.type_utils;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.asts.ast;
+import spp.asts.convention_mut_ast;
+import spp.asts.convention_ref_ast;
+import spp.asts.function_call_argument_ast;
+import spp.asts.function_call_argument_group_ast;
+import spp.asts.function_call_argument_positional_ast;
+import spp.asts.function_call_argument_keyword_ast;
+import spp.asts.function_parameter_group_ast;
+import spp.asts.function_parameter_self_ast;
+import spp.asts.function_parameter_variadic_ast;
+import spp.asts.function_prototype_ast;
+import spp.asts.fold_expression_ast;
+import spp.asts.generic_argument_ast;
+import spp.asts.generic_argument_type_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_parameter_group_ast;
+import spp.asts.identifier_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.generate.common_types;
+import spp.asts.generate.common_types_precompiled;
+import spp.lex.tokens;
 
 
 spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFunctionCallAst(
@@ -127,7 +125,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::print(
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     const auto lhs = meta->postfix_expression_lhs;
     const auto [fn_owner_type, fn_owner_scope, fn_name] = analyse::utils::func_utils::get_function_owner_type_and_function_name(*lhs, *sm, meta);
@@ -315,7 +313,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 }
             }
 
-            // Recreate the lists of function parameters and their names (Void removed, generics etc).
+            // Recreate the lists of function parameters, and their names (Void removed, generics etc).
             func_params = fn_proto->param_group->params | genex::views::ptr | genex::to<std::vector>();
             func_param_names = fn_proto->param_group->params
                 | genex::views::transform([](auto &&x) { return x->extract_name(); })
@@ -510,7 +508,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Prevent double analysis.
     if (m_overload_info.has_value()) {
@@ -537,7 +535,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_7_analyse_semant
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // If a fold is taking place, analyse the non-folding argument again (checks for double move).
     if (fold != nullptr and not m_folded_args.empty()) {
@@ -574,7 +572,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_8_check_memory(
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) -> llvm::Value* {
     // Get the llvm function target.
     const auto llvm_func = std::get<1>(*m_overload_info)->m_llvm_func;
@@ -590,7 +588,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_10_code_gen_2(
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Get the function return type from the overload.
     auto ret_type = std::get<1>(*m_overload_info)->return_type;

@@ -1,15 +1,19 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/ret_statement_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.ret_statement_ast;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.asts.ast;
+import spp.asts.expression_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.generate.common_types;
+import spp.lex.tokens;
 
 
 spp::asts::RetStatementAst::RetStatementAst(
@@ -63,10 +67,10 @@ auto spp::asts::RetStatementAst::print(
 
 auto spp::asts::RetStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the expression.
-    ENFORCE_EXPRESSION_SUBTYPE(expr.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
 
     // Check the enclosing function is a subroutine and not a subroutine, if a value is being returned.
     const auto function_flavour = meta->enclosing_function_flavour;
@@ -79,7 +83,7 @@ auto spp::asts::RetStatementAst::stage_7_analyse_semantics(
     auto expr_type = generate::common_types::void_type(pos_start());
     if (expr != nullptr) {
         meta->save();
-        RETURN_TYPE_OVERLOAD_HELPER(expr.get()) {
+        SPP_RETURN_TYPE_OVERLOAD_HELPER(expr.get()) {
             meta->return_type_overload_resolver_type = meta->enclosing_function_ret_type[0];
         }
 
@@ -112,7 +116,7 @@ auto spp::asts::RetStatementAst::stage_7_analyse_semantics(
 
 auto spp::asts::RetStatementAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // If there is no expression, then now ork needs to be done.
     if (expr == nullptr) return;

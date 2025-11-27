@@ -1,18 +1,23 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/utils/strings.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/algorithms/min_element.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.lex.tokens;
+import spp.utils.strings;
 
 
 spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOperatorRuntimeMemberAccessAst(
@@ -67,7 +72,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::print(
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
 
     // Prevent types on the left-hand-side of a runtime member access.
@@ -164,7 +169,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Get the type of the left-hand-side expression.
     const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
