@@ -1,9 +1,9 @@
-#include <fcntl.h>
-#include <fstream>
-#include <stdexcept>
-#include <string>
-#include <unistd.h>
-#include <spp/utils/files.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.utils.files;
+import std;
+import sys;
 
 
 auto spp::utils::files::read_file(

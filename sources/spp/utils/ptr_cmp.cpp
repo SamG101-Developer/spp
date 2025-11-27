@@ -1,8 +1,8 @@
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/utils/ptr_cmp.hpp>
+module spp.utils.ptr_cmp;
+import spp.asts.identifier_ast;
+import spp.asts.type_identifier_ast;
 
-#include <absl/hash/hash.h>
+import absl;
 
 
 auto spp::utils::SymNameCmp<std::shared_ptr<spp::asts::IdentifierAst>>::operator()(

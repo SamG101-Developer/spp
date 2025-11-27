@@ -1,7 +1,4 @@
-#include <spp/asts/ast.hpp>
-#include <spp/pch.hpp>
-#include <spp/utils/error_formatter.hpp>
-
+module;
 #include <colex/common.hpp>
 #include <genex/to_container.hpp>
 #include <genex/algorithms/fold_left.hpp>
@@ -12,6 +9,9 @@
 #include <genex/views/filter.hpp>
 #include <genex/views/take.hpp>
 #include <opex/cast.hpp>
+
+export module spp.utils.error_formatter;
+import spp.lex.tokens;
 
 
 spp::utils::errors::ErrorFormatter::ErrorFormatter(std::vector<lex::RawToken> tokens, std::string file_path) :
