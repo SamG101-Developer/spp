@@ -1,24 +1,22 @@
+module;
+#include <spp/macros.hpp>
+
 export module spp.analyse.scopes.symbol_table;
+import spp.analyse.scopes.symbols;
+import spp.utils.ptr_cmp;
 import ankerl;
 import std;
 
 
-/// @cond
 namespace spp::analyse::scopes {
     template <typename I, typename S>
     class IndividualSymbolTable;
 
-    export class SymbolTable;
-    struct Symbol;
-    struct NamespaceSymbol;
-    struct TypeSymbol;
-    struct VariableSymbol;
+    SPP_EXP class SymbolTable;
 }
 
-/// @endcond
 
-
-template <typename I, typename S>
+SPP_EXP template <typename I, typename S>
 class spp::analyse::scopes::IndividualSymbolTable {
 private:
     ankerl::unordered_dense::map<std::shared_ptr<I>, std::shared_ptr<S>, spp::utils::PtrHash<std::shared_ptr<I>>, spp::utils::PtrEq<std::shared_ptr<I>>> m_table;

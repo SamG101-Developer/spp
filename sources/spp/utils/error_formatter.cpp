@@ -11,6 +11,7 @@ module;
 #include <opex/cast.hpp>
 
 module spp.utils.error_formatter;
+import spp.asts.ast;
 import spp.lex.tokens;
 
 

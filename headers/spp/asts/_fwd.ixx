@@ -5,7 +5,7 @@ export module spp.asts._fwd;
 
 
 /// @cond
-export namespace spp::asts {
+namespace spp::asts {
     SPP_EXP struct AnnotationAst;
     SPP_EXP struct AssignmentStatementAst;
     SPP_EXP struct Ast;
@@ -67,10 +67,10 @@ export namespace spp::asts {
     SPP_EXP struct IdentifierAst;
 
     // Inner Scopes
-    template <typename T>
-    SPP_EXP struct InnerScopeAst;
-    template <typename T>
-    SPP_EXP struct InnerScopeExpressionAst;
+    SPP_EXP template <typename T>
+    struct InnerScopeAst;
+    SPP_EXP template <typename T>
+    struct InnerScopeExpressionAst;
 
     SPP_EXP struct PatternGuardAst;
     SPP_EXP struct CasePatternVariantAst;

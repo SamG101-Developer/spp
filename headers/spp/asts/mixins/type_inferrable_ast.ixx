@@ -41,5 +41,5 @@ public:
      * @param meta Associated metadata.
      * @return The inferred type of the AST.
      */
-    virtual auto infer_type(analyse::scopes::ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> = 0;
+    virtual auto infer_type(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> = 0;
 };
