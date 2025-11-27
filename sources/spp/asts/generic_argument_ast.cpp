@@ -1,4 +1,4 @@
-#include <spp/asts/generic_argument_ast.hpp>
+module spp.asts.generic_argument_ast;
 
 
 auto spp::asts::GenericArgumentAst::equals_generic_argument_comp_keyword(

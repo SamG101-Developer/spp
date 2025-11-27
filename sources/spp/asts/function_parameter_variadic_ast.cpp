@@ -1,8 +1,13 @@
-#include <spp/asts/function_parameter_variadic_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.function_parameter_variadic_ast;
+import spp.asts.local_variable_ast;
+import spp.asts.ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.mixins.orderable_ast;
+import spp.lex.tokens;
 
 
 spp::asts::FunctionParameterVariadicAst::FunctionParameterVariadicAst(

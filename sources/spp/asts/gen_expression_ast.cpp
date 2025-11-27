@@ -1,20 +1,27 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/coroutine_prototype_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_keyword_ast.hpp>
-#include <spp/asts/gen_expression_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
-#include <spp/asts/generate/common_types_precompiled.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.gen_expression_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.convention_ast;
+import spp.asts.coroutine_prototype_ast;
+import spp.asts.function_prototype_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.generate.common_types;
+import spp.asts.generate.common_types_precompiled;
+import spp.lex.tokens;
+
+import llvm;
 
 
 spp::asts::GenExpressionAst::GenExpressionAst(
@@ -69,10 +76,10 @@ auto spp::asts::GenExpressionAst::print(meta::AstPrinter &printer) const -> std:
 
 auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the expression.
-    ENFORCE_EXPRESSION_SUBTYPE(expr.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
 
     // Check the enclosing function is a coroutine and not a subroutine.
     const auto function_flavour = meta->enclosing_function_flavour;
@@ -85,7 +92,7 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
     auto expr_type = generate::common_types::void_type(pos_start());
     if (expr != nullptr) {
         meta->save();
-        RETURN_TYPE_OVERLOAD_HELPER(expr.get()) {
+        SPP_RETURN_TYPE_OVERLOAD_HELPER(expr.get()) {
             auto [gen_type, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(
                 *meta->enclosing_function_ret_type[0], *sm, *meta->enclosing_function_ret_type[0], "coroutine");
             meta->return_type_overload_resolver_type = std::move(yield_type);
@@ -122,7 +129,7 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::GenExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // If there is no expression, then now ork needs to be done.
     if (expr == nullptr) return;
@@ -153,7 +160,7 @@ auto spp::asts::GenExpressionAst::stage_8_check_memory(
 
 auto spp::asts::GenExpressionAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the expression.
@@ -190,7 +197,7 @@ auto spp::asts::GenExpressionAst::stage_10_code_gen_2(
 
 auto spp::asts::GenExpressionAst::infer_type(
     ScopeManager *,
-    mixins::CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Get the "Send" generic type parameter from the generator type.
     auto send_type = m_gen_type->type_parts().back()->generic_arg_group->type_at("Send")->val;

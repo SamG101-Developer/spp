@@ -1,16 +1,18 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/scopes/symbols.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/generic_argument_comp_keyword_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_parameter_comp_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
 
-#include <spp/asts/type_identifier_ast.hpp>
+module spp.asts.generic_argument_comp_keyword_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.mem_utils;
+import spp.asts.token_ast;
+import spp.asts.ast;
+import spp.asts.generic_parameter_comp_ast;
+import spp.asts.identifier_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.mixins.orderable_ast;
+import spp.lex.tokens;
 
 
 spp::asts::GenericArgumentCompKeywordAst::GenericArgumentCompKeywordAst(
@@ -111,17 +113,17 @@ auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
 
 auto spp::asts::GenericArgumentCompKeywordAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the value.
-    ENFORCE_EXPRESSION_SUBTYPE(val.get())
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(val.get());
     val->stage_7_analyse_semantics(sm, meta);
 }
 
 
 auto spp::asts::GenericArgumentCompKeywordAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the value for memory issues.
     val->stage_8_check_memory(sm, meta);

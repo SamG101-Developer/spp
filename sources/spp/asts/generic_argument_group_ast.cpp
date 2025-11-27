@@ -1,32 +1,39 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/order_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/generic_argument_ast.hpp>
-#include <spp/asts/generic_argument_comp_keyword_ast.hpp>
-#include <spp/asts/generic_argument_comp_positional_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_keyword_ast.hpp>
-#include <spp/asts/generic_argument_type_positional_ast.hpp>
-#include <spp/asts/generic_parameter_ast.hpp>
-#include <spp/asts/generic_parameter_comp_ast.hpp>
-#include <spp/asts/generic_parameter_group_ast.hpp>
-#include <spp/asts/generic_parameter_type_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/mixins/orderable_ast.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/views/cast_dynamic.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/duplicates.hpp>
 #include <genex/views/for_each.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
+#include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.generic_argument_group_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.order_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.generic_argument_ast;
+import spp.asts.generic_argument_comp_keyword_ast;
+import spp.asts.generic_argument_comp_positional_ast;
+import spp.asts.generic_argument_type_ast;
+import spp.asts.generic_argument_type_keyword_ast;
+import spp.asts.generic_argument_type_positional_ast;
+import spp.asts.generic_parameter_comp_ast;
+import spp.asts.generic_parameter_group_ast;
+import spp.asts.generic_parameter_type_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.mixins.orderable_ast;
+import spp.lex.tokens;
+
+import ankerl;
 
 
 spp::asts::GenericArgumentGroupAst::GenericArgumentGroupAst(
@@ -148,8 +155,7 @@ auto spp::asts::GenericArgumentGroupAst::from_map(
 
 
 auto spp::asts::GenericArgumentGroupAst::from_map(
-    ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>,
-                                 std::shared_ptr<const TypeAst>> &&map)
+    ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, std::shared_ptr<const TypeAst>> &&map)
     -> std::unique_ptr<GenericArgumentGroupAst> {
     // Cast the values to "ExpressionAst const*".
     auto mapped_args = analyse::utils::type_utils::GenericInferenceMap();
@@ -272,7 +278,7 @@ auto spp::asts::GenericArgumentGroupAst::get_all_args() const
 
 auto spp::asts::GenericArgumentGroupAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     args | genex::views::for_each([sm, meta](auto const &x) { x->stage_4_qualify_types(sm, meta); });
 }
@@ -280,7 +286,7 @@ auto spp::asts::GenericArgumentGroupAst::stage_4_qualify_types(
 
 auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check there are no duplicate type argument names.
     const auto type_arg_names = get_keyword_args()
@@ -326,7 +332,7 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
 
 auto spp::asts::GenericArgumentGroupAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the arguments for memory issues.
     args | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });

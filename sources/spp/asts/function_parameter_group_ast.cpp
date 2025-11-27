@@ -1,27 +1,26 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/order_utils.hpp>
-#include <spp/asts/function_parameter_ast.hpp>
-#include <spp/asts/function_parameter_group_ast.hpp>
-#include <spp/asts/function_parameter_optional_ast.hpp>
-#include <spp/asts/function_parameter_required_ast.hpp>
-#include <spp/asts/function_parameter_self_ast.hpp>
-#include <spp/asts/function_parameter_variadic_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/mixins/orderable_ast.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/views/cast_dynamic.hpp>
 #include <genex/views/duplicates.hpp>
 #include <genex/views/filter.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
+#include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.function_parameter_group_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.order_utils;
+import spp.asts.function_parameter_optional_ast;
+import spp.asts.function_parameter_required_ast;
+import spp.asts.function_parameter_self_ast;
+import spp.asts.function_parameter_variadic_ast;
+import spp.asts.token_ast;
+import spp.asts.mixins.orderable_ast;
 
 
 spp::asts::FunctionParameterGroupAst::FunctionParameterGroupAst(
@@ -135,7 +134,7 @@ auto spp::asts::FunctionParameterGroupAst::get_non_self_params() const
 
 auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
 
     // Create sets of parameters based on conditions.
@@ -194,7 +193,7 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
 
 auto spp::asts::FunctionParameterGroupAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check each parameter's memory.
     for (auto &&param : params) {

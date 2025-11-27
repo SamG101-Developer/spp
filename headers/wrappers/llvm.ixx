@@ -19,6 +19,7 @@ export namespace llvm {
     using ::llvm::ConstantInt;
     using ::llvm::ConstantFP;
     using ::llvm::ConstantPointerNull;
+    using ::llvm::ConstantTokenNone;
     using ::llvm::Function;
     using ::llvm::FunctionType;
     using ::llvm::IRBuilder;

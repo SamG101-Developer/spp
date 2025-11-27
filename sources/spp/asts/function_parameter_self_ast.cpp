@@ -1,12 +1,14 @@
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/function_parameter_self_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.function_parameter_self_ast;
+import spp.asts.ast;
+import spp.asts.convention_ast;
+import spp.asts.local_variable_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.type_ast;
+import spp.asts.generate.common_types;
+import spp.asts.mixins.orderable_ast;
 
 
 spp::asts::FunctionParameterSelfAst::FunctionParameterSelfAst(
@@ -63,7 +65,7 @@ auto spp::asts::FunctionParameterSelfAst::print(
 
 auto spp::asts::FunctionParameterSelfAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Perform default analysis steps.
     FunctionParameterAst::stage_7_analyse_semantics(sm, meta);

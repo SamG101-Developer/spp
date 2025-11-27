@@ -12,6 +12,8 @@ import std;
  * the module.
  */
 SPP_EXP struct spp::asts::ModulePrototypeAst final : virtual Ast {
+    friend struct spp::asts::FunctionPrototypeAst;
+
 private:
     std::filesystem::path m_file_path;
 

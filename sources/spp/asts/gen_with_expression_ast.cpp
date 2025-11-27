@@ -1,26 +1,28 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_keyword_ast.hpp>
-#include <spp/asts/gen_expression_ast.hpp>
-#include <spp/asts/gen_with_expression_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/inner_scope_expression_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
-#include <spp/asts/loop_condition_iterable_ast.hpp>
-#include <spp/asts/loop_else_statement_ast.hpp>
-#include <spp/asts/loop_expression_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.gen_with_expression_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.gen_expression_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
+import spp.asts.identifier_ast;
+import spp.asts.inner_scope_expression_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.loop_condition_iterable_ast;
+import spp.asts.loop_expression_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.generate.common_types;
+import spp.lex.tokens;
+
 
 
 spp::asts::GenWithExpressionAst::GenWithExpressionAst(
@@ -82,10 +84,10 @@ auto spp::asts::GenWithExpressionAst::print(
 
 auto spp::asts::GenWithExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the expression.
-    ENFORCE_EXPRESSION_SUBTYPE(expr.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
 
     // Check the enclosing function is a coroutine and not a subroutine.
     const auto function_flavour = meta->enclosing_function_flavour;
@@ -97,7 +99,7 @@ auto spp::asts::GenWithExpressionAst::stage_7_analyse_semantics(
     // Analyse the expression (guaranteed to exist), and determine the type of the expression.
     auto expr_type = generate::common_types::void_type(pos_start());
     meta->save();
-    RETURN_TYPE_OVERLOAD_HELPER(expr.get()) {
+    SPP_RETURN_TYPE_OVERLOAD_HELPER(expr.get()) {
         meta->return_type_overload_resolver_type = meta->enclosing_function_ret_type[0];
     }
 
@@ -132,7 +134,7 @@ auto spp::asts::GenWithExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::GenWithExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the expression for memory issues.
     // Ensure the argument isn't moved or partially moved (for all conventions)
@@ -145,7 +147,7 @@ auto spp::asts::GenWithExpressionAst::stage_8_check_memory(
 
 auto spp::asts::GenWithExpressionAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Build the iterable for the loop; the iterable is just the expression, mapped into a different AST.
@@ -167,7 +169,7 @@ auto spp::asts::GenWithExpressionAst::stage_10_code_gen_2(
 
 auto spp::asts::GenWithExpressionAst::infer_type(
     ScopeManager *,
-    mixins::CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Get the "Send" generic type parameter from the generator type.
     auto send_type = m_generator_type->type_parts().back()->generic_arg_group->type_at("Send")->val;

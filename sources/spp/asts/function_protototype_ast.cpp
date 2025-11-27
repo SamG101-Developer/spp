@@ -1,45 +1,45 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/func_utils.hpp>
-#include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/class_implementation_ast.hpp>
-#include <spp/asts/class_member_ast.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
-#include <spp/asts/cmp_statement_ast.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/function_implementation_ast.hpp>
-#include <spp/asts/function_parameter_ast.hpp>
-#include <spp/asts/function_parameter_group_ast.hpp>
-#include <spp/asts/function_parameter_self_ast.hpp>
-#include <spp/asts/function_prototype_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_keyword_ast.hpp>
-#include <spp/asts/generic_parameter_ast.hpp>
-#include <spp/asts/generic_parameter_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/module_implementation_ast.hpp>
-#include <spp/asts/module_prototype_ast.hpp>
-#include <spp/asts/object_initializer_argument_group_ast.hpp>
-#include <spp/asts/object_initializer_ast.hpp>
-#include <spp/asts/sup_implementation_ast.hpp>
-#include <spp/asts/sup_prototype_extension_ast.hpp>
-#include <spp/asts/sup_prototype_functions_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
-#include <spp/codegen/llvm_func_impls.hpp>
-#include <spp/codegen/llvm_mangle.hpp>
-
+module;
+#include <genex/to_container.hpp>
 #include <genex/actions/remove.hpp>
 #include <genex/actions/remove_if.hpp>
 #include <genex/views/cast_dynamic.hpp>
 #include <genex/views/filter.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
+#include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.function_prototype_ast;
+import spp.analyse.scopes.scope_block_name;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.func_utils;
+import spp.asts.ast;
+import spp.asts.annotation_ast;
+import spp.asts.class_prototype_ast;
+import spp.asts.cmp_statement_ast;
+import spp.asts.object_initializer_ast;
+import spp.asts.convention_ast;
+import spp.asts.function_implementation_ast;
+import spp.asts.function_parameter_group_ast;
+import spp.asts.function_parameter_self_ast;
+import spp.asts.function_prototype_ast;
+import spp.asts.generic_argument_ast;
+import spp.asts.generic_argument_type_keyword_ast;
+import spp.asts.generic_parameter_group_ast;
+import spp.asts.identifier_ast;
+import spp.asts.module_implementation_ast;
+import spp.asts.module_prototype_ast;
+import spp.asts.sup_implementation_ast;
+import spp.asts.sup_prototype_functions_ast;
+import spp.asts.sup_prototype_extension_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.generate.common_types;
+import spp.codegen.llvm_mangle;
+import spp.lex.tokens;
 
 
 spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
@@ -51,20 +51,20 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     decltype(tok_arrow) &&tok_arrow,
     decltype(return_type) &&return_type,
     decltype(impl) &&impl) :
-    m_abstract_annotation(nullptr),
-    m_virtual_annotation(nullptr),
-    m_temperature_annotation(nullptr),
-    m_no_impl_annotation(nullptr),
-    m_inline_annotation(nullptr),
-    m_llvm_func(nullptr),
-    annotations(std::move(annotations)),
-    tok_fun(std::move(tok_fun)),
-    name(std::move(name)),
-    generic_param_group(std::move(generic_param_group)),
-    param_group(std::move(param_group)),
-    tok_arrow(std::move(tok_arrow)),
     return_type(std::move(return_type)),
-    impl(std::move(impl)) {
+    tok_arrow(std::move(tok_arrow)),
+    param_group(std::move(param_group)),
+    generic_param_group(std::move(generic_param_group)),
+    name(std::move(name)),
+    tok_fun(std::move(tok_fun)),
+    impl(std::move(impl)),
+    annotations(std::move(annotations)),
+    m_inline_annotation(nullptr),
+    m_no_impl_annotation(nullptr),
+    m_temperature_annotation(nullptr),
+    m_virtual_annotation(nullptr),
+    m_abstract_annotation(nullptr),
+    m_llvm_func(nullptr) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_fun, lex::SppTokenType::KW_FUN, "fun");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_param_group);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_arrow, lex::SppTokenType::TK_ARROW_RIGHT, "->");
@@ -252,7 +252,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
 
 auto spp::asts::FunctionPrototypeAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Create a new scope for the function prototype, and move into it.
     auto scope_name = analyse::scopes::ScopeBlockName("<function#" + orig_name->val + "#" + std::to_string(pos_start()) + ">");
@@ -284,7 +284,7 @@ auto spp::asts::FunctionPrototypeAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::FunctionPrototypeAst::stage_3_gen_top_level_aliases(
     ScopeManager *sm,
-    mixins::CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> void {
     // Skip the function scope, as it is already generated.
     sm->move_to_next_scope();
@@ -295,7 +295,7 @@ auto spp::asts::FunctionPrototypeAst::stage_3_gen_top_level_aliases(
 
 auto spp::asts::FunctionPrototypeAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Skip the function scope, as it is already qualified.
     sm->move_to_next_scope();
@@ -308,7 +308,7 @@ auto spp::asts::FunctionPrototypeAst::stage_4_qualify_types(
 
 auto spp::asts::FunctionPrototypeAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    meta::CompilerMetaData *meta) -> void {
     // Analyse the parameter and return types before sup scopes are attached.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
@@ -320,14 +320,15 @@ auto spp::asts::FunctionPrototypeAst::stage_5_load_super_scopes(
 
 auto spp::asts::FunctionPrototypeAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> void {
     // Perform conflict checking before standard semantic analysis errors due to multiple possible prototypes.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
-    const auto type_scope = ast_cast<ModulePrototypeAst>(m_ctx)
+    const auto mod_ctx = ast_cast<ModulePrototypeAst>(m_ctx);
+    const auto type_scope = mod_ctx
                                 ? sm->current_scope->parent_module()
-                                : m_ctx->m_scope->get_type_symbol(ast_name(m_ctx))->scope;
+                                : mod_ctx->m_scope->get_type_symbol(ast_name(m_ctx))->scope;
 
     // Error if there are conflicts.
     if (const auto conflict = analyse::utils::func_utils::check_for_conflicting_overload(*sm->current_scope, type_scope, *this)) {
@@ -342,7 +343,7 @@ auto spp::asts::FunctionPrototypeAst::stage_6_pre_analyse_semantics(
 
 auto spp::asts::FunctionPrototypeAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Move into the function scope, as it is now ready for semantic analysis.
     sm->move_to_next_scope();
@@ -364,7 +365,7 @@ auto spp::asts::FunctionPrototypeAst::stage_7_analyse_semantics(
 
 auto spp::asts::FunctionPrototypeAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Move into the function scope, as it is now ready for memory checking.
     sm->move_to_next_scope();
@@ -381,7 +382,7 @@ auto spp::asts::FunctionPrototypeAst::stage_8_check_memory(
 
 auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the return and parameter types.

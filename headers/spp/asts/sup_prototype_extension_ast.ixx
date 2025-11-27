@@ -23,6 +23,7 @@ import std;
  */
 SPP_EXP struct spp::asts::SupPrototypeExtensionAst final : virtual Ast, ModuleMemberAst, SupMemberAst {
     friend class spp::analyse::scopes::ScopeManager;
+    friend struct spp::asts::FunctionPrototypeAst;
 
     /**
      * The @c sup keyword that represents the start of the superimposition. This is used to indicate that a type is
