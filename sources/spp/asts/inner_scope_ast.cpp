@@ -1,23 +1,19 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/class_member_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/generic_argument_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/inner_scope_ast.hpp>
-#include <spp/asts/loop_control_flow_statement_ast.hpp>
-#include <spp/asts/ret_statement_ast.hpp>
-#include <spp/asts/statement_ast.hpp>
-#include <spp/asts/sup_implementation_ast.hpp>
-#include <spp/asts/sup_member_ast.hpp>
-#include <spp/asts/sup_prototype_extension_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <genex/to_container.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
+#include <genex/views/ptr.hpp>
+#include <genex/views/transform.hpp>
 
-#include <genex/actions/remove.hpp>
-#include <genex/views/enumerate.hpp>
+#include <spp/macros.hpp>
+
+module spp.asts.inner_scope_ast;
+import spp.analyse.scopes.scope_block_name;
+import spp.analyse.utils.mem_utils;
+import spp.asts.expression_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.lex.tokens;
 
 
 template <typename T>
@@ -111,7 +107,7 @@ auto spp::asts::InnerScopeAst<T>::final_member() const
 template <typename T>
 auto spp::asts::InnerScopeAst<T>::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Create a scope for the InnerScopeAst node.
     auto scope_name = analyse::scopes::ScopeBlockName("<inner-scope#" + std::to_string(pos_start()) + ">");
@@ -127,7 +123,7 @@ auto spp::asts::InnerScopeAst<T>::stage_7_analyse_semantics(
 template <typename T>
 auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Move into the next scope.
     sm->move_to_next_scope();
@@ -152,7 +148,7 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
 template <typename T>
 auto spp::asts::InnerScopeAst<T>::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Add all the expressions/statements into the current scope.

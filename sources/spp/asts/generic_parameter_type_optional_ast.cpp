@@ -1,9 +1,15 @@
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/generic_parameter_type_inline_constraints_ast.hpp>
-#include <spp/asts/generic_parameter_type_optional_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.generic_parameter_type_optional_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.asts.ast;
+import spp.asts.generic_parameter_type_inline_constraints_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.mixins.orderable_ast;
 
 
 spp::asts::GenericParameterTypeOptionalAst::GenericParameterTypeOptionalAst(
@@ -66,7 +72,7 @@ auto spp::asts::GenericParameterTypeOptionalAst::print(
 
 auto spp::asts::GenericParameterTypeOptionalAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Handle the default type.
     default_val->stage_7_analyse_semantics(sm, meta);
@@ -81,7 +87,7 @@ auto spp::asts::GenericParameterTypeOptionalAst::stage_4_qualify_types(
 
 auto spp::asts::GenericParameterTypeOptionalAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the name and default value of the generic type parameter.
     GenericParameterTypeAst::stage_7_analyse_semantics(sm, meta);

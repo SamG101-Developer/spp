@@ -1,14 +1,13 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/inner_scope_expression_ast.hpp>
-#include <spp/asts/loop_control_flow_statement_ast.hpp>
-#include <spp/asts/ret_statement_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
-
+module;
 #include <genex/views/enumerate.hpp>
+#include <genex/views/ptr.hpp>
+
+module spp.asts.inner_scope_expression_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_block_name;
+import spp.asts.statement_ast;
+import spp.asts.generate.common_types;
 
 
 template <typename T>
@@ -33,7 +32,7 @@ auto spp::asts::InnerScopeExpressionAst<T>::new_empty()
 template <typename T>
 auto spp::asts::InnerScopeExpressionAst<T>::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Create a scope for the InnerScopeAst node.
     auto scope_name = analyse::scopes::ScopeBlockName("<inner-scope#" + std::to_string(pos_start()) + ">");
@@ -59,7 +58,7 @@ auto spp::asts::InnerScopeExpressionAst<T>::stage_7_analyse_semantics(
 template <typename T>
 auto spp::asts::InnerScopeExpressionAst<T>::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // If there are any members, return the last member's inferred type.
     if (not this->members.empty()) {

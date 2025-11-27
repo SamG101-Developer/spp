@@ -1,13 +1,14 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/utils/strings.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/views/transform.hpp>
+
+module spp.asts.identifier_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.asts.ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.utils.strings;
 
 
 spp::asts::IdentifierAst::IdentifierAst(
@@ -89,7 +90,7 @@ auto spp::asts::IdentifierAst::to_function_identifier() const
 
 auto spp::asts::IdentifierAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> void {
     // Check there is a symbol with the same name in the current scope.
     const auto shared = std::shared_ptr(ast_clone(this));
@@ -107,7 +108,7 @@ auto spp::asts::IdentifierAst::stage_7_analyse_semantics(
 
 auto spp::asts::IdentifierAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Extract the symbol from the current scope, as a variable symbol.
     const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));
