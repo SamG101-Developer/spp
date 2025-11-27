@@ -1,13 +1,16 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/unary_expression_operator_async_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.unary_expression_operator_async_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.asts.ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.generate.common_types;
 
 
 spp::asts::UnaryExpressionOperatorAsyncAst::UnaryExpressionOperatorAsyncAst(
@@ -55,7 +58,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::print(meta::AstPrinter &printer
 
 auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the right-hand-side is a function call expression.
     if (const auto rhs = ast_cast<PostfixExpressionAst>(meta->unary_expression_rhs); rhs == nullptr or not ast_cast<PostfixExpressionOperatorFunctionCallAst>(rhs->op.get())) {
@@ -71,7 +74,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_7_analyse_semantics(
 
 auto spp::asts::UnaryExpressionOperatorAsyncAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Wrap the function call inside a "Future" type.
     auto inner_type = meta->unary_expression_rhs->infer_type(sm, meta);

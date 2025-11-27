@@ -1,23 +1,19 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/class_implementation_ast.hpp>
-#include <spp/asts/class_member_ast.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
-#include <spp/asts/generic_argument_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_parameter_ast.hpp>
-#include <spp/asts/generic_parameter_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/sup_prototype_extension_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/type_statement_ast.hpp>
-#include <spp/asts/use_statement_ast.hpp>
-
+module;
+#include <genex/to_container.hpp>
 #include <genex/views/for_each.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
+#include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.use_statement_ast;
+import spp.asts.ast;
+import spp.asts.annotation_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_statement_ast;
+import spp.asts.type_identifier_ast;
 
 
 spp::asts::UseStatementAst::UseStatementAst(
@@ -90,7 +86,7 @@ auto spp::asts::UseStatementAst::stage_1_pre_process(
 
 auto spp::asts::UseStatementAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Run the steps for the annotations.
     Ast::stage_2_gen_top_level_scopes(sm, meta);
@@ -108,7 +104,7 @@ auto spp::asts::UseStatementAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::UseStatementAst::stage_3_gen_top_level_aliases(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Generate the top-level alias for the converted type statement.
     m_conversion->stage_3_gen_top_level_aliases(sm, meta);
@@ -117,7 +113,7 @@ auto spp::asts::UseStatementAst::stage_3_gen_top_level_aliases(
 
 auto spp::asts::UseStatementAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Qualify the types in the conversion AST.
     m_conversion->stage_4_qualify_types(sm, meta);
@@ -126,7 +122,7 @@ auto spp::asts::UseStatementAst::stage_4_qualify_types(
 
 auto spp::asts::UseStatementAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Load the super scopes for the conversion AST.
     m_conversion->stage_5_load_super_scopes(sm, meta);
@@ -135,7 +131,7 @@ auto spp::asts::UseStatementAst::stage_5_load_super_scopes(
 
 auto spp::asts::UseStatementAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Skip all scopes, as this is a pre-generated AST.
     m_conversion->stage_6_pre_analyse_semantics(sm, meta);
@@ -144,7 +140,7 @@ auto spp::asts::UseStatementAst::stage_6_pre_analyse_semantics(
 
 auto spp::asts::UseStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the conversion AST.
     m_conversion->stage_7_analyse_semantics(sm, meta);
@@ -153,7 +149,7 @@ auto spp::asts::UseStatementAst::stage_7_analyse_semantics(
 
 auto spp::asts::UseStatementAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check memory for the conversion AST.
     m_conversion->stage_8_check_memory(sm, meta);

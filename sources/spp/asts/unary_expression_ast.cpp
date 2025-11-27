@@ -1,10 +1,11 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/unary_expression_ast.hpp>
-#include <spp/asts/unary_expression_operator_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.unary_expression_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.asts.ast;
+import spp.asts.unary_expression_operator_ast;
 
 
 spp::asts::UnaryExpressionAst::UnaryExpressionAst(
@@ -58,10 +59,10 @@ auto spp::asts::UnaryExpressionAst::print(
 
 auto spp::asts::UnaryExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the semantics of the right-hand-side.
-    ENFORCE_EXPRESSION_SUBTYPE(expr.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
 
     // Analyse the operator and right-hand-side expression.
     expr->stage_7_analyse_semantics(sm, meta);
@@ -75,7 +76,7 @@ auto spp::asts::UnaryExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::UnaryExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory of the right-hand-side.
     expr->stage_8_check_memory(sm, meta);
@@ -84,7 +85,7 @@ auto spp::asts::UnaryExpressionAst::stage_8_check_memory(
 
 auto spp::asts::UnaryExpressionAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Infer the type of the right-hand-side expression, adjusted by the operator.
     meta->save();

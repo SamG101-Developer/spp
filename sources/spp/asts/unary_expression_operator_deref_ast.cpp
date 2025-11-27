@@ -1,11 +1,13 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/unary_expression_operator_deref_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.unary_expression_operator_deref_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.asts.ast;
+import spp.asts.expression_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
 
 
 spp::asts::UnaryExpressionOperatorDerefAst::UnaryExpressionOperatorDerefAst(
@@ -54,7 +56,7 @@ auto spp::asts::UnaryExpressionOperatorDerefAst::print(
 
 auto spp::asts::UnaryExpressionOperatorDerefAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Get the right-hand-side expression's type for constraint checks.
     const auto rhs = meta->unary_expression_rhs;
@@ -76,7 +78,7 @@ auto spp::asts::UnaryExpressionOperatorDerefAst::stage_7_analyse_semantics(
 
 auto spp::asts::UnaryExpressionOperatorDerefAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Get the right-hand-side expression's type.
     const auto rhs = meta->unary_expression_rhs;
