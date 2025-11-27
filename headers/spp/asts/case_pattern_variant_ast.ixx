@@ -21,7 +21,5 @@ protected:
     std::unique_ptr<LetStatementInitializedAst> m_mapped_let;
 
 public:
-    ~CasePatternVariantAst() override;
-
     virtual auto convert_to_variable(CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst>;
 };

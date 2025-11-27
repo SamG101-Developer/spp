@@ -24,8 +24,6 @@ private:
 public:
     explicit ConventionAst(ConventionTag tag);
 
-    ~ConventionAst() override;
-
     auto operator==(ConventionAst const *that) const -> bool;
 
     auto operator==(ConventionTag that_tag) const -> bool;

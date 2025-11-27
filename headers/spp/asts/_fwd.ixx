@@ -15,7 +15,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct ClassPrototypeAst;
     SPP_EXP_CLS struct CmpStatementAst;
     SPP_EXP_CLS struct ConventionAst;
-    SPP_EXP_CLS struct ConventionMovAst;
     SPP_EXP_CLS struct ConventionMutAst;
     SPP_EXP_CLS struct ConventionRefAst;
     SPP_EXP_CLS struct ExpressionAst;

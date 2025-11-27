@@ -24,12 +24,11 @@ find_package(CLI11 REQUIRED) # command line parsing
 find_package(LLVM 21.1.0 REQUIRED CONFIG) # LLVM libraries
 
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
-add_definitions(${LLVM_DEFINITIONS_LIST})
 
 # Collect all source files and create the library.
 file(GLOB_RECURSE MODULE_FILES CONFIGURE_DEPENDS "headers/*.ixx")
 file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS "sources/*.cpp")
-add_library(spp_lib ${SOURCE_FILES})
+add_library(spp_lib)
 
 # Enable all warnings and treat them as errors.
 target_compile_options(spp_lib PRIVATE
@@ -38,7 +37,7 @@ target_compile_options(spp_lib PRIVATE
         -Wold-style-cast -Woverloaded-virtual -Wundef -Wdisabled-optimization -Wmissing-declarations -Wmissing-include-dirs
         -Wnull-dereference -Wformat=2 -Wduplicated-cond -Wduplicated-branches -Wredundant-decls -Wlogical-op
         -Wuseless-cast -Wdouble-promotion -Wstrict-null-sentinel -Wswitch-default -Wswitch-enum -Wno-null-dereference
-        -Wno-maybe-uninitialized -Wno-error=array-bounds)
+        -Wno-maybe-uninitialized -Wno-error=array-bounds -fmodules-ts)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(spp_lib PRIVATE
             -O0 -pg -g -fno-omit-frame-pointer -fno-inline -fno-inline-functions-called-once
@@ -55,6 +54,8 @@ target_sources(spp_lib PUBLIC
         FILE_SET CXX_MODULES FILES ${MODULE_FILES} PRIVATE ${SOURCE_FILES})
 target_include_directories(spp_lib PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/headers)
+target_compile_definitions(spp_lib PRIVATE
+        ${LLVM_DEFINITIONS_LIST})
 
 add_executable(spp main.cpp)
 target_link_libraries(spp PRIVATE spp_lib)

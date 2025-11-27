@@ -7,9 +7,6 @@ spp::asts::ConventionAst::ConventionAst(
 }
 
 
-spp::asts::ConventionAst::~ConventionAst() = default;
-
-
 auto spp::asts::ConventionAst::operator==(
     ConventionAst const *that) const
     -> bool {

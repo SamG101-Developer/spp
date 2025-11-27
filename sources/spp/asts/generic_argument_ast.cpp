@@ -35,9 +35,6 @@ spp::asts::GenericArgumentAst::GenericArgumentAst(
 }
 
 
-spp::asts::GenericArgumentAst::~GenericArgumentAst() = default;
-
-
 auto spp::asts::GenericArgumentAst::operator<=>(
     GenericArgumentAst const &other) const
     -> std::strong_ordering {

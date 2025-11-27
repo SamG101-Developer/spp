@@ -49,8 +49,6 @@ public:
         decltype(val) &&val,
         decltype(m_order_tag) order_tag);
 
-    ~FunctionCallArgumentAst() override;
-
     auto set_self_type(std::shared_ptr<TypeAst> self_type) -> void;
 
     auto get_self_type() -> std::shared_ptr<TypeAst>;

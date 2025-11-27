@@ -27,5 +27,5 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterSelfAst final : FunctionParameter
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, mixins::CompilerMetaData *meta) -> void override;
+    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };

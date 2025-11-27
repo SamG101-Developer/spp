@@ -70,7 +70,6 @@ protected:
 
 public:
     explicit GenericArgumentAst(decltype(m_order_tag) order_tag);
-    ~GenericArgumentAst() override;
     auto operator<=>(GenericArgumentAst const &other) const -> std::strong_ordering;
     auto operator==(GenericArgumentAst const &other) const -> bool;
 };

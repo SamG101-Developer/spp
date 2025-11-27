@@ -4,6 +4,7 @@ module;
 module spp.asts.function_call_argument_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
 import spp.asts.expression_ast;
 import spp.asts.type_ast;
 
@@ -17,9 +18,6 @@ spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(
     conv(std::move(conv)),
     val(std::move(val)) {
 }
-
-
-spp::asts::FunctionCallArgumentAst::~FunctionCallArgumentAst() = default;
 
 
 auto spp::asts::FunctionCallArgumentAst::set_self_type(
