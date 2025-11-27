@@ -5,11 +5,8 @@ module spp.cli;
 import spp.compiler.compiler;
 import spp.utils.files;
 
-import boost;
 import cli11;
 import toml;
-
-namespace bp = boost::process::v1;
 
 
 #define SPP_VALIDATE_STRUCTURE \
@@ -139,12 +136,12 @@ auto spp::cli::handle_vcs()
 
         // Repo doesn't exist locally => clone it.
         if (not std::filesystem::exists(repo_folder)) {
-            bp::system("git clone --branch " + repo_branch + " " + repo_url + " " + repo_folder.string(), SPP_CLI_NULL);
+            std::system(("git clone --branch " + repo_branch + " " + repo_url + " " + repo_folder.string()).c_str());
             std::cout << "Cloned "s + repo_name + " from " + repo_url + "\n";
         }
         else {
-            bp::system("git -C " + repo_folder.string() + " pull origin " + repo_branch, SPP_CLI_NULL);
-            bp::system("git -C " + repo_folder.string() + " checkout " + repo_branch, SPP_CLI_NULL);
+            std::system(("git -C " + repo_folder.string() + " pull origin " + repo_branch).c_str());
+            std::system(("git -C " + repo_folder.string() + " checkout " + repo_branch).c_str());
             std::cout << "Updated "s + repo_name + " from " + repo_url + " (" + repo_branch + ")" + "\n";
         }
 

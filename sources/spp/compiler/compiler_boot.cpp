@@ -31,7 +31,7 @@ import spp.utils.files;
 
 
 auto spp::compiler::CompilerBoot::lex(
-    indicators::ProgressBar &bar,
+    utils::ProgressBar &bar,
     ModuleTree &tree)
     -> void {
     // Lexing stage.
@@ -39,26 +39,28 @@ auto spp::compiler::CompilerBoot::lex(
         mod.code = utils::files::read_file(std::filesystem::current_path() / mod.path);
         mod.tokens = lex::Lexer(mod.code).lex();
         mod.error_formatter = std::make_unique<utils::errors::ErrorFormatter>(mod.tokens, mod.path.string());
-        bar.tick();
+        bar.next();
     }
+    bar.finish();
 }
 
 
 auto spp::compiler::CompilerBoot::parse(
-    indicators::ProgressBar &bar,
+    utils::ProgressBar &bar,
     ModuleTree &tree)
     -> void {
     // Parsing stage.
     for (auto &mod : tree) {
         mod.module_ast = parse::ParserSpp(mod.tokens, mod.error_formatter).parse();
         m_modules.emplace_back(mod.module_ast.get());
-        bar.tick();
+        bar.next();
     }
+    bar.finish();
 }
 
 
 auto spp::compiler::CompilerBoot::stage_1_pre_process(
-    indicators::ProgressBar &bar,
+    utils::ProgressBar &bar,
     ModuleTree &tree,
     asts::Ast *ctx)
     -> void {
@@ -67,13 +69,14 @@ auto spp::compiler::CompilerBoot::stage_1_pre_process(
         PREP_SCOPE_MANAGER;
         mod->m_file_path = mod_in_tree.path;
         mod->stage_1_pre_process(ctx);
-        bar.tick();
+        bar.next();
     }
+    bar.finish();
 }
 
 
 auto spp::compiler::CompilerBoot::stage_2_gen_top_level_scopes(
-    indicators::ProgressBar &bar,
+    utils::ProgressBar &bar,
     ModuleTree &tree,
     analyse::scopes::ScopeManager *sm)
     -> void {
@@ -82,13 +85,14 @@ auto spp::compiler::CompilerBoot::stage_2_gen_top_level_scopes(
         PREP_SCOPE_MANAGER_AND_META(4.0);
         mod->stage_2_gen_top_level_scopes(sm, &meta);
         sm->reset();
-        bar.tick();
+        bar.next();
     }
+    bar.finish();
 }
 
 
 auto spp::compiler::CompilerBoot::stage_3_gen_top_level_aliases(
-    indicators::ProgressBar &bar,
+    utils::ProgressBar &bar,
     ModuleTree &tree,
     analyse::scopes::ScopeManager *sm)
     -> void {
@@ -97,13 +101,14 @@ auto spp::compiler::CompilerBoot::stage_3_gen_top_level_aliases(
         PREP_SCOPE_MANAGER_AND_META(5.0);
         mod->stage_3_gen_top_level_aliases(sm, &meta);
         sm->reset();
-        bar.tick();
+        bar.next();
     }
+    bar.finish();
 }
 
 
 auto spp::compiler::CompilerBoot::stage_4_qualify_types(
-    indicators::ProgressBar &bar,
+    utils::ProgressBar &bar,
     ModuleTree &tree,
     analyse::scopes::ScopeManager *sm)
     -> void {
@@ -112,13 +117,14 @@ auto spp::compiler::CompilerBoot::stage_4_qualify_types(
         PREP_SCOPE_MANAGER_AND_META(6.0);
         mod->stage_4_qualify_types(sm, &meta);
         sm->reset();
-        bar.tick();
+        bar.next();
     }
+    bar.finish();
 }
 
 
 auto spp::compiler::CompilerBoot::stage_5_load_super_scopes(
-    indicators::ProgressBar &bar,
+    utils::ProgressBar &bar,
     ModuleTree &tree,
     analyse::scopes::ScopeManager *sm)
     -> void {
@@ -127,10 +133,12 @@ auto spp::compiler::CompilerBoot::stage_5_load_super_scopes(
         PREP_SCOPE_MANAGER_AND_META(7.0);
         mod->stage_5_load_super_scopes(sm, &meta);
         sm->reset();
-        bar.tick();
+        bar.next();
     }
+    bar.finish();
 
     // Attach all super scopes now.
+    // Todo: New progress bar here
     auto meta = asts::meta::CompilerMetaData();
     meta.current_stage = 7.5;
     sm->attach_all_super_scopes(&meta);
@@ -138,7 +146,7 @@ auto spp::compiler::CompilerBoot::stage_5_load_super_scopes(
 
 
 auto spp::compiler::CompilerBoot::stage_6_pre_analyse_semantics(
-    indicators::ProgressBar &bar,
+    utils::ProgressBar &bar,
     ModuleTree &tree,
     analyse::scopes::ScopeManager *sm)
     -> void {
@@ -147,13 +155,14 @@ auto spp::compiler::CompilerBoot::stage_6_pre_analyse_semantics(
         PREP_SCOPE_MANAGER_AND_META(8.0);
         mod->stage_6_pre_analyse_semantics(sm, &meta);
         sm->reset();
-        bar.tick();
+        bar.next();
     }
+    bar.finish();
 }
 
 
 auto spp::compiler::CompilerBoot::stage_7_analyse_semantics(
-    indicators::ProgressBar &bar,
+    utils::ProgressBar &bar,
     ModuleTree &tree,
     analyse::scopes::ScopeManager *sm)
     -> void {
@@ -162,8 +171,9 @@ auto spp::compiler::CompilerBoot::stage_7_analyse_semantics(
         PREP_SCOPE_MANAGER_AND_META(9.0);
         mod->stage_7_analyse_semantics(sm, &meta);
         sm->reset();
-        bar.tick();
+        bar.next();
     }
+    bar.finish();
 
     // Validate entry point now.
     validate_entry_point(sm);
@@ -171,7 +181,7 @@ auto spp::compiler::CompilerBoot::stage_7_analyse_semantics(
 
 
 auto spp::compiler::CompilerBoot::stage_8_check_memory(
-    indicators::ProgressBar &bar,
+    utils::ProgressBar &bar,
     ModuleTree &tree,
     analyse::scopes::ScopeManager *sm)
     -> void {
@@ -180,8 +190,9 @@ auto spp::compiler::CompilerBoot::stage_8_check_memory(
         PREP_SCOPE_MANAGER_AND_META(10.0);
         mod->stage_8_check_memory(sm, &meta);
         sm->reset();
-        bar.tick();
+        bar.next();
     }
+    bar.finish();
 }
 
 

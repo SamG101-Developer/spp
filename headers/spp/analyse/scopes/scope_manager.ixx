@@ -143,7 +143,7 @@ public:
      * @param meta The compiler metadata.
      */
     auto attach_all_super_scopes(
-        asts::mixins::CompilerMetaData *meta)
+        asts::meta::CompilerMetaData *meta)
         -> void;
 
     /**
@@ -156,7 +156,7 @@ public:
      */
     auto attach_specific_super_scopes(
         Scope &scope,
-        asts::mixins::CompilerMetaData *meta) const
+        asts::meta::CompilerMetaData *meta) const
         -> void;
 
 private:
@@ -172,7 +172,7 @@ private:
     auto attach_specific_super_scopes_impl(
         Scope &scope,
         std::vector<Scope*> &&sup_scopes,
-        asts::mixins::CompilerMetaData *meta) const
+        asts::meta::CompilerMetaData *meta) const
         -> void;
 
     /**

@@ -15,35 +15,37 @@ namespace spp::asts::detail {
         using type = GenericArgType;
     };
 
-    SPP_EXP template <>
+    template <>
     struct make_keyword_arg<GenericArgumentCompAst> {
         using type = GenericArgumentCompKeywordAst;
     };
 
-    SPP_EXP template <>
+    template <>
     struct make_keyword_arg<GenericArgumentTypeAst> {
         using type = GenericArgumentTypeKeywordAst;
     };
 
+
     SPP_EXP template <typename T>
     using make_keyword_arg_t = typename make_keyword_arg<T>::type;
 
-    SPP_EXP template <typename GenericArgType>
+    template <typename GenericArgType>
     struct make_positional_arg {
         using type = GenericArgType;
     };
 
-    SPP_EXP template <>
+    template <>
     struct make_positional_arg<GenericArgumentCompAst> {
         using type = GenericArgumentCompPositionalAst;
     };
+
 
     SPP_EXP template <>
     struct make_positional_arg<GenericArgumentTypeAst> {
         using type = GenericArgumentTypePositionalAst;
     };
 
-    SPP_EXP template <typename T>
+    template <typename T>
     using make_positional_arg_t = typename make_positional_arg<T>::type;
 }
 

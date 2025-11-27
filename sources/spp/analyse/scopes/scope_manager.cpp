@@ -82,7 +82,7 @@ auto spp::analyse::scopes::ScopeManager::move_to_next_scope()
 
 
 auto spp::analyse::scopes::ScopeManager::attach_all_super_scopes(
-    asts::mixins::CompilerMetaData *meta)
+    asts::meta::CompilerMetaData *meta)
     -> void {
     // Ensure the scope manager is at the global scope.
     reset();
@@ -97,7 +97,7 @@ auto spp::analyse::scopes::ScopeManager::attach_all_super_scopes(
 
 auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes(
     Scope &scope,
-    asts::mixins::CompilerMetaData *meta) const
+    asts::meta::CompilerMetaData *meta) const
     -> void {
     // Handle type symbols.
     if (scope.ty_sym != nullptr) {
@@ -112,7 +112,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes(
 auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
     Scope &scope,
     std::vector<Scope*> &&sup_scopes,
-    asts::mixins::CompilerMetaData *meta) const
+    asts::meta::CompilerMetaData *meta) const
     -> void {
     // Skip "$" identifiers (functions don't have substitutable members and take up lots of time).
     const auto scope_name = scope.ty_sym->fq_name();

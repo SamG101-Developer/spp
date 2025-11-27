@@ -8,21 +8,18 @@ module;
 
 export module spp.utils.errors;
 import spp.analyse.scopes.scope;
+import spp.utils.error_formatter;
 
 
-/// @cond
 namespace spp::utils::errors {
-    class ErrorFormatter;
+    SPP_EXP struct AbstractError;
 
-    export struct AbstractError;
-
-    export template <typename T>
+    SPP_EXP template <typename T>
     struct AbstractErrorBuilder;
 }
-/// @endcond
 
 
-struct spp::utils::errors::AbstractError : std::runtime_error {
+SPP_EXP struct spp::utils::errors::AbstractError : std::runtime_error {
 public:
     AbstractError() : std::runtime_error("") {
     }
@@ -41,7 +38,7 @@ public:
 };
 
 
-template <typename T>
+SPP_EXP template <typename T>
 struct spp::utils::errors::AbstractErrorBuilder {
     AbstractErrorBuilder() = default;
     virtual ~AbstractErrorBuilder() = default;
