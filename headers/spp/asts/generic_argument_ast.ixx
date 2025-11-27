@@ -38,9 +38,8 @@ namespace spp::asts::detail {
     struct make_positional_arg<GenericArgumentCompAst> {
         using type = GenericArgumentCompPositionalAst;
     };
-
-
-    SPP_EXP_CLS template <>
+    
+    template <>
     struct make_positional_arg<GenericArgumentTypeAst> {
         using type = GenericArgumentTypePositionalAst;
     };

@@ -90,7 +90,7 @@ namespace spp::codegen::func_impls {
         ctx->builder.CreateRet(result);
     }
 
-    SPP_EXP_FUN auto simple_binary_intrinsic_call(
+    auto simple_binary_intrinsic_call(
         SPP_LLVM_FUNC_INFO,
         LLvmCtx *ctx,
         llvm::Type *ty,
@@ -111,7 +111,7 @@ namespace spp::codegen::func_impls {
         ctx->builder.CreateRet(result);
     }
 
-    SPP_EXP_FUN auto simple_unary_intrinsic_call(
+    auto simple_unary_intrinsic_call(
         SPP_LLVM_FUNC_INFO,
         LLvmCtx *ctx,
         llvm::Type *ty,

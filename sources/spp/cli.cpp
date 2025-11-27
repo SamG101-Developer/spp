@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.cli;
+import spp.asts.module_prototype_ast;
 import spp.compiler.compiler;
 import spp.utils.files;
 

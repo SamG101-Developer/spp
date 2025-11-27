@@ -129,6 +129,9 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
 }
 
 
+spp::analyse::scopes::TypeSymbol::~TypeSymbol() = default;
+
+
 spp::analyse::scopes::TypeSymbol::operator std::string() const {
     return nlohmann::json(std::map<std::string, std::string>{
         {"what", "type"},

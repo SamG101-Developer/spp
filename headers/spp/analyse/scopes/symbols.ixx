@@ -141,6 +141,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     TypeSymbol(
         TypeSymbol const &that);
 
+    ~TypeSymbol();
+
     explicit operator std::string() const override;
 
     auto operator==(

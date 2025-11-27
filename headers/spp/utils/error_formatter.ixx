@@ -18,6 +18,8 @@ SPP_EXP_CLS class spp::utils::errors::ErrorFormatter {
     std::string m_file_path;
 
 public:
+    ErrorFormatter(std::vector<lex::RawToken> tokens, std::string file_path);
+
     auto internal_parse_error_raw_pos(std::size_t ast_start_pos, std::size_t ast_size, std::string &&tag_message) -> std::tuple<std::string, std::string, std::string, std::string, std::string>;
 
     auto error_raw_pos(std::size_t ast_start_pos, std::size_t ast_size, std::string &&message, std::string &&tag_message) -> std::string;
@@ -27,6 +29,4 @@ public:
     auto error_ast(asts::Ast const *ast, std::string &&message, std::string &&tag_message) -> std::string;
 
     auto error_ast_minimal(asts::Ast const *ast, std::string &&tag_message) -> std::string;
-
-    ErrorFormatter(std::vector<lex::RawToken> tokens, std::string file_path);
 };

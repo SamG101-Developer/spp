@@ -10,6 +10,7 @@ module;
 
 export module spp.analyse.errors.semantic_error_builder;
 import spp.analyse.errors.semantic_error;
+import spp.asts._fwd;
 import spp.utils.errors;
 import spp.utils.error_formatter;
 

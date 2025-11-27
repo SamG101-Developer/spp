@@ -4,7 +4,6 @@ module;
 export module spp.asts._fwd;
 
 
-/// @cond
 namespace spp::asts {
     SPP_EXP_CLS struct AnnotationAst;
     SPP_EXP_CLS struct AssignmentStatementAst;
@@ -130,8 +129,8 @@ namespace spp::asts {
     SPP_EXP_CLS struct ClosureExpressionCaptureAst;
     SPP_EXP_CLS struct ClosureExpressionCaptureGroupAst;
     SPP_EXP_CLS struct ClosureExpressionParameterAndCaptureGroupAst;
-    using ClosureExpressionParameterAst = FunctionParameterAst;
-    using ClosureExpressionParameterGroupAst = FunctionParameterGroupAst;
+    SPP_EXP_CLS using ClosureExpressionParameterAst = FunctionParameterAst;
+    SPP_EXP_CLS using ClosureExpressionParameterGroupAst = FunctionParameterGroupAst;
 
     SPP_EXP_CLS struct LetStatementAst;
     SPP_EXP_CLS struct LetStatementInitializedAst;
@@ -205,6 +204,5 @@ namespace spp::asts {
     SPP_EXP_CLS struct SupImplementationAst;
     SPP_EXP_CLS struct SupMemberAst;
 
-    using FunctionMemberAst = StatementAst;
+    SPP_EXP_CLS using FunctionMemberAst = StatementAst;
 }
-/// @endcond
