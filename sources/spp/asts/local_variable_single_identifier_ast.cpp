@@ -1,13 +1,14 @@
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/scopes/symbols.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.local_variable_single_identifier_ast;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_utils;
+import spp.asts.ast;
+import spp.asts.identifier_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
 
 
 spp::asts::LocalVariableSingleIdentifierAst::LocalVariableSingleIdentifierAst(
@@ -80,7 +81,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::extract_names() const
 
 auto spp::asts::LocalVariableSingleIdentifierAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Get the value and its type from the "meta" information.
     const auto val = meta->let_stmt_from_uninitialized ? nullptr : meta->let_stmt_value;
@@ -118,7 +119,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_7_analyse_semantics(
 
 auto spp::asts::LocalVariableSingleIdentifierAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // No value => nothing to check.
     if (meta->let_stmt_from_uninitialized) { return; }
@@ -136,7 +137,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_8_check_memory(
 
 auto spp::asts::LocalVariableSingleIdentifierAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Create the alloca for the variable.

@@ -1,18 +1,20 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/let_statement_uninitialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/loop_condition_iterable_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-
+module;
 #include <genex/views/for_each.hpp>
+#include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.loop_condition_iterable_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.expression_ast;
+import spp.asts.let_statement_uninitialized_ast;
+import spp.asts.local_variable_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
 
 
 spp::asts::LoopConditionIterableAst::LoopConditionIterableAst(
@@ -72,10 +74,10 @@ auto spp::asts::LoopConditionIterableAst::print(
 
 auto spp::asts::LoopConditionIterableAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the iterable.
-    ENFORCE_EXPRESSION_SUBTYPE(iterable.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(iterable.get());
     iterable->stage_7_analyse_semantics(sm, meta);
 
     // Get the generator and yielded type from the iterable.
@@ -102,7 +104,7 @@ auto spp::asts::LoopConditionIterableAst::stage_7_analyse_semantics(
 
 auto spp::asts::LoopConditionIterableAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory state of the variable.
     if (not meta->loop_double_check_active) {

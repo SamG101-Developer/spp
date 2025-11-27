@@ -1,13 +1,15 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/loop_condition_boolean_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types_precompiled.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.loop_condition_boolean_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.generate.common_types_precompiled;
+import spp.asts.expression_ast;
+import spp.asts.type_ast;
 
 
 spp::asts::LoopConditionBooleanAst::LoopConditionBooleanAst(
@@ -56,10 +58,10 @@ auto spp::asts::LoopConditionBooleanAst::print(
 
 auto spp::asts::LoopConditionBooleanAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the condition expression.
-    ENFORCE_EXPRESSION_SUBTYPE(cond.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(cond.get());
     cond->stage_7_analyse_semantics(sm, meta);
 
     // Check the loop condition is boolean.
@@ -74,7 +76,7 @@ auto spp::asts::LoopConditionBooleanAst::stage_7_analyse_semantics(
 
 auto spp::asts::LoopConditionBooleanAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory state of the condition expression.
     cond->stage_8_check_memory(sm, meta);

@@ -1,40 +1,40 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/integer_literal_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_destructure_skip_multiple_arguments_ast.hpp>
-#include <spp/asts/local_variable_destructure_skip_single_argument_ast.hpp>
-#include <spp/asts/local_variable_destructure_tuple_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
-#include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/tuple_literal_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/algorithms/count.hpp>
 #include <genex/algorithms/position.hpp>
 #include <genex/views/cast_dynamic.hpp>
 #include <genex/views/cast_smart.hpp>
 #include <genex/views/concat.hpp>
-#include <genex/views/filter.hpp>
 #include <genex/views/for_each.hpp>
+#include <genex/views/intersperse.hpp>
 #include <genex/views/iota.hpp>
 #include <genex/views/join.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
+#include <genex/views/transform.hpp>
 #include <genex/views/zip.hpp>
 #include <opex/cast.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.local_variable_destructure_tuple_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.expression_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.identifier_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.token_ast;
+import spp.asts.tuple_literal_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.lex.tokens;
 
 
 spp::asts::LocalVariableDestructureTupleAst::LocalVariableDestructureTupleAst(
@@ -110,7 +110,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::extract_names() const
 
 auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Only 1 "multi-skip" allowed in a destructure.
     const auto multi_arg_skips = elems
@@ -123,7 +123,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
             *this, *multi_arg_skips[0], *multi_arg_skips[1]).with_scopes({sm->current_scope}).raise();
     }
 
-    // Ensure the right-hand-side is an tuple type.
+    // Ensure the right-hand-side is a tuple type.
     const auto val = meta->let_stmt_value;
     const auto val_type = val->infer_type(sm, meta);
     if (not analyse::utils::type_utils::is_type_tuple(*val_type, *sm->current_scope)) {
@@ -198,7 +198,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
 
 auto spp::asts::LocalVariableDestructureTupleAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory state of the elements.
     m_new_asts | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });
@@ -207,7 +207,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_8_check_memory(
 
 auto spp::asts::LocalVariableDestructureTupleAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the "let" statements for each element.

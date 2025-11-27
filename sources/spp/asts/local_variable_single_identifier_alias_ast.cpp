@@ -1,6 +1,9 @@
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.local_variable_single_identifier_alias_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
 
 
 spp::asts::LocalVariableSingleIdentifierAliasAst::LocalVariableSingleIdentifierAliasAst(
