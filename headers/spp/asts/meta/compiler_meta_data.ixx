@@ -11,18 +11,18 @@ import std;
 
 
 namespace spp::analyse::scopes {
-    SPP_EXP class Scope;
-    SPP_EXP struct TypeSymbol;
+    SPP_EXP_CLS class Scope;
+    SPP_EXP_CLS struct TypeSymbol;
 }
 
 
 namespace spp::asts::meta {
-    SPP_EXP struct CompilerMetaDataState;
-    SPP_EXP struct CompilerMetaData;
+    SPP_EXP_CLS struct CompilerMetaDataState;
+    SPP_EXP_CLS struct CompilerMetaData;
 }
 
 
-SPP_EXP struct spp::asts::meta::CompilerMetaDataState {
+SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     double current_stage;
     std::shared_ptr<TypeAst> return_type_overload_resolver_type;
     std::shared_ptr<IdentifierAst> assignment_target;
@@ -61,7 +61,7 @@ SPP_EXP struct spp::asts::meta::CompilerMetaDataState {
  * Shared metadata for ASTs, exclusive to the stage of compilation taking place. For example, tracking if an assignment
  * is taking place, when the RHS expression is being analysed.
  */
-SPP_EXP struct spp::asts::meta::CompilerMetaData : CompilerMetaDataState {
+SPP_EXP_CLS struct spp::asts::meta::CompilerMetaData : CompilerMetaDataState {
 private:
     std::stack<CompilerMetaDataState> m_history;
 

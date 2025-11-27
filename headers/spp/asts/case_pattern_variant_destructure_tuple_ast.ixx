@@ -8,7 +8,7 @@ import llvm;
 import std;
 
 
-SPP_EXP struct spp::asts::CasePatternVariantDestructureTupleAst final : CasePatternVariantAst {
+SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureTupleAst final : CasePatternVariantAst {
     /**
      * The @code (@endcode token that indicates the start of a tuple destructuring pattern.
      */

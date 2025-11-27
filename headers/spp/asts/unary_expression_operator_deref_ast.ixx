@@ -7,7 +7,7 @@ import spp.asts.unary_expression_operator_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::UnaryExpressionOperatorDerefAst final : UnaryExpressionOperatorAst {
+SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorDerefAst final : UnaryExpressionOperatorAst {
     /**
      * The @c * token that indicates a dereference operation. This is used to extract a copyable value from a borrow.
      */

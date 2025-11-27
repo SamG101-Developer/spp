@@ -7,7 +7,7 @@ import spp.asts.function_call_argument_positional_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::ClosureExpressionCaptureAst final : FunctionCallArgumentPositionalAst {
+SPP_EXP_CLS struct spp::asts::ClosureExpressionCaptureAst final : FunctionCallArgumentPositionalAst {
     ClosureExpressionCaptureAst(
         decltype(conv) &&conv,
         decltype(val) &&val);

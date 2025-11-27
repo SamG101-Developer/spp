@@ -2,9 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.mixins.compiler_stages;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
 import spp.asts._fwd;
 import spp.asts.meta.compiler_meta_data;
 import spp.codegen.llvm_ctx;
@@ -16,7 +13,11 @@ import std;
 
 
 namespace spp::asts::mixins {
-    SPP_EXP struct CompilerStages;
+    SPP_EXP_CLS struct CompilerStages;
+}
+
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class ScopeManager;
 }
 
 
@@ -24,7 +25,7 @@ namespace spp::asts::mixins {
  * The compiler stages are a list of functions that each AST can implement, and will be ran recursively from its parent
  * AST. The exceptions are the first 3 functions, which are applies to top level ASTs exclusively.
  */
-SPP_EXP struct spp::asts::mixins::CompilerStages {
+SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
     using ScopeManager = spp::analyse::scopes::ScopeManager;
     using CompilerMetaData = spp::asts::meta::CompilerMetaData;
     CompilerStages() = default;

@@ -7,7 +7,7 @@ import spp.asts.statement_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::RetStatementAst final : StatementAst {
+SPP_EXP_CLS struct spp::asts::RetStatementAst final : StatementAst {
 private:
     std::shared_ptr<TypeAst> m_ret_type;
 

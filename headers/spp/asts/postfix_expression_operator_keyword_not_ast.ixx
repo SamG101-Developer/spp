@@ -7,7 +7,7 @@ import spp.asts.postfix_expression_operator_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::PostfixExpressionOperatorKeywordNotAst final : PostfixExpressionOperatorAst {
+SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordNotAst final : PostfixExpressionOperatorAst {
     /**
      * The @c . token that indicates a member access operation.
      */

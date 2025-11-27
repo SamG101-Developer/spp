@@ -6,7 +6,7 @@ import spp.asts.ast;
 import spp.asts.mixins.type_inferrable_ast;
 
 
-SPP_EXP struct spp::asts::PostfixExpressionOperatorAst : virtual Ast, mixins::TypeInferrableAst {
+SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorAst : virtual Ast, mixins::TypeInferrableAst {
     using Ast::Ast;
 
     ~PostfixExpressionOperatorAst() override;

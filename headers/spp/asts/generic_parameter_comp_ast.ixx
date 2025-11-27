@@ -7,7 +7,7 @@ import spp.asts.generic_parameter_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::GenericParameterCompAst : GenericParameterAst {
+SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
     /**
      * The @c cmp token that represents the generic comp parameter. This is used to indicate that the parameter is a
      * comp generic and not a type generic.

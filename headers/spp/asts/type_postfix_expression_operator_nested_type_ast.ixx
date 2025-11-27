@@ -7,7 +7,7 @@ import spp.asts.type_postfix_expression_operator_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final : TypePostfixExpressionOperatorAst {
+SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final : TypePostfixExpressionOperatorAst {
     /**
      * The @c :: operator token that represents the namespace operator.
      */

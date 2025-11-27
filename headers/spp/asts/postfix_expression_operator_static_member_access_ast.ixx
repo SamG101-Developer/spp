@@ -7,7 +7,7 @@ import spp.asts.postfix_expression_operator_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::PostfixExpressionOperatorStaticMemberAccessAst final : PostfixExpressionOperatorAst {
+SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorStaticMemberAccessAst final : PostfixExpressionOperatorAst {
     /**
      * The @c :: token that indicates a static member access operation in a postfix expression.
      */

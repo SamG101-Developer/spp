@@ -7,7 +7,7 @@ import spp.asts.iter_pattern_variant_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::IterPatternVariantExhaustedAst final : IterPatternVariantAst {
+SPP_EXP_CLS struct spp::asts::IterPatternVariantExhaustedAst final : IterPatternVariantAst {
     /**
      * The @c !! token that indicates the pattern variant is exhausted. This is used with any @c GenXXX generators.
      */

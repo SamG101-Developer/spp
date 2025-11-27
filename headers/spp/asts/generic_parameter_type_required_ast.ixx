@@ -7,7 +7,7 @@ import spp.asts.generic_parameter_type_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::GenericParameterTypeRequiredAst final : GenericParameterTypeAst {
+SPP_EXP_CLS struct spp::asts::GenericParameterTypeRequiredAst final : GenericParameterTypeAst {
     /**
      * Construct the GenericParameterTypeRequiredAst with the arguments matching the members.
      * @param name The name of the generic type parameter.

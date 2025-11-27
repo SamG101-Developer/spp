@@ -12,7 +12,7 @@ import std;
  * The ObjectInitializerArgumentAst is the base class representing an argument in a object initialization. It is
  * inherited into the "shorthand" and "keyword" variants.
  */
-SPP_EXP struct spp::asts::ObjectInitializerArgumentAst : virtual Ast, mixins::TypeInferrableAst {
+SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentAst : virtual Ast, mixins::TypeInferrableAst {
     using Ast::Ast;
 
     /**

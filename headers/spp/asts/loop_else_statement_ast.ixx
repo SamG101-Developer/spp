@@ -8,7 +8,7 @@ import spp.asts.mixins.type_inferrable_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::LoopElseStatementAst final : virtual Ast, mixins::TypeInferrableAst {
+SPP_EXP_CLS struct spp::asts::LoopElseStatementAst final : virtual Ast, mixins::TypeInferrableAst {
     /**
      * The @c else keyword that indicates this is an else statement for the loop.
      */

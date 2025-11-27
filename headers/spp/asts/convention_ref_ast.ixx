@@ -11,7 +11,7 @@ import std;
  * The ConventionRefAst represents a convention for immutable borrows. Immutable borrows can be taken from immutable or
  * mutable values.
  */
-SPP_EXP struct spp::asts::ConventionRefAst final : ConventionAst {
+SPP_EXP_CLS struct spp::asts::ConventionRefAst final : ConventionAst {
     /**
      * The token that represents the @c & borrow marker. This is used to indicate that a borrow of some convention is
      * being made.

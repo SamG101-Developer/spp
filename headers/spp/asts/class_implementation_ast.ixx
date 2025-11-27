@@ -14,7 +14,7 @@ namespace spp::parse {
 /// @endcond
 
 
-SPP_EXP struct spp::asts::ClassImplementationAst final : InnerScopeAst<std::unique_ptr<ClassMemberAst>> {
+SPP_EXP_CLS struct spp::asts::ClassImplementationAst final : InnerScopeAst<std::unique_ptr<ClassMemberAst>> {
     friend class parse::ParserSpp;
     using InnerScopeAst::InnerScopeAst;
 

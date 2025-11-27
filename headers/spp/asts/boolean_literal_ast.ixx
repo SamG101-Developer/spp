@@ -12,7 +12,7 @@ import std;
  * The BooleanLiteralAst represents a boolean literal in the source code, which can be either @c true or @c false.
  * This AST is used to represent boolean values in expressions and statements.
  */
-SPP_EXP struct spp::asts::BooleanLiteralAst final : LiteralAst {
+SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
     /**
      * The token that represents the boolean literal, either @c true or @code false@endcode.
      */

@@ -7,7 +7,7 @@ import spp.asts._fwd;
 import std;
 
 
-SPP_EXP struct spp::asts::IsExpressionTempAst {
+SPP_EXP_CLS struct spp::asts::IsExpressionTempAst {
     /**
      * The operator token that represents the is operation. This indicates the type of operation being performed.
      */

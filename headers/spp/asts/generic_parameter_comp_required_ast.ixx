@@ -11,7 +11,7 @@ import std;
  * The GenericParameterCompRequiredAst represents required generic @c cmp parameters in classes, function,
  * superimpositions etc. They look like: @code cls MyClass[cmp n: USize] { ... }@endcode.
  */
-SPP_EXP struct spp::asts::GenericParameterCompRequiredAst final : GenericParameterCompAst {
+SPP_EXP_CLS struct spp::asts::GenericParameterCompRequiredAst final : GenericParameterCompAst {
     /**
      * Construct the GenericParameterCompAst with the arguments matching the members.
      * @param tok_cmp The @c cmp token that represents the generic comp parameter.

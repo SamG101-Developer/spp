@@ -8,7 +8,7 @@ import llvm;
 import std;
 
 
-SPP_EXP struct spp::asts::CasePatternVariantExpressionAst final : CasePatternVariantAst {
+SPP_EXP_CLS struct spp::asts::CasePatternVariantExpressionAst final : CasePatternVariantAst {
     /**
      * The expression that is used in the case pattern variant. This is the expression that will be matched against the
      * condition from the @c case statement.

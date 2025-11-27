@@ -7,7 +7,7 @@ import spp.asts.statement_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
+SPP_EXP_CLS struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
     /**
      * The list of @c exit tokens. This allows for a statement to exit an arbitrary number of loops. If there are no
      * @c exit tokens, then the @c skip token will be present, in @c tok_skip_or_expr. This is ensured by the parser.

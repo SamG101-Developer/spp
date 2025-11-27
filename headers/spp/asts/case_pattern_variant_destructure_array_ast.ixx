@@ -8,7 +8,7 @@ import llvm;
 import std;
 
 
-SPP_EXP struct spp::asts::CasePatternVariantDestructureArrayAst final : CasePatternVariantAst {
+SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureArrayAst final : CasePatternVariantAst {
     /**
      * The @code [@endcode token that indicates the start of an array destructuring pattern.
      */

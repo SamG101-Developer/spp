@@ -15,7 +15,7 @@ namespace spp::analyse::utils::bin_utils {
      * Define the precedence of binary operators. Higher numbers indicate higher precedence. This is used when
      * re-balancing binary expressions to ensure that the correct order of operations is maintained.
      */
-    SPP_EXP const auto BIN_OP_PRECEDENCE = std::map<lex::SppTokenType, std::uint8_t>{
+    SPP_EXP_CLS const auto BIN_OP_PRECEDENCE = std::map<lex::SppTokenType, std::uint8_t>{
         {lex::SppTokenType::KW_OR, 1},
         {lex::SppTokenType::KW_AND, 2},
         {lex::SppTokenType::TK_EQ, 3},
@@ -41,7 +41,7 @@ namespace spp::analyse::utils::bin_utils {
      * The map of binary operators to their corresponding method names. This is used when converting binary expressions
      * to function calls.
      */
-    SPP_EXP const auto BIN_METHODS = std::map<lex::SppTokenType, std::string>{
+    SPP_EXP_CLS const auto BIN_METHODS = std::map<lex::SppTokenType, std::string>{
         {lex::SppTokenType::KW_OR, "ior_"},
         {lex::SppTokenType::KW_AND, "and_"},
         {lex::SppTokenType::TK_EQ, "eq"},
@@ -77,7 +77,7 @@ namespace spp::analyse::utils::bin_utils {
     /**
      * The list of binary compound assignment operators.
      */
-    SPP_EXP constexpr auto BIN_COMPOUND_ASSIGNMENT_OPS = std::array{
+    SPP_EXP_CLS constexpr auto BIN_COMPOUND_ASSIGNMENT_OPS = std::array{
         lex::SppTokenType::TK_ADD_ASSIGN,
         lex::SppTokenType::TK_SUB_ASSIGN,
         lex::SppTokenType::TK_MUL_ASSIGN,
@@ -93,7 +93,7 @@ namespace spp::analyse::utils::bin_utils {
     /**
      * The list of binary comparison operators.
      */
-    SPP_EXP constexpr auto BIN_COMPARISON_OPS = std::array{
+    SPP_EXP_CLS constexpr auto BIN_COMPARISON_OPS = std::array{
         lex::SppTokenType::TK_EQ,
         lex::SppTokenType::TK_NE,
         lex::SppTokenType::TK_LT,
@@ -110,25 +110,25 @@ namespace spp::analyse::utils::bin_utils {
      * @param meta Metadata to pass between ASTs.
      * @return A new binary expression AST with correct order of operations.
      */
-    SPP_EXP auto fix_associativity(
+    SPP_EXP_FUN auto fix_associativity(
         asts::BinaryExpressionAst &bin_expr,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
         -> std::unique_ptr<asts::BinaryExpressionAst>;
 
-    SPP_EXP auto combine_comp_ops(
+    SPP_EXP_FUN auto combine_comp_ops(
         asts::BinaryExpressionAst &bin_expr,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
         -> std::unique_ptr<asts::BinaryExpressionAst>;
 
-    SPP_EXP auto convert_bin_expr_to_function_call(
+    SPP_EXP_FUN auto convert_bin_expr_to_function_call(
         asts::BinaryExpressionAst &bin_expr,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
         -> std::unique_ptr<asts::PostfixExpressionAst>;
 
-    SPP_EXP auto convert_is_expr_to_function_call(
+    SPP_EXP_FUN auto convert_is_expr_to_function_call(
         asts::IsExpressionAst &is_expr,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)

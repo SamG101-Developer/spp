@@ -7,7 +7,7 @@ import spp.asts.ast;
 import std;
 
 
-SPP_EXP struct spp::asts::LocalVariableSingleIdentifierAliasAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAliasAst final : virtual Ast {
     /**
      * The @c as token that indicates the alias for the local variable. This separates the identifier from the alias.
      */

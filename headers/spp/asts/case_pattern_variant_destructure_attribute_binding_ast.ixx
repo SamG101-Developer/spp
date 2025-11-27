@@ -7,7 +7,7 @@ import spp.asts.case_pattern_variant_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::CasePatternVariantDestructureAttributeBindingAst final : CasePatternVariantAst {
+SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureAttributeBindingAst final : CasePatternVariantAst {
     /**
      * The name of the attribute. This is the identifier that is used to refer to the attribute of the object being
      * destructured.

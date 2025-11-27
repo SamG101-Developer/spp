@@ -7,7 +7,7 @@ import spp.asts.iter_pattern_variant_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::IterPatternVariantExceptionAst final : IterPatternVariantAst {
+SPP_EXP_CLS struct spp::asts::IterPatternVariantExceptionAst final : IterPatternVariantAst {
     /**
      * The @c ! token that indicates the pattern variant is an exception. This is used with @c GenRes generators.
      */

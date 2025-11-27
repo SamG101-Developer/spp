@@ -9,11 +9,11 @@ import std;
 
 
 namespace spp::utils::errors {
-    SPP_EXP class ErrorFormatter;
+    SPP_EXP_CLS class ErrorFormatter;
 }
 
 
-SPP_EXP class spp::utils::errors::ErrorFormatter {
+SPP_EXP_CLS class spp::utils::errors::ErrorFormatter {
     std::vector<lex::RawToken> m_tokens;
     std::string m_file_path;
 

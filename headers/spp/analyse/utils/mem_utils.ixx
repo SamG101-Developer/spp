@@ -13,16 +13,16 @@ namespace spp::analyse::utils::mem_utils {
      * symbols from different branches. Branches must equally set memory information for symbols if the branch is being
      * used for assignment.
      */
-    SPP_EXP using InconsistentCondMemState = std::pair<asts::Ast*, asts::Ast*>;
+    SPP_EXP_CLS using InconsistentCondMemState = std::pair<asts::Ast*, asts::Ast*>;
 
-    SPP_EXP struct MemoryInfo;
-    SPP_EXP struct MemoryInfoSnapshot;
+    SPP_EXP_CLS struct MemoryInfo;
+    SPP_EXP_CLS struct MemoryInfoSnapshot;
 }
 
 namespace spp::analyse::scopes {
-    SPP_EXP class Scope;
-    SPP_EXP class ScopeManager;
-    SPP_EXP class VariableSymbol;
+    SPP_EXP_CLS class Scope;
+    SPP_EXP_CLS class ScopeManager;
+    SPP_EXP_CLS class VariableSymbol;
 }
 
 
@@ -31,7 +31,7 @@ namespace spp::analyse::scopes {
  * initialization, movement, and borrowing of the symbol's value, as well as any partial moves and pins that may be
  * associated with it.
  */
-SPP_EXP struct spp::analyse::utils::mem_utils::MemoryInfo {
+SPP_EXP_CLS struct spp::analyse::utils::mem_utils::MemoryInfo {
     /**
      * The @c ast_initialization AST is the AST that initialized the symbol this memory information struct is attached
      * to. This attribute is only set when the symbol is in the initialization state, so when a value is moved out of
@@ -165,7 +165,7 @@ SPP_EXP struct spp::analyse::utils::mem_utils::MemoryInfo {
 };
 
 
-SPP_EXP struct spp::analyse::utils::mem_utils::MemoryInfoSnapshot {
+SPP_EXP_CLS struct spp::analyse::utils::mem_utils::MemoryInfoSnapshot {
     /**
      * View of the initializing ast for the owning @c MemoryInfo
      */
@@ -211,7 +211,7 @@ namespace spp::analyse::utils::mem_utils {
      * @param ast_2 The rhs AST to check for overlap.
      * @return Whether the two memory regions overlap.
      */
-    SPP_EXP auto memory_region_overlap(
+    SPP_EXP_FUN auto memory_region_overlap(
         asts::Ast const &ast_1,
         asts::Ast const &ast_2)
         -> bool;
@@ -224,7 +224,7 @@ namespace spp::analyse::utils::mem_utils {
      * @param ast_2 The rhs AST to check for overlap.
      * @return Whether the two memory regions overlap in the right direction.
      */
-    SPP_EXP auto memory_region_right_overlap(
+    SPP_EXP_FUN auto memory_region_right_overlap(
         asts::Ast const &ast_1,
         asts::Ast const &ast_2)
         -> bool;
@@ -254,7 +254,7 @@ namespace spp::analyse::utils::mem_utils {
      * is used.
      * @throw spp::analyse::errors::SppInconsistentlyPinnedMemoryUseError If an inconsistently pinned symbol is used.
      */
-    SPP_EXP auto validate_symbol_memory(
+    SPP_EXP_FUN auto validate_symbol_memory(
         asts::ExpressionAst &value_ast,
         asts::Ast const &move_ast,
         scopes::ScopeManager &sm,
@@ -267,7 +267,7 @@ namespace spp::analyse::utils::mem_utils {
         asts::meta::CompilerMetaData *meta)
         -> void;
 
-    SPP_EXP template <typename T>
+    SPP_EXP_CLS template <typename T>
     auto validate_inconsistent_memory(
         std::vector<T> const &branches,
         scopes::ScopeManager *sm,

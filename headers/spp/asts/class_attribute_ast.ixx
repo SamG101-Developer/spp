@@ -13,7 +13,7 @@ import std;
  * The ClassAttributeAst represents an attribute of a class. It is defined on the class prototype ast, and is used to
  * add "state" to a type.
  */
-SPP_EXP struct spp::asts::ClassAttributeAst final : virtual Ast, mixins::VisibilityEnabledAst, ClassMemberAst {
+SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : virtual Ast, mixins::VisibilityEnabledAst, ClassMemberAst {
     /**
      * The list of annotations that are applied to this class attribute. Typically, access modifiers in this context.
      */

@@ -7,18 +7,18 @@ import std;
 
 
 namespace spp::utils {
-    SPP_EXP template <typename>
+    SPP_EXP_CLS template <typename>
     struct SymNameCmp;
 
-    SPP_EXP template <typename>
+    SPP_EXP_CLS template <typename>
     struct PtrHash;
 
-    SPP_EXP template <typename>
+    SPP_EXP_CLS template <typename>
     struct PtrEq;
 }
 
 
-SPP_EXP template <typename>
+SPP_EXP_CLS template <typename>
 struct spp::utils::SymNameCmp {
 };
 
@@ -35,7 +35,7 @@ struct spp::utils::SymNameCmp<std::shared_ptr<spp::asts::TypeIdentifierAst>> {
 };
 
 
-SPP_EXP template <typename>
+SPP_EXP_CLS template <typename>
 struct spp::utils::PtrHash {
 };
 
@@ -52,7 +52,7 @@ struct spp::utils::PtrHash<std::shared_ptr<spp::asts::TypeIdentifierAst>> {
 };
 
 
-SPP_EXP template <typename>
+SPP_EXP_CLS template <typename>
 struct spp::utils::PtrEq {
 };
 

@@ -8,7 +8,7 @@ import llvm;
 import std;
 
 
-SPP_EXP struct spp::asts::PatternGuardAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::PatternGuardAst final : virtual Ast {
     /**
      * The @c and keyword token. This is used to indicate that the pattern guard is being introduced, following a
      * pattern.

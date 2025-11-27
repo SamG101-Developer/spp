@@ -18,6 +18,7 @@ find_package(nlohmann_json REQUIRED) # json parsing
 find_package(tomlplusplus REQUIRED) # toml parsing
 find_package(magic_enum REQUIRED) # enum reflection
 find_package(Boost 1.89.0 REQUIRED) # various utilities
+find_package(mp++ REQUIRED) # multi-precision numbers and floating point
 find_package(Glob) # file globbing
 find_package(CLI11 REQUIRED) # command line parsing
 find_package(LLVM 21.1.0 REQUIRED CONFIG) # LLVM libraries
@@ -37,7 +38,7 @@ target_compile_options(spp_lib PRIVATE
         -Wold-style-cast -Woverloaded-virtual -Wundef -Wdisabled-optimization -Wmissing-declarations -Wmissing-include-dirs
         -Wnull-dereference -Wformat=2 -Wduplicated-cond -Wduplicated-branches -Wredundant-decls -Wlogical-op
         -Wuseless-cast -Wdouble-promotion -Wstrict-null-sentinel -Wswitch-default -Wswitch-enum -Wno-null-dereference
-        -Wno-maybe-uninitialized -Wno-error=array-bounds -fmodules-ts)
+        -Wno-maybe-uninitialized -Wno-error=array-bounds)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(spp_lib PRIVATE
             -O0 -pg -g -fno-omit-frame-pointer -fno-inline -fno-inline-functions-called-once
@@ -48,7 +49,7 @@ endif ()
 target_compile_features(spp_lib
         PRIVATE cxx_std_26)
 target_link_libraries(spp_lib PRIVATE
-        absl::hash absl::strings nlohmann_json::nlohmann_json magic_enum::magic_enum Boost::boost
+        absl::hash absl::strings nlohmann_json::nlohmann_json magic_enum::magic_enum Boost::boost mp++::mp++
         Glob LLVMCore LLVMSupport LLVMCodeGen LLVMScalarOpts LLVMTransformUtils)
 target_sources(spp_lib PUBLIC
         FILE_SET CXX_MODULES FILES ${MODULE_FILES} PRIVATE ${SOURCE_FILES})

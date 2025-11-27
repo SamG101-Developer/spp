@@ -15,12 +15,12 @@ import std;
 
 
 namespace spp::parse::errors {
-    SPP_EXP template <typename T>
+    SPP_EXP_CLS template <typename T>
     struct SyntacticErrorBuilder;
 }
 
 
-SPP_EXP template <typename T>
+SPP_EXP_CLS template <typename T>
 struct spp::parse::errors::SyntacticErrorBuilder final : spp::utils::errors::AbstractErrorBuilder<T> {
 private:
     std::size_t pos = 0;

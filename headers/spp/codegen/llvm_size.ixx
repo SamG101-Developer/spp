@@ -9,7 +9,7 @@ import std;
 
 
 namespace spp::codegen {
-    SPP_EXP auto size_of(
+    SPP_EXP_FUN auto size_of(
         analyse::scopes::ScopeManager const &sm,
         std::shared_ptr<asts::TypeAst> const &type)
         -> std::size_t;

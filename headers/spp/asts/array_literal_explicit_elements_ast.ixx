@@ -17,7 +17,7 @@ import std;
  * The elements are stored as @c Ast* pointers, but are restricted to expression-like ASTs by the parser. Their
  * respective analysis functions will be called by inheritance/vtable logic.
  */
-SPP_EXP struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiteralAst {
+SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiteralAst {
     /**
      * The token that represents the left square bracket @code [@endcode in the array literal. This introduces the array
      * literal.

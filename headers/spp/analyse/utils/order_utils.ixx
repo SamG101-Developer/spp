@@ -8,11 +8,11 @@ import std;
 
 
 namespace spp::asts::mixins {
-    SPP_EXP struct OrderableAst;
+    SPP_EXP_CLS struct OrderableAst;
 }
 
 
-SPP_EXP namespace spp::analyse::utils::order_utils {
+SPP_EXP_CLS namespace spp::analyse::utils::order_utils {
     /**
      * Return a list of items that are not in order. The order is provided by internal tags attached to the ASTs, as
      * they all inherit the @c OrderableAst mixin.

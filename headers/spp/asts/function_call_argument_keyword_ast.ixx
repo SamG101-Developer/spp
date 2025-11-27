@@ -11,7 +11,7 @@ import std;
  * The FunctionCallArgumentKeywordAst represents a keyword argument in a function call. It is forces the argument
  * to be matched by a keyword rather than an index.
  */
-SPP_EXP struct spp::asts::FunctionCallArgumentKeywordAst final : FunctionCallArgumentAst {
+SPP_EXP_CLS struct spp::asts::FunctionCallArgumentKeywordAst final : FunctionCallArgumentAst {
     /**
      * The name of the keyword argument. This is the identifier that is used to refer to the argument in the function
      * call.

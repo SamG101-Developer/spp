@@ -7,7 +7,7 @@ import spp.asts.function_parameter_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::FunctionParameterSelfAst final : FunctionParameterAst {
+SPP_EXP_CLS struct spp::asts::FunctionParameterSelfAst final : FunctionParameterAst {
     /**
      * The convention is attached to the self parameter rather than its type, as it is required before the type is
      * necessarily attached.

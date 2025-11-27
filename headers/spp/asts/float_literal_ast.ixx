@@ -13,7 +13,7 @@ import std;
  * and a fractional part. The type of the float can be specific with a postfix type annotation, such as @c _f32 or
  * @c _f64. No postfix defaults the type to @c std::BigDec.
  */
-SPP_EXP struct spp::asts::FloatLiteralAst final : LiteralAst {
+SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
     /**
      * The optional sign of the float literal. This can be either a plus or minus sign.
      */

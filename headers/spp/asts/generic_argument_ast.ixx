@@ -10,7 +10,7 @@ import std;
 
 
 namespace spp::asts::detail {
-    SPP_EXP template <typename GenericArgType>
+    SPP_EXP_CLS template <typename GenericArgType>
     struct make_keyword_arg {
         using type = GenericArgType;
     };
@@ -26,7 +26,7 @@ namespace spp::asts::detail {
     };
 
 
-    SPP_EXP template <typename T>
+    SPP_EXP_CLS template <typename T>
     using make_keyword_arg_t = typename make_keyword_arg<T>::type;
 
     template <typename GenericArgType>
@@ -40,7 +40,7 @@ namespace spp::asts::detail {
     };
 
 
-    SPP_EXP template <>
+    SPP_EXP_CLS template <>
     struct make_positional_arg<GenericArgumentTypeAst> {
         using type = GenericArgumentTypePositionalAst;
     };
@@ -56,7 +56,7 @@ namespace spp::asts::detail {
  * and @c GenericArgumentTypeAst, which represent the two types of generic arguments in the language. These in turn are
  * inherited for the positional and keyword variants.
  */
-SPP_EXP struct spp::asts::GenericArgumentAst : virtual Ast, mixins::OrderableAst {
+SPP_EXP_CLS struct spp::asts::GenericArgumentAst : virtual Ast, mixins::OrderableAst {
     using Ast::Ast;
     friend struct GenericArgumentCompKeywordAst;
     friend struct GenericArgumentCompPositionalAst;

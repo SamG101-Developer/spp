@@ -7,7 +7,7 @@ import spp.asts.literal_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::IntegerLiteralAst final : LiteralAst {
+SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
     /**
      * The optionally provided sign token. This can be either a @c + or @c - sign, indicating the sign of the integer
      * literal. No sign means the integer is positive by default.

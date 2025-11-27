@@ -22,4 +22,3 @@ The S++ Compiler is currently in development and has not reached its first offic
 - Until that time, use of the compiler is at your own discretion and no license enforcement will be applied.
 - By using pre-release versions, you acknowledge that features are incomplete and subject to change.
 
-

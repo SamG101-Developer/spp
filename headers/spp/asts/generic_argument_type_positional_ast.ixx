@@ -11,7 +11,7 @@ import std;
  * The GenericArgumentTypePositionalAst represents a positional argument in a generic argument context. It is forces the
  * argument to be matched by an index rather than a keyword.
  */
-SPP_EXP struct spp::asts::GenericArgumentTypePositionalAst final : GenericArgumentTypeAst {
+SPP_EXP_CLS struct spp::asts::GenericArgumentTypePositionalAst final : GenericArgumentTypeAst {
     /**
      * Construct the GenericArgumentTypePositionalAst with the arguments matching the members.
      * @param val The value of the generic type argument.

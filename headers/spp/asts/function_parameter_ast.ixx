@@ -12,7 +12,7 @@ import std;
  * The FunctionParameterAst provides a common base to all parameter types in a function prototype. It is inherited by
  * the required, optional, variadic and self parameters, and provides the common functionality for all of them.
  */
-SPP_EXP struct spp::asts::FunctionParameterAst : virtual Ast, mixins::OrderableAst {
+SPP_EXP_CLS struct spp::asts::FunctionParameterAst : virtual Ast, mixins::OrderableAst {
     /**
      * The local variable declaration for this parameter. This is used to create a local variable for the parameter,
      * using the same syntax as variables, such as destructuring.

@@ -10,7 +10,7 @@ import std;
 
 
 namespace spp::compiler {
-    SPP_EXP class Compiler;
+    SPP_EXP_CLS class Compiler;
 }
 
 
@@ -28,7 +28,7 @@ inline constexpr auto COMPILER_STAGE_NAMES = std::array{
 };
 
 
-SPP_EXP class spp::compiler::Compiler {
+SPP_EXP_CLS class spp::compiler::Compiler {
 public:
     enum class Mode {
         DEV, REL

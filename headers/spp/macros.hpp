@@ -98,7 +98,9 @@
     if (auto pe = ast_cast<PostfixExpressionAst>(expr); pe != nullptr and ast_cast<PostfixExpressionOperatorFunctionCallAst>(pe->op.get()) != nullptr)
 
 
-#define SPP_EXP export extern "C++"
+#define SPP_EXP_CLS export extern "C++"
+
+#define SPP_EXP_FUN export
 
 
 /**

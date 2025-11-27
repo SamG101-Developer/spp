@@ -8,7 +8,7 @@ import spp.asts.mixins.temp_type_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::TypeTupleShorthandAst final : virtual Ast, mixins::TempTypeAst {
+SPP_EXP_CLS struct spp::asts::TypeTupleShorthandAst final : virtual Ast, mixins::TempTypeAst {
     /**
      * The left parenthesis token that represents the start of the tuple type.
      */

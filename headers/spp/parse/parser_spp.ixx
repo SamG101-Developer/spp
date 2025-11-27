@@ -10,11 +10,11 @@ import std;
 
 
 namespace spp::parse {
-    SPP_EXP class ParserSpp;
+    SPP_EXP_CLS class ParserSpp;
 }
 
 
-SPP_EXP class spp::parse::ParserSpp final : public ParserBase {
+SPP_EXP_CLS class spp::parse::ParserSpp final : public ParserBase {
 public:
     using ParserBase::ParserBase;
 

@@ -8,7 +8,7 @@ import llvm;
 import std;
 
 
-SPP_EXP struct spp::asts::ParenthesisedExpressionAst final : PrimaryExpressionAst {
+SPP_EXP_CLS struct spp::asts::ParenthesisedExpressionAst final : PrimaryExpressionAst {
     /**
      * The @c ( token that indicates the start of a parenthesised expression.
      */

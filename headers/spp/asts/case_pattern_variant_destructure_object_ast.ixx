@@ -8,7 +8,7 @@ import llvm;
 import std;
 
 
-SPP_EXP struct spp::asts::CasePatternVariantDestructureObjectAst final : CasePatternVariantAst {
+SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureObjectAst final : CasePatternVariantAst {
     /**
      * The type of the object being destructured. This is used to determine the type of the destructured elements (by
      * attribute type inference)

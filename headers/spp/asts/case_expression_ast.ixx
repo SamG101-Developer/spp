@@ -13,7 +13,7 @@ import std;
  * keyword is included in after the condition, then pattern matching is used, by combining the condition with partial
  * fragments that are the branches.
  */
-SPP_EXP struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
+SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
     /**
      * The token that represents the @c case keyword in the case expression.
      */

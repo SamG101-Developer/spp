@@ -8,17 +8,15 @@ import std;
 
 /// @cond
 namespace spp::asts::mixins {
-    SPP_EXP class TypeInferrableAst;
+    SPP_EXP_CLS class TypeInferrableAst;
 }
-
 
 namespace spp::asts::meta {
-    SPP_EXP class CompilerMetaData;
+    SPP_EXP_CLS class CompilerMetaData;
 }
 
-
 namespace spp::analyse::scopes {
-    class ScopeManager;
+    SPP_EXP_CLS class ScopeManager;
 }
 
 /// @endcond
@@ -29,7 +27,7 @@ namespace spp::analyse::scopes {
  * literals that can have a type determined at compile time. The @c infer_type method is used to infer the type of the
  * AST based on the current scope and metadata.
  */
-SPP_EXP class spp::asts::mixins::TypeInferrableAst {
+SPP_EXP_CLS class spp::asts::mixins::TypeInferrableAst {
 public:
     TypeInferrableAst();
 

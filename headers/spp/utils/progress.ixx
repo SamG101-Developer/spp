@@ -6,11 +6,11 @@ import std;
 
 
 namespace spp::utils {
-    SPP_EXP class ProgressBar;
+    SPP_EXP_CLS class ProgressBar;
 }
 
 
-SPP_EXP class spp::utils::ProgressBar {
+SPP_EXP_CLS class spp::utils::ProgressBar {
     std::string m_label;
     std::uint32_t m_total_steps;
     std::uint32_t m_current_step;

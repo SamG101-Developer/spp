@@ -7,7 +7,7 @@ import spp.asts.type_unary_expression_operator_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : TypeUnaryExpressionOperatorAst {
+SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : TypeUnaryExpressionOperatorAst {
     /**
      * The namespace token that represents the namespace in which the type is defined.
      */

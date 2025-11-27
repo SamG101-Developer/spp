@@ -7,7 +7,7 @@ import spp.asts.ast;
 import std;
 
 
-SPP_EXP struct spp::asts::GenericParameterGroupAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : virtual Ast {
     /**
      * The token that represents the left bracket @code [@endcode in the generic parameter group. This introduces the
      * generic parameter group.

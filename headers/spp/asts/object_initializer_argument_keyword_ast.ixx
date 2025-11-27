@@ -11,7 +11,7 @@ import std;
  * The ObjectInitializerArgumentKeywordAst represents a keyword argument in a object initializer. It is forces the
  * argument to be matched by a keyword rather than shorthand value.
  */
-SPP_EXP struct spp::asts::ObjectInitializerArgumentKeywordAst final : ObjectInitializerArgumentAst {
+SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentKeywordAst final : ObjectInitializerArgumentAst {
     /**
      * The token that represents the assignment operator @c = in the keyword argument. This separates the name of the
      * argument from the expression that is being passed as the argument's value.

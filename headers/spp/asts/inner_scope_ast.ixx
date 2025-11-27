@@ -15,7 +15,7 @@ import std;
  * inference etc.
  * @tparam T The type of the members in the inner scope.
  */
-SPP_EXP template <typename T>
+SPP_EXP_CLS template <typename T>
 struct spp::asts::InnerScopeAst : virtual Ast {
     /**
      * The @c { token that represents the start of the inner scope. This is used to indicate the beginning of the scope

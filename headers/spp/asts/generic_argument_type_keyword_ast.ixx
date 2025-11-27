@@ -12,7 +12,7 @@ import std;
  * The GenericArgumentTypeKeywordAst represents a keyword argument in a generic argument context. It is forces the
  * argument to be matched by a keyword rather than an index.
  */
-SPP_EXP struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgumentTypeAst {
+SPP_EXP_CLS struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgumentTypeAst {
     /**
      * The name of the keyword argument. This is the type that is used to refer to the argument in the generic call.
      */

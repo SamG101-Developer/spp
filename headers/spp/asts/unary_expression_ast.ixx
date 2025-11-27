@@ -7,7 +7,7 @@ import spp.asts.expression_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::UnaryExpressionAst final : ExpressionAst {
+SPP_EXP_CLS struct spp::asts::UnaryExpressionAst final : ExpressionAst {
     /**
      * The operator token that represents the unary operation. This indicates the type of operation being performed.
      */

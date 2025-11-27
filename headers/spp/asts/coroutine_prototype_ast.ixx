@@ -9,7 +9,7 @@ import llvm;
 import std;
 
 
-SPP_EXP struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst {
+SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst {
     friend struct GenExpressionAst;
     using FunctionPrototypeAst::FunctionPrototypeAst;
 

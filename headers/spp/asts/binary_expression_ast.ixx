@@ -14,7 +14,7 @@ import std;
  * maps the expressions into a method on the left-hand-side type, so @code 1 + 2@endcode will map to the method
  * @code 1.add(2)@endcode.
  */
-SPP_EXP struct spp::asts::BinaryExpressionAst final : ExpressionAst {
+SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
 private:
     std::shared_ptr<PostfixExpressionAst> m_mapped_func;
 

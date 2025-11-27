@@ -10,7 +10,7 @@ import std;
 /**
  * The GenericArgumentTypeAst represents a generic argument that accepts a type (not a compile time value).
  */
-SPP_EXP struct spp::asts::GenericArgumentTypeAst : GenericArgumentAst {
+SPP_EXP_CLS struct spp::asts::GenericArgumentTypeAst : GenericArgumentAst {
     /**
      * The value of the generic type argument. This is passed into the generic like @code func[T]()@endcode or
      * @code std::Vec[std::String]@endcode.

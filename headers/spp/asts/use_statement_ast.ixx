@@ -13,7 +13,7 @@ import std;
  * associated namespace. It is internal mapped to a TypeStatementAst: @code use std::Str@endcode is equivalent to
  * @code type Str = std::Str@endcode.
  */
-SPP_EXP struct spp::asts::UseStatementAst final : StatementAst, ModuleMemberAst {
+SPP_EXP_CLS struct spp::asts::UseStatementAst final : StatementAst, ModuleMemberAst {
 private:
     /**
      * The @c m_generated flag indicates whether this use statement has been generated yet. This is required, because

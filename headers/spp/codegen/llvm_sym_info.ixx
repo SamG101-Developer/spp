@@ -6,12 +6,12 @@ import llvm;
 
 
 namespace spp::codegen {
-    SPP_EXP struct LlvmTypeSymInfo {
+    SPP_EXP_CLS struct LlvmTypeSymInfo {
         llvm::Type *llvm_type;
         llvm::Module *llvm_mod;
     };
 
-    SPP_EXP struct LlvmVarSymInfo {
+    SPP_EXP_CLS struct LlvmVarSymInfo {
         llvm::Value *alloca;
     };
 }

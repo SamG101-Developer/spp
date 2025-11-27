@@ -9,7 +9,7 @@ import ankerl;
 import std;
 
 
-SPP_EXP struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
     /**
      * The token that represents the left bracket @code [@endcode in the generic argument group. This introduces the
      * generic argument group.

@@ -7,7 +7,7 @@ import spp.asts.loop_condition_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::LoopConditionBooleanAst final : LoopConditionAst {
+SPP_EXP_CLS struct spp::asts::LoopConditionBooleanAst final : LoopConditionAst {
     /**
      * The expression that represents the condition of the loop. This is a boolean expression that evaluates to a
      * boolean value.

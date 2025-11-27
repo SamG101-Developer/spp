@@ -9,17 +9,17 @@ import std;
 
 
 namespace spp::analyse::scopes {
-    SPP_EXP class Scope;
-    SPP_EXP struct Symbol;
-    SPP_EXP struct NamespaceSymbol;
-    SPP_EXP struct TypeSymbol;
-    SPP_EXP struct AliasSymbol;
-    SPP_EXP struct VariableSymbol;
+    SPP_EXP_CLS class Scope;
+    SPP_EXP_CLS struct Symbol;
+    SPP_EXP_CLS struct NamespaceSymbol;
+    SPP_EXP_CLS struct TypeSymbol;
+    SPP_EXP_CLS struct AliasSymbol;
+    SPP_EXP_CLS struct VariableSymbol;
 }
 
 
 namespace spp::analyse::utils::mem_utils {
-    SPP_EXP struct MemoryInfo;
+    SPP_EXP_CLS struct MemoryInfo;
 }
 
 
@@ -29,7 +29,7 @@ namespace spp::analyse::utils::mem_utils {
  * some abstract methods that must be implemented by all derived classes. The `@c Symbol* type is used, creating the
  * need for a base class.
  */
-SPP_EXP struct spp::analyse::scopes::Symbol {
+SPP_EXP_CLS struct spp::analyse::scopes::Symbol {
     /**
      * Enforce a virtual destructor for the Symbol class. This is to ensure that derived classes can be properly
      * destructed when deleted through a base class pointer. This is important for polymorphism and memory management,
@@ -47,7 +47,7 @@ SPP_EXP struct spp::analyse::scopes::Symbol {
 };
 
 
-SPP_EXP struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
+SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
     std::shared_ptr<asts::IdentifierAst> name;
 
     Scope *scope;
@@ -67,7 +67,7 @@ SPP_EXP struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
 };
 
 
-SPP_EXP struct spp::analyse::scopes::VariableSymbol final : Symbol {
+SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
     std::shared_ptr<asts::IdentifierAst> name;
 
     std::shared_ptr<asts::TypeAst> type;
@@ -100,7 +100,7 @@ SPP_EXP struct spp::analyse::scopes::VariableSymbol final : Symbol {
 };
 
 
-SPP_EXP struct spp::analyse::scopes::TypeSymbol final : Symbol {
+SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     std::shared_ptr<asts::TypeIdentifierAst> name;
 
     asts::ClassPrototypeAst *type;

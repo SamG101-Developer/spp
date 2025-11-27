@@ -8,11 +8,11 @@ import std;
 
 
 namespace spp::asts::mixins {
-    SPP_EXP struct TempTypeAst;
+    SPP_EXP_CLS struct TempTypeAst;
 }
 
 
-SPP_EXP struct spp::asts::mixins::TempTypeAst {
+SPP_EXP_CLS struct spp::asts::mixins::TempTypeAst {
     TempTypeAst() = default;
 
     virtual ~TempTypeAst() = default;

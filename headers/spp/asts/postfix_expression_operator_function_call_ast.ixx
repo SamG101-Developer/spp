@@ -9,7 +9,7 @@ import llvm;
 import std;
 
 
-SPP_EXP struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : PostfixExpressionOperatorAst {
+SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : PostfixExpressionOperatorAst {
     friend struct UnaryExpressionOperatorAsyncAst;
 
 private:

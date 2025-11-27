@@ -11,7 +11,7 @@ import std;
  * The ModulePrototypeAst represents a prototype for a module in the SPP language. It contains a the implementation of
  * the module.
  */
-SPP_EXP struct spp::asts::ModulePrototypeAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : virtual Ast {
     friend struct spp::asts::FunctionPrototypeAst;
 
 private:

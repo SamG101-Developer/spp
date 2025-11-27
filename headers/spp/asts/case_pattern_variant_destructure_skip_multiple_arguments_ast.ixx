@@ -7,7 +7,7 @@ import spp.asts.case_pattern_variant_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst final : CasePatternVariantAst {
+SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst final : CasePatternVariantAst {
     /**
      * The @c .. token indicates the skip multiple arguments pattern. This is used to indicate that a group of arguments
      * is being skipped. Bindings are used for array and tuple destructuring, while object destructuring can only use an

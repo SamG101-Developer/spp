@@ -11,7 +11,7 @@ import std;
  * The ConventionMutAst represents a convention for mutable borrows. If the borrow is for an argument, this symbol must
  * be mutably defined.
  */
-SPP_EXP struct spp::asts::ConventionMutAst final : ConventionAst {
+SPP_EXP_CLS struct spp::asts::ConventionMutAst final : ConventionAst {
     /**
      * The token that represents the @c & borrow marker. This is used to indicate that a borrow of some convention is
      * being made.

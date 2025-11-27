@@ -8,7 +8,7 @@ import llvm;
 import std;
 
 
-SPP_EXP struct spp::asts::GenWithExpressionAst final : PrimaryExpressionAst {
+SPP_EXP_CLS struct spp::asts::GenWithExpressionAst final : PrimaryExpressionAst {
 private:
     std::shared_ptr<TypeAst> m_generator_type;
 

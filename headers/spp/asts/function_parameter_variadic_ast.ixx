@@ -11,7 +11,7 @@ import std;
  * The FunctionParameterVariadicAst represents a variadic parameter in a function prototype. It is used to define
  * parameters that can accept an arbitrary number of arguments, such as @c *args in Python.
  */
-SPP_EXP struct spp::asts::FunctionParameterVariadicAst final : FunctionParameterAst {
+SPP_EXP_CLS struct spp::asts::FunctionParameterVariadicAst final : FunctionParameterAst {
     /**
      * The token that represents the @c .. ellipsis in the function parameter. This indicates that the parameter is
      * variadic, meaning it can accept a variable number of arguments.

@@ -7,7 +7,7 @@ import spp.asts.local_variable_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst final : LocalVariableAst {
+SPP_EXP_CLS struct spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst final : LocalVariableAst {
     friend struct CasePatternVariantDestructureSkipMultipleArgumentsAst;
 
     /**

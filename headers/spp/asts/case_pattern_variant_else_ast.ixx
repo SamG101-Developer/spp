@@ -8,7 +8,7 @@ import llvm;
 import std;
 
 
-SPP_EXP struct spp::asts::CasePatternVariantElseAst final : CasePatternVariantAst {
+SPP_EXP_CLS struct spp::asts::CasePatternVariantElseAst final : CasePatternVariantAst {
     /**
      * The @c else keyword that indicates this is an else branch of the case pattern variant.
      */

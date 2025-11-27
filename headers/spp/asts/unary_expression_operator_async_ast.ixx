@@ -7,7 +7,7 @@ import spp.asts.unary_expression_operator_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::UnaryExpressionOperatorAsyncAst final : UnaryExpressionOperatorAst {
+SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorAsyncAst final : UnaryExpressionOperatorAst {
     /**
      * The @c async keyword that indicates an asynchronous operation. This is used to mark the following function call
      * as called asynchronously.

@@ -7,7 +7,7 @@ import spp.asts.function_parameter_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::FunctionParameterRequiredAst final : FunctionParameterAst {
+SPP_EXP_CLS struct spp::asts::FunctionParameterRequiredAst final : FunctionParameterAst {
     /**
      * Construct the FunctionParameterRequiredAst with the arguments matching the members.
      * @param var The local variable declaration for this parameter.

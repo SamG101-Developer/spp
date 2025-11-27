@@ -7,7 +7,7 @@ import spp.asts.iter_pattern_variant_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::IterPatternVariantNoValueAst final : IterPatternVariantAst {
+SPP_EXP_CLS struct spp::asts::IterPatternVariantNoValueAst final : IterPatternVariantAst {
     /**
      * The @c _ token that indicates the pattern variant does not have a value. This is used with @c GenOpt generators.
      */

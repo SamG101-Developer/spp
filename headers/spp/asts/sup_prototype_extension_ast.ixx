@@ -21,7 +21,7 @@ import std;
  * }
  * @endcode
  */
-SPP_EXP struct spp::asts::SupPrototypeExtensionAst final : virtual Ast, ModuleMemberAst, SupMemberAst {
+SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : virtual Ast, ModuleMemberAst, SupMemberAst {
     friend class spp::analyse::scopes::ScopeManager;
     friend struct spp::asts::FunctionPrototypeAst;
 

@@ -7,7 +7,7 @@ import spp.asts.ast;
 import std;
 
 
-SPP_EXP struct spp::asts::ClosureExpressionCaptureGroupAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::ClosureExpressionCaptureGroupAst final : virtual Ast {
     /**
      * The @c caps token that indicates the start of the closure capture group. This is used to indicate that the
      * closure has moved on from parameter definitions and is now capturing variables from the outer scope.

@@ -7,7 +7,7 @@ import spp.asts.primary_expression_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst {
+SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst {
 protected:
     std::shared_ptr<TypeAst> m_ret_type;
 

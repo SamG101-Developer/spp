@@ -11,7 +11,7 @@ namespace spp::utils::strings {
      * @param c The character to check.
      * @return If the character is alphanumeric or an underscore.
      */
-    SPP_EXP auto is_alphanumeric(
+    SPP_EXP_FUN auto is_alphanumeric(
         char c)
         -> bool;
 
@@ -20,7 +20,7 @@ namespace spp::utils::strings {
      * @param str The snake_case string.
      * @return The PascalCase string.
      */
-    SPP_EXP auto snake_to_pascal(
+    SPP_EXP_FUN auto snake_to_pascal(
         std::string const &)
         -> std::string;
 
@@ -30,17 +30,17 @@ namespace spp::utils::strings {
      * @param choices The list of choice strings to compare against.
      * @return The closest matching string, or @c std::nullopt if no match is found.
      */
-    SPP_EXP auto closest_match(
+    SPP_EXP_FUN auto closest_match(
         std::string_view query,
         std::vector<std::string> const &choices)
         -> std::optional<std::string>;
 
-    SPP_EXP auto levenshtein(
+    auto levenshtein(
         std::string_view s1,
         std::string_view s2)
         -> std::size_t;
 
-    SPP_EXP auto similarity_ratio(
+    auto similarity_ratio(
         std::string_view s1,
         std::string_view s2)
         -> double;

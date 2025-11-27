@@ -11,7 +11,7 @@ import std;
  * The ObjectInitializerArgumentShorthandAst represents a shorthand argument in an object initializer. It is forces the
  * argument to be matched by shorthand value rather than a keyword.
  */
-SPP_EXP struct spp::asts::ObjectInitializerArgumentShorthandAst final : ObjectInitializerArgumentAst {
+SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentShorthandAst final : ObjectInitializerArgumentAst {
     /**
      * The optional @c .. token that indicates an "else" argument. This fills all the missing attributes in the object
      * with the corresponding attributes from this argument.

@@ -11,23 +11,23 @@ namespace spp::utils::files {
      * @param path The path to the file to read.
      * @return The contents of the file as a string.
      */
-    SPP_EXP auto read_file(std::filesystem::path const &path) -> std::string;
+    SPP_EXP_FUN auto read_file(std::filesystem::path const &path) -> std::string;
 
     /**
      * Simple function to write a string to a file.
      * @param path The path to the file to write to.
      * @param content The content to write to the file.
      */
-    SPP_EXP auto write_file(std::filesystem::path const &path, std::string const &content) -> void;
+    SPP_EXP_FUN auto write_file(std::filesystem::path const &path, std::string const &content) -> void;
 
-    SPP_EXP enum class LockType { Shared, Exclusive };
+    SPP_EXP_CLS enum class LockType { Shared, Exclusive };
 
-    SPP_EXP struct FileLock;
-    SPP_EXP struct FileLockException;
+    SPP_EXP_CLS struct FileLock;
+    SPP_EXP_CLS struct FileLockException;
 }
 
 
-SPP_EXP struct spp::utils::files::FileLock {
+SPP_EXP_CLS struct spp::utils::files::FileLock {
 private:
     std::filesystem::path m_path;
     int m_fd;

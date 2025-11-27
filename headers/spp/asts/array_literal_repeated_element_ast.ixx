@@ -17,7 +17,7 @@ import std;
  * element type, until values are set into the slots of the array. As there are no elements when created, and full type
  * information is required on declaration, the element type and size must be specified.
  */
-SPP_EXP struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLiteralAst {
+SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLiteralAst {
     /**
      * The token that represents the left square bracket @code [@endcode in the array literal. This introduces the array
      * literal.

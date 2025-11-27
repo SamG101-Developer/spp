@@ -12,12 +12,12 @@ import spp.asts._fwd;
 
 
 namespace spp::analyse::scopes {
-    SPP_EXP class ScopeManager;
-    SPP_EXP struct TypeSymbol;
+    SPP_EXP_CLS class ScopeManager;
+    SPP_EXP_CLS struct TypeSymbol;
 }
 
 namespace spp::asts::meta {
-    SPP_EXP struct CompilerMetaData;
+    SPP_EXP_CLS struct CompilerMetaData;
 }
 
 
@@ -26,7 +26,7 @@ namespace spp::asts::meta {
  * scopes of the code, providing the structure of the code, and the symbols within those scopes. It also provides an
  * iterator to traverse the scopes in a depth-first manner, which is useful for various analysis tasks.
  */
-SPP_EXP class spp::analyse::scopes::ScopeManager {
+SPP_EXP_CLS class spp::analyse::scopes::ScopeManager {
     /**
      * The current iterator state. This is a coroutine-based iterator that allows for depth-first traversal of the
      * scopes. It is reset with the @c reset method, and advanced with the @c move_to_next_scope and

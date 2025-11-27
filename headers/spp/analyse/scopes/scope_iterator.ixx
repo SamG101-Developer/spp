@@ -6,8 +6,8 @@ import std;
 
 
 namespace spp::analyse::scopes {
-    SPP_EXP class Scope;
-    SPP_EXP class ScopeIterator;
+    SPP_EXP_CLS class Scope;
+    SPP_EXP_CLS class ScopeIterator;
 }
 
 
@@ -16,7 +16,7 @@ namespace spp::analyse::scopes {
  * root scope. It visits the root scope first, then recursively visits each child scope in order. The iterator is
  * compatible with STL algorithms.
  */
-SPP_EXP class spp::analyse::scopes::ScopeIterator {
+SPP_EXP_CLS class spp::analyse::scopes::ScopeIterator {
     /**
      * A frame that contains a root, and the number of children seen, for each layer in the tree. This means when a list
      * of children is exhausted, the next node up can be checked for more siblings, instead of moving back to the master

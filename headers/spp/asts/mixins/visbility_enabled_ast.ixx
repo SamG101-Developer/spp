@@ -8,12 +8,12 @@ import spp.asts.utils.visibility;
 import std;
 
 namespace spp::asts::mixins {
-    SPP_EXP struct VisibilityEnabledAst;
-    SPP_EXP using VisibilityPair = std::pair<utils::Visibility, AnnotationAst*>;
+    SPP_EXP_CLS struct VisibilityEnabledAst;
+    SPP_EXP_CLS using VisibilityPair = std::pair<utils::Visibility, AnnotationAst*>;
 }
 
 
-SPP_EXP struct spp::asts::mixins::VisibilityEnabledAst {
+SPP_EXP_CLS struct spp::asts::mixins::VisibilityEnabledAst {
     friend struct asts::AnnotationAst;
     friend struct asts::TypeStatementAst;
 

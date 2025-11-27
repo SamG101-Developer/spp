@@ -25,7 +25,7 @@ import std;
  * stage.
  */
 namespace spp::codegen::func_impls {
-    SPP_EXP template <typename F>
+    SPP_EXP_CLS template <typename F>
     auto simple_intrinsic_binop(
         SPP_LLVM_FUNC_INFO,
         LLvmCtx *ctx,
@@ -46,7 +46,7 @@ namespace spp::codegen::func_impls {
         ctx->builder.CreateRet(result);
     }
 
-    SPP_EXP template <typename F>
+    SPP_EXP_CLS template <typename F>
     auto simple_intrinsic_binop_assign(
         SPP_LLVM_FUNC_INFO,
         LLvmCtx *ctx,
@@ -70,7 +70,7 @@ namespace spp::codegen::func_impls {
         ctx->builder.CreateRetVoid();
     }
 
-    SPP_EXP template <typename F>
+    SPP_EXP_CLS template <typename F>
     auto simple_intrinsic_unop(
         SPP_LLVM_FUNC_INFO,
         LLvmCtx *ctx,
@@ -90,7 +90,7 @@ namespace spp::codegen::func_impls {
         ctx->builder.CreateRet(result);
     }
 
-    SPP_EXP inline auto simple_binary_intrinsic_call(
+    SPP_EXP_FUN auto simple_binary_intrinsic_call(
         SPP_LLVM_FUNC_INFO,
         LLvmCtx *ctx,
         llvm::Type *ty,
@@ -111,7 +111,7 @@ namespace spp::codegen::func_impls {
         ctx->builder.CreateRet(result);
     }
 
-    SPP_EXP inline auto simple_unary_intrinsic_call(
+    SPP_EXP_FUN auto simple_unary_intrinsic_call(
         SPP_LLVM_FUNC_INFO,
         LLvmCtx *ctx,
         llvm::Type *ty,

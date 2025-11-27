@@ -7,7 +7,7 @@ import spp.asts.function_prototype_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::SubroutinePrototypeAst final : FunctionPrototypeAst {
+SPP_EXP_CLS struct spp::asts::SubroutinePrototypeAst final : FunctionPrototypeAst {
     using FunctionPrototypeAst::FunctionPrototypeAst;
 
     ~SubroutinePrototypeAst() override;

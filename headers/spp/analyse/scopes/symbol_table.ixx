@@ -11,14 +11,14 @@ import std;
 
 
 namespace spp::analyse::scopes {
-    SPP_EXP template <typename I, typename S>
+    SPP_EXP_CLS template <typename I, typename S>
     class IndividualSymbolTable;
 
-    SPP_EXP class SymbolTable;
+    SPP_EXP_CLS class SymbolTable;
 }
 
 
-SPP_EXP template <typename I, typename S>
+SPP_EXP_CLS template <typename I, typename S>
 class spp::analyse::scopes::IndividualSymbolTable {
 private:
     ankerl::unordered_dense::map<std::shared_ptr<I>, std::shared_ptr<S>, spp::utils::PtrHash<std::shared_ptr<I>>, spp::utils::PtrEq<std::shared_ptr<I>>> m_table;
@@ -55,7 +55,7 @@ public:
 };
 
 
-SPP_EXP class spp::analyse::scopes::SymbolTable {
+SPP_EXP_CLS class spp::analyse::scopes::SymbolTable {
 public:
     SymbolTable();
 

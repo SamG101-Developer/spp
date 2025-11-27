@@ -12,7 +12,7 @@ import std;
  * The StatementAst class is the base class for all statements in the abstract syntax tree. It is used to represent
  * statements that do not return a value, such as variable declarations and control flow statements.
  */
-SPP_EXP struct spp::asts::StatementAst : virtual Ast, mixins::TypeInferrableAst {
+SPP_EXP_CLS struct spp::asts::StatementAst : virtual Ast, mixins::TypeInferrableAst {
     using Ast::Ast;
 
     ~StatementAst() override;

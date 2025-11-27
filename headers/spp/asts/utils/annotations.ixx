@@ -6,14 +6,14 @@ import std;
 
 /// @cond
 namespace spp::asts::utils {
-    SPP_EXP enum class BuiltinAnnotations : std::uint8_t;
+    SPP_EXP_CLS enum class BuiltinAnnotations : std::uint8_t;
 }
 
 /// @endcond
 
 
 // Todo: move this to documentation then delete the file.
-SPP_EXP enum class spp::asts::utils::BuiltinAnnotations : std::uint8_t {
+SPP_EXP_CLS enum class spp::asts::utils::BuiltinAnnotations : std::uint8_t {
     /**
      * A virtual method is a method that can be overridden in derived classes. It allows for polymorphism. Any method
      * that is desired to be overridden must be marked either @c @virtualmethod or @c @abstractmethod. A method is

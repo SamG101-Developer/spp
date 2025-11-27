@@ -8,7 +8,7 @@ import llvm;
 import std;
 
 
-SPP_EXP struct spp::asts::CasePatternVariantLiteralAst final : CasePatternVariantAst {
+SPP_EXP_CLS struct spp::asts::CasePatternVariantLiteralAst final : CasePatternVariantAst {
     /**
      * The literal value of the case pattern variant. This can be a string, integer, float, boolean, but not a tuple or
      * array; special destructure syntax exists for those literals.

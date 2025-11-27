@@ -15,9 +15,9 @@ import sys;
 
 /// @cond
 namespace spp::analyse::scopes {
-    SPP_EXP  class Scope;
-    SPP_EXP class ScopeManager;
-    SPP_EXP using ScopeName = std::variant<
+    SPP_EXP_CLS  class Scope;
+    SPP_EXP_CLS class ScopeManager;
+    SPP_EXP_CLS using ScopeName = std::variant<
         std::shared_ptr<asts::IdentifierAst>,
         std::shared_ptr<asts::TypeIdentifierAst>,
         ScopeBlockName>;
@@ -27,7 +27,7 @@ namespace spp::analyse::scopes {
 /// @endcond
 
 
-SPP_EXP class spp::analyse::scopes::Scope {
+SPP_EXP_CLS class spp::analyse::scopes::Scope {
     friend class spp::analyse::scopes::ScopeManager;
 
 public:

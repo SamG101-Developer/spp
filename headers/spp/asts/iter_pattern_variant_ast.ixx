@@ -7,7 +7,7 @@ import spp.asts.ast;
 import std;
 
 
-SPP_EXP struct spp::asts::IterPatternVariantAst : virtual Ast {
+SPP_EXP_CLS struct spp::asts::IterPatternVariantAst : virtual Ast {
     using Ast::Ast;
 
 protected:

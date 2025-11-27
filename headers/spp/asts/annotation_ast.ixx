@@ -12,7 +12,7 @@ import std;
  * marking a method as @c \@virtualmethod won't generate any code, but will tag the method as virtual, unlocking
  * additional behaviour in the compiler.
  */
-SPP_EXP struct spp::asts::AnnotationAst final : virtual Ast {;
+SPP_EXP_CLS struct spp::asts::AnnotationAst final : virtual Ast {;
     /**
      * The token that represents the @c @ sign in the annotation. This introduces the annotation.
      */

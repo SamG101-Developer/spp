@@ -10,8 +10,8 @@ import std;
 
 
 namespace spp::analyse::scopes {
-    SPP_EXP class Scope;
-    SPP_EXP class ScopeManager;
+    SPP_EXP_CLS class Scope;
+    SPP_EXP_CLS class ScopeManager;
 }
 
 
@@ -34,13 +34,13 @@ namespace spp::analyse::utils::func_utils {
      *      2. The function scope (the scope generated when the @c FunctionPrototypeAst was analysed).
      *      3. The function name (the identifier that is used to call the function).
      */
-    SPP_EXP auto get_function_owner_type_and_function_name(
+    SPP_EXP_FUN auto get_function_owner_type_and_function_name(
         asts::ExpressionAst const &lhs,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData *meta)
         -> std::tuple<std::shared_ptr<asts::TypeAst>, scopes::Scope const*, std::shared_ptr<asts::IdentifierAst>>;
 
-    SPP_EXP auto convert_method_to_function_form(
+    SPP_EXP_FUN auto convert_method_to_function_form(
         asts::TypeAst const &function_owner_type,
         asts::IdentifierAst const &function_name,
         asts::PostfixExpressionAst const &lhs,
@@ -49,32 +49,32 @@ namespace spp::analyse::utils::func_utils {
         asts::meta::CompilerMetaData *meta)
         -> std::pair<std::unique_ptr<asts::PostfixExpressionAst>, std::unique_ptr<asts::PostfixExpressionOperatorFunctionCallAst>>;
 
-    SPP_EXP auto get_all_function_scopes(
+    SPP_EXP_FUN auto get_all_function_scopes(
         asts::IdentifierAst const &target_fn_name,
         scopes::Scope const *target_scope,
         bool for_override = false)
         -> std::vector<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, std::unique_ptr<asts::GenericArgumentGroupAst>>>;
 
-    SPP_EXP auto check_for_conflicting_overload(
+    SPP_EXP_FUN auto check_for_conflicting_overload(
         scopes::Scope const &this_scope,
         scopes::Scope const *target_scope,
         asts::FunctionPrototypeAst const &new_fn)
         -> asts::FunctionPrototypeAst*;
 
-    SPP_EXP auto check_for_conflicting_override(
+    SPP_EXP_FUN auto check_for_conflicting_override(
         scopes::Scope const &this_scope,
         scopes::Scope const *target_scope,
         asts::FunctionPrototypeAst const &new_fn,
         scopes::Scope const *exclude_scope = nullptr)
         -> asts::FunctionPrototypeAst*;
 
-    SPP_EXP auto name_args(
+    SPP_EXP_FUN auto name_args(
         std::vector<std::unique_ptr<asts::FunctionCallArgumentAst>> &args,
         std::vector<asts::FunctionParameterAst*> params,
         scopes::ScopeManager &sm)
         -> void;
 
-    SPP_EXP auto name_generic_args(
+    SPP_EXP_FUN auto name_generic_args(
         std::vector<std::unique_ptr<asts::GenericArgumentAst>> &args,
         std::vector<asts::GenericParameterAst*> params,
         asts::Ast const &owner,
@@ -83,7 +83,7 @@ namespace spp::analyse::utils::func_utils {
         bool is_tuple_owner = false)
         -> void;
 
-    SPP_EXP template <typename GenericArgType, typename GenericParamType>
+    SPP_EXP_CLS template <typename GenericArgType, typename GenericParamType>
     auto name_generic_args_impl(
         std::vector<std::unique_ptr<GenericArgType>> &args,
         std::vector<GenericParamType*> params,
@@ -92,7 +92,7 @@ namespace spp::analyse::utils::func_utils {
         asts::meta::CompilerMetaData *meta)
         -> void;
 
-    SPP_EXP auto infer_generic_args(
+    SPP_EXP_FUN auto infer_generic_args(
         std::vector<std::unique_ptr<asts::GenericArgumentAst>> &args,
         std::vector<asts::GenericParameterAst*> params,
         std::vector<asts::GenericParameterAst*> opt_params,
@@ -107,7 +107,7 @@ namespace spp::analyse::utils::func_utils {
         asts::meta::CompilerMetaData *meta)
         -> void;
 
-    SPP_EXP auto infer_generic_args_impl_type(
+    SPP_EXP_FUN auto infer_generic_args_impl_type(
         std::vector<std::unique_ptr<asts::GenericArgumentTypeKeywordAst>> &args,
         std::vector<asts::GenericParameterTypeAst*> params,
         std::vector<asts::GenericParameterTypeAst*> opt_params,
@@ -121,7 +121,7 @@ namespace spp::analyse::utils::func_utils {
         asts::meta::CompilerMetaData *meta)
         -> void;
 
-    SPP_EXP auto infer_generic_args_impl_comp(
+    SPP_EXP_FUN auto infer_generic_args_impl_comp(
         std::vector<std::unique_ptr<asts::GenericArgumentCompKeywordAst>> &args,
         std::vector<asts::GenericParameterCompAst*> params,
         std::vector<asts::GenericArgumentCompKeywordAst*> explicit_args,
@@ -133,13 +133,13 @@ namespace spp::analyse::utils::func_utils {
         asts::meta::CompilerMetaData *meta)
         -> void;
 
-    SPP_EXP auto is_target_callable(
+    SPP_EXP_FUN auto is_target_callable(
         asts::ExpressionAst &expr,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData *meta)
         -> std::shared_ptr<asts::TypeAst>;
 
-    SPP_EXP auto create_callable_prototype(
+    SPP_EXP_FUN auto create_callable_prototype(
         asts::TypeAst const &expr_type)
         -> std::unique_ptr<asts::FunctionPrototypeAst>;
 }

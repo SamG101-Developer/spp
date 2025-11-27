@@ -9,32 +9,35 @@ export import spp.asts.meta.ast_printer;
 export import spp.asts.mixins.compiler_stages;
 export import spp.asts.meta.compiler_meta_data;
 export import spp.codegen.llvm_ctx;
-import spp.analyse.scopes.scope;
+
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class Scope;
+}
 
 
 namespace spp::asts {
-    SPP_EXP template <typename T>
+    SPP_EXP_CLS template <typename T>
     SPP_ATTR_ALWAYS_INLINE
     auto ast_clone(std::unique_ptr<T> const &ast) -> std::unique_ptr<std::remove_cvref_t<T>> {
         if (ast == nullptr) { return nullptr; }
         return ast_cast<std::remove_cvref_t<T>>(ast->clone());
     }
 
-    SPP_EXP template <typename T>
+    SPP_EXP_CLS template <typename T>
     SPP_ATTR_ALWAYS_INLINE
     auto ast_clone(std::shared_ptr<T> const &ast) -> std::unique_ptr<std::remove_cvref_t<T>> {
         if (ast == nullptr) { return nullptr; }
         return ast_cast<std::remove_cvref_t<T>>(ast->clone());
     }
 
-    SPP_EXP template <typename T>
+    SPP_EXP_CLS template <typename T>
     SPP_ATTR_ALWAYS_INLINE
     auto ast_clone(T *ast) -> std::unique_ptr<std::remove_cvref_t<T>> {
         if (ast == nullptr) { return nullptr; }
         return ast_cast<std::remove_cvref_t<T>>(ast->clone());
     }
 
-    SPP_EXP template <typename T>
+    SPP_EXP_CLS template <typename T>
     SPP_ATTR_ALWAYS_INLINE
     auto ast_clone_vec(std::vector<std::unique_ptr<T>> const &asts) -> std::vector<std::unique_ptr<T>> {
         std::vector<std::unique_ptr<T>> cloned_asts;
@@ -45,7 +48,7 @@ namespace spp::asts {
         return cloned_asts;
     }
 
-    SPP_EXP template <typename T>
+    SPP_EXP_CLS template <typename T>
     SPP_ATTR_ALWAYS_INLINE
     auto ast_clone_vec_shared(std::vector<std::shared_ptr<T>> const &asts) -> std::vector<std::shared_ptr<T>> {
         std::vector<std::shared_ptr<T>> cloned_asts;
@@ -56,50 +59,50 @@ namespace spp::asts {
         return cloned_asts;
     }
 
-    SPP_EXP template <typename T>
+    SPP_EXP_CLS template <typename T>
     SPP_ATTR_HOT
     SPP_ATTR_ALWAYS_INLINE
     auto ast_cast(Ast *ast) -> T* {
         return dynamic_cast<T*>(ast);
     }
 
-    SPP_EXP template <typename T>
+    SPP_EXP_CLS template <typename T>
     SPP_ATTR_HOT
     SPP_ATTR_ALWAYS_INLINE
     auto ast_cast(Ast &ast) -> T& {
         return dynamic_cast<T&>(ast);
     }
 
-    SPP_EXP template <typename T>
+    SPP_EXP_CLS template <typename T>
     SPP_ATTR_HOT
     SPP_ATTR_ALWAYS_INLINE
     auto ast_cast(Ast const *ast) -> T const* {
         return dynamic_cast<T const*>(ast);
     }
 
-    SPP_EXP template <typename T>
+    SPP_EXP_CLS template <typename T>
     SPP_ATTR_HOT
     SPP_ATTR_ALWAYS_INLINE
     auto ast_cast(Ast const &ast) -> T const& {
         return dynamic_cast<T const&>(ast);
     }
 
-    SPP_EXP template <typename T, typename U>
+    SPP_EXP_CLS template <typename T, typename U>
     SPP_ATTR_ALWAYS_INLINE
     auto ast_cast(std::unique_ptr<U> &&ast) -> std::unique_ptr<T> {
         return std::unique_ptr<T>(ast_cast<T>(ast.release()));
     }
 
-    SPP_EXP auto ast_name(Ast *ast) -> std::shared_ptr<TypeAst>;
+    SPP_EXP_FUN auto ast_name(Ast *ast) -> std::shared_ptr<TypeAst>;
 
-    SPP_EXP auto ast_body(Ast *ast) -> std::vector<Ast*>;
+    SPP_EXP_FUN auto ast_body(Ast *ast) -> std::vector<Ast*>;
 }
 
 /**
  * The AST base class is inherited by all other AST classes, provided base functionality, including formatted printing
  * and end position identification.
  */
-SPP_EXP struct spp::asts::Ast : mixins::CompilerStages {
+SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
     friend struct spp::asts::AnnotationAst;
 
 protected:

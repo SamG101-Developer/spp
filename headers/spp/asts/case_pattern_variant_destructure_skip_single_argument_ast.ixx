@@ -7,7 +7,7 @@ import spp.asts.case_pattern_variant_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst final : CasePatternVariantAst {
+SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst final : CasePatternVariantAst {
     /**
      * The @c _ token that indicates the skip single argument pattern. This is used to indicate the next element
      * sequentially is being skipped, and is often seen in array and tuple destructuring. Invalid in object

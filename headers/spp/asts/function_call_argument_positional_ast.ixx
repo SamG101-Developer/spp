@@ -11,7 +11,7 @@ import std;
  * The FunctionCallArgumentPositionalAst represents a positional argument in a function call. It is forces the argument
  * to be matched by an index rather than a keyword. It also support for unpacking a tuple into arguments.
  */
-SPP_EXP struct spp::asts::FunctionCallArgumentPositionalAst : FunctionCallArgumentAst {
+SPP_EXP_CLS struct spp::asts::FunctionCallArgumentPositionalAst : FunctionCallArgumentAst {
     /**
      * The token that represents the @c .. unpacking operator. This is used to indicate that the argument is a tuple
      * being unpacked into the resulting arguments.

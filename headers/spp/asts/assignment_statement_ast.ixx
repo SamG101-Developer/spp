@@ -16,7 +16,7 @@ import std;
  * because they share function mapping logic with binary expressions, and can only have 1 left-hand-side expression
  * anyway. Some checks are copied from this class (symbolic target, etc.).
  */
-SPP_EXP struct spp::asts::AssignmentStatementAst final : StatementAst {
+SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
     /**
      * The list of left-hand side expressions in the assignment statement. These are the variables or properties that
      * are being assigned a value.

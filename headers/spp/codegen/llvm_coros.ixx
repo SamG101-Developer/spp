@@ -6,11 +6,11 @@ import llvm;
 
 
 namespace spp::codegen {
-    SPP_EXP struct LlvmCoroFrame;
+    SPP_EXP_CLS struct LlvmCoroFrame;
 }
 
 
-SPP_EXP struct spp::codegen::LlvmCoroFrame {
+SPP_EXP_CLS struct spp::codegen::LlvmCoroFrame {
     llvm::Value *coro_id;
     llvm::Value *coro_hdl;
 };

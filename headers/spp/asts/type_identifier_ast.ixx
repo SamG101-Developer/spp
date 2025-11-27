@@ -13,7 +13,7 @@ import std;
  * The TypeIdentifierAst is a type expression that is represented by a single type name, and is analogous to the
  * IdentifierAst of the ExpressionAst.
  */
-SPP_EXP struct spp::asts::TypeIdentifierAst final : TypeAst {
+SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
     /**
      * The name for the type. This is the name of the type, such as @c Str or @code Vec[BigInt]@endcode.
      */

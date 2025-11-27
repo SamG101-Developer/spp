@@ -6,7 +6,7 @@ import spp.asts.primary_expression_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::FoldExpressionAst final : PrimaryExpressionAst {
+SPP_EXP_CLS struct spp::asts::FoldExpressionAst final : PrimaryExpressionAst {
     /**
      * The @c .. fold token that indicates a fold operation. Used in binary and function call contexts.
      */

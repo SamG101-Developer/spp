@@ -18,7 +18,7 @@ import std;
  * @note This class is more of a "marker" to see where expressions should be, as there is no additional functionality in
  * this class.
  */
-SPP_EXP struct spp::asts::ExpressionAst : StatementAst {
+SPP_EXP_CLS struct spp::asts::ExpressionAst : StatementAst {
     using StatementAst::StatementAst;
     friend struct ArrayLiteralExplicitElementsAst;
     friend struct ArrayLiteralRepeatedElementAst;

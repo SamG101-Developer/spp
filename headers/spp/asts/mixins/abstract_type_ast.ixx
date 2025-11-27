@@ -10,11 +10,11 @@ import std;
 
 
 namespace spp::asts::mixins {
-    SPP_EXP struct AbstractTypeAst;
+    SPP_EXP_CLS struct AbstractTypeAst;
 }
 
 
-SPP_EXP struct spp::asts::mixins::AbstractTypeAst {
+SPP_EXP_CLS struct spp::asts::mixins::AbstractTypeAst {
 public:
     virtual ~AbstractTypeAst() = default;
 

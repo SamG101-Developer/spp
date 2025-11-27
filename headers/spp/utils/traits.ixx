@@ -6,16 +6,16 @@ import std;
 
 
 namespace spp::utils::traits {
-    SPP_EXP template <typename T>
+    SPP_EXP_CLS template <typename T>
     struct function_traits : function_traits<decltype(&T::operator())> {
     };
 
-    SPP_EXP template <std::size_t N, typename F>
+    SPP_EXP_CLS template <std::size_t N, typename F>
     using nth_param_t = function_traits<F>::template arg_type<N>;
 }
 
 
-SPP_EXP template <typename Ret, typename... Args>
+SPP_EXP_CLS template <typename Ret, typename... Args>
 struct spp::utils::traits::function_traits<Ret(*)(Args...)> {
     using ret_t = Ret;
     using func_stl_t = std::function<Ret(Args...)>;
@@ -29,7 +29,7 @@ struct spp::utils::traits::function_traits<Ret(*)(Args...)> {
 };
 
 
-SPP_EXP template <typename Class, typename Ret, typename... Args>
+SPP_EXP_CLS template <typename Class, typename Ret, typename... Args>
 struct spp::utils::traits::function_traits<Ret(Class::*)(Args...) const> {
     using ret_t = Ret;
     using func_stl_t = std::function<Ret(Args...)>;
@@ -43,7 +43,7 @@ struct spp::utils::traits::function_traits<Ret(Class::*)(Args...) const> {
 };
 
 
-SPP_EXP template <typename Class, typename Ret, typename... Args>
+SPP_EXP_CLS template <typename Class, typename Ret, typename... Args>
 struct spp::utils::traits::function_traits<Ret(Class::*)(Args...)> {
     using ret_t = Ret;
     using func_stl_t = std::function<Ret(Args...)>;

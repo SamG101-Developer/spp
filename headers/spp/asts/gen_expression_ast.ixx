@@ -12,7 +12,7 @@ import std;
  * The GenExpressionAst represents a value being yielded out of a coroutine. A convention can be applied to the value,
  * to create foundational structures like iterators.
  */
-SPP_EXP struct spp::asts::GenExpressionAst final : PrimaryExpressionAst {
+SPP_EXP_CLS struct spp::asts::GenExpressionAst final : PrimaryExpressionAst {
 private:
     std::shared_ptr<TypeAst> m_gen_type;
 

@@ -9,7 +9,7 @@ import llvm;
 import std;
 
 
-SPP_EXP struct spp::asts::CaseExpressionBranchAst final : virtual Ast, mixins::TypeInferrableAst {
+SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : virtual Ast, mixins::TypeInferrableAst {
     /**
      * The optional comparison operator. This is for cases pattern matching cases that look something like
      * @code== 123 { ... }@endcode.

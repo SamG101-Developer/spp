@@ -2,12 +2,13 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.closure_expression_parameter_and_capture_group_ast;
+import spp.asts._fwd;
 import spp.asts.ast;
 
 import std;
 
 
-SPP_EXP struct spp::asts::ClosureExpressionParameterAndCaptureGroupAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::ClosureExpressionParameterAndCaptureGroupAst final : virtual Ast {
     /**
      * The @c | token that indicates the start of the closure parameter and capture group.
      */

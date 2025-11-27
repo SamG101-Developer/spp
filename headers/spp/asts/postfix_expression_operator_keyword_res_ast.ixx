@@ -7,7 +7,7 @@ import spp.asts.postfix_expression_operator_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::PostfixExpressionOperatorKeywordResAst final : PostfixExpressionOperatorAst {
+SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordResAst final : PostfixExpressionOperatorAst {
 private:
     std::shared_ptr<PostfixExpressionAst> m_mapped_func;
 

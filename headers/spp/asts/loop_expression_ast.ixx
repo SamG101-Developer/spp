@@ -9,7 +9,7 @@ import llvm;
 import std;
 
 
-SPP_EXP struct spp::asts::LoopExpressionAst final : PrimaryExpressionAst {
+SPP_EXP_CLS struct spp::asts::LoopExpressionAst final : PrimaryExpressionAst {
 private:
     std::optional<std::tuple<ExpressionAst*, std::shared_ptr<TypeAst>, analyse::scopes::Scope*>> m_loop_exit_type_info;
 

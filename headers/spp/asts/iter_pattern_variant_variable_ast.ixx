@@ -7,7 +7,7 @@ import spp.asts.iter_pattern_variant_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::IterPatternVariantVariableAst final : IterPatternVariantAst {
+SPP_EXP_CLS struct spp::asts::IterPatternVariantVariableAst final : IterPatternVariantAst {
     /**
      * The variable that the generator's yielded value is bound to. This allows the internal value inside the
      * @c Generated container to be inspected.

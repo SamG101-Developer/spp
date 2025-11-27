@@ -11,7 +11,7 @@ import std;
  * The ObjectInitializerArgumentGroupAst represents a group of object initializer arguments. It is used to group
  * multiple shorthand or keyword arguments together in a object initializer.
  */
-SPP_EXP struct spp::asts::ObjectInitializerArgumentGroupAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentGroupAst final : virtual Ast {
     /**
      * The token that represents the left parenthesis @code (@endcode in the object initializer argument group. This
      * introduces the object initializer argument group.

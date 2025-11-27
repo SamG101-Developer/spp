@@ -7,7 +7,7 @@ import spp.asts.literal_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::StringLiteralAst final : LiteralAst {
+SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
     /**
      * The string value of the string literal. This is the actual string that is represented by the literal.
      */

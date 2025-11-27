@@ -7,7 +7,7 @@ import spp.asts.local_variable_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::LocalVariableDestructureAttributeBindingAst final : LocalVariableAst {
+SPP_EXP_CLS struct spp::asts::LocalVariableDestructureAttributeBindingAst final : LocalVariableAst {
     friend struct CasePatternVariantDestructureAttributeBindingAst;
 
     /**

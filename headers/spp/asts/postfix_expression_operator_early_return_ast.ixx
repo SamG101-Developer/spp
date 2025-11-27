@@ -8,7 +8,7 @@ import llvm;
 import std;
 
 
-SPP_EXP struct spp::asts::PostfixExpressionOperatorEarlyReturnAst final : PostfixExpressionOperatorAst {
+SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorEarlyReturnAst final : PostfixExpressionOperatorAst {
     /**
      * The @c ? token that indicates an early return in a postfix expression. This token is used to signify that the
      * expression should be checked for its result-type failure type, and if it matches, the expression will lift the

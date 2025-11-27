@@ -7,7 +7,7 @@ import spp.asts.iter_pattern_variant_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::IterPatternVariantElseAst final : IterPatternVariantAst {
+SPP_EXP_CLS struct spp::asts::IterPatternVariantElseAst final : IterPatternVariantAst {
     /**
      * The @c else token that indicates the pattern variant is a "catch-all". This is used with any generator.
      */

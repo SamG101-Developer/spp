@@ -17,7 +17,7 @@ import std;
  * }
  * @endcode
  */
-SPP_EXP struct spp::asts::SupPrototypeFunctionsAst final : virtual Ast, ModuleMemberAst {
+SPP_EXP_CLS struct spp::asts::SupPrototypeFunctionsAst final : virtual Ast, ModuleMemberAst {
     /**
      * The @c sup keyword that represents the start of the superimposition. This is used to indicate that a type is
      * being extended with additional methods.

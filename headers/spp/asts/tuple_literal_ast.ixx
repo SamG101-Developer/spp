@@ -7,7 +7,7 @@ import spp.asts.literal_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::TupleLiteralAst final : LiteralAst {
+SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
     /**
      * The left parenthesis token that represents the start of the tuple literal.
      */

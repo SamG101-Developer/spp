@@ -8,7 +8,7 @@ import llvm;
 import std;
 
 
-SPP_EXP struct spp::asts::PostfixExpressionAst final : ExpressionAst {
+SPP_EXP_CLS struct spp::asts::PostfixExpressionAst final : ExpressionAst {
     /**
      * The left-hand side expression of the postfix expression. This is the base expression on which the postfix operation
      * is applied.

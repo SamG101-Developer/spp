@@ -7,7 +7,7 @@ import spp.asts.generic_parameter_comp_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::GenericParameterCompOptionalAst final : GenericParameterCompAst {
+SPP_EXP_CLS struct spp::asts::GenericParameterCompOptionalAst final : GenericParameterCompAst {
     /**
      * The token that separates the parameter name from the default value.
      */

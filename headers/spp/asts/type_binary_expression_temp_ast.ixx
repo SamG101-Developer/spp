@@ -7,7 +7,7 @@ import spp.asts._fwd;
 import std;
 
 
-SPP_EXP struct spp::asts::TypeBinaryExpressionTempAst final {
+SPP_EXP_CLS struct spp::asts::TypeBinaryExpressionTempAst final {
     /**
      * The operator token that represents the type binary operation. This indicates the type of operation being
      * performed.

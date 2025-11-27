@@ -8,7 +8,7 @@ import spp.asts.mixins.type_inferrable_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::IterExpressionBranchAst final : virtual Ast, mixins::TypeInferrableAst {
+SPP_EXP_CLS struct spp::asts::IterExpressionBranchAst final : virtual Ast, mixins::TypeInferrableAst {
     /**
      * The pattern that this branch matches against. This can only be a single pattern due to different @c iter patterns
      * introducing different variables and symbols (same as case-of destructuring).

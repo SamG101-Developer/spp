@@ -7,7 +7,7 @@ import spp.asts.generic_parameter_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
+SPP_EXP_CLS struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
     /**
      * The optional inline constraints for the generic type parameter. This is used to specify constraints on the type
      * parameter, such as @c I32 or @c F64 . An example is @code fun func[T: Copy]()@endcode, where @c T is the

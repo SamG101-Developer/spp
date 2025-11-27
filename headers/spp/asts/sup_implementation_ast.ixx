@@ -6,7 +6,7 @@ import spp.asts.inner_scope_ast;
 
 import std;
 
-SPP_EXP struct spp::asts::SupImplementationAst final : InnerScopeAst<std::unique_ptr<SupMemberAst>> {
+SPP_EXP_CLS struct spp::asts::SupImplementationAst final : InnerScopeAst<std::unique_ptr<SupMemberAst>> {
     using InnerScopeAst::InnerScopeAst;
 
     ~SupImplementationAst() override;

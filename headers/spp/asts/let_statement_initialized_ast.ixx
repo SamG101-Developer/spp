@@ -8,7 +8,7 @@ import llvm;
 import std;
 
 
-SPP_EXP struct spp::asts::LetStatementInitializedAst final : LetStatementAst {
+SPP_EXP_CLS struct spp::asts::LetStatementInitializedAst final : LetStatementAst {
     /**
      * The @c let token that starts this statement. It is used to indicate the beginning of a let statement.
      */

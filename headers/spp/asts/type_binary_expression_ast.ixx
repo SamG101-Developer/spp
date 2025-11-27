@@ -8,7 +8,7 @@ import spp.asts.mixins.temp_type_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::TypeBinaryExpressionAst final : virtual Ast, mixins::TempTypeAst {
+SPP_EXP_CLS struct spp::asts::TypeBinaryExpressionAst final : virtual Ast, mixins::TempTypeAst {
     /**
      * The left-hand side expression of the type binary expression. This is the first operand.
      */

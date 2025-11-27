@@ -7,7 +7,7 @@ import spp.asts.loop_condition_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::LoopConditionIterableAst final : LoopConditionAst {
+SPP_EXP_CLS struct spp::asts::LoopConditionIterableAst final : LoopConditionAst {
     /**
      * The variable for iteration. This is filled with each element of the iterable as the loop iterates.
      */

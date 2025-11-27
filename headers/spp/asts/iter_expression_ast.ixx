@@ -7,7 +7,7 @@ import spp.asts.primary_expression_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::IterExpressionAst final : PrimaryExpressionAst {
+SPP_EXP_CLS struct spp::asts::IterExpressionAst final : PrimaryExpressionAst {
     /**
      * The @c iter token that indicates the start of an iteration expression.
      */

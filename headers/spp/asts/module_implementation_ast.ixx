@@ -11,7 +11,7 @@ import std;
  * The ModuleImplementationAst represents the implementation of a module in the SPP language. It contains a list of
  * module members that define the functionality and structure of the module.
  */
-SPP_EXP struct spp::asts::ModuleImplementationAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::ModuleImplementationAst final : virtual Ast {
     /**
      * The list of module members in the implementation. This can include function implementations, class implementations,
      * and other module-level constructs.

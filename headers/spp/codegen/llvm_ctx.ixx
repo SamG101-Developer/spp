@@ -7,11 +7,11 @@ import std;
 
 
 namespace spp::codegen {
-    SPP_EXP struct LLvmCtx;
+    SPP_EXP_CLS struct LLvmCtx;
 }
 
 
-SPP_EXP struct spp::codegen::LLvmCtx {
+SPP_EXP_CLS struct spp::codegen::LLvmCtx {
     llvm::LLVMContext context;
     std::unique_ptr<llvm::Module> module;
     llvm::IRBuilder<> builder;

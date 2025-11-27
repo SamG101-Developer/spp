@@ -9,7 +9,7 @@ import spp.asts.type_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::TypePostfixExpressionAst final : TypeAst {
+SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
     /**
      * The left-hand side type of the postfix expression. This is the base type on which the postfix operation is
      * applied.

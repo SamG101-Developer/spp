@@ -6,8 +6,8 @@ export module spp.asts.mixins.orderable_ast;
 
 /// @cond
 namespace spp::asts::mixins {
-    SPP_EXP struct OrderableAst;
-    SPP_EXP enum class OrderableTag;
+    SPP_EXP_CLS struct OrderableAst;
+    SPP_EXP_CLS enum class OrderableTag;
 }
 /// @endcond
 
@@ -17,7 +17,7 @@ namespace spp::asts::mixins {
  * example, all parameters and arguments are orderable, as they can be ordered in their groups. Required parameters must
  * precede optional parameters fr example.
  */
-SPP_EXP struct spp::asts::mixins::OrderableAst {
+SPP_EXP_CLS struct spp::asts::mixins::OrderableAst {
 protected:
     OrderableTag m_order_tag;
 
@@ -30,7 +30,7 @@ public:
 };
 
 
-SPP_EXP enum class spp::asts::mixins::OrderableTag {
+SPP_EXP_CLS enum class spp::asts::mixins::OrderableTag {
     KEYWORD_ARG,
     POSITIONAL_ARG,
     SELF_PARAM,

@@ -15,7 +15,7 @@ import std;
  * is also the terminator for @c pos_end() recursive calls; the end position is the length of the associated data added
  * to is the sart position.
  */
-SPP_EXP struct spp::asts::TokenAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::TokenAst final : virtual Ast {
     friend struct TypeIdentifierAst;
 
     /**

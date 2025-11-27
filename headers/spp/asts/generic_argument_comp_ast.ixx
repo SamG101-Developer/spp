@@ -11,7 +11,7 @@ import std;
  * The GenericArgumentCompAst represents a generic argument that accepts a compile time value (not a type). Any type is
  * allowed, as any type can be represented at compile time.
  */
-SPP_EXP struct spp::asts::GenericArgumentCompAst : GenericArgumentAst {
+SPP_EXP_CLS struct spp::asts::GenericArgumentCompAst : GenericArgumentAst {
     /**
      * The value of the generic comp argument. This is passed into the generic like @code func[123]()@endcode or
      * @code std::Arr[std::String, 100_uz]@endcode.

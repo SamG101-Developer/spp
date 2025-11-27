@@ -11,7 +11,7 @@ import std;
  * Base class for all different case pattern variants. This is used to store different variants in the same list, and to
  * provide the conversion binding for creating variables defined in patterns.
  */
-SPP_EXP struct spp::asts::CasePatternVariantAst : virtual Ast {
+SPP_EXP_CLS struct spp::asts::CasePatternVariantAst : virtual Ast {
     using Ast::Ast;
 
 protected:

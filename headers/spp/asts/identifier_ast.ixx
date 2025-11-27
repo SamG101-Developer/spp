@@ -8,7 +8,7 @@ import spp.asts.primary_expression_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::IdentifierAst final : PrimaryExpressionAst, std::enable_shared_from_this<IdentifierAst> {
+SPP_EXP_CLS struct spp::asts::IdentifierAst final : PrimaryExpressionAst, std::enable_shared_from_this<IdentifierAst> {
     /**
      * The internal value of the identifier. This is the name of the identifier, such as @c variable or @c my_function.
      */

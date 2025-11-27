@@ -6,8 +6,8 @@ import spp.analyse.scopes.scope_iterator;
 
 
 namespace spp::analyse::scopes {
-    SPP_EXP class Scope;
-    SPP_EXP class ScopeRange;
+    SPP_EXP_CLS class Scope;
+    SPP_EXP_CLS class ScopeRange;
 }
 
 
@@ -15,7 +15,7 @@ namespace spp::analyse::scopes {
  * A @c ScopeRange is a range type that can be used in range-based for loops to iterate the scopes in a @c ScopeManager.
  * It contains a @c begin and @c end function, separating them from the actual @c ScopeManager type.
  */
-SPP_EXP class spp::analyse::scopes::ScopeRange {
+SPP_EXP_CLS class spp::analyse::scopes::ScopeRange {
     /**
      * The root scope to begin iterating from. This is typically the current scope of the manager when the iteration is
      * created.

@@ -8,7 +8,7 @@ import llvm;
 import std;
 
 
-SPP_EXP struct spp::asts::LocalVariableDestructureTupleAst final : LocalVariableAst {
+SPP_EXP_CLS struct spp::asts::LocalVariableDestructureTupleAst final : LocalVariableAst {
     friend struct CasePatternVariantDestructureTupleAst;
 
 private:

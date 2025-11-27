@@ -7,7 +7,7 @@ import spp.asts.type_unary_expression_operator_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeUnaryExpressionOperatorAst {
+SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeUnaryExpressionOperatorAst {
     /**
      * The convention token representing the borrowing convention. This indicates how the type is borrowed, immutably or
      * mutably.

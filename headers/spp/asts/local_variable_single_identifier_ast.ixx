@@ -18,7 +18,7 @@ import std;
  * ie @code (mut x, y) = (1, 2)@endcode. As this AST is either used as a parameter or part of a "let" statement, it will
  * be introducing a symbol into the local scope.
  */
-SPP_EXP struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVariableAst {
+SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVariableAst {
     friend struct CasePatternVariantLiteralAst;
     friend struct CasePatternVariantSingleIdentifierAst;
 

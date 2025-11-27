@@ -12,7 +12,7 @@ import std;
  * The FunctionParameterOptionalAst represents an optional parameter in a function prototype. It is used to define
  * parameters that are not required, and can be omitted when calling the function.
  */
-SPP_EXP struct spp::asts::FunctionParameterOptionalAst final : FunctionParameterAst {
+SPP_EXP_CLS struct spp::asts::FunctionParameterOptionalAst final : FunctionParameterAst {
     /**
      * The token that separates the parameter name from the default value.
      */

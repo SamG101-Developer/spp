@@ -11,11 +11,11 @@ import std;
 
 
 namespace spp::compiler {
-    SPP_EXP struct CompilerBoot;
+    SPP_EXP_CLS struct CompilerBoot;
 }
 
 
-SPP_EXP struct spp::compiler::CompilerBoot {
+SPP_EXP_CLS struct spp::compiler::CompilerBoot {
 private:
     std::vector<asts::ModulePrototypeAst*> m_modules;
 

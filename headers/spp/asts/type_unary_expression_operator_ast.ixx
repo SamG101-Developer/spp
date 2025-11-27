@@ -7,7 +7,7 @@ import spp.asts.ast;
 import std;
 
 
-SPP_EXP struct spp::asts::TypeUnaryExpressionOperatorAst : virtual Ast {
+SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorAst : virtual Ast {
     using Ast::Ast;
     friend struct TypeUnaryExpressionOperatorBorrowAst;
     friend struct TypeUnaryExpressionOperatorNamespaceAst;

@@ -7,7 +7,7 @@ import spp.asts.expression_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::IsExpressionAst final : ExpressionAst {
+SPP_EXP_CLS struct spp::asts::IsExpressionAst final : ExpressionAst {
 private:
     std::shared_ptr<CaseExpressionAst> m_mapped_func;
 

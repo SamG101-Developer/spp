@@ -10,7 +10,7 @@ import std;
 /**
  * A FunctionParameterGroupAst is used to represent a group of function parameters in a function prototype.
  */
-SPP_EXP struct spp::asts::FunctionParameterGroupAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::FunctionParameterGroupAst final : virtual Ast {
     /**
      * The token that represents the left parenthesis @code (@endcode in the function parameter group. This introduces
      * the function parameter group.

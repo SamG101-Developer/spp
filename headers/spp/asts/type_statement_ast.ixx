@@ -17,7 +17,7 @@ import std;
  * complex types, such as aliasing vectors, or partially specialized hash maps etc. For example,
  * @code type SecureByteMap[T] = std::collections::HashMap[K=Byte, V=T, A=SecureAlloc[(K, V)]]@endcode
  */
-SPP_EXP struct spp::asts::TypeStatementAst final : StatementAst, mixins::VisibilityEnabledAst, ModuleMemberAst, SupMemberAst {
+SPP_EXP_CLS struct spp::asts::TypeStatementAst final : StatementAst, mixins::VisibilityEnabledAst, ModuleMemberAst, SupMemberAst {
     friend struct UseStatementAst;
 
 private:

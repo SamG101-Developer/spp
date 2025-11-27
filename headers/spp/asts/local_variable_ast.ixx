@@ -7,7 +7,7 @@ import spp.asts.ast;
 import std;
 
 
-SPP_EXP struct spp::asts::LocalVariableAst : virtual Ast {
+SPP_EXP_CLS struct spp::asts::LocalVariableAst : virtual Ast {
 protected:
     /**
      * The @c let statement that destructures are converted to, to introduce the variables created by the pattern.

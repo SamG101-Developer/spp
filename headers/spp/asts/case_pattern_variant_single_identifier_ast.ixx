@@ -8,7 +8,7 @@ import llvm;
 import std;
 
 
-SPP_EXP struct spp::asts::CasePatternVariantSingleIdentifierAst final : CasePatternVariantAst {
+SPP_EXP_CLS struct spp::asts::CasePatternVariantSingleIdentifierAst final : CasePatternVariantAst {
     /**
      * The optional @c mut token that indicates the pattern is mutable. If no @c mut token is present, the introduced
      * variable is not mutable.

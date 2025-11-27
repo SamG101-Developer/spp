@@ -55,13 +55,12 @@ auto spp::utils::strings::closest_match(
 auto spp::utils::strings::levenshtein(
     const std::string_view s1,
     const std::string_view s2)
-    -> size_t {
+    -> std::size_t {
     const auto m = s1.size();
     const auto n = s2.size();
 
-    auto prev = std::vector<size_t>(n + 1);
-    auto curr = std::vector<size_t>(n + 1);
-
+    auto prev = std::vector<std::size_t>(n + 1);
+    auto curr = std::vector<std::size_t>(n + 1);
     for (auto j = 0uz; j <= n; ++j) {
         prev[j] = j;
     }
@@ -69,7 +68,7 @@ auto spp::utils::strings::levenshtein(
     for (auto i = 0uz; i < m; ++i) {
         curr[0] = i + 1;
         for (auto j = 0uz; j < n; ++j) {
-            const auto cost = (s1[i] == s2[j]) ? 0 : 1;
+            const auto cost = (s1[i] == s2[j]) ? 0uz : 1uz;
             curr[j + 1] = std::min({curr[j] + 1, prev[j + 1] + 1, prev[j] + cost});
         }
         std::swap(prev, curr);

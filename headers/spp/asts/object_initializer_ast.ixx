@@ -8,7 +8,7 @@ import llvm;
 import std;
 
 
-SPP_EXP struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst {
+SPP_EXP_CLS struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst {
     /**
      * The type being initialized by the object initializer. This is the type of the object being created.
      */

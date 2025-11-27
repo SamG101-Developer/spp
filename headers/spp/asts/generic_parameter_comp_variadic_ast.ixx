@@ -7,7 +7,7 @@ import spp.asts.generic_parameter_comp_ast;
 import std;
 
 
-SPP_EXP struct spp::asts::GenericParameterCompVariadicAst final : GenericParameterCompAst {
+SPP_EXP_CLS struct spp::asts::GenericParameterCompVariadicAst final : GenericParameterCompAst {
     /**
      * The token that represents the @c .. ellipsis in the generic parameter. This indicates that the parameter is
      * variadic, meaning it can accept multiple values.

@@ -15,7 +15,7 @@ import std;
  * The CmpStatementAst represents a compile time definition statement at either the module or superimposition level. It
  * is analogous to Rust's "const" statement.
  */
-SPP_EXP struct spp::asts::CmpStatementAst final : virtual Ast, mixins::VisibilityEnabledAst, ModuleMemberAst, SupMemberAst {
+SPP_EXP_CLS struct spp::asts::CmpStatementAst final : virtual Ast, mixins::VisibilityEnabledAst, ModuleMemberAst, SupMemberAst {
     /**
      * The list of annotations that are applied to this cmp statement. Typically, access modifiers in this context.
      */
