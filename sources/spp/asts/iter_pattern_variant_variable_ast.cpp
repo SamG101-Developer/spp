@@ -61,7 +61,7 @@ auto spp::asts::IterPatternVariantVariableAst::print(
 
 auto spp::asts::IterPatternVariantVariableAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Create a dummy type with the same type as the variable's type, to initialize it.
     auto dummy_type = meta->case_condition->infer_type(sm, meta)->type_parts().back()->generic_arg_group->type_at("Yield")->val;
@@ -84,7 +84,7 @@ auto spp::asts::IterPatternVariantVariableAst::stage_7_analyse_semantics(
 
 auto spp::asts::IterPatternVariantVariableAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory state of the variable.
     m_mapped_let->stage_8_check_memory(sm, meta);

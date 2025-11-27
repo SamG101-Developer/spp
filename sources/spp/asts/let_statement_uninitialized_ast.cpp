@@ -71,7 +71,7 @@ auto spp::asts::LetStatementUninitializedAst::print(
 
 auto spp::asts::LetStatementUninitializedAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the type.
     type->stage_7_analyse_semantics(sm, meta);
@@ -91,7 +91,7 @@ auto spp::asts::LetStatementUninitializedAst::stage_7_analyse_semantics(
 
 auto spp::asts::LetStatementUninitializedAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the variable for memory issues.
     meta->save();
@@ -105,7 +105,7 @@ auto spp::asts::LetStatementUninitializedAst::stage_8_check_memory(
 
 auto spp::asts::LetStatementUninitializedAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Delegate the code generation to the variable, after setting up the meta.

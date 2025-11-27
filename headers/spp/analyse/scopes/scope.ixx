@@ -6,9 +6,11 @@ import spp.asts._fwd;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.symbol_table;
+import spp.compiler.module_tree;
 import spp.utils.error_formatter;
 
 import std;
+import sys;
 
 
 /// @cond
@@ -128,7 +130,7 @@ public:
 
     auto get_var_symbol_outermost(asts::Ast const &expr) const -> std::pair<std::shared_ptr<VariableSymbol>, Scope const*>;
 
-    auto depth_difference(const Scope *scope) const -> ssize_t;
+    auto depth_difference(const Scope *scope) const -> sys::ssize_t;
 
     auto final_child_scope() const -> Scope const*;
 

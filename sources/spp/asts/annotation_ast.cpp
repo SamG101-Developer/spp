@@ -134,7 +134,7 @@ auto spp::asts::AnnotationAst::stage_1_pre_process(
 
 auto spp::asts::AnnotationAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Default AST processing (sets scope).
     Ast::stage_2_gen_top_level_scopes(sm, meta);

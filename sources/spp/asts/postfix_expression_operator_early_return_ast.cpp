@@ -70,7 +70,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::print(
 
 auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Get the left-hand-side information.
     const auto lhs = meta->postfix_expression_lhs;
@@ -90,7 +90,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_7_analyse_semanti
 
 auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Convert the unwrapping into a case structure.
@@ -126,7 +126,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_10_code_gen_2(
 
 auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Get the left-hand-side information.
     const auto lhs = meta->postfix_expression_lhs;

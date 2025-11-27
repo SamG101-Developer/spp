@@ -125,7 +125,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::print(
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     const auto lhs = meta->postfix_expression_lhs;
     const auto [fn_owner_type, fn_owner_scope, fn_name] = analyse::utils::func_utils::get_function_owner_type_and_function_name(*lhs, *sm, meta);
@@ -508,7 +508,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Prevent double analysis.
     if (m_overload_info.has_value()) {
@@ -535,7 +535,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_7_analyse_semant
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // If a fold is taking place, analyse the non-folding argument again (checks for double move).
     if (fold != nullptr and not m_folded_args.empty()) {
@@ -572,7 +572,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_8_check_memory(
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) -> llvm::Value* {
     // Get the llvm function target.
     const auto llvm_func = std::get<1>(*m_overload_info)->m_llvm_func;
@@ -588,7 +588,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_10_code_gen_2(
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Get the function return type from the overload.
     auto ret_type = std::get<1>(*m_overload_info)->return_type;

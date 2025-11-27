@@ -85,7 +85,7 @@ auto spp::asts::AssignmentStatementAst::print(
 
 auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Ensure the LHS is semantically valid.
     auto is_attr = [](Ast const *x) -> bool { return not ast_cast<IdentifierAst>(x); };
@@ -160,7 +160,8 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
 
 auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta) -> void {
+    CompilerMetaData *meta)
+    -> void {
     // For each assignment, check the memory status and resolve any (partial-)moves.
     auto is_attr = [](Ast const *x) -> bool { return not ast_cast<IdentifierAst>(x); };
     auto lhs_syms = lhs
@@ -201,7 +202,7 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
 
 auto spp::asts::AssignmentStatementAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate code for each assignment in sequence.

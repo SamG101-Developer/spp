@@ -71,7 +71,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::print(
 
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Handle types on the left-hand-side of a static member access.
     if (const auto lhs_as_type = ast_cast<TypeAst>(meta->postfix_expression_lhs)) {
@@ -149,7 +149,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
 
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Get the left-hand-side type's member's type.
     if (const auto lhs_as_type = ast_cast<TypeAst>(meta->postfix_expression_lhs)) {

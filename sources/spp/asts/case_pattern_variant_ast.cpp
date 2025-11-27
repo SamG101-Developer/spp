@@ -5,7 +5,7 @@ spp::asts::CasePatternVariantAst::~CasePatternVariantAst() = default;
 
 
 auto spp::asts::CasePatternVariantAst::convert_to_variable(
-    meta::CompilerMetaData *)
+    CompilerMetaData *)
     -> std::unique_ptr<LocalVariableAst> {
     return nullptr;
 }

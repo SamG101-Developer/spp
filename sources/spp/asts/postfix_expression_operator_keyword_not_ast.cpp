@@ -63,7 +63,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::print(
 
 auto spp::asts::PostfixExpressionOperatorKeywordNotAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the left-hand-side is a boolean expression.
     const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
@@ -76,7 +76,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::stage_7_analyse_semantic
 
 auto spp::asts::PostfixExpressionOperatorKeywordNotAst::infer_type(
     ScopeManager *,
-    meta::CompilerMetaData *)
+    CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // The type of a "not" expression is always boolean.
     return generate::common_types::boolean_type(pos_start());

@@ -93,7 +93,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::print(
 
 
 auto spp::asts::CasePatternVariantDestructureObjectAst::convert_to_variable(
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::unique_ptr<LocalVariableAst> {
     // Recursively map the elements to their local variable counterparts.
     auto mapped_elems = elems
@@ -109,7 +109,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::convert_to_variable(
 
 auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the class type (required for flow typing).
     type->stage_7_analyse_semantics(sm, meta);
@@ -153,7 +153,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantic
 
 auto spp::asts::CasePatternVariantDestructureObjectAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward memory checking to the mapped let statement.
     m_mapped_let->stage_8_check_memory(sm, meta);
@@ -162,7 +162,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_8_check_memory(
 
 auto spp::asts::CasePatternVariantDestructureObjectAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     /*

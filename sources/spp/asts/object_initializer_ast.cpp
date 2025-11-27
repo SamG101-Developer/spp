@@ -76,7 +76,7 @@ auto spp::asts::ObjectInitializerAst::print(
 
 auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Get the base class symbol (no generics) and check it exists.
     meta->save();
@@ -132,7 +132,7 @@ auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
 
 auto spp::asts::ObjectInitializerAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory of the object argument group.
     arg_group->stage_8_check_memory(sm, meta);
@@ -141,7 +141,7 @@ auto spp::asts::ObjectInitializerAst::stage_8_check_memory(
 
 auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Create an empty struct based on the llvm type.
@@ -184,7 +184,7 @@ auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
 
 auto spp::asts::ObjectInitializerAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *)
+    CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // The type of the object initializer is the type being initialized. The conventions are added for dummy types being
     // created into values during other ast's analysis. Types cannot be instantiated as borrows in user code.

@@ -110,7 +110,7 @@ auto spp::asts::IntegerLiteralAst::print(
 
 auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *)
+    CompilerMetaData *)
     -> void {
     // Get the lower and upper bounds as big floats.
     type = type.empty() ? "s32" : type;
@@ -130,7 +130,7 @@ auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
 
 auto spp::asts::IntegerLiteralAst::infer_type(
     ScopeManager *,
-    meta::CompilerMetaData *)
+    CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Map the type string literal to the correct SPP type.
     if (type.empty()) {

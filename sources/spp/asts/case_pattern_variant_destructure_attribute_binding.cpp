@@ -63,7 +63,7 @@ auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::print(
 
 
 auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::convert_to_variable(
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::unique_ptr<LocalVariableAst> {
     // Create the local variable destructure attribute binding AST.
     auto var = std::make_unique<LocalVariableDestructureAttributeBindingAst>(

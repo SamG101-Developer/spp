@@ -1,4 +1,6 @@
 module spp.asts.is_expression_temp_ast;
+import spp.asts.case_pattern_variant_ast;
+import spp.asts.token_ast;
 
 
 spp::asts::IsExpressionTempAst::IsExpressionTempAst(

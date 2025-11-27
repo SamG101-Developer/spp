@@ -17,12 +17,12 @@ namespace spp::analyse::scopes {
 
 
 namespace spp::asts::meta {
-    SPP_EXP struct CompilerMetaData;
     SPP_EXP struct CompilerMetaDataState;
+    SPP_EXP struct CompilerMetaData;
 }
 
 
-struct spp::asts::meta::CompilerMetaDataState {
+SPP_EXP struct spp::asts::meta::CompilerMetaDataState {
     double current_stage;
     std::shared_ptr<TypeAst> return_type_overload_resolver_type;
     std::shared_ptr<IdentifierAst> assignment_target;
@@ -74,4 +74,3 @@ public:
 
     auto depth() const -> std::size_t;
 };
-

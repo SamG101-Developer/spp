@@ -90,7 +90,7 @@ auto spp::asts::IdentifierAst::to_function_identifier() const
 
 auto spp::asts::IdentifierAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *)
+    CompilerMetaData *)
     -> void {
     // Check there is a symbol with the same name in the current scope.
     const auto shared = std::shared_ptr(ast_clone(this));
@@ -108,7 +108,7 @@ auto spp::asts::IdentifierAst::stage_7_analyse_semantics(
 
 auto spp::asts::IdentifierAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *)
+    CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Extract the symbol from the current scope, as a variable symbol.
     const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));

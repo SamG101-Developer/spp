@@ -63,7 +63,7 @@ auto spp::asts::PatternGuardAst::print(
 
 auto spp::asts::PatternGuardAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the expression in the pattern guard.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
@@ -80,7 +80,7 @@ auto spp::asts::PatternGuardAst::stage_7_analyse_semantics(
 
 auto spp::asts::PatternGuardAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory of the expression.
     // Todo: how is this even applied? just truth check => barely any mem checks needed
@@ -92,7 +92,7 @@ auto spp::asts::PatternGuardAst::stage_8_check_memory(
 
 auto spp::asts::PatternGuardAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the expression.

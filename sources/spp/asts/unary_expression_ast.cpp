@@ -59,7 +59,7 @@ auto spp::asts::UnaryExpressionAst::print(
 
 auto spp::asts::UnaryExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the semantics of the right-hand-side.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
@@ -76,7 +76,7 @@ auto spp::asts::UnaryExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::UnaryExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory of the right-hand-side.
     expr->stage_8_check_memory(sm, meta);
@@ -85,7 +85,7 @@ auto spp::asts::UnaryExpressionAst::stage_8_check_memory(
 
 auto spp::asts::UnaryExpressionAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Infer the type of the right-hand-side expression, adjusted by the operator.
     meta->save();

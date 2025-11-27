@@ -78,7 +78,7 @@ auto spp::asts::FunctionParameterOptionalAst::print(
 
 auto spp::asts::FunctionParameterOptionalAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Perform default analysis steps.
     FunctionParameterAst::stage_7_analyse_semantics(sm, meta);
@@ -94,7 +94,7 @@ auto spp::asts::FunctionParameterOptionalAst::stage_7_analyse_semantics(
 
 auto spp::asts::FunctionParameterOptionalAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Perform default memory checking steps.
     FunctionParameterAst::stage_8_check_memory(sm, meta);

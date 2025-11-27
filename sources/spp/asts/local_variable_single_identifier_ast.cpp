@@ -81,7 +81,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::extract_names() const
 
 auto spp::asts::LocalVariableSingleIdentifierAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Get the value and its type from the "meta" information.
     const auto val = meta->let_stmt_from_uninitialized ? nullptr : meta->let_stmt_value;
@@ -119,7 +119,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_7_analyse_semantics(
 
 auto spp::asts::LocalVariableSingleIdentifierAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // No value => nothing to check.
     if (meta->let_stmt_from_uninitialized) { return; }
@@ -137,7 +137,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_8_check_memory(
 
 auto spp::asts::LocalVariableSingleIdentifierAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Create the alloca for the variable.

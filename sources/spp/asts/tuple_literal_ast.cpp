@@ -98,7 +98,7 @@ auto spp::asts::TupleLiteralAst::print(meta::AstPrinter &printer) const
 
 auto spp::asts::TupleLiteralAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the elements in the tuple.
     for (auto const &elem : elems) {
@@ -122,8 +122,8 @@ auto spp::asts::TupleLiteralAst::stage_7_analyse_semantics(
 
 
 auto spp::asts::TupleLiteralAst::stage_8_check_memory(
-    ScopeManager * sm,
-    meta::CompilerMetaData * meta)
+    ScopeManager *sm,
+    CompilerMetaData *meta)
     -> void {
     // Check the memory of each element in the array literal.
     for (auto &&elem : elems) {
@@ -136,7 +136,7 @@ auto spp::asts::TupleLiteralAst::stage_8_check_memory(
 
 auto spp::asts::TupleLiteralAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Create a "..Ts" type, for the tuple type.
     auto types_gen = elems

@@ -60,7 +60,8 @@ auto spp::asts::ObjectInitializerArgumentShorthandAst::print(
 
 auto spp::asts::ObjectInitializerArgumentShorthandAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta) -> void {
+    CompilerMetaData *meta)
+    -> void {
     // The parser allows Type(123) as a postfix function call over a type, which is invalid as type initialization.
     if (ast_cast<IdentifierAst>(val.get()) == nullptr) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppObjectInitializerInvalidArgumentError>().with_args(

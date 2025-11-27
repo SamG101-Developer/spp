@@ -72,7 +72,7 @@ auto spp::asts::GenericParameterTypeOptionalAst::print(
 
 auto spp::asts::GenericParameterTypeOptionalAst::stage_4_qualify_types(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Handle the default type.
     default_val->stage_7_analyse_semantics(sm, meta);
@@ -87,7 +87,7 @@ auto spp::asts::GenericParameterTypeOptionalAst::stage_4_qualify_types(
 
 auto spp::asts::GenericParameterTypeOptionalAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the name and default value of the generic type parameter.
     GenericParameterTypeAst::stage_7_analyse_semantics(sm, meta);

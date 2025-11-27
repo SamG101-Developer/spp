@@ -17,7 +17,7 @@ spp::asts::GenericArgumentTypeAst::~GenericArgumentTypeAst() = default;
 
 auto spp::asts::GenericArgumentTypeAst::stage_4_qualify_types(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Qualify the type value without generics, then re-add the generics.
     val->stage_4_qualify_types(sm, meta);

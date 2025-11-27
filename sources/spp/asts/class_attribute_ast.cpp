@@ -99,7 +99,7 @@ auto spp::asts::ClassAttributeAst::stage_1_pre_process(
 
 auto spp::asts::ClassAttributeAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Run the generation steps for the annotations.
     annotations | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
@@ -118,7 +118,7 @@ auto spp::asts::ClassAttributeAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::ClassAttributeAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the type is valid before scopes are attached.
     type->stage_7_analyse_semantics(sm, meta);
@@ -129,7 +129,7 @@ auto spp::asts::ClassAttributeAst::stage_5_load_super_scopes(
 
 auto spp::asts::ClassAttributeAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Repeated convention check for generic substitutions.
     if (const auto conv = type->get_convention()) {
@@ -166,7 +166,7 @@ auto spp::asts::ClassAttributeAst::stage_7_analyse_semantics(
 
 auto spp::asts::ClassAttributeAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // If there is a default value, check it for memory errors.
     if (default_val != nullptr) {

@@ -112,7 +112,7 @@ auto spp::asts::FloatLiteralAst::print(
 
 auto spp::asts::FloatLiteralAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *)
+    CompilerMetaData *)
     -> void {
     // Get the lower and upper bounds as big floats.
     type = type.empty() ? "f32" : type;
@@ -132,7 +132,7 @@ auto spp::asts::FloatLiteralAst::stage_7_analyse_semantics(
 
 auto spp::asts::FloatLiteralAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Map the float literal to the correct LLVM type.
@@ -147,7 +147,7 @@ auto spp::asts::FloatLiteralAst::stage_10_code_gen_2(
 
 auto spp::asts::FloatLiteralAst::infer_type(
     ScopeManager *,
-    meta::CompilerMetaData *)
+    CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Map the type string literal to the correct SPP type.
     if (type.empty()) {

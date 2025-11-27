@@ -110,7 +110,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::extract_names() const
 
 auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Only 1 "multi-skip" allowed in a destructure.
     const auto multi_arg_skips = elems
@@ -198,7 +198,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
 
 auto spp::asts::LocalVariableDestructureTupleAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory state of the elements.
     m_new_asts | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });
@@ -207,7 +207,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_8_check_memory(
 
 auto spp::asts::LocalVariableDestructureTupleAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the "let" statements for each element.

@@ -47,7 +47,7 @@ auto spp::asts::CoroutinePrototypeAst::clone() const
 
 auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Perform default function prototype semantic analysis
     FunctionPrototypeAst::stage_7_analyse_semantics(sm, meta);
@@ -82,7 +82,7 @@ auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
 
 auto spp::asts::CoroutinePrototypeAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Use the default FunctionPrototypeAst then use coroutine intrinsics ("id", "begin", "end", "destroy")

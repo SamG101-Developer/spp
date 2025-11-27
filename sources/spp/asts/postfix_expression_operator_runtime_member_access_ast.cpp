@@ -72,7 +72,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::print(
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
 
     // Prevent types on the left-hand-side of a runtime member access.
@@ -169,7 +169,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Get the type of the left-hand-side expression.
     const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);

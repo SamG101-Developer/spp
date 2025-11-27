@@ -230,7 +230,7 @@ auto spp::asts::GenericParameterGroupAst::opt_to_req() const
 
 auto spp::asts::GenericParameterGroupAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Run the generation steps on the parameters in the group.
     params | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
@@ -239,7 +239,7 @@ auto spp::asts::GenericParameterGroupAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::GenericParameterGroupAst::stage_4_qualify_types(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Run the type qualifier steps on each parameter in the group.
     params | genex::views::for_each([sm, meta](auto &&x) { x->stage_4_qualify_types(sm, meta); });
@@ -248,7 +248,7 @@ auto spp::asts::GenericParameterGroupAst::stage_4_qualify_types(
 
 auto spp::asts::GenericParameterGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
 
     const auto param_names = params
@@ -281,7 +281,7 @@ auto spp::asts::GenericParameterGroupAst::stage_7_analyse_semantics(
 
 auto spp::asts::GenericParameterGroupAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Run the memory checks on each parameter in the group.
     params | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });

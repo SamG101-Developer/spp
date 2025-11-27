@@ -41,7 +41,7 @@ auto spp::asts::ClassImplementationAst::stage_1_pre_process(
 
 auto spp::asts::ClassImplementationAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Generate scopes for each member.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
@@ -50,7 +50,7 @@ auto spp::asts::ClassImplementationAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::ClassImplementationAst::stage_3_gen_top_level_aliases(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Generate aliases for each member.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_3_gen_top_level_aliases(sm, meta); });
@@ -59,7 +59,7 @@ auto spp::asts::ClassImplementationAst::stage_3_gen_top_level_aliases(
 
 auto spp::asts::ClassImplementationAst::stage_4_qualify_types(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Qualify types for each member.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_4_qualify_types(sm, meta); });
@@ -68,7 +68,7 @@ auto spp::asts::ClassImplementationAst::stage_4_qualify_types(
 
 auto spp::asts::ClassImplementationAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Load super scopes for each member.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_5_load_super_scopes(sm, meta); });
@@ -77,7 +77,7 @@ auto spp::asts::ClassImplementationAst::stage_5_load_super_scopes(
 
 auto spp::asts::ClassImplementationAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Pre-analyse semantics for each member.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_6_pre_analyse_semantics(sm, meta); });
@@ -99,7 +99,7 @@ auto spp::asts::ClassImplementationAst::stage_6_pre_analyse_semantics(
 
 auto spp::asts::ClassImplementationAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse semantics for each member.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_7_analyse_semantics(sm, meta); });
@@ -108,7 +108,7 @@ auto spp::asts::ClassImplementationAst::stage_7_analyse_semantics(
 
 auto spp::asts::ClassImplementationAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check memory for each member.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });

@@ -79,7 +79,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::new_empty()
 
 auto spp::asts::ClosureExpressionCaptureGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Add the capture variables after analysis, otherwise their symbol checks refer to the new captures, not the
     // original asts from the argument group analysis.
@@ -103,7 +103,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_7_analyse_semantics(
 
 auto spp::asts::ClosureExpressionCaptureGroupAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
 
     // Any borrowed captures need pinning and marking as extended borrows.

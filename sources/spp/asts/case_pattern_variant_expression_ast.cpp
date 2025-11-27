@@ -61,7 +61,7 @@ auto spp::asts::CasePatternVariantExpressionAst::print(
 
 auto spp::asts::CasePatternVariantExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward analysis into the expression.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
@@ -71,7 +71,7 @@ auto spp::asts::CasePatternVariantExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::CasePatternVariantExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory of the expression. todo: maybe do this via generated == function?
     expr->stage_8_check_memory(sm, meta);
@@ -82,7 +82,7 @@ auto spp::asts::CasePatternVariantExpressionAst::stage_8_check_memory(
 
 auto spp::asts::CasePatternVariantExpressionAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Turn the "literal part" into a function argument.

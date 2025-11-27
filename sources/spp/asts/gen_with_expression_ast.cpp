@@ -84,7 +84,7 @@ auto spp::asts::GenWithExpressionAst::print(
 
 auto spp::asts::GenWithExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the expression.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
@@ -134,7 +134,7 @@ auto spp::asts::GenWithExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::GenWithExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the expression for memory issues.
     // Ensure the argument isn't moved or partially moved (for all conventions)
@@ -147,7 +147,7 @@ auto spp::asts::GenWithExpressionAst::stage_8_check_memory(
 
 auto spp::asts::GenWithExpressionAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Build the iterable for the loop; the iterable is just the expression, mapped into a different AST.
@@ -169,7 +169,7 @@ auto spp::asts::GenWithExpressionAst::stage_10_code_gen_2(
 
 auto spp::asts::GenWithExpressionAst::infer_type(
     ScopeManager *,
-    meta::CompilerMetaData *)
+    CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Get the "Send" generic type parameter from the generator type.
     auto send_type = m_generator_type->type_parts().back()->generic_arg_group->type_at("Send")->val;

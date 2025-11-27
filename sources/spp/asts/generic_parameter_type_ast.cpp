@@ -18,7 +18,8 @@ spp::asts::GenericParameterTypeAst::~GenericParameterTypeAst() = default;
 
 auto spp::asts::GenericParameterTypeAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    meta::CompilerMetaData *) -> void {
+    CompilerMetaData *)
+    -> void {
     // Create the type symbol for the generic parameter.
     auto sym = std::make_unique<analyse::scopes::TypeSymbol>(
         ast_clone(name->type_parts().back().get()), nullptr, nullptr, sm->current_scope, nullptr, true);
@@ -28,7 +29,8 @@ auto spp::asts::GenericParameterTypeAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::GenericParameterTypeAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta) -> void {
+    CompilerMetaData *meta)
+    -> void {
     // Analyse the name.
     name->stage_7_analyse_semantics(sm, meta);
 }

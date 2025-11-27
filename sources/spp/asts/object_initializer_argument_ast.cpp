@@ -18,7 +18,7 @@ spp::asts::ObjectInitializerArgumentAst::ObjectInitializerArgumentAst(
 
 auto spp::asts::ObjectInitializerArgumentAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward analysis into the value expression.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(val.get());
@@ -28,7 +28,7 @@ auto spp::asts::ObjectInitializerArgumentAst::stage_7_analyse_semantics(
 
 auto spp::asts::ObjectInitializerArgumentAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory of the value expression.
     val->stage_8_check_memory(sm, meta);
@@ -39,7 +39,7 @@ auto spp::asts::ObjectInitializerArgumentAst::stage_8_check_memory(
 
 auto spp::asts::ObjectInitializerArgumentAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Infer the type of the value expression.
     return val->infer_type(sm, meta);

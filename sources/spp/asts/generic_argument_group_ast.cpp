@@ -278,7 +278,7 @@ auto spp::asts::GenericArgumentGroupAst::get_all_args() const
 
 auto spp::asts::GenericArgumentGroupAst::stage_4_qualify_types(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     args | genex::views::for_each([sm, meta](auto const &x) { x->stage_4_qualify_types(sm, meta); });
 }
@@ -286,7 +286,7 @@ auto spp::asts::GenericArgumentGroupAst::stage_4_qualify_types(
 
 auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check there are no duplicate type argument names.
     const auto type_arg_names = get_keyword_args()
@@ -332,7 +332,7 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
 
 auto spp::asts::GenericArgumentGroupAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the arguments for memory issues.
     args | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });

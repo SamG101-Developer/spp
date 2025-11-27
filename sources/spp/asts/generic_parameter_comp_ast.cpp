@@ -28,7 +28,7 @@ spp::asts::GenericParameterCompAst::~GenericParameterCompAst() = default;
 
 auto spp::asts::GenericParameterCompAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    meta::CompilerMetaData *)
+    CompilerMetaData *)
     -> void {
     // Ensure the type does not have a convention.
     if (const auto conv = type->get_convention(); conv != nullptr) {
@@ -48,7 +48,7 @@ auto spp::asts::GenericParameterCompAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::GenericParameterCompAst::stage_4_qualify_types(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Qualify the type on the generic parameter (and in the symbol). Note: not possible to have a convention here.
     meta->save();
@@ -62,7 +62,7 @@ auto spp::asts::GenericParameterCompAst::stage_4_qualify_types(
 
 auto spp::asts::GenericParameterCompAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the type.
     type->stage_7_analyse_semantics(sm, meta);

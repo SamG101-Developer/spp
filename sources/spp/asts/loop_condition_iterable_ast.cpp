@@ -74,7 +74,7 @@ auto spp::asts::LoopConditionIterableAst::print(
 
 auto spp::asts::LoopConditionIterableAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the iterable.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(iterable.get());
@@ -104,7 +104,7 @@ auto spp::asts::LoopConditionIterableAst::stage_7_analyse_semantics(
 
 auto spp::asts::LoopConditionIterableAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory state of the variable.
     if (not meta->loop_double_check_active) {

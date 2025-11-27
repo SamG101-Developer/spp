@@ -94,7 +94,8 @@ auto spp::asts::BinaryExpressionAst::print(
 
 auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta) -> void {
+    CompilerMetaData *meta)
+    -> void {
     // Ensure TypeAst's aren't used for expression for binary operands.
     SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(lhs.get());
     SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(rhs.get());
@@ -181,7 +182,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::BinaryExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward the memory checking to the mapped function.
     m_mapped_func->stage_8_check_memory(sm, meta);
@@ -190,7 +191,7 @@ auto spp::asts::BinaryExpressionAst::stage_8_check_memory(
 
 auto spp::asts::BinaryExpressionAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Forward the code generation to the mapped function.
@@ -200,7 +201,7 @@ auto spp::asts::BinaryExpressionAst::stage_10_code_gen_2(
 
 auto spp::asts::BinaryExpressionAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Infer the type from the function mapping of the binary expression.
     if (m_mapped_func == nullptr) {

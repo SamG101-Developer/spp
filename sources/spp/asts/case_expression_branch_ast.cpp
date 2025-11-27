@@ -84,7 +84,7 @@ auto spp::asts::CaseExpressionBranchAst::print(
 
 auto spp::asts::CaseExpressionBranchAst::m_codegen_combine_patterns(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) -> llvm::Value* {
     // If there is only one pattern, generate its condition directly.
     // Otherwise, collect all the pattern conditions and combine them with OR.
@@ -103,7 +103,7 @@ auto spp::asts::CaseExpressionBranchAst::m_codegen_combine_patterns(
 
 auto spp::asts::CaseExpressionBranchAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     auto scope_name = analyse::scopes::ScopeBlockName("<case-pattern#" + std::to_string(pos_start()) + ">");
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
@@ -136,7 +136,7 @@ auto spp::asts::CaseExpressionBranchAst::stage_7_analyse_semantics(
 
 auto spp::asts::CaseExpressionBranchAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Move into the branch's scope.
     sm->move_to_next_scope();
@@ -155,7 +155,7 @@ auto spp::asts::CaseExpressionBranchAst::stage_8_check_memory(
 
 auto spp::asts::CaseExpressionBranchAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the branch architecture.
@@ -183,7 +183,7 @@ auto spp::asts::CaseExpressionBranchAst::stage_10_code_gen_2(
 
 auto spp::asts::CaseExpressionBranchAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Forward type inference to the body.
     return body->infer_type(sm, meta);

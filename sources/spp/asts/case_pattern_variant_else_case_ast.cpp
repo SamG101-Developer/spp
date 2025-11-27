@@ -58,7 +58,7 @@ auto spp::asts::CasePatternVariantElseCaseAst::print(
 
 auto spp::asts::CasePatternVariantElseCaseAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward analysis into the case expression.
     case_expr->stage_7_analyse_semantics(sm, meta);
@@ -67,7 +67,7 @@ auto spp::asts::CasePatternVariantElseCaseAst::stage_7_analyse_semantics(
 
 auto spp::asts::CasePatternVariantElseCaseAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward memory checks into the case expression.
     case_expr->stage_8_check_memory(sm, meta);
@@ -76,7 +76,7 @@ auto spp::asts::CasePatternVariantElseCaseAst::stage_8_check_memory(
 
 auto spp::asts::CasePatternVariantElseCaseAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) -> llvm::Value* {
     // Delegate code generation to the case expression.
     return case_expr->stage_10_code_gen_2(sm, meta, ctx);

@@ -81,7 +81,7 @@ auto spp::asts::GenExpressionAst::print(
 
 auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the expression.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
@@ -134,7 +134,7 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::GenExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // If there is no expression, then now ork needs to be done.
     if (expr == nullptr) return;
@@ -165,7 +165,7 @@ auto spp::asts::GenExpressionAst::stage_8_check_memory(
 
 auto spp::asts::GenExpressionAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the expression.
@@ -202,7 +202,7 @@ auto spp::asts::GenExpressionAst::stage_10_code_gen_2(
 
 auto spp::asts::GenExpressionAst::infer_type(
     ScopeManager *,
-    meta::CompilerMetaData *)
+    CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Get the "Send" generic type parameter from the generator type.
     auto send_type = m_gen_type->type_parts().back()->generic_arg_group->type_at("Send")->val;

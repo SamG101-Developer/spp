@@ -134,7 +134,7 @@ auto spp::asts::FunctionParameterGroupAst::get_non_self_params() const
 
 auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
 
     // Create sets of parameters based on conditions.
@@ -193,7 +193,7 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
 
 auto spp::asts::FunctionParameterGroupAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check each parameter's memory.
     for (auto &&param : params) {

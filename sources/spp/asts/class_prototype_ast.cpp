@@ -181,7 +181,7 @@ auto spp::asts::ClassPrototypeAst::stage_1_pre_process(
 
 auto spp::asts::ClassPrototypeAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Create the class scope, which is the scope for the class prototype.
     sm->create_and_move_into_new_scope(std::dynamic_pointer_cast<TypeIdentifierAst>(name), this);
@@ -202,7 +202,7 @@ auto spp::asts::ClassPrototypeAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::ClassPrototypeAst::stage_3_gen_top_level_aliases(
     ScopeManager *sm,
-    meta::CompilerMetaData *)
+    CompilerMetaData *)
     -> void {
     // Skip the class scope.
     sm->move_to_next_scope();
@@ -213,7 +213,7 @@ auto spp::asts::ClassPrototypeAst::stage_3_gen_top_level_aliases(
 
 auto spp::asts::ClassPrototypeAst::stage_4_qualify_types(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Qualify the types in the class body.
     sm->move_to_next_scope();
@@ -226,7 +226,7 @@ auto spp::asts::ClassPrototypeAst::stage_4_qualify_types(
 
 auto spp::asts::ClassPrototypeAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Load the super scopes for the class body.
     sm->move_to_next_scope();
@@ -238,7 +238,7 @@ auto spp::asts::ClassPrototypeAst::stage_5_load_super_scopes(
 
 auto spp::asts::ClassPrototypeAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Pre-analyse semantics for the class body.
     sm->move_to_next_scope();
@@ -257,7 +257,7 @@ auto spp::asts::ClassPrototypeAst::stage_6_pre_analyse_semantics(
 
 auto spp::asts::ClassPrototypeAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse semantics for the class body.
     sm->move_to_next_scope();
@@ -270,7 +270,7 @@ auto spp::asts::ClassPrototypeAst::stage_7_analyse_semantics(
 
 auto spp::asts::ClassPrototypeAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check memory for the class body.
     sm->move_to_next_scope();
@@ -282,7 +282,7 @@ auto spp::asts::ClassPrototypeAst::stage_8_check_memory(
 
 auto spp::asts::ClassPrototypeAst::stage_9_code_gen_1(
     ScopeManager *sm,
-    meta::CompilerMetaData *,
+    CompilerMetaData *,
     codegen::LLvmCtx *)
     -> llvm::Value* {
     sm->move_to_next_scope();
@@ -294,7 +294,7 @@ auto spp::asts::ClassPrototypeAst::stage_9_code_gen_1(
 
 auto spp::asts::ClassPrototypeAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *,
+    CompilerMetaData *,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Get the class symbol.

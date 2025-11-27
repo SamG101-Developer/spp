@@ -76,7 +76,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::print(
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the left-hand-side is a generator type (for specific errors).
     const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
@@ -95,7 +95,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_7_analyse_semantic
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward the memory check to the mapped function, which will check the arguments, and the function call.
     m_mapped_func->stage_8_check_memory(sm, meta);
@@ -104,7 +104,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_8_check_memory(
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Get the generator type.
     const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);

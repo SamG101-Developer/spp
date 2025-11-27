@@ -77,7 +77,7 @@ auto spp::asts::ClosureExpressionAst::print(
 
 auto spp::asts::ClosureExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Save the current scope for later resetting.
     const auto parent_scope = sm->current_scope;
@@ -106,7 +106,7 @@ auto spp::asts::ClosureExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::ClosureExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Save the current scope for later resetting.
     const auto parent_scope = sm->current_scope;
@@ -125,7 +125,7 @@ auto spp::asts::ClosureExpressionAst::stage_8_check_memory(
 
 auto spp::asts::ClosureExpressionAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Create the type as a nullptr, so it can be analysed later.
     std::shared_ptr<TypeAst> ty = nullptr;

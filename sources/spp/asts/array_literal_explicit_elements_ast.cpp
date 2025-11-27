@@ -103,7 +103,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::print(
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
 
     // Analyse the element inside the array.
@@ -144,7 +144,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_7_analyse_semantics(
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory of each element in the array literal.
     for (auto const &elem : elems) {
@@ -157,7 +157,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_8_check_memory(
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Collect the generated versions of the elements.
@@ -187,7 +187,8 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_10_code_gen_2(
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> {
+    CompilerMetaData *meta)
+    -> std::shared_ptr<TypeAst> {
 
     // Create a "T" type and "n" size, for the array type.
     auto size_tok = std::make_unique<TokenAst>(tok_l->pos_start(), lex::SppTokenType::LX_NUMBER, std::to_string(elems.size()));

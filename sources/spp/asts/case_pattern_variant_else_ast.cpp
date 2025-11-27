@@ -54,7 +54,7 @@ auto spp::asts::CasePatternVariantElseAst::print(
 
 auto spp::asts::CasePatternVariantElseAst::stage_10_code_gen_2(
     ScopeManager *,
-    meta::CompilerMetaData *,
+    CompilerMetaData *,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // The "else" pattern always matches, so return "true".

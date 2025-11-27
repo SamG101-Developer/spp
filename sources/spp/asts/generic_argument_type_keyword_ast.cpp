@@ -95,7 +95,7 @@ auto spp::asts::GenericArgumentTypeKeywordAst::from_symbol(
 
 auto spp::asts::GenericArgumentTypeKeywordAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the name and value of the generic type argument.
     val->stage_7_analyse_semantics(sm, meta);

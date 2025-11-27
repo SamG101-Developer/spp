@@ -112,7 +112,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::extract_names() const
 
 auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
 
     // Get the value and analyse it and the type.
@@ -201,7 +201,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
 
 auto spp::asts::LocalVariableDestructureObjectAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory state of the elements.
     m_new_asts | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });
@@ -210,7 +210,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_8_check_memory(
 
 auto spp::asts::LocalVariableDestructureObjectAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the "let" statements for each element.

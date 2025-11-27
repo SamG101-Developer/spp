@@ -199,7 +199,7 @@ auto spp::asts::TypePostfixExpressionAst::with_generics(
 
 auto spp::asts::TypePostfixExpressionAst::stage_4_qualify_types(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     (void)sm;
     (void)meta;
@@ -209,7 +209,7 @@ auto spp::asts::TypePostfixExpressionAst::stage_4_qualify_types(
 
 auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Move through the left-hand-side type.
     lhs->stage_7_analyse_semantics(sm, meta);
@@ -259,7 +259,7 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::TypePostfixExpressionAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Infer the type of the left-hand-side.
     lhs->stage_7_analyse_semantics(sm, meta);

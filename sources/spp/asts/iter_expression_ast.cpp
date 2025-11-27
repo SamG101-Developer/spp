@@ -90,7 +90,7 @@ auto spp::asts::IterExpressionAst::print(
 
 auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     SPP_ENFORCE_EXPRESSION_SUBTYPE(cond.get());
     cond->stage_7_analyse_semantics(sm, meta);
@@ -159,7 +159,7 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::IterExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory state of the condition.
     cond->stage_8_check_memory(sm, meta);
@@ -178,7 +178,7 @@ auto spp::asts::IterExpressionAst::stage_8_check_memory(
 
 auto spp::asts::IterExpressionAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Ensure consistency across branches.
     auto [master_branch_type_info, branches_type_info] = analyse::utils::type_utils::validate_inconsistent_types(

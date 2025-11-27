@@ -60,7 +60,7 @@ auto spp::asts::CasePatternVariantLiteralAst::print(
 
 
 auto spp::asts::CasePatternVariantLiteralAst::convert_to_variable(
-    meta::CompilerMetaData *)
+    CompilerMetaData *)
     -> std::unique_ptr<LocalVariableAst> {
     // Create the local variable literal binding AST.
     auto var_name = std::make_unique<IdentifierAst>(pos_start(), std::format("$_{}", reinterpret_cast<std::uintptr_t>(this)));
@@ -72,7 +72,7 @@ auto spp::asts::CasePatternVariantLiteralAst::convert_to_variable(
 
 auto spp::asts::CasePatternVariantLiteralAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward analysis into the literal.
     literal->stage_7_analyse_semantics(sm, meta);
@@ -81,7 +81,7 @@ auto spp::asts::CasePatternVariantLiteralAst::stage_7_analyse_semantics(
 
 auto spp::asts::CasePatternVariantLiteralAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward memory checks into the literal.
     literal->stage_8_check_memory(sm, meta);
@@ -90,7 +90,7 @@ auto spp::asts::CasePatternVariantLiteralAst::stage_8_check_memory(
 
 auto spp::asts::CasePatternVariantLiteralAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Turn the "literal part" into a function argument.

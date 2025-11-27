@@ -74,7 +74,7 @@ auto spp::asts::IsExpressionAst::print(
 
 auto spp::asts::IsExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Ensure TypeAst's aren't used for expression for binary operands.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(lhs.get());
@@ -95,7 +95,7 @@ auto spp::asts::IsExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::IsExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward the memory checking to the mapped function.
     m_mapped_func->stage_8_check_memory(sm, meta);
@@ -104,7 +104,7 @@ auto spp::asts::IsExpressionAst::stage_8_check_memory(
 
 auto spp::asts::IsExpressionAst::infer_type(
     ScopeManager *,
-    meta::CompilerMetaData *)
+    CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Always return a boolean type (successful or failed match).
     return generate::common_types::boolean_type(m_mapped_func->pos_start());

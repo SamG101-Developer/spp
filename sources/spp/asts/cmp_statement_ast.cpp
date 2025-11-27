@@ -115,7 +115,7 @@ auto spp::asts::CmpStatementAst::stage_1_pre_process(
 
 auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // No top-level scopes needed for cmp statements.
     Ast::stage_2_gen_top_level_scopes(sm, meta);
@@ -139,7 +139,7 @@ auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::CmpStatementAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the type exists before attaching super scopes
     type->stage_7_analyse_semantics(sm, meta);
@@ -148,7 +148,7 @@ auto spp::asts::CmpStatementAst::stage_5_load_super_scopes(
 
 auto spp::asts::CmpStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the type and value.
     type->stage_7_analyse_semantics(sm, meta);
@@ -167,7 +167,7 @@ auto spp::asts::CmpStatementAst::stage_7_analyse_semantics(
 
 auto spp::asts::CmpStatementAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory of the type.
     value->stage_8_check_memory(sm, meta);
@@ -178,7 +178,7 @@ auto spp::asts::CmpStatementAst::stage_8_check_memory(
 
 auto spp::asts::CmpStatementAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the value and store the constant.

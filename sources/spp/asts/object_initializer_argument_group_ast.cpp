@@ -134,7 +134,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::get_keyword_args()
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Ensure there are no duplicate member names. This needs to be done before semantic analysis as other ASTs might
     // try reading a duplicate attribute before an error is raised.
@@ -180,7 +180,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Get the attributes on the type and supertypes.
     const auto cls_sym = sm->current_scope->get_type_symbol(meta->object_init_type);
@@ -250,7 +250,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory of the arguments.
     for (auto &&arg : args) {

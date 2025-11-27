@@ -89,7 +89,7 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::print(
 
 auto spp::asts::PostfixExpressionOperatorIndexAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Determine the left-hand-side type.
     const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
@@ -133,7 +133,7 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::stage_7_analyse_semantics(
 
 auto spp::asts::PostfixExpressionOperatorIndexAst::infer_type(
     analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Forward to the mapped function's return type.
     return m_mapped_func->infer_type(sm, meta);

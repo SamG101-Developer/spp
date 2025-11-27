@@ -118,7 +118,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::get_positional_args() const
 
 auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check there are no duplicate argument names.
     const auto arg_names = get_keyword_args()
@@ -194,7 +194,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
 
 auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // If the target is a coroutine, or the target is called as "async", then pins are required.
     const auto is_target_coro = ast_cast<CoroutinePrototypeAst>(meta->target_call_function_prototype) != nullptr;

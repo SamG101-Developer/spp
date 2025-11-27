@@ -58,7 +58,7 @@ auto spp::asts::LoopConditionBooleanAst::print(
 
 auto spp::asts::LoopConditionBooleanAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the condition expression.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(cond.get());
@@ -76,7 +76,7 @@ auto spp::asts::LoopConditionBooleanAst::stage_7_analyse_semantics(
 
 auto spp::asts::LoopConditionBooleanAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory state of the condition expression.
     cond->stage_8_check_memory(sm, meta);

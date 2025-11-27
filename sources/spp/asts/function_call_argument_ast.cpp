@@ -39,7 +39,7 @@ auto spp::asts::FunctionCallArgumentAst::get_self_type()
 
 auto spp::asts::FunctionCallArgumentAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the semantics of the value expression.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(val.get());
@@ -49,7 +49,7 @@ auto spp::asts::FunctionCallArgumentAst::stage_7_analyse_semantics(
 
 auto spp::asts::FunctionCallArgumentAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory status of the value expression.
     val->stage_8_check_memory(sm, meta);
@@ -58,7 +58,7 @@ auto spp::asts::FunctionCallArgumentAst::stage_8_check_memory(
 
 auto spp::asts::FunctionCallArgumentAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Delegate to the value.
@@ -68,7 +68,7 @@ auto spp::asts::FunctionCallArgumentAst::stage_10_code_gen_2(
 
 auto spp::asts::FunctionCallArgumentAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Infer the type from the value expression, unless an explicit "self" type has been given.
     return m_self_type != nullptr

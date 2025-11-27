@@ -58,7 +58,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::print(meta::AstPrinter &printer
 
 auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the right-hand-side is a function call expression.
     if (const auto rhs = ast_cast<PostfixExpressionAst>(meta->unary_expression_rhs); rhs == nullptr or not ast_cast<PostfixExpressionOperatorFunctionCallAst>(rhs->op.get())) {
@@ -74,7 +74,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_7_analyse_semantics(
 
 auto spp::asts::UnaryExpressionOperatorAsyncAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Wrap the function call inside a "Future" type.
     auto inner_type = meta->unary_expression_rhs->infer_type(sm, meta);

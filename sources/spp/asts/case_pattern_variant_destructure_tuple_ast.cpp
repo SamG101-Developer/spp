@@ -84,7 +84,7 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::print(
 
 
 auto spp::asts::CasePatternVariantDestructureTupleAst::convert_to_variable(
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     ->
     std::unique_ptr<LocalVariableAst> {
     // Recursively map the elements to their local variable counterparts.
@@ -101,7 +101,7 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::convert_to_variable(
 
 auto spp::asts::CasePatternVariantDestructureTupleAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Create the new variable from the pattern in the patterns scope.
     auto var = convert_to_variable(meta);
@@ -112,7 +112,7 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::stage_7_analyse_semantics
 
 auto spp::asts::CasePatternVariantDestructureTupleAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward memory checking to the mapped let statement.
     m_mapped_let->stage_8_check_memory(sm, meta);
@@ -121,7 +121,7 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::stage_8_check_memory(
 
 auto spp::asts::CasePatternVariantDestructureTupleAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the "let" statement to introduce all the symbols.

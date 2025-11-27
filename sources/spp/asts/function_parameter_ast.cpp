@@ -45,7 +45,7 @@ auto spp::asts::FunctionParameterAst::extract_name() const
 
 auto spp::asts::FunctionParameterAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the type.
     type->stage_7_analyse_semantics(sm, meta);
@@ -68,7 +68,7 @@ auto spp::asts::FunctionParameterAst::stage_7_analyse_semantics(
 
 auto spp::asts::FunctionParameterAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *)
+    CompilerMetaData *)
     -> void {
     // Check the memory of each name.
     for (auto &&name : extract_names()) {

@@ -66,7 +66,7 @@ auto spp::asts::ParenthesisedExpressionAst::print(
 
 auto spp::asts::ParenthesisedExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward analysis into the expression.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
@@ -76,7 +76,7 @@ auto spp::asts::ParenthesisedExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::ParenthesisedExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory of the expression.
     expr->stage_8_check_memory(sm, meta);
@@ -87,7 +87,7 @@ auto spp::asts::ParenthesisedExpressionAst::stage_8_check_memory(
 
 auto spp::asts::ParenthesisedExpressionAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the inner expression.
@@ -97,7 +97,7 @@ auto spp::asts::ParenthesisedExpressionAst::stage_10_code_gen_2(
 
 auto spp::asts::ParenthesisedExpressionAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Get the inner expression's type.
     return expr->infer_type(sm, meta);

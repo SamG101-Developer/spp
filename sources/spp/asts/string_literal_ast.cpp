@@ -71,7 +71,7 @@ auto spp::asts::StringLiteralAst::print(
 
 auto spp::asts::StringLiteralAst::infer_type(
     ScopeManager *,
-    meta::CompilerMetaData *)
+    CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // The type of a string literal is always a string type.
     return generate::common_types::string_type(val->pos_start());

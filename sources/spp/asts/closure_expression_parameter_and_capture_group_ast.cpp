@@ -75,7 +75,7 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::print(
 
 auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the arguments against the outer scope's symbols (temp move asts).
     auto caps = capture_group->captures
@@ -101,7 +101,7 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_7_analyse_se
 
 auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the arguments against the outer scope's symbols (temp move asts).
     meta->current_lambda_outer_scope = sm->current_scope;

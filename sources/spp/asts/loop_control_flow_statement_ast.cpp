@@ -75,7 +75,7 @@ auto spp::asts::LoopControlFlowStatementAst::print(
 
 auto spp::asts::LoopControlFlowStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Get the number of control flow statements, and the loop's nesting level.
     const auto has_skip = tok_skip != nullptr;
@@ -121,7 +121,7 @@ auto spp::asts::LoopControlFlowStatementAst::stage_7_analyse_semantics(
 
 auto spp::asts::LoopControlFlowStatementAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory state of the expression if it is present. Expression is being moved into outer context, so
     // strict memory checks.

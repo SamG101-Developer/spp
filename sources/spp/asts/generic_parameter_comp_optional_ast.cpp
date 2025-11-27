@@ -80,7 +80,7 @@ auto spp::asts::GenericParameterCompOptionalAst::print(
 
 auto spp::asts::GenericParameterCompOptionalAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the default value.
     GenericParameterCompAst::stage_7_analyse_semantics(sm, meta);
@@ -97,7 +97,7 @@ auto spp::asts::GenericParameterCompOptionalAst::stage_7_analyse_semantics(
 
 auto spp::asts::GenericParameterCompOptionalAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the default value for memory issues.
     default_val->stage_8_check_memory(sm, meta);

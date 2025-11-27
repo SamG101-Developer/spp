@@ -29,7 +29,7 @@ auto spp::utils::files::write_file(
 
 auto spp::utils::files::FileLock::open_file()
     -> void {
-    m_fd = ::open(m_path.c_str(), O_RDWR | O_CREAT, 0666);
+    m_fd = sys::open(m_path.c_str(), sys::O_RDWR | sys::O_CREAT, 0666);
     if (m_fd == -1) {
         throw std::runtime_error("Failed to open file: " + m_path.string());
     }
@@ -48,7 +48,7 @@ spp::utils::files::FileLock::FileLock(std::filesystem::path const &path) :
 spp::utils::files::FileLock::~FileLock() noexcept {
     unlock();
     if (m_fd != -1) {
-        ::close(m_fd);
+        sys::close(m_fd);
     }
 }
 
@@ -61,12 +61,12 @@ auto spp::utils::files::FileLock::lock(
         throw std::runtime_error("File is already locked");
     }
 
-    flock fl{};
-    fl.l_type = type == LockType::Exclusive ? F_WRLCK : F_RDLCK;
-    fl.l_whence = SEEK_SET;
+    sys::flock fl{};
+    fl.l_type = type == LockType::Exclusive ? sys::F_WRLCK : sys::F_RDLCK;
+    fl.l_whence = sys::SEEK_SET;
 
-    const auto cmd = non_blocking ? F_SETLK : F_SETLKW;
-    if (fcntl(m_fd, cmd, &fl) == -1) {
+    const auto cmd = non_blocking ? sys::F_SETLK : sys::F_SETLKW;
+    if (sys::fcntl(m_fd, cmd, &fl) == -1) {
         throw std::runtime_error("Failed to lock file: " + m_path.string());
     }
 
@@ -81,11 +81,11 @@ auto spp::utils::files::FileLock::unlock() noexcept
         return;
     }
 
-    flock fl{};
-    fl.l_type = F_UNLCK;
-    fl.l_whence = SEEK_SET;
+    sys::flock fl{};
+    fl.l_type = sys::F_UNLCK;
+    fl.l_whence = sys::SEEK_SET;
 
-    fcntl(m_fd, F_SETLK, &fl);
+    sys::fcntl(m_fd, sys::F_SETLK, &fl);
     m_locked = false;
 }
 

@@ -86,7 +86,7 @@ auto spp::asts::UseStatementAst::stage_1_pre_process(
 
 auto spp::asts::UseStatementAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Run the steps for the annotations.
     Ast::stage_2_gen_top_level_scopes(sm, meta);
@@ -104,7 +104,7 @@ auto spp::asts::UseStatementAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::UseStatementAst::stage_3_gen_top_level_aliases(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Generate the top-level alias for the converted type statement.
     m_conversion->stage_3_gen_top_level_aliases(sm, meta);
@@ -113,7 +113,7 @@ auto spp::asts::UseStatementAst::stage_3_gen_top_level_aliases(
 
 auto spp::asts::UseStatementAst::stage_4_qualify_types(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Qualify the types in the conversion AST.
     m_conversion->stage_4_qualify_types(sm, meta);
@@ -122,7 +122,7 @@ auto spp::asts::UseStatementAst::stage_4_qualify_types(
 
 auto spp::asts::UseStatementAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Load the super scopes for the conversion AST.
     m_conversion->stage_5_load_super_scopes(sm, meta);
@@ -131,7 +131,7 @@ auto spp::asts::UseStatementAst::stage_5_load_super_scopes(
 
 auto spp::asts::UseStatementAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Skip all scopes, as this is a pre-generated AST.
     m_conversion->stage_6_pre_analyse_semantics(sm, meta);
@@ -140,7 +140,7 @@ auto spp::asts::UseStatementAst::stage_6_pre_analyse_semantics(
 
 auto spp::asts::UseStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the conversion AST.
     m_conversion->stage_7_analyse_semantics(sm, meta);
@@ -149,7 +149,7 @@ auto spp::asts::UseStatementAst::stage_7_analyse_semantics(
 
 auto spp::asts::UseStatementAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check memory for the conversion AST.
     m_conversion->stage_8_check_memory(sm, meta);

@@ -105,7 +105,7 @@ auto spp::asts::CaseExpressionAst::print(
 
 auto spp::asts::CaseExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the condition expression.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(cond.get());
@@ -143,7 +143,7 @@ auto spp::asts::CaseExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::CaseExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory state of the condition.
     cond->stage_8_check_memory(sm, meta);
@@ -162,7 +162,7 @@ auto spp::asts::CaseExpressionAst::stage_8_check_memory(
 
 auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the condition architecture.
@@ -196,7 +196,7 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
 
 auto spp::asts::CaseExpressionAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Ensure consistency across branches.
     auto [master_branch_type_info, branches_type_info] = analyse::utils::type_utils::validate_inconsistent_types(

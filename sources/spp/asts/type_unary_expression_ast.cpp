@@ -190,7 +190,7 @@ auto spp::asts::TypeUnaryExpressionAst::with_generics(
 
 auto spp::asts::TypeUnaryExpressionAst::stage_4_qualify_types(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Qualify the RHS type.
     if (const auto op_ns = ast_cast<TypeUnaryExpressionOperatorNamespaceAst>(op.get())) {
@@ -209,7 +209,7 @@ auto spp::asts::TypeUnaryExpressionAst::stage_4_qualify_types(
 
 auto spp::asts::TypeUnaryExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the RHS type.
     if (const auto op_ns = ast_cast<TypeUnaryExpressionOperatorNamespaceAst>(op.get())) {
@@ -228,7 +228,7 @@ auto spp::asts::TypeUnaryExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::TypeUnaryExpressionAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Infer the RHS type.
     const auto type_scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;

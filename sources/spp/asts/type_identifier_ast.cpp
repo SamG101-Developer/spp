@@ -281,7 +281,7 @@ auto spp::asts::TypeIdentifierAst::with_generics(
 
 auto spp::asts::TypeIdentifierAst::stage_4_qualify_types(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Qualify the generic argument types.
     // meta->save();
@@ -295,7 +295,7 @@ auto spp::asts::TypeIdentifierAst::stage_4_qualify_types(
 
 auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Determine the scope and get the type symbol.
     const auto scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
@@ -361,7 +361,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
 
 auto spp::asts::TypeIdentifierAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Fully qualify this type name from the scope.
     const auto type_scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;

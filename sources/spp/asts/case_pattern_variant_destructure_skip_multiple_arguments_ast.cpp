@@ -59,7 +59,7 @@ auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::print(
 
 
 auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::convert_to_variable(
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::unique_ptr<LocalVariableAst> {
     // Create the local variable destructure attribute binding AST.
     auto var = std::make_unique<LocalVariableDestructureSkipMultipleArgumentsAst>(

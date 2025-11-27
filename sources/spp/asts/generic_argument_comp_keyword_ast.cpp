@@ -113,7 +113,7 @@ auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
 
 auto spp::asts::GenericArgumentCompKeywordAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the value.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(val.get());
@@ -123,7 +123,7 @@ auto spp::asts::GenericArgumentCompKeywordAst::stage_7_analyse_semantics(
 
 auto spp::asts::GenericArgumentCompKeywordAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the value for memory issues.
     val->stage_8_check_memory(sm, meta);

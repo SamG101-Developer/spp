@@ -80,7 +80,7 @@ auto spp::asts::LetStatementInitializedAst::print(
 
 auto spp::asts::LetStatementInitializedAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the value is a valid expression type.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(val.get());
@@ -122,7 +122,7 @@ auto spp::asts::LetStatementInitializedAst::stage_7_analyse_semantics(
 
 auto spp::asts::LetStatementInitializedAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the variable's memory (which in turn checks the values memory - must be done this way for destructuring).
     meta->save();
@@ -135,7 +135,7 @@ auto spp::asts::LetStatementInitializedAst::stage_8_check_memory(
 
 auto spp::asts::LetStatementInitializedAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Delegate the code generation to the variable, after setting up the meta.

@@ -3,13 +3,15 @@ module;
 
 export module spp.analyse.scopes.symbol_table;
 import spp.analyse.scopes.symbols;
+import spp.asts._fwd;
 import spp.utils.ptr_cmp;
+
 import ankerl;
 import std;
 
 
 namespace spp::analyse::scopes {
-    template <typename I, typename S>
+    SPP_EXP template <typename I, typename S>
     class IndividualSymbolTable;
 
     SPP_EXP class SymbolTable;
@@ -53,7 +55,7 @@ public:
 };
 
 
-class spp::analyse::scopes::SymbolTable {
+SPP_EXP class spp::analyse::scopes::SymbolTable {
 public:
     SymbolTable();
 

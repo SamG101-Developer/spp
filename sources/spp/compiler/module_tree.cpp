@@ -11,6 +11,7 @@ module;
 #include <genex/views/transform.hpp>
 
 module spp.compiler.module_tree;
+import spp.asts.module_prototype_ast;
 import glob;
 
 

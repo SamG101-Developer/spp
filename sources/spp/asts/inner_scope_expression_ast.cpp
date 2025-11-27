@@ -32,7 +32,7 @@ auto spp::asts::InnerScopeExpressionAst<T>::new_empty()
 template <typename T>
 auto spp::asts::InnerScopeExpressionAst<T>::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Create a scope for the InnerScopeAst node.
     auto scope_name = analyse::scopes::ScopeBlockName("<inner-scope#" + std::to_string(pos_start()) + ">");
@@ -58,7 +58,7 @@ auto spp::asts::InnerScopeExpressionAst<T>::stage_7_analyse_semantics(
 template <typename T>
 auto spp::asts::InnerScopeExpressionAst<T>::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // If there are any members, return the last member's inferred type.
     if (not this->members.empty()) {

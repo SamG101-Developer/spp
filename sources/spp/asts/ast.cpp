@@ -87,7 +87,7 @@ auto spp::asts::Ast::stage_1_pre_process(
 
 auto spp::asts::Ast::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    meta::CompilerMetaData *)
+    CompilerMetaData *)
     -> void {
     m_scope = sm->current_scope;
 }

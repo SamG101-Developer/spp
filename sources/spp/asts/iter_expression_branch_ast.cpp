@@ -64,7 +64,7 @@ auto spp::asts::IterExpressionBranchAst::print(
 
 auto spp::asts::IterExpressionBranchAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Create the scope for the iteration branch.
     auto scope_name = analyse::scopes::ScopeBlockName("<iter-branch#" + std::to_string(pos_start()) + ">");
@@ -82,7 +82,7 @@ auto spp::asts::IterExpressionBranchAst::stage_7_analyse_semantics(
 
 auto spp::asts::IterExpressionBranchAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Move into the branch's scope.
     sm->move_to_next_scope();
@@ -99,7 +99,7 @@ auto spp::asts::IterExpressionBranchAst::stage_8_check_memory(
 
 auto spp::asts::IterExpressionBranchAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // The type of the branch is the type of the body.
     return body->infer_type(sm, meta);

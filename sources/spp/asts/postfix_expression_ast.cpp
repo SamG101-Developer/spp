@@ -61,7 +61,7 @@ auto spp::asts::PostfixExpressionAst::print(
 
 auto spp::asts::PostfixExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the lhs.
     SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TYPE(lhs.get());
@@ -91,7 +91,7 @@ auto spp::asts::PostfixExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::PostfixExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory of the lhs.
     lhs->stage_8_check_memory(sm, meta);
@@ -101,7 +101,7 @@ auto spp::asts::PostfixExpressionAst::stage_8_check_memory(
 
 auto spp::asts::PostfixExpressionAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Forward into the operator AST.
@@ -115,7 +115,7 @@ auto spp::asts::PostfixExpressionAst::stage_10_code_gen_2(
 
 auto spp::asts::PostfixExpressionAst::infer_type(
     analyse::scopes::ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Forward into the operator AST.
     meta->save();

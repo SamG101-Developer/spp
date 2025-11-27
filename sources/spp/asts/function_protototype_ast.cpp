@@ -252,7 +252,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
 
 auto spp::asts::FunctionPrototypeAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Create a new scope for the function prototype, and move into it.
     auto scope_name = analyse::scopes::ScopeBlockName("<function#" + orig_name->val + "#" + std::to_string(pos_start()) + ">");
@@ -284,7 +284,7 @@ auto spp::asts::FunctionPrototypeAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::FunctionPrototypeAst::stage_3_gen_top_level_aliases(
     ScopeManager *sm,
-    meta::CompilerMetaData *)
+    CompilerMetaData *)
     -> void {
     // Skip the function scope, as it is already generated.
     sm->move_to_next_scope();
@@ -295,7 +295,7 @@ auto spp::asts::FunctionPrototypeAst::stage_3_gen_top_level_aliases(
 
 auto spp::asts::FunctionPrototypeAst::stage_4_qualify_types(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Skip the function scope, as it is already qualified.
     sm->move_to_next_scope();
@@ -308,7 +308,8 @@ auto spp::asts::FunctionPrototypeAst::stage_4_qualify_types(
 
 auto spp::asts::FunctionPrototypeAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta) -> void {
+    CompilerMetaData *meta)
+    -> void {
     // Analyse the parameter and return types before sup scopes are attached.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
@@ -320,7 +321,7 @@ auto spp::asts::FunctionPrototypeAst::stage_5_load_super_scopes(
 
 auto spp::asts::FunctionPrototypeAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *)
+    CompilerMetaData *)
     -> void {
     // Perform conflict checking before standard semantic analysis errors due to multiple possible prototypes.
     sm->move_to_next_scope();
@@ -343,7 +344,7 @@ auto spp::asts::FunctionPrototypeAst::stage_6_pre_analyse_semantics(
 
 auto spp::asts::FunctionPrototypeAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Move into the function scope, as it is now ready for semantic analysis.
     sm->move_to_next_scope();
@@ -365,7 +366,7 @@ auto spp::asts::FunctionPrototypeAst::stage_7_analyse_semantics(
 
 auto spp::asts::FunctionPrototypeAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Move into the function scope, as it is now ready for memory checking.
     sm->move_to_next_scope();
@@ -382,7 +383,7 @@ auto spp::asts::FunctionPrototypeAst::stage_8_check_memory(
 
 auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the return and parameter types.

@@ -95,7 +95,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_1_pre_process(
 
 auto spp::asts::SupPrototypeFunctionsAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Create a new scope for the superimposition extension.
     auto scope_name = analyse::scopes::ScopeBlockName("<sup#" + static_cast<std::string>(*name) + "#" + std::to_string(pos_start()) + ">");
@@ -129,7 +129,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::SupPrototypeFunctionsAst::stage_3_gen_top_level_aliases(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward to the implementation.
     sm->move_to_next_scope();
@@ -141,7 +141,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_3_gen_top_level_aliases(
 
 auto spp::asts::SupPrototypeFunctionsAst::stage_4_qualify_types(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward to the implementation.
     sm->move_to_next_scope();
@@ -154,7 +154,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_4_qualify_types(
 
 auto spp::asts::SupPrototypeFunctionsAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Move into the superimposition scope.
     sm->move_to_next_scope();
@@ -195,7 +195,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_5_load_super_scopes(
 
 auto spp::asts::SupPrototypeFunctionsAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Move to the next scope.
     sm->move_to_next_scope();
@@ -208,7 +208,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_6_pre_analyse_semantics(
 
 auto spp::asts::SupPrototypeFunctionsAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Move to the next scope.
     sm->move_to_next_scope();
@@ -221,7 +221,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_7_analyse_semantics(
 
 auto spp::asts::SupPrototypeFunctionsAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Move to the next scope.
     sm->move_to_next_scope();

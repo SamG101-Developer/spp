@@ -107,7 +107,7 @@ auto spp::asts::InnerScopeAst<T>::final_member() const
 template <typename T>
 auto spp::asts::InnerScopeAst<T>::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Create a scope for the InnerScopeAst node.
     auto scope_name = analyse::scopes::ScopeBlockName("<inner-scope#" + std::to_string(pos_start()) + ">");
@@ -123,7 +123,7 @@ auto spp::asts::InnerScopeAst<T>::stage_7_analyse_semantics(
 template <typename T>
 auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Move into the next scope.
     sm->move_to_next_scope();
@@ -148,7 +148,7 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
 template <typename T>
 auto spp::asts::InnerScopeAst<T>::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Add all the expressions/statements into the current scope.

@@ -67,7 +67,7 @@ auto spp::asts::RetStatementAst::print(
 
 auto spp::asts::RetStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the expression.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
@@ -116,7 +116,7 @@ auto spp::asts::RetStatementAst::stage_7_analyse_semantics(
 
 auto spp::asts::RetStatementAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // If there is no expression, then now ork needs to be done.
     if (expr == nullptr) return;

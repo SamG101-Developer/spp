@@ -56,7 +56,7 @@ auto spp::asts::UnaryExpressionOperatorDerefAst::print(
 
 auto spp::asts::UnaryExpressionOperatorDerefAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Get the right-hand-side expression's type for constraint checks.
     const auto rhs = meta->unary_expression_rhs;
@@ -78,7 +78,7 @@ auto spp::asts::UnaryExpressionOperatorDerefAst::stage_7_analyse_semantics(
 
 auto spp::asts::UnaryExpressionOperatorDerefAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Get the right-hand-side expression's type.
     const auto rhs = meta->unary_expression_rhs;

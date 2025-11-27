@@ -99,7 +99,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::print(
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the repeated element.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(elem.get());
@@ -134,7 +134,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory of the repeated element (is it initialized etc).
     elem->stage_8_check_memory(sm, meta);
@@ -145,7 +145,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_8_check_memory(
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Collect the generated versions of the elements.
@@ -175,7 +175,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_10_code_gen_2(
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::infer_type(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Create the standard "std::array::Arr[T, n]" type, with generic arguments.
     auto elem_type = elem->infer_type(sm, meta);

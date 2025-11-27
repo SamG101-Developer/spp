@@ -165,7 +165,7 @@ SPP_EXP struct spp::analyse::utils::mem_utils::MemoryInfo {
 };
 
 
-struct spp::analyse::utils::mem_utils::MemoryInfoSnapshot {
+SPP_EXP struct spp::analyse::utils::mem_utils::MemoryInfoSnapshot {
     /**
      * View of the initializing ast for the owning @c MemoryInfo
      */

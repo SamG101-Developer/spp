@@ -73,7 +73,7 @@ auto spp::asts::GenericArgumentCompPositionalAst::print(
 
 auto spp::asts::GenericArgumentCompPositionalAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the value.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(val.get())
@@ -83,7 +83,7 @@ auto spp::asts::GenericArgumentCompPositionalAst::stage_7_analyse_semantics(
 
 auto spp::asts::GenericArgumentCompPositionalAst::stage_8_check_memory(
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Ensure the argument isn't moved or partially moved (for all conventions)
     val->stage_8_check_memory(sm, meta);
