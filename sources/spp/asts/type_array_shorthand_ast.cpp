@@ -1,8 +1,10 @@
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_array_shorthand_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
 
-#include <spp/asts/generate/common_types.hpp>
+module spp.asts.type_array_shorthand_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.generate.common_types;
 
 
 spp::asts::TypeArrayShorthandAst::TypeArrayShorthandAst(

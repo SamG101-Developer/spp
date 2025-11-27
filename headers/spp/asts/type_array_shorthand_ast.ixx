@@ -8,7 +8,7 @@ import spp.asts.mixins.temp_type_ast;
 import std;
 
 
-struct spp::asts::TypeArrayShorthandAst final : virtual Ast, mixins::TempTypeAst {
+SPP_EXP struct spp::asts::TypeArrayShorthandAst final : virtual Ast, mixins::TempTypeAst {
     /**
      * The left square bracket token that represents the start of the array type.
      */

@@ -1,25 +1,22 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/scopes/symbols.hpp>
-#include <spp/analyse/utils/func_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_parameter_ast.hpp>
-#include <spp/asts/generic_parameter_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/sup_implementation_ast.hpp>
-#include <spp/asts/sup_member_ast.hpp>
-#include <spp/asts/sup_prototype_functions_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/type_statement_ast.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/views/filter.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.sup_prototype_functions_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.symbols;
+import spp.asts.convention_ast;
+import spp.asts.generic_parameter_group_ast;
+import spp.asts.sup_implementation_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.type_statement_ast;
+import spp.lex.tokens;
 
 
 spp::asts::SupPrototypeFunctionsAst::SupPrototypeFunctionsAst(
@@ -98,7 +95,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_1_pre_process(
 
 auto spp::asts::SupPrototypeFunctionsAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Create a new scope for the superimposition extension.
     auto scope_name = analyse::scopes::ScopeBlockName("<sup#" + static_cast<std::string>(*name) + "#" + std::to_string(pos_start()) + ">");
@@ -132,7 +129,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::SupPrototypeFunctionsAst::stage_3_gen_top_level_aliases(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward to the implementation.
     sm->move_to_next_scope();
@@ -144,7 +141,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_3_gen_top_level_aliases(
 
 auto spp::asts::SupPrototypeFunctionsAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward to the implementation.
     sm->move_to_next_scope();
@@ -157,7 +154,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_4_qualify_types(
 
 auto spp::asts::SupPrototypeFunctionsAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Move into the superimposition scope.
     sm->move_to_next_scope();
@@ -198,7 +195,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_5_load_super_scopes(
 
 auto spp::asts::SupPrototypeFunctionsAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Move to the next scope.
     sm->move_to_next_scope();
@@ -211,7 +208,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_6_pre_analyse_semantics(
 
 auto spp::asts::SupPrototypeFunctionsAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Move to the next scope.
     sm->move_to_next_scope();
@@ -224,7 +221,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_7_analyse_semantics(
 
 auto spp::asts::SupPrototypeFunctionsAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Move to the next scope.
     sm->move_to_next_scope();

@@ -1,4 +1,4 @@
-#include <spp/asts/token_ast.hpp>
+module spp.asts.token_ast;
 
 
 spp::asts::TokenAst::TokenAst(

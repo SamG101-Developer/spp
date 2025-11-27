@@ -1,9 +1,12 @@
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_binary_expression_ast.hpp>
-#include <spp/lex/tokens.hpp>
+module;
+#include <spp/macros.hpp>
 
-#include <spp/asts/generate/common_types.hpp>
+module spp.asts.type_binary_expression_ast;
+import spp.asts.ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.generate.common_types;
+import spp.lex.tokens;
 
 
 spp::asts::TypeBinaryExpressionAst::TypeBinaryExpressionAst(

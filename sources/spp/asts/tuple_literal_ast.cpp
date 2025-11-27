@@ -1,17 +1,24 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/tuple_literal_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
-
+module;
+#include <genex/to_container.hpp>
 #include <genex/algorithms/all_of.hpp>
 #include <genex/views/indirect.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
+#include <genex/views/ptr.hpp>
+#include <genex/views/transform.hpp>
 #include <genex/views/zip.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.tuple_literal_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.mem_utils;
+import spp.asts.ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.generate.common_types;
+import spp.lex.tokens;
 
 
 spp::asts::TupleLiteralAst::TupleLiteralAst(
@@ -91,11 +98,11 @@ auto spp::asts::TupleLiteralAst::print(meta::AstPrinter &printer) const
 
 auto spp::asts::TupleLiteralAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the elements in the tuple.
     for (auto const &elem : elems) {
-        ENFORCE_EXPRESSION_SUBTYPE(elem.get());
+        SPP_ENFORCE_EXPRESSION_SUBTYPE(elem.get());
         elem->stage_7_analyse_semantics(sm, meta);
     }
 
@@ -116,7 +123,7 @@ auto spp::asts::TupleLiteralAst::stage_7_analyse_semantics(
 
 auto spp::asts::TupleLiteralAst::stage_8_check_memory(
     ScopeManager * sm,
-    mixins::CompilerMetaData * meta)
+    meta::CompilerMetaData * meta)
     -> void {
     // Check the memory of each element in the array literal.
     for (auto &&elem : elems) {
@@ -129,7 +136,7 @@ auto spp::asts::TupleLiteralAst::stage_8_check_memory(
 
 auto spp::asts::TupleLiteralAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Create a "..Ts" type, for the tuple type.
     auto types_gen = elems

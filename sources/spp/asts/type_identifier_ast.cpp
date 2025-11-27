@@ -1,31 +1,34 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/func_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/generic_argument_comp_keyword_ast.hpp>
-#include <spp/asts/generic_argument_comp_positional_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_keyword_ast.hpp>
-#include <spp/asts/generic_argument_type_positional_ast.hpp>
-#include <spp/asts/generic_parameter_ast.hpp>
-#include <spp/asts/generic_parameter_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/type_statement_ast.hpp>
-#include <spp/asts/type_unary_expression_ast.hpp>
-#include <spp/asts/type_unary_expression_operator_borrow_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
-#include <spp/asts/generate/common_types_precompiled.hpp>
-
+module;
+#include <genex/to_container.hpp>
 #include <genex/algorithms/any_of.hpp>
 #include <genex/operations/cmp.hpp>
 #include <genex/views/cast_dynamic.hpp>
 #include <genex/views/concat.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/ptr.hpp>
+#include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.type_identifier_ast;
+import spp.analyse.utils.func_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.class_prototype_ast;
+import spp.asts.generic_argument_comp_ast;
+import spp.asts.generic_argument_comp_keyword_ast;
+import spp.asts.generic_argument_comp_positional_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
+import spp.asts.generic_argument_type_keyword_ast;
+import spp.asts.generic_argument_type_positional_ast;
+import spp.asts.generic_parameter_ast;
+import spp.asts.generic_parameter_group_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.type_statement_ast;
+import spp.asts.type_unary_expression_ast;
+import spp.asts.type_unary_expression_operator_ast;
+import spp.asts.type_unary_expression_operator_borrow_ast;
+import spp.asts.generate.common_types_precompiled;
 
 
 spp::asts::TypeIdentifierAst::TypeIdentifierAst(
@@ -278,7 +281,7 @@ auto spp::asts::TypeIdentifierAst::with_generics(
 
 auto spp::asts::TypeIdentifierAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Qualify the generic argument types.
     // meta->save();
@@ -292,7 +295,7 @@ auto spp::asts::TypeIdentifierAst::stage_4_qualify_types(
 
 auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Determine the scope and get the type symbol.
     const auto scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
@@ -358,7 +361,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
 
 auto spp::asts::TypeIdentifierAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Fully qualify this type name from the scope.
     const auto type_scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;

@@ -1,6 +1,9 @@
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_parenthesised_expression_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.type_parenthesised_expression_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
 
 
 spp::asts::TypeParenthesisedExpressionAst::TypeParenthesisedExpressionAst(
