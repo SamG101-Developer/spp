@@ -1,13 +1,17 @@
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_ast.hpp>
-#include <spp/asts/iter_pattern_variant_exception_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/object_initializer_argument_group_ast.hpp>
-#include <spp/asts/object_initializer_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.iter_pattern_variant_exception_ast;
+import spp.asts.ast;
+import spp.asts.expression_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.local_variable_ast;
+import spp.asts.object_initializer_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
 
 
 spp::asts::IterPatternVariantExceptionAst::IterPatternVariantExceptionAst(
@@ -62,7 +66,7 @@ auto spp::asts::IterPatternVariantExceptionAst::print(
 
 auto spp::asts::IterPatternVariantExceptionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Create a dummy type with the same type as the variable's type, to initialize it.
     auto dummy_type = meta->case_condition->infer_type(sm, meta)->type_parts().back()->generic_arg_group->type_at("Err")->val;
@@ -76,7 +80,7 @@ auto spp::asts::IterPatternVariantExceptionAst::stage_7_analyse_semantics(
 
 auto spp::asts::IterPatternVariantExceptionAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory state of the variable.
     m_mapped_let->stage_8_check_memory(sm, meta);

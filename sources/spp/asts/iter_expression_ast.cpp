@@ -1,25 +1,31 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/iter_expression_ast.hpp>
-#include <spp/asts/iter_expression_branch_ast.hpp>
-#include <spp/asts/iter_pattern_variant_else_ast.hpp>
-#include <spp/asts/iter_pattern_variant_exception_ast.hpp>
-#include <spp/asts/iter_pattern_variant_exhausted_ast.hpp>
-#include <spp/asts/iter_pattern_variant_no_value_ast.hpp>
-#include <spp/asts/iter_pattern_variant_variable_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
-#include <spp/asts/generate/common_types_precompiled.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/algorithms/any_of.hpp>
 #include <genex/views/cast_dynamic.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
 #include <genex/views/ptr.hpp>
+#include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.iter_expression_ast;
+import spp.analyse.scopes.scope_block_name;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.iter_expression_branch_ast;
+import spp.asts.iter_pattern_variant_ast;
+import spp.asts.iter_pattern_variant_exception_ast;
+import spp.asts.iter_pattern_variant_exhausted_ast;
+import spp.asts.iter_pattern_variant_no_value_ast;
+import spp.asts.iter_pattern_variant_variable_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.generate.common_types;
+import spp.asts.generate.common_types_precompiled;
 
 
 spp::asts::IterExpressionAst::IterExpressionAst(
@@ -84,9 +90,9 @@ auto spp::asts::IterExpressionAst::print(
 
 auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
-    ENFORCE_EXPRESSION_SUBTYPE(cond.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(cond.get());
     cond->stage_7_analyse_semantics(sm, meta);
 
     // Create the scope for the iteration expression.
@@ -153,7 +159,7 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::IterExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory state of the condition.
     cond->stage_8_check_memory(sm, meta);
@@ -172,7 +178,7 @@ auto spp::asts::IterExpressionAst::stage_8_check_memory(
 
 auto spp::asts::IterExpressionAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Ensure consistency across branches.
     auto [master_branch_type_info, branches_type_info] = analyse::utils::type_utils::validate_inconsistent_types(
@@ -220,6 +226,6 @@ auto spp::asts::IterExpressionAst::infer_type(
 
     // Return the branch's return type (there is always 1+ branch).
     return branches_type_info.empty()
-        ? generate::common_types::void_type(pos_start())
-        : std::get<1>(master_branch_type_info);
+               ? generate::common_types::void_type(pos_start())
+               : std::get<1>(master_branch_type_info);
 }

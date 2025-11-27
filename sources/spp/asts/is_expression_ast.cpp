@@ -1,20 +1,18 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/bin_utils.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/case_expression_ast.hpp>
-#include <spp/asts/case_pattern_variant_ast.hpp>
-#include <spp/asts/is_expression_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
-
+module;
 #include <genex/views/for_each.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.is_expression_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.bin_utils;
+import spp.asts.ast;
+import spp.asts.case_expression_ast;
+import spp.asts.case_pattern_variant_ast;
+import spp.asts.token_ast;
+import spp.asts.generate.common_types;
 
 
 spp::asts::IsExpressionAst::IsExpressionAst(
@@ -76,11 +74,11 @@ auto spp::asts::IsExpressionAst::print(
 
 auto spp::asts::IsExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Ensure TypeAst's aren't used for expression for binary operands.
-    ENFORCE_EXPRESSION_SUBTYPE(lhs.get());
-    ENFORCE_EXPRESSION_SUBTYPE(rhs.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(lhs.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(rhs.get());
 
     // Convert to a "case" destructure and analyse it.
     const auto n = sm->current_scope->children.size();
@@ -97,7 +95,7 @@ auto spp::asts::IsExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::IsExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward the memory checking to the mapped function.
     m_mapped_func->stage_8_check_memory(sm, meta);
@@ -106,7 +104,7 @@ auto spp::asts::IsExpressionAst::stage_8_check_memory(
 
 auto spp::asts::IsExpressionAst::infer_type(
     ScopeManager *,
-    mixins::CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Always return a boolean type (successful or failed match).
     return generate::common_types::boolean_type(m_mapped_func->pos_start());

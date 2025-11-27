@@ -1,10 +1,16 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/integer_literal_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.integer_literal_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.asts.ast;
+import spp.asts.token_ast;
+import spp.asts.generate.common_types;
+import spp.lex.tokens;
+
+import boost;
+
 
 using CppBigInt = boost::multiprecision::cpp_int;
 
@@ -104,7 +110,7 @@ auto spp::asts::IntegerLiteralAst::print(
 
 auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> void {
     // Get the lower and upper bounds as big floats.
     type = type.empty() ? "s32" : type;
@@ -124,7 +130,7 @@ auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
 
 auto spp::asts::IntegerLiteralAst::infer_type(
     ScopeManager *,
-    mixins::CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Map the type string literal to the correct SPP type.
     if (type.empty()) {

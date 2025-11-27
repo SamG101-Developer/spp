@@ -1,13 +1,11 @@
-#include <spp/asts/inner_scope_expression_ast.hpp>
-#include <spp/asts/iter_expression_branch_ast.hpp>
-#include <spp/asts/iter_pattern_variant_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/pattern_guard_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
 
-#include "spp/analyse/scopes/scope_manager.hpp"
+module spp.asts.iter_expression_branch_ast;
+import spp.analyse.scopes.scope_block_name;
+import spp.asts.iter_pattern_variant_ast;
+import spp.asts.inner_scope_expression_ast;
+import spp.asts.pattern_guard_ast;
 
 
 spp::asts::IterExpressionBranchAst::IterExpressionBranchAst(
@@ -64,18 +62,9 @@ auto spp::asts::IterExpressionBranchAst::print(
 }
 
 
-auto spp::asts::IterExpressionBranchAst::infer_type(
-    ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
-    -> std::shared_ptr<TypeAst> {
-    // The type of the branch is the type of the body.
-    return body->infer_type(sm, meta);
-}
-
-
 auto spp::asts::IterExpressionBranchAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Create the scope for the iteration branch.
     auto scope_name = analyse::scopes::ScopeBlockName("<iter-branch#" + std::to_string(pos_start()) + ">");
@@ -93,7 +82,7 @@ auto spp::asts::IterExpressionBranchAst::stage_7_analyse_semantics(
 
 auto spp::asts::IterExpressionBranchAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Move into the branch's scope.
     sm->move_to_next_scope();
@@ -105,4 +94,13 @@ auto spp::asts::IterExpressionBranchAst::stage_8_check_memory(
 
     // Move out of the branch's scope.
     sm->move_out_of_current_scope();
+}
+
+
+auto spp::asts::IterExpressionBranchAst::infer_type(
+    ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> std::shared_ptr<TypeAst> {
+    // The type of the branch is the type of the body.
+    return body->infer_type(sm, meta);
 }

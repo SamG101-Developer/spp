@@ -1,8 +1,10 @@
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/iter_pattern_variant_else_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.iter_pattern_variant_else_ast;
+import spp.asts.ast;
+import spp.asts.token_ast;
+import spp.lex.tokens;
 
 
 spp::asts::IterPatternVariantElseAst::IterPatternVariantElseAst(

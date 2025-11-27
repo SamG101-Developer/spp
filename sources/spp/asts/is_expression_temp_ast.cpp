@@ -1,9 +1,4 @@
-#include <spp/asts/case_pattern_variant_ast.hpp>
-#include <spp/asts/is_expression_temp_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module spp.asts.is_expression_temp_ast;
 
 
 spp::asts::IsExpressionTempAst::IsExpressionTempAst(
