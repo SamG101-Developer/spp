@@ -10,7 +10,7 @@ module;
 #include <genex/views/take.hpp>
 #include <opex/cast.hpp>
 
-export module spp.utils.error_formatter;
+module spp.utils.error_formatter;
 import spp.lex.tokens;
 
 

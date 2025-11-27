@@ -1,6 +1,5 @@
-#include <spp/utils/strings.hpp>
-
-#include <rapidfuzz/fuzz.hpp>
+module spp.utils.strings;
+import rapidfuzz;
 
 
 auto spp::utils::strings::is_alphanumeric(

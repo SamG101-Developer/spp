@@ -1,4 +1,5 @@
-#include <spp/cli.hpp>
+import spp.cli;
+import std;
 
 
 int main(const std::int32_t, char **argv) {

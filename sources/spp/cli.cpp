@@ -1,22 +1,22 @@
-#include <filesystem>
+module;
+#include <spp/macros.hpp>
 
-#include <spp/cli.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/module_prototype_ast.hpp>
-#include <spp/compiler/compiler.hpp>
-#include <spp/utils/files.hpp>
+module spp.cli;
+import spp.compiler.compiler;
+import spp.utils.files;
 
-#include <boost/process/v1.hpp>
-#include <toml++/toml.hpp>
+import boost;
+import cli11;
+import toml;
 
-namespace bp = boost::process;
+namespace bp = boost::process::v1;
 
 
 #define SPP_VALIDATE_STRUCTURE \
     if (not handle_validate()) { return; }
 
 #define SPP_CLI_NULL \
-    boost::process::v1::std_out > boost::process::v1::null
+    bp::v1::std_out > bp::v1::null
 
 
 inline constexpr std::string OUT_FOLDER = "out";
@@ -139,12 +139,12 @@ auto spp::cli::handle_vcs()
 
         // Repo doesn't exist locally => clone it.
         if (not std::filesystem::exists(repo_folder)) {
-            boost::process::v1::system("git clone --branch " + repo_branch + " " + repo_url + " " + repo_folder.string(), SPP_CLI_NULL);
+            bp::system("git clone --branch " + repo_branch + " " + repo_url + " " + repo_folder.string(), SPP_CLI_NULL);
             std::cout << "Cloned "s + repo_name + " from " + repo_url + "\n";
         }
         else {
-            boost::process::v1::system("git -C " + repo_folder.string() + " pull origin " + repo_branch, SPP_CLI_NULL);
-            boost::process::v1::system("git -C " + repo_folder.string() + " checkout " + repo_branch, SPP_CLI_NULL);
+            bp::system("git -C " + repo_folder.string() + " pull origin " + repo_branch, SPP_CLI_NULL);
+            bp::system("git -C " + repo_folder.string() + " checkout " + repo_branch, SPP_CLI_NULL);
             std::cout << "Updated "s + repo_name + " from " + repo_url + " (" + repo_branch + ")" + "\n";
         }
 

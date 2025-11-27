@@ -6,4 +6,5 @@ export module cli11;
 
 namespace cli11 {
     using ::CLI::App;
+    using ::CLI::IsMember;
 }
