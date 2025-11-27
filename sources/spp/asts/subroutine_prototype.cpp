@@ -1,21 +1,14 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/function_implementation_ast.hpp>
-#include <spp/asts/function_parameter_ast.hpp>
-#include <spp/asts/function_parameter_group_ast.hpp>
-#include <spp/asts/generic_parameter_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/ret_statement_ast.hpp>
-#include <spp/asts/subroutine_prototype_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types_precompiled.hpp>
-#include <spp/codegen/llvm_mangle.hpp>
-
+module;
 #include <genex/views/for_each.hpp>
+
+module spp.asts.subroutine_prototype_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.function_implementation_ast;
+import spp.asts.statement_ast;
+import spp.asts.generate.common_types_precompiled;
 
 
 spp::asts::SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;
@@ -49,7 +42,7 @@ auto spp::asts::SubroutinePrototypeAst::clone() const
 
 auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Perform default function prototype semantic analysis
     FunctionPrototypeAst::stage_7_analyse_semantics(sm, meta);

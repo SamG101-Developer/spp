@@ -1,8 +1,13 @@
-#pragma once
-#include <spp/asts/literal_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+export module spp.asts.string_literal_ast;
+import spp.asts.literal_ast;
+
+import std;
 
 
-struct spp::asts::StringLiteralAst final : LiteralAst {
+SPP_EXP struct spp::asts::StringLiteralAst final : LiteralAst {
     /**
      * The string value of the string literal. This is the actual string that is represented by the literal.
      */
@@ -25,5 +30,5 @@ protected:
 public:
     SPP_AST_KEY_FUNCTIONS;
 
-    auto infer_type(ScopeManager *sm, mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

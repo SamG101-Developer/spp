@@ -1,7 +1,10 @@
-#include <spp/asts/string_literal_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.string_literal_ast;
+import spp.asts.ast;
+import spp.asts.token_ast;
+import spp.asts.generate.common_types;
 
 
 spp::asts::StringLiteralAst::StringLiteralAst(
@@ -68,7 +71,7 @@ auto spp::asts::StringLiteralAst::print(
 
 auto spp::asts::StringLiteralAst::infer_type(
     ScopeManager *,
-    mixins::CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // The type of a string literal is always a string type.
     return generate::common_types::string_type(val->pos_start());

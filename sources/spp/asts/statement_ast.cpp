@@ -1,11 +1,10 @@
-#include <spp/asts/statement_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module spp.asts.statement_ast;
+import spp.asts.generate.common_types;
 
 
 auto spp::asts::StatementAst::infer_type(
     ScopeManager *,
-    mixins::CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // All statements are inferred as the Void type.
     return generate::common_types::void_type(pos_start());
