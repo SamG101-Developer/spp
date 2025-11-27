@@ -1,11 +1,15 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/generic_parameter_comp_optional_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.generic_parameter_comp_optional_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.mixins.orderable_ast;
 
 
 spp::asts::GenericParameterCompOptionalAst::GenericParameterCompOptionalAst(
@@ -76,7 +80,7 @@ auto spp::asts::GenericParameterCompOptionalAst::print(
 
 auto spp::asts::GenericParameterCompOptionalAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the default value.
     GenericParameterCompAst::stage_7_analyse_semantics(sm, meta);
@@ -93,7 +97,7 @@ auto spp::asts::GenericParameterCompOptionalAst::stage_7_analyse_semantics(
 
 auto spp::asts::GenericParameterCompOptionalAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the default value for memory issues.
     default_val->stage_8_check_memory(sm, meta);

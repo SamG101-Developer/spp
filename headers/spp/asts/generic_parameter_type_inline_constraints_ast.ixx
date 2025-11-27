@@ -7,7 +7,7 @@ import spp.asts.ast;
 import std;
 
 
-struct spp::asts::GenericParameterTypeInlineConstraintsAst final : virtual Ast {
+SPP_EXP struct spp::asts::GenericParameterTypeInlineConstraintsAst final : virtual Ast {
     /**
      * The @code :@endcode token that introduces the inline constraints.
      */

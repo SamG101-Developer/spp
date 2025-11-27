@@ -1,11 +1,7 @@
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/scopes/symbols.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/generic_parameter_type_ast.hpp>
-#include <spp/asts/generic_parameter_type_inline_constraints_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/type_statement_ast.hpp>
+module spp.asts.generic_parameter_type_ast;
+import spp.analyse.scopes.symbols;
+import spp.asts.ast;
+import spp.asts.type_ast;
 
 
 spp::asts::GenericParameterTypeAst::GenericParameterTypeAst(
@@ -22,8 +18,8 @@ spp::asts::GenericParameterTypeAst::~GenericParameterTypeAst() = default;
 
 auto spp::asts::GenericParameterTypeAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *) -> void {
-    // Create e type symbol for the generic parameter.
+    meta::CompilerMetaData *) -> void {
+    // Create the type symbol for the generic parameter.
     auto sym = std::make_unique<analyse::scopes::TypeSymbol>(
         ast_clone(name->type_parts().back().get()), nullptr, nullptr, sm->current_scope, nullptr, true);
     sm->current_scope->add_type_symbol(std::move(sym));
@@ -32,7 +28,7 @@ auto spp::asts::GenericParameterTypeAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::GenericParameterTypeAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    meta::CompilerMetaData *meta) -> void {
     // Analyse the name.
     name->stage_7_analyse_semantics(sm, meta);
 }

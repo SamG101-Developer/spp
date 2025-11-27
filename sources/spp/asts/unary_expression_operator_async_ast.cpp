@@ -19,17 +19,20 @@ spp::asts::UnaryExpressionOperatorAsyncAst::UnaryExpressionOperatorAsyncAst(
 spp::asts::UnaryExpressionOperatorAsyncAst::~UnaryExpressionOperatorAsyncAst() = default;
 
 
-auto spp::asts::UnaryExpressionOperatorAsyncAst::pos_start() const -> std::size_t {
+auto spp::asts::UnaryExpressionOperatorAsyncAst::pos_start() const
+    -> std::size_t {
     return tok_async->pos_start();
 }
 
 
-auto spp::asts::UnaryExpressionOperatorAsyncAst::pos_end() const -> std::size_t {
+auto spp::asts::UnaryExpressionOperatorAsyncAst::pos_end() const
+    -> std::size_t {
     return tok_async->pos_end();
 }
 
 
-auto spp::asts::UnaryExpressionOperatorAsyncAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::UnaryExpressionOperatorAsyncAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<UnaryExpressionOperatorAsyncAst>(
         ast_clone(tok_async));
 }
@@ -42,7 +45,8 @@ spp::asts::UnaryExpressionOperatorAsyncAst::operator std::string() const {
 }
 
 
-auto spp::asts::UnaryExpressionOperatorAsyncAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::UnaryExpressionOperatorAsyncAst::print(meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_async);
     SPP_PRINT_END;

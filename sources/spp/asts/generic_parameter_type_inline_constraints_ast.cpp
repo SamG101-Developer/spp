@@ -1,7 +1,11 @@
-#include <spp/pch.hpp>
-#include <spp/asts/generic_parameter_type_inline_constraints_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.generic_parameter_type_inline_constraints_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
 
 
 spp::asts::GenericParameterTypeInlineConstraintsAst::GenericParameterTypeInlineConstraintsAst(

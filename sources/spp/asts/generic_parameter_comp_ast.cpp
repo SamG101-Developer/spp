@@ -1,15 +1,13 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/generic_parameter_comp_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-
+module spp.asts.generic_parameter_comp_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_utils;
+import spp.asts.ast;
+import spp.asts.convention_ast;
+import spp.asts.identifier_ast;
+import spp.asts.type_ast;
+import spp.asts.utils.visibility;
 
 
 spp::asts::GenericParameterCompAst::GenericParameterCompAst(
@@ -30,7 +28,7 @@ spp::asts::GenericParameterCompAst::~GenericParameterCompAst() = default;
 
 auto spp::asts::GenericParameterCompAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> void {
     // Ensure the type does not have a convention.
     if (const auto conv = type->get_convention(); conv != nullptr) {
@@ -50,7 +48,7 @@ auto spp::asts::GenericParameterCompAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::GenericParameterCompAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Qualify the type on the generic parameter (and in the symbol). Note: not possible to have a convention here.
     meta->save();
@@ -64,7 +62,7 @@ auto spp::asts::GenericParameterCompAst::stage_4_qualify_types(
 
 auto spp::asts::GenericParameterCompAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the type.
     type->stage_7_analyse_semantics(sm, meta);

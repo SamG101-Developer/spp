@@ -52,17 +52,20 @@ spp::asts::LocalVariableDestructureTupleAst::LocalVariableDestructureTupleAst(
 spp::asts::LocalVariableDestructureTupleAst::~LocalVariableDestructureTupleAst() = default;
 
 
-auto spp::asts::LocalVariableDestructureTupleAst::pos_start() const -> std::size_t {
+auto spp::asts::LocalVariableDestructureTupleAst::pos_start() const
+    -> std::size_t {
     return tok_l->pos_start();
 }
 
 
-auto spp::asts::LocalVariableDestructureTupleAst::pos_end() const -> std::size_t {
+auto spp::asts::LocalVariableDestructureTupleAst::pos_end() const
+    -> std::size_t {
     return tok_r->pos_end();
 }
 
 
-auto spp::asts::LocalVariableDestructureTupleAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::LocalVariableDestructureTupleAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<LocalVariableDestructureTupleAst>(
         ast_clone(tok_l),
         ast_clone_vec(elems),
@@ -79,7 +82,9 @@ spp::asts::LocalVariableDestructureTupleAst::operator std::string() const {
 }
 
 
-auto spp::asts::LocalVariableDestructureTupleAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::LocalVariableDestructureTupleAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);
     SPP_PRINT_EXTEND(elems);

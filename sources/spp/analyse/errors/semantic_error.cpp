@@ -53,7 +53,8 @@ auto spp::analyse::errors::SemanticError::add_footer(std::string &&note, std::st
 }
 
 
-auto spp::analyse::errors::SemanticError::clone() const -> std::unique_ptr<SemanticError> {
+auto spp::analyse::errors::SemanticError::clone() const
+-> std::unique_ptr<SemanticError> {
     // Use the copy constructor to clone the error.
     return std::make_unique<SemanticError>(*this);
 }

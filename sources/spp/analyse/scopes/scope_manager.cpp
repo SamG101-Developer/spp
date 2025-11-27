@@ -29,7 +29,8 @@ spp::analyse::scopes::ScopeManager::ScopeManager(
 }
 
 
-auto spp::analyse::scopes::ScopeManager::iter() const -> ScopeRange {
+auto spp::analyse::scopes::ScopeManager::iter() const
+-> ScopeRange {
     return ScopeRange{current_scope};
 }
 

@@ -1,28 +1,30 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/order_utils.hpp>
-#include <spp/asts/function_parameter_self_ast.hpp>
-#include <spp/asts/generic_parameter_ast.hpp>
-#include <spp/asts/generic_parameter_comp_optional_ast.hpp>
-#include <spp/asts/generic_parameter_comp_required_ast.hpp>
-#include <spp/asts/generic_parameter_comp_variadic_ast.hpp>
-#include <spp/asts/generic_parameter_group_ast.hpp>
-#include <spp/asts/generic_parameter_type_inline_constraints_ast.hpp>
-#include <spp/asts/generic_parameter_type_optional_ast.hpp>
-#include <spp/asts/generic_parameter_type_required_ast.hpp>
-#include <spp/asts/generic_parameter_type_variadic_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/views/cast_dynamic.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/duplicates.hpp>
 #include <genex/views/for_each.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
+#include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.generic_parameter_group_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.order_utils;
+import spp.asts.token_ast;
+import spp.asts.generic_parameter_comp_required_ast;
+import spp.asts.generic_parameter_type_required_ast;
+import spp.asts.generic_parameter_comp_optional_ast;
+import spp.asts.generic_parameter_type_optional_ast;
+import spp.asts.generic_parameter_comp_variadic_ast;
+import spp.asts.generic_parameter_type_variadic_ast;
+import spp.asts.mixins.orderable_ast;
+import spp.lex.tokens;
 
 
 spp::asts::GenericParameterGroupAst::GenericParameterGroupAst(
@@ -228,7 +230,7 @@ auto spp::asts::GenericParameterGroupAst::opt_to_req() const
 
 auto spp::asts::GenericParameterGroupAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Run the generation steps on the parameters in the group.
     params | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
@@ -237,7 +239,7 @@ auto spp::asts::GenericParameterGroupAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::GenericParameterGroupAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Run the type qualifier steps on each parameter in the group.
     params | genex::views::for_each([sm, meta](auto &&x) { x->stage_4_qualify_types(sm, meta); });
@@ -246,7 +248,7 @@ auto spp::asts::GenericParameterGroupAst::stage_4_qualify_types(
 
 auto spp::asts::GenericParameterGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
 
     const auto param_names = params
@@ -279,7 +281,7 @@ auto spp::asts::GenericParameterGroupAst::stage_7_analyse_semantics(
 
 auto spp::asts::GenericParameterGroupAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Run the memory checks on each parameter in the group.
     params | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });

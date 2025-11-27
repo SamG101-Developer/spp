@@ -31,17 +31,20 @@ auto spp::asts::StringLiteralAst::equals_string_literal(
 }
 
 
-auto spp::asts::StringLiteralAst::pos_start() const -> std::size_t {
+auto spp::asts::StringLiteralAst::pos_start() const
+    -> std::size_t {
     return val->pos_start();
 }
 
 
-auto spp::asts::StringLiteralAst::pos_end() const -> std::size_t {
+auto spp::asts::StringLiteralAst::pos_end() const
+    -> std::size_t {
     return val->pos_end();
 }
 
 
-auto spp::asts::StringLiteralAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::StringLiteralAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<StringLiteralAst>(
         ast_clone(val));
 }
@@ -54,7 +57,9 @@ spp::asts::StringLiteralAst::operator std::string() const {
 }
 
 
-auto spp::asts::StringLiteralAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::StringLiteralAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(val);
     SPP_PRINT_END;

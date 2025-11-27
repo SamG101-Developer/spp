@@ -9,17 +9,20 @@ spp::asts::meta::AstPrinter::AstPrinter(
 }
 
 
-auto spp::asts::meta::AstPrinter::m_increase_indent() -> void {
+auto spp::asts::meta::AstPrinter::m_increase_indent()
+    -> void {
     m_indent_level += m_indent_size;
 }
 
 
-auto spp::asts::meta::AstPrinter::m_decrease_indent() -> void {
+auto spp::asts::meta::AstPrinter::m_decrease_indent()
+    -> void {
     m_indent_level -= m_indent_size;
 }
 
 
-auto spp::asts::meta::AstPrinter::m_format_code(std::string &&code) const -> std::string {
+auto spp::asts::meta::AstPrinter::m_format_code(std::string &&code) const
+    -> std::string {
     if (m_indent_level == 0) {
         return code;
     }

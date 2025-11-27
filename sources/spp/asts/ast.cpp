@@ -15,7 +15,6 @@ import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
 
 
-
 auto spp::asts::ast_name(Ast *ast) -> std::shared_ptr<TypeAst> {
     if (ast_cast<ClassPrototypeAst>(ast) != nullptr) {
         return ast_cast<ClassPrototypeAst>(ast)->name;
@@ -73,7 +72,8 @@ spp::asts::Ast::Ast() = default;
 spp::asts::Ast::~Ast() = default;
 
 
-auto spp::asts::Ast::size() const -> std::size_t {
+auto spp::asts::Ast::size() const
+    -> std::size_t {
     return pos_end() - pos_start();
 }
 

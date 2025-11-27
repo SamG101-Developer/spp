@@ -1,6 +1,11 @@
-#include <spp/asts/generic_parameter_comp_variadic_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.generic_parameter_comp_variadic_ast;
+import spp.asts.ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.mixins.orderable_ast;
 
 
 spp::asts::GenericParameterCompVariadicAst::GenericParameterCompVariadicAst(

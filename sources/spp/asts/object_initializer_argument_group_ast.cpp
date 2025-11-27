@@ -44,17 +44,20 @@ spp::asts::ObjectInitializerArgumentGroupAst::ObjectInitializerArgumentGroupAst(
 spp::asts::ObjectInitializerArgumentGroupAst::~ObjectInitializerArgumentGroupAst() = default;
 
 
-auto spp::asts::ObjectInitializerArgumentGroupAst::pos_start() const -> std::size_t {
+auto spp::asts::ObjectInitializerArgumentGroupAst::pos_start() const
+    -> std::size_t {
     return tok_l->pos_start();
 }
 
 
-auto spp::asts::ObjectInitializerArgumentGroupAst::pos_end() const -> std::size_t {
+auto spp::asts::ObjectInitializerArgumentGroupAst::pos_end() const
+    -> std::size_t {
     return tok_r->pos_end();
 }
 
 
-auto spp::asts::ObjectInitializerArgumentGroupAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::ObjectInitializerArgumentGroupAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<ObjectInitializerArgumentGroupAst>(
         ast_clone(tok_l),
         ast_clone_vec(args),
@@ -71,7 +74,9 @@ spp::asts::ObjectInitializerArgumentGroupAst::operator std::string() const {
 }
 
 
-auto spp::asts::ObjectInitializerArgumentGroupAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::ObjectInitializerArgumentGroupAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);
     SPP_PRINT_EXTEND(args);
@@ -154,7 +159,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics
         // Return type overload helper.
         meta->save();
         if (const auto kw_arg = ast_cast<ObjectInitializerArgumentKeywordAst>(arg.get()); kw_arg != nullptr) {
-            RETURN_TYPE_OVERLOAD_HELPER(arg->val.get()) {
+            RETURN_TYPE_OVERLOAD_HELPER(arg->val.get())
+            {
                 // Multiple attributes with same name (via base classes) -> can't infer the one to use.
                 auto attrs = all_attrs
                     | genex::views::filter([kw_arg](auto &&x) { return *x.first->name == *kw_arg->name; })

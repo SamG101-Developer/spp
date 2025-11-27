@@ -55,17 +55,20 @@ spp::asts::LocalVariableDestructureObjectAst::LocalVariableDestructureObjectAst(
 spp::asts::LocalVariableDestructureObjectAst::~LocalVariableDestructureObjectAst() = default;
 
 
-auto spp::asts::LocalVariableDestructureObjectAst::pos_start() const -> std::size_t {
+auto spp::asts::LocalVariableDestructureObjectAst::pos_start() const
+    -> std::size_t {
     return tok_l->pos_start();
 }
 
 
-auto spp::asts::LocalVariableDestructureObjectAst::pos_end() const -> std::size_t {
+auto spp::asts::LocalVariableDestructureObjectAst::pos_end() const
+    -> std::size_t {
     return tok_r->pos_end();
 }
 
 
-auto spp::asts::LocalVariableDestructureObjectAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::LocalVariableDestructureObjectAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<LocalVariableDestructureObjectAst>(
         ast_clone(type),
         ast_clone(tok_l),
@@ -84,7 +87,9 @@ spp::asts::LocalVariableDestructureObjectAst::operator std::string() const {
 }
 
 
-auto spp::asts::LocalVariableDestructureObjectAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::LocalVariableDestructureObjectAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(type);
     SPP_PRINT_APPEND(tok_l);

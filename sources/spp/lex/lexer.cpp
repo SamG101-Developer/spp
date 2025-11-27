@@ -12,7 +12,8 @@ spp::lex::Lexer::Lexer(std::string code)
 }
 
 
-auto spp::lex::Lexer::lex() const -> std::vector<RawToken> {
+auto spp::lex::Lexer::lex() const
+-> std::vector<RawToken> {
     // Define tracker variables.
     auto tokens = std::vector<RawToken>();
     auto in_string = false;

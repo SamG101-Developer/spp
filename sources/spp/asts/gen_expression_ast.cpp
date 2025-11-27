@@ -38,17 +38,20 @@ spp::asts::GenExpressionAst::GenExpressionAst(
 spp::asts::GenExpressionAst::~GenExpressionAst() = default;
 
 
-auto spp::asts::GenExpressionAst::pos_start() const -> std::size_t {
+auto spp::asts::GenExpressionAst::pos_start() const
+    -> std::size_t {
     return tok_gen->pos_start();
 }
 
 
-auto spp::asts::GenExpressionAst::pos_end() const -> std::size_t {
+auto spp::asts::GenExpressionAst::pos_end() const
+    -> std::size_t {
     return expr->pos_end();
 }
 
 
-auto spp::asts::GenExpressionAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::GenExpressionAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<GenExpressionAst>(
         ast_clone(tok_gen),
         ast_clone(conv),
@@ -65,7 +68,9 @@ spp::asts::GenExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
+auto spp::asts::GenExpressionAst::print(
+    meta::AstPrinter &printer) const
+    -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_gen);
     SPP_PRINT_APPEND(conv);

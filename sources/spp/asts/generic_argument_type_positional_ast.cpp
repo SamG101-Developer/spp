@@ -1,9 +1,10 @@
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/scopes/symbols.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/generic_argument_type_positional_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.generic_argument_type_positional_ast;
+import spp.asts.ast;
+import spp.asts.type_ast;
+import spp.asts.mixins.orderable_ast;
 
 
 spp::asts::GenericArgumentTypePositionalAst::GenericArgumentTypePositionalAst(
@@ -69,7 +70,7 @@ auto spp::asts::GenericArgumentTypePositionalAst::print(
 
 auto spp::asts::GenericArgumentTypePositionalAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the name and value of the generic type argument.
     val->stage_7_analyse_semantics(sm, meta);
