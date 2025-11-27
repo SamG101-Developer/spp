@@ -1,6 +1,5 @@
-#include <spp/utils/error_formatter.hpp>
-#include <spp/utils/errors.hpp>
-#include <spp/parse/parser_base.hpp>
+module spp.parse.parser_base;
+import spp.utils.error_formatter;
 
 
 spp::parse::ParserBase::ParserBase(std::vector<lex::RawToken> tokens, std::shared_ptr<utils::errors::ErrorFormatter> const &error_formatter) :

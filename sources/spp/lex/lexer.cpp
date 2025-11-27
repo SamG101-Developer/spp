@@ -1,10 +1,10 @@
-#include <spp/lex/lexer.hpp>
-#include <spp/pch.hpp>
-#include <spp/utils/strings.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/views/transform.hpp>
 #include <magic_enum/magic_enum.hpp>
+
+module spp.lex.lexer;
+import spp.utils.strings;
 
 
 spp::lex::Lexer::Lexer(std::string code)
@@ -13,7 +13,7 @@ spp::lex::Lexer::Lexer(std::string code)
 
 
 auto spp::lex::Lexer::lex() const
--> std::vector<RawToken> {
+    -> std::vector<RawToken> {
     // Define tracker variables.
     auto tokens = std::vector<RawToken>();
     auto in_string = false;

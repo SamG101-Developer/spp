@@ -1,4 +1,4 @@
-#include <spp/parse/errors/parser_error.hpp>
+module spp.parse.errors.parser_error;
 
 
 spp::parse::errors::SyntacticError::SyntacticError(std::string &&header) :

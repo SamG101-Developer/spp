@@ -1,6 +1,4 @@
-#include <spp/asts/module_prototype_ast.hpp>
-#include <spp/compiler/module_tree.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/actions/remove_if.hpp>
 #include <genex/views/borrow.hpp>
@@ -11,7 +9,9 @@
 #include <genex/views/move.hpp>
 #include <genex/views/split.hpp>
 #include <genex/views/transform.hpp>
-#include <Glob-1.0/glob/glob.h>
+
+module spp.compiler.module_tree;
+import glob;
 
 
 auto spp::compiler::Module::from_path(std::filesystem::path const &path) {

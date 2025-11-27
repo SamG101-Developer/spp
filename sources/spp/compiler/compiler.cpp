@@ -1,9 +1,8 @@
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/module_prototype_ast.hpp>
-#include <spp/asts/generate/common_types_precompiled.hpp>
-#include <spp/compiler/compiler.hpp>
+module spp.compiler.compiler;
 
-#include <indicators/progress_bar.hpp>
+import indicators;
+import spp.analyse.scopes.scope;
+import spp.asts.generate.common_types_precompiled;
 
 
 spp::compiler::Compiler::Compiler(const Mode mode) :

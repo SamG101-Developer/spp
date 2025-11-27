@@ -1,32 +1,32 @@
-#include <print>
-
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/module_prototype_ast.hpp>
-#include <spp/asts/mixins/compiler_stages.hpp>
-#include <spp/compiler/compiler_boot.hpp>
-#include <spp/lex/lexer.hpp>
-#include <spp/parse/parser_spp.hpp>
-#include <spp/utils/error_formatter.hpp>
-#include <spp/utils/files.hpp>
-
+module;
 #include <genex/actions/drop.hpp>
 #include <genex/algorithms/contains.hpp>
 #include <genex/algorithms/find.hpp>
 #include <genex/algorithms/find_if.hpp>
+
+#include <spp/parse/macros.hpp>
+
+module spp.compiler.compiler_boot;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.symbols;
+import spp.asts.module_prototype_ast;
+import spp.asts.expression_ast;
+import spp.asts.identifier_ast;
+import spp.lex.lexer;
+import spp.parse.parser_spp;
+import spp.utils.error_formatter;
+import spp.utils.files;
 
 
 #define PREP_SCOPE_MANAGER \
     auto const &mod_in_tree = *genex::algorithms::find_if(tree, [&](auto &m) { return m.module_ast.get() == mod; })
 
 
-#define PREP_SCOPE_MANAGER_AND_META(s) \
-    PREP_SCOPE_MANAGER;\
-    spp::compiler::CompilerBoot::move_scope_manager_to_ns(sm, mod_in_tree);\
-    auto meta = spp::asts::mixins::CompilerMetaData();\
+#define PREP_SCOPE_MANAGER_AND_META(s)                                      \
+    PREP_SCOPE_MANAGER;                                                     \
+    spp::compiler::CompilerBoot::move_scope_manager_to_ns(sm, mod_in_tree); \
+    auto meta = spp::asts::meta::CompilerMetaData();                        \
     meta.current_stage = (s)
 
 
@@ -131,7 +131,7 @@ auto spp::compiler::CompilerBoot::stage_5_load_super_scopes(
     }
 
     // Attach all super scopes now.
-    auto meta = asts::mixins::CompilerMetaData();
+    auto meta = asts::meta::CompilerMetaData();
     meta.current_stage = 7.5;
     sm->attach_all_super_scopes(&meta);
 }
@@ -198,7 +198,7 @@ auto spp::compiler::CompilerBoot::validate_entry_point(
     sm->reset();
 
     try {
-        auto meta = asts::mixins::CompilerMetaData();
+        auto meta = asts::meta::CompilerMetaData();
         meta.current_stage = 9.0;
         main_call->stage_7_analyse_semantics(sm, &meta);
     }
