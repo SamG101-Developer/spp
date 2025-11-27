@@ -1,4 +1,7 @@
 module spp.parse.parser_base;
+import spp.lex.tokens;
+import spp.parse.errors.parser_error;
+import spp.parse.errors.parser_error_builder;
 import spp.utils.error_formatter;
 
 

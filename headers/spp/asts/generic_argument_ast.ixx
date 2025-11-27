@@ -10,7 +10,7 @@ import std;
 
 
 namespace spp::asts::detail {
-    SPP_EXP_CLS template <typename GenericArgType>
+    template <typename GenericArgType>
     struct make_keyword_arg {
         using type = GenericArgType;
     };
@@ -25,9 +25,9 @@ namespace spp::asts::detail {
         using type = GenericArgumentTypeKeywordAst;
     };
 
-
     SPP_EXP_CLS template <typename T>
     using make_keyword_arg_t = typename make_keyword_arg<T>::type;
+
 
     template <typename GenericArgType>
     struct make_positional_arg {
@@ -38,16 +38,15 @@ namespace spp::asts::detail {
     struct make_positional_arg<GenericArgumentCompAst> {
         using type = GenericArgumentCompPositionalAst;
     };
-    
+
     template <>
     struct make_positional_arg<GenericArgumentTypeAst> {
         using type = GenericArgumentTypePositionalAst;
     };
 
-    template <typename T>
+    SPP_EXP_CLS template <typename T>
     using make_positional_arg_t = typename make_positional_arg<T>::type;
 }
-
 
 
 /**
