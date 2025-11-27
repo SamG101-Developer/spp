@@ -1,9 +1,7 @@
 module;
 #include <llvm/IR/BasicBlock.h>
-#include <llvm/IR/Instruction.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/LLVMContext.h>
 
 export module llvm;
 
@@ -14,6 +12,7 @@ export namespace llvm {
     using ::llvm::APFloat;
     using ::llvm::APFloatBase;
     using ::llvm::ArrayType;
+    using ::llvm::Attribute;
     using ::llvm::BasicBlock;
     using ::llvm::Constant;
     using ::llvm::ConstantInt;
@@ -30,10 +29,38 @@ export namespace llvm {
     using ::llvm::PHINode;
     using ::llvm::StructType;
     using ::llvm::Type;
+    using ::llvm::UndefValue;
     using ::llvm::Value;
 
     namespace Intrinsic {
         using ::llvm::Intrinsic::getOrInsertDeclaration;
         using ::llvm::Intrinsic::IndependentIntrinsics;
+
+        using ::llvm::Intrinsic::abs;
+        using ::llvm::Intrinsic::acos;
+        using ::llvm::Intrinsic::asin;
+        using ::llvm::Intrinsic::atan;
+        using ::llvm::Intrinsic::atan2;
+        using ::llvm::Intrinsic::ceil;
+        using ::llvm::Intrinsic::cos;
+        using ::llvm::Intrinsic::exp;
+        using ::llvm::Intrinsic::exp2;
+        using ::llvm::Intrinsic::floor;
+        using ::llvm::Intrinsic::log;
+        using ::llvm::Intrinsic::log10;
+        using ::llvm::Intrinsic::log2;
+        using ::llvm::Intrinsic::pow;
+        using ::llvm::Intrinsic::sin;
+        using ::llvm::Intrinsic::sqrt;
+        using ::llvm::Intrinsic::tan;
+
+        using ::llvm::Intrinsic::memset;
+
+        using ::llvm::Intrinsic::sadd_with_overflow;
+        using ::llvm::Intrinsic::uadd_with_overflow;
+        using ::llvm::Intrinsic::smul_with_overflow;
+        using ::llvm::Intrinsic::umul_with_overflow;
+        using ::llvm::Intrinsic::ssub_with_overflow;
+        using ::llvm::Intrinsic::usub_with_overflow;
     }
 }

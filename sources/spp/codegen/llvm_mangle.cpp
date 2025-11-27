@@ -1,18 +1,18 @@
-#include <genex/views/reverse.hpp>
-#include <spp/analyse/scopes/symbols.hpp>
-#include <spp/asts/cmp_statement_ast.hpp>
-#include <spp/asts/function_parameter_ast.hpp>
-#include <spp/asts/function_parameter_group_ast.hpp>
-#include <spp/asts/function_prototype_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/codegen/llvm_mangle.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/views/join_with.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/reverse.hpp>
 #include <genex/views/transform.hpp>
+
+module spp.codegen.llvm_mangle;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_block_name;
+import spp.asts.cmp_statement_ast;
+import spp.asts.function_parameter_group_ast;
+import spp.asts.function_prototype_ast;
+import spp.asts.identifier_ast;
+import spp.asts.type_ast;
 
 
 auto spp::codegen::mangle::mangle_type_name(

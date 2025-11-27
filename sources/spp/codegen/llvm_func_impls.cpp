@@ -1,8 +1,9 @@
-#include <spp/asts/generate/common_types.hpp>
-#include <spp/codegen/llvm_func_impls.hpp>
-#include <spp/codegen/llvm_mangle.hpp>
-#include <spp/codegen/llvm_size.hpp>
-#include <spp/utils/files.hpp>
+module spp.codegen.llvm_func_impls;
+import spp.asts.generate.common_types;
+import spp.codegen.llvm_size;
+
+import llvm;
+
 
 // static const auto LLVM_PATH = std::filesystem::path(__FILE__).parent_path() / "raw_impl";
 //

@@ -1,19 +1,20 @@
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/class_attribute_ast.hpp>
-#include <spp/asts/class_implementation_ast.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
-#include <spp/asts/generic_argument_comp_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_ast.hpp>
-#include <spp/asts/integer_literal_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/generate/common_types_precompiled.hpp>
-#include <spp/codegen/llvm_size.hpp>
-
+module;
+#include <genex/to_container.hpp>
 #include <genex/algorithms/fold_left_first.hpp>
 #include <genex/views/cast_dynamic.hpp>
 #include <genex/views/transform.hpp>
+
+module spp.codegen.llvm_size;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.generic_argument_comp_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
+import spp.asts.integer_literal_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.generate.common_types_precompiled;
 
 
 auto spp::codegen::size_of(
