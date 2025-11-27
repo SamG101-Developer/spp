@@ -1,8 +1,15 @@
-#include <spp/pch.hpp>
-#include <spp/asts/module_implementation_ast.hpp>
-#include <spp/asts/module_member_ast.hpp>
-
+module;
+#include <genex/to_container.hpp>
 #include <genex/views/for_each.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
+#include <genex/views/ptr.hpp>
+#include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.module_implementation_ast;
+import spp.asts.module_member_ast;
 
 
 spp::asts::ModuleImplementationAst::ModuleImplementationAst(
@@ -62,7 +69,7 @@ auto spp::asts::ModuleImplementationAst::stage_1_pre_process(
 
 auto spp::asts::ModuleImplementationAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Shift to members.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
@@ -71,7 +78,7 @@ auto spp::asts::ModuleImplementationAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::ModuleImplementationAst::stage_3_gen_top_level_aliases(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Shift to members.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_3_gen_top_level_aliases(sm, meta); });
@@ -80,7 +87,7 @@ auto spp::asts::ModuleImplementationAst::stage_3_gen_top_level_aliases(
 
 auto spp::asts::ModuleImplementationAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Shift to members.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_4_qualify_types(sm, meta); });
@@ -89,7 +96,7 @@ auto spp::asts::ModuleImplementationAst::stage_4_qualify_types(
 
 auto spp::asts::ModuleImplementationAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Shift to members.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_5_load_super_scopes(sm, meta); });
@@ -98,7 +105,7 @@ auto spp::asts::ModuleImplementationAst::stage_5_load_super_scopes(
 
 auto spp::asts::ModuleImplementationAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Shift to members.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_6_pre_analyse_semantics(sm, meta); });
@@ -107,7 +114,7 @@ auto spp::asts::ModuleImplementationAst::stage_6_pre_analyse_semantics(
 
 auto spp::asts::ModuleImplementationAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Shift to members.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_7_analyse_semantics(sm, meta); });
@@ -116,7 +123,7 @@ auto spp::asts::ModuleImplementationAst::stage_7_analyse_semantics(
 
 auto spp::asts::ModuleImplementationAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Shift to members.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });

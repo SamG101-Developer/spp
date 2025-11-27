@@ -1,19 +1,20 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/inner_scope_expression_ast.hpp>
-#include <spp/asts/loop_condition_boolean_ast.hpp>
-#include <spp/asts/loop_condition_iterable_ast.hpp>
-#include <spp/asts/loop_else_statement_ast.hpp>
-#include <spp/asts/loop_expression_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
-#include <spp/asts/generate/common_types_precompiled.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.loop_expression_ast;
+import spp.asts.ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_block_name;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.identifier_ast;
+import spp.asts.inner_scope_expression_ast;
+import spp.asts.loop_condition_ast;
+import spp.asts.loop_else_statement_ast;
+import spp.asts.token_ast;
+import spp.asts.generate.common_types;
+import spp.asts.generate.common_types_precompiled;
 
 
 spp::asts::LoopExpressionAst::LoopExpressionAst(
@@ -78,7 +79,7 @@ auto spp::asts::LoopExpressionAst::print(
 
 auto spp::asts::LoopExpressionAst::m_codegen_condition_bool(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) const
     -> llvm::Value* {
     /*
@@ -153,7 +154,7 @@ auto spp::asts::LoopExpressionAst::m_codegen_condition_bool(
 
 auto spp::asts::LoopExpressionAst::m_codegen_condition_iter(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) const
     -> llvm::Value* {
 
@@ -250,7 +251,7 @@ auto spp::asts::LoopExpressionAst::m_codegen_condition_iter(
 
 auto spp::asts::LoopExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Create the loop scope.
     auto scope_name = analyse::scopes::ScopeBlockName("<loop-expr#" + std::to_string(pos_start()) + ">");
@@ -279,7 +280,7 @@ auto spp::asts::LoopExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::LoopExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Move into the loop scope.
     sm->move_to_next_scope();
@@ -309,7 +310,7 @@ auto spp::asts::LoopExpressionAst::stage_8_check_memory(
 
 auto spp::asts::LoopExpressionAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate code based on the condition type.
@@ -321,7 +322,7 @@ auto spp::asts::LoopExpressionAst::stage_10_code_gen_2(
 
 auto spp::asts::LoopExpressionAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Get the loop's exit type (or Void if there are no exits fro inside the loop).
     auto [exit_expr, loop_type, _] = m_loop_exit_type_info.has_value()

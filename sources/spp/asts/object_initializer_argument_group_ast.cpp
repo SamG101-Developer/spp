@@ -1,32 +1,30 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/class_attribute_ast.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
-#include <spp/asts/class_implementation_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/object_initializer_argument_group_ast.hpp>
-#include <spp/asts/object_initializer_argument_shorthand_ast.hpp>
-#include <spp/asts/object_initializer_argument_keyword_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/macros.hpp>
-#include <spp/pch.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/operations/access.hpp>
 #include <genex/views/cast_dynamic.hpp>
 #include <genex/views/duplicates.hpp>
 #include <genex/views/filter.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
 #include <genex/views/materialize.hpp>
 #include <genex/views/ptr.hpp>
 #include <genex/views/remove.hpp>
 #include <genex/views/set_algorithms.hpp>
 #include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.object_initializer_argument_group_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.type_utils;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.object_initializer_argument_keyword_ast;
+import spp.asts.object_initializer_argument_shorthand_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.lex.tokens;
 
 
 spp::asts::ObjectInitializerArgumentGroupAst::ObjectInitializerArgumentGroupAst(
@@ -136,7 +134,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::get_keyword_args()
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Ensure there are no duplicate member names. This needs to be done before semantic analysis as other ASTs might
     // try reading a duplicate attribute before an error is raised.
@@ -159,7 +157,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics
         // Return type overload helper.
         meta->save();
         if (const auto kw_arg = ast_cast<ObjectInitializerArgumentKeywordAst>(arg.get()); kw_arg != nullptr) {
-            RETURN_TYPE_OVERLOAD_HELPER(arg->val.get())
+            SPP_RETURN_TYPE_OVERLOAD_HELPER(arg->val.get())
             {
                 // Multiple attributes with same name (via base classes) -> can't infer the one to use.
                 auto attrs = all_attrs
@@ -182,7 +180,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Get the attributes on the type and supertypes.
     const auto cls_sym = sm->current_scope->get_type_symbol(meta->object_init_type);
@@ -252,7 +250,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory of the arguments.
     for (auto &&arg : args) {

@@ -1,15 +1,21 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/loop_control_flow_statement_ast.hpp>
-#include <spp/asts/loop_expression_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <genex/to_container.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
+#include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.loop_control_flow_statement_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.loop_expression_ast;
+import spp.asts.token_ast;
+import spp.asts.expression_ast;
+import spp.asts.generate.common_types;
 
 
 spp::asts::LoopControlFlowStatementAst::LoopControlFlowStatementAst(
@@ -69,7 +75,7 @@ auto spp::asts::LoopControlFlowStatementAst::print(
 
 auto spp::asts::LoopControlFlowStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Get the number of control flow statements, and the loop's nesting level.
     const auto has_skip = tok_skip != nullptr;
@@ -78,7 +84,7 @@ auto spp::asts::LoopControlFlowStatementAst::stage_7_analyse_semantics(
 
     // Analyse the expression if it is present.
     if (expr != nullptr) {
-        ENFORCE_EXPRESSION_SUBTYPE(expr.get());
+        SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
     }
 
     // Check the depth of the loop is greater than or equal to the number of control statements.
@@ -115,7 +121,7 @@ auto spp::asts::LoopControlFlowStatementAst::stage_7_analyse_semantics(
 
 auto spp::asts::LoopControlFlowStatementAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory state of the expression if it is present. Expression is being moved into outer context, so
     // strict memory checks.
