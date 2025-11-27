@@ -1,10 +1,13 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.postfix_expression_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
+import spp.asts.ast;
+import spp.asts.postfix_expression_operator_ast;
+import spp.asts.type_ast;
 
 
 spp::asts::PostfixExpressionAst::PostfixExpressionAst(
@@ -58,10 +61,10 @@ auto spp::asts::PostfixExpressionAst::print(
 
 auto spp::asts::PostfixExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the lhs.
-    ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TYPE(lhs.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TYPE(lhs.get());
 
     // The "ast_clone" is required because the "lhs" could be a uniquely owned TypeAst, which must have access to
     // "shared_from_this" (on a shared pointer, which "ast_clone" provides).
@@ -88,7 +91,7 @@ auto spp::asts::PostfixExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::PostfixExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory of the lhs.
     lhs->stage_8_check_memory(sm, meta);
@@ -98,7 +101,7 @@ auto spp::asts::PostfixExpressionAst::stage_8_check_memory(
 
 auto spp::asts::PostfixExpressionAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Forward into the operator AST.
@@ -112,7 +115,7 @@ auto spp::asts::PostfixExpressionAst::stage_10_code_gen_2(
 
 auto spp::asts::PostfixExpressionAst::infer_type(
     analyse::scopes::ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Forward into the operator AST.
     meta->save();

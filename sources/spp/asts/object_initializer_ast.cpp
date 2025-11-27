@@ -1,25 +1,26 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/class_attribute_ast.hpp>
-#include <spp/asts/class_implementation_ast.hpp>
-#include <spp/asts/class_member_ast.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/object_initializer_argument_ast.hpp>
-#include <spp/asts/object_initializer_argument_group_ast.hpp>
-#include <spp/asts/object_initializer_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/utils/ptr_cmp.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/actions/sort.hpp>
+#include <genex/algorithms/position.hpp>
 #include <genex/views/cast_dynamic.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/join.hpp>
+#include <genex/views/ptr.hpp>
 #include <genex/views/transform.hpp>
-#include <genex/algorithms/position.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.object_initializer_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.asts.ast;
+import spp.asts.class_attribute_ast;
+import spp.asts.class_implementation_ast;
+import spp.asts.class_prototype_ast;
+import spp.asts.identifier_ast;
+import spp.asts.object_initializer_argument_ast;
+import spp.asts.object_initializer_argument_group_ast;
+import spp.asts.type_ast;
 
 
 spp::asts::ObjectInitializerAst::ObjectInitializerAst(
@@ -75,7 +76,7 @@ auto spp::asts::ObjectInitializerAst::print(
 
 auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Get the base class symbol (no generics) and check it exists.
     meta->save();
@@ -131,7 +132,7 @@ auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
 
 auto spp::asts::ObjectInitializerAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory of the object argument group.
     arg_group->stage_8_check_memory(sm, meta);
@@ -140,7 +141,7 @@ auto spp::asts::ObjectInitializerAst::stage_8_check_memory(
 
 auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Create an empty struct based on the llvm type.
@@ -183,7 +184,7 @@ auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
 
 auto spp::asts::ObjectInitializerAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // The type of the object initializer is the type being initialized. The conventions are added for dummy types being
     // created into values during other ast's analysis. Types cannot be instantiated as borrows in user code.

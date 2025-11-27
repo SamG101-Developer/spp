@@ -1,10 +1,12 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/parenthesised_expression.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.parenthesised_expression_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.mem_utils;
+import spp.asts.ast;
+import spp.asts.token_ast;
 
 
 spp::asts::ParenthesisedExpressionAst::ParenthesisedExpressionAst(
@@ -64,17 +66,17 @@ auto spp::asts::ParenthesisedExpressionAst::print(
 
 auto spp::asts::ParenthesisedExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Forward analysis into the expression.
-    ENFORCE_EXPRESSION_SUBTYPE(expr.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
     expr->stage_7_analyse_semantics(sm, meta);
 }
 
 
 auto spp::asts::ParenthesisedExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the memory of the expression.
     expr->stage_8_check_memory(sm, meta);
@@ -85,7 +87,7 @@ auto spp::asts::ParenthesisedExpressionAst::stage_8_check_memory(
 
 auto spp::asts::ParenthesisedExpressionAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the inner expression.
@@ -95,7 +97,7 @@ auto spp::asts::ParenthesisedExpressionAst::stage_10_code_gen_2(
 
 auto spp::asts::ParenthesisedExpressionAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Get the inner expression's type.
     return expr->infer_type(sm, meta);

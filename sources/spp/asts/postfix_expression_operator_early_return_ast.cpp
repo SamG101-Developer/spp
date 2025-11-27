@@ -1,23 +1,26 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/fold_expression_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/inner_scope_expression_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_early_return_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
-#include <spp/asts/ret_statement_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
+module;
+#include <spp/macros.hpp>
 
-#include "spp/asts/case_expression_ast.hpp"
-#include "spp/asts/case_expression_branch_ast.hpp"
+module spp.asts.postfix_expression_operator_early_return_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.case_expression_ast;
+import spp.asts.case_expression_branch_ast;
+import spp.asts.expression_ast;
+import spp.asts.identifier_ast;
+import spp.asts.inner_scope_expression_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.ret_statement_ast;
+import spp.asts.statement_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
 
 
 spp::asts::PostfixExpressionOperatorEarlyReturnAst::PostfixExpressionOperatorEarlyReturnAst(
@@ -67,7 +70,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::print(
 
 auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Get the left-hand-side information.
     const auto lhs = meta->postfix_expression_lhs;
@@ -87,7 +90,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_7_analyse_semanti
 
 auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Convert the unwrapping into a case structure.
@@ -123,7 +126,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_10_code_gen_2(
 
 auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Get the left-hand-side information.
     const auto lhs = meta->postfix_expression_lhs;

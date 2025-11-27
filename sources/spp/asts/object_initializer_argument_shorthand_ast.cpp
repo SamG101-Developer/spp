@@ -1,10 +1,12 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/object_initializer_argument_shorthand_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.object_initializer_argument_shorthand_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.asts.ast;
+import spp.asts.token_ast;
+import spp.asts.expression_ast;
 
 
 spp::asts::ObjectInitializerArgumentShorthandAst::ObjectInitializerArgumentShorthandAst(
@@ -58,7 +60,7 @@ auto spp::asts::ObjectInitializerArgumentShorthandAst::print(
 
 auto spp::asts::ObjectInitializerArgumentShorthandAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    meta::CompilerMetaData *meta) -> void {
     // The parser allows Type(123) as a postfix function call over a type, which is invalid as type initialization.
     if (ast_cast<IdentifierAst>(val.get()) == nullptr) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppObjectInitializerInvalidArgumentError>().with_args(
