@@ -1,6 +1,11 @@
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/local_variable_destructure_attribute_binding_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.local_variable_destructure_attribute_binding_ast;
+import spp.asts.ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.lex.tokens;
 
 
 spp::asts::LocalVariableDestructureAttributeBindingAst::LocalVariableDestructureAttributeBindingAst(

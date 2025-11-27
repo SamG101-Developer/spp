@@ -1,9 +1,12 @@
-#include <spp/asts/let_statement_uninitialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/object_initializer_argument_group_ast.hpp>
-#include <spp/asts/object_initializer_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.let_statement_uninitialized_ast;
+import spp.asts.ast;
+import spp.asts.local_variable_ast;
+import spp.asts.object_initializer_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
 
 
 spp::asts::LetStatementUninitializedAst::LetStatementUninitializedAst(
@@ -68,7 +71,7 @@ auto spp::asts::LetStatementUninitializedAst::print(
 
 auto spp::asts::LetStatementUninitializedAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the type.
     type->stage_7_analyse_semantics(sm, meta);
@@ -88,7 +91,7 @@ auto spp::asts::LetStatementUninitializedAst::stage_7_analyse_semantics(
 
 auto spp::asts::LetStatementUninitializedAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the variable for memory issues.
     meta->save();
@@ -100,10 +103,9 @@ auto spp::asts::LetStatementUninitializedAst::stage_8_check_memory(
 }
 
 
-
 auto spp::asts::LetStatementUninitializedAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Delegate the code generation to the variable, after setting up the meta.
@@ -115,4 +117,3 @@ auto spp::asts::LetStatementUninitializedAst::stage_10_code_gen_2(
     meta->restore();
     return alloca;
 }
-

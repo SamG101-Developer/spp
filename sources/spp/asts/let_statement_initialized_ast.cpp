@@ -1,12 +1,15 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.let_statement_initialized_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.local_variable_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.lex.tokens;
 
 
 spp::asts::LetStatementInitializedAst::LetStatementInitializedAst(
@@ -77,10 +80,10 @@ auto spp::asts::LetStatementInitializedAst::print(
 
 auto spp::asts::LetStatementInitializedAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the value is a valid expression type.
-    ENFORCE_EXPRESSION_SUBTYPE(val.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(val.get());
 
     // An explicit type can only be applied if the left-hand-side is a single identifier.
     if (type != nullptr and ast_cast<LocalVariableSingleIdentifierAst>(var.get()) == nullptr) {
@@ -119,7 +122,7 @@ auto spp::asts::LetStatementInitializedAst::stage_7_analyse_semantics(
 
 auto spp::asts::LetStatementInitializedAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Check the variable's memory (which in turn checks the values memory - must be done this way for destructuring).
     meta->save();
@@ -132,7 +135,7 @@ auto spp::asts::LetStatementInitializedAst::stage_8_check_memory(
 
 auto spp::asts::LetStatementInitializedAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    meta::CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Delegate the code generation to the variable, after setting up the meta.
