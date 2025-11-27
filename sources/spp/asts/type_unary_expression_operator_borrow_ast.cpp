@@ -1,5 +1,9 @@
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/type_unary_expression_operator_borrow_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.type_unary_expression_operator_borrow_ast;
+import spp.asts.ast;
+import spp.asts.convention_ast;
 
 
 spp::asts::TypeUnaryExpressionOperatorBorrowAst::TypeUnaryExpressionOperatorBorrowAst(

@@ -1,5 +1,4 @@
-#include <spp/asts/type_postfix_expression_operator_ast.hpp>
-#include <spp/asts/type_postfix_expression_operator_nested_type_ast.hpp>
+module spp.asts.type_postfix_expression_operator_ast;
 
 
 auto spp::asts::TypePostfixExpressionOperatorAst::operator<=>(

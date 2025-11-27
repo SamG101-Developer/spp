@@ -1,26 +1,25 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/class_implementation_ast.hpp>
-#include <spp/asts/class_member_ast.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/generic_argument_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_parameter_ast.hpp>
-#include <spp/asts/generic_parameter_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/sup_implementation_ast.hpp>
-#include <spp/asts/sup_prototype_extension_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/type_statement_ast.hpp>
-
+module;
+#include <genex/to_container.hpp>
 #include <genex/views/for_each.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
+#include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.type_statement_ast;
+import spp.analyse.scopes.scope_block_name;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.annotation_ast;
+import spp.asts.convention_ast;
+import spp.asts.generic_parameter_group_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.lex.tokens;
 
 
 spp::asts::TypeStatementAst::TypeStatementAst(
@@ -126,7 +125,7 @@ auto spp::asts::TypeStatementAst::stage_1_pre_process(
 
 auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Run top level scope generation for the annotations.
     Ast::stage_2_gen_top_level_scopes(sm, meta);
@@ -162,7 +161,7 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Skip the class scope, and enter the type statement scope.
     sm->move_to_next_scope();
@@ -191,7 +190,7 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
 
 auto spp::asts::TypeStatementAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Skip the class scope, and enter the type statement scope.
     sm->move_to_next_scope();
@@ -224,7 +223,7 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
 
 auto spp::asts::TypeStatementAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *) -> void {
+    meta::CompilerMetaData *) -> void {
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
     sm->move_out_of_current_scope();
@@ -233,7 +232,7 @@ auto spp::asts::TypeStatementAst::stage_5_load_super_scopes(
 
 auto spp::asts::TypeStatementAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *) -> void {
+    meta::CompilerMetaData *) -> void {
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
     sm->move_out_of_current_scope();
@@ -242,7 +241,7 @@ auto spp::asts::TypeStatementAst::stage_6_pre_analyse_semantics(
 
 auto spp::asts::TypeStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // If this is a pre-generated AST (mod/sup context), skip any generation steps.
     if (m_generated) {
@@ -271,7 +270,7 @@ auto spp::asts::TypeStatementAst::stage_7_analyse_semantics(
 
 auto spp::asts::TypeStatementAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *) -> void {
+    meta::CompilerMetaData *) -> void {
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
     sm->move_out_of_current_scope();

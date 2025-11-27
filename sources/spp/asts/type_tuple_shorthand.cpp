@@ -1,8 +1,15 @@
-#include <spp/pch.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_tuple_shorthand_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <genex/to_container.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
+#include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.type_tuple_shorthand_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.generate.common_types;
 
 
 spp::asts::TypeTupleShorthandAst::TypeTupleShorthandAst(

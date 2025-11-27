@@ -1,6 +1,9 @@
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_unary_expression_operator_namespace_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.type_unary_expression_operator_namespace_ast;
+import spp.asts.ast;
+import spp.asts.identifier_ast;
 
 
 spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypeUnaryExpressionOperatorNamespaceAst(

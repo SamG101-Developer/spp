@@ -1,8 +1,11 @@
-#include <spp/asts/generic_argument_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/type_postfix_expression_operator_nested_type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.type_postfix_expression_operator_nested_type_ast;
+import spp.asts.ast;
+import spp.asts.token_ast;
+import spp.asts.type_identifier_ast;
+import spp.lex.tokens;
 
 
 spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypePostfixExpressionOperatorNestedTypeAst(

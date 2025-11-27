@@ -1,25 +1,22 @@
-#include <spp/analyse/errors/semantic_error.ixx>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/generic_argument_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/type_postfix_expression_ast.hpp>
-#include <spp/asts/type_postfix_expression_operator_ast.hpp>
-#include <spp/asts/type_postfix_expression_operator_nested_type_ast.hpp>
-#include <spp/asts/type_unary_expression_ast.hpp>
-#include <spp/asts/type_unary_expression_operator_borrow_ast.hpp>
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/algorithms/min_element.hpp>
 #include <genex/views/concat.hpp>
 #include <genex/views/filter.hpp>
 #include <genex/views/transform.hpp>
+
+#include <spp/macros.hpp>
+
+module spp.asts.type_postfix_expression_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.type_postfix_expression_operator_ast;
+import spp.asts.type_postfix_expression_operator_nested_type_ast;
+import spp.asts.type_unary_expression_ast;
+import spp.asts.type_unary_expression_operator_borrow_ast;
 
 
 spp::asts::TypePostfixExpressionAst::TypePostfixExpressionAst(
@@ -202,7 +199,7 @@ auto spp::asts::TypePostfixExpressionAst::with_generics(
 
 auto spp::asts::TypePostfixExpressionAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     (void)sm;
     (void)meta;
@@ -212,7 +209,7 @@ auto spp::asts::TypePostfixExpressionAst::stage_4_qualify_types(
 
 auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Move through the left-hand-side type.
     lhs->stage_7_analyse_semantics(sm, meta);
@@ -262,7 +259,7 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::TypePostfixExpressionAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Infer the type of the left-hand-side.
     lhs->stage_7_analyse_semantics(sm, meta);

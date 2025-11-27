@@ -1,14 +1,13 @@
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/generic_argument_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/type_unary_expression_ast.hpp>
-#include <spp/asts/type_unary_expression_operator_ast.hpp>
-#include <spp/asts/type_unary_expression_operator_borrow_ast.hpp>
-#include <spp/asts/type_unary_expression_operator_namespace_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.type_unary_expression_ast;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.type_unary_expression_operator_ast;
+import spp.asts.type_unary_expression_operator_borrow_ast;
+import spp.asts.type_unary_expression_operator_namespace_ast;
 
 
 spp::asts::TypeUnaryExpressionAst::TypeUnaryExpressionAst(
@@ -191,7 +190,7 @@ auto spp::asts::TypeUnaryExpressionAst::with_generics(
 
 auto spp::asts::TypeUnaryExpressionAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Qualify the RHS type.
     if (const auto op_ns = ast_cast<TypeUnaryExpressionOperatorNamespaceAst>(op.get())) {
@@ -210,7 +209,7 @@ auto spp::asts::TypeUnaryExpressionAst::stage_4_qualify_types(
 
 auto spp::asts::TypeUnaryExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> void {
     // Analyse the RHS type.
     if (const auto op_ns = ast_cast<TypeUnaryExpressionOperatorNamespaceAst>(op.get())) {
@@ -229,7 +228,7 @@ auto spp::asts::TypeUnaryExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::TypeUnaryExpressionAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    meta::CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Infer the RHS type.
     const auto type_scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;

@@ -1,6 +1,4 @@
-#include <spp/asts/type_unary_expression_operator_ast.hpp>
-#include <spp/asts/type_unary_expression_operator_borrow_ast.hpp>
-#include <spp/asts/type_unary_expression_operator_namespace_ast.hpp>
+module spp.asts.type_unary_expression_operator_ast;
 
 
 auto spp::asts::TypeUnaryExpressionOperatorAst::operator<=>(
