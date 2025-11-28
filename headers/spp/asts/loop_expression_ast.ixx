@@ -3,7 +3,9 @@ module;
 
 export module spp.asts.loop_expression_ast;
 import spp.analyse.scopes.scope;
+import spp.asts._fwd;
 import spp.asts.primary_expression_ast;
+import spp.codegen.llvm_ctx;
 
 import llvm;
 import std;

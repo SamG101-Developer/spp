@@ -2,17 +2,14 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_implementation_ast;
+import spp.asts._fwd;
 import spp.asts.inner_scope_ast;
 
 import std;
 
-
-/// @cond
-namespace spp::parse {
-    class ParserSpp;
+namespace spp::asts {
+    SPP_EXP_CLS struct FunctionImplementationAst;
 }
-
-/// @endcond
 
 
 /**
@@ -21,7 +18,6 @@ namespace spp::parse {
  * InnerScopeAst.
  */
 SPP_EXP_CLS struct spp::asts::FunctionImplementationAst final : InnerScopeAst<std::unique_ptr<FunctionMemberAst>> {
-    friend class parse::ParserSpp;
     using InnerScopeAst::InnerScopeAst;
 
     ~FunctionImplementationAst() override;

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.sup_implementation_ast;
+import spp.asts._fwd;
 import spp.asts.inner_scope_ast;
 
 import std;

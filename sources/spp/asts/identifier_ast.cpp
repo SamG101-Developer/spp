@@ -56,7 +56,7 @@ spp::asts::IdentifierAst::operator std::string() const {
 
 
 auto spp::asts::IdentifierAst::print(
-    meta::AstPrinter &) const
+    AstPrinter &) const
     -> std::string {
     return val;
 }

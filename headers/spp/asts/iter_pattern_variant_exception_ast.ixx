@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.iter_pattern_variant_exception_ast;
+import spp.asts._fwd;
 import spp.asts.iter_pattern_variant_ast;
 
 import std;

@@ -4,11 +4,11 @@ module;
 #include <genex/views/transform.hpp>
 
 export module spp.asts.ast;
-export import spp.asts._fwd;
-export import spp.asts.meta.ast_printer;
-export import spp.asts.mixins.compiler_stages;
-export import spp.asts.meta.compiler_meta_data;
-export import spp.codegen.llvm_ctx;
+import spp.asts._fwd;
+import spp.asts.meta.ast_printer;
+import spp.asts.mixins.compiler_stages;
+import spp.asts.meta.compiler_meta_data;
+import spp.codegen.llvm_ctx;
 
 namespace spp::analyse::scopes {
     SPP_EXP_CLS class Scope;
@@ -17,28 +17,28 @@ namespace spp::analyse::scopes {
 
 
 namespace spp::asts {
-    SPP_EXP_CLS template <typename T>
+    SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
     auto ast_clone(std::unique_ptr<T> const &ast) -> std::unique_ptr<std::remove_cvref_t<T>> {
         if (ast == nullptr) { return nullptr; }
         return ast_cast<std::remove_cvref_t<T>>(ast->clone());
     }
 
-    SPP_EXP_CLS template <typename T>
+    SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
     auto ast_clone(std::shared_ptr<T> const &ast) -> std::unique_ptr<std::remove_cvref_t<T>> {
         if (ast == nullptr) { return nullptr; }
         return ast_cast<std::remove_cvref_t<T>>(ast->clone());
     }
 
-    SPP_EXP_CLS template <typename T>
+    SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
     auto ast_clone(T *ast) -> std::unique_ptr<std::remove_cvref_t<T>> {
         if (ast == nullptr) { return nullptr; }
         return ast_cast<std::remove_cvref_t<T>>(ast->clone());
     }
 
-    SPP_EXP_CLS template <typename T>
+    SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
     auto ast_clone_vec(std::vector<std::unique_ptr<T>> const &asts) -> std::vector<std::unique_ptr<T>> {
         std::vector<std::unique_ptr<T>> cloned_asts;
@@ -49,7 +49,7 @@ namespace spp::asts {
         return cloned_asts;
     }
 
-    SPP_EXP_CLS template <typename T>
+    SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
     auto ast_clone_vec_shared(std::vector<std::shared_ptr<T>> const &asts) -> std::vector<std::shared_ptr<T>> {
         std::vector<std::shared_ptr<T>> cloned_asts;
@@ -60,35 +60,35 @@ namespace spp::asts {
         return cloned_asts;
     }
 
-    SPP_EXP_CLS template <typename T>
+    SPP_EXP_FUN template <typename T>
     SPP_ATTR_HOT
     SPP_ATTR_ALWAYS_INLINE
     auto ast_cast(Ast *ast) -> T* {
         return dynamic_cast<T*>(ast);
     }
 
-    SPP_EXP_CLS template <typename T>
+    SPP_EXP_FUN template <typename T>
     SPP_ATTR_HOT
     SPP_ATTR_ALWAYS_INLINE
     auto ast_cast(Ast &ast) -> T& {
         return dynamic_cast<T&>(ast);
     }
 
-    SPP_EXP_CLS template <typename T>
+    SPP_EXP_FUN template <typename T>
     SPP_ATTR_HOT
     SPP_ATTR_ALWAYS_INLINE
     auto ast_cast(Ast const *ast) -> T const* {
         return dynamic_cast<T const*>(ast);
     }
 
-    SPP_EXP_CLS template <typename T>
+    SPP_EXP_FUN template <typename T>
     SPP_ATTR_HOT
     SPP_ATTR_ALWAYS_INLINE
     auto ast_cast(Ast const &ast) -> T const& {
         return dynamic_cast<T const&>(ast);
     }
 
-    SPP_EXP_CLS template <typename T, typename U>
+    SPP_EXP_FUN template <typename T, typename U>
     SPP_ATTR_ALWAYS_INLINE
     auto ast_cast(std::unique_ptr<U> &&ast) -> std::unique_ptr<T> {
         return std::unique_ptr<T>(ast_cast<T>(ast.release()));
@@ -107,6 +107,8 @@ SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
     friend struct spp::asts::AnnotationAst;
 
 protected:
+    using AstPrinter = spp::asts::meta::AstPrinter;
+
     /**
      * The context of an AST is used in certain analysis steps. This might be the parent AST, such as a
      * FunctionPrototypeAst etc.

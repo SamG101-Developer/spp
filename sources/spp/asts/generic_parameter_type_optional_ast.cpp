@@ -60,7 +60,7 @@ spp::asts::GenericParameterTypeOptionalAst::operator std::string() const {
 
 
 auto spp::asts::GenericParameterTypeOptionalAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(name);

@@ -53,7 +53,8 @@ spp::asts::TypeBinaryExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypeBinaryExpressionAst::print(meta::AstPrinter &printer) const
+auto spp::asts::TypeBinaryExpressionAst::print(
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(lhs);

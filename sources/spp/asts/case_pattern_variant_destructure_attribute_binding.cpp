@@ -52,7 +52,7 @@ spp::asts::CasePatternVariantDestructureAttributeBindingAst::operator std::strin
 
 
 auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(name);

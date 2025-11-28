@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_unary_expression_operator_borrow_ast;
+import spp.asts._fwd;
 import spp.asts.type_unary_expression_operator_ast;
 
 import std;

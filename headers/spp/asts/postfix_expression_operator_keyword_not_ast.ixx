@@ -2,9 +2,14 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.postfix_expression_operator_keyword_not_ast;
+import spp.asts._fwd;
 import spp.asts.postfix_expression_operator_ast;
 
 import std;
+
+namespace spp::asts {
+    SPP_EXP_CLS struct PostfixExpressionOperatorKeywordNotAst;
+}
 
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordNotAst final : PostfixExpressionOperatorAst {

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_parameter_optional_ast;
+import spp.asts._fwd;
 import spp.asts.function_parameter_ast;
 import spp.asts.expression_ast;
 

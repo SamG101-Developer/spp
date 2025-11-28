@@ -48,6 +48,10 @@ namespace spp::asts::detail {
     using make_positional_arg_t = typename make_positional_arg<T>::type;
 }
 
+namespace spp::asts {
+    SPP_EXP_CLS struct GenericArgumentAst;
+}
+
 
 /**
  * The GenericArgumentAst is the base class for all generic arguments. It is inherited by the @c GenericArgumentCompAst

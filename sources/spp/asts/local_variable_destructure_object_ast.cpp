@@ -85,7 +85,7 @@ spp::asts::LocalVariableDestructureObjectAst::operator std::string() const {
 
 
 auto spp::asts::LocalVariableDestructureObjectAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(type);

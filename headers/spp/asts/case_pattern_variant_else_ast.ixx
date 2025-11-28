@@ -3,9 +3,14 @@ module;
 
 export module spp.asts.case_pattern_variant_else_ast;
 import spp.asts.case_pattern_variant_ast;
+import spp.codegen.llvm_ctx;
 
 import llvm;
 import std;
+
+namespace spp::asts {
+    SPP_EXP_CLS struct CasePatternVariantElseAst;
+}
 
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantElseAst final : CasePatternVariantAst {

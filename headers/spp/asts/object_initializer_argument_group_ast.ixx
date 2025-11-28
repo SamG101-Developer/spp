@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.object_initializer_argument_group_ast;
+import spp.asts._fwd;
 import spp.asts.ast;
 
 import std;

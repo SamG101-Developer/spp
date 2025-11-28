@@ -2,12 +2,18 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_call_argument_ast;
+import spp.asts._fwd;
 import spp.asts.ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.mixins.type_inferrable_ast;
+import spp.codegen.llvm_ctx;
 
 import llvm;
 import std;
+
+namespace spp::asts {
+    SPP_EXP_CLS struct FunctionCallArgumentAst;
+}
 
 
 /**

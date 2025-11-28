@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.sup_prototype_functions_ast;
+import spp.asts._fwd;
 import spp.asts.ast;
 import spp.asts.module_member_ast;
 

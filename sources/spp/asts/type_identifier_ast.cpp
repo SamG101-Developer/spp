@@ -97,7 +97,7 @@ spp::asts::TypeIdentifierAst::operator std::string() const {
 
 
 auto spp::asts::TypeIdentifierAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     formatted_string.append(name);

@@ -2,9 +2,14 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.object_initializer_argument_keyword_ast;
+import spp.asts._fwd;
 import spp.asts.object_initializer_argument_ast;
 
 import std;
+
+namespace spp::asts {
+    SPP_EXP_CLS struct ObjectInitializerArgumentKeywordAst;
+}
 
 
 /**

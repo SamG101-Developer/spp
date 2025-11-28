@@ -3,6 +3,7 @@ module;
 
 module spp.asts.case_pattern_variant_destructure_skip_single_argument_ast;
 import spp.asts.ast;
+import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_destructure_skip_single_argument_ast;
 import spp.asts.token_ast;
 
@@ -42,7 +43,7 @@ spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::operator std::str
 
 
 auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_underscore);

@@ -2,9 +2,14 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.local_variable_single_identifier_alias_ast;
+import spp.asts._fwd;
 import spp.asts.ast;
 
 import std;
+
+namespace spp::asts {
+    SPP_EXP_CLS struct LocalVariableSingleIdentifierAliasAst;
+}
 
 
 SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAliasAst final : virtual Ast {

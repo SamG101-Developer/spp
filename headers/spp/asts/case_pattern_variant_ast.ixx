@@ -7,6 +7,10 @@ import spp.asts.ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct CasePatternVariantAst;
+}
+
 
 /**
  * Base class for all different case pattern variants. This is used to store different variants in the same list, and to

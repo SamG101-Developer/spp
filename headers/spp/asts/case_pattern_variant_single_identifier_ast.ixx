@@ -7,6 +7,10 @@ import spp.asts.case_pattern_variant_ast;
 import llvm;
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct CasePatternVariantSingleIdentifierAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantSingleIdentifierAst final : CasePatternVariantAst {
     /**

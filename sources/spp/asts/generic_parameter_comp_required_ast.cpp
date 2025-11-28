@@ -53,7 +53,7 @@ spp::asts::GenericParameterCompRequiredAst::operator std::string() const {
 
 
 auto spp::asts::GenericParameterCompRequiredAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_cmp).append(" ");

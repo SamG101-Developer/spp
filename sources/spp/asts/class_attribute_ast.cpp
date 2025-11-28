@@ -76,7 +76,7 @@ spp::asts::ClassAttributeAst::operator std::string() const {
 
 
 auto spp::asts::ClassAttributeAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_EXTEND(annotations);

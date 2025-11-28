@@ -78,7 +78,7 @@ spp::asts::InnerScopeAst<T>::operator std::string() const {
 
 template <typename T>
 auto spp::asts::InnerScopeAst<T>::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);

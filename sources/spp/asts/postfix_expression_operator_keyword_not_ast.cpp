@@ -53,7 +53,7 @@ spp::asts::PostfixExpressionOperatorKeywordNotAst::operator std::string() const 
 
 
 auto spp::asts::PostfixExpressionOperatorKeywordNotAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_dot);

@@ -2,10 +2,14 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_call_argument_positional_ast;
+import spp.asts._fwd;
 import spp.asts.function_call_argument_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct FunctionCallArgumentPositionalAst;
+}
 
 /**
  * The FunctionCallArgumentPositionalAst represents a positional argument in a function call. It is forces the argument

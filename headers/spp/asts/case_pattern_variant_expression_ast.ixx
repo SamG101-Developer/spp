@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_pattern_variant_expression_ast;
+import spp.codegen.llvm_ctx;
 import spp.asts.case_pattern_variant_ast;
 
 import llvm;

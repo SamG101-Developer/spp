@@ -90,7 +90,7 @@ spp::asts::CmpStatementAst::operator std::string() const {
 
 
 auto spp::asts::CmpStatementAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_EXTEND(annotations);

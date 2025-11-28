@@ -37,7 +37,7 @@ target_compile_options(spp_lib PRIVATE
         -Wold-style-cast -Woverloaded-virtual -Wundef -Wdisabled-optimization -Wmissing-declarations -Wmissing-include-dirs
         -Wnull-dereference -Wformat=2 -Wduplicated-cond -Wduplicated-branches -Wredundant-decls -Wlogical-op
         -Wuseless-cast -Wdouble-promotion -Wstrict-null-sentinel -Wswitch-default -Wswitch-enum -Wno-null-dereference
-        -Wno-maybe-uninitialized -Wno-error=array-bounds -fmodules-ts)
+        -Wno-maybe-uninitialized -Wno-error=array-bounds -fmodules-ts -fdump-lang-module-graph -fdump-lang-module-blocks)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(spp_lib PRIVATE
             -O0 -pg -g -fno-omit-frame-pointer -fno-inline -fno-inline-functions-called-once

@@ -84,7 +84,7 @@ spp::asts::GenericArgumentGroupAst::operator std::string() const {
 }
 
 auto spp::asts::GenericArgumentGroupAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     if (not args.empty()) {

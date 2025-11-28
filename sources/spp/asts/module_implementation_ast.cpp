@@ -48,7 +48,7 @@ spp::asts::ModuleImplementationAst::operator std::string() const {
 
 
 auto spp::asts::ModuleImplementationAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_EXTEND(members);

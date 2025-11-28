@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_argument_group_ast;
+import spp.asts._fwd;
 import spp.asts.ast;
 import spp.utils.ptr_cmp;
 

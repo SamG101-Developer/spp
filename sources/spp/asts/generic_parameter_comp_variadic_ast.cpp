@@ -57,7 +57,7 @@ spp::asts::GenericParameterCompVariadicAst::operator std::string() const {
 
 
 auto spp::asts::GenericParameterCompVariadicAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_cmp).append(" ");

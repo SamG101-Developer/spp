@@ -1,4 +1,5 @@
 module spp.asts.generic_argument_comp_ast;
+import spp.asts.expression_ast;
 
 
 spp::asts::GenericArgumentCompAst::GenericArgumentCompAst(

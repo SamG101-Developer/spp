@@ -77,7 +77,7 @@ spp::asts::BinaryExpressionAst::operator std::string() const {
 
 
 auto spp::asts::BinaryExpressionAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     if (lhs != nullptr) {

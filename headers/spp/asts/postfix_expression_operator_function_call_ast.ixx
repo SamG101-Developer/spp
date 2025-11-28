@@ -2,8 +2,10 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts._fwd;
 import spp.analyse.scopes.scope;
 import spp.asts.postfix_expression_operator_ast;
+import spp.codegen.llvm_ctx;
 
 import llvm;
 import std;

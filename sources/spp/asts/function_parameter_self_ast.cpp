@@ -55,7 +55,7 @@ spp::asts::FunctionParameterSelfAst::operator std::string() const {
 
 
 auto spp::asts::FunctionParameterSelfAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(conv);

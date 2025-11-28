@@ -2,7 +2,9 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.float_literal_ast;
+import spp.asts._fwd;
 import spp.asts.literal_ast;
+import spp.codegen.llvm_ctx;
 
 import llvm;
 import std;

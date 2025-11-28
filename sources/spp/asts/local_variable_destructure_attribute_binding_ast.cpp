@@ -52,7 +52,8 @@ spp::asts::LocalVariableDestructureAttributeBindingAst::operator std::string() c
 }
 
 
-auto spp::asts::LocalVariableDestructureAttributeBindingAst::print(meta::AstPrinter &printer) const
+auto spp::asts::LocalVariableDestructureAttributeBindingAst::print(
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(name).append(" ");

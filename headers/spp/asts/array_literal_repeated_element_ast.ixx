@@ -2,7 +2,9 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.array_literal_repeated_element_ast;
+import spp.asts._fwd;
 import spp.asts.array_literal_ast;
+import spp.codegen.llvm_ctx;
 
 import llvm;
 import std;

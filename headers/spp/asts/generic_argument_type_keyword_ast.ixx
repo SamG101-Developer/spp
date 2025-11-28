@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_argument_type_keyword_ast;
+import spp.asts._fwd;
 import spp.analyse.scopes.symbols;
 import spp.asts.generic_argument_type_ast;
 

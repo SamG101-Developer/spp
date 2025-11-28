@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.loop_else_statement_ast;
+import spp.asts._fwd;
 import spp.asts.ast;
 import spp.asts.mixins.type_inferrable_ast;
 

@@ -2,11 +2,13 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_prototype_ast;
+import spp.asts._fwd;
 import spp.asts.ast;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.module_member_ast;
 import spp.asts.sup_member_ast;
 import spp.analyse.scopes.scope;
+import spp.codegen.llvm_ctx;
 
 import llvm;
 import std;

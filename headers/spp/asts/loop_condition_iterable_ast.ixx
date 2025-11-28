@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.loop_condition_iterable_ast;
+import spp.asts._fwd;
 import spp.asts.loop_condition_ast;
 
 import std;

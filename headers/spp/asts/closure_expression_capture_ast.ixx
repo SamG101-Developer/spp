@@ -3,8 +3,13 @@ module;
 
 export module spp.asts.closure_expression_capture_ast;
 import spp.asts.function_call_argument_positional_ast;
+import spp.asts.token_ast;
 
 import std;
+
+namespace spp::asts {
+    SPP_EXP_CLS struct ClosureExpressionCaptureAst;
+}
 
 
 SPP_EXP_CLS struct spp::asts::ClosureExpressionCaptureAst final : FunctionCallArgumentPositionalAst {

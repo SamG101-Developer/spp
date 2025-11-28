@@ -2,8 +2,10 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_expression_branch_ast;
+import spp.asts._fwd;
 import spp.asts.ast;
 import spp.asts.mixins.type_inferrable_ast;
+import spp.codegen.llvm_ctx;
 
 import llvm;
 import std;

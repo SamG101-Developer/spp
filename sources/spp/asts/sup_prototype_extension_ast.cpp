@@ -91,7 +91,7 @@ spp::asts::SupPrototypeExtensionAst::operator std::string() const {
 
 
 auto spp::asts::SupPrototypeExtensionAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_sup).append(" ");

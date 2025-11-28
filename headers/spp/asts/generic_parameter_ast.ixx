@@ -84,6 +84,10 @@ namespace spp::asts::detail {
     using value_type_t = typename generic_param_value_type<GenericParameterType>::type;
 }
 
+namespace spp::asts {
+    SPP_EXP_CLS struct GenericParameterAst;
+}
+
 
 /**
  * The GenericParameterAst is the base class for all generic parameters. It is inherited by the GenericParameterCompAst

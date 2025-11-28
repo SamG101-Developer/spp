@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_parenthesised_expression_ast;
+import spp.asts._fwd;
 import spp.asts.ast;
 import spp.asts.mixins.temp_type_ast;
 

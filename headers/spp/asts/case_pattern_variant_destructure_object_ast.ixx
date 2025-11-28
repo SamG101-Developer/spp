@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.case_pattern_variant_destructure_object_ast;
 import spp.asts.case_pattern_variant_ast;
+import spp.codegen.llvm_ctx;
 
 import llvm;
 import std;

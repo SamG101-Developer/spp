@@ -2,7 +2,9 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.postfix_expression_operator_early_return_ast;
+import spp.asts._fwd;
 import spp.asts.postfix_expression_operator_ast;
+import spp.codegen.llvm_ctx;
 
 import llvm;
 import std;

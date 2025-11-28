@@ -6,6 +6,10 @@ import spp.asts.convention_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct ConventionRefAst;
+}
+
 
 /**
  * The ConventionRefAst represents a convention for immutable borrows. Immutable borrows can be taken from immutable or

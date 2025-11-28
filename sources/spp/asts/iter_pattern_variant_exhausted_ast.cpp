@@ -3,6 +3,7 @@ module;
 
 module spp.asts.iter_pattern_variant_exhausted_ast;
 import spp.asts.ast;
+import spp.asts.let_statement_initialized_ast;
 import spp.asts.token_ast;
 
 
@@ -43,7 +44,7 @@ spp::asts::IterPatternVariantExhaustedAst::operator std::string() const {
 
 
 auto spp::asts::IterPatternVariantExhaustedAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_exhausted);

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.closure_expression_capture_group_ast;
+import spp.asts._fwd;
 import spp.asts.ast;
 
 import std;

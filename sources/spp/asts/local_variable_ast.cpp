@@ -1,4 +1,5 @@
 module spp.asts.local_variable_ast;
+import spp.asts.let_statement_initialized_ast;
 
 
 spp::asts::LocalVariableAst::LocalVariableAst() :

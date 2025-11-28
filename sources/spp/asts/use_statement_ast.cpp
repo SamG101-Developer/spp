@@ -65,7 +65,7 @@ spp::asts::UseStatementAst::operator std::string() const {
 
 
 auto spp::asts::UseStatementAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_EXTEND(annotations);

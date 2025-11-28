@@ -61,7 +61,7 @@ spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::operator std::string(
 
 
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_dbl_colon);

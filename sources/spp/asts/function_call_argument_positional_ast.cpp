@@ -52,7 +52,7 @@ spp::asts::FunctionCallArgumentPositionalAst::operator std::string() const {
 
 
 auto spp::asts::FunctionCallArgumentPositionalAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_unpack);

@@ -42,7 +42,7 @@ spp::asts::LocalVariableDestructureSkipSingleArgumentAst::operator std::string()
 
 
 auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_underscore);

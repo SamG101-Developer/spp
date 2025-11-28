@@ -4,6 +4,7 @@ module;
 module spp.asts.case_pattern_variant_else_ast;
 import spp.lex.tokens;
 import spp.asts.ast;
+import spp.asts.let_statement_initialized_ast;
 import spp.asts.token_ast;
 
 
@@ -44,7 +45,7 @@ spp::asts::CasePatternVariantElseAst::operator std::string() const {
 
 
 auto spp::asts::CasePatternVariantElseAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_else);

@@ -71,7 +71,7 @@
     auto pos_end() const -> std::size_t override;                      \
     auto clone() const -> std::unique_ptr<Ast> override;               \
     explicit operator std::string() const override;                    \
-    auto print(meta::AstPrinter &printer) const -> std::string override
+    auto print(AstPrinter &printer) const -> std::string override
 
 #define SPP_ENFORCE_EXPRESSION_SUBTYPE(ast)                                                                    \
     if ((ast_cast<TypeAst>(ast) != nullptr) or (ast_cast<TokenAst>(ast) != nullptr)) {                     \

@@ -17,6 +17,9 @@ spp::asts::ObjectInitializerArgumentAst::ObjectInitializerArgumentAst(
 }
 
 
+spp::asts::ObjectInitializerArgumentAst::~ObjectInitializerArgumentAst() = default;
+
+
 auto spp::asts::ObjectInitializerArgumentAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

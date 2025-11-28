@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.inner_scope_expression_ast;
+import spp.asts._fwd;
 import spp.asts.inner_scope_ast;
 import spp.asts.primary_expression_ast;
 

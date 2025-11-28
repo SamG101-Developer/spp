@@ -51,7 +51,7 @@ spp::asts::PostfixExpressionAst::operator std::string() const {
 
 
 auto spp::asts::PostfixExpressionAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(lhs);

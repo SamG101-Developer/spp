@@ -2,8 +2,10 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.coroutine_prototype_ast;
+import spp.asts._fwd;
 import spp.asts.function_prototype_ast;
 import spp.codegen.llvm_coros;
+import spp.codegen.llvm_ctx;
 
 import llvm;
 import std;

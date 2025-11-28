@@ -87,7 +87,8 @@ spp::asts::TupleLiteralAst::operator std::string() const {
 }
 
 
-auto spp::asts::TupleLiteralAst::print(meta::AstPrinter &printer) const
+auto spp::asts::TupleLiteralAst::print(
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);

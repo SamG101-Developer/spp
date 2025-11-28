@@ -63,7 +63,7 @@ spp::asts::ClosureExpressionParameterAndCaptureGroupAst::operator std::string() 
 
 
 auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);

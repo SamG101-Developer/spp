@@ -2,6 +2,9 @@ module spp.asts.statement_ast;
 import spp.asts.generate.common_types;
 
 
+spp::asts::StatementAst::~StatementAst() = default;
+
+
 auto spp::asts::StatementAst::infer_type(
     ScopeManager *,
     CompilerMetaData *)

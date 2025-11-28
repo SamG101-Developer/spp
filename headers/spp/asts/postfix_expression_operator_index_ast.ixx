@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.postfix_expression_operator_index_ast;
+import spp.asts._fwd;
 import spp.asts.postfix_expression_operator_ast;
 
 import std;

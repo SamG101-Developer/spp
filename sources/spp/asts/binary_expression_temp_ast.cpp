@@ -1,4 +1,6 @@
 module spp.asts.binary_expression_temp_ast;
+import spp.asts.expression_ast;
+import spp.asts.token_ast;
 
 
 spp::asts::BinaryExpressionTempAst::BinaryExpressionTempAst(

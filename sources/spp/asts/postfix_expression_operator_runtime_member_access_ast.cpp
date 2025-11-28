@@ -62,7 +62,7 @@ spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::operator std::string
 
 
 auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_dot);

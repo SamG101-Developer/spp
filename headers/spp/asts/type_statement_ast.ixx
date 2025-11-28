@@ -4,6 +4,7 @@ module;
 export module spp.asts.type_statement_ast;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
+import spp.asts._fwd;
 import spp.asts.statement_ast;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.module_member_ast;

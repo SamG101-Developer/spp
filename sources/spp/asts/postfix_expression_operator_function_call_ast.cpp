@@ -113,7 +113,7 @@ spp::asts::PostfixExpressionOperatorFunctionCallAst::operator std::string() cons
 
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(generic_arg_group);

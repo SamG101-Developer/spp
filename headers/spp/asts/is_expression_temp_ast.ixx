@@ -6,6 +6,10 @@ import spp.asts._fwd;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct IsExpressionTempAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::IsExpressionTempAst {
     /**

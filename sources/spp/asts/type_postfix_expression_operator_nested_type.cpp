@@ -65,7 +65,7 @@ spp::asts::TypePostfixExpressionOperatorNestedTypeAst::operator std::string() co
 
 
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_sep);

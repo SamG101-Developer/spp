@@ -3,6 +3,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.token_ast;
+import spp.asts._fwd;
 import spp.asts.ast;
 import spp.lex.tokens;
 

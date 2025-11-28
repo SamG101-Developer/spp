@@ -61,7 +61,7 @@ spp::asts::StringLiteralAst::operator std::string() const {
 
 
 auto spp::asts::StringLiteralAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(val);

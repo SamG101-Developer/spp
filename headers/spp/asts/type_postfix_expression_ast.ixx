@@ -4,6 +4,7 @@ module;
 #include <genex/generator.hpp>
 
 export module spp.asts.type_postfix_expression_ast;
+import spp.asts._fwd;
 import spp.asts.type_ast;
 
 import std;

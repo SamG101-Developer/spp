@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_parameter_type_optional_ast;
+import spp.asts._fwd;
 import spp.asts.generic_parameter_type_ast;
 
 import std;

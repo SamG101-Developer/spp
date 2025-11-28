@@ -47,7 +47,7 @@ spp::asts::GenericParameterTypeRequiredAst::operator std::string() const {
 
 
 auto spp::asts::GenericParameterTypeRequiredAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(name);

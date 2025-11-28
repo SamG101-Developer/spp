@@ -3,6 +3,7 @@ module;
 
 module spp.asts.iter_pattern_variant_else_ast;
 import spp.asts.ast;
+import spp.asts.let_statement_initialized_ast;
 import spp.asts.token_ast;
 import spp.lex.tokens;
 
@@ -45,7 +46,7 @@ spp::asts::IterPatternVariantElseAst::operator std::string() const {
 
 
 auto spp::asts::IterPatternVariantElseAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_else);

@@ -51,7 +51,7 @@ spp::asts::GenericParameterTypeInlineConstraintsAst::operator std::string() cons
 
 
 auto spp::asts::GenericParameterTypeInlineConstraintsAst::print(
-    meta::AstPrinter &printer) const
+    AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_colon);

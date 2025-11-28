@@ -37,7 +37,8 @@ spp::asts::TokenAst::operator std::string() const {
 }
 
 
-auto spp::asts::TokenAst::print(meta::AstPrinter &) const
+auto spp::asts::TokenAst::print(
+    AstPrinter &) const
     -> std::string {
     return token_data;
 }
