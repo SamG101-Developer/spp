@@ -13,6 +13,7 @@ import std;
 
 namespace spp::asts::mixins {
     SPP_EXP_CLS struct CompilerStages;
+    SPP_EXP_CLS struct TypeInferrableAst;
 }
 
 namespace spp::asts {
@@ -29,6 +30,8 @@ namespace spp::analyse::scopes {
  * AST. The exceptions are the first 3 functions, which are applies to top level ASTs exclusively.
  */
 SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
+    friend struct spp::asts::mixins::TypeInferrableAst;
+
 protected:
     using ScopeManager = spp::analyse::scopes::ScopeManager;
     using CompilerMetaData = spp::asts::meta::CompilerMetaData;

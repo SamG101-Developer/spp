@@ -10,6 +10,7 @@ module;
 module spp.asts.inner_scope_ast;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.asts.class_member_ast;
 import spp.asts.expression_ast;
@@ -170,5 +171,5 @@ auto spp::asts::InnerScopeAst<T>::stage_10_code_gen_2(
 
 
 template struct spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::ClassMemberAst>>;
-template struct spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::FunctionMemberAst>>;
+template struct spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::StatementAst>>;
 template struct spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::SupMemberAst>>;

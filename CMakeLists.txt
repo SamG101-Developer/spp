@@ -34,10 +34,10 @@ add_library(spp_lib)
 target_compile_options(spp_lib PRIVATE
         -Wall -Wextra -Werror
         -Wcast-align -Wcast-qual -Wconversion -Wsign-conversion -Wsign-promo -Wctor-dtor-privacy -Winit-self
-        -Wold-style-cast -Woverloaded-virtual -Wundef -Wdisabled-optimization -Wmissing-declarations -Wmissing-include-dirs
+        -Wold-style-cast -Wundef -Wdisabled-optimization -Wmissing-declarations -Wmissing-include-dirs
         -Wnull-dereference -Wformat=2 -Wduplicated-cond -Wduplicated-branches -Wredundant-decls -Wlogical-op
         -Wuseless-cast -Wdouble-promotion -Wstrict-null-sentinel -Wswitch-default -Wswitch-enum -Wno-null-dereference
-        -Wno-maybe-uninitialized -Wno-error=array-bounds -fmodules-ts -fdump-lang-module-graph -fdump-lang-module-blocks)
+        -Wno-maybe-uninitialized -Wno-error=array-bounds -Wno-error=overloaded-virtual -fmodules-ts)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(spp_lib PRIVATE
             -O0 -pg -g -fno-omit-frame-pointer -fno-inline -fno-inline-functions-called-once

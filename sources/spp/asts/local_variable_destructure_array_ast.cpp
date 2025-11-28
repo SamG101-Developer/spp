@@ -30,6 +30,7 @@ import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
+import spp.asts.local_variable_destructure_skip_single_argument_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;

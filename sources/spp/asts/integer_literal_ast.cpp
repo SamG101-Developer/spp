@@ -107,22 +107,22 @@ auto spp::asts::IntegerLiteralAst::print(
 
 
 auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
-    ScopeManager *sm,
+    ScopeManager *,
     CompilerMetaData *)
     -> void {
     // Get the lower and upper bounds as big floats.
     type = type.empty() ? "s32" : type;
-    auto const &[lower, upper] = INTEGER_TYPE_MIN_MAX.at(type);
-    auto mapped_val = mppp::BigInt(val->token_data.c_str());
-    if (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB) {
-        mapped_val = mapped_val.neg();
-    }
+    // auto const &[lower, upper] = INTEGER_TYPE_MIN_MAX.at(type);
+    // auto mapped_val = mppp::BigInt(val->token_data.c_str());
+    // if (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB) {
+    //     mapped_val = mapped_val.neg();
+    // }
 
     // Check if the value is within the bounds.
-    if (mapped_val < lower or mapped_val > upper) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIntegerOutOfBoundsError>().with_args(
-            *this, mapped_val, lower, upper, "float").with_scopes({sm->current_scope}).raise();
-    }
+    // if (mapped_val < lower or mapped_val > upper) {
+    //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppIntegerOutOfBoundsError>().with_args(
+    //         *this, mapped_val, lower, upper, "float").with_scopes({sm->current_scope}).raise();
+    // }
 }
 
 

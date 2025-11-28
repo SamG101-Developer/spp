@@ -2,6 +2,7 @@ module;
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Module.h>
 
 export module llvm;
 

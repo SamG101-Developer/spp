@@ -18,6 +18,7 @@ import spp.analyse.utils.type_utils;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.asts.annotation_ast;
+import spp.asts.convention_ast;
 import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
 import spp.asts.generic_argument_group_ast;

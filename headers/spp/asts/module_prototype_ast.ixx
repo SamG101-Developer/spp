@@ -13,6 +13,10 @@ namespace spp::asts {
     SPP_EXP_CLS struct ModuleImplementationAst;
 }
 
+namespace spp::compiler {
+    SPP_EXP_CLS struct CompilerBoot;
+}
+
 
 /**
  * The ModulePrototypeAst represents a prototype for a module in the SPP language. It contains a the implementation of
@@ -20,6 +24,7 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : virtual Ast {
     friend struct spp::asts::FunctionPrototypeAst;
+    friend struct spp::compiler::CompilerBoot;
 
 private:
     std::filesystem::path m_file_path;

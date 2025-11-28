@@ -9,10 +9,11 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.case_pattern_variant_destructure_object_ast;
-import spp.analyse.utils.type_utils;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
 import spp.lex.tokens;
 import spp.asts.ast;
 import spp.asts.case_pattern_variant_destructure_attribute_binding_ast;
@@ -20,10 +21,13 @@ import spp.asts.convention_ref_ast;
 import spp.asts.expression_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_positional_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
+import spp.asts.fold_expression_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_destructure_object_ast;
 import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;

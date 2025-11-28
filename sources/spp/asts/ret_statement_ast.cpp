@@ -128,3 +128,11 @@ auto spp::asts::RetStatementAst::stage_8_check_memory(
     analyse::utils::mem_utils::validate_symbol_memory(
         *expr, *tok_ret, *sm, true, true, true, true, true, true, meta);
 }
+
+
+auto spp::asts::RetStatementAst::infer_type(
+    ScopeManager *,
+    CompilerMetaData *)
+    -> std::shared_ptr<TypeAst> {
+    return generate::common_types::void_type(pos_start());
+}

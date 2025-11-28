@@ -14,6 +14,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.bin_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.ast;
+import spp.asts.fold_expression_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;

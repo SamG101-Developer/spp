@@ -2,11 +2,12 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.mixins.type_inferrable_ast;
+import spp.asts.mixins.compiler_stages;
 import std;
 
 
 namespace spp::asts::mixins {
-    SPP_EXP_CLS class TypeInferrableAst;
+    SPP_EXP_CLS struct TypeInferrableAst;
 }
 
 namespace spp::asts {
@@ -27,8 +28,7 @@ namespace spp::analyse::scopes {
  * literals that can have a type determined at compile time. The @c infer_type method is used to infer the type of the
  * AST based on the current scope and metadata.
  */
-SPP_EXP_CLS class spp::asts::mixins::TypeInferrableAst {
-public:
+SPP_EXP_CLS struct spp::asts::mixins::TypeInferrableAst {
     TypeInferrableAst();
 
     virtual ~TypeInferrableAst();
@@ -39,5 +39,5 @@ public:
      * @param meta Associated metadata.
      * @return The inferred type of the AST.
      */
-    virtual auto infer_type(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> = 0;
+    virtual auto infer_type(CompilerStages::ScopeManager *sm, CompilerStages::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> = 0;
 };

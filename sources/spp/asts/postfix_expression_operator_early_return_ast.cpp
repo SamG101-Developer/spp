@@ -11,6 +11,8 @@ import spp.asts.case_expression_branch_ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
+import spp.asts.fold_expression_ast;
+import spp.asts.function_call_argument_group_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.postfix_expression_ast;

@@ -4,6 +4,7 @@ module;
 module spp.asts.fold_expression_ast;
 import spp.asts.ast;
 import spp.asts.token_ast;
+import spp.asts.generate.common_types;
 
 
 spp::asts::FoldExpressionAst::FoldExpressionAst(
@@ -47,4 +48,12 @@ auto spp::asts::FoldExpressionAst::print(
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_ellipsis);
     SPP_PRINT_END;
+}
+
+
+auto spp::asts::FoldExpressionAst::infer_type(
+    ScopeManager *,
+    CompilerMetaData *)
+    -> std::shared_ptr<TypeAst> {
+    return generate::common_types::void_type(pos_start());
 }

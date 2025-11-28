@@ -15,6 +15,7 @@ import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;

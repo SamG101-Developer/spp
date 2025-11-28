@@ -15,18 +15,22 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.local_variable_destructure_object_ast;
-import spp.analyse.scopes.scope_manager;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
 import spp.asts.ast;
 import spp.asts.class_implementation_ast;
+import spp.asts.class_prototype_ast;
 import spp.asts.class_attribute_ast;
+import spp.asts.class_member_ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.local_variable_destructure_attribute_binding_ast;
+import spp.asts.local_variable_destructure_skip_single_argument_ast;
 import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;

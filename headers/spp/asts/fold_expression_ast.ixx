@@ -8,6 +8,7 @@ import std;
 namespace spp::asts {
     SPP_EXP_CLS struct FoldExpressionAst;
     SPP_EXP_CLS struct TokenAst;
+    SPP_EXP_CLS struct TypeAst;
 }
 
 
@@ -27,4 +28,6 @@ SPP_EXP_CLS struct spp::asts::FoldExpressionAst final : PrimaryExpressionAst {
     ~FoldExpressionAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
+
+    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

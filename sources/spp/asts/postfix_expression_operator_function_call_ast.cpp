@@ -43,6 +43,8 @@ import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;

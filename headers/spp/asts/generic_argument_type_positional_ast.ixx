@@ -27,9 +27,8 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypePositionalAst final : GenericAr
     ~GenericArgumentTypePositionalAst() override;
 
 protected:
-    auto equals(GenericArgumentAst const &other) const -> std::strong_ordering override;
-
-    auto equals_generic_argument_type_positional(GenericArgumentTypePositionalAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals(GenericArgumentAst const &other) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals_generic_argument_type_positional(GenericArgumentTypePositionalAst const &) const -> std::strong_ordering override;
 
 public:
     SPP_AST_KEY_FUNCTIONS;

@@ -13,8 +13,11 @@ import spp.analyse.scopes.symbols;
 import spp.asts.module_prototype_ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.lex.lexer;
 import spp.parse.parser_spp;
+import spp.parse.errors.parser_error;
+import spp.parse.errors.parser_error_builder;
 import spp.utils.error_formatter;
 import spp.utils.files;
 

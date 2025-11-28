@@ -71,14 +71,15 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentAst : virtual Ast, mixins::Orderabl
     friend struct spp::asts::GenericArgumentTypePositionalAst;
 
 protected:
-    virtual auto equals_generic_argument_comp_keyword(GenericArgumentCompKeywordAst const &) const -> std::strong_ordering;
-    virtual auto equals_generic_argument_comp_positional(GenericArgumentCompPositionalAst const &) const -> std::strong_ordering;
-    virtual auto equals_generic_argument_type_keyword(GenericArgumentTypeKeywordAst const &) const -> std::strong_ordering;
-    virtual auto equals_generic_argument_type_positional(GenericArgumentTypePositionalAst const &) const -> std::strong_ordering;
-    virtual auto equals(GenericArgumentAst const &other) const -> std::strong_ordering = 0;
+    SPP_ATTR_NODISCARD virtual auto equals_generic_argument_comp_keyword(GenericArgumentCompKeywordAst const &) const -> std::strong_ordering;
+    SPP_ATTR_NODISCARD virtual auto equals_generic_argument_comp_positional(GenericArgumentCompPositionalAst const &) const -> std::strong_ordering;
+    SPP_ATTR_NODISCARD virtual auto equals_generic_argument_type_keyword(GenericArgumentTypeKeywordAst const &) const -> std::strong_ordering;
+    SPP_ATTR_NODISCARD virtual auto equals_generic_argument_type_positional(GenericArgumentTypePositionalAst const &) const -> std::strong_ordering;
+    SPP_ATTR_NODISCARD virtual auto equals(GenericArgumentAst const &other) const -> std::strong_ordering = 0;
 
 public:
     explicit GenericArgumentAst(decltype(m_order_tag) order_tag);
+    ~GenericArgumentAst() override;
     auto operator<=>(GenericArgumentAst const &other) const -> std::strong_ordering;
     auto operator==(GenericArgumentAst const &other) const -> bool;
 };

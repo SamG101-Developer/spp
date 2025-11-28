@@ -12,6 +12,8 @@ import spp.utils.error_formatter;
 
 namespace spp::asts {
     SPP_EXP_CLS struct Ast;
+    SPP_EXP_CLS struct LoopExpressionAst;
+    SPP_EXP_CLS struct TypeStatementAst;
 }
 
 namespace spp::analyse::scopes {
@@ -30,6 +32,9 @@ namespace spp::asts::meta {
  * iterator to traverse the scopes in a depth-first manner, which is useful for various analysis tasks.
  */
 SPP_EXP_CLS class spp::analyse::scopes::ScopeManager {
+    friend struct spp::asts::LoopExpressionAst;
+    friend struct spp::asts::TypeStatementAst;
+
     /**
      * The current iterator state. This is a coroutine-based iterator that allows for depth-first traversal of the
      * scopes. It is reset with the @c reset method, and advanced with the @c move_to_next_scope and

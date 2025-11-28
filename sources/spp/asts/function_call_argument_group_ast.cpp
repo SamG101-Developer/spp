@@ -22,6 +22,7 @@ import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.order_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.convention_ast;
+import spp.asts.coroutine_prototype_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;

@@ -64,7 +64,6 @@ public:
 
     static auto new_empty() -> std::unique_ptr<InnerScopeAst>;
 
-public:
     auto final_member() const -> Ast*;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;

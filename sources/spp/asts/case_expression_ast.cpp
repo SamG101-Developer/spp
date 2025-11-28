@@ -20,8 +20,12 @@ import spp.asts.ast;
 import spp.asts.boolean_literal_ast;
 import spp.asts.case_expression_branch_ast;
 import spp.asts.case_pattern_variant_ast;
+import spp.asts.case_pattern_variant_else_ast;
 import spp.asts.case_pattern_variant_expression_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.pattern_guard_ast;
 import spp.asts.token_ast;
+import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.lex.tokens;
 

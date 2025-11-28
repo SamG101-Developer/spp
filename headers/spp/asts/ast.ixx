@@ -19,8 +19,13 @@ namespace spp::analyse::scopes {
 namespace spp::asts {
     SPP_EXP_CLS struct AnnotationAst;
     SPP_EXP_CLS struct Ast;
+    SPP_EXP_CLS struct ClassAttributeAst;
+    SPP_EXP_CLS struct ClassPrototypeAst;
+    SPP_EXP_CLS struct CmpStatementAst;
     SPP_EXP_CLS struct CoroutinePrototypeAst;
+    SPP_EXP_CLS struct SubroutinePrototypeAst;
     SPP_EXP_CLS struct TypeAst;
+    SPP_EXP_CLS struct TypeStatementAst;
 
     SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
@@ -110,7 +115,12 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
     friend struct spp::asts::AnnotationAst;
+    friend struct spp::asts::ClassAttributeAst;
+    friend struct spp::asts::ClassPrototypeAst;
+    friend struct spp::asts::CmpStatementAst;
     friend struct spp::asts::CoroutinePrototypeAst;
+    friend struct spp::asts::SubroutinePrototypeAst;
+    friend struct spp::asts::TypeStatementAst;
 
 protected:
     using AstPrinter = spp::asts::meta::AstPrinter;

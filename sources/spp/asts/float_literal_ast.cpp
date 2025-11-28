@@ -14,13 +14,13 @@ import mppp;
 import llvm;
 
 
-const auto FLOAT_TYPE_MIN_MAX = std::map<std::string, std::pair<mppp::BigDec, mppp::BigDec>>{
-    {"f8", {mppp::BigDec("-5.7344e+4"), mppp::BigDec("5.7344e+4")}},
-    {"f16", {mppp::BigDec("-6.55e+4"), mppp::BigDec("6.55e+4")}},
-    {"f32", {mppp::BigDec("-3.4028235e+38"), mppp::BigDec("3.4028235e+38")}},
-    {"f64", {mppp::BigDec("-1.7976931348623157e+308"), mppp::BigDec("1.7976931348623157e+308")}},
-    {"f128", {mppp::BigDec("-1.189731495357231765e+4932"), mppp::BigDec("1.189731495357231765e+4932")}}, // check this
-};
+// const auto FLOAT_TYPE_MIN_MAX = std::map<std::string, std::pair<mppp::BigDec, mppp::BigDec>>{
+//     {"f8", {mppp::BigDec("-5.7344e+4"), mppp::BigDec("5.7344e+4")}},
+//     {"f16", {mppp::BigDec("-6.55e+4"), mppp::BigDec("6.55e+4")}},
+//     {"f32", {mppp::BigDec("-3.4028235e+38"), mppp::BigDec("3.4028235e+38")}},
+//     {"f64", {mppp::BigDec("-1.7976931348623157e+308"), mppp::BigDec("1.7976931348623157e+308")}},
+//     {"f128", {mppp::BigDec("-1.189731495357231765e+4932"), mppp::BigDec("1.189731495357231765e+4932")}}, // check this
+// };
 
 
 spp::asts::FloatLiteralAst::FloatLiteralAst(
@@ -109,22 +109,22 @@ auto spp::asts::FloatLiteralAst::print(
 
 
 auto spp::asts::FloatLiteralAst::stage_7_analyse_semantics(
-    ScopeManager *sm,
+    ScopeManager *,
     CompilerMetaData *)
     -> void {
     // Get the lower and upper bounds as big floats.
     type = type.empty() ? "f32" : type;
-    auto const &[lower, upper] = FLOAT_TYPE_MIN_MAX.at(type);
-    auto mapped_val = mppp::BigDec((int_val->token_data + "." + frac_val->token_data).c_str());
-    if (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB) {
-        mapped_val = mapped_val.neg();
-    }
+    // auto const &[lower, upper] = FLOAT_TYPE_MIN_MAX.at(type);
+    // auto mapped_val = mppp::BigDec((int_val->token_data + "." + frac_val->token_data).c_str());
+    // if (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB) {
+    //     mapped_val = mapped_val.neg();
+    // }
 
     // Check if the value is within the bounds.
-    if (mapped_val < lower or mapped_val > upper) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFloatOutOfBoundsError>().with_args(
-            *this, mapped_val, lower, upper, "float").with_scopes({sm->current_scope}).raise();
-    }
+    // if (mapped_val < lower or mapped_val > upper) {
+    //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppFloatOutOfBoundsError>().with_args(
+    //         *this, mapped_val, lower, upper, "float").with_scopes({sm->current_scope}).raise();
+    // }
 }
 
 

@@ -33,4 +33,11 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompAst : GenericArgumentAst {
         decltype(m_order_tag) order_tag);
 
     ~GenericArgumentCompAst() override;
+
+protected:
+    SPP_ATTR_NODISCARD auto equals_generic_argument_comp_keyword(GenericArgumentCompKeywordAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals_generic_argument_comp_positional(GenericArgumentCompPositionalAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals_generic_argument_type_keyword(GenericArgumentTypeKeywordAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals_generic_argument_type_positional(GenericArgumentTypePositionalAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals(GenericArgumentAst const &other) const -> std::strong_ordering override = 0;
 };
