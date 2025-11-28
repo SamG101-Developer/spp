@@ -7,6 +7,7 @@ import spp.analyse.utils.mem_utils;
 import spp.asts.ast;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
+import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.utils.visibility;
 

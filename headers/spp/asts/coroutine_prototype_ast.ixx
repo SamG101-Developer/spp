@@ -10,6 +10,10 @@ import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct CoroutinePrototypeAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst {
     friend struct GenExpressionAst;

@@ -7,6 +7,10 @@ import spp.asts.loop_condition_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct LoopConditionBooleanAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::LoopConditionBooleanAst final : LoopConditionAst {
     /**

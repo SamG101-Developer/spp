@@ -8,6 +8,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.type_utils;
 import spp.asts.ast;
 import spp.asts.local_variable_ast;
+import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.lex.tokens;

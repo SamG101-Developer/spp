@@ -7,6 +7,10 @@ import spp.asts.primary_expression_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct IterExpressionAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::IterExpressionAst final : PrimaryExpressionAst {
     /**

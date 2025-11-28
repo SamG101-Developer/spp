@@ -9,6 +9,10 @@ import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct ArrayLiteralRepeatedElementAst;
+}
+
 
 /**
  * The ArrayLiteralRepeatedElementAst represents an array literal with repeated elements and a size. This is used to

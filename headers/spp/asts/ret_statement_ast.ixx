@@ -7,6 +7,10 @@ import spp.asts.statement_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct RetStatementAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::RetStatementAst final : StatementAst {
 private:

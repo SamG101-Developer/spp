@@ -9,6 +9,10 @@ import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct AssignmentStatementAst;
+}
+
 
 /**
  * An assignment statement allows for one value to be moved or copied into another variable or property (or multiple
