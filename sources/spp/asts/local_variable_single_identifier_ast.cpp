@@ -5,10 +5,10 @@ module spp.asts.local_variable_single_identifier_ast;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
-import spp.asts.ast;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.token_ast;
+import spp.asts.utils.ast_utils;
 import spp.asts.type_ast;
 
 

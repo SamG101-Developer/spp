@@ -1,11 +1,11 @@
 module spp.asts.generic_parameter_type_ast;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.asts.ast;
 import spp.asts.convention_ast;
 import spp.asts.generic_parameter_type_inline_constraints_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::GenericParameterTypeAst::GenericParameterTypeAst(

@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.scopes.symbol_table;
-import spp.analyse.scopes.symbols;
 import spp.utils.ptr_cmp;
 
 import ankerl;
@@ -14,6 +13,9 @@ namespace spp::analyse::scopes {
     class IndividualSymbolTable;
 
     SPP_EXP_CLS class SymbolTable;
+    SPP_EXP_CLS struct NamespaceSymbol;
+    SPP_EXP_CLS struct TypeSymbol;
+    SPP_EXP_CLS struct VariableSymbol;
 }
 
 

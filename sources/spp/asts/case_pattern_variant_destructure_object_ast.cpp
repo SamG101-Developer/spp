@@ -33,6 +33,7 @@ import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::CasePatternVariantDestructureObjectAst::CasePatternVariantDestructureObjectAst(

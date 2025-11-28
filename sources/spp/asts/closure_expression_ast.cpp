@@ -8,7 +8,6 @@ module;
 module spp.asts.closure_expression_ast;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
-import spp.asts.ast;
 import spp.asts.convention_ast;
 import spp.asts.closure_expression_capture_ast;
 import spp.asts.closure_expression_capture_group_ast;
@@ -18,6 +17,7 @@ import spp.asts.function_parameter_group_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
+import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 

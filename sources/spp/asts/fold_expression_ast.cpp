@@ -2,9 +2,9 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.fold_expression_ast;
-import spp.asts.ast;
 import spp.asts.token_ast;
 import spp.asts.generate.common_types;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::FoldExpressionAst::FoldExpressionAst(

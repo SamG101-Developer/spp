@@ -5,6 +5,7 @@ module spp.asts.string_literal_ast;
 import spp.asts.ast;
 import spp.asts.token_ast;
 import spp.asts.generate.common_types;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::StringLiteralAst::StringLiteralAst(

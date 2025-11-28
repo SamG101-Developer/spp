@@ -11,13 +11,13 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.asts.annotation_ast;
-import spp.asts.ast;
 import spp.asts.identifier_ast;
 import spp.asts.function_implementation_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.utils.ast_utils;
 
 import llvm;
 

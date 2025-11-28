@@ -7,7 +7,6 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
-import spp.asts.ast;
 import spp.asts.convention_ast;
 import spp.asts.gen_expression_ast;
 import spp.asts.generic_argument_group_ast;
@@ -26,6 +25,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
+import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 

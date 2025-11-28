@@ -7,6 +7,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.statement_ast;
 import spp.asts.token_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::LoopElseStatementAst::LoopElseStatementAst(

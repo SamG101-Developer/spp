@@ -2,8 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.type_unary_expression_operator_borrow_ast;
-import spp.asts.ast;
 import spp.asts.convention_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::TypeUnaryExpressionOperatorBorrowAst::TypeUnaryExpressionOperatorBorrowAst(

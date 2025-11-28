@@ -3,9 +3,9 @@ module;
 
 module spp.asts.case_pattern_variant_else_ast;
 import spp.lex.tokens;
-import spp.asts.ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.token_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::CasePatternVariantElseAst::CasePatternVariantElseAst(

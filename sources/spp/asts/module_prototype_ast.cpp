@@ -11,6 +11,7 @@ module;
 module spp.asts.module_prototype_ast;
 import spp.asts.identifier_ast;
 import spp.asts.module_implementation_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::ModulePrototypeAst::ModulePrototypeAst(

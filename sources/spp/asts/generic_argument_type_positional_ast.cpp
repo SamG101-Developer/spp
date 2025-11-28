@@ -3,10 +3,10 @@ module;
 
 module spp.asts.generic_argument_type_positional_ast;
 import spp.analyse.scopes.scope_manager;
-import spp.asts.ast;
 import spp.asts.convention_ast;
 import spp.asts.type_ast;
 import spp.asts.mixins.orderable_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::GenericArgumentTypePositionalAst::GenericArgumentTypePositionalAst(

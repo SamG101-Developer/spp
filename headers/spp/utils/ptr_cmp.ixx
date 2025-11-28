@@ -27,15 +27,9 @@ struct spp::utils::SymNameCmp {
 };
 
 
-template <>
-struct spp::utils::SymNameCmp<std::shared_ptr<spp::asts::IdentifierAst>> {
-    auto operator()(std::shared_ptr<asts::IdentifierAst> const &lhs, std::shared_ptr<asts::IdentifierAst> const &rhs) const -> bool;
-};
-
-
-template <>
-struct spp::utils::SymNameCmp<std::shared_ptr<spp::asts::TypeIdentifierAst>> {
-    auto operator()(std::shared_ptr<asts::TypeIdentifierAst> const &lhs, std::shared_ptr<asts::TypeIdentifierAst> const &rhs) const -> bool;
+template <typename T>
+struct spp::utils::SymNameCmp<std::shared_ptr<T>> {
+    auto operator()(std::shared_ptr<T> const &lhs, std::shared_ptr<T> const &rhs) const -> bool;
 };
 
 

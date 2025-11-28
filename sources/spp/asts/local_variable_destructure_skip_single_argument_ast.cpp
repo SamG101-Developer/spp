@@ -2,9 +2,9 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.local_variable_destructure_skip_single_argument_ast;
-import spp.asts.ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::LocalVariableDestructureSkipSingleArgumentAst::LocalVariableDestructureSkipSingleArgumentAst(

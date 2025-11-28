@@ -5,6 +5,7 @@ module spp.asts.type_postfix_expression_operator_nested_type_ast;
 import spp.asts.ast;
 import spp.asts.token_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 

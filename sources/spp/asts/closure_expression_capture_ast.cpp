@@ -2,10 +2,10 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.closure_expression_capture_ast;
-import spp.asts.ast;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
 import spp.asts.token_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::ClosureExpressionCaptureAst::ClosureExpressionCaptureAst(

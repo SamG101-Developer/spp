@@ -13,7 +13,6 @@ module;
 module spp.asts.object_initializer_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
-import spp.asts.ast;
 import spp.asts.convention_ast;
 import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
@@ -22,6 +21,7 @@ import spp.asts.identifier_ast;
 import spp.asts.object_initializer_argument_ast;
 import spp.asts.object_initializer_argument_group_ast;
 import spp.asts.type_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::ObjectInitializerAst::ObjectInitializerAst(

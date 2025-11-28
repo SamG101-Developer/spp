@@ -2,9 +2,9 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.iter_pattern_variant_no_value_ast;
-import spp.asts.ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.token_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::IterPatternVariantNoValueAst::IterPatternVariantNoValueAst(

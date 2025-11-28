@@ -11,7 +11,6 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
-import spp.asts.ast;
 import spp.asts.cmp_statement_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
@@ -21,6 +20,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
 
 
 spp::analyse::scopes::ScopeManager::ScopeManager(

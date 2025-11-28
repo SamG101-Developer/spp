@@ -10,6 +10,7 @@ import spp.asts.module_prototype_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.token_ast;
 import spp.asts.mixins.visibility_enabled_ast;
+import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
 
 

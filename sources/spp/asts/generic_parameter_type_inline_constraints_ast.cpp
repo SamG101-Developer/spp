@@ -9,6 +9,7 @@ module;
 module spp.asts.generic_parameter_type_inline_constraints_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::GenericParameterTypeInlineConstraintsAst::GenericParameterTypeInlineConstraintsAst(

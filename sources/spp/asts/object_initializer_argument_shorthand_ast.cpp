@@ -5,10 +5,10 @@ module spp.asts.object_initializer_argument_shorthand_ast;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
-import spp.asts.ast;
+import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
-import spp.asts.expression_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::ObjectInitializerArgumentShorthandAst::ObjectInitializerArgumentShorthandAst(

@@ -7,7 +7,6 @@ import spp.analyse.utils.type_utils;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
-import spp.asts.ast;
 import spp.asts.expression_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
@@ -15,6 +14,7 @@ import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
+import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 

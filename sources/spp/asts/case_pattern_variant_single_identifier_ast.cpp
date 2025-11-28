@@ -2,12 +2,12 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.case_pattern_variant_single_identifier_ast;
-import spp.asts.ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.token_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::CasePatternVariantSingleIdentifierAst::CasePatternVariantSingleIdentifierAst(

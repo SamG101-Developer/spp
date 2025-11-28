@@ -11,7 +11,6 @@ module;
 module spp.asts.type_identifier_ast;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.type_utils;
-import spp.asts.ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_comp_keyword_ast;
@@ -29,6 +28,7 @@ import spp.asts.type_unary_expression_ast;
 import spp.asts.type_unary_expression_operator_ast;
 import spp.asts.type_unary_expression_operator_borrow_ast;
 import spp.asts.generate.common_types_precompiled;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::TypeIdentifierAst::TypeIdentifierAst(

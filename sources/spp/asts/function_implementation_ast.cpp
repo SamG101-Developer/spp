@@ -1,5 +1,6 @@
 module spp.asts.function_implementation_ast;
 import spp.asts.ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::FunctionImplementationAst::~FunctionImplementationAst() = default;

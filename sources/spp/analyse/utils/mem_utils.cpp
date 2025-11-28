@@ -21,6 +21,7 @@ import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.iter_expression_branch_ast;
 import spp.asts.tuple_literal_ast;
+import spp.asts.utils.ast_utils;
 
 
 auto spp::analyse::utils::mem_utils::MemoryInfo::moved_by(

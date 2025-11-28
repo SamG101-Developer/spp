@@ -4,6 +4,7 @@ module;
 module spp.asts.type_parenthesised_expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::TypeParenthesisedExpressionAst::TypeParenthesisedExpressionAst(

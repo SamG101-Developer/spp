@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.loop_expression_ast;
-import spp.asts.ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_block_name;
@@ -17,6 +16,7 @@ import spp.asts.loop_else_statement_ast;
 import spp.asts.token_ast;
 import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
+import spp.asts.utils.ast_utils;
 
 import llvm;
 

@@ -10,6 +10,7 @@ module;
 
 module spp.asts.module_implementation_ast;
 import spp.asts.module_member_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::ModuleImplementationAst::ModuleImplementationAst(

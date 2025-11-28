@@ -22,7 +22,6 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.type_utils;
-import spp.asts.ast;
 import spp.asts.expression_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
@@ -35,6 +34,7 @@ import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.type_ast;
+import spp.asts.utils.ast_utils;
 import spp.asts.type_identifier_ast;
 import spp.lex.tokens;
 
