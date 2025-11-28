@@ -9,6 +9,10 @@ import spp.asts.type_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct TypePostfixExpressionAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
     /**

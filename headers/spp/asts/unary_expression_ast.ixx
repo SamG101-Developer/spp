@@ -2,10 +2,15 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.unary_expression_ast;
-import spp.asts._fwd;
 import spp.asts.expression_ast;
 
 import std;
+
+namespace spp::asts {
+    SPP_EXP_CLS struct UnaryExpressionAst;
+    SPP_EXP_CLS struct UnaryExpressionOperatorAst;
+    SPP_EXP_CLS struct TypeAst;
+}
 
 
 SPP_EXP_CLS struct spp::asts::UnaryExpressionAst final : ExpressionAst {

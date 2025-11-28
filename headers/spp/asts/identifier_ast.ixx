@@ -54,7 +54,7 @@ public:
         return equals(that) == std::strong_ordering::equal;
     }
 
-    SPP_ATTR_ALWAYS_INLINE auto operator==(ExpressionAst const &that) const -> bool {
+    SPP_ATTR_ALWAYS_INLINE auto operator==(ExpressionAst const &that) const -> bool override {
         return equals(that) == std::strong_ordering::equal;
     }
 

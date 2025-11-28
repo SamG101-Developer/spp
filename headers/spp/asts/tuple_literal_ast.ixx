@@ -7,6 +7,10 @@ import spp.asts.literal_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct TupleLiteralAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
     /**

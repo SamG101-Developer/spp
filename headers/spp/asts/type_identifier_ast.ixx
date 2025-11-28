@@ -4,12 +4,16 @@ module;
 #include <genex/generator.hpp>
 
 export module spp.asts.type_identifier_ast;
-import spp.asts._fwd;
 import spp.asts.type_ast;
 
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct ConventionAst;
+    SPP_EXP_CLS struct GenericArgumentAst;
+    SPP_EXP_CLS struct GenericArgumentGroupAst;
+    SPP_EXP_CLS struct GenericParameterAst;
+    SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
@@ -52,7 +56,7 @@ public:
 
     static auto from_identifier(IdentifierAst const &identifier) -> std::shared_ptr<TypeIdentifierAst>;
 
-    static auto from_string(std::string const& identifier) -> std::shared_ptr<TypeIdentifierAst>;
+    static auto from_string(std::string const &identifier) -> std::shared_ptr<TypeIdentifierAst>;
 
     SPP_ATTR_ALWAYS_INLINE auto operator<=>(const TypeIdentifierAst &that) const -> std::strong_ordering {
         return equals(that);

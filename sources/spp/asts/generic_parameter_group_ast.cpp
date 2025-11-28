@@ -24,6 +24,7 @@ import spp.asts.generic_parameter_comp_optional_ast;
 import spp.asts.generic_parameter_type_optional_ast;
 import spp.asts.generic_parameter_comp_variadic_ast;
 import spp.asts.generic_parameter_type_variadic_ast;
+import spp.asts.type_identifier_ast;
 import spp.asts.mixins.orderable_ast;
 import spp.lex.tokens;
 

@@ -65,5 +65,5 @@ public:
     ExpressionAst(ExpressionAst const &other);
     ~ExpressionAst() override;
     auto operator<=>(const ExpressionAst &) const -> std::strong_ordering;
-    auto operator==(const ExpressionAst &) const -> bool;
+    virtual auto operator==(const ExpressionAst &) const -> bool;
 };

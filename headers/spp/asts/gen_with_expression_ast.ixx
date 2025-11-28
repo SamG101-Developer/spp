@@ -9,6 +9,10 @@ import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct GenWithExpressionAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::GenWithExpressionAst final : PrimaryExpressionAst {
 private:

@@ -8,6 +8,10 @@ import spp.asts.module_member_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct SupPrototypeFunctionsAst;
+}
+
 
 /**
  * The SupPrototypeFunctionsAst represents a superimposition of methods over a type. This is used to add behavior to a

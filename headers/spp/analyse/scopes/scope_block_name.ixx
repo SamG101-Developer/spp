@@ -1,11 +1,13 @@
+module;
+#include <spp/macros.hpp>
+
 export module spp.analyse.scopes.scope_block_name;
 import std;
 
 
 namespace spp::analyse::scopes {
-    export struct ScopeBlockName;
+    SPP_EXP_CLS struct ScopeBlockName;
 }
-
 
 
 /**
@@ -14,7 +16,7 @@ namespace spp::analyse::scopes {
  * and other blocks of code that don't have a specific name. The string is wrapped into this struct to provide type
  * safety.
  */
-struct spp::analyse::scopes::ScopeBlockName {
+SPP_EXP_CLS struct spp::analyse::scopes::ScopeBlockName {
     /**
      * The name of the scope block. This is just a string, and can be anything that makes sense for the block.
      * Typically, a scope name may be "<loop#30>" for a loop block starting at token number 30.

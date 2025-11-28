@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_prototype_ast;
-import spp.asts._fwd;
 import spp.asts.ast;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.module_member_ast;
@@ -12,6 +11,20 @@ import spp.codegen.llvm_ctx;
 
 import llvm;
 import std;
+
+namespace spp::asts {
+    SPP_EXP_CLS struct AnnotationAst;
+    SPP_EXP_CLS struct FunctionImplementationAst;
+    SPP_EXP_CLS struct FunctionParameterGroupAst;
+    SPP_EXP_CLS struct FunctionPrototypeAst;
+    SPP_EXP_CLS struct GenExpressionAst;
+    SPP_EXP_CLS struct GenericParameterGroupAst;
+    SPP_EXP_CLS struct IdentifierAst;
+    SPP_EXP_CLS struct PostfixExpressionOperatorFunctionCallAst;
+    SPP_EXP_CLS struct SupPrototypeExtensionAst;
+    SPP_EXP_CLS struct TokenAst;
+    SPP_EXP_CLS struct TypeAst;
+}
 
 
 /**

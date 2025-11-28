@@ -9,6 +9,10 @@ import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct GenExpressionAst;
+}
+
 
 /**
  * The GenExpressionAst represents a value being yielded out of a coroutine. A convention can be applied to the value,

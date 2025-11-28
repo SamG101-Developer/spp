@@ -9,6 +9,9 @@ import spp.lex.tokens;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct TokenAst;
+}
 
 /**
  * A TokenAST represents a low level token created by the lexer. This includes @c = or @c + for example, seen in

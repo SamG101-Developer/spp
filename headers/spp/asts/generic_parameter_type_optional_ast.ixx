@@ -7,6 +7,10 @@ import spp.asts.generic_parameter_type_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct GenericParameterTypeOptionalAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::GenericParameterTypeOptionalAst final : GenericParameterTypeAst {
     /**
