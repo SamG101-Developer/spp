@@ -10,11 +10,11 @@ namespace spp::asts::mixins {
 }
 
 namespace spp::asts {
-    SPP_EXP_CLS class TypeAst;
+    SPP_EXP_CLS struct TypeAst;
 }
 
 namespace spp::asts::meta {
-    SPP_EXP_CLS class CompilerMetaData;
+    SPP_EXP_CLS struct CompilerMetaData;
 }
 
 namespace spp::analyse::scopes {
