@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.function_parameter_ast;
+import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.mem_utils;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;

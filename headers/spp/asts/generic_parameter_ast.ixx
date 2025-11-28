@@ -10,7 +10,7 @@ import std;
 
 
 namespace spp::asts::detail {
-    template <typename GenericParameterType>
+    SPP_EXP_CLS template <typename GenericParameterType>
     struct make_required_param {
         using type = GenericParameterType;
     };
@@ -29,7 +29,7 @@ namespace spp::asts::detail {
     using make_required_param_t = typename make_required_param<GenericParameterType>::type;
 
 
-    template <typename GenericParameterType>
+    SPP_EXP_CLS template <typename GenericParameterType>
     struct make_optional_param {
         using type = GenericParameterType;
     };
@@ -48,7 +48,7 @@ namespace spp::asts::detail {
     using make_optional_param_t = typename make_optional_param<GenericParameterType>::type;
 
 
-    template <typename GenericParameterType>
+    SPP_EXP_CLS template <typename GenericParameterType>
     struct make_variadic_param {
         using type = GenericParameterType;
     };
@@ -67,7 +67,7 @@ namespace spp::asts::detail {
     using make_variadic_param_t = typename make_variadic_param<GenericParameterType>::type;
 
 
-    template <typename GenericParameterType>
+    SPP_EXP_CLS template <typename GenericParameterType>
     struct generic_param_value_type;
 
     template <>

@@ -1,7 +1,6 @@
 module;
 #include <spp/macros.hpp>
 
-
 export module spp.asts.meta.compiler_meta_data;
 import spp.asts._fwd;
 import spp.utils.ptr_cmp;

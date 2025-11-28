@@ -14,6 +14,7 @@ module;
 module spp.asts.function_parameter_group_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.order_utils;
 import spp.asts.function_parameter_optional_ast;
 import spp.asts.function_parameter_required_ast;

@@ -11,6 +11,7 @@ module;
 #include <genex/views/zip.hpp>
 
 module spp.asts.assignment_statement_ast;
+import spp.analyse.scopes.scope_manager;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.utils.mem_utils;
@@ -137,7 +138,7 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
         }
 
         // Attribute assignment (ie "x.y = z"), for a borrowed symbol, cannot be immutably borrowed.
-        if (is_attr(lhs_expr) and lhs_sym->type->get_convention() and *lhs_sym->type->get_convention() == ConventionAst::ConventionTag::REF) {
+        if (is_attr(lhs_expr) and lhs_sym->type->get_convention() and *lhs_sym->type->get_convention() == ConventionTag::REF) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
                 *lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_borrowed)).with_scopes({sm->current_scope}).raise();
         }

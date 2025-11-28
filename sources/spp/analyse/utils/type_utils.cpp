@@ -41,6 +41,7 @@ import spp.asts.generic_parameter_type_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.integer_literal_ast;
+import spp.asts.sup_prototype_extension_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -67,7 +68,7 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
     const auto lhs_conv = lhs_type.get_convention();
     const auto rhs_conv = rhs_type.get_convention();
     if ((lhs_conv and *lhs_conv != rhs_conv) or (not lhs_conv and rhs_conv)) {
-        if (not((lhs_conv and *lhs_conv == asts::ConventionAst::ConventionTag::REF) and (rhs_conv and *rhs_conv == asts::ConventionAst::ConventionTag::MUT))) {
+        if (not((lhs_conv and *lhs_conv == asts::ConventionTag::REF) and (rhs_conv and *rhs_conv == asts::ConventionTag::MUT))) {
             return false;
         }
     }

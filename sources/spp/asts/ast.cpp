@@ -4,6 +4,8 @@ module;
 #include <genex/views/ptr.hpp>
 
 module spp.asts.ast;
+import spp.analyse.scopes.scope_manager;
+import spp.asts.ast;
 import spp.asts.class_implementation_ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.function_implementation_ast;

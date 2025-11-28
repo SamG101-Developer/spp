@@ -506,35 +506,35 @@ spp::analyse::errors::SppCoroutineInvalidReturnTypeError::SppCoroutineInvalidRet
 
 spp::analyse::errors::SppFloatOutOfBoundsError::SppFloatOutOfBoundsError(
     asts::LiteralAst const &literal,
-    boost::multiprecision::cpp_dec_float_100 const &value,
-    boost::multiprecision::cpp_dec_float_100 const &lower,
-    boost::multiprecision::cpp_dec_float_100 const &upper,
+    mppp::BigDec const &value,
+    mppp::BigDec const &lower,
+    mppp::BigDec const &upper,
     const std::string_view what) {
     add_header(
         37, "SPP Float Out Of Bounds Error");
     add_error(
         &literal,
-        "Float literal defined here with value: " + value.str());
+        "Float literal defined here with value: " + value.to_string());
     add_footer(
         "The value of this float literal is out of bounds for " + std::string(what) + " type.",
-        "Ensure the value is within the range: [" + lower.str() + ", " + upper.str() + "]");
+        "Ensure the value is within the range: [" + lower.to_string() + ", " + upper.to_string() + "]");
 }
 
 
 spp::analyse::errors::SppIntegerOutOfBoundsError::SppIntegerOutOfBoundsError(
     asts::LiteralAst const &literal,
-    boost::multiprecision::cpp_int const &value,
-    boost::multiprecision::cpp_int const &lower,
-    boost::multiprecision::cpp_int const &upper,
+    mppp::BigInt const &value,
+    mppp::BigInt const &lower,
+    mppp::BigInt const &upper,
     const std::string_view what) {
     add_header(
         38, "SPP Integer Out Of Bounds Error");
     add_error(
         &literal,
-        "Integer literal defined here with value: " + value.str());
+        "Integer literal defined here with value: " + value.to_string());
     add_footer(
         "The value of this integer literal is out of bounds for " + std::string(what) + " type.",
-        "Ensure the value is within the range: [" + lower.str() + ", " + upper.str() + "]");
+        "Ensure the value is within the range: [" + lower.to_string() + ", " + upper.to_string() + "]");
 }
 
 

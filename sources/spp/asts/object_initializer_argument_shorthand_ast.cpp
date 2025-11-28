@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.object_initializer_argument_shorthand_ast;
+import spp.analyse.scopes.scope_manager;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.asts.ast;

@@ -5,6 +5,7 @@ module;
 
 module spp.utils.errors;
 import spp.analyse.scopes.scope;
+import spp.utils.error_formatter;
 
 
 template <typename T>

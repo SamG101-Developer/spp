@@ -8,6 +8,7 @@ module spp.asts.sup_prototype_functions_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.convention_ast;
 import spp.asts.generic_parameter_group_ast;

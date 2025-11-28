@@ -55,6 +55,7 @@ export namespace llvm {
         using ::llvm::Intrinsic::tan;
 
         using ::llvm::Intrinsic::memset;
+        using ::llvm::Intrinsic::trap;
 
         using ::llvm::Intrinsic::sadd_with_overflow;
         using ::llvm::Intrinsic::uadd_with_overflow;
@@ -62,5 +63,12 @@ export namespace llvm {
         using ::llvm::Intrinsic::umul_with_overflow;
         using ::llvm::Intrinsic::ssub_with_overflow;
         using ::llvm::Intrinsic::usub_with_overflow;
+
+        using ::llvm::Intrinsic::coro_begin;
+        using ::llvm::Intrinsic::coro_destroy;
+        using ::llvm::Intrinsic::coro_done;
+        using ::llvm::Intrinsic::coro_id;
+        using ::llvm::Intrinsic::coro_resume;
+        using ::llvm::Intrinsic::coro_suspend;
     }
 }

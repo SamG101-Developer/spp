@@ -152,6 +152,8 @@ import spp.asts.unary_expression_operator_async_ast;
 import spp.asts.unary_expression_operator_deref_ast;
 import spp.asts.use_statement_ast;
 import spp.asts.generate.common_types;
+import spp.parse.errors.parser_error;
+import spp.parse.errors.parser_error_builder;
 import spp.utils.algorithms;
 
 module spp.parse.parser_spp;

@@ -9,6 +9,7 @@ module;
 module spp.asts.class_implementation_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
 import spp.asts.ast;
 import spp.asts.class_attribute_ast;
 

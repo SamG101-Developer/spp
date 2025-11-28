@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.integer_literal_ast;
+import spp.analyse.scopes.scope_manager;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.asts.ast;
@@ -9,27 +10,24 @@ import spp.asts.token_ast;
 import spp.asts.generate.common_types;
 import spp.lex.tokens;
 
-import boost;
+import mppp;
 
 
-using CppBigInt = boost::multiprecision::cpp_int;
-
-
-const auto INTEGER_TYPE_MIN_MAX = std::map<std::string, std::pair<CppBigInt, CppBigInt>>{
-    {"s8", {CppBigInt("-128"), CppBigInt("127")}},
-    {"s16", {CppBigInt("-32768"), CppBigInt("32767")}},
-    {"s32", {CppBigInt("-2147483648"), CppBigInt("2147483647")}},
-    {"s64", {CppBigInt("-9223372036854775808"), CppBigInt("9223372036854775807")}},
-    {"sz", {CppBigInt("-9223372036854775808"), CppBigInt("9223372036854775807")}},
-    {"s128", {CppBigInt("-170141183460469231731687303715884105728"), CppBigInt("170141183460469231731687303715884105727")}},
-    {"s256", {CppBigInt("-57896044618658097711785492504343953926634992332820282019728792003956564819968"), CppBigInt("57896044618658097711785492504343953926634992332820282019728792003956564819967")}},
-    {"u8", {CppBigInt("0"), CppBigInt("255")}},
-    {"u16", {CppBigInt("0"), CppBigInt("65535")}},
-    {"u32", {CppBigInt("0"), CppBigInt("4294967295")}},
-    {"u64", {CppBigInt("0"), CppBigInt("18446744073709551615")}},
-    {"uz", {CppBigInt("0"), CppBigInt("18446744073709551615")}},
-    {"u128", {CppBigInt("0"), CppBigInt("340282366841710300949128831971969468211455")}},
-    {"u256", {CppBigInt("0"), CppBigInt("115792089237316195423570985008687907853269984665640564039457584007913129639935")}}
+const auto INTEGER_TYPE_MIN_MAX = std::map<std::string, std::pair<mppp::BigInt, mppp::BigInt>>{
+    {"s8", {mppp::BigInt("-128"), mppp::BigInt("127")}},
+    {"s16", {mppp::BigInt("-32768"), mppp::BigInt("32767")}},
+    {"s32", {mppp::BigInt("-2147483648"), mppp::BigInt("2147483647")}},
+    {"s64", {mppp::BigInt("-9223372036854775808"), mppp::BigInt("9223372036854775807")}},
+    {"sz", {mppp::BigInt("-9223372036854775808"), mppp::BigInt("9223372036854775807")}},
+    {"s128", {mppp::BigInt("-170141183460469231731687303715884105728"), mppp::BigInt("170141183460469231731687303715884105727")}},
+    {"s256", {mppp::BigInt("-57896044618658097711785492504343953926634992332820282019728792003956564819968"), mppp::BigInt("57896044618658097711785492504343953926634992332820282019728792003956564819967")}},
+    {"u8", {mppp::BigInt("0"), mppp::BigInt("255")}},
+    {"u16", {mppp::BigInt("0"), mppp::BigInt("65535")}},
+    {"u32", {mppp::BigInt("0"), mppp::BigInt("4294967295")}},
+    {"u64", {mppp::BigInt("0"), mppp::BigInt("18446744073709551615")}},
+    {"uz", {mppp::BigInt("0"), mppp::BigInt("18446744073709551615")}},
+    {"u128", {mppp::BigInt("0"), mppp::BigInt("340282366841710300949128831971969468211455")}},
+    {"u256", {mppp::BigInt("0"), mppp::BigInt("115792089237316195423570985008687907853269984665640564039457584007913129639935")}}
 };
 
 
@@ -115,7 +113,7 @@ auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
     // Get the lower and upper bounds as big floats.
     type = type.empty() ? "s32" : type;
     auto const &[lower, upper] = INTEGER_TYPE_MIN_MAX.at(type);
-    auto mapped_val = CppBigInt(val->token_data.c_str());
+    auto mapped_val = mppp::BigInt(val->token_data.c_str());
     if (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB) {
         mapped_val = -mapped_val;
     }

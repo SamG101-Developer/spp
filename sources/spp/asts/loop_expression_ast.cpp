@@ -16,6 +16,8 @@ import spp.asts.token_ast;
 import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 
+import llvm;
+
 
 spp::asts::LoopExpressionAst::LoopExpressionAst(
     decltype(tok_loop) &&tok_loop,

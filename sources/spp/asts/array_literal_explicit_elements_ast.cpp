@@ -12,10 +12,11 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.array_literal_explicit_elements_ast;
-import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.ast;
 import spp.asts.integer_literal_ast;
 import spp.asts.token_ast;
@@ -105,7 +106,6 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-
     // Analyse the element inside the array.
     for (auto &&elem : elems) {
         SPP_ENFORCE_EXPRESSION_SUBTYPE(elem.get());

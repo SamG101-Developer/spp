@@ -4,6 +4,7 @@ module;
 module spp.asts.unary_expression_operator_deref_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
 import spp.asts.ast;
 import spp.asts.expression_ast;
 import spp.asts.token_ast;

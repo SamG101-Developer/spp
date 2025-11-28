@@ -9,6 +9,7 @@ module;
 
 module spp.asts.inner_scope_ast;
 import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.mem_utils;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;

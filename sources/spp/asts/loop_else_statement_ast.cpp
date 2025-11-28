@@ -3,6 +3,7 @@ module;
 
 module spp.asts.loop_else_statement_ast;
 import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.scope_manager;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.token_ast;
 

@@ -11,6 +11,7 @@ module;
 
 module spp.asts.case_expression_branch_ast;
 import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.scope_manager;
 import spp.asts.binary_expression_ast;
 import spp.asts.case_pattern_variant_ast;
 import spp.asts.case_pattern_variant_expression_ast;

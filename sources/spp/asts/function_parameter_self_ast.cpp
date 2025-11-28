@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.function_parameter_self_ast;
+import spp.analyse.scopes.scope_manager;
 import spp.asts.ast;
 import spp.asts.convention_ast;
 import spp.asts.local_variable_ast;
@@ -73,7 +74,7 @@ auto spp::asts::FunctionParameterSelfAst::stage_7_analyse_semantics(
     // Special mutability rules for the "self" parameter.
     const auto sym = sm->current_scope->get_var_symbol(var->extract_name());
     sym->is_mutable = ast_cast<LocalVariableSingleIdentifierAst>(var.get())->tok_mut != nullptr
-        or (conv and *conv == ConventionAst::ConventionTag::MUT);
+        or (conv and *conv == ConventionTag::MUT);
 
     // Apply the convention from the attribute.
     sym->type = type->with_convention(ast_clone(conv));

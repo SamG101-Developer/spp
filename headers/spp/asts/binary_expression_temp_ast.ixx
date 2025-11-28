@@ -7,7 +7,7 @@ import std;
 
 
 /**
- * Temporary aST node that hold the right-hand-side of a binary expression. This is because it is parsed together, aside
+ * Temporary AST node that hold the right-hand-side of a binary expression. This is because it is parsed together, aside
  * from the left-hand-side, and as an entirety may be nullptr, and discarded.
  */
 SPP_EXP_CLS struct spp::asts::BinaryExpressionTempAst {

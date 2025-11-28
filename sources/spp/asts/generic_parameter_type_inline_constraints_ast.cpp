@@ -1,4 +1,7 @@
 module;
+#include <genex/to_container.hpp>
+#include <genex/views/intersperse.hpp>
+#include <genex/views/join.hpp>
 #include <genex/views/transform.hpp>
 
 #include <spp/macros.hpp>

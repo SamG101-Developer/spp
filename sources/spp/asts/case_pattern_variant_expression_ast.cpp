@@ -4,6 +4,7 @@ module;
 module spp.asts.case_pattern_variant_expression_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.mem_utils;
 import spp.asts.ast;
 import spp.asts.convention_ref_ast;

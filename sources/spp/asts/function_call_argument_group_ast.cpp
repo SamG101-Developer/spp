@@ -17,6 +17,7 @@ module;
 module spp.asts.function_call_argument_group_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.order_utils;
 import spp.analyse.utils.type_utils;
@@ -27,6 +28,7 @@ import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_positional_ast;
+import spp.asts.function_call_argument_keyword_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.type_ast;
@@ -135,7 +137,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
     // Check the arguments are in the correct order.
     const auto unordered_args = analyse::utils::order_utils::order_args(args
         | genex::views::ptr
-        | genex::views::cast_dynamic<meta::OrderableAst*>()
+        | genex::views::cast_dynamic<mixins::OrderableAst*>()
         | genex::to<std::vector>());
 
     if (not unordered_args.empty()) {
@@ -175,7 +177,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         arg->stage_7_analyse_semantics(sm, meta);
         const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*arg->val);
         if (sym == nullptr) { continue; }
-        if (arg->conv == nullptr or *arg->conv == ConventionAst::ConventionTag::REF) { continue; }
+        if (arg->conv == nullptr or *arg->conv == ConventionTag::REF) { continue; }
 
         // Immutable symbols cannot be mutated.
         if (not sym->is_mutable) {
@@ -184,7 +186,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         }
 
         // Immutable borrows, even if their symbol is mutable, cannot be mutated.
-        if (std::get<0>(sym->memory_info->ast_borrowed) and *sym->type->get_convention() == ConventionAst::ConventionTag::REF) {
+        if (std::get<0>(sym->memory_info->ast_borrowed) and *sym->type->get_convention() == ConventionTag::REF) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
                 *arg->val, *arg->val, *std::get<0>(sym->memory_info->ast_borrowed)).with_scopes({sm->current_scope}).raise();
         }
@@ -239,7 +241,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
             }
         }
 
-        else if (arg->conv and *arg->conv == ConventionAst::ConventionTag::REF) {
+        else if (arg->conv and *arg->conv == ConventionTag::REF) {
             // Generate the list of overlapping borrows for immutable borrows.
             auto overlaps = borrows_mut
                 | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
@@ -276,7 +278,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
             borrows_ref.emplace_back(arg->val.get());
         }
 
-        else if (arg->conv and *arg->conv == ConventionAst::ConventionTag::MUT) {
+        else if (arg->conv and *arg->conv == ConventionTag::MUT) {
             // Generate the list of overlapping borrows for mutable borrows.
             auto overlaps = genex::views::concat(borrows_ref, borrows_mut)
                 | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })

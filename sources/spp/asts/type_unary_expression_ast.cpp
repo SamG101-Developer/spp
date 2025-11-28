@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.type_unary_expression_ast;
+import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.type_utils;
 import spp.asts.ast;
 import spp.asts.type_identifier_ast;

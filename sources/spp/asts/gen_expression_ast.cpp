@@ -4,6 +4,7 @@ module;
 module spp.asts.gen_expression_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.ast;
@@ -155,7 +156,7 @@ auto spp::asts::GenExpressionAst::stage_8_check_memory(
             *expr, *tok_gen, *sm, false, false, true, true, true, true, meta);
     }
 
-    else if (*conv == ConventionAst::ConventionTag::MUT and not sym->is_mutable) {
+    else if (*conv == ConventionTag::MUT and not sym->is_mutable) {
         // Check the argument's symbol is mutable, if the symbol exists.
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
             *expr, *conv, *std::get<0>(sym->memory_info->ast_initialization)).with_scopes({sm->current_scope}).raise();

@@ -7,6 +7,7 @@ module;
 
 module spp.asts.closure_expression_ast;
 import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.scope_manager;
 import spp.asts.ast;
 import spp.asts.convention_ast;
 import spp.asts.closure_expression_capture_ast;
@@ -130,8 +131,8 @@ auto spp::asts::ClosureExpressionAst::infer_type(
     // Create the type as a nullptr, so it can be analysed later.
     std::shared_ptr<TypeAst> ty = nullptr;
 
-    auto is_ref_cap = [](auto const &cap) { return cap->conv and *cap->conv == ConventionAst::ConventionTag::REF; };
-    auto is_mut_cap = [](auto const &cap) { return cap->conv and *cap->conv == ConventionAst::ConventionTag::MUT; };
+    auto is_ref_cap = [](auto const &cap) { return cap->conv and *cap->conv == ConventionTag::REF; };
+    auto is_mut_cap = [](auto const &cap) { return cap->conv and *cap->conv == ConventionTag::MUT; };
 
     // If there are no captures, return a FunRef type with the parameters and return type.
     if (pc_group->capture_group->captures.empty()) {

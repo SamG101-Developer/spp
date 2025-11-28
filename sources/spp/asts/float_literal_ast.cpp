@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.float_literal_ast;
+import spp.analyse.scopes.scope_manager;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.asts.ast;
@@ -9,19 +10,16 @@ import spp.asts.token_ast;
 import spp.asts.generate.common_types;
 import spp.lex.tokens;
 
-import boost;
+import mppp;
 import llvm;
 
 
-using CppBigFloat = boost::multiprecision::cpp_dec_float_100;
-
-
-const auto FLOAT_TYPE_MIN_MAX = std::map<std::string, std::pair<CppBigFloat, CppBigFloat>>{
-    {"f8", {CppBigFloat("-5.7344e+4"), CppBigFloat("5.7344e+4")}},
-    {"f16", {CppBigFloat("-6.55e+4"), CppBigFloat("6.55e+4")}},
-    {"f32", {CppBigFloat("-3.4028235e+38"), CppBigFloat("3.4028235e+38")}},
-    {"f64", {CppBigFloat("-1.7976931348623157e+308"), CppBigFloat("1.7976931348623157e+308")}},
-    {"f128", {CppBigFloat("-1.189731495357231765e+4932"), CppBigFloat("1.189731495357231765e+4932")}}, // check this
+const auto FLOAT_TYPE_MIN_MAX = std::map<std::string, std::pair<mppp::BigDec, mppp::BigDec>>{
+    {"f8", {mppp::BigDec("-5.7344e+4"), mppp::BigDec("5.7344e+4")}},
+    {"f16", {mppp::BigDec("-6.55e+4"), mppp::BigDec("6.55e+4")}},
+    {"f32", {mppp::BigDec("-3.4028235e+38"), mppp::BigDec("3.4028235e+38")}},
+    {"f64", {mppp::BigDec("-1.7976931348623157e+308"), mppp::BigDec("1.7976931348623157e+308")}},
+    {"f128", {mppp::BigDec("-1.189731495357231765e+4932"), mppp::BigDec("1.189731495357231765e+4932")}}, // check this
 };
 
 
@@ -117,7 +115,7 @@ auto spp::asts::FloatLiteralAst::stage_7_analyse_semantics(
     // Get the lower and upper bounds as big floats.
     type = type.empty() ? "f32" : type;
     auto const &[lower, upper] = FLOAT_TYPE_MIN_MAX.at(type);
-    auto mapped_val = CppBigFloat((int_val->token_data + "." + frac_val->token_data).c_str());
+    auto mapped_val = mppp::BigDec((int_val->token_data + "." + frac_val->token_data).c_str());
     if (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB) {
         mapped_val = -mapped_val;
     }

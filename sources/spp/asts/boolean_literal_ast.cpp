@@ -1,5 +1,12 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.asts.boolean_literal_ast;
+import spp.asts.ast;
 import spp.asts.expression_ast;
+import spp.asts.generate.common_types;
+import spp.asts.token_ast;
+import spp.lex.tokens;
 
 
 spp::asts::BooleanLiteralAst::BooleanLiteralAst(
@@ -81,7 +88,7 @@ auto spp::asts::BooleanLiteralAst::False(
 
 auto spp::asts::BooleanLiteralAst::stage_10_code_gen_2(
     ScopeManager *,
-    mixins::CompilerMetaData *,
+    CompilerMetaData *,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Map the boolean literal to an LLVM constant integer.
@@ -92,7 +99,7 @@ auto spp::asts::BooleanLiteralAst::stage_10_code_gen_2(
 
 auto spp::asts::BooleanLiteralAst::infer_type(
     ScopeManager *,
-    mixins::CompilerMetaData *)
+    CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // The boolean ast is always inferred as "std::boolean::Bool".
     return generate::common_types::boolean_type(pos_start());

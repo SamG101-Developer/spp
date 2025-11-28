@@ -1,10 +1,17 @@
 module spp.analyse.scopes.scope;
 import spp.asts.ast;
+import spp.asts.generic_argument_comp_ast;
+import spp.asts.generic_argument_comp_keyword_ast;
 import spp.asts.generic_argument_type_ast;
+import spp.asts.generic_argument_type_keyword_ast;
 import spp.asts.identifier_ast;
 import spp.asts.module_prototype_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.utils.variants;
 import spp.compiler.module_tree;
 
 #include <genex/to_container.hpp>

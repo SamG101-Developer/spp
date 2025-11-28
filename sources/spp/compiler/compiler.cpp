@@ -1,8 +1,8 @@
 module spp.compiler.compiler;
 
-import indicators;
 import spp.analyse.scopes.scope;
 import spp.asts.generate.common_types_precompiled;
+import spp.utils.progress;
 
 
 spp::compiler::Compiler::Compiler(const Mode mode) :
@@ -14,18 +14,10 @@ spp::compiler::Compiler::Compiler(const Mode mode) :
 
 
 auto spp::compiler::Compiler::compile() -> void {
-    auto progress_bars = std::vector<std::unique_ptr<indicators::ProgressBar>>();
+    auto progress_bars = std::vector<std::unique_ptr<utils::ProgressBar>>();
+    auto num_modules = m_modules.get_modules().size();
     for (auto stage : COMPILER_STAGE_NAMES) {
-        auto p = std::make_unique<indicators::ProgressBar>();
-        p->set_option(indicators::option::BarWidth{50});
-        p->set_option(indicators::option::Start{"["});
-        p->set_option(indicators::option::Fill{"="});
-        p->set_option(indicators::option::Lead{">"});
-        p->set_option(indicators::option::End{"]"});
-        p->set_option(indicators::option::PrefixText{stage});
-        p->set_option(indicators::option::ShowElapsedTime{true});
-        p->set_option(indicators::option::ShowRemainingTime{true});
-        p->set_option(indicators::option::MaxProgress{static_cast<int>(m_modules.get_modules().size())});
+        auto p = std::make_unique<utils::ProgressBar>(stage, num_modules);
         progress_bars.emplace_back(std::move(p));
     }
 
