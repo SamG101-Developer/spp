@@ -14,6 +14,7 @@ import sys;
 
 namespace spp::asts {
     SPP_EXP_CLS struct Ast;
+    SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct GenericArgumentAst;
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct TypeAst;
