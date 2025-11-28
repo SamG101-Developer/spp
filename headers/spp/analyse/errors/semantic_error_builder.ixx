@@ -15,15 +15,13 @@ import spp.utils.errors;
 import spp.utils.error_formatter;
 
 
-/// @cond
 namespace spp::analyse::errors {
-    export template <typename T> requires std::derived_from<T, SemanticError>
+    SPP_EXP_CLS template <typename T> requires std::derived_from<T, SemanticError>
     struct SemanticErrorBuilder;
 }
-/// @endcond
 
 
-template <typename T> requires std::derived_from<T, spp::analyse::errors::SemanticError>
+SPP_EXP_CLS template <typename T> requires std::derived_from<T, spp::analyse::errors::SemanticError>
 struct spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::AbstractErrorBuilder<T> {
     SemanticErrorBuilder() = default;
 

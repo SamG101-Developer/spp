@@ -1,5 +1,9 @@
+module;
+#include <spp/macros.hpp>
+
 export module spp.asts.meta.ast_printer;
 import std;
+import spp.asts._fwd;
 
 
 template <typename, template<typename...> class>
@@ -14,23 +18,12 @@ template <typename T, template <typename...> class C>
 inline constexpr auto is_same_template_v = is_same_template<T, C>::value;
 
 
-/// @cond
-namespace spp::asts {
-    template <typename T>
-    struct InnerScopeAst;
-    struct FunctionImplementationAst;
-    struct ClassImplementationAst;
-    struct SupImplementationAst;
-}
-
 namespace spp::asts::meta {
-    export class AstPrinter;
+    SPP_EXP_CLS class AstPrinter;
 }
 
-/// @endcond
 
-
-class spp::asts::meta::AstPrinter {
+SPP_EXP_CLS class spp::asts::meta::AstPrinter {
     std::uint32_t m_indent_size;
     std::uint32_t m_indent_level;
 
