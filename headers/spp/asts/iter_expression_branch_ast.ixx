@@ -8,6 +8,10 @@ import spp.asts.mixins.type_inferrable_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct IterExpressionBranchAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::IterExpressionBranchAst final : virtual Ast, mixins::TypeInferrableAst {
     /**

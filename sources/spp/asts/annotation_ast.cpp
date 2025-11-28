@@ -4,9 +4,11 @@ module;
 module spp.asts.annotation_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
-import spp.asts.identifier_ast;
-import spp.asts.token_ast;
 import spp.asts.function_prototype_ast;
+import spp.asts.identifier_ast;
+import spp.asts.module_prototype_ast;
+import spp.asts.sup_prototype_extension_ast;
+import spp.asts.token_ast;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.utils.visibility;
 

@@ -8,6 +8,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.mem_utils;
 import spp.asts.ast;
 import spp.asts.token_ast;
+import spp.asts.type_ast;
 
 
 spp::asts::ParenthesisedExpressionAst::ParenthesisedExpressionAst(

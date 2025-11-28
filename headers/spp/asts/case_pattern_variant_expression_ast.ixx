@@ -8,6 +8,10 @@ import spp.asts.case_pattern_variant_ast;
 import llvm;
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct CasePatternVariantExpressionAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantExpressionAst final : CasePatternVariantAst {
     /**

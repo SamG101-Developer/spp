@@ -7,6 +7,7 @@ import spp.asts.convention_ref_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_positional_ast;
 import spp.asts.identifier_ast;
+import spp.asts.let_statement_initialized_ast;
 import spp.asts.literal_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.postfix_expression_ast;

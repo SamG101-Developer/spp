@@ -10,6 +10,10 @@ import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct PostfixExpressionOperatorFunctionCallAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : PostfixExpressionOperatorAst {
     friend struct UnaryExpressionOperatorAsyncAst;

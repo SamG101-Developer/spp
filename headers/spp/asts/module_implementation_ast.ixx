@@ -7,6 +7,10 @@ import spp.asts.ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct ModuleImplementationAst;
+}
+
 
 /**
  * The ModuleImplementationAst represents the implementation of a module in the SPP language. It contains a list of

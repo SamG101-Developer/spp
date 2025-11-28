@@ -9,6 +9,10 @@ import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct BooleanLiteralAst;
+}
+
 
 /**
  * The BooleanLiteralAst represents a boolean literal in the source code, which can be either @c true or @c false.

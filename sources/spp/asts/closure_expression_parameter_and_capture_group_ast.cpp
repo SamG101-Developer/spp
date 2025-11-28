@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.asts.closure_expression_capture_group_ast;
 import spp.asts.function_parameter_group_ast;
+import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.token_ast;
 

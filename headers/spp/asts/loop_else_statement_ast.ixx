@@ -8,6 +8,10 @@ import spp.asts.mixins.type_inferrable_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct LoopElseStatementAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::LoopElseStatementAst final : virtual Ast, mixins::TypeInferrableAst {
     /**

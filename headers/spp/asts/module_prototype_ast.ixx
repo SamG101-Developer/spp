@@ -7,6 +7,10 @@ import spp.asts.ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct ModulePrototypeAst;
+}
+
 
 /**
  * The ModulePrototypeAst represents a prototype for a module in the SPP language. It contains a the implementation of

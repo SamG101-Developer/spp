@@ -4,6 +4,7 @@ module;
 #include <genex/views/ptr.hpp>
 
 module spp.asts.sup_implementation_ast;
+import spp.asts.sup_member_ast;
 import spp.asts.ast;
 
 

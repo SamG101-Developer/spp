@@ -7,6 +7,10 @@ import spp.asts.expression_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct IsExpressionAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::IsExpressionAst final : ExpressionAst {
 private:

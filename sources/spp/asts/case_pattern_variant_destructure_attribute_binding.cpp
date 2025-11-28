@@ -4,6 +4,7 @@ module;
 module spp.asts.case_pattern_variant_destructure_attribute_binding_ast;
 import spp.asts.ast;
 import spp.asts.identifier_ast;
+import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_destructure_attribute_binding_ast;
 import spp.asts.token_ast;
 

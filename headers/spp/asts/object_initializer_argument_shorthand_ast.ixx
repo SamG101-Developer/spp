@@ -7,6 +7,10 @@ import spp.asts.object_initializer_argument_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct ObjectInitializerArgumentShorthandAst;
+}
+
 
 /**
  * The ObjectInitializerArgumentShorthandAst represents a shorthand argument in an object initializer. It is forces the

@@ -5,6 +5,10 @@ export module spp.asts.array_literal_ast;
 import spp.asts._fwd;
 import spp.asts.literal_ast;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct ArrayLiteralAst;
+}
+
 
 /**
  * The ArrayLiteralAst is the base class for the two array literals: @c ArrayLiteral0Elements and

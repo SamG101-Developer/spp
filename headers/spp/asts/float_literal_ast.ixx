@@ -9,6 +9,10 @@ import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct FloatLiteralAst;
+}
+
 
 /**
  * The FloatLiteralAst represents a floating-point literal. It supports a prefix sign, an integer part, a decimal point,

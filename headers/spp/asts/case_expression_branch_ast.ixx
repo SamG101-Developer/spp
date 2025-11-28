@@ -10,6 +10,10 @@ import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct CaseExpressionBranchAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : virtual Ast, mixins::TypeInferrableAst {
     /**

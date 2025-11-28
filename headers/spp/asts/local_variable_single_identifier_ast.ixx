@@ -9,6 +9,10 @@ import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct LocalVariableSingleIdentifierAst;
+}
+
 
 /**
  * The LocalVariableSingleIdentifierAst represents a local variable that is defined by a single identifier. This is used

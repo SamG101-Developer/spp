@@ -7,6 +7,11 @@ import spp.asts.inner_scope_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct SupImplementationAst;
+}
+
+
 SPP_EXP_CLS struct spp::asts::SupImplementationAst final : InnerScopeAst<std::unique_ptr<SupMemberAst>> {
     using InnerScopeAst::InnerScopeAst;
 

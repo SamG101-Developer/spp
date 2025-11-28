@@ -8,6 +8,10 @@ import spp.asts.mixins.abstract_type_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct TypeAst;
+}
+
 
 /**
  * The TypeAst is a base class for all type-related AST nodes in the SPP language.

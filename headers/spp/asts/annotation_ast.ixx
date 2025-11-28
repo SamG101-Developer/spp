@@ -7,6 +7,10 @@ import spp.asts.ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct AnnotationAst;
+}
+
 
 /**
  * An AnnotationAst is used to represent a non-code generated transformation of behaviour inside an AST. For example,

@@ -7,6 +7,10 @@ import spp.asts.ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct FunctionCallArgumentGroupAst;
+}
+
 
 /**
  * The FunctionCallArgumentGroupAst represents a group of function call arguments. It is used to group multiple

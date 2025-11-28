@@ -8,6 +8,11 @@ import spp.asts.primary_expression_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS template <typename T>
+    struct InnerScopeExpressionAst;
+}
+
 
 SPP_EXP_CLS template <typename T>
 struct spp::asts::InnerScopeExpressionAst final : InnerScopeAst<T>, PrimaryExpressionAst {

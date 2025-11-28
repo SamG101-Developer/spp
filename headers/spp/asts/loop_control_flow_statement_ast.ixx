@@ -7,6 +7,10 @@ import spp.asts.statement_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct LoopControlFlowStatementAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
     /**

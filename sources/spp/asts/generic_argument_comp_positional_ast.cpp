@@ -8,6 +8,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.mem_utils;
 import spp.asts.ast;
 import spp.asts.identifier_ast;
+import spp.asts.type_ast;
 import spp.asts.mixins.orderable_ast;
 
 

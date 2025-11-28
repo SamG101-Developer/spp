@@ -7,6 +7,10 @@ import spp.asts.ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct FunctionParameterGroupAst;
+}
+
 
 /**
  * A FunctionParameterGroupAst is used to represent a group of function parameters in a function prototype.

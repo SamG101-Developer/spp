@@ -6,6 +6,10 @@ import spp.asts.case_pattern_variant_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct CasePatternVariantDestructureAttributeBindingAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureAttributeBindingAst final : CasePatternVariantAst {
     /**

@@ -5,6 +5,7 @@ module spp.asts.case_pattern_variant_destructure_skip_multiple_arguments_ast;
 import spp.asts.ast;
 import spp.asts.case_pattern_variant_ast;
 import spp.asts.case_pattern_variant_single_identifier_ast;
+import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
 import spp.asts.token_ast;
 
