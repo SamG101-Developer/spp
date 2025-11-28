@@ -1,19 +1,4 @@
-module spp.analyse.scopes.scope;
-import spp.asts.ast;
-import spp.asts.generic_argument_comp_ast;
-import spp.asts.generic_argument_comp_keyword_ast;
-import spp.asts.generic_argument_type_ast;
-import spp.asts.generic_argument_type_keyword_ast;
-import spp.asts.identifier_ast;
-import spp.asts.module_prototype_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_ast;
-import spp.asts.postfix_expression_operator_static_member_access_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.utils.variants;
-import spp.compiler.module_tree;
-
+module;
 #include <genex/to_container.hpp>
 #include <genex/actions/concat.hpp>
 #include <genex/actions/push_back.hpp>
@@ -27,6 +12,25 @@ import spp.compiler.module_tree;
 #include <genex/views/reverse.hpp>
 #include <genex/views/take_while.hpp>
 #include <genex/views/transform.hpp>
+
+module spp.analyse.scopes.scope;
+import spp.asts.ast;
+import spp.asts.expression_ast;
+import spp.asts.generic_argument_ast;
+import spp.asts.generic_argument_comp_ast;
+import spp.asts.generic_argument_comp_keyword_ast;
+import spp.asts.generic_argument_type_ast;
+import spp.asts.generic_argument_type_keyword_ast;
+import spp.asts.identifier_ast;
+import spp.asts.module_prototype_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.postfix_expression_operator_static_member_access_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.utils.variants;
+import spp.compiler.module_tree;
 
 
 spp::analyse::scopes::ScopeBlockName::ScopeBlockName(std::string &&name) : name(std::move(name)) {

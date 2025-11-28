@@ -35,7 +35,6 @@ namespace spp::asts {
  * this class.
  */
 SPP_EXP_CLS struct spp::asts::ExpressionAst : StatementAst {
-    using StatementAst::StatementAst;
     friend struct spp::asts::ArrayLiteralExplicitElementsAst;
     friend struct spp::asts::ArrayLiteralRepeatedElementAst;
     friend struct spp::asts::BooleanLiteralAst;
@@ -48,7 +47,9 @@ SPP_EXP_CLS struct spp::asts::ExpressionAst : StatementAst {
     friend struct spp::asts::TypeUnaryExpressionAst;
     friend struct spp::asts::TypePostfixExpressionAst;
 
-public:
+    using StatementAst::StatementAst;
+
+protected:
     SPP_ATTR_NODISCARD virtual auto equals_array_literal_explicit_elements(ArrayLiteralExplicitElementsAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals_boolean_literal(BooleanLiteralAst const &) const -> std::strong_ordering;

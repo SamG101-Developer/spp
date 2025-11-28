@@ -13,6 +13,7 @@ import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
+import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_keyword_ast;
 import spp.asts.function_call_argument_positional_ast;
@@ -31,6 +32,7 @@ import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.generic_argument_type_keyword_ast;
 import spp.asts.generic_argument_type_positional_ast;
+import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_comp_ast;
 import spp.asts.generic_parameter_comp_variadic_ast;
 import spp.asts.generic_parameter_group_ast;
@@ -688,20 +690,20 @@ auto spp::analyse::utils::func_utils::create_callable_prototype(
 }
 
 
-template auto spp::analyse::utils::func_utils::name_generic_args_impl<spp::asts::GenericArgumentCompAst, spp::asts::GenericParameterCompAst>(
-    std::vector<std::unique_ptr<asts::GenericArgumentCompAst>> &args,
-    std::vector<asts::GenericParameterCompAst*> params,
-    asts::Ast const &owner,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta) -> void;
-
-
-template auto spp::analyse::utils::func_utils::name_generic_args_impl<spp::asts::GenericArgumentTypeAst, spp::asts::GenericParameterTypeAst>(
-    std::vector<std::unique_ptr<asts::GenericArgumentTypeAst>> &args,
-    std::vector<asts::GenericParameterTypeAst*> params,
-    asts::Ast const &owner,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData *meta) -> void;
+// template auto spp::analyse::utils::func_utils::name_generic_args_impl<spp::asts::GenericArgumentCompAst, spp::asts::GenericParameterCompAst>(
+//     std::vector<std::unique_ptr<asts::GenericArgumentCompAst>> &args,
+//     std::vector<asts::GenericParameterCompAst*> params,
+//     asts::Ast const &owner,
+//     scopes::ScopeManager &sm,
+//     asts::meta::CompilerMetaData *meta) -> void;
+//
+//
+// template auto spp::analyse::utils::func_utils::name_generic_args_impl<spp::asts::GenericArgumentTypeAst, spp::asts::GenericParameterTypeAst>(
+//     std::vector<std::unique_ptr<asts::GenericArgumentTypeAst>> &args,
+//     std::vector<asts::GenericParameterTypeAst*> params,
+//     asts::Ast const &owner,
+//     scopes::ScopeManager &sm,
+//     asts::meta::CompilerMetaData *meta) -> void;
 
 
 auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(

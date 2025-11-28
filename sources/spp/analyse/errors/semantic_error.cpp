@@ -1,4 +1,5 @@
 module spp.analyse.errors.semantic_error;
+import spp.asts.ast;
 import spp.asts.annotation_ast;
 import spp.asts.case_expression_ast;
 import spp.asts.case_expression_branch_ast;
@@ -16,6 +17,7 @@ import spp.asts.identifier_ast;
 import spp.asts.iter_expression_ast;
 import spp.asts.iter_pattern_variant_ast;
 import spp.asts.literal_ast;
+import spp.asts.local_variable_ast;
 import spp.asts.local_variable_destructure_array_ast;
 import spp.asts.local_variable_destructure_object_ast;
 import spp.asts.local_variable_destructure_tuple_ast;

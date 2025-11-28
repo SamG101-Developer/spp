@@ -1,4 +1,13 @@
+module;
+#include <genex/to_container.hpp>
+#include <genex/algorithms/contains.hpp>
+#include <genex/views/cast_dynamic.hpp>
+#include <genex/views/filter.hpp>
+#include <genex/views/ptr.hpp>
+
 module spp.analyse.scopes.scope_manager;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
@@ -11,14 +20,7 @@ import spp.asts.sup_prototype_functions_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-
-#include <genex/to_container.hpp>
-#include <genex/algorithms/contains.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/ptr.hpp>
+import spp.asts.meta.compiler_meta_data;
 
 
 spp::analyse::scopes::ScopeManager::ScopeManager(

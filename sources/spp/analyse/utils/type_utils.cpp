@@ -26,8 +26,10 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.mem_utils;
 import spp.asts.ast;
-import spp.asts.class_prototype_ast;
+import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
+import spp.asts.class_member_ast;
+import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_comp_ast;
@@ -1090,15 +1092,15 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
 }
 
 
-template auto spp::analyse::utils::type_utils::validate_inconsistent_types<spp::asts::CaseExpressionBranchAst*>(
-    std::vector<asts::CaseExpressionBranchAst*> const &,
-    scopes::ScopeManager *,
-    asts::meta::CompilerMetaData *)
-    -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>>;
-
-
-template auto spp::analyse::utils::type_utils::validate_inconsistent_types<spp::asts::IterExpressionBranchAst*>(
-    std::vector<asts::IterExpressionBranchAst*> const &,
-    scopes::ScopeManager *,
-    asts::meta::CompilerMetaData *)
-    -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>>;
+// template auto spp::analyse::utils::type_utils::validate_inconsistent_types<spp::asts::CaseExpressionBranchAst*>(
+//     std::vector<asts::CaseExpressionBranchAst*> const &,
+//     scopes::ScopeManager *,
+//     asts::meta::CompilerMetaData *)
+//     -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>>;
+//
+//
+// template auto spp::analyse::utils::type_utils::validate_inconsistent_types<spp::asts::IterExpressionBranchAst*>(
+//     std::vector<asts::IterExpressionBranchAst*> const &,
+//     scopes::ScopeManager *,
+//     asts::meta::CompilerMetaData *)
+//     -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>>;

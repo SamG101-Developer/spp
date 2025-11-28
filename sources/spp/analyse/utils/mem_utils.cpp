@@ -320,15 +320,15 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
 }
 
 
-template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
-    std::vector<asts::CaseExpressionBranchAst*> const &branches,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> void;
-
-
-template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
-    std::vector<asts::IterExpressionBranchAst*> const &branches,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> void;
+// template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
+//     std::vector<asts::CaseExpressionBranchAst*> const &branches,
+//     scopes::ScopeManager *sm,
+//     asts::meta::CompilerMetaData *meta)
+//     -> void;
+//
+//
+// template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
+//     std::vector<asts::IterExpressionBranchAst*> const &branches,
+//     scopes::ScopeManager *sm,
+//     asts::meta::CompilerMetaData *meta)
+//     -> void;
