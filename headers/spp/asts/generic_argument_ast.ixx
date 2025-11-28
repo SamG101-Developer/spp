@@ -19,7 +19,7 @@ namespace spp::asts {
 
 
 namespace spp::asts::detail {
-    template <typename GenericArgType>
+    SPP_EXP_CLS template <typename GenericArgType>
     struct make_keyword_arg {
         using type = GenericArgType;
     };
@@ -38,7 +38,7 @@ namespace spp::asts::detail {
     using make_keyword_arg_t = typename make_keyword_arg<T>::type;
 
 
-    template <typename GenericArgType>
+    SPP_EXP_CLS template <typename GenericArgType>
     struct make_positional_arg {
         using type = GenericArgType;
     };
@@ -65,10 +65,10 @@ namespace spp::asts::detail {
  */
 SPP_EXP_CLS struct spp::asts::GenericArgumentAst : virtual Ast, mixins::OrderableAst {
     using Ast::Ast;
-    friend struct spp::asts::GenericArgumentCompKeywordAst;
-    friend struct spp::asts::GenericArgumentCompPositionalAst;
-    friend struct spp::asts::GenericArgumentTypeKeywordAst;
-    friend struct spp::asts::GenericArgumentTypePositionalAst;
+    friend struct GenericArgumentCompKeywordAst;
+    friend struct GenericArgumentCompPositionalAst;
+    friend struct GenericArgumentTypeKeywordAst;
+    friend struct GenericArgumentTypePositionalAst;
 
 protected:
     SPP_ATTR_NODISCARD virtual auto equals_generic_argument_comp_keyword(GenericArgumentCompKeywordAst const &) const -> std::strong_ordering;

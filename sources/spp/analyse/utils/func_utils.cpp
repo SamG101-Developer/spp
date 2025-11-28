@@ -1,4 +1,32 @@
 module;
+#include <genex/to_container.hpp>
+#include <genex/actions/clear.hpp>
+#include <genex/actions/concat.hpp>
+#include <genex/actions/drop.hpp>
+#include <genex/actions/pop_front.hpp>
+#include <genex/actions/remove_if.hpp>
+#include <genex/actions/sort.hpp>
+#include <genex/actions/take.hpp>
+#include <genex/algorithms/any_of.hpp>
+#include <genex/algorithms/contains.hpp>
+#include <genex/algorithms/equals.hpp>
+#include <genex/algorithms/position.hpp>
+#include <genex/operations/empty.hpp>
+#include <genex/views/cast_dynamic.hpp>
+#include <genex/views/cast_smart.hpp>
+#include <genex/views/concat.hpp>
+#include <genex/views/drop.hpp>
+#include <genex/views/enumerate.hpp>
+#include <genex/views/filter.hpp>
+#include <genex/views/map.hpp>
+#include <genex/views/materialize.hpp>
+#include <genex/views/move.hpp>
+#include <genex/views/ptr.hpp>
+#include <genex/views/set_algorithms.hpp>
+#include <genex/views/transform.hpp>
+#include <genex/views/tuple_nth.hpp>
+#include <genex/views/zip.hpp>
+
 #include <spp/macros.hpp>
 
 module spp.analyse.utils.func_utils;
@@ -58,34 +86,6 @@ import spp.asts.generate.common_types;
 import spp.utils.ptr_cmp;
 
 import ankerl;
-
-#include <genex/to_container.hpp>
-#include <genex/actions/clear.hpp>
-#include <genex/actions/concat.hpp>
-#include <genex/actions/drop.hpp>
-#include <genex/actions/pop_front.hpp>
-#include <genex/actions/remove_if.hpp>
-#include <genex/actions/sort.hpp>
-#include <genex/actions/take.hpp>
-#include <genex/algorithms/any_of.hpp>
-#include <genex/algorithms/contains.hpp>
-#include <genex/algorithms/equals.hpp>
-#include <genex/algorithms/position.hpp>
-#include <genex/operations/empty.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/cast_smart.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/drop.hpp>
-#include <genex/views/enumerate.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/map.hpp>
-#include <genex/views/materialize.hpp>
-#include <genex/views/move.hpp>
-#include <genex/views/ptr.hpp>
-#include <genex/views/set_algorithms.hpp>
-#include <genex/views/transform.hpp>
-#include <genex/views/tuple_nth.hpp>
-#include <genex/views/zip.hpp>
 
 
 auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
