@@ -107,8 +107,6 @@ SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
     friend struct spp::asts::AnnotationAst;
 
 protected:
-    using CompilerMetaData = meta::CompilerMetaData;
-
     /**
      * The context of an AST is used in certain analysis steps. This might be the parent AST, such as a
      * FunctionPrototypeAst etc.

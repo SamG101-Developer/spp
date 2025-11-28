@@ -6,16 +6,8 @@ import spp.asts.inner_scope_ast;
 
 import std;
 
-/// @cond
-namespace spp::parse {
-    class ParserSpp;
-}
-
-/// @endcond
-
 
 SPP_EXP_CLS struct spp::asts::ClassImplementationAst final : InnerScopeAst<std::unique_ptr<ClassMemberAst>> {
-    friend class parse::ParserSpp;
     using InnerScopeAst::InnerScopeAst;
 
     ~ClassImplementationAst() override;

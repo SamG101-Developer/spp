@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.inner_scope_ast;
+export import spp.asts._fwd;
 import spp.asts.ast;
 
 import llvm;

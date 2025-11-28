@@ -26,8 +26,11 @@ namespace spp::analyse::scopes {
  * AST. The exceptions are the first 3 functions, which are applies to top level ASTs exclusively.
  */
 SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
+protected:
     using ScopeManager = spp::analyse::scopes::ScopeManager;
     using CompilerMetaData = spp::asts::meta::CompilerMetaData;
+
+public:
     CompilerStages() = default;
 
     virtual ~CompilerStages() = default;
