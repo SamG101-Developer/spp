@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_argument_comp_positional_ast;
+import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_comp_ast;
 
 import std;
