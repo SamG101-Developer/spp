@@ -7,6 +7,10 @@ import spp.asts.function_parameter_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct FunctionParameterRequiredAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::FunctionParameterRequiredAst final : FunctionParameterAst {
     /**

@@ -8,6 +8,10 @@ import spp.asts.generic_argument_type_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct GenericArgumentTypeKeywordAst;
+}
+
 
 /**
  * The GenericArgumentTypeKeywordAst represents a keyword argument in a generic argument context. It is forces the

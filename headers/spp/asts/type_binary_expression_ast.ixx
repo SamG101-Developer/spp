@@ -8,6 +8,10 @@ import spp.asts.mixins.temp_type_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct TypeBinaryExpressionAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::TypeBinaryExpressionAst final : virtual Ast, mixins::TempTypeAst {
     /**

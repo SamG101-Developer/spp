@@ -9,6 +9,10 @@ import spp.utils.ptr_cmp;
 import ankerl;
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct GenericArgumentGroupAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
     /**

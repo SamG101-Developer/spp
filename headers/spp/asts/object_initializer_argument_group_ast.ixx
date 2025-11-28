@@ -7,6 +7,10 @@ import spp.asts.ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct ObjectInitializerArgumentGroupAst;
+}
+
 
 /**
  * The ObjectInitializerArgumentGroupAst represents a group of object initializer arguments. It is used to group

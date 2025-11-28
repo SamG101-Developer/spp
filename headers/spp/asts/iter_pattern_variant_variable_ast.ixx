@@ -7,6 +7,10 @@ import spp.asts.iter_pattern_variant_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct IterPatternVariantVariableAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::IterPatternVariantVariableAst final : IterPatternVariantAst {
     /**

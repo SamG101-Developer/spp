@@ -15,6 +15,9 @@ auto spp::asts::TypePostfixExpressionOperatorAst::operator==(
 }
 
 
+spp::asts::TypePostfixExpressionOperatorAst::~TypePostfixExpressionOperatorAst() = default;
+
+
 auto spp::asts::TypePostfixExpressionOperatorAst::equals_nested_type(
     TypePostfixExpressionOperatorNestedTypeAst const &) const
     -> std::strong_ordering {

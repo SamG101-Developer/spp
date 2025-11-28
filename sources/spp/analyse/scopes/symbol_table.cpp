@@ -1,7 +1,9 @@
 module spp.analyse.scopes.symbol_table;
 import spp.analyse.utils.mem_utils;
 import spp.asts.ast;
+import spp.asts.identifier_ast;
 import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
 
 
 template <typename I, typename S>

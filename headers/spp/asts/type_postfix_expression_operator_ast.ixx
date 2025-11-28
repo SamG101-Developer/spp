@@ -7,6 +7,10 @@ import spp.asts.ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct TypePostfixExpressionOperatorAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorAst : virtual Ast {
     using Ast::Ast;

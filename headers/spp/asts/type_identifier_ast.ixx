@@ -9,6 +9,10 @@ import spp.asts.type_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct TypeIdentifierAst;
+}
+
 
 /**
  * The TypeIdentifierAst is a type expression that is represented by a single type name, and is analogous to the

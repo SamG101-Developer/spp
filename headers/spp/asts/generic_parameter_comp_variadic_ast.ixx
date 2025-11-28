@@ -7,6 +7,10 @@ import spp.asts.generic_parameter_comp_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct GenericParameterCompVariadicAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::GenericParameterCompVariadicAst final : GenericParameterCompAst {
     /**
