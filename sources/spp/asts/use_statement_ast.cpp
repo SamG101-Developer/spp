@@ -12,8 +12,8 @@ import spp.asts.ast;
 import spp.asts.annotation_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
-import spp.asts.type_statement_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.type_statement_ast;
 
 
 spp::asts::UseStatementAst::UseStatementAst(

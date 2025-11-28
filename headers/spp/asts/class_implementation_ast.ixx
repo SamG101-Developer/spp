@@ -7,6 +7,10 @@ import spp.asts.inner_scope_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct ClassImplementationAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::ClassImplementationAst final : InnerScopeAst<std::unique_ptr<ClassMemberAst>> {
     using InnerScopeAst::InnerScopeAst;
@@ -15,7 +19,6 @@ SPP_EXP_CLS struct spp::asts::ClassImplementationAst final : InnerScopeAst<std::
 
     auto clone() const -> std::unique_ptr<Ast> override;
 
-public:
     static auto new_empty() -> std::unique_ptr<ClassImplementationAst>;
 
     auto stage_1_pre_process(Ast *ctx) -> void override;

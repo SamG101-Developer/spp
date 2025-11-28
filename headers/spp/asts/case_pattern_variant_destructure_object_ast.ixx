@@ -2,11 +2,16 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_pattern_variant_destructure_object_ast;
+import spp.asts._fwd;
 import spp.asts.case_pattern_variant_ast;
 import spp.codegen.llvm_ctx;
 
 import llvm;
 import std;
+
+namespace spp::asts {
+    SPP_EXP_CLS struct CasePatternVariantDestructureObjectAst;
+}
 
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureObjectAst final : CasePatternVariantAst {

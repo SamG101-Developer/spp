@@ -8,6 +8,10 @@ import spp.asts.expression_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct FunctionParameterOptionalAst;
+}
+
 
 /**
  * The FunctionParameterOptionalAst represents an optional parameter in a function prototype. It is used to define

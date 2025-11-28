@@ -2,7 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_pattern_variant_ast;
-export import spp.asts._fwd;
+import spp.asts._fwd;
 import spp.asts.ast;
 
 import std;

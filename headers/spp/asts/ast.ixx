@@ -17,6 +17,8 @@ namespace spp::analyse::scopes {
 
 
 namespace spp::asts {
+    SPP_EXP_CLS struct Ast;
+
     SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
     auto ast_clone(std::unique_ptr<T> const &ast) -> std::unique_ptr<std::remove_cvref_t<T>> {

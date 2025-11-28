@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.utils.ptr_cmp;
-import spp.asts._fwd;
 import std;
 
 
@@ -15,6 +14,11 @@ namespace spp::utils {
 
     SPP_EXP_CLS template <typename>
     struct PtrEq;
+}
+
+namespace spp::asts {
+    SPP_EXP_CLS struct IdentifierAst;
+    SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
 

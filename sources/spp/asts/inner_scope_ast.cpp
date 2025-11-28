@@ -11,8 +11,11 @@ module spp.asts.inner_scope_ast;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.mem_utils;
+import spp.asts.class_member_ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
+import spp.asts.statement_ast;
+import spp.asts.sup_member_ast;
 import spp.asts.token_ast;
 import spp.lex.tokens;
 

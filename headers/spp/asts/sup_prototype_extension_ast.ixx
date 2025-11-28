@@ -12,6 +12,10 @@ import spp.asts.sup_member_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct SupPrototypeExtensionAst;
+}
+
 
 /**
  * The SupPrototypeExtensionAst represents a superimposition of a type over a type. This is used to "inherit" a type.

@@ -12,6 +12,10 @@ import spp.asts.sup_member_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct TypeStatementAst;
+}
+
 
 /**
  * The TypeStatementAst is used to alias a type to a new name in this scope. It can also use generic parameters for more

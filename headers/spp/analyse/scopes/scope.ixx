@@ -13,18 +13,14 @@ import std;
 import sys;
 
 
-/// @cond
 namespace spp::analyse::scopes {
-    SPP_EXP_CLS  class Scope;
+    SPP_EXP_CLS class Scope;
     SPP_EXP_CLS class ScopeManager;
     SPP_EXP_CLS using ScopeName = std::variant<
         std::shared_ptr<asts::IdentifierAst>,
         std::shared_ptr<asts::TypeIdentifierAst>,
         ScopeBlockName>;
 }
-
-
-/// @endcond
 
 
 SPP_EXP_CLS class spp::analyse::scopes::Scope {

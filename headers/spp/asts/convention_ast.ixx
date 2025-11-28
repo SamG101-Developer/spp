@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.convention_ast;
-export import spp.asts._fwd;
 import spp.asts.ast;
 
 

@@ -8,9 +8,4 @@ export module mppp;
 export namespace mppp {
     using BigInt = mppp::integer<1>;
     using BigDec = mppp::rational<1>;
-
-    namespace detail {
-        using ::mppp::detail::dispatch_less_than;
-        using ::mppp::detail::dispatch_greater_than;
-    }
 }
