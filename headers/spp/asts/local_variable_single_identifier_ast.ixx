@@ -25,8 +25,8 @@ namespace spp::asts {
  * be introducing a symbol into the local scope.
  */
 SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVariableAst {
-    friend struct CasePatternVariantLiteralAst;
-    friend struct CasePatternVariantSingleIdentifierAst;
+    friend struct spp::asts::CasePatternVariantLiteralAst;
+    friend struct spp::asts::CasePatternVariantSingleIdentifierAst;
 
     /**
      * The optional mutability token. If the @c mut keyword was provided, then this will be given a value. Otherwise, it

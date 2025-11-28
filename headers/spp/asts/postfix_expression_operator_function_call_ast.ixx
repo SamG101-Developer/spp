@@ -16,7 +16,7 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : PostfixExpressionOperatorAst {
-    friend struct UnaryExpressionOperatorAsyncAst;
+    friend struct spp::asts::UnaryExpressionOperatorAsyncAst;
 
 private:
     std::optional<std::tuple<analyse::scopes::Scope const*, FunctionPrototypeAst*, std::vector<GenericArgumentAst*>>> m_overload_info;

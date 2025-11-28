@@ -13,7 +13,7 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst final : LocalVariableAst {
-    friend struct CasePatternVariantDestructureSkipMultipleArgumentsAst;
+    friend struct spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst;
 
     /**
      * The @c .. token indicates the skip multiple arguments pattern. This is used to indicate that a group of arguments

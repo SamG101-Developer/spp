@@ -2,13 +2,15 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.mixins.type_inferrable_ast;
-import spp.asts._fwd;
 import std;
 
 
-/// @cond
 namespace spp::asts::mixins {
     SPP_EXP_CLS class TypeInferrableAst;
+}
+
+namespace spp::asts {
+    SPP_EXP_CLS class TypeAst;
 }
 
 namespace spp::asts::meta {
@@ -18,8 +20,6 @@ namespace spp::asts::meta {
 namespace spp::analyse::scopes {
     SPP_EXP_CLS class ScopeManager;
 }
-
-/// @endcond
 
 
 /**

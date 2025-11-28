@@ -22,7 +22,7 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst : virtual Ast, mixins::OrderableAst, mixins::TypeInferrableAst {
     using Ast::Ast;
-    friend struct PostfixExpressionOperatorFunctionCallAst;
+    friend struct spp::asts::PostfixExpressionOperatorFunctionCallAst;
 
 protected:
     /**

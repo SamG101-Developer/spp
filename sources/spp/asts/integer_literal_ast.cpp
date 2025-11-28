@@ -119,7 +119,7 @@ auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
     }
 
     // Check if the value is within the bounds.
-    if (mppp::detail::dispatch_less_than(mapped_val, lower) or mppp::detail::dispatch_greater_than(mapped_val, upper)) {
+    if (mapped_val < lower or mapped_val > upper) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppIntegerOutOfBoundsError>().with_args(
             *this, mapped_val, lower, upper, "float").with_scopes({sm->current_scope}).raise();
     }

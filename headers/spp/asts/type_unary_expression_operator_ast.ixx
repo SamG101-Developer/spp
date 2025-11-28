@@ -14,8 +14,8 @@ namespace spp::asts {
 
 SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorAst : virtual Ast {
     using Ast::Ast;
-    friend struct TypeUnaryExpressionOperatorBorrowAst;
-    friend struct TypeUnaryExpressionOperatorNamespaceAst;
+    friend struct spp::asts::TypeUnaryExpressionOperatorBorrowAst;
+    friend struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst;
 
     auto operator<=>(TypeUnaryExpressionOperatorAst const &) const -> std::strong_ordering;
 

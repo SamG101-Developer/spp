@@ -2,12 +2,22 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.expression_ast;
-import spp.asts._fwd;
 import spp.asts.statement_ast;
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct ArrayLiteralExplicitElementsAst;
+    SPP_EXP_CLS struct ArrayLiteralRepeatedElementAst;
+    SPP_EXP_CLS struct BooleanLiteralAst;
     SPP_EXP_CLS struct ExpressionAst;
+    SPP_EXP_CLS struct FloatLiteralAst;
+    SPP_EXP_CLS struct IdentifierAst;
+    SPP_EXP_CLS struct IntegerLiteralAst;
+    SPP_EXP_CLS struct StringLiteralAst;
+    SPP_EXP_CLS struct TupleLiteralAst;
+    SPP_EXP_CLS struct TypeIdentifierAst;
+    SPP_EXP_CLS struct TypeUnaryExpressionAst;
+    SPP_EXP_CLS struct TypePostfixExpressionAst;
 }
 
 
@@ -25,17 +35,17 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::ExpressionAst : StatementAst {
     using StatementAst::StatementAst;
-    friend struct ArrayLiteralExplicitElementsAst;
-    friend struct ArrayLiteralRepeatedElementAst;
-    friend struct BooleanLiteralAst;
-    friend struct FloatLiteralAst;
-    friend struct IdentifierAst;
-    friend struct IntegerLiteralAst;
-    friend struct StringLiteralAst;
-    friend struct TupleLiteralAst;
-    friend struct TypeIdentifierAst;
-    friend struct TypeUnaryExpressionAst;
-    friend struct TypePostfixExpressionAst;
+    friend struct spp::asts::ArrayLiteralExplicitElementsAst;
+    friend struct spp::asts::ArrayLiteralRepeatedElementAst;
+    friend struct spp::asts::BooleanLiteralAst;
+    friend struct spp::asts::FloatLiteralAst;
+    friend struct spp::asts::IdentifierAst;
+    friend struct spp::asts::IntegerLiteralAst;
+    friend struct spp::asts::StringLiteralAst;
+    friend struct spp::asts::TupleLiteralAst;
+    friend struct spp::asts::TypeIdentifierAst;
+    friend struct spp::asts::TypeUnaryExpressionAst;
+    friend struct spp::asts::TypePostfixExpressionAst;
 
 protected:
     SPP_ATTR_NODISCARD virtual auto equals_array_literal_explicit_elements(ArrayLiteralExplicitElementsAst const &) const -> std::strong_ordering;

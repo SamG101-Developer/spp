@@ -23,7 +23,7 @@ namespace spp::asts {
  * @code type SecureByteMap[T] = std::collections::HashMap[K=Byte, V=T, A=SecureAlloc[(K, V)]]@endcode
  */
 SPP_EXP_CLS struct spp::asts::TypeStatementAst final : StatementAst, mixins::VisibilityEnabledAst, ModuleMemberAst, SupMemberAst {
-    friend struct UseStatementAst;
+    friend struct spp::asts::UseStatementAst;
 
 private:
     bool m_generated;

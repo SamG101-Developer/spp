@@ -2,13 +2,13 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.class_implementation_ast;
-import spp.asts._fwd;
 import spp.asts.inner_scope_ast;
 
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct ClassImplementationAst;
+    SPP_EXP_CLS struct ClassMemberAst;
 }
 
 

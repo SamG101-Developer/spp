@@ -13,7 +13,7 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureSkipSingleArgumentAst final : LocalVariableAst {
-    friend struct CasePatternVariantDestructureSkipSingleArgumentAst;
+    friend struct spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst;
 
     /**
      * The @c _ token that indicates the skip single argument pattern. This is used to indicate the next element

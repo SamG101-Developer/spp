@@ -23,10 +23,10 @@ import std;
  * analysis checks.
  */
 SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : virtual Ast, mixins::VisibilityEnabledAst, SupMemberAst, ModuleMemberAst {
-    friend struct AnnotationAst;
-    friend struct GenExpressionAst;
-    friend struct PostfixExpressionOperatorFunctionCallAst;
-    friend struct SupPrototypeExtensionAst;
+    friend struct spp::asts::AnnotationAst;
+    friend struct spp::asts::GenExpressionAst;
+    friend struct spp::asts::PostfixExpressionOperatorFunctionCallAst;
+    friend struct spp::asts::SupPrototypeExtensionAst;
 
 private:
     std::vector<std::unique_ptr<analyse::scopes::Scope>> m_generic_substituted_scopes;

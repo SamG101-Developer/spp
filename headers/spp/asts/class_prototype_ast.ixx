@@ -22,7 +22,7 @@ import std;
  * ast for this class, allowing for scoping rules to be made easier.
  */
 SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : virtual Ast, mixins::VisibilityEnabledAst, SupMemberAst, ModuleMemberAst {
-    friend struct TypeStatementAst;
+    friend struct spp::asts::TypeStatementAst;
 
 private:
     std::vector<std::pair<analyse::scopes::Scope*, std::unique_ptr<ClassPrototypeAst>>> m_generic_substituted_scopes;

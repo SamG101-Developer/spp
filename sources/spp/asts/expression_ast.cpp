@@ -88,6 +88,9 @@ auto spp::asts::ExpressionAst::equals(
 spp::asts::ExpressionAst::ExpressionAst(ExpressionAst const &) = default;
 
 
+spp::asts::ExpressionAst::~ExpressionAst() = default;
+
+
 auto spp::asts::ExpressionAst::operator<=>(
     const ExpressionAst &rhs_expr) const
     -> std::strong_ordering {

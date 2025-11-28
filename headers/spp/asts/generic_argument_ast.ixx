@@ -60,10 +60,10 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::GenericArgumentAst : virtual Ast, mixins::OrderableAst {
     using Ast::Ast;
-    friend struct GenericArgumentCompKeywordAst;
-    friend struct GenericArgumentCompPositionalAst;
-    friend struct GenericArgumentTypeKeywordAst;
-    friend struct GenericArgumentTypePositionalAst;
+    friend struct spp::asts::GenericArgumentCompKeywordAst;
+    friend struct spp::asts::GenericArgumentCompPositionalAst;
+    friend struct spp::asts::GenericArgumentTypeKeywordAst;
+    friend struct spp::asts::GenericArgumentTypePositionalAst;
 
 protected:
     virtual auto equals_generic_argument_comp_keyword(GenericArgumentCompKeywordAst const &) const -> std::strong_ordering;

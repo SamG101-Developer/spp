@@ -17,7 +17,7 @@ import std;
  * to is the sart position.
  */
 SPP_EXP_CLS struct spp::asts::TokenAst final : virtual Ast {
-    friend struct TypeIdentifierAst;
+    friend struct spp::asts::TypeIdentifierAst;
 
     /**
      * The token type (part of the enum) that this AST is wrapping.

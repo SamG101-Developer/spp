@@ -16,7 +16,7 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst {
-    friend struct GenExpressionAst;
+    friend struct spp::asts::GenExpressionAst;
     using FunctionPrototypeAst::FunctionPrototypeAst;
 
 private:
