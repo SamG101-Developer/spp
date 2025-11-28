@@ -2,14 +2,17 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.sup_prototype_functions_ast;
-import spp.asts._fwd;
 import spp.asts.ast;
 import spp.asts.module_member_ast;
 
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct GenericParameterGroupAst;
+    SPP_EXP_CLS struct SupImplementationAst;
     SPP_EXP_CLS struct SupPrototypeFunctionsAst;
+    SPP_EXP_CLS struct TokenAst;
+    SPP_EXP_CLS struct TypeAst;
 }
 
 

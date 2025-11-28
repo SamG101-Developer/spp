@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.loop_condition_ast;
-import spp.asts._fwd;
 import spp.asts.ast;
 
 namespace spp::asts {

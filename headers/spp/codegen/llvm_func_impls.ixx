@@ -2,13 +2,17 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.codegen.llvm_func_impls;
-import spp.asts._fwd;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_mangle;
 import spp.analyse.scopes.scope_manager;
 
 import llvm;
 import std;
+
+namespace spp::asts {
+    SPP_EXP_CLS struct FunctionPrototypeAst;
+    SPP_EXP_CLS struct TypeAst;
+}
 
 
 #define SPP_LLVM_FUNC_INFO analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto

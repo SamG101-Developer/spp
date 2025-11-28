@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.iter_expression_branch_ast;
-import spp.asts._fwd;
 import spp.asts.ast;
 import spp.asts.mixins.type_inferrable_ast;
 
@@ -10,6 +9,12 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct IterExpressionBranchAst;
+    SPP_EXP_CLS struct IterPatternVariantAst;
+    SPP_EXP_CLS template <typename T>
+    struct InnerScopeExpressionAst;
+    SPP_EXP_CLS struct StatementAst;
+    SPP_EXP_CLS struct PatternGuardAst;
+    SPP_EXP_CLS struct TypeAst;
 }
 
 

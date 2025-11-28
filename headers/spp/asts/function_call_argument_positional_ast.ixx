@@ -2,13 +2,13 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_call_argument_positional_ast;
-import spp.asts._fwd;
 import spp.asts.function_call_argument_ast;
 
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct FunctionCallArgumentPositionalAst;
+    SPP_EXP_CLS struct TokenAst;
 }
 
 /**

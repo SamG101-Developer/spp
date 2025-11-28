@@ -2,12 +2,13 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_binary_expression_temp_ast;
-import spp.asts._fwd;
 
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct TypeBinaryExpressionTempAst;
+    SPP_EXP_CLS struct TokenAst;
+    SPP_EXP_CLS struct TypeAst;
 }
 
 

@@ -2,13 +2,14 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_pattern_variant_destructure_skip_single_argument_ast;
-import spp.asts._fwd;
 import spp.asts.case_pattern_variant_ast;
 
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct CasePatternVariantDestructureSkipSingleArgumentAst;
+    SPP_EXP_CLS struct LocalVariableAst;
+    SPP_EXP_CLS struct TokenAst;
 }
 
 

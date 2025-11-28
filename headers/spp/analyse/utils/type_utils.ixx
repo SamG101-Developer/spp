@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.type_utils;
-import spp.asts._fwd;
 import spp.utils.ptr_cmp;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
@@ -11,6 +10,18 @@ import spp.asts.meta.compiler_meta_data;
 
 import ankerl;
 import std;
+
+namespace spp::asts {
+    SPP_EXP_CLS struct Ast;
+    SPP_EXP_CLS struct ClassAttributeAst;
+    SPP_EXP_CLS struct ClassPrototypeAst;
+    SPP_EXP_CLS struct ExpressionAst;
+    SPP_EXP_CLS struct GenericArgumentAst;
+    SPP_EXP_CLS struct GenericArgumentGroupAst;
+    SPP_EXP_CLS struct GenericParameterGroupAst;
+    SPP_EXP_CLS struct TypeAst;
+    SPP_EXP_CLS struct TypeIdentifierAst;
+}
 
 namespace spp::analyse::utils::type_utils {
     SPP_EXP_CLS using GenericInferenceMap = ankerl::unordered_dense::map<
@@ -232,7 +243,7 @@ namespace spp::analyse::utils::type_utils {
         -> std::string;
 
     SPP_EXP_FUN auto recursive_alias_search(
-        asts::TypeStatementAst const& alias_stmt,
+        asts::TypeStatementAst const &alias_stmt,
         scopes::Scope *tracking_scope,
         std::shared_ptr<asts::TypeAst> actual_old_type,
         scopes::ScopeManager *sm,

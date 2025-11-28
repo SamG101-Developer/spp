@@ -2,13 +2,14 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_parameter_comp_optional_ast;
-import spp.asts._fwd;
 import spp.asts.generic_parameter_comp_ast;
 
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct GenericParameterCompOptionalAst;
+    SPP_EXP_CLS struct TokenAst;
 }
 
 

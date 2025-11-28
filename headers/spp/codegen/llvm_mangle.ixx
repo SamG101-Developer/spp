@@ -5,7 +5,11 @@ export module spp.codegen.llvm_mangle;
 import std;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
-import spp.asts._fwd;
+
+namespace spp::asts {
+    SPP_EXP_CLS struct CmpStatementAst;
+    SPP_EXP_CLS struct FunctionPrototypeAst;
+}
 
 
 namespace spp::codegen::mangle {

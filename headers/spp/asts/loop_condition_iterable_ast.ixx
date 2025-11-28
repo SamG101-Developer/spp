@@ -2,13 +2,15 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.loop_condition_iterable_ast;
-import spp.asts._fwd;
 import spp.asts.loop_condition_ast;
 
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct ExpressionAst;
+    SPP_EXP_CLS struct LocalVariableAst;
     SPP_EXP_CLS struct LoopConditionIterableAst;
+    SPP_EXP_CLS struct TokenAst;
 }
 
 

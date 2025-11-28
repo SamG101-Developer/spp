@@ -2,13 +2,18 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_parameter_group_ast;
-import spp.asts._fwd;
 import spp.asts.ast;
 
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct FunctionParameterGroupAst;
+    SPP_EXP_CLS struct FunctionParameterAst;
+    SPP_EXP_CLS struct FunctionParameterOptionalAst;
+    SPP_EXP_CLS struct FunctionParameterRequiredAst;
+    SPP_EXP_CLS struct FunctionParameterSelfAst;
+    SPP_EXP_CLS struct FunctionParameterVariadicAst;
+    SPP_EXP_CLS struct TokenAst;
 }
 
 

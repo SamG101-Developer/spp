@@ -2,11 +2,14 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.utils.error_formatter;
-import spp.asts._fwd;
 import spp.lex.tokens;
 
 import std;
 
+
+namespace spp::asts {
+    SPP_EXP_CLS struct Ast;
+}
 
 namespace spp::utils::errors {
     SPP_EXP_CLS class ErrorFormatter;

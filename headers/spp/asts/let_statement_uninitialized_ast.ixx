@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.let_statement_uninitialized_ast;
-import spp.asts._fwd;
 import spp.asts.let_statement_ast;
 import spp.codegen.llvm_ctx;
 
@@ -11,6 +10,9 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct LetStatementUninitializedAst;
+    SPP_EXP_CLS struct LocalVariableAst;
+    SPP_EXP_CLS struct TokenAst;
+    SPP_EXP_CLS struct TypeAst;
 }
 
 

@@ -2,13 +2,15 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.iter_expression_ast;
-import spp.asts._fwd;
 import spp.asts.primary_expression_ast;
 
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct IterExpressionAst;
+    SPP_EXP_CLS struct IterExpressionBranchAst;
+    SPP_EXP_CLS struct TokenAst;
+    SPP_EXP_CLS struct TypeAst;
 }
 
 

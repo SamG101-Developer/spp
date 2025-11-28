@@ -2,10 +2,13 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generate.common_types;
-import spp.asts._fwd;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct ExpressionAst;
+    SPP_EXP_CLS struct TypeAst;
+}
 
 namespace spp::asts::generate::common_types {
     /**

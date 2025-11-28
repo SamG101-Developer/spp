@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.pattern_guard_ast;
-import spp.asts._fwd;
 import spp.asts.ast;
 import spp.codegen.llvm_ctx;
 
@@ -10,7 +9,9 @@ import llvm;
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct PatternGuardAst;
+    SPP_EXP_CLS struct TokenAst;
 }
 
 

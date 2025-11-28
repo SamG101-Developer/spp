@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts._fwd;
 import spp.analyse.scopes.scope;
 import spp.asts.postfix_expression_operator_ast;
 import spp.codegen.llvm_ctx;
@@ -11,7 +10,16 @@ import llvm;
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct FunctionCallArgumentAst;
+    SPP_EXP_CLS struct FunctionCallArgumentGroupAst;
+    SPP_EXP_CLS struct FunctionCallArgumentPositionalAst;
+    SPP_EXP_CLS struct FoldExpressionAst;
+    SPP_EXP_CLS struct FunctionPrototypeAst;
+    SPP_EXP_CLS struct GenericArgumentAst;
+    SPP_EXP_CLS struct GenericArgumentGroupAst;
     SPP_EXP_CLS struct PostfixExpressionOperatorFunctionCallAst;
+    SPP_EXP_CLS struct TypeAst;
+    SPP_EXP_CLS struct UnaryExpressionOperatorAsyncAst;
 }
 
 

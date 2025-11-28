@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_argument_group_ast;
-import spp.asts._fwd;
 import spp.asts.ast;
 import spp.utils.ptr_cmp;
 
@@ -10,7 +9,15 @@ import ankerl;
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct GenericArgumentGroupAst;
+    SPP_EXP_CLS struct GenericArgumentAst;
+    SPP_EXP_CLS struct GenericArgumentTypeAst;
+    SPP_EXP_CLS struct GenericArgumentCompAst;
+    SPP_EXP_CLS struct GenericParameterGroupAst;
+    SPP_EXP_CLS struct TokenAst;
+    SPP_EXP_CLS struct TypeIdentifierAst;
+    SPP_EXP_CLS struct TypeAst;
 }
 
 

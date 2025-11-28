@@ -2,13 +2,16 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_parameter_group_ast;
-import spp.asts._fwd;
 import spp.asts.ast;
 
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct GenericParameterGroupAst;
+    SPP_EXP_CLS struct GenericParameterAst;
+    SPP_EXP_CLS struct GenericParameterCompAst;
+    SPP_EXP_CLS struct GenericParameterTypeAst;
+    SPP_EXP_CLS struct TokenAst;
 }
 
 

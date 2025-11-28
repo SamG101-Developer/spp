@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.local_variable_destructure_object_ast;
-import spp.asts._fwd;
 import spp.asts.local_variable_ast;
 import spp.codegen.llvm_ctx;
 
@@ -10,7 +9,12 @@ import llvm;
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct CasePatternVariantDestructureObjectAst;
+    SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct LocalVariableDestructureObjectAst;
+    SPP_EXP_CLS struct LetStatementInitializedAst;
+    SPP_EXP_CLS struct TokenAst;
+    SPP_EXP_CLS struct TypeAst;
 }
 
 

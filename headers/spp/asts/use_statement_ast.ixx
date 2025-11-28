@@ -2,14 +2,17 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.use_statement_ast;
-import spp.asts._fwd;
 import spp.asts.statement_ast;
 import spp.asts.module_member_ast;
 
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct AnnotationAst;
     SPP_EXP_CLS struct UseStatementAst;
+    SPP_EXP_CLS struct TokenAst;
+    SPP_EXP_CLS struct TypeStatementAst;
+    SPP_EXP_CLS struct TypeAst;
 }
 
 

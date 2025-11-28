@@ -2,18 +2,25 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.meta.compiler_meta_data;
-import spp.asts._fwd;
 import spp.utils.ptr_cmp;
 
 import llvm;
 import std;
 
 
+namespace spp::asts {
+    SPP_EXP_CLS struct ExpressionAst;
+    SPP_EXP_CLS struct IdentifierAst;
+    SPP_EXP_CLS struct LoopExpressionAst;
+    SPP_EXP_CLS struct FunctionPrototypeAst;
+    SPP_EXP_CLS struct TokenAst;
+    SPP_EXP_CLS struct TypeAst;
+}
+
 namespace spp::analyse::scopes {
     SPP_EXP_CLS class Scope;
     SPP_EXP_CLS struct TypeSymbol;
 }
-
 
 namespace spp::asts::meta {
     SPP_EXP_CLS struct CompilerMetaDataState;

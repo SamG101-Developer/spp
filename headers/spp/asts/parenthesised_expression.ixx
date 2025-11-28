@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.parenthesised_expression_ast;
-import spp.asts._fwd;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
 
@@ -10,7 +9,10 @@ import llvm;
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct ParenthesisedExpressionAst;
+    SPP_EXP_CLS struct TokenAst;
+    SPP_EXP_CLS struct TypeAst;
 }
 
 

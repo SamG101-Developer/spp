@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.scopes.scope;
-import spp.asts._fwd;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.symbol_table;
@@ -12,6 +11,14 @@ import spp.utils.error_formatter;
 import std;
 import sys;
 
+
+namespace spp::asts {
+    SPP_EXP_CLS struct Ast;
+    SPP_EXP_CLS struct GenericArgumentAst;
+    SPP_EXP_CLS struct IdentifierAst;
+    SPP_EXP_CLS struct TypeAst;
+    SPP_EXP_CLS struct TypeIdentifierAst;
+}
 
 namespace spp::analyse::scopes {
     SPP_EXP_CLS class Scope;

@@ -3,11 +3,17 @@ module;
 
 export module spp.analyse.utils.bin_utils;
 import spp.analyse.scopes.scope_manager;
-import spp.asts._fwd;
 import spp.asts.meta.compiler_meta_data;
 import spp.lex.tokens;
 
 import std;
+
+namespace spp::asts {
+    SPP_EXP_CLS struct BinaryExpressionAst;
+    SPP_EXP_CLS struct CaseExpressionAst;
+    SPP_EXP_CLS struct IsExpressionAst;
+    SPP_EXP_CLS struct PostfixExpressionAst;
+}
 
 
 namespace spp::analyse::utils::bin_utils {

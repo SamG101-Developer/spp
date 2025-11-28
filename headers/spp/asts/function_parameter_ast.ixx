@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_parameter_ast;
-import spp.asts._fwd;
 import spp.asts.ast;
 import spp.asts.mixins.orderable_ast;
 
@@ -10,6 +9,10 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct FunctionParameterAst;
+    SPP_EXP_CLS struct IdentifierAst;
+    SPP_EXP_CLS struct LocalVariableAst;
+    SPP_EXP_CLS struct TokenAst;
+    SPP_EXP_CLS struct TypeAst;
 }
 
 

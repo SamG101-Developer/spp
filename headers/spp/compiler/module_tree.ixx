@@ -2,12 +2,14 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.compiler.module_tree;
-import spp.asts._fwd;
 import spp.lex.tokens;
 import spp.utils.error_formatter;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct ModulePrototypeAst;
+}
 
 namespace spp::compiler {
     SPP_EXP_CLS struct Module;

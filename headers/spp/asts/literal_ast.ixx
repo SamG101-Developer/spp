@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.literal_ast;
-import spp.asts._fwd;
 import spp.asts.primary_expression_ast;
 
 namespace spp::asts {

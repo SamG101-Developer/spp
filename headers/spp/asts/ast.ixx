@@ -4,11 +4,11 @@ module;
 #include <genex/views/transform.hpp>
 
 export module spp.asts.ast;
-import spp.asts._fwd;
 import spp.asts.meta.ast_printer;
 import spp.asts.mixins.compiler_stages;
 import spp.asts.meta.compiler_meta_data;
 import spp.codegen.llvm_ctx;
+
 
 namespace spp::analyse::scopes {
     SPP_EXP_CLS class Scope;
@@ -17,7 +17,10 @@ namespace spp::analyse::scopes {
 
 
 namespace spp::asts {
+    SPP_EXP_CLS struct AnnotationAst;
     SPP_EXP_CLS struct Ast;
+    SPP_EXP_CLS struct CoroutinePrototypeAst;
+    SPP_EXP_CLS struct TypeAst;
 
     SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
@@ -107,6 +110,7 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
     friend struct spp::asts::AnnotationAst;
+    friend struct spp::asts::CoroutinePrototypeAst;
 
 protected:
     using AstPrinter = spp::asts::meta::AstPrinter;

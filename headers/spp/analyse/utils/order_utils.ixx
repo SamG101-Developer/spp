@@ -2,10 +2,12 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.order_utils;
-import spp.asts._fwd;
 import spp.asts.mixins.orderable_ast;
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct Ast;
+}
 
 namespace spp::asts::mixins {
     SPP_EXP_CLS struct OrderableAst;

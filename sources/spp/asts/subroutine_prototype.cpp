@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.type_utils;
 import spp.asts.ast;
+import spp.asts.identifier_ast;
 import spp.asts.function_implementation_ast;
 import spp.asts.statement_ast;
 import spp.asts.generate.common_types_precompiled;

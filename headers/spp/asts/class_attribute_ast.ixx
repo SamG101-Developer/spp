@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.class_attribute_ast;
-import spp.asts._fwd;
 import spp.asts.ast;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.class_member_ast;
@@ -10,7 +9,12 @@ import spp.asts.class_member_ast;
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct AnnotationAst;
     SPP_EXP_CLS struct ClassAttributeAst;
+    SPP_EXP_CLS struct ExpressionAst;
+    SPP_EXP_CLS struct IdentifierAst;
+    SPP_EXP_CLS struct TokenAst;
+    SPP_EXP_CLS struct TypeAst;
 }
 
 

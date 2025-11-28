@@ -2,13 +2,15 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.postfix_expression_operator_runtime_member_access_ast;
-import spp.asts._fwd;
 import spp.asts.postfix_expression_operator_ast;
 
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct PostfixExpressionOperatorRuntimeMemberAccessAst;
+    SPP_EXP_CLS struct TokenAst;
+    SPP_EXP_CLS struct TypeAst;
 }
 
 

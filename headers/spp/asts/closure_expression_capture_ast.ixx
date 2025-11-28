@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.closure_expression_capture_ast;
 import spp.asts.function_call_argument_positional_ast;
-import spp.asts.token_ast;
 
 import std;
 

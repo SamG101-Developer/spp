@@ -2,13 +2,14 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.integer_literal_ast;
-import spp.asts._fwd;
 import spp.asts.literal_ast;
 
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct IntegerLiteralAst;
+    SPP_EXP_CLS struct TokenAst;
+    SPP_EXP_CLS struct TypeAst;
 }
 
 

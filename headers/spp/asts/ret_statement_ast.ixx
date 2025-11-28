@@ -2,13 +2,15 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.ret_statement_ast;
-import spp.asts._fwd;
 import spp.asts.statement_ast;
 
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct RetStatementAst;
+    SPP_EXP_CLS struct TokenAst;
+    SPP_EXP_CLS struct TypeAst;
 }
 
 

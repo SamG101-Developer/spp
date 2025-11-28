@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_parameter_optional_ast;
-import spp.asts._fwd;
 import spp.asts.function_parameter_ast;
 import spp.asts.expression_ast;
 
@@ -10,6 +9,7 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct FunctionParameterOptionalAst;
+    SPP_EXP_CLS struct TokenAst;
 }
 
 

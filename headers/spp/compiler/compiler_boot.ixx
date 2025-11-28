@@ -3,12 +3,15 @@ module;
 
 export module spp.compiler.compiler_boot;
 import spp.analyse.scopes.scope_manager;
-import spp.asts._fwd;
 import spp.compiler.module_tree;
 import spp.utils.progress;
 
 import std;
 
+
+namespace spp::asts {
+    SPP_EXP_CLS struct Ast;
+}
 
 namespace spp::compiler {
     SPP_EXP_CLS struct CompilerBoot;

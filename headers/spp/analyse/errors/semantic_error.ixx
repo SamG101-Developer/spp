@@ -3,13 +3,43 @@ module;
 
 export module spp.analyse.errors.semantic_error;
 import spp.utils.errors;
-import spp.asts._fwd;
 
 import mppp;
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct AnnotationAst;
+    SPP_EXP_CLS struct Ast;
+    SPP_EXP_CLS struct TypeAst;
+    SPP_EXP_CLS struct ExpressionAst;
+    SPP_EXP_CLS struct CasePatternVariantAst;
+    SPP_EXP_CLS struct CaseExpressionBranchAst;
+    SPP_EXP_CLS struct CaseExpressionAst;
+    SPP_EXP_CLS struct ClassPrototypeAst;
+    SPP_EXP_CLS struct CoroutinePrototypeAst;
+    SPP_EXP_CLS struct LiteralAst;
+    SPP_EXP_CLS struct FunctionParameterSelfAst;
+    SPP_EXP_CLS struct FunctionParameterVariadicAst;
+    SPP_EXP_CLS struct FunctionPrototypeAst;
+    SPP_EXP_CLS struct TokenAst;
+    SPP_EXP_CLS struct IterPatternVariantAst;
+    SPP_EXP_CLS struct LocalVariableAst;
+    SPP_EXP_CLS struct LocalVariableDestructureSkipMultipleArgumentsAst;
+    SPP_EXP_CLS struct LocalVariableDestructureArrayAst;
+    SPP_EXP_CLS struct LocalVariableDestructureTupleAst;
+    SPP_EXP_CLS struct LocalVariableDestructureObjectAst;
+    SPP_EXP_CLS struct IdentifierAst;
+    SPP_EXP_CLS struct GenericParameterAst;
+    SPP_EXP_CLS struct TypeStatementAst;
+    SPP_EXP_CLS struct CmpStatementAst;
+    SPP_EXP_CLS struct LoopControlFlowStatementAst;
+    SPP_EXP_CLS struct ObjectInitializerArgumentAst;
+    SPP_EXP_CLS struct PostfixExpressionOperatorFunctionCallAst;
+    SPP_EXP_CLS struct GenericArgumentAst;
+    SPP_EXP_CLS struct ModulePrototypeAst;
+}
 
-/// @cond
+
 namespace spp::analyse::errors {
     SPP_EXP_CLS struct SemanticError;
 
@@ -102,8 +132,6 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppGenericArgumentTooManyError;
     SPP_EXP_CLS struct SppMissingMainFunctionError;
 }
-
-/// @endcond
 
 
 SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::AbstractError {

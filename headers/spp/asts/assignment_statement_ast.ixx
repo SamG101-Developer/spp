@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.assignment_statement_ast;
-import spp.asts._fwd;
 import spp.asts.statement_ast;
 import spp.codegen.llvm_ctx;
 
@@ -11,6 +10,8 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct AssignmentStatementAst;
+    SPP_EXP_CLS struct ExpressionAst;
+    SPP_EXP_CLS struct TokenAst;
 }
 
 
@@ -114,5 +115,5 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
      * @param ctx The LLVM context to use for code generation.
      * @return The LLVM value representing the assignment operation.
      */
-    auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value * override;
+    auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

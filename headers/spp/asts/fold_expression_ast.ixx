@@ -2,12 +2,12 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.fold_expression_ast;
-import spp.asts._fwd;
 import spp.asts.primary_expression_ast;
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct FoldExpressionAst;
+    SPP_EXP_CLS struct TokenAst;
 }
 
 

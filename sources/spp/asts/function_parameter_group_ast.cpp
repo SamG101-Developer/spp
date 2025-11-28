@@ -20,6 +20,7 @@ import spp.asts.function_parameter_optional_ast;
 import spp.asts.function_parameter_required_ast;
 import spp.asts.function_parameter_self_ast;
 import spp.asts.function_parameter_variadic_ast;
+import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.mixins.orderable_ast;
 

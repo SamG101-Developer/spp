@@ -2,13 +2,14 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.iter_pattern_variant_exception_ast;
-import spp.asts._fwd;
 import spp.asts.iter_pattern_variant_ast;
 
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct IterPatternVariantExceptionAst;
+    SPP_EXP_CLS struct LocalVariableAst;
+    SPP_EXP_CLS struct TokenAst;
 }
 
 

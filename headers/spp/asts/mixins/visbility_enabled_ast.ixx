@@ -2,10 +2,15 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.mixins.visibility_enabled_ast;
-import spp.asts._fwd;
 import spp.asts.utils.visibility;
 
 import std;
+
+
+namespace spp::asts {
+    SPP_EXP_CLS struct AnnotationAst;
+    SPP_EXP_CLS struct TypeStatementAst;
+}
 
 namespace spp::asts::mixins {
     SPP_EXP_CLS struct VisibilityEnabledAst;

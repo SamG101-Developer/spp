@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.object_initializer_ast;
-import spp.asts._fwd;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
 
@@ -11,6 +10,8 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct ObjectInitializerAst;
+    SPP_EXP_CLS struct ObjectInitializerArgumentGroupAst;
+    SPP_EXP_CLS struct TypeAst;
 }
 
 

@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.let_statement_ast;
-import spp.asts._fwd;
 import spp.asts.statement_ast;
 
 namespace spp::asts {

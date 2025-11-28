@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_pattern_variant_destructure_object_ast;
-import spp.asts._fwd;
 import spp.asts.case_pattern_variant_ast;
 import spp.codegen.llvm_ctx;
 
@@ -11,6 +10,9 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct CasePatternVariantDestructureObjectAst;
+    SPP_EXP_CLS struct LocalVariableAst;
+    SPP_EXP_CLS struct TokenAst;
+    SPP_EXP_CLS struct TypeAst;
 }
 
 
@@ -60,5 +62,5 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureObjectAst final : Cas
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value * override;
+    auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

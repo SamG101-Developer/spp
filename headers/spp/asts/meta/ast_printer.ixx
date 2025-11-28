@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.meta.ast_printer;
 import std;
-import spp.asts._fwd;
 
 
 template <typename, template<typename...> class>
@@ -17,6 +16,13 @@ struct is_same_template<C<Args...>, C> : std::true_type {
 template <typename T, template <typename...> class C>
 inline constexpr auto is_same_template_v = is_same_template<T, C>::value;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct ClassImplementationAst;
+    SPP_EXP_CLS struct FunctionImplementationAst;
+    SPP_EXP_CLS template <typename T>
+    struct InnerScopeAst;
+    SPP_EXP_CLS struct SupImplementationAst;
+}
 
 namespace spp::asts::meta {
     SPP_EXP_CLS class AstPrinter;

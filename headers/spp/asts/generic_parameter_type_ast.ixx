@@ -2,13 +2,13 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_parameter_type_ast;
-import spp.asts._fwd;
 import spp.asts.generic_parameter_ast;
 
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct GenericParameterTypeAst;
+    SPP_EXP_CLS struct GenericParameterTypeInlineConstraintsAst;
 }
 
 

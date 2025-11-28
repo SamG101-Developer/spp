@@ -2,13 +2,14 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_implementation_ast;
-import spp.asts._fwd;
 import spp.asts.inner_scope_ast;
 
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct FunctionImplementationAst;
+    SPP_EXP_CLS struct StatementAst;
+    SPP_EXP_CLS using FunctionMemberAst = struct spp::asts::StatementAst;
 }
 
 

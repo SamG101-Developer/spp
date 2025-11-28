@@ -2,11 +2,20 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_argument_ast;
-import spp.asts._fwd;
 import spp.asts.ast;
 import spp.asts.mixins.orderable_ast;
 
 import std;
+
+namespace spp::asts {
+    SPP_EXP_CLS struct GenericArgumentAst;
+    SPP_EXP_CLS struct GenericArgumentCompAst;
+    SPP_EXP_CLS struct GenericArgumentTypeAst;
+    SPP_EXP_CLS struct GenericArgumentCompKeywordAst;
+    SPP_EXP_CLS struct GenericArgumentCompPositionalAst;
+    SPP_EXP_CLS struct GenericArgumentTypeKeywordAst;
+    SPP_EXP_CLS struct GenericArgumentTypePositionalAst;
+}
 
 
 namespace spp::asts::detail {
@@ -46,10 +55,6 @@ namespace spp::asts::detail {
 
     SPP_EXP_CLS template <typename T>
     using make_positional_arg_t = typename make_positional_arg<T>::type;
-}
-
-namespace spp::asts {
-    SPP_EXP_CLS struct GenericArgumentAst;
 }
 
 

@@ -3,7 +3,6 @@ module;
 
 export module spp.analyse.scopes.symbol_table;
 import spp.analyse.scopes.symbols;
-import spp.asts._fwd;
 import spp.utils.ptr_cmp;
 
 import ankerl;

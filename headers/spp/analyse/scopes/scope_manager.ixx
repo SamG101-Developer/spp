@@ -8,8 +8,11 @@ import spp.analyse.scopes.scope_iterator;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_range;
 import spp.utils.error_formatter;
-import spp.asts._fwd;
 
+
+namespace spp::asts {
+    SPP_EXP_CLS struct Ast;
+}
 
 namespace spp::analyse::scopes {
     SPP_EXP_CLS class ScopeManager;

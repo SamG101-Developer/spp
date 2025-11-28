@@ -2,13 +2,14 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_pattern_variant_ast;
-import spp.asts._fwd;
 import spp.asts.ast;
 
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct CasePatternVariantAst;
+    SPP_EXP_CLS struct LetStatementInitializedAst;
+    SPP_EXP_CLS struct LocalVariableAst;
 }
 
 

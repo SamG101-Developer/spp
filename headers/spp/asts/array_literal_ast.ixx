@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.array_literal_ast;
-import spp.asts._fwd;
 import spp.asts.literal_ast;
 
 namespace spp::asts {

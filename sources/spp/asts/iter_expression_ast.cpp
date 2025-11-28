@@ -19,6 +19,7 @@ import spp.analyse.utils.type_utils;
 import spp.asts.ast;
 import spp.asts.iter_expression_branch_ast;
 import spp.asts.iter_pattern_variant_ast;
+import spp.asts.iter_pattern_variant_else_ast;
 import spp.asts.iter_pattern_variant_exception_ast;
 import spp.asts.iter_pattern_variant_exhausted_ast;
 import spp.asts.iter_pattern_variant_no_value_ast;

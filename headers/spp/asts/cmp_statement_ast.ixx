@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.cmp_statement_ast;
-import spp.asts._fwd;
 import spp.asts.ast;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.module_member_ast;
@@ -13,7 +12,12 @@ import llvm;
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct AnnotationAst;
     SPP_EXP_CLS struct CmpStatementAst;
+    SPP_EXP_CLS struct ExpressionAst;
+    SPP_EXP_CLS struct IdentifierAst;
+    SPP_EXP_CLS struct TokenAst;
+    SPP_EXP_CLS struct TypeAst;
 }
 
 

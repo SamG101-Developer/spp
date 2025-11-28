@@ -2,11 +2,19 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.scopes.symbols;
-import spp.asts._fwd;
 import spp.codegen.llvm_sym_info;
 import spp.asts.utils.visibility;
 import std;
 
+
+namespace spp::asts {
+    SPP_EXP_CLS struct ClassPrototypeAst;
+    SPP_EXP_CLS struct ConventionAst;
+    SPP_EXP_CLS struct IdentifierAst;
+    SPP_EXP_CLS struct TypeAst;
+    SPP_EXP_CLS struct TypeIdentifierAst;
+    SPP_EXP_CLS struct TypeStatementAst;
+}
 
 namespace spp::analyse::scopes {
     SPP_EXP_CLS class Scope;
@@ -21,7 +29,6 @@ namespace spp::analyse::scopes {
 namespace spp::analyse::utils::mem_utils {
     SPP_EXP_CLS struct MemoryInfo;
 }
-
 
 
 /**
@@ -141,7 +148,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     TypeSymbol(
         TypeSymbol const &that);
 
-    ~TypeSymbol();
+    ~TypeSymbol() override;
 
     explicit operator std::string() const override;
 

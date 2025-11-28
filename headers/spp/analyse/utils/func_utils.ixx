@@ -2,12 +2,32 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.func_utils;
-import spp.asts._fwd;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.ptr_cmp;
 
 import std;
 
+
+namespace spp::asts {
+    SPP_EXP_CLS struct Ast;
+    SPP_EXP_CLS struct ExpressionAst;
+    SPP_EXP_CLS struct FunctionCallArgumentAst;
+    SPP_EXP_CLS struct FunctionParameterAst;
+    SPP_EXP_CLS struct FunctionPrototypeAst;
+    SPP_EXP_CLS struct GenericArgumentAst;
+    SPP_EXP_CLS struct GenericArgumentCompAst;
+    SPP_EXP_CLS struct GenericArgumentCompKeywordAst;
+    SPP_EXP_CLS struct GenericArgumentTypeAst;
+    SPP_EXP_CLS struct GenericArgumentTypeKeywordAst;
+    SPP_EXP_CLS struct GenericArgumentGroupAst;
+    SPP_EXP_CLS struct GenericParameterAst;
+    SPP_EXP_CLS struct GenericParameterCompAst;
+    SPP_EXP_CLS struct GenericParameterTypeAst;
+    SPP_EXP_CLS struct IdentifierAst;
+    SPP_EXP_CLS struct PostfixExpressionAst;
+    SPP_EXP_CLS struct PostfixExpressionOperatorFunctionCallAst;
+    SPP_EXP_CLS struct TypeAst;
+}
 
 namespace spp::analyse::scopes {
     SPP_EXP_CLS class Scope;

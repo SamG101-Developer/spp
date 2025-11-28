@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.case_pattern_variant_literal_ast;
-import spp.asts._fwd;
 import spp.asts.case_pattern_variant_ast;
 import spp.codegen.llvm_ctx;
 
@@ -11,6 +10,8 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct CasePatternVariantLiteralAst;
+    SPP_EXP_CLS struct LiteralAst;
+    SPP_EXP_CLS struct LocalVariableAst;
 }
 
 
