@@ -6,6 +6,10 @@ import spp.asts._fwd;
 import spp.asts.ast;
 import spp.asts.mixins.type_inferrable_ast;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct UnaryExpressionOperatorAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorAst : virtual Ast, mixins::TypeInferrableAst {
     using Ast::Ast;

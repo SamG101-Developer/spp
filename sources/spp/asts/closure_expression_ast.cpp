@@ -13,6 +13,7 @@ import spp.asts.convention_ast;
 import spp.asts.closure_expression_capture_ast;
 import spp.asts.closure_expression_capture_group_ast;
 import spp.asts.closure_expression_parameter_and_capture_group_ast;
+import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;

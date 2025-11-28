@@ -7,6 +7,7 @@ module;
 module spp.codegen.llvm_size;
 import spp.analyse.utils.type_utils;
 import spp.asts.ast;
+import spp.asts.class_attribute_ast;
 import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;

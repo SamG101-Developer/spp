@@ -43,7 +43,7 @@ auto spp::cli::run_cli(
     char **argv)
     -> std::int32_t {
     // Create the CLI object and require that a subcommand is provided.
-    auto app = CLI::App("SPP build tool", "spp");
+    auto app = cli11::App("SPP build tool", "spp");
     app.require_subcommand(1);
     auto mode = std::string();
 
@@ -56,19 +56,19 @@ auto spp::cli::run_cli(
     app.add_subcommand("build", "Build the project")
        ->callback([&mode] { handle_build(mode); })
        ->add_option("-m,--mode", mode, "Build mode (dev or rel)")
-       ->check(CLI::IsMember({"dev", "rel"}))
+       ->check(cli11::IsMember({"dev", "rel"}))
        ->default_val("dev");
 
     app.add_subcommand("run", "Run the project")
        ->callback([&mode] { handle_run(mode); })
        ->add_option("-m,--mode", mode, "Run mode (dev or rel)")
-       ->check(CLI::IsMember({"dev", "rel"}))
+       ->check(cli11::IsMember({"dev", "rel"}))
        ->default_val("dev");
 
     app.add_subcommand("clean", "Clean the project")
        ->callback([&mode] { handle_clean(mode); })
        ->add_option("-m,--mode", mode, "Clean mode (dev, rel or all)")
-       ->check(CLI::IsMember({"dev", "rel", "all"}))
+       ->check(cli11::IsMember({"dev", "rel", "all"}))
        ->default_val("all");
 
     app.add_subcommand("test", "Test the project")
@@ -81,7 +81,7 @@ auto spp::cli::run_cli(
        ->callback(handle_version);
 
     // Parse the command line arguments.
-    CLI11_PARSE(app, argc, argv);
+    app.parse(argc, argv);
     return 0;
 }
 

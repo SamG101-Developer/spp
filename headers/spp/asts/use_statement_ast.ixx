@@ -8,6 +8,10 @@ import spp.asts.module_member_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct UseStatementAst;
+}
+
 
 /**
  * The UseStatementAst reduces a fully qualified tpy into the current scope, making the symbol accessible without the

@@ -9,6 +9,10 @@ import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct BinaryExpressionAst;
+}
+
 
 /**
  * The BinaryExpressionAst represents a binary expression in the source code, which consists of two operands (left-hand

@@ -9,6 +9,10 @@ import spp.asts.class_member_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct ClassAttributeAst;
+}
+
 
 /**
  * The ClassAttributeAst represents an attribute of a class. It is defined on the class prototype ast, and is used to

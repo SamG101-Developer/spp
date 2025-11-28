@@ -4,6 +4,7 @@ module;
 module spp.asts.postfix_expression_operator_keyword_res_ast;
 import spp.analyse.utils.type_utils;
 import spp.asts.ast;
+import spp.asts.fold_expression_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.identifier_ast;

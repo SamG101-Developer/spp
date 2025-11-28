@@ -9,6 +9,10 @@ import spp.asts.type_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct TypeUnaryExpressionAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
     /**

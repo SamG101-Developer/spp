@@ -8,6 +8,10 @@ import spp.analyse.scopes.symbols;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct GenericArgumentCompKeywordAst;
+}
+
 
 /**
  * The GenericArgumentCompKeywordAst represents a keyword argument in a generic argument context. It is forces the argument
