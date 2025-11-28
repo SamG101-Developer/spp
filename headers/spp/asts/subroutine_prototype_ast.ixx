@@ -7,6 +7,10 @@ import spp.asts.function_prototype_ast;
 
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct SubroutinePrototypeAst;
+}
+
 
 SPP_EXP_CLS struct spp::asts::SubroutinePrototypeAst final : FunctionPrototypeAst {
     using FunctionPrototypeAst::FunctionPrototypeAst;
