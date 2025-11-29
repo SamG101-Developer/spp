@@ -1,6 +1,5 @@
 module;
-#include <opex/cast.hpp>
-
+#include <opex/macros.hpp>
 #include <spp/macros.hpp>
 
 module spp.asts.postfix_expression_operator_function_call_ast;
@@ -41,6 +40,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import genex;
+import opex.cast;
 
 
 spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFunctionCallAst(

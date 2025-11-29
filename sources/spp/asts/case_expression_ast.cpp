@@ -1,6 +1,5 @@
 module;
-#include <opex/cast.hpp>
-
+#include <opex/macros.hpp>
 #include <spp/macros.hpp>
 
 module spp.asts.case_expression_ast;
@@ -24,7 +23,9 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+
 import genex;
+import opex.cast;
 
 
 spp::asts::CaseExpressionAst::CaseExpressionAst(

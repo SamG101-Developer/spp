@@ -1,11 +1,13 @@
 module;
-#include <colex/common.hpp>
-#include <opex/cast.hpp>
+#include <opex/macros.hpp>
 
 module spp.utils.error_formatter;
 import spp.asts.ast;
 import spp.lex.tokens;
+
+import colex;
 import genex;
+import opex.cast;
 import std;
 
 

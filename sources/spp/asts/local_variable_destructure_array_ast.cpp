@@ -1,5 +1,5 @@
 module;
-#include <opex/cast.hpp>
+#include <opex/macros.hpp>
 
 #include <spp/macros.hpp>
 
@@ -27,6 +27,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.type_identifier_ast;
 import spp.lex.tokens;
 import genex;
+import opex.cast;
 
 
 spp::asts::LocalVariableDestructureArrayAst::LocalVariableDestructureArrayAst(

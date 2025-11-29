@@ -1,12 +1,11 @@
 module;
 #include <spp/macros.hpp>
 
-#include <colex/common.hpp>
-
 export module spp.analyse.errors.semantic_error_builder;
 import spp.analyse.errors.semantic_error;
 import spp.utils.errors;
 import spp.utils.error_formatter;
+import colex;
 import genex;
 import std;
 

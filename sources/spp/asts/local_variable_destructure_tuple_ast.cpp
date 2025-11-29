@@ -1,6 +1,5 @@
 module;
-#include <opex/cast.hpp>
-
+#include <opex/macros.hpp>
 #include <spp/macros.hpp>
 
 module spp.asts.local_variable_destructure_tuple_ast;
@@ -23,7 +22,9 @@ import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.type_identifier_ast;
 import spp.lex.tokens;
+
 import genex;
+import opex.cast;
 
 
 spp::asts::LocalVariableDestructureTupleAst::LocalVariableDestructureTupleAst(
