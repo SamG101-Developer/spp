@@ -25,7 +25,6 @@ import spp.asts.convention_ast;
 import spp.asts.function_implementation_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_self_ast;
-import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_type_keyword_ast;
 import spp.asts.generic_parameter_group_ast;
@@ -55,20 +54,19 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     decltype(tok_arrow) &&tok_arrow,
     decltype(return_type) &&return_type,
     decltype(impl) &&impl) :
-    return_type(std::move(return_type)),
-    tok_arrow(std::move(tok_arrow)),
-    param_group(std::move(param_group)),
-    generic_param_group(std::move(generic_param_group)),
-    name(std::move(name)),
-    tok_fun(std::move(tok_fun)),
-    impl(std::move(impl)),
-    annotations(std::move(annotations)),
-    m_inline_annotation(nullptr),
-    m_no_impl_annotation(nullptr),
-    m_temperature_annotation(nullptr),
-    m_virtual_annotation(nullptr),
     m_abstract_annotation(nullptr),
-    m_llvm_func(nullptr) {
+    m_virtual_annotation(nullptr),
+    m_temperature_annotation(nullptr),
+    m_no_impl_annotation(nullptr), m_inline_annotation(nullptr),
+    m_llvm_func(nullptr),
+    annotations(std::move(annotations)),
+    tok_fun(std::move(tok_fun)),
+    name(std::move(name)),
+    generic_param_group(std::move(generic_param_group)),
+    param_group(std::move(param_group)),
+    tok_arrow(std::move(tok_arrow)),
+    return_type(std::move(return_type)),
+    impl(std::move(impl)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_fun, lex::SppTokenType::KW_FUN, "fun");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_param_group);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_arrow, lex::SppTokenType::TK_ARROW_RIGHT, "->");
