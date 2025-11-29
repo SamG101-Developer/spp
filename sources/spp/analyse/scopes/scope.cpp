@@ -494,9 +494,9 @@ auto spp::analyse::scopes::Scope::get_var_symbol_outermost(
 
 auto spp::analyse::scopes::Scope::depth_difference(
     const Scope *scope) const
-    -> ssize_t {
+    -> sys::ssize_t {
     // Create an internal function to call recursively with a counter.
-    auto func = [](this auto &&self, const Scope *source, const Scope *target, const ssize_t depth) -> ssize_t {
+    auto func = [](this auto &&self, const Scope *source, const Scope *target, const sys::ssize_t depth) -> sys::ssize_t {
         if (source == target) { return depth; }
         for (auto const *sup_scope : source->m_direct_sup_scopes) {
             if (const auto result = self(sup_scope, target, depth + 1z); result >= 0z) {

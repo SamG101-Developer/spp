@@ -24,6 +24,13 @@ SPP_EXP_CLS struct spp::compiler::Module {
     std::unique_ptr<asts::ModulePrototypeAst> module_ast;
     std::shared_ptr<utils::errors::ErrorFormatter> error_formatter;
 
+    Module(
+        std::filesystem::path path,
+        std::string code,
+        std::vector<lex::RawToken> tokens,
+        std::unique_ptr<asts::ModulePrototypeAst> module_ast,
+        std::shared_ptr<utils::errors::ErrorFormatter> error_formatter);
+
     static auto from_path(std::filesystem::path const &path);
 };
 
@@ -34,14 +41,14 @@ private:
     std::filesystem::path m_src_path;
     std::filesystem::path m_vcs_path;
     std::filesystem::path m_ffi_path;
-    std::vector<Module> m_modules;
+    std::vector<std::unique_ptr<Module>> m_modules;
 
 public:
     explicit ModuleTree(std::filesystem::path path);
 
-    auto begin() -> std::vector<Module>::iterator;
+    auto begin() -> std::vector<std::unique_ptr<Module>>::iterator;
 
-    auto end() -> std::vector<Module>::iterator;
+    auto end() -> std::vector<std::unique_ptr<Module>>::iterator;
 
-    auto get_modules() -> std::vector<Module>&;
+    auto get_modules() -> std::vector<Module*>;
 };

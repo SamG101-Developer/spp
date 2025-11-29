@@ -28,7 +28,7 @@ auto spp::compiler::Compiler::compile() -> void {
     m_boot.lex(**ps++, m_modules);
     m_boot.parse(**ps++, m_modules);
     m_scope_manager = std::make_unique<analyse::scopes::ScopeManager>(
-        analyse::scopes::Scope::new_global(m_modules.get_modules()[0]), nullptr);
+        analyse::scopes::Scope::new_global(*m_modules.get_modules()[0]), nullptr);
     asts::generate::common_types_precompiled::initialize_types();
 
     m_boot.stage_1_pre_process(**ps++, m_modules, nullptr);

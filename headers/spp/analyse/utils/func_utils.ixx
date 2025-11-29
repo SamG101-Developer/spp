@@ -119,9 +119,9 @@ namespace spp::analyse::utils::func_utils {
         std::vector<asts::GenericArgumentAst*> explicit_args,
         std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_source,
         std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_target,
-        std::shared_ptr<asts::Ast> owner,
+        std::shared_ptr<asts::Ast> const &owner,
         scopes::Scope const *owner_scope,
-        std::shared_ptr<asts::IdentifierAst> variadic_param_identifier,
+        std::shared_ptr<asts::IdentifierAst> const &variadic_param_identifier,
         bool is_tuple_owner,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData *meta)
@@ -134,9 +134,9 @@ namespace spp::analyse::utils::func_utils {
         std::vector<asts::GenericArgumentTypeKeywordAst*> explicit_args,
         std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_source,
         std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_target,
-        std::shared_ptr<asts::Ast> owner,
+        std::shared_ptr<asts::Ast> const &owner,
         scopes::Scope const *owner_scope,
-        std::shared_ptr<asts::IdentifierAst> variadic_param_identifier,
+        std::shared_ptr<asts::IdentifierAst> const &variadic_param_identifier,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData *meta)
         -> void;
@@ -147,7 +147,7 @@ namespace spp::analyse::utils::func_utils {
         std::vector<asts::GenericArgumentCompKeywordAst*> explicit_args,
         std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_source,
         std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_target,
-        std::shared_ptr<asts::Ast> owner,
+        std::shared_ptr<asts::Ast> const &owner,
         scopes::Scope const *owner_scope,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData *meta)

@@ -23,6 +23,7 @@ import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.mixins.orderable_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import genex;
@@ -151,16 +152,16 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         }
 
         // Replace the tuple-expansion argument with the expanded arguments.
-        const auto max = static_cast<ssize_t>(arg_type->type_parts().back()->generic_arg_group->args.size());
-        for (auto j = max - 1; j > -1; --j) {
+        const auto max = arg_type->type_parts().back()->generic_arg_group->args.size();
+        for (auto j = max - 1; j > -1uz; --j) {
             auto field = std::make_unique<IdentifierAst>(arg->val->pos_start(), std::to_string(j));
             auto new_ast = std::make_unique<PostfixExpressionAst>(
                 ast_clone(arg->val),
                 std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
             auto new_arg = std::make_unique<FunctionCallArgumentPositionalAst>(ast_clone(arg->conv), nullptr, std::move(new_ast));
-            args.insert(args.begin() + static_cast<ssize_t>(i), std::move(new_arg));
+            args.insert(args.begin() + static_cast<std::ptrdiff_t>(i), std::move(new_arg));
         }
-        genex::actions::erase(args, args.begin() + static_cast<ssize_t>(i) + max);
+        genex::actions::erase(args, args.begin() + static_cast<std::ptrdiff_t>(i) + static_cast<std::ptrdiff_t>(max));
     }
 
     // Analyse the arguments

@@ -20,13 +20,13 @@ import genex;
 
 
 #define PREP_SCOPE_MANAGER \
-    auto const &mod_in_tree = *genex::find_if(tree, [&](auto &m) { return m.module_ast.get() == mod; })
+    auto const &mod_in_tree = *genex::find_if(tree, [&](auto &m) { return m->module_ast.get() == mod; })
 
 
-#define PREP_SCOPE_MANAGER_AND_META(s)                                      \
-    PREP_SCOPE_MANAGER;                                                     \
-    spp::compiler::CompilerBoot::move_scope_manager_to_ns(sm, mod_in_tree); \
-    auto meta = spp::asts::meta::CompilerMetaData();                        \
+#define PREP_SCOPE_MANAGER_AND_META(s)                                       \
+    PREP_SCOPE_MANAGER;                                                      \
+    spp::compiler::CompilerBoot::move_scope_manager_to_ns(sm, *mod_in_tree); \
+    auto meta = spp::asts::meta::CompilerMetaData();                         \
     meta.current_stage = (s)
 
 
@@ -36,9 +36,9 @@ auto spp::compiler::CompilerBoot::lex(
     -> void {
     // Lexing stage.
     for (auto &mod : tree) {
-        mod.code = utils::files::read_file(std::filesystem::current_path() / mod.path);
-        mod.tokens = lex::Lexer(mod.code).lex();
-        mod.error_formatter = std::make_unique<utils::errors::ErrorFormatter>(mod.tokens, mod.path.string());
+        mod->code = utils::files::read_file(std::filesystem::current_path() / mod->path);
+        mod->tokens = lex::Lexer(mod->code).lex();
+        mod->error_formatter = std::make_unique<utils::errors::ErrorFormatter>(mod->tokens, mod->path.string());
         bar.next();
     }
     bar.finish();
@@ -51,8 +51,8 @@ auto spp::compiler::CompilerBoot::parse(
     -> void {
     // Parsing stage.
     for (auto &mod : tree) {
-        mod.module_ast = parse::ParserSpp(mod.tokens, mod.error_formatter).parse();
-        m_modules.emplace_back(mod.module_ast.get());
+        mod->module_ast = parse::ParserSpp(mod->tokens, mod->error_formatter).parse();
+        m_modules.emplace_back(mod->module_ast.get());
         bar.next();
     }
     bar.finish();
@@ -67,7 +67,7 @@ auto spp::compiler::CompilerBoot::stage_1_pre_process(
     // Pre-processing stage.
     for (auto &mod : m_modules) {
         PREP_SCOPE_MANAGER;
-        mod->m_file_path = mod_in_tree.path;
+        mod->m_file_path = mod_in_tree->path;
         mod->stage_1_pre_process(ctx);
         bar.next();
     }

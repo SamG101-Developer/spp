@@ -556,9 +556,9 @@ auto spp::analyse::utils::func_utils::infer_generic_args(
     std::vector<asts::GenericArgumentAst*> explicit_args,
     std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_source,
     std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_target,
-    std::shared_ptr<asts::Ast> owner,
+    std::shared_ptr<asts::Ast> const &owner,
     scopes::Scope const *owner_scope,
-    std::shared_ptr<asts::IdentifierAst> variadic_param_identifier,
+    std::shared_ptr<asts::IdentifierAst> const &variadic_param_identifier,
     const bool is_tuple_owner,
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData *meta)
@@ -687,7 +687,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
     std::vector<asts::GenericArgumentCompKeywordAst*> explicit_args,
     std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_source,
     std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_target,
-    std::shared_ptr<asts::Ast> owner,
+    std::shared_ptr<asts::Ast> const &owner,
     scopes::Scope const *owner_scope,
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData *meta) -> void {
@@ -848,9 +848,9 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
     std::vector<asts::GenericArgumentTypeKeywordAst*> explicit_args,
     std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_source,
     std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, spp::utils::SymNameCmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_target,
-    std::shared_ptr<asts::Ast> owner,
+    std::shared_ptr<asts::Ast> const &owner,
     scopes::Scope const *owner_scope,
-    std::shared_ptr<asts::IdentifierAst> variadic_param_identifier,
+    std::shared_ptr<asts::IdentifierAst> const &variadic_param_identifier,
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData *meta) -> void {
     // Get the parameter names for ease of use.

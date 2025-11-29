@@ -345,7 +345,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
                 // Special case for variadic parameters (updates p_type so don't follow with "else if").
                 if (ast_cast<FunctionParameterVariadicAst>(param)) {
-                    p_type = generate::common_types::tuple_type(param->pos_start(), std::vector(a_type->type_parts().back()->generic_arg_group->args.size(), p_type));
+                    auto ts = std::vector(a_type->type_parts().back()->generic_arg_group->args.size(), p_type);
+                    p_type = generate::common_types::tuple_type(param->pos_start(), std::move(ts));
                     p_type->stage_7_analyse_semantics(sm, meta);
                 }
 

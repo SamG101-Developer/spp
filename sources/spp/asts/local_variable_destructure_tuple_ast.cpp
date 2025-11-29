@@ -1,4 +1,6 @@
 module;
+#include <opex/cast.hpp>
+
 #include <spp/macros.hpp>
 
 module spp.asts.local_variable_destructure_tuple_ast;

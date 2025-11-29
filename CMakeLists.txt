@@ -32,7 +32,7 @@ add_library(spp_lib)
 
 # Enable all warnings and treat them as errors.
 target_compile_options(spp_lib PRIVATE
-        -D_GLIBCXX_DEBUG -fno-modules-ts
+        -fmodules-ts
         -Wall -Wextra -Werror
         -Wcast-align -Wcast-qual -Wconversion -Wsign-conversion -Wsign-promo -Wctor-dtor-privacy -Winit-self
         -Wold-style-cast -Wundef -Wdisabled-optimization -Wmissing-declarations -Wmissing-include-dirs

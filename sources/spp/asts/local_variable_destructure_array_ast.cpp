@@ -23,6 +23,7 @@ import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.type_identifier_ast;
 import spp.lex.tokens;
 import genex;
@@ -151,9 +152,8 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
     const auto skip_index = not multi_arg_skips.empty()
                                 ? genex::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize
                                 : elems.size() - 1;
-    auto indexes = genex::views::iota(0uz, skip_index + 1)
-        | genex::views::concat(genex::views::iota(num_lhs_arr_elems, num_rhs_arr_elems))
-        | genex::to<std::vector>();
+    auto indexes = genex::views::iota(0uz, skip_index + 1uz) | genex::to<std::vector>();
+    indexes.append_range(genex::views::iota(num_lhs_arr_elems, num_rhs_arr_elems) | genex::to<std::vector>());
 
     // Create expanded "let" statements for each part of the destructure.
     for (auto &&[i, elem] : genex::views::zip(indexes, elems | genex::views::ptr)) {
