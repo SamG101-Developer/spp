@@ -65,17 +65,17 @@ namespace spp::asts::detail {
  */
 SPP_EXP_CLS struct spp::asts::GenericArgumentAst : virtual Ast, mixins::OrderableAst {
     using Ast::Ast;
-    friend struct GenericArgumentCompKeywordAst;
-    friend struct GenericArgumentCompPositionalAst;
-    friend struct GenericArgumentTypeKeywordAst;
-    friend struct GenericArgumentTypePositionalAst;
+    friend struct spp::asts::GenericArgumentCompKeywordAst;
+    friend struct spp::asts::GenericArgumentCompPositionalAst;
+    friend struct spp::asts::GenericArgumentTypeKeywordAst;
+    friend struct spp::asts::GenericArgumentTypePositionalAst;
 
 protected:
     SPP_ATTR_NODISCARD virtual auto equals_generic_argument_comp_keyword(GenericArgumentCompKeywordAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals_generic_argument_comp_positional(GenericArgumentCompPositionalAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals_generic_argument_type_keyword(GenericArgumentTypeKeywordAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals_generic_argument_type_positional(GenericArgumentTypePositionalAst const &) const -> std::strong_ordering;
-    SPP_ATTR_NODISCARD virtual auto equals(GenericArgumentAst const &other) const -> std::strong_ordering = 0;
+    SPP_ATTR_NODISCARD virtual auto equals(GenericArgumentAst const &other) const -> std::strong_ordering;
 
 public:
     explicit GenericArgumentAst(decltype(m_order_tag) order_tag);

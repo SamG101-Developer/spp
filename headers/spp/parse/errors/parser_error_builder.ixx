@@ -14,9 +14,15 @@ namespace spp::parse::errors {
     struct SyntacticErrorBuilder;
 }
 
+namespace spp::parse {
+    SPP_EXP_CLS class ParserSpp;
+}
+
 
 SPP_EXP_CLS template <typename T>
 struct spp::parse::errors::SyntacticErrorBuilder final : spp::utils::errors::AbstractErrorBuilder<T> {
+    friend class spp::parse::ParserSpp;
+
 private:
     std::size_t pos = 0;
     std::set<lex::SppTokenType> tokens = {};

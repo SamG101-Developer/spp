@@ -4,12 +4,10 @@ module;
 export module spp.asts.mixins.orderable_ast;
 
 
-/// @cond
 namespace spp::asts::mixins {
     SPP_EXP_CLS struct OrderableAst;
     SPP_EXP_CLS enum class OrderableTag;
 }
-/// @endcond
 
 
 /**

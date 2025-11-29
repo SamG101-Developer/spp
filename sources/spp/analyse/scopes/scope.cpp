@@ -14,6 +14,7 @@ module;
 #include <genex/views/transform.hpp>
 
 module spp.analyse.scopes.scope;
+import spp.analyse.scopes.symbols;
 import spp.asts.ast;
 import spp.asts.expression_ast;
 import spp.asts.generic_argument_ast;
@@ -29,6 +30,7 @@ import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.utils.ast_utils;
 import spp.utils.variants;
 import spp.compiler.module_tree;
 

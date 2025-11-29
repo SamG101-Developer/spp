@@ -29,6 +29,13 @@ auto spp::asts::GenericArgumentAst::equals_generic_argument_type_positional(
 }
 
 
+auto spp::asts::GenericArgumentAst::equals(
+    GenericArgumentAst const &) const
+    -> std::strong_ordering {
+    return std::strong_ordering::less;
+}
+
+
 spp::asts::GenericArgumentAst::GenericArgumentAst(
     const decltype(m_order_tag) order_tag) :
     OrderableAst(order_tag) {

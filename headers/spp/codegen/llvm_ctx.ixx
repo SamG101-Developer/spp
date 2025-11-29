@@ -5,7 +5,6 @@ export module spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
-
 namespace spp::codegen {
     SPP_EXP_CLS struct LLvmCtx;
 }
