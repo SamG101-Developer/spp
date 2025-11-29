@@ -23,9 +23,4 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralAst : LiteralAst {
     ~ArrayLiteralAst() override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
-
-protected:
-    SPP_ATTR_NODISCARD auto equals_array_literal_explicit_elements(ArrayLiteralExplicitElementsAst const &) const -> std::strong_ordering override;
-    SPP_ATTR_NODISCARD auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> std::strong_ordering override;
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 };
