@@ -13,6 +13,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.class_prototype_ast;
+import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
 import spp.analyse.errors.semantic_error;
@@ -26,6 +27,7 @@ import spp.asts.generic_parameter_group_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_mangle;
 import spp.lex.tokens;

@@ -9,7 +9,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-namespace analyse::scopes {
+namespace spp::analyse::scopes {
     SPP_EXP_CLS class ScopeManager;
 }
 

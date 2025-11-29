@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.loop_expression_ast;
-import spp.analyse.scopes.scope;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
 
@@ -17,6 +16,10 @@ namespace spp::asts {
     struct InnerScopeExpressionAst;
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
+}
+
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS struct Scope;
 }
 
 

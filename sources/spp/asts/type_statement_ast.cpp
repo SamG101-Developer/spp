@@ -8,9 +8,11 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.type_statement_ast;
-import spp.analyse.scopes.scope_block_name;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.convention_ast;

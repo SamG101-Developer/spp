@@ -1,6 +1,7 @@
 module spp.compiler.compiler;
 
 import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
 import spp.asts.module_prototype_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.utils.progress;

@@ -8,12 +8,10 @@ import spp.asts.meta.ast_printer;
 import spp.asts.mixins.compiler_stages;
 import spp.codegen.llvm_ctx;
 
-
 namespace spp::analyse::scopes {
     SPP_EXP_CLS struct Scope;
     SPP_EXP_CLS class ScopeManager;
 }
-
 
 namespace spp::asts {
     SPP_EXP_CLS struct AnnotationAst;
@@ -32,6 +30,7 @@ namespace spp::asts {
  * and end position identification.
  */
 SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
+    friend struct spp::analyse::scopes::ScopeManager;
     friend struct spp::asts::AnnotationAst;
     friend struct spp::asts::ClassAttributeAst;
     friend struct spp::asts::ClassPrototypeAst;

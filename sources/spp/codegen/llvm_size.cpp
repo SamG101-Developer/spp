@@ -5,6 +5,7 @@ module;
 #include <genex/views/transform.hpp>
 
 module spp.codegen.llvm_size;
+import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.type_utils;
 import spp.asts.ast;
 import spp.asts.class_attribute_ast;

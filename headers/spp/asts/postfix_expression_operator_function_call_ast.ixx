@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.postfix_expression_operator_function_call_ast;
-import spp.analyse.scopes.scope;
 import spp.asts.postfix_expression_operator_ast;
 import spp.codegen.llvm_ctx;
 
@@ -20,6 +19,10 @@ namespace spp::asts {
     SPP_EXP_CLS struct PostfixExpressionOperatorFunctionCallAst;
     SPP_EXP_CLS struct TypeAst;
     SPP_EXP_CLS struct UnaryExpressionOperatorAsyncAst;
+}
+
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS struct Scope;
 }
 
 

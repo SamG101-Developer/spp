@@ -8,6 +8,7 @@ module;
 module spp.codegen.llvm_mangle;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.symbols;
 import spp.asts.cmp_statement_ast;
 import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
