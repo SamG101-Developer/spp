@@ -178,6 +178,7 @@ namespace spp::parse {
 SPP_EXP_CLS class spp::parse::ParserSpp final : public ParserBase {
 public:
     using ParserBase::ParserBase;
+    ~ParserSpp() override = default;
 
 public:
     auto parse() -> std::unique_ptr<asts::ModulePrototypeAst>;

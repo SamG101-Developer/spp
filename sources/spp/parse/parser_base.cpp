@@ -14,4 +14,4 @@ import spp.utils.error_formatter;
 // }
 
 
-// spp::parse::ParserBase::~ParserBase() = default;
+spp::parse::ParserBase::~ParserBase() = default;
