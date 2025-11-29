@@ -10,7 +10,7 @@ import spp.codegen.llvm_ctx;
 
 
 namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
+    SPP_EXP_CLS struct Scope;
     SPP_EXP_CLS class ScopeManager;
 }
 

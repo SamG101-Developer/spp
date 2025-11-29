@@ -18,7 +18,7 @@ namespace spp::utils::errors {
 }
 
 namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
+    SPP_EXP_CLS struct Scope;
 }
 
 

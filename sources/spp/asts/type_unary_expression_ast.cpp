@@ -5,6 +5,7 @@ module;
 
 module spp.asts.type_unary_expression_ast;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
 import spp.asts.convention_ast;
 import spp.asts.generic_argument_group_ast;
@@ -12,6 +13,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.type_unary_expression_operator_ast;
 import spp.asts.type_unary_expression_operator_borrow_ast;
 import spp.asts.type_unary_expression_operator_namespace_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 

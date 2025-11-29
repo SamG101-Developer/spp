@@ -17,7 +17,7 @@ namespace spp::asts {
 }
 
 namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
+    SPP_EXP_CLS struct Scope;
     SPP_EXP_CLS struct Symbol;
     SPP_EXP_CLS struct NamespaceSymbol;
     SPP_EXP_CLS struct TypeSymbol;

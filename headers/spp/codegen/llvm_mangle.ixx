@@ -3,12 +3,15 @@ module;
 
 export module spp.codegen.llvm_mangle;
 import std;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.symbols;
 
 namespace spp::asts {
     SPP_EXP_CLS struct CmpStatementAst;
     SPP_EXP_CLS struct FunctionPrototypeAst;
+}
+
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS struct Scope;
+    SPP_EXP_CLS struct TypeSymbol;
 }
 
 

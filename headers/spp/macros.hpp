@@ -108,3 +108,5 @@
  * be used, because it is interpreted as an "empty initializer list".
  */
 #define SPP_NO_ANNOTATIONS std::vector<std::unique_ptr<asts::AnnotationAst>>()
+
+#define SPP_LLVM_FUNC_INFO analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto

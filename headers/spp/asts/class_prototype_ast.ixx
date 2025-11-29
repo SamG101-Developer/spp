@@ -6,9 +6,6 @@ import spp.asts.ast;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.module_member_ast;
 import spp.asts.sup_member_ast;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
 import spp.codegen.llvm_ctx;
 
 import llvm;
@@ -22,6 +19,12 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
     SPP_EXP_CLS struct TypeStatementAst;
+}
+
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS struct Scope;
+    SPP_EXP_CLS class ScopeManager;
+    SPP_EXP_CLS struct TypeSymbol;
 }
 
 

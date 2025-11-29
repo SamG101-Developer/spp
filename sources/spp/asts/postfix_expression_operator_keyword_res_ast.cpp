@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.postfix_expression_operator_keyword_res_ast;
+import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.type_utils;
 import spp.asts.fold_expression_ast;
 import spp.asts.generic_argument_group_ast;
@@ -16,6 +17,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 

@@ -54,6 +54,7 @@ export namespace llvm {
         using ::llvm::Intrinsic::sin;
         using ::llvm::Intrinsic::sqrt;
         using ::llvm::Intrinsic::tan;
+        using ::llvm::Intrinsic::ctlz;
 
         using ::llvm::Intrinsic::memset;
         using ::llvm::Intrinsic::trap;

@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_argument_type_keyword_ast;
-import spp.analyse.scopes.symbols;
 import spp.asts.generic_argument_type_ast;
 
 import std;
@@ -11,6 +10,10 @@ namespace spp::asts {
     SPP_EXP_CLS struct GenericArgumentTypeKeywordAst;
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
+}
+
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS struct TypeSymbol;
 }
 
 

@@ -2,14 +2,17 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.codegen.llvm_size;
-import spp.analyse.scopes.scope_manager;
 
 import std;
-
 
 namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
+
+namespace analyse::scopes {
+    SPP_EXP_CLS class ScopeManager;
+}
+
 
 namespace spp::codegen {
     SPP_EXP_FUN auto size_of(

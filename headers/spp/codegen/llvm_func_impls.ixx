@@ -4,7 +4,6 @@ module;
 export module spp.codegen.llvm_func_impls;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_mangle;
-import spp.analyse.scopes.scope_manager;
 
 import llvm;
 import std;
@@ -14,8 +13,9 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
-#define SPP_LLVM_FUNC_INFO analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class ScopeManager;
+}
 
 
 /**
@@ -341,117 +341,4 @@ namespace spp::codegen::func_impls {
     auto std_intrinsic_fptoui(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void;
 
     auto std_intrinsic_fpclass(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void;
-}
-
-
-template <typename F>
-auto spp::codegen::func_impls::simple_intrinsic_binop(
-    analyse::scopes::ScopeManager const *sm,
-    asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
-    llvm::Type *ty,
-    F &&method)
-    -> void {
-    // Create the binary function.
-    const auto name = mangle::mangle_fun_name(*sm->current_scope, *proto);
-    const auto fn_ty = llvm::FunctionType::get(ty, {ty, ty}, false);
-    const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->module.get());
-    const auto entry_bb = llvm::BasicBlock::Create(ctx->context, "entry", fn);
-
-    // Build the function body.
-    ctx->builder.SetInsertPoint(entry_bb);
-    const auto lhs = fn->arg_begin();
-    const auto rhs = fn->arg_begin() + 1;
-    const auto result = method(lhs, rhs);
-    ctx->builder.CreateRet(result);
-}
-
-
-template <typename F>
-auto spp::codegen::func_impls::simple_intrinsic_binop_assign(
-    analyse::scopes::ScopeManager const *sm,
-    asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
-    llvm::Type *ty,
-    F &&method)
-    -> void {
-    // Create the add_assign function.
-    const auto name = mangle::mangle_fun_name(*sm->current_scope, *proto);
-    const auto ptr_ty = llvm::PointerType::get(ctx->context, 0);
-    const auto fn_ty = llvm::FunctionType::get(llvm::Type::getVoidTy(ctx->context), {ptr_ty, ty}, false);
-    const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->module.get());
-    const auto entry_bb = llvm::BasicBlock::Create(ctx->context, "entry", fn);
-
-    // Build the function body.
-    ctx->builder.SetInsertPoint(entry_bb);
-    const auto lhs = fn->arg_begin();
-    const auto rhs = fn->arg_begin() + 1;
-    const auto loaded_val = ctx->builder.CreateLoad(ty, lhs, "loaded_val");
-    const auto result = method(loaded_val, rhs);
-    ctx->builder.CreateStore(result, lhs);
-    ctx->builder.CreateRetVoid();
-}
-
-
-template <typename F>
-auto spp::codegen::func_impls::simple_intrinsic_unop(
-    SPP_LLVM_FUNC_INFO,
-    LLvmCtx *ctx,
-    llvm::Type *ty,
-    F &&method)
-    -> void {
-    // Create the unary function.
-    const auto name = mangle::mangle_fun_name(*sm->current_scope, *proto);
-    const auto fn_ty = llvm::FunctionType::get(ty, {ty}, false);
-    const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->module.get());
-    const auto entry_bb = llvm::BasicBlock::Create(ctx->context, "entry", fn);
-
-    // Build the function body.
-    ctx->builder.SetInsertPoint(entry_bb);
-    const auto operand = fn->arg_begin();
-    const auto result = method(operand);
-    ctx->builder.CreateRet(result);
-}
-
-
-auto spp::codegen::func_impls::simple_binary_intrinsic_call(
-    SPP_LLVM_FUNC_INFO,
-    LLvmCtx *ctx,
-    llvm::Type *ty,
-    const llvm::Intrinsic::IndependentIntrinsics intrinsic)
-    -> void {
-    // Create the function.
-    const auto name = mangle::mangle_fun_name(*sm->current_scope, *proto);
-    const auto fn_ty = llvm::FunctionType::get(ty, {ty, ty}, false);
-    const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->module.get());
-    const auto entry_bb = llvm::BasicBlock::Create(ctx->context, "entry", fn);
-
-    // Build the function body.
-    ctx->builder.SetInsertPoint(entry_bb);
-    const auto lhs = fn->arg_begin();
-    const auto rhs = fn->arg_begin() + 1;
-    const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), intrinsic, {ty});
-    const auto result = ctx->builder.CreateCall(intrinsic_fn, {lhs, rhs}, "result");
-    ctx->builder.CreateRet(result);
-}
-
-
-auto spp::codegen::func_impls::simple_unary_intrinsic_call(
-    SPP_LLVM_FUNC_INFO,
-    LLvmCtx *ctx,
-    llvm::Type *ty,
-    const llvm::Intrinsic::IndependentIntrinsics intrinsic)
-    -> void {
-    // Create the function.
-    const auto name = mangle::mangle_fun_name(*sm->current_scope, *proto);
-    const auto fn_ty = llvm::FunctionType::get(ty, {ty}, false);
-    const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->module.get());
-    const auto entry_bb = llvm::BasicBlock::Create(ctx->context, "entry", fn);
-
-    // Build the function body.
-    ctx->builder.SetInsertPoint(entry_bb);
-    const auto operand = fn->arg_begin();
-    const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), intrinsic, {ty});
-    const auto result = ctx->builder.CreateCall(intrinsic_fn, {operand}, "result");
-    ctx->builder.CreateRet(result);
 }
