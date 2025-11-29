@@ -22,10 +22,8 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::mixins::AbstractTypeAst {
-public:
-    virtual ~AbstractTypeAst() = default;
+    virtual ~AbstractTypeAst();
 
-public:
     virtual auto iterator() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> = 0;
 
     virtual auto is_never_type() const -> bool = 0;

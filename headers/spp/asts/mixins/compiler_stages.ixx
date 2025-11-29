@@ -40,7 +40,7 @@ protected:
 public:
     CompilerStages() = default;
 
-    virtual ~CompilerStages() = default;
+    virtual ~CompilerStages();
 
     /**
      * The preprocessor stage performs AST mutation and transformation before any analysis or scope generate is done.

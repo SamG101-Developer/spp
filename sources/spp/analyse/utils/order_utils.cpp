@@ -1,11 +1,11 @@
 module spp.analyse.utils.order_utils;
 import spp.asts.ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.mixins.orderable_ast;
-import spp.asts.utils.orderable;
+// import spp.asts.type_identifier_ast;
+// import spp.asts.mixins.orderable_ast;
+// import spp.asts.utils.orderable;
 
-import genex;
-import magic_enum;
+// import genex;
+// import magic_enum;
 import std;
 
 
@@ -39,7 +39,7 @@ inline constexpr std::array PARAM_ORDER_ARR{
 //         return a < b;
 //     });
 //
-//     // Return arguments that are out of order. Todo: why "ast_cast" fails here?
+//     // Return arguments that are out of order.
 //     auto out_of_order = genex::views::zip(tagged_args, args_sorted)
 //         | genex::views::filter([](auto &&x) { return std::get<0>(x) != std::get<1>(x); })
 //         | genex::views::transform([](auto &&x) { return std::get<1>(x); })
@@ -68,4 +68,5 @@ inline constexpr std::array PARAM_ORDER_ARR{
 //         std::move(params),
 //         std::vector(PARAM_ORDER_ARR.begin(), PARAM_ORDER_ARR.end())
 //     );
+//     return std::vector<std::pair<std::string, asts::Ast*>>{};
 // }

@@ -29,6 +29,7 @@ private:
 
 public:
     SyntacticErrorBuilder() = default;
+    ~SyntacticErrorBuilder() override = default;
 
     SPP_ATTR_NORETURN auto raise() -> void override {
         // using namespace std::string_literals;

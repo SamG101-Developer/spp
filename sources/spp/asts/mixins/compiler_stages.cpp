@@ -1,6 +1,9 @@
 module spp.asts.mixins.compiler_stages;
 
 
+spp::asts::mixins::CompilerStages::~CompilerStages() = default;
+
+
 auto spp::asts::mixins::CompilerStages::stage_1_pre_process(
     Ast *)
     -> void {

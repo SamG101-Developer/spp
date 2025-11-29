@@ -15,6 +15,19 @@ namespace spp::asts::mixins {
 
 
 SPP_EXP_CLS namespace spp::analyse::utils::order_utils {
+    inline constexpr std::array ARG_ORDER_ARR{
+        spp::asts::utils::OrderableTag::POSITIONAL_ARG,
+        spp::asts::utils::OrderableTag::KEYWORD_ARG,
+    };
+
+
+    inline constexpr std::array PARAM_ORDER_ARR{
+        spp::asts::utils::OrderableTag::SELF_PARAM,
+        spp::asts::utils::OrderableTag::REQUIRED_PARAM,
+        spp::asts::utils::OrderableTag::OPTIONAL_PARAM,
+        spp::asts::utils::OrderableTag::VARIADIC_PARAM,
+    };
+
     /**
      * Return a list of items that are not in order. The order is provided by internal tags attached to the ASTs, as
      * they all inherit the @c OrderableAst mixin.
@@ -33,9 +46,14 @@ SPP_EXP_CLS namespace spp::analyse::utils::order_utils {
      * @param args The list of arguments to check the order of.
      * @return The list of arguments that are out of order, paired with a string representation of their tag.
      */
-    auto order_args(
+    inline auto order_args(
         std::vector<asts::mixins::OrderableAst*> &&args)
-        -> std::vector<std::pair<std::string, asts::Ast*>>;
+        -> std::vector<std::pair<std::string, asts::Ast*>> {
+        return order(
+            std::move(args),
+            std::vector(ARG_ORDER_ARR.begin(), ARG_ORDER_ARR.end())
+        );
+    }
 
     /**
      * The entry point into ordering parameters. This uses the internal order defined for function parameters:
@@ -43,9 +61,14 @@ SPP_EXP_CLS namespace spp::analyse::utils::order_utils {
      * @param params The list of parameters to check the order of.
      * @return The list of parameters that are out of order, paired with a string representation of their tag.
      */
-    auto order_params(
+    inline auto order_params(
         std::vector<asts::mixins::OrderableAst*> &&params)
-        -> std::vector<std::pair<std::string, asts::Ast*>>;
+        -> std::vector<std::pair<std::string, asts::Ast*>> {
+        return order(
+            std::move(params),
+            std::vector(PARAM_ORDER_ARR.begin(), PARAM_ORDER_ARR.end())
+        );
+    }
 }
 
 /// @endcond

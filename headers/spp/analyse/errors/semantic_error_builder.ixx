@@ -20,6 +20,7 @@ namespace spp::analyse::errors {
 SPP_EXP_CLS template <typename T> requires std::derived_from<T, spp::analyse::errors::SemanticError>
 struct spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::AbstractErrorBuilder<T> {
     SemanticErrorBuilder() = default;
+    ~SemanticErrorBuilder() override = default;
 
     SPP_ATTR_NORETURN auto raise() -> void override {
         // const auto cast_error = dynamic_cast<SemanticError*>(this->m_err_obj.get());
