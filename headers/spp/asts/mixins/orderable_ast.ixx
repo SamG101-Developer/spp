@@ -2,11 +2,11 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.mixins.orderable_ast;
+import spp.asts.utils.orderable;
 
 
 namespace spp::asts::mixins {
     SPP_EXP_CLS struct OrderableAst;
-    SPP_EXP_CLS enum class OrderableTag;
 }
 
 
@@ -17,22 +17,12 @@ namespace spp::asts::mixins {
  */
 SPP_EXP_CLS struct spp::asts::mixins::OrderableAst {
 protected:
-    OrderableTag m_order_tag;
+    utils::OrderableTag m_order_tag;
 
 public:
-    explicit OrderableAst(OrderableTag order_tag);
+    explicit OrderableAst(utils::OrderableTag order_tag);
 
     virtual ~OrderableAst();
 
-    auto get_order_tag() const -> OrderableTag;
-};
-
-
-SPP_EXP_CLS enum class spp::asts::mixins::OrderableTag {
-    KEYWORD_ARG,
-    POSITIONAL_ARG,
-    SELF_PARAM,
-    REQUIRED_PARAM,
-    OPTIONAL_PARAM,
-    VARIADIC_PARAM,
+    auto get_order_tag() const -> utils::OrderableTag;
 };

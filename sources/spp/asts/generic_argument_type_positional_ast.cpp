@@ -9,11 +9,12 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
 
 
 spp::asts::GenericArgumentTypePositionalAst::GenericArgumentTypePositionalAst(
     decltype(val) val) :
-    GenericArgumentTypeAst(std::move(val), mixins::OrderableTag::POSITIONAL_ARG) {
+    GenericArgumentTypeAst(std::move(val), utils::OrderableTag::POSITIONAL_ARG) {
 }
 
 

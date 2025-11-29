@@ -11,6 +11,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
 import spp.lex.tokens;
 
 
@@ -18,7 +19,7 @@ spp::asts::GenericArgumentTypeKeywordAst::GenericArgumentTypeKeywordAst(
     decltype(name) name,
     decltype(tok_assign) &&tok_assign,
     decltype(val) val) :
-    GenericArgumentTypeAst(std::move(val), mixins::OrderableTag::KEYWORD_ARG),
+    GenericArgumentTypeAst(std::move(val), utils::OrderableTag::KEYWORD_ARG),
     name(std::move(name)),
     tok_assign(std::move(tok_assign)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");

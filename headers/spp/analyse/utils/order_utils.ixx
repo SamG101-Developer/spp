@@ -2,7 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.order_utils;
-import spp.asts.mixins.orderable_ast;
+import spp.asts.utils.orderable;
 import std;
 
 namespace spp::asts {
@@ -24,7 +24,7 @@ SPP_EXP_CLS namespace spp::analyse::utils::order_utils {
      */
     auto order(
         std::vector<asts::mixins::OrderableAst*> &&args,
-        std::vector<asts::mixins::OrderableTag> order)
+        std::vector<asts::utils::OrderableTag> order)
         -> std::vector<std::pair<std::string, asts::Ast*>>;
 
     /**

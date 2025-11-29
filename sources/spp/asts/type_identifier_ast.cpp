@@ -2,6 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.type_identifier_ast;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.class_prototype_ast;
@@ -34,7 +36,7 @@ spp::asts::TypeIdentifierAst::TypeIdentifierAst(
     m_pos(pos),
     m_is_never_type(false) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_arg_group);
-    this->generic_arg_group->tok_l->m_pos = this->generic_arg_group->tok_l->m_pos ? this->generic_arg_group->tok_l->m_pos : pos + this->pos_start() + this->name.length();
+    this->generic_arg_group->tok_l->m_pos = this->generic_arg_group->tok_l->m_pos ? this->generic_arg_group->tok_l->m_pos : pos + this->name.length();
     this->generic_arg_group->tok_r->m_pos = this->generic_arg_group->tok_r->m_pos ? this->generic_arg_group->tok_r->m_pos : this->generic_arg_group->tok_l->m_pos + 1;
 }
 

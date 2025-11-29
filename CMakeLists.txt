@@ -5,10 +5,10 @@ project(spp)
 # Set the C++ standard and other compiler options.
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_MODULE_STD ON)
-#set(CMAKE_C_COMPILER_LAUNCHER ccache)
-#set(CMAKE_CXX_COMPILER_LAUNCHER ccache)
-#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
-#set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
+set(CMAKE_C_COMPILER_LAUNCHER ccache)
+set(CMAKE_CXX_COMPILER_LAUNCHER ccache)
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
 
 # Find dependencies.
 find_package(ColEx REQUIRED) # colored console output
@@ -33,7 +33,7 @@ add_library(spp_lib)
 
 # Enable all warnings and treat them as errors.
 target_compile_options(spp_lib PRIVATE
-        -fmodules-ts
+        -fno-modules-ts
         -Wall -Wextra -Werror
         -Wcast-align -Wcast-qual -Wconversion -Wsign-conversion -Wsign-promo -Wctor-dtor-privacy -Winit-self
         -Wold-style-cast -Wundef -Wdisabled-optimization -Wmissing-declarations -Wmissing-include-dirs

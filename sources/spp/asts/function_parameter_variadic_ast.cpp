@@ -8,6 +8,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
 import spp.lex.tokens;
 
 
@@ -16,7 +17,7 @@ spp::asts::FunctionParameterVariadicAst::FunctionParameterVariadicAst(
     decltype(var) &&var,
     decltype(tok_colon) &&tok_colon,
     decltype(type) type) :
-    FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type), mixins::OrderableTag::VARIADIC_PARAM),
+    FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type), utils::OrderableTag::VARIADIC_PARAM),
     tok_ellipsis(std::move(tok_ellipsis)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_ellipsis, lex::SppTokenType::TK_DOUBLE_DOT, "..", var ? var->pos_start() : 0);
 }

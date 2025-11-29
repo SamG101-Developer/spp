@@ -6,12 +6,13 @@ import spp.asts.generic_parameter_type_inline_constraints_ast;
 import spp.asts.type_ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
 
 
 spp::asts::GenericParameterTypeRequiredAst::GenericParameterTypeRequiredAst(
     decltype(name) &&name,
     decltype(constraints) &&constraints) :
-    GenericParameterTypeAst(std::move(name), std::move(constraints), mixins::OrderableTag::REQUIRED_PARAM) {
+    GenericParameterTypeAst(std::move(name), std::move(constraints), utils::OrderableTag::REQUIRED_PARAM) {
 }
 
 

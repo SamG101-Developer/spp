@@ -2,28 +2,30 @@ module spp.analyse.utils.order_utils;
 import spp.asts.ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.mixins.orderable_ast;
+import spp.asts.utils.orderable;
+
 import genex;
 import magic_enum;
 import std;
 
 
-inline const auto ARG_ORDER = std::vector{
-    spp::asts::mixins::OrderableTag::POSITIONAL_ARG,
-    spp::asts::mixins::OrderableTag::KEYWORD_ARG
+inline constexpr std::array ARG_ORDER_ARR{
+    spp::asts::utils::OrderableTag::POSITIONAL_ARG,
+    spp::asts::utils::OrderableTag::KEYWORD_ARG,
 };
 
 
-inline const auto PARAM_ORDER = std::vector{
-    spp::asts::mixins::OrderableTag::SELF_PARAM,
-    spp::asts::mixins::OrderableTag::REQUIRED_PARAM,
-    spp::asts::mixins::OrderableTag::OPTIONAL_PARAM,
-    spp::asts::mixins::OrderableTag::VARIADIC_PARAM
+inline constexpr std::array PARAM_ORDER_ARR{
+    spp::asts::utils::OrderableTag::SELF_PARAM,
+    spp::asts::utils::OrderableTag::REQUIRED_PARAM,
+    spp::asts::utils::OrderableTag::OPTIONAL_PARAM,
+    spp::asts::utils::OrderableTag::VARIADIC_PARAM,
 };
 
 
 auto spp::analyse::utils::order_utils::order(
     std::vector<asts::mixins::OrderableAst*> &&args,
-    std::vector<asts::mixins::OrderableTag> order)
+    std::vector<asts::utils::OrderableTag> order)
     -> std::vector<std::pair<std::string, asts::Ast*>> {
     // Tag each argument with its "order tag".
     auto tagged_args = args
@@ -51,7 +53,10 @@ auto spp::analyse::utils::order_utils::order_args(
     std::vector<asts::mixins::OrderableAst*> &&args)
     -> std::vector<std::pair<std::string, asts::Ast*>> {
     // Call the generic order function with the argument order.
-    return order(std::move(args), ARG_ORDER);
+    return order(
+        std::move(args),
+        std::vector<asts::utils::OrderableTag>(ARG_ORDER_ARR.begin(), ARG_ORDER_ARR.end())
+    );
 }
 
 
@@ -59,5 +64,8 @@ auto spp::analyse::utils::order_utils::order_params(
     std::vector<asts::mixins::OrderableAst*> &&params)
     -> std::vector<std::pair<std::string, asts::Ast*>> {
     // Call the generic order function with the parameter order.
-    return order(std::move(params), PARAM_ORDER);
+    return order(
+        std::move(params),
+        std::vector<asts::utils::OrderableTag>(PARAM_ORDER_ARR.begin(), PARAM_ORDER_ARR.end())
+    );
 }

@@ -11,7 +11,7 @@ auto spp::parse::errors::SyntacticErrorBuilder<T>::raise() -> void {
         | genex::views::transform(&lex::tok_to_string)
         | genex::views::intersperse(", "s)
         | genex::views::join
-        | genex::to<std::string>();;
+        | genex::to<std::string>();
     token_set_str = "'" + token_set_str + "'";
 
     // Replace the "£" with the string tokens.

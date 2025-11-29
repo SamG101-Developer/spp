@@ -8,6 +8,7 @@ import spp.asts.token_ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.asts.utils.orderable;
 
 
 spp::asts::FunctionCallArgumentKeywordAst::FunctionCallArgumentKeywordAst(
@@ -15,7 +16,7 @@ spp::asts::FunctionCallArgumentKeywordAst::FunctionCallArgumentKeywordAst(
     decltype(tok_assign) &&tok_assign,
     decltype(conv) &&conv,
     decltype(val) &&val) :
-    FunctionCallArgumentAst(std::move(conv), std::move(val), mixins::OrderableTag::KEYWORD_ARG),
+    FunctionCallArgumentAst(std::move(conv), std::move(val), utils::OrderableTag::KEYWORD_ARG),
     name(std::move(name)),
     tok_assign(std::move(tok_assign)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(tok_assign, lex::SppTokenType::TK_ASSIGN, "=");

@@ -6,6 +6,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
 
 
 spp::asts::GenericParameterCompRequiredAst::GenericParameterCompRequiredAst(
@@ -13,7 +14,7 @@ spp::asts::GenericParameterCompRequiredAst::GenericParameterCompRequiredAst(
     decltype(name) &&name,
     decltype(tok_colon) &&tok_colon,
     decltype(type) &&type) :
-    GenericParameterCompAst(std::move(tok_cmp), std::move(name), std::move(tok_colon), std::move(type), mixins::OrderableTag::REQUIRED_PARAM) {
+    GenericParameterCompAst(std::move(tok_cmp), std::move(name), std::move(tok_colon), std::move(type), utils::OrderableTag::REQUIRED_PARAM) {
 }
 
 

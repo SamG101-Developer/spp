@@ -21,6 +21,7 @@ import spp.compiler.module_tree;
 import genex;
 
 
+// Todo: move to own module.
 spp::analyse::scopes::ScopeBlockName::ScopeBlockName(std::string &&name) : name(std::move(name)) {
 }
 

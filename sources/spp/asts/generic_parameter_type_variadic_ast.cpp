@@ -7,13 +7,14 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
 
 
 spp::asts::GenericParameterTypeVariadicAst::GenericParameterTypeVariadicAst(
     decltype(tok_ellipsis) &&tok_ellipsis,
     decltype(name) &&name,
     decltype(constraints) &&constraints) :
-    GenericParameterTypeAst(std::move(name), std::move(constraints), mixins::OrderableTag::VARIADIC_PARAM),
+    GenericParameterTypeAst(std::move(name), std::move(constraints), utils::OrderableTag::VARIADIC_PARAM),
     tok_ellipsis(std::move(tok_ellipsis)) {
 }
 

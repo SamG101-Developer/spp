@@ -7,13 +7,14 @@ import spp.asts.expression_ast;
 import spp.asts.token_ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
 
 
 spp::asts::FunctionCallArgumentPositionalAst::FunctionCallArgumentPositionalAst(
     decltype(conv) &&conv,
     decltype(tok_unpack) &&tok_unpack,
     decltype(val) &&val) :
-    FunctionCallArgumentAst(std::move(conv), std::move(val), mixins::OrderableTag::POSITIONAL_ARG),
+    FunctionCallArgumentAst(std::move(conv), std::move(val), utils::OrderableTag::POSITIONAL_ARG),
     tok_unpack(std::move(tok_unpack)) {
 }
 

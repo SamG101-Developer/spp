@@ -12,12 +12,13 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
 
 
 spp::asts::FunctionParameterSelfAst::FunctionParameterSelfAst(
     decltype(conv) &&conv,
     decltype(var) &&var) :
-    FunctionParameterAst(std::move(var), nullptr, nullptr, mixins::OrderableTag::SELF_PARAM),
+    FunctionParameterAst(std::move(var), nullptr, nullptr, utils::OrderableTag::SELF_PARAM),
     conv(std::move(conv)) {
     type = generate::common_types::self_type(pos_start());
 }

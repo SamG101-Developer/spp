@@ -37,7 +37,7 @@ auto spp::utils::errors::ErrorFormatter::internal_parse_error_raw_pos(
         m_tokens | genex::views::drop(ast_start_pos) | genex::to<std::vector>(),
         [](auto &&token) { return token.type == RawTokenType::TK_LINE_FEED; }, {}, m_tokens.size() - ast_start_pos) + ast_start_pos;
 
-    auto error_line_tokens = std::vector<lex::RawToken>(
+    auto error_line_tokens = std::vector(
         m_tokens.begin() + error_line_start_pos,
         m_tokens.begin() + (error_line_end_pos as SSize));
 

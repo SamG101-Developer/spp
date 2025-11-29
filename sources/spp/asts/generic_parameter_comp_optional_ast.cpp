@@ -12,6 +12,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
 
 
 spp::asts::GenericParameterCompOptionalAst::GenericParameterCompOptionalAst(
@@ -21,7 +22,7 @@ spp::asts::GenericParameterCompOptionalAst::GenericParameterCompOptionalAst(
     decltype(type) &&type,
     decltype(tok_assign) &&tok_assign,
     decltype(default_val) &&default_val) :
-    GenericParameterCompAst(std::move(tok_cmp), std::move(name), std::move(tok_colon), std::move(type), mixins::OrderableTag::OPTIONAL_PARAM),
+    GenericParameterCompAst(std::move(tok_cmp), std::move(name), std::move(tok_colon), std::move(type), utils::OrderableTag::OPTIONAL_PARAM),
     tok_assign(std::move(tok_assign)),
     default_val(std::move(default_val)) {
 }

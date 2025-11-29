@@ -11,11 +11,12 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
 
 
 spp::asts::GenericArgumentCompPositionalAst::GenericArgumentCompPositionalAst(
     decltype(val) &&val) :
-    GenericArgumentCompAst(std::move(val), mixins::OrderableTag::POSITIONAL_ARG) {
+    GenericArgumentCompAst(std::move(val), utils::OrderableTag::POSITIONAL_ARG) {
 }
 
 

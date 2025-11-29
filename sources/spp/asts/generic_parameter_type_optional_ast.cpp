@@ -13,6 +13,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
 
 
 spp::asts::GenericParameterTypeOptionalAst::GenericParameterTypeOptionalAst(
@@ -20,7 +21,7 @@ spp::asts::GenericParameterTypeOptionalAst::GenericParameterTypeOptionalAst(
     decltype(constraints) &&constraints,
     decltype(tok_assign) &&tok_assign,
     decltype(default_val) &&default_val) :
-    GenericParameterTypeAst(std::move(name), std::move(constraints), mixins::OrderableTag::OPTIONAL_PARAM),
+    GenericParameterTypeAst(std::move(name), std::move(constraints), utils::OrderableTag::OPTIONAL_PARAM),
     tok_assign(std::move(tok_assign)),
     default_val(std::move(default_val)) {
 }
