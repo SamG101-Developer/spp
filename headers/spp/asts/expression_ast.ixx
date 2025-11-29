@@ -35,21 +35,8 @@ namespace spp::asts {
  * this class.
  */
 SPP_EXP_CLS struct spp::asts::ExpressionAst : StatementAst {
-    friend struct spp::asts::ArrayLiteralExplicitElementsAst;
-    friend struct spp::asts::ArrayLiteralRepeatedElementAst;
-    friend struct spp::asts::BooleanLiteralAst;
-    friend struct spp::asts::FloatLiteralAst;
-    friend struct spp::asts::IdentifierAst;
-    friend struct spp::asts::IntegerLiteralAst;
-    friend struct spp::asts::StringLiteralAst;
-    friend struct spp::asts::TupleLiteralAst;
-    friend struct spp::asts::TypeIdentifierAst;
-    friend struct spp::asts::TypeUnaryExpressionAst;
-    friend struct spp::asts::TypePostfixExpressionAst;
-
     using StatementAst::StatementAst;
 
-protected:
     SPP_ATTR_NODISCARD virtual auto equals_array_literal_explicit_elements(ArrayLiteralExplicitElementsAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals_boolean_literal(BooleanLiteralAst const &) const -> std::strong_ordering;
@@ -63,7 +50,6 @@ protected:
     SPP_ATTR_NODISCARD virtual auto equals_type_postfix_expression(TypePostfixExpressionAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals(ExpressionAst const &other) const -> std::strong_ordering; // Not "= 0" on purpose (postfix, unary etc)
 
-public:
     ExpressionAst(ExpressionAst const &other);
     ~ExpressionAst() override;
     auto operator<=>(const ExpressionAst &) const -> std::strong_ordering;

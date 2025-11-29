@@ -1,18 +1,8 @@
-module;
-#include <genex/to_container.hpp>
-#include <genex/actions/remove_if.hpp>
-#include <genex/views/borrow.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/drop.hpp>
-#include <genex/views/join_with.hpp>
-#include <genex/views/materialize.hpp>
-#include <genex/views/move.hpp>
-#include <genex/views/split.hpp>
-#include <genex/views/transform.hpp>
-
 module spp.compiler.module_tree;
 import spp.asts.module_prototype_ast;
 import glob;
+import genex;
+import std;
 
 
 auto spp::compiler::Module::from_path(std::filesystem::path const &path) {

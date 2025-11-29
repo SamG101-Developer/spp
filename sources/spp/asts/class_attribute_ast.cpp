@@ -1,10 +1,4 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/views/for_each.hpp>
-#include <genex/views/intersperse.hpp>
-#include <genex/views/join.hpp>
-#include <genex/views/transform.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.class_attribute_ast;
@@ -21,6 +15,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::ClassAttributeAst::ClassAttributeAst(

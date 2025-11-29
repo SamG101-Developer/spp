@@ -1,11 +1,3 @@
-module;
-#include <genex/meta.hpp>
-#include <genex/to_container.hpp>
-#include <genex/views/duplicates.hpp>
-#include <genex/views/for_each.hpp>
-#include <genex/views/materialize.hpp>
-#include <genex/views/transform.hpp>
-
 module spp.asts.class_implementation_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
@@ -14,6 +6,7 @@ import spp.asts.identifier_ast;
 import spp.asts.class_attribute_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::ClassImplementationAst::~ClassImplementationAst() = default;

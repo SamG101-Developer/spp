@@ -1,7 +1,3 @@
-module;
-#include <genex/views/enumerate.hpp>
-#include <genex/views/ptr.hpp>
-
 module spp.asts.inner_scope_expression_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
@@ -13,6 +9,7 @@ import spp.asts.statement_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.generate.common_types;
+import genex;
 
 
 template <typename T>

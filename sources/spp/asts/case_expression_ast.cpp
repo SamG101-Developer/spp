@@ -1,10 +1,4 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/actions/remove.hpp>
-#include <genex/views/intersperse.hpp>
-#include <genex/views/join.hpp>
-#include <genex/views/ptr.hpp>
-#include <genex/views/transform.hpp>
 #include <opex/cast.hpp>
 
 #include <spp/macros.hpp>
@@ -30,6 +24,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import genex;
 
 
 spp::asts::CaseExpressionAst::CaseExpressionAst(

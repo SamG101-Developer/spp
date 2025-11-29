@@ -1,6 +1,4 @@
 module;
-#include <genex/algorithms/contains.hpp>
-
 #include <spp/parse/macros.hpp>
 
 import spp.asts.annotation_ast;
@@ -156,6 +154,7 @@ import spp.asts.utils.ast_utils;
 import spp.parse.errors.parser_error;
 import spp.parse.errors.parser_error_builder;
 import spp.utils.algorithms;
+import genex;
 
 module spp.parse.parser_spp;
 
@@ -2525,7 +2524,7 @@ auto spp::parse::ParserSpp::parse_lexeme_identifier()
     if (std::isupper(p2->token_data[0])) { return nullptr; }
     out->token_data += p2->token_data;
 
-    while (genex::algorithms::contains(IDENTIFIER_TOKENS, m_tokens[m_pos].type)) {
+    while (genex::contains(IDENTIFIER_TOKENS, m_tokens[m_pos].type)) {
         PARSE_ONCE(p3, parse_lexeme_character_or_digit_or_underscore);
         out->token_data += p3->token_data;
     }
@@ -2546,7 +2545,7 @@ auto spp::parse::ParserSpp::parse_lexeme_upper_identifier()
     if (std::islower(p2->token_data[0])) { return nullptr; }
     out->token_data += p2->token_data;
 
-    while (genex::algorithms::contains(UPPER_IDENTIFIER_TOKENS, m_tokens[m_pos].type)) {
+    while (genex::contains(UPPER_IDENTIFIER_TOKENS, m_tokens[m_pos].type)) {
         PARSE_ONCE(p3, parse_lexeme_character_or_digit);
         out->token_data += p3->token_data;
     }

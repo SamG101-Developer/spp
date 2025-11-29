@@ -1,15 +1,4 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/algorithms/any_of.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/for_each.hpp>
-#include <genex/views/intersperse.hpp>
-#include <genex/views/join.hpp>
-#include <genex/views/materialize.hpp>
-#include <genex/views/ptr.hpp>
-#include <genex/views/transform.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.class_prototype_ast;
@@ -32,6 +21,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_mangle;
 import spp.lex.tokens;
 
+import genex;
 import llvm;
 
 
@@ -403,7 +393,7 @@ auto spp::asts::ClassPrototypeAst::stage_10_code_gen_2(
         }
 
         // If this is a raw generic class like Vec[T], then generate the generic implementations.
-        if (genex::algorithms::any_of(sm->current_scope->all_type_symbols() | genex::views::materialize, [](auto const &sym) { return sym->scope == nullptr; })) {
+        if (genex::any_of(sm->current_scope->all_type_symbols() | genex::views::materialize, [](auto const &sym) { return sym->scope == nullptr; })) {
             for (auto &&[generic_scope, generic_ast] : m_generic_substituted_scopes) {
                 generic_ast->m_fill_llvm_mem_layout(sm, generic_scope->ty_sym.get(), ctx);
             }

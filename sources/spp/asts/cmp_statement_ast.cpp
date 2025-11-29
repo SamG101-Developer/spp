@@ -1,10 +1,4 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/views/for_each.hpp>
-#include <genex/views/intersperse.hpp>
-#include <genex/views/join.hpp>
-#include <genex/views/transform.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.cmp_statement_ast;
@@ -22,6 +16,7 @@ import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_mangle;
 import spp.lex.tokens;
+import genex;
 
 
 spp::asts::CmpStatementAst::CmpStatementAst(

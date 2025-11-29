@@ -1,10 +1,4 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/algorithms/min_element.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/transform.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.type_postfix_expression_ast;
@@ -22,6 +16,7 @@ import spp.asts.type_unary_expression_ast;
 import spp.asts.type_unary_expression_operator_borrow_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::TypePostfixExpressionAst::TypePostfixExpressionAst(
@@ -239,7 +234,7 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
         | genex::views::transform([lhs_type_sym](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
         | genex::to<std::vector>();
 
-    auto min_depth = scopes_and_syms.empty() ? 0 : genex::algorithms::min_element(scopes_and_syms
+    auto min_depth = scopes_and_syms.empty() ? 0 : genex::min_element(scopes_and_syms
                              | genex::views::transform([](auto &&x) { return std::get<0>(x); })
                              | genex::to<std::vector>());
 

@@ -1,6 +1,3 @@
-module;
-#include <genex/views/enumerate.hpp>
-
 module spp.asts.generate.common_types;
 import spp.asts.expression_ast;
 import spp.asts.generic_argument_ast;
@@ -13,6 +10,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.type_unary_expression_ast;
 import spp.asts.type_unary_expression_operator_namespace_ast;
 import spp.asts.type_ast;
+import genex;
 
 
 auto spp::asts::generate::common_types::f8(std::size_t pos) -> std::shared_ptr<TypeAst> {

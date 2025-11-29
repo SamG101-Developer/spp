@@ -1,13 +1,4 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/actions/sort.hpp>
-#include <genex/algorithms/position.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/join.hpp>
-#include <genex/views/ptr.hpp>
-#include <genex/views/transform.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.object_initializer_ast;
@@ -25,6 +16,7 @@ import spp.asts.object_initializer_argument_group_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::ObjectInitializerAst::ObjectInitializerAst(
@@ -168,8 +160,8 @@ auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
         | genex::to<std::vector>();
 
     sorted_args |= genex::actions::sort([&attributes](auto const &a, auto const &b) {
-        const auto a_index = genex::algorithms::position(attributes, [&a](auto const &attr) { return *attr->name == *a->name; });
-        const auto b_index = genex::algorithms::position(attributes, [&b](auto const &attr) { return *attr->name == *b->name; });
+        const auto a_index = genex::position(attributes, [&a](auto const &attr) { return *attr->name == *a->name; });
+        const auto b_index = genex::position(attributes, [&b](auto const &attr) { return *attr->name == *b->name; });
         return a_index < b_index;
     });
 

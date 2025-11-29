@@ -47,7 +47,8 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgum
 
     ~GenericArgumentCompKeywordAst() override;
 
-protected:
+    using GenericArgumentAst::equals;
+    using GenericArgumentAst::equals_generic_argument_comp_keyword;
     SPP_ATTR_NODISCARD auto equals(GenericArgumentAst const &other) const -> std::strong_ordering override;
     SPP_ATTR_NODISCARD auto equals_generic_argument_comp_keyword(GenericArgumentCompKeywordAst const &other) const -> std::strong_ordering;
 

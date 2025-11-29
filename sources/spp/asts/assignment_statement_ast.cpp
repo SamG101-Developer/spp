@@ -1,15 +1,6 @@
 module;
 #include <spp/macros.hpp>
 
-#include <genex/to_container.hpp>
-#include <genex/views/enumerate.hpp>
-#include <genex/views/indirect.hpp>
-#include <genex/views/intersperse.hpp>
-#include <genex/views/join.hpp>
-#include <genex/views/ptr.hpp>
-#include <genex/views/transform.hpp>
-#include <genex/views/zip.hpp>
-
 module spp.asts.assignment_statement_ast;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
@@ -27,6 +18,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import genex;
 
 
 spp::asts::AssignmentStatementAst::AssignmentStatementAst(

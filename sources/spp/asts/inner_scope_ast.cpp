@@ -1,10 +1,4 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/views/intersperse.hpp>
-#include <genex/views/join.hpp>
-#include <genex/views/ptr.hpp>
-#include <genex/views/transform.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.inner_scope_ast;
@@ -20,6 +14,7 @@ import spp.asts.sup_member_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import genex;
 
 
 template <typename T>

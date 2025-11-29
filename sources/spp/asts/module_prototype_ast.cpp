@@ -1,17 +1,11 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/algorithms/contains.hpp>
-#include <genex/algorithms/position.hpp>
-#include <genex/views/drop.hpp>
-#include <genex/views/intersperse.hpp>
-#include <genex/views/join.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.module_prototype_ast;
 import spp.asts.identifier_ast;
 import spp.asts.module_implementation_ast;
 import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::ModulePrototypeAst::ModulePrototypeAst(
@@ -70,9 +64,9 @@ auto spp::asts::ModulePrototypeAst::name() const
 
     // Check if "src" is in the file path.
     auto name = std::string();
-    if (genex::algorithms::contains(parts, "src"s)) {
+    if (genex::contains(parts, "src"s)) {
         name = parts
-            | genex::views::drop(genex::algorithms::position(parts, [](auto &&x) { return x == "src"; }))
+            | genex::views::drop(genex::position(parts, [](auto &&x) { return x == "src"; }))
             | genex::views::intersperse("::"s)
             | genex::views::join
             | genex::to<std::string>();

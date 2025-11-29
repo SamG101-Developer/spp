@@ -1,6 +1,3 @@
-module;
-#include <genex/views/for_each.hpp>
-
 module spp.asts.subroutine_prototype_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
@@ -18,6 +15,7 @@ import spp.asts.token_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;

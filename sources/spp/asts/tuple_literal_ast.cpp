@@ -1,13 +1,4 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/algorithms/all_of.hpp>
-#include <genex/views/indirect.hpp>
-#include <genex/views/intersperse.hpp>
-#include <genex/views/join.hpp>
-#include <genex/views/ptr.hpp>
-#include <genex/views/transform.hpp>
-#include <genex/views/zip.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.tuple_literal_ast;
@@ -21,6 +12,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.lex.tokens;
 import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::TupleLiteralAst::TupleLiteralAst(
@@ -49,7 +41,7 @@ auto spp::asts::TupleLiteralAst::equals(
 auto spp::asts::TupleLiteralAst::equals_tuple_literal(
     TupleLiteralAst const &other) const
     -> std::strong_ordering {
-    if (elems.size() == other.elems.size() and genex::algorithms::all_of(
+    if (elems.size() == other.elems.size() and genex::all_of(
         genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::to<std::vector>(),
         [](auto const &pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
         return std::strong_ordering::equal;

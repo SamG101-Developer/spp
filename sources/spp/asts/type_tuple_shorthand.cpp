@@ -1,9 +1,4 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/views/intersperse.hpp>
-#include <genex/views/join.hpp>
-#include <genex/views/transform.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.type_tuple_shorthand_ast;
@@ -11,6 +6,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::TypeTupleShorthandAst::TypeTupleShorthandAst(

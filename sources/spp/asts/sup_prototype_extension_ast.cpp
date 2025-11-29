@@ -1,9 +1,4 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/transform.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.sup_prototype_extension_ast;
@@ -32,6 +27,7 @@ import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import genex;
 
 
 spp::asts::SupPrototypeExtensionAst::SupPrototypeExtensionAst(

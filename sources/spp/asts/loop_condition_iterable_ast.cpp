@@ -1,7 +1,4 @@
 module;
-#include <genex/views/for_each.hpp>
-#include <genex/views/transform.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.loop_condition_iterable_ast;
@@ -18,6 +15,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::LoopConditionIterableAst::LoopConditionIterableAst(

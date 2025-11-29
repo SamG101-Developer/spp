@@ -1,17 +1,4 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/algorithms/count.hpp>
-#include <genex/algorithms/position.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/cast_smart.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/for_each.hpp>
-#include <genex/views/intersperse.hpp>
-#include <genex/views/iota.hpp>
-#include <genex/views/join.hpp>
-#include <genex/views/ptr.hpp>
-#include <genex/views/transform.hpp>
-#include <genex/views/zip.hpp>
 #include <opex/cast.hpp>
 
 #include <spp/macros.hpp>
@@ -38,6 +25,7 @@ import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.type_identifier_ast;
 import spp.lex.tokens;
+import genex;
 
 
 spp::asts::LocalVariableDestructureArrayAst::LocalVariableDestructureArrayAst(
@@ -145,7 +133,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
     // For a bound ".." destructure, ie "let [a, ..b, c] = t", create an intermediary type.
     auto bound_multi_skip = std::unique_ptr<ArrayLiteralExplicitElementsAst>(nullptr);
     if (not multi_arg_skips.empty() and multi_arg_skips[0]->binding != nullptr) {
-        const auto m = genex::algorithms::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize;
+        const auto m = genex::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize;
         auto new_elems = genex::views::iota(m, m + num_rhs_arr_elems - num_lhs_arr_elems + 1)
             | genex::views::transform([val](const auto i) {
                 auto identifier = std::make_unique<IdentifierAst>(0uz, std::to_string(i));
@@ -161,7 +149,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
 
     // Create new indexes.
     const auto skip_index = not multi_arg_skips.empty()
-                                ? genex::algorithms::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize
+                                ? genex::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize
                                 : elems.size() - 1;
     auto indexes = genex::views::iota(0uz, skip_index + 1)
         | genex::views::concat(genex::views::iota(num_lhs_arr_elems, num_rhs_arr_elems))

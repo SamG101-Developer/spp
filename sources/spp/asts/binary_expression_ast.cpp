@@ -1,10 +1,4 @@
 module;
-#include <genex/algorithms/contains.hpp>
-#include <genex/views/drop.hpp>
-#include <genex/views/drop_last.hpp>
-#include <genex/views/move.hpp>
-#include <genex/views/move_reverse.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.binary_expression_ast;
@@ -23,6 +17,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::BinaryExpressionAst::BinaryExpressionAst(
@@ -103,7 +98,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
     SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(rhs.get());
 
     // Check compound assignment (for example "+=") has a symbolic lhs target.
-    if (genex::algorithms::contains(analyse::utils::bin_utils::BIN_COMPOUND_ASSIGNMENT_OPS, tok_op->token_type)) {
+    if (genex::contains(analyse::utils::bin_utils::BIN_COMPOUND_ASSIGNMENT_OPS, tok_op->token_type)) {
         if (not sm->current_scope->get_var_symbol_outermost(*lhs).first) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppAssignmentTargetError>().with_args(
                 *lhs).with_scopes({sm->current_scope}).raise();

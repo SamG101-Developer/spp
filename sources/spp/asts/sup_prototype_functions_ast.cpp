@@ -1,7 +1,4 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/views/filter.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.sup_prototype_functions_ast;
@@ -21,6 +18,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import genex;
 
 
 spp::asts::SupPrototypeFunctionsAst::SupPrototypeFunctionsAst(

@@ -1,12 +1,3 @@
-module;
-#include <genex/to_container.hpp>
-#include <genex/actions/remove.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/for_each.hpp>
-#include <genex/views/ptr.hpp>
-#include <genex/views/transform.hpp>
-
 module spp.analyse.utils.mem_utils;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.errors.semantic_error;
@@ -22,6 +13,7 @@ import spp.asts.identifier_ast;
 import spp.asts.iter_expression_branch_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.utils.ast_utils;
+import genex;
 
 
 auto spp::analyse::utils::mem_utils::MemoryInfo::moved_by(
@@ -321,15 +313,15 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
 }
 
 
-// template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
-//     std::vector<asts::CaseExpressionBranchAst*> const &branches,
-//     scopes::ScopeManager *sm,
-//     asts::meta::CompilerMetaData *meta)
-//     -> void;
-//
-//
-// template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
-//     std::vector<asts::IterExpressionBranchAst*> const &branches,
-//     scopes::ScopeManager *sm,
-//     asts::meta::CompilerMetaData *meta)
-//     -> void;
+template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
+    std::vector<asts::CaseExpressionBranchAst*> const &branches,
+    scopes::ScopeManager *sm,
+    asts::meta::CompilerMetaData *meta)
+    -> void;
+
+
+template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
+    std::vector<asts::IterExpressionBranchAst*> const &branches,
+    scopes::ScopeManager *sm,
+    asts::meta::CompilerMetaData *meta)
+    -> void;

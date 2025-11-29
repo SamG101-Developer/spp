@@ -1,6 +1,4 @@
 module;
-#include <genex/generator.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.type_unary_expression_ast;
@@ -15,6 +13,7 @@ import spp.asts.type_unary_expression_operator_borrow_ast;
 import spp.asts.type_unary_expression_operator_namespace_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::TypeUnaryExpressionAst::TypeUnaryExpressionAst(

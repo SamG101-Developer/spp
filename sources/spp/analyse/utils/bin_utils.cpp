@@ -1,6 +1,3 @@
-module;
-#include <genex/algorithms/contains.hpp>
-
 module spp.analyse.utils.bin_utils;
 import spp.analyse.scopes.scope_manager;
 import spp.asts.ast;
@@ -25,6 +22,7 @@ import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
+import genex;
 
 
 auto spp::analyse::utils::bin_utils::fix_associativity(
@@ -72,8 +70,8 @@ auto spp::analyse::utils::bin_utils::combine_comp_ops(
     const auto bin_lhs = asts::ast_cast<asts::BinaryExpressionAst>(bin_expr.lhs.get());
     if (
         bin_lhs == nullptr or
-        not genex::algorithms::contains(BIN_COMPARISON_OPS, bin_expr.tok_op->token_type) or
-        not genex::algorithms::contains(BIN_COMPARISON_OPS, bin_lhs->tok_op->token_type)) {
+        not genex::contains(BIN_COMPARISON_OPS, bin_expr.tok_op->token_type) or
+        not genex::contains(BIN_COMPARISON_OPS, bin_lhs->tok_op->token_type)) {
         return std::make_unique<asts::BinaryExpressionAst>(
             std::move(bin_expr.lhs),
             std::move(bin_expr.tok_op),
@@ -119,7 +117,7 @@ auto spp::analyse::utils::bin_utils::convert_bin_expr_to_function_call(
     auto fn_call = std::make_unique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
 
     // Set the arguments for the function call, and return the AST.
-    auto conv = genex::algorithms::contains(BIN_COMPARISON_OPS, new_bin_expr->tok_op->token_type) ? std::make_unique<asts::ConventionRefAst>(nullptr) : nullptr;
+    auto conv = genex::contains(BIN_COMPARISON_OPS, new_bin_expr->tok_op->token_type) ? std::make_unique<asts::ConventionRefAst>(nullptr) : nullptr;
     auto arg = std::make_unique<asts::FunctionCallArgumentPositionalAst>(std::move(conv), nullptr, std::move(new_bin_expr->rhs));
     fn_call->arg_group->args.emplace_back(std::move(arg));
     auto new_ast = std::make_unique<asts::PostfixExpressionAst>(std::move(field_access), std::move(fn_call));

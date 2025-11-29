@@ -1,16 +1,9 @@
-module;
-#include <genex/to_container.hpp>
-#include <genex/algorithms/position.hpp>
-#include <genex/algorithms/sorted.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/transform.hpp>
-#include <genex/views/zip.hpp>
-#include <magic_enum/magic_enum.hpp>
-
 module spp.analyse.utils.order_utils;
 import spp.asts.ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.mixins.orderable_ast;
+import genex;
+import magic_enum;
 
 
 inline const auto ARG_ORDER = std::vector{
@@ -37,9 +30,9 @@ auto spp::analyse::utils::order_utils::order(
         | genex::to<std::vector>();
 
     // Sort the arguments based on the correct order.
-    auto args_sorted = genex::algorithms::sorted(tagged_args, [&](auto &&arg_a, auto &&arg_b) {
-        auto a = genex::algorithms::position(order, [&](auto x) { return x == std::get<0>(arg_a); });
-        auto b = genex::algorithms::position(order, [&](auto x) { return x == std::get<0>(arg_b); });
+    auto args_sorted = genex::sorted(tagged_args, [&](auto &&arg_a, auto &&arg_b) {
+        auto a = genex::position(order, [&](auto x) { return x == std::get<0>(arg_a); });
+        auto b = genex::position(order, [&](auto x) { return x == std::get<0>(arg_b); });
         return a < b;
     });
 

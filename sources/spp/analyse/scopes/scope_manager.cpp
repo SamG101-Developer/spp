@@ -1,10 +1,3 @@
-module;
-#include <genex/to_container.hpp>
-#include <genex/algorithms/contains.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/ptr.hpp>
-
 module spp.analyse.scopes.scope_manager;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
@@ -21,6 +14,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::analyse::scopes::ScopeManager::ScopeManager(
@@ -149,7 +143,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
         auto sup_sym = static_cast<TypeSymbol*>(nullptr);
 
         // Todo: Is this "if-else" quite correct? 2 conditions in the "if", then no "else if" block.
-        if (not scope_generics->args.empty() and not genex::algorithms::contains(generic_sup_blocks, sup_scope)) {
+        if (not scope_generics->args.empty() and not genex::contains(generic_sup_blocks, sup_scope)) {
             const auto external_generics = scope.ty_sym->scope_defined_in->get_extended_generic_symbols(scope_generics->args | genex::views::ptr | genex::to<std::vector>());
             std::tie(new_sup_scope, new_cls_scope) = utils::type_utils::create_generic_sup_scope(*sup_scope, scope, *scope_generics, external_generics, this, meta);
             sup_sym = new_cls_scope ? new_cls_scope->ty_sym.get() : nullptr;

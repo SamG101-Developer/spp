@@ -1,11 +1,4 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/algorithms/any_of.hpp>
-#include <genex/operations/cmp.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/transform.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.type_identifier_ast;
@@ -29,6 +22,7 @@ import spp.asts.type_unary_expression_operator_ast;
 import spp.asts.type_unary_expression_operator_borrow_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::TypeIdentifierAst::TypeIdentifierAst(
@@ -266,7 +260,7 @@ auto spp::asts::TypeIdentifierAst::contains_generic(
     -> bool {
     // Check if the parameter's name is in the type parts iterated from this type.
     auto cast_name = ast_cast<TypeIdentifierAst>(generic.name.get());
-    return genex::algorithms::any_of(
+    return genex::any_of(
         iterator() | genex::to<std::vector>(), [&cast_name](auto ti) { return *ti == *cast_name; });
 }
 

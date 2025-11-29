@@ -1,18 +1,12 @@
 module;
 #include <colex/common.hpp>
-#include <genex/to_container.hpp>
-#include <genex/algorithms/fold_left.hpp>
-#include <genex/algorithms/position.hpp>
-#include <genex/algorithms/position_last.hpp>
-#include <genex/operations/size.hpp>
-#include <genex/views/drop.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/take.hpp>
 #include <opex/cast.hpp>
 
 module spp.utils.error_formatter;
 import spp.asts.ast;
 import spp.lex.tokens;
+import genex;
+import std;
 
 
 spp::utils::errors::ErrorFormatter::ErrorFormatter(std::vector<lex::RawToken> tokens, std::string file_path) :
@@ -33,19 +27,19 @@ auto spp::utils::errors::ErrorFormatter::internal_parse_error_raw_pos(
         ast_size = 1;
     }
 
-    const auto error_line_start_pos = genex::algorithms::position_last(
+    const auto error_line_start_pos = genex::position_last(
         m_tokens | genex::views::take(ast_start_pos) | genex::to<std::vector>(),
         [](auto &&token) { return token.type == RawTokenType::TK_LINE_FEED; }) + 1;
 
-    const auto error_line_end_pos = genex::algorithms::position(
+    const auto error_line_end_pos = genex::position(
         m_tokens | genex::views::drop(ast_start_pos) | genex::to<std::vector>(),
         [](auto &&token) { return token.type == RawTokenType::TK_LINE_FEED; }, {}, m_tokens.size() - ast_start_pos) + ast_start_pos;
 
-    auto error_line_tokens = std::vector(
+    auto error_line_tokens = std::vector<lex::RawToken>(
         m_tokens.begin() + error_line_start_pos,
         m_tokens.begin() + (error_line_end_pos as SSize));
 
-    auto error_line_as_string = genex::algorithms::fold_left(
+    auto error_line_as_string = genex::fold_left(
         error_line_tokens, std::string(),
         [](std::string const &acc, const lex::RawToken &token) { return acc + token.data; });
     while (!error_line_as_string.empty() and error_line_as_string.back() == ' ') {

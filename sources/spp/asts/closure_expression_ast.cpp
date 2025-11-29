@@ -1,8 +1,4 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/algorithms/any_of.hpp>
-#include <genex/views/transform.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.closure_expression_ast;
@@ -20,6 +16,7 @@ import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import genex;
 
 
 spp::asts::ClosureExpressionAst::ClosureExpressionAst(
@@ -144,7 +141,7 @@ auto spp::asts::ClosureExpressionAst::infer_type(
         ty = generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 
-    else if (genex::algorithms::any_of(pc_group->capture_group->captures, [](auto const &x) { return x->conv == nullptr; })) {
+    else if (genex::any_of(pc_group->capture_group->captures, [](auto const &x) { return x->conv == nullptr; })) {
         // If there are captures, but no borrowed captures, return a FunMov type with the parameters and return type.
         auto param_types = pc_group->param_group->params
             | genex::views::transform([](auto const &x) { return x->type; })
@@ -152,7 +149,7 @@ auto spp::asts::ClosureExpressionAst::infer_type(
         ty = generate::common_types::fun_mov_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 
-    else if (genex::algorithms::any_of(pc_group->capture_group->captures, is_mut_cap)) {
+    else if (genex::any_of(pc_group->capture_group->captures, is_mut_cap)) {
         // If there are mutably borrowed captures, return a FunMut type with the parameters and return type.
         auto param_types = pc_group->param_group->params
             | genex::views::transform([](auto const &x) { return x->type; })
@@ -160,7 +157,7 @@ auto spp::asts::ClosureExpressionAst::infer_type(
         ty = generate::common_types::fun_mut_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 
-    else if (genex::algorithms::any_of(pc_group->capture_group->captures, is_ref_cap)) {
+    else if (genex::any_of(pc_group->capture_group->captures, is_ref_cap)) {
         // If there are immutable borrowed captures, return a FunRef type with the parameters and return type.
         auto param_types = pc_group->param_group->params
             | genex::views::transform([](auto const &x) { return x->type; })

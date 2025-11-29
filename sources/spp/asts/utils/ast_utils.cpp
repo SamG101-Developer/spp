@@ -1,9 +1,3 @@
-module;
-#include <genex/to_container.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/ptr.hpp>
-
-
 module spp.asts.utils.ast_utils;
 import spp.asts.ast;
 import spp.asts.class_implementation_ast;
@@ -17,20 +11,7 @@ import spp.asts.statement_ast;
 import spp.asts.sup_implementation_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
-
-//
-// template <typename T>
-// auto spp::asts::ast_clone(std::unique_ptr<T> const &ast) -> std::unique_ptr<std::remove_cvref_t<T>> {
-//     if (ast == nullptr) { return nullptr; }
-//     return ast_cast<std::remove_cvref_t<T>>(ast->clone());
-// }
-//
-//
-// template <typename T>
-// auto ast_clone(std::shared_ptr<T> const &ast) -> std::unique_ptr<std::remove_cvref_t<T>> {
-//     if (ast == nullptr) { return nullptr; }
-//     return ast_cast<std::remove_cvref_t<T>>(ast->clone());
-// }
+import genex;
 
 
 auto spp::asts::ast_name(Ast *ast) -> std::shared_ptr<TypeAst> {

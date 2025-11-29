@@ -31,17 +31,10 @@ SPP_EXP_CLS struct spp::asts::IdentifierAst final : PrimaryExpressionAst, std::e
 
     ~IdentifierAst() override;
 
-protected:
-    SPP_ATTR_ALWAYS_INLINE auto equals(ExpressionAst const &other) const -> std::strong_ordering override {
-        return other.equals_identifier(*this);
-    }
-
-    SPP_ATTR_ALWAYS_INLINE auto equals_identifier(IdentifierAst const &other) const -> std::strong_ordering override {
-        if (val == other.val) {
-            return std::strong_ordering::equal;
-        }
-        return std::strong_ordering::less;
-    }
+    using ExpressionAst::equals;
+    using ExpressionAst::equals_identifier;
+    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals_identifier(IdentifierAst const &other) const -> std::strong_ordering;
 
 public:
     SPP_AST_KEY_FUNCTIONS;

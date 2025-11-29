@@ -1,10 +1,3 @@
-module;
-#include <genex/to_container.hpp>
-#include <genex/views/join_with.hpp>
-#include <genex/views/materialize.hpp>
-#include <genex/views/reverse.hpp>
-#include <genex/views/transform.hpp>
-
 module spp.codegen.llvm_mangle;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
@@ -15,6 +8,7 @@ import spp.asts.function_parameter_group_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.identifier_ast;
 import spp.asts.type_ast;
+import genex;
 
 
 auto spp::codegen::mangle::mangle_type_name(

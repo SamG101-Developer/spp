@@ -1,21 +1,4 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/actions/remove.hpp>
-#include <genex/actions/sort.hpp>
-#include <genex/algorithms/position.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/drop.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/for_each.hpp>
-#include <genex/views/intersperse.hpp>
-#include <genex/views/iota.hpp>
-#include <genex/views/join.hpp>
-#include <genex/views/materialize.hpp>
-#include <genex/views/ptr.hpp>
-#include <genex/views/set_algorithms.hpp>
-#include <genex/views/transform.hpp>
-#include <genex/views/zip.hpp>
 #include <opex/cast.hpp>
 
 #include <spp/macros.hpp>
@@ -57,6 +40,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import genex;
 
 
 spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFunctionCallAst(
@@ -352,7 +336,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             auto sorted_func_arguments = func_args | genex::views::ptr | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>() | genex::to<std::vector>();
             genex::actions::sort(
                 sorted_func_arguments,
-                {}, [&func_param_names](FunctionCallArgumentKeywordAst *arg) { return genex::algorithms::position(func_param_names, [&arg](auto const &param) { return *arg->name == *param; }); });
+                {}, [&func_param_names](FunctionCallArgumentKeywordAst *arg) { return genex::position(func_param_names, [&arg](auto const &param) { return *arg->name == *param; }); });
 
             for (auto &&[arg, param] : sorted_func_arguments | genex::views::zip(func_params)) {
                 auto p_type = fn_scope->get_type_symbol(param->type)->fq_name()->with_convention(ast_clone(param->type->get_convention()));
@@ -371,7 +355,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 }
 
                 // Regular parameter with arg folding.
-                else if (genex::algorithms::contains(m_folded_args, arg)) {
+                else if (genex::contains(m_folded_args, arg)) {
                     if (not analyse::utils::type_utils::symbolic_eq(*p_type, *a_type->type_parts().back()->generic_arg_group->get_type_args()[0]->val, *fn_scope, *sm->current_scope)) {
                         analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
                             *param, *p_type, *arg, *a_type->type_parts().back()->generic_arg_group->get_type_args()[0]->val).with_scopes({fn_scope, sm->current_scope}).raise();

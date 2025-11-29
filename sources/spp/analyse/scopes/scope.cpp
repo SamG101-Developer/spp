@@ -1,18 +1,3 @@
-module;
-#include <genex/to_container.hpp>
-#include <genex/actions/concat.hpp>
-#include <genex/actions/push_back.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/cast_smart.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/drop_last.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/for_each.hpp>
-#include <genex/views/ptr.hpp>
-#include <genex/views/reverse.hpp>
-#include <genex/views/take_while.hpp>
-#include <genex/views/transform.hpp>
-
 module spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
 import spp.asts.ast;
@@ -33,6 +18,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
 import spp.utils.variants;
 import spp.compiler.module_tree;
+import genex;
 
 
 spp::analyse::scopes::ScopeBlockName::ScopeBlockName(std::string &&name) : name(std::move(name)) {

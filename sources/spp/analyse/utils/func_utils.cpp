@@ -1,32 +1,4 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/actions/clear.hpp>
-#include <genex/actions/concat.hpp>
-#include <genex/actions/drop.hpp>
-#include <genex/actions/pop_front.hpp>
-#include <genex/actions/remove_if.hpp>
-#include <genex/actions/sort.hpp>
-#include <genex/actions/take.hpp>
-#include <genex/algorithms/any_of.hpp>
-#include <genex/algorithms/contains.hpp>
-#include <genex/algorithms/equals.hpp>
-#include <genex/algorithms/position.hpp>
-#include <genex/operations/empty.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/cast_smart.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/drop.hpp>
-#include <genex/views/enumerate.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/map.hpp>
-#include <genex/views/materialize.hpp>
-#include <genex/views/move.hpp>
-#include <genex/views/ptr.hpp>
-#include <genex/views/set_algorithms.hpp>
-#include <genex/views/transform.hpp>
-#include <genex/views/tuple_nth.hpp>
-#include <genex/views/zip.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.analyse.utils.func_utils;
@@ -88,6 +60,7 @@ import spp.asts.utils.ast_utils;
 import spp.utils.ptr_cmp;
 
 import ankerl;
+import genex;
 
 
 auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
@@ -288,8 +261,8 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_overload(
         // Remove all the required parameters on the first parameter list off of the other parameter list.
         for (auto [p, q] : genex::views::zip(new_fn.param_group->params | genex::views::ptr, old_fn->param_group->params | genex::views::ptr)) {
             if (type_utils::symbolic_eq(*p->type, *q->type, this_scope, *old_scope)) {
-                params_new |= genex::actions::remove_if([pe=p->extract_names()](auto &&x) { return genex::algorithms::equals(x->extract_names(), std::move(pe), {}, genex::meta::deref, genex::meta::deref); });
-                params_old |= genex::actions::remove_if([qe=q->extract_names()](auto &&x) { return genex::algorithms::equals(x->extract_names(), std::move(qe), {}, genex::meta::deref, genex::meta::deref); });
+                params_new |= genex::actions::remove_if([pe=p->extract_names()](auto &&x) { return genex::equals(x->extract_names(), std::move(pe), {}, genex::meta::deref, genex::meta::deref); });
+                params_old |= genex::actions::remove_if([qe=q->extract_names()](auto &&x) { return genex::equals(x->extract_names(), std::move(qe), {}, genex::meta::deref, genex::meta::deref); });
             }
         }
 
@@ -349,14 +322,14 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_override(
         if (params_new.size() != params_old.size()) { continue; }
 
         // All parameters must have the same names.
-        if (genex::algorithms::any_of(
+        if (genex::any_of(
             genex::views::zip(params_new, params_old) | genex::views::materialize,
             [&param_names_eq](auto pq) { return not param_names_eq(std::get<0>(pq)->extract_names(), std::get<1>(pq)->extract_names()); })) {
             continue;
         }
 
         // All parameters must have the same types.
-        if (genex::algorithms::any_of(
+        if (genex::any_of(
             genex::views::zip(params_new, params_old) | genex::views::materialize,
             [this_scope, old_scope](auto pq) { return not type_utils::symbolic_eq(*std::get<0>(pq)->type, *std::get<1>(pq)->type, this_scope, *old_scope, false); })) {
             continue;
@@ -491,8 +464,8 @@ auto spp::analyse::utils::func_utils::name_generic_args(
     args |= genex::actions::concat(type_args | genex::views::cast_smart<asts::GenericArgumentAst>());
 
     args |= genex::actions::sort([&](auto const &a, auto const &b) {
-        const auto a_index = genex::algorithms::position(params, [&](auto *p) { return *p->name == *(dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(a.get()) ? dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(a.get())->name : dynamic_cast<asts::GenericArgumentCompKeywordAst*>(a.get())->name); });
-        const auto b_index = genex::algorithms::position(params, [&](auto *p) { return *p->name == *(dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(b.get()) ? dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(b.get())->name : dynamic_cast<asts::GenericArgumentCompKeywordAst*>(b.get())->name); });
+        const auto a_index = genex::position(params, [&](auto *p) { return *p->name == *(dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(a.get()) ? dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(a.get())->name : dynamic_cast<asts::GenericArgumentCompKeywordAst*>(a.get())->name); });
+        const auto b_index = genex::position(params, [&](auto *p) { return *p->name == *(dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(b.get()) ? dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(b.get())->name : dynamic_cast<asts::GenericArgumentCompKeywordAst*>(b.get())->name); });
         return a_index < b_index;
     });
 }
@@ -646,8 +619,8 @@ auto spp::analyse::utils::func_utils::infer_generic_args(
     ) | genex::to<std::vector>();
 
     final_args |= genex::actions::sort([&](auto const &a, auto const &b) {
-        const auto a_index = genex::algorithms::position(params, [&](auto *p) { return *p->name == *(dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(a.get()) ? dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(a.get())->name : dynamic_cast<asts::GenericArgumentCompKeywordAst*>(a.get())->name); });
-        const auto b_index = genex::algorithms::position(params, [&](auto *p) { return *p->name == *(dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(b.get()) ? dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(b.get())->name : dynamic_cast<asts::GenericArgumentCompKeywordAst*>(b.get())->name); });
+        const auto a_index = genex::position(params, [&](auto *p) { return *p->name == *(dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(a.get()) ? dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(a.get())->name : dynamic_cast<asts::GenericArgumentCompKeywordAst*>(a.get())->name); });
+        const auto b_index = genex::position(params, [&](auto *p) { return *p->name == *(dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(b.get()) ? dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(b.get())->name : dynamic_cast<asts::GenericArgumentCompKeywordAst*>(b.get())->name); });
         return a_index < b_index;
     });
 
@@ -790,7 +763,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
     // todo: something is needed here, ie "[T, cmp x: Vec[T]]" needs to substitute the value for "T" into "Vec[T]".
     // Cross-apply generic arguments. This allows "Vec[T, A=Alloc[T]]" to substitute the new value of "T" into "Alloc".
     // for (auto const &arg_name : inferred_args | genex::views::keys | genex::to<std::vector>()) {
-    //     if (genex::algorithms::contains(explicit_arg_names, *arg_name, SPP_INSTANT_INDIRECT)) {
+    //     if (genex::contains(explicit_arg_names, *arg_name, SPP_INSTANT_INDIRECT)) {
     //         continue;
     //     }
     //
@@ -805,7 +778,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
     // Convert the inferred types into new generic arguments.
     auto i = args.size();
     for (auto const &[key, val] : formatted_generic_arguments) {
-        const auto matching_param = genex::algorithms::find_if(params, [&](auto *p) { return *p->name == *key; });
+        const auto matching_param = genex::find_if(params, [&](auto *p) { return *p->name == *key; });
         if (matching_param == params.end()) { continue; }
 
         if (asts::ast_cast<asts::TypeAst>(val)) {
@@ -827,8 +800,8 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
     }
 
     args |= genex::actions::sort([&](auto const &a, auto const &b) {
-        const auto a_index = genex::algorithms::position(params, [&](auto *p) { return *p->name == *dynamic_cast<asts::GenericArgumentCompKeywordAst*>(a.get())->name; });
-        const auto b_index = genex::algorithms::position(params, [&](auto *p) { return *p->name == *dynamic_cast<asts::GenericArgumentCompKeywordAst*>(b.get())->name; });
+        const auto a_index = genex::position(params, [&](auto *p) { return *p->name == *dynamic_cast<asts::GenericArgumentCompKeywordAst*>(a.get())->name; });
+        const auto b_index = genex::position(params, [&](auto *p) { return *p->name == *dynamic_cast<asts::GenericArgumentCompKeywordAst*>(b.get())->name; });
         return a_index < b_index;
     });
 
@@ -935,7 +908,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
     // Fully qualify and type arguments (replaced within the inference map).
     // if (const auto owner_sym = sm.current_scope->get_type_symbol(std::dynamic_pointer_cast<asts::TypeAst>(owner)); owner_sym != nullptr) {
         for (auto *opt_param : opt_params | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
-            if (not genex::algorithms::contains(inferred_args | genex::views::keys | genex::views::cast_smart<asts::TypeAst>() | genex::views::materialize, *opt_param->name, SPP_INSTANT_INDIRECT)) {
+            if (not genex::contains(inferred_args | genex::views::keys | genex::views::cast_smart<asts::TypeAst>() | genex::views::materialize, *opt_param->name, SPP_INSTANT_INDIRECT)) {
                 auto def_type = opt_param->default_val;
                 // if (auto def_val_type_sym = owner_scope->get_type_symbol(def_type); def_val_type_sym != nullptr) {
                 //     def_type = owner_scope->get_type_symbol(opt_param->default_val)->fq_name();
@@ -983,7 +956,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
 
     // Cross-apply generic arguments. This allows "Vec[T, A=Alloc[T]]" to substitute the new value of "T" into "Alloc".
     for (auto const &arg_name : inferred_args | genex::views::keys) {
-        if (genex::algorithms::contains(explicit_arg_names, *arg_name, SPP_INSTANT_INDIRECT)) {
+        if (genex::contains(explicit_arg_names, *arg_name, SPP_INSTANT_INDIRECT)) {
             continue;
         }
 
@@ -1002,7 +975,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
     // Convert the inferred types into new generic arguments.
     auto i = args.size();
     for (auto const &[key, val] : formatted_args) {
-        const auto matching_param = genex::algorithms::find_if(params, [&](auto *p) { return *p->name == *key; });
+        const auto matching_param = genex::find_if(params, [&](auto *p) { return *p->name == *key; });
         if (matching_param == params.end()) { continue; }
         auto temp_arg = std::make_unique<asts::GenericArgumentTypeKeywordAst>(ast_clone(key), nullptr, ast_clone(val));
         args.emplace_back(std::move(temp_arg));
@@ -1013,8 +986,8 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
     }
 
     args |= genex::actions::sort([&](auto const &a, auto const &b) {
-        const auto a_index = genex::algorithms::position(params, [&](auto *p) { return *p->name == *dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(a.get())->name; });
-        const auto b_index = genex::algorithms::position(params, [&](auto *p) { return *p->name == *dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(b.get())->name; });
+        const auto a_index = genex::position(params, [&](auto *p) { return *p->name == *dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(a.get())->name; });
+        const auto b_index = genex::position(params, [&](auto *p) { return *p->name == *dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(b.get())->name; });
         return a_index < b_index;
     });
 }

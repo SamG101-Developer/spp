@@ -1,11 +1,7 @@
-module;
-#include <genex/to_container.hpp>
-#include <genex/views/for_each.hpp>
-#include <genex/views/ptr.hpp>
-
 module spp.asts.sup_implementation_ast;
 import spp.asts.sup_member_ast;
 import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::SupImplementationAst::~SupImplementationAst() = default;

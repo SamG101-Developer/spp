@@ -2,16 +2,13 @@ module;
 #include <spp/macros.hpp>
 
 #include <colex/common.hpp>
-#include <genex/to_container.hpp>
-#include <genex/views/cycle.hpp>
-#include <genex/views/take.hpp>
-#include <genex/views/transform.hpp>
-#include <genex/views/zip.hpp>
 
 export module spp.analyse.errors.semantic_error_builder;
 import spp.analyse.errors.semantic_error;
 import spp.utils.errors;
 import spp.utils.error_formatter;
+import genex;
+import std;
 
 
 namespace spp::analyse::errors {

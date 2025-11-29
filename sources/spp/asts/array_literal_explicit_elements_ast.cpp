@@ -1,14 +1,4 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/algorithms/all_of.hpp>
-#include <genex/views/address.hpp>
-#include <genex/views/for_each.hpp>
-#include <genex/views/intersperse.hpp>
-#include <genex/views/join.hpp>
-#include <genex/views/ptr.hpp>
-#include <genex/views/transform.hpp>
-#include <genex/views/zip.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.array_literal_explicit_elements_ast;
@@ -25,6 +15,7 @@ import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
+import genex;
 import llvm;
 
 
@@ -46,7 +37,7 @@ spp::asts::ArrayLiteralExplicitElementsAst::~ArrayLiteralExplicitElementsAst() =
 auto spp::asts::ArrayLiteralExplicitElementsAst::equals_array_literal_explicit_elements(
     ArrayLiteralExplicitElementsAst const &other) const
     -> std::strong_ordering {
-    if (genex::algorithms::all_of(
+    if (genex::all_of(
         genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::to<std::vector>(),
         [](auto &&pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
         return std::strong_ordering::equal;

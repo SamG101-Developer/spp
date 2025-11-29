@@ -1,23 +1,6 @@
 module;
 #include <spp/macros.hpp>
 
-#include <genex/to_container.hpp>
-#include <genex/actions/concat.hpp>
-#include <genex/actions/remove_if.hpp>
-#include <genex/algorithms/any_of.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/cast_smart.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/for_each.hpp>
-#include <genex/views/join.hpp>
-#include <genex/views/materialize.hpp>
-#include <genex/views/ptr.hpp>
-#include <genex/views/remove_if.hpp>
-#include <genex/views/split.hpp>
-#include <genex/views/transform.hpp>
-#include <genex/views/zip.hpp>
-
 module spp.analyse.utils.type_utils;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
@@ -57,6 +40,7 @@ import spp.asts.utils.visibility;
 import spp.lex.lexer;
 import spp.parse.parser_spp;
 import spp.utils.strings;
+import genex;
 
 
 auto spp::analyse::utils::type_utils::symbolic_eq(
@@ -90,7 +74,7 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
     // If the left-hand-side is a "Variant" type, check the composite types first.
     if (check_variant and symbolic_eq(*stripped_lhs_sym->fq_name()->without_generics(), *asts::generate::common_types_precompiled::VAR, lhs_scope, lhs_scope, false)) {
         auto lhs_composite_types = deduplicate_variant_inner_types(*lhs_scope.get_type_symbol(lhs_type.shared_from_this())->fq_name(), lhs_scope);
-        if (genex::algorithms::any_of(lhs_composite_types, [&](auto &&lhs_composite_type) { return symbolic_eq(*lhs_composite_type, rhs_type, lhs_scope, rhs_scope); })) {
+        if (genex::any_of(lhs_composite_types, [&](auto &&lhs_composite_type) { return symbolic_eq(*lhs_composite_type, rhs_type, lhs_scope, rhs_scope); })) {
             return true;
         }
     }
@@ -187,7 +171,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     // Todo: on the failure of a variant match in "any_of", does the generic map need rolling back?
     if (check_variant and symbolic_eq(*asts::generate::common_types_precompiled::VAR, *stripped_rhs_sym->fq_name()->without_generics(), *rhs_scope, *rhs_scope)) {
         auto rhs_composite_types = deduplicate_variant_inner_types(*rhs_scope->get_type_symbol(rhs_type.shared_from_this())->fq_name(), *rhs_scope);
-        if (genex::algorithms::any_of(rhs_composite_types, [&](auto &&rhs_composite_type) { return relaxed_symbolic_eq(lhs_type, *rhs_composite_type, lhs_scope, rhs_scope, generic_args); })) {
+        if (genex::any_of(rhs_composite_types, [&](auto &&rhs_composite_type) { return relaxed_symbolic_eq(lhs_type, *rhs_composite_type, lhs_scope, rhs_scope, generic_args); })) {
             return true;
         }
     }
@@ -920,7 +904,7 @@ auto spp::analyse::utils::type_utils::deduplicate_variant_inner_types(
         }
 
         // Inspect a non-variant type, and if it hasn't beem added to the list, add it.
-        else if (not genex::algorithms::any_of(out, [&](auto x) { return symbolic_eq(*generic_arg->val, *x, scope, scope); })) {
+        else if (not genex::any_of(out, [&](auto x) { return symbolic_eq(*generic_arg->val, *x, scope, scope); })) {
             out.emplace_back(generic_arg->val);
         }
     }

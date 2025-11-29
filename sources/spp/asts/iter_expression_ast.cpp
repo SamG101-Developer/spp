@@ -1,12 +1,4 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/algorithms/any_of.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/intersperse.hpp>
-#include <genex/views/join.hpp>
-#include <genex/views/ptr.hpp>
-#include <genex/views/transform.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.iter_expression_ast;
@@ -28,6 +20,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::IterExpressionAst::IterExpressionAst(
@@ -189,15 +182,15 @@ auto spp::asts::IterExpressionAst::infer_type(
     // Ensure there is a full set of branches for the corresponding generator type (unless there is an "else" present).
     const auto cond_type = cond->infer_type(sm, meta);
 
-    const auto pat_nop_present = genex::algorithms::any_of(
+    const auto pat_nop_present = genex::any_of(
         branches, [](auto const &x) { return ast_cast<IterPatternVariantNoValueAst>(x->pattern.get()) != nullptr; });
-    const auto pat_err_present = genex::algorithms::any_of(
+    const auto pat_err_present = genex::any_of(
         branches, [](auto const &x) { return ast_cast<IterPatternVariantExceptionAst>(x->pattern.get()) != nullptr; });
-    const auto pat_exh_present = genex::algorithms::any_of(
+    const auto pat_exh_present = genex::any_of(
         branches, [](auto const &x) { return ast_cast<IterPatternVariantExhaustedAst>(x->pattern.get()) != nullptr; });
-    const auto pat_var_present = genex::algorithms::any_of(
+    const auto pat_var_present = genex::any_of(
         branches, [](auto const &x) { return ast_cast<IterPatternVariantVariableAst>(x->pattern.get()) != nullptr; });
-    const auto pat_else_present = genex::algorithms::any_of(
+    const auto pat_else_present = genex::any_of(
         branches, [](auto const &x) { return ast_cast<IterPatternVariantElseAst>(x->pattern.get()) != nullptr; });
 
     if (not meta->ignore_missing_else_branch_for_inference) {

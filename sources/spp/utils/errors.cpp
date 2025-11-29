@@ -1,11 +1,7 @@
-module;
-#include <genex/to_container.hpp>
-#include <genex/views/join_with.hpp>
-#include <genex/views/transform.hpp>
-
 module spp.utils.errors;
 import spp.analyse.scopes.scope;
 import spp.utils.error_formatter;
+import genex;
 
 
 template <typename T>

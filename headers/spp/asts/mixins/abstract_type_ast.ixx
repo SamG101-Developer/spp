@@ -1,10 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-#include <genex/generator.hpp>
-
 export module spp.asts.mixins.abstract_type_ast;
-
+import genex;
 import std;
 
 

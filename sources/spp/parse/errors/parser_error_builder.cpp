@@ -1,10 +1,5 @@
-module;
-#include <genex/to_container.hpp>
-#include <genex/views/intersperse.hpp>
-#include <genex/views/join.hpp>
-#include <genex/views/transform.hpp>
-
 module spp.parse.errors.parser_error_builder;
+import genex;
 
 
 template <typename T>

@@ -1,7 +1,4 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/views/filter.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.postfix_expression_operator_index_ast;
@@ -25,6 +22,7 @@ import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import genex;
 
 
 spp::asts::PostfixExpressionOperatorIndexAst::PostfixExpressionOperatorIndexAst(

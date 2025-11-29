@@ -1,9 +1,3 @@
-module;
-#include <genex/to_container.hpp>
-#include <genex/algorithms/fold_left_first.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/transform.hpp>
-
 module spp.codegen.llvm_size;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.type_utils;
@@ -18,6 +12,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
+import genex;
 
 
 auto spp::codegen::size_of(
@@ -144,7 +139,7 @@ auto spp::codegen::size_of(
         const auto all_types = type->type_parts().back()->generic_arg_group->get_type_args()
             | genex::views::transform([&sm](auto &&x) { return size_of(sm, x->val); })
             | genex::to<std::vector>();
-        const auto total_size = genex::algorithms::fold_left_first(all_types, std::plus{});
+        const auto total_size = genex::fold_left_first(all_types, std::plus{});
         return total_size;
     }
 
@@ -162,6 +157,6 @@ auto spp::codegen::size_of(
         | genex::views::transform([](auto &&x) { return std::get<0>(x)->type; })
         | genex::views::transform([&sm](auto &&x) { return size_of(sm, x); })
         | genex::to<std::vector>();
-    const auto total_size = genex::algorithms::fold_left_first(all_types, std::plus{});
+    const auto total_size = genex::fold_left_first(all_types, std::plus{});
     return total_size;
 }

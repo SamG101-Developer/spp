@@ -1,10 +1,4 @@
 module;
-#include <genex/to_container.hpp>
-#include <genex/algorithms/min_element.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/transform.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.postfix_expression_operator_static_member_access_ast;
@@ -20,6 +14,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.strings;
+import genex;
 
 
 spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOperatorStaticMemberAccessAst(
@@ -109,7 +104,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
             | genex::views::transform([lhs_type_sym](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
             | genex::to<std::vector>();
 
-        auto min_depth = genex::algorithms::min_element(scopes_and_syms
+        auto min_depth = genex::min_element(scopes_and_syms
             | genex::views::transform([](auto &&x) { return std::get<0>(x); })
             | genex::to<std::vector>());
 

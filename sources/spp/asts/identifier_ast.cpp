@@ -1,7 +1,3 @@
-module;
-#include <genex/to_container.hpp>
-#include <genex/views/transform.hpp>
-
 module spp.asts.identifier_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
@@ -11,6 +7,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.utils.strings;
 import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::IdentifierAst::IdentifierAst(
@@ -31,6 +28,23 @@ spp::asts::IdentifierAst::IdentifierAst(
 
 
 spp::asts::IdentifierAst::~IdentifierAst() = default;
+
+
+auto spp::asts::IdentifierAst::equals(
+    ExpressionAst const &other) const
+    -> std::strong_ordering {
+    return other.equals_identifier(*this);
+}
+
+
+auto spp::asts::IdentifierAst::equals_identifier(
+    IdentifierAst const &other) const
+    -> std::strong_ordering {
+    if (val == other.val) {
+        return std::strong_ordering::equal;
+    }
+    return std::strong_ordering::less;
+}
 
 
 auto spp::asts::IdentifierAst::pos_start() const
