@@ -61,7 +61,7 @@ protected:
     SPP_ATTR_NODISCARD virtual auto equals_type_identifier(TypeIdentifierAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals_type_unary_expression(TypeUnaryExpressionAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals_type_postfix_expression(TypePostfixExpressionAst const &) const -> std::strong_ordering;
-    SPP_ATTR_NODISCARD virtual auto equals(ExpressionAst const &other) const -> std::strong_ordering;
+    SPP_ATTR_NODISCARD virtual auto equals(ExpressionAst const &other) const -> std::strong_ordering; // Not "= 0" on purpose (postfix, unary etc)
 
 public:
     ExpressionAst(ExpressionAst const &other);
