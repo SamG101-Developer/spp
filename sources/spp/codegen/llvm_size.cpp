@@ -16,6 +16,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types_precompiled;
+import spp.asts.utils.ast_utils;
 
 
 auto spp::codegen::size_of(

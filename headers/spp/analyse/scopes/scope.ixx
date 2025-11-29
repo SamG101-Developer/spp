@@ -3,7 +3,6 @@ module;
 
 export module spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
-import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.symbol_table;
 import spp.compiler.module_tree;
 import spp.utils.error_formatter;
@@ -24,6 +23,7 @@ namespace spp::asts {
 namespace spp::analyse::scopes {
     SPP_EXP_CLS class Scope;
     SPP_EXP_CLS class ScopeManager;
+    SPP_EXP_CLS struct Symbol;
     SPP_EXP_CLS using ScopeName = std::variant<
         std::shared_ptr<asts::IdentifierAst>,
         std::shared_ptr<asts::TypeIdentifierAst>,

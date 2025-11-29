@@ -10,6 +10,7 @@ module;
 module spp.asts.closure_expression_capture_group_ast;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.asts.closure_expression_capture_ast;
 import spp.asts.convention_ast;
@@ -22,6 +23,7 @@ import spp.asts.object_initializer_ast;
 import spp.asts.object_initializer_argument_group_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 

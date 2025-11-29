@@ -7,11 +7,13 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.sup_prototype_extension_ast;
-import spp.analyse.scopes.scope_block_name;
-import spp.analyse.utils.func_utils;
-import spp.analyse.utils.type_utils;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.func_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.cmp_statement_ast;
 import spp.asts.convention_ast;
 import spp.asts.function_prototype_ast;

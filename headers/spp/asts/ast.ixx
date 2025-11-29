@@ -6,7 +6,6 @@ module;
 export module spp.asts.ast;
 import spp.asts.meta.ast_printer;
 import spp.asts.mixins.compiler_stages;
-import spp.asts.meta.compiler_meta_data;
 import spp.codegen.llvm_ctx;
 
 

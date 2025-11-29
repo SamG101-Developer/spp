@@ -22,7 +22,9 @@ module spp.analyse.utils.type_utils;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.mem_utils;
 import spp.asts.ast;
@@ -32,6 +34,7 @@ import spp.asts.class_member_ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
 import spp.asts.function_prototype_ast;
+import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_comp_keyword_ast;
 import spp.asts.generic_argument_group_ast;
@@ -49,6 +52,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.generate.common_types_precompiled;
+import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
 import spp.lex.lexer;
 import spp.parse.parser_spp;
@@ -806,7 +810,7 @@ auto spp::analyse::utils::type_utils::create_generic_sym(
             asts::IdentifierAst::from_type(*comp_arg->name),
             (tm ? *tm : sm).current_scope->get_type_symbol(comp_arg->val->infer_type(tm ? tm : &sm, meta))->fq_name(),
             false, true, asts::utils::Visibility::PUBLIC);
-        sym->memory_info->ast_comptime = ast_clone(comp_arg);
+        sym->memory_info->ast_comptime = asts::ast_clone(comp_arg);
         return sym;
     }
 

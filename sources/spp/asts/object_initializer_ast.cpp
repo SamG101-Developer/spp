@@ -21,6 +21,7 @@ import spp.asts.identifier_ast;
 import spp.asts.object_initializer_argument_ast;
 import spp.asts.object_initializer_argument_group_ast;
 import spp.asts.type_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 

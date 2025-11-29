@@ -2,9 +2,10 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.float_literal_ast;
-import spp.analyse.scopes.scope_manager;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.asts.token_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;

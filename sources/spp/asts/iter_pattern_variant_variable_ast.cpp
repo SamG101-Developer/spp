@@ -3,6 +3,7 @@ module;
 
 module spp.asts.iter_pattern_variant_variable_ast;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;

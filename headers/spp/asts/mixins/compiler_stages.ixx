@@ -2,10 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.mixins.compiler_stages;
-import spp.asts.meta.compiler_meta_data;
 import spp.codegen.llvm_ctx;
 import spp.utils.errors;
-import spp.utils.ptr_cmp;
 
 import llvm;
 import std;
@@ -18,6 +16,10 @@ namespace spp::asts::mixins {
 
 namespace spp::asts {
     SPP_EXP_CLS struct Ast;
+}
+
+namespace spp::asts::meta {
+    SPP_EXP_CLS struct CompilerMetaData;
 }
 
 namespace spp::analyse::scopes {

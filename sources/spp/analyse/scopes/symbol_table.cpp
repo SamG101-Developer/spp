@@ -1,4 +1,5 @@
 module spp.analyse.scopes.symbol_table;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.asts.identifier_ast;
 import spp.asts.type_ast;

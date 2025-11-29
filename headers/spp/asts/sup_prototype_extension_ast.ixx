@@ -2,9 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.sup_prototype_extension_ast;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
 import spp.asts.ast;
 import spp.asts.module_member_ast;
 import spp.asts.sup_member_ast;
@@ -18,6 +15,12 @@ namespace spp::asts {
     SPP_EXP_CLS struct SupPrototypeExtensionAst;
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
+}
+
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class ScopeManager;
+    SPP_EXP_CLS class Scope;
+    SPP_EXP_CLS struct TypeSymbol;
 }
 
 

@@ -5,6 +5,7 @@ module spp.asts.generic_parameter_type_optional_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.asts.convention_ast;
 import spp.asts.generic_parameter_type_inline_constraints_ast;
 import spp.asts.token_ast;

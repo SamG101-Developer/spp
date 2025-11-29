@@ -7,6 +7,7 @@ import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.token_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 

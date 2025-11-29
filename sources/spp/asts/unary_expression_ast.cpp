@@ -8,6 +8,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.unary_expression_operator_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 

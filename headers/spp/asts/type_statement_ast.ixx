@@ -2,8 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_statement_ast;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.symbols;
 import spp.asts.statement_ast;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.module_member_ast;
@@ -21,13 +19,18 @@ namespace spp::asts {
     SPP_EXP_CLS struct UseStatementAst;
 }
 
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS struct TypeSymbol;
+    SPP_EXP_CLS class Scope;
+}
+
 
 /**
  * The TypeStatementAst is used to alias a type to a new name in this scope. It can also use generic parameters for more
  * complex types, such as aliasing vectors, or partially specialized hash maps etc. For example,
  * @code type SecureByteMap[T] = std::collections::HashMap[K=Byte, V=T, A=SecureAlloc[(K, V)]]@endcode
  */
-SPP_EXP_CLS struct spp::asts::TypeStatementAst final : StatementAst, mixins::VisibilityEnabledAst, ModuleMemberAst, SupMemberAst {
+SPP_EXP_CLS struct spp::asts::TypeStatementAst final : StatementAst, ModuleMemberAst, SupMemberAst, mixins::VisibilityEnabledAst {
     friend struct spp::asts::UseStatementAst;
 
 private:

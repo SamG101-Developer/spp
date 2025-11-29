@@ -3,6 +3,7 @@ module;
 
 module spp.asts.function_parameter_ast;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
@@ -12,6 +13,7 @@ import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.let_statement_uninitialized_ast;
 import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
+import spp.asts.meta.compiler_meta_data;
 import spp.lex.tokens;
 
 

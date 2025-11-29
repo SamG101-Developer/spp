@@ -3,9 +3,6 @@ module;
 
 export module spp.analyse.utils.type_utils;
 import spp.utils.ptr_cmp;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
 import spp.asts.meta.compiler_meta_data;
 
 import ankerl;
@@ -21,7 +18,15 @@ namespace spp::asts {
     SPP_EXP_CLS struct GenericParameterGroupAst;
     SPP_EXP_CLS struct TypeAst;
     SPP_EXP_CLS struct TypeIdentifierAst;
+    SPP_EXP_CLS struct TypeStatementAst;
 }
+
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class Scope;
+    SPP_EXP_CLS class ScopeManager;
+    SPP_EXP_CLS struct Symbol;
+}
+
 
 namespace spp::analyse::utils::type_utils {
     SPP_EXP_CLS using GenericInferenceMap = ankerl::unordered_dense::map<

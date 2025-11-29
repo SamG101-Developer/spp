@@ -8,13 +8,15 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.postfix_expression_operator_static_member_access_ast;
-import spp.analyse.scopes.scope_manager;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.strings;

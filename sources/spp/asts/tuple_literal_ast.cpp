@@ -14,6 +14,7 @@ module spp.asts.tuple_literal_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.asts.token_ast;
 import spp.asts.type_ast;

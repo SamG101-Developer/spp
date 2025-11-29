@@ -11,6 +11,7 @@ import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 

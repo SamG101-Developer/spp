@@ -83,6 +83,7 @@ import spp.asts.tuple_literal_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
+import spp.asts.utils.ast_utils;
 import spp.utils.ptr_cmp;
 
 import ankerl;
@@ -116,7 +117,7 @@ auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
 
     // Static access into a type: "Type::method()" or "ns::Type::method()".
     else if (static_field != nullptr and postfix_lhs_as_type != nullptr) {
-        fn_owner_type = ast_clone(postfix_lhs_as_type);
+        fn_owner_type = asts::ast_clone(postfix_lhs_as_type);
         fn_name = static_field->name;
         fn_owner_scope = sm.current_scope->get_type_symbol(fn_owner_type)->scope;
     }
@@ -131,7 +132,7 @@ auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
     // Direct access into a non-namespaced function: "function()":
     else if (lhs_as_ident != nullptr) {
         fn_owner_type = nullptr;
-        fn_name = ast_clone(lhs_as_ident);
+        fn_name = asts::ast_clone(lhs_as_ident);
         fn_owner_scope = sm.current_scope->parent_module();
     }
 
