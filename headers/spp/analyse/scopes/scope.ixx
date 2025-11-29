@@ -4,8 +4,6 @@ module;
 export module spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.symbol_table;
-import spp.compiler.module_tree;
-import spp.utils.error_formatter;
 
 import std;
 import sys;
@@ -20,8 +18,12 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
+namespace spp::compiler {
+    SPP_EXP_CLS struct Module;
+}
+
 namespace spp::analyse::scopes {
-    SPP_EXP_CLS struct Scope;
+    SPP_EXP_CLS class Scope;
     SPP_EXP_CLS class ScopeManager;
     SPP_EXP_CLS struct Symbol;
     SPP_EXP_CLS using ScopeName = std::variant<
@@ -30,15 +32,19 @@ namespace spp::analyse::scopes {
         ScopeBlockName>;
 }
 
+namespace spp::utils::errors {
+    SPP_EXP_CLS class ErrorFormatter;
+}
+
 
 SPP_EXP_CLS class spp::analyse::scopes::Scope {
     friend class spp::analyse::scopes::ScopeManager;
 
 public:
     /**
-     * The name of the scope. This will be either an @c IdentifierAst* (functions, modules), an @c TypeIdentifierAst*
-     * (classes), or a @c ScopeBlockName (blocks: @c case, @c loop, etc). It is stored in a @c std::variant to allow for
-     * easy type-safe access to the underlying type.
+     * The name of the scope. This will be either an @c std::shared_ptr<IdentifierAst> (functions, modules), an
+     * @c std::shared_ptr<TypeIdentifierAst> (classes), or a @c ScopeBlockName (blocks: @c case, @c loop, etc). It is
+     * stored in a @c std::variant to allow for easy type-safe access to the underlying type.
      */
     ScopeName name;
 
@@ -91,14 +97,15 @@ private:
 
     std::vector<Scope*> m_direct_sub_scopes;
 
-    spp::utils::errors::ErrorFormatter *m_error_formatter;
+    utils::errors::ErrorFormatter *m_error_formatter;
 
     std::vector<std::unique_ptr<asts::Ast>> m_temp_asts;
 
 public:
-    Scope(ScopeName name, Scope *parent, asts::Ast *ast = nullptr, spp::utils::errors::ErrorFormatter *error_formatter = nullptr);
+    Scope(ScopeName name, Scope *parent, asts::Ast *ast = nullptr, utils::errors::ErrorFormatter *error_formatter = nullptr);
 
     Scope(Scope const &other);
+    ~Scope() = default;
 
     static auto new_global(compiler::Module const &module) -> std::unique_ptr<Scope>;
 
@@ -106,7 +113,7 @@ public:
     static auto search_sup_scopes_for_type(Scope const &scope, std::shared_ptr<const asts::TypeAst> const &name) -> std::shared_ptr<TypeSymbol>;
     static auto shift_scope_for_namespaced_type(Scope const &scope, asts::TypeAst const &fq_type) -> std::pair<const Scope*, std::shared_ptr<const asts::TypeIdentifierAst>>;
 
-    auto get_error_formatter() const -> spp::utils::errors::ErrorFormatter*;
+    auto get_error_formatter() const -> utils::errors::ErrorFormatter*;
 
     auto get_generics() const -> std::vector<std::unique_ptr<asts::GenericArgumentAst>>;
 
@@ -120,9 +127,9 @@ public:
     auto rem_type_symbol(std::shared_ptr<asts::TypeIdentifierAst> const &sym_name) -> void;
     auto rem_ns_symbol(std::shared_ptr<asts::IdentifierAst> const &sym_name) -> void;
 
-    auto all_var_symbols(bool exclusive = false, bool sup_scope_search = false) const -> std::generator<std::shared_ptr<VariableSymbol>>;
-    auto all_type_symbols(bool exclusive = false, bool sup_scope_search = false) const -> std::generator<std::shared_ptr<TypeSymbol>>;
-    auto all_ns_symbols(bool exclusive = false, bool = false) const -> std::generator<std::shared_ptr<NamespaceSymbol>>;
+    auto all_var_symbols(bool exclusive = false, bool sup_scope_search = false) const -> std::vector<std::shared_ptr<VariableSymbol>>;
+    auto all_type_symbols(bool exclusive = false, bool sup_scope_search = false) const -> std::vector<std::shared_ptr<TypeSymbol>>;
+    auto all_ns_symbols(bool exclusive = false, bool = false) const -> std::vector<std::shared_ptr<NamespaceSymbol>>;
 
     auto has_var_symbol(std::shared_ptr<asts::IdentifierAst> const &sym_name, bool exclusive = false) const -> bool;
     auto has_type_symbol(std::shared_ptr<asts::TypeAst> const &sym_name, bool exclusive = false) const -> bool;
@@ -149,10 +156,6 @@ public:
     auto direct_sup_scopes() const -> std::vector<Scope*>;
 
     auto direct_sup_types() const -> std::vector<std::shared_ptr<asts::TypeAst>>;
-
-    auto sub_scopes() -> std::vector<Scope*>;
-
-    auto direct_sub_scopes() -> std::vector<Scope*>;
 
     auto convert_postfix_to_nested_scope(asts::ExpressionAst const *postfix_ast) const -> Scope const*;
 

@@ -22,7 +22,7 @@ namespace spp::asts {
 }
 
 namespace spp::analyse::scopes {
-    SPP_EXP_CLS struct Scope;
+    SPP_EXP_CLS class Scope;
     SPP_EXP_CLS class ScopeManager;
     SPP_EXP_CLS struct TypeSymbol;
 }

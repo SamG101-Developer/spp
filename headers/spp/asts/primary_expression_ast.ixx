@@ -12,7 +12,7 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::PrimaryExpressionAst : ExpressionAst {
-    using ExpressionAst::ExpressionAst;
+    PrimaryExpressionAst() = default;
 
     ~PrimaryExpressionAst() override;
 };

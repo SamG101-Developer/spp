@@ -7,13 +7,10 @@ import spp.utils.errors;
 import std;
 
 
-/// @cond
 namespace spp::parse::errors {
     SPP_EXP_CLS struct SyntacticError;
     SPP_EXP_CLS struct SppSyntaxError;
 }
-
-/// @endcond
 
 
 SPP_EXP_CLS struct spp::parse::errors::SyntacticError : utils::errors::AbstractError {

@@ -4,6 +4,7 @@ module;
 module spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.identifier_ast;

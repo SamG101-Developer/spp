@@ -20,8 +20,6 @@ namespace spp::asts {
  * inherited into the "shorthand" and "keyword" variants.
  */
 SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentAst : virtual Ast, mixins::TypeInferrableAst {
-    using Ast::Ast;
-
     /**
      * The name of the argument. This is the identifier that is used to refer to the argument in the function call. For
      * shorthand args, this is autofilled by cloning the value, and casting it to an IdentifierAst. Otherwise, it is

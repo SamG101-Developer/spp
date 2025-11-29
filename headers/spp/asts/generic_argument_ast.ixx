@@ -63,13 +63,11 @@ namespace spp::asts::detail {
  * inherited for the positional and keyword variants.
  */
 SPP_EXP_CLS struct spp::asts::GenericArgumentAst : virtual Ast, mixins::OrderableAst {
-    using Ast::Ast;
-
     SPP_ATTR_NODISCARD virtual auto equals_generic_argument_comp_keyword(GenericArgumentCompKeywordAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals_generic_argument_comp_positional(GenericArgumentCompPositionalAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals_generic_argument_type_keyword(GenericArgumentTypeKeywordAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals_generic_argument_type_positional(GenericArgumentTypePositionalAst const &) const -> std::strong_ordering;
-    SPP_ATTR_NODISCARD virtual auto equals(GenericArgumentAst const &other) const -> std::strong_ordering;
+    SPP_ATTR_NODISCARD virtual auto equals(GenericArgumentAst const &other) const -> std::strong_ordering = 0;
 
     explicit GenericArgumentAst(decltype(m_order_tag) order_tag);
     ~GenericArgumentAst() override;

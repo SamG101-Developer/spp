@@ -27,7 +27,7 @@ SPP_EXP_CLS struct spp::asts::IdentifierAst final : PrimaryExpressionAst, std::e
         std::size_t pos,
         decltype(val) val);
 
-    IdentifierAst(IdentifierAst const &);
+    IdentifierAst(IdentifierAst const &) = default;
 
     ~IdentifierAst() override;
 

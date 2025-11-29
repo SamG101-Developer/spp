@@ -20,7 +20,7 @@ namespace spp::parse {
 SPP_EXP_CLS class spp::parse::ParserBase {
 public:
     explicit ParserBase(std::vector<lex::RawToken> tokens, std::shared_ptr<utils::errors::ErrorFormatter> const &error_formatter = nullptr);
-    virtual ~ParserBase() = default;
+    virtual ~ParserBase();
 
 protected:
     std::size_t m_pos = 0;

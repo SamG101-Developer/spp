@@ -101,8 +101,6 @@ namespace spp::asts::detail {
  * and GenericParameterTypeAst, which represent the two types of generic parameters in the language.
  */
 SPP_EXP_CLS struct spp::asts::GenericParameterAst : virtual Ast, mixins::OrderableAst {
-    using Ast::Ast;
-
     /**
      * The name of the generic type parameter. This is the name that will be used to refer to the type parameter in the
      * generic type.

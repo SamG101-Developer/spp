@@ -2,11 +2,13 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.class_prototype_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
 import spp.asts.annotation_ast;
 import spp.asts.convention_ast;
 import spp.asts.class_attribute_ast;
@@ -16,6 +18,7 @@ import spp.asts.generic_parameter_group_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.type_statement_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_mangle;
@@ -178,7 +181,8 @@ auto spp::asts::ClassPrototypeAst::stage_2_gen_top_level_scopes(
     CompilerMetaData *meta)
     -> void {
     // Create the class scope, which is the scope for the class prototype.
-    sm->create_and_move_into_new_scope(std::dynamic_pointer_cast<TypeIdentifierAst>(name), this);
+    auto scope_name = analyse::scopes::ScopeName(std::dynamic_pointer_cast<TypeIdentifierAst>(name));
+    sm->create_and_move_into_new_scope(std::move(scope_name), this);
     Ast::stage_2_gen_top_level_scopes(sm, meta);
 
     // Run the generation steps for the annotations.

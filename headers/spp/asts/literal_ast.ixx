@@ -20,7 +20,7 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::LiteralAst : PrimaryExpressionAst {
-    using PrimaryExpressionAst::PrimaryExpressionAst;
+    LiteralAst() = default;
 
     ~LiteralAst() override;
 };

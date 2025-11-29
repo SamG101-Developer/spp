@@ -4,19 +4,27 @@ module;
 module spp.compiler.compiler_boot;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.asts.module_prototype_ast;
+import spp.asts.ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
+import spp.asts.module_prototype_ast;
 import spp.asts.meta.compiler_meta_data;
+import spp.compiler.module_tree;
 import spp.lex.lexer;
 import spp.parse.parser_spp;
 import spp.parse.errors.parser_error;
 import spp.parse.errors.parser_error_builder;
 import spp.utils.error_formatter;
 import spp.utils.files;
+
 import genex;
+import genex.actions.drop; // ?
+import genex.meta;
+import genex.pipe;
 
 
 #define PREP_SCOPE_MANAGER \
@@ -234,7 +242,7 @@ auto spp::compiler::CompilerBoot::move_scope_manager_to_ns(
     // Create the module namespace as a list of strings.
     auto mod_ns = std::vector<std::string>(mod.path.begin(), mod.path.end());
     if (genex::contains(mod_ns, "src"s)) {
-        const auto src_index = genex::find(mod_ns, "src"s) - mod_ns.begin() + 1;
+        const auto src_index = genex::find(mod_ns, "src"s) - mod_ns.begin() + 1z;
         mod_ns |= genex::actions::drop(src_index);
         mod_ns.back().erase(mod_ns.back().size() - 4);
     }

@@ -10,7 +10,7 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::LoopConditionAst : virtual Ast {
-    using Ast::Ast;
+    LoopConditionAst() = default;
 
     ~LoopConditionAst() override;
 };

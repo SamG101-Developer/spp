@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.compiler.compiler_boot;
-import spp.compiler.module_tree;
 import spp.utils.progress;
 
 import std;
@@ -10,10 +9,13 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct Ast;
+    SPP_EXP_CLS struct ModulePrototypeAst;
 }
 
 namespace spp::compiler {
     SPP_EXP_CLS struct CompilerBoot;
+    SPP_EXP_CLS struct Module;
+    SPP_EXP_CLS struct ModuleTree;
 }
 
 namespace spp::analyse::scopes {

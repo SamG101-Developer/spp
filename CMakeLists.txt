@@ -5,10 +5,10 @@ project(spp)
 # Set the C++ standard and other compiler options.
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_MODULE_STD ON)
-set(CMAKE_C_COMPILER_LAUNCHER ccache)
-set(CMAKE_CXX_COMPILER_LAUNCHER ccache)
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
+#set(CMAKE_C_COMPILER_LAUNCHER ccache)
+#set(CMAKE_CXX_COMPILER_LAUNCHER ccache)
+#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
+#set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
 
 # Find dependencies.
 find_package(ColEx REQUIRED) # colored console output
@@ -33,7 +33,7 @@ add_library(spp_lib)
 
 # Enable all warnings and treat them as errors.
 target_compile_options(spp_lib PRIVATE
-        -fno-modules-ts
+        -fmodules-ts -frtti
         -Wall -Wextra -Werror
         -Wcast-align -Wcast-qual -Wconversion -Wsign-conversion -Wsign-promo -Wctor-dtor-privacy -Winit-self
         -Wold-style-cast -Wundef -Wdisabled-optimization -Wmissing-declarations -Wmissing-include-dirs
@@ -53,8 +53,9 @@ target_link_libraries(spp_lib PRIVATE
         absl::hash absl::strings nlohmann_json::nlohmann_json magic_enum::magic_enum Boost::boost mp++::mp++
         ColEx::ColEx GenEx::GenEx OpEx::OpEx
         Glob LLVMCore LLVMSupport LLVMCodeGen LLVMScalarOpts LLVMTransformUtils)
-target_sources(spp_lib PUBLIC
-        FILE_SET CXX_MODULES FILES ${MODULE_FILES} PRIVATE ${SOURCE_FILES})
+target_sources(spp_lib
+        PUBLIC FILE_SET cxx_modules TYPE CXX_MODULES FILES ${MODULE_FILES}
+        PRIVATE ${SOURCE_FILES})
 target_include_directories(spp_lib PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/headers)
 target_compile_definitions(spp_lib PRIVATE

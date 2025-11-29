@@ -4,7 +4,6 @@ module;
 export module spp.analyse.scopes.scope_block_name;
 import std;
 
-
 namespace spp::analyse::scopes {
     SPP_EXP_CLS struct ScopeBlockName;
 }

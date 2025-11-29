@@ -2,9 +2,12 @@ module;
 #include <spp/macros.hpp>
 
 module spp.codegen.llvm_func_impls;
+import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.generate.common_types;
+import spp.codegen.llvm_ctx;
+import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_size;
 
 import llvm;

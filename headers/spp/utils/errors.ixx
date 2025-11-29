@@ -2,18 +2,19 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.utils.errors;
+import spp.utils.error_formatter;
+import genex;
 import std;
 
 
 namespace spp::utils::errors {
-    SPP_EXP_CLS struct ErrorFormatter;
     SPP_EXP_CLS struct AbstractError;
     SPP_EXP_CLS template <typename T>
     struct AbstractErrorBuilder;
 }
 
 namespace spp::analyse::scopes {
-    SPP_EXP_CLS struct Scope;
+    SPP_EXP_CLS class Scope;
 }
 
 
@@ -45,11 +46,31 @@ protected:
 
 public:
     template <typename... Args> requires std::is_constructible_v<T, Args...>
-    auto with_args(Args &&... args) -> AbstractErrorBuilder&;
+    auto with_args(Args &&... args) -> AbstractErrorBuilder& {
+        // Provide the arguments to construct the error object.
+        m_err_obj = std::make_unique<T>(std::forward<Args>(args)...);
+        return *this;
+    }
 
-    auto with_scopes(std::vector<analyse::scopes::Scope const*> scopes) -> AbstractErrorBuilder&;
+    auto with_scopes(std::vector<analyse::scopes::Scope const*>) -> AbstractErrorBuilder& {
+        // Extract error formatters from a list of scopes.
+        // m_error_formatters = scopes
+        //     | genex::views::transform(&analyse::scopes::Scope::get_error_formatter)
+        //     | genex::to<std::vector>();
+        return *this;
+    }
 
-    auto with_error_formatter(ErrorFormatter *error_formatter) -> AbstractErrorBuilder&;
+    auto with_error_formatter(ErrorFormatter *error_formatter) -> AbstractErrorBuilder& {
+        // Add a single error formatter to the list.
+        m_error_formatters.emplace_back(error_formatter);
+        return *this;
+    }
 
-    SPP_ATTR_NORETURN virtual auto raise() -> void;
+    SPP_ATTR_NORETURN virtual auto raise() -> void {
+        // Throw the error object.
+        this->m_err_obj->final_message = this->m_err_obj->messages
+            | genex::views::join_with('\n')
+            | genex::to<std::string>();
+        throw T(*m_err_obj);
+    }
 };

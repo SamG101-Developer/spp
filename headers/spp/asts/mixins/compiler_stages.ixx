@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.mixins.compiler_stages;
 import spp.codegen.llvm_ctx;
-import spp.utils.errors;
 
 import llvm;
 import std;

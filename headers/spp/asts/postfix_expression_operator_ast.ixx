@@ -13,7 +13,7 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorAst : virtual Ast, mixins::TypeInferrableAst {
-    using Ast::Ast;
+    PostfixExpressionOperatorAst() = default;
 
     ~PostfixExpressionOperatorAst() override;
 

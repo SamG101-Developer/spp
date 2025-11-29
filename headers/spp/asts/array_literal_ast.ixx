@@ -18,9 +18,7 @@ namespace spp::asts {
  * @c ArrayLiteralNElements. The common base class is for type checking only.
  */
 SPP_EXP_CLS struct spp::asts::ArrayLiteralAst : LiteralAst {
-    using LiteralAst::LiteralAst;
+    ArrayLiteralAst() = default;
 
     ~ArrayLiteralAst() override;
-
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

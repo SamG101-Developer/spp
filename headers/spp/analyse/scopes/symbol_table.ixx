@@ -52,7 +52,7 @@ public:
 
     auto has(std::shared_ptr<I> const &sym_name) const -> bool;
 
-    auto all() const -> std::generator<std::shared_ptr<S>>;
+    auto all() const -> std::vector<std::shared_ptr<S>>;
 };
 
 

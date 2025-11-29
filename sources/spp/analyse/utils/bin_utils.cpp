@@ -1,4 +1,5 @@
 module spp.analyse.utils.bin_utils;
+import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.asts.ast;
 import spp.asts.binary_expression_ast;
@@ -82,7 +83,7 @@ auto spp::analyse::utils::bin_utils::combine_comp_ops(
     if (sm->current_scope->get_var_symbol_outermost(*bin_lhs->rhs).first == nullptr) {
         auto temp_var_name = std::make_shared<asts::IdentifierAst>(bin_lhs->rhs->pos_start(), std::format("$_{}", reinterpret_cast<std::uintptr_t>(bin_lhs->rhs.get())));
         auto temp_var_ast = std::make_unique<asts::LocalVariableSingleIdentifierAst>(nullptr, temp_var_name, nullptr);
-        auto temp_let = std::make_unique<asts::LetStatementInitializedAst>(nullptr, std::move(temp_var_ast), nullptr, nullptr, std::move(bin_lhs->rhs));
+        const auto temp_let = std::make_unique<asts::LetStatementInitializedAst>(nullptr, std::move(temp_var_ast), nullptr, nullptr, std::move(bin_lhs->rhs));
         temp_let->stage_7_analyse_semantics(sm, meta);
         bin_lhs->rhs = ast_clone(temp_var_name);
     }

@@ -9,7 +9,7 @@ import genex;
 import std;
 
 namespace spp::analyse::scopes {
-    SPP_EXP_CLS struct Scope;
+    SPP_EXP_CLS class Scope;
     SPP_EXP_CLS class ScopeManager;
 }
 
@@ -81,10 +81,10 @@ public:
      * source code, and is used for error reporting. Calculated by subtracting the start position from the end position.
      * @return The size of the AST in tokens.
      */
-    auto size() const -> std::size_t;
+    virtual auto size() const -> std::size_t final;
 
     /**
-     * The clone operator that deepcopies the AST and all its children ASTs. This is used to create a new AST that is a
+     * The clone operator that deep-copies the AST and all its children ASTs. This is used to create a new AST that is a
      * copy of the original AST, preserving its structure and contents. This is useful for creating a new AST that can
      * be modified without affecting the original AST. Can be cast down as needed, as the return type is a
      * @code std::unique_ptr<T>@endcode to the base @c Ast class.

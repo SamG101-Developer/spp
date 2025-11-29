@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.codegen.llvm_size;
-
 import std;
 
 namespace spp::asts {

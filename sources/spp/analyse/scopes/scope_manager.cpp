@@ -4,6 +4,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
+import spp.asts.ast;
 import spp.asts.cmp_statement_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
@@ -14,6 +15,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.utils.error_formatter;
 import genex;
 
 
@@ -26,7 +28,7 @@ spp::analyse::scopes::ScopeManager::ScopeManager(
 
 
 auto spp::analyse::scopes::ScopeManager::iter() const
--> ScopeRange {
+    -> ScopeRange {
     return ScopeRange{current_scope};
 }
 
@@ -194,11 +196,11 @@ auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statement
 
     // Check for conflicting "type" statements.
     std::vector<std::shared_ptr<asts::TypeIdentifierAst>> new_types;
-    for (auto scope: existing_scopes) {
+    for (auto scope : existing_scopes) {
         auto body = asts::ast_body(scope->ast);
-        for (const auto member: body) {
+        for (const auto member : body) {
             if (const auto type_stmt = asts::ast_cast<asts::TypeStatementAst>(member); type_stmt != nullptr) {
-                for (const auto &new_type: new_types) {
+                for (const auto &new_type : new_types) {
                     if (*new_type == *type_stmt->new_type) {
                         errors::SemanticErrorBuilder<errors::SppIdentifierDuplicateError>().with_args(
                             *new_type, *type_stmt->new_type, "associated type").with_scopes({scope, &sup_scope}).raise();
@@ -211,11 +213,11 @@ auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statement
 
     // Check for conflicting "cmp" statements.
     std::vector<std::shared_ptr<asts::IdentifierAst>> new_cmps;
-    for (auto scope: existing_scopes) {
+    for (auto scope : existing_scopes) {
         auto body = asts::ast_body(scope->ast);
-        for (const auto member: body) {
+        for (const auto member : body) {
             if (const auto cmp_stmt = asts::ast_cast<asts::CmpStatementAst>(member); cmp_stmt != nullptr and cmp_stmt->type->type_parts().back()->name[0] != '$') {
-                for (const auto &new_cmp: new_cmps) {
+                for (const auto &new_cmp : new_cmps) {
                     if (*new_cmp == *cmp_stmt->name) {
                         errors::SemanticErrorBuilder<errors::SppIdentifierDuplicateError>().with_args(
                             *new_cmp, *cmp_stmt->name, "comptime constant").with_scopes({scope, &sup_scope}).raise();

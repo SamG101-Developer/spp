@@ -10,5 +10,7 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::LetStatementAst : StatementAst {
-    using StatementAst::StatementAst;
+    LetStatementAst() = default;
+
+    ~LetStatementAst() override;
 };

@@ -2,9 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.type_utils;
-import spp.utils.ptr_cmp;
 import spp.asts.meta.compiler_meta_data;
-
+import spp.utils.ptr_cmp;
 import ankerl;
 import std;
 
@@ -22,7 +21,7 @@ namespace spp::asts {
 }
 
 namespace spp::analyse::scopes {
-    SPP_EXP_CLS struct Scope;
+    SPP_EXP_CLS class Scope;
     SPP_EXP_CLS class ScopeManager;
     SPP_EXP_CLS struct Symbol;
 }

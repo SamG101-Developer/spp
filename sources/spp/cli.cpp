@@ -5,6 +5,9 @@ module spp.cli;
 import spp.analyse.scopes.scope_manager;
 import spp.asts.module_prototype_ast;
 import spp.compiler.compiler;
+import spp.compiler.compiler_boot;
+import spp.compiler.module_tree;
+import spp.lex.tokens;
 import spp.utils.files;
 
 import cli11;

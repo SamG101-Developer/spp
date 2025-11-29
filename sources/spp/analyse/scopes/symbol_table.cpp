@@ -1,10 +1,13 @@
 module spp.analyse.scopes.symbol_table;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
+import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.type_statement_ast;
 import spp.asts.utils.ast_utils;
+import genex;
 
 
 template <typename I, typename S>
@@ -94,11 +97,11 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::has(
 
 template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::all() const
-    -> std::generator<std::shared_ptr<S>> {
+    -> std::vector<std::shared_ptr<S>> {
     // Generate all symbols in the table.
-    for (auto const &[_, sym] : m_table) {
-        co_yield sym;
-    }
+    return m_table
+        | genex::views::vals
+        | genex::to<std::vector>();
 }
 
 
@@ -128,6 +131,6 @@ auto spp::analyse::scopes::SymbolTable::operator=(
 }
 
 
-// template class spp::analyse::scopes::IndividualSymbolTable<spp::asts::IdentifierAst, spp::analyse::scopes::NamespaceSymbol>;
-// template class spp::analyse::scopes::IndividualSymbolTable<spp::asts::TypeIdentifierAst, spp::analyse::scopes::TypeSymbol>;
-// template class spp::analyse::scopes::IndividualSymbolTable<spp::asts::IdentifierAst, spp::analyse::scopes::VariableSymbol>;
+template class spp::analyse::scopes::IndividualSymbolTable<spp::asts::IdentifierAst, spp::analyse::scopes::NamespaceSymbol>;
+template class spp::analyse::scopes::IndividualSymbolTable<spp::asts::TypeIdentifierAst, spp::analyse::scopes::TypeSymbol>;
+template class spp::analyse::scopes::IndividualSymbolTable<spp::asts::IdentifierAst, spp::analyse::scopes::VariableSymbol>;

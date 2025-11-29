@@ -4,10 +4,9 @@ module;
 export module spp.analyse.scopes.scope_manager;
 import std;
 
-import spp.analyse.scopes.scope_iterator;
 import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_iterator;
 import spp.analyse.scopes.scope_range;
-import spp.utils.error_formatter;
 
 
 namespace spp::asts {
@@ -23,6 +22,10 @@ namespace spp::analyse::scopes {
 
 namespace spp::asts::meta {
     SPP_EXP_CLS struct CompilerMetaData;
+}
+
+namespace spp::utils::errors {
+    SPP_EXP_CLS class ErrorFormatter;
 }
 
 
@@ -121,7 +124,7 @@ public:
     auto create_and_move_into_new_scope(
         ScopeName const &name,
         asts::Ast *ast = nullptr,
-        spp::utils::errors::ErrorFormatter *error_formatter = nullptr)
+        utils::errors::ErrorFormatter *error_formatter = nullptr)
         -> Scope*;
 
     /**

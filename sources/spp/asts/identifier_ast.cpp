@@ -1,6 +1,7 @@
 module spp.asts.identifier_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.type_ast;
@@ -16,14 +17,6 @@ spp::asts::IdentifierAst::IdentifierAst(
     std::enable_shared_from_this<IdentifierAst>(),
     val(std::move(val)),
     m_pos(pos) {
-}
-
-
-spp::asts::IdentifierAst::IdentifierAst(
-    IdentifierAst const &other) :
-    std::enable_shared_from_this<IdentifierAst>(),
-    val(other.val),
-    m_pos(other.m_pos) {
 }
 
 

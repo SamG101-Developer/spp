@@ -2,8 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.codegen.llvm_func_impls;
-import spp.codegen.llvm_ctx;
-import spp.codegen.llvm_mangle;
 
 import llvm;
 import std;
@@ -15,6 +13,10 @@ namespace spp::asts {
 
 namespace spp::analyse::scopes {
     SPP_EXP_CLS class ScopeManager;
+}
+
+namespace spp::codegen {
+    SPP_EXP_CLS struct LLvmCtx;
 }
 
 

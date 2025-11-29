@@ -12,3 +12,6 @@ spp::parse::ParserBase::ParserBase(std::vector<lex::RawToken> tokens, std::share
     m_error_formatter(error_formatter ? error_formatter : std::make_shared<utils::errors::ErrorFormatter>(m_tokens, "<temp>")) {
     m_error_builder->with_error_formatter(m_error_formatter.get());
 }
+
+
+spp::parse::ParserBase::~ParserBase() = default;

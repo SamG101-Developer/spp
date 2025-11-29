@@ -17,7 +17,7 @@ namespace spp::asts {
 }
 
 namespace spp::analyse::scopes {
-    SPP_EXP_CLS struct Scope;
+    SPP_EXP_CLS class Scope;
     SPP_EXP_CLS struct Symbol;
     SPP_EXP_CLS struct NamespaceSymbol;
     SPP_EXP_CLS struct TypeSymbol;
@@ -66,6 +66,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
     NamespaceSymbol(
         NamespaceSymbol const &that);
 
+    ~NamespaceSymbol() override = default;
+
     explicit operator std::string() const override;
 
     auto operator==(
@@ -98,6 +100,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
 
     VariableSymbol(
         VariableSymbol const &that);
+
+    ~VariableSymbol() override = default;
 
     explicit operator std::string() const override;
 

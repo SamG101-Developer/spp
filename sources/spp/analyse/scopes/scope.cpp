@@ -1,6 +1,7 @@
 module spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
 import spp.asts.ast;
+import spp.asts.class_prototype_ast;
 import spp.asts.expression_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_comp_ast;
@@ -13,9 +14,11 @@ import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
+import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
+import spp.utils.error_formatter;
 import spp.utils.variants;
 import spp.compiler.module_tree;
 import genex;
@@ -259,71 +262,59 @@ auto spp::analyse::scopes::Scope::rem_ns_symbol(
 auto spp::analyse::scopes::Scope::all_var_symbols(
     const bool exclusive,
     const bool sup_scope_search) const
-    -> std::generator<std::shared_ptr<VariableSymbol>> {
+    -> std::vector<std::shared_ptr<VariableSymbol>> {
     // Yield all symbols from the var symbol table.
-    for (auto const &sym : table.var_tbl.all()) {
-        co_yield sym;
-    }
+    auto syms = table.var_tbl.all();
 
     // For non-exclusive searches where a parent is present, yield from the parent scope.
     if (not exclusive and parent != nullptr) {
-        for (auto const &sym : parent->all_var_symbols(exclusive, sup_scope_search)) {
-            co_yield sym;
-        }
+        syms.append_range(parent->all_var_symbols(exclusive, sup_scope_search));
     }
 
     // For super scope searches, yield from all direct super scopes.
     if (sup_scope_search) {
         for (auto const *sup_scope : m_direct_sup_scopes) {
-            for (auto const &sym : sup_scope->all_var_symbols(true, false)) {
-                co_yield sym;
-            }
+            syms.append_range(sup_scope->all_var_symbols(true, false));
         }
     }
+
+    return syms;
 }
 
 
 auto spp::analyse::scopes::Scope::all_type_symbols(
     const bool exclusive,
     const bool sup_scope_search) const
-    -> std::generator<std::shared_ptr<TypeSymbol>> {
+    -> std::vector<std::shared_ptr<TypeSymbol>> {
     // Yield all symbols from the type symbol table.
-    for (auto const &sym : table.type_tbl.all()) {
-        co_yield sym;
-    }
+    auto syms = table.type_tbl.all();
 
     // For non-exclusive searches where a parent is present, yield from the parent scope.
     if (not exclusive and parent != nullptr) {
-        for (auto const &sym : parent->all_type_symbols(exclusive, sup_scope_search)) {
-            co_yield sym;
-        }
+        syms.append_range(parent->all_type_symbols(exclusive, sup_scope_search));
     }
 
     // For super scope searches, yield from all direct super scopes.
     if (sup_scope_search) {
         for (auto const *sup_scope : m_direct_sup_scopes) {
-            for (auto const &sym : sup_scope->all_type_symbols(true, false)) {
-                co_yield sym;
-            }
+            syms.append_range(sup_scope->all_type_symbols(true, false));
         }
     }
+
+    return syms;
 }
 
 
 auto spp::analyse::scopes::Scope::all_ns_symbols(
     const bool exclusive, bool) const
-    -> std::generator<std::shared_ptr<NamespaceSymbol>> {
-    // Yield all symbols from the var symbol table.
-    for (auto const &sym : table.ns_tbl.all()) {
-        co_yield sym;
-    }
+    -> std::vector<std::shared_ptr<NamespaceSymbol>> {
+    auto syms = table.ns_tbl.all();
 
     // For non-exclusive searches where a parent is present, yield from the parent scope.
     if (not exclusive and parent != nullptr) {
-        for (auto const &sym : parent->all_ns_symbols(exclusive)) {
-            co_yield sym;
-        }
+        syms.append_range(parent->all_ns_symbols(exclusive));
     }
+    return syms;
 }
 
 
@@ -622,15 +613,9 @@ auto spp::analyse::scopes::Scope::print_scope_tree() const
     auto func = [](this auto &&self, Scope const *scope, std::string const &indent) -> std::string {
         auto result = indent + std::visit(
             spp::utils::variants::overload{
-                [](std::shared_ptr<asts::IdentifierAst> const &id) {
-                    return id->val;
-                },
-                [](std::shared_ptr<asts::TypeIdentifierAst> const &id) {
-                    return id->name;
-                },
-                [](ScopeBlockName const &block) {
-                    return block.name;
-                }
+                [](std::shared_ptr<asts::IdentifierAst> const &id) { return id->val; },
+                [](std::shared_ptr<asts::TypeIdentifierAst> const &id) { return id->name; },
+                [](ScopeBlockName const &block) { return block.name; }
             }, scope->name) + "\n";
 
         for (auto child : scope->children | genex::views::ptr) {

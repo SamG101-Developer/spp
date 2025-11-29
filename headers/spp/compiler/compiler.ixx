@@ -2,14 +2,14 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.compiler.compiler;
-import spp.compiler.module_tree;
-import spp.compiler.compiler_boot;
 
 import std;
 
 
 namespace spp::compiler {
     SPP_EXP_CLS class Compiler;
+    SPP_EXP_CLS struct CompilerBoot;
+    SPP_EXP_CLS struct ModuleTree;
 }
 
 namespace spp::analyse::scopes {
@@ -40,11 +40,11 @@ public:
 private:
     std::filesystem::path m_path;
 
-    ModuleTree m_modules;
+    std::unique_ptr<ModuleTree> m_modules;
 
     Mode m_mode = Mode::DEV;
 
-    CompilerBoot m_boot;
+    std::unique_ptr<CompilerBoot> m_boot;
 
     std::unique_ptr<analyse::scopes::ScopeManager> m_scope_manager;
 
