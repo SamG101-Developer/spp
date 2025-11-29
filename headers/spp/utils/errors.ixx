@@ -53,7 +53,7 @@ public:
     }
 
     auto with_scopes(std::vector<analyse::scopes::Scope const*>) -> AbstractErrorBuilder& {
-        // Extract error formatters from a list of scopes.
+        // Extract error formatters from a list of scopes. TODO
         // m_error_formatters = scopes
         //     | genex::views::transform(&analyse::scopes::Scope::get_error_formatter)
         //     | genex::to<std::vector>();
@@ -67,10 +67,10 @@ public:
     }
 
     SPP_ATTR_NORETURN virtual auto raise() -> void {
-        // Throw the error object.
-        this->m_err_obj->final_message = this->m_err_obj->messages
-            | genex::views::join_with('\n')
-            | genex::to<std::string>();
+        // Throw the error object. TODO
+        // this->m_err_obj->final_message = this->m_err_obj->messages
+        //     | genex::views::join_with('\n')
+        //     | genex::to<std::string>();
         throw T(*m_err_obj);
     }
 };

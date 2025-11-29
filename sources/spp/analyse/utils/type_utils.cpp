@@ -43,8 +43,9 @@ import spp.asts.utils.visibility;
 import spp.lex.lexer;
 import spp.parse.parser_spp;
 import spp.parse.errors.parser_error;
-import spp.parse.errors.parser_error_builder;
+// import spp.parse.errors.parser_error_builder;
 import spp.utils.strings;
+
 import genex;
 
 
@@ -106,18 +107,18 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
         }
     }
 
-    // Ensure each generic argument is symbolically equal to the other.
-    for (auto [lhs_generic, rhs_generic] : genex::views::zip(lhs_generics | genex::views::ptr, rhs_generics | genex::views::ptr)) {
-        if (asts::ast_cast<asts::GenericArgumentTypeAst>(lhs_generic)) {
-            const auto lhs_generic_part = asts::ast_cast<asts::GenericArgumentTypeAst>(lhs_generic);
-            const auto rhs_generic_part = asts::ast_cast<asts::GenericArgumentTypeAst>(rhs_generic);
+    // Ensure each generic argument is symbolically equal to the other. Todo: why genex broke here?
+    for (auto [lhs_generic, rhs_generic] : std::ranges::views::zip(lhs_generics, rhs_generics)) {
+        if (asts::ast_cast<asts::GenericArgumentTypeAst>(lhs_generic.get())) {
+            const auto lhs_generic_part = asts::ast_cast<asts::GenericArgumentTypeAst>(lhs_generic.get());
+            const auto rhs_generic_part = asts::ast_cast<asts::GenericArgumentTypeAst>(rhs_generic.get());
             if (not symbolic_eq(*lhs_generic_part->val, *rhs_generic_part->val, lhs_scope, rhs_scope)) {
                 return false;
             }
         }
         else {
-            const auto lhs_generic_part = asts::ast_cast<asts::GenericArgumentCompAst>(lhs_generic);
-            const auto rhs_generic_part = asts::ast_cast<asts::GenericArgumentCompAst>(rhs_generic);
+            const auto lhs_generic_part = asts::ast_cast<asts::GenericArgumentCompAst>(lhs_generic.get());
+            const auto rhs_generic_part = asts::ast_cast<asts::GenericArgumentCompAst>(rhs_generic.get());
             if (not symbolic_eq(*lhs_generic_part->val, *rhs_generic_part->val, lhs_scope, rhs_scope)) {
                 return false;
             }
@@ -204,17 +205,17 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     }
 
     // Ensure each generic argument is symbolically equal to the other.
-    for (auto [lhs_generic, rhs_generic] : genex::views::zip(lhs_generics | genex::views::ptr, rhs_generics | genex::views::ptr)) {
-        if (asts::ast_cast<asts::GenericArgumentTypeAst>(rhs_generic)) {
-            const auto lhs_generic_part = asts::ast_cast<asts::GenericArgumentTypeAst>(lhs_generic);
-            const auto rhs_generic_part = asts::ast_cast<asts::GenericArgumentTypeAst>(rhs_generic);
+    for (auto [lhs_generic, rhs_generic] : std::ranges::views::zip(lhs_generics, rhs_generics)) {
+        if (asts::ast_cast<asts::GenericArgumentTypeAst>(rhs_generic.get())) {
+            const auto lhs_generic_part = asts::ast_cast<asts::GenericArgumentTypeAst>(lhs_generic.get());
+            const auto rhs_generic_part = asts::ast_cast<asts::GenericArgumentTypeAst>(rhs_generic.get());
             if (not relaxed_symbolic_eq(*lhs_generic_part->val, *rhs_generic_part->val, lhs_scope, rhs_scope, generic_args)) {
                 return false;
             }
         }
         else {
-            const auto lhs_generic_part = asts::ast_cast<asts::GenericArgumentCompAst>(lhs_generic);
-            const auto rhs_generic_part = asts::ast_cast<asts::GenericArgumentCompAst>(rhs_generic);
+            const auto lhs_generic_part = asts::ast_cast<asts::GenericArgumentCompAst>(lhs_generic.get());
+            const auto rhs_generic_part = asts::ast_cast<asts::GenericArgumentCompAst>(rhs_generic.get());
             if (not relaxed_symbolic_eq(*lhs_generic_part->val, *rhs_generic_part->val, *lhs_scope, *rhs_scope, generic_args)) {
                 return false;
             }
@@ -367,17 +368,26 @@ auto spp::analyse::utils::type_utils::is_type_recursive(
 auto spp::analyse::utils::type_utils::get_attr_types(
     const asts::ClassPrototypeAst *cls_proto,
     const scopes::Scope *cls_scope)
-    -> std::generator<std::pair<const asts::ClassPrototypeAst*, std::shared_ptr<asts::TypeAst>>> {
+    -> std::vector<std::pair<const asts::ClassPrototypeAst*, std::shared_ptr<asts::TypeAst>>> {
+    // Todo: GenEx
+    auto mapped_attrs = std::ranges::views::transform(cls_proto->impl->members, [](auto const &member) {
+        return asts::ast_cast<asts::ClassAttributeAst>(member.get());
+    });
+    auto filtered_attrs = std::ranges::views::filter(mapped_attrs, [](auto const &attr) {
+        return attr != nullptr;
+    });
+    const auto all_attrs = std::ranges::to<std::vector>()(filtered_attrs);
+
     // Define the internal function to recursively search for attribute types.
-    for (const auto attr : cls_proto->impl->members | genex::views::ptr | genex::views::cast_dynamic<asts::ClassAttributeAst*>()) {
+    auto attrs = std::vector<std::pair<const asts::ClassPrototypeAst*, std::shared_ptr<asts::TypeAst>>>{};
+    for (const auto attr : all_attrs) {
         const auto attr_type_sym = cls_scope->get_type_symbol(attr->type, true);
         if (attr_type_sym and attr_type_sym->type != nullptr) {
-            co_yield std::make_tuple(attr_type_sym->type, attr->type);
-            for (auto &&tup : get_attr_types(attr_type_sym->type, attr_type_sym->scope)) {
-                co_yield std::move(tup);
-            }
+            attrs.emplace_back(std::make_tuple(attr_type_sym->type, attr->type));
+            attrs.append_range(get_attr_types(attr_type_sym->type, attr_type_sym->scope));
         }
     }
+    return attrs;
 }
 
 
@@ -489,9 +499,8 @@ auto spp::analyse::utils::type_utils::get_try_type(
     }
 
     // Discover the supertypes and add the current type to it.
-    auto sup_types = std::vector{type.shared_from_this()}
-        | genex::views::concat(type_sym->scope->sup_types())
-        | genex::to<std::vector>();
+    auto sup_types = std::vector{type.shared_from_this()};
+    sup_types.append_range(type_sym->scope->sup_types());
 
     // Search through the supertypes for a direct Try type.
     const auto try_type_candidates = sup_types
@@ -508,64 +517,64 @@ auto spp::analyse::utils::type_utils::get_try_type(
 }
 
 
-template <typename T>
-auto spp::analyse::utils::type_utils::validate_inconsistent_types(
-    std::vector<T> const &branches,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>> {
-    // Collect type information for each branch, pairing the branch with its inferred type.
-    auto branches_type_info = branches
-        | genex::views::transform([sm, meta](auto *x) { return std::make_pair(x, x->infer_type(sm, meta)); })
-        | genex::to<std::vector>();
-
-    // Filter the branch types down to variant types for custom analysis.
-    auto variant_branches_type_info = branches_type_info
-        | genex::views::filter([sm](auto &&x) { return type_utils::is_type_variant(*x.second, *sm->current_scope); })
-        | genex::to<std::vector>();
-
-    // Set the master branch type to the first branch's type, if it exists. This is the default and may be subsequently changed.
-    auto master_branch_type_info = not branches.empty()
-                                       ? std::make_pair(branches_type_info[0].first, branches_type_info[0].second)
-                                       : std::make_pair(nullptr, nullptr);
-
-    // Override the master type if a pre-provided type (for assignment) has been given.
-    if (meta->assignment_target_type != nullptr) {
-        master_branch_type_info = std::make_pair(nullptr, meta->assignment_target_type);
-    }
-
-    // Otherwise, if there are variant branches, use the most variant type as the master branch type.
-    else if (not variant_branches_type_info.empty()) {
-        auto most_inner_types = 0uz;
-        for (auto &&[variant_branch, variant_type] : variant_branches_type_info) {
-            const auto variant_size = variant_type->type_parts().back()->generic_arg_group->type_at("Variant")->val->type_parts().back()->generic_arg_group->args.size();
-            if (variant_size > most_inner_types) {
-                master_branch_type_info = std::make_tuple(variant_branch, variant_type);
-                most_inner_types = variant_size;
-            }
-        }
-    }
-
-    // Remove the master branch pointer from the list of remaining branch types and check all types match.
-    auto mismatch_branches_type_info = branches_type_info
-        | genex::views::remove_if([master_branch_type_info](auto const &x) { return x.first == master_branch_type_info.first; })
-        | genex::views::filter([master_branch_type_info, sm](auto const &x) { return not type_utils::symbolic_eq(*master_branch_type_info.second, *x.second, *sm->current_scope, *sm->current_scope); })
-        | genex::to<std::vector>();
-
-    if (not mismatch_branches_type_info.empty()) {
-        auto [mismatch_branch, mismatch_branch_type] = std::move(mismatch_branches_type_info[0]);
-        auto [master_branch, master_branch_type] = master_branch_type_info;
-        analyse::errors::SemanticErrorBuilder<errors::SppTypeMismatchError>().with_args(
-            *master_branch->body->final_member(), *master_branch_type, *mismatch_branch->body->final_member(), *mismatch_branch_type).with_scopes({sm->current_scope}).raise();
-    }
-
-    // Cast to common AST nodes and return with the types.
-    auto cast_master_branch_type_info = std::make_pair(asts::ast_cast<asts::Ast>(master_branch_type_info.first), master_branch_type_info.second);
-    auto cast_branches_type_info = branches_type_info
-        | genex::views::transform([](auto &&x) { return std::make_pair(asts::ast_cast<asts::Ast>(x.first), x.second); })
-        | genex::to<std::vector>();
-    return std::make_tuple(cast_master_branch_type_info, cast_branches_type_info);
-}
+// template <typename T>
+// auto spp::analyse::utils::type_utils::validate_inconsistent_types(
+//     std::vector<T> const &branches,
+//     scopes::ScopeManager *sm,
+//     asts::meta::CompilerMetaData *meta)
+//     -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>> {
+//     // Collect type information for each branch, pairing the branch with its inferred type.
+//     auto branches_type_info = branches
+//         | genex::views::transform([sm, meta](auto *x) { return std::make_pair(x, x->infer_type(sm, meta)); })
+//         | genex::to<std::vector>();
+//
+//     // Filter the branch types down to variant types for custom analysis.
+//     auto variant_branches_type_info = branches_type_info
+//         | genex::views::filter([sm](auto &&x) { return type_utils::is_type_variant(*x.second, *sm->current_scope); })
+//         | genex::to<std::vector>();
+//
+//     // Set the master branch type to the first branch's type, if it exists. This is the default and may be subsequently changed.
+//     auto master_branch_type_info = not branches.empty()
+//                                        ? std::make_pair(branches_type_info[0].first, branches_type_info[0].second)
+//                                        : std::make_pair(nullptr, nullptr);
+//
+//     // Override the master type if a pre-provided type (for assignment) has been given.
+//     if (meta->assignment_target_type != nullptr) {
+//         master_branch_type_info = std::make_pair(nullptr, meta->assignment_target_type);
+//     }
+//
+//     // Otherwise, if there are variant branches, use the most variant type as the master branch type.
+//     else if (not variant_branches_type_info.empty()) {
+//         auto most_inner_types = 0uz;
+//         for (auto &&[variant_branch, variant_type] : variant_branches_type_info) {
+//             const auto variant_size = variant_type->type_parts().back()->generic_arg_group->type_at("Variant")->val->type_parts().back()->generic_arg_group->args.size();
+//             if (variant_size > most_inner_types) {
+//                 master_branch_type_info = std::make_tuple(variant_branch, variant_type);
+//                 most_inner_types = variant_size;
+//             }
+//         }
+//     }
+//
+//     // Remove the master branch pointer from the list of remaining branch types and check all types match.
+//     auto mismatch_branches_type_info = branches_type_info
+//         | genex::views::remove_if([master_branch_type_info](auto const &x) { return x.first == master_branch_type_info.first; })
+//         | genex::views::filter([master_branch_type_info, sm](auto const &x) { return not type_utils::symbolic_eq(*master_branch_type_info.second, *x.second, *sm->current_scope, *sm->current_scope); })
+//         | genex::to<std::vector>();
+//
+//     if (not mismatch_branches_type_info.empty()) {
+//         auto [mismatch_branch, mismatch_branch_type] = std::move(mismatch_branches_type_info[0]);
+//         auto [master_branch, master_branch_type] = master_branch_type_info;
+//         analyse::errors::SemanticErrorBuilder<errors::SppTypeMismatchError>().with_args(
+//             *master_branch->body->final_member(), *master_branch_type, *mismatch_branch->body->final_member(), *mismatch_branch_type).with_scopes({sm->current_scope}).raise();
+//     }
+//
+//     // Cast to common AST nodes and return with the types.
+//     auto cast_master_branch_type_info = std::make_pair(asts::ast_cast<asts::Ast>(master_branch_type_info.first), master_branch_type_info.second);
+//     auto cast_branches_type_info = branches_type_info
+//         | genex::views::transform([](auto &&x) { return std::make_pair(asts::ast_cast<asts::Ast>(x.first), x.second); })
+//         | genex::to<std::vector>();
+//     return std::make_tuple(cast_master_branch_type_info, cast_branches_type_info);
+// }
 
 
 auto spp::analyse::utils::type_utils::get_all_attrs(

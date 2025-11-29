@@ -22,13 +22,11 @@ import spp.utils.error_formatter;
 import spp.utils.files;
 
 import genex;
-import genex.actions.drop; // ?
-import genex.meta;
-import genex.pipe;
 
 
+// todo: genex
 #define PREP_SCOPE_MANAGER \
-    auto const &mod_in_tree = *genex::find_if(tree, [&](auto &m) { return m->module_ast.get() == mod; })
+    auto const &mod_in_tree = *std::ranges::find_if(tree, [&](auto &m) { return m->module_ast.get() == mod; })
 
 
 #define PREP_SCOPE_MANAGER_AND_META(s)                                       \
@@ -43,7 +41,7 @@ auto spp::compiler::CompilerBoot::lex(
     ModuleTree &tree)
     -> void {
     // Lexing stage.
-    for (auto &mod : tree) {
+    for (auto const &mod : tree) {
         mod->code = utils::files::read_file(std::filesystem::current_path() / mod->path);
         mod->tokens = lex::Lexer(mod->code).lex();
         mod->error_formatter = std::make_unique<utils::errors::ErrorFormatter>(mod->tokens, mod->path.string());
@@ -58,7 +56,7 @@ auto spp::compiler::CompilerBoot::parse(
     ModuleTree &tree)
     -> void {
     // Parsing stage.
-    for (auto &mod : tree) {
+    for (auto const &mod : tree) {
         mod->module_ast = parse::ParserSpp(mod->tokens, mod->error_formatter).parse();
         m_modules.emplace_back(mod->module_ast.get());
         bar.next();
@@ -73,7 +71,7 @@ auto spp::compiler::CompilerBoot::stage_1_pre_process(
     asts::Ast *ctx)
     -> void {
     // Pre-processing stage.
-    for (auto &mod : m_modules) {
+    for (auto const &mod : m_modules) {
         PREP_SCOPE_MANAGER;
         mod->m_file_path = mod_in_tree->path;
         mod->stage_1_pre_process(ctx);
@@ -89,7 +87,7 @@ auto spp::compiler::CompilerBoot::stage_2_gen_top_level_scopes(
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Generate top-level scopes stage.
-    for (auto &mod : m_modules) {
+    for (auto const &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(4.0);
         mod->stage_2_gen_top_level_scopes(sm, &meta);
         sm->reset();
@@ -105,7 +103,7 @@ auto spp::compiler::CompilerBoot::stage_3_gen_top_level_aliases(
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Generate top-level aliases stage.
-    for (auto &mod : m_modules) {
+    for (auto const &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(5.0);
         mod->stage_3_gen_top_level_aliases(sm, &meta);
         sm->reset();
@@ -121,7 +119,7 @@ auto spp::compiler::CompilerBoot::stage_4_qualify_types(
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Qualify types stage.
-    for (auto &mod : m_modules) {
+    for (auto const &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(6.0);
         mod->stage_4_qualify_types(sm, &meta);
         sm->reset();
@@ -137,7 +135,7 @@ auto spp::compiler::CompilerBoot::stage_5_load_super_scopes(
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Load super scopes stage.
-    for (auto &mod : m_modules) {
+    for (auto const &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(7.0);
         mod->stage_5_load_super_scopes(sm, &meta);
         sm->reset();
@@ -159,7 +157,7 @@ auto spp::compiler::CompilerBoot::stage_6_pre_analyse_semantics(
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Pre-analyse semantics stage.
-    for (auto &mod : m_modules) {
+    for (auto const &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(8.0);
         mod->stage_6_pre_analyse_semantics(sm, &meta);
         sm->reset();
@@ -175,7 +173,7 @@ auto spp::compiler::CompilerBoot::stage_7_analyse_semantics(
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Analyse semantics stage.
-    for (auto &mod : m_modules) {
+    for (auto const &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(9.0);
         mod->stage_7_analyse_semantics(sm, &meta);
         sm->reset();
@@ -194,7 +192,7 @@ auto spp::compiler::CompilerBoot::stage_8_check_memory(
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Check memory stage.
-    for (auto &mod : m_modules) {
+    for (auto const &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(10.0);
         mod->stage_8_check_memory(sm, &meta);
         sm->reset();
@@ -208,7 +206,7 @@ auto spp::compiler::CompilerBoot::validate_entry_point(
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Get the "main.spp" main module (entry point).
-    const auto main_mod = *genex::find_if(m_modules, [](auto const *mod) {
+    const auto main_mod = *std::ranges::find_if(m_modules, [](auto const *mod) {
         return mod->file_name()->val.ends_with("main.spp");
     });
 
@@ -241,9 +239,9 @@ auto spp::compiler::CompilerBoot::move_scope_manager_to_ns(
     using namespace std::string_literals;
     // Create the module namespace as a list of strings.
     auto mod_ns = std::vector<std::string>(mod.path.begin(), mod.path.end());
-    if (genex::contains(mod_ns, "src"s)) {
-        const auto src_index = genex::find(mod_ns, "src"s) - mod_ns.begin() + 1z;
-        mod_ns |= genex::actions::drop(src_index);
+    if (std::ranges::contains(mod_ns, "src"s)) {
+        const auto src_index = std::ranges::find(mod_ns, "src"s) - mod_ns.begin() + 1z;
+        mod_ns = std::vector(mod_ns.begin() + src_index, mod_ns.end());
         mod_ns.back().erase(mod_ns.back().size() - 4);
     }
     else {
