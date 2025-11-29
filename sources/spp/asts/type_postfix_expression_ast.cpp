@@ -89,7 +89,7 @@ auto spp::asts::TypePostfixExpressionAst::print(
 
 
 auto spp::asts::TypePostfixExpressionAst::iterator() const
-    -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> {
+    -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
     // Iterate from the left-hand-side.
     return lhs->iterator();
 }

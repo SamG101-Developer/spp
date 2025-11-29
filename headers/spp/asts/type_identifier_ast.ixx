@@ -70,7 +70,7 @@ private:
     bool m_is_never_type;
 
 public:
-    auto iterator() const -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> override;
+    auto iterator() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
 
     auto is_never_type() const -> bool override;
 

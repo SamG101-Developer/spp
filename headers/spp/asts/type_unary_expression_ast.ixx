@@ -56,7 +56,7 @@ public:
         return equals(other) == std::strong_ordering::equal;
     }
 
-    auto iterator() const -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> override;
+    auto iterator() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
 
     auto is_never_type() const -> bool override;
 

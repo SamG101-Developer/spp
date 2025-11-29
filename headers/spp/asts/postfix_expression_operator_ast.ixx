@@ -16,6 +16,4 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorAst : virtual Ast, mixins
     PostfixExpressionOperatorAst() = default;
 
     ~PostfixExpressionOperatorAst() override;
-
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

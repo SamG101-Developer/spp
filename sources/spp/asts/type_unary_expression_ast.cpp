@@ -86,7 +86,7 @@ auto spp::asts::TypeUnaryExpressionAst::print(
 
 
 auto spp::asts::TypeUnaryExpressionAst::iterator() const
-    -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> {
+    -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
     // Iterate from the right-hand-side.
     return rhs->iterator();
 }

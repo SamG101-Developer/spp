@@ -117,41 +117,44 @@ auto spp::asts::TypeIdentifierAst::from_string(
 }
 
 
-// auto spp::asts::TypeIdentifierAst::iterator() const
-//     -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> {
-//     // First yield is the original type being iterated over.
-//     co_yield std::dynamic_pointer_cast<const TypeIdentifierAst>(shared_from_this());
-//
-//     for (auto &&g : generic_arg_group->args) {
-//         // Positional generic comp argument with identifier value.
-//         if (auto &&comp_positional_arg = ast_cast<GenericArgumentCompPositionalAst>(g.get())) {
-//             if (auto &&ident_val = ast_cast<IdentifierAst>(comp_positional_arg->val.get())) {
-//                 co_yield from_identifier(*ident_val);
-//             }
-//         }
-//
-//         // Keyword generic comp argument with identifier value.
-//         else if (auto &&comp_keyword_arg = ast_cast<GenericArgumentCompKeywordAst>(g.get())) {
-//             if (auto &&ident_val = ast_cast<IdentifierAst>(comp_keyword_arg->val.get())) {
-//                 co_yield from_identifier(*ident_val);
-//             }
-//         }
-//
-//         // Positional generic type arguments => recursive iteration.
-//         else if (auto &&type_positional_arg = ast_cast<GenericArgumentTypePositionalAst>(g.get())) {
-//             for (auto &&ti : type_positional_arg->val->iterator()) {
-//                 co_yield ti;
-//             }
-//         }
-//
-//         // Keyword generic type arguments => recursive iteration.
-//         else if (auto &&type_keyword_arg = ast_cast<GenericArgumentTypeKeywordAst>(g.get())) {
-//             for (auto &&ti : type_keyword_arg->val->iterator()) {
-//                 co_yield ti;
-//             }
-//         }
-//     }
-// }
+auto spp::asts::TypeIdentifierAst::iterator() const
+    -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
+    // First yield is the original type being iterated over.
+    auto parts = std::vector<std::shared_ptr<const TypeIdentifierAst>>{};
+    parts.emplace_back(std::dynamic_pointer_cast<const TypeIdentifierAst>(shared_from_this()));
+
+    for (auto &&g : generic_arg_group->args) {
+        // Positional generic comp argument with identifier value.
+        if (auto &&comp_positional_arg = ast_cast<GenericArgumentCompPositionalAst>(g.get())) {
+            if (auto &&ident_val = ast_cast<IdentifierAst>(comp_positional_arg->val.get())) {
+                parts.emplace_back(from_identifier(*ident_val));
+            }
+        }
+
+        // Keyword generic comp argument with identifier value.
+        else if (auto &&comp_keyword_arg = ast_cast<GenericArgumentCompKeywordAst>(g.get())) {
+            if (auto &&ident_val = ast_cast<IdentifierAst>(comp_keyword_arg->val.get())) {
+                parts.emplace_back(from_identifier(*ident_val));
+            }
+        }
+
+        // Positional generic type arguments => recursive iteration.
+        else if (auto &&type_positional_arg = ast_cast<GenericArgumentTypePositionalAst>(g.get())) {
+            for (auto &&ti : type_positional_arg->val->iterator()) {
+                parts.emplace_back(ti);
+            }
+        }
+
+        // Keyword generic type arguments => recursive iteration.
+        else if (auto &&type_keyword_arg = ast_cast<GenericArgumentTypeKeywordAst>(g.get())) {
+            for (auto &&ti : type_keyword_arg->val->iterator()) {
+                parts.emplace_back(ti);
+            }
+        }
+    }
+
+    return parts;
+}
 
 
 auto spp::asts::TypeIdentifierAst::is_never_type() const
