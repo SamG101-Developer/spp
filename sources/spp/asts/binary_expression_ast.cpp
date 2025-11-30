@@ -107,7 +107,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
     }
 
     // Handle lhs-folding.
-    if (ast_cast<FoldExpressionAst>(lhs.get())) {
+    if (lhs->to<FoldExpressionAst>()) {
         // Check the rhs is a tuple.
         const auto rhs_tuple_type = rhs->infer_type(sm, meta);
         if (not analyse::utils::type_utils::is_type_tuple(*rhs_tuple_type, *sm->current_scope)) {
@@ -139,7 +139,7 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
     }
 
     // Handle rhs-folding.
-    else if (ast_cast<FoldExpressionAst>(rhs.get())) {
+    else if (rhs->to<FoldExpressionAst>()) {
         // Check the lhs is a tuple.
         const auto lhs_tuple_type = lhs->infer_type(sm, meta);
         if (not analyse::utils::type_utils::is_type_tuple(*lhs_tuple_type, *sm->current_scope)) {

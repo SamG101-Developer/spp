@@ -80,8 +80,8 @@ auto spp::asts::AnnotationAst::stage_1_pre_process(
     using utils::Visibility;
 
     // Define some cast contexts for attribute assignment.
-    const auto fun_ctx = ast_cast<FunctionPrototypeAst>(ctx);
-    const auto vis_ctx = ast_cast<mixins::VisibilityEnabledAst>(ctx);
+    const auto fun_ctx = ctx->to<FunctionPrototypeAst>();
+    const auto vis_ctx = ctx->to<mixins::VisibilityEnabledAst>();
 
     // Mark a method as virtual.
     if (fun_ctx != nullptr and name->val == "virtual_method") {
@@ -144,10 +144,10 @@ auto spp::asts::AnnotationAst::stage_2_gen_top_level_scopes(
     using utils::Visibility;
 
     // Define some cast contexts for attribute assignment.
-    const auto fun_ctx = ast_cast<FunctionPrototypeAst>(m_ctx);
-    const auto vis_ctx = ast_cast<mixins::VisibilityEnabledAst>(m_ctx);
-    const auto ctx_mod_ctx = ast_cast<ModulePrototypeAst>(m_ctx->m_ctx);
-    const auto ctx_ext_ctx = ast_cast<SupPrototypeExtensionAst>(m_ctx->m_ctx);
+    const auto fun_ctx = m_ctx->to<FunctionPrototypeAst>();
+    const auto vis_ctx = m_ctx->to<mixins::VisibilityEnabledAst>();
+    const auto ctx_mod_ctx = m_ctx->m_ctx->to<ModulePrototypeAst>();
+    const auto ctx_ext_ctx = m_ctx->m_ctx->to<SupPrototypeExtensionAst>();
 
     if (name->val == "virtual_method") {
         // The "virtual_method" annotation can only be applied to function ASTs.

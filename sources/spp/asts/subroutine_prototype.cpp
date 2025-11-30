@@ -68,7 +68,7 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
     meta->save();
     meta->ignore_missing_else_branch_for_inference = true;
     const auto is_never = not impl->members.empty() and analyse::utils::type_utils::symbolic_eq(
-        *ast_cast<StatementAst>(impl->final_member())->infer_type(&tm, meta), *generate::common_types_precompiled::NEVER,
+        *impl->final_member()->to<StatementAst>()->infer_type(&tm, meta), *generate::common_types_precompiled::NEVER,
         *tm.current_scope, *sm->current_scope);
     meta->restore();
 
@@ -76,7 +76,7 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
     const auto is_void = analyse::utils::type_utils::symbolic_eq(
         *return_type, *generate::common_types_precompiled::VOID, *sm->current_scope, *sm->current_scope);
 
-    if (is_void or is_never or m_no_impl_annotation or m_abstract_annotation or (not impl->members.empty() and ast_cast<RetStatementAst>(impl->members.back().get()))) {
+    if (is_void or is_never or m_no_impl_annotation or m_abstract_annotation or (not impl->members.empty() and impl->members.back()->to<RetStatementAst>())) {
     }
     else {
         const auto final_member = impl->final_member();

@@ -350,9 +350,9 @@ auto spp::asts::LoopExpressionAst::infer_type(
     // If the return type is "Void", but the condition is comptime "true", then the loop is infinite.
     // Todo: change this to count the number of "exit" statements, as "exit" (void) is possible.
     if (analyse::utils::type_utils::symbolic_eq(*loop_type, *generate::common_types_precompiled::VOID, *sm->current_scope, *sm->current_scope)) {
-        if (ast_cast<LoopConditionBooleanAst>(cond.get())) {
+        if (cond->to<LoopConditionBooleanAst>() != nullptr) {
             // Non-symbolic expressions, or compile time symbolic boolean expressions, can never change (infinite loop)
-            const auto is_symbolic = ast_cast<IdentifierAst>(cond.get());
+            const auto is_symbolic = cond->to<IdentifierAst>();
             if (not is_symbolic or sm->current_scope->get_var_symbol(is_symbolic->shared_from_this())->memory_info->ast_comptime != nullptr) {
                 loop_type = generate::common_types::never_type(pos_start());
             }

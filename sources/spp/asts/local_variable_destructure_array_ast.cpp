@@ -126,7 +126,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
 
     // Determine number of elements in the left-hand-side and right-hand-side arrays.
     const auto num_lhs_arr_elems = elems.size();
-    const auto num_rhs_arr_elems = std::stoul(ast_cast<IntegerLiteralAst>(ast_cast<GenericArgumentCompAst>(val_type->type_parts().back()->generic_arg_group->args[1].get())->val.get())->val->token_data);
+    const auto num_rhs_arr_elems = std::stoul(val_type->type_parts().back()->generic_arg_group->args[1]->to<GenericArgumentCompAst>()->val->to<IntegerLiteralAst>()->val->token_data);
     if ((num_lhs_arr_elems < num_rhs_arr_elems and multi_arg_skips.empty()) or (num_lhs_arr_elems > num_rhs_arr_elems)) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppVariableArrayDestructureArraySizeMismatchError>().with_args(
             *this, num_lhs_arr_elems, *val, num_rhs_arr_elems).with_scopes({sm->current_scope}).raise();
@@ -158,7 +158,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
 
     // Create expanded "let" statements for each part of the destructure.
     for (auto &&[i, elem] : genex::views::zip(indexes, elems | genex::views::ptr)) {
-        const auto cast_elem = ast_cast<LocalVariableDestructureSkipMultipleArgumentsAst>(elem);
+        const auto cast_elem = elem->to<LocalVariableDestructureSkipMultipleArgumentsAst>();
 
         // Handle bound multi argument skipping, by assigning the skipped elements into a variable.
         if (cast_elem != nullptr and multi_arg_skips[0]->binding != nullptr) {
@@ -168,11 +168,11 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
         }
 
         // Skip any conversion for single argument skipping.
-        else if (ast_cast<LocalVariableDestructureSkipSingleArgumentAst>(elem) != nullptr) {
+        else if (elem->to<LocalVariableDestructureSkipSingleArgumentAst>() != nullptr) {
         }
 
         // Skip any conversion for unbound multi argument skipping.
-        else if (ast_cast<LocalVariableDestructureSkipMultipleArgumentsAst>(elem) != nullptr) {
+        else if (elem->to<LocalVariableDestructureSkipMultipleArgumentsAst>() != nullptr) {
         }
 
         // Handle and other nested destructure or single identifier.

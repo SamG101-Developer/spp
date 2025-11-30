@@ -133,7 +133,7 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::stage_10_code_gen_2(
     // Iterate over each element in the destructuring pattern.
     for (auto const &[i, part] : elems | genex::views::ptr | genex::views::enumerate) {
         // For literals, generate the equality checks.
-        if (const auto literal_part = ast_cast<CasePatternVariantLiteralAst>(part); literal_part != nullptr) {
+        if (const auto literal_part = part->to<CasePatternVariantLiteralAst>(); literal_part != nullptr) {
             // Generate the extraction on the condition for this part, like "cond.0".
             auto field_name = std::make_unique<IdentifierAst>(0, std::to_string(i));
             auto field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
@@ -141,7 +141,7 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::stage_10_code_gen_2(
 
             // Turn the "literal part" into a function argument.
             auto eq_arg_conv = std::make_unique<ConventionRefAst>(nullptr);
-            auto eq_arg_val = ast_cast<ExpressionAst>(ast_clone(literal_part->literal.get()));
+            auto eq_arg_val = ast_clone(literal_part->literal->to<ExpressionAst>());
             auto eq_arg = std::make_unique<FunctionCallArgumentPositionalAst>(std::move(eq_arg_conv), nullptr, std::move(eq_arg_val));
 
             // Create the ".eq" part.

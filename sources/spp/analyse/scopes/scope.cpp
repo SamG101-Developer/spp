@@ -182,7 +182,7 @@ auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
     const auto comp_syms = generics
         | genex::views::cast_dynamic<asts::GenericArgumentCompAst*>()
         | genex::views::filter([&ignore](auto &&gen_arg) { return ignore == nullptr or *gen_arg->val != *ignore; })
-        | genex::views::transform([this](auto &&gen_arg) { return get_var_symbol(asts::ast_cast<asts::IdentifierAst>(asts::ast_clone(gen_arg->val))); })
+        | genex::views::transform([this](auto &&gen_arg) { return get_var_symbol(asts::ast_clone(gen_arg->val->template to<asts::IdentifierAst>())); })
         | genex::views::filter([](auto &&sym) { return sym != nullptr and sym->is_generic; })
         | genex::views::cast_smart<Symbol>()
         | genex::to<std::vector>();
@@ -428,12 +428,12 @@ auto spp::analyse::scopes::Scope::get_var_symbol_outermost(
     -> std::pair<std::shared_ptr<VariableSymbol>, Scope const*> {
     // Define helper methods to check expression types.
     auto is_valid_postfix_expression = []<typename OpType>(auto *ast) -> bool {
-        auto postfix_expr = asts::ast_cast<asts::PostfixExpressionAst>(ast);
+        auto postfix_expr = ast->template to<asts::PostfixExpressionAst>();
         if (postfix_expr == nullptr) {
             return false;
         }
 
-        auto postfix_op = asts::ast_cast<OpType>(postfix_expr->op.get());
+        auto postfix_op = postfix_expr->op.get()->template to<OpType>();
         return postfix_op != nullptr;
     };
 
@@ -449,21 +449,21 @@ auto spp::analyse::scopes::Scope::get_var_symbol_outermost(
     if (is_valid_postfix_expression_runtime(&expr)) {
         // Keep moving into the left-hand-side until there is no left-hand-side: "a.b.c" becomes "a".
         while (is_valid_postfix_expression_runtime(adjusted_name)) {
-            adjusted_name = asts::ast_cast<asts::PostfixExpressionAst>(adjusted_name)->lhs.get();
+            adjusted_name = adjusted_name->to<asts::PostfixExpressionAst>()->lhs.get();
         }
 
         // Get the symbol (will be in this scope), and return it with the scope.
-        auto sym = get_var_symbol(asts::ast_cast<asts::IdentifierAst>(ast_clone(adjusted_name)));
+        auto sym = get_var_symbol(ast_clone(adjusted_name->to<asts::IdentifierAst>()));
         return std::make_pair(sym, this);
     }
 
     if (is_valid_postfix_expression_static(&expr)) {
         // This is possible with a left-hand-side type or namespace.
-        const auto postfix_expr = asts::ast_cast<asts::PostfixExpressionAst>(&expr);
-        const auto postfix_op = asts::ast_cast<asts::PostfixExpressionOperatorStaticMemberAccessAst>(postfix_expr->op.get());
+        const auto postfix_expr = expr.to<asts::PostfixExpressionAst>();
+        const auto postfix_op = postfix_expr->op->to<asts::PostfixExpressionOperatorStaticMemberAccessAst>();
 
         // Type based left-hand-side, such as "some_namespace::Type::static_member()"
-        if (const auto type_lhs = asts::ast_cast<asts::TypeAst>(postfix_expr->lhs.get())) {
+        if (const auto type_lhs = postfix_expr->lhs->to<asts::TypeAst>()) {
             const auto type_sym = get_type_symbol(ast_clone(type_lhs));
             const auto var_sym = type_sym->scope->get_var_symbol(postfix_op->name);
             return std::make_pair(var_sym, type_sym->scope);
@@ -472,14 +472,14 @@ auto spp::analyse::scopes::Scope::get_var_symbol_outermost(
         // Namespace based left-hand-side, such as "a::b::c::my_function()"
         auto namespace_scope = this;
         while (is_valid_postfix_expression_static(adjusted_name)) {
-            adjusted_name = asts::ast_cast<asts::PostfixExpressionAst>(adjusted_name)->lhs.get();
-            namespace_scope = namespace_scope->convert_postfix_to_nested_scope(asts::ast_cast<asts::ExpressionAst>(adjusted_name));
+            adjusted_name = adjusted_name->to<asts::PostfixExpressionAst>()->lhs.get();
+            namespace_scope = namespace_scope->convert_postfix_to_nested_scope(adjusted_name->to<asts::ExpressionAst>());
         }
         return std::make_pair(namespace_scope->get_var_symbol(postfix_op->name), namespace_scope);
     }
 
     // Identifiers or non-symbolic expressions can use the normal lookup.
-    auto sym = get_var_symbol(asts::ast_cast<asts::IdentifierAst>(asts::ast_clone(adjusted_name)));
+    auto sym = get_var_symbol(asts::ast_clone(adjusted_name->to<asts::IdentifierAst>()));
     return std::make_pair(sym, this);
 }
 
@@ -554,7 +554,7 @@ auto spp::analyse::scopes::Scope::sup_types() const
     -> std::vector<std::shared_ptr<asts::TypeAst>> {
     // Get all super types, recursively (filter and map the super scopes).
     return sup_scopes()
-        | genex::views::filter([](auto *scope) { return asts::ast_cast<asts::ClassPrototypeAst>(scope->ast); })
+        | genex::views::filter([](auto *scope) { return scope->ast->template to<asts::ClassPrototypeAst>(); })
         | genex::views::transform([](auto *scope) { return scope->ty_sym->fq_name(); })
         | genex::to<std::vector>();
 }
@@ -571,7 +571,7 @@ auto spp::analyse::scopes::Scope::direct_sup_types() const
     -> std::vector<std::shared_ptr<asts::TypeAst>> {
     // Get all direct super types (filter and map the direct super scopes).
     return m_direct_sup_scopes
-        | genex::views::filter([](auto *scope) { return asts::ast_cast<asts::ClassPrototypeAst>(scope->ast); })
+        | genex::views::filter([](auto *scope) { return scope->ast->template to<asts::ClassPrototypeAst>(); })
         | genex::views::transform([](auto *scope) { return scope->ty_sym->fq_name(); })
         | genex::to<std::vector>();
 }
@@ -582,19 +582,19 @@ auto spp::analyse::scopes::Scope::convert_postfix_to_nested_scope(
     -> Scope const* {
 
     // Get the left-hand-side namespace's member's type.
-    if (const auto lhs_as_ident = ast_cast<asts::IdentifierAst>(postfix_ast)) {
+    if (const auto lhs_as_ident = postfix_ast->to<asts::IdentifierAst>()) {
         return get_ns_symbol(ast_clone(lhs_as_ident))->scope;
     }
 
     // Postfix lhs -> get the ns scopes.
     auto lhs = postfix_ast;
     auto namespaces = std::vector<asts::IdentifierAst*>();
-    while (auto const *postfix_lhs = asts::ast_cast<asts::PostfixExpressionAst>(lhs)) {
-        const auto op = asts::ast_cast<asts::PostfixExpressionOperatorStaticMemberAccessAst>(postfix_lhs->op.get());
-        namespaces.emplace_back(asts::ast_cast<asts::IdentifierAst>(op->name.get()));
+    while (auto const *postfix_lhs = lhs->to<asts::PostfixExpressionAst>()) {
+        const auto op = postfix_lhs->op->to<asts::PostfixExpressionOperatorStaticMemberAccessAst>();
+        namespaces.emplace_back(op->name->to<asts::IdentifierAst>());
         lhs = postfix_lhs->lhs.get();
     }
-    if (auto *lhs_as_ident = asts::ast_cast<asts::IdentifierAst>(lhs)) {
+    if (auto *lhs_as_ident = lhs->to<asts::IdentifierAst>()) {
         // todo: is the condition requires? just body.
         namespaces.emplace_back(const_cast<asts::IdentifierAst*>(lhs_as_ident));
     }

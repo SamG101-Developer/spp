@@ -15,6 +15,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
+import spp.asts.meta.compiler_meta_data;
 import spp.lex.tokens;
 
 
@@ -108,7 +109,7 @@ auto spp::asts::RetStatementAst::stage_7_analyse_semantics(
     if (function_flavour->token_type == lex::SppTokenType::KW_FUN) {
         const auto direct_match = analyse::utils::type_utils::symbolic_eq(*m_ret_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
         if (not direct_match) {
-            const auto expr_for_err = expr ? ast_cast<Ast>(expr.get()) : ast_cast<Ast>(tok_ret.get());
+            const auto expr_for_err = expr ? expr->to<Ast>() : tok_ret->to<Ast>();
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
                 *expr_type, *expr_type, *expr_for_err, *m_ret_type).with_scopes({sm->current_scope}).raise();
         }

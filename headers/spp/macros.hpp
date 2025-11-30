@@ -74,28 +74,28 @@
     auto print(AstPrinter &printer) const -> std::string override
 
 #define SPP_ENFORCE_EXPRESSION_SUBTYPE(ast)                                                                    \
-    if ((ast_cast<TypeAst>(ast) != nullptr) or (ast_cast<TokenAst>(ast) != nullptr)) {                     \
+    if ((ast->to<TypeAst>() != nullptr) or (ast->to<TokenAst>() != nullptr)) {                     \
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionTypeInvalidError>().with_args( \
             *ast).with_scopes({sm->current_scope}).raise();                                                \
     }
 
 
 #define SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(ast)                                                        \
-    if (ast_cast<TypeAst>(ast) != nullptr) {                                                               \
+    if (ast->to<TypeAst>() != nullptr) {                                                               \
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionTypeInvalidError>().with_args( \
             *ast).with_scopes({sm->current_scope}).raise();                                                \
     }
 
 
 #define SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TYPE(ast)                                                         \
-    if (ast_cast<TokenAst>(ast) != nullptr) {                                                              \
+    if (ast-->to<TokenAst>() != nullptr) {                                                              \
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionTypeInvalidError>().with_args( \
             *ast).with_scopes({sm->current_scope}).raise();                                                \
     }
 
 
 #define SPP_RETURN_TYPE_OVERLOAD_HELPER(expr) \
-    if (auto pe = ast_cast<PostfixExpressionAst>(expr); pe != nullptr and ast_cast<PostfixExpressionOperatorFunctionCallAst>(pe->op.get()) != nullptr)
+    if (auto pe = expr->to<PostfixExpressionAst>(); pe != nullptr and pe->op->to<PostfixExpressionOperatorFunctionCallAst>() != nullptr)
 
 
 #define SPP_EXP_CLS export extern "C++"

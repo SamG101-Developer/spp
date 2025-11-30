@@ -14,7 +14,7 @@ spp::asts::ClassImplementationAst::~ClassImplementationAst() = default;
 
 auto spp::asts::ClassImplementationAst::clone() const
     -> std::unique_ptr<Ast> {
-    auto *c = ast_cast<InnerScopeAst>(InnerScopeAst::clone().release());
+    auto *c = InnerScopeAst::clone().release()->to<InnerScopeAst>();
     return std::make_unique<ClassImplementationAst>(
         std::move(c->tok_l),
         std::move(c->members),

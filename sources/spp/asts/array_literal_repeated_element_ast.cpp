@@ -126,7 +126,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
 
     // Ensure the size is a constant expression (if symbolic).
     SPP_ENFORCE_EXPRESSION_SUBTYPE(size.get());
-    auto symbolic_size = asts::ast_cast<IdentifierAst>(ast_clone(size));
+    auto symbolic_size = ast_clone(size->to<IdentifierAst>());
     const auto size_sym = sm->current_scope->get_var_symbol(std::move(symbolic_size));
     if (size_sym != nullptr) {
         if (size_sym->memory_info->ast_comptime == nullptr) {
@@ -155,7 +155,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_10_code_gen_2(
     -> llvm::Value* {
     // Collect the generated versions of the elements.
     auto vals = std::vector<llvm::Value*>{};
-    vals.reserve(std::stoull(asts::ast_cast<IntegerLiteralAst>(size.get())->val->token_data));
+    vals.reserve(std::stoull(size->to<IntegerLiteralAst>()->val->token_data));
     for (auto i = 0uz; i < vals.capacity(); ++i) {
         vals.emplace_back(elem->stage_10_code_gen_2(sm, meta, ctx));
     }

@@ -83,7 +83,7 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
     CompilerMetaData *meta)
     -> void {
     // Ensure the LHS is semantically valid.
-    auto is_attr = [](Ast const *x) -> bool { return not ast_cast<IdentifierAst>(x); };
+    auto is_attr = [](Ast const *x) -> bool { return not x->to<IdentifierAst>(); };
     for (auto &&lhs_expr : lhs) {
         lhs_expr->stage_7_analyse_semantics(sm, meta);
     }
@@ -93,14 +93,14 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
         meta->save();
 
         // Handle return type overloading matching for the lhs target types.
-        if (const auto pf = ast_cast<PostfixExpressionAst>(rhs_expr); pf != nullptr) {
-            if (const auto fc = ast_cast<PostfixExpressionOperatorFunctionCallAst>(pf->op.get()); fc != nullptr) {
+        if (const auto pf = rhs_expr->to<PostfixExpressionAst>(); pf != nullptr) {
+            if (const auto fc = pf->op->to<PostfixExpressionOperatorFunctionCallAst>(); fc != nullptr) {
                 meta->return_type_overload_resolver_type = lhs[i]->infer_type(sm, meta);
             }
         }
 
         // Analyse the RHS expression.
-        meta->assignment_target = ast_clone(ast_cast<IdentifierAst>(lhs[i].get()));
+        meta->assignment_target = ast_clone(lhs[i]->to<IdentifierAst>());
         rhs_expr->stage_7_analyse_semantics(sm, meta);
         meta->restore();
     }
@@ -158,7 +158,7 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
     CompilerMetaData *meta)
     -> void {
     // For each assignment, check the memory status and resolve any (partial-)moves.
-    auto is_attr = [](Ast const *x) -> bool { return not ast_cast<IdentifierAst>(x); };
+    auto is_attr = [](Ast const *x) -> bool { return not x->to<IdentifierAst>(); };
     auto lhs_syms = lhs
         | genex::views::indirect
         | genex::views::transform([sm](auto &&x) { return sm->current_scope->get_var_symbol_outermost(x); })
@@ -173,7 +173,7 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
             *rhs_expr, *tok_assign, *sm, is_attr(lhs_expr), false, true, true, true, false, meta);
 
         meta->save();
-        meta->assignment_target = ast_clone(ast_cast<IdentifierAst>(lhs_expr));
+        meta->assignment_target = ast_clone(lhs_expr->to<IdentifierAst>());
         rhs_expr->stage_8_check_memory(sm, meta);
         meta->restore();
 
@@ -182,7 +182,7 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
             *rhs_expr, *tok_assign, *sm, true, true, true, true, true, true, meta);
 
         if (is_attr(lhs_expr)) {
-            const auto pf = ast_cast<PostfixExpressionAst>(lhs_expr);
+            const auto pf = lhs_expr->to<PostfixExpressionAst>();
             analyse::utils::mem_utils::validate_symbol_memory(
                 *lhs_expr, *tok_assign, *sm, true, is_attr(pf->lhs.get()), false, true, true, false, meta);
         }

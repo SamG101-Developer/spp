@@ -126,7 +126,7 @@ auto spp::asts::FunctionPrototypeAst::m_deduce_mock_class_type() const
         | genex::to<std::vector>();
 
     // Module level functions, and static methods, are always FunRef.
-    if (ast_cast<ModulePrototypeAst>(m_ctx) == nullptr or param_group->get_self_param() == nullptr) {
+    if (m_ctx->to<ModulePrototypeAst>() == nullptr or param_group->get_self_param() == nullptr) {
         return generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
     }
 
@@ -177,7 +177,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     Ast::stage_1_pre_process(ctx);
 
     // Substitute the "Self" parameter's type with the name of the method.
-    if (ast_cast<ModulePrototypeAst>(ctx) == nullptr and param_group->get_self_param() != nullptr) {
+    if (ctx->to<ModulePrototypeAst>() == nullptr and param_group->get_self_param() != nullptr) {
         const auto self_gen_sub = std::make_unique<GenericArgumentTypeKeywordAst>(
             generate::common_types::self_type(pos_start()), nullptr, ast_name(ctx));
         auto gen_sub = std::vector<GenericArgumentAst*>(1);
@@ -203,15 +203,15 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
         auto mock_constant_value = std::make_unique<ObjectInitializerAst>(ast_clone(mock_class_name), nullptr);
         auto mock_constant_ast = std::make_unique<CmpStatementAst>(SPP_NO_ANNOTATIONS, nullptr, ast_clone(name), nullptr, ast_clone(mock_class_name), nullptr, std::move(mock_constant_value));
 
-        if (const auto mod_ctx = ast_cast<ModulePrototypeAst>(ctx)) {
+        if (const auto mod_ctx = ctx->to<ModulePrototypeAst>(); mod_ctx != nullptr) {
             mod_ctx->impl->members.emplace_back(std::move(mock_class_ast));
             mod_ctx->impl->members.emplace_back(std::move(mock_constant_ast));
         }
-        else if (const auto sup_ctx = ast_cast<SupPrototypeFunctionsAst>(ctx)) {
+        else if (const auto sup_ctx = ctx->to<SupPrototypeFunctionsAst>(); sup_ctx != nullptr) {
             sup_ctx->impl->members.emplace_back(std::move(mock_class_ast));
             sup_ctx->impl->members.emplace_back(std::move(mock_constant_ast));
         }
-        else if (const auto ext_ctx = ast_cast<SupPrototypeExtensionAst>(ctx)) {
+        else if (const auto ext_ctx = ctx->to<SupPrototypeExtensionAst>(); ext_ctx != nullptr) {
             ext_ctx->impl->members.emplace_back(std::move(mock_class_ast));
             ext_ctx->impl->members.emplace_back(std::move(mock_constant_ast));
         }
@@ -230,15 +230,15 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     mock_sup_ext->m_ctx = m_ctx;
 
     // Manipulate the context body with the new mock superimposition extension.
-    if (const auto mod_ctx = ast_cast<ModulePrototypeAst>(ctx)) {
+    if (const auto mod_ctx = ctx->to<ModulePrototypeAst>()) {
         mod_ctx->impl->members.insert(mod_ctx->impl->members.begin(), std::move(mock_sup_ext));
         mod_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return x.get() == this; });
     }
-    else if (const auto sup_ctx = ast_cast<SupPrototypeFunctionsAst>(ctx)) {
+    else if (const auto sup_ctx = ctx->to<SupPrototypeFunctionsAst>()) {
         sup_ctx->impl->members.insert(sup_ctx->impl->members.begin(), std::move(mock_sup_ext));
         sup_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return x.get() == this; });
     }
-    else if (const auto ext_ctx = ast_cast<SupPrototypeExtensionAst>(ctx)) {
+    else if (const auto ext_ctx = ctx->to<SupPrototypeExtensionAst>()) {
         ext_ctx->impl->members.insert(ext_ctx->impl->members.begin(), std::move(mock_sup_ext));
         ext_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return x.get() == this; });
     }
@@ -255,7 +255,7 @@ auto spp::asts::FunctionPrototypeAst::stage_2_gen_top_level_scopes(
     Ast::stage_2_gen_top_level_scopes(sm, meta);
 
     // If there is a self parameter in a free function, throw as error.
-    if (ast_cast<ModulePrototypeAst>(m_ctx) and param_group->get_self_param()) {
+    if (m_ctx->to<ModulePrototypeAst>() and param_group->get_self_param()) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppSelfParamInFreeFunctionError>().with_args(
             *this, *param_group->get_self_param()).with_scopes({sm->current_scope}).raise();
     }
@@ -321,7 +321,7 @@ auto spp::asts::FunctionPrototypeAst::stage_6_pre_analyse_semantics(
     // Perform conflict checking before standard semantic analysis errors due to multiple possible prototypes.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
-    const auto mod_ctx = ast_cast<ModulePrototypeAst>(m_ctx);
+    const auto mod_ctx = m_ctx->to<ModulePrototypeAst>();
     const auto type_scope = mod_ctx
                                 ? sm->current_scope->parent_module()
                                 : mod_ctx->m_scope->get_type_symbol(ast_name(m_ctx))->scope;

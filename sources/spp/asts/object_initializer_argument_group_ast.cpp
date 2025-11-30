@@ -152,7 +152,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics
     for (auto &&arg : args) {
         // Return type overload helper.
         meta->save();
-        if (const auto kw_arg = ast_cast<ObjectInitializerArgumentKeywordAst>(arg.get()); kw_arg != nullptr) {
+        if (const auto kw_arg = arg->to<ObjectInitializerArgumentKeywordAst>(); kw_arg != nullptr) {
             SPP_RETURN_TYPE_OVERLOAD_HELPER(arg->val.get())
             {
                 // Multiple attributes with same name (via base classes) -> can't infer the one to use.

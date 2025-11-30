@@ -106,6 +106,11 @@ public:
      */
     virtual auto print(meta::AstPrinter &printer) const -> std::string = 0;
 
+    template <typename T>
+    auto to() const -> T* {
+        return dynamic_cast<T*>(this);
+    }
+
     auto stage_1_pre_process(Ast *ctx) -> void override;
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;

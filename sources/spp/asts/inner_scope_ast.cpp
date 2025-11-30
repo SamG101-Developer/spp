@@ -13,6 +13,7 @@ import spp.asts.identifier_ast;
 import spp.asts.statement_ast;
 import spp.asts.sup_member_ast;
 import spp.asts.token_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import genex;
@@ -100,9 +101,7 @@ auto spp::asts::InnerScopeAst<T>::new_empty()
 template <typename T>
 auto spp::asts::InnerScopeAst<T>::final_member() const
     -> Ast* {
-    return members.empty()
-               ? ast_cast<Ast>(tok_r.get())
-               : ast_cast<Ast>(members.back().get());
+    return members.empty() ? tok_r->to<TokenAst>() : members.back()->template to<TokenAst>();
 }
 
 
@@ -137,7 +136,7 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
 
     // If the final expression of the inner scope is being used (ie assigned ot outer variable), then memory check it.
     if (const auto move = meta->assignment_target; not members.empty() and move != nullptr) {
-        if (const auto expr_member = ast_cast<ExpressionAst>(final_member())) {
+        if (const auto expr_member = final_member()->to<ExpressionAst>(); expr_member != nullptr) {
             analyse::utils::mem_utils::validate_symbol_memory(
                 *expr_member, *move, *sm, true, true, true, true, true, true, meta);
         }
@@ -156,7 +155,7 @@ auto spp::asts::InnerScopeAst<T>::stage_10_code_gen_2(
     // Add all the expressions/statements into the current scope.
     sm->move_to_next_scope();
     for (auto *member : members | genex::views::ptr) {
-        if (ast_cast<ExpressionAst>(member) != nullptr) {
+        if (member->template to<ExpressionAst>() != nullptr) {
             member->stage_10_code_gen_2(sm, meta, ctx);
         }
     }

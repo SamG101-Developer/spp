@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.order_utils;
 import spp.analyse.utils.type_utils;
+import spp.asts.expression_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_comp_keyword_ast;
@@ -103,13 +104,13 @@ auto spp::asts::GenericArgumentGroupAst::from_params(
 
     for (auto const &param : generic_params.params) {
         // Map type generic parameters to keyword type arguments.
-        if (const auto type_param = ast_cast<GenericParameterTypeAst>(param.get())) {
+        if (const auto type_param = param->to<GenericParameterTypeAst>()) {
             mapped_args.emplace_back(std::make_unique<GenericArgumentTypeKeywordAst>(
                 ast_clone(type_param->name), nullptr, ast_clone(type_param->name)));
         }
 
         // Map comptime generic parameters to keyword comptime arguments.
-        else if (const auto comp_param = ast_cast<GenericParameterCompAst>(param.get())) {
+        else if (const auto comp_param = param->to<GenericParameterCompAst>()) {
             mapped_args.emplace_back(std::make_unique<GenericArgumentCompKeywordAst>(
                 ast_clone(comp_param->name), nullptr, IdentifierAst::from_type(*comp_param->name)));
         }
@@ -130,13 +131,13 @@ auto spp::asts::GenericArgumentGroupAst::from_map(
 
     for (auto const &[arg_name, arg_val] : map) {
         // Map type ASTs to keyword type arguments.
-        if (auto *arg_val_for_type = ast_cast<TypeAst>(arg_val)) {
+        if (auto *arg_val_for_type = arg_val->to<TypeAst>()) {
             mapped_args.emplace_back(std::make_unique<GenericArgumentTypeKeywordAst>(
                 ast_clone(arg_name), nullptr, ast_clone(arg_val_for_type)));
         }
 
         // Map expression ASTs to keyword comptime arguments.
-        else if (auto *arg_val_for_comp = ast_cast<ExpressionAst>(arg_val)) {
+        else if (auto *arg_val_for_comp = arg_val->to<ExpressionAst>()) {
             mapped_args.emplace_back(std::make_unique<GenericArgumentCompKeywordAst>(
                 ast_clone(arg_name), nullptr, ast_clone(arg_val_for_comp)));
         }

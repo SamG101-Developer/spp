@@ -123,7 +123,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     const auto [fn_owner_type, fn_owner_scope, fn_name] = analyse::utils::func_utils::get_function_owner_type_and_function_name(*lhs, *sm, meta);
 
     // Convert the "obj.method_call(...args)" into "Type::method_call(obj, ...args)".
-    if (const auto cast_lhs = ast_cast<PostfixExpressionAst>(meta->postfix_expression_lhs); cast_lhs != nullptr and ast_cast<PostfixExpressionOperatorRuntimeMemberAccessAst>(cast_lhs->op.get())) {
+    if (const auto cast_lhs = meta->postfix_expression_lhs->to<PostfixExpressionAst>(); cast_lhs != nullptr and cast_lhs->op->to<PostfixExpressionOperatorRuntimeMemberAccessAst>()) {
         auto [transformed_lhs, transformed_fn_call] = analyse::utils::func_utils::convert_method_to_function_form(
             *fn_owner_type, *fn_name, *cast_lhs, *this, *sm, meta);
         meta->save();
@@ -242,7 +242,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
                 // Tuples being folded must all have the same element types (per tuple).
                 for (auto &&arg : m_folded_args) {
-                    auto first_elem_type = ast_cast<GenericArgumentTypeAst>(arg->infer_type(sm, meta)->type_parts().back()->generic_arg_group->args[0].get())->val;
+                    auto first_elem_type = arg->infer_type(sm, meta)->type_parts().back()->generic_arg_group->args[0]->to<GenericArgumentTypeAst>()->val;
                     auto mismatch = arg->infer_type(sm, meta)->type_parts().back()->generic_arg_group->get_type_args()
                         | genex::views::drop(1)
                         | genex::views::filter([sm, first_elem_type](auto &&x) { return not analyse::utils::type_utils::symbolic_eq(*x->val, *first_elem_type, *sm->current_scope, *sm->current_scope); })
@@ -344,14 +344,14 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 auto temp = analyse::utils::type_utils::GenericInferenceMap();
 
                 // Special case for variadic parameters (updates p_type so don't follow with "else if").
-                if (ast_cast<FunctionParameterVariadicAst>(param)) {
+                if (param->to<FunctionParameterVariadicAst>()) {
                     auto ts = std::vector(a_type->type_parts().back()->generic_arg_group->args.size(), p_type);
                     p_type = generate::common_types::tuple_type(param->pos_start(), std::move(ts));
                     p_type->stage_7_analyse_semantics(sm, meta);
                 }
 
                 // Special case for "self" parameters.
-                if (auto self_param = ast_cast<FunctionParameterSelfAst>(param); self_param != nullptr) {
+                if (auto self_param = param->to<FunctionParameterSelfAst>(); self_param != nullptr) {
                     arg->conv = ast_clone(self_param->conv);
                 }
 
@@ -590,9 +590,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
     if (std::get<0>(*m_overload_info) != nullptr) {
         // Get the other generics
         auto other_generics = std::unique_ptr<GenericArgumentGroupAst>(nullptr);
-        if (const auto cast_lhs = ast_cast<PostfixExpressionAst>(meta->postfix_expression_lhs); cast_lhs != nullptr) {
+        if (const auto cast_lhs = meta->postfix_expression_lhs->to<PostfixExpressionAst>(); cast_lhs != nullptr) {
             try {
-                if (ast_cast<PostfixExpressionOperatorStaticMemberAccessAst>(cast_lhs->op.get()) == nullptr) {
+                if (cast_lhs->op->to<PostfixExpressionOperatorStaticMemberAccessAst>() == nullptr) {
                     const auto lhs_lhs_sym = sm->current_scope->get_type_symbol(cast_lhs->lhs->infer_type(sm, meta));
                     if (sm->current_scope->get_type_symbol(cast_lhs->lhs->infer_type(sm, meta)) != nullptr) {
                         auto const *lhs_lhs_scope = lhs_lhs_sym->scope;

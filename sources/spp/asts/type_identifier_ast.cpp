@@ -125,28 +125,28 @@ auto spp::asts::TypeIdentifierAst::iterator() const
 
     for (auto &&g : generic_arg_group->args) {
         // Positional generic comp argument with identifier value.
-        if (auto &&comp_positional_arg = ast_cast<GenericArgumentCompPositionalAst>(g.get())) {
-            if (auto &&ident_val = ast_cast<IdentifierAst>(comp_positional_arg->val.get())) {
+        if (auto &&comp_positional_arg = g->to<GenericArgumentCompPositionalAst>()) {
+            if (auto &&ident_val = comp_positional_arg->val->to<IdentifierAst>()) {
                 parts.emplace_back(from_identifier(*ident_val));
             }
         }
 
         // Keyword generic comp argument with identifier value.
-        else if (auto &&comp_keyword_arg = ast_cast<GenericArgumentCompKeywordAst>(g.get())) {
-            if (auto &&ident_val = ast_cast<IdentifierAst>(comp_keyword_arg->val.get())) {
+        else if (auto &&comp_keyword_arg = g->to<GenericArgumentCompKeywordAst>()) {
+            if (auto &&ident_val = comp_keyword_arg->val->to<IdentifierAst>()) {
                 parts.emplace_back(from_identifier(*ident_val));
             }
         }
 
         // Positional generic type arguments => recursive iteration.
-        else if (auto &&type_positional_arg = ast_cast<GenericArgumentTypePositionalAst>(g.get())) {
+        else if (auto &&type_positional_arg = g->to<GenericArgumentTypePositionalAst>()) {
             for (auto &&ti : type_positional_arg->val->iterator()) {
                 parts.emplace_back(ti);
             }
         }
 
         // Keyword generic type arguments => recursive iteration.
-        else if (auto &&type_keyword_arg = ast_cast<GenericArgumentTypeKeywordAst>(g.get())) {
+        else if (auto &&type_keyword_arg = g->to<GenericArgumentTypeKeywordAst>()) {
             for (auto &&ti : type_keyword_arg->val->iterator()) {
                 parts.emplace_back(ti);
             }
@@ -226,7 +226,7 @@ auto spp::asts::TypeIdentifierAst::substitute_generics(
     // Get the generic type arguments.
     auto gen_type_args = args
         | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()
-        | genex::views::transform([](auto &&g) { return std::make_pair(g->name, ast_cast<ExpressionAst>(g->val.get())); })
+        | genex::views::transform([](auto &&g) { return std::make_pair(g->name, g->val->template to<ExpressionAst>()); })
         | genex::to<std::vector>();
 
     // Get the generic comp arguments.
@@ -237,15 +237,15 @@ auto spp::asts::TypeIdentifierAst::substitute_generics(
 
     // Check if this type directly matches any generic type argument name.
     for (auto &&[gen_arg_name, gen_arg_val] : gen_type_args) {
-        if (*this == *ast_cast<TypeIdentifierAst>(gen_arg_name.get())) {
-            return ast_clone(ast_cast<TypeAst>(gen_arg_val));
+        if (*this == *gen_arg_name->to<TypeIdentifierAst>()) {
+            return ast_clone(gen_arg_val->to<TypeAst>());
         }
     }
 
     // Substitute generics in the comp arguments' types.
     for (auto &&[gen_arg_name, gen_arg_val] : genex::views::concat(gen_type_args, gen_comp_args)) {
         for (auto const &g : name_clone->generic_arg_group->get_comp_args()) {
-            if (auto const *ident_val = ast_cast<IdentifierAst>(g->val.get()); ident_val != nullptr and *ident_val == *IdentifierAst::from_type(*gen_arg_name)) {
+            if (auto const *ident_val = g->val->to<IdentifierAst>(); ident_val != nullptr and *ident_val == *IdentifierAst::from_type(*gen_arg_name)) {
                 g->val = ast_clone(gen_arg_val);
             }
         }
@@ -265,7 +265,7 @@ auto spp::asts::TypeIdentifierAst::contains_generic(
     GenericParameterAst const &generic) const
     -> bool {
     // Check if the parameter's name is in the type parts iterated from this type.
-    auto cast_name = ast_cast<TypeIdentifierAst>(generic.name.get());
+    auto cast_name = generic.name->to<TypeIdentifierAst>();
     return genex::any_of(
         iterator() | genex::to<std::vector>(), [&cast_name](auto ti) { return *ti == *cast_name; });
 }
@@ -307,7 +307,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     // Name all the generic arguments.
     const auto is_tuple = ( {
         const auto as_unary = std::dynamic_pointer_cast<TypeUnaryExpressionAst>(type_sym->fq_name()->without_generics());
-        as_unary != nullptr and *as_unary == *ast_cast<TypeUnaryExpressionAst>(generate::common_types_precompiled::TUP.get());
+        as_unary != nullptr and *as_unary == *generate::common_types_precompiled::TUP->to<TypeUnaryExpressionAst>();
     });
 
     analyse::utils::func_utils::name_generic_args(
@@ -326,7 +326,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
 
     // Infer the generic arguments from information given from object initialization.
     const auto owner = analyse::utils::type_utils::get_type_part_symbol_with_error(
-        *scope, *ast_cast<TypeIdentifierAst>(without_generics().get()), *sm, meta)->fq_name();
+        *scope, *without_generics()->to<TypeIdentifierAst>(), *sm, meta)->fq_name();
     const auto owner_sym = sm->current_scope->get_type_symbol(owner);
 
     analyse::utils::func_utils::infer_generic_args(

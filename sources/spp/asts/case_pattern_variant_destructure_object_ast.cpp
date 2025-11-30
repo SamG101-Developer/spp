@@ -118,7 +118,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantic
     type = sm->current_scope->get_type_symbol(type)->fq_name();
 
     // Get the condition symbol if it exists.
-    auto cond_sym = sm->current_scope->get_var_symbol(ast_clone(ast_cast<IdentifierAst>(meta->case_condition)));
+    auto cond_sym = sm->current_scope->get_var_symbol(ast_clone(meta->case_condition->to<IdentifierAst>()));
     auto cond = meta->case_condition;
     if (cond_sym == nullptr) {
         auto cond_type = meta->case_condition->infer_type(sm, meta);
@@ -181,7 +181,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_10_code_gen_2(
     // Iterate over each element in the destructuring pattern.
     for (auto const &[i, part] : elems | genex::views::ptr | genex::views::enumerate) {
         // For literals, generate the equality checks.
-        if (const auto attr_part = ast_cast<CasePatternVariantDestructureAttributeBindingAst>(part); attr_part != nullptr) {
+        if (const auto attr_part = part->to<CasePatternVariantDestructureAttributeBindingAst>(); attr_part != nullptr) {
             // Generate the extraction on the condition for this part, like "cond.0".
             auto field_name = std::make_unique<IdentifierAst>(0, attr_part->name->val);
             auto field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
@@ -189,7 +189,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_10_code_gen_2(
 
             // Turn the "literal part" into a function argument.
             auto eq_arg_conv = std::make_unique<ConventionRefAst>(nullptr);
-            auto eq_arg_val = ast_cast<ExpressionAst>(ast_clone(attr_part->val.get()));
+            auto eq_arg_val = ast_clone(attr_part->val->to<ExpressionAst>());
             auto eq_arg = std::make_unique<FunctionCallArgumentPositionalAst>(std::move(eq_arg_conv), nullptr, std::move(eq_arg_val));
 
             // Create the ".eq" part.

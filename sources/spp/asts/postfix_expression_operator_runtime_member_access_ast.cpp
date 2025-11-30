@@ -75,7 +75,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
     -> void {
 
     // Prevent types on the left-hand-side of a runtime member access.
-    if (ast_cast<TypeAst>(meta->postfix_expression_lhs)) {
+    if (meta->postfix_expression_lhs->to<TypeAst>() != nullptr) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessStaticOperatorExpectedError>().with_args(
             *meta->postfix_expression_lhs, *tok_dot).with_scopes({sm->current_scope}).raise();
     }
@@ -106,7 +106,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
 
     // Accessing a regular attribute/method on an instance.
     else {
-        const auto lhs_as_ident_raw = ast_cast<IdentifierAst>(meta->postfix_expression_lhs);
+        const auto lhs_as_ident_raw = meta->postfix_expression_lhs->to<IdentifierAst>();
         const auto lhs_as_ident = lhs_as_ident_raw ? std::make_shared<IdentifierAst>(lhs_as_ident_raw->pos_start(), lhs_as_ident_raw->val) : nullptr;
         const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
 

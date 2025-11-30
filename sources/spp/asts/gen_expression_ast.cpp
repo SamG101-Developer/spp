@@ -132,7 +132,7 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
     const auto fallible_match = is_fallible and analyse::utils::type_utils::symbolic_eq(*error_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
     if (not(direct_match or optional_match or fallible_match)) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppYieldedTypeMismatchError>().with_args(
-            *yield_type, *yield_type, expr ? *ast_cast<Ast>(expr.get()) : *ast_cast<Ast>(tok_gen.get()), *expr_type, is_optional, is_fallible, error_type ? *error_type : *generate::common_types_precompiled::VOID).with_scopes({sm->current_scope}).raise();
+            *yield_type, *yield_type, expr ? *expr->to<Ast>() : *tok_gen->to<Ast>(), *expr_type, is_optional, is_fallible, error_type ? *error_type : *generate::common_types_precompiled::VOID).with_scopes({sm->current_scope}).raise();
     }
 }
 
@@ -184,14 +184,14 @@ auto spp::asts::GenExpressionAst::stage_10_code_gen_2(
     const auto suspend_result_val = ctx->builder.CreateCall(llvm_suspend, {none_token, false_val}, "coro.suspend");
 
     // Model the branch control.
-    const auto enclosing_fn_proto = ast_cast<FunctionPrototypeAst>(meta->enclosing_function_scope->ast);
+    const auto enclosing_fn_proto = meta->enclosing_function_scope->ast->to<FunctionPrototypeAst>();
     const auto resume_bb = llvm::BasicBlock::Create(ctx->context, "resume", enclosing_fn_proto->m_llvm_func);
     const auto cleanup_bb = llvm::BasicBlock::Create(ctx->context, "cleanup", enclosing_fn_proto->m_llvm_func);
     const auto suspend_bb = llvm::BasicBlock::Create(ctx->context, "suspend", enclosing_fn_proto->m_llvm_func);
     ctx->builder.CreateSwitch(suspend_result_val, resume_bb, 2);
 
     // Store the yielded value into the coroutine frame.
-    const auto coro_proto = ast_cast<CoroutinePrototypeAst>(enclosing_fn_proto);
+    const auto coro_proto = enclosing_fn_proto->to<CoroutinePrototypeAst>();
     if (llvm_yield_val != nullptr) {
         ctx->builder.CreateStore(llvm_yield_val, coro_proto->m_llvm_coro_yield_slot);
     }

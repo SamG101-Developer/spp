@@ -88,7 +88,7 @@ auto spp::asts::LetStatementInitializedAst::stage_7_analyse_semantics(
     SPP_ENFORCE_EXPRESSION_SUBTYPE(val.get());
 
     // An explicit type can only be applied if the left-hand-side is a single identifier.
-    if (type != nullptr and ast_cast<LocalVariableSingleIdentifierAst>(var.get()) == nullptr) {
+    if (type != nullptr and var->to<LocalVariableSingleIdentifierAst>() == nullptr) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidTypeAnnotationError>().with_args(
             *type, *var).with_scopes({sm->current_scope}).raise();
     }

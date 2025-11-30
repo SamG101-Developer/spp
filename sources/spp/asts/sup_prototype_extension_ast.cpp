@@ -113,7 +113,7 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_cyclic_extension(
     -> void {
     auto check_cycle = [this, &check_scope](analyse::scopes::Scope const *sc) {
         auto dummy = analyse::utils::type_utils::GenericInferenceMap();
-        const auto ext = ast_cast<SupPrototypeExtensionAst>(sc->ast);
+        const auto ext = sc->ast->to<SupPrototypeExtensionAst>();
         return ext and
             analyse::utils::type_utils::relaxed_symbolic_eq(*ext->name, *super_class, sc, &check_scope, dummy, false) and
             analyse::utils::type_utils::symbolic_eq(*ext->super_class, *name, *sc, check_scope, false);
@@ -122,7 +122,7 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_cyclic_extension(
     // Prevent double inheritance by checking if the scopes are already registered the other way around.
     const auto existing_sup_scopes = sup_sym.scope->sup_scopes()
         | genex::views::filter(check_cycle)
-        | genex::views::transform([](auto *x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })
+        | genex::views::transform([](auto *x) { return std::make_pair(x, x->ast->template to<SupPrototypeExtensionAst>()); })
         | genex::to<std::vector>();
 
     if (not existing_sup_scopes.empty()) {
@@ -143,7 +143,7 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_double_extension(
 
     auto check_double = [this, &check_scope](analyse::scopes::Scope const *sc) {
         auto dummy = analyse::utils::type_utils::GenericInferenceMap();
-        const auto ext = ast_cast<SupPrototypeExtensionAst>(sc->ast);
+        const auto ext = sc->ast->to<SupPrototypeExtensionAst>();
         return ext and
             analyse::utils::type_utils::relaxed_symbolic_eq(*ext->name, *name, sc, &check_scope, dummy, false) and
             analyse::utils::type_utils::symbolic_eq(*ext->super_class, *super_class, *sc, check_scope, false);
@@ -153,7 +153,7 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_double_extension(
     auto dummy = analyse::utils::type_utils::GenericInferenceMap();
     const auto existing_sup_scopes = cls_sym.scope->sup_scopes()
         | genex::views::filter(check_double)
-        | genex::views::transform([](auto *x) { return std::make_pair(x, ast_cast<SupPrototypeExtensionAst>(x->ast)); })
+        | genex::views::transform([](auto *x) { return std::make_pair(x, x->ast->template to<SupPrototypeExtensionAst>()); })
         | genex::to<std::vector>();
 
     if (not existing_sup_scopes.empty()) {
@@ -329,7 +329,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
     const auto sup_sym = sm->current_scope->get_type_symbol(super_class);
     const auto sup_scopes = std::vector{sup_sym->scope}
         | genex::views::concat(sm->current_scope->get_type_symbol(super_class)->scope->sup_scopes())
-        | genex::views::filter([](auto &&x) { return ast_cast<ClassPrototypeAst>(x->ast); })
+        | genex::views::filter([](auto &&x) { return x->ast->template to<ClassPrototypeAst>(); })
         | genex::to<std::vector>();
 
     // Mark the class as copyable if the "Copy" type is the supertype.
@@ -344,9 +344,9 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
 
     // Check every member on the superimposition exists on the supertype.
     for (auto &&member : impl->members) {
-        if (const auto ext_member = ast_cast<SupPrototypeExtensionAst>(member.get())) {
+        if (const auto ext_member = member->to<SupPrototypeExtensionAst>()) {
             // Get the method and identify the base method it is overriding.
-            const auto this_method = ast_cast<FunctionPrototypeAst>(ext_member->impl->final_member());
+            const auto this_method = ext_member->impl->final_member()->to<FunctionPrototypeAst>();
             const auto base_method = analyse::utils::func_utils::check_for_conflicting_override(*sm->current_scope, sup_sym->scope, *this_method);
 
             // Check the base method exists.
@@ -362,7 +362,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
             }
         }
 
-        else if (const auto type_member = ast_cast<TypeStatementAst>(member.get())) {
+        else if (const auto type_member = member->to<TypeStatementAst>()) {
             // Get the associated type from the supertype directly.
             const auto this_type = type_member->new_type;
             const auto base_type = sup_sym->scope->get_type_symbol(this_type, true);
@@ -374,7 +374,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
             }
         }
 
-        else if (const auto cmp_member = ast_cast<CmpStatementAst>(member.get())) {
+        else if (const auto cmp_member = member->to<CmpStatementAst>()) {
             // Get the associated type from the supertype directly.
             const auto this_const = cmp_member->name;
             const auto base_const = sup_sym->scope->get_var_symbol(this_const, true);

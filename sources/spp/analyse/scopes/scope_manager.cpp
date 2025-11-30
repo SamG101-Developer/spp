@@ -151,7 +151,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
             sup_sym = new_cls_scope ? new_cls_scope->ty_sym.get() : nullptr;
         }
         else {
-            const auto sup_proto = asts::ast_cast<asts::SupPrototypeExtensionAst>(sup_scope->ast);
+            const auto sup_proto = sup_scope->ast->to<asts::SupPrototypeExtensionAst>();
             new_sup_scope = sup_scope;
             new_cls_scope = sup_proto ? scope.get_type_symbol(sup_proto->super_class)->scope : nullptr;
             sup_sym = new_cls_scope ? new_cls_scope->ty_sym.get() : nullptr;
@@ -159,7 +159,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
         auto cls_sym = scope.ty_sym;
 
         // Prevent double inheritance, cyclic inheritance and self extension.
-        if (const auto ext_ast = asts::ast_cast<asts::SupPrototypeExtensionAst>(sup_scope->ast); ext_ast != nullptr) {
+        if (const auto ext_ast = sup_scope->ast->to<asts::SupPrototypeExtensionAst>(); ext_ast != nullptr) {
             ext_ast->m_check_cyclic_extension(*sup_sym, *sup_scope);
             ext_ast->m_check_double_extension(*cls_sym, *sup_scope);
             ext_ast->m_check_self_extension(*sup_scope);
@@ -176,7 +176,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
         }
 
         // Check for conflicting "cmp" or "type" statements in the super scopes.
-        if (asts::ast_cast<asts::SupPrototypeExtensionAst>(sup_scope->ast) or asts::ast_cast<asts::SupPrototypeFunctionsAst>(sup_scope->ast)) {
+        if (sup_scope->ast->to<asts::SupPrototypeExtensionAst>() or sup_scope->ast->to<asts::SupPrototypeFunctionsAst>()) {
             check_conflicting_type_or_cmp_statements(*cls_sym, *sup_scope);
         }
     }
@@ -190,7 +190,7 @@ auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statement
     // Get the scopes to check for conflicts in.
     auto dummy = utils::type_utils::GenericInferenceMap();
     const auto existing_scopes = cls_sym.scope->m_direct_sup_scopes
-        | genex::views::filter([&](auto *scope) { return asts::ast_cast<asts::SupPrototypeExtensionAst>(scope->ast) or asts::ast_cast<asts::SupPrototypeFunctionsAst>(scope->ast); })
+        | genex::views::filter([&](auto *scope) { return scope->ast->template to<asts::SupPrototypeExtensionAst>() or scope->ast->template to<asts::SupPrototypeFunctionsAst>(); })
         | genex::views::filter([&](auto *scope) { return utils::type_utils::relaxed_symbolic_eq(*ast_name(sup_scope.ast), *ast_name(scope->ast), &sup_scope, scope->ast->m_scope, dummy); })
         | genex::to<std::vector>();
 
@@ -199,7 +199,7 @@ auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statement
     for (auto scope : existing_scopes) {
         auto body = asts::ast_body(scope->ast);
         for (const auto member : body) {
-            if (const auto type_stmt = asts::ast_cast<asts::TypeStatementAst>(member); type_stmt != nullptr) {
+            if (const auto type_stmt = member->to<asts::TypeStatementAst>(); type_stmt != nullptr) {
                 for (const auto &new_type : new_types) {
                     if (*new_type == *type_stmt->new_type) {
                         errors::SemanticErrorBuilder<errors::SppIdentifierDuplicateError>().with_args(
@@ -216,7 +216,7 @@ auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statement
     for (auto scope : existing_scopes) {
         auto body = asts::ast_body(scope->ast);
         for (const auto member : body) {
-            if (const auto cmp_stmt = asts::ast_cast<asts::CmpStatementAst>(member); cmp_stmt != nullptr and cmp_stmt->type->type_parts().back()->name[0] != '$') {
+            if (const auto cmp_stmt = member->to<asts::CmpStatementAst>(); cmp_stmt != nullptr and cmp_stmt->type->type_parts().back()->name[0] != '$') {
                 for (const auto &new_cmp : new_cmps) {
                     if (*new_cmp == *cmp_stmt->name) {
                         errors::SemanticErrorBuilder<errors::SppIdentifierDuplicateError>().with_args(

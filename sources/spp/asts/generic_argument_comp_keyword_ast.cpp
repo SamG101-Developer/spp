@@ -98,13 +98,13 @@ auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
     std::unique_ptr<ExpressionAst> value = nullptr;
 
     // Depending on that the comptime AST is, get the value.
-    if (const auto comptime_param = ast_cast<GenericParameterCompAst>(c)) {
-        value = asts::ast_cast<ExpressionAst>(ast_clone(comptime_param->name));
+    if (const auto comptime_param = c->to<GenericParameterCompAst>(); comptime_param != nullptr) {
+        value = ast_clone(comptime_param->name->to<ExpressionAst>());
     }
-    else if (const auto comptime_arg = ast_cast<GenericArgumentCompAst>(c)) {
+    else if (const auto comptime_arg = c->to<GenericArgumentCompAst>(); comptime_arg != nullptr) {
         value = ast_clone(comptime_arg->val);
     }
-    if (auto const *value_as_type = asts::ast_cast<TypeIdentifierAst>(value.get()); value_as_type != nullptr) {
+    if (auto const *value_as_type = value->to<TypeIdentifierAst>(); value_as_type != nullptr) {
         value = IdentifierAst::from_type(*std::shared_ptr(ast_clone(value_as_type))); // Don't remove "shared_ptr"
     }
 

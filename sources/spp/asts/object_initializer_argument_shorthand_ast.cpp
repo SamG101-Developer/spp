@@ -14,7 +14,7 @@ import spp.asts.utils.ast_utils;
 spp::asts::ObjectInitializerArgumentShorthandAst::ObjectInitializerArgumentShorthandAst(
     std::unique_ptr<TokenAst> tok_ellipsis,
     std::unique_ptr<ExpressionAst> &&val) :
-    ObjectInitializerArgumentAst(ast_cast<IdentifierAst>(ast_clone(val)), std::move(val)),
+    ObjectInitializerArgumentAst(ast_clone(val->to<IdentifierAst>()), std::move(val)),
     tok_ellipsis(std::move(tok_ellipsis)) {
 }
 
@@ -65,7 +65,7 @@ auto spp::asts::ObjectInitializerArgumentShorthandAst::stage_7_analyse_semantics
     CompilerMetaData *meta)
     -> void {
     // The parser allows Type(123) as a postfix function call over a type, which is invalid as type initialization.
-    if (ast_cast<IdentifierAst>(val.get()) == nullptr) {
+    if (val->to<IdentifierAst>() == nullptr) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppObjectInitializerInvalidArgumentError>().with_args(
             *this).with_scopes({sm->current_scope}).raise();
     }

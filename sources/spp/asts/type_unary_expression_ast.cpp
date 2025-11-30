@@ -132,7 +132,7 @@ auto spp::asts::TypeUnaryExpressionAst::type_parts()
 
 auto spp::asts::TypeUnaryExpressionAst::without_convention() const
     -> std::shared_ptr<const TypeAst> {
-    if (ast_cast<TypeUnaryExpressionOperatorBorrowAst>(op.get())) {
+    if (op->to<TypeUnaryExpressionOperatorBorrowAst>() != nullptr) {
         return rhs;
     }
     return std::dynamic_pointer_cast<const TypeAst>(shared_from_this());
@@ -141,7 +141,7 @@ auto spp::asts::TypeUnaryExpressionAst::without_convention() const
 
 auto spp::asts::TypeUnaryExpressionAst::get_convention() const
     -> ConventionAst* {
-    if (auto const *op_borrow = ast_cast<TypeUnaryExpressionOperatorBorrowAst>(op.get())) {
+    if (auto const *op_borrow = op->to<TypeUnaryExpressionOperatorBorrowAst>()) {
         return op_borrow->conv.get();
     }
     return nullptr;
@@ -154,7 +154,7 @@ auto spp::asts::TypeUnaryExpressionAst::with_convention(
     if (conv == nullptr) {
         return std::make_shared<TypeUnaryExpressionAst>(op, rhs);
     }
-    if (ast_cast<TypeUnaryExpressionOperatorBorrowAst>(op.get())) {
+    if (op->to<TypeUnaryExpressionOperatorBorrowAst>()) {
         return std::make_shared<TypeUnaryExpressionAst>(
             std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)),
             rhs);
@@ -200,7 +200,7 @@ auto spp::asts::TypeUnaryExpressionAst::stage_4_qualify_types(
     CompilerMetaData *meta)
     -> void {
     // Qualify the RHS type.
-    if (const auto op_ns = ast_cast<TypeUnaryExpressionOperatorNamespaceAst>(op.get())) {
+    if (const auto op_ns = op->to<TypeUnaryExpressionOperatorNamespaceAst>()) {
         const auto tm = ScopeManager(sm->global_scope, meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope);
         const auto type_scope = analyse::utils::type_utils::get_namespaced_scope_with_error(tm, *op_ns->ns);
         meta->save();
@@ -219,7 +219,7 @@ auto spp::asts::TypeUnaryExpressionAst::stage_7_analyse_semantics(
     CompilerMetaData *meta)
     -> void {
     // Analyse the RHS type.
-    if (const auto op_ns = ast_cast<TypeUnaryExpressionOperatorNamespaceAst>(op.get())) {
+    if (const auto op_ns = op->to<TypeUnaryExpressionOperatorBorrowAst>()) {
         const auto tm = ScopeManager(sm->global_scope, meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope);
         const auto type_scope = analyse::utils::type_utils::get_namespaced_scope_with_error(tm, *op_ns->ns);
         meta->save();

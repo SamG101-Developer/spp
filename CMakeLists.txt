@@ -49,12 +49,12 @@ endif ()
 
 target_compile_features(spp_lib
         PRIVATE cxx_std_26)
-target_link_libraries(spp_lib PRIVATE
+target_link_libraries(spp_lib PUBLIC
         absl::hash absl::strings nlohmann_json::nlohmann_json magic_enum::magic_enum Boost::boost mp++::mp++
         ColEx::ColEx GenEx::GenEx OpEx::OpEx
         Glob LLVMCore LLVMSupport LLVMCodeGen LLVMScalarOpts LLVMTransformUtils)
 target_sources(spp_lib
-        PUBLIC FILE_SET cxx_modules TYPE CXX_MODULES FILES ${MODULE_FILES}
+        PUBLIC FILE_SET CXX_MODULES TYPE CXX_MODULES FILES ${MODULE_FILES}
         PRIVATE ${SOURCE_FILES})
 target_include_directories(spp_lib PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/headers)

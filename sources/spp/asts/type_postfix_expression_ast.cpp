@@ -162,7 +162,7 @@ auto spp::asts::TypePostfixExpressionAst::with_convention(
 
 auto spp::asts::TypePostfixExpressionAst::without_generics() const
     -> std::shared_ptr<TypeAst> {
-    const auto rhs = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
+    const auto rhs = tok_op->to<TypePostfixExpressionOperatorNestedTypeAst>();
     auto new_lhs = ast_clone(lhs); // Todo: clone needed?
     auto new_rhs = std::make_unique<TypePostfixExpressionOperatorNestedTypeAst>(nullptr, std::dynamic_pointer_cast<TypeIdentifierAst>(rhs->name->without_generics()));
     return std::make_shared<TypePostfixExpressionAst>(std::move(new_lhs), std::move(new_rhs));
@@ -172,7 +172,7 @@ auto spp::asts::TypePostfixExpressionAst::without_generics() const
 auto spp::asts::TypePostfixExpressionAst::substitute_generics(
     std::vector<GenericArgumentAst*> const &args) const
     -> std::shared_ptr<TypeAst> {
-    const auto rhs = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
+    const auto rhs = tok_op->to<TypePostfixExpressionOperatorNestedTypeAst>();
     auto new_lhs = lhs->substitute_generics(args);
     auto new_rhs = std::make_unique<TypePostfixExpressionOperatorNestedTypeAst>(
         nullptr, std::dynamic_pointer_cast<TypeIdentifierAst>(rhs->name->substitute_generics(std::move(args))));
@@ -183,7 +183,7 @@ auto spp::asts::TypePostfixExpressionAst::substitute_generics(
 auto spp::asts::TypePostfixExpressionAst::contains_generic(
     GenericParameterAst const &generic) const
     -> bool {
-    const auto rhs = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
+    const auto rhs = tok_op->to<TypePostfixExpressionOperatorNestedTypeAst>();
     return rhs->name->contains_generic(generic);
 }
 
@@ -227,7 +227,7 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
     const auto lhs_type_scope = lhs_type_sym->scope;
 
     // Check there is only 1 target field on the lhs at the highest level.
-    const auto op_nested = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
+    const auto op_nested = tok_op->to<TypePostfixExpressionOperatorNestedTypeAst>();
     auto scopes_and_syms = std::vector{lhs_type_sym->scope}
         | genex::views::concat(lhs_type_sym->scope->sup_scopes())
         | genex::views::transform([name=op_nested->name.get()](auto &&x) { return std::make_pair(x, x->table.type_tbl.get(ast_clone(name))); })
@@ -269,7 +269,7 @@ auto spp::asts::TypePostfixExpressionAst::infer_type(
     const auto lhs_type_scope = lhs_type_sym->scope;
 
     // Infer the type of the postfix operation.
-    const auto op_nested = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
+    const auto op_nested = tok_op->to<TypePostfixExpressionOperatorNestedTypeAst>();
     const auto part = analyse::utils::type_utils::get_type_part_symbol_with_error(*lhs_type_scope, *op_nested->name, *sm, meta)->fq_name();
     const auto sym = lhs_type_scope->get_type_symbol(part);
     return sym->fq_name();

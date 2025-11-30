@@ -127,7 +127,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
 
     const auto assigned_attributes = elems
         | genex::views::ptr
-        | genex::views::filter([](auto const &x) { return ast_cast<LocalVariableDestructureSkipMultipleArgumentsAst>(x) == nullptr; })
+        | genex::views::filter([](auto const &x) { return x->template to<LocalVariableDestructureSkipMultipleArgumentsAst>() == nullptr; })
         | genex::views::transform([](auto const &x) { return x->extract_name(); })
         | genex::to<std::vector>();
 
@@ -164,11 +164,11 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
     // Create expanded "let" statements for each part of the destructure.
     for (const auto elem : elems | genex::views::ptr) {
         // Skip any conversion for unbound multi argument skipping.
-        if (ast_cast<LocalVariableDestructureSkipMultipleArgumentsAst>(elem) != nullptr) {
+        if (elem->to<LocalVariableDestructureSkipMultipleArgumentsAst>() != nullptr) {
         }
 
         // Skip any conversion for single argument skipping.
-        else if (const auto cast_elem_1 = ast_cast<LocalVariableSingleIdentifierAst>(elem); cast_elem_1 != nullptr) {
+        else if (const auto cast_elem_1 = elem->to<LocalVariableSingleIdentifierAst>(); cast_elem_1 != nullptr) {
             auto field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, ast_clone(cast_elem_1->name));
             auto pstfx = std::make_unique<PostfixExpressionAst>(ast_clone(val), std::move(field));
             auto new_ast = std::make_unique<LetStatementInitializedAst>(nullptr, ast_clone(elem), nullptr, nullptr, std::move(pstfx));
@@ -177,11 +177,11 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
         }
 
         // Skip any conversion for single argument skipping.
-        else if (ast_cast<LocalVariableDestructureSkipSingleArgumentAst>(elem) != nullptr) {
+        else if (elem->to<LocalVariableDestructureSkipSingleArgumentAst>() != nullptr) {
         }
 
         // Handle and other nested destructure or single identifier.
-        else if (const auto cast_elem_2 = ast_cast<LocalVariableDestructureAttributeBindingAst>(elem); cast_elem_2 != nullptr) {
+        else if (const auto cast_elem_2 = elem->to<LocalVariableDestructureAttributeBindingAst>(); cast_elem_2 != nullptr) {
             auto field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, ast_clone(cast_elem_2->name));
             auto pstfx = std::make_unique<PostfixExpressionAst>(ast_clone(val), std::move(field));
             auto new_ast = std::make_unique<LetStatementInitializedAst>(nullptr, ast_clone(cast_elem_2->val), nullptr, nullptr, std::move(pstfx));
@@ -189,8 +189,6 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
             m_new_asts.emplace_back(std::move(new_ast));
         }
     }
-
-    //
 }
 
 

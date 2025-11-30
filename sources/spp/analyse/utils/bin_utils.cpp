@@ -32,7 +32,7 @@ auto spp::analyse::utils::bin_utils::fix_associativity(
     asts::meta::CompilerMetaData *meta)
     -> std::unique_ptr<asts::BinaryExpressionAst> {
     // If the right-hand-side isn't a binary expression, then no handling is required; return it.
-    if (asts::ast_cast<asts::BinaryExpressionAst>(bin_expr.rhs.get()) == nullptr) {
+    if (bin_expr.rhs->to<asts::BinaryExpressionAst>() == nullptr) {
         return std::make_unique<asts::BinaryExpressionAst>(
             std::move(bin_expr.lhs),
             std::move(bin_expr.tok_op),
@@ -40,7 +40,7 @@ auto spp::analyse::utils::bin_utils::fix_associativity(
     }
 
     // If the ast precedence > the right-hand-side binary expression's operator's precedence, re-arrange the AST.
-    auto bin_rhs = asts::ast_cast<asts::BinaryExpressionAst>(std::move(bin_expr.rhs));
+    auto bin_rhs = std::unique_ptr<asts::BinaryExpressionAst>(bin_expr.rhs.release()->to<asts::BinaryExpressionAst>());
     if (BIN_OP_PRECEDENCE.at(bin_expr.tok_op->token_type) >= BIN_OP_PRECEDENCE.at(bin_rhs->tok_op->token_type)) {
         bin_expr.rhs = std::move(bin_rhs->rhs);
         bin_rhs->rhs = std::move(bin_rhs->lhs);
@@ -68,7 +68,7 @@ auto spp::analyse::utils::bin_utils::combine_comp_ops(
     asts::meta::CompilerMetaData *meta)
     -> std::unique_ptr<asts::BinaryExpressionAst> {
     // Check the left-hand-side is a binary expression with a comparison operator.
-    const auto bin_lhs = asts::ast_cast<asts::BinaryExpressionAst>(bin_expr.lhs.get());
+    const auto bin_lhs = bin_expr.lhs->to<asts::BinaryExpressionAst>();
     if (
         bin_lhs == nullptr or
         not genex::contains(BIN_COMPARISON_OPS, bin_expr.tok_op->token_type) or
