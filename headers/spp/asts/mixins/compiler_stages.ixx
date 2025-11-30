@@ -1,7 +1,7 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.mixins.compiler_stages;
+export module spp.asts:mixins.compiler_stages;
 import spp.codegen.llvm_ctx;
 
 import llvm;

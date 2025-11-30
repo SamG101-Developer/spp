@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.assignment_statement_ast;
-import spp.asts.statement_ast;
+export module spp.asts:assignment_statement_ast;
+import :statement_ast;
 import spp.codegen.llvm_ctx;
 
 import llvm;

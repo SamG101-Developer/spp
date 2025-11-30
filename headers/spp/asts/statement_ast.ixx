@@ -1,9 +1,9 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.statement_ast;
-import spp.asts.ast;
-import spp.asts.mixins.type_inferrable_ast;
+export module spp.asts:statement_ast;
+import :ast;
+import :mixins.type_inferrable_ast;
 
 import std;
 

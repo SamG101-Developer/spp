@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.mixins.type_inferrable_ast;
-import spp.asts.mixins.compiler_stages;
+export module spp.asts:mixins.type_inferrable_ast;
+import :mixins.compiler_stages;
 import std;
 
 

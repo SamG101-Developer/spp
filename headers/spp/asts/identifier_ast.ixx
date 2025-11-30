@@ -31,10 +31,8 @@ SPP_EXP_CLS struct spp::asts::IdentifierAst final : PrimaryExpressionAst, std::e
 
     ~IdentifierAst() override;
 
-    using ExpressionAst::equals;
-    using ExpressionAst::equals_identifier;
     SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-    SPP_ATTR_NODISCARD auto equals_identifier(IdentifierAst const &other) const -> std::strong_ordering;
+    SPP_ATTR_NODISCARD auto equals_identifier(IdentifierAst const &other) const -> std::strong_ordering override;
 
 public:
     SPP_AST_KEY_FUNCTIONS;

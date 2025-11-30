@@ -1,9 +1,10 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.ast;
+export module spp.asts:ast;
+import :mixins.compiler_stages;
+
 import spp.asts.meta.ast_printer;
-import spp.asts.mixins.compiler_stages;
 import spp.codegen.llvm_ctx;
 import genex;
 import std;

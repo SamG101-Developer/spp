@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.array_literal_explicit_elements_ast;
-import spp.asts.array_literal_ast;
+export module spp.asts:array_literal_explicit_elements_ast;
+import :array_literal_ast;
 import spp.codegen.llvm_ctx;
 
 import llvm;

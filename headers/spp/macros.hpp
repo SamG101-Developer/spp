@@ -98,9 +98,9 @@
     if (auto pe = expr->to<PostfixExpressionAst>(); pe != nullptr and pe->op->to<PostfixExpressionOperatorFunctionCallAst>() != nullptr)
 
 
-#define SPP_EXP_CLS export extern "C++"
+#define SPP_EXP_CLS export
 
-#define SPP_EXP_ENUM export extern "C++"
+#define SPP_EXP_ENUM export
 
 #define SPP_EXP_FUN export
 

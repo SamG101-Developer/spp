@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.expression_ast;
-import spp.asts.statement_ast;
+export module spp.asts:expression_ast;
+import :statement_ast;
 import std;
 
 namespace spp::asts {

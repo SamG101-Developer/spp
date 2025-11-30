@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.array_literal_ast;
-import spp.asts.literal_ast;
+export module spp.asts:array_literal_ast;
+import :literal_ast;
 import std;
 
 namespace spp::asts {
