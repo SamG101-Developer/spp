@@ -107,10 +107,14 @@ public:
     virtual auto print(meta::AstPrinter &printer) const -> std::string = 0;
 
     template <typename T>
-    auto to() -> T*;
+    auto to() -> T* {
+        return dynamic_cast<T*>(this);
+    }
 
     template <typename T>
-    auto to() const -> T const*;
+    auto to() const -> T const* {
+        return dynamic_cast<T const*>(this);
+    }
 
     auto stage_1_pre_process(Ast *ctx) -> void override;
 
