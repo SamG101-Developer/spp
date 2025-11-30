@@ -142,7 +142,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
     // Must use "materialize" because the list gets updates from within the loop.
     for (auto &&[i, arg] : args | genex::views::ptr | genex::views::enumerate | genex::views::materialize) {
         // Only check position arguments that have ".." tokens.
-        const auto pos_arg = ast_cast<FunctionCallArgumentPositionalAst>(arg);
+        const auto pos_arg = arg->to<FunctionCallArgumentPositionalAst>();
         if (pos_arg == nullptr or pos_arg->tok_unpack == nullptr) { continue; }
 
         // Check the argument value is a tuple expression.
@@ -192,7 +192,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
     CompilerMetaData *meta)
     -> void {
     // If the target is a coroutine, or the target is called as "async", then pins are required.
-    const auto is_target_coro = ast_cast<CoroutinePrototypeAst>(meta->target_call_function_prototype) != nullptr;
+    const auto is_target_coro = meta->target_call_function_prototype->to<CoroutinePrototypeAst>() != nullptr;
     const auto pins_required = meta->target_call_was_function_async or is_target_coro;
 
     // Define the borrow sets to maintain the law of exclusivity.

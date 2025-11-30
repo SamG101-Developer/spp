@@ -14,7 +14,7 @@ auto spp::asts::FunctionImplementationAst::new_empty()
 
 auto spp::asts::FunctionImplementationAst::clone() const
     -> std::unique_ptr<Ast> {
-    auto *c = ast_cast<InnerScopeAst>(InnerScopeAst::clone().release());
+    auto *c = InnerScopeAst::clone().release()->to<InnerScopeAst>();
     return std::make_unique<FunctionImplementationAst>(
         std::move(c->tok_l),
         std::move(c->members),

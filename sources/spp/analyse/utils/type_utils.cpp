@@ -371,7 +371,7 @@ auto spp::analyse::utils::type_utils::get_attr_types(
     -> std::vector<std::pair<const asts::ClassPrototypeAst*, std::shared_ptr<asts::TypeAst>>> {
     // Todo: GenEx
     auto mapped_attrs = std::ranges::views::transform(cls_proto->impl->members, [](auto const &member) {
-        return member.get()->template to<asts::ClassAttributeAst>();
+        return member->template to<asts::ClassAttributeAst>();
     });
     auto filtered_attrs = std::ranges::views::filter(mapped_attrs, [](auto const &attr) {
         return attr != nullptr;

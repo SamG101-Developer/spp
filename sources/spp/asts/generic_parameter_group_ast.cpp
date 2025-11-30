@@ -206,14 +206,14 @@ auto spp::asts::GenericParameterGroupAst::opt_to_req() const
     // Convert all optional parameters to required parameters.
     auto new_params = std::vector<std::unique_ptr<GenericParameterAst>>();
     for (auto &&p : params) {
-        if (const auto opt_type = ast_cast<GenericParameterTypeOptionalAst>(p.get())) {
+        if (const auto opt_type = p->to<GenericParameterTypeOptionalAst>(); opt_type != nullptr) {
             auto param = std::make_unique<GenericParameterTypeRequiredAst>(ast_clone(opt_type->name), ast_clone(opt_type->constraints));
-            auto cast_param = ast_cast<GenericParameterAst>(std::move(param));
+            auto cast_param = std::unique_ptr<GenericParameterAst>(param.release()->to<GenericParameterAst>());
             new_params.emplace_back(std::move(cast_param));
         }
-        else if (const auto opt_comp = ast_cast<GenericParameterCompOptionalAst>(p.get())) {
+        else if (const auto opt_comp = p->to<GenericParameterCompOptionalAst>(); opt_comp != nullptr) {
             auto param = std::make_unique<GenericParameterCompRequiredAst>(nullptr, ast_clone(opt_comp->name), nullptr, ast_clone(opt_comp->type));
-            auto cast_param = ast_cast<GenericParameterAst>(std::move(param));
+            auto cast_param = std::unique_ptr<GenericParameterAst>(param.release()->to<GenericParameterAst>());
             new_params.emplace_back(std::move(cast_param));
         }
         else {

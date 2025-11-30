@@ -122,7 +122,7 @@ auto spp::asts::FunctionParameterGroupAst::get_non_self_params() const
     -> std::vector<FunctionParameterAst*> {
     return params
         | genex::views::ptr
-        | genex::views::filter([](auto &&x) { return not ast_cast<FunctionParameterSelfAst>(x); })
+        | genex::views::filter([](auto &&x) { return not x->template to<FunctionParameterSelfAst>(); })
         | genex::to<std::vector>();
 }
 

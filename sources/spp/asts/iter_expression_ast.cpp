@@ -183,15 +183,15 @@ auto spp::asts::IterExpressionAst::infer_type(
     const auto cond_type = cond->infer_type(sm, meta);
 
     const auto pat_nop_present = genex::any_of(
-        branches, [](auto const &x) { return x->pattern.get()->template to<IterPatternVariantNoValueAst>() != nullptr; });
+        branches, [](auto const &x) { return x->pattern->template to<IterPatternVariantNoValueAst>() != nullptr; });
     const auto pat_err_present = genex::any_of(
-        branches, [](auto const &x) { return x->pattern.get()->template to<IterPatternVariantExceptionAst>() != nullptr; });
+        branches, [](auto const &x) { return x->pattern->template to<IterPatternVariantExceptionAst>() != nullptr; });
     const auto pat_exh_present = genex::any_of(
-        branches, [](auto const &x) { return x->pattern.get()->template to<IterPatternVariantExhaustedAst>() != nullptr; });
+        branches, [](auto const &x) { return x->pattern->template to<IterPatternVariantExhaustedAst>() != nullptr; });
     const auto pat_var_present = genex::any_of(
-        branches, [](auto const &x) { return x->pattern.get()->template to<IterPatternVariantVariableAst>() != nullptr; });
+        branches, [](auto const &x) { return x->pattern->template to<IterPatternVariantVariableAst>() != nullptr; });
     const auto pat_else_present = genex::any_of(
-        branches, [](auto const &x) { return x->pattern.get()->template to<IterPatternVariantElseAst>() != nullptr; });
+        branches, [](auto const &x) { return x->pattern->template to<IterPatternVariantElseAst>() != nullptr; });
 
     if (not meta->ignore_missing_else_branch_for_inference) {
         // The GenOpt type requires "else || (var && nov && exh)".

@@ -1,13 +1,12 @@
 module;
 #include <opex/macros.hpp>
-
 #include <spp/macros.hpp>
 
 module spp.asts.local_variable_destructure_array_ast;
-import spp.analyse.utils.type_utils;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.type_utils;
 import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.expression_ast;
 import spp.asts.integer_literal_ast;

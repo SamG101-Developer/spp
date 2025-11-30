@@ -433,7 +433,7 @@ auto spp::analyse::scopes::Scope::get_var_symbol_outermost(
             return false;
         }
 
-        auto postfix_op = postfix_expr->op.get()->template to<OpType>();
+        auto postfix_op = postfix_expr->op->template to<OpType>();
         return postfix_op != nullptr;
     };
 

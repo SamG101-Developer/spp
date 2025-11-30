@@ -7,6 +7,7 @@ import spp.asts.loop_control_flow_statement_ast;
 import spp.asts.ret_statement_ast;
 import spp.asts.statement_ast;
 import spp.asts.token_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.asts.generate.common_types;
 import genex;
@@ -15,7 +16,7 @@ import genex;
 template <typename T>
 auto spp::asts::InnerScopeExpressionAst<T>::clone() const
     -> std::unique_ptr<Ast> {
-    auto *c = ast_cast<InnerScopeAst<T>>(InnerScopeAst<T>::clone().release());
+    auto *c = InnerScopeAst<T>::clone().release()->template to<InnerScopeAst>();
     return std::make_unique<InnerScopeExpressionAst>(
         std::move(c->tok_l),
         std::move(c->members),
@@ -43,8 +44,8 @@ auto spp::asts::InnerScopeExpressionAst<T>::stage_7_analyse_semantics(
 
     // Check for unreachable code.
     for (auto &&[i, member] : this->members | genex::views::ptr | genex::views::enumerate) {
-        auto ret_stmt = ast_cast<RetStatementAst>(member);
-        auto loop_flow_stmt = ast_cast<LoopControlFlowStatementAst>(member);
+        auto ret_stmt = member->template to<RetStatementAst>();
+        auto loop_flow_stmt = member->template to<LoopControlFlowStatementAst>();
         if ((ret_stmt or loop_flow_stmt) and (member != this->members.back().get())) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppUnreachableCodeError>().with_args(
                 *member, *this->members[i + 1]).with_scopes({sm->current_scope}).raise();

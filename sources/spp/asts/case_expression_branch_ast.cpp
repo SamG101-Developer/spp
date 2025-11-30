@@ -112,7 +112,7 @@ auto spp::asts::CaseExpressionBranchAst::stage_7_analyse_semantics(
     if (op.get() and op->token_type != lex::SppTokenType::KW_IS) {
         for (auto &&p : patterns) {
             // Create a dummy function to check the comparison operator exists.
-            const auto pe = ast_cast<CasePatternVariantExpressionAst>(p.get());
+            const auto pe = p->to<CasePatternVariantExpressionAst>();
             const auto bin_ast = std::make_unique<BinaryExpressionAst>(
                 std::make_unique<ObjectInitializerAst>(meta->case_condition->infer_type(sm, meta), nullptr),
                 ast_clone(op),

@@ -149,7 +149,7 @@ auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
     const auto cls_sym = sm->current_scope->get_type_symbol(type);
     const auto attributes = std::vector{cls_sym->scope}
         | genex::views::concat(cls_sym->scope->sup_scopes())
-        | genex::views::transform([](auto const &scope) { return ast_cast<ClassPrototypeAst>(scope->ast)->impl.get(); })
+        | genex::views::transform([](auto const &scope) { return scope->ast->template to<ClassPrototypeAst>()->impl.get(); })
         | genex::views::transform([](auto const &impl) { return impl->members | genex::views::ptr | genex::to<std::vector>(); })
         | genex::views::join
         | genex::views::cast_dynamic<ClassAttributeAst*>()

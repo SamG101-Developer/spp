@@ -88,7 +88,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_7_analyse_semantics(
     // original asts from the argument group analysis.
     for (auto &&cap : captures) {
         // Create a "let" statement to insert the symbol into the current scope.
-        auto cap_val = ast_cast<IdentifierAst>(ast_clone(cap->val));
+        auto cap_val = ast_clone(cap->val->to<IdentifierAst>());
         auto var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(cap_val), nullptr);
         auto var_type = cap->val->infer_type(sm, meta);
         auto let_val = std::make_unique<ObjectInitializerAst>(std::move(var_type), nullptr);
@@ -96,7 +96,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_7_analyse_semantics(
         let->stage_7_analyse_semantics(sm, meta);
 
         // Apply the borrow to the symbol.
-        const auto sym = sm->current_scope->get_var_symbol(ast_cast<IdentifierAst>(ast_clone(cap->val)));
+        const auto sym = sm->current_scope->get_var_symbol(ast_clone(cap->val->to<IdentifierAst>()));
         const auto conv = cap->conv.get();
         sym->memory_info->ast_borrowed = {conv, sm->current_scope};
         sym->type = sym->type->with_convention(ast_clone(cap->conv));
@@ -114,7 +114,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_8_check_memory(
     for (auto const &cap : captures) {
         if (cap->conv != nullptr) {
             // Mark the pins on the capture and the target.
-            const auto cap_val = ast_cast<IdentifierAst>(cap->val.get());
+            const auto cap_val = cap->val->to<IdentifierAst>();
             const auto cap_sym = sm->current_scope->get_var_symbol(ast_clone(cap_val));
             if (ass_sym != nullptr) { ass_sym->memory_info->ast_pins.emplace_back(cap->val.get()); }
             if (cap_sym != nullptr) { cap_sym->memory_info->ast_pins.emplace_back(cap->val.get()); }

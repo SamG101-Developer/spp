@@ -321,9 +321,7 @@ auto spp::asts::LoopExpressionAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate code based on the condition type.
-    return ast_cast<LoopConditionBooleanAst>(cond.get())
-               ? m_codegen_condition_bool(sm, meta, ctx)
-               : m_codegen_condition_iter(sm, meta, ctx);
+    return cond->to<LoopConditionBooleanAst>() ? m_codegen_condition_bool(sm, meta, ctx) : m_codegen_condition_iter(sm, meta, ctx);
 }
 
 

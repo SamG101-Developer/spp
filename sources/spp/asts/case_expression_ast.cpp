@@ -208,7 +208,7 @@ auto spp::asts::CaseExpressionAst::infer_type(
         branches | genex::views::ptr | genex::to<std::vector>(), sm, meta);
 
     // Ensure there is an "else" branch if the branches are not exhaustive. Todo: Need to investigate how to detect exhaustion.
-    if (ast_cast<CasePatternVariantElseAst>(branches.back()->patterns[0].get()) == nullptr and not meta->ignore_missing_else_branch_for_inference) {
+    if (branches.back()->patterns[0]->to<CasePatternVariantElseAst>() == nullptr and not meta->ignore_missing_else_branch_for_inference) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppCaseBranchMissingElseError>().with_args(
             *this, *branches.back()).with_scopes({sm->current_scope}).raise();
     }

@@ -13,7 +13,7 @@ spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::LocalVariableDestru
     decltype(tok_ellipsis) &&tok_ellipsis,
     std::unique_ptr<LocalVariableAst> &&binding) :
     tok_ellipsis(std::move(tok_ellipsis)),
-    binding(ast_cast<LocalVariableSingleIdentifierAst>(std::move(binding))) {
+    binding(std::unique_ptr<LocalVariableSingleIdentifierAst>(binding.release()->to<LocalVariableSingleIdentifierAst>())) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_ellipsis, lex::SppTokenType::TK_DOUBLE_DOT, "..");
 }
 

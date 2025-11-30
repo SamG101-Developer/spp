@@ -130,7 +130,7 @@ auto spp::codegen::size_of(
     // Array (fixed length) size is element size * length.
     if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::ARR, *sm.current_scope, *sm.current_scope)) {
         const auto element_type = type->type_parts().back()->generic_arg_group->type_at("T")->val;
-        const auto length = std::stoll(asts::ast_cast<asts::IntegerLiteralAst>(type->type_parts().back()->generic_arg_group->comp_at("n")->val.get())->val->token_data);
+        const auto length = std::stoll(type->type_parts().back()->generic_arg_group->comp_at("n")->val->to<asts::IntegerLiteralAst>()->val->token_data);
         return size_of(sm, element_type) * static_cast<std::size_t>(length);
     }
 

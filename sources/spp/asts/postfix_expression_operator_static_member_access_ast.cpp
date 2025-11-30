@@ -73,7 +73,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
     CompilerMetaData *meta)
     -> void {
     // Handle types on the left-hand-side of a static member access.
-    if (const auto lhs_as_type = ast_cast<TypeAst>(meta->postfix_expression_lhs)) {
+    if (const auto lhs_as_type = meta->postfix_expression_lhs->to<TypeAst>(); lhs_as_type != nullptr) {
         const auto lhs_type_sym = sm->current_scope->get_type_symbol(ast_clone(lhs_as_type));
 
         // Check the left-hand-side isn't a generic type. Todo: until constraints.
@@ -121,7 +121,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
     }
 
     else {
-        const auto lhs_as_ident = ast_cast<IdentifierAst>(meta->postfix_expression_lhs);
+        const auto lhs_as_ident = meta->postfix_expression_lhs->to<IdentifierAst>();
         const auto lhs_var_sym = sm->current_scope->get_var_symbol(ast_clone(lhs_as_ident));
 
         // Check the lhs is a namespace and not a variable.
@@ -151,7 +151,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::infer_type(
     CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Get the left-hand-side type's member's type.
-    if (const auto lhs_as_type = ast_cast<TypeAst>(meta->postfix_expression_lhs)) {
+    if (const auto lhs_as_type = meta->postfix_expression_lhs->to<TypeAst>(); lhs_as_type != nullptr) {
         const auto lhs_type_sym = sm->current_scope->get_type_symbol(ast_clone(lhs_as_type));
         return lhs_type_sym->scope->get_var_symbol(name, true)->type;
     }

@@ -19,8 +19,9 @@ import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.type_ast;
-import spp.asts.utils.ast_utils;
 import spp.asts.type_identifier_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 import genex;
@@ -150,13 +151,12 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
     const auto skip_index = not multi_arg_skips.empty()
                                 ? genex::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize
                                 : elems.size() - 1;
-    auto indexes = genex::views::iota(0uz, skip_index + 1)
-        | genex::views::concat(genex::views::iota(num_lhs_arr_elems, num_rhs_arr_elems) | genex::views::materialize)
-        | genex::to<std::vector>();
+    auto indexes = genex::views::iota(0uz, skip_index + 1uz) | genex::to<std::vector>();
+    indexes.append_range(genex::views::iota(num_lhs_arr_elems, num_rhs_arr_elems) | genex::to<std::vector>());
 
     // Create expanded "let" statements for each part of the destructure.
     for (auto &&[i, elem] : genex::views::zip(indexes, elems | genex::views::ptr)) {
-        const auto cast_elem = ast_cast<LocalVariableDestructureSkipMultipleArgumentsAst>(elem);
+        const auto cast_elem = elem->to<LocalVariableDestructureSkipMultipleArgumentsAst>();
 
         // Handle bound multi argument skipping, by assigning the skipped elements into a variable.
         if (cast_elem != nullptr and multi_arg_skips[0]->binding != nullptr) {
@@ -166,11 +166,11 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
         }
 
         // Skip any conversion for single argument skipping.
-        else if (ast_cast<LocalVariableDestructureSkipSingleArgumentAst>(elem) != nullptr) {
+        else if (elem->to<LocalVariableDestructureSkipSingleArgumentAst>() != nullptr) {
         }
 
         // Skip any conversion for unbound multi argument skipping.
-        else if (ast_cast<LocalVariableDestructureSkipMultipleArgumentsAst>(elem) != nullptr) {
+        else if (elem->to<LocalVariableDestructureSkipMultipleArgumentsAst>() != nullptr) {
         }
 
         // Handle and other nested destructure or single identifier.

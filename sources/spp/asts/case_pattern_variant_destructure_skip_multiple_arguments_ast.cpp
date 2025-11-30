@@ -9,13 +9,15 @@ import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 
 
 spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::CasePatternVariantDestructureSkipMultipleArgumentsAst(
     decltype(tok_ellipsis) &&tok_ellipsis,
     std::unique_ptr<CasePatternVariantAst> &&binding) :
     tok_ellipsis(std::move(tok_ellipsis)),
-    binding(ast_cast<CasePatternVariantSingleIdentifierAst>(std::move(binding))) {
+    binding(std::unique_ptr<CasePatternVariantSingleIdentifierAst>(binding.release()->to<CasePatternVariantSingleIdentifierAst>())) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_ellipsis, lex::SppTokenType::TK_DOUBLE_DOT, "..");
 }
 
 
