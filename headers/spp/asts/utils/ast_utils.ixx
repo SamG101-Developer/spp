@@ -63,22 +63,8 @@ namespace spp::asts {
     SPP_EXP_FUN template <typename T>
     SPP_ATTR_HOT
     SPP_ATTR_ALWAYS_INLINE
-    auto ast_cast(Ast &ast) -> T& {
-        return dynamic_cast<T&>(ast);
-    }
-
-    SPP_EXP_FUN template <typename T>
-    SPP_ATTR_HOT
-    SPP_ATTR_ALWAYS_INLINE
     auto ast_cast(Ast const *ast) -> T const* {
         return dynamic_cast<T const*>(ast);
-    }
-
-    SPP_EXP_FUN template <typename T>
-    SPP_ATTR_HOT
-    SPP_ATTR_ALWAYS_INLINE
-    auto ast_cast(Ast const &ast) -> T const& {
-        return dynamic_cast<T const&>(ast);
     }
 
     SPP_EXP_FUN template <typename T, typename U>
