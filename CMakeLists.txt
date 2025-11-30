@@ -55,7 +55,7 @@ target_link_libraries(spp_lib PUBLIC
         Glob LLVMCore LLVMSupport LLVMCodeGen LLVMScalarOpts LLVMTransformUtils)
 target_sources(spp_lib
         PUBLIC FILE_SET CXX_MODULES FILES ${MODULE_FILES}
-        PRIVATE ${SOURCE_FILES})
+        PRIVATE ${MODULE_FILES} ${SOURCE_FILES})
 target_include_directories(spp_lib PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/headers)
 target_compile_definitions(spp_lib PRIVATE

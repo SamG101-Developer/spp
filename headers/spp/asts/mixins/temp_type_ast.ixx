@@ -18,7 +18,7 @@ namespace spp::asts {
 SPP_EXP_CLS struct spp::asts::mixins::TempTypeAst {
     TempTypeAst() = default;
 
-    virtual ~TempTypeAst() = default;
+    virtual ~TempTypeAst();
 
     /**
      * Convert this temporary type ast into a different type ast. For example, converting the array type st, parsed from

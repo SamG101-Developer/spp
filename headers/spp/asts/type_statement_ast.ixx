@@ -3,10 +3,9 @@ module;
 
 export module spp.asts.type_statement_ast;
 import spp.asts.statement_ast;
-import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.module_member_ast;
 import spp.asts.sup_member_ast;
-
+import spp.asts.mixins.visibility_enabled_ast;
 import std;
 
 namespace spp::asts {

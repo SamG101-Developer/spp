@@ -7,7 +7,8 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct PrimaryExpressionAst;
-    SPP_EXP_CLS struct TypeAst;
+    SPP_EXP_CLS struct TypeAst;  // DO NOT REMOVE (causes module errors)
+    SPP_EXP_CLS struct IdentifierAst;  // DO NOT REMOVE (causes module errors)
 }
 
 

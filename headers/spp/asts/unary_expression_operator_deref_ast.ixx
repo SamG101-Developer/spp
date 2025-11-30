@@ -7,9 +7,9 @@ import spp.asts.unary_expression_operator_ast;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct UnaryExpressionOperatorDerefAst;
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
+    SPP_EXP_CLS struct UnaryExpressionOperatorDerefAst;
 }
 
 

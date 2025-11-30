@@ -13,9 +13,7 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorAst : virtual Ast, mixins::TypeInferrableAst {
-    using Ast::Ast;
+    UnaryExpressionOperatorAst() = default;
 
     ~UnaryExpressionOperatorAst() override;
-
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

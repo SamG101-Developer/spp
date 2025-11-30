@@ -105,7 +105,7 @@ public:
     Scope(ScopeName name, Scope *parent, asts::Ast *ast = nullptr, utils::errors::ErrorFormatter *error_formatter = nullptr);
 
     Scope(Scope const &other);
-    ~Scope() = default;
+    ~Scope();
 
     static auto new_global(compiler::Module const &module) -> std::unique_ptr<Scope>;
 

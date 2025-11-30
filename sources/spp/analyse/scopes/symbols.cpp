@@ -15,6 +15,9 @@ import spp.codegen.llvm_sym_info;
 import nlohmann.json;
 
 
+spp::analyse::scopes::Symbol::~Symbol() = default;
+
+
 spp::analyse::scopes::NamespaceSymbol::NamespaceSymbol(
     std::shared_ptr<asts::IdentifierAst> name,
     Scope *scope) :
@@ -28,6 +31,9 @@ spp::analyse::scopes::NamespaceSymbol::NamespaceSymbol(
     name(that.name),
     scope(that.scope) {
 }
+
+
+spp::analyse::scopes::NamespaceSymbol::~NamespaceSymbol() = default;
 
 
 spp::analyse::scopes::NamespaceSymbol::operator std::string() const {
@@ -71,6 +77,9 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
     memory_info(that.memory_info->clone()),
     llvm_info(std::make_unique<codegen::LlvmVarSymInfo>()) {
 }
+
+
+spp::analyse::scopes::VariableSymbol::~VariableSymbol() = default;
 
 
 spp::analyse::scopes::VariableSymbol::operator std::string() const {

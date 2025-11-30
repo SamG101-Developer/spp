@@ -3,9 +3,7 @@ module;
 
 export module spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.utils.visibility;
-
 import std;
-
 
 namespace spp::asts {
     SPP_EXP_CLS struct AnnotationAst;
@@ -19,8 +17,8 @@ namespace spp::asts::mixins {
 
 
 SPP_EXP_CLS struct spp::asts::mixins::VisibilityEnabledAst {
-    friend struct asts::AnnotationAst;
-    friend struct asts::TypeStatementAst;
+    friend struct spp::asts::AnnotationAst;
+    friend struct spp::asts::TypeStatementAst;
 
 protected:
     VisibilityPair m_visibility;

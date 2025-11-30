@@ -56,6 +56,9 @@ spp::analyse::scopes::Scope::Scope(Scope const &other) :
 }
 
 
+spp::analyse::scopes::Scope::~Scope() = default;
+
+
 auto spp::analyse::scopes::Scope::new_global(
     compiler::Module const &module)
     -> std::unique_ptr<Scope> {

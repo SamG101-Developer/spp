@@ -6,7 +6,9 @@ import spp.asts.module_prototype_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.compiler.compiler_boot;
 import spp.compiler.module_tree;
+import spp.lex.tokens;
 import spp.utils.progress;
+import std;
 
 
 spp::compiler::Compiler::Compiler(const Mode mode) :
@@ -15,6 +17,9 @@ spp::compiler::Compiler::Compiler(const Mode mode) :
     m_path = std::filesystem::current_path() / "src";
     m_boot = std::make_unique<CompilerBoot>();
 }
+
+
+spp::compiler::Compiler::~Compiler() = default;
 
 
 auto spp::compiler::Compiler::compile() -> void {

@@ -51,6 +51,8 @@ private:
 public:
     explicit Compiler(Mode mode);
 
+    ~Compiler();
+
     auto compile() -> void;
 
     static auto cleanup() -> void;

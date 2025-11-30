@@ -158,9 +158,10 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::stage_10_code_gen_2(
         }
 
         // For nested objects (array, tuple, object)
-        else if (dynamic_cast<CasePatternVariantDestructureArrayAst*>(part) != nullptr or
-            dynamic_cast<CasePatternVariantDestructureTupleAst*>(part) != nullptr or
-            dynamic_cast<CasePatternVariantDestructureObjectAst*>(part) != nullptr) {
+        else if (
+            part->to<CasePatternVariantDestructureArrayAst>() != nullptr or
+            part->to<CasePatternVariantDestructureTupleAst>() != nullptr or
+            part->to<CasePatternVariantDestructureObjectAst>() != nullptr) {
             // Generate the extraction on the condition for this part, like "cond.0".
             auto field_name = std::make_unique<IdentifierAst>(0, std::to_string(i));
             auto field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));

@@ -74,8 +74,8 @@ auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
     const auto static_field = postfix_lhs ? postfix_lhs->op->to<asts::PostfixExpressionOperatorStaticMemberAccessAst>() : nullptr;
 
     // Specific casts.
-    const auto postfix_lhs_as_type = postfix_lhs ? dynamic_cast<asts::TypeAst*>(postfix_lhs->lhs.get()) : nullptr;
-    const auto lhs_as_ident = dynamic_cast<asts::IdentifierAst const*>(&lhs);
+    const auto postfix_lhs_as_type = postfix_lhs ? postfix_lhs->lhs->to<asts::TypeAst>() : nullptr;
+    const auto lhs_as_ident = lhs.to<asts::IdentifierAst>();
 
     // Variables that will be set in each branch, and returned.
     auto fn_owner_type = std::shared_ptr<asts::TypeAst>(nullptr);
@@ -168,7 +168,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
     auto overload_scopes = std::vector<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, std::unique_ptr<asts::GenericArgumentGroupAst>>>();
 
     auto is_valid_ext_scope = [mapped_name=mapped_name.get()](auto const *scope) {
-        const auto ext = dynamic_cast<asts::SupPrototypeExtensionAst*>(scope->ast);
+        const auto ext = scope->ast->template to<asts::SupPrototypeExtensionAst>();
         if (ext == nullptr) { return false; }
         const auto ext_name = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(ext->name);
         return ext_name != nullptr and ext_name->name == mapped_name->val;
@@ -180,7 +180,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
             for (auto const *sup_scope : ancestor_scope->children | genex::views::ptr | genex::views::filter(is_valid_ext_scope)) {
                 auto generics = asts::GenericArgumentGroupAst::new_empty();
                 auto scope = sup_scope; // not for_override ? sup_scope->children[0].get() : sup_scope;
-                auto proto = dynamic_cast<asts::FunctionPrototypeAst*>(asts::ast_body(sup_scope->ast)[0]);
+                auto proto = asts::ast_body(sup_scope->ast)[0]->to<asts::FunctionPrototypeAst>();
                 overload_scopes.emplace_back(scope, proto, std::move(generics));
             }
         }
@@ -189,7 +189,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
     // Functions belonging to a type will have inheritance generics from "sup [...] Type { ... }"
     else {
         // If a class scope was provided, get all the sup scopes from it, otherwise use the specific sup scope.
-        const auto sup_scopes = dynamic_cast<asts::ClassPrototypeAst*>(target_scope->ast) != nullptr
+        const auto sup_scopes = target_scope->ast->to<asts::ClassPrototypeAst>() != nullptr
                                     ? target_scope->sup_scopes() | genex::views::transform([](auto x) -> const scopes::Scope* { return x; }) | genex::to<std::vector>()
                                     : std::vector{target_scope};
 
@@ -200,7 +200,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
                 if (std::dynamic_pointer_cast<asts::TypeIdentifierAst>(sup_ast->name)->name == mapped_name->val) {
                     auto generics = std::make_unique<asts::GenericArgumentGroupAst>(nullptr, sup_scope->get_generics(), nullptr);
                     auto scope = sup_scope;
-                    auto proto = dynamic_cast<asts::FunctionPrototypeAst*>(asts::ast_body(sup_ast)[0]);
+                    auto proto = asts::ast_body(sup_ast)[0]->to<asts::FunctionPrototypeAst>();
                     overload_scopes.emplace_back(scope, proto, std::move(generics));
                 }
             }
@@ -464,8 +464,8 @@ auto spp::analyse::utils::func_utils::name_generic_args(
     args |= genex::actions::concat(type_args | genex::views::cast_smart<asts::GenericArgumentAst>());
 
     args |= genex::actions::sort([&](auto const &a, auto const &b) {
-        const auto a_index = genex::position(params, [&](auto *p) { return *p->name == *(dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(a.get()) ? dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(a.get())->name : dynamic_cast<asts::GenericArgumentCompKeywordAst*>(a.get())->name); });
-        const auto b_index = genex::position(params, [&](auto *p) { return *p->name == *(dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(b.get()) ? dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(b.get())->name : dynamic_cast<asts::GenericArgumentCompKeywordAst*>(b.get())->name); });
+        const auto a_index = genex::position(params, [&](auto *p) { return *p->name == *(a->template to<asts::GenericArgumentTypeKeywordAst>() ? a->template to<asts::GenericArgumentTypeKeywordAst>()->name : a->template to<asts::GenericArgumentCompKeywordAst>()->name); });
+        const auto b_index = genex::position(params, [&](auto *p) { return *p->name == *(b->template to<asts::GenericArgumentTypeKeywordAst>() ? b->template to<asts::GenericArgumentTypeKeywordAst>()->name : b->template to<asts::GenericArgumentCompKeywordAst>()->name); });
         return a_index < b_index;
     });
 }
@@ -619,8 +619,8 @@ auto spp::analyse::utils::func_utils::infer_generic_args(
     ) | genex::to<std::vector>();
 
     final_args |= genex::actions::sort([&](auto const &a, auto const &b) {
-        const auto a_index = genex::position(params, [&](auto *p) { return *p->name == *(dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(a.get()) ? dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(a.get())->name : dynamic_cast<asts::GenericArgumentCompKeywordAst*>(a.get())->name); });
-        const auto b_index = genex::position(params, [&](auto *p) { return *p->name == *(dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(b.get()) ? dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(b.get())->name : dynamic_cast<asts::GenericArgumentCompKeywordAst*>(b.get())->name); });
+        const auto a_index = genex::position(params, [&](auto *p) { return *p->name == *(a->template to<asts::GenericArgumentTypeKeywordAst>() ? a->template to<asts::GenericArgumentTypeKeywordAst>()->name : a->template to<asts::GenericArgumentCompKeywordAst>()->name); });
+        const auto b_index = genex::position(params, [&](auto *p) { return *p->name == *(b->template to<asts::GenericArgumentTypeKeywordAst>() ? b->template to<asts::GenericArgumentTypeKeywordAst>()->name : b->template to<asts::GenericArgumentCompKeywordAst>()->name); });
         return a_index < b_index;
     });
 
@@ -800,8 +800,8 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
     }
 
     args |= genex::actions::sort([&](auto const &a, auto const &b) {
-        const auto a_index = genex::position(params, [&](auto *p) { return *p->name == *dynamic_cast<asts::GenericArgumentCompKeywordAst*>(a.get())->name; });
-        const auto b_index = genex::position(params, [&](auto *p) { return *p->name == *dynamic_cast<asts::GenericArgumentCompKeywordAst*>(b.get())->name; });
+        const auto a_index = genex::position(params, [&](auto *p) { return *p->name == *a->template to<asts::GenericArgumentCompKeywordAst>()->name; });
+        const auto b_index = genex::position(params, [&](auto *p) { return *p->name == *b->template to<asts::GenericArgumentCompKeywordAst>()->name; });
         return a_index < b_index;
     });
 
@@ -986,8 +986,8 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
     }
 
     args |= genex::actions::sort([&](auto const &a, auto const &b) {
-        const auto a_index = genex::position(params, [&](auto *p) { return *p->name == *dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(a.get())->name; });
-        const auto b_index = genex::position(params, [&](auto *p) { return *p->name == *dynamic_cast<asts::GenericArgumentTypeKeywordAst*>(b.get())->name; });
+        const auto a_index = genex::position(params, [&](auto *p) { return *p->name == *a->template to<asts::GenericArgumentTypeKeywordAst>()->name; });
+        const auto b_index = genex::position(params, [&](auto *p) { return *p->name == *b->template to<asts::GenericArgumentTypeKeywordAst>()->name; });
         return a_index < b_index;
     });
 }

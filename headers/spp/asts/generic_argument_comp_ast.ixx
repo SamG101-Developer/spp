@@ -8,7 +8,10 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct ExpressionAst;
+    SPP_EXP_CLS struct GenericArgumentAst;
     SPP_EXP_CLS struct GenericArgumentCompAst;
+    SPP_EXP_CLS struct GenericArgumentCompKeywordAst;
+    SPP_EXP_CLS struct GenericArgumentCompPositionalAst;
 }
 
 

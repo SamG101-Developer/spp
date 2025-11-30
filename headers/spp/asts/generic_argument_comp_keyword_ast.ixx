@@ -50,9 +50,8 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgum
     using GenericArgumentAst::equals;
     using GenericArgumentAst::equals_generic_argument_comp_keyword;
     SPP_ATTR_NODISCARD auto equals(GenericArgumentAst const &other) const -> std::strong_ordering override;
-    SPP_ATTR_NODISCARD auto equals_generic_argument_comp_keyword(GenericArgumentCompKeywordAst const &other) const -> std::strong_ordering;
+    SPP_ATTR_NODISCARD auto equals_generic_argument_comp_keyword(GenericArgumentCompKeywordAst const &other) const -> std::strong_ordering override;
 
-public:
     SPP_AST_KEY_FUNCTIONS;
 
     static auto from_symbol(analyse::scopes::VariableSymbol const &sym) -> std::unique_ptr<GenericArgumentCompKeywordAst>;

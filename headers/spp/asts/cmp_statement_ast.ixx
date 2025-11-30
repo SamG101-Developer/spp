@@ -2,12 +2,11 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.cmp_statement_ast;
-import spp.asts.ast;
-import spp.asts.mixins.visibility_enabled_ast;
+import spp.asts.statement_ast;
 import spp.asts.module_member_ast;
 import spp.asts.sup_member_ast;
+import spp.asts.mixins.visibility_enabled_ast;
 import spp.codegen.llvm_ctx;
-
 import llvm;
 import std;
 
@@ -25,7 +24,7 @@ namespace spp::asts {
  * The CmpStatementAst represents a compile time definition statement at either the module or superimposition level. It
  * is analogous to Rust's "const" statement.
  */
-SPP_EXP_CLS struct spp::asts::CmpStatementAst final : virtual Ast, mixins::VisibilityEnabledAst, ModuleMemberAst, SupMemberAst {
+SPP_EXP_CLS struct spp::asts::CmpStatementAst final : StatementAst, ModuleMemberAst, SupMemberAst, mixins::VisibilityEnabledAst {
     /**
      * The list of annotations that are applied to this cmp statement. Typically, access modifiers in this context.
      */

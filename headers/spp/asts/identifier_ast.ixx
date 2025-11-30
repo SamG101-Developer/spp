@@ -13,16 +13,12 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::IdentifierAst final : PrimaryExpressionAst, std::enable_shared_from_this<IdentifierAst> {
-    /**
-     * The internal value of the identifier. This is the name of the identifier, such as @c variable or @c my_function.
-     */
+private:
+    std::size_t m_pos;
+
+public:
     std::string val;
 
-    /**
-     * Construct the IdentifierAst with the arguments matching the members.
-     * @param[in] pos The position of the identifier in the source code.
-     * @param[in] val The internal value of the identifier.
-     */
     explicit IdentifierAst(
         std::size_t pos,
         decltype(val) val);
@@ -31,10 +27,8 @@ SPP_EXP_CLS struct spp::asts::IdentifierAst final : PrimaryExpressionAst, std::e
 
     ~IdentifierAst() override;
 
-    using ExpressionAst::equals;
-    using ExpressionAst::equals_identifier;
+    SPP_ATTR_NODISCARD auto equals_identifier(IdentifierAst const &) const -> std::strong_ordering override;
     SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-    SPP_ATTR_NODISCARD auto equals_identifier(IdentifierAst const &other) const -> std::strong_ordering;
 
 public:
     SPP_AST_KEY_FUNCTIONS;
@@ -62,7 +56,4 @@ public:
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
-
-private:
-    std::size_t m_pos;
 };

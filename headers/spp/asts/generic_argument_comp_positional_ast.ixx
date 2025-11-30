@@ -26,12 +26,9 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompPositionalAst final : GenericAr
 
     ~GenericArgumentCompPositionalAst() override;
 
-    using GenericArgumentAst::equals;
-    using GenericArgumentAst::equals_generic_argument_comp_positional;
     SPP_ATTR_NODISCARD auto equals(GenericArgumentAst const &other) const -> std::strong_ordering override;
     SPP_ATTR_NODISCARD auto equals_generic_argument_comp_positional(GenericArgumentCompPositionalAst const &other) const -> std::strong_ordering override;
 
-public:
     SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;

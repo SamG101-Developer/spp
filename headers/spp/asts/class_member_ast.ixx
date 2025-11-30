@@ -14,5 +14,7 @@ namespace spp::asts {
  * applicable to the ClassAttributeAst, but allows for simple expansion in the future,
  */
 SPP_EXP_CLS struct spp::asts::ClassMemberAst : virtual Ast {
+    ClassMemberAst() = default;
+
     ~ClassMemberAst() override;
 };

@@ -15,8 +15,8 @@ spp::asts::IdentifierAst::IdentifierAst(
     const std::size_t pos,
     decltype(val) val) :
     std::enable_shared_from_this<IdentifierAst>(),
-    val(std::move(val)),
-    m_pos(pos) {
+    m_pos(pos),
+    val(std::move(val)) {
 }
 
 

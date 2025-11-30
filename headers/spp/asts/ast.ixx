@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.ast;
-import spp.asts.meta.ast_printer;
 import spp.asts.mixins.compiler_stages;
 import spp.codegen.llvm_ctx;
 import genex;
@@ -24,6 +23,11 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
     SPP_EXP_CLS struct TypeStatementAst;
 }
+
+namespace spp::asts::meta {
+    SPP_EXP_CLS class AstPrinter;
+}
+
 
 /**
  * The AST base class is inherited by all other AST classes, provided base functionality, including formatted printing

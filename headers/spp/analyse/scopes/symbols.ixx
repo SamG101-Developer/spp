@@ -42,7 +42,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::Symbol {
      * destructed when deleted through a base class pointer. This is important for polymorphism and memory management,
      * as it allows for proper cleanup of resources when a derived class is deleted.
      */
-    virtual ~Symbol() = default;
+    virtual ~Symbol();
 
     /**
      * Enforce a string conversion operator for the Symbol class. This is to ensure that all derived classes can be
@@ -66,7 +66,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
     NamespaceSymbol(
         NamespaceSymbol const &that);
 
-    ~NamespaceSymbol() override = default;
+    ~NamespaceSymbol() override;
 
     explicit operator std::string() const override;
 
@@ -101,7 +101,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
     VariableSymbol(
         VariableSymbol const &that);
 
-    ~VariableSymbol() override = default;
+    ~VariableSymbol() override;
 
     explicit operator std::string() const override;
 
