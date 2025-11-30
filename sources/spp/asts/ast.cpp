@@ -1,4 +1,5 @@
 module spp.asts.ast;
+import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import std;
 
