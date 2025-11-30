@@ -219,7 +219,7 @@ auto spp::asts::TypeUnaryExpressionAst::stage_7_analyse_semantics(
     CompilerMetaData *meta)
     -> void {
     // Analyse the RHS type.
-    if (const auto op_ns = op->to<TypeUnaryExpressionOperatorBorrowAst>()) {
+    if (const auto op_ns = op->to<TypeUnaryExpressionOperatorNamespaceAst>()) {
         const auto tm = ScopeManager(sm->global_scope, meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope);
         const auto type_scope = analyse::utils::type_utils::get_namespaced_scope_with_error(tm, *op_ns->ns);
         meta->save();

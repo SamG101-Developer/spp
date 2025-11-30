@@ -1089,7 +1089,8 @@ auto spp::parse::ParserSpp::parse_case_expression_branch_else_case()
 
     auto else_pattern = std::unique_ptr<asts::CasePatternVariantAst>(CREATE_AST(asts::CasePatternVariantElseAst, nullptr).release());
     auto temp_1 = std::vector<std::unique_ptr<asts::StatementAst>>();
-    temp_1.emplace_back(std::unique_ptr<asts::StatementAst>(std::unique_ptr<asts::CasePatternVariantElseCaseAst>(p1.release()->to<asts::CasePatternVariantElseCaseAst>())->case_expr).release()->to<asts::StatementAst>());
+    auto ptr = std::unique_ptr<asts::CasePatternVariantElseCaseAst>(p1.release()->to<asts::CasePatternVariantElseCaseAst>())->case_expr.release()->to<asts::StatementAst>();
+    temp_1.emplace_back(std::unique_ptr<asts::StatementAst>(ptr));
 
     auto else_case_body = CREATE_AST(asts::InnerScopeExpressionAst<std::unique_ptr<asts::StatementAst>>, nullptr, std::move(temp_1), nullptr);
     auto temp_2 = std::vector<decltype(else_pattern)>();
@@ -1907,7 +1908,7 @@ auto spp::parse::ParserSpp::parse_unary_type_expression()
     -> std::unique_ptr<asts::TypeAst> {
     PARSE_OPTIONAL(p1, parse_unary_type_expression_op_borrow)
     PARSE_ZERO_OR_MORE(p2, parse_unary_type_expression_op, parse_nothing);
-    PARSE_ONCE(p3, [this] { return parse_type_identifier()->to<asts::TypeAst>(); });
+    PARSE_ONCE(p3, [this] { return std::unique_ptr<asts::TypeAst>(parse_type_identifier().release()); });
     if (p1 != nullptr) { p2.insert(p2.begin(), std::unique_ptr<asts::TypeUnaryExpressionOperatorAst>(p1.release())); }
     return utils::algorithms::move_accumulate(
         p2.rbegin(), p2.rend(), std::move(p3),
@@ -2011,7 +2012,7 @@ auto spp::parse::ParserSpp::parse_postfix_type_expression_simple()
 auto spp::parse::ParserSpp::parse_unary_type_expression_simple()
     -> std::unique_ptr<asts::TypeAst> {
     PARSE_ZERO_OR_MORE(p1, parse_unary_type_expression_op_namespace, parse_nothing);
-    PARSE_ONCE(p2, [this] { return parse_type_identifier()->to<asts::TypeAst>(); });
+    PARSE_ONCE(p2, [this] { return std::unique_ptr<asts::TypeAst>(parse_type_identifier().release()); });
     return utils::algorithms::move_accumulate(
         p1.rbegin(), p1.rend(), std::move(p2),
         [](std::unique_ptr<asts::TypeAst> &&acc, std::unique_ptr<asts::TypeUnaryExpressionOperatorAst> &&x) {

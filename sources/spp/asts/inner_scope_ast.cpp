@@ -136,7 +136,7 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
 
     // If the final expression of the inner scope is being used (ie assigned ot outer variable), then memory check it.
     if (const auto move = meta->assignment_target; not members.empty() and move != nullptr) {
-        if (const auto expr_member = final_member()->to<ExpressionAst>(); expr_member != nullptr) {
+        if (const auto expr_member = final_member()->template to<ExpressionAst>(); expr_member != nullptr) {
             analyse::utils::mem_utils::validate_symbol_memory(
                 *expr_member, *move, *sm, true, true, true, true, true, true, meta);
         }

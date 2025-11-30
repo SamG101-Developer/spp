@@ -14,21 +14,21 @@ namespace spp::asts {
     SPP_ATTR_ALWAYS_INLINE
     auto ast_clone(std::unique_ptr<T> const &ast) -> std::unique_ptr<std::remove_cvref_t<T>> {
         if (ast == nullptr) { return nullptr; }
-        return ast->template to<T>()->clone();
+        return std::unique_ptr<std::remove_cvref_t<T>>(ast->clone().release()->template to<std::remove_cvref_t<T>>());
     }
 
     SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
     auto ast_clone(std::shared_ptr<T> const &ast) -> std::unique_ptr<std::remove_cvref_t<T>> {
         if (ast == nullptr) { return nullptr; }
-        return ast->template to<T>()->clone();
+        return std::unique_ptr<std::remove_cvref_t<T>>(ast->clone().release()->template to<std::remove_cvref_t<T>>());
     }
 
     SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
     auto ast_clone(T *ast) -> std::unique_ptr<std::remove_cvref_t<T>> {
         if (ast == nullptr) { return nullptr; }
-        return ast->template to<T>()->clone();
+        return std::unique_ptr<std::remove_cvref_t<T>>(ast->clone().release()->template to<std::remove_cvref_t<T>>());
     }
 
     SPP_EXP_FUN template <typename T>

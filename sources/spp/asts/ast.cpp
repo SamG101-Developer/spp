@@ -28,3 +28,17 @@ auto spp::asts::Ast::stage_2_gen_top_level_scopes(
     -> void {
     m_scope = sm->current_scope;
 }
+
+
+template <typename T>
+auto spp::asts::Ast::to()
+    -> T* {
+    return dynamic_cast<T*>(this);
+}
+
+
+template <typename T>
+auto spp::asts::Ast::to() const
+    -> const T* {
+    return dynamic_cast<const T*>(this);
+}

@@ -16,7 +16,7 @@ import genex;
 template <typename T>
 auto spp::asts::InnerScopeExpressionAst<T>::clone() const
     -> std::unique_ptr<Ast> {
-    auto *c = InnerScopeAst<T>::clone().release()->template to<InnerScopeAst>();
+    auto *c = InnerScopeAst<T>::clone().release()->template to<InnerScopeAst<T>>();
     return std::make_unique<InnerScopeExpressionAst>(
         std::move(c->tok_l),
         std::move(c->members),

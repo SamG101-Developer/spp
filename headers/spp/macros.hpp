@@ -88,7 +88,7 @@
 
 
 #define SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TYPE(ast)                                                         \
-    if (ast-->to<TokenAst>() != nullptr) {                                                              \
+    if (ast->to<TokenAst>() != nullptr) {                                                              \
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionTypeInvalidError>().with_args( \
             *ast).with_scopes({sm->current_scope}).raise();                                                \
     }
