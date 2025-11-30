@@ -14,7 +14,7 @@ namespace spp::asts::mixins {
 }
 
 
-SPP_EXP_CLS namespace spp::analyse::utils::order_utils {
+namespace spp::analyse::utils::order_utils {
     inline constexpr std::array ARG_ORDER_ARR{
         spp::asts::utils::OrderableTag::POSITIONAL_ARG,
         spp::asts::utils::OrderableTag::KEYWORD_ARG,
@@ -35,7 +35,7 @@ SPP_EXP_CLS namespace spp::analyse::utils::order_utils {
      * @param order The correct order of the tags.
      * @return The list of arguments that are out of order, paired with a string representation of their tag.
      */
-    auto order(
+    SPP_EXP_FUN auto order(
         std::vector<asts::mixins::OrderableAst*> &&args,
         std::vector<asts::utils::OrderableTag> order)
         -> std::vector<std::pair<std::string, asts::Ast*>>;
@@ -46,7 +46,7 @@ SPP_EXP_CLS namespace spp::analyse::utils::order_utils {
      * @param args The list of arguments to check the order of.
      * @return The list of arguments that are out of order, paired with a string representation of their tag.
      */
-    inline auto order_args(
+    SPP_EXP_FUN inline auto order_args(
         std::vector<asts::mixins::OrderableAst*> &&args)
         -> std::vector<std::pair<std::string, asts::Ast*>> {
         return order(
@@ -61,7 +61,7 @@ SPP_EXP_CLS namespace spp::analyse::utils::order_utils {
      * @param params The list of parameters to check the order of.
      * @return The list of parameters that are out of order, paired with a string representation of their tag.
      */
-    inline auto order_params(
+    SPP_EXP_FUN inline auto order_params(
         std::vector<asts::mixins::OrderableAst*> &&params)
         -> std::vector<std::pair<std::string, asts::Ast*>> {
         return order(
@@ -70,5 +70,3 @@ SPP_EXP_CLS namespace spp::analyse::utils::order_utils {
         );
     }
 }
-
-/// @endcond

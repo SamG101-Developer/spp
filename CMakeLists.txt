@@ -54,7 +54,7 @@ target_link_libraries(spp_lib PUBLIC
         ColEx::ColEx GenEx::GenEx OpEx::OpEx
         Glob LLVMCore LLVMSupport LLVMCodeGen LLVMScalarOpts LLVMTransformUtils)
 target_sources(spp_lib
-        PUBLIC FILE_SET CXX_MODULES TYPE CXX_MODULES FILES ${MODULE_FILES}
+        PUBLIC FILE_SET CXX_MODULES FILES ${MODULE_FILES}
         PRIVATE ${SOURCE_FILES})
 target_include_directories(spp_lib PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/headers)

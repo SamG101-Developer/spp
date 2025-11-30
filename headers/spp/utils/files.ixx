@@ -20,7 +20,7 @@ namespace spp::utils::files {
      */
     SPP_EXP_FUN auto write_file(std::filesystem::path const &path, std::string const &content) -> void;
 
-    SPP_EXP_CLS enum class LockType { Shared, Exclusive };
+    SPP_EXP_ENUM enum class LockType { Shared, Exclusive };
 
     SPP_EXP_CLS struct FileLock;
     SPP_EXP_CLS struct FileLockException;

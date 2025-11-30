@@ -6,8 +6,8 @@ import std;
 
 
 namespace spp::lex {
-    SPP_EXP_CLS enum class RawTokenType : std::uint8_t;
-    SPP_EXP_CLS enum class SppTokenType : std::uint8_t;
+    SPP_EXP_ENUM enum class RawTokenType : std::uint8_t;
+    SPP_EXP_ENUM enum class SppTokenType : std::uint8_t;
     SPP_EXP_CLS struct SppTokenSets;
     SPP_EXP_CLS class RawToken;
 }
@@ -17,7 +17,7 @@ namespace spp::lex {
 }
 
 
-SPP_EXP_CLS enum class spp::lex::RawTokenType : std::uint8_t {
+SPP_EXP_ENUM enum class spp::lex::RawTokenType : std::uint8_t {
     LX_CHARACTER,
     LX_DIGIT,
 
@@ -90,7 +90,7 @@ SPP_EXP_CLS enum class spp::lex::RawTokenType : std::uint8_t {
 };
 
 
-SPP_EXP_CLS enum class spp::lex::SppTokenType : std::uint8_t {
+SPP_EXP_ENUM enum class spp::lex::SppTokenType : std::uint8_t {
     LX_CHARACTER,
     LX_DIGIT,
     LX_STRING,

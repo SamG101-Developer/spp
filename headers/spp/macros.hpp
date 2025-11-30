@@ -100,6 +100,8 @@
 
 #define SPP_EXP_CLS export extern "C++"
 
+#define SPP_EXP_ENUM export extern "C++"
+
 #define SPP_EXP_FUN export
 
 

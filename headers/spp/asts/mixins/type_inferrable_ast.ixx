@@ -29,7 +29,7 @@ namespace spp::analyse::scopes {
  * AST based on the current scope and metadata.
  */
 SPP_EXP_CLS struct spp::asts::mixins::TypeInferrableAst {
-    TypeInferrableAst();
+    TypeInferrableAst() = default;
 
     virtual ~TypeInferrableAst();
 

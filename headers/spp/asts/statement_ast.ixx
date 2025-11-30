@@ -18,7 +18,7 @@ namespace spp::asts {
  * statements that do not return a value, such as variable declarations and control flow statements.
  */
 SPP_EXP_CLS struct spp::asts::StatementAst : virtual Ast, mixins::TypeInferrableAst {
-    using Ast::Ast;
+    StatementAst() = default;
 
     ~StatementAst() override;
 
