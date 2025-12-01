@@ -61,7 +61,7 @@ protected:
      * Create a new AST (base class for all derived ASTs). This constructor is protected to prevent direct instantiation
      * as an AST should always be a specific type of AST, such as a TokenAst, IdentifierAst, etc.
      */
-    explicit Ast();
+    explicit Ast() = default;
 
 public:
     ~Ast() override;
@@ -85,7 +85,7 @@ public:
      * source code, and is used for error reporting. Calculated by subtracting the start position from the end position.
      * @return The size of the AST in tokens.
      */
-    virtual auto size() const -> std::size_t final;
+    auto size() const -> std::size_t;
 
     /**
      * The clone operator that deep-copies the AST and all its children ASTs. This is used to create a new AST that is a
@@ -110,6 +110,8 @@ public:
      */
     virtual auto print(meta::AstPrinter &printer) const -> std::string = 0;
 
+    virtual auto ankerl_hash() const -> std::size_t;
+
     template <typename T>
     auto to() -> T* {
         return dynamic_cast<T*>(this);
@@ -132,3 +134,6 @@ public:
         m_scope = scope;
     }
 };
+
+
+spp::asts::Ast::~Ast() = default;

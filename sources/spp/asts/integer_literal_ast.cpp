@@ -42,9 +42,6 @@ spp::asts::IntegerLiteralAst::IntegerLiteralAst(
 }
 
 
-spp::asts::IntegerLiteralAst::~IntegerLiteralAst() = default;
-
-
 auto spp::asts::IntegerLiteralAst::equals(
     ExpressionAst const &other) const
     -> std::strong_ordering {

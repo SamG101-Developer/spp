@@ -3,12 +3,12 @@ module;
 
 export module spp.asts.generic_argument_type_keyword_ast;
 import spp.asts.generic_argument_type_ast;
+import spp.asts.token_ast;
 
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct GenericArgumentTypeKeywordAst;
-    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
@@ -55,3 +55,6 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgum
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
+
+
+spp::asts::GenericArgumentTypeKeywordAst::~GenericArgumentTypeKeywordAst() = default;

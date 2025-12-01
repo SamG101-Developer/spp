@@ -72,7 +72,7 @@ auto spp::analyse::scopes::ScopeManager::move_to_next_scope()
     // For debugging mode only, check if the iterator has reached the end of the generator.
     // Move to the next scope by advancing the iterator.
     current_scope = *++m_it;
-    while (current_scope->ty_sym != nullptr and current_scope->ty_sym->alias_stmt != nullptr) {
+    while (current_scope->ty_sym != nullptr and current_scope->ty_sym->alias_stmt() != nullptr) {
         current_scope = *++m_it;
     }
     return current_scope;

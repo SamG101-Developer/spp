@@ -29,3 +29,6 @@ SPP_EXP_CLS struct spp::asts::TypeAst : PrimaryExpressionAst, mixins::AbstractTy
 
     ~TypeAst() override;
 };
+
+
+spp::asts::TypeAst::~TypeAst() = default;

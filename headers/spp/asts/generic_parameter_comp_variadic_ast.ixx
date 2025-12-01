@@ -3,12 +3,12 @@ module;
 
 export module spp.asts.generic_parameter_comp_variadic_ast;
 import spp.asts.generic_parameter_comp_ast;
+import spp.asts.token_ast;
 
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct GenericParameterCompVariadicAst;
-    SPP_EXP_CLS struct TokenAst;
 }
 
 

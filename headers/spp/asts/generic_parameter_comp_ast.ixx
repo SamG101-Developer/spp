@@ -3,12 +3,12 @@ module;
 
 export module spp.asts.generic_parameter_comp_ast;
 import spp.asts.generic_parameter_ast;
+import spp.asts.token_ast;
 
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct GenericParameterCompAst;
-    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
@@ -55,3 +55,6 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
+
+
+spp::asts::GenericParameterCompAst::~GenericParameterCompAst() = default;

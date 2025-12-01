@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.scope_registry;
 import spp.analyse.scopes.symbols;
 import spp.asts.annotation_ast;
 import spp.asts.convention_ast;
@@ -184,9 +185,10 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_5_load_super_scopes(
         const auto self_sym = std::make_shared<analyse::scopes::TypeSymbol>(
             std::make_unique<TypeIdentifierAst>(name->pos_start(), "Self", nullptr),
             cls_sym->type, cls_sym->scope, sm->current_scope);
-        self_sym->alias_stmt = std::make_unique<TypeStatementAst>(
+        auto new_alias_stmt = std::make_unique<TypeStatementAst>(
             SPP_NO_ANNOTATIONS, nullptr,
             TypeIdentifierAst::from_string("Self"), nullptr, nullptr, name);
+        (*analyse::scopes::SYM_TO_ALIAS_MAP)[self_sym.get()] = std::move(new_alias_stmt);
         sm->current_scope->add_type_symbol(self_sym);
     }
 

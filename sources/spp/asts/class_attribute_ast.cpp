@@ -33,9 +33,6 @@ spp::asts::ClassAttributeAst::ClassAttributeAst(
 }
 
 
-spp::asts::ClassAttributeAst::~ClassAttributeAst() = default;
-
-
 auto spp::asts::ClassAttributeAst::pos_start() const
     -> std::size_t {
     return name->pos_start();

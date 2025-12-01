@@ -1,6 +1,7 @@
 module spp.analyse.scopes.symbols;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.scope_registry;
 import spp.analyse.utils.mem_utils;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
@@ -63,7 +64,7 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
     is_mutable(is_mutable),
     is_generic(is_generic),
     visibility(visibility),
-    memory_info(std::make_unique<utils::mem_utils::MemoryInfo>()) {
+    memory_info(std::make_unique<utils::mem_info_utils::MemoryInfo>()) {
 }
 
 
@@ -79,7 +80,7 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
 }
 
 
-spp::analyse::scopes::VariableSymbol::~VariableSymbol() = default;
+// spp::analyse::scopes::VariableSymbol::~VariableSymbol() = default;
 
 
 spp::analyse::scopes::VariableSymbol::operator std::string() const {
@@ -110,7 +111,6 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
     std::unique_ptr<asts::ConventionAst> &&convention) :
     name(std::move(name)),
     type(type),
-    alias_stmt(nullptr),
     scope(scope),
     scope_defined_in(scope_defined_in),
     scope_module(scope_module),
@@ -127,7 +127,6 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
 spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
     name(ast_clone(that.name)),
     type(that.type),
-    alias_stmt(asts::ast_clone(that.alias_stmt)),
     scope(that.scope),
     scope_defined_in(that.scope_defined_in),
     scope_module(that.scope_module),
@@ -137,10 +136,8 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
     visibility(that.visibility),
     convention(asts::ast_clone(that.convention)),
     generic_impl(that.generic_impl) {
+    (*SYM_TO_ALIAS_MAP)[this] = asts::ast_clone((*SYM_TO_ALIAS_MAP)[&that]);
 }
-
-
-spp::analyse::scopes::TypeSymbol::~TypeSymbol() = default;
 
 
 spp::analyse::scopes::TypeSymbol::operator std::string() const {
@@ -150,6 +147,12 @@ spp::analyse::scopes::TypeSymbol::operator std::string() const {
         {"defined_in", static_cast<std::string>(*std::get<std::shared_ptr<asts::IdentifierAst>>(scope_defined_in->name))},
         {"scope", static_cast<std::string>(*std::get<std::shared_ptr<asts::IdentifierAst>>(scope->name))}
     }).dump();
+}
+
+
+auto spp::analyse::scopes::TypeSymbol::alias_stmt() const
+    -> asts::TypeStatementAst* {
+    return SYM_TO_ALIAS_MAP->contains(this) ? (*SYM_TO_ALIAS_MAP)[this].get() : nullptr;
 }
 
 
@@ -163,8 +166,8 @@ auto spp::analyse::scopes::TypeSymbol::operator==(
 auto spp::analyse::scopes::TypeSymbol::fq_name() const
     -> std::shared_ptr<asts::TypeAst> {
     // For aliases, return the fully qualified name of the aliased type.
-    if (alias_stmt != nullptr) {
-        return asts::ast_clone(alias_stmt->old_type);
+    if (alias_stmt() != nullptr) {
+        return asts::ast_clone(alias_stmt()->old_type);
     }
 
     // If the type is generic, or the name starts with a '$', return the name as-is.

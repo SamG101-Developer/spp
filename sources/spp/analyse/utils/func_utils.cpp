@@ -57,7 +57,6 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
-import spp.utils.ptr_cmp;
 
 import ankerl;
 import genex;
@@ -471,82 +470,82 @@ auto spp::analyse::utils::func_utils::name_generic_args(
 }
 
 
-// template <typename GenericArgType, typename GenericParamType>
-// auto spp::analyse::utils::func_utils::name_generic_args_impl(
-//     std::vector<std::unique_ptr<GenericArgType>> &args,
-//     std::vector<GenericParamType*> params,
-//     asts::Ast const &owner,
-//     scopes::ScopeManager &sm,
-//     asts::meta::CompilerMetaData *meta)
-//     -> void {
-//     // Get the argument names and parameter names, and check for the existence of a variadic parameter.
-//     auto arg_names = args
-//         | genex::views::ptr
-//         | genex::views::cast_dynamic<asts::detail::make_keyword_arg_t<GenericArgType>*>()
-//         | genex::views::transform([](auto &&x) { return x->name; })
-//         | genex::to<std::vector>();
-//
-//     auto param_names = params
-//         | genex::views::transform([](auto &&x) { return x->name; })
-//         | genex::to<std::vector>();
-//
-//     const auto is_variadic =
-//         not params.empty() and asts::ast_cast<asts::detail::make_variadic_param_t<GenericParamType>>(params.back()) != nullptr;
-//
-//     // Check for invalid argument names against parameter names, then remove the valid ones.
-//     auto invalid_arg_names = arg_names
-//         | genex::views::set_difference_unsorted(param_names, SPP_INSTANT_INDIRECT, SPP_INSTANT_INDIRECT)
-//         | genex::to<std::vector>();
-//
-//     if (not invalid_arg_names.empty()) {
-//         errors::SemanticErrorBuilder<errors::SppArgumentNameInvalidError>().with_args(
-//             *params[0], "function parameter", *invalid_arg_names[0], "function argument").with_scopes({sm.current_scope}).raise();
-//     }
-//
-//     // Name all the positional arguments with leftover parameter names.
-//     auto positional_args = args
-//         | genex::views::ptr
-//         | genex::views::cast_dynamic<asts::detail::make_positional_arg_t<GenericArgType>*>()
-//         | genex::to<std::vector>();
-//
-//     for (auto [i, positional_arg] : positional_args | genex::views::enumerate) {
-//         // Error if there are too many generic arguments.
-//         if (param_names.empty()) {
-//             errors::SemanticErrorBuilder<errors::SppGenericArgumentTooManyError>().with_args(
-//                 params.empty() ? owner : *params[0], owner, *positional_arg).with_scopes({sm.current_scope}).raise();
-//         }
-//
-//         // Name the argument based on the parameter names available.
-//         auto param_name = param_names.front();
-//         param_names |= genex::actions::pop_front();
-//         auto keyword_arg = std::make_unique<asts::detail::make_keyword_arg_t<GenericArgType>>(std::move(param_name), nullptr, nullptr);
-//
-//         if (param_names.empty() and is_variadic) {
-//             if constexpr (std::same_as<GenericParamType, asts::GenericParameterCompAst>) {
-//                 // Variadic check: map arguments "func[1_u32, 1_u32]" for "func[..s]" to "func[ts = (1_u32, 1_u32)]".
-//                 auto vals = args | genex::views::ptr | genex::views::drop(i) | genex::views::transform([](auto &&x) { return std::move(x->val); }) | genex::to<std::vector>();
-//                 auto tup_lit = std::make_unique<asts::TupleLiteralAst>(nullptr, std::move(vals), nullptr);
-//                 keyword_arg->val = std::move(tup_lit);
-//             }
-//             else {
-//                 // Variadic check: map arguments "func[U32, U32]" for "func[..Ts]" to "func[Ts = (U32, U32)]".
-//                 auto temp_pos = positional_arg->pos_start();
-//                 auto types = args | genex::views::ptr | genex::views::drop(i) | genex::views::transform([](auto &&x) { return std::move(x->val); }) | genex::to<std::vector>();
-//                 auto tup_type = asts::generate::common_types::tuple_type(temp_pos, std::move(types));
-//                 tup_type->stage_7_analyse_semantics(&sm, meta);
-//                 keyword_arg->val = tup_type;
-//             }
-//
-//             args[i] = std::move(keyword_arg);
-//             args |= genex::actions::take(i + 1);
-//             break;
-//         }
-//
-//         // Standard naming of the argument.
-//         keyword_arg->val = std::move(positional_arg->val);
-//         args[i] = std::move(keyword_arg);
-//     }
-// }
+template <typename GenericArgType, typename GenericParamType>
+auto spp::analyse::utils::func_utils::name_generic_args_impl(
+    std::vector<std::unique_ptr<GenericArgType>> &args,
+    std::vector<GenericParamType*> params,
+    asts::Ast const &owner,
+    scopes::ScopeManager &sm,
+    asts::meta::CompilerMetaData *meta)
+    -> void {
+    // Get the argument names and parameter names, and check for the existence of a variadic parameter.
+    auto arg_names = args
+        | genex::views::ptr
+        | genex::views::cast_dynamic<asts::detail::make_keyword_arg_t<GenericArgType>*>()
+        | genex::views::transform([](auto &&x) { return x->name; })
+        | genex::to<std::vector>();
+
+    auto param_names = params
+        | genex::views::transform([](auto &&x) { return x->name; })
+        | genex::to<std::vector>();
+
+    const auto is_variadic =
+        not params.empty() and params.back()->template to<asts::detail::make_variadic_param_t<GenericParamType>>() != nullptr;
+
+    // Check for invalid argument names against parameter names, then remove the valid ones.
+    auto invalid_arg_names = arg_names
+        | genex::views::set_difference_unsorted(param_names, SPP_INSTANT_INDIRECT, SPP_INSTANT_INDIRECT)
+        | genex::to<std::vector>();
+
+    if (not invalid_arg_names.empty()) {
+        errors::SemanticErrorBuilder<errors::SppArgumentNameInvalidError>().with_args(
+            *params[0], "function parameter", *invalid_arg_names[0], "function argument").with_scopes({sm.current_scope}).raise();
+    }
+
+    // Name all the positional arguments with leftover parameter names.
+    auto positional_args = args
+        | genex::views::ptr
+        | genex::views::cast_dynamic<asts::detail::make_positional_arg_t<GenericArgType>*>()
+        | genex::to<std::vector>();
+
+    for (auto [i, positional_arg] : positional_args | genex::views::enumerate) {
+        // Error if there are too many generic arguments.
+        if (param_names.empty()) {
+            errors::SemanticErrorBuilder<errors::SppGenericArgumentTooManyError>().with_args(
+                params.empty() ? owner : *params[0], owner, *positional_arg).with_scopes({sm.current_scope}).raise();
+        }
+
+        // Name the argument based on the parameter names available.
+        auto param_name = param_names.front();
+        param_names |= genex::actions::pop_front();
+        auto keyword_arg = std::make_unique<asts::detail::make_keyword_arg_t<GenericArgType>>(std::move(param_name), nullptr, nullptr);
+
+        if (param_names.empty() and is_variadic) {
+            if constexpr (std::same_as<GenericParamType, asts::GenericParameterCompAst>) {
+                // Variadic check: map arguments "func[1_u32, 1_u32]" for "func[..s]" to "func[ts = (1_u32, 1_u32)]".
+                auto vals = args | genex::views::ptr | genex::views::drop(i) | genex::views::transform([](auto &&x) { return std::move(x->val); }) | genex::to<std::vector>();
+                auto tup_lit = std::make_unique<asts::TupleLiteralAst>(nullptr, std::move(vals), nullptr);
+                keyword_arg->val = std::move(tup_lit);
+            }
+            else {
+                // Variadic check: map arguments "func[U32, U32]" for "func[..Ts]" to "func[Ts = (U32, U32)]".
+                auto temp_pos = positional_arg->pos_start();
+                auto types = args | genex::views::ptr | genex::views::drop(i) | genex::views::transform([](auto &&x) { return std::move(x->val); }) | genex::to<std::vector>();
+                auto tup_type = asts::generate::common_types::tuple_type(temp_pos, std::move(types));
+                tup_type->stage_7_analyse_semantics(&sm, meta);
+                keyword_arg->val = tup_type;
+            }
+
+            args[i] = std::move(keyword_arg);
+            args |= genex::actions::take(i + 1);
+            break;
+        }
+
+        // Standard naming of the argument.
+        keyword_arg->val = std::move(positional_arg->val);
+        args[i] = std::move(keyword_arg);
+    }
+}
 
 
 auto spp::analyse::utils::func_utils::infer_generic_args(

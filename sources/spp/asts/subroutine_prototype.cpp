@@ -19,9 +19,6 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 
-spp::asts::SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;
-
-
 auto spp::asts::SubroutinePrototypeAst::clone() const
     -> std::unique_ptr<Ast> {
     auto ast = std::make_unique<SubroutinePrototypeAst>(

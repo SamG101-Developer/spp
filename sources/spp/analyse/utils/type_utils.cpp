@@ -7,11 +7,13 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.scope_registry;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.mem_utils;
 import spp.asts.annotation_ast;
 import spp.asts.ast;
+import spp.asts.case_expression_branch_ast;
 import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
 import spp.asts.class_member_ast;
@@ -31,8 +33,11 @@ import spp.asts.generic_parameter_type_ast;
 import spp.asts.generic_parameter_type_optional_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
+import spp.asts.inner_scope_expression_ast;
 import spp.asts.integer_literal_ast;
+import spp.asts.iter_expression_branch_ast;
 import spp.asts.sup_prototype_extension_ast;
+import spp.asts.statement_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -517,64 +522,64 @@ auto spp::analyse::utils::type_utils::get_try_type(
 }
 
 
-// template <typename T>
-// auto spp::analyse::utils::type_utils::validate_inconsistent_types(
-//     std::vector<T> const &branches,
-//     scopes::ScopeManager *sm,
-//     asts::meta::CompilerMetaData *meta)
-//     -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>> {
-//     // Collect type information for each branch, pairing the branch with its inferred type.
-//     auto branches_type_info = branches
-//         | genex::views::transform([sm, meta](auto *x) { return std::make_pair(x, x->infer_type(sm, meta)); })
-//         | genex::to<std::vector>();
-//
-//     // Filter the branch types down to variant types for custom analysis.
-//     auto variant_branches_type_info = branches_type_info
-//         | genex::views::filter([sm](auto &&x) { return type_utils::is_type_variant(*x.second, *sm->current_scope); })
-//         | genex::to<std::vector>();
-//
-//     // Set the master branch type to the first branch's type, if it exists. This is the default and may be subsequently changed.
-//     auto master_branch_type_info = not branches.empty()
-//                                        ? std::make_pair(branches_type_info[0].first, branches_type_info[0].second)
-//                                        : std::make_pair(nullptr, nullptr);
-//
-//     // Override the master type if a pre-provided type (for assignment) has been given.
-//     if (meta->assignment_target_type != nullptr) {
-//         master_branch_type_info = std::make_pair(nullptr, meta->assignment_target_type);
-//     }
-//
-//     // Otherwise, if there are variant branches, use the most variant type as the master branch type.
-//     else if (not variant_branches_type_info.empty()) {
-//         auto most_inner_types = 0uz;
-//         for (auto &&[variant_branch, variant_type] : variant_branches_type_info) {
-//             const auto variant_size = variant_type->type_parts().back()->generic_arg_group->type_at("Variant")->val->type_parts().back()->generic_arg_group->args.size();
-//             if (variant_size > most_inner_types) {
-//                 master_branch_type_info = std::make_tuple(variant_branch, variant_type);
-//                 most_inner_types = variant_size;
-//             }
-//         }
-//     }
-//
-//     // Remove the master branch pointer from the list of remaining branch types and check all types match.
-//     auto mismatch_branches_type_info = branches_type_info
-//         | genex::views::remove_if([master_branch_type_info](auto const &x) { return x.first == master_branch_type_info.first; })
-//         | genex::views::filter([master_branch_type_info, sm](auto const &x) { return not type_utils::symbolic_eq(*master_branch_type_info.second, *x.second, *sm->current_scope, *sm->current_scope); })
-//         | genex::to<std::vector>();
-//
-//     if (not mismatch_branches_type_info.empty()) {
-//         auto [mismatch_branch, mismatch_branch_type] = std::move(mismatch_branches_type_info[0]);
-//         auto [master_branch, master_branch_type] = master_branch_type_info;
-//         analyse::errors::SemanticErrorBuilder<errors::SppTypeMismatchError>().with_args(
-//             *master_branch->body->final_member(), *master_branch_type, *mismatch_branch->body->final_member(), *mismatch_branch_type).with_scopes({sm->current_scope}).raise();
-//     }
-//
-//     // Cast to common AST nodes and return with the types.
-//     auto cast_master_branch_type_info = std::make_pair(asts::ast_cast<asts::Ast>(master_branch_type_info.first), master_branch_type_info.second);
-//     auto cast_branches_type_info = branches_type_info
-//         | genex::views::transform([](auto &&x) { return std::make_pair(asts::ast_cast<asts::Ast>(x.first), x.second); })
-//         | genex::to<std::vector>();
-//     return std::make_tuple(cast_master_branch_type_info, cast_branches_type_info);
-// }
+template <typename T>
+auto spp::analyse::utils::type_utils::validate_inconsistent_types(
+    std::vector<T> const &branches,
+    scopes::ScopeManager *sm,
+    asts::meta::CompilerMetaData *meta)
+    -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>> {
+    // Collect type information for each branch, pairing the branch with its inferred type.
+    auto branches_type_info = branches
+        | genex::views::transform([sm, meta](auto *x) { return std::make_pair(x, x->infer_type(sm, meta)); })
+        | genex::to<std::vector>();
+
+    // Filter the branch types down to variant types for custom analysis.
+    auto variant_branches_type_info = branches_type_info
+        | genex::views::filter([sm](auto &&x) { return type_utils::is_type_variant(*x.second, *sm->current_scope); })
+        | genex::to<std::vector>();
+
+    // Set the master branch type to the first branch's type, if it exists. This is the default and may be subsequently changed.
+    auto master_branch_type_info = not branches.empty()
+                                       ? std::make_pair(branches_type_info[0].first, branches_type_info[0].second)
+                                       : std::make_pair(nullptr, nullptr);
+
+    // Override the master type if a pre-provided type (for assignment) has been given.
+    if (meta->assignment_target_type != nullptr) {
+        master_branch_type_info = std::make_pair(nullptr, meta->assignment_target_type);
+    }
+
+    // Otherwise, if there are variant branches, use the most variant type as the master branch type.
+    else if (not variant_branches_type_info.empty()) {
+        auto most_inner_types = 0uz;
+        for (auto &&[variant_branch, variant_type] : variant_branches_type_info) {
+            const auto variant_size = variant_type->type_parts().back()->generic_arg_group->type_at("Variant")->val->type_parts().back()->generic_arg_group->args.size();
+            if (variant_size > most_inner_types) {
+                master_branch_type_info = std::make_tuple(variant_branch, variant_type);
+                most_inner_types = variant_size;
+            }
+        }
+    }
+
+    // Remove the master branch pointer from the list of remaining branch types and check all types match.
+    auto mismatch_branches_type_info = branches_type_info
+        | genex::views::remove_if([master_branch_type_info](auto const &x) { return x.first == master_branch_type_info.first; })
+        | genex::views::filter([master_branch_type_info, sm](auto const &x) { return not type_utils::symbolic_eq(*master_branch_type_info.second, *x.second, *sm->current_scope, *sm->current_scope); })
+        | genex::to<std::vector>();
+
+    if (not mismatch_branches_type_info.empty()) {
+        auto [mismatch_branch, mismatch_branch_type] = std::move(mismatch_branches_type_info[0]);
+        auto [master_branch, master_branch_type] = master_branch_type_info;
+        analyse::errors::SemanticErrorBuilder<errors::SppTypeMismatchError>().with_args(
+            *master_branch->body->final_member(), *master_branch_type, *mismatch_branch->body->final_member(), *mismatch_branch_type).with_scopes({sm->current_scope}).raise();
+    }
+
+    // Cast to common AST nodes and return with the types.
+    auto cast_master_branch_type_info = std::make_pair(master_branch_type_info.first->template to<asts::Ast>(), master_branch_type_info.second);
+    auto cast_branches_type_info = branches_type_info
+        | genex::views::transform([](auto &&x) { return std::make_pair(x.first->template to<asts::Ast>(), x.second); })
+        | genex::to<std::vector>();
+    return std::make_tuple(cast_master_branch_type_info, cast_branches_type_info);
+}
 
 
 auto spp::analyse::utils::type_utils::get_all_attrs(
@@ -623,16 +628,18 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     const auto new_cls_scope_ptr = new_cls_scope.get();
 
     new_cls_sym->is_copyable = [&old_cls_sym] { return old_cls_sym.is_copyable(); };
-    new_cls_sym->alias_stmt = asts::ast_clone(old_cls_sym.alias_stmt);
-    if (new_cls_sym->alias_stmt) {
-        new_cls_sym->alias_stmt->old_type = new_cls_sym->alias_stmt->old_type->substitute_generics(type_part.generic_arg_group->get_all_args());
-        new_cls_sym->alias_stmt->old_type->stage_7_analyse_semantics(sm, meta);
+    auto new_alias_stmt = asts::ast_clone(old_cls_sym.alias_stmt());
+    if (new_alias_stmt) {
+        new_alias_stmt->old_type = new_alias_stmt->old_type->substitute_generics(type_part.generic_arg_group->get_all_args());
+        new_alias_stmt->old_type->stage_7_analyse_semantics(sm, meta);
 
-        const auto target_scope = new_cls_sym->alias_stmt->get_ast_scope()->parent;
+        const auto target_scope = new_alias_stmt->get_ast_scope()->parent;
         target_scope->add_type_symbol(new_cls_sym);
-        new_cls_sym->alias_stmt->m_temp_scope_1->add_type_symbol(new_cls_sym);
-        new_cls_sym->alias_stmt->m_temp_scope_1->children.emplace_back(std::move(new_cls_scope));
+        new_alias_stmt->m_temp_scope_1->add_type_symbol(new_cls_sym);
+        new_alias_stmt->m_temp_scope_1->children.emplace_back(std::move(new_cls_scope));
+        (*scopes::SYM_TO_ALIAS_MAP)[new_cls_sym.get()] = std::move(new_alias_stmt);
     }
+
 
     // Configure the new scope based on the base (old) scope.
     else {
@@ -664,7 +671,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
         std::make_move_iterator(temp->args.begin()),
         std::make_move_iterator(temp->args.end()));
 
-    auto tm = scopes::ScopeManager(sm->global_scope, new_cls_sym->alias_stmt ? sm->current_scope->get_type_symbol(new_cls_sym->alias_stmt->old_type)->scope : new_cls_scope_ptr);
+    auto tm = scopes::ScopeManager(sm->global_scope, new_alias_stmt ? sm->current_scope->get_type_symbol(new_alias_stmt->old_type)->scope : new_cls_scope_ptr);
     for (auto const &scoped_sym : new_cls_scope_ptr->all_var_symbols(true)) {
         scoped_sym->type = scoped_sym->type->substitute_generics(substitution_generics->get_all_args());
         if (meta->current_stage > 5) {
@@ -747,18 +754,19 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     auto old_self_sym = new_sup_scope_ptr->get_type_symbol(self_type);
     const auto new_self_sym = std::make_shared<scopes::TypeSymbol>(
         std::make_unique<asts::TypeIdentifierAst>(0, "Self", nullptr), new_cls_scope.ty_sym->type, &new_cls_scope, new_sup_scope_ptr);
-    new_self_sym->alias_stmt = std::make_unique<asts::TypeStatementAst>(
+    auto new_alias_stmt = std::make_unique<asts::TypeStatementAst>(
         SPP_NO_ANNOTATIONS, nullptr, asts::TypeIdentifierAst::from_string("Self"), nullptr, nullptr, self_type);
+    (*analyse::scopes::SYM_TO_ALIAS_MAP)[new_self_sym.get()] = std::move(new_alias_stmt);
     new_sup_scope_ptr->add_type_symbol(new_self_sym);
 
     // Run generic substitution on the aliases in the new scope.
     for (auto const &scoped_sym : new_sup_scope_ptr->all_type_symbols(true)) {
-        if (scoped_sym->alias_stmt != nullptr) {
-            auto old_type_sub = scoped_sym->alias_stmt->old_type->substitute_generics(generic_args.args | genex::views::ptr | genex::to<std::vector>());
+        if (scoped_sym->alias_stmt() != nullptr) {
+            auto old_type_sub = scoped_sym->alias_stmt()->old_type->substitute_generics(generic_args.args | genex::views::ptr | genex::to<std::vector>());
             // old_type_sub->stage_7_analyse_semantics(&tm, meta);
             const auto old_type_sub_sym = new_sup_scope_ptr->get_type_symbol(old_type_sub);
 
-            scoped_sym->alias_stmt->old_type = std::move(old_type_sub);
+            scoped_sym->alias_stmt()->old_type = std::move(old_type_sub);
             if (old_type_sub_sym != nullptr) {
                 scoped_sym->type = old_type_sub_sym->type;
                 scoped_sym->scope = old_type_sub_sym->scope;
@@ -978,16 +986,16 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
 
         type_list.emplace_back(actual_old_type);
         scope_list.emplace_back(tracking_scope);
-        alias_list.emplace_back(sym->alias_stmt.get());
+        alias_list.emplace_back(sym->alias_stmt());
         sym_list.emplace_back(sym.get());
 
         // Always check for alias first, because type might have been set by prev alias analysis.
-        if (sym->alias_stmt != nullptr) {
-            generic_list.emplace_back(asts::ast_clone(sym->alias_stmt->generic_param_group));
-            actual_old_type = sym->alias_stmt->old_type;
+        if (sym->alias_stmt() != nullptr) {
+            generic_list.emplace_back(asts::ast_clone(sym->alias_stmt()->generic_param_group));
+            actual_old_type = sym->alias_stmt()->old_type;
             tracking_scope = sym->scope_defined_in;
             const auto new_sym = tracking_scope->get_type_symbol(actual_old_type->without_generics());
-            ts_proto = ts_proto ? : sym->alias_stmt.get(); // always override, so last one is gotten.
+            ts_proto = ts_proto ? : sym->alias_stmt(); // always override, so last one is gotten.
         }
 
         // See if we have found a non-alias type (concrete class definition).
@@ -1094,15 +1102,15 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
 }
 
 
-// template auto spp::analyse::utils::type_utils::validate_inconsistent_types<spp::asts::CaseExpressionBranchAst*>(
-//     std::vector<asts::CaseExpressionBranchAst*> const &,
-//     scopes::ScopeManager *,
-//     asts::meta::CompilerMetaData *)
-//     -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>>;
-//
-//
-// template auto spp::analyse::utils::type_utils::validate_inconsistent_types<spp::asts::IterExpressionBranchAst*>(
-//     std::vector<asts::IterExpressionBranchAst*> const &,
-//     scopes::ScopeManager *,
-//     asts::meta::CompilerMetaData *)
-//     -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>>;
+template auto spp::analyse::utils::type_utils::validate_inconsistent_types<spp::asts::CaseExpressionBranchAst*>(
+    std::vector<asts::CaseExpressionBranchAst*> const &,
+    scopes::ScopeManager *,
+    asts::meta::CompilerMetaData *)
+    -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>>;
+
+
+template auto spp::analyse::utils::type_utils::validate_inconsistent_types<spp::asts::IterExpressionBranchAst*>(
+    std::vector<asts::IterExpressionBranchAst*> const &,
+    scopes::ScopeManager *,
+    asts::meta::CompilerMetaData *)
+    -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>>;

@@ -16,9 +16,6 @@ spp::asts::BooleanLiteralAst::BooleanLiteralAst(
 }
 
 
-spp::asts::BooleanLiteralAst::~BooleanLiteralAst() = default;
-
-
 auto spp::asts::BooleanLiteralAst::equals(
     ExpressionAst const &other) const
     -> std::strong_ordering {

@@ -19,9 +19,6 @@ import genex;
 import llvm;
 
 
-spp::asts::CoroutinePrototypeAst::~CoroutinePrototypeAst() = default;
-
-
 auto spp::asts::CoroutinePrototypeAst::clone() const
     -> std::unique_ptr<Ast> {
     auto ast = std::make_unique<CoroutinePrototypeAst>(

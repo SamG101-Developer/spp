@@ -35,3 +35,6 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompPositionalAst final : GenericAr
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
+
+
+spp::asts::GenericArgumentCompPositionalAst::~GenericArgumentCompPositionalAst() = default;

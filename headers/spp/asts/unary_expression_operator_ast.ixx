@@ -17,3 +17,6 @@ SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorAst : virtual Ast, mixins::
 
     ~UnaryExpressionOperatorAst() override;
 };
+
+
+spp::asts::UnaryExpressionOperatorAst::~UnaryExpressionOperatorAst() = default;

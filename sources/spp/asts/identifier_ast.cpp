@@ -8,6 +8,8 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.utils.strings;
 import spp.asts.utils.ast_utils;
+
+import absl;
 import genex;
 
 
@@ -18,9 +20,6 @@ spp::asts::IdentifierAst::IdentifierAst(
     m_pos(pos),
     val(std::move(val)) {
 }
-
-
-spp::asts::IdentifierAst::~IdentifierAst() = default;
 
 
 auto spp::asts::IdentifierAst::equals(
@@ -122,4 +121,10 @@ auto spp::asts::IdentifierAst::infer_type(
     // Extract the symbol from the current scope, as a variable symbol.
     const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));
     return var_sym ? var_sym->type : nullptr;
+}
+
+
+auto spp::asts::IdentifierAst::ankerl_hash() const
+    -> std::size_t {
+    return absl::Hash<std::string>()(val);
 }

@@ -8,6 +8,3 @@ spp::asts::GenericArgumentCompAst::GenericArgumentCompAst(
     GenericArgumentAst(order_tag),
     val(std::move(val)) {
 }
-
-
-spp::asts::GenericArgumentCompAst::~GenericArgumentCompAst() = default;

@@ -3,12 +3,12 @@ module;
 
 export module spp.asts.generic_parameter_type_ast;
 import spp.asts.generic_parameter_ast;
+import spp.asts.generic_parameter_type_inline_constraints_ast;
 
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct GenericParameterTypeAst;
-    SPP_EXP_CLS struct GenericParameterTypeInlineConstraintsAst;
 }
 
 
@@ -37,3 +37,6 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
+
+
+spp::asts::GenericParameterTypeAst::~GenericParameterTypeAst() = default;

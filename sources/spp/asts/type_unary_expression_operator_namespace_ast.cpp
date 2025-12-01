@@ -16,9 +16,6 @@ spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypeUnaryExpressionOperatorN
 }
 
 
-spp::asts::TypeUnaryExpressionOperatorNamespaceAst::~TypeUnaryExpressionOperatorNamespaceAst() = default;
-
-
 auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::equals(
     TypeUnaryExpressionOperatorAst const &other) const
     -> std::strong_ordering {

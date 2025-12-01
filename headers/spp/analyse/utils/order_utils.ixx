@@ -46,14 +46,9 @@ namespace spp::analyse::utils::order_utils {
      * @param args The list of arguments to check the order of.
      * @return The list of arguments that are out of order, paired with a string representation of their tag.
      */
-    SPP_EXP_FUN inline auto order_args(
+    SPP_EXP_FUN auto order_args(
         std::vector<asts::mixins::OrderableAst*> &&args)
-        -> std::vector<std::pair<std::string, asts::Ast*>> {
-        return order(
-            std::move(args),
-            std::vector(ARG_ORDER_ARR.begin(), ARG_ORDER_ARR.end())
-        );
-    }
+        -> std::vector<std::pair<std::string, asts::Ast*>>;
 
     /**
      * The entry point into ordering parameters. This uses the internal order defined for function parameters:
@@ -61,12 +56,7 @@ namespace spp::analyse::utils::order_utils {
      * @param params The list of parameters to check the order of.
      * @return The list of parameters that are out of order, paired with a string representation of their tag.
      */
-    SPP_EXP_FUN inline auto order_params(
+    SPP_EXP_FUN auto order_params(
         std::vector<asts::mixins::OrderableAst*> &&params)
-        -> std::vector<std::pair<std::string, asts::Ast*>> {
-        return order(
-            std::move(params),
-            std::vector(PARAM_ORDER_ARR.begin(), PARAM_ORDER_ARR.end())
-        );
-    }
+        -> std::vector<std::pair<std::string, asts::Ast*>>;
 }

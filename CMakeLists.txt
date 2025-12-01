@@ -33,13 +33,12 @@ add_library(spp_lib)
 
 # Enable all warnings and treat them as errors.
 target_compile_options(spp_lib PRIVATE
-        -fmodules-ts -frtti
-        -Wall -Wextra -Werror
+        -Wall -Wextra -Werror -fmodules -fvisibility=default
         -Wcast-align -Wcast-qual -Wconversion -Wsign-conversion -Wsign-promo -Wctor-dtor-privacy -Winit-self
         -Wold-style-cast -Wundef -Wdisabled-optimization -Wmissing-declarations -Wmissing-include-dirs
         -Wnull-dereference -Wformat=2 -Wduplicated-cond -Wduplicated-branches -Wredundant-decls -Wlogical-op
         -Wuseless-cast -Wdouble-promotion -Wstrict-null-sentinel -Wswitch-default -Wswitch-enum -Wno-null-dereference
-        -Wno-maybe-uninitialized -Wno-error=array-bounds -Wno-error=overloaded-virtual)
+        -Wno-maybe-uninitialized -Wno-error=array-bounds -Wno-error=overloaded-virtual -Wodr)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(spp_lib PRIVATE
             -O0 -pg -g -fno-omit-frame-pointer -fno-inline -fno-inline-functions-called-once
@@ -55,7 +54,7 @@ target_link_libraries(spp_lib PUBLIC
         Glob LLVMCore LLVMSupport LLVMCodeGen LLVMScalarOpts LLVMTransformUtils)
 target_sources(spp_lib
         PUBLIC FILE_SET CXX_MODULES FILES ${MODULE_FILES}
-        PRIVATE ${MODULE_FILES} ${SOURCE_FILES})
+        PRIVATE ${SOURCE_FILES})
 target_include_directories(spp_lib PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/headers)
 target_compile_definitions(spp_lib PRIVATE
@@ -64,6 +63,10 @@ target_compile_definitions(spp_lib PRIVATE
 add_executable(spp main.cpp)
 target_link_libraries(spp PRIVATE spp_lib)
 
+# Linker map
+target_link_options(spp PRIVATE
+        "-Wl,--Map=${CMAKE_CURRENT_BINARY_DIR}/spp.map"
+        "-Wl,--trace")
 
 # Unit test support.
 enable_testing()

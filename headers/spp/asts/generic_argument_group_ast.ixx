@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.generic_argument_group_ast;
 import spp.asts.ast;
-import spp.utils.ptr_cmp;
 
 import ankerl;
 import std;
@@ -62,7 +61,7 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
         -> std::unique_ptr<GenericArgumentGroupAst>;
 
     static auto from_map(
-        ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst const*, spp::utils::PtrHash<std::shared_ptr<TypeIdentifierAst>>, spp::utils::PtrEq<std::shared_ptr<TypeIdentifierAst>>> &&map)
+        ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst const*, ankerl::ptr_hash<std::shared_ptr<TypeIdentifierAst>>, ankerl::ptr_eq<std::shared_ptr<TypeIdentifierAst>>> &&map)
         -> std::unique_ptr<GenericArgumentGroupAst>;
 
     static auto from_map(

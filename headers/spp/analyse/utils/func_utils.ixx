@@ -3,7 +3,6 @@ module;
 
 export module spp.analyse.utils.func_utils;
 import spp.asts.meta.compiler_meta_data;
-import spp.utils.ptr_cmp;
 import std;
 
 
@@ -102,7 +101,7 @@ namespace spp::analyse::utils::func_utils {
         bool is_tuple_owner = false)
         -> void;
 
-    SPP_EXP_CLS template <typename GenericArgType, typename GenericParamType>
+    SPP_EXP_FUN template <typename GenericArgType, typename GenericParamType>
     auto name_generic_args_impl(
         std::vector<std::unique_ptr<GenericArgType>> &args,
         std::vector<GenericParamType*> params,

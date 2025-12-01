@@ -3,7 +3,6 @@ module;
 
 export module spp.analyse.utils.type_utils;
 import spp.asts.meta.compiler_meta_data;
-import spp.utils.ptr_cmp;
 import ankerl;
 import std;
 
@@ -30,8 +29,8 @@ namespace spp::analyse::scopes {
 namespace spp::analyse::utils::type_utils {
     SPP_EXP_CLS using GenericInferenceMap = ankerl::unordered_dense::map<
         std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*,
-        spp::utils::PtrHash<std::shared_ptr<asts::TypeIdentifierAst>>,
-        spp::utils::PtrEq<std::shared_ptr<asts::TypeIdentifierAst>>>;
+        ankerl::ptr_hash<std::shared_ptr<asts::TypeIdentifierAst>>,
+        ankerl::ptr_eq<std::shared_ptr<asts::TypeIdentifierAst>>>;
 
     /**
      * The symbolic equality type checker is a complex type checking algorithm that takes namespacing, scopes, aliases,
@@ -171,7 +170,7 @@ namespace spp::analyse::utils::type_utils {
         scopes::ScopeManager const &sm)
         -> std::shared_ptr<const asts::TypeAst>;
 
-    SPP_EXP_CLS template <typename T>
+    SPP_EXP_FUN template <typename T>
     auto validate_inconsistent_types(
         std::vector<T> const &branches,
         scopes::ScopeManager *sm,

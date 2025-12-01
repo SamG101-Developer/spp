@@ -39,9 +39,6 @@ spp::asts::FloatLiteralAst::FloatLiteralAst(
 }
 
 
-spp::asts::FloatLiteralAst::~FloatLiteralAst() = default;
-
-
 auto spp::asts::FloatLiteralAst::equals(
     ExpressionAst const &other) const
     -> std::strong_ordering {

@@ -41,9 +41,6 @@ spp::asts::CmpStatementAst::CmpStatementAst(
 }
 
 
-spp::asts::CmpStatementAst::~CmpStatementAst() = default;
-
-
 auto spp::asts::CmpStatementAst::pos_start() const
     -> std::size_t {
     return name->pos_start();

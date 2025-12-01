@@ -4,6 +4,7 @@ module;
 export module spp.asts.boolean_literal_ast;
 import spp.asts.literal_ast;
 import spp.asts.primary_expression_ast;
+import spp.asts.token_ast;
 import spp.codegen.llvm_ctx;
 
 import llvm;
@@ -11,7 +12,6 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct BooleanLiteralAst;
-    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
@@ -75,3 +75,6 @@ public:
      */
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
+
+
+spp::asts::BooleanLiteralAst::~BooleanLiteralAst() = default;

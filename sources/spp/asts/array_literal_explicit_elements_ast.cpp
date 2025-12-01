@@ -32,9 +32,6 @@ spp::asts::ArrayLiteralExplicitElementsAst::ArrayLiteralExplicitElementsAst(
 }
 
 
-spp::asts::ArrayLiteralExplicitElementsAst::~ArrayLiteralExplicitElementsAst() = default;
-
-
 auto spp::asts::ArrayLiteralExplicitElementsAst::equals_array_literal_explicit_elements(
     ArrayLiteralExplicitElementsAst const &other) const
     -> std::strong_ordering {

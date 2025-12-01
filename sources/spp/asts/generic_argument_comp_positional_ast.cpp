@@ -20,9 +20,6 @@ spp::asts::GenericArgumentCompPositionalAst::GenericArgumentCompPositionalAst(
 }
 
 
-spp::asts::GenericArgumentCompPositionalAst::~GenericArgumentCompPositionalAst() = default;
-
-
 auto spp::asts::GenericArgumentCompPositionalAst::equals(
     GenericArgumentAst const &other) const
     -> std::strong_ordering {

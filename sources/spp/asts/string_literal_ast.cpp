@@ -15,9 +15,6 @@ spp::asts::StringLiteralAst::StringLiteralAst(
 }
 
 
-spp::asts::StringLiteralAst::~StringLiteralAst() = default;
-
-
 auto spp::asts::StringLiteralAst::equals(
     ExpressionAst const &other) const
     -> std::strong_ordering {

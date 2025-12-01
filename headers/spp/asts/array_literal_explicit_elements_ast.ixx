@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.array_literal_ast;
+import spp.asts.token_ast;
 import spp.codegen.llvm_ctx;
 
 import llvm;
@@ -10,7 +11,6 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct ArrayLiteralExplicitElementsAst;
-    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
@@ -101,3 +101,6 @@ public:
      */
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
+
+
+spp::asts::ArrayLiteralExplicitElementsAst::~ArrayLiteralExplicitElementsAst() = default;

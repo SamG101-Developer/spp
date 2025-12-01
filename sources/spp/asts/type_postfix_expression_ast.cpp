@@ -28,9 +28,6 @@ spp::asts::TypePostfixExpressionAst::TypePostfixExpressionAst(
 }
 
 
-spp::asts::TypePostfixExpressionAst::~TypePostfixExpressionAst() = default;
-
-
 auto spp::asts::TypePostfixExpressionAst::equals(
     const ExpressionAst &other) const
     -> std::strong_ordering {

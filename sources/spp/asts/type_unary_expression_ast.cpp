@@ -25,9 +25,6 @@ spp::asts::TypeUnaryExpressionAst::TypeUnaryExpressionAst(
 }
 
 
-spp::asts::TypeUnaryExpressionAst::~TypeUnaryExpressionAst() = default;
-
-
 auto spp::asts::TypeUnaryExpressionAst::equals(
     ExpressionAst const &other) const
     -> std::strong_ordering {

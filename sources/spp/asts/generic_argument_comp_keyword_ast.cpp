@@ -29,9 +29,6 @@ spp::asts::GenericArgumentCompKeywordAst::GenericArgumentCompKeywordAst(
 }
 
 
-spp::asts::GenericArgumentCompKeywordAst::~GenericArgumentCompKeywordAst() = default;
-
-
 auto spp::asts::GenericArgumentCompKeywordAst::equals(
     GenericArgumentAst const &other) const
     -> std::strong_ordering {

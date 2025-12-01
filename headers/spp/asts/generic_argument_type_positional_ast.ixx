@@ -33,3 +33,6 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypePositionalAst final : GenericAr
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
+
+
+spp::asts::GenericArgumentTypePositionalAst::~GenericArgumentTypePositionalAst() = default;

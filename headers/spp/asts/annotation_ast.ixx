@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.annotation_ast;
 import spp.asts.ast;
+import spp.asts.token_ast;
 
 import std;
 
@@ -10,7 +11,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct AnnotationAst;
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct UseStatementAst;
-    SPP_EXP_CLS struct TokenAst;
 }
 
 
@@ -73,3 +73,6 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : virtual Ast {
      */
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
+
+
+spp::asts::AnnotationAst::~AnnotationAst() = default;

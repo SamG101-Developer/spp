@@ -33,3 +33,6 @@ public:
 
     auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };
+
+
+spp::asts::CoroutinePrototypeAst::~CoroutinePrototypeAst() = default;

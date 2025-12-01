@@ -88,3 +88,6 @@ public:
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
+
+
+spp::asts::TypeUnaryExpressionAst::~TypeUnaryExpressionAst() = default;

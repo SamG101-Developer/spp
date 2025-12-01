@@ -56,4 +56,9 @@ public:
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+
+    auto ankerl_hash() const -> std::size_t override;
 };
+
+
+spp::asts::IdentifierAst::~IdentifierAst() = default;

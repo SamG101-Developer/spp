@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.scope_registry;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
@@ -40,19 +41,6 @@ spp::asts::TypeStatementAst::TypeStatementAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_type, lex::SppTokenType::KW_TYPE, "type");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_param_group);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
-}
-
-
-spp::asts::TypeStatementAst::~TypeStatementAst() {
-    // Because the TypeStatementAst is passed as a unique pointer to the TypeSymbol, we need to clear it from the type
-    // symbol without destroying it, otherwise there is a use after free because of a double destruction; the unique
-    // pointer destroying the type statement, then the type statement destroying itself (via the destructor). Releasing
-    // it here prevents the type symbol from destroying it.
-    if (m_type_symbol != nullptr) {
-        m_type_symbol->alias_stmt.release();
-    }
-
-    // Now this pointer has been released from the type symbol, we can safely destroy the type statement.
 }
 
 
@@ -142,10 +130,11 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
     }
 
     // Create the type symbol for this type, that will point to the old type.
-    m_type_symbol = std::make_shared<analyse::scopes::TypeSymbol>(
+    auto type_sym = std::make_shared<analyse::scopes::TypeSymbol>(
         new_type, nullptr, nullptr, sm->current_scope, sm->current_scope->parent_module());
-    m_type_symbol->alias_stmt = std::unique_ptr<TypeStatementAst>(this);
-    sm->current_scope->add_type_symbol(m_type_symbol);
+    sm->current_scope->add_type_symbol(type_sym);
+    (*analyse::scopes::ALIAS_TO_SYM_MAP)[this] = type_sym;
+    (*analyse::scopes::SYM_TO_ALIAS_MAP)[type_sym.get()] = std::unique_ptr<TypeStatementAst>(this);
 
     // Create a new scope for the type statement.
     auto scope_name = analyse::scopes::ScopeBlockName("<type-stmt#" + static_cast<std::string>(*new_type) + "#" + std::to_string(pos_start()) + ">");
@@ -172,9 +161,10 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     m_temp_scope_2 = scope2;
 
     const auto final_sym = sm->current_scope->get_type_symbol(actual_old_type->without_generics());
-    m_type_symbol->type = final_sym->type;
-    m_type_symbol->scope = final_sym->scope;
-    m_type_symbol->is_copyable = [final_sym] { return final_sym->is_copyable(); };
+    const auto type_sym = (*analyse::scopes::ALIAS_TO_SYM_MAP)[this];
+    type_sym->type = final_sym->type;
+    type_sym->scope = final_sym->scope;
+    type_sym->is_copyable = [final_sym] { return final_sym->is_copyable(); };
     old_type = actual_old_type;
 
     if (attach_generics != nullptr and not attach_generics->params.empty()) {
@@ -211,8 +201,9 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
         old_type->stage_7_analyse_semantics(sm, meta); // Analyse the fq old type in this scope (for generics)
 
         const auto old_sym = sm->current_scope->get_type_symbol(old_type);
-        m_type_symbol->type = old_sym->type;
-        m_type_symbol->scope = old_sym->scope;
+        const auto type_sym = (*analyse::scopes::ALIAS_TO_SYM_MAP)[this];
+        type_sym->type = old_sym->type;
+        type_sym->scope = old_sym->scope;
         m_temp_scope_3 = std::move(temp_scope);
     }
     sm->move_out_of_current_scope();

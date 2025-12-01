@@ -26,9 +26,6 @@ spp::asts::GenericParameterCompAst::GenericParameterCompAst(
 }
 
 
-spp::asts::GenericParameterCompAst::~GenericParameterCompAst() = default;
-
-
 auto spp::asts::GenericParameterCompAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
     CompilerMetaData *)

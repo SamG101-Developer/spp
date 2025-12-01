@@ -3,12 +3,12 @@ module;
 
 export module spp.asts.generic_argument_comp_keyword_ast;
 import spp.asts.generic_argument_comp_ast;
+import spp.asts.token_ast;
 
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct GenericArgumentCompKeywordAst;
-    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
@@ -60,3 +60,6 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgum
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
+
+
+spp::asts::GenericArgumentCompKeywordAst::~GenericArgumentCompKeywordAst() = default;

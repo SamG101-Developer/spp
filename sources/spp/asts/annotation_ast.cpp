@@ -22,9 +22,6 @@ spp::asts::AnnotationAst::AnnotationAst(
 }
 
 
-spp::asts::AnnotationAst::~AnnotationAst() = default;
-
-
 auto spp::asts::AnnotationAst::pos_start() const
     -> std::size_t {
     return tok_at_sign->pos_start();

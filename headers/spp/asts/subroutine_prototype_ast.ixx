@@ -20,3 +20,6 @@ SPP_EXP_CLS struct spp::asts::SubroutinePrototypeAst final : FunctionPrototypeAs
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
+
+
+spp::asts::SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;

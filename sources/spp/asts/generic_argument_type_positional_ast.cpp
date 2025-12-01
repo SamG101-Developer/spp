@@ -19,9 +19,6 @@ spp::asts::GenericArgumentTypePositionalAst::GenericArgumentTypePositionalAst(
 }
 
 
-spp::asts::GenericArgumentTypePositionalAst::~GenericArgumentTypePositionalAst() = default;
-
-
 auto spp::asts::GenericArgumentTypePositionalAst::equals(
     GenericArgumentAst const &other) const
     -> std::strong_ordering {

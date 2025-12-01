@@ -3,12 +3,12 @@ module;
 
 export module spp.asts.type_unary_expression_operator_namespace_ast;
 import spp.asts.type_unary_expression_operator_ast;
+import spp.asts.token_ast;
 
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct IdentifierAst;
-    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeIdentifierAst;
     SPP_EXP_CLS struct TypeUnaryExpressionOperatorNamespaceAst;
 }
@@ -52,3 +52,6 @@ public:
 
     auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
 };
+
+
+spp::asts::TypeUnaryExpressionOperatorNamespaceAst::~TypeUnaryExpressionOperatorNamespaceAst() = default;

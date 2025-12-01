@@ -4,6 +4,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_info_utils;
 import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.array_literal_repeated_element_ast;
 import spp.asts.ast;
@@ -14,70 +15,6 @@ import spp.asts.iter_expression_branch_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.utils.ast_utils;
 import genex;
-
-
-auto spp::analyse::utils::mem_utils::MemoryInfo::moved_by(
-    asts::Ast const &ast, scopes::Scope *scope)
-
-    -> void {
-    ast_moved = {&ast, scope};
-    ast_initialization = {nullptr, nullptr};
-}
-
-
-auto spp::analyse::utils::mem_utils::MemoryInfo::initialized_by(
-    asts::Ast const &ast,
-    scopes::Scope *scope)
-    -> void {
-    ast_initialization = {&ast, scope};
-    ast_initialization_origin = {&ast, scope};
-    ast_moved = {nullptr, nullptr};
-    initialization_counter += 1;
-
-    is_inconsistently_initialized = std::nullopt;
-    is_inconsistently_moved = std::nullopt;
-    is_inconsistently_partially_moved = std::nullopt;
-    is_inconsistently_pinned = std::nullopt;
-}
-
-
-auto spp::analyse::utils::mem_utils::MemoryInfo::remove_partial_move(
-    asts::Ast const &ast,
-    scopes::Scope *scope)
-    -> void {
-    genex::actions::remove(ast_partial_moves, &ast);
-    if (not ast_partial_moves.empty()) {
-        initialized_by(ast, scope);
-    }
-}
-
-
-auto spp::analyse::utils::mem_utils::MemoryInfo::snapshot() const
-    -> MemoryInfoSnapshot {
-    // Create and return the snapshot.
-    return MemoryInfoSnapshot(
-        std::get<0>(ast_initialization), std::get<0>(ast_moved), ast_partial_moves, ast_pins, ast_linked_pins,
-        initialization_counter);
-}
-
-
-auto spp::analyse::utils::mem_utils::MemoryInfo::clone() const
-    -> std::unique_ptr<MemoryInfo> {
-    auto out = std::make_unique<MemoryInfo>();
-    out->ast_initialization = ast_initialization;
-    out->ast_moved = ast_moved;
-    out->ast_initialization_origin = ast_initialization_origin;
-    out->ast_borrowed = ast_borrowed;
-    out->ast_partial_moves = ast_partial_moves;
-    out->ast_pins = ast_pins;
-    out->ast_comptime = ast_clone(ast_comptime);
-    out->initialization_counter = initialization_counter;
-    out->is_inconsistently_initialized = is_inconsistently_initialized;
-    out->is_inconsistently_moved = is_inconsistently_moved;
-    out->is_inconsistently_partially_moved = is_inconsistently_partially_moved;
-    out->is_inconsistently_pinned = is_inconsistently_pinned;
-    return out;
-}
 
 
 auto spp::analyse::utils::mem_utils::memory_region_overlap(
@@ -236,92 +173,92 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
 }
 
 
-// template <typename T>
-// auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
-//     std::vector<T> const &branches,
-//     scopes::ScopeManager *sm,
-//     asts::meta::CompilerMetaData *meta)
-//     -> void {
-//     // Define a simple alias for a list of symbols and their memory.
-//     using SymbolMemoryList = std::vector<std::pair<T, MemoryInfoSnapshot>>;
-//
-//     auto sym_mem_info = std::map<scopes::VariableSymbol*, SymbolMemoryList>();
-//     for (auto &&branch : branches) {
-//         // Make a record of the symbols' memory status in the scope before the branch is analysed.
-//         auto var_symbols_in_scope = sm->current_scope->all_var_symbols()
-//             | genex::to<std::vector>();
-//
-//         auto old_symbol_mem_info = var_symbols_in_scope
-//             | genex::views::transform([](auto const &x) { return std::make_pair(x.get(), x->memory_info->snapshot()); })
-//             | genex::to<std::vector>();
-//
-//         // Analyse the memory and then recheck the symbols' memory status.
-//         branch->stage_8_check_memory(sm, meta);
-//         auto new_symbol_mem_info = var_symbols_in_scope
-//             | genex::views::transform([](auto const &x) { return std::make_pair(x.get(), x->memory_info->snapshot()); })
-//             | genex::to<std::vector>();
-//
-//         // Reset the memory status of the symbols for the next branch to analyse with the same original memory states.
-//         for (auto &&[sym, old_mem_status] : old_symbol_mem_info) {
-//             sym->memory_info->ast_initialization = {old_mem_status.ast_initialization, std::get<1>(sym->memory_info->ast_initialization)};
-//             sym->memory_info->ast_moved = {old_mem_status.ast_moved, std::get<1>(sym->memory_info->ast_moved)};
-//             sym->memory_info->ast_partial_moves = old_mem_status.ast_partial_moves;
-//             sym->memory_info->ast_pins = old_mem_status.ast_pins;
-//             sym->memory_info->initialization_counter = old_mem_status.initialization_counter;
-//
-//             // Save this memory status for subsequent inter-branch status comparisons.
-//             auto new_symbol_mem_info_map = std::map(new_symbol_mem_info.begin(), new_symbol_mem_info.end());
-//             sym_mem_info[sym].emplace_back(branch, new_symbol_mem_info_map[sym]);
-//         }
-//     }
-//
-//     // Check for consistency among the branches' symbols' memory states.
-//     for (auto &&[sym, branches_memory_info_lists] : sym_mem_info) {
-//         auto first_branch = branches.front();
-//         auto first_branch_mem_info = branches_memory_info_lists.at(0).second;
-//
-//         // Assuming all new memory states are consistent across branches, update o the first "new" state list.
-//         sym->memory_info->ast_initialization = {first_branch_mem_info.ast_initialization, std::get<1>(sym->memory_info->ast_initialization)};
-//         sym->memory_info->ast_moved = {first_branch_mem_info.ast_moved, std::get<1>(sym->memory_info->ast_moved)};
-//         sym->memory_info->ast_partial_moves = first_branch_mem_info.ast_partial_moves;
-//         sym->memory_info->ast_pins = first_branch_mem_info.ast_pins;
-//         sym->memory_info->initialization_counter = first_branch_mem_info.initialization_counter;
-//
-//         // Check the new memory status for each symbol is consistent across all branches.
-//         for (auto &&[branch, branch_memory_info_list] : branches_memory_info_lists) {
-//             // Check for consistent initialization.
-//             if ((first_branch_mem_info.ast_initialization == nullptr) != (branch_memory_info_list.ast_initialization == nullptr)) {
-//                 sym->memory_info->is_inconsistently_initialized = std::make_pair(first_branch, branch);
-//             }
-//
-//             // Check for consistent moved state.
-//             if ((first_branch_mem_info.ast_moved == nullptr) != (branch_memory_info_list.ast_moved == nullptr)) {
-//                 sym->memory_info->is_inconsistently_moved = std::make_pair(first_branch, branch);
-//             }
-//
-//             // Check for consistent partial moves.
-//             if (first_branch_mem_info.ast_partial_moves != branch_memory_info_list.ast_partial_moves) {
-//                 sym->memory_info->is_inconsistently_partially_moved = std::make_pair(first_branch, branch);
-//             }
-//
-//             // Check for consistent pins.
-//             if (first_branch_mem_info.ast_pins != branch_memory_info_list.ast_pins) {
-//                 sym->memory_info->is_inconsistently_pinned = std::make_pair(first_branch, branch);
-//             }
-//         }
-//     }
-// }
-//
-//
-// template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
-//     std::vector<asts::CaseExpressionBranchAst*> const &branches,
-//     scopes::ScopeManager *sm,
-//     asts::meta::CompilerMetaData *meta)
-//     -> void;
-//
-//
-// template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
-//     std::vector<asts::IterExpressionBranchAst*> const &branches,
-//     scopes::ScopeManager *sm,
-//     asts::meta::CompilerMetaData *meta)
-//     -> void;
+template <typename T>
+auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
+    std::vector<T> const &branches,
+    scopes::ScopeManager *sm,
+    asts::meta::CompilerMetaData *meta)
+    -> void {
+    // Define a simple alias for a list of symbols and their memory.
+    using SymbolMemoryList = std::vector<std::pair<T, mem_info_utils::MemoryInfoSnapshot>>;
+
+    auto sym_mem_info = std::map<scopes::VariableSymbol*, SymbolMemoryList>();
+    for (auto &&branch : branches) {
+        // Make a record of the symbols' memory status in the scope before the branch is analysed.
+        auto var_symbols_in_scope = sm->current_scope->all_var_symbols()
+            | genex::to<std::vector>();
+
+        auto old_symbol_mem_info = var_symbols_in_scope
+            | genex::views::transform([](auto const &x) { return std::make_pair(x.get(), x->memory_info->snapshot()); })
+            | genex::to<std::vector>();
+
+        // Analyse the memory and then recheck the symbols' memory status.
+        branch->stage_8_check_memory(sm, meta);
+        auto new_symbol_mem_info = var_symbols_in_scope
+            | genex::views::transform([](auto const &x) { return std::make_pair(x.get(), x->memory_info->snapshot()); })
+            | genex::to<std::vector>();
+
+        // Reset the memory status of the symbols for the next branch to analyse with the same original memory states.
+        for (auto &&[sym, old_mem_status] : old_symbol_mem_info) {
+            sym->memory_info->ast_initialization = {old_mem_status.ast_initialization, std::get<1>(sym->memory_info->ast_initialization)};
+            sym->memory_info->ast_moved = {old_mem_status.ast_moved, std::get<1>(sym->memory_info->ast_moved)};
+            sym->memory_info->ast_partial_moves = old_mem_status.ast_partial_moves;
+            sym->memory_info->ast_pins = old_mem_status.ast_pins;
+            sym->memory_info->initialization_counter = old_mem_status.initialization_counter;
+
+            // Save this memory status for subsequent inter-branch status comparisons.
+            auto new_symbol_mem_info_map = std::map(new_symbol_mem_info.begin(), new_symbol_mem_info.end());
+            sym_mem_info[sym].emplace_back(branch, new_symbol_mem_info_map[sym]);
+        }
+    }
+
+    // Check for consistency among the branches' symbols' memory states.
+    for (auto &&[sym, branches_memory_info_lists] : sym_mem_info) {
+        auto first_branch = branches.front();
+        auto first_branch_mem_info = branches_memory_info_lists.at(0).second;
+
+        // Assuming all new memory states are consistent across branches, update o the first "new" state list.
+        sym->memory_info->ast_initialization = {first_branch_mem_info.ast_initialization, std::get<1>(sym->memory_info->ast_initialization)};
+        sym->memory_info->ast_moved = {first_branch_mem_info.ast_moved, std::get<1>(sym->memory_info->ast_moved)};
+        sym->memory_info->ast_partial_moves = first_branch_mem_info.ast_partial_moves;
+        sym->memory_info->ast_pins = first_branch_mem_info.ast_pins;
+        sym->memory_info->initialization_counter = first_branch_mem_info.initialization_counter;
+
+        // Check the new memory status for each symbol is consistent across all branches.
+        for (auto &&[branch, branch_memory_info_list] : branches_memory_info_lists) {
+            // Check for consistent initialization.
+            if ((first_branch_mem_info.ast_initialization == nullptr) != (branch_memory_info_list.ast_initialization == nullptr)) {
+                sym->memory_info->is_inconsistently_initialized = std::make_pair(first_branch, branch);
+            }
+
+            // Check for consistent moved state.
+            if ((first_branch_mem_info.ast_moved == nullptr) != (branch_memory_info_list.ast_moved == nullptr)) {
+                sym->memory_info->is_inconsistently_moved = std::make_pair(first_branch, branch);
+            }
+
+            // Check for consistent partial moves.
+            if (first_branch_mem_info.ast_partial_moves != branch_memory_info_list.ast_partial_moves) {
+                sym->memory_info->is_inconsistently_partially_moved = std::make_pair(first_branch, branch);
+            }
+
+            // Check for consistent pins.
+            if (first_branch_mem_info.ast_pins != branch_memory_info_list.ast_pins) {
+                sym->memory_info->is_inconsistently_pinned = std::make_pair(first_branch, branch);
+            }
+        }
+    }
+}
+
+
+template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
+    std::vector<asts::CaseExpressionBranchAst*> const &branches,
+    scopes::ScopeManager *sm,
+    asts::meta::CompilerMetaData *meta)
+    -> void;
+
+
+template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
+     std::vector<asts::IterExpressionBranchAst*> const &branches,
+     scopes::ScopeManager *sm,
+     asts::meta::CompilerMetaData *meta)
+     -> void;

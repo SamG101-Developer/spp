@@ -12,9 +12,6 @@ spp::asts::TypeUnaryExpressionOperatorBorrowAst::TypeUnaryExpressionOperatorBorr
 }
 
 
-spp::asts::TypeUnaryExpressionOperatorBorrowAst::~TypeUnaryExpressionOperatorBorrowAst() = default;
-
-
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::equals(
     TypeUnaryExpressionOperatorAst const &other) const
     -> std::strong_ordering {

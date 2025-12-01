@@ -29,9 +29,6 @@ spp::asts::TupleLiteralAst::TupleLiteralAst(
 }
 
 
-spp::asts::TupleLiteralAst::~TupleLiteralAst() = default;
-
-
 auto spp::asts::TupleLiteralAst::equals(
     ExpressionAst const &other) const
     -> std::strong_ordering {

@@ -2,8 +2,11 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.scopes.symbols;
-import spp.codegen.llvm_sym_info;
+import spp.analyse.utils.mem_info_utils;
+import spp.asts.ast;
+import spp.asts.convention_ast;
 import spp.asts.utils.visibility;
+import spp.codegen.llvm_sym_info;
 import std;
 
 
@@ -13,21 +16,13 @@ namespace spp::asts {
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct TypeAst;
     SPP_EXP_CLS struct TypeIdentifierAst;
-    SPP_EXP_CLS struct TypeStatementAst;
 }
 
 namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
     SPP_EXP_CLS struct Symbol;
     SPP_EXP_CLS struct NamespaceSymbol;
     SPP_EXP_CLS struct TypeSymbol;
-    SPP_EXP_CLS struct AliasSymbol;
     SPP_EXP_CLS struct VariableSymbol;
-}
-
-
-namespace spp::analyse::utils::mem_utils {
-    SPP_EXP_CLS struct MemoryInfo;
 }
 
 
@@ -87,7 +82,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
 
     asts::utils::Visibility visibility;
 
-    std::unique_ptr<utils::mem_utils::MemoryInfo> memory_info;
+    std::unique_ptr<utils::mem_info_utils::MemoryInfo> memory_info;
 
     std::unique_ptr<codegen::LlvmVarSymInfo> llvm_info;
 
@@ -115,8 +110,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     std::shared_ptr<asts::TypeIdentifierAst> name;
 
     asts::ClassPrototypeAst *type;
-
-    std::unique_ptr<asts::TypeStatementAst> alias_stmt;
 
     Scope *scope;
 
@@ -156,6 +149,9 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
     explicit operator std::string() const override;
 
+    auto alias_stmt() const
+        -> asts::TypeStatementAst*;
+
     auto operator==(
         TypeSymbol const &that) const
         -> bool;
@@ -163,3 +159,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     SPP_ATTR_NODISCARD auto fq_name() const
         -> std::shared_ptr<asts::TypeAst>;
 };
+
+
+spp::analyse::scopes::VariableSymbol::~VariableSymbol() = default;
+
+spp::analyse::scopes::TypeSymbol::~TypeSymbol() = default;
