@@ -32,8 +32,6 @@
 
 #define SPP_INSTANT_INDIRECT [](auto &&x) -> decltype(auto) { return *x; }
 
-#define SPP_NO_ASAN __attribute__((no_sanitize_address))
-
 #define SPP_IS_DEBUG_BUILD (defined(_DEBUG) || !defined(NDEBUG))
 
 #define SPP_ASSERT(x)                                                                                         \

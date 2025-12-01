@@ -143,7 +143,7 @@ public:
      * @return The next scope in the iteration. A raw pointer is returned as the scope is owned by its parent scope. If
      * the end of the iteration has been reached, an error will be thrown.
      */
-    SPP_NO_ASAN auto move_to_next_scope()
+    auto move_to_next_scope()
         -> Scope*;
 
     /**
