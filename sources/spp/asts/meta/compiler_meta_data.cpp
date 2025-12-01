@@ -1,14 +1,7 @@
 module spp.asts.meta.compiler_meta_data;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
-
-
-auto DerefCmp::operator()(
-    const std::shared_ptr<spp::asts::IdentifierAst> &lhs,
-    const std::shared_ptr<spp::asts::IdentifierAst> &rhs) const
-    -> bool {
-    return *lhs < *rhs;
-}
+import ankerl;
 
 
 spp::asts::meta::CompilerMetaData::CompilerMetaData() {
