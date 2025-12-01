@@ -13,7 +13,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct CaseExpressionBranchAst;
     SPP_EXP_CLS template <typename T>
     struct InnerScopeExpressionAst;
-    SPP_EXP_CLS struct StatementAst;
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
