@@ -16,7 +16,7 @@ spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::CasePatternVar
     decltype(tok_ellipsis) &&tok_ellipsis,
     std::unique_ptr<CasePatternVariantAst> &&binding) :
     tok_ellipsis(std::move(tok_ellipsis)),
-    binding(std::unique_ptr<CasePatternVariantSingleIdentifierAst>(binding.release()->to<CasePatternVariantSingleIdentifierAst>())) {
+    binding(std::unique_ptr<CasePatternVariantSingleIdentifierAst>(binding ? binding.release()->to<CasePatternVariantSingleIdentifierAst>() : nullptr)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_ellipsis, lex::SppTokenType::TK_DOUBLE_DOT, "..");
 }
 
