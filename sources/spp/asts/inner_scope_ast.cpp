@@ -131,8 +131,6 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
 
     // Check the memory of each member.
     for (auto const &x : members) { x->stage_8_check_memory(sm, meta); }
-    auto all_syms = sm->current_scope->all_var_symbols() | genex::to<std::vector>();
-    auto inner_syms = sm->current_scope->all_var_symbols(true);
 
     // If the final expression of the inner scope is being used (ie assigned ot outer variable), then memory check it.
     if (const auto move = meta->assignment_target; not members.empty() and move != nullptr) {

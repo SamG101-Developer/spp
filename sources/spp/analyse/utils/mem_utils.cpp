@@ -185,8 +185,7 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
     auto sym_mem_info = std::map<scopes::VariableSymbol*, SymbolMemoryList>();
     for (auto &&branch : branches) {
         // Make a record of the symbols' memory status in the scope before the branch is analysed.
-        auto var_symbols_in_scope = sm->current_scope->all_var_symbols()
-            | genex::to<std::vector>();
+        auto var_symbols_in_scope = sm->current_scope->all_var_symbols();
 
         auto old_symbol_mem_info = var_symbols_in_scope
             | genex::views::transform([](auto const &x) { return std::make_pair(x.get(), x->memory_info->snapshot()); })

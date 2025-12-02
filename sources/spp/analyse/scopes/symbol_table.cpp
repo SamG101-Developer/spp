@@ -5,7 +5,6 @@ import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
-import spp.asts.type_statement_ast;
 import spp.asts.utils.ast_utils;
 import genex;
 
