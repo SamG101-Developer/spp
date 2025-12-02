@@ -45,19 +45,21 @@ auto spp::lex::Lexer::lex() const
             continue;
         }
 
-        // Multiline comments.
+        // Enter a multi-line comment on '##' (not currently in a multi-line comment).
         if (not in_multi_line_comment and c == '#' and m_code[i + 1] == '#') {
             in_multi_line_comment = true;
             i += 2;
             continue;
         }
 
+        // Exit a multi-line comment on '##' (currently in a multi-line comment).
         if (in_multi_line_comment and c == '#' and m_code[i + 1] == '#') {
             in_multi_line_comment = false;
             i += 2;
             continue;
         }
 
+        // Skip any characters in a multi-line comment.
         if (in_multi_line_comment) {
             ++i;
             continue;
