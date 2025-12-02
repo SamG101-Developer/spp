@@ -25,6 +25,7 @@ The S++ Compiler is currently in development and has not reached its first offic
 ## C++ Todo
 
 - Some destructors have to be defined in the `.ixx` file to force `typeinfo` to be available.
+- This creates the need for the cycle breaking `std::map` that stores object pairs (**must** remove).
 
 ## Feature Roadmap
 
