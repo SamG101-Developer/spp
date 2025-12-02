@@ -2,13 +2,6 @@ module spp.asts.meta.ast_printer;
 import std;
 
 
-spp::asts::meta::AstPrinter::AstPrinter(
-    const std::uint32_t indent_size) :
-    m_indent_size(indent_size),
-    m_indent_level(0) {
-}
-
-
 auto spp::asts::meta::AstPrinter::m_increase_indent()
     -> void {
     m_indent_level += m_indent_size;
@@ -50,4 +43,11 @@ auto spp::asts::meta::AstPrinter::m_format_code(std::string &&code) const
     }
 
     return formatted;
+}
+
+
+spp::asts::meta::AstPrinter::AstPrinter(
+    const std::uint32_t indent_size) :
+    m_indent_size(indent_size),
+    m_indent_level(0) {
 }

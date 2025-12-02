@@ -80,9 +80,6 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
 }
 
 
-// spp::analyse::scopes::VariableSymbol::~VariableSymbol() = default;
-
-
 spp::analyse::scopes::VariableSymbol::operator std::string() const {
     return nlohmann::json(std::map<std::string, std::string>{
         {"what", "variable"},

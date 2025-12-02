@@ -1,8 +1,6 @@
 module spp.analyse.utils.order_utils;
 import spp.asts.ast;
-// import spp.asts.type_identifier_ast;
 import spp.asts.mixins.orderable_ast;
-// import spp.asts.utils.orderable;
 
 import genex;
 import magic_enum;

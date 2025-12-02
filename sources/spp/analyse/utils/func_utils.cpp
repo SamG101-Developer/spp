@@ -664,20 +664,20 @@ auto spp::analyse::utils::func_utils::create_callable_prototype(
 }
 
 
-// template auto spp::analyse::utils::func_utils::name_generic_args_impl<spp::asts::GenericArgumentCompAst, spp::asts::GenericParameterCompAst>(
-//     std::vector<std::unique_ptr<asts::GenericArgumentCompAst>> &args,
-//     std::vector<asts::GenericParameterCompAst*> params,
-//     asts::Ast const &owner,
-//     scopes::ScopeManager &sm,
-//     asts::meta::CompilerMetaData *meta) -> void;
-//
-//
-// template auto spp::analyse::utils::func_utils::name_generic_args_impl<spp::asts::GenericArgumentTypeAst, spp::asts::GenericParameterTypeAst>(
-//     std::vector<std::unique_ptr<asts::GenericArgumentTypeAst>> &args,
-//     std::vector<asts::GenericParameterTypeAst*> params,
-//     asts::Ast const &owner,
-//     scopes::ScopeManager &sm,
-//     asts::meta::CompilerMetaData *meta) -> void;
+template auto spp::analyse::utils::func_utils::name_generic_args_impl<spp::asts::GenericArgumentCompAst, spp::asts::GenericParameterCompAst>(
+    std::vector<std::unique_ptr<asts::GenericArgumentCompAst>> &args,
+    std::vector<asts::GenericParameterCompAst*> params,
+    asts::Ast const &owner,
+    scopes::ScopeManager &sm,
+    asts::meta::CompilerMetaData *meta) -> void;
+
+
+template auto spp::analyse::utils::func_utils::name_generic_args_impl<spp::asts::GenericArgumentTypeAst, spp::asts::GenericParameterTypeAst>(
+    std::vector<std::unique_ptr<asts::GenericArgumentTypeAst>> &args,
+    std::vector<asts::GenericParameterTypeAst*> params,
+    asts::Ast const &owner,
+    scopes::ScopeManager &sm,
+    asts::meta::CompilerMetaData *meta) -> void;
 
 
 auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(

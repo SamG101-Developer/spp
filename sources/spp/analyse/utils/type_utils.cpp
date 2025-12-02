@@ -48,7 +48,6 @@ import spp.asts.utils.visibility;
 import spp.lex.lexer;
 import spp.parse.parser_spp;
 import spp.parse.errors.parser_error;
-// import spp.parse.errors.parser_error_builder;
 import spp.utils.strings;
 
 import genex;
@@ -640,7 +639,6 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
         (*scopes::SYM_TO_ALIAS_MAP)[new_cls_sym.get()] = std::move(new_alias_stmt);
     }
 
-
     // Configure the new scope based on the base (old) scope.
     else {
         new_cls_scope->parent->add_type_symbol(new_cls_sym);
@@ -756,7 +754,7 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
         std::make_unique<asts::TypeIdentifierAst>(0, "Self", nullptr), new_cls_scope.ty_sym->type, &new_cls_scope, new_sup_scope_ptr);
     auto new_alias_stmt = std::make_unique<asts::TypeStatementAst>(
         SPP_NO_ANNOTATIONS, nullptr, asts::TypeIdentifierAst::from_string("Self"), nullptr, nullptr, self_type);
-    (*analyse::scopes::SYM_TO_ALIAS_MAP)[new_self_sym.get()] = std::move(new_alias_stmt);
+    (*scopes::SYM_TO_ALIAS_MAP)[new_self_sym.get()] = std::move(new_alias_stmt);
     new_sup_scope_ptr->add_type_symbol(new_self_sym);
 
     // Run generic substitution on the aliases in the new scope.
