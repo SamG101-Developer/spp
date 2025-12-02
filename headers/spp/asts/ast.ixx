@@ -110,13 +110,30 @@ public:
      */
     virtual auto print(meta::AstPrinter &printer) const -> std::string = 0;
 
+    /**
+     * Overridable hash function for AST nodes, used for hashing ASTs in data structures (particularly in Ankerl's hash
+     * map). Implemented in the @c IdentifierAst and @c TypeIdentifierAst nodes.
+     * @return The hash value of the AST.
+     */
     virtual auto ankerl_hash() const -> std::size_t;
 
+    /**
+     * Non-constant node casting to a target @T type. This uses @c dynamic_cast to safely cast the AST node to the
+     * desired type, returning @c nullptr if the cast is impossible. Supports cross casting to AST mixin types too.
+     * @tparam T The target AST type to cast to.
+     * @return The cast AST node, or @c nullptr if the cast is not possible.
+     */
     template <typename T>
     auto to() -> T* {
         return dynamic_cast<T*>(this);
     }
 
+    /**
+     * Constant node casting to a target @T type. This uses @c dynamic_cast to safely cast the AST node to the
+     * desired type, returning @c nullptr if the cast is impossible. Supports cross casting to AST mixin types too.
+     * @tparam T The target AST type to cast to.
+     * @return The cast AST node, or @c nullptr if the cast is not possible.
+     */
     template <typename T>
     auto to() const -> T const* {
         return dynamic_cast<T const*>(this);
