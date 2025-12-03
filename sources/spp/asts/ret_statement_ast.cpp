@@ -131,6 +131,24 @@ auto spp::asts::RetStatementAst::stage_8_check_memory(
 }
 
 
+auto spp::asts::RetStatementAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate the return value, if there is one.
+    if (expr != nullptr) {
+        const auto ret_val = expr->stage_10_code_gen_2(sm, meta, ctx);
+        ctx->builder.CreateRet(ret_val);
+        return nullptr;
+    }
+
+    // Otherwise, use the return "void" instruction.
+    ctx->builder.CreateRetVoid();
+    return nullptr;
+}
+
+
 auto spp::asts::RetStatementAst::infer_type(
     ScopeManager *,
     CompilerMetaData *)
