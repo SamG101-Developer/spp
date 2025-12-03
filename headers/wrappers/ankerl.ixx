@@ -20,6 +20,16 @@ export namespace ankerl {
     };
 
     template <typename T>
+    struct ptr_cmp {
+        auto operator()(T const &lhs, T const &rhs) const -> bool {
+            if (lhs == nullptr && rhs == nullptr) { return false; }
+            if (lhs == nullptr) { return true; }
+            if (rhs == nullptr) { return false; }
+            return *lhs < *rhs;
+        }
+    };
+
+    template <typename T>
     struct ptr_hash {
         auto operator()(T const &ptr) const -> std::size_t {
             if (ptr == nullptr) { return 0; }
