@@ -660,17 +660,13 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     register_generic_syms(external_generic_syms, type_part.generic_arg_group->args, new_cls_scope_ptr, sm, meta);
 
     // Run generic substitution on the symbols in the scope.
-    // Needs a clone to prevent memory crash.
-    const auto substitution_generics = asts::ast_clone(new_cls_sym->fq_name()->type_parts().back()->generic_arg_group);
-    const auto temp = asts::ast_clone(type_part.generic_arg_group);
-    substitution_generics->args.insert(
-        substitution_generics->args.end(),
-        std::make_move_iterator(temp->args.begin()),
-        std::make_move_iterator(temp->args.end()));
+    const auto fq_type = new_cls_sym->fq_name();
+    auto substitution_generics = fq_type->type_parts().back()->generic_arg_group->args | genex::views::ptr | genex::to<std::vector>();
+    substitution_generics.append_range(type_part.generic_arg_group->args | genex::views::ptr | genex::to<std::vector>());
 
     auto tm = scopes::ScopeManager(sm->global_scope, new_alias_stmt ? sm->current_scope->get_type_symbol(new_alias_stmt->old_type)->scope : new_cls_scope_ptr);
     for (auto const &scoped_sym : new_cls_scope_ptr->all_var_symbols(true)) {
-        scoped_sym->type = scoped_sym->type->substitute_generics(substitution_generics->get_all_args());
+        scoped_sym->type = scoped_sym->type->substitute_generics(substitution_generics);
         if (meta->current_stage > 5) {
             scoped_sym->type->stage_7_analyse_semantics(&tm, meta);
         }
@@ -679,7 +675,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     auto new_ast = asts::ast_clone(old_cls_scope->ast->to<asts::ClassPrototypeAst>());
     new_ast->generic_param_group->params.clear();
     for (auto *attr : new_ast->impl->members | genex::views::ptr | genex::views::cast_dynamic<asts::ClassAttributeAst*>()) {
-        attr->type = attr->type->substitute_generics(substitution_generics->get_all_args());
+        attr->type = attr->type->substitute_generics(substitution_generics);
         if (meta->current_stage > 5) {
             attr->stage_7_analyse_semantics(&tm, meta);
         }
@@ -1042,7 +1038,7 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
         type_list[layer + 1]->stage_7_analyse_semantics(&tm, meta);
         meta->restore();
 
-        for (auto p: params->get_optional_params() | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
+        for (auto p : params->get_optional_params() | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
             p->default_val = p->default_val->substitute_generics(args->get_all_args());
         }
     }

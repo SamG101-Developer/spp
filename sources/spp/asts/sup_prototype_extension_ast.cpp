@@ -144,10 +144,9 @@ auto spp::asts::SupPrototypeExtensionAst::check_double_extension(
     auto check_double = [this, &check_scope](analyse::scopes::Scope const *sc) {
         auto dummy = analyse::utils::type_utils::GenericInferenceMap();
         const auto ext = sc->ast->to<SupPrototypeExtensionAst>();
-        if (not ext) { return false; }
-        const auto a = analyse::utils::type_utils::relaxed_symbolic_eq(*ext->name, *name, sc, &check_scope, dummy, false);
-        const auto b = analyse::utils::type_utils::symbolic_eq(*ext->super_class, *super_class, *sc, check_scope, false);
-        return a and b;
+        return ext and
+            analyse::utils::type_utils::relaxed_symbolic_eq(*ext->name, *name, sc, &check_scope, dummy, false) and
+            analyse::utils::type_utils::symbolic_eq(*ext->super_class, *super_class, *sc, check_scope, false);
     };
 
     // Prevent double inheritance by checking if the scopes are already registered the other way around.
