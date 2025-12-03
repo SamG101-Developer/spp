@@ -7,7 +7,6 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.scope_registry;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
@@ -29,7 +28,7 @@ spp::asts::TypeStatementAst::TypeStatementAst(
     decltype(tok_assign) &&tok_assign,
     decltype(old_type) old_type) :
     m_generated(false),
-    m_for_use_statement(false),
+    m_from_use_statement(false),
     m_temp_scope_1(nullptr),
     m_temp_scope_2(nullptr),
     annotations(std::move(annotations)),
@@ -68,8 +67,8 @@ auto spp::asts::TypeStatementAst::clone() const
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
     ast->m_temp_scope_1 = m_temp_scope_1;
-    ast->m_visibility = m_visibility;
-    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->m_ctx = ast; });
+    ast->visibility = visibility;
+    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->set_ast_ctx(ast); });
     return ast;
 }
 
@@ -133,8 +132,8 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
     auto type_sym = std::make_shared<analyse::scopes::TypeSymbol>(
         new_type, nullptr, nullptr, sm->current_scope, sm->current_scope->parent_module());
     sm->current_scope->add_type_symbol(type_sym);
-    (*analyse::scopes::ALIAS_TO_SYM_MAP)[this] = type_sym;
-    (*analyse::scopes::SYM_TO_ALIAS_MAP)[type_sym.get()] = std::unique_ptr<TypeStatementAst>(this);
+    m_alias_sym = type_sym;
+    m_alias_sym->alias_stmt = std::unique_ptr<TypeStatementAst>(this);
 
     // Create a new scope for the type statement.
     auto scope_name = analyse::scopes::ScopeBlockName("<type-stmt#" + static_cast<std::string>(*new_type) + "#" + std::to_string(pos_start()) + ">");
@@ -161,10 +160,9 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     m_temp_scope_2 = scope2;
 
     const auto final_sym = sm->current_scope->get_type_symbol(actual_old_type->without_generics());
-    const auto type_sym = (*analyse::scopes::ALIAS_TO_SYM_MAP)[this];
-    type_sym->type = final_sym->type;
-    type_sym->scope = final_sym->scope;
-    type_sym->is_copyable = [final_sym] { return final_sym->is_copyable(); };
+    m_alias_sym->type = final_sym->type;
+    m_alias_sym->scope = final_sym->scope;
+    m_alias_sym->is_copyable = [final_sym] { return final_sym->is_copyable(); };
     old_type = actual_old_type;
 
     if (attach_generics != nullptr and not attach_generics->params.empty()) {
@@ -201,9 +199,8 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
         old_type->stage_7_analyse_semantics(sm, meta); // Analyse the fq old type in this scope (for generics)
 
         const auto old_sym = sm->current_scope->get_type_symbol(old_type);
-        const auto type_sym = (*analyse::scopes::ALIAS_TO_SYM_MAP)[this];
-        type_sym->type = old_sym->type;
-        type_sym->scope = old_sym->scope;
+        m_alias_sym->type = old_sym->type;
+        m_alias_sym->scope = old_sym->scope;
         m_temp_scope_3 = std::move(temp_scope);
     }
     sm->move_out_of_current_scope();
@@ -244,14 +241,14 @@ auto spp::asts::TypeStatementAst::stage_7_analyse_semantics(
 
     // Otherwise, run all generation steps.
     const auto current_scope = sm->current_scope;
-    auto iter_copy = sm->m_it;
+    auto iter_copy = sm->current_iterator();
 
     sm->reset(current_scope, iter_copy);
-    iter_copy = sm->m_it;
+    iter_copy = sm->current_iterator();
     stage_2_gen_top_level_scopes(sm, meta);
 
     sm->reset(current_scope, iter_copy);
-    iter_copy = sm->m_it;
+    iter_copy = sm->current_iterator();
     stage_3_gen_top_level_aliases(sm, meta);
 
     sm->reset(current_scope, iter_copy);
@@ -266,4 +263,10 @@ auto spp::asts::TypeStatementAst::stage_8_check_memory(
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
     sm->move_out_of_current_scope();
+}
+
+
+auto spp::asts::TypeStatementAst::mark_from_use_statement()
+    -> void {
+    m_from_use_statement = true;
 }

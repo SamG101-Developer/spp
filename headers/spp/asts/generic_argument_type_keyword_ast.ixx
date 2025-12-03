@@ -7,14 +7,16 @@ import spp.asts.token_ast;
 
 import std;
 
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS struct TypeSymbol;
+}
+
 namespace spp::asts {
     SPP_EXP_CLS struct GenericArgumentTypeKeywordAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS struct TypeSymbol;
-}
+
 
 
 /**

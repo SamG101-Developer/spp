@@ -17,13 +17,8 @@ namespace spp::asts::mixins {
 
 
 SPP_EXP_CLS struct spp::asts::mixins::VisibilityEnabledAst {
-    friend struct spp::asts::AnnotationAst;
-    friend struct spp::asts::TypeStatementAst;
+    VisibilityPair visibility;
 
-protected:
-    VisibilityPair m_visibility;
-
-public:
     VisibilityEnabledAst();
 
     virtual ~VisibilityEnabledAst();

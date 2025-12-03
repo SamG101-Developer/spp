@@ -41,11 +41,9 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
 
     ~TypePostfixExpressionAst() override;
 
-protected:
     auto equals_type_postfix_expression(TypePostfixExpressionAst const &) const -> std::strong_ordering override;
     auto equals(const ExpressionAst &) const -> std::strong_ordering override;
 
-public:
     SPP_AST_KEY_FUNCTIONS;
 
     SPP_ATTR_ALWAYS_INLINE auto operator<=>(TypePostfixExpressionAst const &other) const -> std::strong_ordering {

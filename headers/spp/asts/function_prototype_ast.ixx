@@ -39,58 +39,52 @@ namespace spp::analyse::scopes {
  * analysis checks.
  */
 SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : virtual Ast, mixins::VisibilityEnabledAst, SupMemberAst, ModuleMemberAst {
-    friend struct spp::asts::AnnotationAst;
-    friend struct spp::asts::GenExpressionAst;
-    friend struct spp::asts::PostfixExpressionOperatorFunctionCallAst;
-    friend struct spp::asts::SupPrototypeExtensionAst;
-
 private:
     std::vector<std::unique_ptr<analyse::scopes::Scope>> m_generic_substituted_scopes;
 
-protected:
+public:
     /**
      * Optional @c \@abstractmethod annotation. This is used to indicate that the function is abstract and must be
      * implemented in subclasses.
      */
-    AnnotationAst *m_abstract_annotation;
+    AnnotationAst *abstract_annotation;
 
     /**
      * Optional @c \@virtualmethod annotation. This is used to indicate that the function is virtual and can be
      * overridden in subclasses.
      */
-    AnnotationAst *m_virtual_annotation;
+    AnnotationAst *virtual_annotation;
 
     /**
      * Optional @c \@hot or @c \@cold annotation. This is used to indicate that the function is a hot/cold function,
      * which means it is called frequently/infrequently and should be optimized for performance.
      */
-    AnnotationAst *m_temperature_annotation;
+    AnnotationAst *temperature_annotation;
 
     /**
      * Optional @c \@no_impl annotation. This is used to indicate that the function is not implemented, and the usual
      * type checking rules can be suspended (but this function cannot be called).
      */
-    AnnotationAst *m_no_impl_annotation;
+    AnnotationAst *no_impl_annotation;
 
     /**
      * Optional @c \@always_inline, @c \@inline, or @c \@no_inline annotation. This is used to indicate that the
      * function should be inlined, or not inlined, or always inlined.
      */
-    AnnotationAst *m_inline_annotation;
+    AnnotationAst *inline_annotation;
 
     /**
      * If this function is generic, then all generic implementations / substitutions are stored here, for code
      * generation.
      */
-    std::vector<std::unique_ptr<FunctionPrototypeAst>> m_generic_implementations;
+    std::vector<std::unique_ptr<FunctionPrototypeAst>> generic_implementations;
 
     /**
      * The LLVM generated function for this prototype. This is set during the first pass of code generation, and used
      * for further codegen in the second pass (for function calls, etc).
      */
-    llvm::Function *m_llvm_func;
+    llvm::Function *llvm_func;
 
-public:
     /**
      * The list of annotations that are applied to this function prototype. There are quite a lot of annotations that
      * can be applied here, including the typical access modifiers, but also @c \@virtualmethod, @c \@abstractmethod,

@@ -34,15 +34,6 @@ namespace spp::asts::meta {
  * and end position identification.
  */
 SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
-    friend struct spp::analyse::scopes::ScopeManager;
-    friend struct spp::asts::AnnotationAst;
-    friend struct spp::asts::ClassAttributeAst;
-    friend struct spp::asts::ClassPrototypeAst;
-    friend struct spp::asts::CmpStatementAst;
-    friend struct spp::asts::CoroutinePrototypeAst;
-    friend struct spp::asts::SubroutinePrototypeAst;
-    friend struct spp::asts::TypeStatementAst;
-
 protected:
     using AstPrinter = spp::asts::meta::AstPrinter;
 
@@ -147,8 +138,16 @@ public:
         return m_scope;
     }
 
+    auto get_ast_ctx() const -> Ast* {
+        return m_ctx;
+    }
+
     auto set_ast_scope(analyse::scopes::Scope *scope) -> void {
         m_scope = scope;
+    }
+
+    auto set_ast_ctx(Ast *ctx) -> void {
+        m_ctx = ctx;
     }
 };
 

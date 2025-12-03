@@ -20,7 +20,7 @@ protected:
      */
     std::unique_ptr<LetStatementInitializedAst> m_mapped_let;
 
-    bool m_from_pattern;
+    bool m_from_case_pattern;
 
 public:
     LocalVariableAst();
@@ -30,4 +30,6 @@ public:
     virtual auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>>;
 
     virtual auto extract_name() const -> std::shared_ptr<IdentifierAst>;
+
+    auto mark_from_case_pattern() -> void;
 };

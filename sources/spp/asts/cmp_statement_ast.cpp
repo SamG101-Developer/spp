@@ -65,8 +65,8 @@ auto spp::asts::CmpStatementAst::clone() const
         ast_clone(value));
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
-    ast->m_visibility = m_visibility;
-    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->m_ctx = ast; });
+    ast->visibility = visibility;
+    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->set_ast_ctx(ast); });
     return ast;
 }
 
@@ -124,7 +124,7 @@ auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
 
     // Create a symbol for this constant declaration, pin to prevent moving.
     auto sym = std::make_unique<analyse::scopes::VariableSymbol>(
-        name, type, false, false, m_visibility.first);
+        name, type, false, false, visibility.first);
     sym->memory_info->ast_pins.emplace_back(name.get());
     sym->memory_info->ast_comptime = ast_clone(this);
     sym->memory_info->initialized_by(*this, sm->current_scope);

@@ -33,14 +33,14 @@ auto spp::asts::CoroutinePrototypeAst::clone() const
     ast->orig_name = ast_clone(orig_name);
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
-    ast->m_abstract_annotation = m_abstract_annotation;
-    ast->m_virtual_annotation = m_virtual_annotation;
-    ast->m_temperature_annotation = m_temperature_annotation;
-    ast->m_no_impl_annotation = m_no_impl_annotation;
-    ast->m_inline_annotation = m_inline_annotation;
-    ast->m_visibility = m_visibility;
-    ast->m_llvm_coro_frame = m_llvm_coro_frame;
-    ast->annotations | genex::views::for_each([ast=ast.get()](auto const &a) { a->m_ctx = ast; });
+    ast->abstract_annotation = abstract_annotation;
+    ast->virtual_annotation = virtual_annotation;
+    ast->temperature_annotation = temperature_annotation;
+    ast->no_impl_annotation = no_impl_annotation;
+    ast->inline_annotation = inline_annotation;
+    ast->visibility = visibility;
+    ast->llvm_coro_frame = llvm_coro_frame;
+    ast->annotations | genex::views::for_each([ast=ast.get()](auto const &a) { a->set_ast_ctx(ast); });
     return ast;
 }
 
@@ -107,6 +107,6 @@ auto spp::asts::CoroutinePrototypeAst::stage_10_code_gen_2(
         });
 
     // Store the information into the coroutine context.
-    m_llvm_coro_frame = std::make_unique<codegen::LlvmCoroFrame>(coro_id, coro_begin);
+    llvm_coro_frame = std::make_unique<codegen::LlvmCoroFrame>(coro_id, coro_begin);
     return func;
 }

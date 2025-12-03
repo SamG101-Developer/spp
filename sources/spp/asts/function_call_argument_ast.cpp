@@ -17,7 +17,7 @@ spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(
     decltype(val) &&val,
     const decltype(m_order_tag) order_tag) :
     OrderableAst(order_tag),
-    m_self_type(nullptr),
+    injected_self_type(nullptr),
     conv(std::move(conv)),
     val(std::move(val)) {
 }
@@ -27,14 +27,14 @@ auto spp::asts::FunctionCallArgumentAst::set_self_type(
     std::shared_ptr<TypeAst> self_type)
     -> void {
     // Set the self type to the given type.
-    m_self_type = std::move(self_type);
+    injected_self_type = std::move(self_type);
 }
 
 
 auto spp::asts::FunctionCallArgumentAst::get_self_type()
     -> std::shared_ptr<TypeAst> {
     // Get the self type.
-    return m_self_type;
+    return injected_self_type;
 }
 
 
@@ -72,7 +72,7 @@ auto spp::asts::FunctionCallArgumentAst::infer_type(
     CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Infer the type from the value expression, unless an explicit "self" type has been given.
-    return m_self_type != nullptr
-               ? m_self_type
+    return injected_self_type != nullptr
+               ? injected_self_type
                : val->infer_type(sm, meta)->with_convention(ast_clone(conv));
 }

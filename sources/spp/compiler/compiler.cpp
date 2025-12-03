@@ -2,7 +2,6 @@ module spp.compiler.compiler;
 
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.scope_registry;
 import spp.asts.module_prototype_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.generate.common_types_precompiled;
@@ -40,9 +39,6 @@ auto spp::compiler::Compiler::compile() -> void {
         analyse::scopes::Scope::new_global(*m_modules->get_modules()[0]), nullptr);
     asts::generate::common_types_precompiled::initialize_types();
 
-    analyse::scopes::ALIAS_TO_SYM_MAP = new std::remove_reference_t<decltype(*analyse::scopes::ALIAS_TO_SYM_MAP)>();
-    analyse::scopes::SYM_TO_ALIAS_MAP = new std::remove_reference_t<decltype(*analyse::scopes::SYM_TO_ALIAS_MAP)>();
-
     m_boot->stage_1_pre_process(**ps++, *m_modules, nullptr);
     m_boot->stage_2_gen_top_level_scopes(**ps++, *m_modules, m_scope_manager.get());
     m_boot->stage_3_gen_top_level_aliases(**ps++, *m_modules, m_scope_manager.get());
@@ -56,7 +52,5 @@ auto spp::compiler::Compiler::compile() -> void {
 
 
 auto spp::compiler::Compiler::cleanup() -> void {
-    delete analyse::scopes::ALIAS_TO_SYM_MAP;
-    delete analyse::scopes::SYM_TO_ALIAS_MAP;
     analyse::scopes::ScopeManager::cleanup();
 }

@@ -101,7 +101,7 @@ auto spp::asts::InnerScopeAst<T>::new_empty()
 template <typename T>
 auto spp::asts::InnerScopeAst<T>::final_member() const
     -> Ast* {
-    return members.empty() ? tok_r->to<TokenAst>() : members.back()->template to<TokenAst>();
+    return members.empty() ? tok_r->to<Ast>() : members.back()->template to<Ast>();
 }
 
 

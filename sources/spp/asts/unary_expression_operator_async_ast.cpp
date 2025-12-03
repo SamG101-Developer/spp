@@ -70,7 +70,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_7_analyse_semantics(
     }
     else {
         // Mark the function call as async.
-        rhs->op->to<PostfixExpressionOperatorFunctionCallAst>()->m_is_async = this;
+        rhs->op->to<PostfixExpressionOperatorFunctionCallAst>()->mark_as_async(this);
     }
 }
 

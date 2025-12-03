@@ -33,14 +33,14 @@ auto spp::asts::SubroutinePrototypeAst::clone() const
     ast->orig_name = ast_clone(orig_name);
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
-    ast->m_abstract_annotation = m_abstract_annotation;
-    ast->m_virtual_annotation = m_virtual_annotation;
-    ast->m_temperature_annotation = m_temperature_annotation;
-    ast->m_no_impl_annotation = m_no_impl_annotation;
-    ast->m_inline_annotation = m_inline_annotation;
-    ast->m_visibility = m_visibility;
-    ast->m_llvm_func = m_llvm_func;
-    ast->annotations | genex::views::for_each([ast=ast.get()](auto const &a) { a->m_ctx = ast; });
+    ast->abstract_annotation = abstract_annotation;
+    ast->virtual_annotation = virtual_annotation;
+    ast->temperature_annotation = temperature_annotation;
+    ast->no_impl_annotation = no_impl_annotation;
+    ast->inline_annotation = inline_annotation;
+    ast->visibility = visibility;
+    ast->llvm_func = llvm_func;
+    ast->annotations | genex::views::for_each([ast=ast.get()](auto const &a) { a->set_ast_ctx(ast); });
     return ast;
 }
 
@@ -73,7 +73,7 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
     const auto is_void = analyse::utils::type_utils::symbolic_eq(
         *return_type, *generate::common_types_precompiled::VOID, *sm->current_scope, *sm->current_scope);
 
-    if (is_void or is_never or m_no_impl_annotation or m_abstract_annotation or (not impl->members.empty() and impl->members.back()->to<RetStatementAst>())) {
+    if (is_void or is_never or no_impl_annotation or abstract_annotation or (not impl->members.empty() and impl->members.back()->to<RetStatementAst>())) {
     }
     else {
         const auto final_member = impl->final_member();

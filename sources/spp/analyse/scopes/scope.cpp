@@ -81,7 +81,7 @@ auto spp::analyse::scopes::Scope::search_sup_scopes_for_var(
     std::shared_ptr<asts::IdentifierAst> const &name)
     -> std::shared_ptr<VariableSymbol> {
     // Recursively search the super scopes for a variable symbol.
-    for (auto const *sup_scope : scope.m_direct_sup_scopes) {
+    for (auto const *sup_scope : scope.direct_sup_scopes) {
         if (auto const sym = sup_scope->get_var_symbol(name, true); sym != nullptr) {
             return sym;
         }
@@ -97,7 +97,7 @@ auto spp::analyse::scopes::Scope::search_sup_scopes_for_type(
     std::shared_ptr<const asts::TypeAst> const &name)
     -> std::shared_ptr<TypeSymbol> {
     // Recursively search the super scopes for a type symbol.
-    for (auto const *sup_scope : scope.m_direct_sup_scopes) {
+    for (auto const *sup_scope : scope.direct_sup_scopes) {
         if (auto const sym = sup_scope->get_type_symbol(name, true); sym != nullptr) {
             return sym;
         }
@@ -275,7 +275,7 @@ auto spp::analyse::scopes::Scope::all_var_symbols(
 
     // For super scope searches, yield from all direct super scopes.
     if (sup_scope_search) {
-        for (auto const *sup_scope : m_direct_sup_scopes) {
+        for (auto const *sup_scope : direct_sup_scopes) {
             syms.append_range(sup_scope->all_var_symbols(true, false));
         }
     }
@@ -298,7 +298,7 @@ auto spp::analyse::scopes::Scope::all_type_symbols(
 
     // For super scope searches, yield from all direct super scopes.
     if (sup_scope_search) {
-        for (auto const *sup_scope : m_direct_sup_scopes) {
+        for (auto const *sup_scope : direct_sup_scopes) {
             syms.append_range(sup_scope->all_type_symbols(true, false));
         }
     }
@@ -492,7 +492,7 @@ auto spp::analyse::scopes::Scope::depth_difference(
     // Create an internal function to call recursively with a counter.
     auto func = [](this auto &&self, const Scope *source, const Scope *target, const sys::ssize_t depth) -> sys::ssize_t {
         if (source == target) { return depth; }
-        for (auto const *sup_scope : source->m_direct_sup_scopes) {
+        for (auto const *sup_scope : source->direct_sup_scopes) {
             if (const auto result = self(sup_scope, target, depth + 1z); result >= 0z) {
                 return result;
             }
@@ -543,7 +543,7 @@ auto spp::analyse::scopes::Scope::sup_scopes() const
     -> std::vector<Scope*> {
     // Get all super scopes, recursively.
     auto scopes = std::vector<Scope*>();
-    for (auto *scope : m_direct_sup_scopes) {
+    for (auto *scope : direct_sup_scopes) {
         const auto child_scopes = scope->sup_scopes();
         scopes |= genex::actions::push_back(scope);
         scopes |= genex::actions::concat(child_scopes);
@@ -562,17 +562,10 @@ auto spp::analyse::scopes::Scope::sup_types() const
 }
 
 
-auto spp::analyse::scopes::Scope::direct_sup_scopes() const
-    -> std::vector<Scope*> {
-    // Return the direct super scopes.
-    return m_direct_sup_scopes;
-}
-
-
 auto spp::analyse::scopes::Scope::direct_sup_types() const
     -> std::vector<std::shared_ptr<asts::TypeAst>> {
     // Get all direct super types (filter and map the direct super scopes).
-    return m_direct_sup_scopes
+    return direct_sup_scopes
         | genex::views::filter([](auto *scope) { return scope->ast->template to<asts::ClassPrototypeAst>(); })
         | genex::views::transform([](auto *scope) { return scope->ty_sym->fq_name(); })
         | genex::to<std::vector>();

@@ -7,7 +7,6 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.scope_registry;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.type_utils;
@@ -108,7 +107,7 @@ auto spp::asts::SupPrototypeExtensionAst::print(
 }
 
 
-auto spp::asts::SupPrototypeExtensionAst::m_check_cyclic_extension(
+auto spp::asts::SupPrototypeExtensionAst::check_cyclic_extension(
     analyse::scopes::TypeSymbol const &sup_sym,
     analyse::scopes::Scope &check_scope) const
     -> void {
@@ -133,7 +132,7 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_cyclic_extension(
 }
 
 
-auto spp::asts::SupPrototypeExtensionAst::m_check_double_extension(
+auto spp::asts::SupPrototypeExtensionAst::check_double_extension(
     analyse::scopes::TypeSymbol const &cls_sym,
     analyse::scopes::Scope &check_scope) const
     -> void {
@@ -145,14 +144,16 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_double_extension(
     auto check_double = [this, &check_scope](analyse::scopes::Scope const *sc) {
         auto dummy = analyse::utils::type_utils::GenericInferenceMap();
         const auto ext = sc->ast->to<SupPrototypeExtensionAst>();
-        return ext and
-            analyse::utils::type_utils::relaxed_symbolic_eq(*ext->name, *name, sc, &check_scope, dummy, false) and
-            analyse::utils::type_utils::symbolic_eq(*ext->super_class, *super_class, *sc, check_scope, false);
+        if (not ext) { return false; }
+        const auto a = analyse::utils::type_utils::relaxed_symbolic_eq(*ext->name, *name, sc, &check_scope, dummy, false);
+        const auto b = analyse::utils::type_utils::symbolic_eq(*ext->super_class, *super_class, *sc, check_scope, false);
+        return a and b;
     };
 
     // Prevent double inheritance by checking if the scopes are already registered the other way around.
     auto dummy = analyse::utils::type_utils::GenericInferenceMap();
-    const auto existing_sup_scopes = cls_sym.scope->sup_scopes()
+    auto all_sup_scopes = cls_sym.scope->sup_scopes();
+    const auto existing_sup_scopes = all_sup_scopes
         | genex::views::filter(check_double)
         | genex::views::transform([](auto *x) { return std::make_pair(x, x->ast->template to<SupPrototypeExtensionAst>()); })
         | genex::to<std::vector>();
@@ -164,7 +165,7 @@ auto spp::asts::SupPrototypeExtensionAst::m_check_double_extension(
 }
 
 
-auto spp::asts::SupPrototypeExtensionAst::m_check_self_extension(
+auto spp::asts::SupPrototypeExtensionAst::check_self_extension(
     analyse::scopes::Scope &check_scope) const
     -> void {
     // Check if the superimposition is extending itself.
@@ -292,10 +293,9 @@ auto spp::asts::SupPrototypeExtensionAst::stage_5_load_super_scopes(
         const auto self_sym = std::make_shared<analyse::scopes::TypeSymbol>(
             std::make_unique<TypeIdentifierAst>(name->pos_start(), "Self", nullptr),
             cls_sym->type, cls_sym->scope, sm->current_scope);
-        auto new_alias_stmt = std::make_unique<TypeStatementAst>(
+        self_sym->alias_stmt = std::make_unique<TypeStatementAst>(
             SPP_NO_ANNOTATIONS, nullptr,
             TypeIdentifierAst::from_string("Self"), nullptr, nullptr, name);
-        (*analyse::scopes::SYM_TO_ALIAS_MAP)[self_sym.get()] = std::move(new_alias_stmt);
         sm->current_scope->add_type_symbol(self_sym);
     }
 
@@ -358,7 +358,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
             }
 
             // Check the base method is virtual or abstract.
-            if (not(base_method->m_abstract_annotation or base_method->m_virtual_annotation)) {
+            if (not(base_method->abstract_annotation or base_method->virtual_annotation)) {
                 analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionExtensionNonVirtualMethodOverriddenError>().with_args(
                     *this_method->name, *base_method->name, *super_class).with_scopes({sm->current_scope}).raise();
             }

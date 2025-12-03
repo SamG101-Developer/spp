@@ -1,7 +1,6 @@
 module spp.analyse.scopes.symbols;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
-import spp.analyse.scopes.scope_registry;
 import spp.analyse.utils.mem_utils;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
@@ -14,9 +13,6 @@ import spp.asts.type_statement_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_sym_info;
 import nlohmann.json;
-
-
-spp::analyse::scopes::Symbol::~Symbol() = default;
 
 
 spp::analyse::scopes::NamespaceSymbol::NamespaceSymbol(
@@ -32,9 +28,6 @@ spp::analyse::scopes::NamespaceSymbol::NamespaceSymbol(
     name(that.name),
     scope(that.scope) {
 }
-
-
-spp::analyse::scopes::NamespaceSymbol::~NamespaceSymbol() = default;
 
 
 spp::analyse::scopes::NamespaceSymbol::operator std::string() const {
@@ -133,7 +126,7 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
     visibility(that.visibility),
     convention(asts::ast_clone(that.convention)),
     generic_impl(that.generic_impl) {
-    (*SYM_TO_ALIAS_MAP)[this] = asts::ast_clone((*SYM_TO_ALIAS_MAP)[&that]);
+    alias_stmt = asts::ast_clone(that.alias_stmt);
 }
 
 
@@ -147,12 +140,6 @@ spp::analyse::scopes::TypeSymbol::operator std::string() const {
 }
 
 
-auto spp::analyse::scopes::TypeSymbol::alias_stmt() const
-    -> asts::TypeStatementAst* {
-    return SYM_TO_ALIAS_MAP->contains(this) ? (*SYM_TO_ALIAS_MAP)[this].get() : nullptr;
-}
-
-
 auto spp::analyse::scopes::TypeSymbol::operator==(
     TypeSymbol const &that) const
     -> bool {
@@ -163,8 +150,8 @@ auto spp::analyse::scopes::TypeSymbol::operator==(
 auto spp::analyse::scopes::TypeSymbol::fq_name() const
     -> std::shared_ptr<asts::TypeAst> {
     // For aliases, return the fully qualified name of the aliased type.
-    if (alias_stmt() != nullptr) {
-        return asts::ast_clone(alias_stmt()->old_type);
+    if (alias_stmt != nullptr) {
+        return asts::ast_clone(alias_stmt->old_type);
     }
 
     // If the type is generic, or the name starts with a '$', return the name as-is.

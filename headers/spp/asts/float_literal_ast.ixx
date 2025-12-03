@@ -67,12 +67,10 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
 
     ~FloatLiteralAst() override;
 
-protected:
     SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
     SPP_ATTR_NODISCARD auto equals_float_literal(FloatLiteralAst const &) const -> std::strong_ordering override;
 
-public:
     SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;

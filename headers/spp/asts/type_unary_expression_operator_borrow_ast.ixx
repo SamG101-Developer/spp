@@ -30,12 +30,10 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeU
 
     ~TypeUnaryExpressionOperatorBorrowAst() override;
 
-protected:
     auto equals(TypeUnaryExpressionOperatorAst const &) const -> std::strong_ordering override;
 
     auto equals_op_borrow(TypeUnaryExpressionOperatorBorrowAst const &) const -> std::strong_ordering override;
 
-public:
     SPP_AST_KEY_FUNCTIONS;
 
     auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;

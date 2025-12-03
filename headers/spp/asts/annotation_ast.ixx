@@ -20,8 +20,6 @@ namespace spp::asts {
  * additional behaviour in the compiler.
  */
 SPP_EXP_CLS struct spp::asts::AnnotationAst final : virtual Ast {
-    friend struct spp::asts::UseStatementAst;
-
     /**
      * The token that represents the @c @ sign in the annotation. This introduces the annotation.
      */

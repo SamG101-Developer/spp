@@ -6,13 +6,13 @@ export module spp.codegen.llvm_func_impls;
 import llvm;
 import std;
 
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class ScopeManager;
+}
+
 namespace spp::asts {
     SPP_EXP_CLS struct FunctionPrototypeAst;
     SPP_EXP_CLS struct TypeAst;
-}
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class ScopeManager;
 }
 
 namespace spp::codegen {

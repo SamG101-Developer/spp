@@ -27,8 +27,6 @@ namespace spp::analyse::scopes {
 
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : PostfixExpressionOperatorAst {
-    friend struct spp::asts::UnaryExpressionOperatorAsyncAst;
-
 private:
     std::optional<std::tuple<analyse::scopes::Scope const*, FunctionPrototypeAst*, std::vector<GenericArgumentAst*>>> m_overload_info;
     Ast *m_is_async;
@@ -82,4 +80,6 @@ public:
     auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+
+    auto mark_as_async(Ast *async_token) -> void;
 };

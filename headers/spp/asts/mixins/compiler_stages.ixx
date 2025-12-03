@@ -7,10 +7,8 @@ import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
-
-namespace spp::asts::mixins {
-    SPP_EXP_CLS struct CompilerStages;
-    SPP_EXP_CLS struct TypeInferrableAst;
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class ScopeManager;
 }
 
 namespace spp::asts {
@@ -21,8 +19,9 @@ namespace spp::asts::meta {
     SPP_EXP_CLS struct CompilerMetaData;
 }
 
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class ScopeManager;
+namespace spp::asts::mixins {
+    SPP_EXP_CLS struct CompilerStages;
+    SPP_EXP_CLS struct TypeInferrableAst;
 }
 
 
@@ -31,9 +30,6 @@ namespace spp::analyse::scopes {
  * AST. The exceptions are the first 3 functions, which are applies to top level ASTs exclusively.
  */
 SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
-    friend struct spp::asts::mixins::TypeInferrableAst;
-
-protected:
     using ScopeManager = spp::analyse::scopes::ScopeManager;
     using CompilerMetaData = spp::asts::meta::CompilerMetaData;
 

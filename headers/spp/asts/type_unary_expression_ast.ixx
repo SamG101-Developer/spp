@@ -41,11 +41,9 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
 
     ~TypeUnaryExpressionAst() override;
 
-protected:
     auto equals_type_unary_expression(TypeUnaryExpressionAst const &other) const -> std::strong_ordering override;
     auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
-public:
     SPP_AST_KEY_FUNCTIONS;
 
     SPP_ATTR_ALWAYS_INLINE auto operator<=>(TypeUnaryExpressionAst const &other) const -> std::strong_ordering {

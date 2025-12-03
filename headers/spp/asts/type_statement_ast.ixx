@@ -21,6 +21,7 @@ namespace spp::asts {
 
 namespace spp::analyse::scopes {
     SPP_EXP_CLS class Scope;
+    extern "C++" struct TypeSymbol;
 }
 
 
@@ -30,12 +31,12 @@ namespace spp::analyse::scopes {
  * @code type SecureByteMap[T] = std::collections::HashMap[K=Byte, V=T, A=SecureAlloc[(K, V)]]@endcode
  */
 SPP_EXP_CLS struct spp::asts::TypeStatementAst final : StatementAst, ModuleMemberAst, SupMemberAst, mixins::VisibilityEnabledAst {
-    friend struct spp::asts::UseStatementAst;
-
 private:
     bool m_generated;
 
-    bool m_for_use_statement;
+    bool m_from_use_statement;
+
+    std::shared_ptr<analyse::scopes::TypeSymbol> m_alias_sym;
 
 public:
     analyse::scopes::Scope *m_temp_scope_1;
@@ -112,6 +113,8 @@ public:
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto mark_from_use_statement() -> void;
 };
 
 

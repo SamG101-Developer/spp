@@ -15,8 +15,6 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureAttributeBindingAst final : LocalVariableAst {
-    friend struct spp::asts::CasePatternVariantDestructureAttributeBindingAst;
-
     /**
      * The name of the attribute. This is the identifier that is used to refer to the attribute of the object being
      * destructured.

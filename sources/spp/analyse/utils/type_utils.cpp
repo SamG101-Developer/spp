@@ -7,7 +7,6 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope_block_name;
-import spp.analyse.scopes.scope_registry;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.mem_utils;
@@ -622,12 +621,12 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
         old_cls_scope->parent, old_cls_scope->ast);
 
     const auto new_cls_sym = std::make_shared<scopes::TypeSymbol>(
-        ast_clone(&type_part), new_cls_scope->ast->to<asts::ClassPrototypeAst>(), new_cls_scope.get(),
+        asts::ast_clone(&type_part), new_cls_scope->ast->to<asts::ClassPrototypeAst>(), new_cls_scope.get(),
         sm->current_scope, old_cls_scope->parent, old_cls_sym.is_generic, old_cls_sym.is_directly_copyable, old_cls_sym.visibility);
     const auto new_cls_scope_ptr = new_cls_scope.get();
 
     new_cls_sym->is_copyable = [&old_cls_sym] { return old_cls_sym.is_copyable(); };
-    auto new_alias_stmt = asts::ast_clone(old_cls_sym.alias_stmt());
+    auto new_alias_stmt = asts::ast_clone(old_cls_sym.alias_stmt);
     if (new_alias_stmt) {
         new_alias_stmt->old_type = new_alias_stmt->old_type->substitute_generics(type_part.generic_arg_group->get_all_args());
         new_alias_stmt->old_type->stage_7_analyse_semantics(sm, meta);
@@ -636,7 +635,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
         target_scope->add_type_symbol(new_cls_sym);
         new_alias_stmt->m_temp_scope_1->add_type_symbol(new_cls_sym);
         new_alias_stmt->m_temp_scope_1->children.emplace_back(std::move(new_cls_scope));
-        (*scopes::SYM_TO_ALIAS_MAP)[new_cls_sym.get()] = std::move(new_alias_stmt);
+        new_cls_sym->alias_stmt = std::move(new_alias_stmt);
     }
 
     // Configure the new scope based on the base (old) scope.
@@ -752,19 +751,18 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     auto old_self_sym = new_sup_scope_ptr->get_type_symbol(self_type);
     const auto new_self_sym = std::make_shared<scopes::TypeSymbol>(
         std::make_unique<asts::TypeIdentifierAst>(0, "Self", nullptr), new_cls_scope.ty_sym->type, &new_cls_scope, new_sup_scope_ptr);
-    auto new_alias_stmt = std::make_unique<asts::TypeStatementAst>(
+    new_self_sym->alias_stmt = std::make_unique<asts::TypeStatementAst>(
         SPP_NO_ANNOTATIONS, nullptr, asts::TypeIdentifierAst::from_string("Self"), nullptr, nullptr, self_type);
-    (*scopes::SYM_TO_ALIAS_MAP)[new_self_sym.get()] = std::move(new_alias_stmt);
     new_sup_scope_ptr->add_type_symbol(new_self_sym);
 
     // Run generic substitution on the aliases in the new scope.
     for (auto const &scoped_sym : new_sup_scope_ptr->all_type_symbols(true)) {
-        if (scoped_sym->alias_stmt() != nullptr) {
-            auto old_type_sub = scoped_sym->alias_stmt()->old_type->substitute_generics(generic_args.args | genex::views::ptr | genex::to<std::vector>());
+        if (scoped_sym->alias_stmt != nullptr) {
+            auto old_type_sub = scoped_sym->alias_stmt->old_type->substitute_generics(generic_args.args | genex::views::ptr | genex::to<std::vector>());
             // old_type_sub->stage_7_analyse_semantics(&tm, meta);
             const auto old_type_sub_sym = new_sup_scope_ptr->get_type_symbol(old_type_sub);
 
-            scoped_sym->alias_stmt()->old_type = std::move(old_type_sub);
+            scoped_sym->alias_stmt->old_type = std::move(old_type_sub);
             if (old_type_sub_sym != nullptr) {
                 scoped_sym->type = old_type_sub_sym->type;
                 scoped_sym->scope = old_type_sub_sym->scope;
@@ -984,16 +982,16 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
 
         type_list.emplace_back(actual_old_type);
         scope_list.emplace_back(tracking_scope);
-        alias_list.emplace_back(sym->alias_stmt());
+        alias_list.emplace_back(sym->alias_stmt.get());
         sym_list.emplace_back(sym.get());
 
         // Always check for alias first, because type might have been set by prev alias analysis.
-        if (sym->alias_stmt() != nullptr) {
-            generic_list.emplace_back(asts::ast_clone(sym->alias_stmt()->generic_param_group));
-            actual_old_type = sym->alias_stmt()->old_type;
+        if (sym->alias_stmt != nullptr) {
+            generic_list.emplace_back(asts::ast_clone(sym->alias_stmt->generic_param_group));
+            actual_old_type = sym->alias_stmt->old_type;
             tracking_scope = sym->scope_defined_in;
             const auto new_sym = tracking_scope->get_type_symbol(actual_old_type->without_generics());
-            ts_proto = ts_proto ? : sym->alias_stmt(); // always override, so last one is gotten.
+            ts_proto = ts_proto ? : sym->alias_stmt.get(); // always override, so last one is gotten.
         }
 
         // See if we have found a non-alias type (concrete class definition).

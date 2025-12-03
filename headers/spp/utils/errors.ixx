@@ -6,7 +6,6 @@ import spp.utils.error_formatter;
 import genex;
 import std;
 
-
 namespace spp::utils::errors {
     SPP_EXP_CLS struct AbstractError;
     SPP_EXP_CLS template <typename T>

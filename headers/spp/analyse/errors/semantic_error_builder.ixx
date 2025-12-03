@@ -23,19 +23,19 @@ struct spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::Ab
     ~SemanticErrorBuilder() override = default;
 
     SPP_ATTR_NORETURN auto raise() -> void override {
-        // const auto cast_error = dynamic_cast<SemanticError*>(this->m_err_obj.get());
-        //
-        // // Cycle the formatters to match the number of strings being formatted.
-        // auto formatters = this->m_error_formatters
-        //     | genex::views::cycle
-        //     | genex::views::take(cast_error->m_error_info.size())
-        //     | genex::to<std::vector>();
-        //
-        // // Format all the error strings by the correct formatter (file agnostic).
-        // cast_error->messages = cast_error->m_error_info
-        //     | genex::views::zip(std::move(formatters))
-        //     | genex::views::transform([this](auto &&x) { return stringify_error_information(std::get<1>(x), std::get<0>(x)); })
-        //     | genex::to<std::vector>();
+        const auto cast_error = dynamic_cast<SemanticError*>(this->m_err_obj.get());
+
+        // Cycle the formatters to match the number of strings being formatted.
+        auto formatters = this->m_error_formatters
+            | genex::views::cycle
+            | genex::views::take(cast_error->m_error_info.size())
+            | genex::to<std::vector>();
+
+        // Format all the error strings by the correct formatter (file agnostic).
+        cast_error->messages = cast_error->m_error_info
+            | genex::views::zip(std::move(formatters))
+            | genex::views::transform([this](auto &&x) { return stringify_error_information(std::get<1>(x), std::get<0>(x)); })
+            | genex::to<std::vector>();
 
         // Throw the error object.
         spp::utils::errors::AbstractErrorBuilder<T>::raise();

@@ -14,17 +14,17 @@ import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class Scope;
+    SPP_EXP_CLS class ScopeManager;
+    SPP_EXP_CLS struct TypeSymbol;
+}
+
 namespace spp::asts {
     SPP_EXP_CLS struct ClassPrototypeAst;
     SPP_EXP_CLS struct GenericParameterGroupAst;
     SPP_EXP_CLS struct TypeAst;
     SPP_EXP_CLS struct TypeStatementAst;
-}
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
-    SPP_EXP_CLS class ScopeManager;
-    SPP_EXP_CLS struct TypeSymbol;
 }
 
 
@@ -34,8 +34,6 @@ namespace spp::analyse::scopes {
  * ast for this class, allowing for scoping rules to be made easier.
  */
 SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : virtual Ast, mixins::VisibilityEnabledAst, SupMemberAst, ModuleMemberAst {
-    friend struct spp::asts::TypeStatementAst;
-
 private:
     std::vector<std::pair<analyse::scopes::Scope*, std::unique_ptr<ClassPrototypeAst>>> m_generic_substituted_scopes;
 

@@ -5,11 +5,6 @@ export module spp.asts.mixins.abstract_type_ast;
 import genex;
 import std;
 
-
-namespace spp::asts::mixins {
-    SPP_EXP_CLS struct AbstractTypeAst;
-}
-
 namespace spp::asts {
     SPP_EXP_CLS struct ConventionAst;
     SPP_EXP_CLS struct GenericArgumentAst;
@@ -18,6 +13,10 @@ namespace spp::asts {
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct TypeAst;
     SPP_EXP_CLS struct TypeIdentifierAst;
+}
+
+namespace spp::asts::mixins {
+    SPP_EXP_CLS struct AbstractTypeAst;
 }
 
 

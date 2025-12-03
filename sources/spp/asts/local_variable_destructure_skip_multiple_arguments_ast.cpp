@@ -7,13 +7,14 @@ import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.ptr;
 
 
 spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::LocalVariableDestructureSkipMultipleArgumentsAst(
     decltype(tok_ellipsis) &&tok_ellipsis,
     std::unique_ptr<LocalVariableAst> &&binding) :
     tok_ellipsis(std::move(tok_ellipsis)),
-    binding(std::unique_ptr<LocalVariableSingleIdentifierAst>(binding.release()->to<LocalVariableSingleIdentifierAst>())) {
+    binding(utils::ptr::unique_cast<LocalVariableSingleIdentifierAst>(std::move(binding))) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_ellipsis, lex::SppTokenType::TK_DOUBLE_DOT, "..");
 }
 

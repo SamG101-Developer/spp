@@ -5,8 +5,13 @@ export module spp.asts.sup_prototype_extension_ast;
 import spp.asts.ast;
 import spp.asts.module_member_ast;
 import spp.asts.sup_member_ast;
-
 import std;
+
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class ScopeManager;
+    SPP_EXP_CLS class Scope;
+    SPP_EXP_CLS struct TypeSymbol;
+}
 
 namespace spp::asts {
     SPP_EXP_CLS struct FunctionPrototypeAst;
@@ -15,12 +20,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct SupPrototypeExtensionAst;
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
-}
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class ScopeManager;
-    SPP_EXP_CLS class Scope;
-    SPP_EXP_CLS struct TypeSymbol;
 }
 
 
@@ -34,9 +33,6 @@ namespace spp::analyse::scopes {
  * @endcode
  */
 SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : virtual Ast, ModuleMemberAst, SupMemberAst {
-    friend class spp::analyse::scopes::ScopeManager;
-    friend struct spp::asts::FunctionPrototypeAst;
-
     /**
      * The @c sup keyword that represents the start of the superimposition. This is used to indicate that a type is
      * being extended with additional methods.
@@ -94,22 +90,20 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : virtual Ast, Modu
 
     SPP_AST_KEY_FUNCTIONS;
 
-private:
-    auto m_check_cyclic_extension(
+    auto check_cyclic_extension(
         analyse::scopes::TypeSymbol const &sup_sym,
         analyse::scopes::Scope &check_scope) const
         -> void;
 
-    auto m_check_double_extension(
+    auto check_double_extension(
         analyse::scopes::TypeSymbol const &cls_sym,
         analyse::scopes::Scope &check_scope) const
         -> void;
 
-    auto m_check_self_extension(
+    auto check_self_extension(
         analyse::scopes::Scope &check_scope) const
         -> void;
 
-public:
     auto stage_1_pre_process(Ast *ctx) -> void override;
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *) -> void override;

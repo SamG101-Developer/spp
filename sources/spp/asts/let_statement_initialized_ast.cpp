@@ -101,6 +101,9 @@ auto spp::asts::LetStatementInitializedAst::stage_7_analyse_semantics(
     // Add the type into the return type overload resolver.
     meta->save();
     meta->return_type_overload_resolver_type = type;
+    if (operator std::string().starts_with("let t = ")) {
+        auto _ = 123;
+    }
     val->stage_7_analyse_semantics(sm, meta);
 
     meta->assignment_target = var->extract_name();

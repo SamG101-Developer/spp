@@ -70,7 +70,7 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::convert_to_variable(
     -> std::unique_ptr<LocalVariableAst> {
     // Create the local variable single identifier binding AST.
     auto var = std::make_unique<LocalVariableSingleIdentifierAst>(ast_clone(tok_mut), ast_clone(name), ast_clone(alias));
-    var->m_from_pattern = true;
+    var->mark_from_case_pattern();
     return var;
 }
 

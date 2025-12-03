@@ -18,8 +18,6 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureTupleAst final : LocalVariableAst {
-    friend struct spp::asts::CasePatternVariantDestructureTupleAst;
-
 private:
     std::vector<std::unique_ptr<LetStatementInitializedAst>> m_new_asts;
 

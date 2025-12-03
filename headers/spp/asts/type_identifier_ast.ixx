@@ -45,12 +45,10 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
 
     ~TypeIdentifierAst() override;
 
-protected:
     auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
     auto equals_type_identifier(TypeIdentifierAst const &other) const -> std::strong_ordering override;
 
-public:
     SPP_AST_KEY_FUNCTIONS;
 
     static auto from_identifier(IdentifierAst const &identifier) -> std::shared_ptr<TypeIdentifierAst>;

@@ -56,7 +56,7 @@ auto spp::asts::ModulePrototypeAst::name() const
     using namespace std::string_literals;
     // Split the file path intro parts.
     auto parts = std::vector<std::string>();
-    for (auto const &entry : std::filesystem::directory_iterator(m_file_path)) {
+    for (auto const &entry : std::filesystem::directory_iterator(file_path)) {
         if (entry.is_directory()) {
             parts.emplace_back(entry.path().filename().string());
         }
@@ -86,7 +86,7 @@ auto spp::asts::ModulePrototypeAst::file_name() const
     -> std::unique_ptr<IdentifierAst> {
     using namespace std::string_literals;
     // Return the filepath as an IdentifierAst.
-    return std::make_unique<IdentifierAst>(pos_start(), m_file_path.string());
+    return std::make_unique<IdentifierAst>(pos_start(), file_path.string());
 }
 
 

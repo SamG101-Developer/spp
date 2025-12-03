@@ -36,12 +36,10 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final :
 
     ~TypePostfixExpressionOperatorNestedTypeAst() override;
 
-protected:
     auto equals(TypePostfixExpressionOperatorAst const &) const -> std::strong_ordering override;
 
     auto equals_nested_type(TypePostfixExpressionOperatorNestedTypeAst const &) const -> std::strong_ordering override;
 
-public:
     SPP_AST_KEY_FUNCTIONS;
 
     auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;

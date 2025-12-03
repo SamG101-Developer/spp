@@ -43,12 +43,10 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
 
     ~IntegerLiteralAst() override;
 
-protected:
     auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
     auto equals_integer_literal(IntegerLiteralAst const &) const -> std::strong_ordering override;
 
-public:
     SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;

@@ -21,14 +21,12 @@ namespace spp::parse {
 
 SPP_EXP_CLS template <typename T>
 struct spp::parse::errors::SyntacticErrorBuilder final : utils::errors::AbstractErrorBuilder<T> {
-    friend class spp::parse::ParserSpp;
-
-private:
     std::size_t pos = 0;
+
     std::set<lex::SppTokenType> tokens = {};
 
-public:
     SyntacticErrorBuilder() = default;
+
     ~SyntacticErrorBuilder() override = default;
 
     SPP_ATTR_NORETURN auto raise() -> void override {

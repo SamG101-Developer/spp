@@ -16,15 +16,12 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst {
-    friend struct spp::asts::GenExpressionAst;
     using FunctionPrototypeAst::FunctionPrototypeAst;
 
-private:
-    std::shared_ptr<codegen::LlvmCoroFrame> m_llvm_coro_frame;
+    std::shared_ptr<codegen::LlvmCoroFrame> llvm_coro_frame;
 
-    llvm::Value *m_llvm_coro_yield_slot;
+    llvm::Value *llvm_coro_yield_slot;
 
-public:
     ~CoroutinePrototypeAst() override;
 
     auto clone() const -> std::unique_ptr<Ast> override;

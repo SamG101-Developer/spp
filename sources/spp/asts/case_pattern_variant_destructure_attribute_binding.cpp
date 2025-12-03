@@ -69,6 +69,6 @@ auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::convert_to_var
     // Create the local variable destructure attribute binding AST.
     auto var = std::make_unique<LocalVariableDestructureAttributeBindingAst>(
         ast_clone(name), nullptr, val->convert_to_variable(meta));
-    var->m_from_pattern = true;
+    var->mark_from_case_pattern();
     return var;
 }

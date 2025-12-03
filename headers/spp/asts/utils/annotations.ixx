@@ -4,12 +4,9 @@ module;
 export module spp.asts.utils.annotations;
 import std;
 
-/// @cond
 namespace spp::asts::utils {
     SPP_EXP_ENUM enum class BuiltinAnnotations : std::uint8_t;
 }
-
-/// @endcond
 
 
 // Todo: move this to documentation then delete the file.

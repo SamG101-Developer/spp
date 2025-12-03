@@ -55,7 +55,7 @@ auto spp::asts::ClassAttributeAst::clone() const
         ast_clone(default_val));
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
-    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->m_ctx = ast; });
+    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->set_ast_ctx(ast); });
     return ast;
 }
 
@@ -107,7 +107,7 @@ auto spp::asts::ClassAttributeAst::stage_2_gen_top_level_scopes(
     }
 
     // Create a variable symbol for this attribute in the current scope (class scope).
-    auto sym = std::make_unique<analyse::scopes::VariableSymbol>(name, type, false, false, m_visibility.first);
+    auto sym = std::make_unique<analyse::scopes::VariableSymbol>(name, type, false, false, visibility.first);
     sm->current_scope->add_var_symbol(std::move(sym));
 }
 

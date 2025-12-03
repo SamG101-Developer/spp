@@ -180,7 +180,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
         // Use a try-except block to catch any errors as a following overload could still be valid.
         try {
             // Cannot call an abstract function.
-            if (fn_proto->m_abstract_annotation != nullptr) {
+            if (fn_proto->abstract_annotation != nullptr) {
                 analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallAbstractFunctionError>().with_args(
                     *fn_proto, *this).with_scopes({fn_scope}).raise();
             }
@@ -293,8 +293,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 }
 
                 // Save the generic implementation against the base function, and update the active scope and prototype.
-                fn_proto->m_generic_implementations.emplace_back(std::move(new_fn_proto));
-                fn_proto = fn_proto->m_generic_implementations.back().get();
+                fn_proto->generic_implementations.emplace_back(std::move(new_fn_proto));
+                fn_proto = fn_proto->generic_implementations.back().get();
                 fn_scope = new_fn_scope;
             }
 
@@ -449,7 +449,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             | genex::to<std::string>());
 
         auto arg_usage_signature = arg_group->args
-            | genex::views::transform([sm, meta](auto const &x) { return x->m_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
+            | genex::views::transform([sm, meta](auto const &x) { return x->injected_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
             | genex::views::intersperse(", "s)
             | genex::views::join
             | genex::to<std::string>();
@@ -468,7 +468,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             | genex::to<std::string>());
 
         auto arg_usage_signature = arg_group->args
-            | genex::views::transform([sm, meta](auto const &x) { return x->m_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
+            | genex::views::transform([sm, meta](auto const &x) { return x->injected_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
             | genex::views::intersperse(", "s)
             | genex::views::join
             | genex::to<std::string>();
@@ -568,7 +568,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) -> llvm::Value* {
     // Get the llvm function target.
-    const auto llvm_func = std::get<1>(*m_overload_info)->m_llvm_func;
+    const auto llvm_func = std::get<1>(*m_overload_info)->llvm_func;
     const auto llvm_func_args = arg_group->args
         | genex::views::transform([sm, meta, ctx](auto const &x) { return x->stage_10_code_gen_2(sm, meta, ctx); })
         | genex::to<std::vector>();
@@ -626,4 +626,11 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
 
     // Return the type.
     return ret_type;
+}
+
+
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::mark_as_async(
+    Ast *async_token)
+    -> void {
+    m_is_async = async_token;
 }

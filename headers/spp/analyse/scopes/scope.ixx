@@ -26,6 +26,9 @@ namespace spp::analyse::scopes {
     SPP_EXP_CLS class Scope;
     SPP_EXP_CLS class ScopeManager;
     SPP_EXP_CLS struct Symbol;
+    SPP_EXP_CLS struct TypeSymbol;
+    SPP_EXP_CLS struct NamespaceSymbol;
+    SPP_EXP_CLS struct VariableSymbol;
     SPP_EXP_CLS using ScopeName = std::variant<
         std::shared_ptr<asts::IdentifierAst>,
         std::shared_ptr<asts::TypeIdentifierAst>,
@@ -38,8 +41,6 @@ namespace spp::utils::errors {
 
 
 SPP_EXP_CLS class spp::analyse::scopes::Scope {
-    friend class spp::analyse::scopes::ScopeManager;
-
 public:
     /**
      * The name of the scope. This will be either an @c std::shared_ptr<IdentifierAst> (functions, modules), an
@@ -92,14 +93,10 @@ public:
      */
     Scope *non_generic_scope;
 
+    std::vector<Scope*> direct_sup_scopes;
+
 private:
-    std::vector<Scope*> m_direct_sup_scopes;
-
-    std::vector<Scope*> m_direct_sub_scopes;
-
     utils::errors::ErrorFormatter *m_error_formatter;
-
-    std::vector<std::unique_ptr<asts::Ast>> m_temp_asts;
 
 public:
     Scope(ScopeName name, Scope *parent, asts::Ast *ast = nullptr, utils::errors::ErrorFormatter *error_formatter = nullptr);
@@ -152,8 +149,6 @@ public:
     auto sup_scopes() const -> std::vector<Scope*>;
 
     auto sup_types() const -> std::vector<std::shared_ptr<asts::TypeAst>>;
-
-    auto direct_sup_scopes() const -> std::vector<Scope*>;
 
     auto direct_sup_types() const -> std::vector<std::shared_ptr<asts::TypeAst>>;
 

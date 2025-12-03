@@ -28,6 +28,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import genex;
+import sys;
 
 
 spp::asts::FunctionCallArgumentGroupAst::FunctionCallArgumentGroupAst(
@@ -153,8 +154,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         }
 
         // Replace the tuple-expansion argument with the expanded arguments.
-        const auto max = arg_type->type_parts().back()->generic_arg_group->args.size();
-        for (auto j = max - 1; j > -1uz; --j) {
+        const auto max = static_cast<sys::ssize_t>(arg_type->type_parts().back()->generic_arg_group->args.size());
+        for (auto j = max - 1; j > -1z; --j) {
             auto field = std::make_unique<IdentifierAst>(arg->val->pos_start(), std::to_string(j));
             auto new_ast = std::make_unique<PostfixExpressionAst>(
                 ast_clone(arg->val),
@@ -192,7 +193,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
     CompilerMetaData *meta)
     -> void {
     // If the target is a coroutine, or the target is called as "async", then pins are required.
-    const auto is_target_coro = meta->target_call_function_prototype->to<CoroutinePrototypeAst>() != nullptr;
+    const auto is_target_coro = meta->target_call_function_prototype and
+        meta->target_call_function_prototype->to<CoroutinePrototypeAst>() != nullptr;
     const auto pins_required = meta->target_call_was_function_async or is_target_coro;
 
     // Define the borrow sets to maintain the law of exclusivity.

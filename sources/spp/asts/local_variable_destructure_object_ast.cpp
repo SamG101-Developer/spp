@@ -138,7 +138,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
         | genex::to<std::vector>();
 
     // Check the type matches.
-    if (not analyse::utils::type_utils::symbolic_eq(*val_type, *type, *sm->current_scope, *sm->current_scope, m_from_pattern)) {
+    if (not analyse::utils::type_utils::symbolic_eq(*val_type, *type, *sm->current_scope, *sm->current_scope, m_from_case_pattern)) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
             *val, *val_type, *type, *type).with_scopes({sm->current_scope}).raise();
     }

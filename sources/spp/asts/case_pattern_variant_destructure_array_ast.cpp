@@ -93,7 +93,7 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::convert_to_variable(
     // Create the final local variable wrapping, tag it and return it.
     auto var = std::make_unique<LocalVariableDestructureArrayAst>(
         nullptr, std::move(mapped_elems), nullptr);
-    var->m_from_pattern = true;
+    var->mark_from_case_pattern();
     return var;
 }
 

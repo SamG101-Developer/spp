@@ -4,12 +4,12 @@ module;
 export module spp.codegen.llvm_size;
 import std;
 
-namespace spp::asts {
-    SPP_EXP_CLS struct TypeAst;
-}
-
 namespace spp::analyse::scopes {
     SPP_EXP_CLS class ScopeManager;
+}
+
+namespace spp::asts {
+    SPP_EXP_CLS struct TypeAst;
 }
 
 

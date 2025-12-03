@@ -42,12 +42,10 @@ SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
 
     ~TupleLiteralAst() override;
 
-protected:
     auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
     auto equals_tuple_literal(TupleLiteralAst const &) const -> std::strong_ordering override;
 
-public:
     SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;

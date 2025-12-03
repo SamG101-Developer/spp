@@ -3,9 +3,11 @@ module;
 
 export module spp.compiler.compiler_boot;
 import spp.utils.progress;
-
 import std;
 
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class ScopeManager;
+}
 
 namespace spp::asts {
     SPP_EXP_CLS struct Ast;
@@ -16,10 +18,6 @@ namespace spp::compiler {
     SPP_EXP_CLS struct CompilerBoot;
     SPP_EXP_CLS struct Module;
     SPP_EXP_CLS struct ModuleTree;
-}
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class ScopeManager;
 }
 
 

@@ -45,7 +45,7 @@ auto spp::asts::UseStatementAst::clone() const
         ast_clone(old_type));
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
-    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->m_ctx = ast; });
+    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->set_ast_ctx(ast); });
     return ast;
 }
 
@@ -91,7 +91,7 @@ auto spp::asts::UseStatementAst::stage_2_gen_top_level_scopes(
     const auto new_type = std::dynamic_pointer_cast<TypeIdentifierAst>(old_type->type_parts().back()->without_generics());
     m_conversion = std::make_unique<TypeStatementAst>(
         std::move(annotations), nullptr, new_type, nullptr, nullptr, ast_clone(old_type));
-    m_conversion->m_for_use_statement = true;
+    m_conversion->mark_from_use_statement();
     m_conversion->stage_2_gen_top_level_scopes(sm, meta);
     m_generated = true;
 }

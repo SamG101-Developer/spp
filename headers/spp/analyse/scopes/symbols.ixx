@@ -5,6 +5,7 @@ export module spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_info_utils;
 import spp.asts.ast;
 import spp.asts.convention_ast;
+import spp.asts.type_statement_ast;
 import spp.asts.utils.visibility;
 import spp.codegen.llvm_sym_info;
 import std;
@@ -16,9 +17,11 @@ namespace spp::asts {
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct TypeAst;
     SPP_EXP_CLS struct TypeIdentifierAst;
+    SPP_EXP_CLS struct TypeStatementAst;
 }
 
 namespace spp::analyse::scopes {
+    SPP_EXP_CLS class Scope;
     SPP_EXP_CLS struct Symbol;
     SPP_EXP_CLS struct NamespaceSymbol;
     SPP_EXP_CLS struct TypeSymbol;
@@ -131,6 +134,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
     std::unique_ptr<codegen::LlvmTypeSymInfo> llvm_info;
 
+    std::unique_ptr<asts::TypeStatementAst> alias_stmt;
+
     TypeSymbol(
         std::shared_ptr<asts::TypeIdentifierAst> name,
         asts::ClassPrototypeAst *type,
@@ -149,9 +154,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
     explicit operator std::string() const override;
 
-    auto alias_stmt() const
-        -> asts::TypeStatementAst*;
-
     auto operator==(
         TypeSymbol const &that) const
         -> bool;
@@ -160,6 +162,10 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
         -> std::shared_ptr<asts::TypeAst>;
 };
 
+
+spp::analyse::scopes::Symbol::~Symbol() = default;
+
+spp::analyse::scopes::NamespaceSymbol::~NamespaceSymbol() = default;
 
 spp::analyse::scopes::VariableSymbol::~VariableSymbol() = default;
 

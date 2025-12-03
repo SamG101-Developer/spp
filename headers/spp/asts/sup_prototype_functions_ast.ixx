@@ -4,7 +4,6 @@ module;
 export module spp.asts.sup_prototype_functions_ast;
 import spp.asts.ast;
 import spp.asts.module_member_ast;
-
 import std;
 
 namespace spp::asts {

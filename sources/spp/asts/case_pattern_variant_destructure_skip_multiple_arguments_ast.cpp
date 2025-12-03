@@ -68,6 +68,6 @@ auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::convert_t
     // Create the local variable destructure attribute binding AST.
     auto var = std::make_unique<LocalVariableDestructureSkipMultipleArgumentsAst>(
         nullptr, binding ? binding->convert_to_variable(meta) : nullptr);
-    var->m_from_pattern = true;
+    var->mark_from_case_pattern();
     return var;
 }

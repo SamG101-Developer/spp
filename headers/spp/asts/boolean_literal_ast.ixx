@@ -35,7 +35,6 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
 
     ~BooleanLiteralAst() override;
 
-protected:
     SPP_ATTR_NODISCARD auto equals_boolean_literal(BooleanLiteralAst const &) const -> std::strong_ordering override;
     SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 

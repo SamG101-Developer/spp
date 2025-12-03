@@ -16,7 +16,6 @@ namespace spp::asts {
 
 SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorAst : virtual Ast {
     using Ast::Ast;
-    friend struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst;
 
     auto operator<=>(TypePostfixExpressionOperatorAst const &) const -> std::strong_ordering;
 
@@ -24,12 +23,10 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorAst : virtual Ast {
 
     ~TypePostfixExpressionOperatorAst() override;
 
-protected:
     virtual auto equals(TypePostfixExpressionOperatorAst const &) const -> std::strong_ordering = 0;
 
     virtual auto equals_nested_type(TypePostfixExpressionOperatorNestedTypeAst const &) const -> std::strong_ordering;
 
-public:
     virtual auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> = 0;
 
     virtual auto ns_parts() -> std::vector<std::shared_ptr<IdentifierAst>> = 0;

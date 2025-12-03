@@ -2,12 +2,10 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.cli;
-
 import cli11;
 import std;
 
 
-/// @cond
 namespace spp::cli {
     SPP_EXP_FUN auto run_cli(std::int32_t argc, char **argv) -> std::int32_t;
 
@@ -50,5 +48,3 @@ namespace spp::cli {
     SPP_EXP_FUN auto get_system_shared_library_extension()
         -> std::string;
 }
-
-/// @endcond

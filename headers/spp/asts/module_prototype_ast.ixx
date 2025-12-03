@@ -3,18 +3,16 @@ module;
 
 export module spp.asts.module_prototype_ast;
 import spp.asts.ast;
-
 import std;
 
+namespace spp::compiler {
+    SPP_EXP_CLS struct CompilerBoot;
+}
 namespace spp::asts {
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct FunctionPrototypeAst;
     SPP_EXP_CLS struct ModulePrototypeAst;
     SPP_EXP_CLS struct ModuleImplementationAst;
-}
-
-namespace spp::compiler {
-    SPP_EXP_CLS struct CompilerBoot;
 }
 
 
@@ -23,13 +21,12 @@ namespace spp::compiler {
  * the module.
  */
 SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : virtual Ast {
-    friend struct spp::asts::FunctionPrototypeAst;
-    friend struct spp::compiler::CompilerBoot;
+    /**
+     * The file path of the module prototype. This is interacted with by the compiler to resolve module imports. Not got
+     * from parsing children AST nodes.
+     */
+    std::filesystem::path file_path = "";
 
-private:
-    std::filesystem::path m_file_path;
-
-public:
     /**
      * The module implementation AST that this prototype represents.
      */

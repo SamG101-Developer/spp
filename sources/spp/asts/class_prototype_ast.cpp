@@ -69,8 +69,8 @@ auto spp::asts::ClassPrototypeAst::clone() const
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
     ast->m_cls_sym = m_cls_sym;
-    ast->m_visibility = m_visibility;
-    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->m_ctx = ast; });
+    ast->visibility = visibility;
+    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->set_ast_ctx(ast); });
     return ast;
 }
 

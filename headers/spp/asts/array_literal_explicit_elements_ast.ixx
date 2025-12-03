@@ -56,9 +56,7 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiter
 
     ~ArrayLiteralExplicitElementsAst() override;
 
-protected:
     auto equals_array_literal_explicit_elements(ArrayLiteralExplicitElementsAst const &) const -> std::strong_ordering override;
-
     auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
 public:

@@ -48,11 +48,11 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     decltype(tok_arrow) &&tok_arrow,
     decltype(return_type) &&return_type,
     decltype(impl) &&impl) :
-    m_abstract_annotation(nullptr),
-    m_virtual_annotation(nullptr),
-    m_temperature_annotation(nullptr),
-    m_no_impl_annotation(nullptr), m_inline_annotation(nullptr),
-    m_llvm_func(nullptr),
+    abstract_annotation(nullptr),
+    virtual_annotation(nullptr),
+    temperature_annotation(nullptr),
+    no_impl_annotation(nullptr), inline_annotation(nullptr),
+    llvm_func(nullptr),
     annotations(std::move(annotations)),
     tok_fun(std::move(tok_fun)),
     name(std::move(name)),
@@ -228,7 +228,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     auto mock_sup_ext = std::make_unique<SupPrototypeExtensionAst>(
         nullptr, generic_param_group->opt_to_req(), std::move(mock_class_name), nullptr, std::move(function_type),
         std::move(mock_sup_ext_impl));
-    mock_sup_ext->m_ctx = m_ctx;
+    mock_sup_ext->set_ast_ctx(m_ctx);
 
     // Manipulate the context body with the new mock superimposition extension.
     if (const auto mod_ctx = ctx->to<ModulePrototypeAst>()) {
@@ -325,7 +325,7 @@ auto spp::asts::FunctionPrototypeAst::stage_6_pre_analyse_semantics(
     const auto mod_ctx = m_ctx->to<ModulePrototypeAst>();
     const auto type_scope = mod_ctx
                                 ? sm->current_scope->parent_module()
-                                : mod_ctx->m_scope->get_type_symbol(ast_name(m_ctx))->scope;
+                                : m_ctx->get_ast_scope()->get_type_symbol(ast_name(m_ctx))->scope;
 
     // Error if there are conflicts.
     if (const auto conflict = analyse::utils::func_utils::check_for_conflicting_overload(*sm->current_scope, type_scope, *this)) {
@@ -396,11 +396,11 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
     const auto llvm_fun_type = llvm::FunctionType::get(llvm_ret_type, llvm_param_types, is_var_arg);
 
     // Create the LLVM function and add it to the context.
-    const auto is_extern = m_no_impl_annotation || m_abstract_annotation;
+    const auto is_extern = no_impl_annotation || abstract_annotation;
     const auto linkage = is_extern ? llvm::Function::ExternalLinkage : llvm::Function::InternalLinkage;
     const auto llvm_fun = llvm::Function::Create(
         llvm_fun_type, linkage, codegen::mangle::mangle_fun_name(*sm->current_scope, *this), ctx->module.get());
-    m_llvm_func = llvm_fun;
+    llvm_func = llvm_fun;
 
     // Name the parameters from the ASTs.
     auto llvm_param_iter = llvm_fun->arg_begin();
@@ -410,7 +410,7 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
     }
 
     // If there is an implementation, generate its code.
-    if (m_no_impl_annotation and m_no_impl_annotation->name->val == "compiler_builtin") {
+    if (no_impl_annotation and no_impl_annotation->name->val == "compiler_builtin") {
         // auto manual_ir =
     }
     if (not is_extern) {

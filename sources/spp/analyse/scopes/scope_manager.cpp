@@ -72,7 +72,7 @@ auto spp::analyse::scopes::ScopeManager::move_to_next_scope()
     // For debugging mode only, check if the iterator has reached the end of the generator.
     // Move to the next scope by advancing the iterator.
     current_scope = *++m_it;
-    while (current_scope->ty_sym != nullptr and current_scope->ty_sym->alias_stmt() != nullptr) {
+    while (current_scope->ty_sym != nullptr and current_scope->ty_sym->alias_stmt != nullptr) {
         current_scope = *++m_it;
     }
     return current_scope;
@@ -125,8 +125,9 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
     }
 
     // Clear the sup scopes list.
-    scope.m_direct_sup_scopes.clear();
+    scope.direct_sup_scopes.clear();
     const auto fq_type = scope.ty_sym->fq_name();
+    const auto cls_sym = scope.ty_sym;
 
     // Iterate through all the super scopes and check if the name matches.
     for (auto *sup_scope : sup_scopes) {
@@ -156,23 +157,22 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
             new_cls_scope = sup_proto ? scope.get_type_symbol(sup_proto->super_class)->scope : nullptr;
             sup_sym = new_cls_scope ? new_cls_scope->ty_sym.get() : nullptr;
         }
-        auto cls_sym = scope.ty_sym;
 
         // Prevent double inheritance, cyclic inheritance and self extension.
         if (const auto ext_ast = sup_scope->ast->to<asts::SupPrototypeExtensionAst>(); ext_ast != nullptr) {
-            ext_ast->m_check_cyclic_extension(*sup_sym, *sup_scope);
-            ext_ast->m_check_double_extension(*cls_sym, *sup_scope);
-            ext_ast->m_check_self_extension(*sup_scope);
+            ext_ast->check_cyclic_extension(*sup_sym, *sup_scope);
+            ext_ast->check_double_extension(*cls_sym, *sup_scope);
+            ext_ast->check_self_extension(*sup_scope);
         }
 
         // Register the super scope against the current scope.
-        scope.m_direct_sup_scopes.emplace_back(new_sup_scope);
+        scope.direct_sup_scopes.emplace_back(new_sup_scope);
 
         // Register the super scope's class scope against the current scope, if it is different. This "difference" check
         // ensures that "sup [T] T ext A" doesn't create a "sup A ext A" link.
         if (new_cls_scope and scope.ty_sym != new_cls_scope->ty_sym) {
             // Todo: is this definitely the generically substituted "new_cls_scope"?
-            scope.m_direct_sup_scopes.emplace_back(new_cls_scope);
+            scope.direct_sup_scopes.emplace_back(new_cls_scope);
         }
 
         // Check for conflicting "cmp" or "type" statements in the super scopes.
@@ -189,9 +189,9 @@ auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statement
     -> void {
     // Get the scopes to check for conflicts in.
     auto dummy = utils::type_utils::GenericInferenceMap();
-    const auto existing_scopes = cls_sym.scope->m_direct_sup_scopes
+    const auto existing_scopes = cls_sym.scope->direct_sup_scopes
         | genex::views::filter([&](auto *scope) { return scope->ast->template to<asts::SupPrototypeExtensionAst>() or scope->ast->template to<asts::SupPrototypeFunctionsAst>(); })
-        | genex::views::filter([&](auto *scope) { return utils::type_utils::relaxed_symbolic_eq(*ast_name(sup_scope.ast), *ast_name(scope->ast), &sup_scope, scope->ast->m_scope, dummy); })
+        | genex::views::filter([&](auto *scope) { return utils::type_utils::relaxed_symbolic_eq(*ast_name(sup_scope.ast), *ast_name(scope->ast), &sup_scope, scope->ast->get_ast_scope(), dummy); })
         | genex::to<std::vector>();
 
     // Check for conflicting "type" statements.

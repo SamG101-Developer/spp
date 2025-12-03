@@ -8,6 +8,10 @@ import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class Scope;
+}
+
 namespace spp::asts {
     SPP_EXP_CLS struct LoopConditionAst;
     SPP_EXP_CLS struct LoopElseStatementAst;
@@ -16,10 +20,6 @@ namespace spp::asts {
     struct InnerScopeExpressionAst;
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
-}
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
 }
 
 

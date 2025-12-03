@@ -72,7 +72,6 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
 
     ~ArrayLiteralRepeatedElementAst() override;
 
-protected:
     auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
     auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> std::strong_ordering override;
 

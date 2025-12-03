@@ -553,8 +553,8 @@ auto spp::analyse::utils::func_utils::infer_generic_args(
     std::vector<asts::GenericParameterAst*> params,
     std::vector<asts::GenericParameterAst*> opt_params,
     std::vector<asts::GenericArgumentAst*> explicit_args,
-    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, ankerl::ptr_eq<std::shared_ptr<asts::IdentifierAst>>> const &infer_source,
-    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, ankerl::ptr_eq<std::shared_ptr<asts::IdentifierAst>>> const &infer_target,
+    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, ankerl::ptr_cmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_source,
+    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, ankerl::ptr_cmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_target,
     std::shared_ptr<asts::Ast> const &owner,
     scopes::Scope const *owner_scope,
     std::shared_ptr<asts::IdentifierAst> const &variadic_param_identifier,
@@ -684,8 +684,8 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
     std::vector<std::unique_ptr<asts::GenericArgumentCompKeywordAst>> &args,
     std::vector<asts::GenericParameterCompAst*> params,
     std::vector<asts::GenericArgumentCompKeywordAst*> explicit_args,
-    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, ankerl::ptr_eq<std::shared_ptr<asts::IdentifierAst>>> const &infer_source,
-    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, ankerl::ptr_eq<std::shared_ptr<asts::IdentifierAst>>> const &infer_target,
+    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, ankerl::ptr_cmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_source,
+    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, ankerl::ptr_cmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_target,
     std::shared_ptr<asts::Ast> const &owner,
     scopes::Scope const *owner_scope,
     scopes::ScopeManager &sm,
@@ -845,8 +845,8 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
     std::vector<asts::GenericParameterTypeAst*> params,
     std::vector<asts::GenericParameterTypeAst*> opt_params,
     std::vector<asts::GenericArgumentTypeKeywordAst*> explicit_args,
-    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, ankerl::ptr_eq<std::shared_ptr<asts::IdentifierAst>>> const &infer_source,
-    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, ankerl::ptr_eq<std::shared_ptr<asts::IdentifierAst>>> const &infer_target,
+    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, ankerl::ptr_cmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_source,
+    std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, ankerl::ptr_cmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_target,
     std::shared_ptr<asts::Ast> const &owner,
     scopes::Scope const *owner_scope,
     std::shared_ptr<asts::IdentifierAst> const &variadic_param_identifier,
@@ -879,13 +879,14 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
             auto inferred_arg = std::shared_ptr<const asts::TypeAst>(nullptr);
 
             // Check for a direct match ("a: T" & "a: Str") or an inner match ("a: Vec[T]" & "a: Vec[Str]").
+            auto _ = infer_source.contains(infer_target_name);
             if (infer_source.contains(infer_target_name)) {
                 auto temp_gs = type_utils::GenericInferenceMap();
                 type_utils::relaxed_symbolic_eq(
                     *infer_source.at(infer_target_name)->without_convention(),
                     *infer_target_type->without_convention(),
                     sm.current_scope, owner_scope, temp_gs, true); // DO NOT REMOVE (acquires generics)
-                auto inferred_arg_raw = temp_gs[param_name]->to<asts::TypeAst>();
+                auto inferred_arg_raw = temp_gs.contains(param_name) ? temp_gs[param_name]->to<asts::TypeAst>() : nullptr;
                 inferred_arg = inferred_arg_raw ? inferred_arg_raw->shared_from_this() : nullptr;
             }
 

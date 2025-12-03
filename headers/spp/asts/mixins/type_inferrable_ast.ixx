@@ -12,12 +12,12 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-namespace spp::asts::mixins {
-    SPP_EXP_CLS struct TypeInferrableAst;
-}
-
 namespace spp::asts::meta {
     SPP_EXP_CLS struct CompilerMetaData;
+}
+
+namespace spp::asts::mixins {
+    SPP_EXP_CLS struct TypeInferrableAst;
 }
 
 

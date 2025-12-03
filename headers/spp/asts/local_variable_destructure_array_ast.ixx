@@ -18,8 +18,6 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureArrayAst final : LocalVariableAst {
-    friend struct spp::asts::CasePatternVariantDestructureArrayAst;
-
 private:
     std::vector<std::unique_ptr<LetStatementInitializedAst>> m_new_asts;
 

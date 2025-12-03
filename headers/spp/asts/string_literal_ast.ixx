@@ -28,12 +28,10 @@ SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
 
     ~StringLiteralAst() override;
 
-protected:
     auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
     auto equals_string_literal(StringLiteralAst const &) const -> std::strong_ordering override;
 
-public:
     SPP_AST_KEY_FUNCTIONS;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;

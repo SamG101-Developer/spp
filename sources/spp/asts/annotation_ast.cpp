@@ -82,52 +82,52 @@ auto spp::asts::AnnotationAst::stage_1_pre_process(
 
     // Mark a method as virtual.
     if (fun_ctx != nullptr and name->val == "virtual_method") {
-        fun_ctx->m_virtual_annotation = this;
+        fun_ctx->virtual_annotation = this;
     }
 
     // Mark a method as abstract.
     else if (fun_ctx != nullptr and name->val == "abstract_method") {
-        fun_ctx->m_abstract_annotation = this;
+        fun_ctx->abstract_annotation = this;
     }
 
     // Mark a method as non-implemented.
     else if (fun_ctx != nullptr and name->val == "no_impl") {
-        fun_ctx->m_no_impl_annotation = this;
+        fun_ctx->no_impl_annotation = this;
     }
 
     // Mark a method as non-implemented (ffi).
     else if (fun_ctx != nullptr and name->val == "ffi") {
-        fun_ctx->m_no_impl_annotation = this;
+        fun_ctx->no_impl_annotation = this;
     }
 
     // Mark a method as non-implemented (intrinsic).
     else if (fun_ctx != nullptr and name->val == "compiler_builtin") {
-        fun_ctx->m_no_impl_annotation = this;
+        fun_ctx->no_impl_annotation = this;
     }
 
     // Mark an AST as public.
     else if (vis_ctx != nullptr and name->val == "public") {
-        vis_ctx->m_visibility = std::make_pair(Visibility::PUBLIC, this);
+        vis_ctx->visibility = std::make_pair(Visibility::PUBLIC, this);
     }
 
     // Mark an AST as protected.
     else if (vis_ctx != nullptr and name->val == "protected") {
-        vis_ctx->m_visibility = std::make_pair(Visibility::PROTECTED, this);
+        vis_ctx->visibility = std::make_pair(Visibility::PROTECTED, this);
     }
 
     // Mark an AST as private.
     else if (vis_ctx != nullptr and name->val == "private") {
-        vis_ctx->m_visibility = std::make_pair(Visibility::PRIVATE, this);
+        vis_ctx->visibility = std::make_pair(Visibility::PRIVATE, this);
     }
 
     // Mark a function as hot.
     else if (fun_ctx != nullptr and name->val == "hot") {
-        fun_ctx->m_temperature_annotation = this;
+        fun_ctx->temperature_annotation = this;
     }
 
     // Mark a function as cold.
     else if (fun_ctx != nullptr and name->val == "cold") {
-        fun_ctx->m_temperature_annotation = this;
+        fun_ctx->temperature_annotation = this;
     }
 }
 
@@ -143,8 +143,8 @@ auto spp::asts::AnnotationAst::stage_2_gen_top_level_scopes(
     // Define some cast contexts for attribute assignment.
     const auto fun_ctx = m_ctx->to<FunctionPrototypeAst>();
     const auto vis_ctx = m_ctx->to<mixins::VisibilityEnabledAst>();
-    const auto ctx_mod_ctx = m_ctx->m_ctx->to<ModulePrototypeAst>();
-    const auto ctx_ext_ctx = m_ctx->m_ctx->to<SupPrototypeExtensionAst>();
+    const auto ctx_mod_ctx = m_ctx->get_ast_ctx()->to<ModulePrototypeAst>();
+    const auto ctx_ext_ctx = m_ctx->get_ast_ctx()->to<SupPrototypeExtensionAst>();
 
     if (name->val == "virtual_method") {
         // The "virtual_method" annotation can only be applied to function ASTs.
@@ -160,15 +160,15 @@ auto spp::asts::AnnotationAst::stage_2_gen_top_level_scopes(
         }
 
         // The "virtual_method" annotation cannot be applied to an abstract method.
-        if (fun_ctx and fun_ctx->m_abstract_annotation) {
+        if (fun_ctx and fun_ctx->abstract_annotation) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppAnnotationConflictError>().with_args(
-                *this, *fun_ctx->m_abstract_annotation, *m_ctx).with_scopes({m_scope}).raise();
+                *this, *fun_ctx->abstract_annotation, *m_ctx).with_scopes({m_scope}).raise();
         }
 
         // The "virtual_method" annotation cannot be applied to a virtual method.
-        if (fun_ctx and fun_ctx->m_virtual_annotation and fun_ctx->m_virtual_annotation != this) {
+        if (fun_ctx and fun_ctx->virtual_annotation and fun_ctx->virtual_annotation != this) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppAnnotationConflictError>().with_args(
-                *this, *fun_ctx->m_virtual_annotation, *m_ctx).with_scopes({m_scope}).raise();
+                *this, *fun_ctx->virtual_annotation, *m_ctx).with_scopes({m_scope}).raise();
         }
     }
 
@@ -186,15 +186,15 @@ auto spp::asts::AnnotationAst::stage_2_gen_top_level_scopes(
         }
 
         // The "abstract_method" annotation cannot be applied to a virtual method.
-        if (fun_ctx and fun_ctx->m_virtual_annotation) {
+        if (fun_ctx and fun_ctx->virtual_annotation) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppAnnotationConflictError>().with_args(
-                *this, *fun_ctx->m_virtual_annotation, *m_ctx).with_scopes({m_scope}).raise();
+                *this, *fun_ctx->virtual_annotation, *m_ctx).with_scopes({m_scope}).raise();
         }
 
         // The "abstract_method" annotation cannot be applied to an abstract method.
-        if (fun_ctx and fun_ctx->m_abstract_annotation and fun_ctx->m_abstract_annotation != this) {
+        if (fun_ctx and fun_ctx->abstract_annotation and fun_ctx->abstract_annotation != this) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppAnnotationConflictError>().with_args(
-                *this, *fun_ctx->m_abstract_annotation, *m_ctx).with_scopes({m_scope}).raise();
+                *this, *fun_ctx->abstract_annotation, *m_ctx).with_scopes({m_scope}).raise();
         }
     }
 
@@ -206,9 +206,9 @@ auto spp::asts::AnnotationAst::stage_2_gen_top_level_scopes(
         }
 
         // The function ast must be a class method, not a free function.
-        if (fun_ctx and fun_ctx->m_no_impl_annotation and fun_ctx->m_no_impl_annotation != this) {
+        if (fun_ctx and fun_ctx->no_impl_annotation and fun_ctx->no_impl_annotation != this) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppAnnotationConflictError>().with_args(
-                *this, *fun_ctx->m_no_impl_annotation, *m_ctx).with_scopes({m_scope}).raise();
+                *this, *fun_ctx->no_impl_annotation, *m_ctx).with_scopes({m_scope}).raise();
         }
     }
 
@@ -222,13 +222,13 @@ auto spp::asts::AnnotationAst::stage_2_gen_top_level_scopes(
         // Access modifiers cannot be applied to methods in sup-ext blocks (only in module or sup).
         if (ctx_ext_ctx) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppAnnotationInvalidApplicationError>().with_args(
-                *this, *m_ctx->m_ctx, "extension").with_scopes({m_scope}).raise();
+                *this, *m_ctx->get_ast_ctx(), "extension").with_scopes({m_scope}).raise();
         }
 
         // The visibility annotation cannot be applied to an AST that already has a visibility annotation.
-        if (vis_ctx and vis_ctx->m_visibility.second and vis_ctx->m_visibility.second != this) {
+        if (vis_ctx and vis_ctx->visibility.second and vis_ctx->visibility.second != this) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppAnnotationConflictError>().with_args(
-                *this, *vis_ctx->m_visibility.second, *m_ctx).with_scopes({m_scope}).raise();
+                *this, *vis_ctx->visibility.second, *m_ctx).with_scopes({m_scope}).raise();
         }
     }
 
@@ -240,9 +240,9 @@ auto spp::asts::AnnotationAst::stage_2_gen_top_level_scopes(
         }
 
         // The "hot" and "cold" annotations cannot be applied already temperate functions.
-        if (fun_ctx and fun_ctx->m_temperature_annotation and fun_ctx->m_temperature_annotation != this) {
+        if (fun_ctx and fun_ctx->temperature_annotation and fun_ctx->temperature_annotation != this) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppAnnotationConflictError>().with_args(
-                *this, *fun_ctx->m_temperature_annotation, *m_ctx).with_scopes({m_scope}).raise();
+                *this, *fun_ctx->temperature_annotation, *m_ctx).with_scopes({m_scope}).raise();
         }
     }
 
@@ -254,9 +254,9 @@ auto spp::asts::AnnotationAst::stage_2_gen_top_level_scopes(
         }
 
         // The "always_inline", "inline" and "no_inline" annotations cannot be applied already temperate functions.
-        if (fun_ctx and fun_ctx->m_inline_annotation) {
+        if (fun_ctx and fun_ctx->inline_annotation) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppAnnotationConflictError>().with_args(
-                *this, *fun_ctx->m_inline_annotation, *m_ctx).with_scopes({m_scope}).raise();
+                *this, *fun_ctx->inline_annotation, *m_ctx).with_scopes({m_scope}).raise();
         }
     }
 

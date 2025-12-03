@@ -295,7 +295,7 @@ auto spp::asts::LoopExpressionAst::stage_8_check_memory(
     // Check twice so that invalidation fails on the second loop.
     // Todo: use the "reset" on "sm" like in TypeStatementAst?
     auto tm = ScopeManager(sm->global_scope, sm->current_scope);
-    tm.reset(sm->current_scope, sm->m_it);
+    tm.reset(sm->current_scope, sm->current_iterator());
     for (auto &m : {sm, &tm}) {
         meta->save();
         meta->loop_double_check_active = m == &tm;
