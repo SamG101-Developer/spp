@@ -115,7 +115,11 @@ public:
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto mark_from_use_statement() -> void;
+
+    auto cleanup() const -> void;
 };
 
 
-spp::asts::TypeStatementAst::~TypeStatementAst() = default;
+spp::asts::TypeStatementAst::~TypeStatementAst() {
+    cleanup();
+}
