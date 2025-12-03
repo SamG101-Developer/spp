@@ -47,6 +47,7 @@ import spp.asts.utils.visibility;
 import spp.lex.lexer;
 import spp.parse.parser_spp;
 import spp.parse.errors.parser_error;
+import spp.utils.ptr;
 import spp.utils.strings;
 
 import genex;
@@ -621,8 +622,9 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
         old_cls_scope->parent, old_cls_scope->ast);
 
     const auto new_cls_sym = std::make_shared<scopes::TypeSymbol>(
-        asts::ast_clone(&type_part), new_cls_scope->ast->to<asts::ClassPrototypeAst>(), new_cls_scope.get(),
-        sm->current_scope, old_cls_scope->parent, old_cls_sym.is_generic, old_cls_sym.is_directly_copyable, old_cls_sym.visibility);
+        spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(type_part.shared_from_this()),
+        new_cls_scope->ast->to<asts::ClassPrototypeAst>(), new_cls_scope.get(), sm->current_scope,
+        old_cls_scope->parent, old_cls_sym.is_generic, old_cls_sym.is_directly_copyable, old_cls_sym.visibility);
     const auto new_cls_scope_ptr = new_cls_scope.get();
 
     new_cls_sym->is_copyable = [&old_cls_sym] { return old_cls_sym.is_copyable(); };
