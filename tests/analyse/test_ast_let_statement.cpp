@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -8,7 +9,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let x = std::boolean::Bool
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -21,7 +22,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(value: A or B) -> std::void::Void {
         let A(a) = value
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -31,7 +32,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let x: std::boolean::Bool = 123
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -41,7 +42,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(b: &std::boolean::Bool) -> std::void::Void {
         let x: std::boolean::Bool = b
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -51,7 +52,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(b: std::boolean::Bool) -> std::void::Void {
         let x: &std::boolean::Bool = b
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -63,7 +64,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(aa: A) -> std::void::Void {
         let A(a): A = aa
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -72,7 +73,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let x = true
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -82,7 +83,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x: std::boolean::Bool
         x = false
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -92,7 +93,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x: std::boolean::Bool
         x = b
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -102,7 +103,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x: &mut std::boolean::Bool
         x = b
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -112,7 +113,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x: &std::boolean::Bool
         x = b
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -121,7 +122,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(b: std::boolean::Bool) -> std::void::Void {
         let x: std::boolean::Bool = b
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -130,7 +131,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(b: &mut std::boolean::Bool) -> std::void::Void {
         let x: &mut std::boolean::Bool = b
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -139,7 +140,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(b: &std::boolean::Bool) -> std::void::Void {
         let x: &std::boolean::Bool = b
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -148,7 +149,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let x: std::string::Str or std::number::S32 = "hello world"
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -157,7 +158,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let x: std::string::Str or std::number::S32 or std::boolean::Bool = false
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -166,4 +167,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let x: std::option::Opt[std::number::S32] = std::option::Some(val=123)
     }
-)")
+)");

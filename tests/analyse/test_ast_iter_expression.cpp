@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -23,7 +24,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             !! { 2 }
         }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -50,7 +51,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             !! { 2 }
         }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -73,7 +74,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             internal { 1 }
         }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -97,7 +98,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             !error { 1 }
         }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -123,7 +124,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             _ { 1 }
         }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -146,7 +147,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             !error { 1 }
         }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -169,7 +170,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             _ { 1 }
         }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -193,7 +194,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             internal { 2 }
         }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -217,7 +218,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             _ { 2 }
         }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -243,7 +244,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             !error { 2 }
         }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -265,5 +266,5 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             internal { 1 }
         }
     }
-)");
+)");;
 

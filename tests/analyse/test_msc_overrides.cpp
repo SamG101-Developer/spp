@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -23,7 +24,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         b.f(A())
         b.f(true, 1)
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -50,7 +51,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         x = 123
         b.f(true, 1)
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -77,7 +78,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         x = std::vector::Vec[std::number::S32]()
         b.f(true, 1)
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -101,7 +102,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut coroutine = b.c(123)
         coroutine.res(false)
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -125,4 +126,4 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let b = B()
         b.f("a")
     }
-)");
+)");;

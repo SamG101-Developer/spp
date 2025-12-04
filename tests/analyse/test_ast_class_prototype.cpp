@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -8,7 +9,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls A {
         a: A
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -22,7 +23,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls B {
         a: A
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -35,4 +36,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls B {
         a: std::string::Str
     }
-)")
+)");

@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -17,7 +18,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let t = (1_u64, 2_u32, 3_u16)
         t.f()
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -36,7 +37,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let t = (1_u64, 2_u32)
         t.f()
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -56,7 +57,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let t = (1_u64, 2_u32, 3_u16)
         t.f()
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -76,7 +77,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let t = (1_u64, 2_u64, 3_u64)
         t.f()
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -95,7 +96,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let t = (1_u64, 2_u32, 3_u16)
         t.f()
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -114,7 +115,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let t = (1_u64, "hello", false)
         t.f()
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -142,4 +143,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let t4 = (false,)
         t4.f()
     }
-)");
+)");;

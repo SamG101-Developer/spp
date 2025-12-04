@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -6,7 +7,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_return_type,
     SppCoroutineInvalidReturnTypeError, R"(
     cor c() -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -16,7 +17,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cor c() -> std::generator::Gen[&mut std::number::S32] {
         gen 1
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -26,7 +27,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cor c() -> std::generator::Gen[&std::number::S32] {
         gen 1
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -36,7 +37,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cor c() -> std::generator::Gen[std::number::S32] {
         gen &mut 1
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -45,7 +46,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cor c() -> std::generator::Gen[&std::number::S32] {
         gen &mut 1
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -54,7 +55,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cor c() -> std::generator::Gen[std::number::S32] {
         gen 1
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -63,7 +64,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cor c() -> std::generator::Gen[&mut std::number::S32] {
         gen &mut 1
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -72,7 +73,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cor c() -> std::generator::Gen[&std::number::S32] {
         gen &1
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -83,7 +84,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let (mut x, y) = (false, 123)
         c(&mut x, &y)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -96,7 +97,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cor c() -> MyType {
         gen &1
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -112,7 +113,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cor c() -> MyType {
         gen &1
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -122,7 +123,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cor c() -> std::generator::Gen[&std::number::S32] {
         ret 123
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -131,7 +132,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cor c() -> std::generator::Gen[&std::number::S32] {
         ret
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -151,7 +152,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut value = elem1 + elem2.clone()
         value = "hello world !!!"
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -172,4 +173,4 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut value = elem1 + elem2
         value = "hello world !!!"
     }
-)")
+)");

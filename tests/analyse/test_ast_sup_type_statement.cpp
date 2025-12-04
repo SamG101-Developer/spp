@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -14,7 +15,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x: MyType::X
         x = 123
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -40,7 +41,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x: MyType3::X::Y::Z
         x = 123
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -56,7 +57,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x: MyType[std::number::S32]::X
         x = "hello world"
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -71,7 +72,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x: MyType::X
         x = "hello world"
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -96,7 +97,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x: MyType3::X::Y::Z
         x = "hello world"
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -111,4 +112,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x: MyType[std::number::S32]::X
         x = 123
     }
-)")
+)");

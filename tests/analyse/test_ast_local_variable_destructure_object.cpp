@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -12,7 +13,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let Point(x, .., ..) = Point(x=1, y=2)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -26,7 +27,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let Point(x) = Point(x=1, y=2)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -40,7 +41,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let Point(x, y, z) = Point(x=1, y=2)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -53,7 +54,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let Point(x, mut y) = Point(x=1, y=2)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -67,7 +68,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let Point(x, .., mut z) = Point(x=1, y=2, z=3)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -82,7 +83,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let Point(x, ..y, z) = Point(x=1, y=2, z=3)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -98,7 +99,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let Point(.., dir=[xd, yd, mut zd]) = Point(x=1, y=2, z=3, dir=[1, 2, 3])
         zd = 4
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -114,7 +115,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let Point(.., dir=(xd, yd, mut zd)) = Point(x=1, y=2, z=3, dir=(1, 2, 3))
         zd = 4
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -137,7 +138,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         ex = 30
         ey = 40
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -152,7 +153,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         x = 1
         y = 2
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -167,7 +168,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let Point(x): Point
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -181,7 +182,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let Point(x, y, z): Point
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -197,7 +198,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let Point(mut x, y, z): Point
         x = true
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -214,7 +215,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let Point(mut x, y, z) = p
         x = 10
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -231,5 +232,5 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let Point(mut x, y, z) = p
         x = 10
     }
-)")
+)");
 

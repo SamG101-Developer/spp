@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -8,7 +9,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         123[0]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -27,7 +28,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(a: A) -> std::void::Void {
         let x = a[0]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -46,7 +47,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: A) -> std::void::Void {
         let x = a[mut 0]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -66,7 +67,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(a: A) -> std::void::Void {
         let x = a[mut 0]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -86,4 +87,4 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(mut a: A) -> std::void::Void {
         let x = a[0]
     }
-)")
+)");

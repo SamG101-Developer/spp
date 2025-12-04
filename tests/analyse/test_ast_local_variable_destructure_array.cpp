@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -8,7 +9,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let [a, b] = 1
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -18,7 +19,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let [a, .., .., b] = [1, 2, 3, 4]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -28,7 +29,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let [a, b] = [1, 2, 3]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -38,7 +39,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let [a, b, c] = [1, 2]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -47,7 +48,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let [a, b, c] = [1, 2, 3]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -58,7 +59,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         a = 5
         c = 6
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -67,7 +68,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let [a, .., c] = [1, 2, 3, 4, 5]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -77,7 +78,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let [a, ..mut b, c] = [1, 2, 3, 4]
         b = [5, 6]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -87,7 +88,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let [..mut a, b] = [1, 2, 3, 4]
         a = [5, 6, 7]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -97,7 +98,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let [a, b, ..mut c] = [1, 2, 3, 4]
         c = [5, 6]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -108,7 +109,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let [[a, mut b], c] = [t, [3, 4]]
         b = 4
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -119,7 +120,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let [(a, mut b), c] = [t, (3, "4")]
         b = "5"
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -135,7 +136,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let [Point(x, mut y), ..] = points
         y = 5
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -146,7 +147,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         x = true
         y = true
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -156,7 +157,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let [x, y]: [std::boolean::Bool; 3_uz]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -166,7 +167,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let [x, y]: [std::boolean::Bool; 1_uz]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -177,4 +178,4 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let [x, y]: [std::boolean::Bool; 2_uz]
         x = "hello world"
     }
-)")
+)");

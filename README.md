@@ -36,4 +36,5 @@ The S++ Compiler is currently in development and has not reached its first offic
 
 2. Constant expressions. Allow `cmp` as a regular statement in function bodies, and attach the literal value to the
    variable symbol. Allow `cmp` functions (maybe subroutines only?) that can be evaluated at compile time. Low level
-   functions can be defined as `cmp` and have built in computation logic because they are `@compiler_builtin`?
+   functions can be defined as `cmp` and have built in computation logic because they are `@compiler_builtin`? Add
+   `cmp loop` to iterate elements of a tuple -> unroll at compile time.

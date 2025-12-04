@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -11,7 +12,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut v: Vec[Str]) -> Void {
         loop x in v.iter_mov() { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -24,7 +25,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut v: Vec[Str]) -> Void {
         loop x in v.iter_mut() { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -37,7 +38,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut v: Vec[Str]) -> Void {
         loop x in v.iter_ref() { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -53,7 +54,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             v.push("hello")
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -69,7 +70,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             v.push("hello")
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -85,7 +86,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             v.push("hello")
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -101,7 +102,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             v.push("hello")
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -116,7 +117,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
         v.push("hello")
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -131,7 +132,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             v.push("hello world")
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -146,4 +147,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             let l = v.length()
         }
     }
-)")
+)");

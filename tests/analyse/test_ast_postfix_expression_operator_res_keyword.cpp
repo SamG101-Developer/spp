@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -13,7 +14,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let a = g()
         let b = a.res()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -28,7 +29,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let a = g()
         let b = a.res(123)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -43,7 +44,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let a = g()
         let b = a.res()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -58,7 +59,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let a = g()
         let b = a.res(123)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -76,7 +77,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             !! { c }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -94,7 +95,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             !! { c }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -112,7 +113,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             !! { c }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -129,4 +130,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let c = a.res()
         let d = b
     }
-)")
+)");

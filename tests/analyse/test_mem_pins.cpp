@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -12,7 +13,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let coroutine = g(&x)
         let y = x
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -27,7 +28,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let coroutine = g(&x)
         y = x
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -46,7 +47,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let coroutine = g(&x)
         a.a = x
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -62,7 +63,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let coroutine = g(&x)
         f(x)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -80,7 +81,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let coroutine = g(&x)
         let a = A(a=x)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -96,7 +97,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             x
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -112,7 +113,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             exit x
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -126,7 +127,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let coroutine = g(&x)
         gen x
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -140,4 +141,4 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let coroutine = g(&x)
         ret coroutine
     }
-)")
+)");

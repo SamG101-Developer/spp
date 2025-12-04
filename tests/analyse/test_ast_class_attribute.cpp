@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -9,7 +10,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         a: std::string::Str
         a: std::string::Str
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -19,7 +20,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls A {
         a: &mut std::string::Str
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -29,7 +30,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls A {
         a: &std::string::Str
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -43,7 +44,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let a = A[&mut std::string::Str]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -57,7 +58,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let a = A[&std::string::Str]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -72,7 +73,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         a: std::string::Str
         b: std::string::Str
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -89,7 +90,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls C { }
     sup C ext A {}
     sup C ext B {}
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -99,7 +100,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls A {
         a: std::string::Str = 1
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -108,4 +109,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A {
         a: std::string::Str = "Hello"
     }
-)")
+)");

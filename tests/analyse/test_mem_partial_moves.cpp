@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -13,7 +14,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut x: Str
         x.data = Vec[U8]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -30,7 +31,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let a = b.a
         b.a.str = "hello"
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -48,7 +49,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let b = c.b
         c.b.a.str = "hello"
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -66,7 +67,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let b = c.b.a
         c.b.a.str = "hello"
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -83,4 +84,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = c.b.a.str
         c.b.a.str = "hello"
     }
-)")
+)");

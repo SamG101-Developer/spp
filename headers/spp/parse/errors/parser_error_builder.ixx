@@ -45,7 +45,6 @@ struct spp::parse::errors::SyntacticErrorBuilder final : utils::errors::Abstract
         // err_msg = this->m_error_formatters[0]->error_raw_pos(pos, 1, std::move(err_msg), "Syntax error");
         // std::cout << err_msg << std::endl;
         // this->m_err_obj->messages = {err_msg};
-        // utils::errors::AbstractErrorBuilder<T>::raise();
-        throw;
+        utils::errors::AbstractErrorBuilder<T>::raise();
     }
 };

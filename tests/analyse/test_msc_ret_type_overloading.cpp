@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -15,7 +16,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = "hello world"
         x = g()
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -31,7 +32,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let x: Bool = g()
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -47,7 +48,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Bool {
         ret g()
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -64,7 +65,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cor f() -> Gen[Bool] {
         gen g()
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -95,7 +96,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let string: Str = x.to()
         let boolean: Bool = x.to()
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -115,7 +116,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut x = MyType(a=g())
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -135,7 +136,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut x = MyType[T=Str](a=g())
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -156,7 +157,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> Void {
         let mut x = MyType(a=g())
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -173,7 +174,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         h(g())
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -192,4 +193,4 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> Void {
         h(g())
     }
-)");
+)");;

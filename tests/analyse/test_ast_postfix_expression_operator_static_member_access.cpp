@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -16,7 +17,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         Point::f()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -31,7 +32,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(p: Point) -> std::void::Void {
         Point::f()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -40,7 +41,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         std::io::print(&"hello")
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -50,7 +51,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         std::io::ppp(&"hello")
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -65,4 +66,4 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(p: Point) -> std::void::Void {
         let x = p::x
     }
-)")
+)");

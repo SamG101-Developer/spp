@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -8,7 +9,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     use std::bignum::bigint::BigInt
     use std::string::Str
     use std::option::Opt
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -18,7 +19,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     use std::vector::Vec
 
     fun f[T](a: Vec[T]) -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -30,4 +31,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     use std::number::USize
 
     fun f[T, cmp n: USize](a: Arr[T, n]) -> Void { }
-)")
+)");

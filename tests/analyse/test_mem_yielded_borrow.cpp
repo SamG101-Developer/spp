@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -19,7 +20,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             !! { "nothing" }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -39,7 +40,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             !! { "nothing" }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -56,7 +57,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         h(&mut x)                  # conflicting mutable borrow invalidates the immutable borrow
         coroutine.res()            # use of the invalidated immutable borrow
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -73,7 +74,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         h(&x)                          # conflicting immutable borrow invalidates the mutable borrow
         coroutine.res()                # use of the invalidated mutable borrow
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -90,7 +91,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         h(&mut x)                      # conflicting mutable borrow invalidates the first mutable borrow
         coroutine.res()                # use of the invalidated mutable borrow
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -106,7 +107,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         h(&x)                      # conflicting immutable borrow does not invalidate the first immutable borrow
         coroutine.res()            # use of the valid immutable borrow
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -123,7 +124,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let generator_mut_1 = object.custom_iter_mut()
         let generator_mut_2 = object.custom_iter_mut()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -140,7 +141,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let generator_mut = object.custom_iter_mut()
         let generator_ref = object.custom_iter_ref()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -157,7 +158,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let generator_ref = object.custom_iter_ref()
         let generator_mut = object.custom_iter_mut()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -174,7 +175,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let generator_ref_1 = object.custom_iter_ref()
         let generator_ref_2 = object.custom_iter_ref()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -193,7 +194,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let generator_ref = object.custom_iter_ref()
         let x = generator_mut.res()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -212,7 +213,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut generator_mut = object.custom_iter_mut()
         let x = generator_ref.res()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -231,7 +232,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut generator_mut_2 = object.custom_iter_mut()
         let x = generator_mut_1.res()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -253,7 +254,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let generator_ref = object.custom_iter_ref()
         generator_mut.res()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -275,7 +276,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut generator_mut = object.custom_iter_mut()
         generator_ref.res()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -297,7 +298,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut generator_mut_2 = object.custom_iter_mut()
         generator_mut_1.res()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -318,7 +319,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let generator_ref_2 = object.custom_iter_ref()
         generator_ref_1.res()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -340,7 +341,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             !! { "" }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -362,7 +363,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             !! { "" }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -382,7 +383,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut generator_ref = object.custom_iter_ref()
         generator_ref.res()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -403,7 +404,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut generator_mut = object.custom_iter_mut()
         generator_mut.res()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -424,7 +425,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut generator_mut_1 = object.custom_iter_mut()
         generator_mut_1.res()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -445,4 +446,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut generator_ref_2 = object.custom_iter_ref()
         generator_ref_2.res()
     }
-)")
+)");

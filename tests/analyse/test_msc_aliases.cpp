@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -13,7 +14,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let a = A(b=true)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -30,7 +31,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = A(b=Vec[Bool]::from([true, false, true]))
         let b = A(b=std::vector::Vec[Bool]::from([false, false]))
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -45,7 +46,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let a = A(b=123)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -64,7 +65,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut c = b.test()
         c = false
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -90,7 +91,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut len = v.test()
         len = 0_uz
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -109,7 +110,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut m = n.test()
         m = 0
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -129,7 +130,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut n = S32::from(s)
         n = 0
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -154,7 +155,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut v = std::vector::Vec[S32]::from(s)
         v = Vec[S32]::new()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -175,7 +176,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut s = Str::from(n)
         s = "changed"
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -186,7 +187,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Bool {
         ret true
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -203,7 +204,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             std::vector::Vec[Bool]::from([false, true])
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -214,7 +215,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> S32 {
         ret 123
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -228,7 +229,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         g(true)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -244,7 +245,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         g(Vec[Bool]::from([true, false, true]))
         g(std::vector::Vec[Bool]::from([false, true]))
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -258,7 +259,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         g(123)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -272,7 +273,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         g[true]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -288,7 +289,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         g[Vec[Bool]()]()
         g[std::vector::Vec[Bool]()]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -302,7 +303,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         g[123]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -318,7 +319,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut b = g()
         b = false
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -338,7 +339,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut v2 = g()
         v2 = std::vector::Vec[Bool]::new()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -354,7 +355,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut n = g()
         n = 0
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -370,7 +371,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut b = g[Bool]()
         b = false
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -390,7 +391,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut v2 = g[Vec[Bool]]()
         v2 = std::vector::Vec[Bool]::new()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -406,7 +407,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut n = g[S32]()
         n = 0
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -422,7 +423,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             data = std::vector::Vec[std::number::U8]::new()
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -441,7 +442,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             buf = Slice[U8]()
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -453,7 +454,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case n is S32() { }
         case n is std::number::S32() { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -465,7 +466,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let Str(mut data) = s
         data = std::vector::Vec[std::number::U8]::new()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -480,7 +481,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let Vec[U8](mut buf) = v
         buf = Slice[U8]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -491,7 +492,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(n: S32) -> std::void::Void {
         let S32() = n
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -503,7 +504,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut t: Tool) -> std::void::Void {
         t = false
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -516,7 +517,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut v: BoolVec) -> std::void::Void {
         v = std::vector::Vec[std::boolean::Bool]::new()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -528,7 +529,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut n: Tool) -> std::void::Void {
         n = 0
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -541,7 +542,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = value
         x = false
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -556,7 +557,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut l = value.length()
         l = 0_uz
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -569,7 +570,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut n = value
         n = 0
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -582,7 +583,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         b = true
         b = false
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -596,7 +597,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         v = Vec[Bool]::from([true, false])
         v = std::vector::Vec[Bool]::from([false, true])
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -609,7 +610,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         n = 123
         n = 0
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -621,7 +622,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut b: Bool = true
         b = false
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -634,7 +635,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut v: Vec[Bool] = Vec[Bool]::from([true, false])
         v = std::vector::Vec[Bool]::from([false, true])
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -646,7 +647,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut n: S32 = 123
         n = 0
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -657,7 +658,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let b: Bool = Bool()
         let c: std::boolean::Bool = b
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -670,7 +671,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let v1: Vec[Bool] = Vec[Bool]::new()
         let v2: std::vector::Vec[Bool] = v1
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -682,4 +683,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let n: S32 = S32()
         let m: std::number::S32 = n
     }
-)")
+)");

@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -13,7 +14,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup B ext A {
         type X = std::string::Str
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -28,7 +29,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup A {
         type X = std::string::Str
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -47,7 +48,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
     sup A ext B { }
     sup A ext C { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -71,7 +72,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let x: A::X
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -95,7 +96,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let x = A::X()
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -121,7 +122,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let x = A::X()
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -136,7 +137,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup B ext A {
         cmp x: std::string::Str = "hello world"
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -151,7 +152,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup A {
         cmp x: std::string::Str = "hello world"
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -170,7 +171,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
     sup A ext B { }
     sup A ext C { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -194,7 +195,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let x = A::x
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -220,7 +221,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let x = A::x
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -235,7 +236,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     sup B ext A { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -246,7 +247,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         a: std::number::S32
         a: std::string::Str
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -263,7 +264,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
     sup A ext B { }
     sup A ext C { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -285,7 +286,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let x = A().a
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -309,4 +310,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let x = A().a
     }
-)");
+)");;

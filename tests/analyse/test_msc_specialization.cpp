@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -25,7 +26,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         x = 1234
         v.push(x.to_string())
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -45,7 +46,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let v = Vec[Bool]()
         let x = v.test_func()
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -82,7 +83,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
         b = a.to_string()
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -97,4 +98,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let x = 1.test_func()
     }
-)");
+)");;

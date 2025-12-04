@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -12,7 +13,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cor bar() -> std::generator::Gen[&mut std::number::S32] {
         gen with foo()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -26,7 +27,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cor bar() -> std::generator::Gen[std::number::S32] {
         gen with foo()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -40,7 +41,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cor bar() -> std::generator::Gen[&std::number::S32] {
         gen with foo()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -54,7 +55,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cor bar() -> std::generator::Gen[&mut std::number::S32] {
         gen with foo()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -68,7 +69,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cor bar() -> std::generator::Gen[&std::number::S32] {
         gen with foo()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -82,7 +83,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cor bar() -> std::generator::Gen[&std::number::S32] {
         gen with foo()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -96,7 +97,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cor bar() -> std::generator::Gen[&std::number::S32] {
         gen with foo()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -110,7 +111,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cor bar() -> std::generator::Gen[&mut std::number::S32] {
         gen with foo()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -124,7 +125,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cor bar() -> std::generator::Gen[std::number::S32] {
         gen with foo()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -138,7 +139,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cor bar() -> std::generator::Gen[std::boolean::Bool] {
         gen with foo()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -152,7 +153,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cor bar() -> std::generator::Gen[&std::number::S32] {
         gen with foo()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -166,7 +167,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cor bar() -> std::generator::Gen[&std::number::S32] {
         gen with foo()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -180,7 +181,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cor bar() -> std::generator::GenRes[&std::number::S32, Err=std::string::Str] {
         gen with foo()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -194,7 +195,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cor bar() -> std::generator::GenOpt[&std::number::S32] {
         gen with foo()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -208,7 +209,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cor bar() -> std::generator::GenOpt[&std::number::S32] {
         gen with foo()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -222,7 +223,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cor bar() -> std::generator::GenRes[&std::number::S32, Err=std::string::Str] {
         gen with foo()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -235,7 +236,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cor bar() -> std::generator::GenOpt[&std::number::S32] {
         gen with foo()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -248,4 +249,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cor bar() -> std::generator::GenRes[&std::number::S32, Err=std::string::Str] {
         gen with foo()
     }
-)")
+)");

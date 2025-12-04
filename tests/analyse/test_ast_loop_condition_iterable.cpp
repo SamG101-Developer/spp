@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -8,7 +9,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         loop x in std::iterator::IterMov[std::string::Str] { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -18,7 +19,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         loop x in 0 { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -31,7 +32,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             x = "hello"
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -43,7 +44,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             y = x
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -55,7 +56,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             y = x
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -67,4 +68,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             x = "hello"
         }
     }
-)")
+)");

@@ -1,6 +1,7 @@
 module;
 #include <spp/parse/macros.hpp>
 
+module spp.parse.parser_spp;
 import spp.asts.annotation_ast;
 import spp.asts.array_literal_ast;
 import spp.asts.array_literal_explicit_elements_ast;
@@ -153,7 +154,6 @@ import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 import spp.parse.errors.parser_error;
 import spp.parse.errors.parser_error_builder;
-module spp.parse.parser_spp;
 import spp.utils.algorithms;
 
 import genex;

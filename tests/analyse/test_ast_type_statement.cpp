@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -6,7 +7,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_type_statement_old_type_convention_mut,
     SppSecondClassBorrowViolationError, R"(
     type MyType = &mut std::boolean::Bool
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -14,7 +15,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_type_statement_old_type_convention_ref,
     SppSecondClassBorrowViolationError, R"(
     type MyType = &std::boolean::Bool
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -25,7 +26,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f(a: MyString, b: MyBool) -> std::void::Void { }
     fun g() -> std::void::Void { f("hello", true) }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -38,7 +39,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x: (MyString, MyBool)
         x = ("hello", true)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -47,7 +48,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     type SomeType = std::string::Str or std::boolean::Bool
     fun f(a: SomeType) -> std::void::Void { }
     fun g() -> std::void::Void { f("hello") }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -58,7 +59,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x: SomeType
         x = "hello"
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -75,7 +76,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = std::vector::Vec[std::string::Str]()
         f(x, "test")
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -85,7 +86,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         type MyVec[T] = std::vector::Vec[T]
         let x = MyVec[std::string::Str]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -96,7 +97,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = std::option::Some(val=123)
         f(x)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -105,4 +106,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     type MyVec[T] = std::vector::Vec[T]
 
     fun f[T](a: MyVec[T]) -> std::void::Void { }
-)")
+)");

@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -10,7 +11,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g() -> std::void::Void {
         f(a=true, a=false)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -22,7 +23,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g() -> std::void::Void {
         f(a=true, false)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -35,7 +36,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = 1
         f(..x)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -52,7 +53,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(&mut a, &mut a.b)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -69,7 +70,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(a, a.b)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -86,7 +87,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(a: A) -> std::void::Void {
         f(&a, a.b)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -103,7 +104,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(&mut a, a.b)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -120,7 +121,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(&a, &mut a.b)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -137,7 +138,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(&mut a, &a.b)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -154,7 +155,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(a, &mut a.b)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -171,7 +172,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(&mut a, &a.b)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -188,7 +189,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(&mut a.b, &mut a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -205,7 +206,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(a: A) -> std::void::Void {
         f(&a.b, a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -222,7 +223,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(&mut a.b, a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -239,7 +240,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(&a.b, &mut a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -256,7 +257,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(&mut a.b, &a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -273,7 +274,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(a.b, &mut a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -290,7 +291,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(a.b, &a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -307,7 +308,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(&mut a, &mut a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -324,7 +325,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(a: A) -> std::void::Void {
         f(&a, a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -341,7 +342,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(&mut a, a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -358,7 +359,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(&a, &mut a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -375,7 +376,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(&mut a, &a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -392,7 +393,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(a, &mut a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -409,7 +410,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(a: A) -> std::void::Void {
         f(a, &a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -426,7 +427,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(a: A) -> std::void::Void {
         f(&a, &a.b)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -443,7 +444,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(a: A) -> std::void::Void {
         f(&a.b, &a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -460,7 +461,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(a: A) -> std::void::Void {
         f(&a, &a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -477,7 +478,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(&mut a.a, &a.b)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -494,7 +495,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(&a.a, &mut a.b)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -511,7 +512,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(&mut a.a, &mut a.b)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -528,7 +529,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(a: A) -> std::void::Void {
         f(&a.a, &a.b)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -545,7 +546,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(a: A) -> std::void::Void {
         f(a.a, &a.b)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -562,7 +563,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(a.a, &mut a.b)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -579,7 +580,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(a: A) -> std::void::Void {
         f(&a.a, a.b)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -596,4 +597,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(mut a: A) -> std::void::Void {
         f(&mut a.a, a.b)
     }
-)")
+)");

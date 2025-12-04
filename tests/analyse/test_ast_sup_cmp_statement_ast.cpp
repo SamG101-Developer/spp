@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -14,7 +15,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut local_n = MyType::n
         local_n = "hello world"
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -30,7 +31,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut local_n = MyType::n
         local_n = "hello world"
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -46,7 +47,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut x = MyType[std::number::USize, 123_uz]::n
         x = "hello world"
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -61,7 +62,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut local_n = MyType::n
         local_n = 456_uz
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -76,7 +77,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let mut x = MyType[std::string::Str, "123"]::n
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -91,4 +92,4 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let mut x = MyType[std::number::U32, 123]::n
     }
-)")
+)");

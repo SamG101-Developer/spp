@@ -15,6 +15,8 @@ set(CMAKE_CXX_MODULE_STD ON)
 find_package(ColEx REQUIRED) # colored console output
 find_package(GenEx REQUIRED) # std::generator based iteration utilities
 find_package(OpEx REQUIRED) # custom operators
+find_package(TestEx REQUIRED) # unit testing framework
+
 find_package(absl REQUIRED) # hashing and string utilities
 find_package(nlohmann_json REQUIRED) # json parsing
 find_package(tomlplusplus REQUIRED) # toml parsing
@@ -51,7 +53,7 @@ target_compile_features(spp_lib
         PRIVATE cxx_std_26)
 target_link_libraries(spp_lib PUBLIC
         absl::hash absl::strings nlohmann_json::nlohmann_json magic_enum::magic_enum Boost::boost mp++::mp++
-        ColEx::ColEx GenEx::GenEx OpEx::OpEx
+        ColEx::ColEx GenEx::GenEx OpEx::OpEx TestEx::TestEx
         Glob LLVMCore LLVMSupport LLVMCodeGen LLVMScalarOpts LLVMTransformUtils)
 target_sources(spp_lib
         PUBLIC FILE_SET CXX_MODULES FILES ${MODULE_FILES}

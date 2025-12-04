@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -9,7 +10,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         ret 100
         ret 200
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -22,7 +23,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             f()
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -34,4 +35,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
         ret 200
     }
-)")
+)");

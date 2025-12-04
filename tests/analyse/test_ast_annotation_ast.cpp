@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -9,7 +10,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         @virtual_method
         fun f() -> std::void::Void { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -20,7 +21,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         @abstract_method
         fun f() -> A { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -34,7 +35,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     @no_impl
     fun g() -> A { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -50,7 +51,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     @public
     fun g() -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -66,7 +67,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     @protected
     fun g() -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -82,7 +83,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     @private
     fun g() -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -97,7 +98,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     @cold
     fun g() -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -112,7 +113,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     @hot
     fun g() -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -123,7 +124,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     @virtual_method
     fun f() -> A { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -134,7 +135,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     @abstract_method
     fun f() -> A { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -143,7 +144,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppAnnotationInvalidApplicationError, R"(
     @virtual_method
     cls A { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -152,7 +153,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppAnnotationInvalidApplicationError, R"(
     @abstract_method
     cls A { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -161,7 +162,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppAnnotationInvalidApplicationError, R"(
     @no_impl
     cls A { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -170,7 +171,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppAnnotationInvalidApplicationError, R"(
     @cold
     cls A { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -179,7 +180,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppAnnotationInvalidApplicationError, R"(
     @hot
     cls A { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -197,7 +198,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         @public
         fun f(&self) -> A { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -208,7 +209,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     @invalid
     fun f() -> A { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -220,7 +221,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     @public
     @protected
     fun f() -> A { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -232,7 +233,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     @protected
     @private
     fun f() -> A { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -244,7 +245,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     @private
     @public
     fun f() -> A { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -256,7 +257,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     @cold
     @hot
     fun f() -> A { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -268,7 +269,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     @hot
     @cold
     fun f() -> A { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -281,7 +282,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         @abstract_method
         fun f() -> A { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -294,4 +295,4 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         @virtual_method
         fun f() -> A { }
     }
-)")
+)");

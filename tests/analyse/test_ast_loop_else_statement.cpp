@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -10,7 +11,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             exit std::boolean::Bool
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -22,7 +23,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             exit exit
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -37,7 +38,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -52,7 +53,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             exit true
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -68,7 +69,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -82,7 +83,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             skip
         }
     }
-)")
+)");
 
 
 
@@ -97,7 +98,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             exit 1
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -109,4 +110,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
         x = "goodbye"
     }
-)")
+)");

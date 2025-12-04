@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -15,7 +16,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(p: &mut Point) -> std::void::Void {
         let x = p.x
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -33,7 +34,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let q = p
         let x = q.x
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -52,7 +53,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let q = p
         let x = q.x.u
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -69,7 +70,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(p: &Point) -> std::void::Void {
         let x = p.x
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -87,7 +88,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let q = p
         let x = q.x
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -106,4 +107,4 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let q = p
         let x = q.x.u
     }
-)")
+)");

@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -9,7 +10,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> std::void::Void {
         f[n=true]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -20,7 +21,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> std::void::Void {
         f[true]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -31,7 +32,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> std::void::Void {
         f[T=std::boolean::Bool]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -42,4 +43,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> std::void::Void {
         f[std::boolean::Bool]()
     }
-)")
+)");

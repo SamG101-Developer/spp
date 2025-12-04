@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -20,7 +21,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
         let r = p
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -41,7 +42,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
         let r = p
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -62,7 +63,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
         let r = p
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -83,7 +84,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
         let r = p
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -106,7 +107,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
         let r = p
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -130,7 +131,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
         let r = p
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -153,7 +154,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
         let r = p
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -176,7 +177,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
         let r = p
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -199,4 +200,4 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
         let r = p
     }
-)")
+)");

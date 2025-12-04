@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -14,7 +15,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let p: Point
         let q = p
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -31,7 +32,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let q = p
         let r = p
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -47,7 +48,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let p: Point
         let x = p.x
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -64,7 +65,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let q = p
         let x = p.x
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -81,7 +82,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x1 = p.x
         let x2 = p.x
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -98,7 +99,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = p.x
         let q = p
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -114,7 +115,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = p.x
         let y = p.y
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -125,7 +126,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::string::Str
         let a = [elem]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -136,7 +137,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::number::S32
         let a = [elem; 3_uz]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -152,7 +153,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut point: Point
         point.x = 5
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -163,7 +164,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::number::S32
         let a = elem + 123
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -174,7 +175,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::number::S32
         let a = 123 + elem
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -188,7 +189,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             == 2 { }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -202,7 +203,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             else { }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -214,7 +215,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::string::Str
         let a = g(elem)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -226,7 +227,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::string::Str
         let a = g(a=elem)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -237,7 +238,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::string::Str
         gen elem
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -248,7 +249,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::string::Str
         gen &mut elem
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -259,7 +260,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::string::Str
         gen &elem
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -272,7 +273,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::string::Str
         let a = g[elem]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -285,7 +286,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::string::Str
         let a = g[n=elem]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -305,7 +306,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             else { }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -316,7 +317,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::string::Str
         let a = |caps elem| { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -327,7 +328,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut elem: std::string::Str
         let a = |caps &mut elem| { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -338,7 +339,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::string::Str
         let a = |caps &elem| { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -349,7 +350,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::string::Str
         let a = elem
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -360,7 +361,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::string::Str
         let a = (elem)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -371,7 +372,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::boolean::Bool
         loop elem { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -382,7 +383,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let iterator: std::generator::Gen[std::string::Str]
         loop elem in iterator { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -393,7 +394,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let data: std::vector::Vec[std::number::U8]
         let a = std::string::Str(data)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -404,7 +405,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let data_vec: std::vector::Vec[std::number::U8]
         let a = std::string::Str(data=data_vec)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -418,7 +419,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             else { }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -429,7 +430,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::string::Str
         elem.data
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -440,7 +441,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: (std::string::Str, std::string::Str)
         elem.0
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -451,7 +452,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::boolean::Bool
         elem.not
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -462,7 +463,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::generator::Gen[std::string::Str, std::boolean::Bool]
         elem.res(false)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -473,7 +474,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let func: std::function::FunRef[(std::boolean::Bool,), std::void::Void]
         func(false)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -484,7 +485,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::string::Str
         ret elem
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -495,7 +496,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::function::FunRef[(std::string::Str,), std::void::Void]
         let a = async elem("hello world")
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -506,7 +507,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::function::FunRef[(std::string::Str,), std::void::Void]
         let a = elem("hello world")
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -517,7 +518,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let elem: std::string::Str
         let a = (elem,)
     }
-)")
+)");
 
 
 

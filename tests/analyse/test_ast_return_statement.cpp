@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -8,7 +9,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cor f() -> std::generator::Gen[std::number::S32] {
         ret 123
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -18,7 +19,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::number::S32 {
         ret "hello world"
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -27,7 +28,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cor f() -> std::generator::Gen[std::number::S32] {
         ret
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -36,7 +37,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         ret
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -45,4 +46,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::number::S32 {
         ret 1
     }
-)")
+)");

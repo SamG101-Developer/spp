@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -8,7 +9,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(a: &std::boolean::Bool) -> std::void::Void {
         let b = [a; 1_uz]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -18,7 +19,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(a: &mut std::boolean::Bool) -> std::void::Void {
         let b = [a; 1_uz]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -28,7 +29,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let a = ["hello"; 1_uz]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -39,7 +40,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let b = 100_u32
         let a = [1_u32; b]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -49,7 +50,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let a = [false; 1]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -58,7 +59,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let a = [false; 1_uz]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -68,4 +69,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f[cmp n: USize]() -> std::void::Void {
         let a = [false; n]
     }
-)")
+)");

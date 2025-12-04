@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -7,7 +8,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppFunctionPrototypeConflictError, R"(
     fun f(a: &std::boolean::Bool) -> std::void::Void { }
     fun f(a: &mut std::boolean::Bool) -> std::void::Void { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -16,7 +17,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppFunctionPrototypeConflictError, R"(
     fun f(a: &mut std::boolean::Bool) -> std::void::Void { }
     fun f(a: &std::boolean::Bool) -> std::void::Void { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -24,7 +25,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_overload_different_return_type, R"(
     fun f(a: std::boolean::Bool) -> std::void::Void { }
     fun f(a: std::boolean::Bool) -> std::boolean::Bool { ret true }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -32,7 +33,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_overload_parameter_count, R"(
     fun f(a: std::boolean::Bool) -> std::void::Void { }
     fun f(a: std::boolean::Bool, b: std::boolean::Bool) -> std::void::Void { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -40,7 +41,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_overload_parameter_conventions_1, R"(
     fun f(a: &std::boolean::Bool) -> std::void::Void { }
     fun f(a: std::boolean::Bool) -> std::void::Void { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -48,7 +49,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_overload_parameter_conventions_2, R"(
     fun f(a: std::boolean::Bool) -> std::void::Void { }
     fun f(a: &std::boolean::Bool) -> std::void::Void { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -56,7 +57,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_overload_parameter_conventions_3, R"(
     fun f(a: &mut std::boolean::Bool) -> std::void::Void { }
     fun f(a: std::boolean::Bool) -> std::void::Void { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -64,7 +65,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_overload_parameter_conventions_4, R"(
     fun f(a: std::boolean::Bool) -> std::void::Void { }
     fun f(a: &mut std::boolean::Bool) -> std::void::Void { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -72,7 +73,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_overload_parameter_types, R"(
     fun f(a: std::boolean::Bool) -> std::void::Void { }
     fun f(a: std::bignum::bigint::BigInt) -> std::void::Void { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -81,7 +82,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppFunctionPrototypeConflictError, R"(
     fun f[T](a: T) -> std::void::Void { }
     fun f[T](a: T) -> std::void::Void { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -90,7 +91,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppFunctionPrototypeConflictError, R"(
     fun f[T](a: T) -> std::void::Void { }
     fun f[U](a: U) -> std::void::Void { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -98,7 +99,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_overload_generics_usage_1, R"(
     fun f[T]() -> std::void::Void { }
     fun f[T](b: T) -> std::void::Void { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -106,7 +107,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_overload_generics_usage_2, R"(
     fun f[T](a: T) -> std::void::Void { }
     fun f[T](a: T, b: T) -> std::void::Void { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -114,7 +115,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_overload_generics_usage_3, R"(
     fun f[T]() -> std::void::Void { }
     fun f[T, U]() -> std::void::Void { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -129,7 +130,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup A {
         fun f(a: &mut std::boolean::Bool) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -144,7 +145,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup A {
         fun f(a: &std::boolean::Bool) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -158,7 +159,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A {
         fun f(a: std::boolean::Bool) -> std::boolean::Bool { ret true }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -172,7 +173,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A {
         fun f(a: std::boolean::Bool, b: std::boolean::Bool) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -186,7 +187,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A {
         fun f(a: std::boolean::Bool) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -200,7 +201,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A {
         fun f(a: &std::boolean::Bool) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -214,7 +215,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A {
         fun f(a: std::boolean::Bool) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -228,7 +229,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A {
         fun f(a: &mut std::boolean::Bool) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -242,7 +243,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A {
         fun f(a: std::bignum::bigint::BigInt) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -257,7 +258,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup A {
         fun f[T](a: T) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -272,7 +273,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup A {
         fun f[U](a: U) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -286,7 +287,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A {
         fun f[T](b: T) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -300,7 +301,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A {
         fun f[T](a: T, b: T) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -314,4 +315,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A {
         fun f[T, U]() -> std::void::Void { }
     }
-)");
+)");;

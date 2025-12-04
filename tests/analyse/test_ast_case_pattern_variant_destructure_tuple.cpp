@@ -1,4 +1,5 @@
 #include "../test_macros.hpp"
+import testex;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -8,7 +9,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(p: (std::bignum::bigint::BigInt, std::bignum::bigint::BigInt)) -> std::void::Void {
         case p is [.., ..] { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -18,7 +19,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(p: (std::bignum::bigint::BigInt, std::bignum::bigint::BigInt)) -> std::void::Void {
         case p is (x) { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -28,7 +29,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(p: (std::bignum::bigint::BigInt, std::bignum::bigint::BigInt)) -> std::void::Void {
         case p is (x, y, z) { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -37,7 +38,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: (std::bignum::bigint::BigInt, std::bignum::bigint::BigInt)) -> std::void::Void {
         case p is (x, y) { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -46,7 +47,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: (std::bignum::bigint::BigInt, std::bignum::bigint::BigInt)) -> std::void::Void {
         case p is (x, _) { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -55,7 +56,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: (std::bignum::bigint::BigInt, std::bignum::bigint::BigInt)) -> std::void::Void {
         case p is (x, ..) { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -64,7 +65,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: (std::bignum::bigint::BigInt, std::bignum::bigint::BigInt)) -> std::void::Void {
         case p is (..x) { }
     }
-)")
+)");
 
 
 
@@ -77,7 +78,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             is (x, ..) { }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -86,7 +87,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: (std::array::Arr[std::bignum::bigint::BigInt, 2_uz], std::array::Arr[std::bignum::bigint::BigInt, 2_uz])) -> std::void::Void {
         case p is ([a, b], [c, d]) { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -95,7 +96,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: ((std::bignum::bigint::BigInt, std::bignum::bigint::BigInt), (std::bignum::bigint::BigInt, std::bignum::bigint::BigInt))) -> std::void::Void {
         case p is ((a, b), (c, d)) { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -108,5 +109,5 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: (Point, Point)) -> std::void::Void {
         case p is (Point(x as a, y as b), Point(x as c, y as d)) { }
     }
-)")
+)");
 
