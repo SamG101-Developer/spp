@@ -1,4 +1,5 @@
-#include <testex/macros.hpp>
+#include <testex/main.hpp>
 import testex;
+
 
 TESTEX_MAIN()
