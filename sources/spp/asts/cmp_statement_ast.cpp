@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.cmp_statement_ast;
 import spp.analyse.errors.semantic_error;
@@ -118,8 +119,9 @@ auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
 
     // Ensure that the convention type doesn't have a convention.
     if (const auto conv = type->get_convention(); conv != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
-            *this, *conv, "global constant type").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
+            .with_args(*this, *conv, "global constant type")
+            .raises_from(sm->current_scope);
     }
 
     // Create a symbol for this constant declaration, pin to prevent moving.
@@ -154,8 +156,9 @@ auto spp::asts::CmpStatementAst::stage_7_analyse_semantics(
     const auto inferred_type = value->infer_type(sm, meta);
 
     if (not analyse::utils::type_utils::symbolic_eq(*given_type, *inferred_type, *sm->current_scope, *sm->current_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-            *type, *given_type, *value, *inferred_type).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
+            .with_args(*type, *given_type, *value, *inferred_type)
+            .raises_from(sm->current_scope);
     }
 }
 

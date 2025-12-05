@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.type_utils;
 import spp.analyse.errors.semantic_error;
@@ -358,9 +359,11 @@ auto spp::analyse::utils::type_utils::is_type_recursive(
     scopes::ScopeManager const &sm)
     -> std::shared_ptr<asts::TypeAst> {
     // Get the attribute types recursively from the class prototype, and check for a match with the class prototype.
-    for (auto [cls_proto, attr_ast] : get_attr_types(&type, sm.current_scope)) {
-        if (cls_proto == &type) {
-            return attr_ast;
+    auto attr_info = std::vector<std::pair<std::shared_ptr<scopes::TypeSymbol>, asts::ClassAttributeAst*>>{};
+    get_attr_types(&type, sm.current_scope, attr_info);
+    for (auto [attr_type_sym, attr_ast] : attr_info) {
+        if (attr_type_sym == type.get_cls_sym()) {
+            return attr_ast->type;
         }
     }
 
@@ -371,27 +374,18 @@ auto spp::analyse::utils::type_utils::is_type_recursive(
 
 auto spp::analyse::utils::type_utils::get_attr_types(
     const asts::ClassPrototypeAst *cls_proto,
-    const scopes::Scope *cls_scope)
-    -> std::vector<std::pair<const asts::ClassPrototypeAst*, std::shared_ptr<asts::TypeAst>>> {
-    // Todo: GenEx
-    auto mapped_attrs = std::ranges::views::transform(cls_proto->impl->members, [](auto const &member) {
-        return member->template to<asts::ClassAttributeAst>();
-    });
-    auto filtered_attrs = std::ranges::views::filter(mapped_attrs, [](auto const &attr) {
-        return attr != nullptr;
-    });
-    const auto all_attrs = std::ranges::to<std::vector>()(filtered_attrs);
+    const scopes::Scope *cls_scope,
+    std::vector<std::pair<std::shared_ptr<scopes::TypeSymbol>, asts::ClassAttributeAst*>> &attr_symbols)
+    -> void {
+    // Get all attribute types, without recursion errors (this will be handled elsewhere).
+    for (auto const &member : cls_proto->impl->members | genex::views::ptr | genex::views::cast_dynamic<asts::ClassAttributeAst*>) {
+        auto type_sym = cls_scope->get_type_symbol(member->type);
+        if (genex::contains(attr_symbols, type_sym, genex::get<0>)) { continue; }
+        if (type_sym->scope == nullptr) { continue; }
 
-    // Define the internal function to recursively search for attribute types.
-    auto attrs = std::vector<std::pair<const asts::ClassPrototypeAst*, std::shared_ptr<asts::TypeAst>>>{};
-    for (const auto attr : all_attrs) {
-        const auto attr_type_sym = cls_scope->get_type_symbol(attr->type, true);
-        if (attr_type_sym and attr_type_sym->type != nullptr) {
-            attrs.emplace_back(std::make_tuple(attr_type_sym->type, attr->type));
-            attrs.append_range(get_attr_types(attr_type_sym->type, attr_type_sym->scope));
-        }
+        attr_symbols.emplace_back(type_sym, member);
+        get_attr_types(type_sym->type, type_sym->scope, attr_symbols);
     }
-    return attrs;
 }
 
 
@@ -444,8 +438,9 @@ auto spp::analyse::utils::type_utils::get_generator_and_yield_type(
     // Generic types are not generators, so raise an error.
     const auto type_sym = sm.current_scope->get_type_symbol(type.shared_from_this());
     if (type_sym->scope == nullptr) {
-        errors::SemanticErrorBuilder<errors::SppExpressionNotGeneratorError>().with_args(
-            expr, type, what).with_scopes({sm.current_scope}).raise();
+        errors::SemanticErrorBuilder<errors::SppExpressionNotGeneratorError>()
+            .with_args(expr, type, what)
+            .raises_from(sm.current_scope);
     }
 
     // Discover the supertypes and add the current type to it.=.
@@ -458,12 +453,14 @@ auto spp::analyse::utils::type_utils::get_generator_and_yield_type(
         | genex::to<std::vector>();
 
     if (generator_type_candidates.empty()) {
-        errors::SemanticErrorBuilder<errors::SppExpressionNotGeneratorError>().with_args(
-            expr, type, what).with_scopes({sm.current_scope}).raise();
+        errors::SemanticErrorBuilder<errors::SppExpressionNotGeneratorError>()
+            .with_args(expr, type, what)
+            .raises_from(sm.current_scope);
     }
     if (generator_type_candidates.size() > 1) {
-        errors::SemanticErrorBuilder<errors::SppExpressionAmbiguousGeneratorError>().with_args(
-            expr, type, what).with_scopes({sm.current_scope}).raise();
+        errors::SemanticErrorBuilder<errors::SppExpressionAmbiguousGeneratorError>()
+            .with_args(expr, type, what)
+            .raises_from(sm.current_scope);
     }
 
     // Extract the generator and yield type.
@@ -512,8 +509,9 @@ auto spp::analyse::utils::type_utils::get_try_type(
         | genex::to<std::vector>();
 
     if (try_type_candidates.empty()) {
-        errors::SemanticErrorBuilder<errors::SppEarlyReturnRequiresTryTypeError>().with_args(
-            expr, type).with_scopes({sm.current_scope}).raise();
+        errors::SemanticErrorBuilder<errors::SppEarlyReturnRequiresTryTypeError>()
+            .with_args(expr, type)
+            .raises_from(sm.current_scope);
     }
 
     // Extract the Try type and return it.
@@ -568,8 +566,9 @@ auto spp::analyse::utils::type_utils::validate_inconsistent_types(
     if (not mismatch_branches_type_info.empty()) {
         auto [mismatch_branch, mismatch_branch_type] = std::move(mismatch_branches_type_info[0]);
         auto [master_branch, master_branch_type] = master_branch_type_info;
-        analyse::errors::SemanticErrorBuilder<errors::SppTypeMismatchError>().with_args(
-            *master_branch->body->final_member(), *master_branch_type, *mismatch_branch->body->final_member(), *mismatch_branch_type).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<errors::SppTypeMismatchError>()
+            .with_args(*master_branch->body->final_member(), *master_branch_type, *mismatch_branch->body->final_member(), *mismatch_branch_type)
+            .raises_from(sm->current_scope);
     }
 
     // Cast to common AST nodes and return with the types.
@@ -867,8 +866,9 @@ auto spp::analyse::utils::type_utils::get_type_part_symbol_with_error(
             | genex::to<std::vector>();
 
         const auto closest_match = spp::utils::strings::closest_match(type_part.name, alternatives);
-        analyse::errors::SemanticErrorBuilder<errors::SppIdentifierUnknownError>().with_args(
-            *type_part.without_generics(), "type", closest_match).with_scopes({sm.current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<errors::SppIdentifierUnknownError>()
+            .with_args(*type_part.without_generics(), "type", closest_match)
+            .raises_from(sm.current_scope);
     }
 
     // Return the found type symbol.
@@ -888,8 +888,9 @@ auto spp::analyse::utils::type_utils::get_namespaced_scope_with_error( // todo: 
             | genex::to<std::vector>();
 
         const auto closest_match = spp::utils::strings::closest_match(ns.val, alternatives);
-        analyse::errors::SemanticErrorBuilder<errors::SppIdentifierUnknownError>().with_args(
-            ns, "namespace", closest_match).with_scopes({sm.current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<errors::SppIdentifierUnknownError>()
+            .with_args(ns, "namespace", closest_match)
+            .raises_from(sm.current_scope);
     }
 
     // Return the found namespace scope.
@@ -915,8 +916,9 @@ auto spp::analyse::utils::type_utils::deduplicate_variant_inner_types(
 
         // Ensure there are no borrowed types inside the variant type.
         else if (const auto conv = generic_arg->val->get_convention(); conv != nullptr) {
-            errors::SemanticErrorBuilder<errors::SppSecondClassBorrowViolationError>().with_args(
-                type, *conv, "variant type argument").with_scopes({&scope}).raise();
+            errors::SemanticErrorBuilder<errors::SppSecondClassBorrowViolationError>()
+                .with_args(type, *conv, "variant type argument")
+                .raises_from((&scope));
         }
 
         // Inspect a non-variant type, and if it hasn't beem added to the list, add it.

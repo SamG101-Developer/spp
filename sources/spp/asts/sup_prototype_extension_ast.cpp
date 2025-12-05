@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.sup_prototype_extension_ast;
 import spp.analyse.errors.semantic_error;
@@ -126,8 +127,9 @@ auto spp::asts::SupPrototypeExtensionAst::check_cyclic_extension(
         | genex::to<std::vector>();
 
     if (not existing_sup_scopes.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionCyclicExtensionError>().with_args(
-            *existing_sup_scopes[0].second->super_class, *name).with_scopes({&check_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionCyclicExtensionError>()
+            .with_args(*existing_sup_scopes[0].second->super_class, *name)
+            .raises_from((&check_scope));
     }
 }
 
@@ -158,8 +160,9 @@ auto spp::asts::SupPrototypeExtensionAst::check_double_extension(
         | genex::to<std::vector>();
 
     if (not existing_sup_scopes.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionDoubleExtensionError>().with_args(
-            *existing_sup_scopes[0].second->super_class, *name).with_scopes({&check_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionDoubleExtensionError>()
+            .with_args(*existing_sup_scopes[0].second->super_class, *name)
+            .raises_from((&check_scope));
     }
 }
 
@@ -169,8 +172,9 @@ auto spp::asts::SupPrototypeExtensionAst::check_self_extension(
     -> void {
     // Check if the superimposition is extending itself.
     if (analyse::utils::type_utils::symbolic_eq(*name, *super_class, check_scope, check_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionSelfExtensionError>().with_args(
-            *name, *super_class).with_scopes({&check_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionSelfExtensionError>()
+            .with_args(*name, *super_class)
+            .raises_from((&check_scope));
     }
 }
 
@@ -207,28 +211,32 @@ auto spp::asts::SupPrototypeExtensionAst::stage_2_gen_top_level_scopes(
 
     // Check there are optional generic parameters.
     if (const auto optional = generic_param_group->get_optional_params(); not optional.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionOptionalGenericParameterError>().with_args(
-            *optional[0]).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionOptionalGenericParameterError>()
+            .with_args(*optional[0])
+            .raises_from(sm->current_scope);
     }
 
     // Check every generic parameter is constrained by the type.
     if (name->type_parts().back()->name[0] != '$') {
         if (const auto unconstrained = generic_param_group->get_all_params() | genex::views::filter([this](auto &&x) { return not(name->contains_generic(*x) or super_class->contains_generic(*x)); }) | genex::to<std::vector>(); not unconstrained.empty()) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError>().with_args(
-                *unconstrained[0]).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError>()
+                .with_args(*unconstrained[0])
+                .raises_from(sm->current_scope);
         }
     }
 
     // No conventions allowed on the name.
     if (auto &&conv = name->get_convention(); conv != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
-            *name, *conv, "superimposition type").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
+            .with_args(*name, *conv, "superimposition type")
+            .raises_from(sm->current_scope);
     }
 
     // No conventions allowed on the super class.
     if (auto &&conv = super_class->get_convention(); conv != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
-            *super_class, *conv, "superimposition type").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
+            .with_args(*super_class, *conv, "superimposition type")
+            .raises_from(sm->current_scope);
     }
 
     // Generate symbols for the generic parameter group, and the self type.
@@ -305,8 +313,9 @@ auto spp::asts::SupPrototypeExtensionAst::stage_5_load_super_scopes(
     // Check the supertype is not generic.
     const auto sup_sym = sm->current_scope->get_type_symbol(super_class);
     if (sup_sym->is_generic) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppGenericTypeInvalidUsageError>().with_args(
-            *super_class, *super_class, "superimposition supertype").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppGenericTypeInvalidUsageError>()
+            .with_args(*super_class, *super_class, "superimposition supertype")
+            .raises_from(sm->current_scope);
     }
 
     // Load the implementation and move out of the scope.
@@ -352,14 +361,16 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
 
             // Check the base method exists.
             if (base_method == nullptr) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionExtensionMethodInvalidError>().with_args(
-                    *this_method->name, *super_class).with_scopes({sm->current_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionExtensionMethodInvalidError>()
+                    .with_args(*this_method->name, *super_class)
+                    .raises_from(sm->current_scope);
             }
 
             // Check the base method is virtual or abstract.
             if (not(base_method->abstract_annotation or base_method->virtual_annotation)) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionExtensionNonVirtualMethodOverriddenError>().with_args(
-                    *this_method->name, *base_method->name, *super_class).with_scopes({sm->current_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionExtensionNonVirtualMethodOverriddenError>()
+                    .with_args(*this_method->name, *base_method->name, *super_class)
+                    .raises_from(sm->current_scope);
             }
         }
 
@@ -370,8 +381,9 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
 
             // Check to see if the base type exists.
             if (base_type == nullptr) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionExtensionTypeStatementInvalidError>().with_args(
-                    *type_member, *super_class).with_scopes({sm->current_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionExtensionTypeStatementInvalidError>()
+                    .with_args(*type_member, *super_class)
+                    .raises_from(sm->current_scope);
             }
         }
 
@@ -382,8 +394,9 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
 
             // Check to see if the base type exists.
             if (base_const == nullptr) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionExtensionCmpStatementInvalidError>().with_args(
-                    *cmp_member, *super_class).with_scopes({sm->current_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionExtensionCmpStatementInvalidError>()
+                    .with_args(*cmp_member, *super_class)
+                    .raises_from(sm->current_scope);
             }
         }
     }

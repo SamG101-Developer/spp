@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.function_parameter_optional_ast;
 import spp.analyse.errors.semantic_error;
@@ -88,8 +89,9 @@ auto spp::asts::FunctionParameterOptionalAst::stage_7_analyse_semantics(
     // Make sure the default expression the correct type.
     const auto default_type = default_val->infer_type(sm, meta);
     if (not analyse::utils::type_utils::symbolic_eq(*type, *default_type, *sm->current_scope, *sm->current_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-            *extract_name(), *type, *default_val, *default_type).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
+            .with_args(*extract_name(), *type, *default_val, *default_type)
+            .raises_from(sm->current_scope);
     }
 }
 

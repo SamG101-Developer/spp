@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.case_pattern_variant_destructure_object_ast;
 import spp.analyse.errors.semantic_error;
@@ -137,8 +138,9 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantic
     // Flow type the condition symbol if necessary.
     if (analyse::utils::type_utils::is_type_variant(*cond_sym->type, *sm->current_scope)) {
         if (not analyse::utils::type_utils::symbolic_eq(*cond_sym->type, *type, *sm->current_scope, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-                *meta->case_condition, *cond_sym->type, *type, *type).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
+                .with_args(*meta->case_condition, *cond_sym->type, *type, *type)
+                .raises_from(sm->current_scope);
         }
 
         const auto flow_sym = std::make_shared<analyse::scopes::VariableSymbol>(*cond_sym);

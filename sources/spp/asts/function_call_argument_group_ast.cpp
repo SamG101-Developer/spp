@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.function_call_argument_group_ast;
 import spp.analyse.errors.semantic_error;
@@ -124,8 +125,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         | genex::to<std::vector>();
 
     if (not arg_names.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
-            *arg_names[0], *arg_names[1], "keyword function-argument").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>()
+            .with_args(*arg_names[0], *arg_names[1], "keyword function-argument")
+            .raises_from(sm->current_scope);
     }
 
     // Check the arguments are in the correct order.
@@ -135,8 +137,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         | genex::to<std::vector>());
 
     if (not unordered_args.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>().with_args(
-            unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>()
+            .with_args(unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second)
+            .raises_from(sm->current_scope);
     }
 
     // Expand tuple-expansion arguments ("..tuple" => "tuple.0, tuple.1, ...")
@@ -149,8 +152,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         // Check the argument value is a tuple expression.
         auto arg_type = arg->infer_type(sm, meta);
         if (not analyse::utils::type_utils::is_type_tuple(*arg_type, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpansionOfNonTupleError>().with_args(
-                *arg->val, *arg_type).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpansionOfNonTupleError>()
+                .with_args(*arg->val, *arg_type)
+                .raises_from(sm->current_scope);
         }
 
         // Replace the tuple-expansion argument with the expanded arguments.
@@ -175,14 +179,16 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
 
         // Immutable symbols cannot be mutated.
         if (not sym->is_mutable) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
-                *arg->val, *arg->val, *std::get<0>(sym->memory_info->ast_initialization)).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>()
+                .with_args(*arg->val, *arg->val, *std::get<0>(sym->memory_info->ast_initialization))
+                .raises_from(sm->current_scope);
         }
 
         // Immutable borrows, even if their symbol is mutable, cannot be mutated.
         if (std::get<0>(sym->memory_info->ast_borrowed) and *sym->type->get_convention() == ConventionTag::REF) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
-                *arg->val, *arg->val, *std::get<0>(sym->memory_info->ast_borrowed)).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>()
+                .with_args(*arg->val, *arg->val, *std::get<0>(sym->memory_info->ast_borrowed))
+                .raises_from(sm->current_scope);
         }
     }
 }
@@ -230,8 +236,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                     | genex::to<std::vector>();
 
                 if (not overlaps.empty()) {
-                    analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemoryOverlapUsageError>().with_args(
-                        *overlaps[0], *arg->val).with_scopes({sm->current_scope}).raise();
+                    analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemoryOverlapUsageError>()
+                        .with_args(*overlaps[0], *arg->val)
+                        .raises_from(sm->current_scope);
                 }
             }
         }
@@ -249,8 +256,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
 
             // Check the immutable borrow doesn't overlap with any other mutable borrows in the same scope.
             if (not overlaps.empty()) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemoryOverlapUsageError>().with_args(
-                    *overlaps[0], *arg->val).with_scopes({sm->current_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemoryOverlapUsageError>()
+                    .with_args(*overlaps[0], *arg->val)
+                    .raises_from(sm->current_scope);
             }
 
             // Invalidate any linked pins.
@@ -285,8 +293,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
 
             // Check the mutable borrow doesn't overlap with any other borrows in the same scope.
             if (not overlaps.empty()) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemoryOverlapUsageError>().with_args(
-                    *overlaps[0], *arg->val).with_scopes({sm->current_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemoryOverlapUsageError>()
+                    .with_args(*overlaps[0], *arg->val)
+                    .raises_from(sm->current_scope);
             }
 
             // Invalidate any linked pins.

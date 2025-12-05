@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.tuple_literal_ast;
 import spp.analyse.errors.semantic_error;
@@ -103,8 +104,9 @@ auto spp::asts::TupleLiteralAst::stage_7_analyse_semantics(
     for (auto const &elem : elems | genex::views::indirect) {
         if (auto [elem_sym, _] = sm->current_scope->get_var_symbol_outermost(elem); elem_sym != nullptr) {
             if (const auto borrow_ast = std::get<0>(elem_sym->memory_info->ast_borrowed)) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
-                    elem, *borrow_ast, "explicit array element type").with_scopes({sm->current_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
+                    .with_args(elem, *borrow_ast, "explicit array element type")
+                    .raises_from(sm->current_scope);
             }
         }
     }

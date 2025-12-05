@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.array_literal_explicit_elements_ast;
 import spp.analyse.errors.semantic_error;
@@ -113,16 +114,18 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_7_analyse_semantics(
 
     for (auto &&[elem, elem_type] : genex::views::zip(elems | genex::views::ptr, elem_types)) {
         if (not analyse::utils::type_utils::symbolic_eq(*zeroth_type, *elem_type, *sm->current_scope, *sm->current_scope))
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-                *zeroth_elem, *zeroth_type, *elem, *elem_type).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
+                .with_args(*zeroth_elem, *zeroth_type, *elem, *elem_type)
+                .raises_from(sm->current_scope);
     }
 
     // Check all the elements are owned by the array, not borrowed.
     for (auto &&elem : elems | genex::views::ptr) {
         if (auto [elem_sym, _] = sm->current_scope->get_var_symbol_outermost(*elem); elem_sym != nullptr) {
             if (const auto borrow_ast = std::get<0>(elem_sym->memory_info->ast_borrowed)) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
-                    *elem, *borrow_ast, "explicit array element type").with_scopes({sm->current_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
+                    .with_args(*elem, *borrow_ast, "explicit array element type")
+                    .raises_from(sm->current_scope);
             }
         }
     }

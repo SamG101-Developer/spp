@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.generic_parameter_group_ast;
 import spp.analyse.errors.semantic_error;
@@ -261,14 +262,16 @@ auto spp::asts::GenericParameterGroupAst::stage_7_analyse_semantics(
 
     // Check there are no duplicate parameter names.
     if (not param_names.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
-            *param_names[0], *param_names[1], "keyword function-argument").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>()
+            .with_args(*param_names[0], *param_names[1], "keyword function-argument")
+            .raises_from(sm->current_scope);
     }
 
     // Check the parameters are in the correct order.
     if (not unordered_params.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>().with_args(
-            unordered_params[0].first, *unordered_params[0].second, unordered_params[1].first, *unordered_params[1].second).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>()
+            .with_args(unordered_params[0].first, *unordered_params[0].second, unordered_params[1].first, *unordered_params[1].second)
+            .raises_from(sm->current_scope);
     }
 
     // Run the semantic analysis steps on each parameter in the group.

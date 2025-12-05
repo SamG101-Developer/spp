@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.array_literal_repeated_element_ast;
 import spp.analyse.errors.semantic_error;
@@ -112,25 +113,26 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
 
     // Ensure the element type is copyable, so that is can be repeated in the array.
     if (not elem_type_sym->is_copyable()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidExpressionNonCopyableTypeError>().with_args(
-            *elem, *elem_type).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidExpressionNonCopyableTypeError>()
+            .with_args(*elem, *elem_type)
+            .raises_from(sm->current_scope);
     }
 
     // Ensure the element's type is not a borrow type, as array elements cannot be borrows.
     if (const auto conv = elem_type->get_convention()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
-            *elem, *conv, "repeated array element type").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
+            .with_args(*elem, *conv, "repeated array element type")
+            .raises_from(sm->current_scope);
     }
 
     // Ensure the size is a constant expression (if symbolic).
     SPP_ENFORCE_EXPRESSION_SUBTYPE(size.get());
     auto symbolic_size = ast_clone(size->to<IdentifierAst>());
     const auto size_sym = sm->current_scope->get_var_symbol(std::move(symbolic_size));
-    if (size_sym != nullptr) {
-        if (size_sym->memory_info->ast_comptime == nullptr) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppCompileTimeConstantError>().with_args(
-                *size).with_scopes({sm->current_scope}).raise();
-        }
+    if (size_sym != nullptr and size_sym->memory_info->ast_comptime == nullptr) {
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppCompileTimeConstantError>()
+            .with_args(*size)
+            .raises_from(sm->current_scope);
     }
 }
 

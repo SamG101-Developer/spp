@@ -142,8 +142,9 @@ namespace spp::analyse::utils::type_utils {
 
     SPP_EXP_FUN auto get_attr_types(
         const asts::ClassPrototypeAst *cls_proto,
-        const scopes::Scope *cls_scope)
-        -> std::vector<std::pair<const asts::ClassPrototypeAst*, std::shared_ptr<asts::TypeAst>>>;
+        const scopes::Scope *cls_scope,
+        std::vector<std::pair<std::shared_ptr<scopes::TypeSymbol>, asts::ClassAttributeAst*>> &attr_symbols)
+        -> void;
 
     SPP_EXP_FUN auto is_index_within_type_bound(
         std::size_t index,

@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.assignment_statement_ast;
 import spp.analyse.errors.semantic_error;
@@ -116,26 +117,30 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
 
         // Check if the left-hand-side is non-symbolic (can't do "1 = 2").
         if (lhs_sym == nullptr) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppAssignmentTargetError>().with_args(
-                *lhs_expr).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppAssignmentTargetError>()
+                .with_args(*lhs_expr)
+                .raises_from(sm->current_scope);
         }
 
         // Full assignment (ie "x" = "y") requires the "x" symbol to be marked as "mut" or never initialized.
         if (not is_attr(lhs_expr) and not(lhs_sym->is_mutable or lhs_sym->memory_info->initialization_counter == 0)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
-                *lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_initialization)).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>()
+                .with_args(*lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_initialization))
+                .raises_from(sm->current_scope);
         }
 
         // Attribute assignment (ie "x.y = z"), for a non-borrowed symbol, requires an outermost "mut" symbol.
         if (is_attr(lhs_expr) and not(std::get<0>(lhs_sym->memory_info->ast_borrowed) or lhs_sym->is_mutable)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
-                *lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_initialization)).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>()
+                .with_args(*lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_initialization))
+                .raises_from(sm->current_scope);
         }
 
         // Attribute assignment (ie "x.y = z"), for a borrowed symbol, cannot be immutably borrowed.
         if (is_attr(lhs_expr) and lhs_sym->type->get_convention() and *lhs_sym->type->get_convention() == ConventionTag::REF) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
-                *lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_borrowed)).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>()
+                .with_args(*lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_borrowed))
+                .raises_from(sm->current_scope);
         }
 
         // Prevent double initializations to immutable uninitialized let statements.
@@ -147,8 +152,9 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
         auto lhs_type = lhs_expr->infer_type(sm, meta);
         auto rhs_type = rhs_expr->infer_type(sm, meta);
         if (not analyse::utils::type_utils::symbolic_eq(*lhs_type, *rhs_type, *sm->current_scope, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-                *lhs_expr, *lhs_type, *rhs_expr, *rhs_type).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
+                .with_args(*lhs_expr, *lhs_type, *rhs_expr, *rhs_type)
+                .raises_from(sm->current_scope);
         }
     }
 }

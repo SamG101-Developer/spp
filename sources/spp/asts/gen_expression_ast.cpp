@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.gen_expression_ast;
 import spp.analyse.errors.semantic_error;
@@ -94,8 +95,9 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
     // Check the enclosing function is a coroutine and not a subroutine.
     const auto function_flavour = meta->enclosing_function_flavour;
     if (function_flavour->token_type != lex::SppTokenType::KW_COR) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionSubroutineContainsGenExpressionError>().with_args(
-            *function_flavour, *tok_gen).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionSubroutineContainsGenExpressionError>()
+            .with_args(*function_flavour, *tok_gen)
+            .raises_from(sm->current_scope);
     }
 
     // Analyse the expression if it exists, and determine the type of the expression.
@@ -131,8 +133,10 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
     const auto optional_match = is_optional and analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::VOID, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
     const auto fallible_match = is_fallible and analyse::utils::type_utils::symbolic_eq(*error_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
     if (not(direct_match or optional_match or fallible_match)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppYieldedTypeMismatchError>().with_args(
-            *yield_type, *yield_type, expr ? *expr->to<Ast>() : *tok_gen->to<Ast>(), *expr_type, is_optional, is_fallible, error_type ? *error_type : *generate::common_types_precompiled::VOID).with_scopes({sm->current_scope}).raise();
+        error_type = error_type ? error_type : generate::common_types_precompiled::VOID;
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppYieldedTypeMismatchError>()
+            .with_args(*yield_type, *yield_type, expr ? *expr->to<Ast>() : *tok_gen->to<Ast>(), *expr_type, is_optional, is_fallible, *error_type)
+            .raises_from(sm->current_scope);
     }
 }
 
@@ -162,8 +166,9 @@ auto spp::asts::GenExpressionAst::stage_8_check_memory(
 
     else if (*conv == ConventionTag::MUT and not sym->is_mutable) {
         // Check the argument's symbol is mutable, if the symbol exists.
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
-            *expr, *conv, *std::get<0>(sym->memory_info->ast_initialization)).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>()
+            .with_args(*expr, *conv, *std::get<0>(sym->memory_info->ast_initialization))
+            .raises_from(sm->current_scope);
     }
 }
 

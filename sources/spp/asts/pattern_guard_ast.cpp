@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.pattern_guard_ast;
 import spp.analyse.errors.semantic_error;
@@ -75,8 +76,9 @@ auto spp::asts::PatternGuardAst::stage_7_analyse_semantics(
     // Check the guard's type is boolean.
     const auto expr_type = expr->infer_type(sm, meta);
     if (not analyse::utils::type_utils::is_type_boolean(*expr_type, *sm->current_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionNotBooleanError>().with_args(
-            *expr, *expr_type, "pattern guard").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionNotBooleanError>()
+            .with_args(*expr, *expr_type, "pattern guard")
+            .raises_from(sm->current_scope);
     }
 }
 

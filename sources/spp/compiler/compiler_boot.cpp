@@ -1,4 +1,5 @@
 module;
+#include <spp/analyse/macros.hpp>
 #include <spp/parse/macros.hpp>
 
 module spp.compiler.compiler_boot;
@@ -221,13 +222,15 @@ auto spp::compiler::CompilerBoot::validate_entry_point(
     }
 
     catch (analyse::errors::SppFunctionCallNoValidSignaturesError const &) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMissingMainFunctionError>().with_args(
-            *main_mod).with_scopes({sm->global_scope.get()}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMissingMainFunctionError>()
+            .with_args(*main_mod)
+            .raises_from(sm->global_scope.get());
     }
 
     catch (analyse::errors::SppIdentifierUnknownError const &) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMissingMainFunctionError>().with_args(
-            *main_mod).with_scopes({sm->global_scope.get()}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMissingMainFunctionError>()
+            .with_args(*main_mod)
+            .raises_from(sm->global_scope.get());
     }
 }
 

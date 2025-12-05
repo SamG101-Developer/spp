@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.type_statement_ast;
 import spp.analyse.errors.semantic_error;
@@ -118,18 +119,20 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
 
     // Check there are no conventions on the old type.
     if (auto &&conv = old_type->get_convention(); conv != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
-            *old_type, *conv, "use statement's old type").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
+            .with_args(*old_type, *conv, "use statement's old type")
+            .raises_from(sm->current_scope);
     }
 
     // Check there are no conventions on the new type.
     if (auto &&conv = new_type->get_convention(); conv != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
-            *new_type, *conv, "use statement's new type").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
+            .with_args(*new_type, *conv, "use statement's new type")
+            .raises_from(sm->current_scope);
     }
 
     // Create the type symbol for this type, that will point to the old type.
-    auto type_sym = std::make_shared<analyse::scopes::TypeSymbol>(
+    const auto type_sym = std::make_shared<analyse::scopes::TypeSymbol>(
         new_type, nullptr, nullptr, sm->current_scope, sm->current_scope->parent_module());
     sm->current_scope->add_type_symbol(type_sym);
     m_alias_sym = type_sym;

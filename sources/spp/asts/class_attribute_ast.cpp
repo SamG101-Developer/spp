@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.class_attribute_ast;
 import spp.analyse.errors.semantic_error;
@@ -102,8 +103,9 @@ auto spp::asts::ClassAttributeAst::stage_2_gen_top_level_scopes(
 
     // Ensure that the type does not have a convention.
     if (const auto conv = type->get_convention()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
-            *type, *conv, "attribute type").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
+            .with_args(*type, *conv, "attribute type")
+            .raises_from(sm->current_scope);
     }
 
     // Create a variable symbol for this attribute in the current scope (class scope).
@@ -129,8 +131,9 @@ auto spp::asts::ClassAttributeAst::stage_7_analyse_semantics(
     -> void {
     // Repeated convention check for generic substitutions.
     if (const auto conv = type->get_convention()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
-            *type, *conv, "attribute type").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
+            .with_args(*type, *conv, "attribute type")
+            .raises_from(sm->current_scope);
     }
 
     // Todo: I hate this, yet it works. Will fix later.
@@ -153,8 +156,9 @@ auto spp::asts::ClassAttributeAst::stage_7_analyse_semantics(
 
         // Make sure the default's inferred type matches the attribute's type.
         if (not analyse::utils::type_utils::symbolic_eq(*type, *default_type, *sm->current_scope, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-                *this, *type, *default_val, *default_type).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
+                .with_args(*this, *type, *default_val, *default_type)
+                .raises_from(sm->current_scope);
         }
     }
 }

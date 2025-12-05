@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.unary_expression_operator_async_ast;
 import spp.analyse.errors.semantic_error;
@@ -65,8 +66,9 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_7_analyse_semantics(
     -> void {
     // Check the right-hand-side is a function call expression.
     if (const auto rhs = meta->unary_expression_rhs->to<PostfixExpressionAst>(); rhs == nullptr or not rhs->op->to<PostfixExpressionOperatorFunctionCallAst>()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppAsyncTargetNotFunctionCallError>().with_args(
-            *tok_async, *this).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppAsyncTargetNotFunctionCallError>()
+            .with_args(*tok_async, *this)
+            .raises_from(sm->current_scope);
     }
     else {
         // Mark the function call as async.

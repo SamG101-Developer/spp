@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.analyse.errors.semantic_error;
@@ -76,8 +77,9 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
 
     // Prevent types on the left-hand-side of a runtime member access.
     if (meta->postfix_expression_lhs->to<TypeAst>() != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessStaticOperatorExpectedError>().with_args(
-            *meta->postfix_expression_lhs, *tok_dot).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessStaticOperatorExpectedError>()
+            .with_args(*meta->postfix_expression_lhs, *tok_dot)
+            .raises_from(sm->current_scope);
     }
 
     // Numeric index access (for tuples).
@@ -87,20 +89,23 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
 
         // Check the left-hand-side isn't a generic type. Todo: until constraints.
         if (lhs_type_sym->is_generic) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppGenericTypeInvalidUsageError>().with_args(
-                *meta->postfix_expression_lhs, *lhs_type, "member access").with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppGenericTypeInvalidUsageError>()
+                .with_args(*meta->postfix_expression_lhs, *lhs_type, "member access")
+                .raises_from(sm->current_scope);
         }
 
         // Check the lhs is a tuple/array (the only indexable types).
         if (not analyse::utils::type_utils::is_type_comptime_indexable(*lhs_type, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessNonIndexableError>().with_args(
-                *meta->postfix_expression_lhs, *lhs_type, *tok_dot).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessNonIndexableError>()
+                .with_args(*meta->postfix_expression_lhs, *lhs_type, *tok_dot)
+                .raises_from(sm->current_scope);
         }
 
         // Check the index is within the bounds of the tuple/array.
         if (not analyse::utils::type_utils::is_index_within_type_bound(std::stoul(name->val), *lhs_type, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessOutOfBoundsError>().with_args(
-                *meta->postfix_expression_lhs, *lhs_type, *tok_dot).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessOutOfBoundsError>()
+                .with_args(*meta->postfix_expression_lhs, *lhs_type, *tok_dot)
+                .raises_from(sm->current_scope);
         }
     }
 
@@ -116,14 +121,16 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
 
         // Check the lhs is a variable and not a namespace.
         if (lhs_var_sym == nullptr and lhs_ns_sym != nullptr) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessStaticOperatorExpectedError>().with_args(
-                *meta->postfix_expression_lhs, *tok_dot).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessStaticOperatorExpectedError>()
+                .with_args(*meta->postfix_expression_lhs, *tok_dot)
+                .raises_from(sm->current_scope);
         }
 
         // Check the left-hand-side isn't a generic type.
         if (lhs_type_sym->is_generic) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppGenericTypeInvalidUsageError>().with_args(
-                *meta->postfix_expression_lhs, *lhs_type, "member access").with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppGenericTypeInvalidUsageError>()
+                .with_args(*meta->postfix_expression_lhs, *lhs_type, "member access")
+                .raises_from(sm->current_scope);
         }
 
         // Check the target field exists on the type.
@@ -133,8 +140,9 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
                 | genex::to<std::vector>();
 
             const auto closest_match = spp::utils::strings::closest_match(name->val, alternatives);
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierUnknownError>().with_args(
-                *this, "instance member", closest_match).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierUnknownError>()
+                .with_args(*this, "instance member", closest_match)
+                .raises_from(sm->current_scope);
         }
 
         // Check there is only 1 target field on the type at the highest level.
@@ -159,8 +167,9 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
             | genex::to<std::vector>();
 
         if (closest.size() > 1) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppAmbiguousMemberAccessError>().with_args(
-                *closest[0].second->name, *closest[1].second->name, *name).with_scopes({closest[0].first, closest[1].first, sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppAmbiguousMemberAccessError>()
+                .with_args(*closest[0].second->name, *closest[1].second->name, *name)
+                .raises_from(closest[0].first, closest[1].first, sm->current_scope);
         }
     }
 }

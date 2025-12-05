@@ -1,3 +1,6 @@
+module;
+#include <spp/analyse/macros.hpp>
+
 module spp.asts.coroutine_prototype_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
@@ -69,8 +72,9 @@ auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
         | genex::to<std::vector>();
 
     if (genex::none_of(superimposed_types, [sm](auto &&x) { return analyse::utils::type_utils::is_type_generator(*x->without_generics(), *sm->current_scope); })) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppCoroutineInvalidReturnTypeError>().with_args(
-            *this, *return_type).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppCoroutineInvalidReturnTypeError>()
+            .with_args( *this, *return_type)
+            .raises_from(sm->current_scope);
     }
 
     // Analyse the semantics of the function body, and move out the scope.

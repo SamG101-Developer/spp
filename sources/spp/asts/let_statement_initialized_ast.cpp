@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.let_statement_initialized_ast;
 import spp.analyse.errors.semantic_error;
@@ -9,8 +10,9 @@ import spp.analyse.utils.type_utils;
 import spp.asts.local_variable_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.token_ast;
-import spp.asts.utils.ast_utils;
 import spp.asts.type_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 
@@ -89,8 +91,9 @@ auto spp::asts::LetStatementInitializedAst::stage_7_analyse_semantics(
 
     // An explicit type can only be applied if the left-hand-side is a single identifier.
     if (type != nullptr and var->to<LocalVariableSingleIdentifierAst>() == nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidTypeAnnotationError>().with_args(
-            *type, *var).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidTypeAnnotationError>()
+            .with_args(*type, *var)
+            .raises_from(sm->current_scope);
     }
 
     // Analyse the type if it has been given.
@@ -113,8 +116,9 @@ auto spp::asts::LetStatementInitializedAst::stage_7_analyse_semantics(
         meta->assignment_target_type = type;
         const auto val_type = val->infer_type(sm, meta);
         if (not analyse::utils::type_utils::symbolic_eq(*type, *val_type, *sm->current_scope, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-                *type, *type, *val, *val_type).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
+                .with_args(*type, *type, *val, *val_type)
+                .raises_from(sm->current_scope);
         }
     }
 

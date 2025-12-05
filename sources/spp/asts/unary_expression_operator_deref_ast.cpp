@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.unary_expression_operator_deref_ast;
 import spp.analyse.errors.semantic_error;
@@ -68,14 +69,16 @@ auto spp::asts::UnaryExpressionOperatorDerefAst::stage_7_analyse_semantics(
 
     // Check the right-hand-side expression is a borrowable type.
     if (rhs_type->get_convention() == nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppDereferenceInvalidExpressionNonBorrowedTypeError>().with_args(
-            *tok_deref, *rhs, *rhs_type).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppDereferenceInvalidExpressionNonBorrowedTypeError>()
+            .with_args(*tok_deref, *rhs, *rhs_type)
+            .raises_from(sm->current_scope);
     }
 
     // Check the right-hand-side expression is a "Copy" type.
     if (not sm->current_scope->get_type_symbol(rhs_type)->is_copyable()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidExpressionNonCopyableTypeError>().with_args(
-            *rhs, *rhs_type).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidExpressionNonCopyableTypeError>()
+            .with_args(*rhs, *rhs_type)
+            .raises_from(sm->current_scope);
     }
 }
 

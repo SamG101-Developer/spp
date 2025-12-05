@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.func_utils;
 import spp.analyse.errors.semantic_error;
@@ -382,8 +383,9 @@ auto spp::analyse::utils::func_utils::name_args(
         | genex::to<std::vector>();
 
     if (not invalid_arg_names.empty()) {
-        errors::SemanticErrorBuilder<errors::SppArgumentNameInvalidError>().with_args(
-            *params[0], "function parameter", *invalid_arg_names[0], "function argument").with_scopes({sm.current_scope}).raise();
+        errors::SemanticErrorBuilder<errors::SppArgumentNameInvalidError>()
+            .with_args(*params[0], "function parameter", *invalid_arg_names[0], "function argument")
+            .raises_from(sm.current_scope);
     }
 
     // Name all the positional arguments with leftover parameter names.
@@ -498,8 +500,9 @@ auto spp::analyse::utils::func_utils::name_generic_args_impl(
         | genex::to<std::vector>();
 
     if (not invalid_arg_names.empty()) {
-        errors::SemanticErrorBuilder<errors::SppArgumentNameInvalidError>().with_args(
-            *params[0], "function parameter", *invalid_arg_names[0], "function argument").with_scopes({sm.current_scope}).raise();
+        errors::SemanticErrorBuilder<errors::SppArgumentNameInvalidError>()
+            .with_args(*params[0], "function parameter", *invalid_arg_names[0], "function argument")
+            .raises_from(sm.current_scope);
     }
 
     // Name all the positional arguments with leftover parameter names.
@@ -511,8 +514,9 @@ auto spp::analyse::utils::func_utils::name_generic_args_impl(
     for (auto [i, positional_arg] : positional_args | genex::views::enumerate) {
         // Error if there are too many generic arguments.
         if (param_names.empty()) {
-            errors::SemanticErrorBuilder<errors::SppGenericArgumentTooManyError>().with_args(
-                params.empty() ? owner : *params[0], owner, *positional_arg).with_scopes({sm.current_scope}).raise();
+            errors::SemanticErrorBuilder<errors::SppGenericArgumentTooManyError>()
+                .with_args(params.empty() ? owner : *params[0], owner, *positional_arg)
+                .raises_from(sm.current_scope);
         }
 
         // Name the argument based on the parameter names available.
@@ -739,8 +743,9 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
             | genex::to<std::vector>();
 
         if (not mismatches.empty()) {
-            errors::SemanticErrorBuilder<errors::SppGenericParameterInferredConflictInferredError>().with_args(
-                *arg_name, *inferred_vals[0], *mismatches[0]).with_scopes({sm.current_scope}).raise();
+            errors::SemanticErrorBuilder<errors::SppGenericParameterInferredConflictInferredError>()
+                .with_args(*arg_name, *inferred_vals[0], *mismatches[0])
+                .raises_from(sm.current_scope);
         }
     }
 
@@ -749,8 +754,9 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
         | genex::views::set_difference_unsorted(inferred_args | genex::views::keys | genex::views::materialize, SPP_INSTANT_INDIRECT, SPP_INSTANT_INDIRECT)
         | genex::to<std::vector>();
     if (not uninferred_args.empty()) {
-        errors::SemanticErrorBuilder<errors::SppGenericParameterNotInferredError>().with_args(
-            *uninferred_args[0], *owner).with_scopes({sm.current_scope, owner_scope}).raise();
+        errors::SemanticErrorBuilder<errors::SppGenericParameterNotInferredError>()
+            .with_args(*uninferred_args[0], *owner)
+            .raises_from(sm.current_scope, owner_scope);
     }
 
     // At this point, all conflicts have been checked, so it is safe to only use the first inferred value.
@@ -824,8 +830,9 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
 
             for (auto const &a_type_inner : variadic_types) {
                 if (not type_utils::symbolic_eq(*p_type, *a_type_inner, *owner_scope, *sm.current_scope)) {
-                    errors::SemanticErrorBuilder<errors::SppTypeMismatchError>().with_args(
-                        *comp_param, *p_type, *comp_arg, *a_type_inner).with_scopes({owner_scope, sm.current_scope}).raise();
+                    errors::SemanticErrorBuilder<errors::SppTypeMismatchError>()
+                        .with_args(*comp_param, *p_type, *comp_arg, *a_type_inner)
+                        .raises_from(owner_scope, sm.current_scope);
                 }
             }
             break;
@@ -833,8 +840,9 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
 
         // Otherwise, just check the argument type against the parameter type.
         if (not type_utils::symbolic_eq(*p_type, *a_type, *owner_scope, *sm.current_scope)) {
-            errors::SemanticErrorBuilder<errors::SppTypeMismatchError>().with_args(
-                *comp_param, *p_type, *comp_arg, *a_type).with_scopes({owner_scope, sm.current_scope}).raise();
+            errors::SemanticErrorBuilder<errors::SppTypeMismatchError>()
+                .with_args(*comp_param, *p_type, *comp_arg, *a_type)
+                .raises_from(owner_scope, sm.current_scope);
         }
     }
 }
@@ -934,8 +942,9 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
             | genex::to<std::vector>();
 
         if (not mismatches.empty()) {
-            errors::SemanticErrorBuilder<errors::SppGenericParameterInferredConflictInferredError>().with_args(
-                *arg_name, *inferred_types[0], *mismatches[0]).with_scopes({sm.current_scope}).raise();
+            errors::SemanticErrorBuilder<errors::SppGenericParameterInferredConflictInferredError>()
+                .with_args(*arg_name, *inferred_types[0], *mismatches[0])
+                .raises_from(sm.current_scope);
         }
     }
 
@@ -944,8 +953,9 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
         | genex::views::set_difference_unsorted(inferred_args | genex::views::keys | genex::views::materialize, SPP_INSTANT_INDIRECT, SPP_INSTANT_INDIRECT)
         | genex::to<std::vector>();
     if (not uninferred_args.empty()) {
-        errors::SemanticErrorBuilder<errors::SppGenericParameterNotInferredError>().with_args(
-            *uninferred_args[0], *owner).with_scopes({sm.current_scope, owner_scope}).raise();
+        errors::SemanticErrorBuilder<errors::SppGenericParameterNotInferredError>()
+            .with_args(*uninferred_args[0], *owner)
+            .raises_from(sm.current_scope, owner_scope);
     }
 
     // At this point, all conflicts have been checked, so it is safe to only use the first inferred value.

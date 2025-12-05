@@ -1,3 +1,6 @@
+module;
+#include <spp/analyse/macros.hpp>
+
 module spp.asts.class_implementation_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
@@ -87,8 +90,9 @@ auto spp::asts::ClassImplementationAst::stage_6_pre_analyse_semantics(
         | genex::to<std::vector>();
 
     if (not duplicates.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
-            *duplicates[0], *duplicates[1], "attribute").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>()
+            .with_args(*duplicates[0], *duplicates[1], "attribute")
+            .raises_from(sm->current_scope);
     }
 }
 

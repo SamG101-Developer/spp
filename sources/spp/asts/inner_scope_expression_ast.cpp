@@ -1,3 +1,6 @@
+module;
+#include <spp/analyse/macros.hpp>
+
 module spp.asts.inner_scope_expression_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
@@ -47,8 +50,9 @@ auto spp::asts::InnerScopeExpressionAst<T>::stage_7_analyse_semantics(
         auto ret_stmt = member->template to<RetStatementAst>();
         auto loop_flow_stmt = member->template to<LoopControlFlowStatementAst>();
         if ((ret_stmt or loop_flow_stmt) and (member != this->members.back().get())) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppUnreachableCodeError>().with_args(
-                *member, *this->members[i + 1]).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppUnreachableCodeError>()
+                .with_args(*member, *this->members[i + 1])
+                .raises_from(sm->current_scope);
         }
     }
 

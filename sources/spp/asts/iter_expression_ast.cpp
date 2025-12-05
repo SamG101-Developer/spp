@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.iter_expression_ast;
 import spp.analyse.scopes.scope_block_name;
@@ -121,8 +122,9 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
     // Ensure there is only one type of each branch variation.
     for (auto const &pat_set : std::vector{&pat_nop, &pat_err, &pat_exh, &pat_var}) {
         if (pat_set->size() > 1) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternTypeDuplicateError>().with_args(
-                *(*pat_set)[0], *(*pat_set)[1]).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternTypeDuplicateError>()
+                .with_args(*(*pat_set)[0], *(*pat_set)[1])
+                .raises_from(sm->current_scope);
         }
     }
 
@@ -131,14 +133,16 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
 
     // IterPatternNoValue -> must be a "GenOpt" condition.
     if (not pat_nop.empty() and not analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GENERATED_OPT, *cond_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternIncompatibleError>().with_args(
-            *cond, *cond_type, *pat_nop[0], *generate::common_types_precompiled::GEN_OPT).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternIncompatibleError>()
+            .with_args(*cond, *cond_type, *pat_nop[0], *generate::common_types_precompiled::GEN_OPT)
+            .raises_from(sm->current_scope);
     }
 
     // IterPatternException -> Must be a "GenRes" condition.
     if (not pat_err.empty() and not analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GENERATED_RES, *cond_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternIncompatibleError>().with_args(
-            *cond, *cond_type, *pat_err[0], *generate::common_types_precompiled::GEN_RES).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternIncompatibleError>()
+            .with_args(*cond, *cond_type, *pat_err[0], *generate::common_types_precompiled::GEN_RES)
+            .raises_from(sm->current_scope);
     }
 
     // Analyse each branch of the case expression.
@@ -197,24 +201,27 @@ auto spp::asts::IterExpressionAst::infer_type(
         // The GenOpt type requires "else || (var && nov && exh)".
         if (analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GENERATED_OPT, *cond_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
             if ((not pat_var_present or not pat_nop_present or not pat_exh_present) and not pat_else_present) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternMissingError>().with_args(
-                    *cond, *cond_type).with_scopes({sm->current_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternMissingError>()
+                    .with_args(*cond, *cond_type)
+                    .raises_from(sm->current_scope);
             }
         }
 
         // The GenRes type requires "else || (var && exc && exh)".
         if (analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GENERATED_RES, *cond_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
             if ((not pat_var_present or not pat_err_present or not pat_exh_present) and not pat_else_present) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternMissingError>().with_args(
-                    *cond, *cond_type).with_scopes({sm->current_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternMissingError>()
+                    .with_args(*cond, *cond_type)
+                    .raises_from(sm->current_scope);
             }
         }
 
         // The Gen type requires "else || (var && exh)".
         if (analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GENERATED, *cond_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
             if ((not pat_var_present or not pat_exh_present) and not pat_else_present) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternMissingError>().with_args(
-                    *cond, *cond_type).with_scopes({sm->current_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppIterExpressionPatternMissingError>()
+                    .with_args(*cond, *cond_type)
+                    .raises_from(sm->current_scope);
             }
         }
     }

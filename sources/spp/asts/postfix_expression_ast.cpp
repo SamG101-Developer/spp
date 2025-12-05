@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.postfix_expression_ast;
 import spp.analyse.scopes.scope_manager;

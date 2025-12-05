@@ -1,3 +1,6 @@
+module;
+#include <spp/analyse/macros.hpp>
+
 module spp.asts.generic_parameter_comp_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
@@ -32,8 +35,9 @@ auto spp::asts::GenericParameterCompAst::stage_2_gen_top_level_scopes(
     -> void {
     // Ensure the type does not have a convention.
     if (const auto conv = type->get_convention(); conv != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
-            *type, *conv, "function return type").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
+            .with_args(*type, *conv, "function return type")
+            .raises_from(sm->current_scope);
     }
 
     // Create a variable symbol for this constant in the current scope (class / function).

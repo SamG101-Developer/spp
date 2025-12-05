@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.gen_with_expression_ast;
 import spp.analyse.errors.semantic_error;
@@ -27,7 +28,6 @@ import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
-
 
 
 spp::asts::GenWithExpressionAst::GenWithExpressionAst(
@@ -97,8 +97,9 @@ auto spp::asts::GenWithExpressionAst::stage_7_analyse_semantics(
     // Check the enclosing function is a coroutine and not a subroutine.
     const auto function_flavour = meta->enclosing_function_flavour;
     if (function_flavour->token_type != lex::SppTokenType::KW_COR) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionSubroutineContainsGenExpressionError>().with_args(
-            *function_flavour, *tok_gen).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionSubroutineContainsGenExpressionError>()
+            .with_args(*function_flavour, *tok_gen)
+            .raises_from(sm->current_scope);
     }
 
     // Analyse the expression (guaranteed to exist), and determine the type of the expression.
@@ -131,8 +132,9 @@ auto spp::asts::GenWithExpressionAst::stage_7_analyse_semantics(
 
     // The expression type must be a Gen type that exactly matches the function_ret_type.
     if (not analyse::utils::type_utils::symbolic_eq(*meta->enclosing_function_ret_type[0], *expr_type, *meta->enclosing_function_scope, *sm->current_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-            *meta->enclosing_function_ret_type[0], *meta->enclosing_function_ret_type[0], *expr, *expr_type).with_scopes({meta->enclosing_function_scope, sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
+            .with_args(*meta->enclosing_function_ret_type[0], *meta->enclosing_function_ret_type[0], *expr, *expr_type)
+            .raises_from(meta->enclosing_function_scope, sm->current_scope);
     }
 }
 

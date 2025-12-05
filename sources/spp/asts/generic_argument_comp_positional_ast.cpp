@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.generic_argument_comp_positional_ast;
 import spp.analyse.errors.semantic_error;

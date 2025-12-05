@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.postfix_expression_operator_keyword_not_ast;
 import spp.analyse.errors.semantic_error;
@@ -71,8 +72,9 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::stage_7_analyse_semantic
     // Check the left-hand-side is a boolean expression.
     const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
     if (not analyse::utils::type_utils::is_type_boolean(*lhs_type, *sm->current_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionNotBooleanError>().with_args(
-            *meta->postfix_expression_lhs, *lhs_type, "not expression").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionNotBooleanError>()
+            .with_args(*meta->postfix_expression_lhs, *lhs_type, "not expression")
+            .raises_from(sm->current_scope);
     }
 }
 

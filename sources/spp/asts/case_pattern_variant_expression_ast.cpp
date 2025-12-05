@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.case_pattern_variant_expression_ast;
 import spp.analyse.errors.semantic_error;
@@ -19,6 +20,7 @@ import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 

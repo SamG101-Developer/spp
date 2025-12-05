@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.object_initializer_ast;
 import spp.analyse.errors.semantic_error;
@@ -84,8 +85,9 @@ auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
 
     // Generic types cannot have any attributes set | TODO: future with constraints will allow some.
     if (base_cls_sym->is_generic and not arg_group->args.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppObjectInitializerGenericWithArgsError>().with_args(
-            *type, *arg_group->args[0]).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppObjectInitializerGenericWithArgsError>()
+            .with_args(*type, *arg_group->args[0])
+            .raises_from(sm->current_scope);
     }
 
     // Generic types being initialized uses pure default initialization, so there is no inference to be done.

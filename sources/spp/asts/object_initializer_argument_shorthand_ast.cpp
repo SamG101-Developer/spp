@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.object_initializer_argument_shorthand_ast;
 import spp.analyse.scopes.scope_manager;
@@ -66,8 +67,9 @@ auto spp::asts::ObjectInitializerArgumentShorthandAst::stage_7_analyse_semantics
     -> void {
     // The parser allows Type(123) as a postfix function call over a type, which is invalid as type initialization.
     if (val->to<IdentifierAst>() == nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppObjectInitializerInvalidArgumentError>().with_args(
-            *this).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppObjectInitializerInvalidArgumentError>()
+            .with_args(*this)
+            .raises_from(sm->current_scope);
     }
     ObjectInitializerArgumentAst::stage_7_analyse_semantics(sm, meta);
 }

@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.type_postfix_expression_ast;
 import spp.analyse.errors.semantic_error;
@@ -217,8 +218,9 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
 
     // Check the left-hand-side isn't a generic type. Todo: until constraints
     if (lhs_type_sym->is_generic) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppGenericTypeInvalidUsageError>().with_args(
-            *lhs, *lhs_type, "postfix type").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppGenericTypeInvalidUsageError>()
+            .with_args(*lhs, *lhs_type, "postfix type")
+            .raises_from(sm->current_scope);
     }
 
     const auto lhs_type_scope = lhs_type_sym->scope;
@@ -242,8 +244,9 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
         | genex::to<std::vector>();
 
     if (closest.size() > 1) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppAmbiguousMemberAccessError>().with_args(
-            *closest[0].second->name, *closest[1].second->name, *op_nested->name).with_scopes({closest[0].first, closest[1].first, sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppAmbiguousMemberAccessError>()
+            .with_args(*closest[0].second->name, *closest[1].second->name, *op_nested->name)
+            .raises_from(closest[0].first, closest[1].first, sm->current_scope);
     }
 
     // Ensure the type exists on the "lhs" part.

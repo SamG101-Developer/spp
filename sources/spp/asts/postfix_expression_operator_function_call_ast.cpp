@@ -1,6 +1,7 @@
 module;
 #include <opex/macros.hpp>
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.postfix_expression_operator_function_call_ast;
 import spp.analyse.scopes.scope;
@@ -181,8 +182,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
         try {
             // Cannot call an abstract function.
             if (fn_proto->abstract_annotation != nullptr) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallAbstractFunctionError>().with_args(
-                    *fn_proto, *this).with_scopes({fn_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallAbstractFunctionError>()
+                    .with_args(*fn_proto, *this)
+                    .raises_from(fn_scope);
             }
 
             // Cannot call a not implemented function.
@@ -193,8 +195,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
             // Check if there are too many arguments (for a non-variadic function).
             if (func_args.size() > func_params.size() and not is_variadic_fn) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallTooManyArgumentsError>().with_args(
-                    *fn_proto, *this).with_scopes({fn_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallTooManyArgumentsError>()
+                    .with_args(*fn_proto, *this)
+                    .raises_from(fn_scope);
             }
 
             // Remove the keyword argument names from the set of parameter names, and name the positional arguments.
@@ -250,8 +253,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                         | genex::to<std::vector>();
 
                     if (not mismatch.empty()) {
-                        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionFoldTupleElementTypeMismatchError>().with_args(
-                            *first_elem_type, *mismatch[0]).with_scopes({sm->current_scope}).raise();
+                        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionFoldTupleElementTypeMismatchError>()
+                            .with_args(*first_elem_type, *mismatch[0])
+                            .raises_from(sm->current_scope);
                     }
                 }
 
@@ -260,8 +264,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 for (auto &&arg : m_folded_args | genex::views::drop(1)) {
                     const auto tup_len = arg->infer_type(sm, meta)->type_parts().back()->generic_arg_group->args.size();
                     if (tup_len != first_tup_len) {
-                        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionFoldTupleLengthMismatchError>().with_args(
-                            *m_folded_args[0]->val, first_tup_len, *arg->val, tup_len).with_scopes({sm->current_scope}).raise();
+                        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionFoldTupleLengthMismatchError>()
+                            .with_args(*m_folded_args[0]->val, first_tup_len, *arg->val, tup_len)
+                            .raises_from(sm->current_scope);
                     }
                 }
             }
@@ -288,8 +293,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
                 // Check the new return type isn't a borrow type.
                 if (auto conv = new_fn_proto->return_type->get_convention(); conv != nullptr) {
-                    analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
-                        *new_fn_proto->return_type, *conv, "substituted function return type").with_scopes({sm->current_scope}).raise();
+                    analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
+                        .with_args(*new_fn_proto->return_type, *conv, "substituted function return type")
+                        .raises_from(sm->current_scope);
                 }
 
                 // Save the generic implementation against the base function, and update the active scope and prototype.
@@ -319,8 +325,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 | genex::views::set_difference_unsorted(func_param_names, SPP_INSTANT_INDIRECT, SPP_INSTANT_INDIRECT)
                 | genex::to<std::vector>();
             if (not invalid_args.empty()) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppArgumentNameInvalidError>().with_args(
-                    *func_params[0], "parameter", *invalid_args[0], "argument").with_scopes({sm->current_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppArgumentNameInvalidError>()
+                    .with_args(*func_params[0], "parameter", *invalid_args[0], "argument")
+                    .raises_from(sm->current_scope);
             }
 
             // Check for missing parameters that don't have a corresponding argument.
@@ -328,8 +335,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 | genex::views::set_difference_unsorted(func_arg_names, SPP_INSTANT_INDIRECT, SPP_INSTANT_INDIRECT)
                 | genex::to<std::vector>();
             if (not missing_params.empty()) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppArgumentMissingError>().with_args(
-                    *missing_params[0], "parameter", *this, "argument").with_scopes({sm->current_scope}).raise();
+                analyse::errors::SemanticErrorBuilder<analyse::errors::SppArgumentMissingError>()
+                    .with_args(*missing_params[0], "parameter", *this, "argument")
+                    .raises_from(sm->current_scope);
             }
 
             // Type check the arguments against the parameters. Sort the arguments into parameter order first.
@@ -358,8 +366,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 // Regular parameter with arg folding.
                 else if (genex::contains(m_folded_args, arg)) {
                     if (not analyse::utils::type_utils::symbolic_eq(*p_type, *a_type->type_parts().back()->generic_arg_group->get_type_args()[0]->val, *fn_scope, *sm->current_scope)) {
-                        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-                            *param, *p_type, *arg, *a_type->type_parts().back()->generic_arg_group->get_type_args()[0]->val).with_scopes({fn_scope, sm->current_scope}).raise();
+                        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
+                            .with_args(*param, *p_type, *arg, *a_type->type_parts().back()->generic_arg_group->get_type_args()[0]->val)
+                            .raises_from(fn_scope, sm->current_scope);
                     }
                 }
 
@@ -370,8 +379,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 // Todo: Is this needed for the arg folding variation?
                 else if (not analyse::utils::type_utils::symbolic_eq(*p_type, *a_type, *fn_scope, *sm->current_scope)) {
                     if (not analyse::utils::type_utils::relaxed_symbolic_eq(*a_type, *p_type, sm->current_scope, fn_scope, temp)) {
-                        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-                            *param, *p_type, *arg, *a_type).with_scopes({fn_scope, sm->current_scope}).raise();
+                        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
+                            .with_args(*param, *p_type, *arg, *a_type)
+                            .raises_from(fn_scope, sm->current_scope);
                     }
                 }
             }
@@ -454,8 +464,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             | genex::views::join
             | genex::to<std::string>();
 
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallNoValidSignaturesError>().with_args(
-            *this, failed_signatures_and_errors, arg_usage_signature).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallNoValidSignaturesError>()
+            .with_args(*this, failed_signatures_and_errors, arg_usage_signature)
+            .raises_from(sm->current_scope);
     }
 
     // If there are multiple pass overloads, raise an error.
@@ -473,8 +484,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             | genex::views::join
             | genex::to<std::string>();
 
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallOverloadAmbiguousError>().with_args(
-            *this, signatures, arg_usage_signature).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallOverloadAmbiguousError>()
+            .with_args(*this, signatures, arg_usage_signature)
+            .raises_from(sm->current_scope);
     }
 
     // Special case for closures; apply the convention the closure name to ensure is it movable/mutable etc.

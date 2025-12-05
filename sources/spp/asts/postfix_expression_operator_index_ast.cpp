@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.postfix_expression_operator_index_ast;
 import spp.analyse.errors.semantic_error;
@@ -112,12 +113,14 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::stage_7_analyse_semantics(
         | genex::to<std::vector>();
 
     if (index_type_candidates.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionNotIndexableError>().with_args(
-            *meta->postfix_expression_lhs, *lhs_type, "runtime indexing").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionNotIndexableError>()
+            .with_args(*meta->postfix_expression_lhs, *lhs_type, "runtime indexing")
+            .raises_from(sm->current_scope);
     }
     if (index_type_candidates.size() > 1) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionAmbiguousIndexableError>().with_args(
-            *meta->postfix_expression_lhs, *lhs_type, "runtime indexing").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionAmbiguousIndexableError>()
+            .with_args(*meta->postfix_expression_lhs, *lhs_type, "runtime indexing")
+            .raises_from(sm->current_scope);
     }
 
     // Create the mapped function for the index operator; create the index argument.

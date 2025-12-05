@@ -1,6 +1,7 @@
 module;
 #include <opex/macros.hpp>
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.case_expression_ast;
 import spp.analyse.errors.semantic_error;
@@ -124,14 +125,16 @@ auto spp::asts::CaseExpressionAst::stage_7_analyse_semantics(
     for (auto &&branch : branches) {
         // Destructures can only use 1 pattern.
         if (branch->op != nullptr and branch->op->token_type == lex::SppTokenType::KW_IS and branch->patterns.size() > 1) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppCaseBranchMultipleDestructuresError>().with_args(
-                *branch->patterns[0], *branch->patterns[1]).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppCaseBranchMultipleDestructuresError>()
+                .with_args(*branch->patterns[0], *branch->patterns[1])
+                .raises_from(sm->current_scope);
         }
 
         // Check the "else" branch is the last branch (also checks there is only 1 "else" branch).
         if (branch->patterns[0]->to<CasePatternVariantElseAst>() and branch != branches.back()) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppCaseBranchElseNotLastError>().with_args(
-                *branch, *branches.back()).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppCaseBranchElseNotLastError>()
+                .with_args(*branch, *branches.back())
+                .raises_from(sm->current_scope);
         }
 
         // Analyse the branch.
@@ -209,8 +212,9 @@ auto spp::asts::CaseExpressionAst::infer_type(
 
     // Ensure there is an "else" branch if the branches are not exhaustive. Todo: Need to investigate how to detect exhaustion.
     if (branches.back()->patterns[0]->to<CasePatternVariantElseAst>() == nullptr and not meta->ignore_missing_else_branch_for_inference) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppCaseBranchMissingElseError>().with_args(
-            *this, *branches.back()).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppCaseBranchMissingElseError>()
+            .with_args(*this, *branches.back())
+            .raises_from(sm->current_scope);
     }
 
     // Return the branches' return type. If there are any branches, otherwise Void.

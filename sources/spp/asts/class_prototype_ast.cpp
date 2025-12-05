@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.class_prototype_ast;
 import spp.analyse.errors.semantic_error;
@@ -242,8 +243,9 @@ auto spp::asts::ClassPrototypeAst::stage_6_pre_analyse_semantics(
 
     // Check the type isn't recursive.
     if (auto &&recursion = analyse::utils::type_utils::is_type_recursive(*this, *sm)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppRecursiveTypeError>().with_args(
-            *this, *recursion).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppRecursiveTypeError>()
+            .with_args(*this, *recursion)
+            .raises_from(sm->current_scope);
     }
 
     sm->move_out_of_current_scope();
@@ -405,4 +407,10 @@ auto spp::asts::ClassPrototypeAst::stage_10_code_gen_2(
 
     sm->move_out_of_current_scope();
     return nullptr;
+}
+
+
+auto spp::asts::ClassPrototypeAst::get_cls_sym() const
+    -> std::shared_ptr<analyse::scopes::TypeSymbol> {
+    return m_cls_sym;
 }

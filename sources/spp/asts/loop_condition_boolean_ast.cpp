@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.loop_condition_boolean_ast;
 import spp.analyse.errors.semantic_error;
@@ -70,8 +71,9 @@ auto spp::asts::LoopConditionBooleanAst::stage_7_analyse_semantics(
     const auto cond_type = cond->infer_type(sm, meta);
     const auto target_type = generate::common_types_precompiled::BOOL;
     if (not analyse::utils::type_utils::is_type_boolean(*cond_type, *sm->current_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionNotBooleanError>().with_args(
-            *cond, *cond_type, "loop").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionNotBooleanError>()
+            .with_args(*cond, *cond_type, "loop")
+            .raises_from(sm->current_scope);
     }
 }
 

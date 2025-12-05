@@ -71,24 +71,27 @@
     explicit operator std::string() const override;                    \
     auto print(AstPrinter &printer) const -> std::string override
 
-#define SPP_ENFORCE_EXPRESSION_SUBTYPE(ast)                                                                \
-    if (ast and ((ast->to<TypeAst>() != nullptr) or (ast->to<TokenAst>() != nullptr))) {                   \
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionTypeInvalidError>().with_args( \
-            *ast).with_scopes({sm->current_scope}).raise();                                                \
+#define SPP_ENFORCE_EXPRESSION_SUBTYPE(ast)                                                     \
+    if (ast and ((ast->to<TypeAst>() != nullptr) or (ast->to<TokenAst>() != nullptr))) {        \
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionTypeInvalidError>() \
+            .with_args(*ast)                                                                    \
+            .raises_from(sm->current_scope);                                                    \
     }
 
 
-#define SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(ast)                                                        \
-    if (ast and ast->to<TypeAst>() != nullptr) {                                                               \
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionTypeInvalidError>().with_args( \
-            *ast).with_scopes({sm->current_scope}).raise();                                                \
+#define SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(ast)                                         \
+    if (ast and ast->to<TypeAst>() != nullptr) {                                                \
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionTypeInvalidError>() \
+            .with_args(*ast)                                                                    \
+            .raises_from(sm->current_scope);                                                    \
     }
 
 
-#define SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TYPE(ast)                                                         \
-    if (ast and ast->to<TokenAst>() != nullptr) {                                                              \
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionTypeInvalidError>().with_args( \
-            *ast).with_scopes({sm->current_scope}).raise();                                                \
+#define SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TYPE(ast)                                          \
+    if (ast and ast->to<TokenAst>() != nullptr) {                                               \
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionTypeInvalidError>() \
+            .with_args(*ast)                                                                    \
+            .raises_from(sm->current_scope);                                                    \
     }
 
 

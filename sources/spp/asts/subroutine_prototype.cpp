@@ -1,3 +1,6 @@
+module;
+#include <spp/analyse/macros.hpp>
+
 module spp.asts.subroutine_prototype_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
@@ -77,8 +80,9 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
     }
     else {
         const auto final_member = impl->final_member();
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionSubroutineMissingReturnStatementError>().with_args(
-            *final_member, *return_type).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionSubroutineMissingReturnStatementError>()
+            .with_args(*final_member, *return_type)
+            .raises_from(sm->current_scope);
     }
 
     sm->move_out_of_current_scope();

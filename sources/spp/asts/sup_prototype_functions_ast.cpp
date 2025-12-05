@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.sup_prototype_functions_ast;
 import spp.analyse.errors.semantic_error;
@@ -107,20 +108,23 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_2_gen_top_level_scopes(
 
     // Check there are optional generic parameters.
     if (const auto optional = generic_param_group->get_optional_params(); not optional.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionOptionalGenericParameterError>().with_args(
-            *optional[0]).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionOptionalGenericParameterError>()
+            .with_args(*optional[0])
+            .raises_from(sm->current_scope);
     }
 
     // Check every generic parameter is constrained by the type.
     if (const auto unconstrained = generic_param_group->get_all_params() | genex::views::filter([this](auto &&x) { return not name->contains_generic(*x); }) | genex::to<std::vector>(); not unconstrained.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError>().with_args(
-            *unconstrained[0]).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError>()
+            .with_args(*unconstrained[0])
+            .raises_from(sm->current_scope);
     }
 
     // No conventions allowed on the name.
     if (auto &&conv = name->get_convention(); conv != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
-            *name, *conv, "superimposition type").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
+            .with_args(*name, *conv, "superimposition type")
+            .raises_from(sm->current_scope);
     }
 
     // Generate symbols for the generic parameter group, and the self type.

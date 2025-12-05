@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.binary_expression_ast;
 import spp.analyse.errors.semantic_error;
@@ -101,8 +102,9 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
     // Check compound assignment (for example "+=") has a symbolic lhs target.
     if (genex::contains(analyse::utils::bin_utils::BIN_COMPOUND_ASSIGNMENT_OPS, tok_op->token_type)) {
         if (not sm->current_scope->get_var_symbol_outermost(*lhs).first) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppAssignmentTargetError>().with_args(
-                *lhs).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppAssignmentTargetError>()
+                .with_args(*lhs)
+                .raises_from(sm->current_scope);
         }
     }
 
@@ -111,8 +113,9 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
         // Check the rhs is a tuple.
         const auto rhs_tuple_type = rhs->infer_type(sm, meta);
         if (not analyse::utils::type_utils::is_type_tuple(*rhs_tuple_type, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessNonIndexableError>().with_args(
-                *rhs, *rhs_tuple_type, *lhs).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessNonIndexableError>()
+                .with_args(*rhs, *rhs_tuple_type, *lhs)
+                .raises_from(sm->current_scope);
         }
 
         // Get the parts of the tuple.
@@ -143,8 +146,9 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
         // Check the lhs is a tuple.
         const auto lhs_tuple_type = lhs->infer_type(sm, meta);
         if (not analyse::utils::type_utils::is_type_tuple(*lhs_tuple_type, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessNonIndexableError>().with_args(
-                *lhs, *lhs_tuple_type, *rhs).with_scopes({sm->current_scope}).raise();
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessNonIndexableError>()
+                .with_args(*lhs, *lhs_tuple_type, *rhs)
+                .raises_from(sm->current_scope);
         }
 
         // Get the parts of the tuple.

@@ -1,9 +1,11 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.generic_argument_group_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.order_utils;
 import spp.analyse.utils.type_utils;
@@ -291,8 +293,9 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
         | genex::to<std::vector>();
 
     if (not type_arg_names.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
-            *type_arg_names[0], *type_arg_names[1], "keyword function-argument").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>()
+            .with_args(*type_arg_names[0], *type_arg_names[1], "keyword function-argument")
+            .raises_from(sm->current_scope);
     }
 
     // Check there are no duplicate comp argument names.
@@ -304,8 +307,9 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
         | genex::to<std::vector>();
 
     if (not comp_arg_names.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
-            *comp_arg_names[0], *comp_arg_names[1], "keyword function-argument").with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>()
+            .with_args(*comp_arg_names[0], *comp_arg_names[1], "keyword function-argument")
+            .raises_from(sm->current_scope);
     }
 
     // Check the arguments are in the correct order.
@@ -315,8 +319,9 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
         | genex::to<std::vector>());
 
     if (not unordered_args.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>().with_args(
-            unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second).with_scopes({sm->current_scope}).raise();
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>()
+            .with_args(unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second)
+            .raises_from(sm->current_scope);
     }
 
     // Analyse the arguments.
