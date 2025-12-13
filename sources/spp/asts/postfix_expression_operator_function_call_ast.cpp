@@ -299,8 +299,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 }
 
                 // Save the generic implementation against the base function, and update the active scope and prototype.
-                fn_proto->generic_implementations.emplace_back(std::move(new_fn_proto));
-                fn_proto = fn_proto->generic_implementations.back().get();
+                auto new_fn_proto_ptr = new_fn_proto.get();
+                fn_proto->registered_generic_substitutions().back().second = std::move(new_fn_proto);
+                fn_proto = new_fn_proto_ptr;
                 fn_scope = new_fn_scope;
             }
 
