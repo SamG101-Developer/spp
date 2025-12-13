@@ -51,4 +51,6 @@ public:
     auto end() -> std::vector<std::unique_ptr<Module>>::iterator;
 
     auto get_modules() -> std::vector<Module*>;
+
+    auto root_path() const -> std::filesystem::path;
 };

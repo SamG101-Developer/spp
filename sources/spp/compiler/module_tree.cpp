@@ -91,3 +91,9 @@ auto spp::compiler::ModuleTree::get_modules()
         | genex::views::ptr
         | genex::to<std::vector>();
 }
+
+
+auto spp::compiler::ModuleTree::root_path() const
+    -> std::filesystem::path {
+    return m_root;
+}
