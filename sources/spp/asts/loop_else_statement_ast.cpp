@@ -76,9 +76,22 @@ auto spp::asts::LoopElseStatementAst::stage_8_check_memory(
     CompilerMetaData *meta)
     -> void {
     // Check the body for memory issues.
-    sm->move_out_of_current_scope();
+    sm->move_to_next_scope();
     body->stage_8_check_memory(sm, meta);
     sm->move_out_of_current_scope();
+}
+
+
+auto spp::asts::LoopElseStatementAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate code for the body.
+    sm->move_to_next_scope();
+    const auto val = body->stage_10_code_gen_2(sm, meta, ctx);
+    sm->move_out_of_current_scope();
+    return val;
 }
 
 

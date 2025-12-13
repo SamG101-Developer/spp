@@ -165,7 +165,6 @@ auto spp::asts::LoopExpressionAst::m_codegen_condition_iter(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) const
     -> llvm::Value* {
-
     /*
     # loop y in range_coro() { y * 2 } else { -1 };
     # ============================================
@@ -322,7 +321,10 @@ auto spp::asts::LoopExpressionAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate code based on the condition type.
-    return cond->to<LoopConditionBooleanAst>() ? m_codegen_condition_bool(sm, meta, ctx) : m_codegen_condition_iter(sm, meta, ctx);
+    sm->move_to_next_scope();
+    const auto val = cond->to<LoopConditionBooleanAst>() ? m_codegen_condition_bool(sm, meta, ctx) : m_codegen_condition_iter(sm, meta, ctx);
+    sm->move_out_of_current_scope();
+    return val;
 }
 
 
