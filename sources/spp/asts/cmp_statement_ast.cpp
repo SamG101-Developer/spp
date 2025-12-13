@@ -18,6 +18,7 @@ import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_mangle;
 import spp.lex.tokens;
+import llvm;
 import genex;
 
 
@@ -180,7 +181,13 @@ auto spp::asts::CmpStatementAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the value and store the constant.
+    ctx->in_constant_context = true;
     const auto val = value->stage_10_code_gen_2(sm, meta, ctx);
-    ctx->global_constants[codegen::mangle::mangle_cmp_name(*sm->current_scope, *this)] = llvm::cast<llvm::Constant>(val);
+    ctx->in_constant_context = false;
+
+    const auto type_sym = sm->current_scope->get_type_symbol(type);
+    new llvm::GlobalVariable(*ctx->module, type_sym->llvm_info->llvm_type, true,
+        llvm::GlobalValue::ExternalLinkage, llvm::cast<llvm::Constant>(val),
+        codegen::mangle::mangle_cmp_name(*sm->current_scope, *this));
     return nullptr;
 }
