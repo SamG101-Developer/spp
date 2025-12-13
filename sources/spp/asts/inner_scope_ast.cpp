@@ -128,6 +128,7 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
     -> void {
     // Move into the next scope.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
 
     // Check the memory of each member.
     for (auto const &x : members) { x->stage_8_check_memory(sm, meta); }
@@ -152,6 +153,8 @@ auto spp::asts::InnerScopeAst<T>::stage_10_code_gen_2(
     -> llvm::Value* {
     // Add all the expressions/statements into the current scope.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+
     for (auto *member : members | genex::views::ptr) {
         if (member->template to<ExpressionAst>() != nullptr) {
             member->stage_10_code_gen_2(sm, meta, ctx);
