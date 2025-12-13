@@ -3,11 +3,14 @@ module;
 
 export module spp.asts.module_prototype_ast;
 import spp.asts.ast;
+import spp.codegen.llvm_ctx;
+import llvm;
 import std;
 
 namespace spp::compiler {
     SPP_EXP_CLS struct CompilerBoot;
 }
+
 namespace spp::asts {
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct FunctionPrototypeAst;
@@ -62,4 +65,8 @@ SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : virtual Ast {
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_9_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

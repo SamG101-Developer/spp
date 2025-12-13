@@ -5,6 +5,7 @@ module spp.asts.module_prototype_ast;
 import spp.asts.identifier_ast;
 import spp.asts.module_implementation_ast;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_ctx;
 import genex;
 
 
@@ -159,4 +160,26 @@ auto spp::asts::ModulePrototypeAst::stage_8_check_memory(
     -> void {
     // Shift to implementation.
     impl->stage_8_check_memory(sm, meta);
+}
+
+
+auto spp::asts::ModulePrototypeAst::stage_9_code_gen_1(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Shift to implementation.
+    return impl->stage_9_code_gen_1(sm, meta, ctx);
+}
+
+
+auto spp::asts::ModulePrototypeAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Add the entry building block for module level code.
+
+    // Shift to implementation.
+    return impl->stage_10_code_gen_2(sm, meta, ctx);
 }

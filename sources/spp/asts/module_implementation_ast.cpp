@@ -4,6 +4,7 @@ module;
 module spp.asts.module_implementation_ast;
 import spp.asts.module_member_ast;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_ctx;
 import genex;
 
 
@@ -122,4 +123,26 @@ auto spp::asts::ModuleImplementationAst::stage_8_check_memory(
     -> void {
     // Shift to members.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });
+}
+
+
+auto spp::asts::ModuleImplementationAst::stage_9_code_gen_1(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Shift to members.
+    members | genex::views::for_each([sm, meta, ctx](auto &&x) { x->stage_9_code_gen_1(sm, meta, ctx); });
+    return nullptr;
+}
+
+
+auto spp::asts::ModuleImplementationAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Shift to members.
+    members | genex::views::for_each([sm, meta, ctx](auto &&x) { x->stage_10_code_gen_2(sm, meta, ctx); });
+    return nullptr;
 }
