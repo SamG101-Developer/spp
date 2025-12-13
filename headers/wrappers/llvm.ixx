@@ -3,12 +3,16 @@ module;
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
 
 export module llvm;
 
 
 export namespace llvm {
     using ::llvm::cast;
+    using ::llvm::raw_fd_ostream;
+    using ::llvm::fltSemantics;
+
     using ::llvm::APInt;
     using ::llvm::APFloat;
     using ::llvm::APFloatBase;
@@ -16,12 +20,17 @@ export namespace llvm {
     using ::llvm::Attribute;
     using ::llvm::BasicBlock;
     using ::llvm::Constant;
+    using ::llvm::ConstantArray;
+    using ::llvm::ConstantDataArray;
     using ::llvm::ConstantInt;
     using ::llvm::ConstantFP;
     using ::llvm::ConstantPointerNull;
     using ::llvm::ConstantTokenNone;
+    using ::llvm::ConstantStruct;
     using ::llvm::Function;
     using ::llvm::FunctionType;
+    using ::llvm::GlobalValue;
+    using ::llvm::GlobalVariable;
     using ::llvm::IRBuilder;
     using ::llvm::Instruction;
     using ::llvm::LLVMContext;
@@ -32,6 +41,10 @@ export namespace llvm {
     using ::llvm::Type;
     using ::llvm::UndefValue;
     using ::llvm::Value;
+
+    namespace sys::fs {
+        using ::llvm::sys::fs::OpenFlags;
+    }
 
     namespace Intrinsic {
         using ::llvm::Intrinsic::getOrInsertDeclaration;
