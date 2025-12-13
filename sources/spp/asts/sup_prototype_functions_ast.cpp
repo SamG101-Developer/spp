@@ -69,7 +69,7 @@ auto spp::asts::SupPrototypeFunctionsAst::clone() const
 spp::asts::SupPrototypeFunctionsAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_sup).append(" ");
-    SPP_STRING_APPEND(generic_param_group).append(" ");
+    SPP_STRING_APPEND(generic_param_group).append(generic_param_group->params.empty() ? "" : " ");
     SPP_STRING_APPEND(name).append(" ");
     SPP_STRING_APPEND(impl);
     SPP_STRING_END;
@@ -81,7 +81,7 @@ auto spp::asts::SupPrototypeFunctionsAst::print(
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_sup).append(" ");
-    SPP_PRINT_APPEND(generic_param_group).append(" ");
+    SPP_PRINT_APPEND(generic_param_group).append(generic_param_group->params.empty() ? "" : " ");
     SPP_PRINT_APPEND(name).append(" ");
     SPP_PRINT_APPEND(impl);
     SPP_PRINT_END;
@@ -235,4 +235,32 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_8_check_memory(
     SPP_ASSERT(sm->current_scope == m_scope);
     impl->stage_8_check_memory(sm, meta);
     sm->move_out_of_current_scope();
+}
+
+
+auto spp::asts::SupPrototypeFunctionsAst::stage_9_code_gen_1(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Move to the next scope.
+    sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+    impl->stage_9_code_gen_1(sm, meta, ctx);
+    sm->move_out_of_current_scope();
+    return nullptr;
+}
+
+
+auto spp::asts::SupPrototypeFunctionsAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Move to the next scope.
+    sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+    impl->stage_10_code_gen_2(sm, meta, ctx);
+    sm->move_out_of_current_scope();
+    return nullptr;
 }

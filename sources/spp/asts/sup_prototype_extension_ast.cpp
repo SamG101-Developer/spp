@@ -431,3 +431,31 @@ auto spp::asts::SupPrototypeExtensionAst::stage_8_check_memory(
     impl->stage_8_check_memory(sm, meta);
     sm->move_out_of_current_scope();
 }
+
+
+auto spp::asts::SupPrototypeExtensionAst::stage_9_code_gen_1(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Move to the next scope.
+    sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+    impl->stage_9_code_gen_1(sm, meta, ctx);
+    sm->move_out_of_current_scope();
+    return nullptr;
+}
+
+
+auto spp::asts::SupPrototypeExtensionAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Move to the next scope.
+    sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+    impl->stage_10_code_gen_2(sm, meta, ctx);
+    sm->move_out_of_current_scope();
+    return nullptr;
+}

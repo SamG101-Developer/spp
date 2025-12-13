@@ -149,3 +149,23 @@ auto spp::asts::UseStatementAst::stage_8_check_memory(
     // Check memory for the conversion AST.
     m_conversion->stage_8_check_memory(sm, meta);
 }
+
+
+auto spp::asts::UseStatementAst::stage_9_code_gen_1(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Code gen for the conversion AST.
+    return m_conversion->stage_9_code_gen_1(sm, meta, ctx);
+}
+
+
+auto spp::asts::UseStatementAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Code gen for the conversion AST.
+    return m_conversion->stage_10_code_gen_2(sm, meta, ctx);
+}

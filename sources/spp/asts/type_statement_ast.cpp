@@ -269,6 +269,30 @@ auto spp::asts::TypeStatementAst::stage_8_check_memory(
 }
 
 
+auto spp::asts::TypeStatementAst::stage_9_code_gen_1(
+    ScopeManager *sm,
+    CompilerMetaData *,
+    codegen::LLvmCtx *)
+    -> llvm::Value* {
+    sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+    sm->move_out_of_current_scope();
+    return nullptr;
+}
+
+
+auto spp::asts::TypeStatementAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *,
+    codegen::LLvmCtx *)
+    -> llvm::Value* {
+    sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+    sm->move_out_of_current_scope();
+    return nullptr;
+}
+
+
 auto spp::asts::TypeStatementAst::mark_from_use_statement()
     -> void {
     m_from_use_statement = true;
