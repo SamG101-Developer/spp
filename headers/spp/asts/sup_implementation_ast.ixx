@@ -3,7 +3,8 @@ module;
 
 export module spp.asts.sup_implementation_ast;
 import spp.asts.inner_scope_ast;
-
+import spp.codegen.llvm_ctx;
+import llvm;
 import std;
 
 namespace spp::asts {
@@ -36,4 +37,8 @@ SPP_EXP_CLS struct spp::asts::SupImplementationAst final : InnerScopeAst<std::un
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_9_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

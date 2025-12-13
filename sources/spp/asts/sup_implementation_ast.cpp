@@ -95,3 +95,25 @@ auto spp::asts::SupImplementationAst::stage_8_check_memory(
     // Forward to members.
     members | genex::views::for_each([sm, meta](auto &&m) { m->stage_8_check_memory(sm, meta); });
 }
+
+
+auto spp::asts::SupImplementationAst::stage_9_code_gen_1(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Forward to members.
+    members | genex::views::for_each([sm, meta, ctx](auto &&m) { m->stage_9_code_gen_1(sm, meta, ctx); });
+    return nullptr;
+}
+
+
+auto spp::asts::SupImplementationAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Forward to members.
+    members | genex::views::for_each([sm, meta, ctx](auto &&m) { m->stage_10_code_gen_2(sm, meta, ctx); });
+    return nullptr;
+}
