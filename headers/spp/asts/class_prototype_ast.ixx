@@ -35,7 +35,7 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : virtual Ast, mixins::VisibilityEnabledAst, SupMemberAst, ModuleMemberAst {
 private:
-    std::vector<std::pair<analyse::scopes::Scope*, std::unique_ptr<ClassPrototypeAst>>> m_generic_substituted_scopes;
+    std::vector<std::pair<analyse::scopes::Scope*, std::unique_ptr<ClassPrototypeAst>>> m_generic_substitutions;
 
     std::shared_ptr<analyse::scopes::TypeSymbol> m_cls_sym;
 
@@ -94,7 +94,9 @@ private:
     auto m_fill_llvm_mem_layout(analyse::scopes::ScopeManager *sm, analyse::scopes::TypeSymbol const *type_sym, codegen::LLvmCtx *ctx) -> void;
 
 public:
-    auto register_generic_substituted_scope(analyse::scopes::Scope *scope, std::unique_ptr<ClassPrototypeAst> &&new_ast) -> void;
+    auto register_generic_substitution(analyse::scopes::Scope *scope, std::unique_ptr<ClassPrototypeAst> &&new_ast) -> void;
+
+    auto registered_generic_substitutions() const -> std::vector<std::pair<analyse::scopes::Scope*, ClassPrototypeAst*>>;
 
     auto stage_1_pre_process(Ast *ctx) -> void override;
 

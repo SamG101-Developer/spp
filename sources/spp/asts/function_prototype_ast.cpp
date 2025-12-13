@@ -164,11 +164,26 @@ auto spp::asts::FunctionPrototypeAst::print_signature(
 }
 
 
-auto spp::asts::FunctionPrototypeAst::register_generic_substituted_scope(
-    std::unique_ptr<analyse::scopes::Scope> &&scope)
+auto spp::asts::FunctionPrototypeAst::register_generic_substitution(
+    std::unique_ptr<analyse::scopes::Scope> &&scope,
+    std::unique_ptr<FunctionPrototypeAst> &&new_ast)
     -> void {
     // Store the scope for object persistence (and codegen).
-    m_generic_substituted_scopes.emplace_back(std::move(scope));
+    m_generic_substitutions.emplace_back(std::move(scope), std::move(new_ast));
+}
+
+
+auto spp::asts::FunctionPrototypeAst::registered_generic_substitutions() const
+    -> std::vector<std::pair<analyse::scopes::Scope*, FunctionPrototypeAst*>> {
+    return m_generic_substitutions
+        | genex::views::transform([](auto const &x) { return std::make_pair(x.first.get(), x.second.get()); })
+        | genex::to<std::vector>();
+}
+
+
+auto spp::asts::FunctionPrototypeAst::registered_generic_substitutions()
+    -> std::vector<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>>& {
+    return m_generic_substitutions;
 }
 
 
@@ -382,15 +397,17 @@ auto spp::asts::FunctionPrototypeAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
+auto spp::asts::FunctionPrototypeAst::stage_9_code_gen_1(
     ScopeManager *sm,
-    CompilerMetaData *meta,
+    CompilerMetaData *,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Generate the return and parameter types.
+    // Create the declaration, but not the definition, of the function. This allows for order-agnostic behaviour.
+    // sm->reset(m_scope);
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
 
+    // Generate the return and parameter types.
     const auto llvm_ret_type = sm->current_scope->get_type_symbol(return_type)->llvm_info->llvm_type;
     const auto llvm_param_types = param_group->params
         | genex::views::transform([sm](auto const &x) { return sm->current_scope->get_type_symbol(x->type)->llvm_info->llvm_type; })
@@ -401,28 +418,61 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
     const auto llvm_fun_type = llvm::FunctionType::get(llvm_ret_type, llvm_param_types, is_var_arg);
 
     // Create the LLVM function and add it to the context.
-    const auto is_extern = no_impl_annotation || abstract_annotation;
-    const auto linkage = is_extern ? llvm::Function::ExternalLinkage : llvm::Function::InternalLinkage;
-    const auto llvm_fun = llvm::Function::Create(
-        llvm_fun_type, linkage, codegen::mangle::mangle_fun_name(*sm->current_scope, *this), ctx->module.get());
-    llvm_func = llvm_fun;
+    const auto created_llvm_func = llvm::Function::Create(
+        llvm_fun_type, llvm::Function::ExternalLinkage, codegen::mangle::mangle_fun_name(*sm->current_scope, *this),
+        ctx->module.get());
+    llvm_func = created_llvm_func;
 
     // Name the parameters from the ASTs.
-    auto llvm_param_iter = llvm_fun->arg_begin();
-    for (const auto &param : param_group->params) {
-        llvm_param_iter->setName(param->extract_name()->val);
-        ++llvm_param_iter;
+    // auto llvm_param_iter = created_llvm_func->arg_begin();
+    // for (const auto &param : param_group->params) {
+    //     llvm_param_iter->setName(param->extract_name()->val);
+    //     ++llvm_param_iter;
+    // }
+
+    // Do the same for generic substitutions.
+    // for (auto &&[_, generic_ast] : m_generic_substitutions) {
+    //     generic_ast->stage_9_code_gen_1(sm, meta, ctx);
+    // }
+
+    // Manual scope skipping.
+    const auto final_scope = sm->current_scope->final_child_scope();
+    while (sm->current_scope != final_scope) {
+        sm->move_to_next_scope();
+    }
+    while (sm->current_scope != m_scope->parent) {
+        sm->move_out_of_current_scope();
     }
 
+    return nullptr;
+}
+
+
+auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Build the function body.
+    sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+
     // If there is an implementation, generate its code.
+    const auto is_extern = no_impl_annotation || abstract_annotation;
     if (no_impl_annotation and no_impl_annotation->name->val == "compiler_builtin") {
+        impl->stage_10_code_gen_2(sm, meta, ctx); // scope skipping
         // auto manual_ir =
     }
-    if (not is_extern) {
+    else if (not is_extern) {
+        // Add the entry block to the function.
+        const auto entry_bb = llvm::BasicBlock::Create(ctx->context, "entry", llvm_func);
+        ctx->builder.SetInsertPoint(entry_bb);
+        impl->stage_10_code_gen_2(sm, meta, ctx);
+    }
+    else {
         impl->stage_10_code_gen_2(sm, meta, ctx);
     }
 
-    // Move out of the function scope.
     sm->move_out_of_current_scope();
-    return llvm_fun;
+    return llvm_func;
 }

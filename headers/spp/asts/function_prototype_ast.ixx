@@ -40,7 +40,7 @@ namespace spp::analyse::scopes {
  */
 SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : virtual Ast, mixins::VisibilityEnabledAst, SupMemberAst, ModuleMemberAst {
 private:
-    std::vector<std::unique_ptr<analyse::scopes::Scope>> m_generic_substituted_scopes;
+    std::vector<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>> m_generic_substitutions;
 
 public:
     /**
@@ -73,11 +73,11 @@ public:
      */
     AnnotationAst *inline_annotation;
 
-    /**
-     * If this function is generic, then all generic implementations / substitutions are stored here, for code
-     * generation.
-     */
-    std::vector<std::unique_ptr<FunctionPrototypeAst>> generic_implementations;
+    // /**
+    //  * If this function is generic, then all generic implementations / substitutions are stored here, for code
+    //  * generation.
+    //  */
+    // std::vector<std::unique_ptr<FunctionPrototypeAst>> generic_implementations;
 
     /**
      * The LLVM generated function for this prototype. This is set during the first pass of code generation, and used
@@ -170,7 +170,11 @@ private:
 public:
     auto print_signature(std::string const &owner) const -> std::string;
 
-    auto register_generic_substituted_scope(std::unique_ptr<analyse::scopes::Scope> &&scope) -> void;
+    auto register_generic_substitution(std::unique_ptr<analyse::scopes::Scope> &&scope, std::unique_ptr<FunctionPrototypeAst> &&new_ast) -> void;
+
+    auto registered_generic_substitutions() const -> std::vector<std::pair<analyse::scopes::Scope*, FunctionPrototypeAst*>>;
+
+    auto registered_generic_substitutions() -> std::vector<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>>&;
 
     auto stage_1_pre_process(Ast *ctx) -> void override;
 
@@ -187,6 +191,8 @@ public:
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_9_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };
