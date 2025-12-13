@@ -26,7 +26,6 @@ import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
-
 import genex;
 import opex.cast;
 

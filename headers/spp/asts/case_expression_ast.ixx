@@ -4,7 +4,6 @@ module;
 export module spp.asts.case_expression_ast;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
-
 import llvm;
 import std;
 
