@@ -4,9 +4,8 @@ General compiler design
 
 ## Todo:
 
-- [ ] Remove `ast_cast` -> add `->as<T>()` method instead.
+- [x] Remove `ast_cast` -> add `->as<T>()` method instead.
 - [ ] Remove `ast_clone` -> use `->clone()->as<T>()` methods instead.
-- [ ] Add `->as_shared<T>()` method to AST nodes for `T*` to `std::shared_ptr<T>` casting.
 
 ## Notes:
 
@@ -19,7 +18,7 @@ General compiler design
 - [ ] Reduce cloning where possible (move and put back, shared_ptr -- i think this is minimal anyway)
 - [ ] Remove `orig_name`, use `name` everywhere.
 - [ ] Check `auto &&` vs `auto const &` for unique pointer vector iteration.
-- [ ] Change `not all_of` to the new `none_of` in genex.
+- [x] Change `not all_of` to the new `none_of` in genex.
 
 ## Profile determined optimizations:
 
