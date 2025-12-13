@@ -192,6 +192,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_5_load_super_scopes(
             SPP_NO_ANNOTATIONS, nullptr,
             TypeIdentifierAst::from_string("Self"), nullptr, nullptr, name);
         sm->current_scope->add_type_symbol(self_sym);
+        sm->current_scope->get_type_symbol(name)->aliased_by_symbols.emplace_back(self_sym);
     }
 
     // Load the implementation and move out of the scope.

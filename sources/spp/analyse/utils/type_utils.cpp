@@ -750,6 +750,7 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
         std::make_unique<asts::TypeIdentifierAst>(0, "Self", nullptr), new_cls_scope.ty_sym->type, &new_cls_scope, new_sup_scope_ptr);
     new_self_sym->alias_stmt = std::make_unique<asts::TypeStatementAst>(
         SPP_NO_ANNOTATIONS, nullptr, asts::TypeIdentifierAst::from_string("Self"), nullptr, nullptr, self_type);
+    old_self_sym->aliased_by_symbols.emplace_back(new_self_sym);
     new_sup_scope_ptr->add_type_symbol(new_self_sym);
 
     // Run generic substitution on the aliases in the new scope.
