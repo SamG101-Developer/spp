@@ -205,6 +205,7 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
         m_alias_sym->type = old_sym->type;
         m_alias_sym->scope = old_sym->scope;
         m_temp_scope_3 = std::move(temp_scope);
+        old_sym->aliased_by_symbols.push_back(m_alias_sym);
     }
     sm->move_out_of_current_scope();
 }

@@ -132,9 +132,11 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
     TypeSymbol *generic_impl;
 
-    std::unique_ptr<codegen::LlvmTypeSymInfo> llvm_info;
+    std::shared_ptr<codegen::LlvmTypeSymInfo> llvm_info;
 
     std::unique_ptr<asts::TypeStatementAst> alias_stmt;
+
+    std::vector<std::shared_ptr<TypeSymbol>> aliased_by_symbols = {};
 
     TypeSymbol(
         std::shared_ptr<asts::TypeIdentifierAst> name,

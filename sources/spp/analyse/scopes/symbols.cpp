@@ -127,6 +127,7 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
     convention(asts::ast_clone(that.convention)),
     generic_impl(that.generic_impl) {
     alias_stmt = asts::ast_clone(that.alias_stmt);
+    llvm_info = that.llvm_info;
 }
 
 
