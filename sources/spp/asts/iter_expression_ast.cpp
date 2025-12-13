@@ -175,6 +175,20 @@ auto spp::asts::IterExpressionAst::stage_8_check_memory(
 }
 
 
+auto spp::asts::IterExpressionAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Todo : Proper implementation
+    sm->move_to_next_scope();
+    cond->stage_10_code_gen_2(sm, meta, ctx);
+    branches | genex::views::for_each([sm, meta, ctx](auto const &x) { x->stage_10_code_gen_2(sm, meta, ctx); });
+    sm->move_out_of_current_scope();
+    return nullptr;
+}
+
+
 auto spp::asts::IterExpressionAst::infer_type(
     ScopeManager *sm,
     CompilerMetaData *meta)

@@ -100,6 +100,21 @@ auto spp::asts::IterExpressionBranchAst::stage_8_check_memory(
 }
 
 
+auto spp::asts::IterExpressionBranchAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Move into the branch's scope.
+    sm->move_to_next_scope();
+    pattern->stage_10_code_gen_2(sm, meta, ctx);
+    if (guard) { guard->stage_10_code_gen_2(sm, meta, ctx); }
+    body->stage_10_code_gen_2(sm, meta, ctx);
+    sm->move_out_of_current_scope();
+    return nullptr;
+}
+
+
 auto spp::asts::IterExpressionBranchAst::infer_type(
     ScopeManager *sm,
     CompilerMetaData *meta)
