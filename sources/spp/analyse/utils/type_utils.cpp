@@ -620,6 +620,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
         std::dynamic_pointer_cast<asts::TypeIdentifierAst>(type_part.shared_from_this()),
         old_cls_scope->parent, old_cls_scope->ast);
 
+    // Note there is no LLVM type propagation: handled separately before stage 10.
     const auto new_cls_sym = std::make_shared<scopes::TypeSymbol>(
         spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(type_part.shared_from_this()),
         new_cls_scope->ast->to<asts::ClassPrototypeAst>(), new_cls_scope.get(), sm->current_scope,
@@ -674,6 +675,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     }
 
     auto new_ast = asts::ast_clone(old_cls_scope->ast->to<asts::ClassPrototypeAst>());
+    new_ast->set_ast_scope(new_cls_scope_ptr);
     new_ast->generic_param_group->params.clear();
     for (auto *attr : new_ast->impl->members | genex::views::ptr | genex::views::cast_dynamic<asts::ClassAttributeAst*>()) {
         attr->type = attr->type->substitute_generics(substitution_generics);
@@ -681,7 +683,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
             attr->stage_7_analyse_semantics(&tm, meta);
         }
     }
-    old_cls_sym.type->register_generic_substituted_scope(new_cls_scope_ptr, std::move(new_ast));
+    old_cls_sym.type->register_generic_substitution(new_cls_scope_ptr, std::move(new_ast));
 
     // Return the new class scope.
     return new_cls_scope_ptr;
@@ -705,7 +707,7 @@ auto spp::analyse::utils::type_utils::create_generic_fun_scope(
 
     const auto new_fun_scope_ptr = new_fun_scope.get();
     const auto old_fn_proto = asts::ast_body(old_fun_scope.ast)[0]->to<asts::FunctionPrototypeAst>();
-    old_fn_proto->register_generic_substituted_scope(std::move(new_fun_scope));
+    old_fn_proto->register_generic_substitution(std::move(new_fun_scope), nullptr);
 
     auto tm = scopes::ScopeManager(sm->global_scope, new_fun_scope_ptr);
     register_generic_syms(external_generic_syms, generic_args.args, new_fun_scope_ptr, &tm, meta);
