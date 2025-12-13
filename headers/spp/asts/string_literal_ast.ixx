@@ -4,7 +4,8 @@ module;
 export module spp.asts.string_literal_ast;
 import spp.asts.literal_ast;
 import spp.asts.token_ast;
-
+import spp.codegen.llvm_ctx;
+import llvm;
 import std;
 
 namespace spp::asts {
@@ -33,6 +34,8 @@ SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
     auto equals_string_literal(StringLiteralAst const &) const -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

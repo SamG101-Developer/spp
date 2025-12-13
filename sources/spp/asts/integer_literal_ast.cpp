@@ -2,14 +2,17 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.integer_literal_ast;
-import spp.analyse.scopes.scope_manager;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.asts.token_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_ctx;
 import spp.lex.tokens;
-
+import llvm;
 import mppp;
 
 
@@ -120,6 +123,23 @@ auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
     //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppIntegerOutOfBoundsError>().with_args(
     //         *this, mapped_val, lower, upper, "float").with_scopes({sm->current_scope}).raise();
     // }
+}
+
+
+auto spp::asts::IntegerLiteralAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Get the type of the integer literal.
+    const auto type_ast = infer_type(sm, meta);
+    const auto type_sym = sm->current_scope->get_type_symbol(type_ast);
+    const auto llvm_type = type_sym->llvm_info->llvm_type;
+
+    // Create the LLVM constant integer value.
+    const auto bit_width = llvm_type->getIntegerBitWidth();
+    const auto ap_int = llvm::APInt(bit_width, val->token_data.c_str(), 10);
+    return llvm::ConstantInt::get(ctx->context, ap_int);
 }
 
 

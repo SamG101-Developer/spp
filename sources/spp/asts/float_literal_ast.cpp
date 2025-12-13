@@ -11,9 +11,8 @@ import spp.asts.token_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
-
-import mppp;
 import llvm;
+import mppp;
 
 
 // const auto FLOAT_TYPE_MIN_MAX = std::map<std::string, std::pair<mppp::BigDec, mppp::BigDec>>{
@@ -132,13 +131,16 @@ auto spp::asts::FloatLiteralAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Map the float literal to the correct LLVM type.
-    const auto llvm_type = sm->current_scope->get_type_symbol(infer_type(sm, meta))->llvm_info->llvm_type;
-    const auto full_val = (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB ? "-" : "") + int_val->token_data + "." + frac_val->token_data;
-    const auto llvm_const = llvm::ConstantFP::get(
-        ctx->context,
-        llvm::APFloat(llvm_type->getFltSemantics(), full_val));
-    return llvm_const;
+    // Get the type of the float literal.
+    const auto type_ast = infer_type(sm, meta);
+    const auto type_sym = sm->current_scope->get_type_symbol(type_ast);
+    const auto llvm_type = type_sym->llvm_info->llvm_type;
+
+    // Create the LLVM constant float value.
+    const auto &semantics = llvm_type->getFltSemantics();
+    const auto val = int_val->token_data + "." + frac_val->token_data;
+    const auto ap_float = llvm::APFloat(semantics, std::move(val));
+    return llvm::ConstantFP::get(ctx->context, ap_float);
 }
 
 

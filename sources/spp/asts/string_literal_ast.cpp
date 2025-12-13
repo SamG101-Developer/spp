@@ -2,10 +2,14 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.string_literal_ast;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.asts.ast;
 import spp.asts.token_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
+import llvm;
 
 
 spp::asts::StringLiteralAst::StringLiteralAst(
@@ -64,6 +68,21 @@ auto spp::asts::StringLiteralAst::print(
     SPP_PRINT_START;
     SPP_PRINT_APPEND(val);
     SPP_PRINT_END;
+}
+
+
+auto spp::asts::StringLiteralAst::stage_10_code_gen_2(
+    ScopeManager *,
+    CompilerMetaData *,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // const auto type_ast = infer_type(sm, meta);
+    // const auto type_sym = sm->current_scope->get_type_symbol(type_ast);
+    // const auto llvm_ty = llvm::cast<llvm::StructType>(type_sym->llvm_info->llvm_type);
+
+    const auto bytes = llvm::ConstantDataArray::get(ctx->context, val->token_data);
+    // Todo: Wrap into std::vector::Vec
+    return bytes;
 }
 
 

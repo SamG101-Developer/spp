@@ -153,27 +153,42 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Collect the generated versions of the elements.
-    auto vals = std::vector<llvm::Value*>{};
-    vals.reserve(elems.size());
+    // Runtime allocation. Todo: Can this be removed for comp only?
+    if (not ctx->in_constant_context) {
+        // Collect the generated versions of the elements.
+        auto vals = std::vector<llvm::Value*>{};
+        vals.reserve(elems.size());
+        for (auto const &elem : elems) {
+            vals.emplace_back(elem->stage_10_code_gen_2(sm, meta, ctx));
+        }
+
+        // Create the array type and allocation.
+        const auto elem_ty = vals[0]->getType();
+        const auto arr_ty = llvm::ArrayType::get(elem_ty, vals.size());
+        const auto arr_alloc = ctx->builder.CreateAlloca(arr_ty);
+
+        // Store the elements in the array allocation.
+        for (auto i = 0uz; i < vals.size(); ++i) {
+            const auto idx0 = llvm::ConstantInt::get(ctx->context, llvm::APInt(64, 0));
+            const auto idx1 = llvm::ConstantInt::get(ctx->context, llvm::APInt(64, i));
+            const auto elem_ptr = ctx->builder.CreateGEP(arr_ty, arr_alloc, {idx0, idx1});
+            ctx->builder.CreateStore(vals[i], elem_ptr);
+        }
+
+        // Return the array allocation.
+        return arr_alloc;
+    }
+
+    // Constant array creation.
+    auto comp_vals = std::vector<llvm::Constant*>{};
+    comp_vals.reserve(elems.size());
     for (auto const &elem : elems) {
-        vals.emplace_back(elem->stage_10_code_gen_2(sm, meta, ctx));
+        const auto comp_val = llvm::cast<llvm::Constant>(elem->stage_10_code_gen_2(sm, meta, ctx));
+        comp_vals.emplace_back(comp_val);
     }
-
-    // Create the array type and allocation.
-    const auto elem_ty = vals[0]->getType();
-    const auto arr_ty = llvm::ArrayType::get(elem_ty, vals.size());
-    const auto arr_alloc = ctx->builder.CreateAlloca(arr_ty);
-
-    // Store the elements in the array allocation.
-    for (auto i = 0uz; i < vals.size(); ++i) {
-        const auto idx0 = llvm::ConstantInt::get(ctx->context, llvm::APInt(64, 0));
-        const auto idx1 = llvm::ConstantInt::get(ctx->context, llvm::APInt(64, i));
-        const auto elem_ptr = ctx->builder.CreateGEP(arr_ty, arr_alloc, {idx0, idx1});
-        ctx->builder.CreateStore(vals[i], elem_ptr);
-    }
-
-    // Return the array allocation.
+    const auto elem_ty = comp_vals[0]->getType();
+    const auto arr_ty = llvm::ArrayType::get(elem_ty, comp_vals.size());
+    const auto arr_alloc = llvm::ConstantArray::get(arr_ty, comp_vals);
     return arr_alloc;
 }
 
@@ -182,7 +197,6 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::infer_type(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
-
     // Create a "T" type and "n" size, for the array type.
     auto size_tok = std::make_unique<TokenAst>(tok_l->pos_start(), lex::SppTokenType::LX_NUMBER, std::to_string(elems.size()));
     auto size_gen = std::make_unique<IntegerLiteralAst>(nullptr, std::move(size_tok), "uz");

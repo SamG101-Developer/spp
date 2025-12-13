@@ -18,6 +18,7 @@ import spp.asts.object_initializer_argument_group_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import llvm;
 import genex;
 
 
@@ -145,12 +146,12 @@ auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
     -> llvm::Value* {
     // Create an empty struct based on the llvm type.
     const auto llvm_type = sm->current_scope->get_type_symbol(type)->llvm_info->llvm_type;
-    const auto aggregate = ctx->builder.CreateAlloca(llvm_type, nullptr, "obj_init.aggregate");
 
     // Re-order the arguments to match the fields on the type.
     const auto cls_sym = sm->current_scope->get_type_symbol(type);
     const auto attributes = std::vector{cls_sym->scope}
         | genex::views::concat(cls_sym->scope->sup_scopes())
+        | genex::views::filter([](auto const &scope) { return scope->ast->template to<ClassPrototypeAst>() != nullptr; })
         | genex::views::transform([](auto const &scope) { return scope->ast->template to<ClassPrototypeAst>()->impl.get(); })
         | genex::views::transform([](auto const &impl) { return impl->members | genex::views::ptr | genex::to<std::vector>(); })
         | genex::views::join
@@ -168,16 +169,33 @@ auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
         return a_index < b_index;
     });
 
-    // Set each attribute value in the aggregate.
-    for (auto i = 0uz; i < sorted_args.size(); ++i) {
-        const auto &arg = sorted_args[i];
-        const auto attr_ptr = ctx->builder.CreateStructGEP(llvm_type, aggregate, static_cast<std::uint32_t>(i), arg->name->val);
-        const auto val = arg->val->stage_10_code_gen_2(sm, meta, ctx);
-        ctx->builder.CreateStore(val, attr_ptr);
+    // Runtime pathway.
+    if (not ctx->in_constant_context) {
+        // Set each field value in the aggregate.
+        const auto aggregate = ctx->builder.CreateAlloca(llvm_type, nullptr, "obj_init.aggregate");
+        for (auto i = 0uz; i < sorted_args.size(); ++i) {
+            const auto &arg = sorted_args[i];
+            const auto attr_ptr = ctx->builder.CreateStructGEP(llvm_type, aggregate, static_cast<std::uint32_t>(i), arg->name->val);
+            const auto val = arg->val->stage_10_code_gen_2(sm, meta, ctx);
+            ctx->builder.CreateStore(val, attr_ptr);
+        }
+
+        // Return the aggregate.
+        return ctx->builder.CreateLoad(llvm_type, aggregate, "obj_init.result");
     }
 
-    // Return the aggregate.
-    return ctx->builder.CreateLoad(llvm_type, aggregate, "obj_init.result");
+    // Constant pathway.
+    else {
+        // Set each field value in the constant.
+        auto comp_fields = std::vector<llvm::Constant*>(sorted_args.size());
+        for (auto i = 0uz; i < sorted_args.size(); ++i) {
+            const auto comp_val = sorted_args[i]->val->stage_10_code_gen_2(sm, meta, ctx);
+            comp_fields[i] = llvm::cast<llvm::Constant>(comp_val);
+        }
+
+        // Return the constant struct.
+        return llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(llvm_type), comp_fields);
+    }
 }
 
 
