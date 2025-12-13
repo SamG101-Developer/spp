@@ -45,7 +45,7 @@ auto spp::asts::FunctionParameterRequiredAst::clone() const
 
 spp::asts::FunctionParameterRequiredAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(var).append(" ");
+    SPP_STRING_APPEND(var);
     SPP_STRING_APPEND(tok_colon).append(" ");
     SPP_STRING_APPEND(type);
     SPP_STRING_END;
@@ -56,7 +56,7 @@ auto spp::asts::FunctionParameterRequiredAst::print(
     AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(var).append(" ");
+    SPP_PRINT_APPEND(var);
     SPP_PRINT_APPEND(tok_colon).append(" ");
     SPP_PRINT_APPEND(type);
     SPP_PRINT_END;
