@@ -26,7 +26,7 @@ auto spp::codegen::mangle::mangle_mod_name(
     // Generate the module name by joining the ancestor scope names with '#'.
     return mod_scope.ancestors()
         | genex::views::reverse
-        | genex::views::transform([](auto *scope) { return std::get<analyse::scopes::ScopeBlockName>(scope->name).name; })
+        | genex::views::transform([](auto *scope) { return scope->name_as_string(); })
         | genex::views::materialize
         | genex::views::join_with('#')
         | genex::to<std::string>();
