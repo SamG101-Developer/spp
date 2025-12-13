@@ -2,16 +2,16 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.scopes.scope_manager;
-import std;
-
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_iterator;
 import spp.analyse.scopes.scope_range;
-
+import spp.codegen.llvm_ctx;
+import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct Ast;
     SPP_EXP_CLS struct LoopExpressionAst;
+    SPP_EXP_CLS struct ModulePrototypeAst;
     SPP_EXP_CLS struct TypeStatementAst;
 }
 
@@ -142,6 +142,11 @@ public:
      */
     auto move_to_next_scope()
         -> Scope*;
+
+    auto attach_llvm_type_info(
+        asts::ModulePrototypeAst const &mod,
+        codegen::LLvmCtx &ctx) const
+        -> void;
 
     /**
      * For every type discovered up until this point, attach the defined supertypes to them. At this point, all base

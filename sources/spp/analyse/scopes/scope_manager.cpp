@@ -8,9 +8,16 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
 import spp.asts.ast;
+import spp.asts.class_prototype_ast;
 import spp.asts.cmp_statement_ast;
+import spp.asts.function_prototype_ast;
+import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
+import spp.asts.module_prototype_ast;
+import spp.asts.module_implementation_ast;
+import spp.asts.module_member_ast;
+import spp.asts.sup_implementation_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
 import spp.asts.type_ast;
@@ -18,6 +25,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_type_registration;
 import spp.utils.error_formatter;
 import genex;
 
@@ -79,6 +87,43 @@ auto spp::analyse::scopes::ScopeManager::move_to_next_scope()
         current_scope = *++m_it;
     }
     return current_scope;
+}
+
+
+auto spp::analyse::scopes::ScopeManager::attach_llvm_type_info(
+    asts::ModulePrototypeAst const &mod,
+    codegen::LLvmCtx &ctx) const
+    -> void {
+    // Iterate the members of the module, filter to class prototypes, and call the register function.
+    const auto cls_members = mod.impl->members
+        | genex::views::ptr
+        | genex::views::cast_dynamic<asts::ClassPrototypeAst*>()
+        | genex::to<std::vector>();
+
+    for (auto const &cls_proto : cls_members) {
+        // If this is not a base generic (std::vector::Vec)
+        if (cls_proto->registered_generic_substitutions().empty()) {
+            codegen::register_llvm_type_info(cls_proto, ctx);
+
+            // All aliases need llvm type info propagated from their aliased types.
+            const auto llvm_type = cls_proto->get_ast_scope()->ty_sym->llvm_info->llvm_type;
+            for (auto const &alias_sym : cls_proto->get_ast_scope()->ty_sym->aliased_by_symbols) {
+                alias_sym->llvm_info->llvm_type = llvm_type;
+            }
+        }
+
+        // All concrete generic implementations (not std::vector::Vec[T]).
+        // Todo: don't generate when one of the generics is "comp->identifier" or "type->generic"
+        for (auto const &generic_sub : cls_proto->registered_generic_substitutions()) {
+            codegen::register_llvm_type_info(generic_sub.second, ctx);
+
+            // All generic aliases need llvm type info propagated from their aliased types.
+            const auto llvm_type = generic_sub.second->get_ast_scope()->ty_sym->llvm_info->llvm_type;
+            for (auto const &alias_sym : generic_sub.second->get_ast_scope()->ty_sym->aliased_by_symbols) {
+                alias_sym->llvm_info->llvm_type = llvm_type;
+            }
+        }
+    }
 }
 
 

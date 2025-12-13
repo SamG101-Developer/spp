@@ -507,9 +507,7 @@ auto spp::analyse::scopes::Scope::depth_difference(
 auto spp::analyse::scopes::Scope::final_child_scope() const
     -> Scope const* {
     // If there are no children, return this scope (base case for the recursion).
-    if (children.empty()) {
-        return this;
-    }
+    if (children.empty()) { return this; }
 
     // Otherwise, return the final child scope (recursively searching).
     return children.back()->final_child_scope();
