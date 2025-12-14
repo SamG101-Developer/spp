@@ -114,7 +114,6 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
     CompilerMetaData *meta)
     -> void {
     // Run top level scope generation for the annotations.
-    Ast::stage_2_gen_top_level_scopes(sm, meta);
     annotations | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
 
     // Check there are no conventions on the old type.
@@ -136,7 +135,7 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
         new_type, nullptr, nullptr, sm->current_scope, sm->current_scope->parent_module());
     sm->current_scope->add_type_symbol(type_sym);
     m_alias_sym = type_sym;
-    m_alias_sym->alias_stmt = std::unique_ptr<TypeStatementAst>(this);
+    m_alias_sym->alias_stmt = std::unique_ptr<TypeStatementAst>(this);  // This is BAD but "cleanup" handles mem error.
 
     // Create a new scope for the type statement.
     auto scope_name = analyse::scopes::ScopeBlockName("<type-stmt#" + static_cast<std::string>(*new_type) + "#" + std::to_string(pos_start()) + ">");
@@ -191,7 +190,7 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
         auto tm_1 = ScopeManager(sm->global_scope, stripped_old_sym->scope);
         auto tm_2 = ScopeManager(sm->global_scope, m_temp_scope_1);
 
-        auto temp_scope = std::make_unique<analyse::scopes::Scope>(*m_temp_scope_2->parent);
+        auto temp_scope = std::make_unique<analyse::scopes::Scope>(*m_temp_scope_2->parent);  // todo: remove copy, store as raw pointer?
         auto tm_3 = ScopeManager(sm->global_scope, temp_scope.get());
         generic_param_group->stage_2_gen_top_level_scopes(&tm_3, meta);
 
