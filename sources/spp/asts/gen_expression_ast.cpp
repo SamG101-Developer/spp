@@ -106,7 +106,7 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
         meta->save();
         SPP_RETURN_TYPE_OVERLOAD_HELPER(expr.get()) {
             auto [gen_type, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(
-                *meta->enclosing_function_ret_type[0], *sm, *meta->enclosing_function_ret_type[0], "coroutine");
+                *meta->enclosing_function_ret_type[0], *sm->current_scope, *meta->enclosing_function_ret_type[0], "coroutine");
             meta->return_type_overload_resolver_type = std::move(yield_type);
         }
 
@@ -128,7 +128,7 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
 
     // Determine the "Yield" type of the enclosing function (to type check the expression against).
     auto [_, yield_type, _, is_optional, is_fallible, error_type] = analyse::utils::type_utils::get_generator_and_yield_type(
-        *m_gen_type, *sm, *m_gen_type, "coroutine");
+        *m_gen_type, *sm->current_scope, *m_gen_type, "coroutine");
     const auto direct_match = analyse::utils::type_utils::symbolic_eq(*yield_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
     const auto optional_match = is_optional and analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::VOID, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
     const auto fallible_match = is_fallible and analyse::utils::type_utils::symbolic_eq(*error_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);

@@ -442,16 +442,16 @@ auto spp::analyse::utils::type_utils::get_nth_type_of_indexable_type(
 
 auto spp::analyse::utils::type_utils::get_generator_and_yield_type(
     asts::TypeAst const &type,
-    scopes::ScopeManager const &sm,
+    scopes::Scope const &scope,
     asts::ExpressionAst const &expr,
     std::string_view what)
     -> std::tuple<std::shared_ptr<const asts::TypeAst>, std::shared_ptr<asts::TypeAst>, bool, bool, bool, std::shared_ptr<asts::TypeAst>> {
     // Generic types are not generators, so raise an error.
-    const auto type_sym = sm.current_scope->get_type_symbol(type.shared_from_this());
+    const auto type_sym = scope.get_type_symbol(type.shared_from_this());
     if (type_sym->scope == nullptr) {
         errors::SemanticErrorBuilder<errors::SppExpressionNotGeneratorError>()
             .with_args(expr, type, what)
-            .raises_from(sm.current_scope);
+            .raises_from((&scope));
     }
 
     // Discover the supertypes and add the current type to it.=.
@@ -460,18 +460,18 @@ auto spp::analyse::utils::type_utils::get_generator_and_yield_type(
 
     // Search through the supertypes for a direct generator type.
     const auto generator_type_candidates = sup_types
-        | genex::views::filter([&sm](auto const &sup_type) { return is_type_generator(*sup_type, *sm.current_scope); })
+        | genex::views::filter([&scope](auto const &sup_type) { return is_type_generator(*sup_type, scope); })
         | genex::to<std::vector>();
 
     if (generator_type_candidates.empty()) {
         errors::SemanticErrorBuilder<errors::SppExpressionNotGeneratorError>()
             .with_args(expr, type, what)
-            .raises_from(sm.current_scope);
+            .raises_from((&scope));
     }
     if (generator_type_candidates.size() > 1) {
         errors::SemanticErrorBuilder<errors::SppExpressionAmbiguousGeneratorError>()
             .with_args(expr, type, what)
-            .raises_from(sm.current_scope);
+            .raises_from((&scope));
     }
 
     // Extract the generator and yield type.
@@ -480,16 +480,13 @@ auto spp::analyse::utils::type_utils::get_generator_and_yield_type(
 
     // Extract the multiplicity, optionality and fallibility from the generator type.
     auto is_once = symbolic_eq(
-        *asts::generate::common_types_precompiled::GEN_ONCE, *generator_type->without_generics(),
-        *sm.current_scope, *sm.current_scope);
+        *asts::generate::common_types_precompiled::GEN_ONCE, *generator_type->without_generics(), scope, scope);
 
     auto is_optional = symbolic_eq(
-        *asts::generate::common_types_precompiled::GEN_OPT, *generator_type->without_generics(),
-        *sm.current_scope, *sm.current_scope);
+        *asts::generate::common_types_precompiled::GEN_OPT, *generator_type->without_generics(), scope, scope);
 
     auto is_fallible = symbolic_eq(
-        *asts::generate::common_types_precompiled::GEN_RES, *generator_type->without_generics(),
-        *sm.current_scope, *sm.current_scope);
+        *asts::generate::common_types_precompiled::GEN_RES, *generator_type->without_generics(), scope, scope);
 
     // Get the error type if the generator is fallible.
     auto error_type = is_fallible ? generator_type->type_parts().back()->generic_arg_group->type_at("Err")->val : nullptr;

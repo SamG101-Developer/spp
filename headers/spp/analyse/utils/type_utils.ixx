@@ -166,7 +166,7 @@ namespace spp::analyse::utils::type_utils {
 
     SPP_EXP_FUN auto get_generator_and_yield_type(
         asts::TypeAst const &type,
-        scopes::ScopeManager const &sm,
+        scopes::Scope const &scope,
         asts::ExpressionAst const &expr,
         std::string_view what)
         -> std::tuple<std::shared_ptr<const asts::TypeAst>, std::shared_ptr<asts::TypeAst>, bool, bool, bool, std::shared_ptr<asts::TypeAst>>;

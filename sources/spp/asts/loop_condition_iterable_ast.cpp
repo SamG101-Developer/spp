@@ -87,7 +87,7 @@ auto spp::asts::LoopConditionIterableAst::stage_7_analyse_semantics(
     // Todo: Change to only allow Gen, not GenOpt/GenRes.
     const auto iterable_type = iterable->infer_type(sm, meta);
     auto [gen_type, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(
-        *iterable_type, *sm, *iterable, "loop condition");
+        *iterable_type, *sm->current_scope, *iterable, "loop condition");
 
     // Create a "let" statement to introduce the loop variable into the scope.
     const auto let_ast = std::make_unique<LetStatementUninitializedAst>(nullptr, std::move(var), nullptr, yield_type);
