@@ -58,6 +58,7 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
     is_generic(is_generic),
     visibility(visibility),
     memory_info(std::make_unique<utils::mem_info_utils::MemoryInfo>()) {
+    llvm_info = std::make_unique<codegen::LlvmVarSymInfo>();
 }
 
 
