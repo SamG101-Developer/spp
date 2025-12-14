@@ -3,7 +3,8 @@ module;
 
 export module spp.asts.postfix_expression_operator_keyword_res_ast;
 import spp.asts.postfix_expression_operator_ast;
-
+import spp.codegen.llvm_ctx;
+import llvm;
 import std;
 
 namespace spp::asts {
@@ -54,6 +55,8 @@ public:
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
