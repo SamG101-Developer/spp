@@ -54,6 +54,24 @@ import spp.utils.strings;
 import genex;
 
 
+auto spp::analyse::utils::type_utils::convention_eq(
+    asts::TypeAst const &lhs_type,
+    asts::TypeAst const &rhs_type)
+    -> bool {
+    // Extract the conventions.
+    const auto lhs_conv = lhs_type.get_convention();
+    const auto rhs_conv = rhs_type.get_convention();
+
+    // If the conventions are not equal, return false (allow "&mut" to coerce to "&").
+    if ((lhs_conv and *lhs_conv != rhs_conv) or (not lhs_conv and rhs_conv)) {
+        if (not((lhs_conv and *lhs_conv == asts::ConventionTag::REF) and (rhs_conv and *rhs_conv == asts::ConventionTag::MUT))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+
 auto spp::analyse::utils::type_utils::symbolic_eq(
     asts::TypeAst const &lhs_type,
     asts::TypeAst const &rhs_type,
@@ -64,15 +82,7 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
     // Special case for the "!" never type.
     if (rhs_type.is_never_type()) { return true; }
     if (lhs_type.is_never_type()) { return rhs_type.is_never_type(); }
-
-    // Do a convention check, and allow "&mut" to coerce to "&".
-    const auto lhs_conv = lhs_type.get_convention();
-    const auto rhs_conv = rhs_type.get_convention();
-    if ((lhs_conv and *lhs_conv != rhs_conv) or (not lhs_conv and rhs_conv)) {
-        if (not((lhs_conv and *lhs_conv == asts::ConventionTag::REF) and (rhs_conv and *rhs_conv == asts::ConventionTag::MUT))) {
-            return false;
-        }
-    }
+    if (not convention_eq(lhs_type, rhs_type)) { return false; }
 
     // Strip the generics from the types.
     const auto stripped_lhs = lhs_type.without_generics();
@@ -153,7 +163,6 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     scopes::Scope const *rhs_scope,
     GenericInferenceMap &generic_args,
     const bool check_variant) -> bool {
-    // Todo: Convention check?
     // If the right-hand-side scope is nullptr, the scope is generic so auto-match it.
     if (rhs_scope == nullptr) {
         return true;
@@ -170,6 +179,8 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
         generic_args.insert({t, &lhs_type});
         return true;
     }
+
+    if (not convention_eq(lhs_type, rhs_type)) { return false; }
 
     const auto stripped_lhs_sym = lhs_scope->get_type_symbol(stripped_lhs);
     if (stripped_lhs_sym->is_generic) {
