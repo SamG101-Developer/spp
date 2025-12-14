@@ -9,6 +9,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct ArrayLiteralExplicitElementsAst;
     SPP_EXP_CLS struct ArrayLiteralRepeatedElementAst;
     SPP_EXP_CLS struct BooleanLiteralAst;
+    SPP_EXP_CLS struct CharLiteralAst;
     SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct FloatLiteralAst;
     SPP_EXP_CLS struct IdentifierAst;
@@ -40,6 +41,7 @@ SPP_EXP_CLS struct spp::asts::ExpressionAst : StatementAst {
     SPP_ATTR_NODISCARD virtual auto equals_array_literal_explicit_elements(ArrayLiteralExplicitElementsAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals_boolean_literal(BooleanLiteralAst const &) const -> std::strong_ordering;
+    SPP_ATTR_NODISCARD virtual auto equals_char_literal(CharLiteralAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals_float_literal(FloatLiteralAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals_identifier(IdentifierAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals_integer_literal(IntegerLiteralAst const &) const -> std::strong_ordering;

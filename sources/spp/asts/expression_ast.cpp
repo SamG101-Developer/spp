@@ -22,6 +22,13 @@ auto spp::asts::ExpressionAst::equals_boolean_literal(
 }
 
 
+auto spp::asts::ExpressionAst::equals_char_literal(
+    CharLiteralAst const &) const
+    -> std::strong_ordering {
+    return std::strong_ordering::less;
+}
+
+
 auto spp::asts::ExpressionAst::equals_float_literal(
     FloatLiteralAst const &) const
     -> std::strong_ordering {
