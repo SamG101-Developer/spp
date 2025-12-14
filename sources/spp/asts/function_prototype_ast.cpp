@@ -403,7 +403,6 @@ auto spp::asts::FunctionPrototypeAst::stage_9_code_gen_1(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Create the declaration, but not the definition, of the function. This allows for order-agnostic behaviour.
-    // sm->reset(m_scope);
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
 
@@ -413,15 +412,17 @@ auto spp::asts::FunctionPrototypeAst::stage_9_code_gen_1(
         | genex::views::transform([sm](auto const &x) { return sm->current_scope->get_type_symbol(x->type)->llvm_info->llvm_type; })
         | genex::to<std::vector>();
 
-    // Create the LLVM function type.
-    const auto is_var_arg = param_group->get_variadic_param() != nullptr;
-    const auto llvm_fun_type = llvm::FunctionType::get(llvm_ret_type, llvm_param_types, is_var_arg);
+    if (llvm_ret_type != nullptr and genex::all_of(llvm_param_types, [](auto const &x) { return x != nullptr; })) {
+        // Create the LLVM function type.
+        const auto is_var_arg = param_group->get_variadic_param() != nullptr;
+        const auto llvm_fun_type = llvm::FunctionType::get(llvm_ret_type, llvm_param_types, is_var_arg);
 
-    // Create the LLVM function and add it to the context.
-    const auto created_llvm_func = llvm::Function::Create(
-        llvm_fun_type, llvm::Function::ExternalLinkage, codegen::mangle::mangle_fun_name(*sm->current_scope, *this),
-        ctx->module.get());
-    llvm_func = created_llvm_func;
+        // Create the LLVM function and add it to the context.
+        const auto created_llvm_func = llvm::Function::Create(
+            llvm_fun_type, llvm::Function::ExternalLinkage, codegen::mangle::mangle_fun_name(*sm->current_scope, *this),
+            ctx->module.get());
+        llvm_func = created_llvm_func;
+    }
 
     // Name the parameters from the ASTs.
     // auto llvm_param_iter = created_llvm_func->arg_begin();
@@ -436,13 +437,12 @@ auto spp::asts::FunctionPrototypeAst::stage_9_code_gen_1(
     // }
 
     // Manual scope skipping.
+    // const auto parent_scope = sm->current_scope->parent;
     const auto final_scope = sm->current_scope->final_child_scope();
     while (sm->current_scope != final_scope) {
-        sm->move_to_next_scope();
+        sm->move_to_next_scope(false);
     }
-    while (sm->current_scope != m_scope->parent) {
-        sm->move_out_of_current_scope();
-    }
+    // sm->reset(parent_scope);
 
     return nullptr;
 }
