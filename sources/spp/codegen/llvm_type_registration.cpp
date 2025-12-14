@@ -25,6 +25,13 @@ auto spp::codegen::register_llvm_type_info(
     asts::ClassPrototypeAst const *cls_proto,
     LLvmCtx &ctx)
     -> void {
+    // $ types are 0-size types in LLVM.
+    if (cls_proto->name->operator std::string()[0] == '$') {
+        const auto zero_size_struct = llvm::StructType::create(ctx.context, mangle::mangle_type_name(*cls_proto->get_cls_sym()));
+        zero_size_struct->setBody({}, true);
+        cls_proto->get_cls_sym()->llvm_info->llvm_type = zero_size_struct;
+    }
+
     // Get the class symbol from the current scope.
     const auto scope = cls_proto->get_ast_scope();
     const auto cls_sym = scope->ty_sym;
@@ -47,7 +54,7 @@ auto spp::codegen::register_llvm_type_info(
         return;
     }
 
-    if (ancestor_names[0] == "std" and ancestor_names[1] == "num" and ancestor_names[2].starts_with("sized")) {
+    if (ancestor_names[0] == "std" and ancestor_names[1] == "num" and ancestor_names[2].starts_with("sized") and ancestor_names[3].starts_with("Sized")) {
         const auto type_part = ancestor_names[2];
         const auto bit_width_ast = scope->ty_sym->fq_name()->type_parts().back()->generic_arg_group->comp_at("bit_width")->val->to<asts::IntegerLiteralAst>();
         if (bit_width_ast == nullptr) { return; }

@@ -10,6 +10,8 @@ export module llvm;
 
 export namespace llvm {
     using ::llvm::cast;
+    using ::llvm::dyn_cast;
+    using ::llvm::isa;
     using ::llvm::raw_fd_ostream;
     using ::llvm::fltSemantics;
 
@@ -34,6 +36,7 @@ export namespace llvm {
     using ::llvm::IRBuilder;
     using ::llvm::Instruction;
     using ::llvm::LLVMContext;
+    using ::llvm::MaybeAlign;
     using ::llvm::Module;
     using ::llvm::PointerType;
     using ::llvm::PHINode;
