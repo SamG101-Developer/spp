@@ -72,17 +72,29 @@ auto spp::asts::StringLiteralAst::print(
 
 
 auto spp::asts::StringLiteralAst::stage_10_code_gen_2(
-    ScopeManager *,
-    CompilerMetaData *,
+    ScopeManager *sm,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // const auto type_ast = infer_type(sm, meta);
-    // const auto type_sym = sm->current_scope->get_type_symbol(type_ast);
-    // const auto llvm_ty = llvm::cast<llvm::StructType>(type_sym->llvm_info->llvm_type);
+    const auto type_ast = infer_type(sm, meta);
+    const auto type_sym = sm->current_scope->get_type_symbol(type_ast);
 
-    const auto bytes = llvm::ConstantDataArray::get(ctx->context, val->token_data);
-    // Todo: Wrap into std::vector::Vec
-    return bytes;
+    // Runtime allocation for the string literal into a byte array.
+    if (not ctx->in_constant_context) {
+        const auto bytes = val->token_data;
+        const auto arr_ty = llvm::ArrayType::get(llvm::Type::getInt8Ty(ctx->context), bytes.size());
+        const auto arr_alloc = ctx->builder.CreateAlloca(arr_ty, nullptr, "str_lit");
+
+        // Create the constant data array and copy it into the allocated array.
+        const auto src = llvm::ConstantDataArray::getString(ctx->context, bytes, false);
+        ctx->builder.CreateMemCpy(arr_alloc, llvm::MaybeAlign(1), src, llvm::MaybeAlign(1), bytes.size());
+        return arr_alloc;
+    }
+
+    // Constant allocation for the string literal into a byte array.
+    const auto bytes = val->token_data;
+    const auto arr_alloc = llvm::ConstantDataArray::getString(ctx->context, bytes, false);
+    return arr_alloc;
 }
 
 

@@ -74,10 +74,12 @@ auto spp::asts::CharLiteralAst::print(
 auto spp::asts::CharLiteralAst::stage_10_code_gen_2(
     ScopeManager *,
     CompilerMetaData *,
-    codegen::LLvmCtx *)
+    codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // TODO
-    return nullptr;
+    // Create the LLVM constant integer value.
+    const auto bit_width = llvm::Type::getInt8Ty(ctx->context)->getBitWidth();
+    const auto ap_int = llvm::APInt(bit_width, val->token_data.c_str(), 10);
+    return llvm::ConstantInt::get(ctx->context, ap_int);
 }
 
 
