@@ -96,10 +96,29 @@ auto spp::analyse::scopes::ScopeManager::attach_llvm_type_info(
     codegen::LLvmCtx &ctx) const
     -> void {
     // Iterate the members of the module, filter to class prototypes, and call the register function.
-    const auto cls_members = mod.impl->members
-        | genex::views::ptr
-        | genex::views::cast_dynamic<asts::ClassPrototypeAst*>()
-        | genex::to<std::vector>();
+
+    auto cls_members = std::vector<asts::ClassPrototypeAst*>{};
+    for (auto const &member : mod.impl->members) {
+        if (const auto cls_member = member->to<asts::ClassPrototypeAst>(); cls_member != nullptr) {
+            cls_members.emplace_back(cls_member);
+        }
+
+        if (const auto sup_member = member->to<asts::SupPrototypeFunctionsAst>(); sup_member != nullptr) {
+            for (auto const &sup_member_inner : sup_member->impl->members) {
+                if (const auto cls_sup_member = sup_member_inner->to<asts::ClassPrototypeAst>(); cls_sup_member != nullptr) {
+                    cls_members.emplace_back(cls_sup_member);
+                }
+            }
+        }
+
+        if (const auto ext_member = member->to<asts::SupPrototypeExtensionAst>(); ext_member != nullptr) {
+            for (auto const &ext_member_inner : ext_member->impl->members) {
+                if (const auto cls_ext_member = ext_member_inner->to<asts::ClassPrototypeAst>(); cls_ext_member != nullptr) {
+                    cls_members.emplace_back(cls_ext_member);
+                }
+            }
+        }
+    }
 
     for (auto const &cls_proto : cls_members) {
         // If this is not a base generic (std::vector::Vec)

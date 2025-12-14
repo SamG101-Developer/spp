@@ -140,7 +140,7 @@ public:
      * @return The next scope in the iteration. A raw pointer is returned as the scope is owned by its parent scope. If
      * the end of the iteration has been reached, an error will be thrown.
      */
-    auto move_to_next_scope()
+    auto move_to_next_scope(bool ignore_alias_class_scopes = true)
         -> Scope*;
 
     auto attach_llvm_type_info(
