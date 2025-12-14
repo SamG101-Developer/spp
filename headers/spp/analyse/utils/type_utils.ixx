@@ -10,6 +10,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct Ast;
     SPP_EXP_CLS struct ClassAttributeAst;
     SPP_EXP_CLS struct ClassPrototypeAst;
+    SPP_EXP_CLS struct ConventionAst;
     SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct GenericArgumentAst;
     SPP_EXP_CLS struct GenericArgumentGroupAst;
@@ -31,6 +32,11 @@ namespace spp::analyse::utils::type_utils {
         std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*,
         ankerl::ptr_hash<std::shared_ptr<asts::TypeIdentifierAst>>,
         ankerl::ptr_eq<std::shared_ptr<asts::TypeIdentifierAst>>>;
+
+    SPP_EXP_FUN auto convention_eq(
+        asts::TypeAst const &lhs_type,
+        asts::TypeAst const &rhs_type)
+        -> bool;
 
     /**
      * The symbolic equality type checker is a complex type checking algorithm that takes namespacing, scopes, aliases,
