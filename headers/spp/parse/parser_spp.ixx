@@ -72,6 +72,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct CasePatternVariantElseCaseAst;
     SPP_EXP_CLS struct CasePatternVariantExpressionAst;
     SPP_EXP_CLS struct CasePatternVariantLiteralAst;
+    SPP_EXP_CLS struct CharLiteralAst;
     SPP_EXP_CLS struct PrimaryExpressionAst;
     SPP_EXP_CLS struct CaseExpressionAst;
     SPP_EXP_CLS struct CaseExpressionBranchAst;
@@ -435,6 +436,7 @@ public:
     auto parse_upper_identifier() -> std::unique_ptr<asts::IdentifierAst>;
 
     auto parse_literal() -> std::unique_ptr<asts::LiteralAst>;
+    auto parse_literal_char() -> std::unique_ptr<asts::CharLiteralAst>;
     auto parse_literal_string() -> std::unique_ptr<asts::StringLiteralAst>;
     auto parse_literal_float() -> std::unique_ptr<asts::FloatLiteralAst>;
     auto parse_literal_integer() -> std::unique_ptr<asts::IntegerLiteralAst>;
@@ -474,6 +476,7 @@ public:
     auto parse_lexeme_oct_integer() -> std::unique_ptr<asts::TokenAst>;
     auto parse_lexeme_dec_integer() -> std::unique_ptr<asts::TokenAst>;
     auto parse_lexeme_hex_integer() -> std::unique_ptr<asts::TokenAst>;
+    auto parse_lexeme_single_quote_char() -> std::unique_ptr<asts::TokenAst>;
     auto parse_lexeme_double_quote_string() -> std::unique_ptr<asts::TokenAst>;
     auto parse_lexeme_identifier() -> std::unique_ptr<asts::TokenAst>;
     auto parse_lexeme_upper_identifier() -> std::unique_ptr<asts::TokenAst>;
@@ -510,6 +513,7 @@ public:
     auto parse_token_borrow() -> std::unique_ptr<asts::TokenAst>;
     auto parse_token_vertical_bar() -> std::unique_ptr<asts::TokenAst>;
     auto parse_token_semicolon() -> std::unique_ptr<asts::TokenAst>;
+    auto parse_token_single_quote() -> std::unique_ptr<asts::TokenAst>;
     auto parse_token_double_quote() -> std::unique_ptr<asts::TokenAst>;
     auto parse_token_dollar() -> std::unique_ptr<asts::TokenAst>;
     auto parse_token_arrow_right() -> std::unique_ptr<asts::TokenAst>;

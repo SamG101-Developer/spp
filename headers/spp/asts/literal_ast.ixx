@@ -9,6 +9,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct ArrayLiteralExplicitElementsAst;
     SPP_EXP_CLS struct ArrayLiteralRepeatedElementAst;
     SPP_EXP_CLS struct BooleanLiteralAst;
+    SPP_EXP_CLS struct CharLiteralAst;
     SPP_EXP_CLS struct FloatLiteralAst;
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct IntegerLiteralAst;

@@ -25,6 +25,7 @@ import spp.asts.case_pattern_variant_else_case_ast;
 import spp.asts.case_pattern_variant_expression_ast;
 import spp.asts.case_pattern_variant_literal_ast;
 import spp.asts.case_pattern_variant_single_identifier_ast;
+import spp.asts.char_literal_ast;
 import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
 import spp.asts.class_member_ast;
@@ -38,6 +39,7 @@ import spp.asts.convention_ast;
 import spp.asts.convention_mut_ast;
 import spp.asts.convention_ref_ast;
 import spp.asts.coroutine_prototype_ast;
+import spp.asts.expression_ast;
 import spp.asts.float_literal_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_ast;
@@ -91,6 +93,7 @@ import spp.asts.let_statement_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.let_statement_uninitialized_ast;
 import spp.asts.literal_ast;
+import spp.asts.local_variable_ast;
 import spp.asts.local_variable_destructure_array_ast;
 import spp.asts.local_variable_destructure_attribute_binding_ast;
 import spp.asts.local_variable_destructure_object_ast;
@@ -106,7 +109,9 @@ import spp.asts.loop_control_flow_statement_ast;
 import spp.asts.loop_else_statement_ast;
 import spp.asts.loop_expression_ast;
 import spp.asts.module_implementation_ast;
+import spp.asts.module_member_ast;
 import spp.asts.module_prototype_ast;
+import spp.asts.object_initializer_argument_ast;
 import spp.asts.object_initializer_argument_group_ast;
 import spp.asts.object_initializer_argument_keyword_ast;
 import spp.asts.object_initializer_argument_shorthand_ast;
@@ -124,11 +129,13 @@ import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.primary_expression_ast;
 import spp.asts.ret_statement_ast;
+import spp.asts.statement_ast;
 import spp.asts.string_literal_ast;
 import spp.asts.subroutine_prototype_ast;
 import spp.asts.sup_implementation_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
+import spp.asts.sup_member_ast;
 import spp.asts.token_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.type_array_shorthand_ast;
@@ -143,6 +150,7 @@ import spp.asts.type_postfix_expression_operator_nested_type_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.type_tuple_shorthand_ast;
 import spp.asts.type_unary_expression_ast;
+import spp.asts.type_unary_expression_operator_ast;
 import spp.asts.type_unary_expression_operator_borrow_ast;
 import spp.asts.type_unary_expression_operator_namespace_ast;
 import spp.asts.unary_expression_ast;
@@ -1214,7 +1222,8 @@ auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_single_identif
 auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_literal()
     -> std::unique_ptr<asts::CasePatternVariantAst> {
     PARSE_ALTERNATE(
-        p1, asts::LiteralAst, parse_literal_float, parse_literal_integer, parse_literal_string, parse_literal_boolean);
+        p1, asts::LiteralAst, parse_literal_float, parse_literal_integer, parse_literal_char, parse_literal_string,
+        parse_literal_boolean);
     return CREATE_AST(asts::CasePatternVariantLiteralAst, p1);
 }
 
@@ -2114,10 +2123,18 @@ auto spp::parse::ParserSpp::parse_upper_identifier()
 auto spp::parse::ParserSpp::parse_literal()
     -> std::unique_ptr<asts::LiteralAst> {
     PARSE_ALTERNATE(
-        p1, asts::LiteralAst, parse_literal_string, parse_literal_float, parse_literal_integer, parse_literal_boolean,
+        p1, asts::LiteralAst, parse_literal_char, parse_literal_string, parse_literal_float, parse_literal_integer,
+        parse_literal_boolean,
         [this] { return parse_literal_tuple([this] { return parse_expression(); }); },
         [this] { return parse_literal_array([this] { return parse_expression(); }); });
     return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_literal_char()
+    -> std::unique_ptr<asts::CharLiteralAst> {
+    PARSE_ONCE(p1, parse_lexeme_single_quote_char);
+    return CREATE_AST(asts::CharLiteralAst, p1);
 }
 
 
@@ -2307,7 +2324,7 @@ auto spp::parse::ParserSpp::parse_cmp_value()
     -> std::unique_ptr<asts::ExpressionAst> {
     // todo: just accept all Expression's and then check them in semantic analysis for cmp?
     PARSE_ALTERNATE(
-        p1, asts::ExpressionAst, parse_literal_string, parse_literal_float, parse_literal_integer,
+        p1, asts::ExpressionAst, parse_literal_char, parse_literal_string, parse_literal_float, parse_literal_integer,
         parse_literal_boolean, [this] { return parse_literal_tuple([this] { return parse_cmp_value(); }); },
         [this] { return parse_literal_array([this] { return parse_cmp_value(); }); }, parse_cmp_object_initializer,
         parse_identifier);
@@ -2489,6 +2506,24 @@ auto spp::parse::ParserSpp::parse_lexeme_hex_integer()
         if (std::string("0123456789abcdefABCDEF").find(p4->token_data[0]) == std::string::npos) { return nullptr; }
         out->token_data += std::move(p4->token_data);
     }
+
+    return out;
+}
+
+
+auto spp::parse::ParserSpp::parse_lexeme_single_quote_char()
+    -> std::unique_ptr<asts::TokenAst> {
+    PARSE_ONCE(_, parse_nothing);
+    auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_CHAR, std::string());
+
+    PARSE_ONCE(p1, parse_token_single_quote);
+    out->token_data += std::move(p1->token_data);
+
+    PARSE_ONCE(p2, parse_lexeme_character);
+    out->token_data += std::move(p2->token_data);
+
+    PARSE_ONCE(p3, parse_token_single_quote);
+    out->token_data += std::move(p3->token_data);
 
     return out;
 }
@@ -2769,6 +2804,13 @@ auto spp::parse::ParserSpp::parse_token_vertical_bar()
 auto spp::parse::ParserSpp::parse_token_semicolon()
     -> std::unique_ptr<asts::TokenAst> {
     PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_SEMICOLON, lex::SppTokenType::TK_SEMICOLON); });
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_token_single_quote()
+    -> std::unique_ptr<asts::TokenAst> {
+    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_APOSTROPHE, lex::SppTokenType::TK_APOSTROPHE); });
     return FORWARD_AST(p1);
 }
 

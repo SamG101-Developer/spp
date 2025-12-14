@@ -13,6 +13,7 @@ auto spp::lex::Lexer::lex() const
     -> std::vector<RawToken> {
     // Define tracker variables.
     auto tokens = std::vector<RawToken>();
+    auto in_char = false;
     auto in_string = false;
     auto in_single_line_comment = false;
     auto in_multi_line_comment = false;
@@ -34,6 +35,13 @@ auto spp::lex::Lexer::lex() const
 
         // Skip any characters in a single-line comment (except terminating newline character).
         if (in_single_line_comment and c != '\n') {
+            ++i;
+            continue;
+        }
+
+        // Append any characters in a character literal as a character token (except terminating apostrophe).
+        if (in_char and c != '\'') {
+            tokens.emplace_back(RawTokenType::LX_CHARACTER, std::string(1, c));
             ++i;
             continue;
         }
@@ -184,6 +192,12 @@ auto spp::lex::Lexer::lex() const
         }
         case '_': {
             tokens.emplace_back(RawTokenType::TK_UNDERSCORE, "_");
+            ++i;
+            continue;
+        }
+        case '\'': {
+            tokens.emplace_back(RawTokenType::TK_APOSTROPHE, "'");
+            in_char = !in_char;
             ++i;
             continue;
         }
