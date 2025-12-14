@@ -45,6 +45,7 @@ SPP_EXP_ENUM enum class spp::lex::RawTokenType : std::uint8_t {
     TK_SEMICOLON,
     TK_AT_SIGN,
     TK_UNDERSCORE,
+    TK_APOSTROPHE,
     TK_QUOTATION_MARK,
     TK_EXCLAMATION_MARK,
     TK_DOLLAR_SIGN,
@@ -93,6 +94,7 @@ SPP_EXP_ENUM enum class spp::lex::RawTokenType : std::uint8_t {
 SPP_EXP_ENUM enum class spp::lex::SppTokenType : std::uint8_t {
     LX_CHARACTER,
     LX_DIGIT,
+    LX_CHAR,
     LX_STRING,
     LX_NUMBER,
     LX_IDENTIFIER,
@@ -177,6 +179,7 @@ SPP_EXP_ENUM enum class spp::lex::SppTokenType : std::uint8_t {
     TK_ASSIGN,
     TK_ARROW_RIGHT,
     TK_AT,
+    TK_APOSTROPHE,
     TK_QUOTATION_MARK,
     TK_UNDERSCORE,
     TK_EXCLAMATION_MARK,
@@ -202,6 +205,7 @@ SPP_EXP_FUN auto spp::lex::tok_to_string(const SppTokenType token) noexcept -> s
     switch (token) {
     case SppTokenType::LX_CHARACTER: return "";
     case SppTokenType::LX_DIGIT: return "";
+    case SppTokenType::LX_CHAR: return "";
     case SppTokenType::LX_STRING: return "";
     case SppTokenType::LX_NUMBER: return "";
     case SppTokenType::LX_IDENTIFIER: return "";
@@ -284,6 +288,7 @@ SPP_EXP_FUN auto spp::lex::tok_to_string(const SppTokenType token) noexcept -> s
     case SppTokenType::TK_ASSIGN: return "=";
     case SppTokenType::TK_ARROW_RIGHT: return "->";
     case SppTokenType::TK_AT: return "@";
+    case SppTokenType::TK_APOSTROPHE: return "'";
     case SppTokenType::TK_QUOTATION_MARK: return "\"";
     case SppTokenType::TK_UNDERSCORE: return "_";
     case SppTokenType::TK_EXCLAMATION_MARK: return "!";
