@@ -14,8 +14,8 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
 import spp.asts.meta.compiler_meta_data;
+import spp.lex.tokens;
 import spp.utils.strings;
 import genex;
 
@@ -171,6 +171,40 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
                 .raises_from(closest[0].first, closest[1].first, sm->current_scope);
         }
     }
+}
+
+
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Get the type of the left-hand-side expression.
+    const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
+    const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_type);
+    const auto llvm_type = llvm::cast<llvm::StructType>(lhs_type_sym->llvm_info->llvm_type);
+
+    // If the lhs is symbolic, get the address of the outermost part.
+    const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*meta->postfix_expression_lhs);
+    auto base_ptr = static_cast<llvm::Value*>(nullptr);
+    if (sym != nullptr) {
+        // Get the alloca for the lhs symbol (the base pointer).
+        const auto lhs_alloca = sym->llvm_info->alloca;
+        base_ptr = ctx->builder.CreateLoad(llvm_type, lhs_alloca, "load.member_access.base_ptr");
+    }
+    else {
+        // Materialize the lhs expression into a temporary.
+        const auto lhs_val = meta->postfix_expression_lhs->stage_10_code_gen_2(sm, meta, ctx);
+        const auto temp = ctx->builder.CreateAlloca(llvm_type, nullptr, "temp.member_access.lhs");
+        ctx->builder.CreateStore(lhs_val, temp);
+        base_ptr = temp;
+    }
+
+    const auto field_index = analyse::utils::type_utils::get_field_index_in_type(
+        *lhs_type, *name, sm);
+    const auto llvm_field_index = llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx->context), field_index);
+    const auto llvm_field_ptr = ctx->builder.CreateGEP(llvm_type, base_ptr, llvm_field_index, "member_access.field_ptr");
+    return llvm_field_ptr;
 }
 
 

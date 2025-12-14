@@ -259,4 +259,10 @@ namespace spp::analyse::utils::type_utils {
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
         -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>, scopes::Scope*, scopes::Scope*>;
+
+    SPP_EXP_FUN auto get_field_index_in_type(
+        asts::TypeAst const &type_sym,
+        asts::IdentifierAst const &field_name,
+        scopes::ScopeManager *sm)
+        -> std::size_t;
 }

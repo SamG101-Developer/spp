@@ -1112,6 +1112,27 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
 }
 
 
+auto spp::analyse::utils::type_utils::get_field_index_in_type(
+    asts::TypeAst const &type_sym,
+    asts::IdentifierAst const &field_name,
+    scopes::ScopeManager *sm)
+    -> std::size_t {
+    // Get all the attributes on the type.
+    const auto all_attrs = get_all_attrs(type_sym, sm);
+
+    // Find the field index.
+    for (auto index = 0uz; index < all_attrs.size(); ++index) {
+        if (*all_attrs[index].first->name == field_name) {
+            return index;
+        }
+    }
+
+    return all_attrs.size();
+
+    // return genex::position(all_attrs, genex::operations::eq_fixed(field_name), [](auto &&attr) -> decltype(auto) { return *attr.first->name; });
+}
+
+
 template auto spp::analyse::utils::type_utils::validate_inconsistent_types<spp::asts::CaseExpressionBranchAst*>(
     std::vector<asts::CaseExpressionBranchAst*> const &,
     scopes::ScopeManager *,

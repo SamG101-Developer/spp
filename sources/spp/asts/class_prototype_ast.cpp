@@ -143,14 +143,18 @@ auto spp::asts::ClassPrototypeAst::m_fill_llvm_mem_layout(
     }
 
     // Collect the scope and sup scopes to get all attributes.
-    auto types = std::vector{type_sym->scope}
-        | genex::views::concat(type_sym->scope->sup_scopes())
-        | genex::views::transform([](auto *x) { return x->ast; })
-        | genex::views::cast_dynamic<ClassPrototypeAst*>()
-        | genex::views::transform([](auto *x) { return x->impl->members | genex::views::ptr | genex::to<std::vector>(); })
-        | genex::views::join
-        | genex::views::cast_dynamic<ClassAttributeAst*>()
-        | genex::views::transform([sm](auto *x) { return sm->current_scope->get_type_symbol(x->type)->llvm_info->llvm_type; })
+    // auto types = std::vector{type_sym->scope}
+    //     | genex::views::concat(type_sym->scope->sup_scopes())
+    //     | genex::views::transform([](auto *x) { return x->ast; })
+    //     | genex::views::cast_dynamic<ClassPrototypeAst*>()
+    //     | genex::views::transform([](auto *x) { return x->impl->members | genex::views::ptr | genex::to<std::vector>(); })
+    //     | genex::views::join
+    //     | genex::views::cast_dynamic<ClassAttributeAst*>()
+    //     | genex::views::transform([sm](auto *x) { return sm->current_scope->get_type_symbol(x->type)->llvm_info->llvm_type; })
+    //     | genex::to<std::vector>();
+
+    auto types = analyse::utils::type_utils::get_all_attrs(*type_sym->fq_name(), sm)
+        | genex::views::transform([sm](auto const &x) { return x.second->get_type_symbol(x.first->type)->llvm_info->llvm_type; })
         | genex::to<std::vector>();
 
     // If there are any generic types present (llvm_type is nullptr), skip the layout generation.
