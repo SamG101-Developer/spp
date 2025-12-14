@@ -14,6 +14,7 @@ import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.meta.compiler_meta_data;
+import spp.codegen.llvm_ctx;
 import spp.compiler.module_tree;
 import spp.lex.lexer;
 import spp.parse.parser_spp;
@@ -21,7 +22,7 @@ import spp.parse.errors.parser_error;
 import spp.parse.errors.parser_error_builder;
 import spp.utils.error_formatter;
 import spp.utils.files;
-
+import llvm;
 import genex;
 
 
@@ -200,6 +201,56 @@ auto spp::compiler::CompilerBoot::stage_8_check_memory(
         bar.next();
     }
     bar.finish();
+
+    // Attach all LLVM type info to all types now.
+    for (auto const &mod : m_modules) {
+        auto ctx = codegen::LLvmCtx::new_ctx(mod->file_path);
+        sm->attach_llvm_type_info(*mod, *ctx);
+        m_llvm_ctxs.emplace_back(std::move(ctx));
+    }
+}
+
+
+auto spp::compiler::CompilerBoot::stage_9_code_gen_1(
+    utils::ProgressBar &bar,
+    ModuleTree &tree,
+    analyse::scopes::ScopeManager *sm)
+    -> void {
+    // Code generation stage.
+    for (auto const &[mod, ctx] : genex::views::zip(m_modules, m_llvm_ctxs | genex::views::ptr)) {
+        PREP_SCOPE_MANAGER_AND_META(11.0);
+        mod->stage_9_code_gen_1(sm, &meta, ctx);
+        sm->reset();
+        bar.next();
+    }
+    bar.finish();
+}
+
+
+auto spp::compiler::CompilerBoot::stage_10_code_gen_2(
+    utils::ProgressBar &bar,
+    ModuleTree &tree,
+    analyse::scopes::ScopeManager *sm)
+    -> void {
+    // Code generation stage.
+    for (auto const &[mod, ctx] : genex::views::zip(m_modules, m_llvm_ctxs | genex::views::ptr)) {
+        PREP_SCOPE_MANAGER_AND_META(12.0);
+        mod->stage_10_code_gen_2(sm, &meta, ctx);
+        sm->reset();
+        bar.next();
+    }
+    bar.finish();
+
+    // Write the llvm modules to file.
+    const auto out_path = tree.root_path() / "out" / "llvm";
+    std::filesystem::create_directories(out_path);
+    for (auto const &ctx : m_llvm_ctxs) {
+        auto ec = std::error_code();
+        auto file = out_path / (ctx->module->getName().str() + ".ll");
+        auto out = llvm::raw_fd_ostream(file.string(), ec, static_cast<llvm::sys::fs::OpenFlags>(0));
+        ctx->module->print(out, nullptr);
+        out.flush();
+    }
 }
 
 

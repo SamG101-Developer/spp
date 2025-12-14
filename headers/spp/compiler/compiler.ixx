@@ -26,6 +26,8 @@ inline constexpr auto COMPILER_STAGE_NAMES = std::array{
     "Pre-Analysing Semantics........ ",
     "Analysing Semantics............ ",
     "Checking Memory Safety......... ",
+    "Generating Code (1)............ ",
+    "Generating Code (2)............ "
 };
 
 

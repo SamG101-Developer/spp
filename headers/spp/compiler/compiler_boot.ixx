@@ -2,7 +2,9 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.compiler.compiler_boot;
+import spp.codegen.llvm_ctx;
 import spp.utils.progress;
+import llvm;
 import std;
 
 namespace spp::analyse::scopes {
@@ -24,6 +26,7 @@ namespace spp::compiler {
 SPP_EXP_CLS struct spp::compiler::CompilerBoot {
 private:
     std::vector<asts::ModulePrototypeAst*> m_modules;
+    std::vector<std::unique_ptr<codegen::LLvmCtx>> m_llvm_ctxs;
 
     auto validate_entry_point(analyse::scopes::ScopeManager *sm) -> void;
     static auto move_scope_manager_to_ns(analyse::scopes::ScopeManager *sm, Module const &mod) -> void;
@@ -39,4 +42,6 @@ public:
     auto stage_6_pre_analyse_semantics(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
     auto stage_7_analyse_semantics(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
     auto stage_8_check_memory(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
+    auto stage_9_code_gen_1(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
+    auto stage_10_code_gen_2(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
 };

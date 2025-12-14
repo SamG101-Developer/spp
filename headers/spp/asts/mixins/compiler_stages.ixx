@@ -2,8 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.mixins.compiler_stages;
-import spp.codegen.llvm_ctx;
-
 import llvm;
 import std;
 
@@ -22,6 +20,10 @@ namespace spp::asts::meta {
 namespace spp::asts::mixins {
     SPP_EXP_CLS struct CompilerStages;
     SPP_EXP_CLS struct TypeInferrableAst;
+}
+
+namespace spp::codegen {
+    SPP_EXP_CLS struct LLvmCtx;
 }
 
 
