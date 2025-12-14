@@ -87,7 +87,7 @@ auto spp::asts::ClosureExpressionAst::stage_7_analyse_semantics(
     // Update the meta args with the closure information for body analysis.
     // The closure-wide save/restore allows for the "ret" to match the closure's inferred return type.
     meta->save();
-    meta->enclosing_function_scope = sm->current_scope;  // this will be the closure-outer scope
+    meta->enclosing_function_scope = sm->current_scope; // this will be the closure-outer scope
     sm->current_scope->parent = sm->current_scope->parent_module();
 
     auto scope_name = analyse::scopes::ScopeBlockName("<closure-inner#" + std::to_string(pos_start()) + ">");
@@ -121,6 +121,22 @@ auto spp::asts::ClosureExpressionAst::stage_8_check_memory(
     // Set the scope back.
     meta->restore();
     sm->current_scope = parent_scope;
+}
+
+
+auto spp::asts::ClosureExpressionAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // TODO
+    // For now, just skip scopes and return a nullptr.
+    const auto parent_scope = sm->current_scope;
+    pc_group->stage_10_code_gen_2(sm, meta, ctx);
+    sm->move_to_next_scope();
+    body->stage_10_code_gen_2(sm, meta, ctx);
+    sm->current_scope = parent_scope;
+    return nullptr;
 }
 
 
