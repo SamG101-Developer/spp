@@ -184,6 +184,8 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
         phi = ctx->builder.CreatePHI(ret_type_sym, branches.size() as U32, "case.phi");
     }
 
+    // Do the case condition?
+
     // Generate each branch.
     meta->save();
     meta->phi_node = phi;
