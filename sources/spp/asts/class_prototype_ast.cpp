@@ -24,7 +24,6 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_mangle;
 import spp.lex.tokens;
-
 import genex;
 import llvm;
 
@@ -136,8 +135,13 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
 auto spp::asts::ClassPrototypeAst::m_fill_llvm_mem_layout(
     analyse::scopes::ScopeManager *sm,
     analyse::scopes::TypeSymbol const *type_sym,
-    codegen::LLvmCtx *ctx)
+    codegen::LLvmCtx *)
     -> void {
+    // Non-struct types are compiler known special types, or $ types - no generation needed.
+    if (type_sym->llvm_info->llvm_type == nullptr or not llvm::isa<llvm::StructType>(type_sym->llvm_info->llvm_type)) {
+        return;
+    }
+
     // Collect the scope and sup scopes to get all attributes.
     auto types = std::vector{type_sym->scope}
         | genex::views::concat(type_sym->scope->sup_scopes())
@@ -149,9 +153,11 @@ auto spp::asts::ClassPrototypeAst::m_fill_llvm_mem_layout(
         | genex::views::transform([sm](auto *x) { return sm->current_scope->get_type_symbol(x->type)->llvm_info->llvm_type; })
         | genex::to<std::vector>();
 
-    const auto llvm_type_struct = llvm::StructType::create(
-        ctx->context, std::move(types), codegen::mangle::mangle_type_name(*type_sym));
-    type_sym->llvm_info->llvm_type = llvm_type_struct;
+    // If there are any generic types present (llvm_type is nullptr), skip the layout generation.
+    if (genex::all_of(types, [](auto const &x) { return x != nullptr; })) {
+        const auto struct_type = llvm::dyn_cast<llvm::StructType>(type_sym->llvm_info->llvm_type);
+        struct_type->setBody(std::move(types));
+    }
 }
 
 
@@ -310,7 +316,7 @@ auto spp::asts::ClassPrototypeAst::stage_10_code_gen_2(
     SPP_ASSERT(sm->current_scope == m_scope);
     const auto cls_sym = sm->current_scope->ty_sym;
 
-    // No generation for "$" types.
+    // $ types are pre-set with a packed empty body.
     if (name->type_parts().back()->name[0] == '$') {
         sm->move_out_of_current_scope();
         return nullptr;
