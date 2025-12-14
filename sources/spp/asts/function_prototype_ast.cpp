@@ -151,6 +151,37 @@ auto spp::asts::FunctionPrototypeAst::m_deduce_mock_class_type() const
 }
 
 
+auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
+    analyse::scopes::Scope const &scope,
+    codegen::LLvmCtx *ctx)
+    -> void {
+    // Generate the return and parameter types.
+    const auto llvm_ret_type = scope.get_type_symbol(return_type)->llvm_info->llvm_type;
+    const auto llvm_param_types = param_group->params
+        | genex::views::transform([&scope](auto const &x) { return scope.get_type_symbol(x->type)->llvm_info->llvm_type; })
+        | genex::to<std::vector>();
+
+    if (llvm_ret_type != nullptr and genex::all_of(llvm_param_types, [](auto const &x) { return x != nullptr; })) {
+        // Create the LLVM function type.
+        const auto is_var_arg = param_group->get_variadic_param() != nullptr;
+        const auto llvm_fun_type = llvm::FunctionType::get(llvm_ret_type, llvm_param_types, is_var_arg);
+
+        // Create the LLVM function and add it to the context.
+        const auto created_llvm_func = llvm::Function::Create(
+            llvm_fun_type, llvm::Function::ExternalLinkage, codegen::mangle::mangle_fun_name(scope, *this),
+            ctx->module.get());
+        llvm_func = created_llvm_func;
+    }
+
+    // Name the parameters from the ASTs.
+    // auto llvm_param_iter = created_llvm_func->arg_begin();
+    // for (const auto &param : param_group->params) {
+    //     llvm_param_iter->setName(param->extract_name()->val);
+    //     ++llvm_param_iter;
+    // }
+}
+
+
 auto spp::asts::FunctionPrototypeAst::print_signature(
     std::string const &owner) const
     -> std::string {
@@ -406,43 +437,19 @@ auto spp::asts::FunctionPrototypeAst::stage_9_code_gen_1(
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
 
-    // Generate the return and parameter types.
-    const auto llvm_ret_type = sm->current_scope->get_type_symbol(return_type)->llvm_info->llvm_type;
-    const auto llvm_param_types = param_group->params
-        | genex::views::transform([sm](auto const &x) { return sm->current_scope->get_type_symbol(x->type)->llvm_info->llvm_type; })
-        | genex::to<std::vector>();
+    // Handle the main function prototype.
+    m_generate_llvm_declaration(*m_scope, ctx);
 
-    if (llvm_ret_type != nullptr and genex::all_of(llvm_param_types, [](auto const &x) { return x != nullptr; })) {
-        // Create the LLVM function type.
-        const auto is_var_arg = param_group->get_variadic_param() != nullptr;
-        const auto llvm_fun_type = llvm::FunctionType::get(llvm_ret_type, llvm_param_types, is_var_arg);
-
-        // Create the LLVM function and add it to the context.
-        const auto created_llvm_func = llvm::Function::Create(
-            llvm_fun_type, llvm::Function::ExternalLinkage, codegen::mangle::mangle_fun_name(*sm->current_scope, *this),
-            ctx->module.get());
-        llvm_func = created_llvm_func;
+    // Handle generic substitutions of a function.
+    for (auto &&[generic_scope, generic_ast] : m_generic_substitutions) {
+        generic_ast->m_generate_llvm_declaration(*generic_scope, ctx);
     }
 
-    // Name the parameters from the ASTs.
-    // auto llvm_param_iter = created_llvm_func->arg_begin();
-    // for (const auto &param : param_group->params) {
-    //     llvm_param_iter->setName(param->extract_name()->val);
-    //     ++llvm_param_iter;
-    // }
-
-    // Do the same for generic substitutions.
-    // for (auto &&[_, generic_ast] : m_generic_substitutions) {
-    //     generic_ast->stage_9_code_gen_1(sm, meta, ctx);
-    // }
-
     // Manual scope skipping.
-    // const auto parent_scope = sm->current_scope->parent;
     const auto final_scope = sm->current_scope->final_child_scope();
     while (sm->current_scope != final_scope) {
         sm->move_to_next_scope(false);
     }
-    // sm->reset(parent_scope);
 
     return nullptr;
 }
