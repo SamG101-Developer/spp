@@ -155,10 +155,8 @@ auto spp::asts::InnerScopeAst<T>::stage_10_code_gen_2(
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
 
-    for (auto *member : members | genex::views::ptr) {
-        if (member->template to<ExpressionAst>() != nullptr) {
-            member->stage_10_code_gen_2(sm, meta, ctx);
-        }
+    for (auto const &member : members) {
+        member->stage_10_code_gen_2(sm, meta, ctx);
     }
 
     // Exit the scope.
