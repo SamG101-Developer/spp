@@ -136,6 +136,7 @@ auto spp::asts::LetStatementInitializedAst::stage_8_check_memory(
     // Check the variable's memory (which in turn checks the values memory - must be done this way for destructuring).
     meta->save();
     meta->assignment_target = var->extract_name();
+    meta->let_stmt_explicit_type = type;
     meta->let_stmt_value = val.get();
     var->stage_8_check_memory(sm, meta);
     meta->restore();
@@ -150,6 +151,7 @@ auto spp::asts::LetStatementInitializedAst::stage_10_code_gen_2(
     // Delegate the code generation to the variable, after setting up the meta.
     meta->save();
     meta->assignment_target = var->extract_name();
+    meta->let_stmt_explicit_type = type ? type : val->infer_type(sm, meta);
     meta->let_stmt_value = val.get();
     const auto alloca = var->stage_10_code_gen_2(sm, meta, ctx);
     meta->restore();
