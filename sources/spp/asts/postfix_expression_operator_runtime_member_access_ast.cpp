@@ -74,7 +74,6 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-
     // Prevent types on the left-hand-side of a runtime member access.
     if (meta->postfix_expression_lhs->to<TypeAst>() != nullptr) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessStaticOperatorExpectedError>()
