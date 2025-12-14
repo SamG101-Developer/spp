@@ -3,22 +3,28 @@ module;
 
 export module spp.asts.coroutine_prototype_ast;
 import spp.asts.function_prototype_ast;
-import spp.codegen.llvm_coros;
 import spp.codegen.llvm_ctx;
-
 import llvm;
 import std;
 
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class Scope;
+}
+
 namespace spp::asts {
     SPP_EXP_CLS struct CoroutinePrototypeAst;
-    SPP_EXP_CLS struct GenExpressionAst;
 }
 
 
 SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst {
-    using FunctionPrototypeAst::FunctionPrototypeAst;
+private:
+    llvm::Function *m_llvm_resume_fn;
 
-    std::shared_ptr<codegen::LlvmCoroFrame> llvm_coro_frame;
+protected:
+    auto m_generate_llvm_declaration(analyse::scopes::Scope const &scope, codegen::LLvmCtx *ctx) -> llvm::Function* override;
+
+public:
+    using FunctionPrototypeAst::FunctionPrototypeAst;
 
     llvm::Value *llvm_coro_yield_slot;
 
@@ -27,8 +33,6 @@ SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst
     auto clone() const -> std::unique_ptr<Ast> override;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };
 
 

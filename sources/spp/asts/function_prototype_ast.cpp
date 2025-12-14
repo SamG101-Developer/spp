@@ -154,7 +154,7 @@ auto spp::asts::FunctionPrototypeAst::m_deduce_mock_class_type() const
 auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
     analyse::scopes::Scope const &scope,
     codegen::LLvmCtx *ctx)
-    -> void {
+    -> llvm::Function* {
     // Generate the return and parameter types.
     const auto llvm_ret_type = scope.get_type_symbol(return_type)->llvm_info->llvm_type;
     const auto llvm_param_types = param_group->params
@@ -172,6 +172,7 @@ auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
             ctx->module.get());
         llvm_func = created_llvm_func;
     }
+    return llvm_func;
 
     // Name the parameters from the ASTs.
     // auto llvm_param_iter = created_llvm_func->arg_begin();

@@ -12,11 +12,15 @@ import spp.asts.annotation_ast;
 import spp.asts.identifier_ast;
 import spp.asts.function_implementation_ast;
 import spp.asts.function_parameter_group_ast;
+import spp.asts.function_prototype_ast;
 import spp.asts.generic_parameter_group_ast;
+import spp.asts.generic_argument_type_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_coros;
 
 import genex;
 import llvm;
@@ -42,9 +46,29 @@ auto spp::asts::CoroutinePrototypeAst::clone() const
     ast->no_impl_annotation = no_impl_annotation;
     ast->inline_annotation = inline_annotation;
     ast->visibility = visibility;
-    ast->llvm_coro_frame = llvm_coro_frame;
     ast->annotations | genex::views::for_each([ast=ast.get()](auto const &a) { a->set_ast_ctx(ast); });
     return ast;
+}
+
+
+auto spp::asts::CoroutinePrototypeAst::m_generate_llvm_declaration(
+    analyse::scopes::Scope const &scope,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Function* {
+    // Do the base functionality, then create the coroutine environment struct type.
+    const auto llvm_resume_fn = FunctionPrototypeAst::m_generate_llvm_declaration(scope, ctx);
+    m_llvm_resume_fn = llvm_resume_fn;
+
+    // Create the generator constructor, that immediately returns the generator object.
+    // Skip base generic functions, as they do not need coroutine generation.
+    const auto [_, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(
+        *return_type, scope, *return_type, "coroutine");
+    if (scope.get_type_symbol(yield_type)->llvm_info->llvm_type != nullptr) {
+        const auto coro_gen_ctor = codegen::create_coro_gen_ctor(this, ctx, scope);
+        llvm_func = coro_gen_ctor;
+    }
+
+    return llvm_func;
 }
 
 
@@ -73,7 +97,7 @@ auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
 
     if (genex::none_of(superimposed_types, [sm](auto &&x) { return analyse::utils::type_utils::is_type_generator(*x->without_generics(), *sm->current_scope); })) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppCoroutineInvalidReturnTypeError>()
-            .with_args( *this, *return_type)
+            .with_args(*this, *return_type)
             .raises_from(sm->current_scope);
     }
 
@@ -81,36 +105,4 @@ auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
     sm->move_out_of_current_scope();
     meta->restore(true);
     meta->loop_return_types->clear();
-}
-
-
-auto spp::asts::CoroutinePrototypeAst::stage_10_code_gen_2(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
-    -> llvm::Value* {
-    // Use the default FunctionPrototypeAst then use coroutine intrinsics ("id", "begin", "end", "destroy")
-    const auto func = FunctionPrototypeAst::stage_10_code_gen_2(sm, meta, ctx);
-
-    // Use the coro.id intrinsic.
-    auto coro_id = ctx->builder.CreateCall(
-        llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), llvm::Intrinsic::coro_id),
-        {
-            llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx->context), 0),
-            llvm::ConstantPointerNull::get(llvm::cast<llvm::PointerType>(llvm::Type::getVoidTy(ctx->context))),
-            llvm::ConstantPointerNull::get(llvm::cast<llvm::PointerType>(llvm::Type::getVoidTy(ctx->context))),
-            llvm::ConstantPointerNull::get(llvm::cast<llvm::PointerType>(llvm::Type::getVoidTy(ctx->context))),
-        });
-
-    // Use the coro.begin intrinsic.
-    auto coro_begin = ctx->builder.CreateCall(
-        llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), llvm::Intrinsic::coro_begin),
-        {
-            llvm::ConstantPointerNull::get(llvm::cast<llvm::PointerType>(llvm::Type::getVoidTy(ctx->context))),
-            coro_id,
-        });
-
-    // Store the information into the coroutine context.
-    llvm_coro_frame = std::make_unique<codegen::LlvmCoroFrame>(coro_id, coro_begin);
-    return func;
 }
