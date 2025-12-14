@@ -41,6 +41,7 @@ namespace spp::asts::generate::common_types {
     SPP_EXP_FUN auto void_type(std::size_t pos) -> std::shared_ptr<TypeAst>;
     SPP_EXP_FUN auto boolean_type(std::size_t pos) -> std::shared_ptr<TypeAst>;
     SPP_EXP_FUN auto string_type(std::size_t pos) -> std::shared_ptr<TypeAst>;
+    SPP_EXP_FUN auto string_view_type(std::size_t pos) -> std::shared_ptr<TypeAst>;
     SPP_EXP_FUN auto never_type(std::size_t pos) -> std::shared_ptr<TypeAst>;
     SPP_EXP_FUN auto copy_type(std::size_t pos) -> std::shared_ptr<TypeAst>;
 

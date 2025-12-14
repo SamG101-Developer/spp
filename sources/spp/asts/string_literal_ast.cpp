@@ -91,5 +91,5 @@ auto spp::asts::StringLiteralAst::infer_type(
     CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // The type of a string literal is always a string type.
-    return generate::common_types::string_type(val->pos_start());
+    return generate::common_types::string_view_type(val->pos_start());
 }

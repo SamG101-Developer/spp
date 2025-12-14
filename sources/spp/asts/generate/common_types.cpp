@@ -189,6 +189,14 @@ auto spp::asts::generate::common_types::string_type(std::size_t pos) -> std::sha
 }
 
 
+auto spp::asts::generate::common_types::string_view_type(std::size_t pos) -> std::shared_ptr<TypeAst> {
+    std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("StrView"), nullptr);
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("string_view")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
+    return type;
+}
+
+
 auto spp::asts::generate::common_types::never_type(std::size_t pos) -> std::shared_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("Never"), nullptr);
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("never")), nullptr), std::move(type));
