@@ -68,6 +68,8 @@ auto spp::asts::FunctionCallArgumentAst::stage_10_code_gen_2(
     // Delegate to the value.
     const auto llvm_val = val->stage_10_code_gen_2(sm, meta, ctx);
     const auto llvm_type = llvm_val->getType();
+    SPP_ASSERT(llvm_type != nullptr);
+    SPP_ASSERT_LLVM_TYPE_OPAQUE(llvm_type);
 
     // Handle the convention (to pointer).
     if (conv != nullptr) {

@@ -183,6 +183,8 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_10_code_g
     const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
     const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_type);
     const auto llvm_type = llvm::cast<llvm::StructType>(lhs_type_sym->llvm_info->llvm_type);
+    SPP_ASSERT(llvm_type != nullptr);
+    SPP_ASSERT_LLVM_TYPE_OPAQUE(llvm_type);
 
     // If the lhs is symbolic, get the address of the outermost part.
     const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*meta->postfix_expression_lhs);
@@ -190,16 +192,13 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_10_code_g
     if (sym != nullptr) {
         // Get the alloca for the lhs symbol (the base pointer).
         const auto lhs_alloca = sym->llvm_info->alloca;
-        SPP_ASSERT(llvm_type != nullptr and lhs_alloca != nullptr);
+        SPP_ASSERT(lhs_alloca != nullptr);
         base_ptr = ctx->builder.CreateLoad(llvm_type, lhs_alloca, "load.member_access.base_ptr");
     }
     else {
         // Materialize the lhs expression into a temporary.
         const auto lhs_val = meta->postfix_expression_lhs->stage_10_code_gen_2(sm, meta, ctx);
-        SPP_ASSERT(llvm_type != nullptr);
         const auto temp = ctx->builder.CreateAlloca(llvm_type, nullptr, "temp.member_access.lhs");
-
-        SPP_ASSERT(lhs_val != nullptr and temp != nullptr);
         ctx->builder.CreateStore(lhs_val, temp);
         base_ptr = temp;
     }

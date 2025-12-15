@@ -173,6 +173,8 @@ auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
     if (not ctx->in_constant_context) {
         // Set each field value in the aggregate.
         SPP_ASSERT(llvm_type != nullptr);
+        SPP_ASSERT_LLVM_TYPE_OPAQUE(llvm_type);
+
         const auto aggregate = ctx->builder.CreateAlloca(llvm_type, nullptr, "obj_init.aggregate");
         for (auto i = 0uz; i < sorted_args.size(); ++i) {
             const auto &arg = sorted_args[i];
@@ -184,7 +186,7 @@ auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
         }
 
         // Return the aggregate.
-        SPP_ASSERT(llvm_type != nullptr and aggregate != nullptr);
+        SPP_ASSERT(aggregate != nullptr);
         return ctx->builder.CreateLoad(llvm_type, aggregate, "obj_init.result");
     }
 
