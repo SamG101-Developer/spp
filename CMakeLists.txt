@@ -25,7 +25,7 @@ find_package(Boost 1.89.0 REQUIRED) # preprocessor metaprogramming utilities
 find_package(mp++ REQUIRED) # multi-precision numbers and floating point
 find_package(Glob) # file globbing
 find_package(CLI11 REQUIRED) # command line parsing
-find_package(LLVM 21.1.0 REQUIRED CONFIG) # LLVM libraries
+find_package(LLVM 22.0.0 REQUIRED CONFIG) # LLVM libraries
 
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 
@@ -44,7 +44,7 @@ target_compile_options(spp_lib PRIVATE
         -Wno-maybe-uninitialized -Wno-error=array-bounds -Wno-error=overloaded-virtual -Wodr)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(spp_lib PRIVATE
-            -O0 -pg -g -fno-omit-frame-pointer -fno-inline -fno-inline-functions-called-once
+            -O0 -pg -g -fno-omit-frame-pointer -fno-inline -fno-inline-functions -fno-inline-functions-called-once
             -fno-optimize-sibling-calls)
     target_link_options(spp_lib PRIVATE -pg)
 endif ()
