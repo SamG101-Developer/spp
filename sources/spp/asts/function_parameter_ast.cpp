@@ -13,8 +13,8 @@ import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.let_statement_uninitialized_ast;
 import spp.asts.type_ast;
-import spp.asts.utils.ast_utils;
 import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 
@@ -91,6 +91,10 @@ auto spp::asts::FunctionParameterAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the local variable so that the symbol table receives the alloca.
+    meta->save();
+    meta->let_stmt_explicit_type = type;
+    meta->let_stmt_from_uninitialized = true;  // Its not uninitialized but as the value is external we need this behaviour
     var->stage_10_code_gen_2(sm, meta, ctx);
+    meta->restore();
     return nullptr;
 }

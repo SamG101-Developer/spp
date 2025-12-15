@@ -93,7 +93,7 @@ auto spp::analyse::scopes::ScopeManager::move_to_next_scope(
 
 auto spp::analyse::scopes::ScopeManager::attach_llvm_type_info(
     asts::ModulePrototypeAst const &mod,
-    codegen::LLvmCtx &ctx) const
+    codegen::LLvmCtx *ctx) const
     -> void {
     // Iterate the members of the module, filter to class prototypes, and call the register function.
 

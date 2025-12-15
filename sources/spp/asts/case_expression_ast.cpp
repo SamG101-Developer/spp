@@ -175,7 +175,7 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
     // Generate the condition architecture.
     sm->move_to_next_scope();
     const auto func = ctx->builder.GetInsertBlock()->getParent();
-    const auto end_bb = llvm::BasicBlock::Create(ctx->context, "case.end", func);
+    const auto end_bb = llvm::BasicBlock::Create(*ctx->context, "case.end", func);
     auto phi = static_cast<llvm::PHINode*>(nullptr);
 
     // If this expression is being used for assignment, allocate space.

@@ -145,7 +145,7 @@ public:
 
     auto attach_llvm_type_info(
         asts::ModulePrototypeAst const &mod,
-        codegen::LLvmCtx &ctx) const
+        codegen::LLvmCtx *ctx) const
         -> void;
 
     /**

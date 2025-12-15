@@ -153,7 +153,7 @@ auto spp::asts::FunctionPrototypeAst::m_deduce_mock_class_type() const
 
 auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
     ScopeManager *sm,
-    CompilerMetaData *meta,
+    CompilerMetaData *,
     codegen::LLvmCtx *ctx)
     -> llvm::Function* {
     // Generate the return and parameter types.
@@ -172,9 +172,6 @@ auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
             llvm_fun_type, llvm::Function::ExternalLinkage, codegen::mangle::mangle_fun_name(*sm->current_scope, *this),
             ctx->module.get());
         llvm_func = created_llvm_func;
-
-        // Generate the parameters as variables.
-        param_group->stage_10_code_gen_2(sm, meta, ctx);
     }
     return llvm_func;
 
@@ -470,6 +467,9 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
 
+    // Generate the parameters as variables.
+    param_group->stage_10_code_gen_2(sm, meta, ctx);
+
     // If there is an implementation, generate its code.
     const auto is_extern = no_impl_annotation || abstract_annotation;
     if (no_impl_annotation and no_impl_annotation->name->val == "compiler_builtin") {
@@ -478,7 +478,7 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
     }
     else if (not is_extern) {
         // Add the entry block to the function.
-        const auto entry_bb = llvm::BasicBlock::Create(ctx->context, "entry", llvm_func);
+        const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry", llvm_func);
         ctx->builder.SetInsertPoint(entry_bb);
         impl->stage_10_code_gen_2(sm, meta, ctx);
     }

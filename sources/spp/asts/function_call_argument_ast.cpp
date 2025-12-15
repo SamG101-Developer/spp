@@ -77,15 +77,11 @@ auto spp::asts::FunctionCallArgumentAst::stage_10_code_gen_2(
         if (sym != nullptr) {
             // Get the alloca for the lhs symbol (the base pointer).
             const auto lhs_alloca = llvm_val;
-            SPP_ASSERT(llvm_type != nullptr and lhs_alloca != nullptr);
             llvm_val_ptr = ctx->builder.CreateLoad(llvm_type, lhs_alloca, "load.arg.base_ptr");
         }
         else {
             // Materialize the lhs expression into a temporary.
-            SPP_ASSERT(llvm_type != nullptr);
             const auto temp = ctx->builder.CreateAlloca(llvm_type, nullptr, "temp.arg.borrow");
-
-            SPP_ASSERT(temp != nullptr);
             ctx->builder.CreateStore(llvm_val, temp);
             llvm_val_ptr = temp;
         }

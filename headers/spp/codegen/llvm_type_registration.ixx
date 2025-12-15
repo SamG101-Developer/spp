@@ -17,6 +17,6 @@ namespace spp::asts {
 namespace spp::codegen {
     SPP_EXP_FUN auto register_llvm_type_info(
         asts::ClassPrototypeAst const *cls_proto,
-        LLvmCtx &ctx)
+        LLvmCtx *ctx)
         -> void;
 }

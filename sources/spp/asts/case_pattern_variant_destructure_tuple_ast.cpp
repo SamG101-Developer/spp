@@ -126,7 +126,7 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::stage_10_code_gen_2(
     m_mapped_let->stage_10_code_gen_2(sm, meta, ctx);
 
     // Create a "master" statement that will be "AND"ed with all the literal checks.
-    auto master_stmt = dynamic_cast<llvm::Value*>(llvm::ConstantInt::getTrue(ctx->context));
+    auto master_stmt = dynamic_cast<llvm::Value*>(llvm::ConstantInt::getTrue(*ctx->context));
 
     // Iterate over each element in the destructuring pattern.
     for (auto const &[i, part] : elems | genex::views::ptr | genex::views::enumerate) {

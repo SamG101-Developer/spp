@@ -139,7 +139,7 @@ auto spp::asts::IntegerLiteralAst::stage_10_code_gen_2(
     // Create the LLVM constant integer value.
     const auto bit_width = llvm_type->getIntegerBitWidth();
     const auto ap_int = llvm::APInt(bit_width, val->token_data.c_str(), 10);
-    return llvm::ConstantInt::get(ctx->context, ap_int);
+    return llvm::ConstantInt::get(*ctx->context, ap_int);
 }
 
 

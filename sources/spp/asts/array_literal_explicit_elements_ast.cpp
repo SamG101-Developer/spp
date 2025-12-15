@@ -170,8 +170,8 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_10_code_gen_2(
 
         // Store the elements in the array allocation.
         for (auto i = 0uz; i < vals.size(); ++i) {
-            const auto idx0 = llvm::ConstantInt::get(ctx->context, llvm::APInt(64, 0));
-            const auto idx1 = llvm::ConstantInt::get(ctx->context, llvm::APInt(64, i));
+            const auto idx0 = llvm::ConstantInt::get(*ctx->context, llvm::APInt(64, 0));
+            const auto idx1 = llvm::ConstantInt::get(*ctx->context, llvm::APInt(64, i));
             const auto elem_ptr = ctx->builder.CreateGEP(arr_ty, arr_alloc, {idx0, idx1});
 
             SPP_ASSERT(vals[i] != nullptr and elem_ptr != nullptr);

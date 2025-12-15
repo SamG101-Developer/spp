@@ -206,7 +206,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_10_code_g
 
     const auto field_index = analyse::utils::type_utils::get_field_index_in_type(
         *lhs_type, *name, sm);
-    const auto llvm_field_index = llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx->context), field_index);
+    const auto llvm_field_index = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), field_index);
     const auto llvm_field_ptr = ctx->builder.CreateGEP(llvm_type, base_ptr, llvm_field_index, "member_access.field_ptr");
     return llvm_field_ptr;
 }

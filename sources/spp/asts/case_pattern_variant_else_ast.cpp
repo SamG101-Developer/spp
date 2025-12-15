@@ -59,5 +59,5 @@ auto spp::asts::CasePatternVariantElseAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // The "else" pattern always matches, so return "true".
-    return llvm::ConstantInt::getTrue(ctx->context);
+    return llvm::ConstantInt::getTrue(*ctx->context);
 }

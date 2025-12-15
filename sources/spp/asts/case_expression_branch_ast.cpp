@@ -159,11 +159,11 @@ auto spp::asts::CaseExpressionBranchAst::stage_10_code_gen_2(
     // Generate the branch architecture.
     sm->move_to_next_scope();
     const auto func = ctx->builder.GetInsertBlock()->getParent();
-    const auto branch_bb = llvm::BasicBlock::Create(ctx->context, "case.branch", func);
+    const auto branch_bb = llvm::BasicBlock::Create(*ctx->context, "case.branch", func);
 
     // Get the condition.
     const auto match_cond = m_codegen_combine_patterns(sm, meta, ctx);
-    const auto next_bb = llvm::BasicBlock::Create(ctx->context, "case.next", func);
+    const auto next_bb = llvm::BasicBlock::Create(*ctx->context, "case.next", func);
     ctx->builder.CreateCondBr(match_cond, branch_bb, next_bb);
     ctx->builder.SetInsertPoint(branch_bb);
 

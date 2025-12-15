@@ -113,10 +113,10 @@ auto spp::asts::LoopExpressionAst::m_codegen_condition_bool(
 
     // Create the building blocks.
     const auto fn = ctx->builder.GetInsertBlock()->getParent();
-    const auto cond_bb = llvm::BasicBlock::Create(ctx->context, "loop.cond", fn);
-    const auto body_bb = llvm::BasicBlock::Create(ctx->context, "loop.body");
-    const auto else_bb = else_block ? llvm::BasicBlock::Create(ctx->context, "loop.else") : nullptr;
-    const auto exit_bb = llvm::BasicBlock::Create(ctx->context, "loop.exit");
+    const auto cond_bb = llvm::BasicBlock::Create(*ctx->context, "loop.cond", fn);
+    const auto body_bb = llvm::BasicBlock::Create(*ctx->context, "loop.body");
+    const auto else_bb = else_block ? llvm::BasicBlock::Create(*ctx->context, "loop.else") : nullptr;
+    const auto exit_bb = llvm::BasicBlock::Create(*ctx->context, "loop.exit");
 
     // Jump to the cond block, and insert from there.
     ctx->builder.CreateBr(cond_bb);
@@ -197,10 +197,10 @@ auto spp::asts::LoopExpressionAst::m_codegen_condition_iter(
     const auto coro_handle = iterable_val;
 
     // Prepare the blocks that form the loop.
-    const auto cond_bb = llvm::BasicBlock::Create(ctx->context, "loop.check", fn);
-    const auto body_bb = llvm::BasicBlock::Create(ctx->context, "loop.body");
-    const auto else_bb = else_block ? llvm::BasicBlock::Create(ctx->context, "loop.else") : nullptr;
-    const auto exit_bb = llvm::BasicBlock::Create(ctx->context, "loop.exit");
+    const auto cond_bb = llvm::BasicBlock::Create(*ctx->context, "loop.check", fn);
+    const auto body_bb = llvm::BasicBlock::Create(*ctx->context, "loop.body");
+    const auto else_bb = else_block ? llvm::BasicBlock::Create(*ctx->context, "loop.else") : nullptr;
+    const auto exit_bb = llvm::BasicBlock::Create(*ctx->context, "loop.exit");
 
     // Jump to the cond block, and insert from there.
     ctx->builder.CreateBr(cond_bb);

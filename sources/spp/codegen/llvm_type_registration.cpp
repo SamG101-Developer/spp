@@ -23,11 +23,11 @@ import std;
 
 auto spp::codegen::register_llvm_type_info(
     asts::ClassPrototypeAst const *cls_proto,
-    LLvmCtx &ctx)
+    LLvmCtx *ctx)
     -> void {
     // $ types are 0-size types in LLVM.
     if (cls_proto->name->operator std::string()[0] == '$') {
-        const auto zero_size_struct = llvm::StructType::create(ctx.context, mangle::mangle_type_name(*cls_proto->get_cls_sym()));
+        const auto zero_size_struct = llvm::StructType::create(*ctx->context, mangle::mangle_type_name(*cls_proto->get_cls_sym()));
         zero_size_struct->setBody({}, true);
         cls_proto->get_cls_sym()->llvm_info->llvm_type = zero_size_struct;
     }
@@ -45,12 +45,12 @@ auto spp::codegen::register_llvm_type_info(
         | genex::to<std::vector>();
 
     if (ancestor_names == std::vector<std::string>{"std", "void", "Void"}) {
-        cls_sym->llvm_info->llvm_type = llvm::Type::getVoidTy(ctx.context);
+        cls_sym->llvm_info->llvm_type = llvm::Type::getVoidTy(*ctx->context);
         return;
     }
 
     if (ancestor_names == std::vector<std::string>{"std", "boolean", "Bool"}) {
-        cls_sym->llvm_info->llvm_type = llvm::Type::getInt1Ty(ctx.context);
+        cls_sym->llvm_info->llvm_type = llvm::Type::getInt1Ty(*ctx->context);
         return;
     }
 
@@ -61,30 +61,30 @@ auto spp::codegen::register_llvm_type_info(
 
         const auto bit_width = std::stoul(scope->ty_sym->fq_name()->type_parts().back()->generic_arg_group->comp_at("bit_width")->val->to<asts::IntegerLiteralAst>()->val->token_data);
         if (type_part == "sized_integer") {
-            cls_sym->llvm_info->llvm_type = llvm::Type::getIntNTy(ctx.context, static_cast<unsigned int>(bit_width));
+            cls_sym->llvm_info->llvm_type = llvm::Type::getIntNTy(*ctx->context, static_cast<unsigned int>(bit_width));
             return;
         }
 
         if (type_part.starts_with("sized_floating_point")) {
             if (bit_width == 8) {
-                cls_sym->llvm_info->llvm_type = llvm::Type::getFloatingPointTy(ctx.context, llvm::APFloatBase::Float8E4M3());
+                cls_sym->llvm_info->llvm_type = llvm::Type::getFloatingPointTy(*ctx->context, llvm::APFloatBase::Float8E4M3());
             }
             else if (bit_width == 16) {
-                cls_sym->llvm_info->llvm_type = llvm::Type::getFloatingPointTy(ctx.context, llvm::APFloatBase::IEEEhalf());
+                cls_sym->llvm_info->llvm_type = llvm::Type::getFloatingPointTy(*ctx->context, llvm::APFloatBase::IEEEhalf());
             }
             else if (bit_width == 32) {
-                cls_sym->llvm_info->llvm_type = llvm::Type::getFloatingPointTy(ctx.context, llvm::APFloatBase::IEEEsingle());
+                cls_sym->llvm_info->llvm_type = llvm::Type::getFloatingPointTy(*ctx->context, llvm::APFloatBase::IEEEsingle());
             }
             else if (bit_width == 64) {
-                cls_sym->llvm_info->llvm_type = llvm::Type::getFloatingPointTy(ctx.context, llvm::APFloatBase::IEEEdouble());
+                cls_sym->llvm_info->llvm_type = llvm::Type::getFloatingPointTy(*ctx->context, llvm::APFloatBase::IEEEdouble());
             }
             else if (bit_width == 128) {
-                cls_sym->llvm_info->llvm_type = llvm::Type::getFloatingPointTy(ctx.context, llvm::APFloatBase::IEEEquad());
+                cls_sym->llvm_info->llvm_type = llvm::Type::getFloatingPointTy(*ctx->context, llvm::APFloatBase::IEEEquad());
             }
             return;
         }
     }
 
     // Empty struct, will fill in stage_10 when all attributes' types have been generated.
-    cls_sym->llvm_info->llvm_type = llvm::StructType::create(ctx.context, mangle::mangle_type_name(*cls_sym));
+    cls_sym->llvm_info->llvm_type = llvm::StructType::create(*ctx->context, mangle::mangle_type_name(*cls_sym));
 }

@@ -140,7 +140,7 @@ auto spp::asts::FloatLiteralAst::stage_10_code_gen_2(
     const auto &semantics = llvm_type->getFltSemantics();
     const auto val = int_val->token_data + "." + frac_val->token_data;
     const auto ap_float = llvm::APFloat(semantics, std::move(val));
-    return llvm::ConstantFP::get(ctx->context, ap_float);
+    return llvm::ConstantFP::get(*ctx->context, ap_float);
 }
 
 
