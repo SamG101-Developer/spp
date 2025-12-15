@@ -103,6 +103,7 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
 
         // Analyse the RHS expression.
         meta->assignment_target = ast_clone(lhs[i]->to<IdentifierAst>());
+        meta->assignment_target_type = lhs[i]->infer_type(sm, meta);
         rhs_expr->stage_7_analyse_semantics(sm, meta);
         meta->restore();
     }
@@ -181,6 +182,7 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
 
         meta->save();
         meta->assignment_target = ast_clone(lhs_expr->to<IdentifierAst>());
+        meta->assignment_target_type = lhs_expr->infer_type(sm, meta);
         rhs_expr->stage_8_check_memory(sm, meta);
         meta->restore();
 
