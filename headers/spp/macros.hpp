@@ -43,6 +43,12 @@
     } while (0)
 
 
+#define SPP_ASSERT_LLVM_TYPE_OPAQUE(llvm_type)                                  \
+    if (auto st = llvm::dyn_cast<llvm::StructType>(llvm_type); st != nullptr) { \
+        SPP_ASSERT(st->isOpaque());                                             \
+    }
+
+
 #define SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(ast_attr, ...)                               \
     if ((ast_attr).get() == nullptr) {                                                 \
         (ast_attr) = std::remove_cvref_t<decltype(*ast_attr)>::new_empty(__VA_ARGS__); \
