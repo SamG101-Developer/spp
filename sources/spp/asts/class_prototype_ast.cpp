@@ -142,25 +142,19 @@ auto spp::asts::ClassPrototypeAst::m_fill_llvm_mem_layout(
         return;
     }
 
-    // Collect the scope and sup scopes to get all attributes.
-    // auto types = std::vector{type_sym->scope}
-    //     | genex::views::concat(type_sym->scope->sup_scopes())
-    //     | genex::views::transform([](auto *x) { return x->ast; })
-    //     | genex::views::cast_dynamic<ClassPrototypeAst*>()
-    //     | genex::views::transform([](auto *x) { return x->impl->members | genex::views::ptr | genex::to<std::vector>(); })
-    //     | genex::views::join
-    //     | genex::views::cast_dynamic<ClassAttributeAst*>()
-    //     | genex::views::transform([sm](auto *x) { return sm->current_scope->get_type_symbol(x->type)->llvm_info->llvm_type; })
-    //     | genex::to<std::vector>();
-
     auto types = analyse::utils::type_utils::get_all_attrs(*type_sym->fq_name(), sm)
-        | genex::views::transform([sm](auto const &x) { return x.second->get_type_symbol(x.first->type)->llvm_info->llvm_type; })
+        | genex::views::transform([](auto const &x) { return x.second->get_type_symbol(x.first->type)->llvm_info->llvm_type; })
         | genex::to<std::vector>();
 
     // If there are any generic types present (llvm_type is nullptr), skip the layout generation.
     if (genex::all_of(types, [](auto const &x) { return x != nullptr; })) {
         const auto struct_type = llvm::dyn_cast<llvm::StructType>(type_sym->llvm_info->llvm_type);
         struct_type->setBody(std::move(types));
+    }
+
+    // Pass this layout to aliases too.
+    for (auto const &alias : type_sym->aliased_by_symbols) {
+        alias->llvm_info->llvm_type = type_sym->llvm_info->llvm_type;
     }
 }
 
@@ -304,20 +298,7 @@ auto spp::asts::ClassPrototypeAst::stage_9_code_gen_1(
     // Generate code for the class body.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
-    impl->stage_9_code_gen_1(sm, nullptr, ctx);
-    sm->move_out_of_current_scope();
-    return nullptr;
-}
 
-
-auto spp::asts::ClassPrototypeAst::stage_10_code_gen_2(
-    ScopeManager *sm,
-    CompilerMetaData *,
-    codegen::LLvmCtx *ctx)
-    -> llvm::Value* {
-    // Get the class symbol.
-    sm->move_to_next_scope();
-    SPP_ASSERT(sm->current_scope == m_scope);
     const auto cls_sym = sm->current_scope->ty_sym;
 
     // $ types are pre-set with a packed empty body.
@@ -335,6 +316,20 @@ auto spp::asts::ClassPrototypeAst::stage_10_code_gen_2(
 
     m_fill_llvm_mem_layout(sm, cls_sym.get(), ctx);
 
+    sm->move_out_of_current_scope();
+    return nullptr;
+}
+
+
+auto spp::asts::ClassPrototypeAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Get the class symbol.
+    sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+    impl->stage_10_code_gen_2(sm, meta, ctx);
     sm->move_out_of_current_scope();
     return nullptr;
 }

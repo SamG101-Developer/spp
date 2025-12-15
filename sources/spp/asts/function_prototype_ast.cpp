@@ -467,6 +467,10 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
 
+    // Add the entry block to the function.
+    const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry", llvm_func);
+    ctx->builder.SetInsertPoint(entry_bb);
+
     // Generate the parameters as variables.
     param_group->stage_10_code_gen_2(sm, meta, ctx);
 
@@ -477,9 +481,6 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
         // auto manual_ir =
     }
     else if (not is_extern) {
-        // Add the entry block to the function.
-        const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry", llvm_func);
-        ctx->builder.SetInsertPoint(entry_bb);
         impl->stage_10_code_gen_2(sm, meta, ctx);
     }
     else {
