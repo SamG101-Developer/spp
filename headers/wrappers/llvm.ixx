@@ -11,6 +11,7 @@ export module llvm;
 export namespace llvm {
     using ::llvm::cast;
     using ::llvm::dyn_cast;
+    using ::llvm::errs;
     using ::llvm::isa;
     using ::llvm::raw_fd_ostream;
     using ::llvm::fltSemantics;

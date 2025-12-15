@@ -173,7 +173,6 @@ auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
     if (not ctx->in_constant_context) {
         // Set each field value in the aggregate.
         SPP_ASSERT(llvm_type != nullptr);
-        SPP_ASSERT_LLVM_TYPE_OPAQUE(llvm_type);
 
         const auto aggregate = ctx->builder.CreateAlloca(llvm_type, nullptr, "obj_init.aggregate");
         for (auto i = 0uz; i < sorted_args.size(); ++i) {
