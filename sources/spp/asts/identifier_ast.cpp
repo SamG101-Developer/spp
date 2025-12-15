@@ -121,7 +121,7 @@ auto spp::asts::IdentifierAst::stage_7_analyse_semantics(
 
 auto spp::asts::IdentifierAst::stage_10_code_gen_2(
     ScopeManager *sm,
-    CompilerMetaData *meta,
+    CompilerMetaData *,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Get the allocation for the variable from the current scope.
