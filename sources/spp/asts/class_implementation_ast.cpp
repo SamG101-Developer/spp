@@ -113,3 +113,14 @@ auto spp::asts::ClassImplementationAst::stage_8_check_memory(
     // Check memory for each member.
     members | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });
 }
+
+
+auto spp::asts::ClassImplementationAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate code for each member.
+    members | genex::views::for_each([sm, meta, ctx](auto &&x) { x->stage_10_code_gen_2(sm, meta, ctx); });
+    return nullptr;
+}
