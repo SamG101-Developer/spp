@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.asts.inner_scope_expression_ast;
@@ -59,6 +60,27 @@ auto spp::asts::InnerScopeExpressionAst<T>::stage_7_analyse_semantics(
     // Analyse the members of the inner scope.
     for (auto const &x : this->members) { x->stage_7_analyse_semantics(sm, meta); }
     sm->move_out_of_current_scope();
+}
+
+
+template <typename T>
+auto spp::asts::InnerScopeExpressionAst<T>::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Add all the expressions/statements into the current scope.
+    sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+
+    auto ret_val = static_cast<llvm::Value*>(nullptr);
+    for (auto const &member : this->members) {
+        ret_val = member->stage_10_code_gen_2(sm, meta, ctx);
+    }
+
+    // Exit the scope.
+    sm->move_out_of_current_scope();
+    return ret_val;
 }
 
 
