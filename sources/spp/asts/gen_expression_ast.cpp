@@ -174,40 +174,11 @@ auto spp::asts::GenExpressionAst::stage_8_check_memory(
 
 
 auto spp::asts::GenExpressionAst::stage_10_code_gen_2(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    ScopeManager *,
+    CompilerMetaData *,
+    codegen::LLvmCtx *)
     -> llvm::Value* {
-    // Generate the expression.
-    const auto llvm_yield_val = expr == nullptr ? nullptr : expr->stage_10_code_gen_2(sm, meta, ctx);
-
-    // Insert the suspension intrinsic call for LLVM.
-    const auto llvm_suspend = llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), llvm::Intrinsic::coro_suspend);
-
-    const auto none_token = llvm::ConstantTokenNone::get(ctx->context);
-    const auto false_val = llvm::ConstantInt::get(llvm::Type::getInt1Ty(ctx->context), 0);
-    const auto suspend_result_val = ctx->builder.CreateCall(llvm_suspend, {none_token, false_val}, "coro.suspend");
-
-    // Model the branch control.
-    const auto enclosing_fn_proto = meta->enclosing_function_scope->ast->to<FunctionPrototypeAst>();
-    const auto resume_bb = llvm::BasicBlock::Create(ctx->context, "resume", enclosing_fn_proto->llvm_func);
-    const auto cleanup_bb = llvm::BasicBlock::Create(ctx->context, "cleanup", enclosing_fn_proto->llvm_func);
-    const auto suspend_bb = llvm::BasicBlock::Create(ctx->context, "suspend", enclosing_fn_proto->llvm_func);
-    ctx->builder.CreateSwitch(suspend_result_val, resume_bb, 2);
-
-    // Store the yielded value into the coroutine frame.
-    const auto coro_proto = enclosing_fn_proto->to<CoroutinePrototypeAst>();
-    if (llvm_yield_val != nullptr) {
-        SPP_ASSERT(llvm_yield_val != nullptr and coro_proto != nullptr);
-        ctx->builder.CreateStore(llvm_yield_val, coro_proto->llvm_coro_yield_slot);
-    }
-
-    ctx->builder.SetInsertPoint(cleanup_bb);
-    ctx->builder.CreateRetVoid();
-    ctx->builder.SetInsertPoint(suspend_bb);
-    ctx->builder.CreateRetVoid();
-    ctx->builder.SetInsertPoint(resume_bb);
-    return nullptr;
+    throw std::runtime_error("NOT IMPLEMENTED YET");
 }
 
 
