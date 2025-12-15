@@ -184,7 +184,6 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_10_code_g
     const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_type);
     const auto llvm_type = llvm::cast<llvm::StructType>(lhs_type_sym->llvm_info->llvm_type);
     SPP_ASSERT(llvm_type != nullptr);
-    SPP_ASSERT_LLVM_TYPE_OPAQUE(llvm_type);
 
     // If the lhs is symbolic, get the address of the outermost part.
     const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*meta->postfix_expression_lhs);
