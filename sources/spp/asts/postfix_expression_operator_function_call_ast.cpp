@@ -582,13 +582,27 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx) -> llvm::Value* {
     // Get the llvm function target.
     const auto llvm_func = std::get<1>(*m_overload_info)->llvm_func;
-    const auto llvm_func_args = arg_group->args
+    auto llvm_func_args = arg_group->args
         | genex::views::transform([sm, meta, ctx](auto const &x) { return x->stage_10_code_gen_2(sm, meta, ctx); })
         | genex::to<std::vector>();
 
-    // Create the call instruction and return it.
-    const auto llvm_func_call = ctx->builder.CreateCall(llvm_func, llvm_func_args, "func_call");
-    return llvm_func_call;
+    // Determine if we are returning an aggregate.
+    const auto returns_agg = meta->assignment_target != nullptr;
+    auto ret_storage = static_cast<llvm::AllocaInst*>(nullptr);
+    if (returns_agg) {
+        const auto agg_ty = sm->current_scope->get_type_symbol(meta->assignment_target_type)->llvm_info->llvm_type;
+        ret_storage = ctx->builder.CreateAlloca(agg_ty, nullptr, "call.ret");
+        llvm_func_args.insert(llvm_func_args.begin(), ret_storage);
+    }
+
+    // Create the call instruction.
+    const auto llvm_func_call = ctx->builder.CreateCall(llvm_func, llvm_func_args, "call");
+
+    // Return the loaded aggregate if required.
+    if (returns_agg) {
+        return ctx->builder.CreateLoad(ret_storage->getAllocatedType(), llvm_func_args[0], "call.ret.load");
+    }
+    return llvm_func_call; // Todo: Just a Void?
 }
 
 
