@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.asts.identifier_ast;
@@ -11,9 +12,9 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.utils.strings;
 import spp.asts.utils.ast_utils;
-
 import absl;
 import genex;
+import llvm;
 
 
 spp::asts::IdentifierAst::IdentifierAst(
@@ -115,6 +116,19 @@ auto spp::asts::IdentifierAst::stage_7_analyse_semantics(
             .with_args(*this, "identifier", closest_match)
             .raises_from(sm->current_scope);
     }
+}
+
+
+auto spp::asts::IdentifierAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Get the allocation for the variable from the current scope.
+    const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));
+    const auto alloca = llvm::cast<llvm::AllocaInst>(var_sym->llvm_info->alloca);
+    SPP_ASSERT(alloca != nullptr);
+    return ctx->builder.CreateLoad(alloca->getAllocatedType(), alloca, "load_ident");
 }
 
 

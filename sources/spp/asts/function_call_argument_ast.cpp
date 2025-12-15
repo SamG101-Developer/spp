@@ -6,10 +6,12 @@ module spp.asts.function_call_argument_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 
@@ -64,7 +66,33 @@ auto spp::asts::FunctionCallArgumentAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Delegate to the value.
-    return val->stage_10_code_gen_2(sm, meta, ctx);
+    const auto llvm_val = val->stage_10_code_gen_2(sm, meta, ctx);
+    const auto llvm_type = llvm_val->getType();
+
+    // Handle the convention (to pointer).
+    if (conv != nullptr) {
+        // If the lhs is symbolic, get the address of the outermost part.
+        const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*meta->postfix_expression_lhs);
+        auto llvm_val_ptr = static_cast<llvm::Value*>(nullptr);
+        if (sym != nullptr) {
+            // Get the alloca for the lhs symbol (the base pointer).
+            const auto lhs_alloca = llvm_val;
+            SPP_ASSERT(llvm_type != nullptr and lhs_alloca != nullptr);
+            llvm_val_ptr = ctx->builder.CreateLoad(llvm_type, lhs_alloca, "load.arg.base_ptr");
+        }
+        else {
+            // Materialize the lhs expression into a temporary.
+            SPP_ASSERT(llvm_type != nullptr);
+            const auto temp = ctx->builder.CreateAlloca(llvm_type, nullptr, "temp.arg.borrow");
+
+            SPP_ASSERT(temp != nullptr);
+            ctx->builder.CreateStore(llvm_val, temp);
+            llvm_val_ptr = temp;
+        }
+        return llvm_val_ptr;
+    }
+
+    return llvm_val;
 }
 
 
