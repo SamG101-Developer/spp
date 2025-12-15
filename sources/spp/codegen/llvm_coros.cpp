@@ -1,3 +1,6 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.codegen.llvm_coros;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
@@ -67,6 +70,8 @@ auto spp::codegen::create_coro_gen_ctor(
     const auto gen_out = llvm_func->getArg(0);
     const auto state_ptr = ctx->builder.CreateStructGEP(coro_env_type, gen_out, 0);
     const auto state_initial = llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx->context), static_cast<std::uint32_t>(CoroutineState::VARIABLE));
+
+    SPP_ASSERT(state_initial != nullptr and state_ptr != nullptr);
     ctx->builder.CreateStore(state_initial, state_ptr);
     ctx->builder.CreateRetVoid();
 

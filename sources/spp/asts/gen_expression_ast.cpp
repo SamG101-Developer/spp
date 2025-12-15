@@ -198,6 +198,7 @@ auto spp::asts::GenExpressionAst::stage_10_code_gen_2(
     // Store the yielded value into the coroutine frame.
     const auto coro_proto = enclosing_fn_proto->to<CoroutinePrototypeAst>();
     if (llvm_yield_val != nullptr) {
+        SPP_ASSERT(llvm_yield_val != nullptr and coro_proto != nullptr);
         ctx->builder.CreateStore(llvm_yield_val, coro_proto->llvm_coro_yield_slot);
     }
 

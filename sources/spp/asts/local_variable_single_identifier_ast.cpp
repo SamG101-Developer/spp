@@ -145,12 +145,14 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_10_code_gen_2(
     -> llvm::Value* {
     // Create the alloca for the variable.
     const auto llvm_type = sm->current_scope->get_type_symbol(meta->let_stmt_explicit_type)->llvm_info->llvm_type;
+    SPP_ASSERT(llvm_type != nullptr);
     const auto alloca = ctx->builder.CreateAlloca(llvm_type, nullptr, "local_var");
     sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name)->llvm_info->alloca = alloca;
 
     // Generate the initializer expression.
     if (not meta->let_stmt_from_uninitialized) {
         const auto val = meta->let_stmt_value->stage_10_code_gen_2(sm, meta, ctx);
+        SPP_ASSERT(val != nullptr and alloca != nullptr);
         ctx->builder.CreateStore(val, alloca);
     }
 

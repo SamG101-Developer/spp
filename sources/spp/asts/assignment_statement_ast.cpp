@@ -211,6 +211,8 @@ auto spp::asts::AssignmentStatementAst::stage_10_code_gen_2(
     for (auto i = 0uz; i < lhs.size(); ++i) {
         const auto lhs_val = lhs[i]->stage_10_code_gen_2(sm, meta, ctx);
         const auto rhs_val = rhs[i]->stage_10_code_gen_2(sm, meta, ctx);
+
+        SPP_ASSERT(lhs_val != nullptr and rhs_val != nullptr);
         ctx->builder.CreateStore(rhs_val, lhs_val); // todo: this will fail
     }
 

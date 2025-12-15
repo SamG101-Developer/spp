@@ -55,8 +55,11 @@ auto spp::codegen::func_impls::simple_intrinsic_binop_assign(
     ctx->builder.SetInsertPoint(entry_bb);
     const auto lhs = fn->arg_begin();
     const auto rhs = fn->arg_begin() + 1;
+    SPP_ASSERT(ty != nullptr and lhs != nullptr);
     const auto loaded_val = ctx->builder.CreateLoad(ty, lhs, "loaded_val");
     const auto result = method(loaded_val, rhs);
+
+    SPP_ASSERT(result != nullptr and lhs != nullptr);
     ctx->builder.CreateStore(result, lhs);
     ctx->builder.CreateRetVoid();
 }
@@ -285,7 +288,9 @@ auto spp::codegen::func_impls::std_memory_clear(
     const auto int32_ty = llvm::Type::getInt32Ty(ctx->context);
     const auto const_idx_0 = llvm::ConstantInt::get(int32_ty, 0);
     const auto ptr_addr = ctx->builder.CreateGEP(mem_ty, self, {const_idx_0, const_idx_0}, "ptr_addr");
-    const auto ptr = ctx->builder.CreateLoad(llvm::PointerType::get(ctx->context, 0), ptr_addr, "ptr");
+    const auto ptr_type = llvm::PointerType::get(ctx->context, 0);
+    SPP_ASSERT(ptr_type != nullptr);
+    const auto ptr = ctx->builder.CreateLoad(ptr_type, ptr_addr, "ptr");
 
     // Zero out the memory by calling llvm.memset.
     const auto memset_intrinsic = llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), llvm::Intrinsic::memset);
@@ -326,11 +331,13 @@ auto spp::codegen::func_impls::std_memory_place_element(
     const auto int32_ty = llvm::Type::getInt32Ty(ctx->context);
     const auto const_idx_0 = llvm::ConstantInt::get(int32_ty, 0);
 
+    SPP_ASSERT(mem_ty != nullptr and ptr_ty != nullptr and ty != nullptr);
     const auto ptr_addr = ctx->builder.CreateGEP(mem_ty, self, {const_idx_0, const_idx_0}, "ptr_addr");
     const auto ptr = ctx->builder.CreateLoad(ptr_ty, ptr_addr, "ptr");
     const auto elem_ptr = ctx->builder.CreateGEP(ty, ptr, {index}, "elem_ptr");
 
     // Store the value at the computed element pointer.
+    SPP_ASSERT(value != nullptr and elem_ptr != nullptr);
     ctx->builder.CreateStore(value, elem_ptr);
     ctx->builder.CreateRetVoid();
 }
@@ -365,6 +372,8 @@ auto spp::codegen::func_impls::std_memory_take_element(
     const auto int32_ty = llvm::Type::getInt32Ty(ctx->context);
     const auto const_idx_0 = llvm::ConstantInt::get(int32_ty, 0);
     const auto const_idx_1 = llvm::ConstantInt::get(int32_ty, 1);
+
+    SPP_ASSERT(mem_ty != nullptr and size_ty != nullptr);
     const auto cap_addr = ctx->builder.CreateGEP(mem_ty, self, {const_idx_0, const_idx_1}, "cap_addr");
     const auto cap_val = ctx->builder.CreateLoad(size_ty, cap_addr, "cap_val");
 
@@ -377,6 +386,7 @@ auto spp::codegen::func_impls::std_memory_take_element(
 
     // If in bounds, load the value at the index and return it wrapped in Some.
     ctx->builder.SetInsertPoint(then_bb);
+    SPP_ASSERT(mem_ty != nullptr and ptr_ty != nullptr and ty != nullptr);
     const auto ptr_addr = ctx->builder.CreateGEP(mem_ty, self, {const_idx_0, const_idx_1}, "ptr_addr");
     const auto ptr = ctx->builder.CreateLoad(ptr_ty, ptr_addr, "ptr");
     const auto elem_addr = ctx->builder.CreateGEP(ty, ptr, index, "elem_addr");

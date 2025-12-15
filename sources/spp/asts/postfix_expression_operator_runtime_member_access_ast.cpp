@@ -190,12 +190,16 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_10_code_g
     if (sym != nullptr) {
         // Get the alloca for the lhs symbol (the base pointer).
         const auto lhs_alloca = sym->llvm_info->alloca;
+        SPP_ASSERT(llvm_type != nullptr and lhs_alloca != nullptr);
         base_ptr = ctx->builder.CreateLoad(llvm_type, lhs_alloca, "load.member_access.base_ptr");
     }
     else {
         // Materialize the lhs expression into a temporary.
         const auto lhs_val = meta->postfix_expression_lhs->stage_10_code_gen_2(sm, meta, ctx);
+        SPP_ASSERT(llvm_type != nullptr);
         const auto temp = ctx->builder.CreateAlloca(llvm_type, nullptr, "temp.member_access.lhs");
+
+        SPP_ASSERT(lhs_val != nullptr and temp != nullptr);
         ctx->builder.CreateStore(lhs_val, temp);
         base_ptr = temp;
     }

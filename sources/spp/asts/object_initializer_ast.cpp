@@ -172,15 +172,19 @@ auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
     // Runtime pathway.
     if (not ctx->in_constant_context) {
         // Set each field value in the aggregate.
+        SPP_ASSERT(llvm_type != nullptr);
         const auto aggregate = ctx->builder.CreateAlloca(llvm_type, nullptr, "obj_init.aggregate");
         for (auto i = 0uz; i < sorted_args.size(); ++i) {
             const auto &arg = sorted_args[i];
             const auto attr_ptr = ctx->builder.CreateStructGEP(llvm_type, aggregate, static_cast<std::uint32_t>(i), arg->name->val);
             const auto val = arg->val->stage_10_code_gen_2(sm, meta, ctx);
+
+            SPP_ASSERT(val != nullptr and attr_ptr != nullptr);
             ctx->builder.CreateStore(val, attr_ptr);
         }
 
         // Return the aggregate.
+        SPP_ASSERT(llvm_type != nullptr and aggregate != nullptr);
         return ctx->builder.CreateLoad(llvm_type, aggregate, "obj_init.result");
     }
 

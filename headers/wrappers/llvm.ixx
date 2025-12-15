@@ -15,6 +15,7 @@ export namespace llvm {
     using ::llvm::raw_fd_ostream;
     using ::llvm::fltSemantics;
 
+    using ::llvm::Align;
     using ::llvm::APInt;
     using ::llvm::APFloat;
     using ::llvm::APFloatBase;
@@ -41,6 +42,7 @@ export namespace llvm {
     using ::llvm::PointerType;
     using ::llvm::PHINode;
     using ::llvm::StructType;
+    using ::llvm::Triple;
     using ::llvm::Type;
     using ::llvm::UndefValue;
     using ::llvm::Value;
