@@ -146,7 +146,6 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_10_code_gen_2(
     // Create the alloca for the variable.
     const auto llvm_type = sm->current_scope->get_type_symbol(meta->let_stmt_explicit_type)->llvm_info->llvm_type;
     SPP_ASSERT(llvm_type != nullptr);
-    SPP_ASSERT_LLVM_TYPE_OPAQUE(llvm_type);
 
     const auto alloca = ctx->builder.CreateAlloca(llvm_type, nullptr, "local_var");
     sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name)->llvm_info->alloca = alloca;

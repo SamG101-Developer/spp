@@ -126,9 +126,20 @@ auto spp::asts::IdentifierAst::stage_10_code_gen_2(
     -> llvm::Value* {
     // Get the allocation for the variable from the current scope.
     const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));
-    const auto alloca = llvm::cast<llvm::AllocaInst>(var_sym->llvm_info->alloca);
-    SPP_ASSERT(alloca != nullptr);
-    return ctx->builder.CreateLoad(alloca->getAllocatedType(), alloca, "load_ident");
+
+    // Handle local variable allocation extraction + load.
+    if (llvm::isa<llvm::AllocaInst>(var_sym->llvm_info->alloca)) {
+        const auto alloca = llvm::cast<llvm::AllocaInst>(var_sym->llvm_info->alloca);
+        return ctx->builder.CreateLoad(alloca->getAllocatedType(), alloca, "load.local");
+    }
+
+    // Handle global variable (load from global).
+    if (llvm::isa<llvm::GlobalVariable>(var_sym->llvm_info->alloca)) {
+        const auto global_var = llvm::cast<llvm::GlobalVariable>(var_sym->llvm_info->alloca);
+        return ctx->builder.CreateLoad(global_var->getValueType(), global_var, "load.global");
+    }
+
+    std::unreachable();
 }
 
 

@@ -13,6 +13,7 @@ import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
+import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
@@ -175,19 +176,26 @@ auto spp::asts::CmpStatementAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::CmpStatementAst::stage_10_code_gen_2(
+auto spp::asts::CmpStatementAst::stage_9_code_gen_1(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Generate the value and store the constant.
+    // Generate the value in a constant context.
     ctx->in_constant_context = true;
     const auto val = value->stage_10_code_gen_2(sm, meta, ctx);
     ctx->in_constant_context = false;
 
+    // Create the global variable for the constant.
     const auto type_sym = sm->current_scope->get_type_symbol(type);
-    new llvm::GlobalVariable(*ctx->module, type_sym->llvm_info->llvm_type, true,
+    const auto gv = new llvm::GlobalVariable(
+        *ctx->module, type_sym->llvm_info->llvm_type, true,
         llvm::GlobalValue::ExternalLinkage, llvm::cast<llvm::Constant>(val),
         codegen::mangle::mangle_cmp_name(*sm->current_scope, *this));
+
+    // Register in the llvm info.
+    const auto var_sym = sm->current_scope->get_var_symbol(name);
+    var_sym->llvm_info->alloca = gv;
+
     return nullptr;
 }
