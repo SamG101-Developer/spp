@@ -172,32 +172,41 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Generate the condition architecture.
+    // Determine if this "case" will be yielding an expression, and generate the condition.
+    const auto is_expr = meta->assignment_target != nullptr;
+    cond->stage_10_code_gen_2(sm, meta, ctx); // Todo: needed? the patterns generates from the condition as needed.
     sm->move_to_next_scope();
-    const auto func = ctx->builder.GetInsertBlock()->getParent();
-    const auto end_bb = llvm::BasicBlock::Create(*ctx->context, "case.end", func);
-    auto phi = static_cast<llvm::PHINode*>(nullptr);
 
-    // If this expression is being used for assignment, allocate space.
-    if (meta->assignment_target != nullptr) {
+    // Get the function, and create the end basic block.
+    const auto func = ctx->builder.GetInsertBlock()->getParent();
+    const auto case_end_bb = llvm::BasicBlock::Create(*ctx->context, "case.end", func);
+
+    // Handle the potential PHI node for returning a value out of the case expression.
+    auto phi = static_cast<llvm::PHINode*>(nullptr);
+    if (is_expr) {
         const auto ret_type_sym = sm->current_scope->get_type_symbol(infer_type(sm, meta))->llvm_info->llvm_type;
         phi = ctx->builder.CreatePHI(ret_type_sym, branches.size() as U32, "case.phi");
     }
 
-    // Do the case condition?
+    // Set "case" information to the meta struct for branches and patterns to use.
+    meta->save();
+    meta->case_condition = cond.get();
+    meta->end_bb = case_end_bb;
+    meta->phi_node = phi;
+
+    // Generate the case entry block for the branches to generate bodies into.
+    const auto case_entry_bb = llvm::BasicBlock::Create(*ctx->context, "case.entry", func);
+    ctx->builder.CreateBr(case_entry_bb);
+    ctx->builder.SetInsertPoint(case_entry_bb);
 
     // Generate each branch.
-    meta->save();
-    meta->phi_node = phi;
-    meta->end_bb = end_bb;
-    meta->case_condition = cond.get();
     for (auto &&branch : branches) {
         branch->stage_10_code_gen_2(sm, meta, ctx);
     }
-    meta->restore();
 
     // Finish the case expression.
-    ctx->builder.SetInsertPoint(end_bb);
+    meta->restore();
+    ctx->builder.SetInsertPoint(case_end_bb);
     sm->move_out_of_current_scope();
     return phi;
 }

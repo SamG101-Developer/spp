@@ -159,19 +159,19 @@ auto spp::asts::CaseExpressionBranchAst::stage_10_code_gen_2(
     // Generate the branch architecture.
     sm->move_to_next_scope();
     const auto func = ctx->builder.GetInsertBlock()->getParent();
-    const auto branch_bb = llvm::BasicBlock::Create(*ctx->context, "case.branch", func);
+    const auto case_branch_body_bb = llvm::BasicBlock::Create(*ctx->context, "case.branch.body", func);
+    const auto case_branch_next_bb = llvm::BasicBlock::Create(*ctx->context, "case.branch.next", func);
 
     // Get the condition.
     const auto match_cond = m_codegen_combine_patterns(sm, meta, ctx);
-    const auto next_bb = llvm::BasicBlock::Create(*ctx->context, "case.next", func);
-    ctx->builder.CreateCondBr(match_cond, branch_bb, next_bb);
-    ctx->builder.SetInsertPoint(branch_bb);
+    ctx->builder.CreateCondBr(match_cond, case_branch_body_bb, case_branch_next_bb);
+    ctx->builder.SetInsertPoint(case_branch_body_bb);
 
     // Generate the body.
     const auto branch_val = body->stage_10_code_gen_2(sm, meta, ctx);
-    meta->phi_node->addIncoming(branch_val, branch_bb);
+    if (meta->phi_node != nullptr) { meta->phi_node->addIncoming(branch_val, case_branch_body_bb); }
     ctx->builder.CreateBr(meta->end_bb);
-    ctx->builder.SetInsertPoint(next_bb);
+    ctx->builder.SetInsertPoint(case_branch_next_bb);
 
     // Move out of the branch's scope.
     sm->move_out_of_current_scope();
