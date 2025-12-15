@@ -16,6 +16,7 @@ export namespace llvm {
     using ::llvm::fltSemantics;
 
     using ::llvm::Align;
+    using ::llvm::AllocaInst;
     using ::llvm::APInt;
     using ::llvm::APFloat;
     using ::llvm::APFloatBase;
