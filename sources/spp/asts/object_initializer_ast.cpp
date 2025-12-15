@@ -189,17 +189,15 @@ auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
     }
 
     // Constant pathway.
-    else {
-        // Set each field value in the constant.
-        auto comp_fields = std::vector<llvm::Constant*>(sorted_args.size());
-        for (auto i = 0uz; i < sorted_args.size(); ++i) {
-            const auto comp_val = sorted_args[i]->val->stage_10_code_gen_2(sm, meta, ctx);
-            comp_fields[i] = llvm::cast<llvm::Constant>(comp_val);
-        }
-
-        // Return the constant struct.
-        return llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(llvm_type), comp_fields);
+    // Set each field value in the constant.
+    auto comp_fields = std::vector<llvm::Constant*>(sorted_args.size());
+    for (auto i = 0uz; i < sorted_args.size(); ++i) {
+        const auto comp_val = sorted_args[i]->val->stage_10_code_gen_2(sm, meta, ctx);
+        comp_fields[i] = llvm::cast<llvm::Constant>(comp_val);
     }
+
+    // Return the constant struct.
+    return llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(llvm_type), comp_fields);
 }
 
 
