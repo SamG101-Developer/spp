@@ -83,3 +83,14 @@ auto spp::asts::FunctionParameterAst::stage_8_check_memory(
         sym->memory_info->initialized_by(*this, sm->current_scope);
     }
 }
+
+
+auto spp::asts::FunctionParameterAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate the local variable so that the symbol table receives the alloca.
+    var->stage_10_code_gen_2(sm, meta, ctx);
+    return nullptr;
+}

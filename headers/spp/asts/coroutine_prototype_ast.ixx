@@ -21,7 +21,7 @@ private:
     llvm::Function *m_llvm_resume_fn;
 
 protected:
-    auto m_generate_llvm_declaration(analyse::scopes::Scope const &scope, codegen::LLvmCtx *ctx) -> llvm::Function* override;
+    auto m_generate_llvm_declaration(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Function* override;
 
 public:
     using FunctionPrototypeAst::FunctionPrototypeAst;

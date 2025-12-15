@@ -3,7 +3,8 @@ module;
 
 export module spp.asts.function_parameter_group_ast;
 import spp.asts.ast;
-
+import spp.codegen.llvm_ctx;
+import llvm;
 import std;
 
 namespace spp::asts {
@@ -68,4 +69,6 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterGroupAst final : virtual Ast {
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

@@ -168,7 +168,7 @@ private:
     auto m_deduce_mock_class_type() const -> std::shared_ptr<TypeAst>;
 
 protected:
-    virtual auto m_generate_llvm_declaration(analyse::scopes::Scope const &scope, codegen::LLvmCtx *ctx) -> llvm::Function*;
+    virtual auto m_generate_llvm_declaration(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Function*;
 
 public:
     auto print_signature(std::string const &owner) const -> std::string;

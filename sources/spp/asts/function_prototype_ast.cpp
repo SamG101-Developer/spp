@@ -152,13 +152,14 @@ auto spp::asts::FunctionPrototypeAst::m_deduce_mock_class_type() const
 
 
 auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
-    analyse::scopes::Scope const &scope,
+    ScopeManager *sm,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Function* {
     // Generate the return and parameter types.
-    const auto llvm_ret_type = scope.get_type_symbol(return_type)->llvm_info->llvm_type;
+    const auto llvm_ret_type = sm->current_scope->get_type_symbol(return_type)->llvm_info->llvm_type;
     const auto llvm_param_types = param_group->params
-        | genex::views::transform([&scope](auto const &x) { return scope.get_type_symbol(x->type)->llvm_info->llvm_type; })
+        | genex::views::transform([&sm](auto const &x) { return sm->current_scope->get_type_symbol(x->type)->llvm_info->llvm_type; })
         | genex::to<std::vector>();
 
     if (llvm_ret_type != nullptr and genex::all_of(llvm_param_types, [](auto const &x) { return x != nullptr; })) {
@@ -168,9 +169,12 @@ auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
 
         // Create the LLVM function and add it to the context.
         const auto created_llvm_func = llvm::Function::Create(
-            llvm_fun_type, llvm::Function::ExternalLinkage, codegen::mangle::mangle_fun_name(scope, *this),
+            llvm_fun_type, llvm::Function::ExternalLinkage, codegen::mangle::mangle_fun_name(*sm->current_scope, *this),
             ctx->module.get());
         llvm_func = created_llvm_func;
+
+        // Generate the parameters as variables.
+        param_group->stage_10_code_gen_2(sm, meta, ctx);
     }
     return llvm_func;
 
@@ -431,7 +435,7 @@ auto spp::asts::FunctionPrototypeAst::stage_8_check_memory(
 
 auto spp::asts::FunctionPrototypeAst::stage_9_code_gen_1(
     ScopeManager *sm,
-    CompilerMetaData *,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Create the declaration, but not the definition, of the function. This allows for order-agnostic behaviour.
@@ -439,11 +443,12 @@ auto spp::asts::FunctionPrototypeAst::stage_9_code_gen_1(
     SPP_ASSERT(sm->current_scope == m_scope);
 
     // Handle the main function prototype.
-    m_generate_llvm_declaration(*m_scope, ctx);
+    m_generate_llvm_declaration(sm, meta, ctx);
 
     // Handle generic substitutions of a function.
     for (auto &&[generic_scope, generic_ast] : m_generic_substitutions) {
-        generic_ast->m_generate_llvm_declaration(*generic_scope, ctx);
+        auto tm = ScopeManager(sm->global_scope, generic_scope.get());
+        generic_ast->m_generate_llvm_declaration(&tm, meta, ctx);
     }
 
     // Manual scope skipping.

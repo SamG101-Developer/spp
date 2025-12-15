@@ -52,19 +52,20 @@ auto spp::asts::CoroutinePrototypeAst::clone() const
 
 
 auto spp::asts::CoroutinePrototypeAst::m_generate_llvm_declaration(
-    analyse::scopes::Scope const &scope,
+    ScopeManager *sm,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Function* {
     // Do the base functionality, then create the coroutine environment struct type.
-    const auto llvm_resume_fn = FunctionPrototypeAst::m_generate_llvm_declaration(scope, ctx);
+    const auto llvm_resume_fn = FunctionPrototypeAst::m_generate_llvm_declaration(sm, meta, ctx);
     m_llvm_resume_fn = llvm_resume_fn;
 
     // Create the generator constructor, that immediately returns the generator object.
     // Skip base generic functions, as they do not need coroutine generation.
     const auto [_, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(
-        *return_type, scope, *return_type, "coroutine");
-    if (scope.get_type_symbol(yield_type)->llvm_info->llvm_type != nullptr) {
-        const auto coro_gen_ctor = codegen::create_coro_gen_ctor(this, ctx, scope);
+        *return_type, *sm->current_scope, *return_type, "coroutine");
+    if (sm->current_scope->get_type_symbol(yield_type)->llvm_info->llvm_type != nullptr) {
+        const auto coro_gen_ctor = codegen::create_coro_gen_ctor(this, ctx, *sm->current_scope);
         llvm_func = coro_gen_ctor;
     }
 

@@ -132,7 +132,6 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-
     // Create sets of parameters based on conditions.
     const auto self_params = params
         | genex::views::ptr
@@ -199,4 +198,15 @@ auto spp::asts::FunctionParameterGroupAst::stage_8_check_memory(
     for (auto &&param : params) {
         param->stage_8_check_memory(sm, meta);
     }
+}
+
+
+auto spp::asts::FunctionParameterGroupAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Code generate each parameter.
+    params | genex::views::for_each([sm, meta, ctx](auto &&x) { x->stage_10_code_gen_2(sm, meta, ctx); });
+    return nullptr;
 }
