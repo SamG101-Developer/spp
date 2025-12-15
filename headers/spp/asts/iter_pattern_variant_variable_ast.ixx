@@ -3,7 +3,8 @@ module;
 
 export module spp.asts.iter_pattern_variant_variable_ast;
 import spp.asts.iter_pattern_variant_ast;
-
+import spp.codegen.llvm_ctx;
+import llvm;
 import std;
 
 namespace spp::asts {
@@ -33,4 +34,6 @@ SPP_EXP_CLS struct spp::asts::IterPatternVariantVariableAst final : IterPatternV
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

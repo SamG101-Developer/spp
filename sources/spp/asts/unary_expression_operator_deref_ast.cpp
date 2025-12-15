@@ -83,6 +83,16 @@ auto spp::asts::UnaryExpressionOperatorDerefAst::stage_7_analyse_semantics(
 }
 
 
+auto spp::asts::UnaryExpressionOperatorDerefAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Not implemented yet.
+    throw std::runtime_error("UnaryExpressionOperatorDerefAst::stage_10_code_gen_2 not implemented yet");
+}
+
+
 auto spp::asts::UnaryExpressionOperatorDerefAst::infer_type(
     ScopeManager *sm,
     CompilerMetaData *meta)

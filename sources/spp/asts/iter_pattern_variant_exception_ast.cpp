@@ -87,3 +87,12 @@ auto spp::asts::IterPatternVariantExceptionAst::stage_8_check_memory(
     // Check the memory state of the variable.
     m_mapped_let->stage_8_check_memory(sm, meta);
 }
+
+
+auto spp::asts::IterPatternVariantExceptionAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx) -> llvm::Value* {
+    // Not implemented yet.
+    throw std::runtime_error("IterPatternVariantExceptionAst::stage_10_code_gen_2 not implemented");
+}
