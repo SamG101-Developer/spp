@@ -89,6 +89,9 @@ auto spp::asts::UnaryExpressionOperatorDerefAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Not implemented yet.
+    (void)sm;
+    (void)meta;
+    (void)ctx;
     throw std::runtime_error("UnaryExpressionOperatorDerefAst::stage_10_code_gen_2 not implemented yet");
 }
 
