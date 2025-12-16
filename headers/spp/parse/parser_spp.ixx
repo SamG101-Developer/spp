@@ -76,10 +76,9 @@ namespace spp::asts {
     SPP_EXP_CLS struct PrimaryExpressionAst;
     SPP_EXP_CLS struct CaseExpressionAst;
     SPP_EXP_CLS struct CaseExpressionBranchAst;
+    SPP_EXP_CLS struct LoopConditionalExpressionAst;
     SPP_EXP_CLS struct LoopExpressionAst;
-    SPP_EXP_CLS struct LoopConditionAst;
-    SPP_EXP_CLS struct LoopConditionBooleanAst;
-    SPP_EXP_CLS struct LoopConditionIterableAst;
+    SPP_EXP_CLS struct LoopIterableExpressionAst;
     SPP_EXP_CLS struct LoopControlFlowStatementAst;
     SPP_EXP_CLS struct LoopElseStatementAst;
     SPP_EXP_CLS struct GenExpressionAst;
@@ -326,9 +325,8 @@ public:
     auto parse_boolean_comparison_op() -> std::unique_ptr<asts::TokenAst>;
 
     auto parse_loop_expression() -> std::unique_ptr<asts::LoopExpressionAst>;
-    auto parse_loop_condition() -> std::unique_ptr<asts::LoopConditionAst>;
-    auto parse_loop_condition_boolean() -> std::unique_ptr<asts::LoopConditionBooleanAst>;
-    auto parse_loop_condition_iterable() -> std::unique_ptr<asts::LoopConditionIterableAst>;
+    auto parse_loop_conditional_expression() -> std::unique_ptr<asts::LoopConditionalExpressionAst>;
+    auto parse_loop_iterable_expression() -> std::unique_ptr<asts::LoopIterableExpressionAst>;
     auto parse_loop_else_statement() -> std::unique_ptr<asts::LoopElseStatementAst>;
 
     auto parse_iter_of_expression() -> std::unique_ptr<asts::IterExpressionAst>;

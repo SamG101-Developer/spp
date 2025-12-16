@@ -22,7 +22,6 @@ import spp.asts.local_variable_destructure_array_ast;
 import spp.asts.local_variable_destructure_object_ast;
 import spp.asts.local_variable_destructure_tuple_ast;
 import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
-import spp.asts.loop_condition_iterable_ast;
 import spp.asts.loop_control_flow_statement_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.object_initializer_argument_ast;

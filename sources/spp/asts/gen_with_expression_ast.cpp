@@ -16,9 +16,8 @@ import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
-import spp.asts.loop_condition_iterable_ast;
 import spp.asts.loop_else_statement_ast;
-import spp.asts.loop_expression_ast;
+import spp.asts.loop_iterable_expression_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
@@ -160,16 +159,16 @@ auto spp::asts::GenWithExpressionAst::stage_10_code_gen_2(
     // Build the iterable for the loop; the iterable is just the expression, mapped into a different AST.
     auto temp_var_name = std::make_unique<IdentifierAst>(0, "_coro_temp");
     auto temp_var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(temp_var_name), nullptr);
-    auto loop_cond_iter = std::make_unique<LoopConditionIterableAst>(std::move(temp_var), nullptr, std::move(expr));
 
     // Build the "gen" expression for the individual yielding.
     auto gen_value = std::make_unique<IdentifierAst>(0, "_coro_temp");
     auto gen_expression = std::make_unique<GenExpressionAst>(nullptr, nullptr, std::move(gen_value));
-    auto loop_body = std::make_unique<decltype(LoopExpressionAst::body)::element_type>(nullptr, std::vector<std::unique_ptr<StatementAst>>(), nullptr);
+    auto loop_body = std::make_unique<decltype(LoopIterableExpressionAst::body)::element_type>(nullptr, std::vector<std::unique_ptr<StatementAst>>(), nullptr);
     loop_body->members.emplace_back(std::unique_ptr<StatementAst>(gen_expression.release()));
 
     // Build the loop expression with the iterable condition.
-    const auto loop_expr = std::make_unique<LoopExpressionAst>(nullptr, std::move(loop_cond_iter), std::move(loop_body), nullptr);
+    const auto loop_expr = std::make_unique<LoopIterableExpressionAst>(
+        nullptr, std::move(temp_var), nullptr, std::move(expr), std::move(loop_body), nullptr);
     return loop_expr->stage_10_code_gen_2(sm, meta, ctx);
 }
 

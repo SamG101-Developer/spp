@@ -102,12 +102,11 @@ import spp.asts.local_variable_destructure_skip_single_argument_ast;
 import spp.asts.local_variable_destructure_tuple_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.loop_condition_ast;
-import spp.asts.loop_condition_boolean_ast;
-import spp.asts.loop_condition_iterable_ast;
+import spp.asts.loop_conditional_expression_ast;
 import spp.asts.loop_control_flow_statement_ast;
 import spp.asts.loop_else_statement_ast;
 import spp.asts.loop_expression_ast;
+import spp.asts.loop_iterable_expression_ast;
 import spp.asts.module_implementation_ast;
 import spp.asts.module_member_ast;
 import spp.asts.module_prototype_ast;
@@ -1318,35 +1317,31 @@ auto spp::parse::ParserSpp::parse_boolean_comparison_op()
 
 auto spp::parse::ParserSpp::parse_loop_expression()
     -> std::unique_ptr<asts::LoopExpressionAst> {
-    PARSE_ONCE(p1, parse_keyword_loop);
-    PARSE_ONCE(p2, parse_loop_condition);
-    PARSE_ONCE(p3, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
-    PARSE_OPTIONAL(p4, parse_loop_else_statement);
-    return CREATE_AST(asts::LoopExpressionAst, p1, p2, p3, p4);
-}
-
-
-auto spp::parse::ParserSpp::parse_loop_condition()
-    -> std::unique_ptr<asts::LoopConditionAst> {
     PARSE_ALTERNATE(
-        p1, asts::LoopConditionAst, parse_loop_condition_iterable, parse_loop_condition_boolean);
+        p1, asts::LoopExpressionAst, parse_loop_conditional_expression, parse_loop_iterable_expression);
     return FORWARD_AST(p1);
 }
 
 
-auto spp::parse::ParserSpp::parse_loop_condition_boolean()
-    -> std::unique_ptr<asts::LoopConditionBooleanAst> {
-    PARSE_ONCE(p1, parse_expression);
-    return CREATE_AST(asts::LoopConditionBooleanAst, p1);
+auto spp::parse::ParserSpp::parse_loop_conditional_expression()
+    -> std::unique_ptr<asts::LoopConditionalExpressionAst> {
+    PARSE_ONCE(p1, parse_keyword_loop);
+    PARSE_ONCE(p2, parse_expression);
+    PARSE_ONCE(p3, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
+    PARSE_OPTIONAL(p4, parse_loop_else_statement);
+    return CREATE_AST(asts::LoopConditionalExpressionAst, p1, p2, p3, p4);
 }
 
 
-auto spp::parse::ParserSpp::parse_loop_condition_iterable()
-    -> std::unique_ptr<asts::LoopConditionIterableAst> {
-    PARSE_ONCE(p1, parse_local_variable);
-    PARSE_ONCE(p2, parse_keyword_in);
-    PARSE_ONCE(p3, parse_expression);
-    return CREATE_AST(asts::LoopConditionIterableAst, p1, p2, p3);
+auto spp::parse::ParserSpp::parse_loop_iterable_expression()
+    -> std::unique_ptr<asts::LoopIterableExpressionAst> {
+    PARSE_ONCE(p1, parse_keyword_loop);
+    PARSE_ONCE(p2, parse_local_variable);
+    PARSE_ONCE(p3, parse_keyword_in);
+    PARSE_ONCE(p4, parse_expression);
+    PARSE_ONCE(p5, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
+    PARSE_OPTIONAL(p6, parse_loop_else_statement);
+    return CREATE_AST(asts::LoopIterableExpressionAst, p1, p2, p3, p4, p5, p6);
 }
 
 
