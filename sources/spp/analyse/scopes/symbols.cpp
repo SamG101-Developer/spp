@@ -71,6 +71,7 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
     visibility(that.visibility),
     memory_info(that.memory_info->clone()),
     llvm_info(std::make_unique<codegen::LlvmVarSymInfo>()) {
+    llvm_info->alloca = that.llvm_info->alloca;
 }
 
 
