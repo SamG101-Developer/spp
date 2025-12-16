@@ -3,7 +3,8 @@ module;
 
 export module spp.asts.is_expression_ast;
 import spp.asts.expression_ast;
-
+import spp.codegen.llvm_ctx;
+import llvm;
 import std;
 
 namespace spp::asts {
@@ -18,6 +19,8 @@ namespace spp::asts {
 SPP_EXP_CLS struct spp::asts::IsExpressionAst final : ExpressionAst {
 private:
     std::shared_ptr<CaseExpressionAst> m_mapped_func;
+
+    std::shared_ptr<IdentifierAst> m_lhs_as_id;
 
 public:
     /**
@@ -53,6 +56,8 @@ public:
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

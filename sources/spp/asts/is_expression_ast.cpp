@@ -11,6 +11,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.bin_utils;
 import spp.asts.case_expression_ast;
 import spp.asts.case_pattern_variant_ast;
+import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -83,6 +84,7 @@ auto spp::asts::IsExpressionAst::stage_7_analyse_semantics(
     // Ensure TypeAst's aren't used for expression for binary operands.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(lhs.get());
     SPP_ENFORCE_EXPRESSION_SUBTYPE(rhs.get());
+    m_lhs_as_id = ast_clone(lhs->to<IdentifierAst>());
 
     // Convert to a "case" destructure and analyse it.
     const auto n = sm->current_scope->children.size();
@@ -90,10 +92,10 @@ auto spp::asts::IsExpressionAst::stage_7_analyse_semantics(
     m_mapped_func->stage_7_analyse_semantics(sm, meta);
 
     // Add the destructure symbols to the current scope.
+    // This includes the lhs symbol if it's been flow typed.
     auto destructure_syms = sm->current_scope->children[n]->children[0]->all_var_symbols(true, true);
-    destructure_syms | genex::views::for_each([sm](auto &&x) {
-        sm->current_scope->add_var_symbol(std::shared_ptr<analyse::scopes::VariableSymbol>(x));
-    });
+    destructure_syms
+        | genex::views::for_each([sm](auto &&x) { sm->current_scope->add_var_symbol(x); });
 }
 
 
@@ -103,6 +105,26 @@ auto spp::asts::IsExpressionAst::stage_8_check_memory(
     -> void {
     // Forward the memory checking to the mapped function.
     m_mapped_func->stage_8_check_memory(sm, meta);
+}
+
+
+auto spp::asts::IsExpressionAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // If the lhs was an identifier, the "is" causes it to get flow types, so we need to promote the original "alloca"
+    // into the flow typed symbol.
+    if (m_lhs_as_id) {
+        const auto flow_typed_lhs_sym = sm->current_scope->get_var_symbol(m_lhs_as_id, true);
+        if (flow_typed_lhs_sym != nullptr) {
+            const auto original_sym = sm->current_scope->parent->get_var_symbol(m_lhs_as_id);
+            flow_typed_lhs_sym->llvm_info->alloca = original_sym->llvm_info->alloca;
+        }
+    }
+
+    // Forward the code generation to the mapped function.
+    return m_mapped_func->stage_10_code_gen_2(sm, meta, ctx);
 }
 
 
