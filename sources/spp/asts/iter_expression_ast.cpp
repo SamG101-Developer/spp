@@ -1,4 +1,5 @@
 module;
+#include <opex/macros.hpp>
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
@@ -7,6 +8,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.iter_expression_branch_ast;
@@ -23,6 +25,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import genex;
+import opex.cast;
 
 
 spp::asts::IterExpressionAst::IterExpressionAst(
@@ -99,6 +102,7 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
     // Create the scope for the iteration expression.
     auto scope_name = analyse::scopes::ScopeBlockName("<iter-expr#" + std::to_string(pos_start()) + ">");
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
+    Ast::stage_2_gen_top_level_scopes(sm, meta);
 
     const auto pat_nop = branches
         | genex::views::transform([](auto const &x) { return x->pattern.get(); })
@@ -172,6 +176,8 @@ auto spp::asts::IterExpressionAst::stage_8_check_memory(
 
     // Move into the "case" scope and check the memory satus of the symbols in the branches.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+
     analyse::utils::mem_utils::validate_inconsistent_memory(
         branches | genex::views::ptr | genex::to<std::vector>(), sm, meta);
 
@@ -186,16 +192,51 @@ auto spp::asts::IterExpressionAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Todo : Proper implementation
-    sm->move_to_next_scope();
+    const auto is_expr = meta->assignment_target != nullptr;
     cond->stage_10_code_gen_2(sm, meta, ctx);
+
+    sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
 
     meta->save();
     meta->case_condition = cond.get();
     branches | genex::views::for_each([sm, meta, ctx](auto const &x) { x->stage_10_code_gen_2(sm, meta, ctx); });
     meta->restore();
 
+    // Branching mechanism like "case" but instead of value matching, it's pattern matching on the generator state.
+    // 1=>variable, 2=>exhausted, 3=>no value, 4=>exception
+    // Also, each branch may have a guard on, so logical AND that with the pattern match.
+    const auto func = ctx->builder.GetInsertBlock()->getParent();
+    const auto iter_end_bb = llvm::BasicBlock::Create(*ctx->context, "iter.end", func);
+
+    // Handle the potential PHI node for returning a value out of the case expression.
+    auto phi = static_cast<llvm::PHINode*>(nullptr);
+    if (is_expr) {
+        const auto ret_type_sym = sm->current_scope->get_type_symbol(infer_type(sm, meta))->llvm_info->llvm_type;
+        phi = ctx->builder.CreatePHI(ret_type_sym, branches.size() as U32, "iter.phi");
+    }
+
+    // Set "iter" information to the meta struct for branches and patterns to use.
+    meta->save();
+    meta->case_condition = cond.get();
+    meta->end_bb = iter_end_bb;
+    meta->phi_node = phi;
+
+    // Generate the case entry block for the branches to generate bodies into.
+    const auto case_entry_bb = llvm::BasicBlock::Create(*ctx->context, "case.entry", func);
+    ctx->builder.CreateBr(case_entry_bb);
+    ctx->builder.SetInsertPoint(case_entry_bb);
+
+    // Generate each branch.
+    for (auto &&branch : branches) {
+        branch->stage_10_code_gen_2(sm, meta, ctx);
+    }
+
+    // Finish the case expression.
+    meta->restore();
+    ctx->builder.SetInsertPoint(iter_end_bb);
     sm->move_out_of_current_scope();
-    return nullptr;
+    return phi;
 }
 
 

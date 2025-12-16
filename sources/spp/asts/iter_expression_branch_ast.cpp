@@ -6,9 +6,16 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.iter_pattern_variant_ast;
+import spp.asts.iter_pattern_variant_else_ast;
+import spp.asts.iter_pattern_variant_exception_ast;
+import spp.asts.iter_pattern_variant_exhausted_ast;
+import spp.asts.iter_pattern_variant_no_value_ast;
+import spp.asts.iter_pattern_variant_variable_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.pattern_guard_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_coros;
 
 
 spp::asts::IterExpressionBranchAst::IterExpressionBranchAst(
@@ -65,6 +72,55 @@ auto spp::asts::IterExpressionBranchAst::print(
 }
 
 
+auto spp::asts::IterExpressionBranchAst::m_codegen_combine_patterns(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx) const
+    -> llvm::Value* {
+    // Based on the environment generator state, generate a u8 equality.
+    // If there is a guard, generate it and logical AND it with the pattern match.
+    auto gen_env = meta->case_condition->stage_10_code_gen_2(sm, meta, ctx);
+    const auto gen_type = llvm::PointerType::get(*ctx->context, 0);
+    const auto yield_ptr = ctx->builder.CreateStructGEP(gen_type, gen_env, 0, "gen.yield.state");
+    const auto yield_val = ctx->builder.CreateLoad(llvm::Type::getInt8Ty(*ctx->context), yield_ptr, "gen.state.val");
+    auto llvm_combined_pattern = static_cast<llvm::Value*>(nullptr);
+
+    // Based on the pattern, determine the match condition.
+    if (pattern->to<IterPatternVariantVariableAst>() != nullptr) {
+        constexpr auto state = static_cast<std::uint8_t>(codegen::CoroutineState::VARIABLE);
+        const auto constant = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->context), state);
+        llvm_combined_pattern = ctx->builder.CreateICmpEQ(yield_val, constant, "iter.pattern.match");
+    }
+    else if (pattern->to<IterPatternVariantExhaustedAst>() != nullptr) {
+        constexpr auto state = static_cast<std::uint8_t>(codegen::CoroutineState::EXHAUSTED);
+        const auto constant = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->context), state);
+        llvm_combined_pattern = ctx->builder.CreateICmpEQ(yield_val, constant, "iter.pattern.match");
+    }
+    else if (pattern->to<IterPatternVariantNoValueAst>() != nullptr) {
+        constexpr auto state = static_cast<std::uint8_t>(codegen::CoroutineState::NO_VALUE);
+        const auto constant = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->context), state);
+        llvm_combined_pattern = ctx->builder.CreateICmpEQ(yield_val, constant, "iter.pattern.match");
+    }
+    else if (pattern->to<IterPatternVariantExceptionAst>() != nullptr) {
+        constexpr auto state = static_cast<std::uint8_t>(codegen::CoroutineState::ERROR);
+        const auto constant = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->context), state);
+        llvm_combined_pattern = ctx->builder.CreateICmpEQ(yield_val, constant, "iter.pattern.match");
+    }
+    else if (pattern->to<IterPatternVariantElseAst>() != nullptr) {
+        // Always matches.
+        llvm_combined_pattern = llvm::ConstantInt::getTrue(*ctx->context);
+    }
+
+    // If there is a guard, combine it with the pattern match.
+    if (guard) {
+        const auto llvm_guard = guard->stage_10_code_gen_2(sm, meta, ctx);
+        return ctx->builder.CreateAnd(llvm_combined_pattern, llvm_guard, "iter.pattern.guard.match");
+    }
+
+    return llvm_combined_pattern;
+}
+
+
 auto spp::asts::IterExpressionBranchAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
@@ -105,11 +161,24 @@ auto spp::asts::IterExpressionBranchAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Move into the branch's scope.
+    // Generate the branch architecture.
     sm->move_to_next_scope();
-    pattern->stage_10_code_gen_2(sm, meta, ctx);
-    if (guard) { guard->stage_10_code_gen_2(sm, meta, ctx); }
-    body->stage_10_code_gen_2(sm, meta, ctx);
+    const auto func = ctx->builder.GetInsertBlock()->getParent();
+    const auto iter_branch_body_bb = llvm::BasicBlock::Create(*ctx->context, "iter.branch.body", func);
+    const auto iter_branch_next_bb = llvm::BasicBlock::Create(*ctx->context, "iter.branch.next", func);
+
+    // Get the condition.
+    const auto match_cond = m_codegen_combine_patterns(sm, meta, ctx);
+    ctx->builder.CreateCondBr(match_cond, iter_branch_body_bb, iter_branch_next_bb);
+    ctx->builder.SetInsertPoint(iter_branch_body_bb);
+
+    // Generate the body.
+    const auto branch_val = body->stage_10_code_gen_2(sm, meta, ctx);
+    if (meta->phi_node != nullptr) { meta->phi_node->addIncoming(branch_val, iter_branch_body_bb); }
+    ctx->builder.CreateBr(meta->end_bb);
+    ctx->builder.SetInsertPoint(iter_branch_next_bb);
+
+    // Move out of the branch's scope.
     sm->move_out_of_current_scope();
     return nullptr;
 }
