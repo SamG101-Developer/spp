@@ -83,19 +83,20 @@ auto spp::asts::CaseExpressionBranchAst::print(
 auto spp::asts::CaseExpressionBranchAst::m_codegen_combine_patterns(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx) -> llvm::Value* {
+    codegen::LLvmCtx *ctx) const
+    -> llvm::Value* {
     // If there is only one pattern, generate its condition directly.
     // Otherwise, collect all the pattern conditions and combine them with OR.
-    auto combined_cond = patterns.front()->stage_10_code_gen_2(sm, meta, ctx);
+    auto llvm_combined_pattern = patterns.front()->stage_10_code_gen_2(sm, meta, ctx);
     for (auto const &pattern : patterns | genex::views::ptr | genex::views::drop(1)) {
-        const auto pattern_cond = pattern->stage_10_code_gen_2(sm, meta, ctx);
-        combined_cond = ctx->builder.CreateOr(combined_cond, pattern_cond);
+        const auto llvm_pattern = pattern->stage_10_code_gen_2(sm, meta, ctx);
+        llvm_combined_pattern = ctx->builder.CreateOr(llvm_combined_pattern, llvm_pattern);
     }
     if (guard) {
-        const auto guard_cond = guard->stage_10_code_gen_2(sm, meta, ctx);
-        combined_cond = ctx->builder.CreateAnd(combined_cond, guard_cond);
+        const auto llvm_guard = guard->stage_10_code_gen_2(sm, meta, ctx);
+        llvm_combined_pattern = ctx->builder.CreateAnd(llvm_combined_pattern, llvm_guard, "case.pattern.guard.match");
     }
-    return combined_cond;
+    return llvm_combined_pattern;
 }
 
 
@@ -140,7 +141,9 @@ auto spp::asts::CaseExpressionBranchAst::stage_8_check_memory(
     sm->move_to_next_scope();
 
     // Check the patterns, guard and body.
-    patterns | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });
+    for (auto &&p : patterns) {
+        p->stage_8_check_memory(sm, meta);
+    }
     if (guard) {
         guard->stage_8_check_memory(sm, meta);
     }

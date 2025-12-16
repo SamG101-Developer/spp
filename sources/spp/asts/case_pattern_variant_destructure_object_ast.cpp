@@ -169,11 +169,6 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    /*
-        parse_case_expression_pattern_variant_destructure_attribute_binding,
-        parse_case_expression_pattern_variant_destructure_skip_multiple_arguments,
-        parse_case_expression_pattern_variant_single_identifier
-     */
     // Generate the "let" statement to introduce all the symbols.
     m_mapped_let->stage_10_code_gen_2(sm, meta, ctx);
 

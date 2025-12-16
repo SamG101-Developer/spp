@@ -72,7 +72,7 @@ private:
      * @param ctx The llvm code generation context.
      * @return The llvm value representing the combined pattern matches.
      */
-    auto m_codegen_combine_patterns(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value*;
+    auto m_codegen_combine_patterns(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) const -> llvm::Value*;
 
 public:
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
