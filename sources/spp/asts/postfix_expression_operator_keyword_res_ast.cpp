@@ -19,6 +19,7 @@ import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 
 
 spp::asts::PostfixExpressionOperatorKeywordResAst::PostfixExpressionOperatorKeywordResAst(
@@ -28,6 +29,9 @@ spp::asts::PostfixExpressionOperatorKeywordResAst::PostfixExpressionOperatorKeyw
     tok_dot(std::move(tok_dot)),
     tok_res(std::move(tok_res)),
     arg_group(std::move(arg_group)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_dot, lex::SppTokenType::TK_DOT, ".");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_res, lex::SppTokenType::KW_RES, "res");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->arg_group);
 }
 
 
