@@ -1,7 +1,7 @@
 # Annotations
 
 Lots of new annotations needed, primarily for llvm lowering. Also will add the ability to add arguments into some
-annotations. This might look like `@repr(C)`
+annotations. This might look like `@repr(C)`. https://chatgpt.com/s/t_69404edcd9688191b0e4824a98ba4530
 
 ## Structs
 
