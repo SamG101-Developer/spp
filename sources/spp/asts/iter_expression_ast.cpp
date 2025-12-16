@@ -94,6 +94,8 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
     SPP_ENFORCE_EXPRESSION_SUBTYPE(cond.get());
     cond->stage_7_analyse_semantics(sm, meta);
 
+    // Todo: Check that the condition is a generated type.
+
     // Create the scope for the iteration expression.
     auto scope_name = analyse::scopes::ScopeBlockName("<iter-expr#" + std::to_string(pos_start()) + ">");
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
@@ -186,7 +188,12 @@ auto spp::asts::IterExpressionAst::stage_10_code_gen_2(
     // Todo : Proper implementation
     sm->move_to_next_scope();
     cond->stage_10_code_gen_2(sm, meta, ctx);
+
+    meta->save();
+    meta->case_condition = cond.get();
     branches | genex::views::for_each([sm, meta, ctx](auto const &x) { x->stage_10_code_gen_2(sm, meta, ctx); });
+    meta->restore();
+
     sm->move_out_of_current_scope();
     return nullptr;
 }

@@ -17,6 +17,7 @@ import spp.asts.object_initializer_argument_group_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 
@@ -101,9 +102,22 @@ auto spp::asts::IterPatternVariantVariableAst::stage_10_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) -> llvm::Value* {
-    // Not implemented yet.
-    (void)sm;
-    (void)meta;
-    (void)ctx;
-    throw std::runtime_error("IterPatternVariantVariableAst::stage_10_code_gen_2 not implemented");
+    // Get the generator pointer of the targetted coroutine. This is just the value being inspected (cond).
+    auto gen_env = meta->case_condition->stage_10_code_gen_2(sm, meta, ctx);
+
+    // GEP to the "Yield" field (field 2).
+    const auto gen_type = llvm::PointerType::get(*ctx->context, 0);
+    const auto yield_ptr = ctx->builder.CreateStructGEP(gen_type, gen_env, 2, "gen.yield.ptr");
+    const auto yield_val = ctx->builder.CreateLoad(llvm::PointerType::get(*ctx->context, 0), yield_ptr, "gen.yield.val");
+
+    // Alloca for the variable.
+    meta->save();
+    meta->let_stmt_explicit_type = meta->case_condition->infer_type(sm, meta)->type_parts().back()->generic_arg_group->type_at("Yield")->val;
+    meta->let_stmt_from_uninitialized = true; // skip normal value conversion (we have raw value already)
+    const auto alloca = m_mapped_let->stage_10_code_gen_2(sm, meta, ctx); // Todo: will fail for non-single local vars
+    meta->restore();
+
+    // Store the yield value into the variable.
+    ctx->builder.CreateStore(yield_val, alloca);
+    return nullptr;
 }

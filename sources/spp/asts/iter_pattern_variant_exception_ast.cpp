@@ -95,9 +95,22 @@ auto spp::asts::IterPatternVariantExceptionAst::stage_10_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) -> llvm::Value* {
-    // Not implemented yet.
-    (void)sm;
-    (void)meta;
-    (void)ctx;
-    throw std::runtime_error("IterPatternVariantExceptionAst::stage_10_code_gen_2 not implemented");
+    // Get the generator pointer of the targetted coroutine. This is just the value being inspected (cond).
+    auto gen_env = meta->case_condition->stage_10_code_gen_2(sm, meta, ctx);
+
+    // GEP to the "Error" field (field 3).
+    const auto gen_type = llvm::PointerType::get(*ctx->context, 0);
+    const auto error_ptr = ctx->builder.CreateStructGEP(gen_type, gen_env, 3, "gen.error.ptr");
+    const auto error_val = ctx->builder.CreateLoad(llvm::PointerType::get(*ctx->context, 0), error_ptr, "gen.error.val");
+
+    // Alloca for the variable.
+    meta->save();
+    meta->let_stmt_explicit_type = meta->case_condition->infer_type(sm, meta)->type_parts().back()->generic_arg_group->type_at("Yield")->val;
+    meta->let_stmt_from_uninitialized = true; // skip normal value conversion (we have raw value already)
+    const auto alloca = m_mapped_let->stage_10_code_gen_2(sm, meta, ctx);
+    meta->restore();
+
+    // Store the yield value into the variable.
+    ctx->builder.CreateStore(error_val, alloca);
+    return nullptr;
 }

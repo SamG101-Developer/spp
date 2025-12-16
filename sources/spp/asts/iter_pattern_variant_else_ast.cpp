@@ -52,15 +52,3 @@ auto spp::asts::IterPatternVariantElseAst::print(
     SPP_PRINT_APPEND(tok_else).append(" ");
     SPP_PRINT_END;
 }
-
-
-auto spp::asts::IterPatternVariantElseAst::stage_10_code_gen_2(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx) -> llvm::Value* {
-    // Not implemented yet.
-    (void)sm;
-    (void)meta;
-    (void)ctx;
-    throw std::runtime_error("IterPatternVariantElseAst::stage_10_code_gen_2 not implemented");
-}

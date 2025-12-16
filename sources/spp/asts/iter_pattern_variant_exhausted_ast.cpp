@@ -52,15 +52,3 @@ auto spp::asts::IterPatternVariantExhaustedAst::print(
     SPP_PRINT_APPEND(tok_exhausted).append(" ");
     SPP_PRINT_END;
 }
-
-
-auto spp::asts::IterPatternVariantExhaustedAst::stage_10_code_gen_2(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx) -> llvm::Value* {
-    // Not implemented yet.
-    (void)sm;
-    (void)meta;
-    (void)ctx;
-    throw std::runtime_error("IterPatternVariantExhaustedAst::stage_10_code_gen_2 not implemented yet.");
-}

@@ -28,7 +28,5 @@ SPP_EXP_CLS struct spp::asts::IterPatternVariantElseAst final : IterPatternVaria
 
     ~IterPatternVariantElseAst() override;
 
-    auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
-
     SPP_AST_KEY_FUNCTIONS;
 };
