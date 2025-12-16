@@ -51,7 +51,7 @@ auto spp::asts::IterPatternVariantVariableAst::clone() const
 
 spp::asts::IterPatternVariantVariableAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(var);
+    SPP_STRING_APPEND(var).append(" ");
     SPP_STRING_END;
 }
 
@@ -60,7 +60,7 @@ auto spp::asts::IterPatternVariantVariableAst::print(
     AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(var);
+    SPP_PRINT_APPEND(var).append(" ");
     SPP_PRINT_END;
 }
 

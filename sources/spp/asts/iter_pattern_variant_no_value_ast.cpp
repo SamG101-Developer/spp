@@ -40,7 +40,7 @@ auto spp::asts::IterPatternVariantNoValueAst::clone() const
 
 spp::asts::IterPatternVariantNoValueAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_underscore);
+    SPP_STRING_APPEND(tok_underscore).append(" ");
     SPP_STRING_END;
 }
 
@@ -49,7 +49,7 @@ auto spp::asts::IterPatternVariantNoValueAst::print(
     AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_underscore);
+    SPP_PRINT_APPEND(tok_underscore).append(" ");
     SPP_PRINT_END;
 }
 

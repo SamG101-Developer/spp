@@ -40,7 +40,7 @@ auto spp::asts::IterPatternVariantExhaustedAst::clone() const
 
 spp::asts::IterPatternVariantExhaustedAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_exhausted);
+    SPP_STRING_APPEND(tok_exhausted).append(" ");
     SPP_STRING_END;
 }
 
@@ -49,7 +49,7 @@ auto spp::asts::IterPatternVariantExhaustedAst::print(
     AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_exhausted);
+    SPP_PRINT_APPEND(tok_exhausted).append(" ");
     SPP_PRINT_END;
 }
 

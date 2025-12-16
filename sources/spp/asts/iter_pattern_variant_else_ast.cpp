@@ -40,7 +40,7 @@ auto spp::asts::IterPatternVariantElseAst::clone() const
 
 spp::asts::IterPatternVariantElseAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_else);
+    SPP_STRING_APPEND(tok_else).append(" ");
     SPP_STRING_END;
 }
 
@@ -49,7 +49,7 @@ auto spp::asts::IterPatternVariantElseAst::print(
     AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_else);
+    SPP_PRINT_APPEND(tok_else).append(" ");
     SPP_PRINT_END;
 }
 

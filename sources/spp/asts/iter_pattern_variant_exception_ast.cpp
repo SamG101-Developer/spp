@@ -52,7 +52,7 @@ auto spp::asts::IterPatternVariantExceptionAst::clone() const
 
 spp::asts::IterPatternVariantExceptionAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_exc);
+    SPP_STRING_APPEND(tok_exc).append(" ");
     SPP_STRING_APPEND(var);
     SPP_STRING_END;
 }
@@ -62,7 +62,7 @@ auto spp::asts::IterPatternVariantExceptionAst::print(
     AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_exc);
+    SPP_PRINT_APPEND(tok_exc).append(" ");
     SPP_PRINT_APPEND(var);
     SPP_PRINT_END;
 }
