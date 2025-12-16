@@ -21,6 +21,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 import genex;
 
 
@@ -34,6 +35,8 @@ spp::asts::IterExpressionAst::IterExpressionAst(
     cond(std::move(cond)),
     tok_of(std::move(tok_of)),
     branches(std::move(branches)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_iter, lex::SppTokenType::KW_ITER, "iter", cond ? cond->pos_start() : 0);
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_of, lex::SppTokenType::KW_OF, "of", cond ? cond->pos_end() : 0);
 }
 
 

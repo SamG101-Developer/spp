@@ -14,6 +14,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 
 
 spp::asts::IterPatternVariantExceptionAst::IterPatternVariantExceptionAst(
@@ -22,6 +23,7 @@ spp::asts::IterPatternVariantExceptionAst::IterPatternVariantExceptionAst(
     IterPatternVariantAst(),
     tok_exc(std::move(tok_exc)),
     var(std::move(var)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_exc, lex::SppTokenType::TK_EXCLAMATION_MARK, "!");
 }
 
 

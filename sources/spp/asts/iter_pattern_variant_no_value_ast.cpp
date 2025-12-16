@@ -5,12 +5,14 @@ module spp.asts.iter_pattern_variant_no_value_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 
 
 spp::asts::IterPatternVariantNoValueAst::IterPatternVariantNoValueAst(
     decltype(tok_underscore) &&tok_underscore) :
     IterPatternVariantAst(),
     tok_underscore(std::move(tok_underscore)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_underscore, lex::SppTokenType::TK_UNDERSCORE, "_");
 }
 
 

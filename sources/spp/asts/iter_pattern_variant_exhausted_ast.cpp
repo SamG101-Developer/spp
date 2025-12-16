@@ -5,12 +5,14 @@ module spp.asts.iter_pattern_variant_exhausted_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 
 
 spp::asts::IterPatternVariantExhaustedAst::IterPatternVariantExhaustedAst(
     decltype(tok_exhausted) &&tok_exhausted) :
     IterPatternVariantAst(),
     tok_exhausted(std::move(tok_exhausted)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_exhausted, lex::SppTokenType::TK_DOUBLE_EXCLAMATION_MARK, "!!");
 }
 
 
