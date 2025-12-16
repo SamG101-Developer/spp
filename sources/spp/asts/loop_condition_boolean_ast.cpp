@@ -87,3 +87,13 @@ auto spp::asts::LoopConditionBooleanAst::stage_8_check_memory(
     analyse::utils::mem_utils::validate_symbol_memory(
         *cond, *cond, *sm, true, true, false, false, false, false, meta);
 }
+
+
+auto spp::asts::LoopConditionBooleanAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate the condition expression.
+    return cond->stage_10_code_gen_2(sm, meta, ctx);
+}

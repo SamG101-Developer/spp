@@ -4,7 +4,6 @@ module;
 export module spp.asts.loop_expression_ast;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
-
 import llvm;
 import std;
 
@@ -67,9 +66,9 @@ public:
     SPP_AST_KEY_FUNCTIONS;
 
 private:
-    auto m_codegen_condition_bool(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) const -> llvm::Value*;
+    auto m_codegen_condition_bool(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value*;
 
-    auto m_codegen_condition_iter(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) const -> llvm::Value*;
+    auto m_codegen_condition_iter(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value*;
 
 public:
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;

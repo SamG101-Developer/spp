@@ -47,6 +47,10 @@ SPP_EXP_CLS struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
 
     ~LoopControlFlowStatementAst() override;
 
+    static auto Skip(std::size_t pos) -> std::unique_ptr<LoopControlFlowStatementAst>;
+
+    static auto Exit(std::size_t pos) -> std::unique_ptr<LoopControlFlowStatementAst>;
+
     SPP_AST_KEY_FUNCTIONS;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;

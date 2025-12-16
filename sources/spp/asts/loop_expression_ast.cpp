@@ -11,17 +11,32 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
+import spp.asts.boolean_literal_ast;
+import spp.asts.function_call_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
+import spp.asts.iter_expression_ast;
+import spp.asts.iter_expression_branch_ast;
+import spp.asts.iter_pattern_variant_else_ast;
+import spp.asts.iter_pattern_variant_variable_ast;
+import spp.asts.iter_pattern_variant_exhausted_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.loop_condition_ast;
 import spp.asts.loop_condition_boolean_ast;
+import spp.asts.loop_condition_iterable_ast;
+import spp.asts.loop_control_flow_statement_ast;
 import spp.asts.loop_else_statement_ast;
+import spp.asts.pattern_guard_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_keyword_res_ast;
+import spp.asts.statement_ast;
 import spp.asts.token_ast;
 import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-
 import llvm;
 
 
@@ -88,73 +103,58 @@ auto spp::asts::LoopExpressionAst::print(
 auto spp::asts::LoopExpressionAst::m_codegen_condition_bool(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx) const
+    codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    /*
-    let x = loop cond { body } else { else_block }
+    // Determine if this "case" will be yielding an expression.
+    const auto is_expr = meta->assignment_target != nullptr;
 
-    br label %loop.cond
+    // Get the function, and create the basic blocks.
+    const auto func = ctx->builder.GetInsertBlock()->getParent();
+    const auto loop_cond_entry_bb = llvm::BasicBlock::Create(*ctx->context, "loop.cond.entry", func);
+    const auto loop_body_bb = llvm::BasicBlock::Create(*ctx->context, "loop.body", func);
+    const auto loop_cond_next_bb = llvm::BasicBlock::Create(*ctx->context, "loop.cond.next", func);
+    const auto loop_else_bb = llvm::BasicBlock::Create(*ctx->context, "loop.else", func);
+    const auto loop_end_bb = llvm::BasicBlock::Create(*ctx->context, "loop.end", func);
 
-    loop.cond:
-        %cond_val = ... ; bool
-        br i1 %cond_val, label %loop.body, label %loop.else
-
-    loop.body:
-        %body_val = ... ; body codegen value
-        br label %loop.cond
-
-    loop.else:
-        %else_val = ... ; else block result
-        br label %loop.exit
-
-    loop.exit:
-        %result = phi <type> [ %else_val, %loop.else ]
-     */
-
-    // Create the building blocks.
-    const auto fn = ctx->builder.GetInsertBlock()->getParent();
-    const auto cond_bb = llvm::BasicBlock::Create(*ctx->context, "loop.cond", fn);
-    const auto body_bb = llvm::BasicBlock::Create(*ctx->context, "loop.body");
-    const auto else_bb = else_block ? llvm::BasicBlock::Create(*ctx->context, "loop.else") : nullptr;
-    const auto exit_bb = llvm::BasicBlock::Create(*ctx->context, "loop.exit");
-
-    // Jump to the cond block, and insert from there.
-    ctx->builder.CreateBr(cond_bb);
-    ctx->builder.SetInsertPoint(cond_bb);
-
-    // Generate the condition.
-    const auto llvm_cond = cond->stage_10_code_gen_2(sm, meta, ctx);
-    const auto false_target = else_bb ? else_bb : exit_bb;
-    ctx->builder.CreateCondBr(llvm_cond, body_bb, false_target);
-
-    // Attach the remaining blocks.
-    fn->insert(fn->end(), body_bb);
-    ctx->builder.SetInsertPoint(body_bb);
-
-    // Generate the body value and resume the loop (back to the check).
-    const auto llvm_body = body->stage_10_code_gen_2(sm, meta, ctx);
-    ctx->builder.CreateBr(cond_bb);
-
-    // Handle the else block if it exists.
-    auto llvm_else = static_cast<llvm::Value*>(nullptr);
-    auto else_end_bb = static_cast<llvm::BasicBlock*>(nullptr);
-    if (else_bb != nullptr) {
-        fn->insert(fn->end(), else_bb);
-        ctx->builder.SetInsertPoint(else_bb);
-        llvm_else = else_block->stage_10_code_gen_2(sm, meta, ctx);
-        ctx->builder.CreateBr(exit_bb);
-        else_end_bb = ctx->builder.GetInsertBlock();
+    // Handle the potential PHI node for returning a value out of the loop expression.
+    auto phi = static_cast<llvm::PHINode*>(nullptr);
+    if (is_expr) {
+        const auto ret_type_sym = sm->current_scope->get_type_symbol(infer_type(sm, meta))->llvm_info->llvm_type;
+        phi = ctx->builder.CreatePHI(ret_type_sym, 2, "loop.phi");
     }
 
-    // Exit block and phi node.
-    fn->insert(fn->end(), exit_bb);
-    ctx->builder.SetInsertPoint(exit_bb);
-    const auto phi_type = llvm_body->getType();
-    const auto phi = ctx->builder.CreatePHI(phi_type, else_bb ? 2 : 1, "loop.exit.phi");
-    phi->addIncoming(llvm_body, body_bb);
-    else_bb
-        ? phi->addIncoming(llvm_else, else_end_bb)
-        : phi->addIncoming(llvm::Constant::getNullValue(phi_type), cond_bb);
+    // Jump to the condition entry block.
+    ctx->builder.CreateBr(loop_cond_entry_bb);
+    ctx->builder.SetInsertPoint(loop_cond_entry_bb);
+    const auto llvm_initial_cond = cond->stage_10_code_gen_2(sm, meta, ctx);
+    ctx->builder.CreateCondBr(llvm_initial_cond, loop_body_bb, loop_else_bb);
+
+    // Generate the loop body block.
+    ctx->builder.SetInsertPoint(loop_body_bb);
+    const auto llvm_body_val = body->stage_10_code_gen_2(sm, meta, ctx);
+    ctx->builder.CreateBr(loop_cond_next_bb);
+
+    // Generate the loop continuation block.
+    ctx->builder.SetInsertPoint(loop_cond_next_bb);
+    const auto llvm_cond = cond->stage_10_code_gen_2(sm, meta, ctx);
+    ctx->builder.CreateCondBr(llvm_cond, loop_body_bb, loop_end_bb);
+
+    // Generate the else block if it exists.
+    ctx->builder.SetInsertPoint(loop_else_bb);
+    auto llvm_else_val = static_cast<llvm::Value*>(nullptr);
+    if (else_block != nullptr) {
+        llvm_else_val = else_block->stage_10_code_gen_2(sm, meta, ctx);
+    }
+    ctx->builder.CreateBr(loop_end_bb);
+
+    // Finish the loop expression.
+    ctx->builder.SetInsertPoint(loop_end_bb);
+    if (is_expr) {
+        phi->addIncoming(llvm_body_val, loop_body_bb);
+        if (else_block != nullptr) {
+            phi->addIncoming(llvm_else_val, loop_else_bb);
+        }
+    }
 
     return phi;
 }
@@ -163,96 +163,89 @@ auto spp::asts::LoopExpressionAst::m_codegen_condition_bool(
 auto spp::asts::LoopExpressionAst::m_codegen_condition_iter(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx) const
+    codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     /*
-    # loop y in range_coro() { y * 2 } else { -1 };
-    # ============================================
-
-    br label %loop.check
-
-    loop.check:
-        call void @llvm.coro.resume(ptr %iter)
-        %done = call i1 @llvm.coro.done(ptr %iter)
-        br i1 %done, label %loop.else, label %loop.body
-
-    loop.body:
-        %yield = call i32 @coro.yield.load(ptr %iter)
-        %mul = mul i32 %yield, 2
-        br label %loop.check
-
-    loop.else:
-        %elseval = add i32 -1, 0
-        br label %loop.exit
-
-    loop.exit:
-        %phi = phi i32 [ %mul, %loop.body ], [ %elseval, %loop.else ]
-        call void @llvm.coro.destroy(ptr %iter)
+     * Iteration looping is syntactic sugar. The translation looks like this:
+     *
+     *      loop [x, y] in z.iter_ref() { body } else { other }
+     *
+     * becomes
+     *
+     *      let __iter = z.iter_ref()
+     *      let __first = true
+     *      loop true {
+     *          let __res = __iter.res()
+     *          iter __res {
+     *              [x, y] { body }  # variable binding
+     *
+     *              !! && first {
+     *                  other
+     *                  exit
+     *              }  # first iteration and exhausted -> run else block
+     *
+     *              !! { exit }  # exhausted -> break from the loop
+     *
+     *              else { skip }  # continue the loop for opt/res types
+     *          }
+     *      }
+     *
      */
 
-    const auto fn = ctx->builder.GetInsertBlock()->getParent();
+    // Simple statements to move from.
+    auto skip_stmt = LoopControlFlowStatementAst::Skip(pos_start());
+    auto exit_stmt = LoopControlFlowStatementAst::Exit(pos_start());
+    auto iter_cond = cond->to<LoopConditionIterableAst>();
 
-    // Evaluate the iterable (coroutine handle).
-    const auto iterable_val = cond->stage_10_code_gen_2(sm, meta, ctx);
-    const auto coro_handle = iterable_val;
+    // Create the initial let statement to materialize the condition being iterated.
+    auto iterable_name = std::make_shared<IdentifierAst>(pos_start(), std::format("$_iter_{}", reinterpret_cast<std::uintptr_t>(this)));
+    auto iterable_var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, iterable_name, nullptr);
+    auto iterable_val = std::move(iter_cond->iterable);
+    auto iterable_let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(iterable_var), nullptr, nullptr, std::move(iterable_val));
 
-    // Prepare the blocks that form the loop.
-    const auto cond_bb = llvm::BasicBlock::Create(*ctx->context, "loop.check", fn);
-    const auto body_bb = llvm::BasicBlock::Create(*ctx->context, "loop.body");
-    const auto else_bb = else_block ? llvm::BasicBlock::Create(*ctx->context, "loop.else") : nullptr;
-    const auto exit_bb = llvm::BasicBlock::Create(*ctx->context, "loop.exit");
+    // Create the "let" statement that increments the iterator.
+    auto resume_name = std::make_shared<IdentifierAst>(pos_start(), std::format("$_res_{}", reinterpret_cast<std::uintptr_t>(this)));
+    auto resume_var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, resume_name, nullptr);
+    auto resume_val_op = std::make_unique<PostfixExpressionOperatorKeywordResAst>(nullptr, nullptr, nullptr);
+    auto resume_val = std::make_unique<PostfixExpressionAst>(ast_clone(iterable_name), std::move(resume_val_op));
+    auto resume_let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(resume_var), nullptr, nullptr, std::move(resume_val));
 
-    // Jump to the cond block, and insert from there.
-    ctx->builder.CreateBr(cond_bb);
-    ctx->builder.SetInsertPoint(cond_bb);
+    // Iter:Else => skip over GenOpt no-value and GenRes error yields.
+    auto iter_else_pattern = std::make_unique<IterPatternVariantElseAst>(nullptr);
+    auto iter_else_body = InnerScopeExpressionAst<std::unique_ptr<StatementAst>>::new_empty();
+    iter_else_body->members.emplace_back(std::move(skip_stmt));
+    auto iter_else_branch = std::make_unique<IterExpressionBranchAst>(std::move(iter_else_pattern), std::move(iter_else_body), nullptr);
 
-    // Resume the coroutine to get the next value.
-    const auto coro_resume_decl = llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), llvm::Intrinsic::coro_resume);
-    ctx->builder.CreateCall(coro_resume_decl, {coro_handle});
+    // Iter:Exhausted AND first => run the else block once, then exit the loop.
+    // TODO
 
-    // Check if the coroutine is done.
-    const auto coro_done_decl = llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), llvm::Intrinsic::coro_done);
-    const auto is_done = ctx->builder.CreateCall(coro_done_decl, {coro_handle}, "loop.is_done"); // todo: change this to an "iter" block-like analysis
-    const auto false_target = else_bb ? else_bb : exit_bb;
-    ctx->builder.CreateCondBr(is_done, false_target, body_bb);
+    // Iter:Exhausted => exit the loop, as iteration has finished.
+    auto iter_exhausted_pattern = std::make_unique<IterPatternVariantExhaustedAst>(nullptr);
+    auto iter_exhausted_body = InnerScopeExpressionAst<std::unique_ptr<StatementAst>>::new_empty();
+    iter_exhausted_body->members.emplace_back(std::move(exit_stmt));
+    auto iter_exhausted_branch = std::make_unique<IterExpressionBranchAst>(std::move(iter_exhausted_pattern), std::move(iter_exhausted_body), nullptr);
 
-    // Handle the body block, and insert from there.
-    fn->insert(fn->end(), body_bb);
-    ctx->builder.SetInsertPoint(body_bb);
+    // Iter:Variable => bind to the same variable as in the original loop.
+    auto iter_var_pattern = std::make_unique<IterPatternVariantVariableAst>(std::move(iter_cond->var));
+    auto iter_var_body = std::move(body);
+    auto iter_var_branch = std::make_unique<IterExpressionBranchAst>(std::move(iter_var_pattern), std::move(iter_var_body), nullptr);
 
-    // Load the yielded value. Todo: hook into "iter" to extract value from the coroutine.
-    // const auto coro_yield_load_decl = llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), llvm::Intrinsic::coro_yield_load);
-    // const auto yielded_value = ctx->builder.CreateCall(coro_yield_load_decl, {coro_handle}, "loop.yielded_value");
+    // Iter block to handle the resume value.
+    auto iter_branches = std::vector<std::unique_ptr<IterExpressionBranchAst>>();
+    iter_branches.emplace_back(std::move(iter_var_branch));
+    iter_branches.emplace_back(std::move(iter_exhausted_branch));
+    iter_branches.emplace_back(std::move(iter_else_branch));
+    auto iter_expr = std::make_unique<IterExpressionAst>(nullptr, ast_clone(resume_name), nullptr, std::move(iter_branches));
 
-    // Generate the body value and resume the loop (back to the check).
-    const auto llvm_body = body->stage_10_code_gen_2(sm, meta, ctx);
-    ctx->builder.CreateBr(cond_bb);
+    // New boolean loop that manually iterates the iterable.
+    auto loop_cond_new = std::make_unique<LoopConditionBooleanAst>(BooleanLiteralAst::True(pos_start()));
+    auto loop_new = std::make_unique<LoopExpressionAst>(nullptr, std::move(loop_cond_new), nullptr, nullptr);
+    loop_new->body->members.emplace_back(std::move(resume_let));
+    loop_new->body->members.emplace_back(std::move(iter_expr));
 
-    // Handle the else block if it exists.
-    auto llvm_else = static_cast<llvm::Value*>(nullptr);
-    auto else_end_bb = static_cast<llvm::BasicBlock*>(nullptr);
-    if (else_bb != nullptr) {
-        fn->insert(fn->end(), else_bb);
-        ctx->builder.SetInsertPoint(else_bb);
-        llvm_else = else_block->stage_10_code_gen_2(sm, meta, ctx);
-        ctx->builder.CreateBr(exit_bb);
-        else_end_bb = ctx->builder.GetInsertBlock();
-    }
-
-    // Exit block and phi node.
-    fn->insert(fn->end(), exit_bb);
-    ctx->builder.SetInsertPoint(exit_bb);
-    const auto phi_type = llvm_body->getType();
-    const auto phi = ctx->builder.CreatePHI(phi_type, else_bb ? 2 : 1, "loop.exit.phi");
-    phi->addIncoming(llvm_body, body_bb);
-    else_bb
-        ? phi->addIncoming(llvm_else, else_end_bb)
-        : phi->addIncoming(llvm::Constant::getNullValue(phi_type), cond_bb);
-
-    // Cleanup the coroutine.
-    const auto coro_destroy_decl = llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), llvm::Intrinsic::coro_destroy);
-    ctx->builder.CreateCall(coro_destroy_decl, {coro_handle});
-    return phi;
+    // Generate the code for the iterable let statement, then the new loop.
+    iterable_let->stage_10_code_gen_2(sm, meta, ctx);
+    return loop_new->stage_10_code_gen_2(sm, meta, ctx);
 }
 
 
@@ -263,6 +256,7 @@ auto spp::asts::LoopExpressionAst::stage_7_analyse_semantics(
     // Create the loop scope.
     auto scope_name = analyse::scopes::ScopeBlockName("<loop-expr#" + std::to_string(pos_start()) + ">");
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
+    Ast::stage_2_gen_top_level_scopes(sm, meta);
     cond->stage_7_analyse_semantics(sm, meta);
 
     // Set the loop level information into the "meta" object.
@@ -291,6 +285,7 @@ auto spp::asts::LoopExpressionAst::stage_8_check_memory(
     -> void {
     // Move into the loop scope.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
 
     // Check twice so that invalidation fails on the second loop.
     // Todo: use the "reset" on "sm" like in TypeStatementAst?
@@ -322,7 +317,10 @@ auto spp::asts::LoopExpressionAst::stage_10_code_gen_2(
     -> llvm::Value* {
     // Generate code based on the condition type.
     sm->move_to_next_scope();
-    const auto val = cond->to<LoopConditionBooleanAst>() ? m_codegen_condition_bool(sm, meta, ctx) : m_codegen_condition_iter(sm, meta, ctx);
+    SPP_ASSERT(sm->current_scope == m_scope);
+    const auto val = cond->to<LoopConditionBooleanAst>()
+                         ? m_codegen_condition_bool(sm, meta, ctx)
+                         : m_codegen_condition_iter(sm, meta, ctx);
     sm->move_out_of_current_scope();
     return val;
 }
