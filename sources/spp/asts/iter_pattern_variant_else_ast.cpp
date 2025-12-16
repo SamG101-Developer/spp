@@ -59,5 +59,8 @@ auto spp::asts::IterPatternVariantElseAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) -> llvm::Value* {
     // Not implemented yet.
+    (void)sm;
+    (void)meta;
+    (void)ctx;
     throw std::runtime_error("IterPatternVariantElseAst::stage_10_code_gen_2 not implemented");
 }
