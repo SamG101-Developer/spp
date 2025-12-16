@@ -11,6 +11,7 @@ import spp.asts.generic_argument_type_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types_precompiled;
+import spp.codegen.llvm_mangle;
 import llvm;
 import std;
 
@@ -76,4 +77,30 @@ auto spp::codegen::create_coro_gen_ctor(
     ctx->builder.CreateRetVoid();
 
     return llvm_func;
+}
+
+
+auto spp::codegen::create_async_spawn_func(
+    LLvmCtx *ctx,
+    analyse::scopes::TypeSymbol const &fut_type_sym) -> llvm::Function* {
+    // Create the async spawn function.
+    const auto llvm_closure_func_ptr_type = llvm::PointerType::get(*ctx->context, 0);
+    const auto llvm_fut_ptr_type = llvm::PointerType::get(*ctx->context, 0);
+
+    const auto spawn_func_type = llvm::FunctionType::get(
+        llvm::Type::getVoidTy(*ctx->context),
+        {llvm_closure_func_ptr_type, llvm_fut_ptr_type}, false);
+
+    const auto internal_spawn_func_name = std::string("async_internal_spawn") + mangle::mangle_type_name(fut_type_sym);
+    if (const auto func = ctx->module->getFunction(internal_spawn_func_name); func != nullptr) {
+        return func;
+    }
+
+    const auto internal_spawn_func = llvm::Function::Create(
+        spawn_func_type, llvm::Function::InternalLinkage,
+        internal_spawn_func_name, ctx->module.get());
+
+    internal_spawn_func->addFnAttr(llvm::Attribute::NoUnwind);
+    internal_spawn_func->addFnAttr(llvm::Attribute::NoInline);
+    return internal_spawn_func;
 }

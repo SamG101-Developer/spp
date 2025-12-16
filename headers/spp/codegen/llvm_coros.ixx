@@ -7,6 +7,7 @@ import llvm;
 
 namespace spp::analyse::scopes {
     SPP_EXP_CLS class Scope;
+    SPP_EXP_CLS struct TypeSymbol;
 }
 
 namespace spp::asts {
@@ -42,4 +43,8 @@ namespace spp::codegen {
         asts::CoroutinePrototypeAst const *coro,
         LLvmCtx *ctx,
         analyse::scopes::Scope const &scope) -> llvm::Function*;
+
+    SPP_EXP_FUN auto create_async_spawn_func(
+        LLvmCtx *ctx,
+        analyse::scopes::TypeSymbol const &fut_type_sym) -> llvm::Function*;
 }
