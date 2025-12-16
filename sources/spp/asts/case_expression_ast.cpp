@@ -19,6 +19,7 @@ import spp.asts.case_pattern_variant_ast;
 import spp.asts.case_pattern_variant_else_ast;
 import spp.asts.case_pattern_variant_expression_ast;
 import spp.asts.let_statement_initialized_ast;
+import spp.asts.identifier_ast;
 import spp.asts.pattern_guard_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -88,9 +89,9 @@ auto spp::asts::CaseExpressionAst::clone() const
 
 spp::asts::CaseExpressionAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_case);
-    SPP_STRING_APPEND(cond);
-    SPP_STRING_APPEND(tok_of);
+    SPP_STRING_APPEND(tok_case).append(" ");
+    SPP_STRING_APPEND(cond).append(" ");
+    SPP_STRING_APPEND(tok_of).append(" ");
     SPP_STRING_EXTEND(branches);
     SPP_STRING_END;
 }
@@ -100,9 +101,9 @@ auto spp::asts::CaseExpressionAst::print(
     AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_case);
-    SPP_PRINT_APPEND(cond);
-    SPP_PRINT_APPEND(tok_of);
+    SPP_PRINT_APPEND(tok_case).append(" ");
+    SPP_PRINT_APPEND(cond).append(" ");
+    SPP_PRINT_APPEND(tok_of).append(" ");
     SPP_PRINT_EXTEND(branches);
     SPP_PRINT_END;
 }
@@ -119,6 +120,7 @@ auto spp::asts::CaseExpressionAst::stage_7_analyse_semantics(
     // Create the scope for the case expression.
     auto scope_name = analyse::scopes::ScopeBlockName("<case-expr#" + std::to_string(pos_start()) + ">");
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
+    Ast::stage_2_gen_top_level_scopes(sm, meta);
 
     // Analyse eac branch of the case expression.
     for (auto &&branch : branches) {
@@ -159,8 +161,14 @@ auto spp::asts::CaseExpressionAst::stage_8_check_memory(
 
     // Move into the "case" scope and check the memory satus of the symbols in the branches.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+
+    // Validate the memory state across all branches (also calls stage 8 from within).
+    meta->save();
+    meta->case_condition = cond.get();
     analyse::utils::mem_utils::validate_inconsistent_memory(
         branches | genex::views::ptr | genex::to<std::vector>(), sm, meta);
+    meta->restore();
 
     // Move out of the case expression scope.
     sm->move_out_of_current_scope();
@@ -174,8 +182,10 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
     -> llvm::Value* {
     // Determine if this "case" will be yielding an expression, and generate the condition.
     const auto is_expr = meta->assignment_target != nullptr;
-    cond->stage_10_code_gen_2(sm, meta, ctx); // Todo: needed? the patterns generates from the condition as needed.
+    cond->stage_10_code_gen_2(sm, meta, ctx);
+
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
 
     // Get the function, and create the end basic block.
     const auto func = ctx->builder.GetInsertBlock()->getParent();
