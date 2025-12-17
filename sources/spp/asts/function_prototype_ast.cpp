@@ -473,11 +473,21 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
     ctx->builder.SetInsertPoint(entry_bb);
 
     // Generate the parameters as variables.
-    param_group->stage_10_code_gen_2(sm, meta, ctx);
+    if (llvm_func != nullptr) {
+        param_group->stage_10_code_gen_2(sm, meta, ctx);
+    }
 
     // If there is an implementation, generate its code.
     const auto is_extern = no_impl_annotation || abstract_annotation;
-    if (no_impl_annotation and no_impl_annotation->name->val == "compiler_builtin") {
+    if (llvm_func == nullptr) {
+        // Generic base function so not generating for it.
+        // Manual scope skipping.
+        const auto final_scope = sm->current_scope->final_child_scope();
+        while (sm->current_scope != final_scope) {
+            sm->move_to_next_scope(false);
+        }
+    }
+    else if (no_impl_annotation and no_impl_annotation->name->val == "compiler_builtin") {
         impl->stage_10_code_gen_2(sm, meta, ctx); // scope skipping
         // auto manual_ir =
     }
