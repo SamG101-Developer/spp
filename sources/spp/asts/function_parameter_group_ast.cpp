@@ -207,6 +207,8 @@ auto spp::asts::FunctionParameterGroupAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Code generate each parameter.
-    params | genex::views::for_each([sm, meta, ctx](auto &&x) { x->stage_10_code_gen_2(sm, meta, ctx); });
+    for (auto &&param : params) {
+        param->stage_10_code_gen_2(sm, meta, ctx);
+    }
     return nullptr;
 }

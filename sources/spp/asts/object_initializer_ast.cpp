@@ -18,6 +18,7 @@ import spp.asts.object_initializer_argument_group_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_type;
 import llvm;
 import genex;
 
@@ -144,8 +145,9 @@ auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Create an empty struct based on the llvm type.
-    const auto llvm_type = sm->current_scope->get_type_symbol(type)->llvm_info->llvm_type;
+    // Create an empty struct based on the llvm type - will never be a borrow so always stack allocated, not a pointer.
+    const auto type_sym = sm->current_scope->get_type_symbol(type);
+    const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
 
     // Re-order the arguments to match the fields on the type.
     const auto cls_sym = sm->current_scope->get_type_symbol(type);

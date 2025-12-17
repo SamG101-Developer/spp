@@ -21,6 +21,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
+import spp.codegen.llvm_type;
 
 import genex;
 import llvm;
@@ -64,7 +65,8 @@ auto spp::asts::CoroutinePrototypeAst::m_generate_llvm_declaration(
     // Skip base generic functions, as they do not need coroutine generation.
     const auto [_, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(
         *return_type, *sm->current_scope, *return_type, "coroutine");
-    if (sm->current_scope->get_type_symbol(yield_type)->llvm_info->llvm_type != nullptr) {
+    const auto yield_type_sym = sm->current_scope->get_type_symbol(yield_type);
+    if (codegen::llvm_type(*yield_type_sym, ctx) != nullptr) {
         const auto coro_gen_ctor = codegen::create_coro_gen_ctor(this, ctx, *sm->current_scope);
         llvm_func = coro_gen_ctor;
     }

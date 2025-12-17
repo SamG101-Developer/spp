@@ -1,4 +1,4 @@
-module spp.codegen.llvm_type_registration;
+module spp.codegen.llvm_type;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.type_utils;
 import spp.analyse.scopes.symbols;
@@ -23,8 +23,10 @@ import std;
 
 auto spp::codegen::register_llvm_type_info(
     asts::ClassPrototypeAst const *cls_proto,
-    LLvmCtx *ctx)
+    LLvmCtx const *ctx)
     -> void {
+    // Note: because symbols have a convention attached to them, retrieval handles pointer logic for borrows.
+
     // $ types are 0-size types in LLVM.
     if (cls_proto->name->operator std::string()[0] == '$') {
         const auto zero_size_struct = llvm::StructType::create(*ctx->context, mangle::mangle_type_name(*cls_proto->get_cls_sym()));
@@ -87,4 +89,15 @@ auto spp::codegen::register_llvm_type_info(
 
     // Empty struct, will fill in stage_10 when all attributes' types have been generated.
     cls_sym->llvm_info->llvm_type = llvm::StructType::create(*ctx->context, mangle::mangle_type_name(*cls_sym));
+}
+
+
+auto spp::codegen::llvm_type(
+    analyse::scopes::TypeSymbol const &type_sym,
+    LLvmCtx const *ctx)
+    -> llvm::Type* {
+    // Either return the llvm type bound to the symbol, or a pointer for borrows.
+    return type_sym.convention != nullptr
+               ? llvm::PointerType::get(*ctx->context, 0)
+               : type_sym.llvm_info->llvm_type;
 }

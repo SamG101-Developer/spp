@@ -25,7 +25,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_type_registration;
+import spp.codegen.llvm_type;
 import spp.utils.error_formatter;
 import genex;
 
@@ -126,7 +126,7 @@ auto spp::analyse::scopes::ScopeManager::attach_llvm_type_info(
             codegen::register_llvm_type_info(cls_proto, ctx);
 
             // All aliases need llvm type info propagated from their aliased types.
-            const auto llvm_type = cls_proto->get_ast_scope()->ty_sym->llvm_info->llvm_type;
+            const auto llvm_type = codegen::llvm_type(*cls_proto->get_ast_scope()->ty_sym, ctx);
             for (auto const &alias_sym : cls_proto->get_ast_scope()->ty_sym->aliased_by_symbols) {
                 alias_sym->llvm_info->llvm_type = llvm_type;
             }
@@ -138,7 +138,7 @@ auto spp::analyse::scopes::ScopeManager::attach_llvm_type_info(
             codegen::register_llvm_type_info(generic_sub.second, ctx);
 
             // All generic aliases need llvm type info propagated from their aliased types.
-            const auto llvm_type = generic_sub.second->get_ast_scope()->ty_sym->llvm_info->llvm_type;
+            const auto llvm_type = codegen::llvm_type(*generic_sub.second->get_ast_scope()->ty_sym, ctx);
             for (auto const &alias_sym : generic_sub.second->get_ast_scope()->ty_sym->aliased_by_symbols) {
                 alias_sym->llvm_info->llvm_type = llvm_type;
             }

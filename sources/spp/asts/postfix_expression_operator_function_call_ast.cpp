@@ -39,6 +39,7 @@ import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import genex;
 import opex.cast;
@@ -590,8 +591,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_10_code_gen_2(
     const auto returns_agg = meta->assignment_target != nullptr;
     auto ret_storage = static_cast<llvm::AllocaInst*>(nullptr);
     if (returns_agg) {
-        const auto agg_ty = sm->current_scope->get_type_symbol(meta->assignment_target_type)->llvm_info->llvm_type;
-        ret_storage = ctx->builder.CreateAlloca(agg_ty, nullptr, "call.ret");
+        const auto agg_type_sym = sm->current_scope->get_type_symbol(meta->assignment_target_type);
+        const auto llvm_agg_type = codegen::llvm_type(*agg_type_sym, ctx);
+        ret_storage = ctx->builder.CreateAlloca(llvm_agg_type, nullptr, "call.ret");
         llvm_func_args.insert(llvm_func_args.begin(), ret_storage);
     }
 

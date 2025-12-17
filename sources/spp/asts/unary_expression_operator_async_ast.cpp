@@ -17,6 +17,7 @@ import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
+import spp.codegen.llvm_type;
 
 
 spp::asts::UnaryExpressionOperatorAsyncAst::UnaryExpressionOperatorAsyncAst(
@@ -88,7 +89,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_10_code_gen_2(
     // We need a "Fut[T]" object to work with immediately.
     const auto fut_type = infer_type(sm, meta);
     const auto fut_type_sym = sm->current_scope->get_type_symbol(fut_type);
-    const auto llvm_fut_type = fut_type_sym->llvm_info->llvm_type;
+    const auto llvm_fut_type = codegen::llvm_type(*fut_type_sym, ctx);
 
     // Allocate the future onto the stack and set the initial state.
     const auto fut_alloca = ctx->builder.CreateAlloca(llvm_fut_type, nullptr, "async.fut.alloca");
@@ -118,7 +119,6 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_10_code_gen_2(
 
         // Get the function calls type information.
         const auto rhs_type = meta->unary_expression_rhs->infer_type(sm, meta);
-        // const auto llvm_rhs_type = sm->current_scope->get_type_symbol(rhs_type)->llvm_info->llvm_type;
         const auto fut_param = fut_closure->getArg(0);
 
         // Set the future's state to completed.

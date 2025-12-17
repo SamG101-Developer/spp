@@ -114,6 +114,8 @@ auto spp::asts::SupImplementationAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Forward to members.
-    members | genex::views::for_each([sm, meta, ctx](auto &&m) { m->stage_10_code_gen_2(sm, meta, ctx); });
+    for (auto const &m : members) {
+        m->stage_10_code_gen_2(sm, meta, ctx);
+    }
     return nullptr;
 }

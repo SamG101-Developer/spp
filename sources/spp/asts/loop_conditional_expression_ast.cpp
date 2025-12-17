@@ -18,6 +18,7 @@ import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_type;
 import spp.lex.tokens;
 
 
@@ -170,8 +171,9 @@ auto spp::asts::LoopConditionalExpressionAst::stage_10_code_gen_2(
     // Handle the potential PHI node for returning a value out of the loop expression.
     auto phi = static_cast<llvm::PHINode*>(nullptr);
     if (is_expr) {
-        const auto ret_type_sym = sm->current_scope->get_type_symbol(infer_type(sm, meta))->llvm_info->llvm_type;
-        phi = ctx->builder.CreatePHI(ret_type_sym, 2, "loop.phi");
+        const auto ret_type_sym = sm->current_scope->get_type_symbol(infer_type(sm, meta));
+        const auto llvm_ret_type = codegen::llvm_type(*ret_type_sym, ctx);
+        phi = ctx->builder.CreatePHI(llvm_ret_type, 2, "loop.phi");
     }
 
     // Jump to the condition entry block.

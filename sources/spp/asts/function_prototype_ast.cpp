@@ -36,6 +36,7 @@ import spp.asts.generate.common_types;
 import spp.asts.mixins.compiler_stages;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_mangle;
+import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import genex;
 
@@ -157,9 +158,9 @@ auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
     codegen::LLvmCtx *ctx)
     -> llvm::Function* {
     // Generate the return and parameter types.
-    const auto llvm_ret_type = sm->current_scope->get_type_symbol(return_type)->llvm_info->llvm_type;
+    const auto llvm_ret_type = codegen::llvm_type(*sm->current_scope->get_type_symbol(return_type), ctx);
     const auto llvm_param_types = param_group->params
-        | genex::views::transform([&sm](auto const &x) { return sm->current_scope->get_type_symbol(x->type)->llvm_info->llvm_type; })
+        | genex::views::transform([&](auto const &x) { return codegen::llvm_type(*sm->current_scope->get_type_symbol(x->type), ctx); })
         | genex::to<std::vector>();
 
     if (llvm_ret_type != nullptr and genex::all_of(llvm_param_types, [](auto const &x) { return x != nullptr; })) {

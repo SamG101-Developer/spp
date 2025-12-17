@@ -23,6 +23,7 @@ import spp.asts.type_statement_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_mangle;
+import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import genex;
 import llvm;
@@ -135,26 +136,26 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
 auto spp::asts::ClassPrototypeAst::m_fill_llvm_mem_layout(
     analyse::scopes::ScopeManager *sm,
     analyse::scopes::TypeSymbol const *type_sym,
-    codegen::LLvmCtx *)
+    codegen::LLvmCtx *ctx)
     -> void {
     // Non-struct types are compiler known special types, or $ types - no generation needed.
-    if (type_sym->llvm_info->llvm_type == nullptr or not llvm::isa<llvm::StructType>(type_sym->llvm_info->llvm_type)) {
+    if (codegen::llvm_type(*type_sym, ctx) == nullptr or not llvm::isa<llvm::StructType>(codegen::llvm_type(*type_sym, ctx))) {
         return;
     }
 
     auto types = analyse::utils::type_utils::get_all_attrs(*type_sym->fq_name(), sm)
-        | genex::views::transform([](auto const &x) { return x.second->get_type_symbol(x.first->type)->llvm_info->llvm_type; })
+        | genex::views::transform([&](auto const &x) { return codegen::llvm_type(*x.second->get_type_symbol(x.first->type), ctx); })
         | genex::to<std::vector>();
 
     // If there are any generic types present (llvm_type is nullptr), skip the layout generation.
     if (genex::all_of(types, [](auto const &x) { return x != nullptr; })) {
-        const auto struct_type = llvm::dyn_cast<llvm::StructType>(type_sym->llvm_info->llvm_type);
+        const auto struct_type = llvm::dyn_cast<llvm::StructType>(codegen::llvm_type(*type_sym, ctx));
         struct_type->setBody(std::move(types));
     }
 
     // Pass this layout to aliases too.
     for (auto const &alias : type_sym->aliased_by_symbols) {
-        alias->llvm_info->llvm_type = type_sym->llvm_info->llvm_type;
+        alias->llvm_info->llvm_type = codegen::llvm_type(*type_sym, ctx);
     }
 }
 

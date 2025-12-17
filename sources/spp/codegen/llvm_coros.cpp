@@ -12,6 +12,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.codegen.llvm_mangle;
+import spp.codegen.llvm_type;
 import llvm;
 import std;
 
@@ -29,11 +30,11 @@ auto spp::codegen::create_coro_environment(
     auto fields = std::vector<llvm::Type*>();
     fields.emplace_back(llvm::Type::getInt8Ty(*ctx->context));
     fields.emplace_back(llvm::Type::getInt8Ty(*ctx->context));
-    fields.emplace_back(scope.get_type_symbol(yield_type)->llvm_info->llvm_type);
+    fields.emplace_back(llvm_type(*scope.get_type_symbol(yield_type), ctx));
 
     // For GenRes, the error slot is also required.
     if (analyse::utils::type_utils::symbolic_eq(*coro->return_type->without_generics(), *asts::generate::common_types_precompiled::GEN_RES, scope, scope)) {
-        fields.emplace_back(scope.get_type_symbol(error_type)->llvm_info->llvm_type);
+        fields.emplace_back(llvm_type(*scope.get_type_symbol(error_type), ctx));
     }
     else {
         // Dummy to keep field ordering consistent.
@@ -42,7 +43,7 @@ auto spp::codegen::create_coro_environment(
 
     // For Send != Void, the send slot is also required.
     if (not analyse::utils::type_utils::symbolic_eq(*send_type, *asts::generate::common_types_precompiled::VOID, scope, scope)) {
-        fields.emplace_back(scope.get_type_symbol(send_type)->llvm_info->llvm_type);
+        fields.emplace_back(llvm_type(*scope.get_type_symbol(send_type), ctx));
     }
     else {
         // Dummy to keep field ordering consistent.

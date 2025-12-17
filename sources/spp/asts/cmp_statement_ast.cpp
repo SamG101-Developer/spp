@@ -18,6 +18,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_mangle;
+import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import llvm;
 import genex;
@@ -188,14 +189,14 @@ auto spp::asts::CmpStatementAst::stage_9_code_gen_1(
 
     // Create the global variable for the constant.
     const auto type_sym = sm->current_scope->get_type_symbol(type);
-    const auto gv = new llvm::GlobalVariable(
-        *ctx->module, type_sym->llvm_info->llvm_type, true,
-        llvm::GlobalValue::ExternalLinkage, llvm::cast<llvm::Constant>(val),
+    const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
+    const auto llvm_global_var = new llvm::GlobalVariable(
+        *ctx->module, llvm_type, true, llvm::GlobalValue::ExternalLinkage, llvm::cast<llvm::Constant>(val),
         codegen::mangle::mangle_cmp_name(*sm->current_scope, *this));
 
     // Register in the llvm info.
     const auto var_sym = sm->current_scope->get_var_symbol(name);
-    var_sym->llvm_info->alloca = gv;
+    var_sym->llvm_info->alloca = llvm_global_var;
 
     return nullptr;
 }

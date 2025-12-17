@@ -10,6 +10,8 @@ import spp.analyse.scopes.symbols;
 import spp.asts.token_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_ctx;
+import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import llvm;
 import mppp;
@@ -134,7 +136,7 @@ auto spp::asts::FloatLiteralAst::stage_10_code_gen_2(
     // Get the type of the float literal.
     const auto type_ast = infer_type(sm, meta);
     const auto type_sym = sm->current_scope->get_type_symbol(type_ast);
-    const auto llvm_type = type_sym->llvm_info->llvm_type;
+    const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
 
     // Create the LLVM constant float value.
     const auto &semantics = llvm_type->getFltSemantics();
