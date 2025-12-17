@@ -198,11 +198,6 @@ auto spp::asts::IterExpressionAst::stage_10_code_gen_2(
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
 
-    meta->save();
-    meta->case_condition = cond.get();
-    branches | genex::views::for_each([sm, meta, ctx](auto const &x) { x->stage_10_code_gen_2(sm, meta, ctx); });
-    meta->restore();
-
     // Branching mechanism like "case" but instead of value matching, it's pattern matching on the generator state.
     // 1=>variable, 2=>exhausted, 3=>no value, 4=>exception
     // Also, each branch may have a guard on, so logical AND that with the pattern match.

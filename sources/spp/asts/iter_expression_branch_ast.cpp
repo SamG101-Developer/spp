@@ -86,6 +86,7 @@ auto spp::asts::IterExpressionBranchAst::m_codegen_combine_patterns(
     auto llvm_combined_pattern = static_cast<llvm::Value*>(nullptr);
 
     // Based on the pattern, determine the match condition.
+    pattern->stage_10_code_gen_2(sm, meta, ctx);
     if (pattern->to<IterPatternVariantVariableAst>() != nullptr) {
         constexpr auto state = static_cast<std::uint8_t>(codegen::CoroutineState::VARIABLE);
         const auto constant = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->context), state);
