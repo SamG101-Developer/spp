@@ -475,6 +475,7 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
     // Generate the parameters as variables.
     if (llvm_func != nullptr) {
         param_group->stage_10_code_gen_2(sm, meta, ctx);
+        generic_param_group->stage_10_code_gen_2(sm, meta, ctx);
     }
 
     // If there is an implementation, generate its code.
