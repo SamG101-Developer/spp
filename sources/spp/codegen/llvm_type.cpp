@@ -87,6 +87,13 @@ auto spp::codegen::register_llvm_type_info(
         }
     }
 
+
+    // If the type already exists in LLVM, skip.
+    if (const auto llvm_type = llvm::StructType::getTypeByName(*ctx->context, mangle::mangle_type_name(*cls_sym)); llvm_type != nullptr) {
+        cls_sym->llvm_info->llvm_type = llvm_type;
+        return;
+    }
+
     // Empty struct, will fill in stage_10 when all attributes' types have been generated.
     cls_sym->llvm_info->llvm_type = llvm::StructType::create(*ctx->context, mangle::mangle_type_name(*cls_sym));
 }
