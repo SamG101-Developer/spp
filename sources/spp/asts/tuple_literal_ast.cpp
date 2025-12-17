@@ -14,6 +14,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.lex.tokens;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_type;
 import genex;
 
 
@@ -126,6 +127,38 @@ auto spp::asts::TupleLiteralAst::stage_8_check_memory(
         analyse::utils::mem_utils::validate_symbol_memory(
             *elem, *elem, *sm, true, true, true, true, true, false, meta);
     }
+}
+
+
+auto spp::asts::TupleLiteralAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Create a struct, to hold the tuple elements (runtime numeric access maps to field indices).
+    const auto tuple_type = infer_type(sm, meta);
+    const auto tuple_type_sym = sm->current_scope->get_type_symbol(tuple_type);
+    const auto llvm_type = codegen::llvm_type(*tuple_type_sym, ctx);
+    SPP_ASSERT(llvm_type != nullptr);
+
+    // Create the alloca for the tuple.
+    const auto alloca = ctx->builder.CreateAlloca(llvm_type, nullptr, "tuple.alloca");
+    SPP_ASSERT(alloca != nullptr);
+
+    // Store each element into the tuple alloca.
+    for (std::size_t i = 0; i < elems.size(); ++i) {
+        const auto elem_value = elems[i]->stage_10_code_gen_2(sm, meta, ctx);
+        SPP_ASSERT(elem_value != nullptr);
+
+        const auto const_idx_0 = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), 0);
+        const auto const_idx_1 = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), i);
+        const auto elem_ptr = ctx->builder.CreateGEP(llvm_type, alloca, {const_idx_0, const_idx_1}, "tuple.elem.ptr");
+        ctx->builder.CreateStore(elem_value, elem_ptr);
+    }
+
+    // Load the tuple value from the alloca and return it.
+    const auto tuple_value = ctx->builder.CreateLoad(llvm_type, alloca, "tuple.val");
+    return tuple_value;
 }
 
 
