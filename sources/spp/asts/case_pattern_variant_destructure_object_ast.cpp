@@ -13,6 +13,7 @@ import spp.analyse.utils.type_utils;
 import spp.lex.tokens;
 import spp.asts.ast;
 import spp.asts.case_pattern_variant_destructure_attribute_binding_ast;
+import spp.asts.case_pattern_variant_literal_ast;
 import spp.asts.convention_ref_ast;
 import spp.asts.expression_ast;
 import spp.asts.function_call_argument_group_ast;
@@ -21,6 +22,7 @@ import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.let_statement_initialized_ast;
+import spp.asts.literal_ast;
 import spp.asts.local_variable_destructure_object_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
@@ -119,9 +121,9 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantic
     type = sm->current_scope->get_type_symbol(type)->fq_name();
 
     // Get the condition symbol if it exists.
-    auto cond_sym = sm->current_scope->get_var_symbol(ast_clone(meta->case_condition->to<IdentifierAst>()));
+    m_cond_sym = sm->current_scope->get_var_symbol(ast_clone(meta->case_condition->to<IdentifierAst>()));
     auto cond = meta->case_condition;
-    if (cond_sym == nullptr) {
+    if (m_cond_sym == nullptr) {
         auto cond_type = meta->case_condition->infer_type(sm, meta);
 
         // Create a variable and let statement for the condition.
@@ -132,20 +134,20 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantic
 
         // Set the memory information of the symbol based on the type of iteration.
         cond = var_name.get();
-        cond_sym = sm->current_scope->get_var_symbol(var_name);
+        m_cond_sym = sm->current_scope->get_var_symbol(var_name);
     }
 
     // Flow type the condition symbol if necessary.
-    if (analyse::utils::type_utils::is_type_variant(*cond_sym->type, *sm->current_scope)) {
-        if (not analyse::utils::type_utils::symbolic_eq(*cond_sym->type, *type, *sm->current_scope, *sm->current_scope)) {
+    if (analyse::utils::type_utils::is_type_variant(*m_cond_sym->type, *sm->current_scope)) {
+        if (not analyse::utils::type_utils::symbolic_eq(*m_cond_sym->type, *type, *sm->current_scope, *sm->current_scope)) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
-                .with_args(*meta->case_condition, *cond_sym->type, *type, *type)
+                .with_args(*meta->case_condition, *m_cond_sym->type, *type, *type)
                 .raises_from(sm->current_scope);
         }
 
-        const auto flow_sym = std::make_shared<analyse::scopes::VariableSymbol>(*cond_sym);
-        flow_sym->type = type;
-        sm->current_scope->add_var_symbol(flow_sym);
+        m_flow_sym = std::make_shared<analyse::scopes::VariableSymbol>(*m_cond_sym);
+        m_flow_sym->type = type;
+        sm->current_scope->add_var_symbol(m_flow_sym);
     }
 
     // Create the new variable from the pattern in the patterns scope.
@@ -169,6 +171,11 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
+    // Attach the alloca to the potential flow symbol from the outer version of it.
+    if (m_flow_sym and m_cond_sym) {
+        m_flow_sym->llvm_info->alloca = m_cond_sym->llvm_info->alloca;
+    }
+
     // Generate the "let" statement to introduce all the symbols.
     m_mapped_let->stage_10_code_gen_2(sm, meta, ctx);
 
@@ -178,7 +185,14 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_10_code_gen_2(
     // Iterate over each element in the destructuring pattern.
     for (auto const &[i, part] : elems | genex::views::ptr | genex::views::enumerate) {
         // For literals, generate the equality checks.
-        if (const auto attr_part = part->to<CasePatternVariantDestructureAttributeBindingAst>(); attr_part != nullptr) {
+        const auto attr_part = part->to<CasePatternVariantDestructureAttributeBindingAst>();
+        if (not attr_part) { continue; }
+
+        const auto literal_binding = attr_part->val->to<CasePatternVariantLiteralAst>();
+        if (not literal_binding) { continue; }
+
+        const auto literal = literal_binding->literal.get();
+        if (literal != nullptr) {
             // Generate the extraction on the condition for this part, like "cond.0".
             auto field_name = std::make_unique<IdentifierAst>(0, attr_part->name->val);
             auto field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
@@ -186,7 +200,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_10_code_gen_2(
 
             // Turn the "literal part" into a function argument.
             auto eq_arg_conv = std::make_unique<ConventionRefAst>(nullptr);
-            auto eq_arg_val = ast_clone(attr_part->val->to<ExpressionAst>());
+            auto eq_arg_val = ast_clone(literal->to<ExpressionAst>());
             auto eq_arg = std::make_unique<FunctionCallArgumentPositionalAst>(std::move(eq_arg_conv), nullptr, std::move(eq_arg_val));
 
             // Create the ".eq" part.
@@ -196,10 +210,11 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_10_code_gen_2(
 
             // Make the ".eq" part callable, as ".eq()" (no arguments right now)
             auto eq_call = std::make_unique<PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
-            const auto eq_call_expr = std::make_unique<PostfixExpressionAst>(std::move(eq_pf_expr), std::move(eq_call));
             eq_call->arg_group->args.emplace_back(std::move(eq_arg));
+            const auto eq_call_expr = std::make_unique<PostfixExpressionAst>(std::move(eq_pf_expr), std::move(eq_call));
 
             // Generate the equality check.
+            eq_call_expr->stage_7_analyse_semantics(sm, meta);
             const auto llvm_call = eq_call_expr->stage_10_code_gen_2(sm, meta, ctx);
             master_stmt = ctx->builder.CreateAnd(master_stmt, llvm_call);
         }
