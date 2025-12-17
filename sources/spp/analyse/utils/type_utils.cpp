@@ -662,6 +662,12 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     }
 
     // No more checks for tuples.
+    auto new_ast = asts::ast_clone(old_cls_scope->ast->to<asts::ClassPrototypeAst>());
+    new_ast->set_ast_scope(new_cls_scope_ptr);
+    new_ast->generic_param_group->params.clear();
+    const auto new_ast_ptr = new_ast.get();
+
+    old_cls_sym.type->register_generic_substitution(new_cls_scope_ptr, std::move(new_ast));
     if (is_tuple) {
         return new_cls_scope_ptr;
     }
@@ -682,16 +688,12 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
         }
     }
 
-    auto new_ast = asts::ast_clone(old_cls_scope->ast->to<asts::ClassPrototypeAst>());
-    new_ast->set_ast_scope(new_cls_scope_ptr);
-    new_ast->generic_param_group->params.clear();
-    for (auto *attr : new_ast->impl->members | genex::views::ptr | genex::views::cast_dynamic<asts::ClassAttributeAst*>()) {
+    for (auto *attr : new_ast_ptr->impl->members | genex::views::ptr | genex::views::cast_dynamic<asts::ClassAttributeAst*>()) {
         attr->type = attr->type->substitute_generics(substitution_generics);
         if (meta->current_stage > 5) {
             attr->stage_7_analyse_semantics(&tm, meta);
         }
     }
-    old_cls_sym.type->register_generic_substitution(new_cls_scope_ptr, std::move(new_ast));
 
     // Return the new class scope.
     return new_cls_scope_ptr;
