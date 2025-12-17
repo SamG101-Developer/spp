@@ -9,9 +9,13 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.asts.convention_ast;
+import spp.asts.generic_parameter_comp_optional_ast;
 import spp.asts.identifier_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
 
@@ -70,4 +74,26 @@ auto spp::asts::GenericParameterCompAst::stage_7_analyse_semantics(
     -> void {
     // Analyse the type.
     type->stage_7_analyse_semantics(sm, meta);
+}
+
+
+auto spp::asts::GenericParameterCompAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // The compile time constants' symbols need to be allocated into the function.
+    // Todo: need to be done as a "constant" (see GlobalConstantAst)
+    auto cast_name = IdentifierAst::from_type(*name);
+    const auto is_opt = to<GenericParameterCompOptionalAst>();
+
+    meta->save();
+    meta->let_stmt_explicit_type = type;
+    meta->let_stmt_from_uninitialized = not is_opt;
+    meta->let_stmt_value = is_opt ? is_opt->default_val.get() : nullptr;
+    const auto var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(cast_name), nullptr);
+    const auto alloca = var->stage_10_code_gen_2(sm, meta, ctx);
+    meta->restore();
+
+    return alloca;
 }

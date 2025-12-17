@@ -231,7 +231,7 @@ auto spp::asts::GenericParameterGroupAst::stage_2_gen_top_level_scopes(
     CompilerMetaData *meta)
     -> void {
     // Run the generation steps on the parameters in the group.
-    params | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
+    params | genex::views::for_each([&](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
 }
 
 
@@ -240,7 +240,7 @@ auto spp::asts::GenericParameterGroupAst::stage_4_qualify_types(
     CompilerMetaData *meta)
     -> void {
     // Run the type qualifier steps on each parameter in the group.
-    params | genex::views::for_each([sm, meta](auto &&x) { x->stage_4_qualify_types(sm, meta); });
+    params | genex::views::for_each([&](auto &&x) { x->stage_4_qualify_types(sm, meta); });
 }
 
 
@@ -248,7 +248,6 @@ auto spp::asts::GenericParameterGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-
     const auto param_names = params
         | genex::views::transform([](auto &&x) { return x->name.get(); })
         | genex::views::materialize
@@ -275,7 +274,7 @@ auto spp::asts::GenericParameterGroupAst::stage_7_analyse_semantics(
     }
 
     // Run the semantic analysis steps on each parameter in the group.
-    params | genex::views::for_each([sm, meta](auto &&x) { x->stage_7_analyse_semantics(sm, meta); });
+    params | genex::views::for_each([&](auto &&x) { x->stage_7_analyse_semantics(sm, meta); });
 }
 
 
@@ -284,5 +283,16 @@ auto spp::asts::GenericParameterGroupAst::stage_8_check_memory(
     CompilerMetaData *meta)
     -> void {
     // Run the memory checks on each parameter in the group.
-    params | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });
+    params | genex::views::for_each([&](auto &&x) { x->stage_8_check_memory(sm, meta); });
+}
+
+
+auto spp::asts::GenericParameterGroupAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Run the code generation steps on each parameter in the group.
+    params | genex::views::for_each([&](auto &&x) { x->stage_10_code_gen_2(sm, meta, ctx); });
+    return nullptr;
 }
