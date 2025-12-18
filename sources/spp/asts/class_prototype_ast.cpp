@@ -138,6 +138,8 @@ auto spp::asts::ClassPrototypeAst::m_fill_llvm_mem_layout(
     analyse::scopes::TypeSymbol const *type_sym,
     codegen::LLvmCtx *ctx)
     -> void {
+    // Todo: error if attribute's default value if a comp generic value?? Also TEST THIS
+
     // Non-struct types are compiler known special types, or $ types - no generation needed.
     if (codegen::llvm_type(*type_sym, ctx) == nullptr or not llvm::isa<llvm::StructType>(codegen::llvm_type(*type_sym, ctx))) {
         return;
