@@ -34,10 +34,7 @@ auto spp::codegen::create_coro_env_type(
     const auto send_type = generator_type->type_parts().back()->generic_arg_group->type_at("Send")->val;
 
     // Store the resume function.
-    const auto llvm_resume_func_type = llvm::FunctionType::get(
-        llvm::Type::getVoidTy(*ctx->context),
-        {llvm::PointerType::get(*ctx->context, 0), llvm_type(*scope.get_type_symbol(send_type), ctx)},
-        false);
+    const auto llvm_resume_func_ptr_type = llvm::PointerType::get(*ctx->context, 0);
 
     // Define the fields for the coro environment: coro state, current yield location.
     const auto llvm_state_type = llvm::Type::getInt8Ty(*ctx->context);
@@ -70,7 +67,7 @@ auto spp::codegen::create_coro_env_type(
 
     // Create the struct type and return it.
     const auto fields = std::vector<llvm::Type*>{
-        llvm_resume_func_type,
+        llvm_resume_func_ptr_type,
         llvm_state_type,
         llvm_location_type,
         llvm_arg_struct_type,
@@ -89,6 +86,7 @@ auto spp::codegen::create_coro_gen_ctor(
     analyse::scopes::Scope const &scope)
     -> std::tuple<llvm::Function*, llvm::Value*, llvm::Type*> {
     const auto [coro_env_type, coro_env_args_type] = create_coro_env_type(coro, ctx, scope);
+    SPP_ASSERT(coro_env_type != nullptr);
 
     // Create the gen ctor function - accept, fill, and return the generator environment.
     const auto llvm_func_name = coro->llvm_func->getName().str() + ".gen.ctor";

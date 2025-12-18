@@ -48,6 +48,10 @@ auto spp::asts::CoroutinePrototypeAst::clone() const
     ast->no_impl_annotation = no_impl_annotation;
     ast->inline_annotation = inline_annotation;
     ast->visibility = visibility;
+    ast->llvm_func = llvm_func;
+    ast->llvm_coro_yield_slot = llvm_coro_yield_slot;
+    ast->llvm_gen_env = llvm_gen_env;
+    ast->m_llvm_resume_fn = m_llvm_resume_fn;
     ast->annotations | genex::views::for_each([ast=ast.get()](auto const &a) { a->set_ast_ctx(ast); });
     return ast;
 }
@@ -94,22 +98,30 @@ auto spp::asts::CoroutinePrototypeAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
+    // Move into the coroutine scope.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
 
     // Create the coroutine contructor function.
     const auto [llvm_coro_ctor, llvm_gen_env, llem_gen_env_args_type] = codegen::create_coro_gen_ctor(this, ctx, *sm->current_scope);
     const auto llvm_coro_resume_func = codegen::create_coro_res_func(this, llem_gen_env_args_type, ctx, *sm->current_scope);
-    m_llvm_resume_fn = llvm_coro_resume_func;  // Save for interaction with ".res()" calls.
+    m_llvm_resume_fn = llvm_coro_resume_func; // Save for interaction with ".res()" calls.
+    this->llvm_gen_env = llvm_gen_env; // Save for interaction with ".res()" calls.
 
     // Load the resume function into the 0th field of the coroutine environment.
-    const auto resume_slot = ctx->builder.CreateStructGEP(llvm_coro_ctor->getReturnType(), llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::RES_FN));
-    ctx->builder.CreateStore(llvm_coro_resume_func, resume_slot);
+    ctx->builder.CreateStore(
+        ctx->builder.CreateBitCast(llvm_coro_resume_func, llvm::PointerType::get(*ctx->context, 0)),
+        ctx->builder.CreateStructGEP(llvm_coro_ctor->getReturnType(), llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::RES_FN)));
 
     // Entry block into the resume function.
     const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry", llvm_coro_resume_func);
     ctx->builder.SetInsertPoint(entry_bb);
+
+    meta->save();
+    meta->enclosing_function_flavour = this->tok_fun.get();
+    meta->enclosing_function_scope = sm->current_scope;
     impl->stage_10_code_gen_2(sm, meta, ctx);
+    meta->restore();
 
     // Reset to the start of the resume function to build the switch.
     ctx->builder.SetInsertPoint(entry_bb);
