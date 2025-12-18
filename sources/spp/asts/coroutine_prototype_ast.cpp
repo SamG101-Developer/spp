@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.asts.coroutine_prototype_ast;
@@ -93,6 +94,9 @@ auto spp::asts::CoroutinePrototypeAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
+    sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+
     // Create the coroutine contructor function.
     const auto [llvm_coro_ctor, llvm_gen_env, llem_gen_env_args_type] = codegen::create_coro_gen_ctor(this, ctx, *sm->current_scope);
     const auto llvm_coro_resume_func = codegen::create_coro_res_func(this, llem_gen_env_args_type, ctx, *sm->current_scope);
@@ -132,5 +136,6 @@ auto spp::asts::CoroutinePrototypeAst::stage_10_code_gen_2(
 
     // Reset the yield continuations for future coroutines.
     ctx->yield_continuations.clear();
+    sm->move_out_of_current_scope();
     return llvm_coro_ctor;
 }
