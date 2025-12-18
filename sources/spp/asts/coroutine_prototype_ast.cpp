@@ -52,29 +52,6 @@ auto spp::asts::CoroutinePrototypeAst::clone() const
 }
 
 
-auto spp::asts::CoroutinePrototypeAst::m_generate_llvm_declaration(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
-    -> llvm::Function* {
-    // Do the base functionality, then create the coroutine environment struct type.
-    const auto llvm_resume_fn = FunctionPrototypeAst::m_generate_llvm_declaration(sm, meta, ctx);
-    m_llvm_resume_fn = llvm_resume_fn;
-
-    // Create the generator constructor, that immediately returns the generator object.
-    // Skip base generic functions, as they do not need coroutine generation.
-    const auto [_, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(
-        *return_type, *sm->current_scope, *return_type, "coroutine");
-    const auto yield_type_sym = sm->current_scope->get_type_symbol(yield_type);
-    if (codegen::llvm_type(*yield_type_sym, ctx) != nullptr) {
-        const auto coro_gen_ctor = codegen::create_coro_gen_ctor(this, ctx, *sm->current_scope);
-        llvm_func = coro_gen_ctor;
-    }
-
-    return llvm_func;
-}
-
-
 auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
@@ -108,4 +85,52 @@ auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
     sm->move_out_of_current_scope();
     meta->restore(true);
     meta->loop_return_types->clear();
+}
+
+
+auto spp::asts::CoroutinePrototypeAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Create the coroutine contructor function.
+    const auto [llvm_coro_ctor, llvm_gen_env, llem_gen_env_args_type] = codegen::create_coro_gen_ctor(this, ctx, *sm->current_scope);
+    const auto llvm_coro_resume_func = codegen::create_coro_res_func(this, llem_gen_env_args_type, ctx, *sm->current_scope);
+    m_llvm_resume_fn = llvm_coro_resume_func;  // Save for interaction with ".res()" calls.
+
+    // Load the resume function into the 0th field of the coroutine environment.
+    const auto resume_slot = ctx->builder.CreateStructGEP(llvm_coro_ctor->getReturnType(), llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::RES_FN));
+    ctx->builder.CreateStore(llvm_coro_resume_func, resume_slot);
+
+    // Entry block into the resume function.
+    const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry", llvm_coro_resume_func);
+    ctx->builder.SetInsertPoint(entry_bb);
+    impl->stage_10_code_gen_2(sm, meta, ctx);
+
+    // Reset to the start of the resume function to build the switch.
+    ctx->builder.SetInsertPoint(entry_bb);
+
+    // Create the "switch" header block, mapping location values to labels.
+    const auto number_of_yields = static_cast<std::uint32_t>(ctx->yield_continuations.size());
+    const auto switch_bb = llvm::BasicBlock::Create(*ctx->context, "coro.switch", llvm_coro_resume_func);
+
+    // Switch on the value loaded from the coroutine environment's location field.
+    const auto loc_field = ctx->builder.CreateStructGEP(llvm::PointerType::get(*ctx->context, 0), llvm_coro_resume_func->getArg(0), 1);
+    const auto loc_value = ctx->builder.CreateLoad(llvm::Type::getInt32Ty(*ctx->context), loc_field);
+    const auto switch_inst = ctx->builder.CreateSwitch(loc_value, switch_bb, number_of_yields + 1);
+
+    // Case for "0" => start of the coroutine.
+    const auto start_bb = llvm::BasicBlock::Create(*ctx->context, "coro.start", llvm_coro_resume_func);
+    switch_inst->addCase(llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), 0), start_bb);
+    ctx->builder.SetInsertPoint(start_bb);
+
+    // Loop up the yield counter, generating a "case" and "jump" for each yield point.
+    for (std::size_t i = 0; i < number_of_yields; ++i) {
+        const auto target_block = ctx->yield_continuations[i];
+        switch_inst->addCase(llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), i + 1), target_block);
+    }
+
+    // Reset the yield continuations for future coroutines.
+    ctx->yield_continuations.clear();
+    return llvm_coro_ctor;
 }

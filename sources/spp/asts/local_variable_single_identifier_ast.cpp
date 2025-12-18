@@ -149,7 +149,12 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_10_code_gen_2(
     const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
     SPP_ASSERT(llvm_type != nullptr);
 
-    const auto alloca = ctx->builder.CreateAlloca(llvm_type, nullptr, "local_var");
+    // Always alloca at the top of the function for stack variables.
+    const auto func = ctx->builder.GetInsertBlock()->getParent();
+    const auto entry = &func->getEntryBlock();
+    auto temp_builder = llvm::IRBuilder(entry, entry->begin());
+
+    const auto alloca = temp_builder.CreateAlloca(llvm_type, nullptr, "local_var");
     sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name)->llvm_info->alloca = alloca;
 
     // Generate the initializer expression.

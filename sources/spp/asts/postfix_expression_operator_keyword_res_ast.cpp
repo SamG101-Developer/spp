@@ -5,6 +5,7 @@ module spp.asts.postfix_expression_operator_keyword_res_ast;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.type_utils;
 import spp.asts.fold_expression_ast;
+import spp.asts.function_call_argument_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.identifier_ast;
@@ -19,6 +20,7 @@ import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_coros;
 import spp.lex.tokens;
 
 
@@ -114,8 +116,31 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Forward the generation to the "send" function, which in turn runs the internal "resume" (llvm).
-    return m_mapped_func->stage_10_code_gen_2(sm, meta, ctx);
+    // The llvm generator environment is the lhs of this postfix expression. (both Gen and Generated are the env, but
+    // separate types for analysis). the "resuming" on Generated types simply shiftf the state inside the environment.
+    const auto llvm_gen_env = meta->postfix_expression_lhs->stage_10_code_gen_2(sm, meta, ctx);
+
+    // Get the resume function pointer (field 0) from the generator environment.
+    const auto llvm_gen_env_type = llvm::PointerType::get(*ctx->context, 0);
+    const auto llvm_resume_func_ptr = ctx->builder.CreateStructGEP(
+        llvm_gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::RES_FN));
+    const auto llvm_resume_func = ctx->builder.CreateLoad(
+        llvm_resume_func_ptr->getType(), llvm_resume_func_ptr);
+
+    // Convert the send value, if it exists, to the correct LLVM type.
+    const auto llvm_send_value = arg_group != nullptr and not arg_group->args.empty()
+                                     ? arg_group->args[0]->stage_10_code_gen_2(sm, meta, ctx)
+                                     : llvm::Constant::getNullValue(llvm::Type::getInt8Ty(*ctx->context));
+
+    // Call the resume function with the generator environment and send value.
+    ctx->builder.CreateCall(
+        llvm::FunctionType::get(
+            llvm::Type::getVoidTy(*ctx->context),
+            {llvm::PointerType::get(*ctx->context, 0), llvm_send_value->getType()}, false),
+        llvm_resume_func, {llvm_gen_env, llvm_send_value});
+
+    // Return the generated value (ie wrapped in the generator environment).
+    return llvm_gen_env;
 }
 
 

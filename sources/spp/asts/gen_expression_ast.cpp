@@ -25,6 +25,7 @@ import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_coros;
 import spp.lex.tokens;
 
 import llvm;
@@ -174,11 +175,67 @@ auto spp::asts::GenExpressionAst::stage_8_check_memory(
 
 
 auto spp::asts::GenExpressionAst::stage_10_code_gen_2(
-    ScopeManager *,
-    CompilerMetaData *,
-    codegen::LLvmCtx *)
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    throw std::runtime_error("NOT IMPLEMENTED YET");
+    // Get the generator environment.
+    const auto coro = meta->enclosing_function_scope->ast->to<CoroutinePrototypeAst>();
+    const auto llvm_gen_env = coro->llvm_gen_env;
+    SPP_ASSERT(llvm_gen_env != nullptr);
+
+    const auto [_, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(
+        *m_gen_type, *sm->current_scope, *m_gen_type, "gen");
+    const auto yielded_type = expr ? expr->infer_type(sm, meta) : nullptr;
+    const auto is_exception = yielded_type and analyse::utils::type_utils::symbolic_eq(
+        *yield_type, *yielded_type, *sm->current_scope, *sm->current_scope);
+    const auto gen_env_type = llvm::PointerType::get(*ctx->context, 0);
+
+    // Generate the value and store it in the generator environment.
+    if (expr != nullptr and not is_exception) {
+        ctx->builder.CreateStore(
+            llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->context), static_cast<std::uint8_t>(codegen::CoroutineState::VARIABLE)),
+            ctx->builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::STATE)));
+
+        ctx->builder.CreateStore(
+            expr->stage_10_code_gen_2(sm, meta, ctx),
+            ctx->builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::YIELD_SLOT)));
+    }
+
+    // Generate the exception and store it in the generator environment.
+    else if (is_exception) {
+        ctx->builder.CreateStore(
+            llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->context), static_cast<std::uint8_t>(codegen::CoroutineState::EXCEPTION)),
+            ctx->builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::STATE)));
+
+        ctx->builder.CreateStore(
+            expr->stage_10_code_gen_2(sm, meta, ctx),
+            ctx->builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::ERROR_SLOT)));
+    }
+
+    // No expression => store "no value" state.
+    else {
+        ctx->builder.CreateStore(
+            llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->context), static_cast<std::uint8_t>(codegen::CoroutineState::NO_VALUE)),
+            ctx->builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::STATE)));
+
+        ctx->builder.CreateStore(
+            llvm::UndefValue::get(llvm::Type::getVoidTy(*ctx->context)),
+            ctx->builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::YIELD_SLOT)));
+    }
+
+    ctx->builder.CreateRetVoid();
+
+    // Continuation block.
+    const auto cont_bb = llvm::BasicBlock::Create(*ctx->context, "gen.cont", ctx->builder.GetInsertBlock()->getParent());
+    ctx->yield_continuations.push_back(cont_bb);
+    ctx->builder.SetInsertPoint(cont_bb);
+
+    // If this gen expression was "sent" a value, return it. Read off of the "send" slot.
+    const auto send_slot_ptr = ctx->builder.CreateStructGEP(
+        gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::SEND_SLOT));
+    return ctx->builder.CreateLoad(
+        ctx->builder.getInt8Ty(), send_slot_ptr);
 }
 
 

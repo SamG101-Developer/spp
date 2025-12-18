@@ -17,6 +17,7 @@ SPP_EXP_CLS struct spp::codegen::LLvmCtx {
     llvm::IRBuilder<> builder;
     std::map<std::string, llvm::Constant*> global_constants;
     bool in_constant_context = false;
+    std::vector<llvm::BasicBlock*> yield_continuations;
 
     LLvmCtx(LLvmCtx const &) = delete;
     LLvmCtx(LLvmCtx &&) noexcept = delete;
