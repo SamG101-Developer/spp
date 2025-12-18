@@ -151,10 +151,11 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::stage_10_code_gen_2(
 
             // Make the ".eq" part callable, as ".eq()" (no arguments right now)
             auto eq_call = std::make_unique<PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
-            const auto eq_call_expr = std::make_unique<PostfixExpressionAst>(std::move(eq_pf_expr), std::move(eq_call));
             eq_call->arg_group->args.emplace_back(std::move(eq_arg));
+            const auto eq_call_expr = std::make_unique<PostfixExpressionAst>(std::move(eq_pf_expr), std::move(eq_call));
 
             // Generate the equality check.
+            eq_call_expr->stage_7_analyse_semantics(sm, meta);
             const auto llvm_call = eq_call_expr->stage_10_code_gen_2(sm, meta, ctx);
             master_stmt = ctx->builder.CreateAnd(master_stmt, llvm_call);
         }
