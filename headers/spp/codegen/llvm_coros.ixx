@@ -21,7 +21,7 @@ namespace spp::codegen {
         VARIABLE,
         EXHAUSTED,
         NO_VALUE, // On GenOpt
-        ERROR, // On GenRes
+        EXCEPTION, // On GenRes
     };
 
     SPP_EXP_FUN auto create_coro_environment(

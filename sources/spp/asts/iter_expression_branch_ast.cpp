@@ -103,7 +103,7 @@ auto spp::asts::IterExpressionBranchAst::m_codegen_combine_patterns(
         llvm_combined_pattern = ctx->builder.CreateICmpEQ(yield_val, constant, "iter.pattern.match");
     }
     else if (pattern->to<IterPatternVariantExceptionAst>() != nullptr) {
-        constexpr auto state = static_cast<std::uint8_t>(codegen::CoroutineState::ERROR);
+        constexpr auto state = static_cast<std::uint8_t>(codegen::CoroutineState::EXCEPTION);
         const auto constant = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->context), state);
         llvm_combined_pattern = ctx->builder.CreateICmpEQ(yield_val, constant, "iter.pattern.match");
     }
