@@ -175,13 +175,6 @@ auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
         llvm_func = created_llvm_func;
     }
     return llvm_func;
-
-    // Name the parameters from the ASTs.
-    // auto llvm_param_iter = created_llvm_func->arg_begin();
-    // for (const auto &param : param_group->params) {
-    //     llvm_param_iter->setName(param->extract_name()->val);
-    //     ++llvm_param_iter;
-    // }
 }
 
 
@@ -489,13 +482,15 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
         }
     }
     else if (no_impl_annotation and no_impl_annotation->name->val == "compiler_builtin") {
-        impl->stage_10_code_gen_2(sm, meta, ctx); // scope skipping
-        // auto manual_ir =
+        // Get manual IR from a codegen module.
+        impl->stage_10_code_gen_2(sm, meta, ctx);
     }
     else if (not is_extern) {
+        // Generate the function implementation.
         impl->stage_10_code_gen_2(sm, meta, ctx);
     }
     else {
+        // Skip the scope, linker will provide implementation for ffi.
         impl->stage_10_code_gen_2(sm, meta, ctx);
     }
 
