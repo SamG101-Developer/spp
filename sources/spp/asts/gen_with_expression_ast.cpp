@@ -169,6 +169,14 @@ auto spp::asts::GenWithExpressionAst::stage_10_code_gen_2(
     // Build the loop expression with the iterable condition.
     const auto loop_expr = std::make_unique<LoopIterableExpressionAst>(
         nullptr, std::move(temp_var), nullptr, std::move(expr), std::move(loop_body), nullptr);
+
+    // Analyse it to transform into the correct form (conditional loop).
+    const auto current_scope = sm->current_scope;
+    auto iter_copy = sm->current_iterator();
+    loop_expr->stage_7_analyse_semantics(sm, meta);
+    sm->reset(current_scope, iter_copy);
+
+    // Reset the scope to before the loop and then generate it.
     return loop_expr->stage_10_code_gen_2(sm, meta, ctx);
 }
 
