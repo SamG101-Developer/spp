@@ -192,7 +192,6 @@ auto spp::asts::IterExpressionAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Todo : Proper implementation
     const auto is_expr = meta->assignment_target != nullptr;
     cond->stage_10_code_gen_2(sm, meta, ctx);
 

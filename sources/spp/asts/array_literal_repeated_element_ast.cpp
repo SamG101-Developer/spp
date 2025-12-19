@@ -154,6 +154,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
+    // Get the size from the generic comp arg.
     const auto num_vals = std::stoull(size->to<IntegerLiteralAst>()->val->token_data);
 
     // Runtime allocation. Todo: Can this be removed for comp only?
