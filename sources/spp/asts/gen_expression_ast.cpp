@@ -39,6 +39,7 @@ spp::asts::GenExpressionAst::GenExpressionAst(
     tok_gen(std::move(tok_gen)),
     conv(std::move(conv)),
     expr(std::move(expr)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_gen, lex::SppTokenType::KW_GEN, "gen");
 }
 
 
