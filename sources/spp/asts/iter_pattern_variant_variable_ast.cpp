@@ -45,8 +45,10 @@ auto spp::asts::IterPatternVariantVariableAst::pos_end() const
 
 auto spp::asts::IterPatternVariantVariableAst::clone() const
     -> std::unique_ptr<Ast> {
-    return std::make_unique<IterPatternVariantVariableAst>(
+    auto i = std::make_unique<IterPatternVariantVariableAst>(
         ast_clone(var));
+    i->m_mapped_let = ast_clone(m_mapped_let);
+    return i;
 }
 
 

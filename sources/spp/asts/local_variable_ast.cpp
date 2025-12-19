@@ -3,7 +3,6 @@ import spp.asts.let_statement_initialized_ast;
 
 
 spp::asts::LocalVariableAst::LocalVariableAst() :
-    m_mapped_let(nullptr),
     m_from_case_pattern(false) {
 }
 

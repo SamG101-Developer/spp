@@ -6,6 +6,7 @@ module spp.asts.case_pattern_variant_expression_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.case_utils;
 import spp.analyse.utils.mem_utils;
 import spp.asts.convention_ref_ast;
 import spp.asts.expression_ast;
@@ -74,6 +75,9 @@ auto spp::asts::CasePatternVariantExpressionAst::stage_7_analyse_semantics(
     // Forward analysis into the expression.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
     expr->stage_7_analyse_semantics(sm, meta);
+
+    analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_dummy(
+        {this}, sm, meta);
 }
 
 
@@ -93,23 +97,7 @@ auto spp::asts::CasePatternVariantExpressionAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Turn the "literal part" into a function argument.
-    auto eq_arg_conv = std::make_unique<ConventionRefAst>(nullptr);
-    auto eq_arg_val = ast_clone(expr.get());
-    auto eq_arg = std::make_unique<FunctionCallArgumentPositionalAst>(std::move(eq_arg_conv), nullptr, std::move(eq_arg_val));
-
-    // Create the ".eq" part.
-    auto eq_field_name = std::make_unique<IdentifierAst>(0, "eq");
-    auto eq_field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(eq_field_name));
-    auto eq_pf_expr = std::make_unique<PostfixExpressionAst>(ast_clone(meta->case_condition), std::move(eq_field));
-
-    // Make the ".eq" part callable, as ".eq()" (no arguments right now)
-    auto eq_call = std::make_unique<PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
-    eq_call->arg_group->args.emplace_back(std::move(eq_arg));
-    const auto eq_call_expr = std::make_unique<PostfixExpressionAst>(std::move(eq_pf_expr), std::move(eq_call));
-
-    // Generate the equality check.
-    eq_call_expr->stage_7_analyse_semantics(sm, meta); // Load the overload information.
-    const auto llvm_call = eq_call_expr->stage_10_code_gen_2(sm, meta, ctx);
-    return llvm_call;
+    const auto llvm_master_transform = analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs(
+        {this}, sm, meta, ctx);
+    return llvm_master_transform[0];
 }

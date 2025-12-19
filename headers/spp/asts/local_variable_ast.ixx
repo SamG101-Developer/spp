@@ -15,11 +15,6 @@ namespace spp::asts {
 
 SPP_EXP_CLS struct spp::asts::LocalVariableAst : virtual Ast {
 protected:
-    /**
-     * The @c let statement that destructures are converted to, to introduce the variables created by the pattern.
-     */
-    std::unique_ptr<LetStatementInitializedAst> m_mapped_let;
-
     bool m_from_case_pattern;
 
 public:

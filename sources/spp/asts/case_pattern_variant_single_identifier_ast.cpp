@@ -38,10 +38,12 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::pos_end() const
 
 auto spp::asts::CasePatternVariantSingleIdentifierAst::clone() const
     -> std::unique_ptr<Ast> {
-    return std::make_unique<CasePatternVariantSingleIdentifierAst>(
+    auto i = std::make_unique<CasePatternVariantSingleIdentifierAst>(
         ast_clone(tok_mut),
         ast_clone(name),
         ast_clone(alias));
+    i->m_mapped_let = ast_clone(m_mapped_let);
+    return i;
 }
 
 
@@ -81,8 +83,7 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::stage_7_analyse_semantics
     -> void {
     // Forward analysis into the name and alias.
     auto var = convert_to_variable(meta);
-    m_mapped_let = std::make_unique<LetStatementInitializedAst>(
-        nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
+    m_mapped_let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
     m_mapped_let->stage_7_analyse_semantics(sm, meta);
 }
 

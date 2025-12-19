@@ -44,9 +44,11 @@ auto spp::asts::IterPatternVariantExceptionAst::pos_end() const
 
 auto spp::asts::IterPatternVariantExceptionAst::clone() const
     -> std::unique_ptr<Ast> {
-    return std::make_unique<IterPatternVariantExceptionAst>(
+    auto i = std::make_unique<IterPatternVariantExceptionAst>(
         ast_clone(tok_exc),
         ast_clone(var));
+    i->m_mapped_let = ast_clone(m_mapped_let);
+    return i;
 }
 
 
