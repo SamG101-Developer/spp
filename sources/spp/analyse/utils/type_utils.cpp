@@ -769,11 +769,12 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     for (auto const &scoped_sym : new_sup_scope_ptr->all_type_symbols(true)) {
         if (scoped_sym->alias_stmt != nullptr) {
             auto old_type_sub = scoped_sym->alias_stmt->old_type->substitute_generics(generic_args.args | genex::views::ptr | genex::to<std::vector>());
-            // old_type_sub->stage_7_analyse_semantics(&tm, meta);
+            // old_type_sub->stage_7_analyse_semantics(&tm, meta);  Todo: Why is this commented?
             const auto old_type_sub_sym = new_sup_scope_ptr->get_type_symbol(old_type_sub);
 
             scoped_sym->alias_stmt->old_type = std::move(old_type_sub);
             if (old_type_sub_sym != nullptr) {
+                old_type_sub_sym->aliased_by_symbols.push_back(scoped_sym);
                 scoped_sym->type = old_type_sub_sym->type;
                 scoped_sym->scope = old_type_sub_sym->scope;
             }
