@@ -47,12 +47,20 @@ auto spp::codegen::register_llvm_type_info(
         | genex::to<std::vector>();
 
     if (ancestor_names == std::vector<std::string>{"std", "void", "Void"}) {
+        // Lower S++ "Void" to the llvm "void" type.
         cls_sym->llvm_info->llvm_type = llvm::Type::getVoidTy(*ctx->context);
         return;
     }
 
     if (ancestor_names == std::vector<std::string>{"std", "boolean", "Bool"}) {
+        // Lower S++ "Bool" to the llvm "i1" type.
         cls_sym->llvm_info->llvm_type = llvm::Type::getInt1Ty(*ctx->context);
+        return;
+    }
+
+    if (ancestor_names == std::vector<std::string>{"std", "string_view", "StrView"}) {
+        // Lower S++ "StrView" to the llvm "i8*" type.
+        cls_sym->llvm_info->llvm_type = llvm::PointerType::get(*ctx->context, 0);
         return;
     }
 
