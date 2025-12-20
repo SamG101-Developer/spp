@@ -68,12 +68,12 @@ auto spp::analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs(
             eq_call->arg_group->args.emplace_back(std::move(eq_arg));
             const auto eq_call_expr = std::make_unique<asts::PostfixExpressionAst>(std::move(eq_pf_expr), std::move(eq_call));
 
-            // Generate the equality check.
             const auto current_scope = sm->current_scope;
-            const auto current_scope_iterator = sm->current_iterator();
+            const auto current_scope_iter = sm->current_iterator();
             eq_call_expr->stage_7_analyse_semantics(sm, meta);
-            sm->reset(current_scope, current_scope_iterator);
+            sm->reset(current_scope, current_scope_iter);
 
+            // Generate the equality check.
             const auto llvm_call = eq_call_expr->stage_10_code_gen_2(sm, meta, ctx);
             llvm_values.emplace_back(llvm_call);
         }
@@ -137,7 +137,6 @@ auto spp::analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_dummy(
             auto eq_call = std::make_unique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
             eq_call->arg_group->args.emplace_back(std::move(eq_arg));
             const auto eq_call_expr = std::make_unique<asts::PostfixExpressionAst>(std::move(eq_pf_expr), std::move(eq_call));
-
             eq_call_expr->stage_7_analyse_semantics(sm, meta);
         }
     }

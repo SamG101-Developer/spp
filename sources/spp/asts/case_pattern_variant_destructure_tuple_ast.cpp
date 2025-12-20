@@ -134,6 +134,11 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the "let" statement to introduce all the symbols.
+    if (m_mapped_let == nullptr) {
+        auto var = convert_to_variable(meta);
+        m_mapped_let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
+        m_mapped_let->stage_7_analyse_semantics(sm, meta);
+    }
     m_mapped_let->stage_10_code_gen_2(sm, meta, ctx);
 
     // Combine all the generated transforms into a single "AND"ed statement.
