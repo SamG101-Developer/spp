@@ -7,7 +7,6 @@ import ankerl;
 import llvm;
 import std;
 
-
 namespace spp::asts {
     SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct IdentifierAst;
@@ -25,6 +24,10 @@ namespace spp::analyse::scopes {
 namespace spp::asts::meta {
     SPP_EXP_CLS struct CompilerMetaDataState;
     SPP_EXP_CLS struct CompilerMetaData;
+}
+
+namespace spp::codegen {
+    SPP_EXP_CLS struct LLvmCtx;
 }
 
 
@@ -60,6 +63,7 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     std::shared_ptr<TypeAst> ignore_cmp_generic;
     llvm::PHINode *phi_node;
     llvm::BasicBlock *end_bb;
+    codegen::LLvmCtx *llvm_ctx;
 };
 
 

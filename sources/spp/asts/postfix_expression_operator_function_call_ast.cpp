@@ -273,6 +273,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             }
 
             // Create a new overload with the generic arguments applied.
+            // Todo: should re-use generic substituted prototypes when available. Then remove the manual generation.
             auto generic_args_raw = generic_args | genex::views::ptr | genex::to<std::vector>();
             if (not generic_args_raw.empty()) {
                 auto new_fn_proto = ast_clone(fn_proto);
@@ -304,6 +305,11 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 fn_proto->registered_generic_substitutions().back().second = std::move(new_fn_proto);
                 fn_proto = new_fn_proto_ptr;
                 fn_scope = new_fn_scope;
+
+                // Todo: Remove this once re-using prototypes is done.
+                if (meta->current_stage == 12) {
+                    fn_proto->m_generate_llvm_declaration(&tm, meta, meta->llvm_ctx);
+                }
             }
 
             // Check any params are void, pop them (indexes because of unique pointers).

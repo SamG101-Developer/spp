@@ -235,6 +235,7 @@ auto spp::compiler::CompilerBoot::stage_10_code_gen_2(
     // Code generation stage.
     for (auto const &[mod, ctx] : genex::views::zip(m_modules, m_llvm_ctxs | genex::views::ptr)) {
         PREP_SCOPE_MANAGER_AND_META(12.0);
+        meta.llvm_ctx = ctx;
         mod->stage_10_code_gen_2(sm, &meta, ctx);
         sm->reset();
         bar.next();

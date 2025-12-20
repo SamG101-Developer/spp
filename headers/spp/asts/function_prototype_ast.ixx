@@ -167,7 +167,7 @@ public:
 private:
     auto m_deduce_mock_class_type() const -> std::shared_ptr<TypeAst>;
 
-protected:
+public:
     virtual auto m_generate_llvm_declaration(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Function*;
 
 public:
