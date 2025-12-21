@@ -211,6 +211,8 @@ auto spp::asts::IterExpressionAst::stage_10_code_gen_2(
         const auto llvm_ret_type = codegen::llvm_type(*ret_type_sym, ctx);
         phi = ctx->builder.CreatePHI(llvm_ret_type, branches.size() as U32, "iter.phi");
     }
+    meta->assignment_target = nullptr;
+    meta->assignment_target_type = nullptr;
 
     // Set "iter" information to the meta struct for branches and patterns to use.
     meta->save();

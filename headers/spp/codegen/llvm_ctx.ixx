@@ -5,6 +5,10 @@ export module spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class Scope;
+}
+
 namespace spp::codegen {
     SPP_EXP_CLS struct LLvmCtx;
     auto global_context = new llvm::LLVMContext();
@@ -17,7 +21,17 @@ SPP_EXP_CLS struct spp::codegen::LLvmCtx {
     llvm::IRBuilder<> builder;
     std::map<std::string, llvm::Constant*> global_constants;
     bool in_constant_context = false;
+
+    // Coroutine information.
     std::vector<llvm::BasicBlock*> yield_continuations;
+
+    // Closure tracking information.
+    llvm::Type *current_closure_type = nullptr;
+    analyse::scopes::Scope *current_closure_scope = nullptr;
+
+    // Loop black tracking information (for loop control flow).
+    std::stack<llvm::BasicBlock*> loop_end_bb_stack; // Allows breaking out of N loops.
+    llvm::BasicBlock *loop_innermost_cond_bb = nullptr; // For "skip" statements.
 
     LLvmCtx(LLvmCtx const &) = delete;
     LLvmCtx(LLvmCtx &&) noexcept = delete;

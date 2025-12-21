@@ -13,6 +13,7 @@ export namespace llvm {
     using ::llvm::dyn_cast;
     using ::llvm::errs;
     using ::llvm::isa;
+    using ::llvm::install_fatal_error_handler;
     using ::llvm::raw_fd_ostream;
     using ::llvm::fltSemantics;
 
