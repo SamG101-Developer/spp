@@ -117,9 +117,11 @@ auto spp::asts::CoroutinePrototypeAst::stage_10_code_gen_2(
     const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry", llvm_coro_resume_func);
     ctx->builder.SetInsertPoint(entry_bb);
 
+    const auto ret_type_sym = sm->current_scope->get_type_symbol(return_type);
     meta->save();
     meta->enclosing_function_flavour = this->tok_fun.get();
     meta->enclosing_function_scope = sm->current_scope;
+    meta->enclosing_function_ret_type.emplace_back(ret_type_sym->fq_name());
     impl->stage_10_code_gen_2(sm, meta, ctx);
     meta->restore();
 

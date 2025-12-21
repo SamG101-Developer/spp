@@ -33,6 +33,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.mixins.compiler_stages;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_mangle;
@@ -471,6 +472,12 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
         generic_param_group->stage_10_code_gen_2(sm, meta, ctx);
     }
 
+    const auto ret_type_sym = sm->current_scope->get_type_symbol(return_type);
+    meta->save();
+    meta->enclosing_function_flavour = this->tok_fun.get();
+    meta->enclosing_function_ret_type.emplace_back(ret_type_sym->fq_name());
+    meta->enclosing_function_scope = sm->current_scope;
+
     // If there is an implementation, generate its code.
     const auto is_extern = no_impl_annotation || abstract_annotation;
     if (llvm_func == nullptr) {
@@ -493,6 +500,8 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
         // Skip the scope, linker will provide implementation for ffi.
         impl->stage_10_code_gen_2(sm, meta, ctx);
     }
+
+    meta->restore();
 
     sm->move_out_of_current_scope();
     return llvm_func;
