@@ -6,6 +6,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
+import spp.asts.closure_expression_ast;
 import spp.asts.closure_expression_capture_ast;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
@@ -19,6 +20,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import genex;
 
@@ -108,7 +110,6 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_8_check_memory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-
     // Any borrowed captures need pinning and marking as extended borrows.
     const auto [ass_sym, _] = meta->current_lambda_outer_scope->get_var_symbol_outermost(*meta->assignment_target);
     for (auto const &cap : captures) {
@@ -125,4 +126,46 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_8_check_memory(
             //     cap->val.get(), is_mut, meta->current_lambda_outer_scope);
         }
     }
+}
+
+
+auto spp::asts::ClosureExpressionCaptureGroupAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Build the variable bindings from the environment object. This allows the body to remain unchanged as the
+    // variables get loaded from the environment struct.
+    for (auto const &[i, capture] : captures | genex::views::ptr | genex::views::enumerate) {
+        const auto zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), 0);
+        const auto idx = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), i);
+
+        // For the capture x, mock "let x = env.x".
+        const auto cap_val = capture->val->to<IdentifierAst>();
+        const auto cap_ty = capture->infer_type(sm, meta);
+        const auto cap_ty_sym = sm->current_scope->get_type_symbol(cap_ty);
+        const auto cap_llvm_type = codegen::llvm_type(*sm->current_scope->get_type_symbol(cap_ty), ctx);
+
+        // Create the alloca for the variable.
+        const auto alloca = ctx->builder.CreateAlloca(
+            cap_llvm_type, nullptr, "capture.alloca." + cap_val->val);
+
+        const auto gep = ctx->builder.CreateInBoundsGEP(
+            ctx->current_closure_type,
+            ctx->current_closure_scope->ast->to<ClosureExpressionAst>()->llvm_func->getArg(0),
+            std::vector<llvm::Value*>{zero, idx});
+
+        const auto load = ctx->builder.CreateLoad(
+            cap_llvm_type, gep, "capture.load." + cap_val->val);
+
+        ctx->builder.CreateStore(load, alloca);
+
+        // Add the alloca to the current scope as a variable symbol.
+        // Todo: Handle mutability properly.
+        auto var_sym = std::make_unique<analyse::scopes::VariableSymbol>(
+            asts::ast_clone(cap_val), cap_ty, false, false);
+        var_sym->llvm_info->alloca = alloca;
+        sm->current_scope->add_var_symbol(std::move(var_sym));
+    }
+    return nullptr;
 }

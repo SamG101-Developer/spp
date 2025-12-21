@@ -4,6 +4,7 @@ module;
 module spp.asts.closure_expression_parameter_and_capture_group_ast;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.asts.convention_ast;
 import spp.asts.closure_expression_capture_ast;
 import spp.asts.closure_expression_capture_group_ast;
@@ -11,9 +12,11 @@ import spp.asts.expression_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_group_ast;
+import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_type;
 import genex;
 
 
@@ -126,4 +129,17 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_8_check_memo
     // Check the parameters and captures.
     param_group->stage_8_check_memory(sm, meta);
     capture_group->stage_8_check_memory(sm, meta);
+}
+
+
+auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate the parameters into the current scope.
+    sm->move_to_next_scope();
+    param_group->stage_10_code_gen_2(sm, meta, ctx);
+    capture_group->stage_10_code_gen_2(sm, meta, ctx);
+    return nullptr;
 }

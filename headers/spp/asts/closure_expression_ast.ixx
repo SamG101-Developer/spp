@@ -20,6 +20,8 @@ protected:
     std::shared_ptr<TypeAst> m_ret_type;
 
 public:
+    llvm::Function *llvm_func;
+
     /**
      * The optional @c cor keyword. Providing this will turn the closure into a coroutine closure. Otherwise, it will
      * default to @code fun@endcode.

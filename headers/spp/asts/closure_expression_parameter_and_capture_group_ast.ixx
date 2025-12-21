@@ -3,11 +3,13 @@ module;
 
 export module spp.asts.closure_expression_parameter_and_capture_group_ast;
 import spp.asts.ast;
-
+import spp.codegen.llvm_ctx;
+import llvm;
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct ClosureExpressionParameterAndCaptureGroupAst;
+    SPP_EXP_CLS struct FunctionParameterAst;
     SPP_EXP_CLS struct FunctionParameterGroupAst;
     SPP_EXP_CLS using ClosureExpressionParameterGroupAst = FunctionParameterGroupAst;
     SPP_EXP_CLS struct ClosureExpressionCaptureGroupAst;
@@ -57,4 +59,6 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionParameterAndCaptureGroupAst final
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };
