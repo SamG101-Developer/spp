@@ -153,3 +153,33 @@ auto spp::asts::LoopControlFlowStatementAst::stage_8_check_memory(
             *expr, *tok_seq_exit.back(), *sm, true, true, true, true, true, true, meta);
     }
 }
+
+
+auto spp::asts::LoopControlFlowStatementAst::stage_10_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // For "exit" statements, we need to branch to the end bb of N loops, N being the number of exit tokens.
+    // TODO
+
+    // For "skip" statements, we need to branch to the condition check bb of the innermost loop.
+    // TODO
+
+    // If there is an attached expression, code generate it.
+    return expr ? expr->stage_10_code_gen_2(sm, meta, ctx) : nullptr;
+}
+
+
+auto spp::asts::LoopControlFlowStatementAst::infer_type(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> std::shared_ptr<TypeAst> {
+    // If there is an attached expression, return its type.
+    if (expr != nullptr) {
+        return expr->infer_type(sm, meta);
+    }
+
+    // Otherwise, return the void type.
+    return generate::common_types::void_type(pos_start());
+}
