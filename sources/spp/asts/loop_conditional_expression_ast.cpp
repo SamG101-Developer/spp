@@ -159,9 +159,9 @@ auto spp::asts::LoopConditionalExpressionAst::stage_10_code_gen_2(
 
     // Determine if this "case" will be yielding an expression.
     const auto is_expr = meta->assignment_target != nullptr;
+    const auto func = ctx->builder.GetInsertBlock()->getParent();
 
     // Get the function, and create the basic blocks.
-    const auto func = ctx->builder.GetInsertBlock()->getParent();
     const auto loop_cond_entry_bb = llvm::BasicBlock::Create(*ctx->context, "loop.cond.entry", func);
     const auto loop_body_bb = llvm::BasicBlock::Create(*ctx->context, "loop.body", func);
     const auto loop_cond_next_bb = llvm::BasicBlock::Create(*ctx->context, "loop.cond.next", func);
@@ -169,12 +169,16 @@ auto spp::asts::LoopConditionalExpressionAst::stage_10_code_gen_2(
     const auto loop_end_bb = llvm::BasicBlock::Create(*ctx->context, "loop.end", func);
 
     // Handle the potential PHI node for returning a value out of the loop expression.
-    auto phi = static_cast<llvm::PHINode*>(nullptr);
+    auto result_alloca = static_cast<llvm::Value*>(nullptr);
+    auto result_ty = static_cast<llvm::Type*>(nullptr);
+
     if (is_expr) {
         const auto ret_type_sym = sm->current_scope->get_type_symbol(infer_type(sm, meta));
-        const auto llvm_ret_type = codegen::llvm_type(*ret_type_sym, ctx);
-        phi = ctx->builder.CreatePHI(llvm_ret_type, 2, "loop.phi");
+        result_ty = codegen::llvm_type(*ret_type_sym, ctx);
+        result_alloca = ctx->builder.CreateAlloca(result_ty, nullptr, "loop.result.alloca");
     }
+    meta->assignment_target = nullptr;
+    meta->assignment_target_type = nullptr;
 
     // Jump to the condition entry block.
     ctx->builder.CreateBr(loop_cond_entry_bb);
@@ -184,8 +188,10 @@ auto spp::asts::LoopConditionalExpressionAst::stage_10_code_gen_2(
 
     // Generate the loop body block.
     ctx->builder.SetInsertPoint(loop_body_bb);
-    const auto llvm_body_val = body->stage_10_code_gen_2(sm, meta, ctx);
-    ctx->builder.CreateBr(loop_cond_next_bb);
+    body->stage_10_code_gen_2(sm, meta, ctx);
+    if (not ctx->builder.GetInsertBlock()->getTerminator()) {
+        ctx->builder.CreateBr(loop_cond_next_bb);
+    }
 
     // Generate the loop continuation block.
     ctx->builder.SetInsertPoint(loop_cond_next_bb);
@@ -194,23 +200,21 @@ auto spp::asts::LoopConditionalExpressionAst::stage_10_code_gen_2(
 
     // Generate the else block if it exists.
     ctx->builder.SetInsertPoint(loop_else_bb);
-    auto llvm_else_val = static_cast<llvm::Value*>(nullptr);
     if (else_block != nullptr) {
-        llvm_else_val = else_block->stage_10_code_gen_2(sm, meta, ctx);
+        else_block->stage_10_code_gen_2(sm, meta, ctx);
     }
-    ctx->builder.CreateBr(loop_end_bb);
+    if (not ctx->builder.GetInsertBlock()->getTerminator()) {
+        ctx->builder.CreateBr(loop_end_bb);
+    }
 
     // Finish the loop expression.
     ctx->builder.SetInsertPoint(loop_end_bb);
-    if (is_expr) {
-        phi->addIncoming(llvm_body_val, loop_body_bb);
-        if (else_block != nullptr) {
-            phi->addIncoming(llvm_else_val, loop_else_bb);
-        }
-    }
-
     sm->move_out_of_current_scope();
-    return phi;
+    if (is_expr) {
+        const auto result_load = ctx->builder.CreateLoad(result_ty, result_alloca, "loop.result.load");
+        return result_load;
+    }
+    return nullptr;
 }
 
 
@@ -219,16 +223,16 @@ auto spp::asts::LoopConditionalExpressionAst::infer_type(
     CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // If the condition is a boolean literal "true" and no flow control statements exist, return the never type.
-    if (const auto cond_bool_lit = cond->to<BooleanLiteralAst>()) {
-        if (cond_bool_lit->tok_bool->token_type == lex::SppTokenType::KW_TRUE) {
-            if (m_loop_exit_type_info.has_value()) {
-                const auto [exit_expr, _, _] = *m_loop_exit_type_info;
-                if (exit_expr == nullptr) {
-                    return generate::common_types::never_type(pos_start());
-                }
-            }
-        }
-    }
+    // if (const auto cond_bool_lit = cond->to<BooleanLiteralAst>()) {
+    //     if (cond_bool_lit->tok_bool->token_type == lex::SppTokenType::KW_TRUE) {
+    //         if (m_loop_exit_type_info.has_value()) {
+    //             const auto [exit_expr, _, _] = *m_loop_exit_type_info;
+    //             if (exit_expr == nullptr) {
+    //                 return generate::common_types::never_type(pos_start());
+    //             }
+    //         }
+    //     }
+    // }
 
     return LoopExpressionAst::infer_type(sm, meta);
 }

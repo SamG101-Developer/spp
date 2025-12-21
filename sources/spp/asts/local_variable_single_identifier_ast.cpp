@@ -159,9 +159,10 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_10_code_gen_2(
 
     // Generate the initializer expression.
     if (not meta->let_stmt_from_uninitialized) {
-        const auto val = meta->let_stmt_value->stage_10_code_gen_2(sm, meta, ctx);
-        SPP_ASSERT(val != nullptr and alloca != nullptr);
-        ctx->builder.CreateStore(val, alloca);
+        meta->save();
+        meta->assignment_target = alias != nullptr ? alias->name : name;
+        meta->let_stmt_value->stage_10_code_gen_2(sm, meta, ctx);
+        meta->restore();
     }
 
     // Alloca already added; return nullptr.

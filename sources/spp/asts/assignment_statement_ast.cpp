@@ -211,11 +211,16 @@ auto spp::asts::AssignmentStatementAst::stage_10_code_gen_2(
     -> llvm::Value* {
     // Generate code for each assignment in sequence.
     for (auto i = 0uz; i < lhs.size(); ++i) {
-        const auto lhs_val = lhs[i]->stage_10_code_gen_2(sm, meta, ctx);
-        const auto rhs_val = rhs[i]->stage_10_code_gen_2(sm, meta, ctx);
+        meta->save();
+        meta->assignment_target = ast_clone(lhs[i]->to<IdentifierAst>());
+        meta->assignment_target_type = lhs[i]->infer_type(sm, meta);
+        rhs[i]->stage_10_code_gen_2(sm, meta, ctx);
+        meta->restore();
 
-        SPP_ASSERT(lhs_val != nullptr and rhs_val != nullptr);
-        ctx->builder.CreateStore(rhs_val, lhs_val); // todo: this will fail
+        // lhs[i]->stage_10_code_gen_2(sm, meta, ctx);
+
+        // SPP_ASSERT(lhs_val != nullptr and rhs_val != nullptr);
+        // ctx->builder.CreateStore(rhs_val, lhs_val); // todo: this will fail
     }
 
     // Statements are always generated into a builder so no need to return anything.

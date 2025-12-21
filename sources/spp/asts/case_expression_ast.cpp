@@ -54,6 +54,9 @@ auto spp::asts::CaseExpressionAst::new_non_pattern_match(
     decltype(cond) &&cond,
     std::unique_ptr<InnerScopeExpressionAst<std::unique_ptr<StatementAst>>> &&first,
     decltype(branches) &&branches) -> std::unique_ptr<CaseExpressionAst> {
+    // Defaults.
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(tok_case, lex::SppTokenType::KW_CASE, "case", cond ? cond->pos_start() : 0);
+
     // Convert consecutive if/else-if/else branches into case pattern matching.
     auto patterns = std::vector<std::unique_ptr<CasePatternVariantAst>>(1);
     patterns[0] = std::make_unique<CasePatternVariantExpressionAst>(BooleanLiteralAst::True(tok_case->pos_start()));
@@ -193,18 +196,21 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
     const auto case_end_bb = llvm::BasicBlock::Create(*ctx->context, "case.end", func);
 
     // Handle the potential PHI node for returning a value out of the case expression.
-    auto phi = static_cast<llvm::PHINode*>(nullptr);
+    auto result_alloca = static_cast<llvm::Value*>(nullptr);
+    auto result_ty = static_cast<llvm::Type*>(nullptr);
+
     if (is_expr) {
         const auto ret_type_sym = sm->current_scope->get_type_symbol(infer_type(sm, meta));
-        const auto llvm_ret_type = codegen::llvm_type(*ret_type_sym, ctx);
-        phi = ctx->builder.CreatePHI(llvm_ret_type, branches.size() as U32, "case.phi");
+        result_ty = codegen::llvm_type(*ret_type_sym, ctx);
+        result_alloca = ctx->builder.CreateAlloca(result_ty, nullptr, "case.result.alloca");
     }
+    meta->assignment_target = nullptr;
+    meta->assignment_target_type = nullptr;
 
     // Set "case" information to the meta struct for branches and patterns to use.
     meta->save();
     meta->case_condition = cond.get();
     meta->end_bb = case_end_bb;
-    meta->phi_node = phi;
 
     // Generate the case entry block for the branches to generate bodies into.
     const auto case_entry_bb = llvm::BasicBlock::Create(*ctx->context, "case.entry", func);
@@ -220,7 +226,12 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
     meta->restore();
     ctx->builder.SetInsertPoint(case_end_bb);
     sm->move_out_of_current_scope();
-    return phi;
+
+    if (is_expr) {
+        const auto result_load = ctx->builder.CreateLoad(result_ty, result_alloca, "case.result.load");
+        return result_load;
+    }
+    return nullptr;
 }
 
 

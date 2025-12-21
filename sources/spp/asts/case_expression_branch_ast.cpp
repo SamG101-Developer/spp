@@ -171,17 +171,16 @@ auto spp::asts::CaseExpressionBranchAst::stage_10_code_gen_2(
     ctx->builder.SetInsertPoint(case_branch_body_bb);
 
     // Generate the body.
-    const auto branch_val = body->stage_10_code_gen_2(sm, meta, ctx);
+    body->stage_10_code_gen_2(sm, meta, ctx);
     const auto incoming_bb = ctx->builder.GetInsertBlock();
     const auto terminator = incoming_bb->getTerminator();
 
     if (not terminator) {
-        if (meta->phi_node) { meta->phi_node->addIncoming(branch_val, incoming_bb); }
         ctx->builder.CreateBr(meta->end_bb);
     }
-    ctx->builder.SetInsertPoint(case_branch_next_bb);
 
     // Move out of the branch's scope.
+    ctx->builder.SetInsertPoint(case_branch_next_bb);
     sm->move_out_of_current_scope();
     return nullptr;
 }
