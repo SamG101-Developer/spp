@@ -80,6 +80,11 @@ auto spp::asts::InnerScopeExpressionAst<T>::stage_10_code_gen_2(
 
     // Exit the scope.
     sm->move_out_of_current_scope();
+
+    if (ret_val and meta->llvm_assignment_target) {
+        ctx->builder.CreateStore(ret_val, meta->llvm_assignment_target);
+        return ret_val;
+    }
     return ret_val;
 }
 
