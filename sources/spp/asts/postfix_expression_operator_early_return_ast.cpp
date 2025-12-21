@@ -103,7 +103,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_10_code_gen_2(
 
     // Create the condition by calling the inspection method on the lhs.
     auto postfix_call = ( {
-        auto field_name = std::make_unique<IdentifierAst>(pos_start(), "op_is_output");
+        auto field_name = std::make_unique<IdentifierAst>(pos_start(), "op_is_residual");
         auto field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
         auto postfix_field = std::make_unique<PostfixExpressionAst>(ast_clone(meta->postfix_expression_lhs), std::move(field));
         auto call = std::make_unique<PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
@@ -112,7 +112,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_10_code_gen_2(
 
     // Create the case arm.
     auto case_branch = ( {
-        auto output_field_name = std::make_unique<IdentifierAst>(pos_start(), "op_as_output");
+        auto output_field_name = std::make_unique<IdentifierAst>(pos_start(), "op_as_residual");
         auto output_field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(output_field_name));
         auto postfix_output_field = std::make_unique<PostfixExpressionAst>(ast_clone(meta->postfix_expression_lhs), std::move(output_field));
         auto call_output = std::make_unique<PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
@@ -126,6 +126,12 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_10_code_gen_2(
     // Create the case expression.
     const auto case_expr = CaseExpressionAst::new_non_pattern_match(
         nullptr, std::move(postfix_call), std::move(case_branch), {});
+
+    const auto current_scope = sm->current_scope;
+    const auto current_scope_iterator = sm->current_iterator();
+    case_expr->stage_7_analyse_semantics(sm, meta);
+    sm->reset(current_scope, current_scope_iterator);
+
     return case_expr->stage_10_code_gen_2(sm, meta, ctx);
 }
 
