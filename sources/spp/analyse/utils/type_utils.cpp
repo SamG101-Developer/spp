@@ -567,8 +567,9 @@ auto spp::analyse::utils::type_utils::validate_inconsistent_types(
 
     // Remove the master branch pointer from the list of remaining branch types and check all types match.
     auto mismatch_branches_type_info = branches_type_info
-        | genex::views::remove_if([master_branch_type_info](auto const &x) { return x.first == master_branch_type_info.first; })
-        | genex::views::filter([master_branch_type_info, sm](auto const &x) { return not type_utils::symbolic_eq(*master_branch_type_info.second, *x.second, *sm->current_scope, *sm->current_scope); })
+        | genex::views::remove_if([&](auto const&x) {return symbolic_eq(*asts::generate::common_types_precompiled::NEVER, *x.second, *sm->current_scope, *sm->current_scope);})
+        | genex::views::remove_if([&](auto const &x) { return x.first == master_branch_type_info.first; })
+        | genex::views::filter([&](auto const &x) { return not type_utils::symbolic_eq(*master_branch_type_info.second, *x.second, *sm->current_scope, *sm->current_scope); })
         | genex::to<std::vector>();
 
     if (not mismatch_branches_type_info.empty()) {
