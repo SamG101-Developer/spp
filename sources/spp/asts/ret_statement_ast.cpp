@@ -25,6 +25,7 @@ spp::asts::RetStatementAst::RetStatementAst(
     decltype(expr) &&val) :
     tok_ret(std::move(tok_ret)),
     expr(std::move(val)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_ret, lex::SppTokenType::KW_RET, "ret", expr ? expr->pos_start() : 0);
 }
 
 
