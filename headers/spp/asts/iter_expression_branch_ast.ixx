@@ -27,27 +27,27 @@ SPP_EXP_CLS struct spp::asts::IterExpressionBranchAst final : virtual Ast, mixin
     std::unique_ptr<IterPatternVariantAst> pattern;
 
     /**
-     * The body of the iteration branch. This is an inner scope that contains the statements that will be executed if
-     * the branch matches.
-     */
-    std::unique_ptr<InnerScopeExpressionAst<std::unique_ptr<StatementAst>>> body;
-
-    /**
      * An optional guard for the iteration branch. This is a boolean expression that must evaluate to true for the
      * branch to be executed.
      */
     std::unique_ptr<PatternGuardAst> guard;
 
     /**
+     * The body of the iteration branch. This is an inner scope that contains the statements that will be executed if
+     * the branch matches.
+     */
+    std::unique_ptr<InnerScopeExpressionAst<std::unique_ptr<StatementAst>>> body;
+
+    /**
      * Construct the IterExpressionBranchAst with the arguments matching the members.
      * @param pattern The pattern that this branch matches against.
-     * @param body The body of the iteration branch.
      * @param guard The optional guard for the iteration branch.
+     * @param body The body of the iteration branch.
      */
     IterExpressionBranchAst(
         decltype(pattern) &&pattern,
-        decltype(body) &&body,
-        decltype(guard) &&guard);
+        decltype(guard) &&guard,
+        decltype(body) &&body);
 
     ~IterExpressionBranchAst() override;
 

@@ -20,11 +20,11 @@ import spp.codegen.llvm_coros;
 
 spp::asts::IterExpressionBranchAst::IterExpressionBranchAst(
     decltype(pattern) &&pattern,
-    decltype(body) &&body,
-    decltype(guard) &&guard) :
+    decltype(guard) &&guard,
+    decltype(body) &&body) :
     pattern(std::move(pattern)),
-    body(std::move(body)),
-    guard(std::move(guard)) {
+    guard(std::move(guard)),
+    body(std::move(body)) {
 }
 
 
@@ -47,8 +47,8 @@ auto spp::asts::IterExpressionBranchAst::clone() const
     -> std::unique_ptr<Ast> {
     return std::make_unique<IterExpressionBranchAst>(
         ast_clone(pattern),
-        ast_clone(body),
-        ast_clone(guard));
+        ast_clone(guard),
+        ast_clone(body));
 }
 
 

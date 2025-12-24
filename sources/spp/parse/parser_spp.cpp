@@ -1368,8 +1368,8 @@ auto spp::parse::ParserSpp::parse_iter_of_expression()
 auto spp::parse::ParserSpp::parse_iter_of_expression_branch()
     -> std::unique_ptr<asts::IterExpressionBranchAst> {
     PARSE_ONCE(p1, parse_iter_expression_pattern_variant)
-    PARSE_ONCE(p2, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
-    PARSE_OPTIONAL(p3, parse_pattern_guard);
+    PARSE_OPTIONAL(p2, parse_pattern_guard);
+    PARSE_ONCE(p3, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
     return CREATE_AST(asts::IterExpressionBranchAst, p1, p2, p3);
 }
 
