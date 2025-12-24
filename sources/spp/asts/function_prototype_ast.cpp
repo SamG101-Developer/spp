@@ -502,7 +502,14 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
     }
 
     meta->restore();
-
     sm->move_out_of_current_scope();
-    return llvm_func;
+
+    // Analyse to make a new scope in the correct place.
+    for (auto &&[_, generic_impl] : m_generic_substitutions) {
+        auto tm = ScopeManager(sm->global_scope, m_scope->parent);
+        tm.reset(tm.current_scope);
+        generic_impl->stage_10_code_gen_2(&tm, meta, ctx);
+    }
+
+    return nullptr;
 }

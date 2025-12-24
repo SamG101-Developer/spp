@@ -39,7 +39,7 @@ namespace spp::analyse::scopes {
  * analysis checks.
  */
 SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : virtual Ast, mixins::VisibilityEnabledAst, SupMemberAst, ModuleMemberAst {
-private:
+protected:
     std::vector<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>> m_generic_substitutions;
 
 public:
