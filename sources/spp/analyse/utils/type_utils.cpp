@@ -566,17 +566,19 @@ auto spp::analyse::utils::type_utils::validate_inconsistent_types(
     }
 
     // Remove the master branch pointer from the list of remaining branch types and check all types match.
+    // Todo: Shouldn't need to auto-remove "!" type, because symbolic_eq handles it?
     auto mismatch_branches_type_info = branches_type_info
-        | genex::views::remove_if([&](auto const&x) {return symbolic_eq(*asts::generate::common_types_precompiled::NEVER, *x.second, *sm->current_scope, *sm->current_scope);})
+        | genex::views::remove_if([&](auto const &x) { return symbolic_eq(*asts::generate::common_types_precompiled::NEVER, *x.second, *sm->current_scope, *sm->current_scope); })
         | genex::views::remove_if([&](auto const &x) { return x.first == master_branch_type_info.first; })
-        | genex::views::filter([&](auto const &x) { return not type_utils::symbolic_eq(*master_branch_type_info.second, *x.second, *sm->current_scope, *sm->current_scope); })
+        | genex::views::remove_if([&](auto const &x) { return type_utils::symbolic_eq(*master_branch_type_info.second, *x.second, *sm->current_scope, *sm->current_scope); })
         | genex::to<std::vector>();
 
     if (not mismatch_branches_type_info.empty()) {
         auto [mismatch_branch, mismatch_branch_type] = std::move(mismatch_branches_type_info[0]);
         auto [master_branch, master_branch_type] = master_branch_type_info;
+        auto final_member = master_branch ? master_branch->body->final_member() : meta->assignment_target.get(); // see nullptr when assignment target type is used.
         analyse::errors::SemanticErrorBuilder<errors::SppTypeMismatchError>()
-            .with_args(*master_branch->body->final_member(), *master_branch_type, *mismatch_branch->body->final_member(), *mismatch_branch_type)
+            .with_args(*final_member, *master_branch_type, *mismatch_branch->body->final_member(), *mismatch_branch_type)
             .raises_from(sm->current_scope);
     }
 

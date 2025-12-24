@@ -119,12 +119,12 @@ auto spp::asts::CaseExpressionAst::stage_7_analyse_semantics(
     -> void {
     // Analyse the condition expression.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(cond.get());
-    cond->stage_7_analyse_semantics(sm, meta);
 
     // Create the scope for the case expression.
     auto scope_name = analyse::scopes::ScopeBlockName("<case-expr#" + std::to_string(pos_start()) + ">");
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
     Ast::stage_2_gen_top_level_scopes(sm, meta);
+    cond->stage_7_analyse_semantics(sm, meta);
 
     // Analyse eac branch of the case expression.
     for (auto &&branch : branches) {
@@ -158,14 +158,14 @@ auto spp::asts::CaseExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // Move into the "case" scope and check the memory satus of the symbols in the branches.
+    sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+
     // Check the memory state of the condition.
     cond->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
         *cond, *cond, *sm, true, true, false, false, false, false, meta);
-
-    // Move into the "case" scope and check the memory satus of the symbols in the branches.
-    sm->move_to_next_scope();
-    SPP_ASSERT(sm->current_scope == m_scope);
 
     // Validate the memory state across all branches (also calls stage 8 from within).
     meta->save();
@@ -184,12 +184,13 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
+    // Scope shift.
+    sm->move_to_next_scope();
+    // SPP_ASSERT(sm->current_scope == m_scope);
+
     // Determine if this "case" will be yielding an expression, and generate the condition.
     const auto is_expr = meta->assignment_target != nullptr;
     cond->stage_10_code_gen_2(sm, meta, ctx);
-
-    sm->move_to_next_scope();
-    SPP_ASSERT(sm->current_scope == m_scope);
 
     // Get the function, and create the end basic block.
     const auto func = ctx->builder.GetInsertBlock()->getParent();
@@ -243,7 +244,8 @@ auto spp::asts::CaseExpressionAst::infer_type(
     auto [master_branch_type_info, branches_type_info] = analyse::utils::type_utils::validate_inconsistent_types(
         branches | genex::views::ptr | genex::to<std::vector>(), sm, meta);
 
-    // Ensure there is an "else" branch if the branches are not exhaustive. Todo: Need to investigate how to detect exhaustion.
+    // Ensure there is an "else" branch if the branches are not exhaustive.
+    // Todo: Need to investigate how to detect exhaustion.
     if (branches.back()->patterns[0]->to<CasePatternVariantElseAst>() == nullptr and not meta->ignore_missing_else_branch_for_inference) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppCaseBranchMissingElseError>()
             .with_args(*this, *branches.back())
