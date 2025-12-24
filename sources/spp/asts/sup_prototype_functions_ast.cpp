@@ -261,7 +261,26 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_10_code_gen_2(
     // Move to the next scope.
     sm->move_to_next_scope();
     // SPP_ASSERT(sm->current_scope == m_scope);
-    impl->stage_10_code_gen_2(sm, meta, ctx);
+
+    // Check if this block is purely generic.
+    const auto is_generic_scope =
+        genex::any_of(sm->current_scope->all_type_symbols(true), [](auto &&x) { return x->scope == nullptr; }) or
+        genex::any_of(sm->current_scope->all_var_symbols(true), [](auto &&x) { return x->memory_info->ast_comptime == nullptr; });
+
+    // Generate the implementation if not a generic scope.
+    if (not is_generic_scope) {
+        impl->stage_10_code_gen_2(sm, meta, ctx);
+    }
+
+    // Generic sup block so not generating for it.
+    // Manual scope skipping.
+    else {
+        const auto final_scope = sm->current_scope->final_child_scope();
+        while (sm->current_scope != final_scope) {
+            sm->move_to_next_scope(false);
+        }
+    }
+
     sm->move_out_of_current_scope();
     return nullptr;
 }
