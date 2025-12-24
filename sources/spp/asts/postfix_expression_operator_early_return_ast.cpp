@@ -9,13 +9,20 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.type_utils;
 import spp.asts.case_expression_ast;
 import spp.asts.case_expression_branch_ast;
+import spp.asts.case_pattern_variant_ast;
+import spp.asts.case_pattern_variant_destructure_object_ast;
+import spp.asts.case_pattern_variant_destructure_skip_multiple_arguments_ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
+import spp.asts.is_expression_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
@@ -99,40 +106,74 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Convert the unwrapping into a case structure.
+    // Extract the "try" information for the type.
+    auto lhs = meta->postfix_expression_lhs;
+    const auto lhs_type = lhs->infer_type(sm, meta);
+    const auto try_type = analyse::utils::type_utils::get_try_type(*lhs_type, *lhs, *sm);
 
-    // Create the condition by calling the inspection method on the lhs.
-    auto postfix_call = ( {
-        auto field_name = std::make_unique<IdentifierAst>(pos_start(), "op_is_residual");
-        auto field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
-        auto postfix_field = std::make_unique<PostfixExpressionAst>(ast_clone(meta->postfix_expression_lhs), std::move(field));
-        auto call = std::make_unique<PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
-        std::make_unique<PostfixExpressionAst>(std::move(postfix_field), std::move(call));
+    // Temp holder for non-symbolic condition.
+    if (sm->current_scope->get_var_symbol_outermost(*lhs).first == nullptr) {
+        auto uid = std::to_string(reinterpret_cast<std::uintptr_t>(this));
+        auto var_name = std::make_unique<IdentifierAst>(pos_start(), "$try_" + std::move(uid));
+        auto var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
+        auto let_stmt = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, ast_clone(lhs));
+
+        const auto current_scope = sm->current_scope;
+        const auto current_scope_iterator = sm->current_iterator();
+        let_stmt->stage_7_analyse_semantics(sm, meta);
+        sm->reset(current_scope, current_scope_iterator);
+
+        // Set the lhs to the variable name.
+        let_stmt->stage_10_code_gen_2(sm, meta, ctx);
+        lhs = let_stmt->var->to<LocalVariableSingleIdentifierAst>()->name.get();
+    }
+
+    // Create the condition by attempting an "is" against the residual.
+    auto type_check = ( {
+        auto is_expr_lhs = ast_clone(lhs);
+        auto is_expr_rhs = try_type->type_parts().back()->generic_arg_group->type_at("Residual")->val;
+
+        auto skip_all = std::make_unique<CasePatternVariantDestructureSkipMultipleArgumentsAst>(nullptr, nullptr);
+        auto destructures = std::vector<std::unique_ptr<CasePatternVariantAst>>{};
+        destructures.emplace_back(std::move(skip_all));
+
+        auto is_expr_rhs_wrap = std::make_unique<CasePatternVariantDestructureObjectAst>(std::move(is_expr_rhs), nullptr, std::move(destructures), nullptr);
+        auto is_expr = std::make_unique<IsExpressionAst>(std::move(is_expr_lhs), nullptr, std::move(is_expr_rhs_wrap));
+        std::move(is_expr);
     });
 
-    // Create the case arm.
-    auto case_branch = ( {
-        auto output_field_name = std::make_unique<IdentifierAst>(pos_start(), "op_as_residual");
-        auto output_field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(output_field_name));
-        auto postfix_output_field = std::make_unique<PostfixExpressionAst>(ast_clone(meta->postfix_expression_lhs), std::move(output_field));
-        auto call_output = std::make_unique<PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
-        auto postfix_call_output = std::make_unique<PostfixExpressionAst>(std::move(postfix_output_field), std::move(call_output));
-        auto ret_stmt = std::make_unique<RetStatementAst>(nullptr, std::move(postfix_call_output));
-        auto inner_scope_members = std::vector<std::unique_ptr<StatementAst>>{};
-        inner_scope_members.emplace_back(std::move(ret_stmt));
-        std::make_unique<decltype(CaseExpressionBranchAst::body)::element_type>(nullptr, std::move(inner_scope_members), nullptr);
+    auto ret = ( {
+        auto ret_expr = ast_clone(lhs);
+        std::make_unique<RetStatementAst>(nullptr, std::move(ret_expr));
     });
 
-    // Create the case expression.
-    const auto case_expr = CaseExpressionAst::new_non_pattern_match(
-        nullptr, std::move(postfix_call), std::move(case_branch), {});
-
+    // Convert the "is" expression into a case condition with destructure.
     const auto current_scope = sm->current_scope;
     const auto current_scope_iterator = sm->current_iterator();
-    case_expr->stage_7_analyse_semantics(sm, meta);
+
+    type_check->stage_7_analyse_semantics(sm, meta);
+    const auto check = type_check->mapped_func();
+    check->branches[0]->body->members.emplace_back(std::move(ret));
     sm->reset(current_scope, current_scope_iterator);
 
-    return case_expr->stage_10_code_gen_2(sm, meta, ctx);
+    meta->save();
+    meta->assignment_target = nullptr;
+    meta->assignment_target_type = nullptr;
+    check->stage_10_code_gen_2(sm, meta, ctx);
+    meta->restore();
+
+    // Next, in case the try succeeded, we need to extract the Output value.
+    auto output_extract = ( {
+        auto output_field_name = std::make_unique<IdentifierAst>(pos_start(), "op_as_value");
+        auto output_field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(output_field_name));
+        auto postfix_output_field = std::make_unique<PostfixExpressionAst>(ast_clone(lhs), std::move(output_field));
+        auto call_output = std::make_unique<PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
+        auto postfix_call_output = std::make_unique<PostfixExpressionAst>(std::move(postfix_output_field), std::move(call_output));
+        std::move(postfix_call_output);
+    });
+
+    output_extract->stage_7_analyse_semantics(sm, meta); // Never going to create a scope.
+    return output_extract->stage_10_code_gen_2(sm, meta, ctx);
 }
 
 
@@ -146,5 +187,5 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::infer_type(
 
     // Get the Try type's Output generic argument.
     const auto try_type = analyse::utils::type_utils::get_try_type(*lhs_type, *lhs, *sm);
-    return try_type->type_parts().back()->generic_arg_group->type_at("Output")->val;
+    return try_type->type_parts().back()->generic_arg_group->type_at("Value")->val;
 }
