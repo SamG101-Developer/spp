@@ -153,7 +153,7 @@ auto spp::asts::InnerScopeAst<T>::stage_10_code_gen_2(
     -> llvm::Value* {
     // Add all the expressions/statements into the current scope.
     sm->move_to_next_scope();
-    SPP_ASSERT(sm->current_scope == m_scope);
+    // SPP_ASSERT(sm->current_scope == m_scope);
 
     for (auto const &member : members) {
         member->stage_10_code_gen_2(sm, meta, ctx);

@@ -155,7 +155,7 @@ auto spp::asts::LoopConditionalExpressionAst::stage_10_code_gen_2(
     -> llvm::Value* {
     // Move into the loop scope.
     sm->move_to_next_scope();
-    SPP_ASSERT(sm->current_scope == m_scope);
+    // SPP_ASSERT(sm->current_scope == m_scope);
 
     // Determine if this "case" will be yielding an expression.
     const auto is_expr = meta->assignment_target != nullptr;

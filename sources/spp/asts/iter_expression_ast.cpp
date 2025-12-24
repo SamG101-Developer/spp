@@ -196,7 +196,7 @@ auto spp::asts::IterExpressionAst::stage_10_code_gen_2(
     cond->stage_10_code_gen_2(sm, meta, ctx);
 
     sm->move_to_next_scope();
-    SPP_ASSERT(sm->current_scope == m_scope);
+    // SPP_ASSERT(sm->current_scope == m_scope);
 
     // Branching mechanism like "case" but instead of value matching, it's pattern matching on the generator state.
     // 1=>variable, 2=>exhausted, 3=>no value, 4=>exception

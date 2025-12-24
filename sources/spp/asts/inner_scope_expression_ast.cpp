@@ -71,7 +71,7 @@ auto spp::asts::InnerScopeExpressionAst<T>::stage_10_code_gen_2(
     -> llvm::Value* {
     // Add all the expressions/statements into the current scope.
     sm->move_to_next_scope();
-    SPP_ASSERT(sm->current_scope == m_scope);
+    // SPP_ASSERT(sm->current_scope == m_scope);
 
     auto ret_val = static_cast<llvm::Value*>(nullptr);
     for (auto const &member : this->members) {

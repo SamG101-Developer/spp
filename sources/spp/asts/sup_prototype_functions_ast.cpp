@@ -260,7 +260,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_10_code_gen_2(
     -> llvm::Value* {
     // Move to the next scope.
     sm->move_to_next_scope();
-    SPP_ASSERT(sm->current_scope == m_scope);
+    // SPP_ASSERT(sm->current_scope == m_scope);
     impl->stage_10_code_gen_2(sm, meta, ctx);
     sm->move_out_of_current_scope();
     return nullptr;

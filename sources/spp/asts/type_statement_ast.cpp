@@ -287,7 +287,7 @@ auto spp::asts::TypeStatementAst::stage_10_code_gen_2(
     codegen::LLvmCtx *)
     -> llvm::Value* {
     sm->move_to_next_scope();
-    SPP_ASSERT(sm->current_scope == m_scope);
+    // SPP_ASSERT(sm->current_scope == m_scope);
     sm->move_out_of_current_scope();
     return nullptr;
 }

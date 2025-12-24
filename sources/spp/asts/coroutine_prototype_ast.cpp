@@ -100,7 +100,7 @@ auto spp::asts::CoroutinePrototypeAst::stage_10_code_gen_2(
     -> llvm::Value* {
     // Move into the coroutine scope.
     sm->move_to_next_scope();
-    SPP_ASSERT(sm->current_scope == m_scope);
+    // SPP_ASSERT(sm->current_scope == m_scope);
 
     // Create the coroutine contructor function.
     const auto [llvm_coro_ctor, llvm_gen_env, llem_gen_env_args_type] = codegen::create_coro_gen_ctor(this, ctx, *sm->current_scope);

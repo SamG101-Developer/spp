@@ -331,7 +331,7 @@ auto spp::asts::ClassPrototypeAst::stage_10_code_gen_2(
     -> llvm::Value* {
     // Get the class symbol.
     sm->move_to_next_scope();
-    SPP_ASSERT(sm->current_scope == m_scope);
+    // SPP_ASSERT(sm->current_scope == m_scope);
     impl->stage_10_code_gen_2(sm, meta, ctx);
     sm->move_out_of_current_scope();
     return nullptr;

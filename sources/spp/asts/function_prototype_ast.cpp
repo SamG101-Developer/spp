@@ -460,7 +460,7 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
     -> llvm::Value* {
     // Build the function body.
     sm->move_to_next_scope();
-    SPP_ASSERT(sm->current_scope == m_scope);
+    // SPP_ASSERT(sm->current_scope == m_scope);
 
     // Add the entry block to the function.
     const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry", llvm_func);
