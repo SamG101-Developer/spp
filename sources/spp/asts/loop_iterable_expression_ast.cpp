@@ -128,7 +128,7 @@ auto spp::asts::LoopIterableExpressionAst::stage_7_analyse_semantics(
         auto iter_else_pattern = std::make_unique<IterPatternVariantElseAst>(nullptr);
         auto iter_else_body = InnerScopeExpressionAst<std::unique_ptr<StatementAst>>::new_empty();
         iter_else_body->members.emplace_back(std::move(skip_stmt));
-        std::make_unique<IterExpressionBranchAst>(std::move(iter_else_pattern), std::move(iter_else_body), nullptr);
+        std::make_unique<IterExpressionBranchAst>(std::move(iter_else_pattern), nullptr, std::move(iter_else_body));
     });
 
     // Iter:Exhausted AND first => run the else block once, then exit the loop.
@@ -139,14 +139,14 @@ auto spp::asts::LoopIterableExpressionAst::stage_7_analyse_semantics(
         auto iter_exhausted_pattern = std::make_unique<IterPatternVariantExhaustedAst>(nullptr);
         auto iter_exhausted_body = InnerScopeExpressionAst<std::unique_ptr<StatementAst>>::new_empty();
         iter_exhausted_body->members.emplace_back(std::move(exit_stmt));
-        std::make_unique<IterExpressionBranchAst>(std::move(iter_exhausted_pattern), std::move(iter_exhausted_body), nullptr);
+        std::make_unique<IterExpressionBranchAst>(std::move(iter_exhausted_pattern), nullptr, std::move(iter_exhausted_body));
     });
 
     // Iter:Variable => bind to the same variable as in the original loop.
     auto iter_var_branch = ( {
         auto iter_var_pattern = std::make_unique<IterPatternVariantVariableAst>(std::move(var));
         auto iter_var_body = std::move(body);
-        std::make_unique<IterExpressionBranchAst>(std::move(iter_var_pattern), std::move(iter_var_body), nullptr);
+        std::make_unique<IterExpressionBranchAst>(std::move(iter_var_pattern), nullptr, std::move(iter_var_body));
     });
 
     // Iter block to handle the resume value.
