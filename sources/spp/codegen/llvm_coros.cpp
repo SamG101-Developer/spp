@@ -50,7 +50,7 @@ auto spp::codegen::create_coro_env_type(
         arg_struct_fields.emplace_back(llvm_type(*param_type_sym, ctx));
     }
     const auto llvm_arg_struct_type = llvm::StructType::create(
-        *ctx->context, std::move(arg_struct_fields), "gen.args");
+        *ctx->context, arg_struct_fields, "gen.args");
 
     // Yield slot.
     const auto llvm_yield_type = llvm_type(*scope.get_type_symbol(yield_type), ctx);
@@ -75,6 +75,11 @@ auto spp::codegen::create_coro_env_type(
         llvm_send_type,
         llvm_error_type
     };
+
+    if (llvm_yield_type == nullptr or llvm_send_type == nullptr or llvm_error_type == nullptr) {
+        return {nullptr, nullptr};
+    }
+
     const auto coro_env_type = llvm::StructType::create(*ctx->context, std::move(fields), "gen.env");
     return {coro_env_type, llvm_arg_struct_type};
 }
@@ -86,6 +91,10 @@ auto spp::codegen::create_coro_gen_ctor(
     analyse::scopes::Scope const &scope)
     -> std::tuple<llvm::Function*, llvm::Value*, llvm::Type*> {
     const auto [coro_env_type, coro_env_args_type] = create_coro_env_type(coro, ctx, scope);
+    if (coro_env_type == nullptr or coro_env_args_type == nullptr) {
+        return {nullptr, nullptr, nullptr};
+    }
+
     SPP_ASSERT(coro_env_type != nullptr);
 
     // Create the gen ctor function - accept, fill, and return the generator environment.
