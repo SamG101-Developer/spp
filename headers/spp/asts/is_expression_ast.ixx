@@ -53,6 +53,8 @@ public:
 
     SPP_AST_KEY_FUNCTIONS;
 
+    auto mapped_func() const -> std::shared_ptr<CaseExpressionAst>;
+
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;

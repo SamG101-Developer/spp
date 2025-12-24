@@ -17,6 +17,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 import genex;
 
 
@@ -28,6 +29,7 @@ spp::asts::IsExpressionAst::IsExpressionAst(
     lhs(std::move(lhs)),
     tok_op(std::move(tok_op)),
     rhs(std::move(rhs)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_op, lex::SppTokenType::KW_IS, "is");
 }
 
 
@@ -59,6 +61,10 @@ auto spp::asts::IsExpressionAst::clone() const
 
 spp::asts::IsExpressionAst::operator std::string() const {
     SPP_STRING_START;
+    if (m_mapped_func) {
+        SPP_STRING_APPEND(m_mapped_func);
+        SPP_STRING_END;
+    }
     SPP_STRING_APPEND(lhs);
     SPP_STRING_APPEND(tok_op);
     SPP_STRING_APPEND(rhs);
@@ -70,10 +76,20 @@ auto spp::asts::IsExpressionAst::print(
     AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
+    if (m_mapped_func) {
+        SPP_PRINT_APPEND(m_mapped_func);
+        SPP_PRINT_END;
+    }
     SPP_PRINT_APPEND(lhs);
     SPP_PRINT_APPEND(tok_op);
     SPP_PRINT_APPEND(rhs);
     SPP_PRINT_END;
+}
+
+
+auto spp::asts::IsExpressionAst::mapped_func() const
+    -> std::shared_ptr<CaseExpressionAst> {
+    return m_mapped_func;
 }
 
 
@@ -93,9 +109,11 @@ auto spp::asts::IsExpressionAst::stage_7_analyse_semantics(
 
     // Add the destructure symbols to the current scope.
     // This includes the lhs symbol if it's been flow typed.
-    auto destructure_syms = sm->current_scope->children[n]->children[0]->all_var_symbols(true, true);
-    destructure_syms
-        | genex::views::for_each([sm](auto &&x) { sm->current_scope->add_var_symbol(x); });
+    if (not sm->current_scope->name_as_string().starts_with("<inner-scope#")) {
+        auto destructure_syms = sm->current_scope->children[n]->children[0]->all_var_symbols(true, true);
+        destructure_syms
+            | genex::views::for_each([sm](auto &&x) { sm->current_scope->add_var_symbol(x); });
+    }
 }
 
 
@@ -118,7 +136,8 @@ auto spp::asts::IsExpressionAst::stage_10_code_gen_2(
     if (m_lhs_as_id) {
         const auto flow_typed_lhs_sym = sm->current_scope->get_var_symbol(m_lhs_as_id, true);
         if (flow_typed_lhs_sym != nullptr) {
-            const auto original_sym = sm->current_scope->parent->get_var_symbol(m_lhs_as_id);
+            auto original_sym = sm->current_scope->parent->get_var_symbol(m_lhs_as_id);
+            original_sym = original_sym ? original_sym : flow_typed_lhs_sym;
             flow_typed_lhs_sym->llvm_info->alloca = original_sym->llvm_info->alloca;
         }
     }
