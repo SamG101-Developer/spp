@@ -126,6 +126,7 @@ auto spp::asts::IdentifierAst::stage_10_code_gen_2(
     -> llvm::Value* {
     // Get the allocation for the variable from the current scope.
     const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));
+    SPP_ASSERT(var_sym->llvm_info->alloca != nullptr);
 
     // Handle local variable allocation extraction + load.
     if (llvm::isa<llvm::AllocaInst>(var_sym->llvm_info->alloca)) {
