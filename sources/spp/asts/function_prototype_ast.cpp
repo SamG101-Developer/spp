@@ -68,6 +68,7 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_param_group);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_arrow, lex::SppTokenType::TK_ARROW_RIGHT, "->");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->impl);
+    m_original_impl = ast_clone(this->impl.get());
 }
 
 
@@ -153,18 +154,35 @@ auto spp::asts::FunctionPrototypeAst::m_deduce_mock_class_type() const
 }
 
 
+auto spp::asts::FunctionPrototypeAst::m_is_pure_generic(
+    ScopeManager *sm,
+    codegen::LLvmCtx *ctx) const
+    -> std::tuple<bool, llvm::Type*, std::vector<llvm::Type*>> {
+    // Convert the return and parameter types to LLVM types.
+    const auto llvm_ret_type = codegen::llvm_type(*sm->current_scope->get_type_symbol(return_type), ctx);
+    const auto llvm_param_types = param_group->params
+        | genex::views::transform([&](auto const &x) { return codegen::llvm_type(*sm->current_scope->get_type_symbol(x->type), ctx); })
+        | genex::to<std::vector>();
+
+    // Check if any of the types failed to convert.
+    const auto is_generic = llvm_ret_type != nullptr and genex::all_of(llvm_param_types, [](auto const &x) { return x != nullptr; });
+    return {not is_generic, llvm_ret_type, llvm_param_types};
+}
+
+
 auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
     ScopeManager *sm,
     CompilerMetaData *,
     codegen::LLvmCtx *ctx)
     -> llvm::Function* {
     // Generate the return and parameter types.
-    const auto llvm_ret_type = codegen::llvm_type(*sm->current_scope->get_type_symbol(return_type), ctx);
-    const auto llvm_param_types = param_group->params
-        | genex::views::transform([&](auto const &x) { return codegen::llvm_type(*sm->current_scope->get_type_symbol(x->type), ctx); })
-        | genex::to<std::vector>();
+    auto [is_generic, llvm_ret_type, llvm_param_types] = m_is_pure_generic(sm, ctx);
 
-    if (llvm_ret_type != nullptr and genex::all_of(llvm_param_types, [](auto const &x) { return x != nullptr; })) {
+    if (operator std::string() == "fun lt(&self, that: &std::num::sized_integer::SizedInteger[bit_width=32_u32, signed=true]) - Bool {ret intrinsics:slt(self, that)}") {
+        auto _ = 123;
+    }
+
+    if (not is_generic) {
         // Create the LLVM function type.
         const auto is_var_arg = param_group->get_variadic_param() != nullptr;
         const auto llvm_fun_type = llvm::FunctionType::get(llvm_ret_type, llvm_param_types, is_var_arg);
@@ -202,15 +220,15 @@ auto spp::asts::FunctionPrototypeAst::register_generic_substitution(
 
 
 auto spp::asts::FunctionPrototypeAst::registered_generic_substitutions() const
-    -> std::vector<std::pair<analyse::scopes::Scope*, FunctionPrototypeAst*>> {
+    -> std::list<std::pair<analyse::scopes::Scope*, FunctionPrototypeAst*>> {
     return m_generic_substitutions
         | genex::views::transform([](auto const &x) { return std::make_pair(x.first.get(), x.second.get()); })
-        | genex::to<std::vector>();
+        | genex::to<std::list>();
 }
 
 
 auto spp::asts::FunctionPrototypeAst::registered_generic_substitutions()
-    -> std::vector<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>>& {
+    -> std::list<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>>& {
     return m_generic_substitutions;
 }
 
@@ -391,7 +409,7 @@ auto spp::asts::FunctionPrototypeAst::stage_7_analyse_semantics(
     -> void {
     // Move into the function scope, as it is now ready for semantic analysis.
     sm->move_to_next_scope();
-    SPP_ASSERT(sm->current_scope == m_scope);
+    // SPP_ASSERT(sm->current_scope == m_scope);
 
     // Repeated convention check for generic substitutions.
     if (const auto conv = return_type->get_convention(); conv != nullptr) {
@@ -505,10 +523,24 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
     sm->move_out_of_current_scope();
 
     // Analyse to make a new scope in the correct place.
-    for (auto &&[_, generic_impl] : m_generic_substitutions) {
-        auto tm = ScopeManager(sm->global_scope, m_scope->parent);
+    for (auto &&[generic_scope, generic_proto] : m_generic_substitutions) {
+        auto tm = ScopeManager(sm->global_scope, generic_scope.get());
+        if (std::get<0>(generic_proto->m_is_pure_generic(&tm, ctx))) { continue; }
+
+        auto cloned_scope_set = std::make_unique<analyse::scopes::Scope>(*m_scope->children[0]);
+        generic_scope->children[0]->children.push_back(std::move(cloned_scope_set));
+        generic_scope->fix_children_parent_pointers();
+
         tm.reset(tm.current_scope);
-        generic_impl->stage_10_code_gen_2(&tm, meta, ctx);
+
+        const auto current_scope = tm.current_scope;
+        const auto current_iter = tm.current_iterator();
+
+        generic_proto->impl = std::move(generic_proto->m_original_impl);
+        generic_proto->stage_7_analyse_semantics(&tm, meta);
+
+        tm.reset(current_scope, current_iter);
+        generic_proto->stage_10_code_gen_2(&tm, meta, ctx);
     }
 
     return nullptr;

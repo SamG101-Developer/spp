@@ -40,7 +40,12 @@ namespace spp::analyse::scopes {
  */
 SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : virtual Ast, mixins::VisibilityEnabledAst, SupMemberAst, ModuleMemberAst {
 protected:
-    std::vector<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>> m_generic_substitutions;
+    /**
+     * Using a list because there are times that the collection is iterated whilst being appended to.
+     */
+    std::list<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>> m_generic_substitutions;
+
+    std::unique_ptr<FunctionImplementationAst> m_original_impl;
 
 public:
     /**
@@ -167,6 +172,8 @@ public:
 private:
     auto m_deduce_mock_class_type() const -> std::shared_ptr<TypeAst>;
 
+    auto m_is_pure_generic(ScopeManager *sm, codegen::LLvmCtx *ctx) const -> std::tuple<bool, llvm::Type*, std::vector<llvm::Type*>>;
+
 public:
     virtual auto m_generate_llvm_declaration(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Function*;
 
@@ -175,9 +182,9 @@ public:
 
     auto register_generic_substitution(std::unique_ptr<analyse::scopes::Scope> &&scope, std::unique_ptr<FunctionPrototypeAst> &&new_ast) -> void;
 
-    auto registered_generic_substitutions() const -> std::vector<std::pair<analyse::scopes::Scope*, FunctionPrototypeAst*>>;
+    auto registered_generic_substitutions() const -> std::list<std::pair<analyse::scopes::Scope*, FunctionPrototypeAst*>>;
 
-    auto registered_generic_substitutions() -> std::vector<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>>&;
+    auto registered_generic_substitutions() -> std::list<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>>&;
 
     auto stage_1_pre_process(Ast *ctx) -> void override;
 

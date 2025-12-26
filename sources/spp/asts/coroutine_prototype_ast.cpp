@@ -40,6 +40,7 @@ auto spp::asts::CoroutinePrototypeAst::clone() const
         ast_clone(return_type),
         ast_clone(impl));
     ast->orig_name = ast_clone(orig_name);
+    ast->m_original_impl = ast_clone(m_original_impl);
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
     ast->abstract_annotation = abstract_annotation;
@@ -162,6 +163,7 @@ auto spp::asts::CoroutinePrototypeAst::stage_10_code_gen_2(
     }
     sm->move_out_of_current_scope();
 
+    // Can't use "llvm_func == nullptr" because of coroutine ctor function.
     if (llvm_gen_env == nullptr) {
         // Analyse to make a new scope in the correct place.
         for (auto &&[_, generic_impl] : m_generic_substitutions) {
