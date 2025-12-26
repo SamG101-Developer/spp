@@ -711,13 +711,7 @@ auto spp::analyse::utils::type_utils::create_generic_fun_scope(
     asts::meta::CompilerMetaData *meta)
     -> scopes::Scope* {
     // Create a new scope and symbol for the generic substituted function.
-    auto new_fun_scope_name = std::get<scopes::ScopeBlockName>(old_fun_scope.name);
-    auto new_fun_scope = std::make_unique<scopes::Scope>(new_fun_scope_name, old_fun_scope.parent, old_fun_scope.ast);
-    new_fun_scope->children = old_fun_scope.children
-        | genex::views::transform([](auto &&scope) { return std::make_unique<scopes::Scope>(*scope); })
-        | genex::to<std::vector>();
-    new_fun_scope->fix_children_parent_pointers();
-
+    auto new_fun_scope = std::make_unique<scopes::Scope>(old_fun_scope);
     const auto new_fun_scope_ptr = new_fun_scope.get();
     const auto old_fn_proto = asts::ast_body(old_fun_scope.ast)[0]->to<asts::FunctionPrototypeAst>();
     old_fn_proto->register_generic_substitution(std::move(new_fun_scope), nullptr);
@@ -740,14 +734,7 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     -> std::tuple<scopes::Scope*, scopes::Scope*> {
     // Create a new scope for the generic substituted super scope.
     const auto self_type = asts::ast_name(old_sup_scope.ast)->substitute_generics(generic_args.args | genex::views::ptr | genex::to<std::vector>());
-    auto new_sup_scope_name = old_sup_scope.name;
-    auto new_sup_scope = std::make_unique<scopes::Scope>(new_sup_scope_name, old_sup_scope.parent, old_sup_scope.ast);
-
-    new_sup_scope->table = old_sup_scope.table;
-    new_sup_scope->children = old_sup_scope.children
-        | genex::views::transform([](auto &&scope) { return std::make_unique<scopes::Scope>(*scope); })
-        | genex::to<std::vector>();
-    new_sup_scope->fix_children_parent_pointers();
+    auto new_sup_scope = std::make_unique<scopes::Scope>(old_sup_scope);
     auto new_sup_scope_ptr = new_sup_scope.get();
     old_sup_scope.parent->children.emplace_back(std::move(new_sup_scope));
 
@@ -760,7 +747,7 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
 
     // Add the "Self" symbol into the new scope.
     self_type->stage_7_analyse_semantics(&tm, meta);
-    auto old_self_sym = new_sup_scope_ptr->get_type_symbol(self_type);
+    const auto old_self_sym = new_sup_scope_ptr->get_type_symbol(self_type);
     const auto new_self_sym = std::make_shared<scopes::TypeSymbol>(
         std::make_unique<asts::TypeIdentifierAst>(0, "Self", nullptr), new_cls_scope.ty_sym->type, &new_cls_scope, new_sup_scope_ptr);
     new_self_sym->alias_stmt = std::make_unique<asts::TypeStatementAst>(

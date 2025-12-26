@@ -52,6 +52,12 @@ spp::analyse::scopes::Scope::Scope(Scope const &other) :
     table(other.table),
     non_generic_scope(other.non_generic_scope),
     m_error_formatter(nullptr) {
+    // Copy the children recursively.
+    for (auto const &child_scope : other.children) {
+        auto child_copy = std::make_unique<Scope>(*child_scope);
+        child_copy->parent = this;
+        children.emplace_back(std::move(child_copy));
+    }
 }
 
 
