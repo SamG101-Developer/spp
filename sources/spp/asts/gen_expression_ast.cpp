@@ -69,7 +69,7 @@ auto spp::asts::GenExpressionAst::clone() const
 
 spp::asts::GenExpressionAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_gen);
+    SPP_STRING_APPEND(tok_gen).append(" ");
     SPP_STRING_APPEND(conv);
     SPP_STRING_APPEND(expr);
     SPP_STRING_END;
@@ -80,7 +80,7 @@ auto spp::asts::GenExpressionAst::print(
     AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_gen);
+    SPP_PRINT_APPEND(tok_gen).append(" ");
     SPP_PRINT_APPEND(conv);
     SPP_PRINT_APPEND(expr);
     SPP_PRINT_END;
@@ -125,7 +125,8 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
         meta->enclosing_function_ret_type.emplace_back(m_gen_type);
     }
     else {
-        m_gen_type = meta->enclosing_function_ret_type[0];
+        // Todo - this list isn't getting cleared, so [0] != [last] (using .back() hides the bug - TEMP FIX).
+        m_gen_type = meta->enclosing_function_ret_type.back();
     }
 
     // Determine the "Yield" type of the enclosing function (to type check the expression against).
