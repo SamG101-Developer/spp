@@ -324,14 +324,14 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_override(
         // All parameters must have the same names.
         if (genex::any_of(
             genex::views::zip(params_new, params_old) | genex::views::materialize,
-            [&param_names_eq](auto pq) { return not param_names_eq(std::get<0>(pq)->extract_names(), std::get<1>(pq)->extract_names()); })) {
+            [&](auto pq) { return not param_names_eq(std::get<0>(pq)->extract_names(), std::get<1>(pq)->extract_names()); })) {
             continue;
         }
 
         // All parameters must have the same types.
         if (genex::any_of(
             genex::views::zip(params_new, params_old) | genex::views::materialize,
-            [this_scope, old_scope](auto pq) { return not type_utils::symbolic_eq(*std::get<0>(pq)->type, *std::get<1>(pq)->type, this_scope, *old_scope, false); })) {
+            [&](auto pq) { return not type_utils::symbolic_eq(*std::get<0>(pq)->type, *std::get<1>(pq)->type, this_scope, *old_scope, false); })) {
             continue;
         }
 
