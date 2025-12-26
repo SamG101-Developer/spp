@@ -105,7 +105,7 @@ auto spp::asts::RetStatementAst::stage_7_analyse_semantics(
         meta->enclosing_function_ret_type.emplace_back(m_ret_type);
     }
     else {
-        m_ret_type = meta->enclosing_function_ret_type[0];
+        m_ret_type = meta->enclosing_function_ret_type.back();
     }
 
     // Type check the expression type against the return type of the enclosing subroutine.
