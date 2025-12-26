@@ -246,6 +246,11 @@ auto spp::compiler::CompilerBoot::stage_10_code_gen_2(
     const auto out_path = tree.root_path() / "out" / "llvm";
     std::filesystem::create_directories(out_path);
     for (auto const &ctx : m_llvm_ctxs) {
+        if (llvm::verifyModule(*ctx->module, &llvm::errs())) {
+            llvm::errs() << "Invalid module: " << ctx->module->getName() << "\n";
+            std::abort();
+        }
+
         auto ec = std::error_code();
         auto file = out_path / (ctx->module->getName().str() + ".ll");
         auto out = llvm::raw_fd_ostream(file.string(), ec, static_cast<llvm::sys::fs::OpenFlags>(0));
