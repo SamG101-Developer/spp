@@ -4,6 +4,7 @@ module;
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
+#include <llvm/IR/Verifier.h>
 
 export module llvm;
 
@@ -14,6 +15,7 @@ export namespace llvm {
     using ::llvm::errs;
     using ::llvm::isa;
     using ::llvm::install_fatal_error_handler;
+    using ::llvm::verifyModule;
     using ::llvm::raw_fd_ostream;
     using ::llvm::fltSemantics;
 
