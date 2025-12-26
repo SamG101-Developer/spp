@@ -41,7 +41,7 @@ SPP_EXP_CLS struct spp::codegen::LLvmCtx {
     LLvmCtx() :
         context(global_context),
         module(nullptr),
-        builder(llvm::IRBuilder(*context)) {
+        builder(*context) {
     }
 
     static auto new_ctx(std::string const &module_name) -> std::unique_ptr<LLvmCtx> {
