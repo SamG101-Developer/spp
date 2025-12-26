@@ -34,6 +34,7 @@ auto spp::asts::SubroutinePrototypeAst::clone() const
         ast_clone(return_type),
         ast_clone(impl));
     ast->orig_name = ast_clone(orig_name);
+    ast->m_original_impl = ast_clone(m_original_impl);
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
     ast->abstract_annotation = abstract_annotation;
