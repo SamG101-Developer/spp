@@ -72,7 +72,7 @@ namespace spp::analyse::utils::bin_utils {
         {lex::SppTokenType::TK_SUB, "sub"},
         {lex::SppTokenType::TK_MUL, "mul"},
         {lex::SppTokenType::TK_DIV, "div"},
-        {lex::SppTokenType::TK_REM, "mod"},
+        {lex::SppTokenType::TK_REM, "rem"},
         {lex::SppTokenType::TK_POW, "pow"},
         {lex::SppTokenType::TK_BIT_IOR_ASSIGN, "bit_ior_assign"},
         {lex::SppTokenType::TK_BIT_XOR_ASSIGN, "bit_xor_assign"},
