@@ -10,6 +10,7 @@ import spp.analyse.utils.mem_utils;
 import spp.asts.class_member_ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
+import spp.asts.ret_statement_ast;
 import spp.asts.statement_ast;
 import spp.asts.sup_member_ast;
 import spp.asts.token_ast;
@@ -157,6 +158,11 @@ auto spp::asts::InnerScopeAst<T>::stage_10_code_gen_2(
 
     for (auto const &member : members) {
         member->stage_10_code_gen_2(sm, meta, ctx);
+    }
+
+    // Need to add a "return void" if the final member isn't a RetStatementAst.
+    if (members.empty() or members.back()->template to<RetStatementAst>() == nullptr) {
+        ctx->builder.CreateRetVoid();
     }
 
     // Exit the scope.
