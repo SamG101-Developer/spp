@@ -276,7 +276,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             // Todo: should re-use generic substituted prototypes when available. Then remove the manual generation.
             auto generic_args_raw = generic_args | genex::views::ptr | genex::to<std::vector>();
             if (not generic_args_raw.empty()) {
-                auto new_fn_proto = ast_clone(fn_proto);
+                auto new_fn_proto = ast_clone(fn_proto); // Todo: if the fn_proto hasn't been analysed -> issues.
                 auto external_generics = sm->current_scope->get_extended_generic_symbols(generic_args_raw);
                 auto new_fn_scope = analyse::utils::type_utils::create_generic_fun_scope(
                     *fn_scope, GenericArgumentGroupAst(nullptr, ast_clone_vec(generic_args), nullptr),
@@ -524,9 +524,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_7_analyse_semant
     CompilerMetaData *meta)
     -> void {
     // Prevent double analysis.
-    if (m_overload_info.has_value()) {
-        return;
-    }
+    if (m_overload_info.has_value()) { return; }
 
     meta->save();
     meta->return_type_overload_resolver_type = nullptr;

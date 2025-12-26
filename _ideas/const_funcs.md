@@ -47,3 +47,5 @@ args, and when constant functions are ready, they can be manipulated as argument
   maybe `cmp` function parameters should be converted to `cmp` generic parameters at compile time codegen time? On the
   other hand, `cmp` functions _can be called at runtime_, it is just that the code executed will be the llvm ir
   implementation. So I guess we stay with both `cmp` generics and function parameters.
+- Doing structs as for `cmp` context might be a bit weird - start initial support for non-struct types ie
+  numbers/bools/strings etc, disallowing postfix operator access primarily because it is more complex to implement.
