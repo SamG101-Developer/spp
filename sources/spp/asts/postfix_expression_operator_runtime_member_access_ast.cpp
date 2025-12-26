@@ -183,7 +183,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_10_code_g
     // Get the type of the left-hand-side expression.
     const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
     const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_type);
-    const auto llvm_type = llvm::cast<llvm::StructType>(codegen::llvm_type(*lhs_type_sym, ctx));
+    const auto llvm_type = codegen::llvm_type(*lhs_type_sym, ctx);
     SPP_ASSERT(llvm_type != nullptr);
 
     // If the lhs is symbolic, get the address of the outermost part.
