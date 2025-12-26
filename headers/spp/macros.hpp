@@ -34,13 +34,17 @@
 
 #define SPP_IS_DEBUG_BUILD (defined(_DEBUG) || !defined(NDEBUG))
 
-#define SPP_ASSERT(x)                                                                                         \
-    do {                                                                                                      \
-        if (!(x)) {                                                                                           \
-            std::cerr << "Assertion failed: " #x ", file " << __FILE__ << ", line " << __LINE__ << std::endl; \
-            std::abort();                                                                                     \
-        }                                                                                                     \
-    } while (0)
+#ifndef NDEBUG
+    #define SPP_ASSERT(x)                                                                                         \
+        do {                                                                                                      \
+            if (!(x)) {                                                                                           \
+                std::cerr << "Assertion failed: " #x ", file " << __FILE__ << ", line " << __LINE__ << std::endl; \
+                std::abort();                                                                                     \
+            }                                                                                                     \
+        } while (0)
+#else
+    #define SPP_ASSERT(x) do {} while (0)
+#endif
 
 
 #define SPP_ASSERT_LLVM_TYPE_OPAQUE(llvm_type)                                  \
