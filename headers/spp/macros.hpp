@@ -46,6 +46,15 @@
     #define SPP_ASSERT(x) do {} while (0)
 #endif
 
+#ifndef NDEBUG
+    #define SPP_LOG(x)                                                                                            \
+        do {                                                                                                      \
+            std::cerr << "[SPP LOG] " << x << " (file " << __FILE__ << ", line " << __LINE__ << ")" << std::endl; \
+        } while (0)
+#else
+    #define SPP_LOG(x) do {} while (0)
+#endif
+
 
 #define SPP_ASSERT_LLVM_TYPE_OPAQUE(llvm_type)                                  \
     if (auto st = llvm::dyn_cast<llvm::StructType>(llvm_type); st != nullptr) { \
