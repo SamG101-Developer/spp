@@ -49,6 +49,7 @@ export namespace llvm {
     using ::llvm::StructType;
     using ::llvm::Triple;
     using ::llvm::Type;
+    using ::llvm::TypeSize;
     using ::llvm::UndefValue;
     using ::llvm::Value;
 
