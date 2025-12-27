@@ -10,10 +10,12 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
+import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_materialize;
 import spp.utils.uid;
 
 
@@ -67,11 +69,6 @@ auto spp::asts::FunctionCallArgumentAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Delegate to the value.
-    const auto llvm_val = val->stage_10_code_gen_2(sm, meta, ctx);
-    const auto llvm_type = llvm_val->getType();
-    SPP_ASSERT(llvm_type != nullptr);
-
     // Handle the convention (to pointer).
     if (conv != nullptr) {
         // If the lhs is symbolic, get the address of the outermost part.
@@ -80,19 +77,26 @@ auto spp::asts::FunctionCallArgumentAst::stage_10_code_gen_2(
         auto llvm_val_ptr = static_cast<llvm::Value*>(nullptr);
         if (sym != nullptr) {
             // Get the alloca for the lhs symbol (the base pointer).
+            const auto llvm_val = val->stage_10_code_gen_2(sm, meta, ctx);
+            const auto llvm_type = llvm_val->getType();
+            SPP_ASSERT(llvm_type != nullptr);
+
             const auto lhs_alloca = sym->llvm_info->alloca;
             llvm_val_ptr = ctx->builder.CreateLoad(llvm_type, lhs_alloca, "load.arg.base_ptr" + uid);
         }
         else {
             // Materialize the lhs expression into a temporary.
-            const auto temp = ctx->builder.CreateAlloca(llvm_type, nullptr, "temp.arg.borrow" + uid);
-            ctx->builder.CreateStore(llvm_val, temp);
-            llvm_val_ptr = temp;
+            const auto materialized_val = codegen::llvm_materialize(*val, sm, meta, ctx);
+            const auto materialized_sym = sm->current_scope->get_var_symbol(ast_clone(materialized_val));
+
+            const auto lhs_alloca = materialized_sym->llvm_info->alloca;
+            const auto llvm_type = lhs_alloca->getType();
+            llvm_val_ptr = ctx->builder.CreateLoad(llvm_type, lhs_alloca, "load.arg.mat_ptr" + uid);
         }
         return llvm_val_ptr;
     }
 
-    return llvm_val;
+    return val->stage_10_code_gen_2(sm, meta, ctx);
 }
 
 
