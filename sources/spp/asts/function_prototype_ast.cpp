@@ -483,9 +483,6 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
 
     // Generate the parameters as variables.
     if (llvm_func != nullptr) {
-        if (operator std::string().contains("fun test_type_aliases(other: std::vector::Vec[T=std::bignum::bigint::BigInt, A=std::allocator::GlobalAlloc[E=std::bignum::bigint::BigInt]]) - std::void::Void")) {
-            auto _ = 123;
-        }
         param_group->stage_10_code_gen_2(sm, meta, ctx);
         generic_param_group->stage_10_code_gen_2(sm, meta, ctx);
     }
