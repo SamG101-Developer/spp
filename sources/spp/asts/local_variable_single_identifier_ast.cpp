@@ -163,7 +163,8 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_10_code_gen_2(
     if (not meta->let_stmt_from_uninitialized) {
         meta->save();
         meta->assignment_target = alias != nullptr ? alias->name : name;
-        meta->let_stmt_value->stage_10_code_gen_2(sm, meta, ctx);
+        const auto llvm_val = meta->let_stmt_value->stage_10_code_gen_2(sm, meta, ctx);
+        ctx->builder.CreateStore(llvm_val, alloca);
         meta->restore();
     }
 
