@@ -3,13 +3,14 @@ module;
 #include <spp/analyse/macros.hpp>
 
 module spp.asts.function_prototype_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.utils.func_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.class_implementation_ast;
@@ -177,10 +178,6 @@ auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
     -> llvm::Function* {
     // Generate the return and parameter types.
     auto [is_generic, llvm_ret_type, llvm_param_types] = m_is_pure_generic(sm, ctx);
-
-    if (operator std::string() == "fun lt(&self, that: &std::num::sized_integer::SizedInteger[bit_width=32_u32, signed=true]) - Bool {ret intrinsics:slt(self, that)}") {
-        auto _ = 123;
-    }
 
     if (not is_generic) {
         // Create the LLVM function type.
@@ -486,6 +483,9 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
 
     // Generate the parameters as variables.
     if (llvm_func != nullptr) {
+        if (operator std::string().contains("fun test_type_aliases(other: std::vector::Vec[T=std::bignum::bigint::BigInt, A=std::allocator::GlobalAlloc[E=std::bignum::bigint::BigInt]]) - std::void::Void")) {
+            auto _ = 123;
+        }
         param_group->stage_10_code_gen_2(sm, meta, ctx);
         generic_param_group->stage_10_code_gen_2(sm, meta, ctx);
     }
