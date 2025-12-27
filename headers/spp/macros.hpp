@@ -62,7 +62,7 @@
 
 #define SPP_PRINT_APPEND(x) formatted_string.append(x->print(printer))
 
-#define SPP_PRINT_EXTEND(x) formatted_string.append(x | genex::views::transform([&](auto &&x) { return x->print(printer); }) | genex::views::intersperse(std::string(", ")) | genex::views::join | genex::to<std::string>())
+#define SPP_PRINT_EXTEND(x, j) formatted_string.append(x | genex::views::transform([&](auto &&x) { return x->print(printer); }) | genex::views::intersperse(std::string(j)) | genex::views::join | genex::to<std::string>())
 
 #define SPP_PRINT_END return formatted_string
 
@@ -70,7 +70,7 @@
 
 #define SPP_STRING_APPEND(x) raw_string.append(x != nullptr ? static_cast<std::string>(*x) : "")
 
-#define SPP_STRING_EXTEND(x) raw_string.append(x | genex::views::transform([&](auto &&x) { return static_cast<std::string>(*x); }) | genex::views::intersperse(std::string(", ")) | genex::views::join | genex::to<std::string>())
+#define SPP_STRING_EXTEND(x, j) raw_string.append(x | genex::views::transform([&](auto &&x) { return static_cast<std::string>(*x); }) | genex::views::intersperse(std::string(j)) | genex::views::join | genex::to<std::string>())
 
 #define SPP_STRING_END return raw_string
 
