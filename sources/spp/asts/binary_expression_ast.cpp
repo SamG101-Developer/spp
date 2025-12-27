@@ -38,7 +38,7 @@ spp::asts::BinaryExpressionAst::~BinaryExpressionAst() = default;
 
 auto spp::asts::BinaryExpressionAst::pos_start() const
     -> std::size_t {
-    return lhs->pos_start();
+    return lhs != nullptr ? lhs->pos_start() : m_mapped_func->pos_start();
 }
 
 
