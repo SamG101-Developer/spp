@@ -158,12 +158,12 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics
             SPP_RETURN_TYPE_OVERLOAD_HELPER(arg->val.get()) {
                 // Multiple attributes with same name (via base classes) -> can't infer the one to use.
                 auto attrs = all_attrs
-                    | genex::views::filter([kw_arg](auto &&x) { return *x.first->name == *kw_arg->name; })
+                    | genex::views::filter([kw_arg](auto &&x) { return *x.first == *kw_arg->name; })
                     | genex::to<std::vector>();
                 if (attrs.size() > 1) { continue; }
 
                 // Use the type off the single matching attribute.
-                const auto attr_type_sym = attrs[0].second->get_type_symbol(attrs[0].first->type);
+                const auto attr_type_sym = attrs[0].second;
                 const auto attr_type = attr_type_sym->is_generic ? nullptr : attr_type_sym->fq_name();
                 meta->return_type_overload_resolver_type = std::move(attr_type);
             }
@@ -183,7 +183,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
     const auto cls_sym = sm->current_scope->get_type_symbol(meta->object_init_type);
     const auto all_attrs = analyse::utils::type_utils::get_all_attrs(*meta->object_init_type, sm);
     const auto all_attr_names = all_attrs
-        | genex::views::transform([](auto &&x) { return x.first->name; })
+        | genex::views::transform([](auto &&x) { return x.first; })
         | genex::to<std::vector>();
 
     // Check there is at most 1 autofill argument.
@@ -215,7 +215,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
     // Type check the non-autofill arguments against the class attributes.
     for (auto &&arg : get_non_autofill_args()) {
         auto matching_attrs = all_attrs
-            | genex::views::filter([&arg](auto const &x) { return *x.first->name == *arg->name; })
+            | genex::views::filter([&arg](auto const &x) { return *x.first == *arg->name; })
             | genex::to<std::vector>();
 
         if (matching_attrs.size() > 1) {
@@ -224,8 +224,8 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
                 .raises_from(sm->current_scope);
         }
 
-        auto [attr, scope] = matching_attrs[0];
-        const auto attr_type = scope->get_type_symbol(cls_sym->scope->get_var_symbol(attr->name)->type)->fq_name();
+        auto [attr, attr_type_sym] = matching_attrs[0];
+        const auto attr_type = attr_type_sym->fq_name();
         meta->save();
         meta->assignment_target_type = attr_type;
         auto arg_type = arg->infer_type(sm, meta);

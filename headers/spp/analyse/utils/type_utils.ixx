@@ -24,6 +24,7 @@ namespace spp::analyse::scopes {
     SPP_EXP_CLS class Scope;
     SPP_EXP_CLS class ScopeManager;
     SPP_EXP_CLS struct Symbol;
+    SPP_EXP_CLS struct VariableSymbol;
 }
 
 
@@ -187,7 +188,7 @@ namespace spp::analyse::utils::type_utils {
     SPP_EXP_FUN auto get_all_attrs(
         asts::TypeAst const &type,
         scopes::ScopeManager const *sm)
-        -> std::vector<std::pair<asts::ClassAttributeAst*, scopes::Scope*>>;
+        -> std::vector<std::pair<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<scopes::TypeSymbol>>>;
 
     SPP_EXP_FUN auto create_generic_cls_scope(
         asts::TypeIdentifierAst &type_part,

@@ -136,7 +136,7 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
 auto spp::asts::ClassPrototypeAst::m_fill_llvm_mem_layout(
     analyse::scopes::ScopeManager *sm,
     analyse::scopes::TypeSymbol const *type_sym,
-    codegen::LLvmCtx *ctx)
+    codegen::LLvmCtx *ctx) const
     -> void {
     // Todo: error if attribute's default value if a comp generic value?? Also TEST THIS
 
@@ -146,7 +146,7 @@ auto spp::asts::ClassPrototypeAst::m_fill_llvm_mem_layout(
     }
 
     auto types = analyse::utils::type_utils::get_all_attrs(*type_sym->fq_name(), sm)
-        | genex::views::transform([&](auto const &x) { return codegen::llvm_type(*x.second->get_type_symbol(x.first->type), ctx); })
+        | genex::views::transform([&](auto const &pair) { return codegen::llvm_type(*pair.second, ctx); })
         | genex::to<std::vector>();
 
     // If there are any generic types present (llvm_type is nullptr), skip the layout generation.

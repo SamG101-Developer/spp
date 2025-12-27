@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
 import spp.asts.convention_ast;
 import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
@@ -150,14 +151,10 @@ auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
     const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
 
     // Re-order the arguments to match the fields on the type.
+    // Todo: use the type_utils::get_attrs() function here?
     const auto cls_sym = sm->current_scope->get_type_symbol(type);
-    const auto attributes = std::vector{cls_sym->scope}
-        | genex::views::concat(cls_sym->scope->sup_scopes())
-        | genex::views::filter([](auto const &scope) { return scope->ast->template to<ClassPrototypeAst>() != nullptr; })
-        | genex::views::transform([](auto const &scope) { return scope->ast->template to<ClassPrototypeAst>()->impl.get(); })
-        | genex::views::transform([](auto const &impl) { return impl->members | genex::views::ptr | genex::to<std::vector>(); })
-        | genex::views::join
-        | genex::views::cast_dynamic<ClassAttributeAst*>()
+    const auto attr_names = analyse::utils::type_utils::get_all_attrs(*cls_sym->fq_name(), sm)
+        | genex::views::transform([](auto const &attr) { return attr.first; })
         | genex::to<std::vector>();
 
     // Sort the arguments (by name) to match the type's attributes.
@@ -165,9 +162,9 @@ auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
         | genex::views::ptr
         | genex::to<std::vector>();
 
-    sorted_args |= genex::actions::sort([&attributes](auto const &a, auto const &b) {
-        const auto a_index = genex::position(attributes, [&a](auto const &attr) { return *attr->name == *a->name; });
-        const auto b_index = genex::position(attributes, [&b](auto const &attr) { return *attr->name == *b->name; });
+    sorted_args |= genex::actions::sort([&](auto const &a, auto const &b) {
+        const auto a_index = genex::position(attr_names, [&a](auto const &attr_name) { return *attr_name == *a->name; });
+        const auto b_index = genex::position(attr_names, [&b](auto const &attr_name) { return *attr_name == *b->name; });
         return a_index < b_index;
     });
 

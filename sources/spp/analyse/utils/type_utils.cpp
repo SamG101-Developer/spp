@@ -594,26 +594,29 @@ auto spp::analyse::utils::type_utils::validate_inconsistent_types(
 auto spp::analyse::utils::type_utils::get_all_attrs(
     asts::TypeAst const &type,
     scopes::ScopeManager const *sm)
-    -> std::vector<std::pair<asts::ClassAttributeAst*, scopes::Scope*>> {
+    -> std::vector<std::pair<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<scopes::TypeSymbol>>> {
     // Get the symbol of the class type.
     const auto cls_sym = sm->current_scope->get_type_symbol(type.shared_from_this());
 
     // Get the attribute information from the class type and all super types.
     auto all_scopes = std::vector{cls_sym->scope};
     all_scopes.append_range(cls_sym->scope->sup_scopes());
-    auto all_attrs = all_scopes
+
+    const auto all_syms = all_scopes
         | genex::views::filter([](auto &&sup_scope) { return sup_scope->ast->template to<asts::ClassPrototypeAst>() != nullptr; })
-        | genex::views::transform([](auto &&sup_scope) {
-            return sup_scope->ast->template to<asts::ClassPrototypeAst>()->impl->members
-                | genex::views::ptr
-                | genex::views::cast_dynamic<asts::ClassAttributeAst*>()
-                | genex::views::transform([sup_scope](auto &&x) { return std::make_pair(x, sup_scope); })
-                | genex::to<std::vector>();
-        })
-        | genex::views::join
+        | genex::views::transform([](auto &&sup_scope) { return std::make_pair(sup_scope, sup_scope->all_var_symbols(true)); })
         | genex::to<std::vector>();
 
-    return all_attrs;
+    auto extended_syms = std::vector<std::pair<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<scopes::TypeSymbol>>>{};
+    for (auto const &[sup_scope, syms] : all_syms) {
+        for (auto const &sym : syms) {
+            const auto sym_type = sup_scope->get_type_symbol(sym->type);
+            const auto ext_type = sym_type->fq_name();
+            extended_syms.emplace_back(sym->name, sym_type);
+        }
+    }
+
+    return extended_syms;
 }
 
 
@@ -695,6 +698,13 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
         attr->type = attr->type->substitute_generics(substitution_generics);
         if (meta->current_stage > 5) {
             attr->stage_7_analyse_semantics(&tm, meta);
+        }
+
+        // Remove void attributes from the class.
+        if (is_type_void(*attr->type, *new_cls_scope_ptr)) {
+            // new_ast_ptr->impl |= genex::actions::remove_if([&](auto &&x) { return x == attr; }, [](auto &&x) { return x.get(); });
+            (void)std::ranges::remove_if(new_ast_ptr->impl->members, [&](auto &&x) { return x.get() == attr; }).begin();
+            new_cls_scope_ptr->rem_var_symbol(attr->name);
         }
     }
 
@@ -1112,7 +1122,7 @@ auto spp::analyse::utils::type_utils::get_field_index_in_type(
 
     // Find the field index.
     for (auto index = 0uz; index < all_attrs.size(); ++index) {
-        if (*all_attrs[index].first->name == field_name) {
+        if (*all_attrs[index].first == field_name) {
             return index;
         }
     }
