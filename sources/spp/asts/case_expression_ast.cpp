@@ -96,7 +96,7 @@ spp::asts::CaseExpressionAst::operator std::string() const {
     SPP_STRING_APPEND(tok_case).append(" ");
     SPP_STRING_APPEND(cond).append(" ");
     SPP_STRING_APPEND(tok_of).append(" ");
-    SPP_STRING_EXTEND(branches);
+    SPP_STRING_EXTEND(branches, "\n");
     SPP_STRING_END;
 }
 
@@ -108,7 +108,7 @@ auto spp::asts::CaseExpressionAst::print(
     SPP_PRINT_APPEND(tok_case).append(" ");
     SPP_PRINT_APPEND(cond).append(" ");
     SPP_PRINT_APPEND(tok_of).append(" ");
-    SPP_PRINT_EXTEND(branches);
+    SPP_PRINT_EXTEND(branches, "\n");
     SPP_PRINT_END;
 }
 

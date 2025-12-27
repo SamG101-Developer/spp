@@ -63,7 +63,6 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::clone() const
         ast_clone_vec(elems),
         ast_clone(tok_r));
     c->m_mapped_let = ast_clone(m_mapped_let);
-    std::cout << "LE CLONE " << c.get() << " " << c->m_mapped_let.get() << std::endl;
     return c;
 }
 
@@ -71,7 +70,7 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::clone() const
 spp::asts::CasePatternVariantDestructureTupleAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_l);
-    SPP_STRING_EXTEND(elems);
+    SPP_STRING_EXTEND(elems, ", ");
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;
 }
@@ -82,7 +81,7 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::print(
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(elems);
+    SPP_PRINT_EXTEND(elems, ", ");
     SPP_PRINT_APPEND(tok_r);
     SPP_PRINT_END;
 }

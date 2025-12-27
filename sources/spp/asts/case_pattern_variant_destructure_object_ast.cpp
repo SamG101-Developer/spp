@@ -82,7 +82,7 @@ spp::asts::CasePatternVariantDestructureObjectAst::operator std::string() const 
     SPP_STRING_START;
     SPP_STRING_APPEND(type);
     SPP_STRING_APPEND(tok_l);
-    SPP_STRING_EXTEND(elems);
+    SPP_STRING_EXTEND(elems, ", ");
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;
 }
@@ -94,7 +94,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::print(
     SPP_PRINT_START;
     SPP_PRINT_APPEND(type);
     SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(elems);
+    SPP_PRINT_EXTEND(elems, ", ");
     SPP_PRINT_APPEND(tok_r);
     SPP_PRINT_END;
 }

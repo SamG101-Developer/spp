@@ -60,7 +60,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::clone() const
 spp::asts::ClosureExpressionCaptureGroupAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_caps).append(" ");
-    SPP_STRING_EXTEND(captures);
+    SPP_STRING_EXTEND(captures, ", ");
     SPP_STRING_END;
 }
 
@@ -70,7 +70,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::print(
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_caps).append(" ");
-    SPP_PRINT_EXTEND(captures);
+    SPP_PRINT_EXTEND(captures, ", ");
     SPP_PRINT_END;
 }
 

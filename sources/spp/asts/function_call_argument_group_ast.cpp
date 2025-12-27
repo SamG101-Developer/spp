@@ -78,7 +78,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::clone() const
 spp::asts::FunctionCallArgumentGroupAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_l);
-    SPP_STRING_EXTEND(args);
+    SPP_STRING_EXTEND(args, ", ");
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;
 }
@@ -89,7 +89,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::print(
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(args);
+    SPP_PRINT_EXTEND(args, ", ");
     SPP_PRINT_APPEND(tok_r);
     SPP_PRINT_END;
 }

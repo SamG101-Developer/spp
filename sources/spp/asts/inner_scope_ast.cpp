@@ -72,8 +72,8 @@ auto spp::asts::InnerScopeAst<T>::clone() const
 template <typename T>
 spp::asts::InnerScopeAst<T>::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_l);
-    SPP_STRING_EXTEND(members);
+    SPP_STRING_APPEND(tok_l).append(not members.empty() ? "\n" : "");
+    SPP_STRING_EXTEND(members, "\n").append(not members.empty() ? "\n" : "");
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;
 }
@@ -84,8 +84,8 @@ auto spp::asts::InnerScopeAst<T>::print(
     AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(members);
+    SPP_PRINT_APPEND(tok_l).append(not members.empty() ? "\n" : "");
+    SPP_PRINT_EXTEND(members, "\n").append(not members.empty() ? "\n" : "");
     SPP_PRINT_APPEND(tok_r);
     SPP_PRINT_END;
 }

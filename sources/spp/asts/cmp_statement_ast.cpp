@@ -77,7 +77,7 @@ auto spp::asts::CmpStatementAst::clone() const
 
 spp::asts::CmpStatementAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(annotations);
+    SPP_STRING_EXTEND(annotations, "\n").append(not annotations.empty() ? "\n" : "");
     SPP_STRING_APPEND(tok_cmp).append(" ");
     SPP_STRING_APPEND(name);
     SPP_STRING_APPEND(tok_colon).append(" ");
@@ -92,7 +92,7 @@ auto spp::asts::CmpStatementAst::print(
     AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_EXTEND(annotations);
+    SPP_PRINT_EXTEND(annotations, "\n").append(not annotations.empty() ? "\n" : "");
     SPP_PRINT_APPEND(tok_cmp).append(" ");
     SPP_PRINT_APPEND(name);
     SPP_PRINT_APPEND(tok_colon).append(" ");

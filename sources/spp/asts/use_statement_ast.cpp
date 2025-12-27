@@ -52,7 +52,7 @@ auto spp::asts::UseStatementAst::clone() const
 
 spp::asts::UseStatementAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(annotations);
+    SPP_STRING_EXTEND(annotations, "\n").append(not annotations.empty() ? "\n" : "");
     SPP_STRING_APPEND(tok_use).append(" ");
     SPP_STRING_APPEND(old_type);
     SPP_STRING_END;
@@ -63,7 +63,7 @@ auto spp::asts::UseStatementAst::print(
     AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_EXTEND(annotations);
+    SPP_PRINT_EXTEND(annotations, "\n").append(not annotations.empty() ? "\n" : "");
     SPP_PRINT_APPEND(tok_use).append(" ");
     SPP_PRINT_APPEND(old_type);
     SPP_PRINT_END;

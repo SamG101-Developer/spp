@@ -78,7 +78,7 @@ auto spp::asts::ClassPrototypeAst::clone() const
 
 spp::asts::ClassPrototypeAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(annotations);
+    SPP_STRING_EXTEND(annotations, "\n").append(not annotations.empty() ? "\n" : "");
     SPP_STRING_APPEND(tok_cls).append(" ");
     SPP_STRING_APPEND(name);
     SPP_STRING_APPEND(generic_param_group).append(" ");
@@ -91,7 +91,7 @@ auto spp::asts::ClassPrototypeAst::print(
     AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_EXTEND(annotations);
+    SPP_PRINT_EXTEND(annotations, "\n").append(not annotations.empty() ? "\n" : "");
     SPP_PRINT_APPEND(tok_cls).append(" ");
     SPP_PRINT_APPEND(name);
     SPP_PRINT_APPEND(generic_param_group).append(" ");

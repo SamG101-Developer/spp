@@ -84,7 +84,7 @@ spp::asts::GenericParameterGroupAst::operator std::string() const {
     SPP_STRING_START;
     if (not params.empty()) {
         SPP_STRING_APPEND(tok_l);
-        SPP_STRING_EXTEND(params);
+        SPP_STRING_EXTEND(params, ", ");
         SPP_STRING_APPEND(tok_r);
     }
     SPP_STRING_END;
@@ -97,7 +97,7 @@ auto spp::asts::GenericParameterGroupAst::print(
     SPP_PRINT_START;
     if (not params.empty()) {
         SPP_PRINT_APPEND(tok_l);
-        SPP_PRINT_EXTEND(params);
+        SPP_PRINT_EXTEND(params, ", ");
         SPP_PRINT_APPEND(tok_r);
     }
     SPP_PRINT_END;

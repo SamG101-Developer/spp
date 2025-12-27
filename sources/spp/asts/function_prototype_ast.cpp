@@ -95,7 +95,7 @@ auto spp::asts::FunctionPrototypeAst::clone() const
 
 spp::asts::FunctionPrototypeAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(annotations);
+    SPP_STRING_EXTEND(annotations, "\n").append(not annotations.empty() ? "\n" : "");
     SPP_STRING_APPEND(tok_fun).append(" ");
     SPP_STRING_APPEND(name);
     SPP_STRING_APPEND(generic_param_group);
@@ -111,7 +111,7 @@ auto spp::asts::FunctionPrototypeAst::print(
     AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_EXTEND(annotations);
+    SPP_PRINT_EXTEND(annotations, "\n").append(not annotations.empty() ? "\n" : "");
     SPP_PRINT_APPEND(tok_fun);
     SPP_PRINT_APPEND(name);
     SPP_PRINT_APPEND(generic_param_group);

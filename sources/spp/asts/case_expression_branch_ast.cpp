@@ -61,7 +61,7 @@ auto spp::asts::CaseExpressionBranchAst::clone() const
 spp::asts::CaseExpressionBranchAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(op);
-    SPP_STRING_EXTEND(patterns);
+    SPP_STRING_EXTEND(patterns, ", ");
     SPP_STRING_APPEND(guard);
     SPP_STRING_APPEND(body);
     SPP_STRING_END;
@@ -73,7 +73,7 @@ auto spp::asts::CaseExpressionBranchAst::print(
     -> std::string {
     SPP_PRINT_START;
     SPP_PRINT_APPEND(op);
-    SPP_PRINT_EXTEND(patterns);
+    SPP_PRINT_EXTEND(patterns, ", ");
     SPP_PRINT_APPEND(guard);
     SPP_PRINT_APPEND(body);
     SPP_PRINT_END;

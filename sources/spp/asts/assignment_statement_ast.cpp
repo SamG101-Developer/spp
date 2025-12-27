@@ -60,10 +60,9 @@ auto spp::asts::AssignmentStatementAst::clone() const
 
 spp::asts::AssignmentStatementAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(lhs);
-    raw_string.append(" ");
+    SPP_STRING_EXTEND(lhs, ", ").append(" ");
     SPP_STRING_APPEND(tok_assign).append(" ");
-    SPP_STRING_EXTEND(rhs);
+    SPP_STRING_EXTEND(rhs, ", ");
     SPP_STRING_END;
 }
 
@@ -72,10 +71,9 @@ auto spp::asts::AssignmentStatementAst::print(
     AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_EXTEND(lhs);
-    formatted_string.append(" ");
+    SPP_PRINT_EXTEND(lhs, ", ").append(" ");
     SPP_PRINT_APPEND(tok_assign).append(" ");
-    SPP_PRINT_EXTEND(rhs);
+    SPP_PRINT_EXTEND(rhs, ", ");
     SPP_PRINT_END;
 }
 

@@ -72,7 +72,7 @@ spp::asts::GenericArgumentGroupAst::operator std::string() const {
     SPP_STRING_START;
     if (not args.empty()) {
         SPP_STRING_APPEND(tok_l);
-        SPP_STRING_EXTEND(args);
+        SPP_STRING_EXTEND(args, ", ");
         SPP_STRING_APPEND(tok_r);
     }
     SPP_STRING_END;
@@ -84,7 +84,7 @@ auto spp::asts::GenericArgumentGroupAst::print(
     SPP_PRINT_START;
     if (not args.empty()) {
         SPP_PRINT_APPEND(tok_l);
-        SPP_PRINT_EXTEND(args);
+        SPP_PRINT_EXTEND(args, ", ");
         SPP_PRINT_APPEND(tok_r);
     }
     SPP_PRINT_END;
