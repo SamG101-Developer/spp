@@ -587,35 +587,27 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) -> llvm::Value* {
     // Get the llvm function target.
-    const auto llvm_func = std::get<1>(*m_overload_info)->llvm_func;
     const auto uid = spp::utils::generate_uid(this);
-    auto llvm_func_args = arg_group->args
+    const auto llvm_func = std::get<1>(*m_overload_info)->llvm_func;
+    const auto llvm_func_args = arg_group->args
         | genex::views::transform([sm, meta, ctx](auto const &x) { return x->stage_10_code_gen_2(sm, meta, ctx); })
         | genex::to<std::vector>();
 
-    // Determine if we are returning an aggregate.
-    const auto returns_agg = meta->assignment_target != nullptr;
-    auto ret_storage = static_cast<llvm::AllocaInst*>(nullptr);
-    if (returns_agg) {
-        const auto agg_type_sym = sm->current_scope->get_type_symbol(meta->assignment_target_type);
-        const auto llvm_agg_type = codegen::llvm_type(*agg_type_sym, ctx);
-
-        const auto func = ctx->builder.GetInsertBlock()->getParent();
-        const auto entry = &func->getEntryBlock();
-        auto temp_builder = llvm::IRBuilder(entry, entry->begin());
-
-        ret_storage = temp_builder.CreateAlloca(llvm_agg_type, nullptr, "call.ret" + uid);
-        llvm_func_args.insert(llvm_func_args.begin(), ret_storage);
-    }
-
     // Create the call instruction.
-    const auto llvm_func_call = ctx->builder.CreateCall(llvm_func, llvm_func_args, "call" + uid);
-
-    // Return the loaded aggregate if required.
-    if (returns_agg) {
-        return ctx->builder.CreateLoad(ret_storage->getAllocatedType(), ret_storage, "call.ret.load" + uid);
+    const auto llvm_call = ctx->builder.CreateCall(llvm_func, llvm_func_args, "call" + uid);
+    if (llvm_func->getReturnType()->isVoidTy()) {
+        return llvm_call;
     }
-    return llvm_func_call; // Todo: Just a Void?
+
+    // Store the return value if there is an assignment target.
+    if (meta->assignment_target != nullptr) {
+        const auto target_sym = sm->current_scope->get_var_symbol(meta->assignment_target);
+        const auto target_alloca = llvm::cast<llvm::AllocaInst>(target_sym->llvm_info->alloca);
+        ctx->builder.CreateStore(llvm_call, target_alloca);
+        return target_alloca;
+    }
+
+    return llvm_call;
 }
 
 

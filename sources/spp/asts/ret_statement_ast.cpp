@@ -3,21 +3,28 @@ module;
 #include <spp/analyse/macros.hpp>
 
 module spp.asts.ret_statement_ast;
-import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
-import spp.analyse.scopes.scope_manager;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.expression_ast;
+import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 import spp.asts.meta.compiler_meta_data;
+import spp.codegen.llvm_materialize;
+import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.utils.uid;
 
 
 spp::asts::RetStatementAst::RetStatementAst(
@@ -148,9 +155,23 @@ auto spp::asts::RetStatementAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the return value, if there is one.
-    if (expr != nullptr) {
-        const auto ret_val = expr->stage_10_code_gen_2(sm, meta, ctx);
-        ctx->builder.CreateRet(ret_val);
+        if (expr != nullptr) {
+        // Temp holder for non-symbolic condition.
+        if (sm->current_scope->get_var_symbol_outermost(*expr).first == nullptr) {
+            meta->save();
+            meta->assignment_target_type = m_ret_type;
+            const auto ret_val = codegen::llvm_materialize(*expr, sm, meta, ctx);
+            const auto llvm_ret_val = ret_val->stage_10_code_gen_2(sm, meta, ctx);
+            ctx->builder.CreateRet(llvm_ret_val);
+            meta->restore();
+        }
+
+        // Otherwise, generate normally.
+        else {
+            const auto llvm_ret_val = expr->stage_10_code_gen_2(sm, meta, ctx);
+            ctx->builder.CreateRet(llvm_ret_val);
+        }
+
         return nullptr;
     }
 
