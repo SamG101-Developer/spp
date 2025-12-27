@@ -122,6 +122,11 @@ namespace spp::analyse::utils::type_utils {
         scopes::Scope const &scope)
         -> bool;
 
+    SPP_EXP_FUN auto is_type_never(
+        asts::TypeAst const &type,
+        scopes::Scope const &scope)
+        -> bool;
+
     SPP_EXP_FUN auto is_type_generator(
         asts::TypeAst const &type,
         scopes::Scope const &scope)

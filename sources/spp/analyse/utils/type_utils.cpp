@@ -319,6 +319,16 @@ auto spp::analyse::utils::type_utils::is_type_void(
 }
 
 
+auto spp::analyse::utils::type_utils::is_type_never(
+    asts::TypeAst const &type,
+    scopes::Scope const &scope)
+    -> bool {
+    // Check the type against "std::void::Void".
+    return
+        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::NEVER, scope, scope);
+}
+
+
 auto spp::analyse::utils::type_utils::is_type_generator(
     asts::TypeAst const &type,
     scopes::Scope const &scope)
