@@ -199,7 +199,6 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
     // Handle the potential PHI node for returning a value out of the case expression.
     auto result_alloca = static_cast<llvm::Value*>(nullptr);
     auto result_ty = static_cast<llvm::Type*>(nullptr);
-
     if (is_expr) {
         const auto ret_type_sym = sm->current_scope->get_type_symbol(infer_type(sm, meta));
         result_ty = codegen::llvm_type(*ret_type_sym, ctx);

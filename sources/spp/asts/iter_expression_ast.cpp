@@ -205,11 +205,12 @@ auto spp::asts::IterExpressionAst::stage_10_code_gen_2(
     const auto iter_end_bb = llvm::BasicBlock::Create(*ctx->context, "iter.end", func);
 
     // Handle the potential PHI node for returning a value out of the case expression.
-    auto phi = static_cast<llvm::PHINode*>(nullptr);
+    auto result_alloca = static_cast<llvm::Value*>(nullptr);
+    auto result_ty = static_cast<llvm::Type*>(nullptr);
     if (is_expr) {
         const auto ret_type_sym = sm->current_scope->get_type_symbol(infer_type(sm, meta));
-        const auto llvm_ret_type = codegen::llvm_type(*ret_type_sym, ctx);
-        phi = ctx->builder.CreatePHI(llvm_ret_type, branches.size() as U32, "iter.phi");
+        result_ty = codegen::llvm_type(*ret_type_sym, ctx);
+        result_alloca = ctx->builder.CreateAlloca(result_ty, nullptr, "iter.result.alloca");
     }
     meta->assignment_target = nullptr;
     meta->assignment_target_type = nullptr;
@@ -218,10 +219,9 @@ auto spp::asts::IterExpressionAst::stage_10_code_gen_2(
     meta->save();
     meta->case_condition = cond.get();
     meta->end_bb = iter_end_bb;
-    meta->phi_node = phi;
 
     // Generate the case entry block for the branches to generate bodies into.
-    const auto case_entry_bb = llvm::BasicBlock::Create(*ctx->context, "case.entry", func);
+    const auto case_entry_bb = llvm::BasicBlock::Create(*ctx->context, "iter.entry", func);
     ctx->builder.CreateBr(case_entry_bb);
     ctx->builder.SetInsertPoint(case_entry_bb);
 
@@ -234,7 +234,12 @@ auto spp::asts::IterExpressionAst::stage_10_code_gen_2(
     meta->restore();
     ctx->builder.SetInsertPoint(iter_end_bb);
     sm->move_out_of_current_scope();
-    return phi;
+
+    if (is_expr) {
+        const auto result_load = ctx->builder.CreateLoad(result_ty, result_alloca, "iter.result.load");
+        return result_load;
+    }
+    return nullptr;
 }
 
 
