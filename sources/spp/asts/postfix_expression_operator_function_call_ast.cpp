@@ -593,20 +593,13 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_10_code_gen_2(
         | genex::views::transform([sm, meta, ctx](auto const &x) { return x->stage_10_code_gen_2(sm, meta, ctx); })
         | genex::to<std::vector>();
 
+    SPP_ASSERT(llvm_func != nullptr);
+    SPP_ASSERT(not ctx->builder.GetInsertBlock()->getTerminator());
+    const auto before = ctx->builder.GetInsertBlock();
+
     // Create the call instruction.
     const auto llvm_call = ctx->builder.CreateCall(llvm_func, llvm_func_args, "call" + uid);
-    if (llvm_func->getReturnType()->isVoidTy()) {
-        return llvm_call;
-    }
-
-    // Store the return value if there is an assignment target.
-    if (meta->assignment_target != nullptr) {
-        const auto target_sym = sm->current_scope->get_var_symbol(meta->assignment_target);
-        const auto target_alloca = llvm::cast<llvm::AllocaInst>(target_sym->llvm_info->alloca);
-        ctx->builder.CreateStore(llvm_call, target_alloca);
-        return target_alloca;
-    }
-
+    SPP_ASSERT(ctx->builder.GetInsertBlock() == before);
     return llvm_call;
 }
 
