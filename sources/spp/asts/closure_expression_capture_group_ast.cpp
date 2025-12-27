@@ -155,8 +155,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_10_code_gen_2(
             ctx->current_closure_scope->ast->to<ClosureExpressionAst>()->llvm_func->getArg(0),
             std::vector<llvm::Value*>{zero, idx});
 
-        const auto load = ctx->builder.CreateLoad(
-            cap_llvm_type, gep, "capture.load." + cap_val->val);
+        const auto load = ctx->builder.CreateLoad(cap_llvm_type, gep, "capture.load." + cap_val->val);
 
         ctx->builder.CreateStore(load, alloca);
 
