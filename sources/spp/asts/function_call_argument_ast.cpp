@@ -5,6 +5,7 @@ module;
 module spp.asts.function_call_argument_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.convention_ast;
@@ -77,7 +78,7 @@ auto spp::asts::FunctionCallArgumentAst::stage_10_code_gen_2(
         auto llvm_val_ptr = static_cast<llvm::Value*>(nullptr);
         if (sym != nullptr) {
             // Get the alloca for the lhs symbol (the base pointer).
-            const auto lhs_alloca = llvm_val;
+            const auto lhs_alloca = sym->llvm_info->alloca;
             llvm_val_ptr = ctx->builder.CreateLoad(llvm_type, lhs_alloca, "load.arg.base_ptr");
         }
         else {
