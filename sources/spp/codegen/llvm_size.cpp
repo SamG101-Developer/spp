@@ -1,5 +1,6 @@
 module spp.codegen.llvm_size;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
 import spp.asts.ast;
 import spp.asts.class_attribute_ast;
@@ -154,7 +155,7 @@ auto spp::codegen::size_of(
 
     // Otherwise, sum the attributes of the struct/class.
     const auto all_types = analyse::utils::type_utils::get_all_attrs(*type, &sm)
-        | genex::views::transform([](auto &&x) { return std::get<0>(x)->type; })
+        | genex::views::transform([](auto &&x) { return x.second->fq_name(); })
         | genex::views::transform([&sm](auto &&x) { return size_of(sm, x); })
         | genex::to<std::vector>();
     const auto total_size = genex::fold_left_first(all_types, std::plus{});
