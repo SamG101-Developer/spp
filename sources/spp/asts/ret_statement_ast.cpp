@@ -97,6 +97,13 @@ auto spp::asts::RetStatementAst::stage_7_analyse_semantics(
         expr->stage_7_analyse_semantics(sm, meta);
         expr_type = expr->infer_type(sm, meta);
         meta->restore();
+
+        // Check the expr_type isn't Void (don't allow "ret void_func()" => "void_func(); ret").
+        if (analyse::utils::type_utils::is_type_void(*expr_type, *sm->current_scope)) {
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidVoidValueError>()
+                .with_args(*expr, "return value")
+                .raises_from(sm->current_scope);
+        }
     }
 
     // Functions provide the return type, closures require inference; handle the inference.

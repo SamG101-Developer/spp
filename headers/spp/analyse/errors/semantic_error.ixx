@@ -131,6 +131,7 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppGenericParameterNotInferredError;
     SPP_EXP_CLS struct SppGenericArgumentTooManyError;
     SPP_EXP_CLS struct SppMissingMainFunctionError;
+    SPP_EXP_CLS struct SppInvalidVoidValueError;
 }
 
 
@@ -159,7 +160,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::Abs
 
 
 SPP_EXP_CLS struct spp::analyse::errors::SppAnnotationInvalidApplicationError final : SemanticError {
-    explicit SppAnnotationInvalidApplicationError(asts::AnnotationAst const &annotation, asts::Ast const &ctx, std::string &&block_list);
+    explicit SppAnnotationInvalidApplicationError(asts::AnnotationAst const &annotation, asts::Ast const &ctx, std::string_view block_list);
 };
 
 
@@ -595,4 +596,9 @@ SPP_EXP_CLS struct spp::analyse::errors::SppGenericArgumentTooManyError final : 
 
 SPP_EXP_CLS struct spp::analyse::errors::SppMissingMainFunctionError final : SemanticError {
     explicit SppMissingMainFunctionError(asts::ModulePrototypeAst const &mod);
+};
+
+
+SPP_EXP_CLS struct spp::analyse::errors::SppInvalidVoidValueError final : SemanticError {
+    explicit SppInvalidVoidValueError(asts::ExpressionAst const &expr, std::string_view what);
 };

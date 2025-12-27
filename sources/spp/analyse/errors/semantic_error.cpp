@@ -55,7 +55,7 @@ auto spp::analyse::errors::SemanticError::add_footer(std::string &&note, std::st
 
 
 auto spp::analyse::errors::SemanticError::clone() const
--> std::unique_ptr<SemanticError> {
+    -> std::unique_ptr<SemanticError> {
     // Use the copy constructor to clone the error.
     return std::make_unique<SemanticError>(*this);
 }
@@ -64,7 +64,7 @@ auto spp::analyse::errors::SemanticError::clone() const
 spp::analyse::errors::SppAnnotationInvalidApplicationError::SppAnnotationInvalidApplicationError(
     asts::AnnotationAst const &annotation,
     asts::Ast const &ctx,
-    std::string &&block_list) {
+    const std::string_view block_list) {
     add_header(
         0, "SPP Annotation Invalid Application Error");
     add_context_for_error(
@@ -72,7 +72,7 @@ spp::analyse::errors::SppAnnotationInvalidApplicationError::SppAnnotationInvalid
         "Annotation defined here");
     add_error(
         &ctx,
-        "Invalid " + block_list + "context defined here");
+        "Invalid " + std::string(block_list) + "context defined here");
     add_footer(
         "This annotation is not compatible with the current context.",
         "Remove the annotation from here");
@@ -1588,4 +1588,18 @@ spp::analyse::errors::SppMissingMainFunctionError::SppMissingMainFunctionError(
     add_footer(
         "The module is missing a 'main' function, which is required as the entry point of the program.",
         "Define a 'main' function in the module");
+}
+
+
+spp::analyse::errors::SppInvalidVoidValueError::SppInvalidVoidValueError(
+    asts::ExpressionAst const &expr,
+    const std::string_view what) {
+    add_header(
+        82, "SPP Invalid Void Value Error");
+    add_error(
+        &expr,
+        "Expression defined here");
+    add_footer(
+        "This expression evaluates to 'void' and cannot be used in a " + std::string(what) + " context.",
+        "Ensure the expression has a valid non-void type");
 }

@@ -130,7 +130,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_10_code_gen_2(
 
         // Set the value in the future (field 1).
         const auto fut_value_ptr_in_closure = ctx->builder.CreateStructGEP(llvm_fut_type, fut_param, 1, "async.fut.value_ptr.in_closure" + uid);
-        ctx->builder.CreateStore(fut_val, fut_value_ptr_in_closure);
+        if (not fut_val->getType()->isVoidTy()) { ctx->builder.CreateStore(fut_val, fut_value_ptr_in_closure); }
 
         // Return from the closure.
         ctx->builder.CreateRetVoid();

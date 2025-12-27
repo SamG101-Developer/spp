@@ -86,6 +86,7 @@ auto spp::asts::LetStatementInitializedAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // Todo: Test preventing "let x = void_type()" + same for "let x: Void"
     // Check the value is a valid expression type.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(val.get());
 
@@ -146,7 +147,7 @@ auto spp::asts::LetStatementInitializedAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Delegate the code generation to the variable, after setting up the meta.
-    meta->save();
+        meta->save();
     meta->assignment_target = var->extract_name();
     meta->assignment_target_type = type ? type : val->infer_type(sm, meta);
     meta->let_stmt_explicit_type = type ? type : val->infer_type(sm, meta);
