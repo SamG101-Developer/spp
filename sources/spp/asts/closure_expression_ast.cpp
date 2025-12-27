@@ -20,6 +20,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.utils.uid;
 import genex;
 
 
@@ -135,7 +136,7 @@ auto spp::asts::ClosureExpressionAst::stage_10_code_gen_2(
     // Strategy: build an "environment" struct for the closure. Attributes are captures. The safety is already
     // guaranteed by semantic analysis.
     // Todo: Add LLVM attributes to pointer types for optimizations (unique, nonnull, etc).
-    const auto uid = std::to_string(reinterpret_cast<std::uintptr_t>(this));
+    const auto uid = spp::utils::generate_uid(this);
     const auto env_ty = llvm::StructType::create(*ctx->context, "$ClosureEnv" + uid);
     auto env_field_types = std::vector<llvm::Type*>{};
     for (const auto &capture : pc_group->capture_group->captures) {

@@ -16,6 +16,7 @@ import spp.asts.pattern_guard_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
+import spp.utils.uid;
 
 
 spp::asts::IterExpressionBranchAst::IterExpressionBranchAst(
@@ -80,9 +81,10 @@ auto spp::asts::IterExpressionBranchAst::m_codegen_combine_patterns(
     // Based on the environment generator state, generate a u8 equality.
     // If there is a guard, generate it and logical AND it with the pattern match.
     auto gen_env = meta->case_condition->stage_10_code_gen_2(sm, meta, ctx);
+    const auto uid = spp::utils::generate_uid(this);
     const auto gen_type = llvm::PointerType::get(*ctx->context, 0);
-    const auto yield_ptr = ctx->builder.CreateStructGEP(gen_type, gen_env, 0, "gen.yield.state");
-    const auto yield_val = ctx->builder.CreateLoad(llvm::Type::getInt8Ty(*ctx->context), yield_ptr, "gen.state.val");
+    const auto yield_ptr = ctx->builder.CreateStructGEP(gen_type, gen_env, 0, "gen.yield.state" + uid);
+    const auto yield_val = ctx->builder.CreateLoad(llvm::Type::getInt8Ty(*ctx->context), yield_ptr, "gen.state.val" + uid);
     auto llvm_combined_pattern = static_cast<llvm::Value*>(nullptr);
 
     // Based on the pattern, determine the match condition.
@@ -90,22 +92,22 @@ auto spp::asts::IterExpressionBranchAst::m_codegen_combine_patterns(
     if (pattern->to<IterPatternVariantVariableAst>() != nullptr) {
         constexpr auto state = static_cast<std::uint8_t>(codegen::CoroutineState::VARIABLE);
         const auto constant = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->context), state);
-        llvm_combined_pattern = ctx->builder.CreateICmpEQ(yield_val, constant, "iter.pattern.match");
+        llvm_combined_pattern = ctx->builder.CreateICmpEQ(yield_val, constant, "iter.pattern.match" + uid);
     }
     else if (pattern->to<IterPatternVariantExhaustedAst>() != nullptr) {
         constexpr auto state = static_cast<std::uint8_t>(codegen::CoroutineState::EXHAUSTED);
         const auto constant = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->context), state);
-        llvm_combined_pattern = ctx->builder.CreateICmpEQ(yield_val, constant, "iter.pattern.match");
+        llvm_combined_pattern = ctx->builder.CreateICmpEQ(yield_val, constant, "iter.pattern.match" + uid);
     }
     else if (pattern->to<IterPatternVariantNoValueAst>() != nullptr) {
         constexpr auto state = static_cast<std::uint8_t>(codegen::CoroutineState::NO_VALUE);
         const auto constant = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->context), state);
-        llvm_combined_pattern = ctx->builder.CreateICmpEQ(yield_val, constant, "iter.pattern.match");
+        llvm_combined_pattern = ctx->builder.CreateICmpEQ(yield_val, constant, "iter.pattern.match" + uid);
     }
     else if (pattern->to<IterPatternVariantExceptionAst>() != nullptr) {
         constexpr auto state = static_cast<std::uint8_t>(codegen::CoroutineState::EXCEPTION);
         const auto constant = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->context), state);
-        llvm_combined_pattern = ctx->builder.CreateICmpEQ(yield_val, constant, "iter.pattern.match");
+        llvm_combined_pattern = ctx->builder.CreateICmpEQ(yield_val, constant, "iter.pattern.match" + uid);
     }
     else if (pattern->to<IterPatternVariantElseAst>() != nullptr) {
         // Always matches.
@@ -115,7 +117,7 @@ auto spp::asts::IterExpressionBranchAst::m_codegen_combine_patterns(
     // If there is a guard, combine it with the pattern match.
     if (guard) {
         const auto llvm_guard = guard->stage_10_code_gen_2(sm, meta, ctx);
-        return ctx->builder.CreateAnd(llvm_combined_pattern, llvm_guard, "iter.pattern.guard.match");
+        return ctx->builder.CreateAnd(llvm_combined_pattern, llvm_guard, "iter.pattern.guard.match" + uid);
     }
 
     return llvm_combined_pattern;

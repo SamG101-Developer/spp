@@ -16,6 +16,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.uid;
 
 
 spp::asts::FunctionParameterAst::FunctionParameterAst(
@@ -29,7 +30,8 @@ spp::asts::FunctionParameterAst::FunctionParameterAst(
     type(std::move(type)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_colon, lex::SppTokenType::TK_COLON, ":", var ? var->pos_end() : 0);
     if (this->var == nullptr) {
-        auto var_name = std::make_unique<IdentifierAst>(0, std::format("$_{}", reinterpret_cast<std::uintptr_t>(this)));
+        const auto uid = spp::utils::generate_uid(this);
+        auto var_name = std::make_unique<IdentifierAst>(0, uid);
         this->var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
     }
 }

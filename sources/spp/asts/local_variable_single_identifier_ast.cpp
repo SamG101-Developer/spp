@@ -13,6 +13,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.asts.type_ast;
 import spp.codegen.llvm_type;
+import spp.utils.uid;
 
 
 spp::asts::LocalVariableSingleIdentifierAst::LocalVariableSingleIdentifierAst(
@@ -145,6 +146,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Create the alloca for the variable.
+    const auto uid = spp::utils::generate_uid(this);
     const auto type_sym = sm->current_scope->get_type_symbol(meta->let_stmt_explicit_type);
     const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
     SPP_ASSERT(llvm_type != nullptr);
@@ -154,7 +156,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_10_code_gen_2(
     const auto entry = &func->getEntryBlock();
     auto temp_builder = llvm::IRBuilder(entry, entry->begin());
 
-    const auto alloca = temp_builder.CreateAlloca(llvm_type, nullptr, "local_var");
+    const auto alloca = temp_builder.CreateAlloca(llvm_type, nullptr, "local.alloca" + uid);
     sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name)->llvm_info->alloca = alloca;
 
     // Generate the initializer expression.

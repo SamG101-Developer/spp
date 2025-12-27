@@ -18,6 +18,7 @@ import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.utils.uid;
 
 
 spp::asts::CasePatternVariantLiteralAst::CasePatternVariantLiteralAst(
@@ -69,7 +70,8 @@ auto spp::asts::CasePatternVariantLiteralAst::convert_to_variable(
     CompilerMetaData *)
     -> std::unique_ptr<LocalVariableAst> {
     // Create the local variable literal binding AST.
-    auto var_name = std::make_unique<IdentifierAst>(pos_start(), std::format("$_{}", reinterpret_cast<std::uintptr_t>(this)));
+    const auto uid = spp::utils::generate_uid(this);
+    auto var_name = std::make_unique<IdentifierAst>(pos_start(), uid);
     auto var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
     var->mark_from_case_pattern();
     return var;

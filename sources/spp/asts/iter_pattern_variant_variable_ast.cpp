@@ -19,6 +19,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.utils.uid;
 
 
 spp::asts::IterPatternVariantVariableAst::IterPatternVariantVariableAst(
@@ -105,12 +106,13 @@ auto spp::asts::IterPatternVariantVariableAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) -> llvm::Value* {
     // Get the generator pointer of the targetted coroutine. This is just the value being inspected (cond).
+    const auto uid = spp::utils::generate_uid(this);
     auto gen_env = meta->case_condition->stage_10_code_gen_2(sm, meta, ctx);
 
     // GEP to the "Yield" field (field 2).
     const auto gen_type = llvm::PointerType::get(*ctx->context, 0);
-    const auto yield_ptr = ctx->builder.CreateStructGEP(gen_type, gen_env, 2, "gen.yield.ptr");
-    const auto yield_val = ctx->builder.CreateLoad(llvm::PointerType::get(*ctx->context, 0), yield_ptr, "gen.yield.val");
+    const auto yield_ptr = ctx->builder.CreateStructGEP(gen_type, gen_env, 2, "gen.yield.ptr" + uid);
+    const auto yield_val = ctx->builder.CreateLoad(llvm::PointerType::get(*ctx->context, 0), yield_ptr, "gen.yield.val" + uid);
 
     // Alloca for the variable.
     meta->save();

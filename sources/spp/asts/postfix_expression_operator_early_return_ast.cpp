@@ -33,6 +33,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.utils.uid;
 
 
 spp::asts::PostfixExpressionOperatorEarlyReturnAst::PostfixExpressionOperatorEarlyReturnAst(
@@ -113,7 +114,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_10_code_gen_2(
 
     // Temp holder for non-symbolic condition.
     if (sm->current_scope->get_var_symbol_outermost(*lhs).first == nullptr) {
-        auto uid = std::to_string(reinterpret_cast<std::uintptr_t>(this));
+        auto uid = spp::utils::generate_uid(this);
         auto var_name = std::make_unique<IdentifierAst>(pos_start(), "$try_" + std::move(uid));
         auto var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
         auto let_stmt = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, ast_clone(lhs));

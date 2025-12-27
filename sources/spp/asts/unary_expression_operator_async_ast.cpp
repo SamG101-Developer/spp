@@ -18,6 +18,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_type;
+import spp.utils.uid;
 
 
 spp::asts::UnaryExpressionOperatorAsyncAst::UnaryExpressionOperatorAsyncAst(
@@ -87,13 +88,14 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // We need a "Fut[T]" object to work with immediately.
+    const auto uid = spp::utils::generate_uid(this);
     const auto fut_type = infer_type(sm, meta);
     const auto fut_type_sym = sm->current_scope->get_type_symbol(fut_type);
     const auto llvm_fut_type = codegen::llvm_type(*fut_type_sym, ctx);
 
     // Allocate the future onto the stack and set the initial state.
-    const auto fut_alloca = ctx->builder.CreateAlloca(llvm_fut_type, nullptr, "async.fut.alloca");
-    const auto fut_state_ptr = ctx->builder.CreateStructGEP(llvm_fut_type, fut_alloca, 0, "async.fut.state_ptr");
+    const auto fut_alloca = ctx->builder.CreateAlloca(llvm_fut_type, nullptr, "async.fut.alloca" + uid);
+    const auto fut_state_ptr = ctx->builder.CreateStructGEP(llvm_fut_type, fut_alloca, 0, "async.fut.state_ptr" + uid);
     const auto fut_state = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->context), 0);
     ctx->builder.CreateStore(fut_state, fut_state_ptr);
 
@@ -104,11 +106,11 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_10_code_gen_2(
 
     const auto fut_closure = llvm::Function::Create(
         fut_closure_type, llvm::Function::InternalLinkage,
-        "async.fut.closure", ctx->module.get());
+        "async.fut.closure" + uid, ctx->module.get());
 
     {
         // Create the entry block for the closure.
-        const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "async.fut.closure.entry", fut_closure);
+        const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "async.fut.closure.entry" + uid, fut_closure);
         ctx->builder.SetInsertPoint(entry_bb);
 
         // Generate the function call expression inside the closure.
@@ -122,12 +124,12 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_10_code_gen_2(
         const auto fut_param = fut_closure->getArg(0);
 
         // Set the future's state to completed.
-        const auto fut_state_ptr_in_closure = ctx->builder.CreateStructGEP(llvm_fut_type, fut_param, 0, "async.fut.state_ptr.in_closure");
+        const auto fut_state_ptr_in_closure = ctx->builder.CreateStructGEP(llvm_fut_type, fut_param, 0, "async.fut.state_ptr.in_closure" + uid);
         const auto fut_state_completed = llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->context), 1);
         ctx->builder.CreateStore(fut_state_completed, fut_state_ptr_in_closure);
 
         // Set the value in the future (field 1).
-        const auto fut_value_ptr_in_closure = ctx->builder.CreateStructGEP(llvm_fut_type, fut_param, 1, "async.fut.value_ptr.in_closure");
+        const auto fut_value_ptr_in_closure = ctx->builder.CreateStructGEP(llvm_fut_type, fut_param, 1, "async.fut.value_ptr.in_closure" + uid);
         ctx->builder.CreateStore(fut_val, fut_value_ptr_in_closure);
 
         // Return from the closure.
@@ -140,7 +142,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_10_code_gen_2(
     }
 
     // Return the future value.
-    const auto fut_loaded = ctx->builder.CreateLoad(llvm_fut_type, fut_alloca, "async.fut.loaded");
+    const auto fut_loaded = ctx->builder.CreateLoad(llvm_fut_type, fut_alloca, "async.fut.loaded" + uid);
     return fut_loaded;
 }
 

@@ -23,6 +23,7 @@ import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
+import spp.utils.uid;
 import genex;
 
 
@@ -81,11 +82,12 @@ auto spp::analyse::utils::bin_utils::combine_comp_ops(
 
     // Non-symbolic value being re-used -> put it into a variable first.
     if (sm->current_scope->get_var_symbol_outermost(*bin_lhs->rhs).first == nullptr) {
-        auto temp_var_name = std::make_shared<asts::IdentifierAst>(bin_lhs->rhs->pos_start(), std::format("$_{}", reinterpret_cast<std::uintptr_t>(bin_lhs->rhs.get())));
+        const auto uid = spp::utils::generate_uid(bin_lhs->rhs.get());
+        auto temp_var_name = std::make_shared<asts::IdentifierAst>(bin_lhs->rhs->pos_start(), uid);
         auto temp_var_ast = std::make_unique<asts::LocalVariableSingleIdentifierAst>(nullptr, temp_var_name, nullptr);
         const auto temp_let = std::make_unique<asts::LetStatementInitializedAst>(nullptr, std::move(temp_var_ast), nullptr, nullptr, std::move(bin_lhs->rhs));
         temp_let->stage_7_analyse_semantics(sm, meta);
-        bin_lhs->rhs = ast_clone(temp_var_name);
+        bin_lhs->rhs = asts::ast_clone(temp_var_name);
     }
 
     // Otherwise, re-arrange the ASTs, with an "and" combinator binary expression.

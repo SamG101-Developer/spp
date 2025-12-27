@@ -22,6 +22,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.utils.uid;
 import genex;
 
 
@@ -136,6 +137,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_10_code_gen_2(
     -> llvm::Value* {
     // Build the variable bindings from the environment object. This allows the body to remain unchanged as the
     // variables get loaded from the environment struct.
+    const auto uid = spp::utils::generate_uid(this);
     for (auto const &[i, capture] : captures | genex::views::ptr | genex::views::enumerate) {
         const auto zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), 0);
         const auto idx = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), i);
@@ -148,14 +150,14 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_10_code_gen_2(
 
         // Create the alloca for the variable.
         const auto alloca = ctx->builder.CreateAlloca(
-            cap_llvm_type, nullptr, "capture.alloca." + cap_val->val);
+            cap_llvm_type, nullptr, "capture.alloca." + uid);
 
         const auto gep = ctx->builder.CreateInBoundsGEP(
             ctx->current_closure_type,
             ctx->current_closure_scope->ast->to<ClosureExpressionAst>()->llvm_func->getArg(0),
             std::vector<llvm::Value*>{zero, idx});
 
-        const auto load = ctx->builder.CreateLoad(cap_llvm_type, gep, "capture.load." + cap_val->val);
+        const auto load = ctx->builder.CreateLoad(cap_llvm_type, gep, "capture.load." + uid);
 
         ctx->builder.CreateStore(load, alloca);
 

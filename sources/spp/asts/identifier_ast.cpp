@@ -12,6 +12,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.utils.strings;
 import spp.asts.utils.ast_utils;
+import spp.utils.uid;
 import absl;
 import genex;
 import llvm;
@@ -125,19 +126,20 @@ auto spp::asts::IdentifierAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Get the allocation for the variable from the current scope.
+    const auto uid = spp::utils::generate_uid(this);
     const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));
     SPP_ASSERT(var_sym->llvm_info->alloca != nullptr);
 
     // Handle local variable allocation extraction + load.
     if (llvm::isa<llvm::AllocaInst>(var_sym->llvm_info->alloca)) {
         const auto alloca = llvm::cast<llvm::AllocaInst>(var_sym->llvm_info->alloca);
-        return ctx->builder.CreateLoad(alloca->getAllocatedType(), alloca, "load.local");
+        return ctx->builder.CreateLoad(alloca->getAllocatedType(), alloca, "load.local" + uid);
     }
 
     // Handle global variable (load from global).
     if (llvm::isa<llvm::GlobalVariable>(var_sym->llvm_info->alloca)) {
         const auto global_var = llvm::cast<llvm::GlobalVariable>(var_sym->llvm_info->alloca);
-        return ctx->builder.CreateLoad(global_var->getValueType(), global_var, "load.global");
+        return ctx->builder.CreateLoad(global_var->getValueType(), global_var, "load.global" + uid);
     }
 
     std::unreachable();

@@ -20,6 +20,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
+import spp.utils.uid;
 import llvm;
 import genex;
 
@@ -147,6 +148,7 @@ auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Create an empty struct based on the llvm type - will never be a borrow so always stack allocated, not a pointer.
+    const auto uid = spp::utils::generate_uid(this);
     const auto type_sym = sm->current_scope->get_type_symbol(type);
     const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
 
@@ -173,7 +175,7 @@ auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
         // Set each field value in the aggregate.
         SPP_ASSERT(llvm_type != nullptr);
 
-        const auto aggregate = ctx->builder.CreateAlloca(llvm_type, nullptr, "obj_init.aggregate");
+        const auto aggregate = ctx->builder.CreateAlloca(llvm_type, nullptr, "obj_init.aggregate" + uid);
         for (auto i = 0uz; i < sorted_args.size(); ++i) {
             const auto &arg = sorted_args[i];
             const auto attr_ptr = ctx->builder.CreateStructGEP(llvm_type, aggregate, static_cast<std::uint32_t>(i), arg->name->val);
@@ -185,7 +187,7 @@ auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
 
         // Return the aggregate.
         SPP_ASSERT(aggregate != nullptr);
-        return ctx->builder.CreateLoad(llvm_type, aggregate, "obj_init.result");
+        return ctx->builder.CreateLoad(llvm_type, aggregate, "obj_init.result" + uid);
     }
 
     // Constant pathway.

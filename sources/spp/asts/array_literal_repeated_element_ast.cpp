@@ -18,6 +18,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.uid;
 import llvm;
 
 
@@ -167,10 +168,11 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_10_code_gen_2(
         }
 
         // Create the array type.
+        const auto uid = spp::utils::generate_uid(this);
         const auto elem_ty = vals[0]->getType();
         const auto arr_ty = llvm::ArrayType::get(elem_ty, vals.size());
         SPP_ASSERT(arr_ty != nullptr);
-        const auto arr_alloc = ctx->builder.CreateAlloca(arr_ty, nullptr, "array_literal_repeated_elements");
+        const auto arr_alloc = ctx->builder.CreateAlloca(arr_ty, nullptr, "array.repeated.alloca" + uid);
 
         // Store the elements in the array allocation.
         for (auto i = 0uz; i < vals.size(); ++i) {

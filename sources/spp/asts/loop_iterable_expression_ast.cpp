@@ -28,6 +28,7 @@ import spp.asts.token_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.uid;
 
 
 spp::asts::LoopIterableExpressionAst::LoopIterableExpressionAst(
@@ -103,10 +104,11 @@ auto spp::asts::LoopIterableExpressionAst::stage_7_analyse_semantics(
     CompilerMetaData *meta)
     -> void {
     // Simple statements to move from.
+    const auto uid = spp::utils::generate_uid(this);
     auto skip_stmt = LoopControlFlowStatementAst::Skip(pos_start());
     auto exit_stmt = LoopControlFlowStatementAst::Exit(pos_start());
-    auto iterable_name = std::make_shared<IdentifierAst>(pos_start(), std::format("$_iter_{}", reinterpret_cast<std::uintptr_t>(this)));
-    auto resume_name = std::make_shared<IdentifierAst>(pos_start(), std::format("$_res_{}", reinterpret_cast<std::uintptr_t>(this)));
+    auto iterable_name = std::make_shared<IdentifierAst>(pos_start(), "$_iter_" + uid);
+    auto resume_name = std::make_shared<IdentifierAst>(pos_start(), "$_res_" + uid);
 
     // Create the initial let statement to materialize the condition being iterated.
     auto iterable_let = ( {

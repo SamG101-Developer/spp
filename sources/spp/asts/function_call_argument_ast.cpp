@@ -14,6 +14,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.utils.uid;
 
 
 spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(
@@ -74,16 +75,17 @@ auto spp::asts::FunctionCallArgumentAst::stage_10_code_gen_2(
     // Handle the convention (to pointer).
     if (conv != nullptr) {
         // If the lhs is symbolic, get the address of the outermost part.
+        const auto uid = spp::utils::generate_uid(this);
         const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*meta->postfix_expression_lhs);
         auto llvm_val_ptr = static_cast<llvm::Value*>(nullptr);
         if (sym != nullptr) {
             // Get the alloca for the lhs symbol (the base pointer).
             const auto lhs_alloca = sym->llvm_info->alloca;
-            llvm_val_ptr = ctx->builder.CreateLoad(llvm_type, lhs_alloca, "load.arg.base_ptr");
+            llvm_val_ptr = ctx->builder.CreateLoad(llvm_type, lhs_alloca, "load.arg.base_ptr" + uid);
         }
         else {
             // Materialize the lhs expression into a temporary.
-            const auto temp = ctx->builder.CreateAlloca(llvm_type, nullptr, "temp.arg.borrow");
+            const auto temp = ctx->builder.CreateAlloca(llvm_type, nullptr, "temp.arg.borrow" + uid);
             ctx->builder.CreateStore(llvm_val, temp);
             llvm_val_ptr = temp;
         }

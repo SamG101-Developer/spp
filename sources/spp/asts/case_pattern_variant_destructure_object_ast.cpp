@@ -34,6 +34,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.utils.uid;
 import genex;
 
 
@@ -130,7 +131,8 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantic
         auto cond_type = meta->case_condition->infer_type(sm, meta);
 
         // Create a variable and let statement for the condition.
-        auto var_name = std::make_shared<IdentifierAst>(pos_start(), std::format("$_{}", reinterpret_cast<std::uintptr_t>(this)));
+        const auto uid = spp::utils::generate_uid(this);
+        auto var_name = std::make_shared<IdentifierAst>(pos_start(), uid);
         auto var_ast = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, var_name, nullptr);
         const auto let_ast = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var_ast), cond_type, nullptr, ast_clone(meta->case_condition));
         let_ast->stage_7_analyse_semantics(sm, meta);

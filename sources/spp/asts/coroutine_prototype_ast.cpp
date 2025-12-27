@@ -23,7 +23,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_type;
-
+import spp.utils.uid;
 import genex;
 import llvm;
 
@@ -106,6 +106,7 @@ auto spp::asts::CoroutinePrototypeAst::stage_10_code_gen_2(
     // Create the coroutine contructor function.
     const auto [llvm_coro_ctor, llvm_gen_env, llem_gen_env_args_type] = codegen::create_coro_gen_ctor(this, ctx, *sm->current_scope);
     if (llvm_gen_env != nullptr) {
+        const auto uid = spp::utils::generate_uid(this);
         const auto llvm_coro_resume_func = codegen::create_coro_res_func(this, llem_gen_env_args_type, ctx, *sm->current_scope);
         m_llvm_resume_fn = llvm_coro_resume_func; // Save for interaction with ".res()" calls.
         this->llvm_gen_env = llvm_gen_env; // Save for interaction with ".res()" calls.
@@ -116,7 +117,7 @@ auto spp::asts::CoroutinePrototypeAst::stage_10_code_gen_2(
             ctx->builder.CreateStructGEP(llvm_coro_ctor->getReturnType(), llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::RES_FN)));
 
         // Entry block into the resume function.
-        const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry", llvm_coro_resume_func);
+        const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry" + uid, llvm_coro_resume_func);
         ctx->builder.SetInsertPoint(entry_bb);
 
         const auto ret_type_sym = sm->current_scope->get_type_symbol(return_type);
@@ -132,15 +133,15 @@ auto spp::asts::CoroutinePrototypeAst::stage_10_code_gen_2(
 
         // Create the "switch" header block, mapping location values to labels.
         const auto number_of_yields = static_cast<std::uint32_t>(ctx->yield_continuations.size());
-        const auto switch_bb = llvm::BasicBlock::Create(*ctx->context, "coro.switch", llvm_coro_resume_func);
+        const auto switch_bb = llvm::BasicBlock::Create(*ctx->context, "coro.switch" + uid, llvm_coro_resume_func);
 
         // Switch on the value loaded from the coroutine environment's location field.
-        const auto loc_field = ctx->builder.CreateStructGEP(llvm::PointerType::get(*ctx->context, 0), llvm_coro_resume_func->getArg(0), 1);
-        const auto loc_value = ctx->builder.CreateLoad(llvm::Type::getInt32Ty(*ctx->context), loc_field);
+        const auto loc_field = ctx->builder.CreateStructGEP(llvm::PointerType::get(*ctx->context, 0), llvm_coro_resume_func->getArg(0), 1, "coro.loc.gep" + uid);
+        const auto loc_value = ctx->builder.CreateLoad(llvm::Type::getInt32Ty(*ctx->context), loc_field, "coro.loc.load" + uid);
         const auto switch_inst = ctx->builder.CreateSwitch(loc_value, switch_bb, number_of_yields + 1);
 
         // Case for "0" => start of the coroutine.
-        const auto start_bb = llvm::BasicBlock::Create(*ctx->context, "coro.start", llvm_coro_resume_func);
+        const auto start_bb = llvm::BasicBlock::Create(*ctx->context, "coro.start" + uid, llvm_coro_resume_func);
         switch_inst->addCase(llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), 0), start_bb);
         ctx->builder.SetInsertPoint(start_bb);
 

@@ -10,6 +10,7 @@ import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_size;
 import spp.codegen.llvm_type;
+import spp.utils.uid;
 
 import llvm;
 
@@ -46,18 +47,19 @@ auto spp::codegen::func_impls::simple_intrinsic_binop_assign(
     F &&method)
     -> void {
     // Create the add_assign function.
+    const auto uid = spp::utils::generate_uid();
     const auto name = mangle::mangle_fun_name(*sm->current_scope, *proto);
     const auto ptr_ty = llvm::PointerType::get(*ctx->context, 0);
     const auto fn_ty = llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->context), {ptr_ty, ty}, false);
     const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->module.get());
-    const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry", fn);
+    const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry" + uid, fn);
 
     // Build the function body.
     ctx->builder.SetInsertPoint(entry_bb);
     const auto lhs = fn->arg_begin();
     const auto rhs = fn->arg_begin() + 1;
     SPP_ASSERT(ty != nullptr and lhs != nullptr);
-    const auto loaded_val = ctx->builder.CreateLoad(ty, lhs, "loaded_val");
+    const auto loaded_val = ctx->builder.CreateLoad(ty, lhs, "intrinsic.assign.loaded" + uid);
     const auto result = method(loaded_val, rhs);
 
     SPP_ASSERT(result != nullptr and lhs != nullptr);
@@ -74,10 +76,11 @@ auto spp::codegen::func_impls::simple_intrinsic_unop(
     F &&method)
     -> void {
     // Create the unary function.
+    const auto uid = spp::utils::generate_uid();
     const auto name = mangle::mangle_fun_name(*sm->current_scope, *proto);
     const auto fn_ty = llvm::FunctionType::get(ty, {ty}, false);
     const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->module.get());
-    const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry", fn);
+    const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry" + uid, fn);
 
     // Build the function body.
     ctx->builder.SetInsertPoint(entry_bb);
@@ -94,17 +97,18 @@ auto spp::codegen::func_impls::simple_binary_intrinsic_call(
     const llvm::Intrinsic::IndependentIntrinsics intrinsic)
     -> void {
     // Create the function.
+    const auto uid = spp::utils::generate_uid();
     const auto name = mangle::mangle_fun_name(*sm->current_scope, *proto);
     const auto fn_ty = llvm::FunctionType::get(ty, {ty, ty}, false);
     const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->module.get());
-    const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry", fn);
+    const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry" + uid, fn);
 
     // Build the function body.
     ctx->builder.SetInsertPoint(entry_bb);
     const auto lhs = fn->arg_begin();
     const auto rhs = fn->arg_begin() + 1;
     const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), intrinsic, {ty});
-    const auto result = ctx->builder.CreateCall(intrinsic_fn, {lhs, rhs}, "result");
+    const auto result = ctx->builder.CreateCall(intrinsic_fn, {lhs, rhs}, "intrinsic.result" + uid);
     ctx->builder.CreateRet(result);
 }
 
@@ -116,16 +120,17 @@ auto spp::codegen::func_impls::simple_unary_intrinsic_call(
     const llvm::Intrinsic::IndependentIntrinsics intrinsic)
     -> void {
     // Create the function.
+    const auto uid = spp::utils::generate_uid();
     const auto name = mangle::mangle_fun_name(*sm->current_scope, *proto);
     const auto fn_ty = llvm::FunctionType::get(ty, {ty}, false);
     const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->module.get());
-    const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry", fn);
+    const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry" + uid, fn);
 
     // Build the function body.
     ctx->builder.SetInsertPoint(entry_bb);
     const auto operand = fn->arg_begin();
     const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), intrinsic, {ty});
-    const auto result = ctx->builder.CreateCall(intrinsic_fn, {operand}, "result");
+    const auto result = ctx->builder.CreateCall(intrinsic_fn, {operand}, "intrinsic.result" + uid);
     ctx->builder.CreateRet(result);
 }
 
@@ -181,15 +186,15 @@ auto spp::codegen::func_impls::simple_unary_intrinsic_call(
 
 
 #define MAKE_BIN_OP_CLOSURE(Func) \
-    [&ctx](llvm::Value *a, llvm::Value *b) { return ctx->builder.Func(a, b, "result"); }
+    [&ctx](llvm::Value *a, llvm::Value *b) { return ctx->builder.Func(a, b, "result" + spp::utils::generate_uid()); }
 
 
 #define MAKE_UN_OP_CLOSURE(Func) \
-    [&ctx](llvm::Value *a) { return ctx->builder.Func(a, "result"); }
+    [&ctx](llvm::Value *a) { return ctx->builder.Func(a, "result" + spp::utils::generate_uid()); }
 
 
 #define MAKE_CONV_CLOSURE(Func) \
-    [&ctx, ty](llvm::Value *a) { return ctx->builder.Func(a, ty, "result"); }
+    [&ctx, ty](llvm::Value *a) { return ctx->builder.Func(a, ty, "result" + spp::utils::generate_uid()); }
 
 
 auto spp::codegen::func_impls::std_abort_abort(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx) -> void {

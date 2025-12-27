@@ -41,6 +41,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.utils.uid;
 import genex;
 import opex.cast;
 
@@ -587,6 +588,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx) -> llvm::Value* {
     // Get the llvm function target.
     const auto llvm_func = std::get<1>(*m_overload_info)->llvm_func;
+    const auto uid = spp::utils::generate_uid(this);
     auto llvm_func_args = arg_group->args
         | genex::views::transform([sm, meta, ctx](auto const &x) { return x->stage_10_code_gen_2(sm, meta, ctx); })
         | genex::to<std::vector>();
@@ -597,16 +599,21 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_10_code_gen_2(
     if (returns_agg) {
         const auto agg_type_sym = sm->current_scope->get_type_symbol(meta->assignment_target_type);
         const auto llvm_agg_type = codegen::llvm_type(*agg_type_sym, ctx);
-        ret_storage = ctx->builder.CreateAlloca(llvm_agg_type, nullptr, "call.ret");
+
+        const auto func = ctx->builder.GetInsertBlock()->getParent();
+        const auto entry = &func->getEntryBlock();
+        auto temp_builder = llvm::IRBuilder(entry, entry->begin());
+
+        ret_storage = temp_builder.CreateAlloca(llvm_agg_type, nullptr, "call.ret" + uid);
         llvm_func_args.insert(llvm_func_args.begin(), ret_storage);
     }
 
     // Create the call instruction.
-    const auto llvm_func_call = ctx->builder.CreateCall(llvm_func, llvm_func_args, "call");
+    const auto llvm_func_call = ctx->builder.CreateCall(llvm_func, llvm_func_args, "call" + uid);
 
     // Return the loaded aggregate if required.
     if (returns_agg) {
-        return ctx->builder.CreateLoad(ret_storage->getAllocatedType(), llvm_func_args[0], "call.ret.load");
+        return ctx->builder.CreateLoad(ret_storage->getAllocatedType(), ret_storage, "call.ret.load" + uid);
     }
     return llvm_func_call; // Todo: Just a Void?
 }

@@ -28,6 +28,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.utils.uid;
 import genex;
 import opex.cast;
 
@@ -189,12 +190,13 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
     // SPP_ASSERT(sm->current_scope == m_scope);
 
     // Determine if this "case" will be yielding an expression, and generate the condition.
+    const auto uid = spp::utils::generate_uid(this);
     const auto is_expr = meta->assignment_target != nullptr;
     cond->stage_10_code_gen_2(sm, meta, ctx);
 
     // Get the function, and create the end basic block.
     const auto func = ctx->builder.GetInsertBlock()->getParent();
-    const auto case_end_bb = llvm::BasicBlock::Create(*ctx->context, "case.end", func);
+    const auto case_end_bb = llvm::BasicBlock::Create(*ctx->context, "case.end" + uid, func);
 
     // Handle the potential PHI node for returning a value out of the case expression.
     auto result_alloca = static_cast<llvm::Value*>(nullptr);
@@ -202,7 +204,7 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
     if (is_expr) {
         const auto ret_type_sym = sm->current_scope->get_type_symbol(infer_type(sm, meta));
         result_ty = codegen::llvm_type(*ret_type_sym, ctx);
-        result_alloca = ctx->builder.CreateAlloca(result_ty, nullptr, "case.result.alloca");
+        result_alloca = ctx->builder.CreateAlloca(result_ty, nullptr, "case.result.alloca" + uid);
     }
     meta->assignment_target = nullptr;
     meta->assignment_target_type = nullptr;
@@ -213,7 +215,7 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
     meta->end_bb = case_end_bb;
 
     // Generate the case entry block for the branches to generate bodies into.
-    const auto case_entry_bb = llvm::BasicBlock::Create(*ctx->context, "case.entry", func);
+    const auto case_entry_bb = llvm::BasicBlock::Create(*ctx->context, "case.entry" + uid, func);
     ctx->builder.CreateBr(case_entry_bb);
     ctx->builder.SetInsertPoint(case_entry_bb);
 
@@ -228,7 +230,7 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
     sm->move_out_of_current_scope();
 
     if (is_expr) {
-        const auto result_load = ctx->builder.CreateLoad(result_ty, result_alloca, "case.result.load");
+        const auto result_load = ctx->builder.CreateLoad(result_ty, result_alloca, "case.result.load" + uid);
         return result_load;
     }
     return nullptr;

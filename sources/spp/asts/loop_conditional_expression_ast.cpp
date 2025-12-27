@@ -20,6 +20,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.utils.uid;
 
 
 spp::asts::LoopConditionalExpressionAst::LoopConditionalExpressionAst(
@@ -158,15 +159,16 @@ auto spp::asts::LoopConditionalExpressionAst::stage_10_code_gen_2(
     // SPP_ASSERT(sm->current_scope == m_scope);
 
     // Determine if this "case" will be yielding an expression.
+    const auto uid = spp::utils::generate_uid(this);
     const auto is_expr = meta->assignment_target != nullptr;
     const auto func = ctx->builder.GetInsertBlock()->getParent();
 
     // Get the function, and create the basic blocks.
-    const auto loop_cond_entry_bb = llvm::BasicBlock::Create(*ctx->context, "loop.cond.entry", func);
-    const auto loop_body_bb = llvm::BasicBlock::Create(*ctx->context, "loop.body", func);
-    const auto loop_cond_next_bb = llvm::BasicBlock::Create(*ctx->context, "loop.cond.next", func);
-    const auto loop_else_bb = llvm::BasicBlock::Create(*ctx->context, "loop.else", func);
-    const auto loop_end_bb = llvm::BasicBlock::Create(*ctx->context, "loop.end", func);
+    const auto loop_cond_entry_bb = llvm::BasicBlock::Create(*ctx->context, "loop.cond.entry" + uid, func);
+    const auto loop_body_bb = llvm::BasicBlock::Create(*ctx->context, "loop.body" + uid, func);
+    const auto loop_cond_next_bb = llvm::BasicBlock::Create(*ctx->context, "loop.cond.next" + uid, func);
+    const auto loop_else_bb = llvm::BasicBlock::Create(*ctx->context, "loop.else" + uid, func);
+    const auto loop_end_bb = llvm::BasicBlock::Create(*ctx->context, "loop.end" + uid, func);
 
     // Handle the potential PHI node for returning a value out of the loop expression.
     auto result_alloca = static_cast<llvm::Value*>(nullptr);
@@ -175,7 +177,7 @@ auto spp::asts::LoopConditionalExpressionAst::stage_10_code_gen_2(
     if (is_expr) {
         const auto ret_type_sym = sm->current_scope->get_type_symbol(infer_type(sm, meta));
         result_ty = codegen::llvm_type(*ret_type_sym, ctx);
-        result_alloca = ctx->builder.CreateAlloca(result_ty, nullptr, "loop.result.alloca");
+        result_alloca = ctx->builder.CreateAlloca(result_ty, nullptr, "loop.result.alloca" + uid);
     }
     meta->assignment_target = nullptr;
     meta->assignment_target_type = nullptr;
@@ -211,7 +213,7 @@ auto spp::asts::LoopConditionalExpressionAst::stage_10_code_gen_2(
     ctx->builder.SetInsertPoint(loop_end_bb);
     sm->move_out_of_current_scope();
     if (is_expr) {
-        const auto result_load = ctx->builder.CreateLoad(result_ty, result_alloca, "loop.result.load");
+        const auto result_load = ctx->builder.CreateLoad(result_ty, result_alloca, "loop.result.load" + uid);
         return result_load;
     }
     return nullptr;

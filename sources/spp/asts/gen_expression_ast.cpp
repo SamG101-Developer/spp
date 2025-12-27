@@ -27,6 +27,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
 import spp.lex.tokens;
+import spp.utils.uid;
 
 import llvm;
 
@@ -186,6 +187,7 @@ auto spp::asts::GenExpressionAst::stage_10_code_gen_2(
     const auto llvm_gen_env = coro->llvm_gen_env;
     SPP_ASSERT(llvm_gen_env != nullptr);
 
+    const auto uid = spp::utils::generate_uid(this);
     const auto [_, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(
         *m_gen_type, *sm->current_scope, *m_gen_type, "gen");
     const auto yielded_type = expr ? expr->infer_type(sm, meta) : nullptr;
@@ -229,15 +231,14 @@ auto spp::asts::GenExpressionAst::stage_10_code_gen_2(
     ctx->builder.CreateRetVoid();
 
     // Continuation block.
-    const auto cont_bb = llvm::BasicBlock::Create(*ctx->context, "gen.cont", ctx->builder.GetInsertBlock()->getParent());
+    const auto cont_bb = llvm::BasicBlock::Create(*ctx->context, "gen.cont" + uid, ctx->builder.GetInsertBlock()->getParent());
     ctx->yield_continuations.push_back(cont_bb);
     ctx->builder.SetInsertPoint(cont_bb);
 
     // If this gen expression was "sent" a value, return it. Read off of the "send" slot.
     const auto send_slot_ptr = ctx->builder.CreateStructGEP(
         gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::SEND_SLOT));
-    return ctx->builder.CreateLoad(
-        ctx->builder.getInt8Ty(), send_slot_ptr);
+    return ctx->builder.CreateLoad(ctx->builder.getInt8Ty(), send_slot_ptr, "gen.send.val" + uid);
 }
 
 
