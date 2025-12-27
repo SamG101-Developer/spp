@@ -38,7 +38,7 @@ auto spp::asts::ModuleImplementationAst::clone() const
 
 spp::asts::ModuleImplementationAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(members);
+    SPP_STRING_EXTEND(members, "\n");
     SPP_STRING_END;
 }
 
@@ -47,7 +47,7 @@ auto spp::asts::ModuleImplementationAst::print(
     AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
-    SPP_PRINT_EXTEND(members);
+    SPP_PRINT_EXTEND(members, "\n");
     SPP_PRINT_END;
 }
 
