@@ -187,7 +187,6 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
     -> llvm::Value* {
     // Scope shift.
     sm->move_to_next_scope();
-    // SPP_ASSERT(sm->current_scope == m_scope);
 
     // Determine if this "case" will be yielding an expression, and generate the condition.
     const auto uid = spp::utils::generate_uid(this);
@@ -196,44 +195,36 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
 
     // Get the function, and create the end basic block.
     const auto func = ctx->builder.GetInsertBlock()->getParent();
+    const auto case_entry_bb = llvm::BasicBlock::Create(*ctx->context, "case.entry" + uid, func);
     const auto case_end_bb = llvm::BasicBlock::Create(*ctx->context, "case.end" + uid, func);
+    ctx->builder.CreateBr(case_entry_bb);
 
-    // Handle the potential PHI node for returning a value out of the case expression.
-    auto result_alloca = static_cast<llvm::Value*>(nullptr);
-    auto result_ty = static_cast<llvm::Type*>(nullptr);
-    if (is_expr) {
-        const auto ret_type_sym = sm->current_scope->get_type_symbol(infer_type(sm, meta));
-        result_ty = codegen::llvm_type(*ret_type_sym, ctx);
-        result_alloca = ctx->builder.CreateAlloca(result_ty, nullptr, "case.result.alloca" + uid);
+    auto phi = static_cast<llvm::PHINode*>(nullptr);
+    if (uid == "$40779704_3414") {
+        auto _ = 123;
     }
-    meta->assignment_target = nullptr;
-    meta->assignment_target_type = nullptr;
+    if (is_expr) {
+        ctx->builder.SetInsertPoint(case_entry_bb);
+        const auto ret_type_sym = sm->current_scope->get_type_symbol(infer_type(sm, meta));
+        phi = ctx->builder.CreatePHI(codegen::llvm_type(*ret_type_sym, ctx), branches.size() as U32, "case.phi" + uid);
+    }
 
     // Set "case" information to the meta struct for branches and patterns to use.
     meta->save();
     meta->case_condition = cond.get();
     meta->end_bb = case_end_bb;
+    meta->llvm_phi = phi;
 
-    // Generate the case entry block for the branches to generate bodies into.
-    const auto case_entry_bb = llvm::BasicBlock::Create(*ctx->context, "case.entry" + uid, func);
-    ctx->builder.CreateBr(case_entry_bb);
+    // Generate each branch (no return value because phi is modified by the branch).
     ctx->builder.SetInsertPoint(case_entry_bb);
-
-    // Generate each branch.
-    for (auto &&branch : branches) {
+    for (auto const &branch : branches) {
         branch->stage_10_code_gen_2(sm, meta, ctx);
     }
 
-    // Finish the case expression.
     meta->restore();
-    ctx->builder.SetInsertPoint(case_end_bb);
     sm->move_out_of_current_scope();
-
-    if (is_expr) {
-        const auto result_load = ctx->builder.CreateLoad(result_ty, result_alloca, "case.result.load" + uid);
-        return result_load;
-    }
-    return nullptr;
+    ctx->builder.SetInsertPoint(case_end_bb);
+    return phi;
 }
 
 

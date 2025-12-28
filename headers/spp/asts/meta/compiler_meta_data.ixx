@@ -65,6 +65,7 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     codegen::LLvmCtx *llvm_ctx;
     llvm::Value *llvm_assignment_target;
     llvm::Value *llvm_assignment_target_type;
+    llvm::PHINode *llvm_phi;
 };
 
 

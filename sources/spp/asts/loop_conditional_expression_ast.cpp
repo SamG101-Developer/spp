@@ -156,67 +156,62 @@ auto spp::asts::LoopConditionalExpressionAst::stage_10_code_gen_2(
     -> llvm::Value* {
     // Move into the loop scope.
     sm->move_to_next_scope();
-    // SPP_ASSERT(sm->current_scope == m_scope);
 
     // Determine if this "case" will be yielding an expression.
     const auto uid = spp::utils::generate_uid(this);
     const auto is_expr = meta->assignment_target != nullptr;
-    const auto func = ctx->builder.GetInsertBlock()->getParent();
 
     // Get the function, and create the basic blocks.
-    const auto loop_cond_entry_bb = llvm::BasicBlock::Create(*ctx->context, "loop.cond.entry" + uid, func);
+    const auto func = ctx->builder.GetInsertBlock()->getParent();
+    const auto loop_cond_bb = llvm::BasicBlock::Create(*ctx->context, "loop.cond" + uid, func);
     const auto loop_body_bb = llvm::BasicBlock::Create(*ctx->context, "loop.body" + uid, func);
-    const auto loop_cond_next_bb = llvm::BasicBlock::Create(*ctx->context, "loop.cond.next" + uid, func);
     const auto loop_else_bb = llvm::BasicBlock::Create(*ctx->context, "loop.else" + uid, func);
     const auto loop_end_bb = llvm::BasicBlock::Create(*ctx->context, "loop.end" + uid, func);
+    ctx->builder.CreateBr(loop_cond_bb);
 
-    // Handle the potential PHI node for returning a value out of the loop expression.
-    auto result_alloca = static_cast<llvm::Value*>(nullptr);
-    auto result_ty = static_cast<llvm::Type*>(nullptr);
-
+    auto phi = static_cast<llvm::PHINode*>(nullptr);
     if (is_expr) {
+        ctx->builder.SetInsertPoint(loop_cond_bb);
         const auto ret_type_sym = sm->current_scope->get_type_symbol(infer_type(sm, meta));
-        result_ty = codegen::llvm_type(*ret_type_sym, ctx);
-        result_alloca = ctx->builder.CreateAlloca(result_ty, nullptr, "loop.result.alloca" + uid);
+        phi = ctx->builder.CreatePHI(codegen::llvm_type(*ret_type_sym, ctx), 2, "loop.phi" + uid);
     }
-    meta->assignment_target = nullptr;
-    meta->assignment_target_type = nullptr;
 
     // Jump to the condition entry block.
-    ctx->builder.CreateBr(loop_cond_entry_bb);
-    ctx->builder.SetInsertPoint(loop_cond_entry_bb);
-    const auto llvm_initial_cond = cond->stage_10_code_gen_2(sm, meta, ctx);
-    ctx->builder.CreateCondBr(llvm_initial_cond, loop_body_bb, loop_else_bb);
+    meta->save();
+    meta->end_bb = loop_end_bb;
+    meta->llvm_phi = phi;
+
+    // Generate the initial condition.
+    ctx->builder.SetInsertPoint(loop_cond_bb);
+    const auto llvm_cond = cond->stage_10_code_gen_2(sm, meta, ctx);
+    ctx->builder.CreateCondBr(llvm_cond, loop_body_bb, loop_else_bb);
 
     // Generate the loop body block.
     ctx->builder.SetInsertPoint(loop_body_bb);
     body->stage_10_code_gen_2(sm, meta, ctx);
-    if (not ctx->builder.GetInsertBlock()->getTerminator()) {
-        ctx->builder.CreateBr(loop_cond_next_bb);
+    if (ctx->builder.GetInsertBlock()->getTerminator() == nullptr) {
+        ctx->builder.CreateBr(loop_cond_bb);
     }
-
-    // Generate the loop continuation block.
-    ctx->builder.SetInsertPoint(loop_cond_next_bb);
-    const auto llvm_cond = llvm_initial_cond;
-    ctx->builder.CreateCondBr(llvm_cond, loop_body_bb, loop_end_bb);
 
     // Generate the else block if it exists.
     ctx->builder.SetInsertPoint(loop_else_bb);
     if (else_block != nullptr) {
-        else_block->stage_10_code_gen_2(sm, meta, ctx);
+        const auto else_val = else_block->stage_10_code_gen_2(sm, meta, ctx);
+        const auto else_end_bb = ctx->builder.GetInsertBlock();
+        if (else_end_bb->getTerminator() == nullptr) {
+            phi->addIncoming(else_val, else_end_bb);
+            ctx->builder.CreateBr(loop_end_bb);
+        }
     }
-    if (not ctx->builder.GetInsertBlock()->getTerminator()) {
+    else {
         ctx->builder.CreateBr(loop_end_bb);
     }
 
     // Finish the loop expression.
-    ctx->builder.SetInsertPoint(loop_end_bb);
+    meta->restore();
     sm->move_out_of_current_scope();
-    if (is_expr) {
-        const auto result_load = ctx->builder.CreateLoad(result_ty, result_alloca, "loop.result.load" + uid);
-        return result_load;
-    }
-    return nullptr;
+    ctx->builder.SetInsertPoint(loop_end_bb);
+    return phi;
 }
 
 

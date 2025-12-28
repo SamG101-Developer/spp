@@ -166,26 +166,27 @@ auto spp::asts::IterExpressionBranchAst::stage_10_code_gen_2(
     -> llvm::Value* {
     // Generate the branch architecture.
     sm->move_to_next_scope();
+    const auto uid = spp::utils::generate_uid(this);
     const auto func = ctx->builder.GetInsertBlock()->getParent();
-    const auto iter_branch_body_bb = llvm::BasicBlock::Create(*ctx->context, "iter.branch.body", func);
-    const auto iter_branch_next_bb = llvm::BasicBlock::Create(*ctx->context, "iter.branch.next", func);
+    const auto body_bb = llvm::BasicBlock::Create(*ctx->context, "iter.branch.body" + uid, func);
+    const auto next_bb = llvm::BasicBlock::Create(*ctx->context, "iter.branch.next" + uid, func);
 
     // Get the condition.
-    const auto match_cond = m_codegen_combine_patterns(sm, meta, ctx);
-    ctx->builder.CreateCondBr(match_cond, iter_branch_body_bb, iter_branch_next_bb);
-    ctx->builder.SetInsertPoint(iter_branch_body_bb);
+    const auto cond = m_codegen_combine_patterns(sm, meta, ctx);
+    ctx->builder.CreateCondBr(cond, body_bb, next_bb);
+    ctx->builder.SetInsertPoint(body_bb);
 
     // Generate the body.
-    body->stage_10_code_gen_2(sm, meta, ctx);
+    const auto llvm_val = body->stage_10_code_gen_2(sm, meta, ctx);
     const auto incoming_bb = ctx->builder.GetInsertBlock();
-    const auto terminator = incoming_bb->getTerminator();
 
-    if (not terminator) {
+    if (incoming_bb->getTerminator() == nullptr) {
+        if (meta->llvm_phi != nullptr) { meta->llvm_phi->addIncoming(llvm_val, incoming_bb); }
         ctx->builder.CreateBr(meta->end_bb);
     }
 
     // Move out of the branch's scope.
-    ctx->builder.SetInsertPoint(iter_branch_next_bb);
+    ctx->builder.SetInsertPoint(next_bb);
     sm->move_out_of_current_scope();
     return nullptr;
 }

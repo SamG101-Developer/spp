@@ -17,6 +17,7 @@ import spp.asts.token_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.uid;
 import genex;
 
 
@@ -161,26 +162,36 @@ auto spp::asts::CaseExpressionBranchAst::stage_10_code_gen_2(
     -> llvm::Value* {
     // Generate the branch architecture.
     sm->move_to_next_scope();
+    const auto uid = spp::utils::generate_uid(this);
     const auto func = ctx->builder.GetInsertBlock()->getParent();
-    const auto case_branch_body_bb = llvm::BasicBlock::Create(*ctx->context, "case.branch.body", func);
-    const auto case_branch_next_bb = llvm::BasicBlock::Create(*ctx->context, "case.branch.next", func);
+    const auto body_bb = llvm::BasicBlock::Create(*ctx->context, "case.branch.body" + uid, func);
+    const auto next_bb = llvm::BasicBlock::Create(*ctx->context, "case.branch.next" + uid, func);
 
     // Get the condition.
-    const auto match_cond = m_codegen_combine_patterns(sm, meta, ctx);
-    ctx->builder.CreateCondBr(match_cond, case_branch_body_bb, case_branch_next_bb);
-    ctx->builder.SetInsertPoint(case_branch_body_bb);
+    const auto cond = m_codegen_combine_patterns(sm, meta, ctx);
+    ctx->builder.CreateCondBr(cond, body_bb, next_bb);
+    ctx->builder.SetInsertPoint(body_bb);
 
     // Generate the body.
-    body->stage_10_code_gen_2(sm, meta, ctx);
+    auto llvm_val = body->stage_10_code_gen_2(sm, meta, ctx);
     const auto incoming_bb = ctx->builder.GetInsertBlock();
-    const auto terminator = incoming_bb->getTerminator();
 
-    if (not terminator) {
+    // Sometimes, a type is returned from a branch that is part of the variant type on the lhs. For example, a Opt[T]
+    // might receive a Some[T] in one branch, and a None in another. In this case, we need to cast the returned
+    // value to the variant type.
+    if (meta->assignment_target != nullptr and llvm_val != nullptr) {
+        const auto target_llvm_type = meta->llvm_phi->getType();
+        const auto casted_val = ctx->builder.CreateBitCast(llvm_val, target_llvm_type, "case.branch.cast.ptr");
+        llvm_val = casted_val;
+    }
+
+    if (incoming_bb->getTerminator() == nullptr) {
+        if (meta->llvm_phi != nullptr) { meta->llvm_phi->addIncoming(llvm_val, incoming_bb); }
         ctx->builder.CreateBr(meta->end_bb);
     }
 
     // Move out of the branch's scope.
-    ctx->builder.SetInsertPoint(case_branch_next_bb);
+    ctx->builder.SetInsertPoint(next_bb);
     sm->move_out_of_current_scope();
     return nullptr;
 }

@@ -156,7 +156,7 @@ auto spp::asts::IterExpressionAst::stage_7_analyse_semantics(
             .raises_from(sm->current_scope);
     }
 
-    // Analyse each branch of the case expression.
+    // Analyse each branch of the iter expression.
     meta->save();
     meta->case_condition = cond.get();
     for (auto const &x : branches) { x->stage_7_analyse_semantics(sm, meta); }
@@ -176,14 +176,14 @@ auto spp::asts::IterExpressionAst::stage_8_check_memory(
     analyse::utils::mem_utils::validate_symbol_memory(
         *cond, *cond, *sm, true, true, false, false, false, false, meta);
 
-    // Move into the "case" scope and check the memory satus of the symbols in the branches.
+    // Move into the "iter" scope and check the memory satus of the symbols in the branches.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
 
     analyse::utils::mem_utils::validate_inconsistent_memory(
         branches | genex::views::ptr | genex::to<std::vector>(), sm, meta);
 
-    // Move out of the case expression scope.
+    // Move out of the iter expression scope.
     sm->move_out_of_current_scope();
 }
 
@@ -193,56 +193,43 @@ auto spp::asts::IterExpressionAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    //
+    // Scope shift.
+    sm->move_to_next_scope();
+
+    // Determine if this "iter" will be yielding an expression, and generate the condition.
     const auto uid = spp::utils::generate_uid(this);
     const auto is_expr = meta->assignment_target != nullptr;
     cond->stage_10_code_gen_2(sm, meta, ctx);
 
-    sm->move_to_next_scope();
-    // SPP_ASSERT(sm->current_scope == m_scope);
-
-    // Branching mechanism like "case" but instead of value matching, it's pattern matching on the generator state.
-    // 1=>variable, 2=>exhausted, 3=>no value, 4=>exception
-    // Also, each branch may have a guard on, so logical AND that with the pattern match.
+    // Get the function, and create the end basic block.
     const auto func = ctx->builder.GetInsertBlock()->getParent();
+    const auto iter_entry_bb = llvm::BasicBlock::Create(*ctx->context, "iter.entry" + uid, func);
     const auto iter_end_bb = llvm::BasicBlock::Create(*ctx->context, "iter.end" + uid, func);
+    ctx->builder.CreateBr(iter_entry_bb);
 
-    // Handle the potential PHI node for returning a value out of the case expression.
-    auto result_alloca = static_cast<llvm::Value*>(nullptr);
-    auto result_ty = static_cast<llvm::Type*>(nullptr);
+    auto phi = static_cast<llvm::PHINode*>(nullptr);
     if (is_expr) {
+        ctx->builder.SetInsertPoint(iter_entry_bb);
         const auto ret_type_sym = sm->current_scope->get_type_symbol(infer_type(sm, meta));
-        result_ty = codegen::llvm_type(*ret_type_sym, ctx);
-        result_alloca = ctx->builder.CreateAlloca(result_ty, nullptr, "iter.result.alloca" + uid);
+        phi = ctx->builder.CreatePHI(codegen::llvm_type(*ret_type_sym, ctx), branches.size() as U32, "iter.phi" + uid);
     }
-    meta->assignment_target = nullptr;
-    meta->assignment_target_type = nullptr;
 
     // Set "iter" information to the meta struct for branches and patterns to use.
     meta->save();
     meta->case_condition = cond.get();
     meta->end_bb = iter_end_bb;
+    meta->llvm_phi = phi;
 
-    // Generate the case entry block for the branches to generate bodies into.
-    const auto case_entry_bb = llvm::BasicBlock::Create(*ctx->context, "iter.entry" + uid, func);
-    ctx->builder.CreateBr(case_entry_bb);
-    ctx->builder.SetInsertPoint(case_entry_bb);
-
-    // Generate each branch.
-    for (auto &&branch : branches) {
+    // Generate each branch (no return value because phi is modified by the branch).
+    ctx->builder.SetInsertPoint(iter_entry_bb);
+    for (auto const &branch : branches) {
         branch->stage_10_code_gen_2(sm, meta, ctx);
     }
 
-    // Finish the case expression.
     meta->restore();
-    ctx->builder.SetInsertPoint(iter_end_bb);
     sm->move_out_of_current_scope();
-
-    if (is_expr) {
-        const auto result_load = ctx->builder.CreateLoad(result_ty, result_alloca, "iter.result.load" + uid);
-        return result_load;
-    }
-    return nullptr;
+    ctx->builder.SetInsertPoint(iter_end_bb);
+    return phi;
 }
 
 
