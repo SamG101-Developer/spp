@@ -595,11 +595,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_10_code_gen_2(
 
     SPP_ASSERT(llvm_func != nullptr);
     SPP_ASSERT(not ctx->builder.GetInsertBlock()->getTerminator());
-    const auto before = ctx->builder.GetInsertBlock();
 
     // Create the call instruction.
     const auto llvm_call = ctx->builder.CreateCall(llvm_func, llvm_func_args, "call" + uid);
-    SPP_ASSERT(ctx->builder.GetInsertBlock() == before);
     return llvm_call;
 }
 

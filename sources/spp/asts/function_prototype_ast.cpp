@@ -193,6 +193,9 @@ auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
         // Apply standard optimization flags.
         llvm_func->addFnAttr(llvm::Attribute::NoUnwind);
         llvm_func->addFnAttr(llvm::Attribute::NoInline);
+        // llvm_func->addFnAttr(analyse::utils::type_utils::is_type_never(*return_type, *sm->current_scope)
+        //                          ? llvm::Attribute::NoReturn
+        //                          : llvm::Attribute::WillReturn);
     }
     return llvm_func;
 }
@@ -201,8 +204,7 @@ auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
 auto spp::asts::FunctionPrototypeAst::print_signature(
     std::string const &owner) const
     -> std::string {
-    SPP_STRING_START;
-    raw_string += owner;
+    SPP_STRING_START.append(owner);
     SPP_STRING_APPEND(generic_param_group);
     SPP_STRING_APPEND(param_group).append(" ");
     SPP_STRING_APPEND(tok_arrow).append(" ");

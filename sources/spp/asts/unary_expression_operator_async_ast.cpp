@@ -100,15 +100,15 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_10_code_gen_2(
     ctx->builder.CreateStore(fut_state, fut_state_ptr);
 
     // Generate the async closure function and set it in the future.
-    const auto fut_closure_type = llvm::FunctionType::get(
-        llvm::Type::getVoidTy(*ctx->context),
-        {llvm::PointerType::get(*ctx->context, 0)}, false);
-
-    const auto fut_closure = llvm::Function::Create(
-        fut_closure_type, llvm::Function::InternalLinkage,
-        "async.fut.closure" + uid, ctx->module.get());
-
     {
+        const auto fut_closure_type = llvm::FunctionType::get(
+            llvm::Type::getVoidTy(*ctx->context),
+            {llvm::PointerType::get(*ctx->context, 0)}, false);
+
+        const auto fut_closure = llvm::Function::Create(
+            fut_closure_type, llvm::Function::InternalLinkage,
+            "async.fut.closure" + uid, ctx->module.get());
+
         // Create the entry block for the closure.
         const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "async.fut.closure.entry" + uid, fut_closure);
         ctx->builder.SetInsertPoint(entry_bb);
