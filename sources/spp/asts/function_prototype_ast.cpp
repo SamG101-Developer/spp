@@ -189,6 +189,10 @@ auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
             llvm_fun_type, llvm::Function::ExternalLinkage, codegen::mangle::mangle_fun_name(*sm->current_scope, *this),
             ctx->module.get());
         llvm_func = created_llvm_func;
+
+        // Apply standard optimization flags.
+        llvm_func->addFnAttr(llvm::Attribute::NoUnwind);
+        llvm_func->addFnAttr(llvm::Attribute::NoInline);
     }
     return llvm_func;
 }
