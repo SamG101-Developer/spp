@@ -74,26 +74,21 @@ auto spp::asts::FunctionCallArgumentAst::stage_10_code_gen_2(
         // If the lhs is symbolic, get the address of the outermost part.
         const auto uid = spp::utils::generate_uid(this);
         const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*meta->postfix_expression_lhs);
-        auto llvm_val_ptr = static_cast<llvm::Value*>(nullptr);
+
         if (sym != nullptr) {
             // Get the alloca for the lhs symbol (the base pointer).
-            const auto llvm_val = val->stage_10_code_gen_2(sm, meta, ctx);
-            const auto llvm_type = llvm_val->getType();
-            SPP_ASSERT(llvm_type != nullptr);
-
-            const auto lhs_alloca = sym->llvm_info->alloca;
-            llvm_val_ptr = ctx->builder.CreateLoad(llvm_type, lhs_alloca, "load.arg.base_ptr" + uid);
+            const auto llvm_alloca = sym->llvm_info->alloca;
+            SPP_ASSERT(llvm_alloca->getType()->isPointerTy());
+            return llvm_alloca;
         }
-        else {
-            // Materialize the lhs expression into a temporary.
-            const auto materialized_val = codegen::llvm_materialize(*val, sm, meta, ctx);
-            const auto materialized_sym = sm->current_scope->get_var_symbol(ast_clone(materialized_val));
 
-            const auto lhs_alloca = materialized_sym->llvm_info->alloca;
-            const auto llvm_type = lhs_alloca->getType();
-            llvm_val_ptr = ctx->builder.CreateLoad(llvm_type, lhs_alloca, "load.arg.mat_ptr" + uid);
-        }
-        return llvm_val_ptr;
+        // Materialize the lhs expression into a temporary.
+        const auto materialized_val = codegen::llvm_materialize(*val, sm, meta, ctx);
+        const auto materialized_sym = sm->current_scope->get_var_symbol(ast_clone(materialized_val));
+
+        const auto llvm_alloca = materialized_sym->llvm_info->alloca;
+        SPP_ASSERT(llvm_alloca->getType()->isPointerTy());
+        return llvm_alloca;
     }
 
     return val->stage_10_code_gen_2(sm, meta, ctx);
