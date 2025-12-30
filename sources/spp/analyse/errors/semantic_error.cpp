@@ -704,7 +704,7 @@ spp::analyse::errors::SppIdentifierUnknownError::SppIdentifierUnknownError(
         34, "SPP Identifier Unknown Error");
     add_error(
         &name,
-        "Unknown " + std::string(what) + " defined here" + (closest ? " (did you mean '" + *closest + "'?)" : ""));
+        "Unknown " + std::string(what) + "'" + static_cast<std::string>(name) + "' defined here" + (closest ? " (did you mean '" + *closest + "'?)" : ""));
     add_footer(
         "This " + std::string(what) + " is not defined in the current scope.",
         "Define the identifier or correct its name");
@@ -1197,7 +1197,7 @@ spp::analyse::errors::SppFunctionCallNoValidSignaturesError::SppFunctionCallNoVa
         &call,
         "Function call defined here");
     add_footer(
-        "No valid signatures match this function call.\n\nAvailable signatures: " + std::string(sigs) + "\n\nAttempted: " + std::string(attempted),
+        "No valid signatures match this function call.\n\nAvailable signatures: " + std::string(sigs) + "\n\nAttempted: (" + std::string(attempted) + ")",
         "Adjust the arguments to match one of the available signatures");
 }
 
@@ -1212,7 +1212,7 @@ spp::analyse::errors::SppFunctionCallOverloadAmbiguousError::SppFunctionCallOver
         &call,
         "Function call defined here");
     add_footer(
-        "The function call is ambiguous between multiple overloads.\n\nAvailable signatures: " + std::string(sigs) + "\n\nAttempted: " + std::string(attempted),
+        "The function call is ambiguous between multiple overloads.\n\nAvailable signatures: " + std::string(sigs) + "\n\nAttempted: (" + std::string(attempted) + ")",
         "Specify types or adjust arguments to resolve the ambiguity");
 }
 
