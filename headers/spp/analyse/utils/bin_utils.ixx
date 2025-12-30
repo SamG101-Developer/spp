@@ -83,7 +83,7 @@ namespace spp::analyse::utils::bin_utils {
         {lex::SppTokenType::TK_SUB_ASSIGN, "sub_assign"},
         {lex::SppTokenType::TK_MUL_ASSIGN, "mul_assign"},
         {lex::SppTokenType::TK_DIV_ASSIGN, "div_assign"},
-        {lex::SppTokenType::TK_REM_ASSIGN, "mod_assign"},
+        {lex::SppTokenType::TK_REM_ASSIGN, "rem_assign"},
         {lex::SppTokenType::TK_POW_ASSIGN, "pow_assign"}
     };
 
