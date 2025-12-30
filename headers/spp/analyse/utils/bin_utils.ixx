@@ -29,6 +29,17 @@ namespace spp::analyse::utils::bin_utils {
      * re-balancing binary expressions to ensure that the correct order of operations is maintained.
      */
     SPP_EXP_CLS const auto BIN_OP_PRECEDENCE = std::map<lex::SppTokenType, std::uint8_t>{
+        {lex::SppTokenType::TK_ADD_ASSIGN, 0},
+        {lex::SppTokenType::TK_SUB_ASSIGN, 0},
+        {lex::SppTokenType::TK_MUL_ASSIGN, 0},
+        {lex::SppTokenType::TK_DIV_ASSIGN, 0},
+        {lex::SppTokenType::TK_REM_ASSIGN, 0},
+        {lex::SppTokenType::TK_POW_ASSIGN, 0},
+        {lex::SppTokenType::TK_BIT_AND_ASSIGN, 0},
+        {lex::SppTokenType::TK_BIT_IOR_ASSIGN, 0},
+        {lex::SppTokenType::TK_BIT_XOR_ASSIGN, 0},
+        {lex::SppTokenType::TK_BIT_SHL_ASSIGN, 0},
+        {lex::SppTokenType::TK_BIT_SHR_ASSIGN, 0},
         {lex::SppTokenType::KW_OR, 1},
         {lex::SppTokenType::KW_AND, 2},
         {lex::SppTokenType::TK_EQ, 3},
