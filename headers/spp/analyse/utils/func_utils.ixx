@@ -143,6 +143,7 @@ namespace spp::analyse::utils::func_utils {
     SPP_EXP_FUN auto infer_generic_args_impl_comp(
         std::vector<std::unique_ptr<asts::GenericArgumentCompKeywordAst>> &args,
         std::vector<asts::GenericParameterCompAst*> params,
+        std::vector<asts::GenericParameterCompAst*> opt_params,
         std::vector<asts::GenericArgumentCompKeywordAst*> explicit_args,
         std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, ankerl::ptr_cmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_source,
         std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, ankerl::ptr_cmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_target,

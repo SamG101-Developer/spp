@@ -36,6 +36,7 @@ import spp.asts.generic_argument_type_keyword_ast;
 import spp.asts.generic_argument_type_positional_ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_comp_ast;
+import spp.asts.generic_parameter_comp_optional_ast;
 import spp.asts.generic_parameter_comp_variadic_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.generic_parameter_type_ast;
@@ -604,6 +605,10 @@ auto spp::analyse::utils::func_utils::infer_generic_args(
         | genex::views::cast_dynamic<asts::GenericParameterTypeAst*>()
         | genex::to<std::vector>();
 
+    const auto comp_opt_params = opt_params
+        | genex::views::cast_dynamic<asts::GenericParameterCompAst*>()
+        | genex::to<std::vector>();
+
     const auto type_opt_params = opt_params
         | genex::views::cast_dynamic<asts::GenericParameterTypeAst*>()
         | genex::to<std::vector>();
@@ -613,7 +618,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args(
     // Todo: Because of cross substitution left to right between type and comp
     // Todo: Or do type, comp, type-cross-substitution again
     infer_generic_args_impl_type(type_args, type_params, type_opt_params, type_explicit_args, infer_source, infer_target, owner, owner_scope, variadic_param_identifier, sm, meta);
-    infer_generic_args_impl_comp(comp_args, comp_params, comp_explicit_args, infer_source, infer_target, owner, owner_scope, sm, meta);
+    infer_generic_args_impl_comp(comp_args, comp_params, comp_opt_params, comp_explicit_args, infer_source, infer_target, owner, owner_scope, sm, meta);
 
     // Sort the new arguments to match the parameter order.
     auto final_args = genex::views::concat(
@@ -687,6 +692,7 @@ template auto spp::analyse::utils::func_utils::name_generic_args_impl<spp::asts:
 auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
     std::vector<std::unique_ptr<asts::GenericArgumentCompKeywordAst>> &args,
     std::vector<asts::GenericParameterCompAst*> params,
+    std::vector<asts::GenericParameterCompAst*> opt_params,
     std::vector<asts::GenericArgumentCompKeywordAst*> explicit_args,
     std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, ankerl::ptr_cmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_source,
     std::map<std::shared_ptr<asts::IdentifierAst>, std::shared_ptr<asts::TypeAst>, ankerl::ptr_cmp<std::shared_ptr<asts::IdentifierAst>>> const &infer_target,
@@ -732,6 +738,15 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
             if (inferred_arg != nullptr) {
                 inferred_args[param_name].emplace_back(inferred_arg);
             }
+        }
+    }
+
+    // Fully qualify and type arguments (replaced within the inference map).
+    for (auto *opt_param : opt_params | genex::views::cast_dynamic<asts::GenericParameterCompOptionalAst*>()) {
+        if (not genex::contains(inferred_args | genex::views::keys | genex::views::cast_smart<asts::TypeAst>() | genex::views::materialize, *opt_param->name, SPP_INSTANT_INDIRECT)) {
+            auto def_val = opt_param->default_val.get();
+            const auto cast_name = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(opt_param->name);
+            inferred_args[cast_name].emplace_back(def_val);
         }
     }
 
@@ -914,13 +929,9 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
     }
 
     // Fully qualify and type arguments (replaced within the inference map).
-    // if (const auto owner_sym = sm.current_scope->get_type_symbol(std::dynamic_pointer_cast<asts::TypeAst>(owner)); owner_sym != nullptr) {
     for (auto *opt_param : opt_params | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
         if (not genex::contains(inferred_args | genex::views::keys | genex::views::cast_smart<asts::TypeAst>() | genex::views::materialize, *opt_param->name, SPP_INSTANT_INDIRECT)) {
             auto def_type = opt_param->default_val;
-            // if (auto def_val_type_sym = owner_scope->get_type_symbol(def_type); def_val_type_sym != nullptr) {
-            //     def_type = owner_scope->get_type_symbol(opt_param->default_val)->fq_name();
-            // }
             auto def_type_raw = def_type->without_generics();
             if (auto def_val_type_sym = owner_scope->get_type_symbol(def_type_raw); def_val_type_sym != nullptr and meta->current_stage > 4) {
                 auto temp = def_val_type_sym->fq_name()->with_convention(asts::ast_clone(def_type->get_convention()));
@@ -932,7 +943,6 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
             inferred_args[cast_name].emplace_back(def_type);
         }
     }
-    // }
 
     // Check each generic argument name only has one unique inferred type. "T" cannot infer to "Str" and "U32".
     for (auto [arg_name, inferred_types] : inferred_args) {
