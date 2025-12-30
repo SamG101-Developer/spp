@@ -92,11 +92,6 @@ auto spp::asts::AnnotationAst::stage_1_pre_process(
         fun_ctx->abstract_annotation = this;
     }
 
-    // Mark a method as non-implemented.
-    else if (fun_ctx != nullptr and name->val == "no_impl") {
-        fun_ctx->no_impl_annotation = this;
-    }
-
     // Mark a method as non-implemented (ffi).
     else if (fun_ctx != nullptr and name->val == "ffi") {
         fun_ctx->no_impl_annotation = this;
@@ -208,7 +203,7 @@ auto spp::asts::AnnotationAst::stage_2_gen_top_level_scopes(
         }
     }
 
-    else if (name->val == "no_impl" or name->val == "ffi" or name->val == "compiler_builtin") {
+    else if (name->val == "ffi" or name->val == "compiler_builtin") {
         // The "no_impl" annotation can only be applied to function ASTs.
         if (not fun_ctx) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppAnnotationInvalidApplicationError>()

@@ -183,16 +183,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
         // Use a try-except block to catch any errors as a following overload could still be valid.
         try {
             // Cannot call an abstract function.
-            if (fn_proto->abstract_annotation != nullptr) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallAbstractFunctionError>()
-                    .with_args(*fn_proto, *this)
-                    .raises_from(fn_scope);
-            }
-
-            // Cannot call a not implemented function.
-            // if (fn_proto->m_no_impl_annotation != nullptr) {
-            //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallNotImplFunctionError>().with_args(
-            //         *fn_proto, *this).with_scopes({fn_scope}).raise();
+            // if (fn_proto->abstract_annotation != nullptr) {
+            //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionCallAbstractFunctionError>()
+            //         .with_args(*fn_proto, *this)
+            //         .raises_from(fn_scope);
             // }
 
             // Check if there are too many arguments (for a non-variadic function).
