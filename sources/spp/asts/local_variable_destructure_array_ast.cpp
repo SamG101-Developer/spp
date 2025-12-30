@@ -166,6 +166,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
         // Handle bound multi argument skipping, by assigning the skipped elements into a variable.
         if (cast_elem != nullptr and multi_arg_skips[0]->binding != nullptr) {
             auto new_ast = std::make_unique<LetStatementInitializedAst>(nullptr, ast_clone(cast_elem->binding), nullptr, nullptr, std::move(bound_multi_skip));
+            if (m_from_case_pattern) { new_ast->var->mark_from_case_pattern(); }
             new_ast->stage_7_analyse_semantics(sm, meta);
             m_new_asts.emplace_back(std::move(new_ast));
         }
@@ -184,6 +185,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
             auto field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(index));
             auto pstfx = std::make_unique<PostfixExpressionAst>(ast_clone(val), std::move(field));
             auto new_ast = std::make_unique<LetStatementInitializedAst>(nullptr, ast_clone(elem), nullptr, nullptr, std::move(pstfx));
+            if (m_from_case_pattern) { new_ast->var->mark_from_case_pattern(); }
             new_ast->stage_7_analyse_semantics(sm, meta);
             m_new_asts.emplace_back(std::move(new_ast));
         }

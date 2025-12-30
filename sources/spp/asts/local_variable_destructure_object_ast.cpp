@@ -177,6 +177,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
             auto field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, ast_clone(cast_elem_1->name));
             auto pstfx = std::make_unique<PostfixExpressionAst>(ast_clone(val), std::move(field));
             auto new_ast = std::make_unique<LetStatementInitializedAst>(nullptr, ast_clone(elem), nullptr, nullptr, std::move(pstfx));
+            if (m_from_case_pattern) { new_ast->var->mark_from_case_pattern(); }
             new_ast->stage_7_analyse_semantics(sm, meta);
             m_new_asts.emplace_back(std::move(new_ast));
         }
@@ -190,6 +191,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
             auto field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, ast_clone(cast_elem_2->name));
             auto pstfx = std::make_unique<PostfixExpressionAst>(ast_clone(val), std::move(field));
             auto new_ast = std::make_unique<LetStatementInitializedAst>(nullptr, ast_clone(cast_elem_2->val), nullptr, nullptr, std::move(pstfx));
+            if (m_from_case_pattern) { new_ast->var->mark_from_case_pattern(); }
             new_ast->stage_7_analyse_semantics(sm, meta);
             m_new_asts.emplace_back(std::move(new_ast));
         }
