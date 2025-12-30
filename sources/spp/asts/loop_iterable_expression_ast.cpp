@@ -57,7 +57,7 @@ auto spp::asts::LoopIterableExpressionAst::pos_start() const
 
 auto spp::asts::LoopIterableExpressionAst::pos_end() const
     -> std::size_t {
-    return iterable->pos_end();
+    return iterable != nullptr ? iterable->pos_end() : m_transform_loop->pos_end();
 }
 
 
