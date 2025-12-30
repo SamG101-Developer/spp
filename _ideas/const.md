@@ -49,3 +49,9 @@ args, and when constant functions are ready, they can be manipulated as argument
   implementation. So I guess we stay with both `cmp` generics and function parameters.
 - Doing structs as for `cmp` context might be a bit weird - start initial support for non-struct types ie
   numbers/bools/strings etc, disallowing postfix operator access primarily because it is more complex to implement.
+
+## Cmp constants
+
+- Need to extend to allow `::` postfix access for `cmp` values, so we can do things like
+  `fun f(a: U8 = Type::constant) -> Void`
+  

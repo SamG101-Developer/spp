@@ -14,3 +14,21 @@ Need 2 stages
 ## Stage 2
 
 - Generate function definitions
+
+## Materializing
+
+- Need to materialize non-symbolic expressions in the following cases:
+    - [x] Argument to a function call
+    - [x] `ret` expression
+    - [ ] `case` block condition
+    - [ ] `loop` block condition
+    - [ ] `iter` block condition
+    - [x] `gen` expression?
+    - [x] Postfix `?` expression lhs
+
+## Assigning to variables
+
+- Possible expressions:
+    - Literal => generate llvm value directly
+    - Postfix.FnCall =>
+  
