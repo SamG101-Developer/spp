@@ -131,9 +131,7 @@ auto spp::analyse::utils::func_utils::convert_method_to_function_form(
     asts::meta::CompilerMetaData *meta)
     -> std::pair<std::unique_ptr<asts::PostfixExpressionAst>, std::unique_ptr<asts::PostfixExpressionOperatorFunctionCallAst>> {
     // The "self" argument will be the lhs.lhs if is symbolic, otherwise just a mock object initializer.
-    auto self_arg_val = sm.current_scope->get_var_symbol_outermost(*lhs.lhs).first != nullptr ?
-                            ast_clone(lhs.lhs) :
-                            std::make_unique<asts::ObjectInitializerAst>(lhs.lhs->infer_type(&sm, meta), nullptr);
+    auto self_arg_val = sm.current_scope->get_var_symbol_outermost(*lhs.lhs).first != nullptr ? ast_clone(lhs.lhs) : std::make_unique<asts::ObjectInitializerAst>(lhs.lhs->infer_type(&sm, meta), nullptr);
 
     // Create an argument for "self" and inject it into the current arguments.
     auto self_arg = std::make_unique<asts::FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(self_arg_val));
@@ -743,11 +741,11 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
 
     // Fully qualify and type arguments (replaced within the inference map).
     for (auto *opt_param : opt_params | genex::views::cast_dynamic<asts::GenericParameterCompOptionalAst*>()) {
-        if (not genex::contains(inferred_args | genex::views::keys | genex::views::cast_smart<asts::TypeAst>() | genex::views::materialize, *opt_param->name, SPP_INSTANT_INDIRECT)) {
-            auto def_val = opt_param->default_val.get();
-            const auto cast_name = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(opt_param->name);
-            inferred_args[cast_name].emplace_back(def_val);
-        }
+        const auto cast_name = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(opt_param->name);
+        if (genex::contains(inferred_args | genex::views::keys | genex::to<std::vector>(), *cast_name, genex::meta::deref)) { continue; }
+
+        auto def_val = opt_param->default_val.get();
+        inferred_args[cast_name].emplace_back(def_val);
     }
 
     // Check each generic argument name only has one unique inferred type. "T" cannot infer to "Str" and "U32".
@@ -902,7 +900,6 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
             auto inferred_arg = std::shared_ptr<const asts::TypeAst>(nullptr);
 
             // Check for a direct match ("a: T" & "a: Str") or an inner match ("a: Vec[T]" & "a: Vec[Str]").
-            auto _ = infer_source.contains(infer_target_name);
             if (infer_source.contains(infer_target_name)) {
                 auto temp_gs = type_utils::GenericInferenceMap();
                 type_utils::relaxed_symbolic_eq(
@@ -930,18 +927,18 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
 
     // Fully qualify and type arguments (replaced within the inference map).
     for (auto *opt_param : opt_params | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
-        if (not genex::contains(inferred_args | genex::views::keys | genex::views::cast_smart<asts::TypeAst>() | genex::views::materialize, *opt_param->name, SPP_INSTANT_INDIRECT)) {
-            auto def_type = opt_param->default_val;
-            auto def_type_raw = def_type->without_generics();
-            if (auto def_val_type_sym = owner_scope->get_type_symbol(def_type_raw); def_val_type_sym != nullptr and meta->current_stage > 4) {
-                auto temp = def_val_type_sym->fq_name()->with_convention(asts::ast_clone(def_type->get_convention()));
-                temp = temp->with_generics(asts::ast_clone(def_type->type_parts().back()->generic_arg_group));
-                def_type = std::move(temp);
-            }
+        const auto cast_name = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(opt_param->name);
+        if (genex::contains(inferred_args | genex::views::keys | genex::to<std::vector>(), *cast_name, genex::meta::deref)) { continue; }
 
-            const auto cast_name = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(opt_param->name);
-            inferred_args[cast_name].emplace_back(def_type);
+        auto def_type = opt_param->default_val;
+        auto def_type_raw = def_type->without_generics();
+        if (auto def_val_type_sym = owner_scope->get_type_symbol(def_type_raw); def_val_type_sym != nullptr and meta->current_stage > 4) {
+            auto temp = def_val_type_sym->fq_name()->with_convention(asts::ast_clone(def_type->get_convention()));
+            temp = temp->with_generics(asts::ast_clone(def_type->type_parts().back()->generic_arg_group));
+            def_type = std::move(temp);
         }
+
+        inferred_args[cast_name].emplace_back(def_type);
     }
 
     // Check each generic argument name only has one unique inferred type. "T" cannot infer to "Str" and "U32".
