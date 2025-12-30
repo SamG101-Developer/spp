@@ -382,7 +382,7 @@ auto spp::analyse::utils::type_utils::is_type_recursive(
     // Get the attribute types recursively from the class prototype, and check for a match with the class prototype.
     auto attr_info = std::vector<std::pair<std::shared_ptr<scopes::TypeSymbol>, asts::ClassAttributeAst*>>{};
     get_attr_types(&type, sm.current_scope, attr_info);
-    for (auto [attr_type_sym, attr_ast] : attr_info) {
+    for (auto const &[attr_type_sym, attr_ast] : attr_info) {
         if (attr_type_sym == type.get_cls_sym()) {
             return attr_ast->type;
         }
@@ -889,6 +889,7 @@ auto spp::analyse::utils::type_utils::get_type_part_symbol_with_error(
             | genex::views::remove_if([](auto const &x) { return x[0] == '$'; })
             | genex::to<std::vector>();
 
+        std::cout << type_part.name << std::endl;
         const auto closest_match = spp::utils::strings::closest_match(type_part.name, alternatives);
         analyse::errors::SemanticErrorBuilder<errors::SppIdentifierUnknownError>()
             .with_args(*type_part.without_generics(), "type", closest_match)
@@ -911,6 +912,7 @@ auto spp::analyse::utils::type_utils::get_namespaced_scope_with_error( // todo: 
             | genex::views::transform([](auto const &x) { return x->name->val; })
             | genex::to<std::vector>();
 
+        std::cout << ns.val << std::endl;
         const auto closest_match = spp::utils::strings::closest_match(ns.val, alternatives);
         analyse::errors::SemanticErrorBuilder<errors::SppIdentifierUnknownError>()
             .with_args(ns, "namespace", closest_match)
