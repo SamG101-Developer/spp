@@ -72,6 +72,10 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::clone() const
 
 spp::asts::PostfixExpressionOperatorIndexAst::operator std::string() const {
     SPP_STRING_START;
+    if (m_mapped_func != nullptr) {
+        SPP_STRING_APPEND(m_mapped_func);
+        SPP_STRING_END;
+    }
     SPP_STRING_APPEND(tok_l);
     SPP_STRING_APPEND(tok_mut);
     SPP_STRING_APPEND(expr);
@@ -84,6 +88,10 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::print(
     AstPrinter &printer) const
     -> std::string {
     SPP_PRINT_START;
+    if (m_mapped_func != nullptr) {
+        SPP_PRINT_APPEND(m_mapped_func);
+        SPP_PRINT_END;
+    }
     SPP_PRINT_APPEND(tok_l);
     SPP_PRINT_APPEND(tok_mut);
     SPP_PRINT_APPEND(expr);

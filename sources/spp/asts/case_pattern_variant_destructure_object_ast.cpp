@@ -120,6 +120,8 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantic
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // TODO: Move flow typing logic to local variabl mapping
+    // TODO: Flow typing doesn't work on nested variant destructuring
     // Analyse the class type (required for flow typing).
     type->stage_7_analyse_semantics(sm, meta);
     type = sm->current_scope->get_type_symbol(type)->fq_name();

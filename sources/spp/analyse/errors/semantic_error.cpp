@@ -706,7 +706,7 @@ spp::analyse::errors::SppIdentifierUnknownError::SppIdentifierUnknownError(
         &name,
         "Unknown " + std::string(what) + " '" + static_cast<std::string>(name) + "' defined here" + (closest ? " (did you mean '" + *closest + "'?)" : ""));
     add_footer(
-        "This " + std::string(what) + " is not defined in the current scope.",
+        "The " + std::string(what) + " '" + static_cast<std::string>(name) + "' is not defined in the current scope.",
         "Define the identifier or correct its name");
 }
 

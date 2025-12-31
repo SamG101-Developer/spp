@@ -160,7 +160,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
     // Todo: TIDY this function big time. I WANT TO VOMIT.
     // If the name is empty (non-symbolic call) then return "no scopes".
     // If the target scope is nullptr, then the functions are bein superimposed over a generic type.
-    if (target_fn_name.val == "" or target_scope == nullptr) { return {}; }
+    if (target_fn_name.val.empty() or target_scope == nullptr) { return {}; }
 
     // Get the function-type name from the function: "func()" => "$Func".
     const auto mapped_name = target_fn_name.to_function_identifier();
@@ -192,11 +192,11 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
                                     ? target_scope->sup_scopes() | genex::views::transform([](auto x) -> const scopes::Scope* { return x; }) | genex::to<std::vector>()
                                     : std::vector{target_scope};
 
-        // From the super scopes, check each one for "sup $Func ext FunXXX { ... }" super-impositions.
+        // From the super scopes, check each one for "sup $Func ext FunXXX { ... }" super-impositions. The TypeIdentifier cast is always valid because the function types are always the target - "$Func" etc.
         // Todo: use the "is_valid_ext_scope"?
         for (auto *sup_scope : sup_scopes) {
             for (auto *sup_ast : asts::ast_body(sup_scope->ast) | genex::views::cast_dynamic<asts::SupPrototypeExtensionAst*>()) {
-                if (std::dynamic_pointer_cast<asts::TypeIdentifierAst>(sup_ast->name)->name == mapped_name->val) {
+                if (sup_ast->name->to<asts::TypeIdentifierAst>()->name == mapped_name->val) {
                     auto generics = std::make_unique<asts::GenericArgumentGroupAst>(nullptr, sup_scope->get_generics(), nullptr);
                     auto scope = sup_scope;
                     auto proto = asts::ast_body(sup_ast)[0]->to<asts::FunctionPrototypeAst>();

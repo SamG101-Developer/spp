@@ -217,6 +217,7 @@ auto spp::asts::TypeIdentifierAst::substitute_generics(
     std::vector<GenericArgumentAst*> const &args) const
     -> std::shared_ptr<TypeAst> {
     auto name_clone = ast_clone(this);
+    if (args.empty() or generic_arg_group == nullptr) { return name_clone; }
 
     // Get the generic type arguments.
     auto gen_type_args = args
