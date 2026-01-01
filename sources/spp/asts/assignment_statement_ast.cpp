@@ -83,7 +83,9 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
     CompilerMetaData *meta)
     -> void {
     // Ensure the LHS is semantically valid.
-    auto is_attr = [](Ast const *x) -> bool { return not x->to<IdentifierAst>(); };
+    auto is_attr = [&](Ast const *x) -> bool { return not x->to<IdentifierAst>() and sm->current_scope->get_var_symbol_outermost(*x).first != nullptr; };
+    auto is_identifier = [](Ast const *x) -> bool { return x->to<IdentifierAst>() != nullptr; };
+
     for (auto &&lhs_expr : lhs) {
         lhs_expr->stage_7_analyse_semantics(sm, meta);
     }
@@ -115,14 +117,14 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
         auto &&[lhs_sym, _] = lhs_sym_and_scope;
 
         // Check if the left-hand-side is non-symbolic (can't do "1 = 2").
-        if (lhs_sym == nullptr) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppAssignmentTargetError>()
-                .with_args(*lhs_expr)
-                .raises_from(sm->current_scope);
-        }
+        // if (lhs_sym == nullptr) {
+        //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppAssignmentTargetError>()
+        //         .with_args(*lhs_expr)
+        //         .raises_from(sm->current_scope);
+        // }
 
         // Full assignment (ie "x" = "y") requires the "x" symbol to be marked as "mut" or never initialized.
-        if (not is_attr(lhs_expr) and not(lhs_sym->is_mutable or lhs_sym->memory_info->initialization_counter == 0)) {
+        if (is_identifier(lhs_expr) and not(lhs_sym->is_mutable or lhs_sym->memory_info->initialization_counter == 0)) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>()
                 .with_args(*lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_initialization))
                 .raises_from(sm->current_scope);
@@ -143,7 +145,7 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
         }
 
         // Prevent double initializations to immutable uninitialized let statements.
-        if (not is_attr(lhs_expr)) {
+        if (is_identifier(lhs_expr)) {
             lhs_sym->memory_info->initialized_by(*this, sm->current_scope);
         }
 
@@ -164,7 +166,8 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
     CompilerMetaData *meta)
     -> void {
     // For each assignment, check the memory status and resolve any (partial-)moves.
-    auto is_attr = [](Ast const *x) -> bool { return not x->to<IdentifierAst>(); };
+    auto is_attr = [&](Ast const *x) -> bool { return not x->to<IdentifierAst>() and sm->current_scope->get_var_symbol_outermost(*x).first != nullptr; };
+
     auto lhs_syms = lhs
         | genex::views::indirect
         | genex::views::transform([sm](auto &&x) { return sm->current_scope->get_var_symbol_outermost(x); })
