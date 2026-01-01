@@ -586,7 +586,7 @@ auto spp::analyse::utils::type_utils::validate_inconsistent_types(
     if (not mismatch_branches_type_info.empty()) {
         auto [mismatch_branch, mismatch_branch_type] = std::move(mismatch_branches_type_info[0]);
         auto [master_branch, master_branch_type] = master_branch_type_info;
-        auto final_member = master_branch ? master_branch->body->final_member() : meta->assignment_target.get(); // see nullptr when assignment target type is used.
+        auto final_member = master_branch ? master_branch->body->final_member() : meta->assignment_target.get();
         analyse::errors::SemanticErrorBuilder<errors::SppTypeMismatchError>()
             .with_args(*final_member, *master_branch_type, *mismatch_branch->body->final_member(), *mismatch_branch_type)
             .raises_from(sm->current_scope);
