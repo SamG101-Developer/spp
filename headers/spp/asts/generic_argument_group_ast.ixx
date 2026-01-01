@@ -74,6 +74,8 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
 
     auto comp_at(const char *key) const -> GenericArgumentCompAst const*;
 
+    auto merge_generics(decltype(args) &&other_args) -> void;
+
     auto get_type_args() const -> std::vector<GenericArgumentTypeAst*>;
 
     auto get_comp_args() const -> std::vector<GenericArgumentCompAst*>;

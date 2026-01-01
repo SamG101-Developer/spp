@@ -203,6 +203,23 @@ auto spp::asts::GenericArgumentGroupAst::comp_at(
 }
 
 
+auto spp::asts::GenericArgumentGroupAst::merge_generics(
+    decltype(args) &&other_args)
+    -> void {
+    // Append the other arguments to this argument group, checking named duplicates.
+    for (auto &&other_arg : other_args) {
+        if (const auto kw_comp = other_arg->to<GenericArgumentCompKeywordAst>(); kw_comp != nullptr) {
+            if (comp_at(kw_comp->name->to<TypeIdentifierAst>()->name.c_str()) != nullptr) { continue; }
+            args.emplace_back(std::move(other_arg));
+        }
+        else if (const auto kw_type = other_arg->to<GenericArgumentTypeKeywordAst>(); kw_type != nullptr) {
+            if (type_at(kw_type->name->to<TypeIdentifierAst>()->name.c_str()) != nullptr) { continue; }
+            args.emplace_back(std::move(other_arg));
+        }
+    }
+}
+
+
 auto spp::asts::GenericArgumentGroupAst::get_type_args() const
     -> std::vector<GenericArgumentTypeAst*> {
     // Filter by casting.

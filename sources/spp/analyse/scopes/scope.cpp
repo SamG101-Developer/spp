@@ -21,6 +21,7 @@ import spp.asts.utils.ast_utils;
 import spp.utils.error_formatter;
 import spp.utils.variants;
 import spp.compiler.module_tree;
+import ankerl;
 import genex;
 
 
@@ -156,18 +157,30 @@ auto spp::analyse::scopes::Scope::get_generics() const
     // Create the symbols list.
     auto syms = std::vector<std::unique_ptr<asts::GenericArgumentAst>>();
     const auto scopes = ancestors();
+    auto type_names = std::vector<std::shared_ptr<asts::TypeIdentifierAst>>();
+    auto comp_names = std::vector<std::shared_ptr<asts::IdentifierAst>>();
 
     // Check each ancestor scope, accumulating generic symbols.
     for (auto const *scope : scopes) {
-        // Type symbols must be generic and have a "scope" ie the generic points to a concrete type.
-        scope->all_type_symbols(true)
+        auto all_type_syms = scope->all_type_symbols(true)
             | genex::views::filter([](auto const &sym) { return sym->is_generic and sym->scope != nullptr; })
-            | genex::views::for_each([&syms](auto const &sym) { syms.emplace_back(asts::GenericArgumentTypeKeywordAst::from_symbol(*sym)); });
+            | genex::to<std::vector>();
 
-        // Comp symbols must be generic.
-        scope->all_var_symbols(true)
+        for (auto &&t: all_type_syms) {
+            if (genex::contains(type_names, *t->name, genex::meta::deref)) { continue; }
+            syms.emplace_back(asts::GenericArgumentTypeKeywordAst::from_symbol(*t));
+            type_names.emplace_back(t->name);
+        }
+
+        auto all_var_syms = scope->all_var_symbols(true)
             | genex::views::filter([](auto const &sym) { return sym->is_generic; })
-            | genex::views::for_each([&syms](auto const &sym) { syms.emplace_back(asts::GenericArgumentCompKeywordAst::from_symbol(*sym)); });
+            | genex::to<std::vector>();
+
+        for (auto &&v: all_var_syms) {
+            if (genex::contains(comp_names, *v->name, genex::meta::deref)) { continue; }
+            syms.emplace_back(asts::GenericArgumentCompKeywordAst::from_symbol(*v));
+            comp_names.emplace_back(v->name);
+        }
     }
 
     // Return the list of generic symbols.

@@ -29,6 +29,7 @@ import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
+import spp.asts.object_initializer_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
@@ -156,8 +157,20 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
         }
     }
 
+    if (this == reinterpret_cast<PostfixExpressionOperatorFunctionCallAst*>(0x15291f40)) {
+        auto _ = 123;
+    }
+
     for (auto &&[fn_scope, fn_proto, ctx_generic_arg_group] : all_overloads) {
-        auto ctx_generic_args = ctx_generic_arg_group->get_all_args();
+        auto lhs_arg_group = GenericArgumentGroupAst::new_empty();
+        if (auto p = meta->postfix_expression_lhs->to<PostfixExpressionAst>(); p != nullptr) {
+            if (auto pp = p->lhs->to<TypeAst>(); pp != nullptr) {
+                auto args = std::move(std::shared_ptr(ast_clone(pp))->type_parts().back()->generic_arg_group->args);
+                lhs_arg_group->merge_generics(std::move(args));
+            }
+        }
+        lhs_arg_group->merge_generics(std::move(ctx_generic_arg_group->args));
+        auto ctx_generic_args = lhs_arg_group->get_all_args();
 
         // Extract generic/function parameter information from the overload.
         auto func_params = fn_proto->param_group->get_all_params();
@@ -269,19 +282,22 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
             // Create a new overload with the generic arguments applied.
             // Todo: should re-use generic substituted prototypes when available. Then remove the manual generation.
-            auto generic_args_raw = generic_args | genex::views::ptr | genex::to<std::vector>();
+            auto combined_generics = GenericArgumentGroupAst::new_empty();
+            combined_generics->merge_generics(std::move(generic_args));
+            combined_generics->merge_generics(std::move(lhs_arg_group->args));
+            auto generic_args_raw = combined_generics->get_all_args();
             if (not generic_args_raw.empty()) {
                 auto new_fn_proto = ast_clone(fn_proto); // Todo: if the fn_proto hasn't been analysed -> issues.
                 auto external_generics = sm->current_scope->get_extended_generic_symbols(generic_args_raw);
                 auto new_fn_scope = analyse::utils::type_utils::create_generic_fun_scope(
-                    *fn_scope, GenericArgumentGroupAst(nullptr, ast_clone_vec(generic_args), nullptr),
+                    *fn_scope, GenericArgumentGroupAst(nullptr, ast_clone_vec(combined_generics->args), nullptr),
                     external_generics, sm, meta);
 
                 auto tm = ScopeManager(sm->global_scope, new_fn_scope);
                 new_fn_proto->generic_param_group->params = decltype(GenericParameterGroupAst::params)();
 
                 // Substitute and analyse the function parameters and return type.
-                for (auto const &p : new_fn_proto->param_group->params) {
+                for (auto *p : new_fn_proto->param_group->get_non_self_params()) {
                     p->type = p->type->substitute_generics(generic_args_raw);
                     p->type->stage_7_analyse_semantics(&tm, meta);
                 }
@@ -605,34 +621,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
 
     // If there is a scope present (non-closure), then fully qualify the return type.
     if (std::get<0>(*m_overload_info) != nullptr) {
-        // Get the other generics
-        auto other_generics = std::unique_ptr<GenericArgumentGroupAst>(nullptr);
-        if (const auto cast_lhs = meta->postfix_expression_lhs->to<PostfixExpressionAst>(); cast_lhs != nullptr) {
-            try {
-                if (cast_lhs->op->to<PostfixExpressionOperatorStaticMemberAccessAst>() == nullptr) {
-                    const auto lhs_lhs_sym = sm->current_scope->get_type_symbol(cast_lhs->lhs->infer_type(sm, meta));
-                    if (sm->current_scope->get_type_symbol(cast_lhs->lhs->infer_type(sm, meta)) != nullptr) {
-                        auto const *lhs_lhs_scope = lhs_lhs_sym->scope;
-                        if (not analyse::utils::type_utils::is_type_tuple(*lhs_lhs_scope->ty_sym->fq_name(), *sm->current_scope)) {
-                            other_generics = ast_clone(lhs_lhs_scope->ty_sym->fq_name()->type_parts().back()->generic_arg_group);
-                        }
-                    }
-                }
-            }
-            catch (const std::exception &) {
-                // todo: refine error
-            }
-
-            ret_type = std::get<0>(*m_overload_info)->get_type_symbol(ret_type)->fq_name();
-            if (other_generics != nullptr) {
-                ret_type = ret_type->substitute_generics(other_generics->get_all_args());
-            }
-            ret_type = ret_type->substitute_generics(std::get<0>(*m_overload_info)->get_generics() | genex::views::ptr | genex::to<std::vector>());
-
-            // TODO: REMOVE CONST CAST
-            auto tm = ScopeManager(sm->global_scope, const_cast<analyse::scopes::Scope*>(std::get<0>(*m_overload_info)));
-            ret_type->stage_7_analyse_semantics(&tm, meta);
-        }
+        ret_type = std::get<0>(*m_overload_info)->get_type_symbol(ret_type)->fq_name();
     }
 
     // For GenOnce coroutines, automatically resume the coroutine and return the "Yield" type.
