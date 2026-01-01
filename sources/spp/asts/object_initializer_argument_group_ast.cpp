@@ -228,6 +228,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
         const auto attr_type = attr_type_sym->fq_name();
         meta->save();
         meta->assignment_target_type = attr_type;
+        meta->assignment_target = IdentifierAst::from_type(*meta->assignment_target_type);
         auto arg_type = arg->infer_type(sm, meta);
         meta->restore();
 
