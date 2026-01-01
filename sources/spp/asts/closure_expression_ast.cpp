@@ -53,10 +53,12 @@ auto spp::asts::ClosureExpressionAst::pos_end() const
 
 auto spp::asts::ClosureExpressionAst::clone() const
     -> std::unique_ptr<Ast> {
-    return std::make_unique<ClosureExpressionAst>(
+    auto c = std::make_unique<ClosureExpressionAst>(
         ast_clone(tok),
         ast_clone(pc_group),
         ast_clone(body));
+    c->m_ret_type = m_ret_type;
+    return c;
 }
 
 

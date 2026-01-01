@@ -62,7 +62,4 @@ public:
     auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
-
-private:
-    std::shared_ptr<TypeAst> m_return_type;
 };
