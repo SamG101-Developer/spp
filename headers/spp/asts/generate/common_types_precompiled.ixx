@@ -43,6 +43,9 @@ namespace spp::asts::generate::common_types_precompiled {
     SPP_EXP_CMP std::shared_ptr<TypeAst> SHARED = nullptr;
     SPP_EXP_CMP std::shared_ptr<TypeAst> SHADOW = nullptr;
 
+    SPP_EXP_CMP std::shared_ptr<TypeAst> FWD_MUT = nullptr;
+    SPP_EXP_CMP std::shared_ptr<TypeAst> FWD_REF = nullptr;
+
     SPP_EXP_CMP std::shared_ptr<TypeAst> S8 = nullptr;
     SPP_EXP_CMP std::shared_ptr<TypeAst> S16 = nullptr;
     SPP_EXP_CMP std::shared_ptr<TypeAst> S32 = nullptr;

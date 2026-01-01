@@ -73,5 +73,8 @@ namespace spp::asts::generate::common_types {
     SPP_EXP_FUN auto fun_mut_type(std::size_t pos, std::shared_ptr<TypeAst> param_types, std::shared_ptr<TypeAst> ret_type) -> std::shared_ptr<TypeAst>;
     SPP_EXP_FUN auto fun_mov_type(std::size_t pos, std::shared_ptr<TypeAst> param_types, std::shared_ptr<TypeAst> ret_type) -> std::shared_ptr<TypeAst>;
 
+    SPP_EXP_FUN auto forward_ref_type(std::size_t pos, std::shared_ptr<TypeAst> inner_type) -> std::shared_ptr<TypeAst>;
+    SPP_EXP_FUN auto forward_mut_type(std::size_t pos, std::shared_ptr<TypeAst> inner_type) -> std::shared_ptr<TypeAst>;
+
     SPP_EXP_FUN auto self_type(std::size_t pos) -> std::shared_ptr<TypeAst>;
 }

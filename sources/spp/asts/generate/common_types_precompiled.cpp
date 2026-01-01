@@ -31,4 +31,7 @@ auto spp::asts::generate::common_types_precompiled::initialize_types() -> void {
 
     NEVER = common_types::never_type(0)->without_generics();
     COPY = common_types::copy_type(0)->without_generics();
+
+    FWD_MUT = common_types::forward_mut_type(0, common_types::void_type(0))->without_generics();
+    FWD_REF = common_types::forward_ref_type(0, common_types::void_type(0))->without_generics();
 }
