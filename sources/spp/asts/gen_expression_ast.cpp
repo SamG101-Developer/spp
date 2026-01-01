@@ -15,6 +15,7 @@ import spp.asts.coroutine_prototype_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
+import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
@@ -114,6 +115,7 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
         }
 
         meta->assignment_target_type = meta->enclosing_function_ret_type.empty() ? nullptr : meta->enclosing_function_ret_type[0];
+        meta->assignment_target = IdentifierAst::from_type(*meta->assignment_target_type);
         expr->stage_7_analyse_semantics(sm, meta);
         expr_type = expr->infer_type(sm, meta)->with_convention(ast_clone(conv));
         meta->restore();

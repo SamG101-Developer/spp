@@ -100,7 +100,9 @@ auto spp::asts::RetStatementAst::stage_7_analyse_semantics(
             meta->return_type_overload_resolver_type = meta->enclosing_function_ret_type[0];
         }
 
+        // For case conditions, we need an assignment target in case of variants.
         meta->assignment_target_type = meta->enclosing_function_ret_type.empty() ? nullptr : meta->enclosing_function_ret_type[0];
+        meta->assignment_target = IdentifierAst::from_type(*meta->assignment_target_type);
         expr->stage_7_analyse_semantics(sm, meta);
         expr_type = expr->infer_type(sm, meta);
         meta->restore();

@@ -109,6 +109,7 @@ auto spp::asts::GenWithExpressionAst::stage_7_analyse_semantics(
     }
 
     meta->assignment_target_type = meta->enclosing_function_ret_type.empty() ? nullptr : meta->enclosing_function_ret_type[0];
+    meta->assignment_target = IdentifierAst::from_type(*meta->assignment_target_type);
     meta->prevent_auto_generator_resume = true;
     expr->stage_7_analyse_semantics(sm, meta);
     expr_type = expr->infer_type(sm, meta);
