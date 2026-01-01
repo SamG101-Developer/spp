@@ -183,6 +183,11 @@ namespace spp::analyse::utils::type_utils {
         scopes::ScopeManager const &sm)
         -> std::shared_ptr<const asts::TypeAst>;
 
+    SPP_EXP_FUN auto get_fwd_types(
+        asts::TypeAst const &type,
+        scopes::ScopeManager const &sm)
+        -> std::pair<std::shared_ptr<const asts::TypeAst>, std::shared_ptr<const asts::TypeAst>>;
+
     SPP_EXP_FUN template <typename T>
     auto validate_inconsistent_types(
         std::vector<T> const &branches,

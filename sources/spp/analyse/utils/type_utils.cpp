@@ -537,6 +537,37 @@ auto spp::analyse::utils::type_utils::get_try_type(
 }
 
 
+auto spp::analyse::utils::type_utils::get_fwd_types(
+    asts::TypeAst const &type,
+    scopes::ScopeManager const &sm)
+    -> std::pair<std::shared_ptr<const asts::TypeAst>, std::shared_ptr<const asts::TypeAst>> {
+    // Generic types do not have forward types, so return nullptr.
+    const auto type_sym = sm.current_scope->get_type_symbol(type.shared_from_this());
+    if (type_sym->scope == nullptr) {
+        return {nullptr, nullptr};
+    }
+
+    // Discover the supertypes and add the current type to it.
+    auto sup_types = std::vector{type.shared_from_this()};
+    sup_types.append_range(type_sym->scope->sup_types());
+
+    // Search through the supertypes for a direct FwdRef type.
+    const auto fwd_ref_type_candidates = sup_types
+        | genex::views::filter([&sm](auto &&sup_type) { return symbolic_eq(*sup_type, *asts::generate::common_types_precompiled::FWD_REF, *sm.current_scope, *sm.current_scope); })
+        | genex::to<std::vector>();
+
+    // Search through the supertypes for a direct FwdMut type.
+    const auto fwd_mut_type_candidates = sup_types
+        | genex::views::filter([&sm](auto &&sup_type) { return symbolic_eq(*sup_type, *asts::generate::common_types_precompiled::FWD_MUT, *sm.current_scope, *sm.current_scope); })
+        | genex::to<std::vector>();
+
+    // No error raised here; just return the pair of types (nullptr if not found).
+    auto fwd_ref_type = fwd_ref_type_candidates.empty() ? nullptr : fwd_ref_type_candidates[0];
+    auto fwd_mut_type = fwd_mut_type_candidates.empty() ? nullptr : fwd_mut_type_candidates[0];
+    return std::pair{fwd_ref_type, fwd_mut_type};
+}
+
+
 template <typename T>
 auto spp::analyse::utils::type_utils::validate_inconsistent_types(
     std::vector<T> const &branches,
