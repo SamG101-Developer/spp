@@ -3,9 +3,9 @@ module;
 
 export module spp.analyse.errors.semantic_error;
 import spp.utils.errors;
-
 import mppp;
 import std;
+import sys;
 
 namespace spp::asts {
     SPP_EXP_CLS struct AnnotationAst;
@@ -132,6 +132,7 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppGenericArgumentTooManyError;
     SPP_EXP_CLS struct SppMissingMainFunctionError;
     SPP_EXP_CLS struct SppInvalidVoidValueError;
+    SPP_EXP_CLS struct SppBorrowLifetimeIncreaseError;
 }
 
 
@@ -601,4 +602,9 @@ SPP_EXP_CLS struct spp::analyse::errors::SppMissingMainFunctionError final : Sem
 
 SPP_EXP_CLS struct spp::analyse::errors::SppInvalidVoidValueError final : SemanticError {
     explicit SppInvalidVoidValueError(asts::ExpressionAst const &expr, std::string_view what);
+};
+
+
+SPP_EXP_CLS struct spp::analyse::errors::SppBorrowLifetimeIncreaseError final : SemanticError {
+    explicit SppBorrowLifetimeIncreaseError(asts::Ast const& extension_ast, asts::Ast const& lhs_init_definition, asts::Ast const& rhs_borrow_definition);
 };

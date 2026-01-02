@@ -1600,6 +1600,27 @@ spp::analyse::errors::SppInvalidVoidValueError::SppInvalidVoidValueError(
         &expr,
         "Expression defined here");
     add_footer(
-        "This expression evaluates to 'void' and cannot be used in a " + std::string(what) + " context.",
+        "This expression evaluates to 'Void' and cannot be used in a " + std::string(what) + " context.",
         "Ensure the expression has a valid non-void type");
+}
+
+
+spp::analyse::errors::SppBorrowLifetimeIncreaseError::SppBorrowLifetimeIncreaseError(
+    asts::Ast const &extension_ast,
+    asts::Ast const &lhs_init_definition,
+    asts::Ast const &rhs_borrow_definition) {
+    add_header(
+        83, "SPP Borrow Lifetime Increase Error");
+    add_context_for_error(
+        &lhs_init_definition,
+        "Left-hand side initialization defined here");
+    add_context_for_error(
+        &rhs_borrow_definition,
+        "Right-hand side borrow defined here");
+    add_error(
+        &extension_ast,
+        "Borrow lifetime extension defined here");
+    add_footer(
+        "The borrow lifetime of the right-hand side exceeds that of the left-hand side.",
+        "Ensure the borrow lifetime does not exceed the initialization lifetime");
 }
