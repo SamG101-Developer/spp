@@ -88,6 +88,7 @@ namespace spp::analyse::utils::mem_utils {
 
     SPP_EXP_FUN template <typename T>
     auto validate_inconsistent_memory(
+        asts::Ast* parent,
         std::vector<T> const &branches,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)

@@ -1,5 +1,6 @@
 module;
 #include <spp/analyse/macros.hpp>
+#include <opex/macros.hpp>
 
 module spp.analyse.utils.mem_utils;
 import spp.analyse.errors.semantic_error_builder;
@@ -14,10 +15,12 @@ import spp.asts.ast;
 import spp.asts.case_expression_branch_ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
+import spp.asts.inner_scope_expression_ast;
 import spp.asts.iter_expression_branch_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.utils.ast_utils;
 import genex;
+import opex.cast;
 
 
 auto spp::analyse::utils::mem_utils::memory_region_overlap(
@@ -188,6 +191,7 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
 
 template <typename T>
 auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
+    asts::Ast *parent,
     std::vector<T> const &branches,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
@@ -195,7 +199,12 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
     // Define a simple alias for a list of symbols and their memory.
     using SymbolMemoryList = std::vector<std::pair<T, mem_info_utils::MemoryInfoSnapshot>>;
 
+    // Create a map of the symbols' memory  information before any branches are analysed.
     auto sym_mem_info = std::map<scopes::VariableSymbol*, SymbolMemoryList>();
+    auto pre_analysis_mem_info = sm->current_scope->all_var_symbols()
+        | genex::views::transform([](auto const &x) { return std::make_pair(x.get(), x->memory_info->snapshot()); })
+        | genex::to<std::vector>();
+
     for (auto &&branch : branches) {
         // Make a record of the symbols' memory status in the scope before the branch is analysed.
         auto var_symbols_in_scope = sm->current_scope->all_var_symbols();
@@ -224,20 +233,38 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
         }
     }
 
+    // Add the pre-analysis memory states as a "final" branch (just for comparison purposes).
+    for (auto &&[sym, mem_info_list] : pre_analysis_mem_info) {
+        sym_mem_info[sym].emplace_back(nullptr, std::move(mem_info_list));
+    }
+
+    // Get the first "non-terminating" branch, and update the symbols to reflect its memory state.
+    auto non_terminating_branch = genex::find_if(
+        branches, [](auto const &x) { return not x->body->terminates(); });
+    auto first_branch = non_terminating_branch == branches.end() ? parent : *non_terminating_branch;
+    auto first_branch_index = non_terminating_branch != branches.end() ? genex::iterators::distance(branches.begin(), non_terminating_branch) as SSize : -1;
+    auto first_branch_mem_info_getter = [&](auto const &branch_mem_info) {
+        return first_branch_index != -1 ? branch_mem_info.at(first_branch_index as USize).second : branch_mem_info.back().second;
+    };
+
     // Check for consistency among the branches' symbols' memory states.
     for (auto &&[sym, branches_memory_info_lists] : sym_mem_info) {
-        auto first_branch = branches.front();
-        auto first_branch_mem_info = branches_memory_info_lists.at(0).second;
+        auto first_branch_mem_info = first_branch_mem_info_getter(branches_memory_info_lists);
 
-        // Assuming all new memory states are consistent across branches, update o the first "new" state list.
+        // Assuming all new memory states are consistent across branches, update to the first "new" state list.
         sym->memory_info->ast_initialization = {first_branch_mem_info.ast_initialization, std::get<1>(sym->memory_info->ast_initialization)};
         sym->memory_info->ast_moved = {first_branch_mem_info.ast_moved, std::get<1>(sym->memory_info->ast_moved)};
         sym->memory_info->ast_partial_moves = first_branch_mem_info.ast_partial_moves;
         sym->memory_info->ast_pins = first_branch_mem_info.ast_pins;
         sym->memory_info->initialization_counter = first_branch_mem_info.initialization_counter;
 
-        // Check the new memory status for each symbol is consistent across all branches.
-        for (auto &&[branch, branch_memory_info_list] : branches_memory_info_lists) {
+        // Check the new memory status for each symbol is consistent across all branches that don't terminate.
+        auto applicable_branch_memory_info_lists = branches_memory_info_lists
+            | genex::views::drop_last(1)
+            | genex::views::remove_if([&](auto const &x) { return x.first->body->terminates(); })
+            | genex::to<std::vector>();
+
+        for (auto const &[branch, branch_memory_info_list] : applicable_branch_memory_info_lists) {
             // Check for consistent initialization.
             if ((first_branch_mem_info.ast_initialization == nullptr) != (branch_memory_info_list.ast_initialization == nullptr)) {
                 sym->memory_info->is_inconsistently_initialized = std::make_pair(first_branch, branch);
@@ -263,6 +290,7 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
 
 
 template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
+    asts::Ast *parent,
     std::vector<asts::CaseExpressionBranchAst*> const &branches,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
@@ -270,6 +298,7 @@ template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
 
 
 template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
+    asts::Ast *parent,
     std::vector<asts::IterExpressionBranchAst*> const &branches,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
