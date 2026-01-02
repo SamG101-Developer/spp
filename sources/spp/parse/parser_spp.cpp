@@ -1818,7 +1818,7 @@ auto spp::parse::ParserSpp::parse_closure_expression_capture_group()
 auto spp::parse::ParserSpp::parse_closure_expression_capture()
     -> std::unique_ptr<asts::ClosureExpressionCaptureAst> {
     PARSE_OPTIONAL(p1, parse_convention);
-    PARSE_ONCE(p2, parse_identifier);
+    PARSE_ALTERNATE(p2, asts::IdentifierAst, parse_identifier, parse_self_identifier);
     return CREATE_AST(asts::ClosureExpressionCaptureAst, p1, p2);
 }
 
