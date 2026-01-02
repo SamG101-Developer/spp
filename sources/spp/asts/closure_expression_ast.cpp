@@ -90,6 +90,14 @@ auto spp::asts::ClosureExpressionAst::stage_7_analyse_semantics(
     const auto parent_scope = sm->current_scope;
     pc_group->stage_7_analyse_semantics(sm, meta);
 
+    const auto inherited_type_generics = sm->current_scope->all_type_symbols()
+        | genex::views::filter([](auto const &sym) { return sym->is_generic; })
+        | genex::to<std::vector>();
+
+    const auto inherited_comp_generics = sm->current_scope->all_var_symbols()
+        | genex::views::filter([](auto const &sym) { return sym->is_generic; })
+        | genex::to<std::vector>();
+
     // Update the meta args with the closure information for body analysis.
     // The closure-wide save/restore allows for the "ret" to match the closure's inferred return type.
     meta->save();
@@ -100,6 +108,14 @@ auto spp::asts::ClosureExpressionAst::stage_7_analyse_semantics(
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
     meta->enclosing_function_flavour = tok.get();
     meta->enclosing_function_ret_type = {};
+
+    // Add the inherited generics into the closure-inner scope.
+    for (const auto &type_generic_sym : inherited_type_generics) {
+        sm->current_scope->add_type_symbol(type_generic_sym);
+    }
+    for (const auto &comp_generic_sym : inherited_comp_generics) {
+        sm->current_scope->add_var_symbol(comp_generic_sym);
+    }
 
     // Analyse the body of the closure.
     body->stage_7_analyse_semantics(sm, meta);
