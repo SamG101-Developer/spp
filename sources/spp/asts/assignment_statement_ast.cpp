@@ -167,6 +167,7 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
     -> void {
     // For each assignment, check the memory status and resolve any (partial-)moves.
     auto is_attr = [&](Ast const *x) -> bool { return not x->to<IdentifierAst>() and sm->current_scope->get_var_symbol_outermost(*x).first != nullptr; };
+    auto is_identifier = [](Ast const *x) -> bool { return x->to<IdentifierAst>() != nullptr; };
 
     auto lhs_syms = lhs
         | genex::views::indirect
@@ -198,9 +199,12 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
         }
 
         // Resolve moved identifiers to the "initialised" state, otherwise resolve a partial move.
-        is_attr(lhs_expr)
-            ? lhs_sym->memory_info->remove_partial_move(*lhs_expr, sm->current_scope)
-            : lhs_sym->memory_info->initialized_by(*this, sm->current_scope);
+        if (is_attr(lhs_expr)) {
+            lhs_sym->memory_info->remove_partial_move(*lhs_expr, sm->current_scope);
+        }
+        else if (is_identifier(lhs_expr)) {
+            lhs_sym->memory_info->initialized_by(*this, sm->current_scope);
+        }
     }
 }
 
