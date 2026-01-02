@@ -1483,10 +1483,70 @@ auto spp::parse::ParserSpp::parse_statement()
 
 auto spp::parse::ParserSpp::parse_assignment_statement()
     -> std::unique_ptr<asts::AssignmentStatementAst> {
-    PARSE_ONE_OR_MORE(p1, parse_expression, parse_token_comma);
+    PARSE_ONE_OR_MORE(p1, parse_assignment_target, parse_token_comma);
     PARSE_ONCE(p2, parse_token_assign);
     PARSE_ONE_OR_MORE(p3, parse_expression, parse_token_comma);
     return CREATE_AST(asts::AssignmentStatementAst, p1, p2, p3);
+}
+
+
+auto spp::parse::ParserSpp::parse_assignment_target()
+    -> std::unique_ptr<asts::ExpressionAst> {
+    // Skip binary expression on lhs of assignment.
+    PARSE_ONCE(p1, parse_unary_expression);
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_assignment_target_unary_expression()
+    -> std::unique_ptr<asts::ExpressionAst> {
+    PARSE_OPTIONAL(p0, parse_assignment_target_unary_expression_op);
+    auto p1 = std::vector<std::unique_ptr<asts::UnaryExpressionOperatorAst>>();
+    if (p0) { p1.emplace_back(std::move(p0)); }
+    PARSE_ONCE(p2, parse_assignment_target_postfix_expression);
+    return utils::algorithms::move_accumulate(
+        p1.rbegin(), p1.rend(), std::move(p2),
+        [](std::unique_ptr<asts::ExpressionAst> &&acc, std::unique_ptr<asts::UnaryExpressionOperatorAst> &&x) {
+            return CREATE_AST(asts::UnaryExpressionAst, std::move(x), std::move(acc));
+        });
+}
+
+
+auto spp::parse::ParserSpp::parse_assignment_target_unary_expression_op()
+    -> std::unique_ptr<asts::UnaryExpressionOperatorAst> {
+    PARSE_ONCE(p1, parse_unary_expression_op_deref);
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_assignment_target_postfix_expression()
+    -> std::unique_ptr<asts::ExpressionAst> {
+    PARSE_ONCE(p1, parse_assignment_target_primary_expression);
+    PARSE_ZERO_OR_MORE(p2, parse_assignment_target_postfix_expression_op, parse_nothing);
+    return utils::algorithms::move_accumulate(
+        p2.begin(), p2.end(), std::move(p1),
+        [](std::unique_ptr<asts::ExpressionAst> &&acc, std::unique_ptr<asts::PostfixExpressionOperatorAst> &&x) {
+            return CREATE_AST(asts::PostfixExpressionAst, std::move(acc), std::move(x));
+        });
+}
+
+
+auto spp::parse::ParserSpp::parse_assignment_target_postfix_expression_op()
+    -> std::unique_ptr<asts::PostfixExpressionOperatorAst> {
+    PARSE_ALTERNATE(
+        p1, asts::PostfixExpressionOperatorAst, parse_postfix_expression_op_function_call,
+        parse_postfix_expression_op_runtime_member_access,
+        parse_postfix_expression_op_static_member_access, parse_postfix_expression_op_index);
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_assignment_target_primary_expression()
+    -> std::unique_ptr<asts::ExpressionAst> {
+    PARSE_ALTERNATE(
+        p1, asts::PrimaryExpressionAst, parse_identifier, parse_self_identifier,
+        [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); });
+    return FORWARD_AST(p1);
 }
 
 
