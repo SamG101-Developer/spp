@@ -10,6 +10,13 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
 import spp.asts.identifier_ast;
+import spp.asts.fold_expression_ast;
+import spp.asts.function_call_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
+import spp.asts.object_initializer_ast;
+import spp.asts.object_initializer_argument_group_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -136,6 +143,20 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
 
         // Check the target field exists on the type.
         if (not lhs_type_sym->scope->has_var_symbol(name, true)) {
+
+            // At this point, we need to check for the presence of "FwdMut" or "FwdRef" superimpositions, allowing
+            // access to their members.
+            auto [fwd_ref_type, _] = analyse::utils::type_utils::get_fwd_types(*lhs_type, *sm);
+            if (fwd_ref_type != nullptr) {
+                const auto inner_type = fwd_ref_type->type_parts().back()->generic_arg_group->type_at("T")->val;
+                auto mock_init = std::make_unique<ObjectInitializerAst>(inner_type, nullptr);
+                auto mock_access = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, name);
+                const auto pf = std::make_unique<PostfixExpressionAst>(std::move(mock_init), std::move(mock_access));
+                pf->stage_7_analyse_semantics(sm, meta);
+                return;
+            }
+
+            // Tpye field was not found on this type, or the forwaring type (includes nested forwarding checks).
             const auto alternatives = sm->current_scope->all_var_symbols(true, true)
                 | genex::views::transform([](auto const &x) { return x->name->val; })
                 | genex::to<std::vector>();

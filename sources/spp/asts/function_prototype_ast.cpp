@@ -12,6 +12,8 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
+import spp.asts.convention_mut_ast;
+import spp.asts.convention_ref_ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.class_implementation_ast;
 import spp.asts.cmp_statement_ast;
@@ -384,7 +386,7 @@ auto spp::asts::FunctionPrototypeAst::stage_5_load_super_scopes(
 
 auto spp::asts::FunctionPrototypeAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
-    CompilerMetaData *)
+    CompilerMetaData *meta)
     -> void {
     // Perform conflict checking before standard semantic analysis errors due to multiple possible prototypes.
     sm->move_to_next_scope();
@@ -395,7 +397,7 @@ auto spp::asts::FunctionPrototypeAst::stage_6_pre_analyse_semantics(
                                 : m_ctx->get_ast_scope()->get_type_symbol(ast_name(m_ctx))->scope;
 
     // Error if there are conflicts.
-    if (const auto conflict = analyse::utils::func_utils::check_for_conflicting_overload(*sm->current_scope, type_scope, *this)) {
+    if (const auto conflict = analyse::utils::func_utils::check_for_conflicting_overload(*sm->current_scope, type_scope, *this, *sm, meta)) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionPrototypeConflictError>()
             .with_args(*this, *conflict)
             .raises_from(sm->current_scope);

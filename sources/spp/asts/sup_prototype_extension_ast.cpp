@@ -27,6 +27,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import genex;
@@ -358,7 +359,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
         if (const auto ext_member = member->to<SupPrototypeExtensionAst>()) {
             // Get the method and identify the base method it is overriding.
             const auto this_method = ext_member->impl->final_member()->to<FunctionPrototypeAst>();
-            const auto base_method = analyse::utils::func_utils::check_for_conflicting_override(*sm->current_scope, sup_sym->scope, *this_method);
+            const auto base_method = analyse::utils::func_utils::check_for_conflicting_override(*sm->current_scope, sup_sym->scope, *this_method, *sm, meta);
 
             // Check the base method exists.
             if (base_method == nullptr) {

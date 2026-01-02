@@ -71,19 +71,24 @@ namespace spp::analyse::utils::func_utils {
     SPP_EXP_FUN auto get_all_function_scopes(
         asts::IdentifierAst const &target_fn_name,
         scopes::Scope const *target_scope,
-        bool for_override = false)
-        -> std::vector<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, std::unique_ptr<asts::GenericArgumentGroupAst>>>;
+        scopes::ScopeManager &sm,
+        asts::meta::CompilerMetaData *meta)
+        -> std::vector<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, std::unique_ptr<asts::GenericArgumentGroupAst>, std::shared_ptr<asts::TypeAst>>>;
 
     SPP_EXP_FUN auto check_for_conflicting_overload(
         scopes::Scope const &this_scope,
         scopes::Scope const *target_scope,
-        asts::FunctionPrototypeAst const &new_fn)
+        asts::FunctionPrototypeAst const &new_fn,
+        scopes::ScopeManager &sm,
+        asts::meta::CompilerMetaData *meta)
         -> asts::FunctionPrototypeAst*;
 
     SPP_EXP_FUN auto check_for_conflicting_override(
         scopes::Scope const &this_scope,
         scopes::Scope const *target_scope,
         asts::FunctionPrototypeAst const &new_fn,
+        scopes::ScopeManager &sm,
+        asts::meta::CompilerMetaData *meta,
         scopes::Scope const *exclude_scope = nullptr)
         -> asts::FunctionPrototypeAst*;
 

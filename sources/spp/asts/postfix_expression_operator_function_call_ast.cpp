@@ -140,9 +140,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     }
 
     // Record the "pass" and "fail" overloads.
-    auto all_overloads = std::vector<std::tuple<analyse::scopes::Scope const*, FunctionPrototypeAst*, std::unique_ptr<GenericArgumentGroupAst>>>{};
+    auto all_overloads = std::vector<std::tuple<analyse::scopes::Scope const*, FunctionPrototypeAst*, std::unique_ptr<GenericArgumentGroupAst>, std::shared_ptr<asts::TypeAst>>>{};
     if (fn_name != nullptr) {
-        all_overloads = analyse::utils::func_utils::get_all_function_scopes(*fn_name, fn_owner_scope);
+        all_overloads = analyse::utils::func_utils::get_all_function_scopes(*fn_name, fn_owner_scope, *sm, meta);
     }
     auto pass_overloads = std::vector<std::tuple<analyse::scopes::Scope const*, FunctionPrototypeAst*, std::vector<GenericArgumentAst*>>>();
     auto fail_overloads = std::vector<std::tuple<analyse::scopes::Scope const*, FunctionPrototypeAst*, std::unique_ptr<analyse::errors::SemanticError>>>();
@@ -152,22 +152,23 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     if (all_overloads.empty()) {
         if (const auto lhs_type = analyse::utils::func_utils::is_target_callable(*lhs, *sm, meta); lhs_type != nullptr) {
             m_closure_dummy_proto = analyse::utils::func_utils::create_callable_prototype(*lhs_type);
-            all_overloads.emplace_back(sm->current_scope, m_closure_dummy_proto.get(), GenericArgumentGroupAst::new_empty());
+            all_overloads.emplace_back(sm->current_scope, m_closure_dummy_proto.get(), GenericArgumentGroupAst::new_empty(), nullptr);
             is_closure = true;
         }
     }
 
-    if (this == reinterpret_cast<PostfixExpressionOperatorFunctionCallAst*>(0x15291f40)) {
-        auto _ = 123;
-    }
-
-    for (auto &&[fn_scope, fn_proto, ctx_generic_arg_group] : all_overloads) {
+    for (auto &&[fn_scope, fn_proto, ctx_generic_arg_group, fwd_type] : all_overloads) {
         auto lhs_arg_group = GenericArgumentGroupAst::new_empty();
-        if (auto p = meta->postfix_expression_lhs->to<PostfixExpressionAst>(); p != nullptr) {
-            if (auto pp = p->lhs->to<TypeAst>(); pp != nullptr) {
-                auto args = std::move(std::shared_ptr(ast_clone(pp))->type_parts().back()->generic_arg_group->args);
-                lhs_arg_group->merge_generics(std::move(args));
+        if (fwd_type == nullptr) {
+            if (auto p = meta->postfix_expression_lhs->to<PostfixExpressionAst>(); p != nullptr) {
+                if (auto pp = p->lhs->to<TypeAst>(); pp != nullptr) {
+                    auto args = std::move(std::shared_ptr(ast_clone(pp))->type_parts().back()->generic_arg_group->args);
+                    lhs_arg_group->merge_generics(std::move(args));
+                }
             }
+        }
+        else {
+            lhs_arg_group->merge_generics(std::move(fwd_type->type_parts().back()->generic_arg_group->args));
         }
         lhs_arg_group->merge_generics(std::move(ctx_generic_arg_group->args));
         auto ctx_generic_args = lhs_arg_group->get_all_args();
@@ -596,13 +597,12 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_10_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) -> llvm::Value* {
-    // Get the llvm function target.
+    // Get the llvm function target, and generate the argument values.
     const auto uid = spp::utils::generate_uid(this);
     const auto llvm_func = std::get<1>(*m_overload_info)->llvm_func;
     const auto llvm_func_args = arg_group->args
         | genex::views::transform([sm, meta, ctx](auto const &x) { return x->stage_10_code_gen_2(sm, meta, ctx); })
         | genex::to<std::vector>();
-
     SPP_ASSERT(llvm_func != nullptr);
     SPP_ASSERT(not ctx->builder.GetInsertBlock()->getTerminator());
 

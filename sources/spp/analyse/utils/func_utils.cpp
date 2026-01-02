@@ -14,6 +14,7 @@ import spp.asts.ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
+import spp.asts.identifier_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_group_ast;
@@ -155,8 +156,9 @@ auto spp::analyse::utils::func_utils::convert_method_to_function_form(
 auto spp::analyse::utils::func_utils::get_all_function_scopes(
     asts::IdentifierAst const &target_fn_name,
     scopes::Scope const *target_scope,
-    const bool)
-    -> std::vector<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, std::unique_ptr<asts::GenericArgumentGroupAst>>> {
+    scopes::ScopeManager &sm,
+    asts::meta::CompilerMetaData *meta)
+    -> std::vector<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, std::unique_ptr<asts::GenericArgumentGroupAst>, std::shared_ptr<asts::TypeAst>>> {
     // Todo: TIDY this function big time. I WANT TO VOMIT.
     // If the name is empty (non-symbolic call) then return "no scopes".
     // If the target scope is nullptr, then the functions are bein superimposed over a generic type.
@@ -164,7 +166,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
 
     // Get the function-type name from the function: "func()" => "$Func".
     const auto mapped_name = target_fn_name.to_function_identifier();
-    auto overload_scopes = std::vector<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, std::unique_ptr<asts::GenericArgumentGroupAst>>>();
+    auto overload_scopes = std::vector<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, std::unique_ptr<asts::GenericArgumentGroupAst>, std::shared_ptr<asts::TypeAst>>>();
 
     auto is_valid_ext_scope = [mapped_name=mapped_name.get()](auto const *scope) {
         const auto ext = scope->ast->template to<asts::SupPrototypeExtensionAst>();
@@ -180,7 +182,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
                 auto generics = asts::GenericArgumentGroupAst::new_empty();
                 auto scope = sup_scope; // not for_override ? sup_scope->children[0].get() : sup_scope;
                 auto proto = asts::ast_body(sup_scope->ast)[0]->to<asts::FunctionPrototypeAst>();
-                overload_scopes.emplace_back(scope, proto, std::move(generics));
+                overload_scopes.emplace_back(scope, proto, std::move(generics), nullptr);
             }
         }
     }
@@ -200,16 +202,16 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
                     auto generics = std::make_unique<asts::GenericArgumentGroupAst>(nullptr, sup_scope->get_generics(), nullptr);
                     auto scope = sup_scope;
                     auto proto = asts::ast_body(sup_ast)[0]->to<asts::FunctionPrototypeAst>();
-                    overload_scopes.emplace_back(scope, proto, std::move(generics));
+                    overload_scopes.emplace_back(scope, proto, std::move(generics), nullptr);
                 }
             }
         }
 
         // When a derived class has overridden a method, the base method must be removed.
-        for (auto &&[scope_1, fn_1, _] : overload_scopes) {
-            for (auto &&[scope_2, fn_2, _] : overload_scopes) {
+        for (auto &&[scope_1, fn_1, _, _] : overload_scopes) {
+            for (auto &&[scope_2, fn_2, _, _] : overload_scopes) {
                 if (fn_1 != fn_2 and target_scope->depth_difference(scope_1) < target_scope->depth_difference(scope_2)) {
-                    auto conflict = check_for_conflicting_override(*scope_1, scope_2, *fn_1);
+                    auto conflict = check_for_conflicting_override(*scope_1, scope_2, *fn_1, sm, meta);
                     if (conflict != nullptr) {
                         overload_scopes |= genex::actions::remove_if([conflict](auto &&info) { return std::get<1>(info) == conflict; });
                     }
@@ -219,9 +221,22 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
 
         // Adjust the scope in the tuple to the inner function scope.
         for (auto &&[i, info] : overload_scopes | genex::views::move | genex::views::enumerate | genex::to<std::vector>()) {
-            auto &[scope, proto, generics] = info;
+            auto &[scope, proto, generics, t] = info;
             scope = (scope->children | genex::views::ptr | genex::views::filter(is_valid_ext_scope) | genex::to<std::vector>())[0];
-            overload_scopes[i] = std::make_tuple(scope, proto, std::move(generics));
+            overload_scopes[i] = std::make_tuple(scope, proto, std::move(generics), t);
+        }
+    }
+
+    // Next, get scopes from "forwarding types" (ie FwdRef and FwdMut return types).
+    if (target_scope->ty_sym != nullptr and meta->current_stage >= 9.0) {
+        auto [fwd_ref_type, fwd_mut_type] = type_utils::get_fwd_types(*target_scope->ty_sym->fq_name(), sm);
+        if (fwd_ref_type != nullptr) {
+            const auto inner_type = fwd_ref_type->type_parts().back()->generic_arg_group->type_at("T")->val;
+            auto inner_scopes = get_all_function_scopes(target_fn_name, sm.current_scope->get_type_symbol(inner_type)->scope, sm, meta);
+            for (auto &&i: inner_scopes) {
+                std::get<3>(i) = asts::ast_clone(inner_type);
+            }
+            overload_scopes.insert(overload_scopes.end(), std::make_move_iterator(inner_scopes.begin()), std::make_move_iterator(inner_scopes.end()));
         }
     }
 
@@ -233,10 +248,12 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
 auto spp::analyse::utils::func_utils::check_for_conflicting_overload(
     scopes::Scope const &this_scope,
     scopes::Scope const *target_scope,
-    asts::FunctionPrototypeAst const &new_fn)
+    asts::FunctionPrototypeAst const &new_fn,
+    scopes::ScopeManager &sm,
+    asts::meta::CompilerMetaData *meta)
     -> asts::FunctionPrototypeAst* {
     // Get the methods that belong to this type, or any of its supertypes.
-    auto existing = get_all_function_scopes(*new_fn.orig_name, target_scope);
+    auto existing = get_all_function_scopes(*new_fn.orig_name, target_scope, sm, meta);
     auto existing_scopes = existing | genex::views::tuple_nth<0>();
     auto existing_fns = existing | genex::views::tuple_nth<1>();
 
@@ -244,7 +261,7 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_overload(
     for (auto [old_scope, old_fn] : genex::views::zip(existing_scopes, existing_fns)) {
         // Ignore if the method is an identical match on a base class (override) or is the same object.
         if (old_fn == &new_fn) { continue; }
-        if (old_fn == check_for_conflicting_override(this_scope, old_scope, new_fn, old_scope)) { continue; }
+        if (old_fn == check_for_conflicting_override(this_scope, old_scope, new_fn, sm, meta, old_scope)) { continue; }
 
         // Ignore if the return types are different.
         if (not type_utils::symbolic_eq(*new_fn.return_type, *old_fn->return_type, this_scope, *old_scope)) { continue; }
@@ -282,6 +299,8 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_override(
     scopes::Scope const &this_scope,
     scopes::Scope const *target_scope,
     asts::FunctionPrototypeAst const &new_fn,
+    scopes::ScopeManager &sm,
+    asts::meta::CompilerMetaData *meta,
     scopes::Scope const *exclude_scope)
     -> asts::FunctionPrototypeAst* {
     // Helper function to get the type of the convention AST applied to the "self" parameter.
@@ -295,7 +314,7 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_override(
     };
 
     // Get the existing functions that belong to this type, or any of its supertypes.
-    auto existing = get_all_function_scopes(*new_fn.orig_name, target_scope, true);
+    auto existing = get_all_function_scopes(*new_fn.orig_name, target_scope, sm, meta);
     auto existing_scopes = existing | genex::views::tuple_nth<0>() | genex::to<std::vector>();
     auto existing_fns = existing | genex::views::tuple_nth<1>() | genex::to<std::vector>();
 
