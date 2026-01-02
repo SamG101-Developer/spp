@@ -11,6 +11,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
+import spp.asts.inner_scope_expression_ast;
 import spp.asts.iter_expression_branch_ast;
 import spp.asts.iter_pattern_variant_ast;
 import spp.asts.iter_pattern_variant_else_ast;
@@ -181,7 +182,7 @@ auto spp::asts::IterExpressionAst::stage_8_check_memory(
     SPP_ASSERT(sm->current_scope == m_scope);
 
     analyse::utils::mem_utils::validate_inconsistent_memory(
-        branches | genex::views::ptr | genex::to<std::vector>(), sm, meta);
+        this, branches | genex::views::ptr | genex::to<std::vector>(), sm, meta);
 
     // Move out of the iter expression scope.
     sm->move_out_of_current_scope();
@@ -288,4 +289,12 @@ auto spp::asts::IterExpressionAst::infer_type(
     return branches_type_info.empty()
                ? generate::common_types::void_type(pos_start())
                : std::get<1>(master_branch_type_info);
+}
+
+
+auto spp::asts::IterExpressionAst::terminates() const
+    -> bool {
+    // The iter expression only terminates if all branches terminate.
+    return not genex::any_of(
+        branches, [](auto const &branch) { return not branch->body->terminates(); });
 }

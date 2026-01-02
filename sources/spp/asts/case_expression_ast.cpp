@@ -20,6 +20,7 @@ import spp.asts.case_pattern_variant_else_ast;
 import spp.asts.case_pattern_variant_expression_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.identifier_ast;
+import spp.asts.inner_scope_expression_ast;
 import spp.asts.pattern_guard_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -172,7 +173,7 @@ auto spp::asts::CaseExpressionAst::stage_8_check_memory(
     meta->save();
     meta->case_condition = cond.get();
     analyse::utils::mem_utils::validate_inconsistent_memory(
-        branches | genex::views::ptr | genex::to<std::vector>(), sm, meta);
+        this, branches | genex::views::ptr | genex::to<std::vector>(), sm, meta);
     meta->restore();
 
     // Move out of the case expression scope.
@@ -248,4 +249,12 @@ auto spp::asts::CaseExpressionAst::infer_type(
     return branches_type_info.empty()
                ? generate::common_types::void_type(pos_start())
                : std::get<1>(master_branch_type_info);
+}
+
+
+auto spp::asts::CaseExpressionAst::terminates() const
+    -> bool {
+    // The case expression only terminates if all branches terminate.
+    return not genex::any_of(
+        branches, [](auto const &branch) { return not branch->body->terminates(); });
 }

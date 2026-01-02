@@ -189,3 +189,10 @@ auto spp::asts::RetStatementAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     return generate::common_types::void_type(pos_start());
 }
+
+
+auto spp::asts::RetStatementAst::terminates() const
+    -> bool {
+    // This is the only statement that always terminates.
+    return true;
+}

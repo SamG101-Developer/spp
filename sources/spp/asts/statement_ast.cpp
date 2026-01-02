@@ -12,3 +12,9 @@ auto spp::asts::StatementAst::infer_type(
     // All statements are inferred as the Void type.
     return generate::common_types::void_type(pos_start());
 }
+
+
+auto spp::asts::StatementAst::terminates() const
+    -> bool {
+    return false;
+}

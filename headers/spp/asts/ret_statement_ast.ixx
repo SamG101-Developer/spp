@@ -52,4 +52,6 @@ public:
     auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+
+    SPP_ATTR_NODISCARD auto terminates() const -> bool override;
 };

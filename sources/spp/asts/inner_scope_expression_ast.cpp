@@ -105,4 +105,13 @@ auto spp::asts::InnerScopeExpressionAst<T>::infer_type(
 }
 
 
+template <typename T>
+auto spp::asts::InnerScopeExpressionAst<T>::terminates() const
+    -> bool {
+    // The inner scope expression only terminates if the last member terminates.
+    if (this->members.empty()) { return false; }
+    return this->members.back()->terminates();
+}
+
+
 template struct spp::asts::InnerScopeExpressionAst<std::unique_ptr<spp::asts::StatementAst>>;

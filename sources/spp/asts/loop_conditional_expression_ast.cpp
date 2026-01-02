@@ -233,3 +233,10 @@ auto spp::asts::LoopConditionalExpressionAst::infer_type(
 
     return LoopExpressionAst::infer_type(sm, meta);
 }
+
+
+auto spp::asts::LoopConditionalExpressionAst::terminates() const
+    -> bool {
+    // The loop conditional expression only terminates if the body terminates.
+    return body->terminates();
+}

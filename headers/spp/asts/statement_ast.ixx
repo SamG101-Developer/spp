@@ -30,4 +30,11 @@ SPP_EXP_CLS struct spp::asts::StatementAst : virtual Ast, mixins::TypeInferrable
      * @return The Void type, as all statements are void.
      */
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+
+    /**
+     * Test if the statement always terminates control flow with the "ret" instruction. For blocks, the final member is
+     * always inspected, recursively.
+     * @return If the statement always terminates control flow.
+     */
+    SPP_ATTR_NODISCARD virtual auto terminates() const -> bool;
 };
