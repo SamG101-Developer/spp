@@ -25,7 +25,9 @@ import ankerl;
 import genex;
 
 
-spp::analyse::scopes::ScopeBlockName::ScopeBlockName(std::string &&name) : name(std::move(name)) {
+spp::analyse::scopes::ScopeBlockName::ScopeBlockName(
+    std::string &&name) :
+    name(std::move(name)) {
 }
 
 
@@ -68,15 +70,16 @@ spp::analyse::scopes::Scope::~Scope() = default;
 auto spp::analyse::scopes::Scope::new_global(
     compiler::Module const &module)
     -> std::unique_ptr<Scope> {
-    // Create a new global scope.
+    // Create a new global scope (no parent or ast for the global scope).
     auto glob_scope_name = ScopeBlockName("<global>");
-    auto glob_scope = std::make_unique<Scope>(std::move(glob_scope_name), nullptr, nullptr, module.error_formatter.get());
+    auto glob_scope = std::make_unique<Scope>(
+        std::move(glob_scope_name), nullptr, nullptr, module.error_formatter.get());
 
-    // Inject the "_global namespace symbol into this scope (makes lookups orthogonal).
+    // Inject the "_global" namespace symbol into this scope (makes lookups orthogonal).
     auto glob_ns_sym_name = std::make_unique<asts::IdentifierAst>(0, "_global");
-    auto glob_ns_sym = std::make_unique<NamespaceSymbol>(std::move(glob_ns_sym_name), glob_scope.get());
+    auto glob_ns_sym = std::make_unique<NamespaceSymbol>(
+        std::move(glob_ns_sym_name), glob_scope.get());
     glob_scope->ns_sym = std::move(glob_ns_sym);
-    glob_scope->ast = module.module_ast.get();
 
     // Return the global scope.
     return glob_scope;
@@ -89,9 +92,7 @@ auto spp::analyse::scopes::Scope::search_sup_scopes_for_var(
     -> std::shared_ptr<VariableSymbol> {
     // Recursively search the super scopes for a variable symbol.
     for (auto const *sup_scope : scope.direct_sup_scopes) {
-        if (auto const sym = sup_scope->get_var_symbol(name, true); sym != nullptr) {
-            return sym;
-        }
+        if (auto sym = sup_scope->get_var_symbol(name, true); sym != nullptr) { return sym; }
     }
 
     // No symbol was found, so return nullptr.
@@ -105,9 +106,7 @@ auto spp::analyse::scopes::Scope::search_sup_scopes_for_type(
     -> std::shared_ptr<TypeSymbol> {
     // Recursively search the super scopes for a type symbol.
     for (auto const *sup_scope : scope.direct_sup_scopes) {
-        if (auto const sym = sup_scope->get_type_symbol(name, true); sym != nullptr) {
-            return sym;
-        }
+        if (auto sym = sup_scope->get_type_symbol(name, true); sym != nullptr) { return sym; }
     }
 
     // No symbol was found, so return nullptr.
@@ -166,7 +165,7 @@ auto spp::analyse::scopes::Scope::get_generics() const
             | genex::views::filter([](auto const &sym) { return sym->is_generic and sym->scope != nullptr; })
             | genex::to<std::vector>();
 
-        for (auto &&t: all_type_syms) {
+        for (auto &&t : all_type_syms) {
             if (genex::contains(type_names, *t->name, genex::meta::deref)) { continue; }
             syms.emplace_back(asts::GenericArgumentTypeKeywordAst::from_symbol(*t));
             type_names.emplace_back(t->name);
@@ -176,7 +175,7 @@ auto spp::analyse::scopes::Scope::get_generics() const
             | genex::views::filter([](auto const &sym) { return sym->is_generic; })
             | genex::to<std::vector>();
 
-        for (auto &&v: all_var_syms) {
+        for (auto &&v : all_var_syms) {
             if (genex::contains(comp_names, *v->name, genex::meta::deref)) { continue; }
             syms.emplace_back(asts::GenericArgumentCompKeywordAst::from_symbol(*v));
             comp_names.emplace_back(v->name);
@@ -189,8 +188,8 @@ auto spp::analyse::scopes::Scope::get_generics() const
 
 
 auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
-    std::vector<asts::GenericArgumentAst*> generics,
-    std::shared_ptr<asts::TypeAst> ignore)
+    std::vector<asts::GenericArgumentAst*> const &generics,
+    std::shared_ptr<asts::TypeAst> const &ignore)
     -> std::vector<std::shared_ptr<Symbol>> {
     // Convert the provided generic arguments into symbols. Todo: filter to "is_generic"?
     const auto type_syms = generics
@@ -592,7 +591,6 @@ auto spp::analyse::scopes::Scope::direct_sup_types() const
 auto spp::analyse::scopes::Scope::convert_postfix_to_nested_scope(
     asts::ExpressionAst const *postfix_ast) const
     -> Scope const* {
-
     // Get the left-hand-side namespace's member's type.
     if (const auto lhs_as_ident = postfix_ast->to<asts::IdentifierAst>()) {
         return get_ns_symbol(ast_clone(lhs_as_ident))->scope;
