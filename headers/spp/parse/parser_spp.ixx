@@ -142,7 +142,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct UnaryExpressionAst;
     SPP_EXP_CLS struct UnaryExpressionOperatorAst;
     SPP_EXP_CLS struct UnaryExpressionOperatorAsyncAst;
-    SPP_EXP_CLS struct UnaryExpressionOperatorDerefAst;
+    SPP_EXP_CLS struct PostfixExpressionOperatorDerefAst;
     SPP_EXP_CLS struct ParenthesisedExpressionAst;
     SPP_EXP_CLS struct RetStatementAst;
     SPP_EXP_CLS struct StatementAst;
@@ -275,10 +275,10 @@ public:
     auto parse_unary_expression() -> std::unique_ptr<asts::ExpressionAst>;
     auto parse_unary_expression_op() -> std::unique_ptr<asts::UnaryExpressionOperatorAst>;
     auto parse_unary_expression_op_async() -> std::unique_ptr<asts::UnaryExpressionOperatorAsyncAst>;
-    auto parse_unary_expression_op_deref() -> std::unique_ptr<asts::UnaryExpressionOperatorDerefAst>;
 
     auto parse_postfix_expression() -> std::unique_ptr<asts::ExpressionAst>;
     auto parse_postfix_expression_op() -> std::unique_ptr<asts::PostfixExpressionOperatorAst>;
+    auto parse_postfix_expression_op_deref() -> std::unique_ptr<asts::PostfixExpressionOperatorDerefAst>;
     auto parse_postfix_expression_op_early_return() -> std::unique_ptr<asts::PostfixExpressionOperatorEarlyReturnAst>;
     auto parse_postfix_expression_op_function_call() -> std::unique_ptr<asts::PostfixExpressionOperatorFunctionCallAst>;
     auto parse_postfix_expression_op_runtime_member_access() -> std::unique_ptr<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>;

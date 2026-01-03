@@ -155,7 +155,7 @@ import spp.asts.type_unary_expression_operator_namespace_ast;
 import spp.asts.unary_expression_ast;
 import spp.asts.unary_expression_operator_ast;
 import spp.asts.unary_expression_operator_async_ast;
-import spp.asts.unary_expression_operator_deref_ast;
+import spp.asts.postfix_expression_operator_deref_ast;
 import spp.asts.use_statement_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
@@ -932,7 +932,7 @@ auto spp::parse::ParserSpp::parse_unary_expression()
 auto spp::parse::ParserSpp::parse_unary_expression_op()
     -> std::unique_ptr<asts::UnaryExpressionOperatorAst> {
     PARSE_ALTERNATE(
-        p1, asts::UnaryExpressionOperatorAst, parse_unary_expression_op_async, parse_unary_expression_op_deref);
+        p1, asts::UnaryExpressionOperatorAst, parse_unary_expression_op_async);
     return FORWARD_AST(p1);
 }
 
@@ -941,13 +941,6 @@ auto spp::parse::ParserSpp::parse_unary_expression_op_async()
     -> std::unique_ptr<asts::UnaryExpressionOperatorAsyncAst> {
     PARSE_ONCE(p1, parse_keyword_async);
     return CREATE_AST(asts::UnaryExpressionOperatorAsyncAst, p1);
-}
-
-
-auto spp::parse::ParserSpp::parse_unary_expression_op_deref()
-    -> std::unique_ptr<asts::UnaryExpressionOperatorDerefAst> {
-    PARSE_ONCE(p1, parse_token_deref);
-    return CREATE_AST(asts::UnaryExpressionOperatorDerefAst, p1);
 }
 
 
@@ -966,11 +959,19 @@ auto spp::parse::ParserSpp::parse_postfix_expression()
 auto spp::parse::ParserSpp::parse_postfix_expression_op()
     -> std::unique_ptr<asts::PostfixExpressionOperatorAst> {
     PARSE_ALTERNATE(
-        p1, asts::PostfixExpressionOperatorAst, parse_postfix_expression_op_early_return,
-        parse_postfix_expression_op_function_call, parse_postfix_expression_op_runtime_member_access,
+        p1, asts::PostfixExpressionOperatorAst, parse_postfix_expression_op_deref,
+        parse_postfix_expression_op_early_return, parse_postfix_expression_op_function_call,
+        parse_postfix_expression_op_runtime_member_access,
         parse_postfix_expression_op_static_member_access, parse_postfix_expression_op_keyword_not,
         parse_postfix_expression_op_keyword_res, parse_postfix_expression_op_index);
     return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_postfix_expression_op_deref()
+    -> std::unique_ptr<asts::PostfixExpressionOperatorDerefAst> {
+    PARSE_ONCE(p1, parse_token_deref);
+    return CREATE_AST(asts::PostfixExpressionOperatorDerefAst, p1);
 }
 
 
@@ -1498,27 +1499,6 @@ auto spp::parse::ParserSpp::parse_assignment_target()
 }
 
 
-auto spp::parse::ParserSpp::parse_assignment_target_unary_expression()
-    -> std::unique_ptr<asts::ExpressionAst> {
-    PARSE_OPTIONAL(p0, parse_assignment_target_unary_expression_op);
-    auto p1 = std::vector<std::unique_ptr<asts::UnaryExpressionOperatorAst>>();
-    if (p0) { p1.emplace_back(std::move(p0)); }
-    PARSE_ONCE(p2, parse_assignment_target_postfix_expression);
-    return utils::algorithms::move_accumulate(
-        p1.rbegin(), p1.rend(), std::move(p2),
-        [](std::unique_ptr<asts::ExpressionAst> &&acc, std::unique_ptr<asts::UnaryExpressionOperatorAst> &&x) {
-            return CREATE_AST(asts::UnaryExpressionAst, std::move(x), std::move(acc));
-        });
-}
-
-
-auto spp::parse::ParserSpp::parse_assignment_target_unary_expression_op()
-    -> std::unique_ptr<asts::UnaryExpressionOperatorAst> {
-    PARSE_ONCE(p1, parse_unary_expression_op_deref);
-    return FORWARD_AST(p1);
-}
-
-
 auto spp::parse::ParserSpp::parse_assignment_target_postfix_expression()
     -> std::unique_ptr<asts::ExpressionAst> {
     PARSE_ONCE(p1, parse_assignment_target_primary_expression);
@@ -1534,7 +1514,8 @@ auto spp::parse::ParserSpp::parse_assignment_target_postfix_expression()
 auto spp::parse::ParserSpp::parse_assignment_target_postfix_expression_op()
     -> std::unique_ptr<asts::PostfixExpressionOperatorAst> {
     PARSE_ALTERNATE(
-        p1, asts::PostfixExpressionOperatorAst, parse_postfix_expression_op_function_call,
+        p1, asts::PostfixExpressionOperatorAst, parse_postfix_expression_op_deref,
+        parse_postfix_expression_op_function_call,
         parse_postfix_expression_op_runtime_member_access,
         parse_postfix_expression_op_static_member_access, parse_postfix_expression_op_index);
     return FORWARD_AST(p1);
@@ -2837,7 +2818,7 @@ auto spp::parse::ParserSpp::parse_token_exclamation_mark()
 
 auto spp::parse::ParserSpp::parse_token_deref()
     -> std::unique_ptr<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_ASTERISK, lex::SppTokenType::TK_DEREF); });
+    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_AT_SIGN, lex::SppTokenType::TK_DEREF); });
     return FORWARD_AST(p1);
 }
 

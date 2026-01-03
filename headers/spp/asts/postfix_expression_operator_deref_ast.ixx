@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.unary_expression_operator_deref_ast;
-import spp.asts.unary_expression_operator_ast;
+export module spp.asts.postfix_expression_operator_deref_ast;
+import spp.asts.postfix_expression_operator_ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
@@ -10,24 +10,24 @@ import std;
 namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
-    SPP_EXP_CLS struct UnaryExpressionOperatorDerefAst;
+    SPP_EXP_CLS struct PostfixExpressionOperatorDerefAst;
 }
 
 
-SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorDerefAst final : UnaryExpressionOperatorAst {
+SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorDerefAst final : PostfixExpressionOperatorAst {
     /**
      * The @c * token that indicates a dereference operation. This is used to extract a copyable value from a borrow.
      */
     std::unique_ptr<TokenAst> tok_deref;
 
     /**
-     * Construct the UnaryExpressionOperatorDerefAst with the arguments matching the members.
+     * Construct the PostfixExpressionOperatorDerefAst with the arguments matching the members.
      * @param tok_deref The @c * token that indicates a dereference operation.
      */
-    explicit UnaryExpressionOperatorDerefAst(
+    explicit PostfixExpressionOperatorDerefAst(
         decltype(tok_deref) &&tok_deref);
 
-    ~UnaryExpressionOperatorDerefAst() override;
+    ~PostfixExpressionOperatorDerefAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
