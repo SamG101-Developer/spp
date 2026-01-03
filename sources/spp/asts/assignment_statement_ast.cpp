@@ -86,9 +86,12 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
     auto is_attr = [&](Ast const *x) -> bool { return not x->to<IdentifierAst>() and sm->current_scope->get_var_symbol_outermost(*x).first != nullptr; };
     auto is_identifier = [](Ast const *x) -> bool { return x->to<IdentifierAst>() != nullptr; };
 
+    meta->save();
+    meta->is_assignment_lhs = true;
     for (auto &&lhs_expr : lhs) {
         lhs_expr->stage_7_analyse_semantics(sm, meta);
     }
+    meta->restore();
 
     // Ensure the RHS is semantically valid.
     for (auto [i, rhs_expr] : rhs | genex::views::ptr | genex::views::enumerate) {
@@ -115,13 +118,6 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
     // Create quick access derefs for the looping.
     for (auto &&[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(lhs | genex::views::ptr, rhs | genex::views::ptr, lhs_syms)) {
         auto &&[lhs_sym, _] = lhs_sym_and_scope;
-
-        // Check if the left-hand-side is non-symbolic (can't do "1 = 2").
-        // if (lhs_sym == nullptr) {
-        //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppAssignmentTargetError>()
-        //         .with_args(*lhs_expr)
-        //         .raises_from(sm->current_scope);
-        // }
 
         // Full assignment (ie "x" = "y") requires the "x" symbol to be marked as "mut" or never initialized.
         if (is_identifier(lhs_expr) and not(lhs_sym->is_mutable or lhs_sym->memory_info->initialization_counter == 0)) {
