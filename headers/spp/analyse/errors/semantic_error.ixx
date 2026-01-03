@@ -58,7 +58,6 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppMoveFromPinLinkedMemoryError;
     SPP_EXP_CLS struct SppInconsistentlyInitializedMemoryUseError;
     SPP_EXP_CLS struct SppInconsistentlyPinnedMemoryUseError;
-    SPP_EXP_CLS struct SppAssignmentTargetError;
     SPP_EXP_CLS struct SppMemberAccessNonIndexableError;
     SPP_EXP_CLS struct SppMemberAccessOutOfBoundsError;
     SPP_EXP_CLS struct SppCaseBranchMultipleDestructuresError;
@@ -232,11 +231,6 @@ SPP_EXP_CLS struct spp::analyse::errors::SppInconsistentlyInitializedMemoryUseEr
 
 SPP_EXP_CLS struct spp::analyse::errors::SppInconsistentlyPinnedMemoryUseError final : SemanticError {
     explicit SppInconsistentlyPinnedMemoryUseError(asts::ExpressionAst const &ast, asts::Ast const &branch_1, asts::Ast const &branch_2);
-};
-
-
-SPP_EXP_CLS struct spp::analyse::errors::SppAssignmentTargetError final : SemanticError {
-    explicit SppAssignmentTargetError(asts::ExpressionAst const &lhs);
 };
 
 

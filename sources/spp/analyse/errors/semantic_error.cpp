@@ -353,19 +353,6 @@ spp::analyse::errors::SppInconsistentlyPinnedMemoryUseError::SppInconsistentlyPi
 }
 
 
-spp::analyse::errors::SppAssignmentTargetError::SppAssignmentTargetError(
-    asts::ExpressionAst const &lhs) {
-    add_header(
-        15, "SPP Assignment Target Error");
-    add_error(
-        &lhs,
-        "Left-hand side of assignment defined here");
-    add_footer(
-        "The left-hand side of a assignment must be a valid assignable target.",
-        "Ensure the left-hand side is a variable, field, or indexable element");
-}
-
-
 spp::analyse::errors::SppMemberAccessNonIndexableError::SppMemberAccessNonIndexableError(
     asts::ExpressionAst const &lhs,
     asts::TypeAst const &lhs_type,

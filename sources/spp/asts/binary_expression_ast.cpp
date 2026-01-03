@@ -99,15 +99,6 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
     SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(lhs.get());
     SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(rhs.get());
 
-    // Check compound assignment (for example "+=") has a symbolic lhs target.
-    if (genex::contains(analyse::utils::bin_utils::BIN_COMPOUND_ASSIGNMENT_OPS, tok_op->token_type)) {
-        if (not sm->current_scope->get_var_symbol_outermost(*lhs).first) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppAssignmentTargetError>()
-                .with_args(*lhs)
-                .raises_from(sm->current_scope);
-        }
-    }
-
     // Handle lhs-folding.
     if (lhs->to<FoldExpressionAst>()) {
         // Check the rhs is a tuple.
