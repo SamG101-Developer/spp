@@ -1494,7 +1494,7 @@ auto spp::parse::ParserSpp::parse_assignment_statement()
 auto spp::parse::ParserSpp::parse_assignment_target()
     -> std::unique_ptr<asts::ExpressionAst> {
     // Skip binary expression on lhs of assignment.
-    PARSE_ONCE(p1, parse_unary_expression);
+    PARSE_ONCE(p1, parse_assignment_target_postfix_expression);
     return FORWARD_AST(p1);
 }
 
@@ -1525,8 +1525,7 @@ auto spp::parse::ParserSpp::parse_assignment_target_postfix_expression_op()
 auto spp::parse::ParserSpp::parse_assignment_target_primary_expression()
     -> std::unique_ptr<asts::ExpressionAst> {
     PARSE_ALTERNATE(
-        p1, asts::PrimaryExpressionAst, parse_identifier, parse_self_identifier,
-        [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); });
+        p1, asts::PrimaryExpressionAst, parse_identifier, parse_self_identifier);
     return FORWARD_AST(p1);
 }
 

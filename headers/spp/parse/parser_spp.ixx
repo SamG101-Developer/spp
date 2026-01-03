@@ -348,8 +348,6 @@ public:
     auto parse_statement() -> std::unique_ptr<asts::StatementAst>;
     auto parse_assignment_statement() -> std::unique_ptr<asts::AssignmentStatementAst>;
     auto parse_assignment_target() -> std::unique_ptr<asts::ExpressionAst>;
-    auto parse_assignment_target_unary_expression() -> std::unique_ptr<asts::ExpressionAst>;
-    auto parse_assignment_target_unary_expression_op() -> std::unique_ptr<asts::UnaryExpressionOperatorAst>;
     auto parse_assignment_target_postfix_expression() -> std::unique_ptr<asts::ExpressionAst>;
     auto parse_assignment_target_postfix_expression_op() -> std::unique_ptr<asts::PostfixExpressionOperatorAst>;
     auto parse_assignment_target_primary_expression() -> std::unique_ptr<asts::ExpressionAst>;
