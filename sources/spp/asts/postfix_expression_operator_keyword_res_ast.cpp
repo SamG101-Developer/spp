@@ -88,6 +88,9 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_7_analyse_semantic
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // Already analysed => return early.
+    if (m_mapped_func != nullptr) { return; }
+
     // Check the left-hand-side is a generator type (for specific errors).
     const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
     analyse::utils::type_utils::get_generator_and_yield_type(

@@ -73,11 +73,11 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::clone() const
 spp::asts::PostfixExpressionOperatorIndexAst::operator std::string() const {
     SPP_STRING_START;
     if (m_mapped_func != nullptr) {
-        SPP_STRING_APPEND(m_mapped_func);
+        SPP_STRING_APPEND(m_mapped_func->op);
         SPP_STRING_END;
     }
     SPP_STRING_APPEND(tok_l);
-    SPP_STRING_APPEND(tok_mut);
+    SPP_STRING_APPEND(tok_mut).append(tok_mut ? " " : "");
     SPP_STRING_APPEND(expr);
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;
@@ -89,11 +89,11 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::print(
     -> std::string {
     SPP_PRINT_START;
     if (m_mapped_func != nullptr) {
-        SPP_PRINT_APPEND(m_mapped_func);
+        SPP_PRINT_APPEND(m_mapped_func->op);
         SPP_PRINT_END;
     }
     SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_APPEND(tok_mut);
+    SPP_PRINT_APPEND(tok_mut).append(tok_mut ? " " : "");
     SPP_PRINT_APPEND(expr);
     SPP_PRINT_APPEND(tok_r);
     SPP_PRINT_END;
@@ -104,6 +104,9 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // Already analysed => return early.
+    if (m_mapped_func != nullptr) { return; }
+
     // Determine the left-hand-side type.
     const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
 
