@@ -201,9 +201,6 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
     ctx->builder.CreateBr(case_entry_bb);
 
     auto phi = static_cast<llvm::PHINode*>(nullptr);
-    if (uid == "$40779704_3414") {
-        auto _ = 123;
-    }
     if (is_expr) {
         ctx->builder.SetInsertPoint(case_entry_bb);
         const auto ret_type_sym = sm->current_scope->get_type_symbol(infer_type(sm, meta));
