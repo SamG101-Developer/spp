@@ -61,6 +61,7 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     bool skip_type_analysis_generic_checks;
     analyse::scopes::Scope *type_analysis_type_scope;
     std::shared_ptr<TypeAst> ignore_cmp_generic;
+    bool is_assignment_lhs;
     llvm::BasicBlock *end_bb;
     codegen::LLvmCtx *llvm_ctx;
     llvm::Value *llvm_assignment_target;

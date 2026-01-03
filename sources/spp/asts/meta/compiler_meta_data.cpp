@@ -34,6 +34,7 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
     skip_type_analysis_generic_checks = false;
     type_analysis_type_scope = nullptr;
     ignore_cmp_generic = nullptr;
+    is_assignment_lhs = false;
     end_bb = nullptr;
     llvm_ctx = nullptr;
     llvm_assignment_target = nullptr;
@@ -51,7 +52,7 @@ auto spp::asts::meta::CompilerMetaData::save() -> void {
         prevent_auto_generator_resume, let_stmt_explicit_type, let_stmt_value, let_stmt_from_uninitialized,
         loop_double_check_active, current_loop_depth, current_loop_ast, loop_return_types, object_init_type,
         infer_source, infer_target, postfix_expression_lhs, unary_expression_rhs, skip_type_analysis_generic_checks,
-        type_analysis_type_scope, ignore_cmp_generic, end_bb, llvm_ctx, llvm_assignment_target,
+        type_analysis_type_scope, ignore_cmp_generic, is_assignment_lhs, end_bb, llvm_ctx, llvm_assignment_target,
         llvm_assignment_target_type, llvm_phi);
 }
 
@@ -90,6 +91,7 @@ auto spp::asts::meta::CompilerMetaData::restore(const bool heavy) -> void {
     skip_type_analysis_generic_checks = state.skip_type_analysis_generic_checks;
     type_analysis_type_scope = state.type_analysis_type_scope;
     ignore_cmp_generic = state.ignore_cmp_generic;
+    is_assignment_lhs = state.is_assignment_lhs;
     end_bb = state.end_bb;
     llvm_ctx = state.llvm_ctx;
     llvm_assignment_target = state.llvm_assignment_target;
