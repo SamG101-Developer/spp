@@ -26,7 +26,7 @@ import std;
 
 
 auto spp::codegen::create_coro_env_type(
-    asts::CoroutinePrototypeAst const *coro,
+    asts::CoroutinePrototypeAst *coro,
     LLvmCtx *ctx,
     analyse::scopes::Scope const &scope)
     -> std::pair<llvm::StructType*, llvm::StructType*> {
@@ -83,12 +83,13 @@ auto spp::codegen::create_coro_env_type(
     }
 
     const auto coro_env_type = llvm::StructType::create(*ctx->context, std::move(fields), "gen.env");
+    coro->llvm_coro_env_type = coro_env_type;
     return {coro_env_type, llvm_arg_struct_type};
 }
 
 
 auto spp::codegen::create_coro_gen_ctor(
-    asts::CoroutinePrototypeAst const *coro,
+    asts::CoroutinePrototypeAst *coro,
     LLvmCtx *ctx,
     analyse::scopes::Scope const &scope)
     -> std::tuple<llvm::Function*, llvm::Value*, llvm::Type*> {

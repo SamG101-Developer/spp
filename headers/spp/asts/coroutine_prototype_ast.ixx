@@ -29,6 +29,8 @@ public:
 
     llvm::Value *llvm_coro_yield_slot;
 
+    llvm::StructType *llvm_coro_env_type;
+
     using FunctionPrototypeAst::FunctionPrototypeAst;
 
     ~CoroutinePrototypeAst() override;

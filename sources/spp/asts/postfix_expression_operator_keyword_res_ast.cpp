@@ -120,15 +120,15 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_10_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
+    // TODO
     // The llvm generator environment is the lhs of this postfix expression. (both Gen and Generated are the env, but
     // separate types for analysis). the "resuming" on Generated types simply shiftf the state inside the environment.
     const auto uid = spp::utils::generate_uid(this);
     const auto llvm_gen_env = meta->postfix_expression_lhs->stage_10_code_gen_2(sm, meta, ctx);
-    const auto llvm_gen_env_type = llvm::PointerType::get(*ctx->context, 0);
+    const auto llvm_gen_env_type = llvm_gen_env->getType();
 
     // Get the resume function pointer (field 0) from the generator environment.
-    const auto resume_slot = ctx->builder.CreateStructGEP(
-        llvm_gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::RES_FN), "gen.resume.fn.slot" + uid);
+    const auto resume_slot = ctx->builder.CreateStructGEP(llvm_gen_env_type, llvm_gen_env, 0, "gen.resume.fn.slot" + uid);
     const auto llvm_resume_func_ptr = ctx->builder.CreateLoad(
         llvm::PointerType::get(*ctx->context, 0), resume_slot, "gen.resume.fn.ptr" + uid);
 

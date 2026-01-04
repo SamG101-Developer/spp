@@ -37,7 +37,7 @@ namespace spp::codegen {
     };
 
     SPP_EXP_FUN auto create_coro_env_type(
-        asts::CoroutinePrototypeAst const *coro,
+        asts::CoroutinePrototypeAst *coro,
         LLvmCtx *ctx,
         analyse::scopes::Scope const &scope)
         -> std::pair<llvm::StructType*, llvm::StructType*>;
@@ -53,7 +53,7 @@ namespace spp::codegen {
      * @return The generated function, and the generator environment object.
      */
     SPP_EXP_FUN auto create_coro_gen_ctor(
-        asts::CoroutinePrototypeAst const *coro,
+        asts::CoroutinePrototypeAst *coro,
         LLvmCtx *ctx,
         analyse::scopes::Scope const &scope)
         -> std::tuple<llvm::Function*, llvm::Value*, llvm::Type*>;
