@@ -2,19 +2,26 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.case_pattern_variant_single_identifier_ast;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.token_ast;
+import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 
 spp::asts::CasePatternVariantSingleIdentifierAst::CasePatternVariantSingleIdentifierAst(
+    decltype(conv) &&conv,
     decltype(tok_mut) &&tok_mut,
     decltype(name) &&name,
     decltype(alias) &&alias) :
+    conv(std::move(conv)),
     tok_mut(std::move(tok_mut)),
     name(std::move(name)),
     alias(std::move(alias)) {
@@ -39,6 +46,7 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::pos_end() const
 auto spp::asts::CasePatternVariantSingleIdentifierAst::clone() const
     -> std::unique_ptr<Ast> {
     auto i = std::make_unique<CasePatternVariantSingleIdentifierAst>(
+        ast_clone(conv),
         ast_clone(tok_mut),
         ast_clone(name),
         ast_clone(alias));
@@ -70,8 +78,11 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::print(
 auto spp::asts::CasePatternVariantSingleIdentifierAst::convert_to_variable(
     CompilerMetaData *)
     -> std::unique_ptr<LocalVariableAst> {
-    // Create the local variable single identifier binding AST.
-    auto var = std::make_unique<LocalVariableSingleIdentifierAst>(ast_clone(tok_mut), ast_clone(name), ast_clone(alias));
+    // Create the local variable single identifier binding AST. (Note no convention is propagated into the variable,
+    // as conventions are only relevant at the pattern matching site, not the variable declaration site).
+    auto var = std::make_unique<LocalVariableSingleIdentifierAst>(
+        ast_clone(tok_mut), ast_clone(name), ast_clone(alias));
+    var->conv = ast_clone(conv);
     var->mark_from_case_pattern();
     return var;
 }
@@ -81,9 +92,12 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::stage_7_analyse_semantics
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // Forward analysis into the name and alias.
+    // Get the variable name.
     auto var = convert_to_variable(meta);
-    m_mapped_let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
+
+    // Forward analysis into the name and alias.
+    m_mapped_let = std::make_unique<LetStatementInitializedAst>(
+        nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
     m_mapped_let->stage_7_analyse_semantics(sm, meta);
 }
 

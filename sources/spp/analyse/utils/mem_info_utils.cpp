@@ -44,8 +44,9 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::snapshot() const
     -> MemoryInfoSnapshot {
     // Create and return the snapshot.
     return MemoryInfoSnapshot(
-        std::get<0>(ast_initialization), std::get<0>(ast_moved), ast_partial_moves, ast_pins, ast_linked_pins,
-        initialization_counter);
+        std::get<0>(ast_initialization), std::get<1>(ast_initialization),
+        std::get<0>(ast_moved), std::get<1>(ast_moved),
+        ast_partial_moves, ast_pins, ast_linked_pins, initialization_counter);
 }
 
 
@@ -65,4 +66,15 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::clone() const
     out->is_inconsistently_partially_moved = is_inconsistently_partially_moved;
     out->is_inconsistently_pinned = is_inconsistently_pinned;
     return out;
+}
+
+
+auto spp::analyse::utils::mem_info_utils::MemoryInfo::fill_from_snapshot(
+    MemoryInfoSnapshot const &snapshot)
+    -> void {
+    ast_initialization = {snapshot.ast_initialization, snapshot.scope_initialization};
+    ast_moved = {snapshot.ast_moved, snapshot.scope_moved};
+    ast_partial_moves = snapshot.ast_partial_moves;
+    ast_pins = snapshot.ast_pins;
+    initialization_counter = snapshot.initialization_counter;
 }

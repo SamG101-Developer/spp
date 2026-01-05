@@ -1212,10 +1212,28 @@ auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_destructure_at
 
 auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_single_identifier()
     -> std::unique_ptr<asts::CasePatternVariantAst> {
+    PARSE_ALTERNATE(
+        p1, asts::CasePatternVariantAst, parse_case_expression_pattern_variant_single_identifier_with_convention,
+        parse_case_expression_pattern_variant_single_identifier_without_convention);
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_single_identifier_with_convention()
+    -> std::unique_ptr<asts::CasePatternVariantAst> {
+    PARSE_ONCE(p1, parse_convention);
+    PARSE_ONCE(p2, parse_identifier);
+    PARSE_OPTIONAL(p3, parse_local_variable_single_identifier_alias);
+    return CREATE_AST(asts::CasePatternVariantSingleIdentifierAst, p1, nullptr, p2, p3);
+}
+
+
+auto spp::parse::ParserSpp::parse_case_expression_pattern_variant_single_identifier_without_convention()
+    -> std::unique_ptr<asts::CasePatternVariantAst> {
     PARSE_OPTIONAL(p1, parse_keyword_mut);
     PARSE_ONCE(p2, parse_identifier);
     PARSE_OPTIONAL(p3, parse_local_variable_single_identifier_alias);
-    return CREATE_AST(asts::CasePatternVariantSingleIdentifierAst, p1, p2, p3);
+    return CREATE_AST(asts::CasePatternVariantSingleIdentifierAst, nullptr, p1, p2, p3);
 }
 
 

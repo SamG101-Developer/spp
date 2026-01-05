@@ -11,6 +11,7 @@ import std;
 namespace spp::asts {
     SPP_EXP_CLS struct CasePatternVariantLiteralAst;
     SPP_EXP_CLS struct CasePatternVariantSingleIdentifierAst;
+    SPP_EXP_CLS struct ConventionAst;
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct LocalVariableSingleIdentifierAst;
     SPP_EXP_CLS struct LocalVariableSingleIdentifierAliasAst;
@@ -29,6 +30,13 @@ namespace spp::asts {
  * be introducing a symbol into the local scope.
  */
 SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVariableAst {
+    /**
+     * A convention can ONLY be attached via the @c case expression pattern matching system. This allows borrows to be
+     * introduced into an inner scope (the case branch scope), and is needed in this class as-well as
+     * @c CasePatternVaruantSingleIdentifierAst, for mutability checking reasons.
+     */
+    std::unique_ptr<ConventionAst> conv;
+
     /**
      * The optional mutability token. If the @c mut keyword was provided, then this will be given a value. Otherwise, it
      * will be @c nullptr. This is used to indicate that the variable is mutable, and can be modified after being

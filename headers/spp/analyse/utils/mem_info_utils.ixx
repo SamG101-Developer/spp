@@ -165,6 +165,13 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo {
      * @note The clone is not a deep copy, so pointers will be shared between the original and the clone.
      */
     SPP_ATTR_NODISCARD auto clone() const -> std::unique_ptr<MemoryInfo>;
+
+    /**
+     * Fill the memory information from a given snapshot. This is used to restore the memory information to a previous
+     * state.
+     * @param snapshot The snapshot to restore the memory information from.
+     */
+    auto fill_from_snapshot(MemoryInfoSnapshot const &snapshot) -> void;
 };
 
 
@@ -175,9 +182,19 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfoSnapshot {
     asts::Ast const *ast_initialization;
 
     /**
+     * The scope in which the initializing ast for the owning @c MemoryInfo was present at the time of the snapshot.
+     */
+    scopes::Scope *scope_initialization = nullptr;
+
+    /**
      * View of the moving ast for the owning @c MemoryInfo
      */
     asts::Ast const *ast_moved;
+
+    /**
+     * The scope in which the moving ast for the owning @c MemoryInfo was present at the time of the snapshot.
+     */
+    scopes::Scope *scope_moved;
 
     /**
      * List of partial moves that were present in the owning @c MemoryInfo at the time of the snapshot.

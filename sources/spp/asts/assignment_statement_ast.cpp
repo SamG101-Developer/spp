@@ -207,9 +207,8 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
         const auto rhs_outermost = sm->current_scope->get_var_symbol_outermost(*rhs_expr).first;
         const auto is_rhs_borrow = rhs_outermost and std::get<0>(rhs_outermost->memory_info->ast_borrowed) != nullptr;
         if (lhs_outermost != nullptr and rhs_outermost != nullptr and is_rhs_borrow) {
-
             const auto rhs_borrow_scope = std::get<1>(rhs_outermost->memory_info->ast_borrowed);
-            const auto lhs_init_scope = ({
+            const auto lhs_init_scope = ( {
                 auto ret_scope = static_cast<analyse::scopes::Scope const*>(nullptr);
                 for (auto const &ancestor : rhs_borrow_scope->ancestors()) {
                     if (not ancestor->has_var_symbol(lhs_outermost->name, true)) { continue; }

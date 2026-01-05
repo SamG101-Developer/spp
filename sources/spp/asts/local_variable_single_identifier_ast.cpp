@@ -6,6 +6,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
+import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.token_ast;
@@ -43,10 +44,13 @@ auto spp::asts::LocalVariableSingleIdentifierAst::pos_end() const
 
 auto spp::asts::LocalVariableSingleIdentifierAst::clone() const
     -> std::unique_ptr<Ast> {
-    return std::make_unique<LocalVariableSingleIdentifierAst>(
+    auto l = std::make_unique<LocalVariableSingleIdentifierAst>(
         ast_clone(tok_mut),
         ast_clone(name),
         ast_clone(alias));
+    l->conv = ast_clone(conv);
+    l->m_from_case_pattern = m_from_case_pattern;
+    return l;
 }
 
 
@@ -94,7 +98,12 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_7_analyse_semantics(
     auto sym = std::make_unique<analyse::scopes::VariableSymbol>(
         alias != nullptr ? alias->name : name,
         meta->let_stmt_explicit_type != nullptr ? meta->let_stmt_explicit_type : val_type,
-        tok_mut != nullptr);
+        tok_mut != nullptr or (conv and *conv == ConventionTag::MUT));
+
+    // Update the type if there is a convention present.
+    if (conv != nullptr) {
+        sym->type = sym->type->with_convention(ast_clone(conv));
+    }
 
     // Set the initialization AST (for errors).
     sym->memory_info->ast_initialization = {name.get(), sm->current_scope};
@@ -135,6 +144,9 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_8_check_memory(
     // Get the name or alias symbol to mark it as initialized.
     const auto sym = sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name);
     sym->memory_info->initialized_by(*name, sm->current_scope);
+    if (conv != nullptr) {
+        sym->memory_info->ast_borrowed = {conv.get(), sm->current_scope};
+    }
 }
 
 

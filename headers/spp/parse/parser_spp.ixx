@@ -311,6 +311,8 @@ public:
     auto parse_case_expression_pattern_variant_destructure_skip_multiple_arguments() -> std::unique_ptr<asts::CasePatternVariantAst>;
     auto parse_case_expression_pattern_variant_destructure_attribute_binding() -> std::unique_ptr<asts::CasePatternVariantAst>;
     auto parse_case_expression_pattern_variant_single_identifier() -> std::unique_ptr<asts::CasePatternVariantAst>;
+    auto parse_case_expression_pattern_variant_single_identifier_with_convention() -> std::unique_ptr<asts::CasePatternVariantAst>;
+    auto parse_case_expression_pattern_variant_single_identifier_without_convention() -> std::unique_ptr<asts::CasePatternVariantAst>;
     auto parse_case_expression_pattern_variant_literal() -> std::unique_ptr<asts::CasePatternVariantAst>;
     auto parse_case_expression_pattern_variant_expression() -> std::unique_ptr<asts::CasePatternVariantAst>;
     auto parse_case_expression_pattern_variant_else() -> std::unique_ptr<asts::CasePatternVariantAst>;
