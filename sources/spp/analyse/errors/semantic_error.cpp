@@ -14,8 +14,6 @@ import spp.asts.function_parameter_variadic_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.identifier_ast;
-import spp.asts.iter_expression_ast;
-import spp.asts.iter_pattern_variant_ast;
 import spp.asts.literal_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.local_variable_destructure_array_ast;
@@ -147,7 +145,7 @@ spp::analyse::errors::SppTypeMismatchError::SppTypeMismatchError(
 
 spp::analyse::errors::SppSecondClassBorrowViolationError::SppSecondClassBorrowViolationError(
     asts::Ast const &expr,
-    asts::Ast const &conv,
+    asts::Ast const &type,
     const std::string_view ctx) {
     add_header(
         5, "SPP Second-Class Borrow Violation Error");
@@ -155,7 +153,7 @@ spp::analyse::errors::SppSecondClassBorrowViolationError::SppSecondClassBorrowVi
         &expr,
         "Expression defined here");
     add_error(
-        &conv,
+        &type,
         "Conversion to second-class type in " + std::string(ctx) + " context defined here");
     add_footer(
         "This expression cannot be used in a " + std::string(ctx) + " context because it is a second-class type.",
@@ -665,18 +663,15 @@ spp::analyse::errors::SppYieldedTypeMismatchError::SppYieldedTypeMismatchError(
     asts::Ast const &lhs,
     asts::TypeAst const &lhs_ty,
     asts::Ast const &rhs,
-    asts::TypeAst const &rhs_ty,
-    const bool is_optional,
-    const bool is_fallible,
-    asts::TypeAst const &error_type) {
+    asts::TypeAst const &rhs_ty) {
     add_header(
         46, "SPP Yielded Type Mismatch Error");
     add_context_for_error(
         &lhs,
-        "Yielded type: " + static_cast<std::string>(lhs_ty) + (is_optional ? " (optional)" : "") + (is_fallible ? " (fallible)" : ""));
+        "Yielded type: " + static_cast<std::string>(lhs_ty));
     add_error(
         &rhs,
-        "Expected type: " + static_cast<std::string>(rhs_ty) + (is_fallible ? " or error type: " + static_cast<std::string>(error_type) : ""));
+        "Expected type: " + static_cast<std::string>(rhs_ty));
     add_footer(
         "The type of the yielded value does not match the expected type.",
         "Ensure the yielded value matches the expected type");
@@ -712,56 +707,6 @@ spp::analyse::errors::SppUnreachableCodeError::SppUnreachableCodeError(
     add_footer(
         "This code is unreachable due to preceding control flow statements.",
         "Remove or modify the unreachable code");
-}
-
-
-spp::analyse::errors::SppIterExpressionPatternTypeDuplicateError::SppIterExpressionPatternTypeDuplicateError(
-    asts::IterPatternVariantAst const &first_branch,
-    asts::IterPatternVariantAst const &second_branch) {
-    add_header(
-        34, "SPP Iter Expression Pattern Type Duplicate Error");
-    add_context_for_error(
-        &first_branch,
-        "First pattern branch defined here");
-    add_error(
-        &second_branch,
-        "Second pattern branch defined here");
-    add_footer(
-        "These two pattern branches have the same type, which is not allowed.",
-        "Ensure each pattern branch has a unique type");
-}
-
-
-spp::analyse::errors::SppIterExpressionPatternIncompatibleError::SppIterExpressionPatternIncompatibleError(
-    asts::ExpressionAst const &cond,
-    asts::TypeAst const &cond_type,
-    asts::IterPatternVariantAst const &pattern,
-    asts::TypeAst const &required_generator_type) {
-    add_header(
-        31, "SPP Iter Expression Pattern Incompatible Error");
-    add_context_for_error(
-        &cond,
-        "Condition expression defined here with type: " + static_cast<std::string>(cond_type));
-    add_error(
-        &pattern,
-        "Pattern defined here");
-    add_footer(
-        "The pattern is incompatible with the generator type required for the condition expression.",
-        "Ensure the pattern matches the required generator type: " + static_cast<std::string>(required_generator_type));
-}
-
-
-spp::analyse::errors::SppIterExpressionPatternMissingError::SppIterExpressionPatternMissingError(
-    asts::ExpressionAst const &cond,
-    asts::TypeAst const &cond_type) {
-    add_header(
-        32, "SPP Iter Expression Pattern Missing Error");
-    add_error(
-        &cond,
-        "Condition expression defined here with type: " + static_cast<std::string>(cond_type));
-    add_footer(
-        "A pattern is required for the generator type of the condition expression.",
-        "Provide a suitable pattern for the generator type");
 }
 
 

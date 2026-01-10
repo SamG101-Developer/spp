@@ -79,9 +79,6 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppYieldedTypeMismatchError;
     SPP_EXP_CLS struct SppIdentifierUnknownError;
     SPP_EXP_CLS struct SppUnreachableCodeError;
-    SPP_EXP_CLS struct SppIterExpressionPatternTypeDuplicateError;
-    SPP_EXP_CLS struct SppIterExpressionPatternIncompatibleError;
-    SPP_EXP_CLS struct SppIterExpressionPatternMissingError;
     SPP_EXP_CLS struct SppInvalidTypeAnnotationError;
     SPP_EXP_CLS struct SppMultipleSkipMultiArgumentsError;
     SPP_EXP_CLS struct SppVariableArrayDestructureArrayTypeMismatchError;
@@ -185,7 +182,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppTypeMismatchError final : SemanticEr
 
 
 SPP_EXP_CLS struct spp::analyse::errors::SppSecondClassBorrowViolationError final : SemanticError {
-    explicit SppSecondClassBorrowViolationError(asts::Ast const &expr, asts::Ast const &conv, std::string_view ctx);
+    explicit SppSecondClassBorrowViolationError(asts::Ast const &expr, asts::Ast const &type, std::string_view ctx);
 };
 
 
@@ -325,7 +322,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppFunctionSubroutineContainsGenExpress
 
 
 SPP_EXP_CLS struct spp::analyse::errors::SppYieldedTypeMismatchError final : SemanticError {
-    explicit SppYieldedTypeMismatchError(asts::Ast const &lhs, asts::TypeAst const &lhs_ty, asts::Ast const &rhs, asts::TypeAst const &rhs_ty, bool is_optional, bool is_fallible, asts::TypeAst const &error_type);
+    explicit SppYieldedTypeMismatchError(asts::Ast const &lhs, asts::TypeAst const &lhs_ty, asts::Ast const &rhs, asts::TypeAst const &rhs_ty);
 };
 
 
@@ -336,21 +333,6 @@ SPP_EXP_CLS struct spp::analyse::errors::SppIdentifierUnknownError final : Seman
 
 SPP_EXP_CLS struct spp::analyse::errors::SppUnreachableCodeError final : SemanticError {
     explicit SppUnreachableCodeError(asts::Ast const &member, asts::Ast const &next_member);
-};
-
-
-SPP_EXP_CLS struct spp::analyse::errors::SppIterExpressionPatternTypeDuplicateError final : SemanticError {
-    explicit SppIterExpressionPatternTypeDuplicateError(asts::IterPatternVariantAst const &first_branch, asts::IterPatternVariantAst const &second_branch);
-};
-
-
-SPP_EXP_CLS struct spp::analyse::errors::SppIterExpressionPatternIncompatibleError final : SemanticError {
-    explicit SppIterExpressionPatternIncompatibleError(asts::ExpressionAst const &cond, asts::TypeAst const &cond_type, asts::IterPatternVariantAst const &pattern, asts::TypeAst const &required_generator_type);
-};
-
-
-SPP_EXP_CLS struct spp::analyse::errors::SppIterExpressionPatternMissingError final : SemanticError {
-    explicit SppIterExpressionPatternMissingError(asts::ExpressionAst const &cond, asts::TypeAst const &cond_type);
 };
 
 
