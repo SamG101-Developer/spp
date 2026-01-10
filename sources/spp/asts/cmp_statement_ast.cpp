@@ -120,13 +120,6 @@ auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
     Ast::stage_2_gen_top_level_scopes(sm, meta);
     annotations | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
 
-    // Ensure that the convention type doesn't have a convention.
-    if (const auto conv = type->get_convention(); conv != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
-            .with_args(*this, *conv, "global constant type")
-            .raises_from(sm->current_scope);
-    }
-
     // Create a symbol for this constant declaration, pin to prevent moving.
     auto sym = std::make_unique<analyse::scopes::VariableSymbol>(
         name, type, false, false, visibility.first);
@@ -143,6 +136,11 @@ auto spp::asts::CmpStatementAst::stage_5_load_super_scopes(
     -> void {
     // Check the type exists before attaching super scopes
     type->stage_7_analyse_semantics(sm, meta);
+
+    // Ensure that the convention type doesn't have a convention.
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(this, type, *sm, "global constant type");
+    type = sm->current_scope->get_type_symbol(type)->fq_name();
+    sm->current_scope->get_var_symbol(name)->type = type;
 }
 
 

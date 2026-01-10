@@ -101,13 +101,6 @@ auto spp::asts::ClassAttributeAst::stage_2_gen_top_level_scopes(
     // Run the generation steps for the annotations.
     annotations | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
 
-    // Ensure that the type does not have a convention.
-    if (const auto conv = type->get_convention()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
-            .with_args(*type, *conv, "attribute type")
-            .raises_from(sm->current_scope);
-    }
-
     // Create a variable symbol for this attribute in the current scope (class scope).
     auto sym = std::make_unique<analyse::scopes::VariableSymbol>(name, type, false, false, visibility.first);
     sm->current_scope->add_var_symbol(std::move(sym));
@@ -120,6 +113,7 @@ auto spp::asts::ClassAttributeAst::stage_5_load_super_scopes(
     -> void {
     // Check the type is valid before scopes are attached.
     type->stage_7_analyse_semantics(sm, meta);
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(type, type, *sm, "attribute type");
     type = sm->current_scope->get_type_symbol(type)->fq_name();
     sm->current_scope->get_var_symbol(name)->type = type;
 }
@@ -130,11 +124,7 @@ auto spp::asts::ClassAttributeAst::stage_7_analyse_semantics(
     CompilerMetaData *meta)
     -> void {
     // Repeated convention check for generic substitutions.
-    if (const auto conv = type->get_convention()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
-            .with_args(*type, *conv, "attribute type")
-            .raises_from(sm->current_scope);
-    }
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(type, type, *sm, "attribute type");
 
     // Todo: I hate this, yet it works. Will fix later.
     const auto meta_depth = meta->depth();
