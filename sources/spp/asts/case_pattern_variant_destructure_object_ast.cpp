@@ -40,7 +40,7 @@ import genex;
 
 
 spp::asts::CasePatternVariantDestructureObjectAst::CasePatternVariantDestructureObjectAst(
-    decltype(type) &&type,
+    decltype(type) type,
     decltype(tok_l) &&tok_l,
     decltype(elems) &&elems,
     decltype(tok_r) &&tok_r) :
@@ -54,6 +54,14 @@ spp::asts::CasePatternVariantDestructureObjectAst::CasePatternVariantDestructure
 
 
 spp::asts::CasePatternVariantDestructureObjectAst::~CasePatternVariantDestructureObjectAst() = default;
+
+
+auto spp::asts::CasePatternVariantDestructureObjectAst::from_type(
+    std::shared_ptr<TypeAst> const &type)
+    -> std::unique_ptr<CasePatternVariantDestructureObjectAst> {
+    auto empty_elems = std::vector<std::unique_ptr<CasePatternVariantAst>>{};
+    return std::make_unique<CasePatternVariantDestructureObjectAst>(type, nullptr, std::move(empty_elems), nullptr);
+}
 
 
 auto spp::asts::CasePatternVariantDestructureObjectAst::pos_start() const

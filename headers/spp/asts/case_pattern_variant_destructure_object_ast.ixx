@@ -56,12 +56,15 @@ public:
      * @param[in] tok_r The @code )@endcode token that indicates the end of a object destructuring pattern.
      */
     CasePatternVariantDestructureObjectAst(
-        decltype(type) &&type,
+        decltype(type) type,
         decltype(tok_l) &&tok_l,
         decltype(elems) &&elems,
         decltype(tok_r) &&tok_r);
 
     ~CasePatternVariantDestructureObjectAst() override;
+
+    static auto from_type(
+        std::shared_ptr<TypeAst> const &type) -> std::unique_ptr<CasePatternVariantDestructureObjectAst>;
 
     SPP_AST_KEY_FUNCTIONS;
 
