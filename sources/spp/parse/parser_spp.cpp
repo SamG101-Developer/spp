@@ -81,14 +81,6 @@ import spp.asts.inner_scope_expression_ast;
 import spp.asts.integer_literal_ast;
 import spp.asts.is_expression_ast;
 import spp.asts.is_expression_temp_ast;
-import spp.asts.iter_expression_ast;
-import spp.asts.iter_expression_branch_ast;
-import spp.asts.iter_pattern_variant_ast;
-import spp.asts.iter_pattern_variant_else_ast;
-import spp.asts.iter_pattern_variant_exception_ast;
-import spp.asts.iter_pattern_variant_exhausted_ast;
-import spp.asts.iter_pattern_variant_no_value_ast;
-import spp.asts.iter_pattern_variant_variable_ast;
 import spp.asts.let_statement_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.let_statement_uninitialized_ast;
@@ -1039,8 +1031,8 @@ auto spp::parse::ParserSpp::parse_primary_expression()
     PARSE_ALTERNATE(
         p1, asts::PrimaryExpressionAst, parse_closure_expression, parse_parenthesised_expression, parse_literal,
         parse_object_initializer, parse_case_of_expression, parse_case_expression, parse_loop_expression,
-        parse_iter_of_expression, parse_gen_unroll_expression, parse_gen_expression, parse_type_expression,
-        parse_identifier, parse_self_identifier,
+        parse_gen_unroll_expression, parse_gen_expression, parse_type_expression, parse_identifier,
+        parse_self_identifier,
         [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); }, parse_fold_expression);
     return FORWARD_AST(p1);
 }
@@ -1369,73 +1361,6 @@ auto spp::parse::ParserSpp::parse_loop_else_statement()
     PARSE_ONCE(p1, parse_keyword_else);
     PARSE_ONCE(p2, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
     return CREATE_AST(asts::LoopElseStatementAst, p1, p2);
-}
-
-
-auto spp::parse::ParserSpp::parse_iter_of_expression()
-    -> std::unique_ptr<asts::IterExpressionAst> {
-    PARSE_ONCE(p1, parse_keyword_iter);
-    PARSE_ONCE(p2, parse_expression);
-    PARSE_ONCE(p3, parse_keyword_of);
-    PARSE_ONCE(p4, parse_token_left_curly_brace);
-    PARSE_ONE_OR_MORE(p5, parse_iter_of_expression_branch, parse_newline);
-    PARSE_ONCE(p6, parse_token_right_curly_brace);
-    return CREATE_AST(asts::IterExpressionAst, p1, p2, p3, p5);
-}
-
-
-auto spp::parse::ParserSpp::parse_iter_of_expression_branch()
-    -> std::unique_ptr<asts::IterExpressionBranchAst> {
-    PARSE_ONCE(p1, parse_iter_expression_pattern_variant)
-    PARSE_OPTIONAL(p2, parse_pattern_guard);
-    PARSE_ONCE(p3, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); })
-    return CREATE_AST(asts::IterExpressionBranchAst, p1, p2, p3);
-}
-
-
-auto spp::parse::ParserSpp::parse_iter_expression_pattern_variant()
-    -> std::unique_ptr<asts::IterPatternVariantAst> {
-    PARSE_ALTERNATE(
-        p1, asts::IterPatternVariantAst, parse_iter_expression_pattern_variant_no_value,
-        parse_iter_expression_pattern_variant_exhausted, parse_iter_expression_pattern_variant_exception,
-        parse_iter_expression_pattern_variant_variable);
-    return FORWARD_AST(p1);
-}
-
-
-auto spp::parse::ParserSpp::parse_iter_expression_pattern_variant_variable()
-    -> std::unique_ptr<asts::IterPatternVariantVariableAst> {
-    PARSE_ONCE(p1, parse_local_variable);
-    return CREATE_AST(asts::IterPatternVariantVariableAst, p1);
-}
-
-
-auto spp::parse::ParserSpp::parse_iter_expression_pattern_variant_exhausted()
-    -> std::unique_ptr<asts::IterPatternVariantExhaustedAst> {
-    PARSE_ONCE(p1, parse_token_double_exclamation_mark);
-    return CREATE_AST(asts::IterPatternVariantExhaustedAst, p1);
-}
-
-
-auto spp::parse::ParserSpp::parse_iter_expression_pattern_variant_no_value()
-    -> std::unique_ptr<asts::IterPatternVariantNoValueAst> {
-    PARSE_ONCE(p1, parse_token_underscore);
-    return CREATE_AST(asts::IterPatternVariantNoValueAst, p1);
-}
-
-
-auto spp::parse::ParserSpp::parse_iter_expression_pattern_variant_exception()
-    -> std::unique_ptr<asts::IterPatternVariantExceptionAst> {
-    PARSE_ONCE(p1, parse_token_exclamation_mark);
-    PARSE_ONCE(p2, parse_local_variable);
-    return CREATE_AST(asts::IterPatternVariantExceptionAst, p1, p2);
-}
-
-
-auto spp::parse::ParserSpp::parse_iter_expression_pattern_variant_else()
-    -> std::unique_ptr<asts::IterPatternVariantElseAst> {
-    PARSE_ONCE(p1, parse_keyword_else);
-    return CREATE_AST(asts::IterPatternVariantElseAst, p1);
 }
 
 
@@ -2073,10 +1998,12 @@ auto spp::parse::ParserSpp::parse_postfix_type_expression_simple()
 
 auto spp::parse::ParserSpp::parse_unary_type_expression_simple()
     -> std::unique_ptr<asts::TypeAst> {
-    PARSE_ZERO_OR_MORE(p1, parse_unary_type_expression_op_namespace, parse_nothing);
-    PARSE_ONCE(p2, [this] { return std::unique_ptr<asts::TypeAst>(parse_type_identifier().release()); });
+    PARSE_OPTIONAL(p1, parse_unary_type_expression_op_borrow)
+    PARSE_ZERO_OR_MORE(p2, parse_unary_type_expression_op, parse_nothing);
+    PARSE_ONCE(p3, [this] { return std::unique_ptr<asts::TypeAst>(parse_type_identifier().release()); });
+    if (p1 != nullptr) { p2.insert(p2.begin(), std::unique_ptr<asts::TypeUnaryExpressionOperatorAst>(p1.release())); }
     return utils::algorithms::move_accumulate(
-        p1.rbegin(), p1.rend(), std::move(p2),
+        p2.rbegin(), p2.rend(), std::move(p3),
         [](std::unique_ptr<asts::TypeAst> &&acc, std::unique_ptr<asts::TypeUnaryExpressionOperatorAst> &&x) {
             return CREATE_AST(asts::TypeUnaryExpressionAst, x, std::move(acc));
         });
@@ -3141,13 +3068,6 @@ auto spp::parse::ParserSpp::parse_keyword_self()
 auto spp::parse::ParserSpp::parse_keyword_case()
     -> std::unique_ptr<asts::TokenAst> {
     PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_CASE, lex::SppTokenType::KW_CASE); });
-    return FORWARD_AST(p1);
-}
-
-
-auto spp::parse::ParserSpp::parse_keyword_iter()
-    -> std::unique_ptr<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::KW_ITER, lex::SppTokenType::KW_ITER); });
     return FORWARD_AST(p1);
 }
 

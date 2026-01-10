@@ -96,14 +96,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct BinaryExpressionTempAst;
     SPP_EXP_CLS struct IsExpressionAst;
     SPP_EXP_CLS struct IsExpressionTempAst;
-    SPP_EXP_CLS struct IterExpressionAst;
-    SPP_EXP_CLS struct IterExpressionBranchAst;
-    SPP_EXP_CLS struct IterPatternVariantAst;
-    SPP_EXP_CLS struct IterPatternVariantElseAst;
-    SPP_EXP_CLS struct IterPatternVariantExceptionAst;
-    SPP_EXP_CLS struct IterPatternVariantExhaustedAst;
-    SPP_EXP_CLS struct IterPatternVariantNoValueAst;
-    SPP_EXP_CLS struct IterPatternVariantVariableAst;
     SPP_EXP_CLS struct ClosureExpressionAst;
     SPP_EXP_CLS struct ClosureExpressionCaptureAst;
     SPP_EXP_CLS struct ClosureExpressionCaptureGroupAst;
@@ -330,15 +322,6 @@ public:
     auto parse_loop_iterable_expression() -> std::unique_ptr<asts::LoopIterableExpressionAst>;
     auto parse_loop_else_statement() -> std::unique_ptr<asts::LoopElseStatementAst>;
 
-    auto parse_iter_of_expression() -> std::unique_ptr<asts::IterExpressionAst>;
-    auto parse_iter_of_expression_branch() -> std::unique_ptr<asts::IterExpressionBranchAst>;
-    auto parse_iter_expression_pattern_variant() -> std::unique_ptr<asts::IterPatternVariantAst>;
-    auto parse_iter_expression_pattern_variant_variable() -> std::unique_ptr<asts::IterPatternVariantVariableAst>;
-    auto parse_iter_expression_pattern_variant_no_value() -> std::unique_ptr<asts::IterPatternVariantNoValueAst>;
-    auto parse_iter_expression_pattern_variant_exhausted() -> std::unique_ptr<asts::IterPatternVariantExhaustedAst>;
-    auto parse_iter_expression_pattern_variant_exception() -> std::unique_ptr<asts::IterPatternVariantExceptionAst>;
-    auto parse_iter_expression_pattern_variant_else() -> std::unique_ptr<asts::IterPatternVariantElseAst>;
-
     auto parse_gen_expression() -> std::unique_ptr<asts::GenExpressionAst>;
     auto parse_gen_expression_with_expression() -> std::unique_ptr<asts::GenExpressionAst>;
     auto parse_gen_expression_without_expression() -> std::unique_ptr<asts::GenExpressionAst>;
@@ -555,7 +538,6 @@ public:
     auto parse_keyword_type() -> std::unique_ptr<asts::TokenAst>;
     auto parse_keyword_self() -> std::unique_ptr<asts::TokenAst>;
     auto parse_keyword_case() -> std::unique_ptr<asts::TokenAst>;
-    auto parse_keyword_iter() -> std::unique_ptr<asts::TokenAst>;
     auto parse_keyword_of() -> std::unique_ptr<asts::TokenAst>;
     auto parse_keyword_loop() -> std::unique_ptr<asts::TokenAst>;
     auto parse_keyword_in() -> std::unique_ptr<asts::TokenAst>;
