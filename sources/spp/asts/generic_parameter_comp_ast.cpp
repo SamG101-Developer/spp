@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.asts.generic_parameter_comp_ast;
@@ -8,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.convention_ast;
 import spp.asts.generic_parameter_comp_optional_ast;
 import spp.asts.identifier_ast;
@@ -37,13 +39,6 @@ auto spp::asts::GenericParameterCompAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
     CompilerMetaData *)
     -> void {
-    // Ensure the type does not have a convention.
-    if (const auto conv = type->get_convention(); conv != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
-            .with_args(*type, *conv, "function return type")
-            .raises_from(sm->current_scope);
-    }
-
     // Create a variable symbol for this constant in the current scope (class / function).
     auto sym = std::make_unique<analyse::scopes::VariableSymbol>(
         IdentifierAst::from_type(*name), type, false, true, utils::Visibility::PUBLIC);
@@ -62,6 +57,7 @@ auto spp::asts::GenericParameterCompAst::stage_4_qualify_types(
     meta->save();
     meta->ignore_cmp_generic = name;
     type->stage_7_analyse_semantics(sm, meta);
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(type, type, *sm, "function return type");
     type = sm->current_scope->get_type_symbol(type)->fq_name();
     meta->restore();
     sm->current_scope->get_var_symbol(IdentifierAst::from_type(*name))->type = type;
