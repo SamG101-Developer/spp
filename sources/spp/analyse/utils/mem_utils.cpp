@@ -16,7 +16,6 @@ import spp.asts.case_expression_branch_ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
-import spp.asts.iter_expression_branch_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.utils.ast_utils;
 import genex;
@@ -189,15 +188,14 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
 }
 
 
-template <typename T>
 auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
     asts::Ast *parent,
-    std::vector<T> const &branches,
+    std::vector<asts::CaseExpressionBranchAst*> const &branches,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
     -> void {
     // Define a simple alias for a list of symbols and their memory.
-    using SymbolMemoryList = std::vector<std::pair<T, mem_info_utils::MemoryInfoSnapshot>>;
+    using SymbolMemoryList = std::vector<std::pair<asts::CaseExpressionBranchAst*, mem_info_utils::MemoryInfoSnapshot>>;
 
     // Create a map of the symbols' memory  information before any branches are analysed.
     auto sym_mem_info = std::map<scopes::VariableSymbol*, SymbolMemoryList>();
@@ -287,19 +285,3 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
         }
     }
 }
-
-
-template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
-    asts::Ast *parent,
-    std::vector<asts::CaseExpressionBranchAst*> const &branches,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> void;
-
-
-template auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
-    asts::Ast *parent,
-    std::vector<asts::IterExpressionBranchAst*> const &branches,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> void;

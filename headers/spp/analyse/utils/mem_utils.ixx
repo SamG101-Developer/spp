@@ -7,6 +7,7 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct Ast;
+    SPP_EXP_CLS struct CaseExpressionBranchAst;
     SPP_EXP_CLS struct ExpressionAst;
 }
 
@@ -86,10 +87,9 @@ namespace spp::analyse::utils::mem_utils {
         asts::meta::CompilerMetaData *meta)
         -> void;
 
-    SPP_EXP_FUN template <typename T>
-    auto validate_inconsistent_memory(
+    SPP_EXP_FUN auto validate_inconsistent_memory(
         asts::Ast* parent,
-        std::vector<T> const &branches,
+        std::vector<asts::CaseExpressionBranchAst*> const &branches,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
         -> void;
