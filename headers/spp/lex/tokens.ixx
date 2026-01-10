@@ -182,7 +182,6 @@ SPP_EXP_ENUM enum class spp::lex::SppTokenType : std::uint8_t {
     TK_QUOTATION_MARK,
     TK_UNDERSCORE,
     TK_EXCLAMATION_MARK,
-    TK_DOUBLE_EXCLAMATION_MARK,
     TK_DOLLAR,
     TK_SPACE,
     TK_NEWLINE,
@@ -291,7 +290,6 @@ SPP_EXP_FUN auto spp::lex::tok_to_string(const SppTokenType token) noexcept -> s
     case SppTokenType::TK_QUOTATION_MARK: return "\"";
     case SppTokenType::TK_UNDERSCORE: return "_";
     case SppTokenType::TK_EXCLAMATION_MARK: return "!";
-    case SppTokenType::TK_DOUBLE_EXCLAMATION_MARK: return "!!";
     case SppTokenType::TK_DOLLAR: return "$";
     case SppTokenType::TK_SPACE: return " ";
     case SppTokenType::TK_NEWLINE: return "\n";

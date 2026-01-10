@@ -506,7 +506,6 @@ public:
     auto parse_token_arrow_right() -> std::unique_ptr<asts::TokenAst>;
     auto parse_token_double_dot() -> std::unique_ptr<asts::TokenAst>;
     auto parse_token_double_colon() -> std::unique_ptr<asts::TokenAst>;
-    auto parse_token_double_exclamation_mark() -> std::unique_ptr<asts::TokenAst>;
     auto parse_token_equals() -> std::unique_ptr<asts::TokenAst>;
     auto parse_token_not_equals() -> std::unique_ptr<asts::TokenAst>;
     auto parse_token_less_than_equals() -> std::unique_ptr<asts::TokenAst>;

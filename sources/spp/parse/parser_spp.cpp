@@ -2833,14 +2833,6 @@ auto spp::parse::ParserSpp::parse_token_double_colon()
 }
 
 
-auto spp::parse::ParserSpp::parse_token_double_exclamation_mark()
-    -> std::unique_ptr<asts::TokenAst> {
-    PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_EXCLAMATION_MARK, lex::SppTokenType::TK_DOUBLE_EXCLAMATION_MARK); });
-    PARSE_ONCE(p2, [this] { return parse_token_raw(lex::RawTokenType::TK_EXCLAMATION_MARK, lex::SppTokenType::TK_DOUBLE_EXCLAMATION_MARK); });
-    return FORWARD_AST(p1);
-}
-
-
 auto spp::parse::ParserSpp::parse_token_equals()
     -> std::unique_ptr<asts::TokenAst> {
     PARSE_ONCE(p1, [this] { return parse_token_raw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_EQ); });
