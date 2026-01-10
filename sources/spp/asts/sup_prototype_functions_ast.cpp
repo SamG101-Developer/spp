@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.convention_ast;
 import spp.asts.generic_argument_group_ast;
@@ -121,13 +122,6 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_2_gen_top_level_scopes(
             .raises_from(sm->current_scope);
     }
 
-    // No conventions allowed on the name.
-    if (auto &&conv = name->get_convention(); conv != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
-            .with_args(*name, *conv, "superimposition type")
-            .raises_from(sm->current_scope);
-    }
-
     // Generate symbols for the generic parameter group, and the self type.
     generic_param_group->stage_2_gen_top_level_scopes(sm, meta);
     impl->stage_2_gen_top_level_scopes(sm, meta);
@@ -170,6 +164,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_5_load_super_scopes(
 
     // Analyse the type being superimposed over.
     name->stage_7_analyse_semantics(sm, meta);
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(name, name, *sm, "superimposition type");
     name = sm->current_scope->get_type_symbol(name)->fq_name();
 
     // Register the superimposition against the base symbol.

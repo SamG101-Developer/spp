@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_info_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
 import spp.asts.integer_literal_ast;
@@ -121,14 +122,10 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
     }
 
     // Ensure the element's type is not a borrow type, as array elements cannot be borrows.
-    if (const auto conv = elem_type->get_convention()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
-            .with_args(*elem, *conv, "repeated array element type")
-            .raises_from(sm->current_scope);
-    }
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(size.get());
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(elem, elem_type, *sm, "repeated array element type");
 
     // Ensure the size is a constant expression (if symbolic).
-    SPP_ENFORCE_EXPRESSION_SUBTYPE(size.get());
     auto symbolic_size = ast_clone(size->to<IdentifierAst>());
     const auto size_sym = sm->current_scope->get_var_symbol(std::move(symbolic_size));
     if (size_sym != nullptr and size_sym->memory_info->ast_comptime == nullptr) {

@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
@@ -103,14 +104,9 @@ auto spp::asts::TupleLiteralAst::stage_7_analyse_semantics(
     }
 
     // Check all the elements are owned by the tuple, not borrowed.
-    for (auto const &elem : elems | genex::views::indirect) {
-        if (auto [elem_sym, _] = sm->current_scope->get_var_symbol_outermost(elem); elem_sym != nullptr) {
-            if (const auto borrow_ast = std::get<0>(elem_sym->memory_info->ast_borrowed)) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
-                    .with_args(elem, *borrow_ast, "explicit array element type")
-                    .raises_from(sm->current_scope);
-            }
-        }
+    for (auto const &elem : elems | genex::views::ptr) {
+        auto elem_type = elem->infer_type(sm, meta);
+        SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(elem, elem_type, *sm, "tuple literal element");
     }
 
     // Analyse the inferred array type to generate the generic implementation.

@@ -306,11 +306,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 new_fn_proto->return_type->stage_7_analyse_semantics(&tm, meta);
 
                 // Check the new return type isn't a borrow type.
-                if (auto conv = new_fn_proto->return_type->get_convention(); conv != nullptr) {
-                    analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
-                        .with_args(*new_fn_proto->return_type, *conv, "substituted function return type")
-                        .raises_from(sm->current_scope);
-                }
+                SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(
+                    new_fn_proto->return_type, new_fn_proto->return_type, tm, "substituted function return type");
 
                 // Save the generic implementation against the base function, and update the active scope and prototype.
                 auto new_fn_proto_ptr = new_fn_proto.get();
@@ -609,6 +606,12 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_10_code_gen_2(
     // Create the call instruction.
     const auto llvm_call = ctx->builder.CreateCall(llvm_func, llvm_func_args, "call" + uid);
     return llvm_call;
+
+    // // For now, return a dummy value because CreateCall keeps adding phi nodes
+    //
+    // const auto dummy_type = llvm_func->getReturnType();
+    // const auto llvm_dummy_val = llvm::UndefValue::get(dummy_type);
+    // return llvm_dummy_val;
 }
 
 
@@ -626,7 +629,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
 
     // For GenOnce coroutines, automatically resume the coroutine and return the "Yield" type.
     if (m_is_coro_and_auto_resume and not meta->prevent_auto_generator_resume) {
-        auto [_, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(
+        auto [_, yield_type, _] = analyse::utils::type_utils::get_generator_and_yield_type(
             *ret_type, *sm->current_scope, *meta->postfix_expression_lhs, "function call");
         ret_type = yield_type;
     }

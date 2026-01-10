@@ -226,20 +226,6 @@ auto spp::asts::SupPrototypeExtensionAst::stage_2_gen_top_level_scopes(
         }
     }
 
-    // No conventions allowed on the name.
-    if (auto &&conv = name->get_convention(); conv != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
-            .with_args(*name, *conv, "superimposition type")
-            .raises_from(sm->current_scope);
-    }
-
-    // No conventions allowed on the super class.
-    if (auto &&conv = super_class->get_convention(); conv != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
-            .with_args(*super_class, *conv, "superimposition type")
-            .raises_from(sm->current_scope);
-    }
-
     // Generate symbols for the generic parameter group, and the self type.
     generic_param_group->stage_2_gen_top_level_scopes(sm, meta);
     impl->stage_2_gen_top_level_scopes(sm, meta);
@@ -282,6 +268,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_5_load_super_scopes(
 
     // Analyse the type being superimposed over.
     name->stage_7_analyse_semantics(sm, meta);
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(name, name, *sm, "superimposition type");
     name = sm->current_scope->get_type_symbol(name)->fq_name();
 
     // Register the superimposition against the base symbol.
@@ -310,6 +297,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_5_load_super_scopes(
 
     // Analyse the supertype after Self has been added (allows use in generic arguments to the superclass).
     super_class->stage_7_analyse_semantics(sm, meta);
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(super_class, super_class, *sm, "superimposition supertype");
     super_class = sm->current_scope->get_type_symbol(super_class)->fq_name();
 
     // Check the supertype is not generic.

@@ -116,19 +116,8 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
     // Run top level scope generation for the annotations.
     annotations | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
 
-    // Check there are no conventions on the old type.
-    if (auto &&conv = old_type->get_convention(); conv != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
-            .with_args(*old_type, *conv, "use statement's old type")
-            .raises_from(sm->current_scope);
-    }
-
     // Check there are no conventions on the new type.
-    if (auto &&conv = new_type->get_convention(); conv != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
-            .with_args(*new_type, *conv, "use statement's new type")
-            .raises_from(sm->current_scope);
-    }
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(new_type, new_type, *sm, "use statement's new type", false);
 
     // Create the type symbol for this type, that will point to the old type.
     const auto type_sym = std::make_shared<analyse::scopes::TypeSymbol>(
