@@ -1,15 +1,30 @@
 module;
+#include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
+#include <string.h>
 #include <unistd.h>
-
+#include <sys/stat.h>
 
 export module sys;
 
+#undef stderr
+#undef stdin
+#undef stdout
 
 export namespace sys {
-    using ::fcntl;
-    using ::open;
     using ::close;
+    using ::chdir;
+    using ::fcntl;
+    using ::fdopen;
+    using ::fileno;
+    using ::isatty;
+    using ::open;
+    using ::read;
+    using ::rmdir;
+    using ::strcasecmp;
+    using ::stat;
+    using ::write;
     using ::flock;
     using ::ssize_t;
 
@@ -36,4 +51,16 @@ export namespace sys {
 
     #undef F_UNLCK
     constexpr auto F_UNLCK = 2;
+
+    #undef errno
+    auto errno = *__errno_location();
+
+    #undef S_ISDIR
+    auto S_ISDIR = [](const mode_t mode) {
+        return __S_ISTYPE(mode, __S_IFDIR);
+    };
+
+    const auto stdout = ::stdout;
+    const auto stdin = ::stdin;
+    const auto stderr = ::stderr;
 }
