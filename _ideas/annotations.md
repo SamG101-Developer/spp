@@ -68,3 +68,23 @@ annotations. This might look like `@repr(C)`. https://chatgpt.com/s/t_69404edcd9
   parameter is passed by value, can't fit in a register, and allows LLVM to make optimizations based on this knowledge.
 - The `inreg` attribute is applied to primitive owned types (ints, floats, bools, etc). This indicates that the
   parameter is passed in a register, allowing LLVM to optimize based on this knowledge.
+
+## ANNOTATIONS V2
+
+- Define every annotation as an annotation in source code, so they can be referenced and checked against.
+
+```
+@annotation
+@compiler_builtin
+fun annotation() { }
+
+@annotation
+@compiler_builtin
+fun compiler_builtin() { }
+
+@annotation
+@compiler_builtin
+@targets(method, function)
+fun virtual_method() { }
+```
+  
