@@ -28,8 +28,9 @@ import spp.asts.local_variable_destructure_object_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.postfix_expression_operator_deref_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
@@ -123,8 +124,11 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantic
     // TODO: Move flow typing logic to local variabl mapping
     // TODO: Flow typing doesn't work on nested variant destructuring
     // Analyse the class type (required for flow typing).
+
+    auto conv = ast_clone(type->get_convention());
     type->stage_7_analyse_semantics(sm, meta);
     type = sm->current_scope->get_type_symbol(type)->fq_name();
+    type = type->with_convention(std::move(conv));
 
     // Get the condition symbol if it exists.
     m_cond_sym = sm->current_scope->get_var_symbol(ast_clone(meta->case_condition->to<IdentifierAst>()));
@@ -137,7 +141,17 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantic
         auto var_name = std::make_shared<IdentifierAst>(pos_start(), uid);
         auto var_ast = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, var_name, nullptr);
         const auto let_ast = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var_ast), cond_type, nullptr, ast_clone(meta->case_condition));
-        let_ast->stage_7_analyse_semantics(sm, meta);
+
+        // TODO: Same logic for array and tuple destructures?
+        SPP_DEREF_ALLOW_MOVE_HELPER(let_ast->val) {
+            meta->save();
+            meta->allow_move_deref = true;
+            let_ast->stage_7_analyse_semantics(sm, meta);
+            meta->restore();
+        }
+        else {
+            let_ast->stage_7_analyse_semantics(sm, meta);
+        }
 
         // Set the memory information of the symbol based on the type of iteration.
         cond = var_name.get();
