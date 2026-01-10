@@ -455,7 +455,7 @@ auto spp::analyse::utils::type_utils::get_generator_and_yield_type(
     scopes::Scope const &scope,
     asts::ExpressionAst const &expr,
     std::string_view what)
-    -> std::tuple<std::shared_ptr<const asts::TypeAst>, std::shared_ptr<asts::TypeAst>, bool, bool, bool, std::shared_ptr<asts::TypeAst>> {
+    -> std::tuple<std::shared_ptr<const asts::TypeAst>, std::shared_ptr<asts::TypeAst>, bool> {
     // Generic types are not generators, so raise an error.
     const auto type_sym = scope.get_type_symbol(type.shared_from_this());
     if (type_sym->scope == nullptr) {
@@ -492,17 +492,8 @@ auto spp::analyse::utils::type_utils::get_generator_and_yield_type(
     auto is_once = symbolic_eq(
         *asts::generate::common_types_precompiled::GEN_ONCE, *generator_type->without_generics(), scope, scope);
 
-    auto is_optional = symbolic_eq(
-        *asts::generate::common_types_precompiled::GEN_OPT, *generator_type->without_generics(), scope, scope);
-
-    auto is_fallible = symbolic_eq(
-        *asts::generate::common_types_precompiled::GEN_RES, *generator_type->without_generics(), scope, scope);
-
-    // Get the error type if the generator is fallible.
-    auto error_type = is_fallible ? generator_type->type_parts().back()->generic_arg_group->type_at("Err")->val : nullptr;
-
     // Return all the information about the generator type.
-    return std::make_tuple(generator_type, yield_type, is_once, is_optional, is_fallible, error_type);
+    return std::make_tuple(generator_type, yield_type, is_once);
 }
 
 

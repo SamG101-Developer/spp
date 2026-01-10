@@ -31,7 +31,7 @@ auto spp::codegen::create_coro_env_type(
     analyse::scopes::Scope const &scope)
     -> std::pair<llvm::StructType*, llvm::StructType*> {
     // Get the type being yielded.
-    const auto [generator_type, yield_type, _, _, _, error_type] = analyse::utils::type_utils::get_generator_and_yield_type(
+    const auto [generator_type, yield_type, _] = analyse::utils::type_utils::get_generator_and_yield_type(
         *coro->return_type, scope, *coro->return_type, "coroutine prototype");
     const auto send_type = generator_type->type_parts().back()->generic_arg_group->type_at("Send")->val;
 
@@ -62,11 +62,6 @@ auto spp::codegen::create_coro_env_type(
                                     ? llvm_type(*scope.get_type_symbol(send_type), ctx)
                                     : llvm::Type::getInt8Ty(*ctx->context); // Dummy
 
-    // For GenRes, the error slot is also required.
-    const auto llvm_error_type = analyse::utils::type_utils::symbolic_eq(*generator_type->without_generics(), *asts::generate::common_types_precompiled::GEN_RES, scope, scope)
-                                     ? llvm_type(*scope.get_type_symbol(error_type), ctx)
-                                     : llvm::Type::getInt8Ty(*ctx->context); // Dummy
-
     // Create the struct type and return it.
     const auto fields = std::vector<llvm::Type*>{
         llvm_resume_func_ptr_type,
@@ -75,10 +70,9 @@ auto spp::codegen::create_coro_env_type(
         llvm_arg_struct_type,
         llvm_yield_type,
         llvm_send_type,
-        llvm_error_type
     };
 
-    if (llvm_yield_type == nullptr or llvm_send_type == nullptr or llvm_error_type == nullptr) {
+    if (llvm_yield_type == nullptr or llvm_send_type == nullptr) {
         return {nullptr, nullptr};
     }
 
@@ -161,7 +155,7 @@ auto spp::codegen::create_coro_res_func(
     -> llvm::Function* {
     // Get the "send" type for the resume signature.
     const auto uid = spp::utils::generate_uid(coro);
-    const auto [generator_type, _, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(
+    const auto [generator_type, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(
         *coro->return_type, scope, *coro->return_type, "coroutine prototype");
     const auto send_type = generator_type->type_parts().back()->generic_arg_group->type_at("Send")->val;
     const auto llvm_send_type = llvm_type(*scope.get_type_symbol(send_type), ctx);

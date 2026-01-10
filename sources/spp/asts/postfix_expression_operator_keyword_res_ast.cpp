@@ -157,31 +157,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Get the generator type.
     const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
-    auto [gen_type, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(
+    auto [_, yield_type, _] = analyse::utils::type_utils::get_generator_and_yield_type(
         *lhs_type, *sm->current_scope, *meta->postfix_expression_lhs, "resume expression");
-
-    // Convert the type Gen[Yield] => Generated[Yield]
-    if (analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN, *gen_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
-        auto generated_type = generate::common_types::generated_type(pos_start(), std::move(yield_type));
-        generated_type->stage_7_analyse_semantics(sm, meta);
-        return generated_type;
-    }
-
-    // Convert the type GenOpt[Yield] => GeneratedOpt[Yield]
-    if (analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN_OPT, *gen_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
-        auto generated_type = generate::common_types::generated_opt_type(pos_start(), std::move(yield_type));
-        generated_type->stage_7_analyse_semantics(sm, meta);
-        return generated_type;
-    }
-
-    // Convert the type GenRes[Yield, Err] => GeneratedRes[Yield, Err]
-    if (analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::GEN_RES, *gen_type->without_generics(), *sm->current_scope, *sm->current_scope)) {
-        auto generated_type = generate::common_types::generated_res_type(pos_start(), std::move(yield_type), gen_type->type_parts().back()->generic_arg_group->type_at("Err")->val);
-        generated_type->stage_7_analyse_semantics(sm, meta);
-        return generated_type;
-    }
-
-    // Semantic analysis prevents non-generator types from being used with the ".res" operator, so this should never be
-    // reached.
-    std::unreachable();
+    return yield_type;
 }

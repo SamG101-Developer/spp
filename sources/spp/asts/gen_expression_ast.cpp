@@ -109,7 +109,7 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
     if (expr != nullptr) {
         meta->save();
         SPP_RETURN_TYPE_OVERLOAD_HELPER(expr.get()) {
-            auto [gen_type, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(
+            auto [gen_type, yield_type, _] = analyse::utils::type_utils::get_generator_and_yield_type(
                 *meta->enclosing_function_ret_type[0], *sm->current_scope, *meta->enclosing_function_ret_type[0], "coroutine");
             meta->return_type_overload_resolver_type = std::move(yield_type);
         }
@@ -133,15 +133,12 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
     }
 
     // Determine the "Yield" type of the enclosing function (to type check the expression against).
-    auto [_, yield_type, _, is_optional, is_fallible, error_type] = analyse::utils::type_utils::get_generator_and_yield_type(
+    auto [_, yield_type, _] = analyse::utils::type_utils::get_generator_and_yield_type(
         *m_gen_type, *sm->current_scope, *m_gen_type, "coroutine");
     const auto direct_match = analyse::utils::type_utils::symbolic_eq(*yield_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
-    const auto optional_match = is_optional and analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::VOID, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
-    const auto fallible_match = is_fallible and analyse::utils::type_utils::symbolic_eq(*error_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
-    if (not(direct_match or optional_match or fallible_match)) {
-        error_type = error_type ? error_type : generate::common_types_precompiled::VOID;
+    if (not direct_match) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppYieldedTypeMismatchError>()
-            .with_args(*yield_type, *yield_type, expr ? *expr->to<Ast>() : *tok_gen->to<Ast>(), *expr_type, is_optional, is_fallible, *error_type)
+            .with_args(*yield_type, *yield_type, expr ? *expr->to<Ast>() : *tok_gen->to<Ast>(), *expr_type)
             .raises_from(sm->current_scope);
     }
 }
@@ -190,7 +187,7 @@ auto spp::asts::GenExpressionAst::stage_10_code_gen_2(
     SPP_ASSERT(llvm_gen_env != nullptr);
 
     const auto uid = spp::utils::generate_uid(this);
-    const auto [_, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(
+    const auto [_, yield_type, _] = analyse::utils::type_utils::get_generator_and_yield_type(
         *m_gen_type, *sm->current_scope, *m_gen_type, "gen");
     const auto yielded_type = expr ? expr->infer_type(sm, meta) : nullptr;
     const auto is_exception = yielded_type and analyse::utils::type_utils::symbolic_eq(

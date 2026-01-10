@@ -127,7 +127,7 @@ auto spp::asts::GenWithExpressionAst::stage_7_analyse_semantics(
     }
 
     // Determine the "yield" type of the enclosing function (to type check the expression against).
-    auto [_, yield_type, _, _, _, error_type] = analyse::utils::type_utils::get_generator_and_yield_type(
+    auto [_, yield_type, _] = analyse::utils::type_utils::get_generator_and_yield_type(
         *meta->enclosing_function_ret_type[0], *sm->current_scope, *meta->enclosing_function_ret_type[0], "coroutine");
 
     // The expression type must be a Gen type that exactly matches the function_ret_type.
