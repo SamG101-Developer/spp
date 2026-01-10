@@ -22,6 +22,8 @@ import spp.asts.let_statement_initialized_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.pattern_guard_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_deref_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
@@ -126,7 +128,16 @@ auto spp::asts::CaseExpressionAst::stage_7_analyse_semantics(
     auto scope_name = analyse::scopes::ScopeBlockName("<case-expr#" + std::to_string(pos_start()) + ">");
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
     Ast::stage_2_gen_top_level_scopes(sm, meta);
-    cond->stage_7_analyse_semantics(sm, meta);
+
+    SPP_DEREF_ALLOW_MOVE_HELPER(cond) {
+        meta->save();
+        meta->allow_move_deref = true;
+        cond->stage_7_analyse_semantics(sm, meta);
+        meta->restore();
+    }
+    else {
+        cond->stage_7_analyse_semantics(sm, meta);
+    }
 
     // Analyse eac branch of the case expression.
     for (auto &&branch : branches) {

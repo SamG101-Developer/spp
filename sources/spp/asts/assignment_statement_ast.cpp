@@ -14,6 +14,7 @@ import spp.asts.convention_ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_deref_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -86,12 +87,17 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
     auto is_attr = [&](Ast const *x) -> bool { return not x->to<IdentifierAst>() and sm->current_scope->get_var_symbol_outermost(*x).first != nullptr; };
     auto is_identifier = [](Ast const *x) -> bool { return x->to<IdentifierAst>() != nullptr; };
 
-    meta->save();
-    meta->is_assignment_lhs = true;
     for (auto &&lhs_expr : lhs) {
-        lhs_expr->stage_7_analyse_semantics(sm, meta);
+        SPP_DEREF_ALLOW_MOVE_HELPER(lhs_expr) {
+            meta->save();
+            meta->allow_move_deref = true;
+            lhs_expr->stage_7_analyse_semantics(sm, meta);
+            meta->restore();
+        }
+        else {
+            lhs_expr->stage_7_analyse_semantics(sm, meta);
+        }
     }
-    meta->restore();
 
     // Ensure the RHS is semantically valid.
     for (auto [i, rhs_expr] : rhs | genex::views::ptr | genex::views::enumerate) {
