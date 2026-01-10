@@ -198,6 +198,24 @@ auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
         // llvm_func->addFnAttr(analyse::utils::type_utils::is_type_never(*return_type, *sm->current_scope)
         //                          ? llvm::Attribute::NoReturn
         //                          : llvm::Attribute::WillReturn);
+
+        // for (const auto i : genex::views::iota(param_group->params.size() as U32)) {
+        //     if (param_group->params[i]->type->get_convention() == nullptr) {
+        //         llvm_func->addParamAttr(i, llvm::Attribute::NoUndef);
+        //     }
+        //     else if (param_group->params[i]->type->get_convention()->to<ConventionRefAst>()) {
+        //         llvm_func->addParamAttr(i, llvm::Attribute::NonNull);
+        //         llvm_func->addParamAttr(i, llvm::Attribute::NoUndef);
+        //         llvm_func->addParamAttr(i, llvm::Attribute::ReadOnly);
+        //         llvm_func->addParamAttr(i, llvm::Attribute::Dereferenceable);
+        //     }
+        //     else if (param_group->params[i]->type->get_convention()->to<ConventionMutAst>()) {
+        //         llvm_func->addParamAttr(i, llvm::Attribute::NonNull);
+        //         llvm_func->addParamAttr(i, llvm::Attribute::NoUndef);
+        //         llvm_func->addParamAttr(i, llvm::Attribute::NoAlias);
+        //         llvm_func->addParamAttr(i, llvm::Attribute::Dereferenceable);
+        //     }
+        // }
     }
     return llvm_func;
 }
@@ -334,13 +352,6 @@ auto spp::asts::FunctionPrototypeAst::stage_2_gen_top_level_scopes(
         x->stage_2_gen_top_level_scopes(sm, meta);
     }
 
-    // Ensure the function's return type does not have a convention.
-    if (const auto conv = return_type->get_convention(); conv != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
-            .with_args(*return_type, *conv, "function return type")
-            .raises_from(sm->current_scope);
-    }
-
     // Generate the generic parameters and attributes of the function.
     generic_param_group->stage_2_gen_top_level_scopes(sm, meta);
     sm->move_out_of_current_scope();
@@ -380,6 +391,10 @@ auto spp::asts::FunctionPrototypeAst::stage_5_load_super_scopes(
     SPP_ASSERT(sm->current_scope == m_scope);
     param_group->stage_7_analyse_semantics(sm, meta);
     return_type->stage_7_analyse_semantics(sm, meta);
+
+    // Ensure the function's return type does not have a convention.
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(return_type, return_type, *sm, "function return type");
+
     sm->move_out_of_current_scope();
 }
 
@@ -417,11 +432,7 @@ auto spp::asts::FunctionPrototypeAst::stage_7_analyse_semantics(
     // SPP_ASSERT(sm->current_scope == m_scope);
 
     // Repeated convention check for generic substitutions.
-    if (const auto conv = return_type->get_convention(); conv != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>()
-            .with_args(*return_type, *conv, "function return type")
-            .raises_from(sm->current_scope);
-    }
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(return_type, return_type, *sm, "function return type");
 
     // Analyse the generic parameter group, and the parameter group.
     generic_param_group->stage_7_analyse_semantics(sm, meta);
