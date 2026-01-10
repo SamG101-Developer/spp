@@ -8,6 +8,7 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct Ast;
+    SPP_EXP_CLS struct CaseExpressionBranchAst;
     SPP_EXP_CLS struct ClassAttributeAst;
     SPP_EXP_CLS struct ClassPrototypeAst;
     SPP_EXP_CLS struct ConventionAst;
@@ -152,6 +153,12 @@ namespace spp::analyse::utils::type_utils {
         scopes::ScopeManager const &sm)
         -> std::shared_ptr<asts::TypeAst>;
 
+    SPP_EXP_FUN auto is_type_borrowed(
+        asts::TypeAst const &type,
+        scopes::ScopeManager const &sm,
+        bool deep = true)
+        -> bool;
+
     SPP_EXP_FUN auto get_attr_types(
         const asts::ClassPrototypeAst *cls_proto,
         const scopes::Scope *cls_scope,
@@ -188,9 +195,8 @@ namespace spp::analyse::utils::type_utils {
         scopes::ScopeManager const &sm)
         -> std::pair<std::shared_ptr<const asts::TypeAst>, std::shared_ptr<const asts::TypeAst>>;
 
-    SPP_EXP_FUN template <typename T>
-    auto validate_inconsistent_types(
-        std::vector<T> const &branches,
+    SPP_EXP_FUN auto validate_inconsistent_types(
+        std::vector<asts::CaseExpressionBranchAst*> const &branches,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
         -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>>;

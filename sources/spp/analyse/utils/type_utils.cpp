@@ -35,7 +35,6 @@ import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.integer_literal_ast;
-import spp.asts.iter_expression_branch_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.statement_ast;
 import spp.asts.token_ast;
@@ -82,7 +81,6 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
     // Special case for the "!" never type.
     if (rhs_type.is_never_type()) { return true; }
     if (lhs_type.is_never_type()) { return rhs_type.is_never_type(); }
-    if (not convention_eq(lhs_type, rhs_type)) { return false; }
 
     // Strip the generics from the types.
     const auto stripped_lhs = lhs_type.without_generics();
@@ -99,6 +97,8 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
             return true;
         }
     }
+
+    if (not convention_eq(lhs_type, rhs_type)) { return false; }
 
     // If the stripped types are not equal, return false (comparing by address is fine -- ClassPrototypeAst* nodes).
     if (stripped_lhs_sym->type != stripped_rhs_sym->type) {
@@ -336,8 +336,6 @@ auto spp::analyse::utils::type_utils::is_type_generator(
     // Check the type against "std::generator::Gen[T]/GenOpt[T]/GenRes[T, E]".
     return
         symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::GEN, scope, scope) or
-        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::GEN_OPT, scope, scope) or
-        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::GEN_RES, scope, scope) or
         symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::GEN_ONCE, scope, scope);
 }
 
@@ -390,6 +388,25 @@ auto spp::analyse::utils::type_utils::is_type_recursive(
 
     // No recursive type was found, so return nullptr.
     return nullptr;
+}
+
+
+auto spp::analyse::utils::type_utils::is_type_borrowed(
+    asts::TypeAst const &type,
+    scopes::ScopeManager const &sm,
+    bool deep)
+    -> bool {
+    // Check that either this type, or any inner types for variants, are "&" or "&mut".
+    if (type.get_convention() != nullptr) { return true; }
+
+    // Check the inner types for variant types.
+    const auto variant_type = asts::generate::common_types_precompiled::VAR;
+    if (deep and symbolic_eq(*type.without_generics(), *variant_type, *sm.current_scope, *sm.current_scope, false)) {
+        for (auto const &inner_type_arg : type.type_parts().back()->generic_arg_group->get_type_args()) {
+            if (is_type_borrowed(*inner_type_arg->val, sm)) { return true; }
+        }
+    }
+    return false;
 }
 
 
@@ -559,9 +576,8 @@ auto spp::analyse::utils::type_utils::get_fwd_types(
 }
 
 
-template <typename T>
 auto spp::analyse::utils::type_utils::validate_inconsistent_types(
-    std::vector<T> const &branches,
+    std::vector<asts::CaseExpressionBranchAst*> const &branches,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
     -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>> {
@@ -960,13 +976,6 @@ auto spp::analyse::utils::type_utils::deduplicate_variant_inner_types(
             out.append_range(deduplicate_variant_inner_types(*generic_arg->val, scope));
         }
 
-        // Ensure there are no borrowed types inside the variant type.
-        else if (const auto conv = generic_arg->val->get_convention(); conv != nullptr) {
-            errors::SemanticErrorBuilder<errors::SppSecondClassBorrowViolationError>()
-                .with_args(type, *conv, "variant type argument")
-                .raises_from((&scope));
-        }
-
         // Inspect a non-variant type, and if it hasn't beem added to the list, add it.
         else if (not genex::any_of(out, [&](auto x) { return symbolic_eq(*generic_arg->val, *x, scope, scope); })) {
             out.emplace_back(generic_arg->val);
@@ -1163,17 +1172,3 @@ auto spp::analyse::utils::type_utils::get_field_index_in_type(
 
     // return genex::position(all_attrs, genex::operations::eq_fixed(field_name), [](auto &&attr) -> decltype(auto) { return *attr.first->name; });
 }
-
-
-template auto spp::analyse::utils::type_utils::validate_inconsistent_types<spp::asts::CaseExpressionBranchAst*>(
-    std::vector<asts::CaseExpressionBranchAst*> const &,
-    scopes::ScopeManager *,
-    asts::meta::CompilerMetaData *)
-    -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>>;
-
-
-template auto spp::analyse::utils::type_utils::validate_inconsistent_types<spp::asts::IterExpressionBranchAst*>(
-    std::vector<asts::IterExpressionBranchAst*> const &,
-    scopes::ScopeManager *,
-    asts::meta::CompilerMetaData *)
-    -> std::tuple<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>, std::vector<std::pair<asts::Ast*, std::shared_ptr<asts::TypeAst>>>>;
