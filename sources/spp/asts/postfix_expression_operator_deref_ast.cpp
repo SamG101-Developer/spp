@@ -75,7 +75,7 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::stage_7_analyse_semantics(
     }
 
     // Check the right-hand-side expression is a "Copy" type.
-    if (not sm->current_scope->get_type_symbol(lhs_type)->is_copyable() and not meta->is_assignment_lhs) {
+    if (not sm->current_scope->get_type_symbol(lhs_type)->is_copyable() and not meta->allow_move_deref) {
         analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidExpressionNonCopyableTypeError>()
             .with_args(*lhs, *lhs_type)
             .raises_from(sm->current_scope);
