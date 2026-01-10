@@ -114,8 +114,20 @@
     }
 
 
+#define SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(ast, type, m, what, ...)                           \
+    if (analyse::utils::type_utils::is_type_borrowed(*type, m __VA_OPT__(, __VA_ARGS__))) {          \
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>() \
+            .with_args(*ast, *type, what)                                                            \
+            .raises_from(sm->current_scope);                                                         \
+    }
+
+
 #define SPP_RETURN_TYPE_OVERLOAD_HELPER(expr) \
     if (auto pe = expr->to<PostfixExpressionAst>(); pe != nullptr and pe->op->to<PostfixExpressionOperatorFunctionCallAst>() != nullptr)
+
+
+#define SPP_DEREF_ALLOW_MOVE_HELPER(expr) \
+    if (auto pe = expr->to<PostfixExpressionAst>(); pe != nullptr and pe->op->to<PostfixExpressionOperatorDerefAst>() != nullptr)
 
 
 #define SPP_EXP_CLS export extern "C++"
