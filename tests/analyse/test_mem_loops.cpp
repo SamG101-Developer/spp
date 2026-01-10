@@ -1,5 +1,4 @@
 #include "../test_macros.hpp"
-import testex;
 
 
 

@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
-import testex;
-
+import spp.analyse.errors.semantic_error;
 import spp.asts.annotation_ast;
 import spp.asts.array_literal_ast;
 import spp.asts.array_literal_explicit_elements_ast;
@@ -78,14 +77,6 @@ import spp.asts.inner_scope_expression_ast;
 import spp.asts.integer_literal_ast;
 import spp.asts.is_expression_ast;
 import spp.asts.is_expression_temp_ast;
-import spp.asts.iter_expression_ast;
-import spp.asts.iter_expression_branch_ast;
-import spp.asts.iter_pattern_variant_ast;
-import spp.asts.iter_pattern_variant_else_ast;
-import spp.asts.iter_pattern_variant_exception_ast;
-import spp.asts.iter_pattern_variant_exhausted_ast;
-import spp.asts.iter_pattern_variant_no_value_ast;
-import spp.asts.iter_pattern_variant_variable_ast;
 import spp.asts.let_statement_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.let_statement_uninitialized_ast;

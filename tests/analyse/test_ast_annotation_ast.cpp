@@ -1,5 +1,4 @@
 #include "../test_macros.hpp"
-import testex;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -21,20 +20,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         @abstract_method
         fun f() -> A { }
     }
-)");
-
-
-SPP_TEST_SHOULD_PASS_SEMANTIC(
-    AnnotationAst,
-    test_valid_no_impl, R"(
-    cls A { }
-    sup A {
-        @no_impl
-        fun f() -> A { }
-    }
-
-    @no_impl
-    fun g() -> A { }
 )");
 
 

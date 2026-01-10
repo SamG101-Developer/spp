@@ -1,5 +1,4 @@
 #include "../test_macros.hpp"
-import testex;
 
 
 #if defined(_WIN64) || defined(__x86_64__) || defined(__ppc64__) || defined(__aarch64__)

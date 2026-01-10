@@ -1,5 +1,4 @@
 #include "../test_macros.hpp"
-import testex;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(

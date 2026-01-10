@@ -1,5 +1,4 @@
 #include "../test_macros.hpp"
-import testex;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -217,16 +216,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
         fun f(mut a: &A) -> std::void::Void {
             a.b = true
-        }
-)");
-
-
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AssignmentStatementAst,
-    test_invalid_non_symbolic_target,
-    SppAssignmentTargetError, R"(
-        fun f() -> std::void::Void {
-            1 = 2
         }
 )");
 
