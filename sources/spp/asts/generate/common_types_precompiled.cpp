@@ -5,13 +5,7 @@ import spp.asts.utils.ast_utils;
 
 auto spp::asts::generate::common_types_precompiled::initialize_types() -> void {
     GEN = common_types::gen_type(0, common_types::void_type(0), common_types::void_type(0))->without_generics();
-    GEN_OPT = common_types::gen_opt_type(0, common_types::void_type(0), common_types::void_type(0))->without_generics();
-    GEN_RES = common_types::gen_res_type(0, common_types::void_type(0), common_types::void_type(0), common_types::void_type(0))->without_generics();
     GEN_ONCE = common_types::gen_once_type(0, common_types::void_type(0))->without_generics();
-
-    GENERATED = common_types::generated_type(0, common_types::void_type(0))->without_generics();
-    GENERATED_OPT = common_types::generated_opt_type(0, common_types::void_type(0))->without_generics();
-    GENERATED_RES = common_types::generated_res_type(0, common_types::void_type(0), common_types::void_type(0))->without_generics();
 
     INDEX_MUT = common_types::index_mut_type(0, common_types::void_type(0))->without_generics();
     INDEX_REF = common_types::index_ref_type(0, common_types::void_type(0))->without_generics();

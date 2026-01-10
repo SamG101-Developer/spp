@@ -12,13 +12,7 @@ namespace spp::asts::generate::common_types_precompiled {
      * The fixed @code std::generator::Gen@endcode type, with no generic arguments.
      */
     SPP_EXP_CMP std::shared_ptr<TypeAst> GEN = nullptr;
-    SPP_EXP_CMP std::shared_ptr<TypeAst> GEN_OPT = nullptr;
-    SPP_EXP_CMP std::shared_ptr<TypeAst> GEN_RES = nullptr;
     SPP_EXP_CMP std::shared_ptr<TypeAst> GEN_ONCE = nullptr;
-
-    SPP_EXP_CMP std::shared_ptr<TypeAst> GENERATED = nullptr;
-    SPP_EXP_CMP std::shared_ptr<TypeAst> GENERATED_OPT = nullptr;
-    SPP_EXP_CMP std::shared_ptr<TypeAst> GENERATED_RES = nullptr;
 
     SPP_EXP_CMP std::shared_ptr<TypeAst> INDEX_REF = nullptr;
     SPP_EXP_CMP std::shared_ptr<TypeAst> INDEX_MUT = nullptr;

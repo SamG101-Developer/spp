@@ -59,12 +59,6 @@ namespace spp::asts::generate::common_types {
 
     SPP_EXP_FUN auto gen_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type, std::shared_ptr<TypeAst> send_type = nullptr) -> std::shared_ptr<TypeAst>;
     SPP_EXP_FUN auto gen_once_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto gen_opt_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type, std::shared_ptr<TypeAst> send_type = nullptr) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto gen_res_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type, std::shared_ptr<TypeAst> err_type, std::shared_ptr<TypeAst> send_type = nullptr) -> std::shared_ptr<TypeAst>;
-
-    SPP_EXP_FUN auto generated_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto generated_opt_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto generated_res_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type, std::shared_ptr<TypeAst> err_type) -> std::shared_ptr<TypeAst>;
 
     SPP_EXP_FUN auto index_mut_type(std::size_t pos, std::shared_ptr<TypeAst> elem_type) -> std::shared_ptr<TypeAst>;
     SPP_EXP_FUN auto index_ref_type(std::size_t pos, std::shared_ptr<TypeAst> elem_type) -> std::shared_ptr<TypeAst>;
