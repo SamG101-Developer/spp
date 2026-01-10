@@ -92,10 +92,8 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_7_analyse_semantics(
     for (auto &&cap : captures) {
         // Create a "let" statement to insert the symbol into the current scope.
         auto cap_val = ast_clone(cap->val->to<IdentifierAst>());
-        auto var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(cap_val), nullptr);
-        auto var_type = cap->val->infer_type(sm, meta);
-        auto let_val = std::make_unique<ObjectInitializerAst>(std::move(var_type), nullptr);
-        const auto let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, std::move(let_val));
+        auto var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, ast_clone(cap_val), nullptr);
+        const auto let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, ast_clone(cap->val));
         let->stage_7_analyse_semantics(sm, meta);
 
         // Apply the borrow to the symbol.
