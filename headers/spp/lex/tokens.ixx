@@ -68,7 +68,6 @@ SPP_EXP_ENUM enum class spp::lex::RawTokenType : std::uint8_t {
     KW_TYPE,
     KW_SELF,
     KW_CASE,
-    KW_ITER,
     KW_OF,
     KW_LOOP,
     KW_IN,
