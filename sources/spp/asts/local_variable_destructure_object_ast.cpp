@@ -116,8 +116,10 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
     const auto val_type = val->infer_type(sm, meta);
     type->stage_7_analyse_semantics(sm, meta);
 
-    const auto attributes = sm->current_scope->get_type_symbol(type)->type->impl->members
-        | genex::views::ptr
+    const auto cls_proto = sm->current_scope->get_type_symbol(type)->type;
+    const auto cls_attrs = cls_proto != nullptr ? cls_proto->impl->members | genex::views::ptr | genex::to<std::vector>() : std::vector<ClassMemberAst*>{};
+
+    const auto attributes = cls_attrs
         | genex::views::cast_dynamic<ClassAttributeAst*>()
         | genex::to<std::vector>();
 
