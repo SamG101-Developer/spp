@@ -98,9 +98,6 @@ import spp.asts.local_variable_destructure_skip_single_argument_ast;
 import spp.asts.local_variable_destructure_tuple_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.loop_condition_ast;
-import spp.asts.loop_condition_boolean_ast;
-import spp.asts.loop_condition_iterable_ast;
 import spp.asts.loop_control_flow_statement_ast;
 import spp.asts.loop_else_statement_ast;
 import spp.asts.loop_expression_ast;
@@ -147,7 +144,7 @@ import spp.asts.type_unary_expression_operator_namespace_ast;
 import spp.asts.unary_expression_ast;
 import spp.asts.unary_expression_operator_ast;
 import spp.asts.unary_expression_operator_async_ast;
-import spp.asts.unary_expression_operator_deref_ast;
+import spp.asts.postfix_expression_operator_deref_ast;
 import spp.asts.use_statement_ast;
 import spp.parse.errors.parser_error;
 
