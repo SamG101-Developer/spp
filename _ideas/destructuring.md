@@ -4,11 +4,13 @@
   array, tuple or object destructuring without partially moving the object.
 - Example syntax:
 
-```spp
-case my_object of {
-    MyClass (&field1, &field2) { ... }  // Destructure with borrows
-    MyClass (field1, field2) { ... }    // Destructure with moves
-    else { ... }
+```s++
+fun f() -> Void {
+  case my_object of {
+      is MyClass (&field1, &field2) { }  # Destructure with borrows
+      is MyClass (field1, field2) { }    # Destructure with moves
+      else { }
+    }
 }
 ```
 

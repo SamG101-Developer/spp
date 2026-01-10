@@ -73,18 +73,18 @@ annotations. This might look like `@repr(C)`. https://chatgpt.com/s/t_69404edcd9
 
 - Define every annotation as an annotation in source code, so they can be referenced and checked against.
 
-```
+```s++
 @annotation
 @compiler_builtin
-fun annotation() { }
+fun annotation() -> Void { }
 
 @annotation
 @compiler_builtin
-fun compiler_builtin() { }
+fun compiler_builtin() -> Void { }
 
 @annotation
 @compiler_builtin
-@targets(method, function)
-fun virtual_method() { }
+# @targets(method, function)
+fun virtual_method() -> Void { }
 ```
   
