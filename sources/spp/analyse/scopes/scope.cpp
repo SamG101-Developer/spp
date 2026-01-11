@@ -207,8 +207,8 @@ auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
         | genex::views::cast_smart<Symbol>()
         | genex::to<std::vector>();
 
-    auto syms = genex::views::concat(type_syms, comp_syms)
-        | genex::to<std::vector>();
+    auto syms = type_syms;
+    syms.append_range(comp_syms);
 
     // Re-use above logic to collect generic symbols from the ancestor scopes.
     const auto scopes = ancestors()
@@ -563,6 +563,7 @@ auto spp::analyse::scopes::Scope::sup_scopes() const
         const auto child_scopes = scope->sup_scopes();
         scopes |= genex::actions::push_back(scope);
         scopes |= genex::actions::concat(child_scopes);
+        scopes.push_back(scope);
     }
     return scopes;
 }

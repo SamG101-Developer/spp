@@ -232,14 +232,15 @@ auto spp::asts::TypeIdentifierAst::substitute_generics(
         | genex::to<std::vector>();
 
     // Check if this type directly matches any generic type argument name.
-    for (auto &&[gen_arg_name, gen_arg_val] : gen_type_args) {
+    for (auto const &[gen_arg_name, gen_arg_val] : gen_type_args) {
         if (*this == *gen_arg_name->to<TypeIdentifierAst>()) {
             return ast_clone(gen_arg_val->to<TypeAst>());
         }
     }
 
     // Substitute generics in the comp arguments' types.
-    for (auto &&[gen_arg_name, gen_arg_val] : genex::views::concat(gen_type_args, gen_comp_args)) {
+    gen_type_args.append_range(gen_comp_args);
+    for (auto const &[gen_arg_name, gen_arg_val] : gen_comp_args) {
         for (auto const &g : name_clone->generic_arg_group->get_comp_args()) {
             if (auto const *ident_val = g->val->to<IdentifierAst>(); ident_val != nullptr and *ident_val == *IdentifierAst::from_type(*gen_arg_name)) {
                 g->val = ast_clone(gen_arg_val);

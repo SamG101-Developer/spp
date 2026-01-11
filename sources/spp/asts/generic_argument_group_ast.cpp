@@ -255,8 +255,8 @@ auto spp::asts::GenericArgumentGroupAst::get_keyword_args() const
         | genex::views::cast_dynamic<GenericArgumentAst*>()
         | genex::to<std::vector>();
 
-    return genex::views::concat(keyword_types, keyword_comps)
-        | genex::to<std::vector>();
+    keyword_types.append_range(keyword_comps);
+    return keyword_types;
 }
 
 
@@ -275,8 +275,8 @@ auto spp::asts::GenericArgumentGroupAst::get_positional_args() const
         | genex::views::cast_dynamic<GenericArgumentAst*>()
         | genex::to<std::vector>();
 
-    return genex::views::concat(positional_types, positional_comps)
-        | genex::to<std::vector>();
+    positional_types.append_range(positional_comps);
+    return positional_types;
 }
 
 

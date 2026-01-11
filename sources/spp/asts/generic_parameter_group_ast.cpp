@@ -113,39 +113,39 @@ auto spp::asts::GenericParameterGroupAst::new_empty()
 
 auto spp::asts::GenericParameterGroupAst::get_required_params() const
     -> std::vector<GenericParameterAst*> {
-    auto required_type = params
+    auto required_types = params
         | genex::views::ptr
         | genex::views::cast_dynamic<GenericParameterTypeRequiredAst*>()
         | genex::views::cast_dynamic<GenericParameterAst*>()
         | genex::to<std::vector>();
 
-    auto required_comp = params
+    auto required_comps = params
         | genex::views::ptr
         | genex::views::cast_dynamic<GenericParameterCompRequiredAst*>()
         | genex::views::cast_dynamic<GenericParameterAst*>()
         | genex::to<std::vector>();
 
-    return genex::views::concat(required_type, required_comp)
-        | genex::to<std::vector>();
+    required_types.append_range(required_comps);
+    return required_types;
 }
 
 
 auto spp::asts::GenericParameterGroupAst::get_optional_params() const
     -> std::vector<GenericParameterAst*> {
-    auto optional_type = params
+    auto optional_types = params
         | genex::views::ptr
         | genex::views::cast_dynamic<GenericParameterTypeOptionalAst*>()
         | genex::views::cast_dynamic<GenericParameterAst*>()
         | genex::to<std::vector>();
 
-    auto optional_comp = params
+    auto optional_comps = params
         | genex::views::ptr
         | genex::views::cast_dynamic<GenericParameterCompOptionalAst*>()
         | genex::views::cast_dynamic<GenericParameterAst*>()
         | genex::to<std::vector>();
 
-    return genex::views::concat(optional_type, optional_comp)
-        | genex::to<std::vector>();
+    optional_types.append_range(optional_comps);
+    return optional_types;
 }
 
 
@@ -163,8 +163,8 @@ auto spp::asts::GenericParameterGroupAst::get_variadic_param() const
         | genex::views::cast_dynamic<GenericParameterAst*>()
         | genex::to<std::vector>();
 
-    const auto variadics = genex::views::concat(variadic_type, variadic_comp)
-        | genex::to<std::vector>();
+    auto variadics = variadic_type;
+    variadics.append_range(variadic_comp);
 
     if (variadics.size() > 1) {
         // This should have been caught in parsing, but just in case.
