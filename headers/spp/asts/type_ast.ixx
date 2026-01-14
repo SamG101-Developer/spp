@@ -4,9 +4,13 @@ module;
 export module spp.asts.type_ast;
 import spp.asts.primary_expression_ast;
 import spp.asts.mixins.abstract_type_ast;
-import genex;
-
+import spp.utils.cache;
 import std;
+
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class Scope;
+    SPP_EXP_CLS struct TypeSymbol;
+}
 
 namespace spp::asts {
     SPP_EXP_CLS struct ConventionAst;
@@ -28,6 +32,8 @@ SPP_EXP_CLS struct spp::asts::TypeAst : PrimaryExpressionAst, mixins::AbstractTy
     using PrimaryExpressionAst::PrimaryExpressionAst;
 
     ~TypeAst() override;
+
+    mutable utils::Cache<analyse::scopes::Scope const*, std::shared_ptr<analyse::scopes::TypeSymbol>> cached_type_symbols;
 };
 
 
