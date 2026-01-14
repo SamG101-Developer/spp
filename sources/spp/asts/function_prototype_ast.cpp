@@ -110,22 +110,6 @@ spp::asts::FunctionPrototypeAst::operator std::string() const {
 }
 
 
-auto spp::asts::FunctionPrototypeAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_EXTEND(annotations, "\n").append(not annotations.empty() ? "\n" : "");
-    SPP_PRINT_APPEND(tok_fun);
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(generic_param_group);
-    SPP_PRINT_APPEND(param_group).append(" ");
-    SPP_PRINT_APPEND(tok_arrow).append(" ");
-    SPP_PRINT_APPEND(return_type).append(" ");
-    SPP_PRINT_APPEND(impl);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::FunctionPrototypeAst::m_deduce_mock_class_type() const
     -> std::shared_ptr<TypeAst> {
     // Extract the parameter types.
@@ -279,10 +263,10 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     auto function_call = std::make_unique<IdentifierAst>(name->pos_start(), "call");
 
     // If this is the first overload being converted, then the class needs to be made for the mock type.
-    const auto needs_generation = (ast_body(ctx)
+    const auto needs_generation = genex::operations::empty(ast_body(ctx)
         | genex::views::cast_dynamic<ClassPrototypeAst*>()
         | genex::views::filter([&mock_class_name](auto &&x) { return x->name->without_generics() == mock_class_name->without_generics(); })
-        | genex::to<std::vector>()).empty();
+        | genex::to<std::vector>());
 
     if (needs_generation) {
         auto mock_class_ast = std::make_unique<ClassPrototypeAst>(SPP_NO_ANNOTATIONS, nullptr, ast_clone(mock_class_name), nullptr, nullptr);

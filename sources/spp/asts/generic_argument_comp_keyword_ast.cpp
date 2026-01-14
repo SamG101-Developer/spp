@@ -78,17 +78,6 @@ spp::asts::GenericArgumentCompKeywordAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenericArgumentCompKeywordAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(tok_assign);
-    SPP_PRINT_APPEND(val);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
     analyse::scopes::VariableSymbol const &sym)
     -> std::unique_ptr<GenericArgumentCompKeywordAst> {

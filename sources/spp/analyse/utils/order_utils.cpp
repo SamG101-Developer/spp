@@ -1,7 +1,6 @@
 module spp.analyse.utils.order_utils;
 import spp.asts.ast;
 import spp.asts.mixins.orderable_ast;
-
 import genex;
 import magic_enum;
 import std;
@@ -53,8 +52,7 @@ auto spp::analyse::utils::order_utils::order_args(
     // Call the generic order function with the argument order.
     return order(
         std::move(args),
-        std::vector(ARG_ORDER_ARR.begin(), ARG_ORDER_ARR.end())
-    );
+        std::vector(ARG_ORDER_ARR.begin(), ARG_ORDER_ARR.end()));
 }
 
 
@@ -64,7 +62,5 @@ auto spp::analyse::utils::order_utils::order_params(
     // Call the generic order function with the parameter order.
     return order(
         std::move(params),
-        std::vector(PARAM_ORDER_ARR.begin(), PARAM_ORDER_ARR.end())
-    );
-    return std::vector<std::pair<std::string, asts::Ast*>>{};
+        std::vector(PARAM_ORDER_ARR.begin(), PARAM_ORDER_ARR.end()));
 }

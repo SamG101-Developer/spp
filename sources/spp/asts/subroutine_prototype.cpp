@@ -44,7 +44,9 @@ auto spp::asts::SubroutinePrototypeAst::clone() const
     ast->inline_annotation = inline_annotation;
     ast->visibility = visibility;
     ast->llvm_func = llvm_func;
-    ast->annotations | genex::views::for_each([ast=ast.get()](auto const &a) { a->set_ast_ctx(ast); });
+    for (auto const &a: ast->annotations) {
+        a->set_ast_ctx(ast.get());
+    }
     return ast;
 }
 

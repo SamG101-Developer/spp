@@ -59,18 +59,6 @@ spp::asts::LetStatementUninitializedAst::operator std::string() const {
 }
 
 
-auto spp::asts::LetStatementUninitializedAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_let).append(" ");
-    SPP_PRINT_APPEND(var);
-    SPP_PRINT_APPEND(tok_colon).append(" ");
-    SPP_PRINT_APPEND(type);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::LetStatementUninitializedAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

@@ -45,7 +45,9 @@ auto spp::asts::UseStatementAst::clone() const
         ast_clone(old_type));
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
-    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->set_ast_ctx(ast); });
+    for (auto const &a: ast->annotations) {
+        a->set_ast_ctx(ast.get());
+    }
     return ast;
 }
 
@@ -59,23 +61,14 @@ spp::asts::UseStatementAst::operator std::string() const {
 }
 
 
-auto spp::asts::UseStatementAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_EXTEND(annotations, "\n").append(not annotations.empty() ? "\n" : "");
-    SPP_PRINT_APPEND(tok_use).append(" ");
-    SPP_PRINT_APPEND(old_type);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::UseStatementAst::stage_1_pre_process(
     Ast *ctx)
     -> void {
     // Pre-process the annotations.
     Ast::stage_1_pre_process(ctx);
-    annotations | genex::views::for_each([this](const auto &annotation) { annotation->stage_1_pre_process(this); });
+    for (const auto &annotation : annotations) {
+        annotation->set_ast_ctx(this);
+    }
 }
 
 
@@ -85,7 +78,9 @@ auto spp::asts::UseStatementAst::stage_2_gen_top_level_scopes(
     -> void {
     // Run the steps for the annotations.
     Ast::stage_2_gen_top_level_scopes(sm, meta);
-    annotations | genex::views::for_each([sm, meta](const auto &annotation) { annotation->stage_2_gen_top_level_scopes(sm, meta); });
+    for (const auto &annotation : annotations) {
+        annotation->stage_2_gen_top_level_scopes(sm, meta);
+    }
 
     // Create the type statement AST conversion.
     const auto new_type = std::dynamic_pointer_cast<TypeIdentifierAst>(old_type->type_parts().back()->without_generics());

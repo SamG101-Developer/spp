@@ -96,17 +96,6 @@ spp::asts::IntegerLiteralAst::operator std::string() const {
 }
 
 
-auto spp::asts::IntegerLiteralAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_sign);
-    SPP_PRINT_APPEND(val);
-    formatted_string.append("_").append(type);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
     ScopeManager *,
     CompilerMetaData *)

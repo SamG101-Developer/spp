@@ -28,7 +28,7 @@ auto spp::codegen::mangle::mangle_mod_name(
         | genex::views::reverse
         | genex::views::filter([](auto *scope) { return not scope->name_as_string().contains("<"); })
         | genex::views::transform([](auto *scope) { return scope->name_as_string(); })
-        | genex::views::materialize
+        | genex::to<std::vector>()
         | genex::views::join_with('#')
         | genex::to<std::string>();
 }

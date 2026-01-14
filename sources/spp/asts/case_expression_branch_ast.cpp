@@ -69,18 +69,6 @@ spp::asts::CaseExpressionBranchAst::operator std::string() const {
 }
 
 
-auto spp::asts::CaseExpressionBranchAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(op).append(" ");
-    SPP_PRINT_EXTEND(patterns, ", ").append(" ");
-    SPP_PRINT_APPEND(guard).append(guard ? " " : "");
-    SPP_PRINT_APPEND(body);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::CaseExpressionBranchAst::m_codegen_combine_patterns(
     ScopeManager *sm,
     CompilerMetaData *meta,
@@ -109,7 +97,9 @@ auto spp::asts::CaseExpressionBranchAst::stage_7_analyse_semantics(
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
 
     // Analyse the patterns, ensuring comparison methods exist is needed.
-    patterns | genex::views::for_each([sm, meta](auto &&x) { x->stage_7_analyse_semantics(sm, meta); });
+    for (auto const &p : patterns) {
+        p->stage_7_analyse_semantics(sm, meta);
+    }
 
     if (op.get() and op->token_type != lex::SppTokenType::KW_IS) {
         for (auto &&p : patterns) {

@@ -50,16 +50,6 @@ spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::operator std::strin
 }
 
 
-auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_ellipsis);
-    SPP_PRINT_APPEND(binding);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::extract_name() const
     -> std::shared_ptr<IdentifierAst> {
     return std::make_shared<IdentifierAst>(pos_start(), "_UNMATCHABLE");

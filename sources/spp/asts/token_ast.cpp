@@ -37,13 +37,6 @@ spp::asts::TokenAst::operator std::string() const {
 }
 
 
-auto spp::asts::TokenAst::print(
-    AstPrinter &) const
-    -> std::string {
-    return token_data;
-}
-
-
 auto spp::asts::TokenAst::new_empty(
     lex::SppTokenType token_type,
     std::string &&token_data,

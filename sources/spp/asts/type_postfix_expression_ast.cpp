@@ -76,16 +76,6 @@ spp::asts::TypePostfixExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypePostfixExpressionAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(lhs);
-    SPP_PRINT_APPEND(tok_op);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::TypePostfixExpressionAst::iterator() const
     -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
     // Iterate from the left-hand-side.
@@ -227,8 +217,9 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
 
     // Check there is only 1 target field on the lhs at the highest level.
     const auto op_nested = tok_op->to<TypePostfixExpressionOperatorNestedTypeAst>();
-    auto scopes_and_syms = std::vector{lhs_type_sym->scope}
-        | genex::views::concat(lhs_type_sym->scope->sup_scopes())
+    auto sup_scopes = lhs_type_sym->scope->sup_scopes();
+    sup_scopes.insert(sup_scopes.begin(), lhs_type_sym->scope);
+    auto scopes_and_syms = sup_scopes
         | genex::views::transform([name=op_nested->name.get()](auto &&x) { return std::make_pair(x, x->table.type_tbl.get(ast_clone(name))); })
         | genex::views::filter([](auto &&x) { return x.second != nullptr; })
         | genex::views::transform([lhs_type_sym](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })

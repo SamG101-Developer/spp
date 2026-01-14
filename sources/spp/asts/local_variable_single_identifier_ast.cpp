@@ -63,17 +63,6 @@ spp::asts::LocalVariableSingleIdentifierAst::operator std::string() const {
 }
 
 
-auto spp::asts::LocalVariableSingleIdentifierAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_mut).append(tok_mut ? " " : "");
-    SPP_PRINT_APPEND(name).append(alias ? " " : "");
-    SPP_PRINT_APPEND(alias);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::LocalVariableSingleIdentifierAst::extract_name() const
     -> std::shared_ptr<IdentifierAst> {
     return name;

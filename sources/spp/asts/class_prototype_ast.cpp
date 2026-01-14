@@ -71,7 +71,9 @@ auto spp::asts::ClassPrototypeAst::clone() const
     ast->m_scope = m_scope;
     ast->m_cls_sym = m_cls_sym;
     ast->visibility = visibility;
-    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->set_ast_ctx(ast); });
+    for (auto const &a: ast->annotations) {
+        a->set_ast_ctx(ast.get());
+    }
     return ast;
 }
 
@@ -84,19 +86,6 @@ spp::asts::ClassPrototypeAst::operator std::string() const {
     SPP_STRING_APPEND(generic_param_group).append(" ");
     SPP_STRING_APPEND(impl);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::ClassPrototypeAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_EXTEND(annotations, "\n").append(not annotations.empty() ? "\n" : "");
-    SPP_PRINT_APPEND(tok_cls).append(" ");
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(generic_param_group).append(" ");
-    SPP_PRINT_APPEND(impl);
-    SPP_PRINT_END;
 }
 
 
@@ -185,7 +174,9 @@ auto spp::asts::ClassPrototypeAst::stage_1_pre_process(
     -> void {
     // Pre-process the AST by calling the base class method and then processing annotations and the body.
     Ast::stage_1_pre_process(ctx);
-    annotations | genex::views::for_each([this](auto &&x) { x->stage_1_pre_process(this); });
+    for (auto &&a : annotations) {
+        a->stage_1_pre_process(this);
+    }
     impl->stage_1_pre_process(this);
 }
 
@@ -200,7 +191,9 @@ auto spp::asts::ClassPrototypeAst::stage_2_gen_top_level_scopes(
     Ast::stage_2_gen_top_level_scopes(sm, meta);
 
     // Run the generation steps for the annotations.
-    annotations | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
+    for (auto &&a : annotations) {
+        a->stage_2_gen_top_level_scopes(sm, meta);
+    }
 
     // Generate the symbols for the class prototype, and handle generic parameters.
     meta->cls_sym = m_generate_symbols(sm);

@@ -90,16 +90,6 @@ spp::asts::TypeIdentifierAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypeIdentifierAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    formatted_string.append(name);
-    SPP_PRINT_APPEND(generic_arg_group);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::TypeIdentifierAst::from_identifier(
     IdentifierAst const &identifier)
     -> std::shared_ptr<TypeIdentifierAst> {

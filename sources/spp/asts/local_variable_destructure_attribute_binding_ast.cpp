@@ -52,17 +52,6 @@ spp::asts::LocalVariableDestructureAttributeBindingAst::operator std::string() c
 }
 
 
-auto spp::asts::LocalVariableDestructureAttributeBindingAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(name).append(" ");
-    SPP_PRINT_APPEND(tok_assign).append(" ");
-    SPP_PRINT_APPEND(val);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::LocalVariableDestructureAttributeBindingAst::extract_name() const
     -> std::shared_ptr<IdentifierAst> {
     return name;

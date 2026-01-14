@@ -74,23 +74,6 @@ spp::asts::BinaryExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::BinaryExpressionAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    if (lhs != nullptr) {
-        formatted_string.append("(");
-        SPP_PRINT_APPEND(lhs).append(" ");
-        SPP_PRINT_APPEND(tok_op).append(" ");
-        SPP_PRINT_APPEND(rhs).append(")");
-    }
-    else {
-        SPP_PRINT_APPEND(m_mapped_func);
-    }
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

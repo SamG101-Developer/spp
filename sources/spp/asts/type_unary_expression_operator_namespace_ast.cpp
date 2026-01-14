@@ -63,16 +63,6 @@ spp::asts::TypeUnaryExpressionOperatorNamespaceAst::operator std::string() const
 }
 
 
-auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(ns);
-    formatted_string.append("::");
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::ns_parts() const
     -> std::vector<std::shared_ptr<const IdentifierAst>> {
     return {ns};

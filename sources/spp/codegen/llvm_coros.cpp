@@ -19,9 +19,9 @@ import spp.asts.generate.common_types_precompiled;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
 import spp.utils.uid;
-import genex;
 import llvm;
 import opex.cast;
+import genex;
 import std;
 
 
@@ -46,7 +46,8 @@ auto spp::codegen::create_coro_env_type(
     auto arg_struct_fields = std::vector<llvm::Type*>();
     for (const auto &param_name : coro->param_group->params
          | genex::views::transform([](auto &&x) { return x->extract_names(); })
-         | genex::views::join) {
+         | genex::views::join
+         | genex::to<std::vector>()) {
         const auto param_sym = scope.get_var_symbol(param_name);
         const auto param_type_sym = scope.get_type_symbol(param_sym->type);
         arg_struct_fields.emplace_back(llvm_type(*param_type_sym, ctx));
@@ -124,7 +125,8 @@ auto spp::codegen::create_coro_gen_ctor(
     for (const auto &[i, param_name] : coro->param_group->params
          | genex::views::transform([](auto &&x) { return x->extract_names(); })
          | genex::views::join
-         | genex::views::enumerate) {
+         | genex::views::enumerate
+         | genex::to<std::vector>()) {
         // Get the alloca from the parameter variable.
         const auto puid = spp::utils::generate_uid(param_name.get());
         const auto param_sym = scope.get_var_symbol(param_name);

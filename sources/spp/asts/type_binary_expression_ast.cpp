@@ -53,17 +53,6 @@ spp::asts::TypeBinaryExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypeBinaryExpressionAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(lhs);
-    SPP_PRINT_APPEND(tok_op);
-    SPP_PRINT_APPEND(rhs);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::TypeBinaryExpressionAst::convert()
     -> std::unique_ptr<TypeAst> {
     using namespace std::string_literals;

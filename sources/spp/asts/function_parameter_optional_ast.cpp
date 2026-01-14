@@ -66,19 +66,6 @@ spp::asts::FunctionParameterOptionalAst::operator std::string() const {
 }
 
 
-auto spp::asts::FunctionParameterOptionalAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(var);
-    SPP_PRINT_APPEND(tok_colon).append(" ");
-    SPP_PRINT_APPEND(type).append(" ");
-    SPP_PRINT_APPEND(tok_assign).append(" ");
-    SPP_PRINT_APPEND(default_val);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::FunctionParameterOptionalAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

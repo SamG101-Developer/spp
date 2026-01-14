@@ -53,7 +53,9 @@ auto spp::asts::CoroutinePrototypeAst::clone() const
     ast->llvm_coro_yield_slot = llvm_coro_yield_slot;
     ast->llvm_gen_env = llvm_gen_env;
     ast->m_llvm_resume_fn = m_llvm_resume_fn;
-    ast->annotations | genex::views::for_each([ast=ast.get()](auto const &a) { a->set_ast_ctx(ast); });
+    for (auto const &a: ast->annotations) {
+        a->set_ast_ctx(ast.get());
+    }
     return ast;
 }
 

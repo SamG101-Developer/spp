@@ -89,20 +89,6 @@ spp::asts::LoopIterableExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::LoopIterableExpressionAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_loop).append(" ");
-    SPP_PRINT_APPEND(var).append(" ");
-    SPP_PRINT_APPEND(tok_in).append(" ");
-    SPP_PRINT_APPEND(iterable).append(" ");
-    SPP_PRINT_APPEND(body).append("\n");
-    SPP_PRINT_APPEND(else_block);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::LoopIterableExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

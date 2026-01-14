@@ -95,19 +95,6 @@ spp::asts::FloatLiteralAst::operator std::string() const {
 }
 
 
-auto spp::asts::FloatLiteralAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_sign);
-    SPP_PRINT_APPEND(int_val);
-    SPP_PRINT_APPEND(tok_dot);
-    SPP_PRINT_APPEND(frac_val);
-    formatted_string.append("_").append(type);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::FloatLiteralAst::stage_7_analyse_semantics(
     ScopeManager *,
     CompilerMetaData *)

@@ -73,17 +73,6 @@ spp::asts::PostfixExpressionOperatorKeywordResAst::operator std::string() const 
 }
 
 
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_dot);
-    SPP_PRINT_APPEND(tok_res);
-    SPP_PRINT_APPEND(arg_group);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

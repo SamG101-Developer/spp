@@ -69,7 +69,9 @@ auto spp::asts::TypeStatementAst::clone() const
     ast->m_scope = m_scope;
     ast->m_temp_scope_1 = m_temp_scope_1;
     ast->visibility = visibility;
-    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->set_ast_ctx(ast); });
+    for (auto const &a: ast->annotations) {
+        a->set_ast_ctx(ast.get());
+    }
     return ast;
 }
 
@@ -86,26 +88,14 @@ spp::asts::TypeStatementAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypeStatementAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_EXTEND(annotations, "\n").append(not annotations.empty() ? "\n" : "");
-    SPP_PRINT_APPEND(tok_type).append(" ");
-    SPP_PRINT_APPEND(new_type);
-    SPP_PRINT_APPEND(generic_param_group).append(" ");
-    SPP_PRINT_APPEND(tok_assign).append(" ");
-    SPP_PRINT_APPEND(old_type);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::TypeStatementAst::stage_1_pre_process(
     Ast *ctx)
     -> void {
     // Pre-process the annotations.
     Ast::stage_1_pre_process(ctx);
-    annotations | genex::views::for_each([this](auto &&x) { x->stage_1_pre_process(this); });
+    for (auto const &annotation: annotations) {
+        annotation->stage_1_pre_process(this);
+    }
 }
 
 
@@ -114,7 +104,9 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
     CompilerMetaData *meta)
     -> void {
     // Run top level scope generation for the annotations.
-    annotations | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
+    for (auto const &annotation : annotations) {
+        annotation->stage_2_gen_top_level_scopes(sm, meta);
+    }
 
     // Check there are no conventions on the new type.
     SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(new_type, new_type, *sm, "use statement's new type", false);

@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.ast;
 import spp.asts.mixins.compiler_stages;
-import genex;
 import std;
 
 namespace spp::analyse::scopes {
@@ -34,8 +33,6 @@ namespace spp::asts::meta {
  */
 SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
 protected:
-    using AstPrinter = spp::asts::meta::AstPrinter;
-
     /**
      * The context of an AST is used in certain analysis steps. This might be the parent AST, such as a
      * FunctionPrototypeAst etc.
@@ -91,14 +88,6 @@ public:
      * Recursively prints child nodes using their respective "operator std::string()" methods.
      */
     virtual explicit operator std::string() const = 0;
-
-    /**
-     * Print an AST using auto-formatting. This handles the indentation for the ASTs, and prints braces correctly.
-     * Recursively prints child nodes using their respective print methods.
-     * @param[out] printer The printer object that tracks indentation and formatting.
-     * @return The formatted string representation of the AST.
-     */
-    virtual auto print(meta::AstPrinter &printer) const -> std::string = 0;
 
     /**
      * Overridable hash function for AST nodes, used for hashing ASTs in data structures (particularly in Ankerl's hash

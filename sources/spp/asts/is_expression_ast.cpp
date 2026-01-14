@@ -72,21 +72,6 @@ spp::asts::IsExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::IsExpressionAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    if (m_mapped_func) {
-        SPP_PRINT_APPEND(m_mapped_func);
-        SPP_PRINT_END;
-    }
-    SPP_PRINT_APPEND(lhs);
-    SPP_PRINT_APPEND(tok_op);
-    SPP_PRINT_APPEND(rhs);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::IsExpressionAst::mapped_func() const
     -> std::shared_ptr<CaseExpressionAst> {
     return m_mapped_func;
@@ -110,9 +95,10 @@ auto spp::asts::IsExpressionAst::stage_7_analyse_semantics(
     // Add the destructure symbols to the current scope.
     // This includes the lhs symbol if it's been flow typed.
     if (not sm->current_scope->name_as_string().starts_with("<inner-scope#")) {
-        auto destructure_syms = sm->current_scope->children[n]->children[0]->all_var_symbols(true, true);
-        destructure_syms
-            | genex::views::for_each([sm](auto &&x) { sm->current_scope->add_var_symbol(x); });
+        const auto destructure_syms = sm->current_scope->children[n]->children[0]->all_var_symbols(true, true);
+        for (auto &&x: destructure_syms) {
+            sm->current_scope->add_var_symbol(x);
+        }
     }
 }
 

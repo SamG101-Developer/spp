@@ -52,16 +52,6 @@ spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::operator std::
 }
 
 
-auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_ellipsis);
-    SPP_PRINT_APPEND(binding);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::convert_to_variable(
     CompilerMetaData *meta)
     -> std::unique_ptr<LocalVariableAst> {

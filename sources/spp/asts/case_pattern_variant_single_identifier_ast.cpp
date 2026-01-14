@@ -64,17 +64,6 @@ spp::asts::CasePatternVariantSingleIdentifierAst::operator std::string() const {
 }
 
 
-auto spp::asts::CasePatternVariantSingleIdentifierAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_mut);
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(alias);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::CasePatternVariantSingleIdentifierAst::convert_to_variable(
     CompilerMetaData *)
     -> std::unique_ptr<LocalVariableAst> {

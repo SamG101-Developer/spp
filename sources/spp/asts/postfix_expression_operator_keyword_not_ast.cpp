@@ -55,16 +55,6 @@ spp::asts::PostfixExpressionOperatorKeywordNotAst::operator std::string() const 
 }
 
 
-auto spp::asts::PostfixExpressionOperatorKeywordNotAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_dot);
-    SPP_PRINT_APPEND(tok_not);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::PostfixExpressionOperatorKeywordNotAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

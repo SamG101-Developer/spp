@@ -57,15 +57,6 @@ spp::asts::TypeUnaryExpressionOperatorBorrowAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(conv);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::ns_parts() const
     -> std::vector<std::shared_ptr<const IdentifierAst>> {
     return {};

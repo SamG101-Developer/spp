@@ -30,8 +30,6 @@
 
 #define SPP_ATTR_COLD [[gnu::cold]]
 
-#define SPP_INSTANT_INDIRECT [](auto &&x) -> decltype(auto) { return *x; }
-
 #define SPP_IS_DEBUG_BUILD (defined(_DEBUG) || !defined(NDEBUG))
 
 #ifndef NDEBUG
@@ -67,14 +65,6 @@
         (ast_attr) = std::remove_cvref_t<decltype(*ast_attr)>::new_empty(__VA_ARGS__); \
     }
 
-#define SPP_PRINT_START auto formatted_string = std::string()
-
-#define SPP_PRINT_APPEND(x) formatted_string.append(x->print(printer))
-
-#define SPP_PRINT_EXTEND(x, j) formatted_string.append(x | genex::views::transform([&](auto &&x) { return x->print(printer); }) | genex::views::intersperse(std::string(j)) | genex::views::join | genex::to<std::string>())
-
-#define SPP_PRINT_END return formatted_string
-
 #define SPP_STRING_START auto raw_string = std::string()
 
 #define SPP_STRING_APPEND(x) raw_string.append(x != nullptr ? static_cast<std::string>(*x) : "")
@@ -88,7 +78,6 @@
     auto pos_end() const -> std::size_t override;                      \
     auto clone() const -> std::unique_ptr<Ast> override;               \
     explicit operator std::string() const override;                    \
-    auto print(AstPrinter &printer) const -> std::string override
 
 #define SPP_ENFORCE_EXPRESSION_SUBTYPE(ast)                                                     \
     if (ast and ((ast->to<TypeAst>() != nullptr) or (ast->to<TokenAst>() != nullptr))) {        \

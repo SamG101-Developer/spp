@@ -84,22 +84,6 @@ spp::asts::PostfixExpressionOperatorIndexAst::operator std::string() const {
 }
 
 
-auto spp::asts::PostfixExpressionOperatorIndexAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    if (m_mapped_func != nullptr) {
-        SPP_PRINT_APPEND(m_mapped_func->op);
-        SPP_PRINT_END;
-    }
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_APPEND(tok_mut).append(tok_mut ? " " : "");
-    SPP_PRINT_APPEND(expr);
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::PostfixExpressionOperatorIndexAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

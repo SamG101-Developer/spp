@@ -95,20 +95,6 @@ spp::asts::SupPrototypeExtensionAst::operator std::string() const {
 }
 
 
-auto spp::asts::SupPrototypeExtensionAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_sup).append(" ");
-    SPP_PRINT_APPEND(generic_param_group).append(" ");
-    SPP_PRINT_APPEND(name).append(" ");
-    SPP_PRINT_APPEND(tok_ext).append(" ");
-    SPP_PRINT_APPEND(super_class).append(" ");
-    SPP_PRINT_APPEND(impl);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::SupPrototypeExtensionAst::check_cyclic_extension(
     analyse::scopes::TypeSymbol const &sup_sym,
     analyse::scopes::Scope &check_scope) const
@@ -327,10 +313,10 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
     // Get the symbols.
     const auto cls_sym = sm->current_scope->get_type_symbol(name);
     const auto sup_sym = sm->current_scope->get_type_symbol(super_class);
-    const auto sup_scopes = std::vector{sup_sym->scope}
-        | genex::views::concat(sm->current_scope->get_type_symbol(super_class)->scope->sup_scopes())
-        | genex::views::filter([](auto &&x) { return x->ast->template to<ClassPrototypeAst>(); })
-        | genex::to<std::vector>();
+
+    auto sup_scopes = sm->current_scope->get_type_symbol(super_class)->scope->sup_scopes();
+    sup_scopes.insert(sup_scopes.begin(), sup_sym->scope);
+    genex::actions::remove_if(sup_scopes, [](auto &&x) { return x->ast->template to<ClassPrototypeAst>() == nullptr; });
 
     // Mark the class as copyable if the "Copy" type is the supertype.
     for (const auto sup_scope : sup_scopes) {

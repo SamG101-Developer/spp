@@ -70,7 +70,9 @@ auto spp::asts::CmpStatementAst::clone() const
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
     ast->visibility = visibility;
-    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->set_ast_ctx(ast); });
+    for (auto const &a: ast->annotations) {
+        a->set_ast_ctx(ast.get());
+    }
     return ast;
 }
 
@@ -88,27 +90,14 @@ spp::asts::CmpStatementAst::operator std::string() const {
 }
 
 
-auto spp::asts::CmpStatementAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_EXTEND(annotations, "\n").append(not annotations.empty() ? "\n" : "");
-    SPP_PRINT_APPEND(tok_cmp).append(" ");
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(tok_colon).append(" ");
-    SPP_PRINT_APPEND(type).append(" ");
-    SPP_PRINT_APPEND(tok_assign).append(" ");
-    SPP_PRINT_APPEND(value);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::CmpStatementAst::stage_1_pre_process(
     Ast *ctx)
     -> void {
     // No pre-processing needed for cmp statements.
     Ast::stage_1_pre_process(ctx);
-    annotations | genex::views::for_each([this](auto &&x) { x->stage_1_pre_process(this); });
+    for (auto &&a : annotations) {
+        a->stage_1_pre_process(this);
+    }
 }
 
 
@@ -118,7 +107,9 @@ auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
     -> void {
     // No top-level scopes needed for cmp statements.
     Ast::stage_2_gen_top_level_scopes(sm, meta);
-    annotations | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
+    for (auto &&a : annotations) {
+        a->stage_2_gen_top_level_scopes(sm, meta);
+    }
 
     // Create a symbol for this constant declaration, pin to prevent moving.
     auto sym = std::make_unique<analyse::scopes::VariableSymbol>(

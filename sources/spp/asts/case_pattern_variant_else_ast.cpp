@@ -44,15 +44,6 @@ spp::asts::CasePatternVariantElseAst::operator std::string() const {
 }
 
 
-auto spp::asts::CasePatternVariantElseAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_else);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::CasePatternVariantElseAst::stage_10_code_gen_2(
     ScopeManager *,
     CompilerMetaData *,

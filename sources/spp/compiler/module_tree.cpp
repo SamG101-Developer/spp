@@ -39,7 +39,6 @@ spp::compiler::ModuleTree::ModuleTree(
         | genex::views::transform([](auto const &p) { return Module::from_path(p); })
         | genex::to<std::vector>();
 
-    auto test = glob::rglob(m_vcs_path / "**/*.spp");
     auto vcs_modules = glob::rglob(m_vcs_path / "**/*.spp")
         | genex::views::transform([](auto const &p) { return Module::from_path(p); })
         | genex::to<std::vector>();
@@ -54,7 +53,7 @@ spp::compiler::ModuleTree::ModuleTree(
         auto relative_path = std::filesystem::relative(m->path, m_vcs_path);
         auto inner_path = std::filesystem::path();
         constexpr auto sep = std::filesystem::path::preferred_separator;
-        for (auto const &part : std::filesystem::path(relative_path.string() | genex::views::split(sep) | genex::views::drop(1) | genex::views::materialize | genex::views::join_with(sep) | genex::to<std::string>())) {
+        for (auto const &part : std::filesystem::path(relative_path.string() | genex::views::split(sep) | genex::views::drop(1) | genex::to<std::vector>() | genex::views::join_with(sep) | genex::to<std::string>())) {
             inner_path /= part;
         }
 
@@ -87,9 +86,7 @@ auto spp::compiler::ModuleTree::end()
 
 auto spp::compiler::ModuleTree::get_modules()
     -> std::vector<Module*> {
-    return m_modules
-        | genex::views::ptr
-        | genex::to<std::vector>();
+    return m_modules | genex::views::ptr | genex::to<std::vector>();
 }
 
 

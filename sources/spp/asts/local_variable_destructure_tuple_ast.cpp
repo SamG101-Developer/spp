@@ -24,7 +24,6 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
-
 import genex;
 import opex.cast;
 
@@ -71,17 +70,6 @@ spp::asts::LocalVariableDestructureTupleAst::operator std::string() const {
     SPP_STRING_EXTEND(elems, ", ");
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::LocalVariableDestructureTupleAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(elems, ", ");
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
 }
 
 
@@ -197,7 +185,9 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_8_check_memory(
     CompilerMetaData *meta)
     -> void {
     // Check the memory state of the elements.
-    m_new_asts | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });
+    for (auto &&ast : m_new_asts) {
+        ast->stage_8_check_memory(sm, meta);
+    }
 }
 
 

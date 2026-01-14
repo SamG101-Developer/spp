@@ -53,17 +53,6 @@ spp::asts::TypeTupleShorthandAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypeTupleShorthandAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(element_types, ", ");
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::TypeTupleShorthandAst::convert()
     -> std::unique_ptr<TypeAst> {
     const auto type = generate::common_types::tuple_type(pos_start(), std::move(element_types));

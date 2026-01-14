@@ -49,16 +49,6 @@ spp::asts::LoopElseStatementAst::operator std::string() const {
 }
 
 
-auto spp::asts::LoopElseStatementAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_else);
-    SPP_PRINT_APPEND(body);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::LoopElseStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

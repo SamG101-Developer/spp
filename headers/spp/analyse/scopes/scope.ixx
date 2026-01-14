@@ -156,7 +156,7 @@ public:
 
     SPP_ATTR_NODISCARD auto get_generics() const -> std::vector<std::unique_ptr<asts::GenericArgumentAst>>;
 
-    auto get_extended_generic_symbols(std::vector<asts::GenericArgumentAst*> const &generics, std::shared_ptr<asts::TypeAst> const &ignore = nullptr) -> std::vector<std::shared_ptr<Symbol>>;
+    auto get_extended_generic_symbols(std::vector<asts::GenericArgumentAst*> const &generics, std::shared_ptr<asts::TypeAst> const &ignore = nullptr) const -> std::vector<std::shared_ptr<Symbol>>;
 
     auto add_var_symbol(std::shared_ptr<VariableSymbol> const &sym) -> void;
     auto add_type_symbol(std::shared_ptr<TypeSymbol> const &sym) -> void;

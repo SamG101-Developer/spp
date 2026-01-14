@@ -68,18 +68,6 @@ spp::asts::LoopConditionalExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::LoopConditionalExpressionAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_loop).append(" ");
-    SPP_PRINT_APPEND(cond).append(" ");
-    SPP_PRINT_APPEND(body).append("\n");
-    SPP_PRINT_APPEND(else_block);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::LoopConditionalExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

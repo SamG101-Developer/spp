@@ -42,7 +42,7 @@ auto spp::codegen::register_llvm_type_info(
     const auto ancestor_names = scope->ancestors()
         | genex::views::drop_last(1)
         | genex::views::transform([](auto *x) { return x->name_as_string(); })
-        | genex::views::materialize
+        | genex::to<std::vector>()
         | genex::views::reverse
         | genex::to<std::vector>();
 

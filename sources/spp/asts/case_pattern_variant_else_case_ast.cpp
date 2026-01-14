@@ -48,15 +48,6 @@ spp::asts::CasePatternVariantElseCaseAst::operator std::string() const {
 }
 
 
-auto spp::asts::CasePatternVariantElseCaseAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_else);
-    SPP_PRINT_APPEND(case_expr);
-    SPP_PRINT_END;
-}
-
 
 auto spp::asts::CasePatternVariantElseCaseAst::stage_7_analyse_semantics(
     ScopeManager *sm,

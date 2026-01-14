@@ -59,15 +59,15 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
         return;
     }
     if (auto const *arr_literal = value_ast.to<asts::ArrayLiteralExplicitElementsAst>(); arr_literal != nullptr) {
-        arr_literal->elems
-            | genex::views::ptr
-            | genex::views::for_each([&](auto *x) { validate_symbol_memory(*x, move_ast, sm, true, true, true, true, true, mark_moves, meta); });
+        for (auto &&x: arr_literal->elems) {
+            validate_symbol_memory(*x, move_ast, sm, true, true, true, true, true, mark_moves, meta);
+        }
         return;
     }
     if (auto const *tup_literal = value_ast.to<asts::TupleLiteralAst>(); tup_literal != nullptr) {
-        tup_literal->elems
-            | genex::views::ptr
-            | genex::views::for_each([&](auto *x) { validate_symbol_memory(*x, move_ast, sm, true, true, true, true, true, mark_moves, meta); });
+        for (auto &&x: tup_literal->elems) {
+            validate_symbol_memory(*x, move_ast, sm, true, true, true, true, true, mark_moves, meta);
+        }
         return;
     }
 
@@ -199,21 +199,20 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
 
     // Create a map of the symbols' memory  information before any branches are analysed.
     auto sym_mem_info = std::map<scopes::VariableSymbol*, SymbolMemoryList>();
-    auto pre_analysis_mem_info = sm->current_scope->all_var_symbols()
+    auto vs = sm->current_scope->all_var_symbols();
+    auto pre_analysis_mem_info = vs
         | genex::views::transform([](auto const &x) { return std::make_pair(x.get(), x->memory_info->snapshot()); })
         | genex::to<std::vector>();
 
     for (auto &&branch : branches) {
         // Make a record of the symbols' memory status in the scope before the branch is analysed.
-        auto var_symbols_in_scope = sm->current_scope->all_var_symbols();
-
-        auto old_symbol_mem_info = var_symbols_in_scope
+        auto old_symbol_mem_info = vs
             | genex::views::transform([](auto const &x) { return std::make_pair(x.get(), x->memory_info->snapshot()); })
             | genex::to<std::vector>();
 
         // Analyse the memory and then recheck the symbols' memory status.
         branch->stage_8_check_memory(sm, meta);
-        auto new_symbol_mem_info = var_symbols_in_scope
+        auto new_symbol_mem_info = vs
             | genex::views::transform([](auto const &x) { return std::make_pair(x.get(), x->memory_info->snapshot()); })
             | genex::to<std::vector>();
 

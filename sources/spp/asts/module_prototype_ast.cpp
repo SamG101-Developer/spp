@@ -43,15 +43,6 @@ spp::asts::ModulePrototypeAst::operator std::string() const {
 }
 
 
-auto spp::asts::ModulePrototypeAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(impl);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::ModulePrototypeAst::name() const
     -> std::unique_ptr<IdentifierAst> {
     using namespace std::string_literals;

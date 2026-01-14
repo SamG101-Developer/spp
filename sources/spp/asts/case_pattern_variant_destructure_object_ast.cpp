@@ -98,18 +98,6 @@ spp::asts::CasePatternVariantDestructureObjectAst::operator std::string() const 
 }
 
 
-auto spp::asts::CasePatternVariantDestructureObjectAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(type);
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(elems, ", ");
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::CasePatternVariantDestructureObjectAst::convert_to_variable(
     CompilerMetaData *meta)
     -> std::unique_ptr<LocalVariableAst> {

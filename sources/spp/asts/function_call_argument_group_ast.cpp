@@ -84,17 +84,6 @@ spp::asts::FunctionCallArgumentGroupAst::operator std::string() const {
 }
 
 
-auto spp::asts::FunctionCallArgumentGroupAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(args, ", ");
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::FunctionCallArgumentGroupAst::get_keyword_args() const
     -> std::vector<FunctionCallArgumentKeywordAst*> {
     return args
@@ -120,7 +109,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
     // Check there are no duplicate argument names.
     const auto arg_names = get_keyword_args()
         | genex::views::transform([](auto &&x) { return x->name.get(); })
-        | genex::views::materialize
+        | genex::to<std::vector>()
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
@@ -144,7 +133,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
 
     // Expand tuple-expansion arguments ("..tuple" => "tuple.0, tuple.1, ...")
     // Must use "materialize" because the list gets updates from within the loop.
-    for (auto &&[i, arg] : args | genex::views::ptr | genex::views::enumerate | genex::views::materialize) {
+    for (auto &&[i, arg] : args | genex::views::ptr | genex::views::enumerate | genex::to<std::vector>()) {
         // Only check position arguments that have ".." tokens.
         const auto pos_arg = arg->to<FunctionCallArgumentPositionalAst>();
         if (pos_arg == nullptr or pos_arg->tok_unpack == nullptr) { continue; }

@@ -4,7 +4,6 @@ module;
 export module spp.asts.type_identifier_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.type_ast;
-import genex;
 import std;
 
 namespace spp::asts {

@@ -28,7 +28,7 @@ import genex;
 
 // todo: genex
 #define PREP_SCOPE_MANAGER \
-    auto const &mod_in_tree = *std::ranges::find_if(tree, [&](auto &m) { return m->module_ast.get() == mod; })
+    auto const &mod_in_tree = *genex::find_if(tree, [&](auto &m) { return m->module_ast.get() == mod; })
 
 
 #define PREP_SCOPE_MANAGER_AND_META(s)                                       \
@@ -264,7 +264,7 @@ auto spp::compiler::CompilerBoot::validate_entry_point(
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Get the "main.spp" main module (entry point).
-    const auto main_mod = *std::ranges::find_if(m_modules, [](auto const *mod) {
+    const auto main_mod = *genex::find_if(m_modules, [](auto const *mod) {
         return mod->file_name()->val.ends_with("main.spp");
     });
 
@@ -299,8 +299,8 @@ auto spp::compiler::CompilerBoot::move_scope_manager_to_ns(
     using namespace std::string_literals;
     // Create the module namespace as a list of strings.
     auto mod_ns = std::vector<std::string>(mod.path.begin(), mod.path.end());
-    if (std::ranges::contains(mod_ns, "src"s)) {
-        const auto src_index = std::ranges::find(mod_ns, "src"s) - mod_ns.begin() + 1z;
+    if (genex::contains(mod_ns, "src"s)) {
+        const auto src_index = genex::find(mod_ns, "src"s) - mod_ns.begin() + 1z;
         mod_ns = std::vector(mod_ns.begin() + src_index, mod_ns.end());
         mod_ns.back().erase(mod_ns.back().size() - 4);
     }

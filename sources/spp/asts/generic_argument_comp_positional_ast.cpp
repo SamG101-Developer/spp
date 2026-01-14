@@ -64,15 +64,6 @@ spp::asts::GenericArgumentCompPositionalAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenericArgumentCompPositionalAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(val);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::GenericArgumentCompPositionalAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

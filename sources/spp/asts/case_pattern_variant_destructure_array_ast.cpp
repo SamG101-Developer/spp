@@ -76,23 +76,12 @@ spp::asts::CasePatternVariantDestructureArrayAst::operator std::string() const {
 }
 
 
-auto spp::asts::CasePatternVariantDestructureArrayAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(elems, ", ");
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::CasePatternVariantDestructureArrayAst::convert_to_variable(
     CompilerMetaData *meta)
     -> std::unique_ptr<LocalVariableAst> {
     // Recursively map the elements to their local variable counterparts.
     auto mapped_elems = elems
-        | genex::views::transform([meta](auto &&x) { return x->convert_to_variable(meta); })
+        | genex::views::transform([meta](auto const &x) { return x->convert_to_variable(meta); })
         | genex::to<std::vector>();
 
     // Create the final local variable wrapping, tag it and return it.

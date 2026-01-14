@@ -50,14 +50,3 @@ spp::asts::GenericParameterTypeVariadicAst::operator std::string() const {
     SPP_STRING_APPEND(constraints);
     SPP_STRING_END;
 }
-
-
-auto spp::asts::GenericParameterTypeVariadicAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_ellipsis);
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(constraints);
-    SPP_PRINT_END;
-}

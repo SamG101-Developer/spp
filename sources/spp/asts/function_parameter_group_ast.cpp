@@ -62,17 +62,6 @@ spp::asts::FunctionParameterGroupAst::operator std::string() const {
 }
 
 
-auto spp::asts::FunctionParameterGroupAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(params, ", ");
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::FunctionParameterGroupAst::get_all_params() const
     -> std::vector<FunctionParameterAst*> {
     return params
@@ -146,7 +135,7 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
     const auto param_names = params
         | genex::views::transform([](auto &&x) { return x->extract_names(); })
         | genex::views::join
-        | genex::views::materialize
+        | genex::to<std::vector>()
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 

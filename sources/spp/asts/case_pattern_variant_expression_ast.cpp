@@ -59,15 +59,6 @@ spp::asts::CasePatternVariantExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::CasePatternVariantExpressionAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(expr);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::CasePatternVariantExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

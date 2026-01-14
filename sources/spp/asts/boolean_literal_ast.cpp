@@ -59,15 +59,6 @@ spp::asts::BooleanLiteralAst::operator std::string() const {
 }
 
 
-auto spp::asts::BooleanLiteralAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_bool);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::BooleanLiteralAst::True(
     const std::size_t pos)
     -> std::unique_ptr<BooleanLiteralAst> {

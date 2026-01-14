@@ -46,13 +46,3 @@ spp::asts::LocalVariableSingleIdentifierAliasAst::operator std::string() const {
     SPP_STRING_APPEND(name);
     SPP_STRING_END;
 }
-
-
-auto spp::asts::LocalVariableSingleIdentifierAliasAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_as).append_range(" ");
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_END;
-}

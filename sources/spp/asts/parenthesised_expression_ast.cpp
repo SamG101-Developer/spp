@@ -56,17 +56,6 @@ spp::asts::ParenthesisedExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::ParenthesisedExpressionAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_open_paren);
-    SPP_PRINT_APPEND(expr);
-    SPP_PRINT_APPEND(tok_close_paren);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::ParenthesisedExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

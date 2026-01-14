@@ -52,16 +52,6 @@ spp::asts::UnaryExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::UnaryExpressionAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(op);
-    SPP_PRINT_APPEND(expr);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::UnaryExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

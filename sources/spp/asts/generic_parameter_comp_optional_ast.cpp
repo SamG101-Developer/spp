@@ -68,20 +68,6 @@ spp::asts::GenericParameterCompOptionalAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenericParameterCompOptionalAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_cmp).append(" ");
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(tok_colon).append(" ");
-    SPP_PRINT_APPEND(type).append(" ");
-    SPP_PRINT_APPEND(tok_assign).append(" ");
-    SPP_PRINT_APPEND(default_val);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::GenericParameterCompOptionalAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

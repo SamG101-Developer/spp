@@ -47,14 +47,3 @@ spp::asts::ObjectInitializerArgumentKeywordAst::operator std::string() const {
     SPP_STRING_APPEND(val);
     SPP_STRING_END;
 }
-
-
-auto spp::asts::ObjectInitializerArgumentKeywordAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(tok_assign);
-    SPP_PRINT_APPEND(val);
-    SPP_PRINT_END;
-}

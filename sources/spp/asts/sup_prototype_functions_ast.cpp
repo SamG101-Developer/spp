@@ -78,18 +78,6 @@ spp::asts::SupPrototypeFunctionsAst::operator std::string() const {
 }
 
 
-auto spp::asts::SupPrototypeFunctionsAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_sup).append(" ");
-    SPP_PRINT_APPEND(generic_param_group).append(generic_param_group->params.empty() ? "" : " ");
-    SPP_PRINT_APPEND(name).append(" ");
-    SPP_PRINT_APPEND(impl);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::SupPrototypeFunctionsAst::stage_1_pre_process(
     Ast *ctx)
     -> void {

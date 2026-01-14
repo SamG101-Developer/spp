@@ -66,16 +66,6 @@ spp::asts::ObjectInitializerAst::operator std::string() const {
 }
 
 
-auto spp::asts::ObjectInitializerAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(type);
-    SPP_PRINT_APPEND(arg_group);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

@@ -73,15 +73,6 @@ spp::asts::PostfixExpressionOperatorEarlyReturnAst::operator std::string() const
 }
 
 
-auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_qst);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

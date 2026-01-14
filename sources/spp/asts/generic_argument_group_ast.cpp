@@ -27,7 +27,6 @@ import spp.asts.type_identifier_ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
-
 import ankerl;
 import genex;
 
@@ -76,18 +75,6 @@ spp::asts::GenericArgumentGroupAst::operator std::string() const {
         SPP_STRING_APPEND(tok_r);
     }
     SPP_STRING_END;
-}
-
-auto spp::asts::GenericArgumentGroupAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    if (not args.empty()) {
-        SPP_PRINT_APPEND(tok_l);
-        SPP_PRINT_EXTEND(args, ", ");
-        SPP_PRINT_APPEND(tok_r);
-    }
-    SPP_PRINT_END;
 }
 
 
@@ -293,7 +280,9 @@ auto spp::asts::GenericArgumentGroupAst::stage_4_qualify_types(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    args | genex::views::for_each([sm, meta](auto const &x) { x->stage_4_qualify_types(sm, meta); });
+    for (auto const &x : args) {
+        x->stage_4_qualify_types(sm, meta);
+    }
 }
 
 
@@ -305,7 +294,7 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
     const auto type_arg_names = get_keyword_args()
         | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()
         | genex::views::transform([](auto &&x) { return x->name.get(); })
-        | genex::views::materialize
+        | genex::to<std::vector>()
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
@@ -319,7 +308,7 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
     const auto comp_arg_names = get_keyword_args()
         | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()
         | genex::views::transform([](auto &&x) { return x->name.get(); })
-        | genex::views::materialize
+        | genex::to<std::vector>()
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
@@ -342,7 +331,9 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
     }
 
     // Analyse the arguments.
-    args | genex::views::for_each([sm, meta](auto const &x) { x->stage_7_analyse_semantics(sm, meta); });
+    for (auto const &x : args) {
+        x->stage_7_analyse_semantics(sm, meta);
+    }
 }
 
 
@@ -351,5 +342,7 @@ auto spp::asts::GenericArgumentGroupAst::stage_8_check_memory(
     CompilerMetaData *meta)
     -> void {
     // Check the arguments for memory issues.
-    args | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });
+    for (auto const &x : args) {
+        x->stage_8_check_memory(sm, meta);
+    }
 }

@@ -154,7 +154,6 @@ import spp.asts.utils.ast_utils;
 import spp.parse.errors.parser_error;
 import spp.parse.errors.parser_error_builder;
 import spp.utils.algorithms;
-
 import genex;
 import std;
 

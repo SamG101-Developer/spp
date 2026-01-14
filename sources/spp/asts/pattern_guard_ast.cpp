@@ -55,16 +55,6 @@ spp::asts::PatternGuardAst::operator std::string() const {
 }
 
 
-auto spp::asts::PatternGuardAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_and);
-    SPP_PRINT_APPEND(expr);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::PatternGuardAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

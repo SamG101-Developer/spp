@@ -1,3 +1,6 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
 import spp.asts.ast;
@@ -189,7 +192,7 @@ auto spp::analyse::scopes::Scope::get_generics() const
 
 auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
     std::vector<asts::GenericArgumentAst*> const &generics,
-    std::shared_ptr<asts::TypeAst> const &ignore)
+    std::shared_ptr<asts::TypeAst> const &ignore) const
     -> std::vector<std::shared_ptr<Symbol>> {
     // Convert the provided generic arguments into symbols. Todo: filter to "is_generic"?
     const auto type_syms = generics
@@ -216,14 +219,16 @@ auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
         | genex::to<std::vector>();
 
     for (auto const *scope : scopes) {
-        scope->all_type_symbols(true)
-            | genex::views::filter([](auto const &sym) { return sym->is_generic; })
-            | genex::views::for_each([&syms](auto const &sym) { syms.emplace_back(sym); });
+        for (auto const &sym : scope->all_type_symbols(true)
+             | genex::views::filter([](auto const &s) { return s->is_generic; })) {
+            syms.emplace_back(sym);
+        }
 
-        scope->all_var_symbols(true)
-            | genex::views::filter([](auto const &sym) { return sym->is_generic; })
-            | genex::views::filter([&ignore](auto const &sym) { return ignore == nullptr or *sym->name == *ignore; })
-            | genex::views::for_each([&syms](auto const &sym) { syms.emplace_back(sym); });
+        for (auto const &sym : scope->all_var_symbols(true)
+             | genex::views::filter([](auto const &s) { return s->is_generic; })
+             | genex::views::filter([&ignore](auto const &s) { return ignore == nullptr or *s->name == *ignore; })) {
+            syms.emplace_back(sym);
+        }
     }
 
     // Return the full list of generic symbols.
@@ -396,6 +401,11 @@ auto spp::analyse::scopes::Scope::get_type_symbol(
     // Adjust the scope for the namespace of the type identifier if there is one.
     if (sym_name == nullptr) { return nullptr; }
 
+    // Check cache.
+    if (sym_name->cached_type_symbols.contains(this)) {
+        return sym_name->cached_type_symbols.get(this);
+    }
+
     auto scope = this;
     std::shared_ptr<const asts::TypeIdentifierAst> sym_name_extracted;
     if (const auto sym_name_as_identifier = std::dynamic_pointer_cast<const asts::TypeIdentifierAst>(sym_name)) {
@@ -420,6 +430,10 @@ auto spp::analyse::scopes::Scope::get_type_symbol(
         sym = search_sup_scopes_for_type(*scope, sym_name_extracted);
     }
 
+    // Update cache and return the found symbol, or nullptr.
+    if (sym != nullptr) {
+        sym_name->cached_type_symbols.set(this, sym);
+    }
     return sym;
 }
 
@@ -561,9 +575,8 @@ auto spp::analyse::scopes::Scope::sup_scopes() const
     auto scopes = std::vector<Scope*>();
     for (auto *scope : direct_sup_scopes) {
         const auto child_scopes = scope->sup_scopes();
-        scopes |= genex::actions::push_back(scope);
-        scopes |= genex::actions::concat(child_scopes);
         scopes.push_back(scope);
+        scopes.append_range(child_scopes);
     }
     return scopes;
 }

@@ -66,16 +66,6 @@ spp::asts::ClosureExpressionCaptureGroupAst::operator std::string() const {
 }
 
 
-auto spp::asts::ClosureExpressionCaptureGroupAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_caps).append(" ");
-    SPP_PRINT_EXTEND(captures, ", ");
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::ClosureExpressionCaptureGroupAst::new_empty()
     -> std::unique_ptr<ClosureExpressionCaptureGroupAst> {
     return std::make_unique<ClosureExpressionCaptureGroupAst>(

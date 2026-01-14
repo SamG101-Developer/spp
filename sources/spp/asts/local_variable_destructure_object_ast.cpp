@@ -79,18 +79,6 @@ spp::asts::LocalVariableDestructureObjectAst::operator std::string() const {
 }
 
 
-auto spp::asts::LocalVariableDestructureObjectAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(type);
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(elems, ", ");
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::LocalVariableDestructureObjectAst::extract_name() const
     -> std::shared_ptr<IdentifierAst> {
     return std::make_shared<IdentifierAst>(pos_start(), "_UNMATCHABLE");
@@ -136,7 +124,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
 
     const auto missing_attributes = attributes
         | genex::views::transform([](auto const &x) { return x->name; })
-        | genex::views::materialize
+        | genex::to<std::vector>()
         | genex::views::set_difference_unsorted(assigned_attributes, genex::meta::deref, genex::meta::deref)
         | genex::to<std::vector>();
 
@@ -206,7 +194,9 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_8_check_memory(
     CompilerMetaData *meta)
     -> void {
     // Check the memory state of the elements.
-    m_new_asts | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });
+    for (auto &&x : m_new_asts) {
+        x->stage_8_check_memory(sm, meta);
+    }
 }
 
 

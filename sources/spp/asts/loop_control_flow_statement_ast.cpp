@@ -82,17 +82,6 @@ spp::asts::LoopControlFlowStatementAst::operator std::string() const {
 }
 
 
-auto spp::asts::LoopControlFlowStatementAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_EXTEND(tok_seq_exit, " ").append(" ");
-    SPP_PRINT_APPEND(tok_skip).append(" ");
-    SPP_PRINT_APPEND(expr);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::LoopControlFlowStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

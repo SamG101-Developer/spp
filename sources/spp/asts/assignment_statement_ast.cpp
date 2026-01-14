@@ -68,17 +68,6 @@ spp::asts::AssignmentStatementAst::operator std::string() const {
 }
 
 
-auto spp::asts::AssignmentStatementAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_EXTEND(lhs, ", ").append(" ");
-    SPP_PRINT_APPEND(tok_assign).append(" ");
-    SPP_PRINT_EXTEND(rhs, ", ");
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
@@ -172,8 +161,7 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
     auto is_identifier = [](Ast const *x) -> bool { return x->to<IdentifierAst>() != nullptr; };
 
     auto lhs_syms = lhs
-        | genex::views::indirect
-        | genex::views::transform([sm](auto &&x) { return sm->current_scope->get_var_symbol_outermost(x); })
+        | genex::views::transform([sm](auto &&x) { return sm->current_scope->get_var_symbol_outermost(*x); })
         | genex::to<std::vector>();
 
     for (auto &&[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(lhs | genex::views::ptr, rhs | genex::views::ptr, lhs_syms)) {

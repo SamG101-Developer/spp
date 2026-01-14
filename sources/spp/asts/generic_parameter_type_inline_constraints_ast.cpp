@@ -45,13 +45,3 @@ spp::asts::GenericParameterTypeInlineConstraintsAst::operator std::string() cons
     SPP_STRING_EXTEND(constraints, " & ");
     SPP_STRING_END;
 }
-
-
-auto spp::asts::GenericParameterTypeInlineConstraintsAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_colon);
-    SPP_PRINT_EXTEND(constraints, " & ");
-    SPP_PRINT_END;
-}

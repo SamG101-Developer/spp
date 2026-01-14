@@ -72,16 +72,6 @@ spp::asts::TypeUnaryExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypeUnaryExpressionAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(op);
-    SPP_PRINT_APPEND(rhs);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::TypeUnaryExpressionAst::iterator() const
     -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
     // Iterate from the right-hand-side.

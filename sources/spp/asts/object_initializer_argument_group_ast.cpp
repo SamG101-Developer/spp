@@ -69,17 +69,6 @@ spp::asts::ObjectInitializerArgumentGroupAst::operator std::string() const {
 }
 
 
-auto spp::asts::ObjectInitializerArgumentGroupAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(args, ", ");
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::ObjectInitializerArgumentGroupAst::new_empty()
     -> std::unique_ptr<ObjectInitializerArgumentGroupAst> {
     return std::make_unique<ObjectInitializerArgumentGroupAst>(
@@ -137,7 +126,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics
     // try reading a duplicate attribute before an error is raised.
     const auto duplicates = get_keyword_args()
         | genex::views::transform([](auto &&x) { return x->name; })
-        | genex::views::materialize
+        | genex::to<std::vector>()
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
@@ -203,7 +192,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
         | genex::to<std::vector>();
 
     const auto invalid_args = arg_names
-        | genex::views::set_difference_unsorted(all_attr_names, SPP_INSTANT_INDIRECT, SPP_INSTANT_INDIRECT)
+        | genex::views::set_difference_unsorted(all_attr_names, genex::meta::deref, genex::meta::deref)
         | genex::to<std::vector>();
 
     if (not invalid_args.empty()) {

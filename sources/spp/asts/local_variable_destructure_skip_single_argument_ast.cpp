@@ -41,15 +41,6 @@ spp::asts::LocalVariableDestructureSkipSingleArgumentAst::operator std::string()
 }
 
 
-auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_underscore);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::extract_name() const
     -> std::shared_ptr<IdentifierAst> {
     return std::make_shared<IdentifierAst>(pos_start(), "_UNMATCHABLE");

@@ -71,17 +71,6 @@ spp::asts::ClosureExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::ClosureExpressionAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok).append(" ");
-    SPP_PRINT_APPEND(pc_group).append(" ");
-    SPP_PRINT_APPEND(body);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::ClosureExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

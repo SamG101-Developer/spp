@@ -55,16 +55,3 @@ spp::asts::GenericParameterCompVariadicAst::operator std::string() const {
     SPP_STRING_APPEND(type);
     SPP_STRING_END;
 }
-
-
-auto spp::asts::GenericParameterCompVariadicAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_cmp).append(" ");
-    SPP_PRINT_APPEND(tok_ellipsis);
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(tok_colon).append(" ");
-    SPP_PRINT_APPEND(type);
-    SPP_PRINT_END;
-}

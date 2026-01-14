@@ -49,7 +49,6 @@ import spp.parse.parser_spp;
 import spp.parse.errors.parser_error;
 import spp.utils.ptr;
 import spp.utils.strings;
-
 import genex;
 
 
@@ -123,7 +122,7 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
     }
 
     // Ensure each generic argument is symbolically equal to the other. Todo: why genex broke here?
-    for (auto [lhs_generic, rhs_generic] : std::ranges::views::zip(lhs_generics, rhs_generics)) {
+    for (auto const &[lhs_generic, rhs_generic] : std::ranges::views::zip(lhs_generics, rhs_generics)) {
         if (lhs_generic->to<asts::GenericArgumentTypeAst>()) {
             const auto lhs_generic_part = lhs_generic->to<asts::GenericArgumentTypeAst>();
             const auto rhs_generic_part = rhs_generic->to<asts::GenericArgumentTypeAst>();
@@ -220,7 +219,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
         }
     }
 
-    // Ensure each generic argument is symbolically equal to the other.
+    // Ensure each generic argument is symbolically equal to the other. Todo: why genex broke here?
     for (auto [lhs_generic, rhs_generic] : std::ranges::views::zip(lhs_generics, rhs_generics)) {
         if (rhs_generic->to<asts::GenericArgumentTypeAst>()) {
             const auto lhs_generic_part = lhs_generic->to<asts::GenericArgumentTypeAst>();
@@ -751,7 +750,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
         // Remove void attributes from the class.
         if (is_type_void(*attr->type, *new_cls_scope_ptr)) {
             // new_ast_ptr->impl |= genex::actions::remove_if([&](auto &&x) { return x == attr; }, [](auto &&x) { return x.get(); });
-            (void)std::ranges::remove_if(new_ast_ptr->impl->members, [&](auto &&x) { return x.get() == attr; }).begin();
+            new_ast_ptr->impl->members |= genex::actions::remove_if([&](auto &&x) { return x.get() == attr; });
             new_cls_scope_ptr->rem_var_symbol(attr->name);
         }
     }
@@ -796,8 +795,8 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     auto new_sup_scope_ptr = new_sup_scope.get();
     old_sup_scope.parent->children.emplace_back(std::move(new_sup_scope));
 
-    std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name =
-        substitute_sup_scope_name(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name, generic_args);
+    // std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name =
+    //     substitute_sup_scope_name(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name, generic_args);
 
     // Register the generic symbols.
     auto tm = scopes::ScopeManager(sm->global_scope, new_sup_scope_ptr);
@@ -887,14 +886,14 @@ auto spp::analyse::utils::type_utils::register_generic_syms(
     asts::meta::CompilerMetaData *meta)
     -> void {
     // Register the type symbols to the scope.
-    external_generic_syms
-        | genex::views::cast_smart<scopes::TypeSymbol>()
-        | genex::views::for_each([&](auto const &e) { scope->add_type_symbol(e); });
+    for (auto const &e : external_generic_syms | genex::views::cast_smart<scopes::TypeSymbol>()) {
+        scope->add_type_symbol(e);
+    }
 
     // Register the variable symbols to the scope.
-    external_generic_syms
-        | genex::views::cast_smart<scopes::VariableSymbol>()
-        | genex::views::for_each([&](auto const &e) { scope->add_var_symbol(e); });
+    for (auto const &e : external_generic_syms | genex::views::cast_smart<scopes::VariableSymbol>()) {
+        scope->add_var_symbol(e);
+    }
 
     // Convert the generic arguments into symbols.
     auto generic_syms = generic_args
@@ -902,14 +901,14 @@ auto spp::analyse::utils::type_utils::register_generic_syms(
         | genex::to<std::vector>();
 
     // Register the created generic symbols to the scope.
-    generic_syms
-        | genex::views::cast_smart<scopes::TypeSymbol>()
-        | genex::views::for_each([&](auto const &e) { scope->add_type_symbol(e); });
+    for (auto const &e : generic_syms | genex::views::cast_smart<scopes::TypeSymbol>()) {
+        scope->add_type_symbol(e);
+    }
 
     // Register the created generic symbols to the scope.
-    generic_syms
-        | genex::views::cast_smart<scopes::VariableSymbol>()
-        | genex::views::for_each([&](auto const &e) { scope->add_var_symbol(e); });
+    for (auto const &e : generic_syms | genex::views::cast_smart<scopes::VariableSymbol>()) {
+        scope->add_var_symbol(e);
+    }
 }
 
 
@@ -993,7 +992,7 @@ auto spp::analyse::utils::type_utils::substitute_sup_scope_name(
     -> std::string {
     const auto parts = old_sup_scope_name
         | genex::views::split('#')
-        | genex::views::materialize
+        | genex::to<std::vector>()
         | genex::views::transform([](auto &&x) { return std::string(x.begin(), x.end()); })
         | genex::to<std::vector>();
 

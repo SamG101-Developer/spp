@@ -60,7 +60,6 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
-
 import ankerl;
 import genex;
 
@@ -233,7 +232,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
         if (fwd_ref_type != nullptr) {
             const auto inner_type = fwd_ref_type->type_parts().back()->generic_arg_group->type_at("T")->val;
             auto inner_scopes = get_all_function_scopes(target_fn_name, sm.current_scope->get_type_symbol(inner_type)->scope, sm, meta);
-            for (auto &&i: inner_scopes) {
+            for (auto &&i : inner_scopes) {
                 std::get<3>(i) = asts::ast_clone(inner_type);
             }
             overload_scopes.insert(overload_scopes.end(), std::make_move_iterator(inner_scopes.begin()), std::make_move_iterator(inner_scopes.end()));
@@ -315,7 +314,7 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_override(
 
     // Get the existing functions that belong to this type, or any of its supertypes.
     auto existing = get_all_function_scopes(*new_fn.orig_name, target_scope, sm, meta);
-    auto existing_scopes = existing | genex::views::tuple_nth<0>() | genex::to<std::vector>();
+    auto existing_scopes = existing | genex::views::tuple_nth<0>() | genex::to<std::vector>(); // todo: vec needed?
     auto existing_fns = existing | genex::views::tuple_nth<1>() | genex::to<std::vector>();
 
     auto param_names_eq = [](auto const &a, auto const &b) {
@@ -341,14 +340,14 @@ auto spp::analyse::utils::func_utils::check_for_conflicting_override(
 
         // All parameters must have the same names.
         if (genex::any_of(
-            genex::views::zip(params_new, params_old) | genex::views::materialize,
+            genex::views::zip(params_new, params_old) | genex::to<std::vector>(),
             [&](auto pq) { return not param_names_eq(std::get<0>(pq)->extract_names(), std::get<1>(pq)->extract_names()); })) {
             continue;
         }
 
         // All parameters must have the same types.
         if (genex::any_of(
-            genex::views::zip(params_new, params_old) | genex::views::materialize,
+            genex::views::zip(params_new, params_old) | genex::to<std::vector>(),
             [&](auto pq) { return not type_utils::symbolic_eq(*std::get<0>(pq)->type, *std::get<1>(pq)->type, this_scope, *old_scope, false); })) {
             continue;
         }
@@ -397,7 +396,7 @@ auto spp::analyse::utils::func_utils::name_args(
 
     // Check for invalid argument names against parameter names, then remove the valid ones.
     auto invalid_arg_names = arg_names
-        | genex::views::set_difference_unsorted(param_names, SPP_INSTANT_INDIRECT, SPP_INSTANT_INDIRECT)
+        | genex::views::set_difference_unsorted(param_names, genex::meta::deref, genex::meta::deref)
         | genex::to<std::vector>();
 
     if (not invalid_arg_names.empty()) {
@@ -514,7 +513,7 @@ auto spp::analyse::utils::func_utils::name_generic_args_impl(
 
     // Check for invalid argument names against parameter names, then remove the valid ones.
     auto invalid_arg_names = arg_names
-        | genex::views::set_difference_unsorted(param_names, SPP_INSTANT_INDIRECT, SPP_INSTANT_INDIRECT)
+        | genex::views::set_difference_unsorted(param_names, genex::meta::deref, genex::meta::deref)
         | genex::to<std::vector>();
 
     if (not invalid_arg_names.empty()) {
@@ -662,7 +661,8 @@ auto spp::analyse::utils::func_utils::is_target_callable(
     -> std::shared_ptr<asts::TypeAst> {
     // Get the type of the expression.
     auto expr_type = expr.infer_type(&sm, meta);
-    const auto is_type_functional = type_utils::is_type_function(*expr_type, *sm.current_scope);
+    const auto is_type_functional = type_utils::is_type_function(
+        *expr_type, *sm.current_scope);
     return is_type_functional ? std::move(expr_type) : nullptr;
 }
 
@@ -783,7 +783,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
 
     // Check all the generic arguments have been inferred.
     auto uninferred_args = param_names
-        | genex::views::set_difference_unsorted(inferred_args | genex::views::keys | genex::views::materialize, SPP_INSTANT_INDIRECT, SPP_INSTANT_INDIRECT)
+        | genex::views::set_difference_unsorted(inferred_args | genex::views::keys | genex::to<std::vector>(), genex::meta::deref, genex::meta::deref)
         | genex::to<std::vector>();
     if (not uninferred_args.empty()) {
         errors::SemanticErrorBuilder<errors::SppGenericParameterNotInferredError>()
@@ -800,7 +800,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_comp(
     // todo: something is needed here, ie "[T, cmp x: Vec[T]]" needs to substitute the value for "T" into "Vec[T]".
     // Cross-apply generic arguments. This allows "Vec[T, A=Alloc[T]]" to substitute the new value of "T" into "Alloc".
     // for (auto const &arg_name : inferred_args | genex::views::keys | genex::to<std::vector>()) {
-    //     if (genex::contains(explicit_arg_names, *arg_name, SPP_INSTANT_INDIRECT)) {
+    //     if (genex::contains(explicit_arg_names, *arg_name, genex::meta::deref)) {
     //         continue;
     //     }
     //
@@ -976,7 +976,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
 
     // Check all the generic arguments have been inferred.
     auto uninferred_args = param_names
-        | genex::views::set_difference_unsorted(inferred_args | genex::views::keys | genex::views::materialize, SPP_INSTANT_INDIRECT, SPP_INSTANT_INDIRECT)
+        | genex::views::set_difference_unsorted(inferred_args | genex::views::keys | genex::to<std::vector>(), genex::meta::deref, genex::meta::deref)
         | genex::to<std::vector>();
     if (not uninferred_args.empty()) {
         errors::SemanticErrorBuilder<errors::SppGenericParameterNotInferredError>()
@@ -992,7 +992,7 @@ auto spp::analyse::utils::func_utils::infer_generic_args_impl_type(
 
     // Cross-apply generic arguments. This allows "Vec[T, A=Alloc[T]]" to substitute the new value of "T" into "Alloc".
     for (auto const &arg_name : inferred_args | genex::views::keys) {
-        if (genex::contains(explicit_arg_names, *arg_name, SPP_INSTANT_INDIRECT)) {
+        if (genex::contains(explicit_arg_names, *arg_name, genex::meta::deref)) {
             continue;
         }
 

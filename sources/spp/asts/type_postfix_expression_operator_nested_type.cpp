@@ -62,16 +62,6 @@ spp::asts::TypePostfixExpressionOperatorNestedTypeAst::operator std::string() co
 }
 
 
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_sep);
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::ns_parts() const
     -> std::vector<std::shared_ptr<const IdentifierAst>> {
     return {};

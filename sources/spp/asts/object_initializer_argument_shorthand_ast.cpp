@@ -51,16 +51,6 @@ spp::asts::ObjectInitializerArgumentShorthandAst::operator std::string() const {
 }
 
 
-auto spp::asts::ObjectInitializerArgumentShorthandAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_ellipsis);
-    SPP_PRINT_APPEND(val);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::ObjectInitializerArgumentShorthandAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

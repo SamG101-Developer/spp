@@ -80,18 +80,6 @@ spp::asts::InnerScopeAst<T>::operator std::string() const {
 
 
 template <typename T>
-auto spp::asts::InnerScopeAst<T>::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l).append(not members.empty() ? "\n" : "");
-    SPP_PRINT_EXTEND(members, "\n").append(not members.empty() ? "\n" : "");
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
-}
-
-
-template <typename T>
 auto spp::asts::InnerScopeAst<T>::new_empty()
     -> std::unique_ptr<InnerScopeAst> {
     return std::make_unique<InnerScopeAst>(

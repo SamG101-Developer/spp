@@ -43,15 +43,6 @@ spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::operator std::str
 }
 
 
-auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_underscore);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::convert_to_variable(
     CompilerMetaData *)
     -> std::unique_ptr<LocalVariableAst> {

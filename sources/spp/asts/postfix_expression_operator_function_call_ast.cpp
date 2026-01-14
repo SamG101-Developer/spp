@@ -108,17 +108,6 @@ spp::asts::PostfixExpressionOperatorFunctionCallAst::operator std::string() cons
 }
 
 
-auto spp::asts::PostfixExpressionOperatorFunctionCallAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(generic_arg_group);
-    SPP_PRINT_APPEND(arg_group);
-    SPP_PRINT_APPEND(fold);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     ScopeManager *sm,
     CompilerMetaData *meta)
@@ -246,10 +235,11 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 // Populate the list of arguments to fold.
                 for (auto &&arg : func_args | genex::views::ptr | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>()) {
                     if (analyse::utils::type_utils::is_type_tuple(*arg->infer_type(sm, meta), *sm->current_scope)) {
-                        func_params
-                            | genex::views::filter([arg](auto &&x) { return *x->extract_name() == *arg->name; })
-                            | genex::views::filter([sm](auto &&x) { return not analyse::utils::type_utils::is_type_tuple(*x->type, *sm->current_scope); })
-                            | genex::views::for_each([this, arg](auto &&) { m_folded_args.emplace_back(arg); });
+                        for (auto && _: func_params
+                             | genex::views::filter([arg](auto &&x) { return *x->extract_name() == *arg->name; })
+                             | genex::views::filter([sm](auto &&x) { return not analyse::utils::type_utils::is_type_tuple(*x->type, *sm->current_scope); })) {
+                            m_folded_args.emplace_back(arg);
+                        }
                     }
                 }
 
@@ -339,7 +329,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
             // Check for any keyword arguments that don't have a corresponding parameter.
             const auto invalid_args = func_arg_names
-                | genex::views::set_difference_unsorted(func_param_names, SPP_INSTANT_INDIRECT, SPP_INSTANT_INDIRECT)
+                | genex::views::set_difference_unsorted(func_param_names, genex::meta::deref, genex::meta::deref)
                 | genex::to<std::vector>();
             if (not invalid_args.empty()) {
                 analyse::errors::SemanticErrorBuilder<analyse::errors::SppArgumentNameInvalidError>()
@@ -349,7 +339,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
             // Check for missing parameters that don't have a corresponding argument.
             const auto missing_params = func_param_names_req
-                | genex::views::set_difference_unsorted(func_arg_names, SPP_INSTANT_INDIRECT, SPP_INSTANT_INDIRECT)
+                | genex::views::set_difference_unsorted(func_arg_names, genex::meta::deref, genex::meta::deref)
                 | genex::to<std::vector>();
             if (not missing_params.empty()) {
                 analyse::errors::SemanticErrorBuilder<analyse::errors::SppArgumentMissingError>()
@@ -561,7 +551,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_8_check_memory(
     if (fold != nullptr and not m_folded_args.empty()) {
         auto non_folding_args = arg_group->args
             | genex::views::ptr
-            | genex::views::materialize
+            | genex::to<std::vector>()
             | genex::views::set_difference_unsorted(m_folded_args)
             | genex::views::transform([](auto &&x) { return ast_clone(x); })
             | genex::to<std::vector>();

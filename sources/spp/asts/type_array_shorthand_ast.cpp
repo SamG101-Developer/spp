@@ -59,19 +59,6 @@ spp::asts::TypeArrayShorthandAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypeArrayShorthandAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_APPEND(element_type);
-    SPP_PRINT_APPEND(tok_semicolon);
-    SPP_PRINT_APPEND(size);
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::TypeArrayShorthandAst::convert()
     -> std::unique_ptr<TypeAst> {
     const auto type = generate::common_types::array_type(pos_start(), std::move(element_type), std::move(size));

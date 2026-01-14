@@ -82,17 +82,6 @@ spp::asts::TupleLiteralAst::operator std::string() const {
 }
 
 
-auto spp::asts::TupleLiteralAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(elems, ", ");
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::TupleLiteralAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

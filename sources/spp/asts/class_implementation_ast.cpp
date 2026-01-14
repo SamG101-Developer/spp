@@ -34,7 +34,9 @@ auto spp::asts::ClassImplementationAst::new_empty()
 auto spp::asts::ClassImplementationAst::stage_1_pre_process(
     Ast *ctx)
     -> void {
-    members | genex::views::for_each([ctx](auto &&x) { x->stage_1_pre_process(ctx); });
+    for (auto const &m: members) {
+        m->stage_1_pre_process(ctx);
+    }
 }
 
 
@@ -43,7 +45,9 @@ auto spp::asts::ClassImplementationAst::stage_2_gen_top_level_scopes(
     CompilerMetaData *meta)
     -> void {
     // Generate scopes for each member.
-    members | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
+    for (auto const &m : members) {
+        m->stage_2_gen_top_level_scopes(sm, meta);
+    }
 }
 
 
@@ -52,7 +56,9 @@ auto spp::asts::ClassImplementationAst::stage_3_gen_top_level_aliases(
     CompilerMetaData *meta)
     -> void {
     // Generate aliases for each member.
-    members | genex::views::for_each([sm, meta](auto &&x) { x->stage_3_gen_top_level_aliases(sm, meta); });
+    for (auto const &m : members) {
+        m->stage_3_gen_top_level_aliases(sm, meta);
+    }
 }
 
 
@@ -61,7 +67,9 @@ auto spp::asts::ClassImplementationAst::stage_4_qualify_types(
     CompilerMetaData *meta)
     -> void {
     // Qualify types for each member.
-    members | genex::views::for_each([sm, meta](auto &&x) { x->stage_4_qualify_types(sm, meta); });
+    for (auto const &m : members) {
+        m->stage_4_qualify_types(sm, meta);
+    }
 }
 
 
@@ -70,7 +78,9 @@ auto spp::asts::ClassImplementationAst::stage_5_load_super_scopes(
     CompilerMetaData *meta)
     -> void {
     // Load super scopes for each member.
-    members | genex::views::for_each([sm, meta](auto &&x) { x->stage_5_load_super_scopes(sm, meta); });
+    for (auto const &m : members) {
+        m->stage_5_load_super_scopes(sm, meta);
+    }
 }
 
 
@@ -79,13 +89,15 @@ auto spp::asts::ClassImplementationAst::stage_6_pre_analyse_semantics(
     CompilerMetaData *meta)
     -> void {
     // Pre-analyse semantics for each member.
-    members | genex::views::for_each([sm, meta](auto &&x) { x->stage_6_pre_analyse_semantics(sm, meta); });
+    for (auto const &m : members) {
+        m->stage_6_pre_analyse_semantics(sm, meta);
+    }
 
     // Ensure there are no duplicate member names. This needs to be done before semantic analysis as other ASTs might
     // try reading a duplicate attribute before an error is raised.
     const auto duplicates = members
         | genex::views::transform([](auto &&x) { return x->template to<ClassAttributeAst>()->name.get(); })
-        | genex::views::materialize
+        | genex::to<std::vector>()
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
@@ -102,7 +114,9 @@ auto spp::asts::ClassImplementationAst::stage_7_analyse_semantics(
     CompilerMetaData *meta)
     -> void {
     // Analyse semantics for each member.
-    members | genex::views::for_each([sm, meta](auto &&x) { x->stage_7_analyse_semantics(sm, meta); });
+    for (auto const &m : members) {
+        m->stage_7_analyse_semantics(sm, meta);
+    }
 }
 
 
@@ -111,7 +125,9 @@ auto spp::asts::ClassImplementationAst::stage_8_check_memory(
     CompilerMetaData *meta)
     -> void {
     // Check memory for each member.
-    members | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });
+    for (auto const &m : members) {
+        m->stage_8_check_memory(sm, meta);
+    }
 }
 
 
@@ -121,6 +137,8 @@ auto spp::asts::ClassImplementationAst::stage_10_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate code for each member.
-    members | genex::views::for_each([sm, meta, ctx](auto &&x) { x->stage_10_code_gen_2(sm, meta, ctx); });
+    for (auto const &m : members) {
+        m->stage_10_code_gen_2(sm, meta, ctx);
+    }
     return nullptr;
 }

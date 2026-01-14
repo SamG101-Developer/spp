@@ -4,7 +4,6 @@ module;
 export module spp.asts.type_postfix_expression_ast;
 import spp.asts.type_postfix_expression_operator_ast;
 import spp.asts.type_ast;
-import genex;
 import std;
 
 namespace spp::asts {

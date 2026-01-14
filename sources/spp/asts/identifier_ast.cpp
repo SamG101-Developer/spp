@@ -67,13 +67,6 @@ spp::asts::IdentifierAst::operator std::string() const {
 }
 
 
-auto spp::asts::IdentifierAst::print(
-    AstPrinter &) const
-    -> std::string {
-    return val;
-}
-
-
 auto spp::asts::IdentifierAst::operator+(
     IdentifierAst const &that) const
     -> IdentifierAst {

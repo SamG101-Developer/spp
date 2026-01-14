@@ -58,16 +58,6 @@ spp::asts::FunctionParameterSelfAst::operator std::string() const {
 }
 
 
-auto spp::asts::FunctionParameterSelfAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(conv);
-    SPP_PRINT_APPEND(var);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::FunctionParameterSelfAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

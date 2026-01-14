@@ -48,13 +48,3 @@ spp::asts::ConventionMutAst::operator std::string() const {
     SPP_STRING_APPEND(tok_mut).append(" ");
     SPP_STRING_END;
 }
-
-
-auto spp::asts::ConventionMutAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_borrow);
-    SPP_PRINT_APPEND(tok_mut).append(" ");
-    SPP_PRINT_END;
-}

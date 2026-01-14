@@ -63,26 +63,13 @@ spp::asts::GenericParameterTypeOptionalAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenericParameterTypeOptionalAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(constraints);
-    SPP_PRINT_APPEND(tok_assign);
-    SPP_PRINT_APPEND(default_val);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::GenericParameterTypeOptionalAst::stage_4_qualify_types(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Handle the default type.
     default_val->stage_7_analyse_semantics(sm, meta);
-    const auto raw = default_val->without_generics();
-    if (const auto sym = sm->current_scope->get_type_symbol(raw); sym != nullptr) {
+    if (const auto sym = sm->current_scope->get_type_symbol(default_val->without_generics()); sym != nullptr) {
         auto temp = sym->fq_name()->with_convention(ast_clone(default_val->get_convention()));
         temp = temp->with_generics(std::move(default_val->type_parts().back()->generic_arg_group));
         default_val = std::move(temp);

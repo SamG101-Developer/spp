@@ -75,17 +75,6 @@ spp::asts::GenWithExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenWithExpressionAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_gen).append(" ");
-    SPP_PRINT_APPEND(tok_with).append(" ");
-    SPP_PRINT_APPEND(expr);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::GenWithExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

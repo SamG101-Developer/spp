@@ -70,7 +70,7 @@ spp::analyse::errors::SppAnnotationInvalidApplicationError::SppAnnotationInvalid
         "Annotation defined here");
     add_error(
         &ctx,
-        "Invalid " + std::string(block_list) + "context defined here");
+        "Invalid " + std::string(block_list) + " context defined here");
     add_footer(
         "This annotation is not compatible with the current context.",
         "Remove the annotation from here");

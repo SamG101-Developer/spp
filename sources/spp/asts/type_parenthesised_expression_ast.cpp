@@ -51,17 +51,6 @@ spp::asts::TypeParenthesisedExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypeParenthesisedExpressionAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_APPEND(expr);
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::TypeParenthesisedExpressionAst::convert()
     -> std::unique_ptr<TypeAst> {
     return std::unique_ptr<TypeAst>(expr.get());

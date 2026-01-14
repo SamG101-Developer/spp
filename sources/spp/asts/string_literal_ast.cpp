@@ -62,15 +62,6 @@ spp::asts::StringLiteralAst::operator std::string() const {
 }
 
 
-auto spp::asts::StringLiteralAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(val);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::StringLiteralAst::stage_10_code_gen_2(
     ScopeManager *,
     CompilerMetaData *,

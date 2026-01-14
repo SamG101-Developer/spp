@@ -5,8 +5,6 @@ export module spp.parse.errors.parser_error_builder;
 import spp.lex.tokens;
 import spp.utils.errors;
 import spp.utils.error_formatter;
-
-import genex;
 import std;
 
 namespace spp::parse::errors {

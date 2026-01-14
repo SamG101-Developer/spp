@@ -105,18 +105,6 @@ spp::asts::CaseExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::CaseExpressionAst::print(
-    AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_case).append(" ");
-    SPP_PRINT_APPEND(cond).append(" ");
-    SPP_PRINT_APPEND(tok_of).append(" ");
-    SPP_PRINT_EXTEND(branches, "\n");
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::CaseExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
