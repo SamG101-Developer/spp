@@ -26,7 +26,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_non_copyable_element,
     SppInvalidExpressionNonCopyableTypeError, R"(
     fun f() -> std::void::Void {
-        let a = ["hello"; 1_uz]
+        let a = [std::string::Str::from("hello"); 1_uz]
     }
 )");
 

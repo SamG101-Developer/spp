@@ -55,5 +55,7 @@ inline auto build_temp_project(std::string code, const bool add_main = true) -> 
         spp::analyse::scopes::ScopeManager::cleanup();
         throw;
     }
+
+    spp::analyse::scopes::ScopeManager::cleanup();
     std::filesystem::current_path(cwd);
 }

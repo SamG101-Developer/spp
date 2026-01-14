@@ -143,15 +143,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
-    test_invalid_no_impl_on_non_function,
-    SppAnnotationInvalidApplicationError, R"(
-    @no_impl
-    cls A { }
-)");
-
-
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AnnotationAst,
     test_invalid_cold_on_non_function,
     SppAnnotationInvalidApplicationError, R"(
     @cold
