@@ -106,6 +106,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     ClassAttributeAst,
     test_valid_default_value, R"(
     cls A {
-        a: std::string::Str = "Hello"
+        a: std::string_view::StrView = "Hello"
     }
 )");
