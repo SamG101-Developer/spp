@@ -110,27 +110,38 @@ auto spp::asts::SupImplementationAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::SupImplementationAst::stage_9_code_gen_1(
+auto spp::asts::SupImplementationAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Forward to members.
+    for (auto const &m : members) {
+        m->stage_9_comptime_resolution(sm, meta);
+    }
+}
+
+
+auto spp::asts::SupImplementationAst::stage_10_code_gen_1(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Forward to members.
     for (auto const &m : members) {
-        m->stage_9_code_gen_1(sm, meta, ctx);
+        m->stage_10_code_gen_1(sm, meta, ctx);
     }
     return nullptr;
 }
 
 
-auto spp::asts::SupImplementationAst::stage_10_code_gen_2(
+auto spp::asts::SupImplementationAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Forward to members.
     for (auto const &m : members) {
-        m->stage_10_code_gen_2(sm, meta, ctx);
+        m->stage_11_code_gen_2(sm, meta, ctx);
     }
     return nullptr;
 }

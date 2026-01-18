@@ -8,7 +8,7 @@ import spp.asts.utils.ast_utils;
 
 
 spp::asts::ObjectInitializerArgumentKeywordAst::ObjectInitializerArgumentKeywordAst(
-    decltype(name) &&name,
+    decltype(name) name,
     decltype(tok_assign) &&tok_assign,
     decltype(val) &&val) :
     ObjectInitializerArgumentAst(std::move(name), std::move(val)),

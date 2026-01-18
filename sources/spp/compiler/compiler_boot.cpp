@@ -211,15 +211,15 @@ auto spp::compiler::CompilerBoot::stage_8_check_memory(
 }
 
 
-auto spp::compiler::CompilerBoot::stage_9_code_gen_1(
+auto spp::compiler::CompilerBoot::stage_9_comptime_resolution(
     utils::ProgressBar &bar,
     ModuleTree &tree,
     analyse::scopes::ScopeManager *sm)
     -> void {
-    // Code generation stage.
-    for (auto const &[mod, ctx] : genex::views::zip(m_modules, m_llvm_ctxs | genex::views::ptr)) {
+    // Comptime resolution stage.
+    for (auto const &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(11.0);
-        mod->stage_9_code_gen_1(sm, &meta, ctx);
+        mod->stage_9_comptime_resolution(sm, &meta);
         sm->reset();
         bar.next();
     }
@@ -227,7 +227,23 @@ auto spp::compiler::CompilerBoot::stage_9_code_gen_1(
 }
 
 
-auto spp::compiler::CompilerBoot::stage_10_code_gen_2(
+auto spp::compiler::CompilerBoot::stage_10_code_gen_1(
+    utils::ProgressBar &bar,
+    ModuleTree &tree,
+    analyse::scopes::ScopeManager *sm)
+    -> void {
+    // Code generation stage.
+    for (auto const &[mod, ctx] : genex::views::zip(m_modules, m_llvm_ctxs | genex::views::ptr)) {
+        PREP_SCOPE_MANAGER_AND_META(11.0);
+        mod->stage_10_code_gen_1(sm, &meta, ctx);
+        sm->reset();
+        bar.next();
+    }
+    bar.finish();
+}
+
+
+auto spp::compiler::CompilerBoot::stage_11_code_gen_2(
     utils::ProgressBar &bar,
     ModuleTree &tree,
     analyse::scopes::ScopeManager *sm)
@@ -236,7 +252,7 @@ auto spp::compiler::CompilerBoot::stage_10_code_gen_2(
     for (auto const &[mod, ctx] : genex::views::zip(m_modules, m_llvm_ctxs | genex::views::ptr)) {
         PREP_SCOPE_MANAGER_AND_META(12.0);
         meta.llvm_ctx = ctx;
-        mod->stage_10_code_gen_2(sm, &meta, ctx);
+        mod->stage_11_code_gen_2(sm, &meta, ctx);
         sm->reset();
         bar.next();
     }
@@ -245,6 +261,7 @@ auto spp::compiler::CompilerBoot::stage_10_code_gen_2(
     // Write the llvm modules to file.
     const auto out_path = tree.root_path() / "out" / "llvm";
     std::filesystem::create_directories(out_path);
+
     for (auto const &ctx : m_llvm_ctxs) {
         if (llvm::verifyModule(*ctx->module, &llvm::errs())) {
             llvm::errs() << "Invalid module: " << ctx->module->getName() << "\n";

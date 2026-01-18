@@ -4,7 +4,6 @@ module;
 export module spp.asts.inner_scope_ast;
 import spp.asts.ast;
 import spp.codegen.llvm_ctx;
-
 import llvm;
 import std;
 
@@ -64,11 +63,11 @@ public:
 
     static auto new_empty() -> std::unique_ptr<InnerScopeAst>;
 
-    auto final_member() const -> Ast*;
+    SPP_ATTR_NODISCARD auto final_member() const -> Ast*;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

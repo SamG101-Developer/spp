@@ -16,7 +16,7 @@ auto print_stacktrace_for_sigsegv(void *user_data, const char *reason, bool gen_
     std::printf("Error: signal SIGSEGV:\n");
     std::printf("Reason: %s\n", reason);
     std::printf("Backtrace:\n");
-    backtrace_symbols_fd(array, size, 2);
+    backtrace_symbols_fd(array, static_cast<int>(size), 2);
 }
 
 
@@ -25,5 +25,6 @@ int main(const std::int32_t, char **argv) {
     llvm::install_fatal_error_handler(print_stacktrace_for_sigsegv);
     std::filesystem::current_path(std::filesystem::absolute(argv[0]).parent_path().parent_path() / "project");
     spp::cli::handle_build("dev");
+    // spp::cli::run_cli(argc, argv);
     return 0;
 }

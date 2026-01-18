@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.token_ast;
 import spp.asts.generate.common_types;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_type;
@@ -100,7 +101,7 @@ auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
     ScopeManager *,
     CompilerMetaData *)
     -> void {
-    // Get the lower and upper bounds as big floats.
+    // Get the lower and upper bounds as big ints.
     type = type.empty() ? "s32" : type;
     // auto const &[lower, upper] = INTEGER_TYPE_MIN_MAX.at(type);
     // auto mapped_val = mppp::BigInt(val->token_data.c_str());
@@ -111,12 +112,21 @@ auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
     // Check if the value is within the bounds.
     // if (mapped_val < lower or mapped_val > upper) {
     //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppIntegerOutOfBoundsError>().with_args(
-    //         *this, mapped_val, lower, upper, "float").with_scopes({sm->current_scope}).raise();
+    //         *this, mapped_val, lower, upper, "int").with_scopes({sm->current_scope}).raise();
     // }
 }
 
 
-auto spp::asts::IntegerLiteralAst::stage_10_code_gen_2(
+auto spp::asts::IntegerLiteralAst::stage_9_comptime_resolution(
+    ScopeManager *,
+    CompilerMetaData *meta)
+    -> void {
+    // Clone and return the float literal as is for compile-time resolution.
+    meta->cmp_result = ast_clone(this);
+}
+
+
+auto spp::asts::IntegerLiteralAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -128,7 +138,7 @@ auto spp::asts::IntegerLiteralAst::stage_10_code_gen_2(
 
     // Create the LLVM constant integer value.
     const auto bit_width = llvm_type->getIntegerBitWidth();
-    const auto ap_int = llvm::APInt(bit_width, val->token_data.c_str(), 10);
+    const auto ap_int = llvm::APInt(bit_width, val->token_data, 10);
     return llvm::ConstantInt::get(*ctx->context, ap_int);
 }
 

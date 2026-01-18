@@ -250,7 +250,17 @@ auto spp::asts::TypeStatementAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::TypeStatementAst::stage_9_code_gen_1(
+auto spp::asts::TypeStatementAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *)
+    -> void {
+    sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+    sm->move_out_of_current_scope();
+}
+
+
+auto spp::asts::TypeStatementAst::stage_10_code_gen_1(
     ScopeManager *sm,
     CompilerMetaData *,
     codegen::LLvmCtx *)
@@ -262,7 +272,7 @@ auto spp::asts::TypeStatementAst::stage_9_code_gen_1(
 }
 
 
-auto spp::asts::TypeStatementAst::stage_10_code_gen_2(
+auto spp::asts::TypeStatementAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *,
     codegen::LLvmCtx *)

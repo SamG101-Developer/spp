@@ -89,6 +89,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
 
     std::unique_ptr<codegen::LlvmVarSymInfo> llvm_info;
 
+    std::unique_ptr<asts::Ast> comptime_value;
+
     VariableSymbol(
         std::shared_ptr<asts::IdentifierAst> name,
         std::shared_ptr<asts::TypeAst> type,

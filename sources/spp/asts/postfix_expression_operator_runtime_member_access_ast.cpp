@@ -8,7 +8,9 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.obj_utils;
 import spp.analyse.utils.type_utils;
+import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.identifier_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
@@ -18,10 +20,11 @@ import spp.asts.object_initializer_argument_group_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.token_ast;
+import spp.asts.tuple_literal_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
-import spp.asts.utils.ast_utils;
 import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.strings;
 import spp.codegen.llvm_type;
@@ -187,7 +190,38 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
 }
 
 
-auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_10_code_gen_2(
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Resolve the left-hand-side expression.
+    meta->postfix_expression_lhs->stage_9_comptime_resolution(sm, meta);
+
+    // Handle numeric index access (for tuples).
+    if (std::isdigit(name->val[0]) and meta->cmp_result->to<TupleLiteralAst>()) {
+        const auto cmp_tup = meta->cmp_result->to<TupleLiteralAst>();
+        const auto index = std::stoul(name->val);
+        auto cmp_field = ast_clone(cmp_tup->elems[index]);
+        meta->cmp_result = std::move(cmp_field);
+        return;
+    }
+
+    // Handle numeric index access (for arrays).
+    if (std::isdigit(name->val[0]) and meta->cmp_result->to<ArrayLiteralExplicitElementsAst>()) {
+        const auto cmp_tup = meta->cmp_result->to<ArrayLiteralExplicitElementsAst>();
+        const auto index = std::stoul(name->val);
+        auto cmp_field = ast_clone(cmp_tup->elems[index]);
+        meta->cmp_result = std::move(cmp_field);
+        return;
+    }
+
+    // Handle normal attribute access (for objects).
+    auto cmp_obj = meta->cmp_result->to<ObjectInitializerAst>();
+    meta->cmp_result = analyse::utils::obj_utils::get_attribute_value(cmp_obj, name.get());
+}
+
+
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -210,7 +244,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_10_code_g
     }
     else {
         // Materialize the lhs expression into a temporary.
-        const auto lhs_val = meta->postfix_expression_lhs->stage_10_code_gen_2(sm, meta, ctx);
+        const auto lhs_val = meta->postfix_expression_lhs->stage_11_code_gen_2(sm, meta, ctx);
         const auto temp = ctx->builder.CreateAlloca(llvm_type, nullptr, "temp.member_access.lhs" + uid);
         ctx->builder.CreateStore(lhs_val, temp);
         base_ptr = temp;

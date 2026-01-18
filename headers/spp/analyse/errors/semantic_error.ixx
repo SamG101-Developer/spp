@@ -129,6 +129,7 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppMissingMainFunctionError;
     SPP_EXP_CLS struct SppInvalidVoidValueError;
     SPP_EXP_CLS struct SppBorrowLifetimeIncreaseError;
+    SPP_EXP_CLS struct SppInvalidComptimeOperationError;
 }
 
 
@@ -583,4 +584,9 @@ SPP_EXP_CLS struct spp::analyse::errors::SppInvalidVoidValueError final : Semant
 
 SPP_EXP_CLS struct spp::analyse::errors::SppBorrowLifetimeIncreaseError final : SemanticError {
     explicit SppBorrowLifetimeIncreaseError(asts::Ast const& extension_ast, asts::Ast const& lhs_init_definition, asts::Ast const& rhs_borrow_definition);
+};
+
+
+SPP_EXP_CLS struct spp::analyse::errors::SppInvalidComptimeOperationError final : SemanticError { // Todo: Check other comptime error: merge?
+    explicit SppInvalidComptimeOperationError(asts::Ast const& ast);
 };

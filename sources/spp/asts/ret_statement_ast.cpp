@@ -141,7 +141,19 @@ auto spp::asts::RetStatementAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::RetStatementAst::stage_10_code_gen_2(
+auto spp::asts::RetStatementAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // If there is no expression, then return nullptr.
+    if (expr == nullptr) { return; }
+
+    // Resolve the expression.
+    expr->stage_9_comptime_resolution(sm, meta);
+}
+
+
+auto spp::asts::RetStatementAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -153,14 +165,14 @@ auto spp::asts::RetStatementAst::stage_10_code_gen_2(
             meta->save();
             meta->assignment_target_type = m_ret_type;
             const auto ret_val = codegen::llvm_materialize(*expr, sm, meta, ctx);
-            const auto llvm_ret_val = ret_val->stage_10_code_gen_2(sm, meta, ctx);
+            const auto llvm_ret_val = ret_val->stage_11_code_gen_2(sm, meta, ctx);
             ctx->builder.CreateRet(llvm_ret_val);
             meta->restore();
         }
 
         // Otherwise, generate normally.
         else {
-            const auto llvm_ret_val = expr->stage_10_code_gen_2(sm, meta, ctx);
+            const auto llvm_ret_val = expr->stage_11_code_gen_2(sm, meta, ctx);
             ctx->builder.CreateRet(llvm_ret_val);
         }
 

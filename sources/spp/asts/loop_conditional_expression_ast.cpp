@@ -137,7 +137,7 @@ auto spp::asts::LoopConditionalExpressionAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::LoopConditionalExpressionAst::stage_10_code_gen_2(
+auto spp::asts::LoopConditionalExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -171,12 +171,12 @@ auto spp::asts::LoopConditionalExpressionAst::stage_10_code_gen_2(
 
     // Generate the initial condition.
     ctx->builder.SetInsertPoint(loop_cond_bb);
-    const auto llvm_cond = cond->stage_10_code_gen_2(sm, meta, ctx);
+    const auto llvm_cond = cond->stage_11_code_gen_2(sm, meta, ctx);
     ctx->builder.CreateCondBr(llvm_cond, loop_body_bb, loop_else_bb);
 
     // Generate the loop body block.
     ctx->builder.SetInsertPoint(loop_body_bb);
-    body->stage_10_code_gen_2(sm, meta, ctx);
+    body->stage_11_code_gen_2(sm, meta, ctx);
     if (ctx->builder.GetInsertBlock()->getTerminator() == nullptr) {
         ctx->builder.CreateBr(loop_cond_bb);
     }
@@ -184,7 +184,7 @@ auto spp::asts::LoopConditionalExpressionAst::stage_10_code_gen_2(
     // Generate the else block if it exists.
     ctx->builder.SetInsertPoint(loop_else_bb);
     if (else_block != nullptr) {
-        const auto else_val = else_block->stage_10_code_gen_2(sm, meta, ctx);
+        const auto else_val = else_block->stage_11_code_gen_2(sm, meta, ctx);
         const auto else_end_bb = ctx->builder.GetInsertBlock();
         if (else_end_bb->getTerminator() == nullptr) {
             phi->addIncoming(else_val, else_end_bb);

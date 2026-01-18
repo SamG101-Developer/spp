@@ -94,7 +94,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_7_analyse_semanti
 }
 
 
-auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_10_code_gen_2(
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -140,7 +140,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_10_code_gen_2(
     meta->save();
     meta->assignment_target = nullptr;
     meta->assignment_target_type = nullptr;
-    check->stage_10_code_gen_2(sm, meta, ctx);
+    check->stage_11_code_gen_2(sm, meta, ctx);
     meta->restore();
 
     // Next, in case the try succeeded, we need to extract the Output value.
@@ -154,7 +154,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_10_code_gen_2(
     });
 
     output_extract->stage_7_analyse_semantics(sm, meta); // Never going to create a scope.
-    return output_extract->stage_10_code_gen_2(sm, meta, ctx);
+    return output_extract->stage_11_code_gen_2(sm, meta, ctx);
 }
 
 

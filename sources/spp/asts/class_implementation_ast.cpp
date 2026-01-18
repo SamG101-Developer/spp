@@ -131,14 +131,14 @@ auto spp::asts::ClassImplementationAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::ClassImplementationAst::stage_10_code_gen_2(
+auto spp::asts::ClassImplementationAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate code for each member.
     for (auto const &m : members) {
-        m->stage_10_code_gen_2(sm, meta, ctx);
+        m->stage_11_code_gen_2(sm, meta, ctx);
     }
     return nullptr;
 }

@@ -141,7 +141,7 @@ auto spp::asts::GenWithExpressionAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::GenWithExpressionAst::stage_10_code_gen_2(
+auto spp::asts::GenWithExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -167,7 +167,7 @@ auto spp::asts::GenWithExpressionAst::stage_10_code_gen_2(
     sm->reset(current_scope, iter_copy);
 
     // Reset the scope to before the loop and then generate it.
-    return loop_expr->stage_10_code_gen_2(sm, meta, ctx);
+    return loop_expr->stage_11_code_gen_2(sm, meta, ctx);
 }
 
 

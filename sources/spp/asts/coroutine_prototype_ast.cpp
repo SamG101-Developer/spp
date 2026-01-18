@@ -32,6 +32,7 @@ auto spp::asts::CoroutinePrototypeAst::clone() const
     -> std::unique_ptr<Ast> {
     auto ast = std::make_unique<CoroutinePrototypeAst>(
         ast_clone_vec(annotations),
+        nullptr,
         ast_clone(tok_fun),
         ast_clone(name),
         ast_clone(generic_param_group),
@@ -96,7 +97,7 @@ auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
 }
 
 
-auto spp::asts::CoroutinePrototypeAst::stage_10_code_gen_2(
+auto spp::asts::CoroutinePrototypeAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -127,7 +128,7 @@ auto spp::asts::CoroutinePrototypeAst::stage_10_code_gen_2(
         meta->enclosing_function_flavour = this->tok_fun.get();
         meta->enclosing_function_scope = sm->current_scope;
         meta->enclosing_function_ret_type.emplace_back(ret_type_sym->fq_name());
-        impl->stage_10_code_gen_2(sm, meta, ctx);
+        impl->stage_11_code_gen_2(sm, meta, ctx);
         meta->restore();
 
         // Reset to the start of the resume function to build the switch.
@@ -172,7 +173,7 @@ auto spp::asts::CoroutinePrototypeAst::stage_10_code_gen_2(
         for (auto &&[_, generic_impl] : m_generic_substitutions) {
             auto tm = ScopeManager(sm->global_scope, m_scope->parent);
             tm.reset(tm.current_scope);
-            generic_impl->stage_10_code_gen_2(&tm, meta, ctx);
+            generic_impl->stage_11_code_gen_2(&tm, meta, ctx);
         }
     }
 

@@ -36,6 +36,10 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentShorthandAst final : Obje
         std::unique_ptr<TokenAst> tok_ellipsis,
         std::unique_ptr<ExpressionAst> &&val);
 
+    static auto create_autofill(
+        std::unique_ptr<ExpressionAst> &&val)
+        -> std::unique_ptr<ObjectInitializerArgumentShorthandAst>;
+
     ~ObjectInitializerArgumentShorthandAst() override;
 
     SPP_AST_KEY_FUNCTIONS;

@@ -73,7 +73,7 @@ auto spp::asts::GenericParameterCompAst::stage_7_analyse_semantics(
 }
 
 
-auto spp::asts::GenericParameterCompAst::stage_10_code_gen_2(
+auto spp::asts::GenericParameterCompAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -88,7 +88,7 @@ auto spp::asts::GenericParameterCompAst::stage_10_code_gen_2(
     meta->let_stmt_from_uninitialized = not is_opt;
     meta->let_stmt_value = is_opt ? is_opt->default_val.get() : nullptr;
     const auto var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(cast_name), nullptr);
-    const auto alloca = var->stage_10_code_gen_2(sm, meta, ctx);
+    const auto alloca = var->stage_11_code_gen_2(sm, meta, ctx);
     meta->restore();
 
     return alloca;

@@ -30,7 +30,7 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentKeywordAst final : Object
      * @param val The expression that is being passed as the argument to the object initializer.
      */
     ObjectInitializerArgumentKeywordAst(
-        decltype(name) &&name,
+        decltype(name) name,
         decltype(tok_assign) &&tok_assign,
         decltype(val) &&val);
 

@@ -74,7 +74,16 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::stage_7_analyse_semantics(
 }
 
 
-auto spp::asts::PostfixExpressionOperatorDerefAst::stage_10_code_gen_2(
+auto spp::asts::PostfixExpressionOperatorDerefAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // As this is cmp context, just return the "lhs" generation.
+    meta->postfix_expression_lhs->stage_9_comptime_resolution(sm, meta);
+}
+
+
+auto spp::asts::PostfixExpressionOperatorDerefAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -83,7 +92,7 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::stage_10_code_gen_2(
     (void)sm;
     (void)meta;
     (void)ctx;
-    throw std::runtime_error("PostfixExpressionOperatorDerefAst::stage_10_code_gen_2 not implemented yet");
+    throw std::runtime_error("PostfixExpressionOperatorDerefAst::stage_11_code_gen_2 not implemented yet");
 }
 
 

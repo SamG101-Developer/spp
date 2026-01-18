@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.type_utils;
+import spp.asts.boolean_literal_ast;
 import spp.asts.expression_ast;
 import spp.asts.token_ast;
 import spp.asts.generate.common_types;
@@ -66,6 +67,20 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::stage_7_analyse_semantic
             .with_args(*meta->postfix_expression_lhs, *lhs_type, "not expression")
             .raises_from(sm->current_scope);
     }
+}
+
+
+auto spp::asts::PostfixExpressionOperatorKeywordNotAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // The "lhs" will be boolean based on prevous analysis.
+    meta->postfix_expression_lhs->stage_9_comptime_resolution(sm, meta);
+    const auto cmp_lhs_bool = meta->cmp_result->to<BooleanLiteralAst>();
+
+    // Extract the value inside the boolean and invert it.
+    const auto p = pos_start();
+    meta->cmp_result = cmp_lhs_bool->is_true() ? BooleanLiteralAst::False(p) : BooleanLiteralAst::True(p);
 }
 
 

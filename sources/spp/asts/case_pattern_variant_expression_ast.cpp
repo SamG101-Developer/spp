@@ -67,7 +67,7 @@ auto spp::asts::CasePatternVariantExpressionAst::stage_7_analyse_semantics(
     SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
     expr->stage_7_analyse_semantics(sm, meta);
 
-    analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_dummy(
+    analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_dummy_core(
         {this}, sm, meta);
 }
 
@@ -83,12 +83,25 @@ auto spp::asts::CasePatternVariantExpressionAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::CasePatternVariantExpressionAst::stage_10_code_gen_2(
+auto spp::asts::CasePatternVariantExpressionAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Transform the pattern into comptime values; all need to be true.
+    auto comptime_tranforms = analyse::utils::case_utils::create_and_analyse_pattern_eq_comptime(
+        {this}, sm, meta);
+
+    // Return the single result (only one expression will be here).
+    meta->cmp_result = std::move(comptime_tranforms[0]);
+}
+
+
+auto spp::asts::CasePatternVariantExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    const auto llvm_master_transform = analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs(
+    const auto llvm_master_transform = analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_llvm(
         {this}, sm, meta, ctx);
     return llvm_master_transform[0];
 }

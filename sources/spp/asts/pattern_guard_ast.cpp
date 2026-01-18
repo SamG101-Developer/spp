@@ -85,11 +85,20 @@ auto spp::asts::PatternGuardAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::PatternGuardAst::stage_10_code_gen_2(
+auto spp::asts::PatternGuardAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Resolve the expression at compile-time.
+    expr->stage_9_comptime_resolution(sm, meta);
+}
+
+
+auto spp::asts::PatternGuardAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the expression.
-    return expr->stage_10_code_gen_2(sm, meta, ctx);
+    return expr->stage_11_code_gen_2(sm, meta, ctx);
 }

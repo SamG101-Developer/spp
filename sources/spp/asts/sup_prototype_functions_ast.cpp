@@ -223,7 +223,19 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::SupPrototypeFunctionsAst::stage_9_code_gen_1(
+auto spp::asts::SupPrototypeFunctionsAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Move to the next scope.
+    sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+    impl->stage_9_comptime_resolution(sm, meta);
+    sm->move_out_of_current_scope();
+}
+
+
+auto spp::asts::SupPrototypeFunctionsAst::stage_10_code_gen_1(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -231,13 +243,13 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_9_code_gen_1(
     // Move to the next scope.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
-    impl->stage_9_code_gen_1(sm, meta, ctx);
+    impl->stage_10_code_gen_1(sm, meta, ctx);
     sm->move_out_of_current_scope();
     return nullptr;
 }
 
 
-auto spp::asts::SupPrototypeFunctionsAst::stage_10_code_gen_2(
+auto spp::asts::SupPrototypeFunctionsAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -253,7 +265,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_10_code_gen_2(
 
     // Generate the implementation if not a generic scope.
     if (not is_generic_scope) {
-        impl->stage_10_code_gen_2(sm, meta, ctx);
+        impl->stage_11_code_gen_2(sm, meta, ctx);
     }
 
     // Generic sup block so not generating for it.

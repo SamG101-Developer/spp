@@ -74,10 +74,10 @@
 #define SPP_STRING_END return raw_string
 
 #define SPP_AST_KEY_FUNCTIONS                                          \
-    auto pos_start() const -> std::size_t override;                    \
-    auto pos_end() const -> std::size_t override;                      \
-    auto clone() const -> std::unique_ptr<Ast> override;               \
-    explicit operator std::string() const override;                    \
+    SPP_ATTR_NODISCARD auto pos_start() const -> std::size_t override;                    \
+    SPP_ATTR_NODISCARD auto pos_end() const -> std::size_t override;                      \
+    SPP_ATTR_NODISCARD auto clone() const -> std::unique_ptr<Ast> override;               \
+    SPP_ATTR_NODISCARD explicit operator std::string() const override;                    \
 
 #define SPP_ENFORCE_EXPRESSION_SUBTYPE(ast)                                                     \
     if (ast and ((ast->to<TypeAst>() != nullptr) or (ast->to<TokenAst>() != nullptr))) {        \

@@ -679,10 +679,11 @@ auto spp::analyse::utils::func_utils::create_callable_prototype(
 
     // Create a function prototype based off of the parameter and return type.
     // Todo: When might it be a coroutine, not a subroutine?
+    // Todo: Do we set "cmp" here for the usbroutine ever?
     auto dummy_param_group = std::make_unique<asts::FunctionParameterGroupAst>(nullptr, std::move(dummy_param_types), nullptr);
     auto dummy_name = std::make_unique<asts::IdentifierAst>(0, "<anonymous>");
     auto dummy_overload = std::make_unique<asts::SubroutinePrototypeAst>(
-        SPP_NO_ANNOTATIONS, nullptr, std::move(dummy_name), nullptr, std::move(dummy_param_group), nullptr,
+        SPP_NO_ANNOTATIONS, nullptr, nullptr, std::move(dummy_name), nullptr, std::move(dummy_param_group), nullptr,
         std::move(dummy_return_type), nullptr);
 
     // Return the function prototype.

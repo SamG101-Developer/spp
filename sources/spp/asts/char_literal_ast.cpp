@@ -8,6 +8,7 @@ import spp.analyse.scopes.symbols;
 import spp.asts.ast;
 import spp.asts.token_ast;
 import spp.asts.generate.common_types;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import llvm;
 
@@ -62,14 +63,22 @@ spp::asts::CharLiteralAst::operator std::string() const {
 }
 
 
-auto spp::asts::CharLiteralAst::stage_10_code_gen_2(
+auto spp::asts::CharLiteralAst::stage_9_comptime_resolution(
+    ScopeManager *,
+    CompilerMetaData *meta)
+    -> void {
+    // Clone and return the char literal as is for compile-time resolution.
+    meta->cmp_result = ast_clone(this);
+}
+
+
+auto spp::asts::CharLiteralAst::stage_11_code_gen_2(
     ScopeManager *,
     CompilerMetaData *,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Create the LLVM constant integer value.
-    const auto bit_width = llvm::Type::getInt8Ty(*ctx->context)->getBitWidth();
-    const auto ap_int = llvm::APInt(bit_width, val->token_data.c_str(), 10);
+    const auto ap_int = llvm::APInt(8, val->token_data, false);
     return llvm::ConstantInt::get(*ctx->context, ap_int);
 }
 

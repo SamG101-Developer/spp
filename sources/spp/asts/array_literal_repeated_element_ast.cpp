@@ -134,7 +134,20 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::ArrayLiteralRepeatedElementAst::stage_10_code_gen_2(
+auto spp::asts::ArrayLiteralRepeatedElementAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Convert the inner element to a compile-time value.
+    elem->stage_9_comptime_resolution(sm, meta);
+
+    // Wrap the compile-time array value.
+    meta->cmp_result = std::make_unique<ArrayLiteralRepeatedElementAst>(
+        nullptr, std::move(meta->cmp_result), nullptr, ast_clone(size), nullptr);
+}
+
+
+auto spp::asts::ArrayLiteralRepeatedElementAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -148,7 +161,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_10_code_gen_2(
         auto vals = std::vector<llvm::Value*>{};
         vals.reserve(num_vals);
         for (auto i = 0uz; i < vals.capacity(); ++i) {
-            vals.emplace_back(elem->stage_10_code_gen_2(sm, meta, ctx));
+            vals.emplace_back(elem->stage_11_code_gen_2(sm, meta, ctx));
         }
 
         // Create the array type.
@@ -173,7 +186,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_10_code_gen_2(
     }
 
     // Constant array creation.
-    const auto comp_val = llvm::cast<llvm::Constant>(elem->stage_10_code_gen_2(sm, meta, ctx));
+    const auto comp_val = llvm::cast<llvm::Constant>(elem->stage_11_code_gen_2(sm, meta, ctx));
     const auto comp_vals = std::vector(num_vals, comp_val);
 
     const auto elem_ty = comp_val->getType();

@@ -4,7 +4,6 @@ module;
 export module spp.asts.statement_ast;
 import spp.asts.ast;
 import spp.asts.mixins.type_inferrable_ast;
-
 import std;
 
 namespace spp::asts {

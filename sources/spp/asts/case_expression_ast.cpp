@@ -180,7 +180,32 @@ auto spp::asts::CaseExpressionAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
+auto spp::asts::CaseExpressionAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Load meta information for compile-time resolution.
+    meta->save();
+    meta->case_condition = cond.get();
+
+    // Delegate to the branchs' compile-time resolution (break at first match).
+    for (auto const &branch : branches) {
+        branch->stage_9_comptime_resolution(sm, meta);
+        if (meta->cmp_result != nullptr and
+            meta->cmp_result->to<BooleanLiteralAst>() != nullptr and
+            meta->cmp_result->to<BooleanLiteralAst>()->is_true()) {
+            // Branch matched, stop here.
+            meta->restore();
+            return;
+        }
+    }
+
+    // Otherwise, if no branches matched, this is non-returning, so nullptr is fine.
+    meta->restore();
+}
+
+
+auto spp::asts::CaseExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -191,7 +216,7 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
     // Determine if this "case" will be yielding an expression, and generate the condition.
     const auto uid = spp::utils::generate_uid(this);
     const auto is_expr = meta->assignment_target != nullptr;
-    cond->stage_10_code_gen_2(sm, meta, ctx);
+    cond->stage_11_code_gen_2(sm, meta, ctx);
 
     // Get the function, and create the end basic block.
     const auto func = ctx->builder.GetInsertBlock()->getParent();
@@ -215,7 +240,7 @@ auto spp::asts::CaseExpressionAst::stage_10_code_gen_2(
     // Generate each branch (no return value because phi is modified by the branch).
     ctx->builder.SetInsertPoint(case_entry_bb);
     for (auto const &branch : branches) {
-        branch->stage_10_code_gen_2(sm, meta, ctx);
+        branch->stage_11_code_gen_2(sm, meta, ctx);
     }
 
     meta->restore();
@@ -243,8 +268,8 @@ auto spp::asts::CaseExpressionAst::infer_type(
 
     // Return the branches' return type. If there are any branches, otherwise Void.
     return branches_type_info.empty()
-               ? generate::common_types::void_type(pos_start())
-               : std::get<1>(master_branch_type_info);
+        ? generate::common_types::void_type(pos_start())
+        : std::get<1>(master_branch_type_info);
 }
 
 

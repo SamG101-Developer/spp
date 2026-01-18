@@ -26,6 +26,7 @@ auto spp::asts::SubroutinePrototypeAst::clone() const
     -> std::unique_ptr<Ast> {
     auto ast = std::make_unique<SubroutinePrototypeAst>(
         ast_clone_vec(annotations),
+        ast_clone(tok_cmp),
         ast_clone(tok_fun),
         ast_clone(name),
         ast_clone(generic_param_group),
@@ -64,6 +65,7 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
     meta->enclosing_function_flavour = this->tok_fun.get();
     meta->enclosing_function_ret_type.emplace_back(ret_type_sym->fq_name());
     meta->enclosing_function_scope = sm->current_scope;
+    meta->enclosing_function_cmp = tok_cmp.get();
     impl->stage_7_analyse_semantics(sm, meta);
 
     // Handle the "!" never type.
@@ -77,7 +79,8 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
 
     // Check there is a return statement at the end (for non-void functions).
     const auto is_void = analyse::utils::type_utils::symbolic_eq(
-        *return_type, *generate::common_types_precompiled::VOID, *sm->current_scope, *sm->current_scope);
+        *return_type, *generate::common_types_precompiled::VOID,
+        *sm->current_scope, *sm->current_scope);
 
     if (is_void or is_never or no_impl_annotation or abstract_annotation or (not impl->members.empty() and impl->members.back()->to<RetStatementAst>())) {
     }

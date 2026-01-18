@@ -47,6 +47,7 @@ import genex;
 
 spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     decltype(annotations) &&annotations,
+    decltype(tok_fun) &&tok_cmp,
     decltype(tok_fun) &&tok_fun,
     decltype(name) &&name,
     decltype(generic_param_group) &&generic_param_group,
@@ -60,6 +61,7 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     no_impl_annotation(nullptr), inline_annotation(nullptr),
     llvm_func(nullptr),
     annotations(std::move(annotations)),
+    tok_cmp(std::move(tok_cmp)),
     tok_fun(std::move(tok_fun)),
     name(std::move(name)),
     generic_param_group(std::move(generic_param_group)),
@@ -72,6 +74,7 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_arrow, lex::SppTokenType::TK_ARROW_RIGHT, "->");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->impl);
     m_original_impl = ast_clone(this->impl.get());
+    m_non_generic_impl = this;
 }
 
 
@@ -99,6 +102,7 @@ auto spp::asts::FunctionPrototypeAst::clone() const
 spp::asts::FunctionPrototypeAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_EXTEND(annotations, "\n").append(not annotations.empty() ? "\n" : "");
+    SPP_STRING_APPEND(tok_cmp).append(tok_cmp ? " " : "");
     SPP_STRING_APPEND(tok_fun).append(" ");
     SPP_STRING_APPEND(name);
     SPP_STRING_APPEND(generic_param_group);
@@ -443,7 +447,19 @@ auto spp::asts::FunctionPrototypeAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::FunctionPrototypeAst::stage_9_code_gen_1(
+auto spp::asts::FunctionPrototypeAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *)
+    -> void {
+    // Manual scope skipping.
+    const auto final_scope = sm->current_scope->final_child_scope();
+    while (sm->current_scope != final_scope) {
+        sm->move_to_next_scope(false);
+    }
+}
+
+
+auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_1(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -471,7 +487,7 @@ auto spp::asts::FunctionPrototypeAst::stage_9_code_gen_1(
 }
 
 
-auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
+auto spp::asts::FunctionPrototypeAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -486,8 +502,8 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
 
     // Generate the parameters as variables.
     if (llvm_func != nullptr) {
-        param_group->stage_10_code_gen_2(sm, meta, ctx);
-        generic_param_group->stage_10_code_gen_2(sm, meta, ctx);
+        param_group->stage_11_code_gen_2(sm, meta, ctx);
+        generic_param_group->stage_11_code_gen_2(sm, meta, ctx);
     }
 
     const auto ret_type_sym = sm->current_scope->get_type_symbol(return_type);
@@ -508,15 +524,15 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
     }
     else if (no_impl_annotation and no_impl_annotation->name->val == "compiler_builtin") {
         // Get manual IR from a codegen module.
-        impl->stage_10_code_gen_2(sm, meta, ctx);
+        impl->stage_11_code_gen_2(sm, meta, ctx);
     }
     else if (not is_extern) {
         // Generate the function implementation.
-        impl->stage_10_code_gen_2(sm, meta, ctx);
+        impl->stage_11_code_gen_2(sm, meta, ctx);
     }
     else {
         // Skip the scope, linker will provide implementation for ffi.
-        impl->stage_10_code_gen_2(sm, meta, ctx);
+        impl->stage_11_code_gen_2(sm, meta, ctx);
     }
 
     meta->restore();
@@ -540,7 +556,7 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_2(
         generic_proto->stage_7_analyse_semantics(&tm, meta);
 
         tm.reset(current_scope, current_iter);
-        generic_proto->stage_10_code_gen_2(&tm, meta, ctx);
+        generic_proto->stage_11_code_gen_2(&tm, meta, ctx);
     }
 
     return nullptr;

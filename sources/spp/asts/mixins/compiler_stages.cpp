@@ -1,4 +1,12 @@
+module;
+#include <spp/analyse/macros.hpp>
+
 module spp.asts.mixins.compiler_stages;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
+import spp.asts.ast;
+import spp.codegen.llvm_ctx;
 
 
 auto spp::asts::mixins::CompilerStages::stage_1_pre_process(
@@ -56,7 +64,18 @@ auto spp::asts::mixins::CompilerStages::stage_8_check_memory(
 }
 
 
-auto spp::asts::mixins::CompilerStages::stage_9_code_gen_1(
+auto spp::asts::mixins::CompilerStages::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *)
+    -> void {
+    analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidComptimeOperationError>()
+        .with_args(dynamic_cast<Ast&>(*this))
+        .raises_from(sm->current_scope);
+    std::unreachable();
+}
+
+
+auto spp::asts::mixins::CompilerStages::stage_10_code_gen_1(
     ScopeManager *,
     CompilerMetaData *,
     codegen::LLvmCtx *)
@@ -65,7 +84,7 @@ auto spp::asts::mixins::CompilerStages::stage_9_code_gen_1(
 }
 
 
-auto spp::asts::mixins::CompilerStages::stage_10_code_gen_2(
+auto spp::asts::mixins::CompilerStages::stage_11_code_gen_2(
     ScopeManager *,
     CompilerMetaData *,
     codegen::LLvmCtx *)

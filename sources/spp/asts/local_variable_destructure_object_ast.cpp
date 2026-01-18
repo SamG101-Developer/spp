@@ -200,14 +200,25 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::LocalVariableDestructureObjectAst::stage_10_code_gen_2(
+auto spp::asts::LocalVariableDestructureObjectAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Comptime resolve each element.
+    for (auto &&x : m_new_asts) {
+        x->stage_9_comptime_resolution(sm, meta);
+    }
+}
+
+
+auto spp::asts::LocalVariableDestructureObjectAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the "let" statements for each element.
     for (auto &&ast : m_new_asts) {
-        ast->stage_10_code_gen_2(sm, meta, ctx);
+        ast->stage_11_code_gen_2(sm, meta, ctx);
     }
     return nullptr;
 }

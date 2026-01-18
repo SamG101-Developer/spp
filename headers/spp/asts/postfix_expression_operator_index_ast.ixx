@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.postfix_expression_operator_index_ast;
 import spp.asts.postfix_expression_operator_ast;
-
 import std;
 
 namespace spp::asts {
@@ -68,6 +67,8 @@ public:
      * @param[in,out] meta Associated metadata.
      */
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
      * Type inference is done with the mapped function for the @c index operator on the left-hand-side type. For

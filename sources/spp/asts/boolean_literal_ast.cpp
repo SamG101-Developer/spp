@@ -6,6 +6,7 @@ import spp.asts.ast;
 import spp.asts.expression_ast;
 import spp.asts.generate.common_types;
 import spp.asts.token_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
@@ -62,6 +63,7 @@ spp::asts::BooleanLiteralAst::operator std::string() const {
 auto spp::asts::BooleanLiteralAst::True(
     const std::size_t pos)
     -> std::unique_ptr<BooleanLiteralAst> {
+    // Create a boolean literal AST representing the "true" value.
     auto tok = std::make_unique<TokenAst>(pos, lex::SppTokenType::KW_TRUE, "true");
     return std::make_unique<BooleanLiteralAst>(std::move(tok));
 }
@@ -70,12 +72,29 @@ auto spp::asts::BooleanLiteralAst::True(
 auto spp::asts::BooleanLiteralAst::False(
     const std::size_t pos)
     -> std::unique_ptr<BooleanLiteralAst> {
+    // Create a boolean literal AST representing the "false" value.
     auto tok = std::make_unique<TokenAst>(pos, lex::SppTokenType::KW_FALSE, "false");
     return std::make_unique<BooleanLiteralAst>(std::move(tok));
 }
 
 
-auto spp::asts::BooleanLiteralAst::stage_10_code_gen_2(
+auto spp::asts::BooleanLiteralAst::is_true() const
+    -> bool {
+    // Check if the boolean literal represents a true value.
+    return tok_bool->token_type == lex::SppTokenType::KW_TRUE;
+}
+
+
+auto spp::asts::BooleanLiteralAst::stage_9_comptime_resolution(
+    ScopeManager *,
+    CompilerMetaData *meta)
+    -> void {
+    // Clone and return the boolean literal as is for compile-time resolution.
+    meta->cmp_result = ast_clone(this);
+}
+
+
+auto spp::asts::BooleanLiteralAst::stage_11_code_gen_2(
     ScopeManager *,
     CompilerMetaData *,
     codegen::LLvmCtx *ctx)

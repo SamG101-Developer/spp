@@ -7,7 +7,6 @@ import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.module_member_ast;
 import spp.asts.sup_member_ast;
 import spp.codegen.llvm_ctx;
-
 import llvm;
 import std;
 
@@ -38,7 +37,11 @@ namespace spp::analyse::scopes {
  * This ASt is further inherited into the SubroutinePrototypeAst and CoroutinePrototypeAst, which add additional
  * analysis checks.
  */
-SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : virtual Ast, mixins::VisibilityEnabledAst, SupMemberAst, ModuleMemberAst {
+SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst :
+    virtual Ast,
+    SupMemberAst,
+    ModuleMemberAst,
+    mixins::VisibilityEnabledAst {
 protected:
     /**
      * Using a list because there are times that the collection is iterated whilst being appended to.
@@ -46,6 +49,9 @@ protected:
     std::list<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>> m_generic_substitutions;
 
     std::unique_ptr<FunctionImplementationAst> m_original_impl;
+
+public:
+    FunctionPrototypeAst* m_non_generic_impl;
 
 public:
     /**
@@ -78,12 +84,6 @@ public:
      */
     AnnotationAst *inline_annotation;
 
-    // /**
-    //  * If this function is generic, then all generic implementations / substitutions are stored here, for code
-    //  * generation.
-    //  */
-    // std::vector<std::unique_ptr<FunctionPrototypeAst>> generic_implementations;
-
     /**
      * The LLVM generated function for this prototype. This is set during the first pass of code generation, and used
      * for further codegen in the second pass (for function calls, etc).
@@ -96,6 +96,13 @@ public:
      * and @c \@hot/\@cold.
      */
     std::vector<std::unique_ptr<AnnotationAst>> annotations;
+
+    /**
+     * The optional @c cmp token indicates that this function prototype is a compile-time function. This means that the
+     * function can be evaluated at compile time, and can be used in compile-time contexts.
+     * @note only supported with subroutines, not coroutines, at present.
+     */
+    std::unique_ptr<TokenAst> tok_cmp;
 
     /**
      * The @c fun or @c cor keyword that represents the start of the function prototype. This is used to indicate that a
@@ -147,6 +154,7 @@ public:
     /**
      * Construct the FunctionPrototypeAst with the arguments matching the members.
      * @param annotations The list of annotations that are applied to this function prototype.
+     * @param tok_cmp The optional @c cmp token indicating that this function prototype is a compile-time function.
      * @param tok_fun The @c fun or @c cor keyword that represents the start of the function prototype.
      * @param name The name of the function prototype.
      * @param generic_param_group An optional generic parameter group for the function prototype.
@@ -157,6 +165,7 @@ public:
      */
     FunctionPrototypeAst(
         decltype(annotations) &&annotations,
+        decltype(tok_fun) &&tok_cmp,
         decltype(tok_fun) &&tok_fun,
         decltype(name) &&name,
         decltype(generic_param_group) &&generic_param_group,
@@ -202,7 +211,9 @@ public:
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_9_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

@@ -144,7 +144,7 @@ auto spp::asts::LoopControlFlowStatementAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::LoopControlFlowStatementAst::stage_10_code_gen_2(
+auto spp::asts::LoopControlFlowStatementAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -156,7 +156,7 @@ auto spp::asts::LoopControlFlowStatementAst::stage_10_code_gen_2(
     // TODO
 
     // If there is an attached expression, code generate it.
-    return expr ? expr->stage_10_code_gen_2(sm, meta, ctx) : nullptr;
+    return expr ? expr->stage_11_code_gen_2(sm, meta, ctx) : nullptr;
 }
 
 

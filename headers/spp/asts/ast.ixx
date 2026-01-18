@@ -58,21 +58,21 @@ public:
      * the start position of the first field, until a TokenAst is reached.
      * @return The first position this AST encompasses.
      */
-    virtual auto pos_start() const -> std::size_t = 0;
+    SPP_ATTR_NODISCARD virtual auto pos_start() const -> std::size_t = 0;
 
     /**
      * The end position is the final position in the source code that contains this AST. An AST will recursively get the
      * end position of the final field, until a TokenAst is reached.
      * @return The final position this AST encompasses.
      */
-    virtual auto pos_end() const -> std::size_t = 0;
+    SPP_ATTR_NODISCARD virtual auto pos_end() const -> std::size_t = 0;
 
     /**
      * The size of an AST is the number of tokens it encompasses. This is used to determine the size of the AST in the
      * source code, and is used for error reporting. Calculated by subtracting the start position from the end position.
      * @return The size of the AST in tokens.
      */
-    auto size() const -> std::size_t;
+    SPP_ATTR_NODISCARD auto size() const -> std::size_t;
 
     /**
      * The clone operator that deep-copies the AST and all its children ASTs. This is used to create a new AST that is a
@@ -81,20 +81,20 @@ public:
      * @code std::unique_ptr<T>@endcode to the base @c Ast class.
      * @return The cloned AST as a unique pointer to the base Ast class.
      */
-    virtual auto clone() const -> std::unique_ptr<Ast> = 0;
+    SPP_ATTR_NODISCARD virtual auto clone() const -> std::unique_ptr<Ast> = 0;
 
     /**
      * Print an AST using raw-formatting. This does not handle indentation, and prints the AST as a single line.
      * Recursively prints child nodes using their respective "operator std::string()" methods.
      */
-    virtual explicit operator std::string() const = 0;
+    SPP_ATTR_NODISCARD virtual explicit operator std::string() const = 0;
 
     /**
      * Overridable hash function for AST nodes, used for hashing ASTs in data structures (particularly in Ankerl's hash
      * map). Implemented in the @c IdentifierAst and @c TypeIdentifierAst nodes.
      * @return The hash value of the AST.
      */
-    virtual auto ankerl_hash() const -> std::size_t;
+    SPP_ATTR_NODISCARD virtual auto ankerl_hash() const -> std::size_t;
 
     /**
      * Non-constant node casting to a target @T type. This uses @c dynamic_cast to safely cast the AST node to the
@@ -122,11 +122,11 @@ public:
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto get_ast_scope() const -> analyse::scopes::Scope* {
+    SPP_ATTR_NODISCARD auto get_ast_scope() const -> analyse::scopes::Scope* {
         return m_scope;
     }
 
-    auto get_ast_ctx() const -> Ast* {
+    SPP_ATTR_NODISCARD auto get_ast_ctx() const -> Ast* {
         return m_ctx;
     }
 

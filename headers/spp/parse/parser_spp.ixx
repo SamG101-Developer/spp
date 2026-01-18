@@ -446,12 +446,6 @@ public:
     auto parse_literal_array_repeated_element(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::ArrayLiteralRepeatedElementAst>;
     auto parse_literal_array_explicit_elements(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser) -> std::unique_ptr<asts::ArrayLiteralExplicitElementsAst>;
 
-    auto parse_cmp_value() -> std::unique_ptr<asts::ExpressionAst>;
-    auto parse_cmp_object_initializer() -> std::unique_ptr<asts::ObjectInitializerAst>;
-    auto parse_cmp_object_initializer_argument_group() -> std::unique_ptr<asts::ObjectInitializerArgumentGroupAst>;
-    auto parse_cmp_object_initializer_argument() -> std::unique_ptr<asts::ObjectInitializerArgumentAst>;
-    auto parse_cmp_object_initializer_argument_keyword() -> std::unique_ptr<asts::ObjectInitializerArgumentKeywordAst>;
-
     auto parse_specific_characters(std::string &&s) -> std::unique_ptr<asts::TokenAst>;
     auto parse_specific_character(char16_t c) -> std::unique_ptr<asts::TokenAst>;
 

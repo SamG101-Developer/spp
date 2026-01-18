@@ -73,7 +73,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_7_analyse_semantics(
 }
 
 
-auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_10_code_gen_2(
+auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -107,7 +107,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_10_code_gen_2(
         // Generate the function call expression inside the closure.
         meta->save();
         meta->prevent_auto_generator_resume = true;
-        const auto fut_val = meta->unary_expression_rhs->stage_10_code_gen_2(sm, meta, ctx);
+        const auto fut_val = meta->unary_expression_rhs->stage_11_code_gen_2(sm, meta, ctx);
         meta->restore();
 
         // Get the function calls type information.

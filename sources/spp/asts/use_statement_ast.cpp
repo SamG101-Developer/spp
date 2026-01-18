@@ -146,21 +146,30 @@ auto spp::asts::UseStatementAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::UseStatementAst::stage_9_code_gen_1(
+auto spp::asts::UseStatementAst::stage_9_comptime_resolution(
     ScopeManager *sm,
-    CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
-    -> llvm::Value* {
-    // Code gen for the conversion AST.
-    return m_conversion->stage_9_code_gen_1(sm, meta, ctx);
+    CompilerMetaData *meta)
+    -> void {
+    // Comptime resolve the conversion AST.
+    return m_conversion->stage_9_comptime_resolution(sm, meta);
 }
 
 
-auto spp::asts::UseStatementAst::stage_10_code_gen_2(
+auto spp::asts::UseStatementAst::stage_10_code_gen_1(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Code gen for the conversion AST.
-    return m_conversion->stage_10_code_gen_2(sm, meta, ctx);
+    return m_conversion->stage_10_code_gen_1(sm, meta, ctx);
+}
+
+
+auto spp::asts::UseStatementAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Code gen for the conversion AST.
+    return m_conversion->stage_11_code_gen_2(sm, meta, ctx);
 }

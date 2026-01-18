@@ -286,7 +286,18 @@ auto spp::asts::ClassPrototypeAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::ClassPrototypeAst::stage_9_code_gen_1(
+auto spp::asts::ClassPrototypeAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *)
+    -> void {
+    // Skip the class body.
+    sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+    sm->move_out_of_current_scope();
+}
+
+
+auto spp::asts::ClassPrototypeAst::stage_10_code_gen_1(
     ScopeManager *sm,
     CompilerMetaData *,
     codegen::LLvmCtx *ctx)
@@ -317,7 +328,7 @@ auto spp::asts::ClassPrototypeAst::stage_9_code_gen_1(
 }
 
 
-auto spp::asts::ClassPrototypeAst::stage_10_code_gen_2(
+auto spp::asts::ClassPrototypeAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -325,7 +336,7 @@ auto spp::asts::ClassPrototypeAst::stage_10_code_gen_2(
     // Get the class symbol.
     sm->move_to_next_scope();
     // SPP_ASSERT(sm->current_scope == m_scope);
-    impl->stage_10_code_gen_2(sm, meta, ctx);
+    impl->stage_11_code_gen_2(sm, meta, ctx);
     sm->move_out_of_current_scope();
     return nullptr;
 }

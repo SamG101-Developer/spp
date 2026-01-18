@@ -1,5 +1,4 @@
 module;
-#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.asts.inner_scope_expression_ast;
@@ -11,9 +10,9 @@ import spp.asts.loop_control_flow_statement_ast;
 import spp.asts.ret_statement_ast;
 import spp.asts.statement_ast;
 import spp.asts.token_ast;
+import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.asts.generate.common_types;
 import genex;
 
 
@@ -64,7 +63,21 @@ auto spp::asts::InnerScopeExpressionAst<T>::stage_7_analyse_semantics(
 
 
 template <typename T>
-auto spp::asts::InnerScopeExpressionAst<T>::stage_10_code_gen_2(
+auto spp::asts::InnerScopeExpressionAst<T>::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Comptime resolve each member of the inner scope.
+    for (auto const &member : this->members) {
+        const auto did_ret = member->template to<RetStatementAst>() != nullptr;
+        member->stage_9_comptime_resolution(sm, meta);
+        if (did_ret) { return; }
+    }
+}
+
+
+template <typename T>
+auto spp::asts::InnerScopeExpressionAst<T>::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -75,7 +88,7 @@ auto spp::asts::InnerScopeExpressionAst<T>::stage_10_code_gen_2(
 
     auto ret_val = static_cast<llvm::Value*>(nullptr);
     for (auto const &member : this->members) {
-        ret_val = member->stage_10_code_gen_2(sm, meta, ctx);
+        ret_val = member->stage_11_code_gen_2(sm, meta, ctx);
     }
 
     // Exit the scope.

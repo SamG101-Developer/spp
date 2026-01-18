@@ -1,6 +1,7 @@
 module spp.analyse.utils.case_utils;
 import spp.analyse.scopes.scope_manager;
 import spp.asts.utils.ast_utils;
+import spp.asts.ast;
 import spp.asts.case_pattern_variant_ast;
 import spp.asts.case_pattern_variant_expression_ast;
 import spp.asts.case_pattern_variant_literal_ast;
@@ -27,26 +28,26 @@ import genex;
 import std;
 
 
-auto spp::analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs(
-    std::vector<asts::CasePatternVariantAst*> elems,
+template <typename T>
+auto spp::analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_core(
+    std::vector<asts::CasePatternVariantAst*> const &elems,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
-    -> std::vector<llvm::Value*> {
-    auto llvm_values = std::vector<llvm::Value*>();
-    llvm_values.reserve(elems.size());
+    std::function<T(asts::Ast *)> &&mapper)
+    -> std::vector<T> {
+    auto transformed = std::vector<T>();
+    transformed.reserve(elems.size());
 
     if (not elems.empty() and elems[0]->to<asts::CasePatternVariantExpressionAst>()) {
         // For expression patterns, just generate the expression once.
         const auto expr_part = elems[0]->to<asts::CasePatternVariantExpressionAst>();
-        const auto llvm_call = expr_part->expr->stage_10_code_gen_2(sm, meta, ctx);
-        llvm_values.emplace_back(llvm_call);
-        return llvm_values;
+        auto transform = mapper(expr_part->expr.get());
+        transformed.emplace_back(std::move(transform));
+        return transformed;
     }
 
     for (auto const &[i, part] : elems | genex::views::enumerate) {
         // For literals and expressions, generate the equality checks.
-
         if (part->to<asts::CasePatternVariantLiteralAst>() != nullptr) {
             // Generate the extraction on the condition for this part, like "cond.0".
             auto field_name = std::make_unique<asts::IdentifierAst>(0, std::to_string(i));
@@ -74,8 +75,8 @@ auto spp::analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs(
             sm->reset(current_scope, current_scope_iter);
 
             // Generate the equality check.
-            const auto llvm_call = eq_call_expr->stage_10_code_gen_2(sm, meta, ctx);
-            llvm_values.emplace_back(llvm_call);
+            auto transform = mapper(eq_call_expr.get());
+            transformed.emplace_back(std::move(transform));
         }
 
         // For nested objects (array, tuple, object)
@@ -93,18 +94,50 @@ auto spp::analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs(
             meta->case_condition = pf_expr.get();
 
             // Combine the result.
-            const auto llvm_call = part->stage_10_code_gen_2(sm, meta, ctx);
-            llvm_values.emplace_back(llvm_call);
+            auto transform = mapper(part);
+            transformed.emplace_back(std::move(transform));
             meta->restore();
         }
     }
 
-    return llvm_values;
+    return transformed;
 }
 
 
-auto spp::analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_dummy(
-    std::vector<asts::CasePatternVariantAst*> elems,
+auto spp::analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_llvm(
+    std::vector<asts::CasePatternVariantAst*> const &elems,
+    scopes::ScopeManager *sm,
+    asts::meta::CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> std::vector<llvm::Value*> {
+    // Get the expression and map then to LLVM values.
+    std::function<llvm::Value*(asts::Ast *)> map = [&](asts::Ast *x) {
+        return x->stage_11_code_gen_2(sm, meta, ctx);
+    };
+
+    auto asts = create_and_analyse_pattern_eq_funcs_core(elems, sm, meta, std::move(map));
+    return asts;
+}
+
+
+auto spp::analyse::utils::case_utils::create_and_analyse_pattern_eq_comptime(
+    std::vector<asts::CasePatternVariantAst*> const &elems,
+    scopes::ScopeManager *sm,
+    asts::meta::CompilerMetaData *meta)
+    -> std::vector<std::unique_ptr<asts::ExpressionAst>> {
+    // Get the expression and map then to Comptime values.
+    std::function<std::unique_ptr<asts::ExpressionAst>(asts::Ast *)> map = [&](asts::Ast *x) {
+        x->stage_9_comptime_resolution(sm, meta);
+        return std::move(meta->cmp_result);
+    };
+
+    auto asts = create_and_analyse_pattern_eq_funcs_core(elems, sm, meta, std::move(map));
+    return asts;
+}
+
+
+auto spp::analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_dummy_core(
+    std::vector<asts::CasePatternVariantAst*> const &elems,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
     -> void {

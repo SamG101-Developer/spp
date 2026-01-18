@@ -76,6 +76,15 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::new_empty()
 }
 
 
+auto spp::asts::ObjectInitializerArgumentGroupAst::get_all_args()
+    -> std::vector<ObjectInitializerArgumentAst*> {
+    // Get all arguments in the group.
+    return args
+        | genex::views::ptr
+        | genex::to<std::vector>();
+}
+
+
 auto spp::asts::ObjectInitializerArgumentGroupAst::get_autofill_arg()
     -> ObjectInitializerArgumentShorthandAst* {
     // Get the first shorthand argument tagged with the ".." token.

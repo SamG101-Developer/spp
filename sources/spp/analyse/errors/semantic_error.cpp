@@ -190,7 +190,7 @@ spp::analyse::errors::SppInvalidMutationError::SppInvalidMutationError(
         &mutator,
         "Invalid mutation attempted here");
     add_footer(
-        "This symbol cannot be mutated because it was not declared as mutable.",
+        "The symbol " + static_cast<std::string>(sym) + " cannot be mutated because it was not declared as mutable.",
         "Declare the symbol as mutable or remove the mutation");
 }
 
@@ -1555,4 +1555,17 @@ spp::analyse::errors::SppBorrowLifetimeIncreaseError::SppBorrowLifetimeIncreaseE
     add_footer(
         "The borrow lifetime of the right-hand side exceeds that of the left-hand side.",
         "Ensure the borrow lifetime does not exceed the initialization lifetime");
+}
+
+
+spp::analyse::errors::SppInvalidComptimeOperationError::SppInvalidComptimeOperationError(
+    asts::Ast const &ast) {
+    add_header(
+        84, "SPP Invalid Comptime Operation Error");
+    add_error(
+        &ast,
+        "Ast defined here");
+    add_footer(
+        "This expression cannot be evaluatable at compile-time for.",
+        "Modify the expression to be computable at compile-time");
 }

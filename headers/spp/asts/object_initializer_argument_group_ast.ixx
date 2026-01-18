@@ -57,6 +57,8 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentGroupAst final : virtual 
 
     static auto new_empty() -> std::unique_ptr<ObjectInitializerArgumentGroupAst>;
 
+    auto get_all_args() -> std::vector<ObjectInitializerArgumentAst*>;
+
     auto get_autofill_arg() -> ObjectInitializerArgumentShorthandAst*;
 
     auto get_non_autofill_args() -> std::vector<ObjectInitializerArgumentAst*>;

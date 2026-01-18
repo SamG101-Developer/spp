@@ -165,7 +165,7 @@ auto spp::asts::GenExpressionAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::GenExpressionAst::stage_10_code_gen_2(
+auto spp::asts::GenExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -190,7 +190,7 @@ auto spp::asts::GenExpressionAst::stage_10_code_gen_2(
             ctx->builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::STATE)));
 
         ctx->builder.CreateStore(
-            expr->stage_10_code_gen_2(sm, meta, ctx),
+            expr->stage_11_code_gen_2(sm, meta, ctx),
             ctx->builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::YIELD_SLOT)));
     }
 
@@ -201,7 +201,7 @@ auto spp::asts::GenExpressionAst::stage_10_code_gen_2(
             ctx->builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::STATE)));
 
         ctx->builder.CreateStore(
-            expr->stage_10_code_gen_2(sm, meta, ctx),
+            expr->stage_11_code_gen_2(sm, meta, ctx),
             ctx->builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::ERROR_SLOT)));
     }
 

@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.case_pattern_variant_ast;
 import spp.asts.ast;
-
 import std;
 
 namespace spp::asts {
@@ -28,4 +27,6 @@ protected:
 
 public:
     virtual auto convert_to_variable(CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst>;
+
+    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };

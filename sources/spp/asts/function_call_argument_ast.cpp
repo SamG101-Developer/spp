@@ -64,7 +64,16 @@ auto spp::asts::FunctionCallArgumentAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::FunctionCallArgumentAst::stage_10_code_gen_2(
+auto spp::asts::FunctionCallArgumentAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Delegate comptime resolution to the value expression.
+    val->stage_9_comptime_resolution(sm, meta);
+}
+
+
+auto spp::asts::FunctionCallArgumentAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -91,7 +100,7 @@ auto spp::asts::FunctionCallArgumentAst::stage_10_code_gen_2(
         return llvm_alloca;
     }
 
-    return val->stage_10_code_gen_2(sm, meta, ctx);
+    return val->stage_11_code_gen_2(sm, meta, ctx);
 }
 
 
@@ -101,6 +110,6 @@ auto spp::asts::FunctionCallArgumentAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Infer the type from the value expression, unless an explicit "self" type has been given.
     return injected_self_type != nullptr
-               ? injected_self_type
-               : val->infer_type(sm, meta)->with_convention(ast_clone(conv));
+        ? injected_self_type
+        : val->infer_type(sm, meta)->with_convention(ast_clone(conv));
 }

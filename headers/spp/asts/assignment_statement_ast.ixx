@@ -4,9 +4,12 @@ module;
 export module spp.asts.assignment_statement_ast;
 import spp.asts.statement_ast;
 import spp.codegen.llvm_ctx;
-
 import llvm;
 import std;
+
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class ScopeManager;
+}
 
 namespace spp::asts {
     SPP_EXP_CLS struct AssignmentStatementAst;
@@ -42,6 +45,12 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
      */
     std::vector<std::unique_ptr<ExpressionAst>> rhs;
 
+private:
+    static auto is_identifier(Ast const *x) -> bool;
+
+    static auto is_attr(Ast const *x, analyse::scopes::ScopeManager const *sm) -> bool;
+
+public:
     /**
      * Construct the AssignmentStatementAst with the arguments matching the members.
      * @param[in] lhs The list of left-hand side expressions in the assignment statement.
@@ -105,6 +114,16 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
      * @param[in,out] meta Associated metadata.
      */
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+#
+    /**
+     * Resolve the assignment statement at compile time. This is only possible if all the right-hand-side expressions
+     * are compile time resolvable themselves. The symbol table is updated with the new compile time values for the
+     * left-hand-side symbols.
+     * @param sm The scope manager to use for resolution.
+     * @param meta Associated metadata.
+     * @return The result of the compile time resolution.
+     */
+    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
      * Create the LLVM IR code to perform the assignment operation. This involves generating the code for both the
@@ -115,5 +134,5 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
      * @param ctx The LLVM context to use for code generation.
      * @return The LLVM value representing the assignment operation.
      */
-    auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

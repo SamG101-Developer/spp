@@ -3,8 +3,10 @@ module;
 
 module spp.asts.case_pattern_variant_else_ast;
 import spp.lex.tokens;
+import spp.asts.boolean_literal_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.token_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 
@@ -44,7 +46,16 @@ spp::asts::CasePatternVariantElseAst::operator std::string() const {
 }
 
 
-auto spp::asts::CasePatternVariantElseAst::stage_10_code_gen_2(
+auto spp::asts::CasePatternVariantElseAst::stage_9_comptime_resolution(
+    ScopeManager *,
+    CompilerMetaData *meta)
+    -> void {
+    // The "else" pattern always matches, so return "true".
+    meta->cmp_result = BooleanLiteralAst::True(tok_else->pos_start());
+}
+
+
+auto spp::asts::CasePatternVariantElseAst::stage_11_code_gen_2(
     ScopeManager *,
     CompilerMetaData *,
     codegen::LLvmCtx *ctx)

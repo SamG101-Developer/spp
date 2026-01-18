@@ -13,10 +13,12 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.asts.convention_mut_ast;
 import spp.asts.convention_ref_ast;
+import spp.asts.expression_ast;
 import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_positional_ast;
 import spp.asts.function_call_argument_keyword_ast;
+import spp.asts.function_implementation_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_required_ast;
 import spp.asts.function_parameter_self_ast;
@@ -133,7 +135,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     if (fn_name != nullptr) {
         all_overloads = analyse::utils::func_utils::get_all_function_scopes(*fn_name, fn_owner_scope, *sm, meta);
     }
-    auto pass_overloads = std::vector<std::tuple<analyse::scopes::Scope const*, FunctionPrototypeAst*, std::vector<GenericArgumentAst*>>>();
+    auto pass_overloads = std::vector<std::tuple<analyse::scopes::Scope const*, FunctionPrototypeAst*, std::vector<std::unique_ptr<FunctionCallArgumentAst>>, std::vector<GenericArgumentAst*>>>();
     auto fail_overloads = std::vector<std::tuple<analyse::scopes::Scope const*, FunctionPrototypeAst*, std::unique_ptr<analyse::errors::SemanticError>>>();
 
     // Create a dummy overload for no-overload identifiers that are function types (closures etc).
@@ -279,6 +281,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             auto generic_args_raw = combined_generics->get_all_args();
             if (not generic_args_raw.empty()) {
                 auto new_fn_proto = ast_clone(fn_proto); // Todo: if the fn_proto hasn't been analysed -> issues.
+                new_fn_proto->m_non_generic_impl = fn_proto;
                 auto external_generics = sm->current_scope->get_extended_generic_symbols(generic_args_raw);
                 auto new_fn_scope = analyse::utils::type_utils::create_generic_fun_scope(
                     *fn_scope, GenericArgumentGroupAst(nullptr, ast_clone_vec(combined_generics->args), nullptr),
@@ -394,7 +397,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             }
 
             // Add the overload to the pass list.
-            pass_overloads.emplace_back(fn_scope, fn_proto, std::move(generic_args_raw));
+            pass_overloads.emplace_back(fn_scope, fn_proto, std::move(func_args), std::move(generic_args_raw));
         }
 
         catch (const analyse::errors::SppFunctionCallAbstractFunctionError &e) {
@@ -446,9 +449,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     // Perform the return type overload selection separately here, for error reasons.
     auto return_matches = decltype(pass_overloads)();
     if (meta->return_type_overload_resolver_type != nullptr) {
-        for (auto &&[fn_scope, fn_proto, fn_generics] : pass_overloads) {
+        for (auto &&[fn_scope, fn_proto, fn_args, fn_generics] : pass_overloads) {
             if (analyse::utils::type_utils::symbolic_eq(*fn_proto->return_type, *meta->return_type_overload_resolver_type, *fn_scope, *sm->current_scope)) {
-                return_matches.emplace_back(fn_scope, fn_proto, fn_generics);
+                return_matches.emplace_back(fn_scope, fn_proto, std::move(fn_args), fn_generics);
             }
         }
         if (return_matches.size() == 1) {
@@ -511,10 +514,14 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     }
 
     // Set the overload to the only pass overload.
-    m_overload_info = std::move(pass_overloads[0]);
+    m_overload_info = std::make_tuple(
+        std::get<0>(pass_overloads[0]),
+        std::get<1>(pass_overloads[0]),
+        std::move(std::get<3>(pass_overloads[0])));
     if (const auto self_param = std::get<1>(*m_overload_info)->param_group->get_self_param()) {
         arg_group->args[0]->conv = ast_clone(self_param->conv);
     }
+    arg_group->args = std::move(std::get<2>(pass_overloads[0]));
 }
 
 
@@ -532,6 +539,13 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_7_analyse_semant
     meta->restore();
 
     determine_overload(sm, meta);
+
+    // Check that if we are in a cmp context, that the overload is also cmp.
+    if (meta->enclosing_function_cmp != nullptr and std::get<1>(*m_overload_info)->tok_cmp == nullptr) {
+        analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidComptimeOperationError>()
+            .with_args(*this)
+            .raises_from(sm->current_scope);
+    }
 
     // Special case for GenOnce called as a coroutine => auto move into the "Yield" type.
     if (std::get<1>(*m_overload_info)->tok_fun->token_type == lex::SppTokenType::KW_COR and not meta->prevent_auto_generator_resume) {
@@ -580,7 +594,36 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_10_code_gen_2(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Get the function prototype and resolve it.
+    const auto fn_proto = std::get<1>(*m_overload_info)->m_non_generic_impl;
+
+    // Create the argument map for the function to use.
+    auto args = std::vector<std::pair<std::shared_ptr<IdentifierAst>, std::unique_ptr<ExpressionAst>>>();
+    for (auto const &arg: arg_group->get_keyword_args()) {
+        arg->stage_9_comptime_resolution(sm, meta);
+        args.emplace_back(arg->name, std::move(meta->cmp_result));
+    }
+    auto arg_map = decltype(meta->cmp_args)();
+    for (auto &&[name, val] : args) {
+        arg_map[name] = std::move(val);
+    }
+
+    // Resolve the function with the arguments.
+    // Todo: Remove the "const_cast" here.
+    meta->save();
+    meta->cmp_args = std::move(arg_map);
+    auto tm = ScopeManager(sm->global_scope, const_cast<analyse::scopes::Scope*>(std::get<0>(*m_overload_info)));
+    tm.reset(tm.current_scope->children[0].get());
+    fn_proto->impl->stage_9_comptime_resolution(&tm, meta);
+    meta->restore();
+}
+
+
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) -> llvm::Value* {
@@ -588,7 +631,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_10_code_gen_2(
     const auto uid = spp::utils::generate_uid(this);
     const auto llvm_func = std::get<1>(*m_overload_info)->llvm_func;
     const auto llvm_func_args = arg_group->args
-        | genex::views::transform([sm, meta, ctx](auto const &x) { return x->stage_10_code_gen_2(sm, meta, ctx); })
+        | genex::views::transform([sm, meta, ctx](auto const &x) { return x->stage_11_code_gen_2(sm, meta, ctx); })
         | genex::to<std::vector>();
     SPP_ASSERT(llvm_func != nullptr);
     SPP_ASSERT(not ctx->builder.GetInsertBlock()->getTerminator());

@@ -32,7 +32,8 @@ auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::pos_end() co
 
 auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::clone() const
     -> std::unique_ptr<Ast> {
-    return std::make_unique<CasePatternVariantDestructureSkipSingleArgumentAst>(ast_clone(tok_underscore));
+    return std::make_unique<CasePatternVariantDestructureSkipSingleArgumentAst>(
+        ast_clone(tok_underscore));
 }
 
 

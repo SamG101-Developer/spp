@@ -6,7 +6,6 @@ import spp.asts.ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.mixins.type_inferrable_ast;
 import spp.codegen.llvm_ctx;
-
 import llvm;
 import std;
 
@@ -23,7 +22,13 @@ namespace spp::asts {
  * The FunctionCallArgumentAst is the base class representing an argument in a function call. It is inherited into the
  * "positional" and "keyword" variants.
  */
-SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst : virtual Ast, mixins::OrderableAst, mixins::TypeInferrableAst {
+SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst :
+    virtual Ast,
+    mixins::OrderableAst,
+    mixins::TypeInferrableAst {
+    /**
+     * Use the base Ast's constructors.
+     */
     using Ast::Ast;
 
     /**
@@ -63,7 +68,9 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst : virtual Ast, mixins::Ord
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

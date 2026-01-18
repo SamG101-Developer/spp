@@ -139,7 +139,20 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::LocalVariableSingleIdentifierAst::stage_10_code_gen_2(
+auto spp::asts::LocalVariableSingleIdentifierAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Assign the generated value into the variable symbol.
+    meta->save();
+    meta->assignment_target = alias != nullptr ? alias->name : name;
+    meta->let_stmt_value->stage_9_comptime_resolution(sm, meta);
+    sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name)->comptime_value = std::move(meta->cmp_result);
+    meta->restore();
+}
+
+
+auto spp::asts::LocalVariableSingleIdentifierAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -162,7 +175,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_10_code_gen_2(
     if (not meta->let_stmt_from_uninitialized) {
         meta->save();
         meta->assignment_target = alias != nullptr ? alias->name : name;
-        const auto llvm_val = meta->let_stmt_value->stage_10_code_gen_2(sm, meta, ctx);
+        const auto llvm_val = meta->let_stmt_value->stage_11_code_gen_2(sm, meta, ctx);
         ctx->builder.CreateStore(llvm_val, alloca);
         meta->restore();
     }

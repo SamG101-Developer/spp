@@ -78,7 +78,7 @@ auto spp::asts::UnaryExpressionAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::UnaryExpressionAst::stage_10_code_gen_2(
+auto spp::asts::UnaryExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -86,7 +86,7 @@ auto spp::asts::UnaryExpressionAst::stage_10_code_gen_2(
     // Generate the right-hand-side expression.
     meta->save();
     meta->unary_expression_rhs = expr.get();
-    const auto lhs_val = op->stage_10_code_gen_2(sm, meta, ctx);
+    const auto lhs_val = op->stage_11_code_gen_2(sm, meta, ctx);
     meta->restore();
     return lhs_val;
 }

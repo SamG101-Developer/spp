@@ -36,6 +36,8 @@ spp::asts::ArrayLiteralExplicitElementsAst::ArrayLiteralExplicitElementsAst(
 auto spp::asts::ArrayLiteralExplicitElementsAst::equals_array_literal_explicit_elements(
     ArrayLiteralExplicitElementsAst const &other) const
     -> std::strong_ordering {
+    // Two array literals with explicit elements are equal if all their elements are equal.
+    // Todo: what about different sized arrays?
     if (genex::all_of(
         genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::to<std::vector>(),
         [](auto &&pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
@@ -132,7 +134,24 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::stage_10_code_gen_2(
+auto spp::asts::ArrayLiteralExplicitElementsAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Convert the inner elements to compile-time values.
+    auto cmp_elems = std::vector<std::unique_ptr<ExpressionAst>>();
+    for (auto const &elem : elems) {
+        elem->stage_9_comptime_resolution(sm, meta);
+        cmp_elems.emplace_back(std::move(meta->cmp_result));
+    }
+
+    // Wrap the compile-time array value.
+    meta->cmp_result = std::make_unique<ArrayLiteralExplicitElementsAst>(
+        nullptr, std::move(cmp_elems), nullptr);
+}
+
+
+auto spp::asts::ArrayLiteralExplicitElementsAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -143,7 +162,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_10_code_gen_2(
         auto vals = std::vector<llvm::Value*>{};
         vals.reserve(elems.size());
         for (auto const &elem : elems) {
-            vals.emplace_back(elem->stage_10_code_gen_2(sm, meta, ctx));
+            vals.emplace_back(elem->stage_11_code_gen_2(sm, meta, ctx));
         }
 
         // Create the array type and allocation.
@@ -171,7 +190,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_10_code_gen_2(
     auto comp_vals = std::vector<llvm::Constant*>{};
     comp_vals.reserve(elems.size());
     for (auto const &elem : elems) {
-        const auto comp_val = llvm::cast<llvm::Constant>(elem->stage_10_code_gen_2(sm, meta, ctx));
+        const auto comp_val = llvm::cast<llvm::Constant>(elem->stage_11_code_gen_2(sm, meta, ctx));
         comp_vals.emplace_back(comp_val);
     }
     const auto elem_ty = comp_vals[0]->getType();

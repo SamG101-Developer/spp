@@ -16,6 +16,7 @@ import spp.asts.class_prototype_ast;
 import spp.asts.identifier_ast;
 import spp.asts.object_initializer_argument_ast;
 import spp.asts.object_initializer_argument_group_ast;
+import spp.asts.object_initializer_argument_keyword_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
@@ -135,7 +136,25 @@ auto spp::asts::ObjectInitializerAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
+auto spp::asts::ObjectInitializerAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Convert the inner elements to compile-time values.
+    auto cmp_elems = ObjectInitializerArgumentGroupAst::new_empty();
+    for (auto const &elem : arg_group->args) {
+        elem->stage_9_comptime_resolution(sm, meta);
+        auto cmp_arg = std::make_unique<ObjectInitializerArgumentKeywordAst>(elem->name, nullptr, std::move(meta->cmp_result));
+        cmp_elems->args.emplace_back(std::move(cmp_arg));
+    }
+
+    // Wrap the compile-time array value.
+    meta->cmp_result = std::make_unique<ObjectInitializerAst>(
+        type, std::move(cmp_elems));
+}
+
+
+auto spp::asts::ObjectInitializerAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -172,7 +191,7 @@ auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
         for (auto i = 0uz; i < sorted_args.size(); ++i) {
             const auto &arg = sorted_args[i];
             const auto attr_ptr = ctx->builder.CreateStructGEP(llvm_type, aggregate, static_cast<std::uint32_t>(i), arg->name->val);
-            const auto val = arg->val->stage_10_code_gen_2(sm, meta, ctx);
+            const auto val = arg->val->stage_11_code_gen_2(sm, meta, ctx);
 
             SPP_ASSERT(val != nullptr and attr_ptr != nullptr);
             ctx->builder.CreateStore(val, attr_ptr);
@@ -187,7 +206,7 @@ auto spp::asts::ObjectInitializerAst::stage_10_code_gen_2(
     // Set each field value in the constant.
     auto comp_fields = std::vector<llvm::Constant*>(sorted_args.size());
     for (auto i = 0uz; i < sorted_args.size(); ++i) {
-        const auto comp_val = sorted_args[i]->val->stage_10_code_gen_2(sm, meta, ctx);
+        const auto comp_val = sorted_args[i]->val->stage_11_code_gen_2(sm, meta, ctx);
         comp_fields[i] = llvm::cast<llvm::Constant>(comp_val);
     }
 

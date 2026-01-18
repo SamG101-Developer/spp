@@ -70,7 +70,7 @@ auto spp::asts::CmpStatementAst::clone() const
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
     ast->visibility = visibility;
-    for (auto const &a: ast->annotations) {
+    for (auto const &a : ast->annotations) {
         a->set_ast_ctx(ast.get());
     }
     return ast;
@@ -129,7 +129,8 @@ auto spp::asts::CmpStatementAst::stage_5_load_super_scopes(
     type->stage_7_analyse_semantics(sm, meta);
 
     // Ensure that the convention type doesn't have a convention.
-    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(this, type, *sm, "global constant type");
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(
+        this, type, *sm, "global constant type");
     type = sm->current_scope->get_type_symbol(type)->fq_name();
     sm->current_scope->get_var_symbol(name)->type = type;
 }
@@ -166,14 +167,37 @@ auto spp::asts::CmpStatementAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::CmpStatementAst::stage_9_code_gen_1(
+auto spp::asts::CmpStatementAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Generate the value and assign it to the variable symbol's compile-time value.
+    if (type->operator std::string()[0] != '$') {
+        if (name->operator std::string() == "x") {
+            auto _ = 123;
+        }
+
+        const auto var_sym = sm->current_scope->get_var_symbol(name);
+        value->stage_9_comptime_resolution(sm, meta);
+        var_sym->comptime_value = std::move(meta->cmp_result);
+        if (var_sym->comptime_value != nullptr) {
+            std::cout << "RESOLVED CMP VALUE " << name->operator std::string() << " TO " << var_sym->comptime_value->operator std::string() << "\n";
+        }
+        else {
+            std::cout << "FAILED TO RESOLVE CMP VALUE " << name->operator std::string() << "\n";
+        }
+    }
+}
+
+
+auto spp::asts::CmpStatementAst::stage_10_code_gen_1(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the value in a constant context.
     ctx->in_constant_context = true;
-    const auto val = value->stage_10_code_gen_2(sm, meta, ctx);
+    const auto val = value->stage_11_code_gen_2(sm, meta, ctx);
     ctx->in_constant_context = false;
 
     // Create the global variable for the constant.

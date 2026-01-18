@@ -133,6 +133,15 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::stage_7_analyse_semantics(
 }
 
 
+auto spp::asts::PostfixExpressionOperatorIndexAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Forward to the mapped function.
+    m_mapped_func->stage_9_comptime_resolution(sm, meta);
+}
+
+
 auto spp::asts::PostfixExpressionOperatorIndexAst::infer_type(
     analyse::scopes::ScopeManager *sm,
     CompilerMetaData *meta)

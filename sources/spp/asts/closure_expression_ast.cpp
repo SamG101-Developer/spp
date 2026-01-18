@@ -2,6 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.closure_expression_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
@@ -135,7 +137,7 @@ auto spp::asts::ClosureExpressionAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::ClosureExpressionAst::stage_10_code_gen_2(
+auto spp::asts::ClosureExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -181,9 +183,9 @@ auto spp::asts::ClosureExpressionAst::stage_10_code_gen_2(
 
     // For now, just skip scopes and return a nullptr.
     const auto parent_scope = sm->current_scope;
-    pc_group->stage_10_code_gen_2(sm, meta, ctx);
+    pc_group->stage_11_code_gen_2(sm, meta, ctx);
     sm->move_to_next_scope();
-    body->stage_10_code_gen_2(sm, meta, ctx);
+    body->stage_11_code_gen_2(sm, meta, ctx);
     sm->current_scope = parent_scope;
 
     // Restore the previous context.
@@ -201,7 +203,7 @@ auto spp::asts::ClosureExpressionAst::stage_10_code_gen_2(
 
         const auto field_ptr = ctx->builder.CreateInBoundsGEP(
             env_ty, env_alloca, {zero, capture_index}, "closure.env.gep." + std::to_string(i));
-        const auto val = capture->val->stage_10_code_gen_2(sm, meta, ctx); // always an identifier, no worry abt double generation.
+        const auto val = capture->val->stage_11_code_gen_2(sm, meta, ctx); // always an identifier, no worry abt double generation.
         ctx->builder.CreateStore(val, field_ptr);
     }
 

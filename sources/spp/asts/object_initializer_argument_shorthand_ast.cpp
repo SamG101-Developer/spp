@@ -10,6 +10,7 @@ import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 
 
 spp::asts::ObjectInitializerArgumentShorthandAst::ObjectInitializerArgumentShorthandAst(
@@ -17,6 +18,15 @@ spp::asts::ObjectInitializerArgumentShorthandAst::ObjectInitializerArgumentShort
     std::unique_ptr<ExpressionAst> &&val) :
     ObjectInitializerArgumentAst(ast_clone(val->to<IdentifierAst>()), std::move(val)),
     tok_ellipsis(std::move(tok_ellipsis)) {
+}
+
+
+auto spp::asts::ObjectInitializerArgumentShorthandAst::create_autofill(
+    std::unique_ptr<ExpressionAst> &&val)
+    -> std::unique_ptr<ObjectInitializerArgumentShorthandAst> {
+    return std::make_unique<ObjectInitializerArgumentShorthandAst>(
+        TokenAst::new_empty(lex::SppTokenType::TK_DOUBLE_DOT, ".."),
+        std::move(val));
 }
 
 

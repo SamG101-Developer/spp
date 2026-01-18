@@ -6,6 +6,7 @@ import spp.lex.tokens;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.case_utils;
+import spp.asts.boolean_literal_ast;
 import spp.asts.case_pattern_variant_expression_ast;
 import spp.asts.case_pattern_variant_literal_ast;
 import spp.asts.case_pattern_variant_destructure_object_ast;
@@ -101,7 +102,7 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::stage_7_analyse_semantics
     m_mapped_let->stage_7_analyse_semantics(sm, meta);
 
     // Note there is no nested analysis of "elems", because the "let" statement handles it.
-    analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_dummy(
+    analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_dummy_core(
         elems | genex::views::ptr | genex::to<std::vector>(), sm, meta);
 }
 
@@ -115,26 +116,47 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::CasePatternVariantDestructureArrayAst::stage_10_code_gen_2(
+auto spp::asts::CasePatternVariantDestructureArrayAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Transform the pattern into comptime values; all need to be true.
+    auto comptime_tranforms = analyse::utils::case_utils::create_and_analyse_pattern_eq_comptime(
+        elems | genex::views::ptr | genex::to<std::vector>(), sm, meta);
+
+    // All must be true for the pattern to match (look for any false).
+    const auto all_true = genex::all_of(
+        comptime_tranforms,
+        [](auto const &x) { return x->template to<BooleanLiteralAst>()->is_true(); });
+
+    // Based on the result, return the corresponding comptime value.
+    const auto p = pos_start();
+    meta->cmp_result = all_true ? BooleanLiteralAst::True(p) : BooleanLiteralAst::False(p);
+}
+
+
+auto spp::asts::CasePatternVariantDestructureArrayAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the "let" statement to introduce all the symbols.
     if (m_mapped_let == nullptr) {
+        // Todo: Needed?
         auto var = convert_to_variable(meta);
-        m_mapped_let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
+        m_mapped_let = std::make_unique<LetStatementInitializedAst>(
+            nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
         m_mapped_let->stage_7_analyse_semantics(sm, meta);
     }
-    m_mapped_let->stage_10_code_gen_2(sm, meta, ctx);
+    m_mapped_let->stage_11_code_gen_2(sm, meta, ctx);
 
     // Combine all the generated transforms into a single "AND"ed statement.
-    auto llvm_transforms = analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs(
+    auto llvm_transforms = analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_llvm(
         elems | genex::views::ptr | genex::to<std::vector>(), sm, meta, ctx);
     const auto combine_func = [&ctx](auto *a, auto *b) { return ctx->builder.CreateAnd(a, b); };
     const auto llvm_master_transform = llvm_transforms.empty()
-                                           ? dynamic_cast<llvm::Value*>(llvm::ConstantInt::getTrue(*ctx->context))
-                                           : genex::fold_left_first(llvm_transforms, std::move(combine_func));
+        ? dynamic_cast<llvm::Value*>(llvm::ConstantInt::getTrue(*ctx->context))
+        : genex::fold_left_first(llvm_transforms, std::move(combine_func));
 
     // Return the combined statement.
     return llvm_master_transform;

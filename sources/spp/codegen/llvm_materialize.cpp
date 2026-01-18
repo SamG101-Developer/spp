@@ -32,7 +32,7 @@ auto spp::codegen::llvm_materialize(
     // Set the lhs to the variable name.
     meta->let_stmt_from_uninitialized = false; // Need to generate the expression now.
     meta->let_stmt_value = &ast;
-    var->stage_10_code_gen_2(sm, meta, ctx);
+    var->stage_11_code_gen_2(sm, meta, ctx);
     meta->restore();
     const auto materialized_val = var->to<asts::LocalVariableSingleIdentifierAst>()->name.get();
     return materialized_val;

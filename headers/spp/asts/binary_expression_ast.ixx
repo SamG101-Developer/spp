@@ -4,7 +4,6 @@ module;
 export module spp.asts.binary_expression_ast;
 import spp.asts.expression_ast;
 import spp.codegen.llvm_ctx;
-
 import llvm;
 import std;
 
@@ -74,6 +73,14 @@ public:
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
+     * Resolve the binary expression at compile time. This maps to the comptime resolution of the mapped function.
+     * @param sm The scope manager to use for resolution.
+     * @param meta Associated metadata.
+     * @return The result of the compile time resolution.
+     */
+    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    /**
      * Forward the code generation to the mapped function. This just generates a standard function call. Some functions
      * like @code (1 + 2)@endcode will map to LLVM IR directly.
      * @param sm The scope manager to use for code generation.
@@ -81,7 +88,7 @@ public:
      * @param ctx The LLVM context to use for code generation.
      * @return The LLVM value generated from this AST.
      */
-    auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     /**
      * Forward the type checking to the mapped function. This just applies standard type inference from a function call.

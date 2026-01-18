@@ -282,14 +282,14 @@ auto spp::asts::GenericParameterGroupAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::GenericParameterGroupAst::stage_10_code_gen_2(
+auto spp::asts::GenericParameterGroupAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Run the code generation steps on each parameter in the group.
     for (auto &&x : params) {
-        x->stage_10_code_gen_2(sm, meta, ctx);
+        x->stage_11_code_gen_2(sm, meta, ctx);
     }
     return nullptr;
 }

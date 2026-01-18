@@ -112,7 +112,7 @@ auto spp::asts::IsExpressionAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::IsExpressionAst::stage_10_code_gen_2(
+auto spp::asts::IsExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -129,7 +129,7 @@ auto spp::asts::IsExpressionAst::stage_10_code_gen_2(
     }
 
     // Forward the code generation to the mapped function.
-    return m_mapped_func->stage_10_code_gen_2(sm, meta, ctx);
+    return m_mapped_func->stage_11_code_gen_2(sm, meta, ctx);
 }
 
 

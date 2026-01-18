@@ -9,10 +9,12 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.obj_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
+import spp.asts.object_initializer_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_deref_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
@@ -68,14 +70,26 @@ spp::asts::AssignmentStatementAst::operator std::string() const {
 }
 
 
+auto spp::asts::AssignmentStatementAst::is_identifier(
+    Ast const *x) -> bool {
+    // Determine if the AST node is an identifier.
+    return x->to<IdentifierAst>() != nullptr;
+}
+
+
+auto spp::asts::AssignmentStatementAst::is_attr(
+    Ast const *x,
+    analyse::scopes::ScopeManager const *sm) -> bool {
+    // Determine if the AST node is an attribute (ie not an identifier).
+    return not x->to<IdentifierAst>() and sm->current_scope->get_var_symbol_outermost(*x).first != nullptr;
+}
+
+
 auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Ensure the LHS is semantically valid.
-    auto is_attr = [&](Ast const *x) -> bool { return not x->to<IdentifierAst>() and sm->current_scope->get_var_symbol_outermost(*x).first != nullptr; };
-    auto is_identifier = [](Ast const *x) -> bool { return x->to<IdentifierAst>() != nullptr; };
-
     for (auto &&lhs_expr : lhs) {
         SPP_DEREF_ALLOW_MOVE_HELPER(lhs_expr) {
             meta->save();
@@ -122,14 +136,14 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
         }
 
         // Attribute assignment (ie "x.y = z"), for a non-borrowed symbol, requires an outermost "mut" symbol.
-        if (is_attr(lhs_expr) and not(std::get<0>(lhs_sym->memory_info->ast_borrowed) or lhs_sym->is_mutable)) {
+        if (is_attr(lhs_expr, sm) and not(std::get<0>(lhs_sym->memory_info->ast_borrowed) or lhs_sym->is_mutable)) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>()
                 .with_args(*lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_initialization))
                 .raises_from(sm->current_scope);
         }
 
         // Attribute assignment (ie "x.y = z"), for a borrowed symbol, cannot be immutably borrowed.
-        if (is_attr(lhs_expr) and lhs_sym->type->get_convention() and *lhs_sym->type->get_convention() == ConventionTag::REF) {
+        if (is_attr(lhs_expr, sm) and lhs_sym->type->get_convention() and *lhs_sym->type->get_convention() == ConventionTag::REF) {
             analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>()
                 .with_args(*lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_borrowed))
                 .raises_from(sm->current_scope);
@@ -157,9 +171,6 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
     CompilerMetaData *meta)
     -> void {
     // For each assignment, check the memory status and resolve any (partial-)moves.
-    auto is_attr = [&](Ast const *x) -> bool { return not x->to<IdentifierAst>() and sm->current_scope->get_var_symbol_outermost(*x).first != nullptr; };
-    auto is_identifier = [](Ast const *x) -> bool { return x->to<IdentifierAst>() != nullptr; };
-
     auto lhs_syms = lhs
         | genex::views::transform([sm](auto &&x) { return sm->current_scope->get_var_symbol_outermost(*x); })
         | genex::to<std::vector>();
@@ -170,7 +181,7 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
         // Partially validate the memory of the right-hand-side expression, if it is an attribute being set. Don't mark
         // the move, but do some checks before calling the internal memory checker on the postfix expression.
         analyse::utils::mem_utils::validate_symbol_memory(
-            *rhs_expr, *tok_assign, *sm, is_attr(lhs_expr), false, true, true, true, false, meta);
+            *rhs_expr, *tok_assign, *sm, is_attr(lhs_expr, sm), false, true, true, true, false, meta);
 
         meta->save();
         meta->assignment_target = ast_clone(lhs_expr->to<IdentifierAst>());
@@ -182,14 +193,14 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
         analyse::utils::mem_utils::validate_symbol_memory(
             *rhs_expr, *tok_assign, *sm, true, true, true, true, true, true, meta);
 
-        if (is_attr(lhs_expr)) {
+        if (is_attr(lhs_expr, sm)) {
             const auto pf = lhs_expr->to<PostfixExpressionAst>();
             analyse::utils::mem_utils::validate_symbol_memory(
-                *lhs_expr, *tok_assign, *sm, true, is_attr(pf->lhs.get()), false, true, true, false, meta);
+                *lhs_expr, *tok_assign, *sm, true, is_attr(pf->lhs.get(), sm), false, true, true, false, meta);
         }
 
         // Resolve moved identifiers to the "initialised" state, otherwise resolve a partial move.
-        if (is_attr(lhs_expr)) {
+        if (is_attr(lhs_expr, sm)) {
             lhs_sym->memory_info->remove_partial_move(*lhs_expr, sm->current_scope);
         }
         else if (is_identifier(lhs_expr)) {
@@ -224,7 +235,37 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::AssignmentStatementAst::stage_10_code_gen_2(
+auto spp::asts::AssignmentStatementAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Wrap the rhs value and move it into the value of the variable symbol.
+    for (auto i = 0uz; i < lhs.size(); ++i) {
+        rhs[i]->stage_9_comptime_resolution(sm, meta);
+        const auto lhs_sym = sm->current_scope->get_var_symbol_outermost(*lhs[i]).first;
+
+        // Assign to a full identifier.
+        if (is_identifier(lhs[i].get())) {
+            lhs_sym->comptime_value = std::move(meta->cmp_result);
+        }
+
+        // Assign to an attribute.
+        else if (is_attr(lhs[i].get(), sm)) {
+            analyse::utils::obj_utils::set_attribute_value(
+                lhs_sym->comptime_value->to<ObjectInitializerAst>(), lhs[i].get(), std::move(meta->cmp_result), sm);
+        }
+
+        // Otherwise, unsupported in the comptime context.
+        else {
+            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidComptimeOperationError>()
+                .with_args(*lhs[i])
+                .raises_from(sm->current_scope);
+        }
+    }
+}
+
+
+auto spp::asts::AssignmentStatementAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -237,11 +278,11 @@ auto spp::asts::AssignmentStatementAst::stage_10_code_gen_2(
         meta->assignment_target_type = lhs[i]->infer_type(sm, meta);
 
         // Generate the RHS value.
-        const auto llvm_rhs = rhs[i]->stage_10_code_gen_2(sm, meta, ctx);
+        const auto llvm_rhs = rhs[i]->stage_11_code_gen_2(sm, meta, ctx);
         meta->restore();
 
         // Generate the LHS location and store the RHS value into it.
-        const auto llvm_lhs = lhs[i]->stage_10_code_gen_2(sm, meta, ctx);
+        const auto llvm_lhs = lhs[i]->stage_11_code_gen_2(sm, meta, ctx);
         ctx->builder.CreateStore(llvm_rhs, llvm_lhs);
     }
 

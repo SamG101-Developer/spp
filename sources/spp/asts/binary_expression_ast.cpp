@@ -165,13 +165,22 @@ auto spp::asts::BinaryExpressionAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::BinaryExpressionAst::stage_10_code_gen_2(
+auto spp::asts::BinaryExpressionAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Forward the compile-time resolution to the mapped function.
+    m_mapped_func->stage_9_comptime_resolution(sm, meta);
+}
+
+
+auto spp::asts::BinaryExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Forward the code generation to the mapped function.
-    return m_mapped_func->stage_10_code_gen_2(sm, meta, ctx);
+    return m_mapped_func->stage_11_code_gen_2(sm, meta, ctx);
 }
 
 
@@ -180,7 +189,7 @@ auto spp::asts::BinaryExpressionAst::infer_type(
     CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Infer the type from the function mapping of the binary expression.
-    if (m_mapped_func == nullptr) {
+    if (m_mapped_func == nullptr) { // Todo: Needed?
         stage_7_analyse_semantics(sm, meta);
     }
     return m_mapped_func->infer_type(sm, meta);

@@ -5,6 +5,7 @@ module spp.asts.case_expression_branch_ast;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.asts.binary_expression_ast;
+import spp.asts.boolean_literal_ast;
 import spp.asts.case_pattern_variant_ast;
 import spp.asts.case_pattern_variant_expression_ast;
 import spp.asts.inner_scope_expression_ast;
@@ -76,13 +77,13 @@ auto spp::asts::CaseExpressionBranchAst::m_codegen_combine_patterns(
     -> llvm::Value* {
     // If there is only one pattern, generate its condition directly.
     // Otherwise, collect all the pattern conditions and combine them with OR.
-    auto llvm_combined_pattern = patterns.front()->stage_10_code_gen_2(sm, meta, ctx);
+    auto llvm_combined_pattern = patterns.front()->stage_11_code_gen_2(sm, meta, ctx);
     for (auto const &pattern : patterns | genex::views::ptr | genex::views::drop(1)) {
-        const auto llvm_pattern = pattern->stage_10_code_gen_2(sm, meta, ctx);
+        const auto llvm_pattern = pattern->stage_11_code_gen_2(sm, meta, ctx);
         llvm_combined_pattern = ctx->builder.CreateOr(llvm_combined_pattern, llvm_pattern);
     }
     if (guard) {
-        const auto llvm_guard = guard->stage_10_code_gen_2(sm, meta, ctx);
+        const auto llvm_guard = guard->stage_11_code_gen_2(sm, meta, ctx);
         llvm_combined_pattern = ctx->builder.CreateAnd(llvm_combined_pattern, llvm_guard, "case.pattern.guard.match");
     }
     return llvm_combined_pattern;
@@ -145,7 +146,35 @@ auto spp::asts::CaseExpressionBranchAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::CaseExpressionBranchAst::stage_10_code_gen_2(
+auto spp::asts::CaseExpressionBranchAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Combine the case expression with the pattern to determine if this branch should be taken, at compile-time.
+    for (auto const& pattern: patterns) {
+        pattern->stage_9_comptime_resolution(sm, meta);
+
+        // Determine if this branch is not a match (false).
+        const auto cmp_pat_bool = meta->cmp_result->to<BooleanLiteralAst>();
+        if (cmp_pat_bool == nullptr or not cmp_pat_bool->is_true()) { continue; }
+
+        // Check with the branch guard if it exists.
+        if (guard != nullptr) {
+            guard->stage_9_comptime_resolution(sm, meta);
+            const auto cmp_guard_bool = meta->cmp_result->to<BooleanLiteralAst>();
+            if (not cmp_guard_bool->is_true()) { continue; }
+        }
+
+        // At this point, the correct branch has been identified, so resolve the body.
+        body->stage_9_comptime_resolution(sm, meta);
+        return;
+    }
+
+    std::unreachable();
+}
+
+
+auto spp::asts::CaseExpressionBranchAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -163,7 +192,7 @@ auto spp::asts::CaseExpressionBranchAst::stage_10_code_gen_2(
     ctx->builder.SetInsertPoint(body_bb);
 
     // Generate the body.
-    auto llvm_val = body->stage_10_code_gen_2(sm, meta, ctx);
+    auto llvm_val = body->stage_11_code_gen_2(sm, meta, ctx);
     const auto incoming_bb = ctx->builder.GetInsertBlock();
 
     // Sometimes, a type is returned from a branch that is part of the variant type on the lhs. For example, a Opt[T]

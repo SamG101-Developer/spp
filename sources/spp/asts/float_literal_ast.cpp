@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.token_ast;
 import spp.asts.generate.common_types;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_type;
@@ -115,7 +116,16 @@ auto spp::asts::FloatLiteralAst::stage_7_analyse_semantics(
 }
 
 
-auto spp::asts::FloatLiteralAst::stage_10_code_gen_2(
+auto spp::asts::FloatLiteralAst::stage_9_comptime_resolution(
+    ScopeManager *,
+    CompilerMetaData *meta)
+    -> void {
+    // Clone and return the float literal as is for compile-time resolution.
+    meta->cmp_result = ast_clone(this);
+}
+
+
+auto spp::asts::FloatLiteralAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -128,7 +138,7 @@ auto spp::asts::FloatLiteralAst::stage_10_code_gen_2(
     // Create the LLVM constant float value.
     const auto &semantics = llvm_type->getFltSemantics();
     const auto val = int_val->token_data + "." + frac_val->token_data;
-    const auto ap_float = llvm::APFloat(semantics, std::move(val));
+    const auto ap_float = llvm::APFloat(semantics, val);
     return llvm::ConstantFP::get(*ctx->context, ap_float);
 }
 

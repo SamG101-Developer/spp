@@ -135,7 +135,7 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
 
 
 template <typename T>
-auto spp::asts::InnerScopeAst<T>::stage_10_code_gen_2(
+auto spp::asts::InnerScopeAst<T>::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -145,7 +145,7 @@ auto spp::asts::InnerScopeAst<T>::stage_10_code_gen_2(
     // SPP_ASSERT(sm->current_scope == m_scope);
 
     for (auto const &member : members) {
-        member->stage_10_code_gen_2(sm, meta, ctx);
+        member->stage_11_code_gen_2(sm, meta, ctx);
     }
 
     // Need to add a "return void" if the final member isn't a RetStatementAst.

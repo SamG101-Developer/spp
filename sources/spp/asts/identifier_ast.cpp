@@ -10,8 +10,9 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
-import spp.utils.strings;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.utils.strings;
 import spp.utils.uid;
 import absl;
 import genex;
@@ -113,7 +114,18 @@ auto spp::asts::IdentifierAst::stage_7_analyse_semantics(
 }
 
 
-auto spp::asts::IdentifierAst::stage_10_code_gen_2(
+auto spp::asts::IdentifierAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Extract the value from the symbol table and return it.
+    const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));
+    const auto cmp_id = var_sym->comptime_value.get();
+    meta->cmp_result = ast_clone(cmp_id->to<ExpressionAst>());
+}
+
+
+auto spp::asts::IdentifierAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *,
     codegen::LLvmCtx *ctx)

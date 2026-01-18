@@ -15,6 +15,7 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
     enclosing_function_scope = nullptr;
     enclosing_function_flavour = nullptr;
     enclosing_function_ret_type = {};
+    enclosing_function_cmp = nullptr;
     current_lambda_outer_scope = nullptr;
     target_call_function_prototype = nullptr;
     target_call_was_function_async = false;
@@ -40,6 +41,7 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
     llvm_assignment_target = nullptr;
     llvm_assignment_target_type = nullptr;
     llvm_phi = nullptr;
+    cmp_result = nullptr;
 }
 
 
@@ -47,13 +49,13 @@ auto spp::asts::meta::CompilerMetaData::save() -> void {
     m_history.emplace(
         current_stage, return_type_overload_resolver_type, assignment_target,
         assignment_target_type, ignore_missing_else_branch_for_inference, case_condition, cls_sym,
-        enclosing_function_scope, enclosing_function_flavour, enclosing_function_ret_type,
+        enclosing_function_scope, enclosing_function_flavour, enclosing_function_ret_type, enclosing_function_cmp,
         current_lambda_outer_scope, target_call_function_prototype, target_call_was_function_async,
         prevent_auto_generator_resume, let_stmt_explicit_type, let_stmt_value, let_stmt_from_uninitialized,
         loop_double_check_active, current_loop_depth, current_loop_ast, loop_return_types, object_init_type,
         infer_source, infer_target, postfix_expression_lhs, unary_expression_rhs, skip_type_analysis_generic_checks,
         type_analysis_type_scope, ignore_cmp_generic, allow_move_deref, end_bb, llvm_ctx, llvm_assignment_target,
-        llvm_assignment_target_type, llvm_phi);
+        llvm_assignment_target_type, llvm_phi, std::move(cmp_args), nullptr);
 }
 
 
@@ -71,6 +73,7 @@ auto spp::asts::meta::CompilerMetaData::restore(const bool heavy) -> void {
         enclosing_function_scope = state.enclosing_function_scope;
         enclosing_function_flavour = state.enclosing_function_flavour;
         enclosing_function_ret_type = state.enclosing_function_ret_type;
+        enclosing_function_cmp = state.enclosing_function_cmp;
     }
     current_lambda_outer_scope = state.current_lambda_outer_scope;
     target_call_function_prototype = state.target_call_function_prototype;
@@ -97,6 +100,7 @@ auto spp::asts::meta::CompilerMetaData::restore(const bool heavy) -> void {
     llvm_assignment_target = state.llvm_assignment_target;
     llvm_assignment_target_type = state.llvm_assignment_target_type;
     llvm_phi = state.llvm_phi;
+    cmp_args = std::move(state.cmp_args);
 }
 
 

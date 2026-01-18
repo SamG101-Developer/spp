@@ -47,6 +47,7 @@ export namespace llvm {
     using ::llvm::Module;
     using ::llvm::PointerType;
     using ::llvm::PHINode;
+    using ::llvm::SmallVector;
     using ::llvm::StructType;
     using ::llvm::Triple;
     using ::llvm::Type;

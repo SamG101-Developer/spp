@@ -72,14 +72,14 @@ auto spp::asts::LoopElseStatementAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::LoopElseStatementAst::stage_10_code_gen_2(
+auto spp::asts::LoopElseStatementAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate code for the body.
     sm->move_to_next_scope();
-    const auto val = body->stage_10_code_gen_2(sm, meta, ctx);
+    const auto val = body->stage_11_code_gen_2(sm, meta, ctx);
     sm->move_out_of_current_scope();
     return val;
 }

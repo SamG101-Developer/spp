@@ -267,7 +267,7 @@ auto spp::parse::ParserSpp::parse_class_attribute()
 auto spp::parse::ParserSpp::parse_class_attribute_default_value()
     -> std::unique_ptr<asts::ExpressionAst> {
     PARSE_ONCE(p1, parse_token_assign);
-    PARSE_ONCE(p2, parse_cmp_value);
+    PARSE_ONCE(p2, parse_expression); // TODO: Force this "cmp" in SA?
     return FORWARD_AST(p2);
 }
 
@@ -339,14 +339,15 @@ auto spp::parse::ParserSpp::parse_function_prototype()
 auto spp::parse::ParserSpp::parse_subroutine_prototype()
     -> std::unique_ptr<asts::SubroutinePrototypeAst> {
     PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_newline);
-    PARSE_ONCE(p2, parse_keyword_fun);
-    PARSE_ONCE(p3, parse_identifier);
-    PARSE_OPTIONAL(p4, parse_generic_parameter_group);
-    PARSE_ONCE(p5, parse_function_parameter_group);
-    PARSE_ONCE(p6, parse_token_arrow_right);
-    PARSE_ONCE(p7, parse_type_expression);
-    PARSE_ONCE(p8, parse_function_implementation);
-    return CREATE_AST(asts::SubroutinePrototypeAst, p1, p2, p3, p4, p5, p6, p7, p8);
+    PARSE_OPTIONAL(p2, parse_keyword_cmp);
+    PARSE_ONCE(p3, parse_keyword_fun);
+    PARSE_ONCE(p4, parse_identifier);
+    PARSE_OPTIONAL(p5, parse_generic_parameter_group);
+    PARSE_ONCE(p6, parse_function_parameter_group);
+    PARSE_ONCE(p7, parse_token_arrow_right);
+    PARSE_ONCE(p8, parse_type_expression);
+    PARSE_ONCE(p9, parse_function_implementation);
+    return CREATE_AST(asts::SubroutinePrototypeAst, p1, p2, p3, p4, p5, p6, p7, p8, p9);
 }
 
 
@@ -360,7 +361,7 @@ auto spp::parse::ParserSpp::parse_coroutine_prototype()
     PARSE_ONCE(p6, parse_token_arrow_right);
     PARSE_ONCE(p7, parse_type_expression);
     PARSE_ONCE(p8, parse_function_implementation);
-    return CREATE_AST(asts::CoroutinePrototypeAst, p1, p2, p3, p4, p5, p6, p7, p8);
+    return CREATE_AST(asts::CoroutinePrototypeAst, p1, nullptr, p2, p3, p4, p5, p6, p7, p8);
 }
 
 
@@ -438,7 +439,7 @@ auto spp::parse::ParserSpp::parse_function_parameter_optional()
     PARSE_ONCE(p2, parse_token_colon);
     PARSE_ONCE(p3, parse_type_expression);
     PARSE_ONCE(p4, parse_token_assign);
-    PARSE_ONCE(p5, parse_cmp_value);
+    PARSE_ONCE(p5, parse_expression); // TODO: Force this "cmp" in SA?
     return CREATE_AST(asts::FunctionParameterOptionalAst, p1, p2, p3, p4, p5);
 }
 
@@ -533,7 +534,7 @@ auto spp::parse::ParserSpp::parse_generic_parameter_comp_optional()
     PARSE_ONCE(p3, parse_token_colon);
     PARSE_ONCE(p4, parse_type_expression);
     PARSE_ONCE(p5, parse_token_assign);
-    PARSE_ONCE(p6, parse_cmp_value);
+    PARSE_ONCE(p6, parse_expression); // TODO: Force this "cmp" in SA?
     return CREATE_AST(asts::GenericParameterCompOptionalAst, p1, asts::TypeIdentifierAst::from_identifier(*p2), p3, p4, p5, p6);
 }
 
@@ -620,7 +621,7 @@ auto spp::parse::ParserSpp::parse_generic_argument_comp()
 
 auto spp::parse::ParserSpp::parse_generic_argument_comp_positional()
     -> std::unique_ptr<asts::GenericArgumentCompPositionalAst> {
-    PARSE_ONCE(p1, parse_cmp_value);
+    PARSE_ONCE(p1, parse_expression); // TODO: Force this "cmp" in SA?
     return CREATE_AST(asts::GenericArgumentCompPositionalAst, p1);
 }
 
@@ -629,7 +630,7 @@ auto spp::parse::ParserSpp::parse_generic_argument_comp_keyword()
     -> std::unique_ptr<asts::GenericArgumentCompKeywordAst> {
     PARSE_ONCE(p1, parse_identifier);
     PARSE_ONCE(p2, parse_token_assign);
-    PARSE_ONCE(p3, parse_cmp_value);
+    PARSE_ONCE(p3, parse_expression); // TODO: Force this "cmp" in SA?
     return CREATE_AST(asts::GenericArgumentCompKeywordAst, asts::TypeIdentifierAst::from_identifier(*p1), p2, p3);
 }
 
@@ -661,7 +662,7 @@ auto spp::parse::ParserSpp::parse_generic_argument_type_keyword()
 
 auto spp::parse::ParserSpp::parse_annotation()
     -> std::unique_ptr<asts::AnnotationAst> {
-    PARSE_ONCE(p1, parse_token_at);
+    PARSE_ONCE(p1, parse_token_exclamation_mark);
     PARSE_ONCE(p2, parse_identifier);
     auto x = CREATE_AST(asts::AnnotationAst, p1, p2);
     return x;
@@ -962,6 +963,7 @@ auto spp::parse::ParserSpp::parse_postfix_expression_op()
 auto spp::parse::ParserSpp::parse_postfix_expression_op_deref()
     -> std::unique_ptr<asts::PostfixExpressionOperatorDerefAst> {
     PARSE_ONCE(p1, parse_token_deref);
+    PARSE_NEGATE(lex::RawTokenType::LX_CHARACTER)
     return CREATE_AST(asts::PostfixExpressionOperatorDerefAst, p1);
 }
 
@@ -1088,7 +1090,8 @@ auto spp::parse::ParserSpp::parse_case_expression_branch_else_case()
 
     auto else_pattern = std::unique_ptr<asts::CasePatternVariantAst>(CREATE_AST(asts::CasePatternVariantElseAst, nullptr).release());
     auto temp_1 = std::vector<std::unique_ptr<asts::StatementAst>>();
-    auto ptr = std::unique_ptr<asts::CasePatternVariantElseCaseAst>(p1.release()->to<asts::CasePatternVariantElseCaseAst>())->case_expr.release()->to<asts::StatementAst>();
+    const auto ptr = std::unique_ptr<asts::CasePatternVariantElseCaseAst>(
+        p1.release()->to<asts::CasePatternVariantElseCaseAst>())->case_expr.release()->to<asts::StatementAst>();
     temp_1.emplace_back(std::unique_ptr<asts::StatementAst>(ptr));
 
     auto else_case_body = CREATE_AST(asts::InnerScopeExpressionAst<std::unique_ptr<asts::StatementAst>>, nullptr, std::move(temp_1), nullptr);
@@ -1529,7 +1532,7 @@ auto spp::parse::ParserSpp::parse_cmp_statement()
     PARSE_ONCE(p3, parse_token_colon);
     PARSE_ONCE(p4, parse_type_expression);
     PARSE_ONCE(p5, parse_token_assign);
-    PARSE_ONCE(p6, parse_cmp_value);
+    PARSE_ONCE(p6, parse_expression); // TODO: Force this "cmp" in SA?
     return CREATE_AST(asts::CmpStatementAst, NO_ANNOTATIONS, p1, p2, p3, p4, p5, p6);
 }
 
@@ -1807,10 +1810,10 @@ auto spp::parse::ParserSpp::parse_closure_expression_capture()
 
 auto spp::parse::ParserSpp::parse_closure_expression_parameter_and_capture_group()
     -> std::unique_ptr<asts::ClosureExpressionParameterAndCaptureGroupAst> {
-    PARSE_ONCE(p1, parse_token_vertical_bar);
+    PARSE_ONCE(p1, parse_token_left_parenthesis);
     PARSE_ONCE(p2, parse_closure_expression_parameter_group);
     PARSE_OPTIONAL(p3, parse_closure_expression_capture_group);
-    PARSE_ONCE(p4, parse_token_vertical_bar);
+    PARSE_ONCE(p4, parse_token_right_parenthesis);
     return CREATE_AST(asts::ClosureExpressionParameterAndCaptureGroupAst, p1, p2, p3, p4);
 }
 
@@ -1840,7 +1843,9 @@ auto spp::parse::ParserSpp::parse_type_expression()
 }
 
 
-auto spp::parse::ParserSpp::parse_binary_type_expression_precedence_level_n_rhs(std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser, std::function<std::unique_ptr<asts::TypeAst>()> &&rhs_parser)
+auto spp::parse::ParserSpp::parse_binary_type_expression_precedence_level_n_rhs(
+    std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser,
+    std::function<std::unique_ptr<asts::TypeAst>()> &&rhs_parser)
     -> std::unique_ptr<asts::TypeBinaryExpressionTempAst> {
     PARSE_ONCE(p1, op_parser);
     PARSE_ONCE(p2, rhs_parser);
@@ -1848,7 +1853,10 @@ auto spp::parse::ParserSpp::parse_binary_type_expression_precedence_level_n_rhs(
 }
 
 
-auto spp::parse::ParserSpp::parse_binary_type_expression_precedence_level_n(std::function<std::unique_ptr<asts::TypeAst>()> &&lhs_parser, std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser, std::function<std::unique_ptr<asts::TypeAst>()> &&rhs_parser)
+auto spp::parse::ParserSpp::parse_binary_type_expression_precedence_level_n(
+    std::function<std::unique_ptr<asts::TypeAst>()> &&lhs_parser,
+    std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser,
+    std::function<std::unique_ptr<asts::TypeAst>()> &&rhs_parser)
     -> std::unique_ptr<asts::TypeAst> {
     auto op_rhs_parser = [this, op_parser, rhs_parser] mutable { return parse_binary_type_expression_precedence_level_n_rhs(std::move(op_parser), std::move(rhs_parser)); };
     PARSE_ONCE(p1, lhs_parser);
@@ -2022,7 +2030,7 @@ auto spp::parse::ParserSpp::parse_type_array()
     PARSE_ONCE(p1, parse_token_left_square_bracket);
     PARSE_ONCE(p2, parse_type_expression);
     PARSE_ONCE(p3, parse_token_semicolon);
-    PARSE_ONCE(p4, parse_cmp_value);
+    PARSE_ONCE(p4, parse_expression); // TODO: Force this "cmp" in SA?
     PARSE_ONCE(p5, parse_token_right_square_bracket);
     return CREATE_AST(asts::TypeArrayShorthandAst, p1, p2, p3, p4, p5)->convert();
 }
@@ -2257,7 +2265,8 @@ auto spp::parse::ParserSpp::parse_integer_suffix_type()
 }
 
 
-auto spp::parse::ParserSpp::parse_literal_tuple_1_element(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser)
+auto spp::parse::ParserSpp::parse_literal_tuple_1_element(
+    std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser)
     -> std::unique_ptr<asts::TupleLiteralAst> {
     PARSE_ONCE(p1, parse_token_left_parenthesis);
     PARSE_ONCE(p2, std::move(elem_parser));
@@ -2270,7 +2279,8 @@ auto spp::parse::ParserSpp::parse_literal_tuple_1_element(std::function<std::uni
 }
 
 
-auto spp::parse::ParserSpp::parse_literal_tuple_n_elements(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser)
+auto spp::parse::ParserSpp::parse_literal_tuple_n_elements(
+    std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser)
     -> std::unique_ptr<asts::TupleLiteralAst> {
     PARSE_ONCE(p1, parse_token_left_parenthesis);
     PARSE_TWO_OR_MORE(p2, elem_parser, parse_token_comma);
@@ -2279,70 +2289,25 @@ auto spp::parse::ParserSpp::parse_literal_tuple_n_elements(std::function<std::un
 }
 
 
-auto spp::parse::ParserSpp::parse_literal_array_repeated_element(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser)
+auto spp::parse::ParserSpp::parse_literal_array_repeated_element(
+    std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser)
     -> std::unique_ptr<asts::ArrayLiteralRepeatedElementAst> {
     PARSE_ONCE(p1, parse_token_left_square_bracket);
     PARSE_ONCE(p2, elem_parser);
     PARSE_ONCE(p3, parse_token_semicolon);
-    PARSE_ONCE(p4, parse_cmp_value);
+    PARSE_ONCE(p4, parse_expression); // TODO: Force this "cmp" in SA?
     PARSE_ONCE(p5, parse_token_right_square_bracket);
     return CREATE_AST(asts::ArrayLiteralRepeatedElementAst, p1, p2, p3, p4, p5);
 }
 
 
-auto spp::parse::ParserSpp::parse_literal_array_explicit_elements(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser)
+auto spp::parse::ParserSpp::parse_literal_array_explicit_elements(
+    std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser)
     -> std::unique_ptr<asts::ArrayLiteralExplicitElementsAst> {
     PARSE_ONCE(p1, parse_token_left_square_bracket);
     PARSE_ONE_OR_MORE(p2, elem_parser, parse_token_comma);
     PARSE_ONCE(p3, parse_token_right_square_bracket);
     return CREATE_AST(asts::ArrayLiteralExplicitElementsAst, p1, p2, p3);
-}
-
-
-auto spp::parse::ParserSpp::parse_cmp_value()
-    -> std::unique_ptr<asts::ExpressionAst> {
-    // todo: just accept all Expression's and then check them in semantic analysis for cmp?
-    PARSE_ALTERNATE(
-        p1, asts::ExpressionAst, parse_literal_char, parse_literal_string, parse_literal_float, parse_literal_integer,
-        parse_literal_boolean, [this] { return parse_literal_tuple([this] { return parse_cmp_value(); }); },
-        [this] { return parse_literal_array([this] { return parse_cmp_value(); }); }, parse_cmp_object_initializer,
-        parse_identifier);
-    return FORWARD_AST(p1);
-}
-
-
-auto spp::parse::ParserSpp::parse_cmp_object_initializer()
-    -> std::unique_ptr<asts::ObjectInitializerAst> {
-    PARSE_ONCE(p1, parse_type_expression_simple);
-    PARSE_ONCE(p2, parse_cmp_object_initializer_argument_group);
-    return CREATE_AST(asts::ObjectInitializerAst, p1, p2);
-}
-
-
-auto spp::parse::ParserSpp::parse_cmp_object_initializer_argument_group()
-    -> std::unique_ptr<asts::ObjectInitializerArgumentGroupAst> {
-    PARSE_ONCE(p1, parse_token_left_parenthesis);
-    PARSE_ZERO_OR_MORE(p2, parse_cmp_object_initializer_argument, parse_token_comma);
-    PARSE_ONCE(p3, parse_token_right_parenthesis);
-    return CREATE_AST(asts::ObjectInitializerArgumentGroupAst, p1, p2, p3);
-}
-
-
-auto spp::parse::ParserSpp::parse_cmp_object_initializer_argument()
-    -> std::unique_ptr<asts::ObjectInitializerArgumentAst> {
-    PARSE_ALTERNATE(
-        p1, asts::ObjectInitializerArgumentAst, parse_cmp_object_initializer_argument_keyword,
-        parse_object_initializer_argument_shorthand);
-    return FORWARD_AST(p1);
-}
-
-
-auto spp::parse::ParserSpp::parse_cmp_object_initializer_argument_keyword()
-    -> std::unique_ptr<asts::ObjectInitializerArgumentKeywordAst> {
-    PARSE_ONCE(p1, parse_identifier);
-    PARSE_ONCE(p2, parse_token_assign);
-    PARSE_ONCE(p3, parse_cmp_value);
-    return CREATE_AST(asts::ObjectInitializerArgumentKeywordAst, p1, p2, p3);
 }
 
 

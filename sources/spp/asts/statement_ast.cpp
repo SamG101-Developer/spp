@@ -16,5 +16,6 @@ auto spp::asts::StatementAst::infer_type(
 
 auto spp::asts::StatementAst::terminates() const
     -> bool {
+    // By default, statements do not terminate control flow.
     return false;
 }

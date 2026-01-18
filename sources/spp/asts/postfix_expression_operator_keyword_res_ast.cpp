@@ -1,7 +1,10 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.postfix_expression_operator_keyword_res_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.type_utils;
 import spp.asts.fold_expression_ast;
@@ -104,7 +107,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_10_code_gen_2(
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -113,7 +116,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_10_code_gen_2(
     // The llvm generator environment is the lhs of this postfix expression. (both Gen and Generated are the env, but
     // separate types for analysis). the "resuming" on Generated types simply shiftf the state inside the environment.
     const auto uid = spp::utils::generate_uid(this);
-    const auto llvm_gen_env = meta->postfix_expression_lhs->stage_10_code_gen_2(sm, meta, ctx);
+    const auto llvm_gen_env = meta->postfix_expression_lhs->stage_11_code_gen_2(sm, meta, ctx);
     const auto llvm_gen_env_type = llvm_gen_env->getType();
 
     // Get the resume function pointer (field 0) from the generator environment.
@@ -123,8 +126,8 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_10_code_gen_2(
 
     // Convert the send value, if it exists, to the correct LLVM type.
     const auto llvm_send_value = arg_group != nullptr and not arg_group->args.empty()
-                                     ? arg_group->args[0]->stage_10_code_gen_2(sm, meta, ctx)
-                                     : llvm::UndefValue::get(llvm::Type::getVoidTy(*ctx->context));
+        ? arg_group->args[0]->stage_11_code_gen_2(sm, meta, ctx)
+        : llvm::UndefValue::get(llvm::Type::getVoidTy(*ctx->context));
 
     // Call the resume function with the generator environment and send value.
     ctx->builder.CreateCall(

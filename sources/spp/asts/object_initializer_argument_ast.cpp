@@ -14,7 +14,7 @@ import spp.asts.utils.ast_utils;
 
 
 spp::asts::ObjectInitializerArgumentAst::ObjectInitializerArgumentAst(
-    decltype(name) &&name,
+    decltype(name) name,
     decltype(val) &&val) :
     name(std::move(name)),
     val(std::move(val)) {
@@ -42,6 +42,15 @@ auto spp::asts::ObjectInitializerArgumentAst::stage_8_check_memory(
     val->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
         *val, *this, *sm, true, true, true, true, true, true, meta);
+}
+
+
+auto spp::asts::ObjectInitializerArgumentAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Comptime resolve the value expression.
+    val->stage_9_comptime_resolution(sm, meta);
 }
 
 

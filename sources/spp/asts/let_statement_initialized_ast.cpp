@@ -128,7 +128,24 @@ auto spp::asts::LetStatementInitializedAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::LetStatementInitializedAst::stage_10_code_gen_2(
+auto spp::asts::LetStatementInitializedAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Comptime resolve the value.
+    val->stage_9_comptime_resolution(sm, meta);
+
+    // Assign the comptime value to the variable.
+    meta->save();
+    meta->assignment_target = var->extract_name();
+    meta->let_stmt_explicit_type = type;
+    meta->let_stmt_value = val.get();
+    var->stage_9_comptime_resolution(sm, meta);
+    meta->restore();
+}
+
+
+auto spp::asts::LetStatementInitializedAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -139,7 +156,7 @@ auto spp::asts::LetStatementInitializedAst::stage_10_code_gen_2(
     meta->assignment_target_type = type ? type : val->infer_type(sm, meta);
     meta->let_stmt_explicit_type = type ? type : val->infer_type(sm, meta);
     meta->let_stmt_value = val.get();
-    const auto alloca = var->stage_10_code_gen_2(sm, meta, ctx);
+    const auto alloca = var->stage_11_code_gen_2(sm, meta, ctx);
     meta->restore();
     return alloca;
 }

@@ -67,10 +67,19 @@ auto spp::asts::CasePatternVariantElseCaseAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::CasePatternVariantElseCaseAst::stage_10_code_gen_2(
+auto spp::asts::CasePatternVariantElseCaseAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Get the comptime result from the case expression.
+    case_expr->stage_9_comptime_resolution(sm, meta);
+}
+
+
+auto spp::asts::CasePatternVariantElseCaseAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) -> llvm::Value* {
     // Delegate code generation to the case expression.
-    return case_expr->stage_10_code_gen_2(sm, meta, ctx);
+    return case_expr->stage_11_code_gen_2(sm, meta, ctx);
 }

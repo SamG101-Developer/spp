@@ -93,7 +93,7 @@ auto spp::asts::LetStatementUninitializedAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::LetStatementUninitializedAst::stage_10_code_gen_2(
+auto spp::asts::LetStatementUninitializedAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -103,7 +103,7 @@ auto spp::asts::LetStatementUninitializedAst::stage_10_code_gen_2(
     meta->let_stmt_value = nullptr;
     meta->let_stmt_explicit_type = type;
     meta->let_stmt_from_uninitialized = true;
-    const auto alloca = var->stage_10_code_gen_2(sm, meta, ctx);
+    const auto alloca = var->stage_11_code_gen_2(sm, meta, ctx);
     meta->restore();
     return alloca;
 }

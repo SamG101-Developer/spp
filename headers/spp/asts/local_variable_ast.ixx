@@ -22,9 +22,11 @@ public:
 
     ~LocalVariableAst() override;
 
-    virtual auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>>;
+    SPP_ATTR_NODISCARD virtual auto extract_names() const
+        -> std::vector<std::shared_ptr<IdentifierAst>>;
 
-    virtual auto extract_name() const -> std::shared_ptr<IdentifierAst>;
+    SPP_ATTR_NODISCARD virtual auto extract_name() const
+        -> std::shared_ptr<IdentifierAst>;
 
     auto mark_from_case_pattern() -> void;
 };

@@ -11,6 +11,7 @@ namespace spp::analyse::scopes {
 
 namespace spp::asts {
     SPP_EXP_CLS struct Ast;
+    SPP_EXP_CLS struct ExpressionAst;
 }
 
 namespace spp::asts::meta {
@@ -108,6 +109,15 @@ public:
     virtual auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
     /**
+     * Resolve any comptime values that haven't got literals assigned to them. This allows for somptime functions to be
+     * called, computed, and their values set to the varoables required. Some ASTs will not support this, so they will
+     * throw a compile time error, such as loop expressions.
+     * @param sm The scope manager to use for resolution.
+     * @param meta Associated metadata.
+     */
+    virtual auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void;
+
+    /**
      * Generate some LLVM IR code from the ASTs. This is IR that is needed for the rest of the program to be generated.
      * Required to make the ASTs order-agnostic.
      * @param[in, out] sm The scope manager to get symbol's memory information from.
@@ -115,7 +125,7 @@ public:
      * @param[in, out] ctx The LLVM context to generate code into.
      * @return The LLVM value generated from this AST.
      */
-    virtual auto stage_9_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value*;
+    virtual auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value*;
 
     /**
      * Finish the LLVM IR generation for the remaining (majority) of the ASTs. This will then all get linked together
@@ -125,5 +135,5 @@ public:
      * @param[in, out] ctx The LLVM context to generate code into.
      * @returns The LLVM value generated from this AST.
      */
-    virtual auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value*;
+    virtual auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value*;
 };

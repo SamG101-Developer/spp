@@ -5,7 +5,6 @@ export module spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.array_literal_ast;
 import spp.asts.token_ast;
 import spp.codegen.llvm_ctx;
-
 import llvm;
 import std;
 
@@ -82,13 +81,22 @@ public:
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
+     * Resolve the array literal at compile time. This is only possible if all the elements are compile time resolvable
+     * themselves.
+     * @param sm The scope manager to use for resolution.
+     * @param meta Associated metadata.
+     * @return The result of the compile time resolution.
+     */
+    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    /**
      * Create an array type based on the internal element type and the number of elements.
      * @param sm The scope manager to use for code generation.
      * @param meta Associated metadata.
      * @param ctx The LLVM context to use for code generation.
      * @return The LLVM value representing the array literal.
      */
-    auto stage_10_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     /**
      * The inferred type of an array literal is always @code std::array::Arr[T, n]@endcode, where @c T is the type of

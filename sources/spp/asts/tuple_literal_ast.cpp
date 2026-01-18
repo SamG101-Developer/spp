@@ -98,7 +98,7 @@ auto spp::asts::TupleLiteralAst::stage_7_analyse_semantics(
         SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(elem, elem_type, *sm, "tuple literal element");
     }
 
-    // Analyse the inferred array type to generate the generic implementation.
+    // Analyse the inferred tuple type to generate the generic implementation.
     infer_type(sm, meta)->stage_7_analyse_semantics(sm, meta);
 }
 
@@ -107,7 +107,7 @@ auto spp::asts::TupleLiteralAst::stage_8_check_memory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // Check the memory of each element in the array literal.
+    // Check the memory of each element in the tuple literal.
     for (auto &&elem : elems) {
         elem->stage_8_check_memory(sm, meta);
         analyse::utils::mem_utils::validate_symbol_memory(
@@ -116,7 +116,24 @@ auto spp::asts::TupleLiteralAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::TupleLiteralAst::stage_10_code_gen_2(
+auto spp::asts::TupleLiteralAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Convert the inner elements to compile-time values.
+    auto cmp_elems = std::vector<std::unique_ptr<ExpressionAst>>();
+    for (auto const &elem : elems) {
+        elem->stage_9_comptime_resolution(sm, meta);
+        cmp_elems.emplace_back(std::move(meta->cmp_result));
+    }
+
+    // Wrap the compile-time array value.
+    meta->cmp_result = std::make_unique<TupleLiteralAst>(
+        nullptr, std::move(cmp_elems), nullptr);
+}
+
+
+auto spp::asts::TupleLiteralAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -134,7 +151,7 @@ auto spp::asts::TupleLiteralAst::stage_10_code_gen_2(
 
     // Store each element into the tuple alloca.
     for (std::size_t i = 0; i < elems.size(); ++i) {
-        const auto elem_value = elems[i]->stage_10_code_gen_2(sm, meta, ctx);
+        const auto elem_value = elems[i]->stage_11_code_gen_2(sm, meta, ctx);
         SPP_ASSERT(elem_value != nullptr);
 
         const auto const_idx_0 = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), 0);

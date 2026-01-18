@@ -42,6 +42,7 @@ public:
     auto stage_6_pre_analyse_semantics(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
     auto stage_7_analyse_semantics(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
     auto stage_8_check_memory(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
-    auto stage_9_code_gen_1(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
-    auto stage_10_code_gen_2(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
+    auto stage_9_comptime_resolution(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
+    auto stage_10_code_gen_1(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
+    auto stage_11_code_gen_2(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
 };

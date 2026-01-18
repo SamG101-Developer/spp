@@ -120,14 +120,14 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_8_check_memo
 }
 
 
-auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_10_code_gen_2(
+auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the parameters into the current scope.
     sm->move_to_next_scope();
-    param_group->stage_10_code_gen_2(sm, meta, ctx);
-    capture_group->stage_10_code_gen_2(sm, meta, ctx);
+    param_group->stage_11_code_gen_2(sm, meta, ctx);
+    capture_group->stage_11_code_gen_2(sm, meta, ctx);
     return nullptr;
 }

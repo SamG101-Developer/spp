@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.meta.compiler_meta_data;
-
 import ankerl;
 import llvm;
 import std;
@@ -42,6 +41,7 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     analyse::scopes::Scope *enclosing_function_scope;
     TokenAst *enclosing_function_flavour;
     std::vector<std::shared_ptr<TypeAst>> enclosing_function_ret_type;
+    TokenAst *enclosing_function_cmp;
     analyse::scopes::Scope *current_lambda_outer_scope;
     FunctionPrototypeAst *target_call_function_prototype;
     bool target_call_was_function_async;
@@ -67,6 +67,8 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     llvm::Value *llvm_assignment_target;
     llvm::Value *llvm_assignment_target_type;
     llvm::PHINode *llvm_phi;
+    std::map<std::shared_ptr<IdentifierAst>, std::unique_ptr<ExpressionAst>, ankerl::ptr_cmp<std::shared_ptr<IdentifierAst>>> cmp_args;
+    std::unique_ptr<ExpressionAst> cmp_result;
 };
 
 

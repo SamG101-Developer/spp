@@ -94,7 +94,19 @@ auto spp::asts::PostfixExpressionAst::stage_8_check_memory(
 }
 
 
-auto spp::asts::PostfixExpressionAst::stage_10_code_gen_2(
+auto spp::asts::PostfixExpressionAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Forward into the operator AST.
+    meta->save();
+    meta->postfix_expression_lhs = lhs.get();
+    op->stage_9_comptime_resolution(sm, meta);
+    meta->restore();
+}
+
+
+auto spp::asts::PostfixExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
@@ -102,7 +114,7 @@ auto spp::asts::PostfixExpressionAst::stage_10_code_gen_2(
     // Forward into the operator AST.
     meta->save();
     meta->postfix_expression_lhs = lhs.get();
-    const auto ret_val = op->stage_10_code_gen_2(sm, meta, ctx);
+    const auto ret_val = op->stage_11_code_gen_2(sm, meta, ctx);
     meta->restore();
     return ret_val;
 }
