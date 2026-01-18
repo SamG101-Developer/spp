@@ -54,4 +54,28 @@ args, and when constant functions are ready, they can be manipulated as argument
 
 - Need to extend to allow `::` postfix access for `cmp` values, so we can do things like
   `fun f(a: U8 = Type::constant) -> Void`
+
+## NEW
+
+The idea of `cmp` variables is that they can be used inside functions, such that these values can be computed at compile
+time and not waste runtime resources. That being said, there will, at least initially, be limitations on what can be
+done: both he operations that can be done as `cmp`, and where these `cmp` values can be present. These are all the
+palces that `cmp` variables need to be known at compile time.
+
+- Comptime declaration statements: `cmp x: s32 = 1`
+- Comptime generic parameter default value: `fun f[cmp x: S32 = 1]() { ... }`
+- Comptime generic argument value: `f[1]() { ... }`
+- Function parameter default value: `fun f(x: S32 = 1) { ... }`
+- Class attribute default value: `cls C { x: S32 = 1 }`
+
+For resolution, we build a "tree" of the comptime linking. This enables 2 key things:
+
+- Are there cycles in the comptime resolution; do we have `cmp x: S32 = y + 1` and `cmp y: S32 = x + 1`? This involved
+  deeper analysis, such as `cmp x: S32 = f()`, and the function `f` uses the variable `x` too.
+- Substituting the value into the variable. This needs to be done, ultimately, before the final codegen stage, so that
+  any uses of the variable can be replaced with the literal value.
+
+When do we do the substitution. Initially, this will be restricted. What this means, is that we won't be able to use
+them in types being used for superimposition, or function parameters etc, just like with "postfix" types, due to order
+of resolution. This is okay for now, and a special error will be raised, likely referenceing "not yet implemented".
   
