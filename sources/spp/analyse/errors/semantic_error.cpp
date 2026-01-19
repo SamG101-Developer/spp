@@ -1569,3 +1569,17 @@ spp::analyse::errors::SppInvalidComptimeOperationError::SppInvalidComptimeOperat
         "This expression cannot be evaluatable at compile-time for.",
         "Modify the expression to be computable at compile-time");
 }
+
+
+spp::analyse::errors::SppInternalCompilerError::SppInternalCompilerError(
+    asts::Ast const &ast,
+    const std::string_view message) {
+    add_header(
+        99, "SPP Internal Compiler Error");
+    add_error(
+        &ast,
+        "Ast defined here");
+    add_footer(
+        "An internal compiler error has occurred: " + std::string(message),
+        "Please report this issue to the SPP development team with the relevant code context");
+}
