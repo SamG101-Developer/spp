@@ -1,7 +1,10 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.case_expression_branch_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.asts.binary_expression_ast;
@@ -151,26 +154,36 @@ auto spp::asts::CaseExpressionBranchAst::stage_9_comptime_resolution(
     CompilerMetaData *meta)
     -> void {
     // Combine the case expression with the pattern to determine if this branch should be taken, at compile-time.
+    sm->move_to_next_scope();
     for (auto const& pattern: patterns) {
         pattern->stage_9_comptime_resolution(sm, meta);
 
         // Determine if this branch is not a match (false).
         const auto cmp_pat_bool = meta->cmp_result->to<BooleanLiteralAst>();
-        if (cmp_pat_bool == nullptr or not cmp_pat_bool->is_true()) { continue; }
+        if (cmp_pat_bool == nullptr or not cmp_pat_bool->is_true()) {
+            sm->exhaust_scope();
+            continue;
+        }
 
         // Check with the branch guard if it exists.
         if (guard != nullptr) {
             guard->stage_9_comptime_resolution(sm, meta);
             const auto cmp_guard_bool = meta->cmp_result->to<BooleanLiteralAst>();
-            if (not cmp_guard_bool->is_true()) { continue; }
+            if (not cmp_guard_bool->is_true()) {
+                sm->exhaust_scope();
+                continue;
+            }
         }
 
         // At this point, the correct branch has been identified, so resolve the body.
         body->stage_9_comptime_resolution(sm, meta);
+        sm->move_out_of_current_scope();
         return;
     }
 
-    std::unreachable();
+    // None of the patterns on this branch matched.
+    meta->cmp_result = nullptr;
+    sm->move_out_of_current_scope();
 }
 
 

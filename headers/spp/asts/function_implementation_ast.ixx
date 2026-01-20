@@ -17,7 +17,7 @@ namespace spp::asts {
  * function and contains the statements that make up the function's implementation. Semantically equivalent to a basic
  * InnerScopeAst.
  */
-SPP_EXP_CLS struct spp::asts::FunctionImplementationAst final :
+SPP_EXP_CLS struct spp::asts::FunctionImplementationAst :
     InnerScopeAst<std::unique_ptr<FunctionMemberAst>> {
     using InnerScopeAst::InnerScopeAst;
 

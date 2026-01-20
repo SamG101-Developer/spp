@@ -91,6 +91,16 @@ auto spp::analyse::scopes::ScopeManager::move_to_next_scope(
 }
 
 
+auto spp::analyse::scopes::ScopeManager::exhaust_scope()
+    -> void {
+    // Manual scope skipping.
+    const auto final_scope = current_scope->final_child_scope();
+    while (current_scope != final_scope) {
+        move_to_next_scope(false);
+    }
+}
+
+
 auto spp::analyse::scopes::ScopeManager::attach_llvm_type_info(
     asts::ModulePrototypeAst const &mod,
     codegen::LLvmCtx *ctx) const

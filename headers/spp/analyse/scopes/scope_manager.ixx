@@ -143,6 +143,12 @@ public:
     auto move_to_next_scope(bool ignore_alias_class_scopes = true)
         -> Scope*;
 
+    /**
+     * Skip every scope belonging to the current scope. This moves the iterator such that iterating once more will move
+     * to the next sibling of this scope.
+     */
+    auto exhaust_scope() -> void;
+
     auto attach_llvm_type_info(
         asts::ModulePrototypeAst const &mod,
         codegen::LLvmCtx *ctx) const

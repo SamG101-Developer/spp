@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.builtins;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
@@ -19,6 +20,7 @@ import spp.asts.class_implementation_ast;
 import spp.asts.cmp_statement_ast;
 import spp.asts.convention_ast;
 import spp.asts.function_implementation_ast;
+import spp.asts.function_implementation_lowered_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_self_ast;
 import spp.asts.generic_argument_ast;
@@ -396,8 +398,8 @@ auto spp::asts::FunctionPrototypeAst::stage_6_pre_analyse_semantics(
     SPP_ASSERT(sm->current_scope == m_scope);
     const auto mod_ctx = m_ctx->to<ModulePrototypeAst>();
     const auto type_scope = mod_ctx
-                                ? sm->current_scope->parent_module()
-                                : m_ctx->get_ast_scope()->get_type_symbol(ast_name(m_ctx))->scope;
+        ? sm->current_scope->parent_module()
+        : m_ctx->get_ast_scope()->get_type_symbol(ast_name(m_ctx))->scope;
 
     // Error if there are conflicts.
     if (const auto conflict = analyse::utils::func_utils::check_for_conflicting_overload(*sm->current_scope, type_scope, *this, *sm, meta)) {
@@ -426,6 +428,35 @@ auto spp::asts::FunctionPrototypeAst::stage_7_analyse_semantics(
     generic_param_group->stage_7_analyse_semantics(sm, meta);
     param_group->stage_7_analyse_semantics(sm, meta);
 
+    // If this is a !compiler_builtin function, ensure a key exists in the "BUILTINS".
+    if (no_impl_annotation and no_impl_annotation->name->val == "compiler_builtin") {
+        auto scope_vec = sm->current_scope->parent_module()->ancestors()
+            | genex::views::transform([](auto const &x) { return x->name_as_string(); })
+            | genex::to<std::vector>()
+            | genex::views::reverse
+            | genex::views::drop(1)
+            | genex::views::intersperse(std::string("::"))
+            | genex::to<std::vector>();
+        auto scope_str = genex::fold_left_first(scope_vec, std::plus<std::string>{});
+        scope_str.append("::").append(name->val);
+
+        auto lowered_impl = std::make_unique<FunctionImplementationLoweredAst>();
+        lowered_impl->set_scope_str(scope_str);
+        impl = std::move(lowered_impl);
+
+        // if (not analyse::utils::builtins::BUILTIN_FUNCS.contains(scope_str)) {
+        //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppInternalCompilerError>()
+        //         .with_args(*no_impl_annotation, "compiler_builtin function '" + scope_str + "' is not registered in BUILTIN_FUNCS")
+        //         .raises_from(sm->current_scope);
+        // }
+
+        // if (tok_cmp != nullptr and analyse::utils::builtins::BUILTIN_FUNCS.at(scope_str).cmp_fn == nullptr) {
+        //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppInternalCompilerError>()
+        //         .with_args(*tok_cmp, "compiler_builtin function '" + scope_str + "' missing builtin comptime implementation")
+        //         .raises_from(sm->current_scope);
+        // }
+    }
+
     // There is no scope exit, as subclasses will call this method, and finish the analysis themselves.
 }
 
@@ -452,10 +483,7 @@ auto spp::asts::FunctionPrototypeAst::stage_9_comptime_resolution(
     CompilerMetaData *)
     -> void {
     // Manual scope skipping.
-    const auto final_scope = sm->current_scope->final_child_scope();
-    while (sm->current_scope != final_scope) {
-        sm->move_to_next_scope(false);
-    }
+    sm->exhaust_scope();
 }
 
 

@@ -4,6 +4,7 @@ module;
 export module spp.analyse.utils.func_utils;
 import spp.asts.meta.compiler_meta_data;
 import ankerl;
+import llvm;
 import std;
 
 

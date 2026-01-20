@@ -173,19 +173,10 @@ auto spp::asts::CmpStatementAst::stage_9_comptime_resolution(
     -> void {
     // Generate the value and assign it to the variable symbol's compile-time value.
     if (type->operator std::string()[0] != '$') {
-        if (name->operator std::string() == "x") {
-            auto _ = 123;
-        }
-
         const auto var_sym = sm->current_scope->get_var_symbol(name);
         value->stage_9_comptime_resolution(sm, meta);
         var_sym->comptime_value = std::move(meta->cmp_result);
-        if (var_sym->comptime_value != nullptr) {
-            std::cout << "RESOLVED CMP VALUE " << name->operator std::string() << " TO " << var_sym->comptime_value->operator std::string() << "\n";
-        }
-        else {
-            std::cout << "FAILED TO RESOLVE CMP VALUE " << name->operator std::string() << "\n";
-        }
+        // var_sym->comptime_value == nullptr // Todo: => ERROR?
     }
 }
 

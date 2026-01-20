@@ -22,7 +22,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
 import spp.utils.error_formatter;
-import spp.utils.variants;
+import spp.utils.functions;
 import spp.compiler.module_tree;
 import ankerl;
 import genex;
@@ -636,7 +636,7 @@ auto spp::analyse::scopes::Scope::print_scope_tree() const
     // Indent the children, print the scope name.
     auto func = [](this auto &&self, Scope const *scope, std::string const &indent) -> std::string {
         auto result = indent + std::visit(
-            spp::utils::variants::overload{
+            spp::utils::functions::overload{
                 [](std::shared_ptr<asts::IdentifierAst> const &id) { return id->val; },
                 [](std::shared_ptr<asts::TypeIdentifierAst> const &id) { return id->name; },
                 [](ScopeBlockName const &block) { return block.name; }

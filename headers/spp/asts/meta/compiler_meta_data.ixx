@@ -67,7 +67,7 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     llvm::Value *llvm_assignment_target;
     llvm::Value *llvm_assignment_target_type;
     llvm::PHINode *llvm_phi;
-    std::map<std::shared_ptr<IdentifierAst>, std::unique_ptr<ExpressionAst>, ankerl::ptr_cmp<std::shared_ptr<IdentifierAst>>> cmp_args;
+    std::map<std::shared_ptr<IdentifierAst>, std::unique_ptr<ExpressionAst>> cmp_args;
     std::unique_ptr<ExpressionAst> cmp_result;
 };
 

@@ -616,7 +616,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_9_comptime_resol
     // Todo: Remove the "const_cast" here.
     meta->save();
     meta->cmp_args = std::move(arg_map);
-    auto tm = ScopeManager(sm->global_scope, const_cast<analyse::scopes::Scope*>(std::get<0>(*m_overload_info)));
+    auto tm = ScopeManager(sm->global_scope, fn_proto->get_ast_scope()); // const_cast<analyse::scopes::Scope*>(std::get<0>(*m_overload_info)));
     tm.reset(tm.current_scope->children[0].get());
     fn_proto->impl->stage_9_comptime_resolution(&tm, meta);
     meta->restore();

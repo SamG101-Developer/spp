@@ -184,23 +184,22 @@ auto spp::asts::CaseExpressionAst::stage_9_comptime_resolution(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // Scopes.
+    sm->move_to_next_scope();
+
     // Load meta information for compile-time resolution.
     meta->save();
     meta->case_condition = cond.get();
 
     // Delegate to the branchs' compile-time resolution (break at first match).
+    meta->cmp_result = nullptr;
     for (auto const &branch : branches) {
         branch->stage_9_comptime_resolution(sm, meta);
-        if (meta->cmp_result != nullptr and
-            meta->cmp_result->to<BooleanLiteralAst>() != nullptr and
-            meta->cmp_result->to<BooleanLiteralAst>()->is_true()) {
-            // Branch matched, stop here.
-            meta->restore();
-            return;
-        }
+        if (meta->cmp_result != nullptr) { break; }
     }
 
     // Otherwise, if no branches matched, this is non-returning, so nullptr is fine.
+    sm->move_out_of_current_scope();
     meta->restore();
 }
 

@@ -130,6 +130,9 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::stage_9_comptime_resoluti
         comptime_tranforms,
         [](auto const &x) { return x->template to<BooleanLiteralAst>()->is_true(); });
 
+    // Generate the "let" statement to introduce all the symbols.
+    m_mapped_let->stage_9_comptime_resolution(sm, meta);
+
     // Based on the result, return the corresponding comptime value.
     const auto p = pos_start();
     meta->cmp_result = all_true ? BooleanLiteralAst::True(p) : BooleanLiteralAst::False(p);

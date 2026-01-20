@@ -43,6 +43,6 @@ auto spp::asts::FunctionImplementationAst::stage_9_comptime_resolution(
     for (auto const &member : this->members) {
         const auto did_ret = member->to<RetStatementAst>() != nullptr;
         member->stage_9_comptime_resolution(sm, meta);
-        if (did_ret) { return; }
+        if (did_ret) { break; }
     }
 }

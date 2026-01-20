@@ -45,7 +45,11 @@ import spp.asts.generic_parameter_type_optional_ast;
 import spp.asts.generic_parameter_type_variadic_ast;
 import spp.asts.identifier_ast;
 import spp.asts.identifier_ast;
+import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
+import spp.asts.literal_ast;
 import spp.asts.object_initializer_ast;
 import spp.asts.object_initializer_argument_group_ast;
 import spp.asts.postfix_expression_ast;
@@ -60,6 +64,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
+import spp.utils.uid;
 import ankerl;
 import genex;
 
@@ -130,8 +135,25 @@ auto spp::analyse::utils::func_utils::convert_method_to_function_form(
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData *meta)
     -> std::pair<std::unique_ptr<asts::PostfixExpressionAst>, std::unique_ptr<asts::PostfixExpressionOperatorFunctionCallAst>> {
-    // The "self" argument will be the lhs.lhs if is symbolic, otherwise just a mock object initializer.
-    auto self_arg_val = sm.current_scope->get_var_symbol_outermost(*lhs.lhs).first != nullptr ? ast_clone(lhs.lhs) : std::make_unique<asts::ObjectInitializerAst>(lhs.lhs->infer_type(&sm, meta), nullptr);
+    // The "self" argument will be the lhs.lhs if is symbolic, otherwise a materialization.
+    auto self_arg_val = std::unique_ptr<asts::ExpressionAst>(nullptr);
+    if (const auto o = sm.current_scope->get_var_symbol_outermost(*lhs.lhs).first; o != nullptr) {
+        self_arg_val = asts::ast_clone(lhs.lhs);
+    }
+    else if (lhs.lhs->to<asts::LiteralAst>() == nullptr) {
+        // Use object initializer mock object.
+        auto mock = std::make_unique<asts::ObjectInitializerAst>(lhs.lhs->infer_type(&sm, meta), nullptr);
+        self_arg_val = std::move(mock);
+    }
+    else {
+        // Create a "let" statement, then use the identifier.
+        auto var_name = std::make_shared<asts::IdentifierAst>(0, spp::utils::generate_uid());
+        auto var = std::make_unique<asts::LocalVariableSingleIdentifierAst>(nullptr, var_name, nullptr);
+        const auto let_stmt = std::make_unique<asts::LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, asts::ast_clone(lhs.lhs));
+        let_stmt->stage_7_analyse_semantics(&sm, meta);
+        sm.current_scope->get_var_symbol(var_name)->comptime_value = asts::ast_clone(lhs.lhs);
+        self_arg_val = asts::ast_clone(var_name);
+    }
 
     // Create an argument for "self" and inject it into the current arguments.
     auto self_arg = std::make_unique<asts::FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(self_arg_val));

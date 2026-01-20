@@ -68,11 +68,15 @@ auto spp::asts::InnerScopeExpressionAst<T>::stage_9_comptime_resolution(
     CompilerMetaData *meta)
     -> void {
     // Comptime resolve each member of the inner scope.
+    sm->move_to_next_scope();
     for (auto const &member : this->members) {
         const auto did_ret = member->template to<RetStatementAst>() != nullptr;
         member->stage_9_comptime_resolution(sm, meta);
-        if (did_ret) { return; }
+        if (did_ret) { break; }
     }
+
+    // Exit the scope.
+    sm->move_out_of_current_scope();
 }
 
 
