@@ -85,6 +85,13 @@ auto spp::asts::BooleanLiteralAst::is_true() const
 }
 
 
+auto spp::asts::BooleanLiteralAst::cpp_value() const
+    -> bool {
+    // Return the C++ boolean value of the boolean literal.
+    return is_true();
+}
+
+
 auto spp::asts::BooleanLiteralAst::stage_9_comptime_resolution(
     ScopeManager *,
     CompilerMetaData *meta)

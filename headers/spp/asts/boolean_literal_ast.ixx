@@ -56,6 +56,8 @@ public:
 
     SPP_ATTR_NODISCARD auto is_true() const -> bool;
 
+    SPP_ATTR_NODISCARD auto cpp_value() const -> bool;
+
     /**
      * Resolve the boolean literal at compile time. This will produce a compile time value representing either @c true
      * or @c false.

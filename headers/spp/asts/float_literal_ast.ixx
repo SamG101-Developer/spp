@@ -66,9 +66,22 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
 
     ~FloatLiteralAst() override;
 
+    static auto from_single_token(
+        decltype(tok_sign) &&tok_sign,
+        std::unique_ptr<TokenAst> &&token,
+        std::string &&type)
+        -> std::unique_ptr<FloatLiteralAst>;
+
     SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
     SPP_ATTR_NODISCARD auto equals_float_literal(FloatLiteralAst const &) const -> std::strong_ordering override;
+
+    template <typename T> requires std::floating_point<T>
+    auto cpp_value() const -> T {
+        const auto raw_str = static_cast<std::string>(*int_val) + "." + static_cast<std::string>(*frac_val);
+        const auto signed_str = tok_sign != nullptr ? "-" + raw_str : raw_str;
+        return static_cast<T>(std::stold(signed_str));
+    }
 
     SPP_AST_KEY_FUNCTIONS;
 

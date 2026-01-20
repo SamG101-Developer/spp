@@ -41,6 +41,23 @@ spp::asts::FloatLiteralAst::FloatLiteralAst(
 }
 
 
+auto spp::asts::FloatLiteralAst::from_single_token(
+    decltype(tok_sign) &&tok_sign,
+    std::unique_ptr<TokenAst> &&token,
+    std::string &&type)
+    -> std::unique_ptr<FloatLiteralAst> {
+    // Split the token data into integer and fractional parts.
+    auto int_part = token->token_data.substr(0, token->token_data.find('.'));
+    auto frac_part = token->token_data.substr(token->token_data.find('.') + 1);
+    return std::make_unique<FloatLiteralAst>(
+        std::move(tok_sign),
+        std::make_unique<TokenAst>(token->pos_start(), lex::SppTokenType::LX_NUMBER, std::move(int_part)),
+        std::make_unique<TokenAst>(token->pos_start() + int_part.size(), lex::SppTokenType::TK_DOT, "."),
+        std::make_unique<TokenAst>(token->pos_start() + int_part.size() + 1, lex::SppTokenType::LX_NUMBER, std::move(frac_part)),
+        std::move(type));
+}
+
+
 auto spp::asts::FloatLiteralAst::equals(
     ExpressionAst const &other) const
     -> std::strong_ordering {
