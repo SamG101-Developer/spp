@@ -5,11 +5,8 @@ project(spp)
 # Set the C++ standard and other compiler options.
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_MODULE_STD ON)
-#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fuse-ld=lld")
-#set(CMAKE_C_COMPILER_LAUNCHER ccache)
-#set(CMAKE_CXX_COMPILER_LAUNCHER ccache)
-#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
-#set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
+set(CMAKE_INSTALL_RPATH "/usr/local/gcc-dev/lib64")
+set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 
 # Find dependencies.
 find_package(ColEx REQUIRED) # colored console output
@@ -64,11 +61,6 @@ target_compile_definitions(spp_lib PRIVATE
 
 add_executable(spp main.cpp)
 target_link_libraries(spp PRIVATE spp_lib)
-
-# Linker map
-target_link_options(spp PRIVATE
-        "-Wl,--Map=${CMAKE_CURRENT_BINARY_DIR}/spp.map"
-        "-Wl,--trace")
 
 # Unit test support.
 enable_testing()
