@@ -8,7 +8,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     use std::number::U32
     fun f() -> std::void::Void {
         let a = 5_u32
-        let x = |b: U32 caps a| { a = b }
+        let x = (b: U32 caps a) { a = b }
         x(123_u32)
     }
 )");
@@ -21,7 +21,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     use std::number::U32
     fun f() -> std::void::Void {
         let a = 5_u32
-        let x = || a
+        let x = () a
     }
 )");
 
@@ -33,7 +33,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     use std::number::U32
     fun f() -> std::void::Void {
         let a = 5_u32
-        let x = |caps a| case a < 5_u32 { ret true } else { ret 123 }
+        let x = (caps a) case a < 5_u32 { ret true } else { ret 123 }
     }
 )");
 
@@ -49,7 +49,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun f() -> std::void::Void {
         let a = 5_u32
-        let x = |caps &a| 123_u32
+        let x = (caps &a) 123_u32
         g(x)
     }
 )");
@@ -66,7 +66,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun f() -> std::void::Void {
         let mut a = 5_u32
-        let x = |caps &mut a| 123_u32
+        let x = (caps &mut a) 123_u32
         g(x)
     }
 )");
@@ -81,7 +81,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun f() -> std::void::Void {
         let a = 5_u32
-        let x: FunMut[(), U32] = |caps &mut a| 123_u32
+        let x: FunMut[(), U32] = (caps &mut a) 123_u32
     }
 )");
 
@@ -94,7 +94,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun f() -> std::void::Void {
         let a = 5_u32
-        let x = |b: U32 caps a, c| { b = a }
+        let x = (b: U32 caps a, c) { b = a }
     }
 )");
 
@@ -106,7 +106,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     use std::number::U32
     fun f() -> std::void::Void {
         let a = "test"
-        let x = |caps a| a
+        let x = (caps a) a
         let b = a
     }
 )");
@@ -117,7 +117,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_simple,
     R"(
     fun f() -> std::void::Void {
-        let x = || 5_u32
+        let x = () 5_u32
     }
 )");
 
@@ -128,7 +128,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     R"(
     use std::number::U32
     fun f() -> std::void::Void {
-        let x = |a: U32, b: U32| a + b
+        let x = (a: U32, b: U32) a + b
     }
 )");
 
@@ -140,7 +140,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     use std::number::U32
     fun f() -> std::void::Void {
         let a = 5_u32
-        let x = |b: U32, c: U32 caps a| a + b + c
+        let x = (b: U32, c: U32 caps a) a + b + c
     }
 )");
 
@@ -152,7 +152,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     use std::number::U32
     fun f() -> std::void::Void {
         let a = 5_u32
-        let x = |mut b: &U32 caps &a| { b = a }
+        let x = (mut b: &U32 caps &a) { b = a }
     }
 )");
 
@@ -164,7 +164,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     use std::number::U32
     fun f() -> std::void::Void {
         let mut a = 5_u32
-        let x = |mut b: &mut U32 caps &mut a| { b = a }
+        let x = (mut b: &mut U32 caps &mut a) { b = a }
     }
 )");
 
@@ -178,7 +178,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> std::void::Void {
         let a = 5_u32
-        let x: FunMov[(), U32] = |caps a| 123_u32
+        let x: FunMov[(), U32] = (caps a) 123_u32
     }
 )");
 
@@ -192,7 +192,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> std::void::Void {
         let mut a = 5_u32
-        let x: FunMut[(), U32] = |caps &mut a| 123_u32
+        let x: FunMut[(), U32] = (caps &mut a) 123_u32
     }
 )");
 
@@ -206,7 +206,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> std::void::Void {
         let a = 5_u32
-        let x: FunRef[(), U32] = |caps &a| 123_u32
+        let x: FunRef[(), U32] = (caps &a) 123_u32
     }
 )");
 
@@ -219,7 +219,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     use std::number::U32
     fun f() -> std::void::Void {
         let a = 5_u32
-        let x = |caps a| a
+        let x = (caps a) a
         let mut y = x()
         y = 123_u32
     }
@@ -233,7 +233,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     use std::number::U32
     fun f() -> std::void::Void {
         let a = "test"
-        let x = |caps a| a
+        let x = (caps a) a
     }
 )");
 
@@ -245,7 +245,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     use std::string::Str
     fun f() -> std::void::Void {
         let a = "test"
-        let x = |caps a| a
+        let x = (caps a) a
         x()
         x()
     }
@@ -259,7 +259,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     use std::string::Str
     fun f() -> std::void::Void {
         let mut a = "test"
-        let x = |caps &mut a| { }
+        let x = (caps &mut a) { }
         x()
     }
 )");
@@ -271,7 +271,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppMoveFromPinnedMemoryError, R"(
     fun f() -> std::void::Void {
         let some_variable = "hello world"
-        let x = |caps &some_variable| 123_u32
+        let x = (caps &some_variable) 123_u32
         let b = some_variable
     }
 )");
@@ -285,7 +285,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun f() -> std::void::Void {
         let some_variable = "hello world"
-        let x = |caps some_variable| 123_u32
+        let x = (caps some_variable) 123_u32
         g(&some_variable)
     }
 )");
@@ -298,7 +298,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     use std::number::U32
     fun f() -> std::void::Void {
         let a = 5_u32
-        let x = |caps a| { ret a }
+        let x = (caps a) { ret a }
     }
 )");
 
@@ -310,7 +310,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     use std::number::U32
     fun f() -> std::void::Void {
         let a = 5_u32
-        let x = |caps a| { gen a }
+        let x = (caps a) { gen a }
     }
 )");
 
@@ -322,7 +322,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     use std::number::U32
     fun f() -> std::void::Void {
         let a = 5_u32
-        let x = cor |caps a| { gen a }
+        let x = cor (caps a) { gen a }
     }
 )");
 
@@ -334,6 +334,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     use std::number::U32
     fun f() -> std::void::Void {
         let a = 5_u32
-        let x = cor |caps a| { ret a }
+        let x = cor (caps a) { ret a }
     }
 )");

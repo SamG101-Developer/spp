@@ -45,7 +45,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_value_comp_identifier_noncopyanle,
     SppMoveFromPinnedMemoryError, R"(
     cls MyClass {
-        x: std::string::Str
+        x: std::string_view::StrView
     }
     cmp x: MyClass = MyClass(x="hello")
     cmp y: MyClass = x
