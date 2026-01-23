@@ -145,32 +145,21 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
         | genex::to<std::vector>());
 
     // Check there is only 1 "self" parameter.
-    if (self_params.size() > 1) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMultipleSelfParametersError>()
-            .with_args(*self_params[0], *self_params[1])
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppMultipleSelfParametersError>(
+        self_params.size() > 1, {sm->current_scope}, ERR_ARGS(*self_params[0], *self_params[1]));
 
     // Check there is only 1 variadic parameter, and it is last.
-    if (variadic_params.size() > 1) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMultipleVariadicParametersError>()
-            .with_args(*variadic_params[0], *variadic_params[1])
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppMultipleVariadicParametersError>(
+        variadic_params.size() > 1, {sm->current_scope}, ERR_ARGS(*variadic_params[0], *variadic_params[1]));
 
     // Check there are no duplicate parameter names.
-    if (not param_names.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>()
-            .with_args(*param_names[0], *param_names[1], "keyword function-argument")
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppIdentifierDuplicateError>(
+        not param_names.empty(), {sm->current_scope}, ERR_ARGS(*param_names[0], *param_names[1], "keyword function-argument"));
 
     // Check the parameters are in the correct order.
-    if (not unordered_params.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>()
-            .with_args(unordered_params[0].first, *unordered_params[0].second, unordered_params[1].first, *unordered_params[1].second)
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppOrderInvalidError>(
+        not unordered_params.empty(), {sm->current_scope},
+        ERR_ARGS(unordered_params[0].first, *unordered_params[0].second, unordered_params[1].first, *unordered_params[1].second));
 
     // Analyse the parameters.
     for (auto const &param : params) {

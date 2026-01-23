@@ -54,19 +54,17 @@ auto spp::asts::LoopExpressionAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Get the loop's exit type (or Void if there are no exits fro inside the loop).
     auto [exit_expr, loop_type, _] = m_loop_exit_type_info.has_value()
-                                         ? *m_loop_exit_type_info
-                                         : std::make_tuple(nullptr, generate::common_types::void_type(pos_start()), nullptr);
+        ? *m_loop_exit_type_info
+        : std::make_tuple(nullptr, generate::common_types::void_type(pos_start()), nullptr);
     exit_expr = exit_expr ? exit_expr : this;
 
     // Check the else block's type is the same as the loop exit type.
     if (else_block != nullptr and not meta->ignore_missing_else_branch_for_inference) {
         const auto else_type = else_block->infer_type(sm, meta);
-        if (not analyse::utils::type_utils::symbolic_eq(*loop_type, *else_type, *sm->current_scope, *sm->current_scope)) {
-            const auto final_member = else_block->body->final_member();
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
-                .with_args(*exit_expr, *loop_type, *final_member, *else_type)
-                .raises_from(sm->current_scope);
-        }
+        const auto final_member = else_block->body->final_member();
+        raise_if<analyse::errors::SppTypeMismatchError>(
+            not analyse::utils::type_utils::symbolic_eq(*loop_type, *else_type, *sm->current_scope, *sm->current_scope),
+            {sm->current_scope}, ERR_ARGS(*exit_expr, *loop_type, *final_member, *else_type));
     }
 
     // Return the loop type.

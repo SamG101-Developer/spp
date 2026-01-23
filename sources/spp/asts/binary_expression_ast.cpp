@@ -86,11 +86,9 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
     if (lhs->to<FoldExpressionAst>()) {
         // Check the rhs is a tuple.
         const auto rhs_tuple_type = rhs->infer_type(sm, meta);
-        if (not analyse::utils::type_utils::is_type_tuple(*rhs_tuple_type, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessNonIndexableError>()
-                .with_args(*rhs, *rhs_tuple_type, *lhs)
-                .raises_from(sm->current_scope);
-        }
+        raise_if<analyse::errors::SppMemberAccessNonIndexableError>(
+            not analyse::utils::type_utils::is_type_tuple(*rhs_tuple_type, *sm->current_scope),
+            {sm->current_scope}, ERR_ARGS(*rhs, *rhs_tuple_type, *lhs));
 
         // Get the parts of the tuple.
         const auto rhs_num_elems = rhs_tuple_type->type_parts()[0]->generic_arg_group->args.size();
@@ -119,11 +117,9 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
     else if (rhs->to<FoldExpressionAst>()) {
         // Check the lhs is a tuple.
         const auto lhs_tuple_type = lhs->infer_type(sm, meta);
-        if (not analyse::utils::type_utils::is_type_tuple(*lhs_tuple_type, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessNonIndexableError>()
-                .with_args(*lhs, *lhs_tuple_type, *rhs)
-                .raises_from(sm->current_scope);
-        }
+        raise_if<analyse::errors::SppMemberAccessNonIndexableError>(
+            not analyse::utils::type_utils::is_type_tuple(*lhs_tuple_type, *sm->current_scope),
+            {sm->current_scope}, ERR_ARGS(*lhs, *lhs_tuple_type, *rhs));
 
         // Get the parts of the tuple.
         const auto lhs_num_elems = lhs_tuple_type->type_parts()[0]->generic_arg_group->args.size();

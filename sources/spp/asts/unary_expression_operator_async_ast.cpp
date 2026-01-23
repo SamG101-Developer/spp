@@ -61,15 +61,13 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_7_analyse_semantics(
     CompilerMetaData *meta)
     -> void {
     // Check the right-hand-side is a function call expression.
-    if (const auto rhs = meta->unary_expression_rhs->to<PostfixExpressionAst>(); rhs == nullptr or not rhs->op->to<PostfixExpressionOperatorFunctionCallAst>()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppAsyncTargetNotFunctionCallError>()
-            .with_args(*tok_async, *this)
-            .raises_from(sm->current_scope);
-    }
-    else {
-        // Mark the function call as async.
-        rhs->op->to<PostfixExpressionOperatorFunctionCallAst>()->mark_as_async(this);
-    }
+    const auto rhs = meta->unary_expression_rhs->to<PostfixExpressionAst>();
+    raise_if<analyse::errors::SppAsyncTargetNotFunctionCallError>(
+        rhs == nullptr or rhs->op->to<PostfixExpressionOperatorFunctionCallAst>() == nullptr,
+        {sm->current_scope}, ERR_ARGS(*tok_async, *this));
+
+    // Mark the function call as async.
+    rhs->op->to<PostfixExpressionOperatorFunctionCallAst>()->mark_as_async(this);
 }
 
 

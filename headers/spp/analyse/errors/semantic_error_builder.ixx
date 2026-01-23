@@ -1,7 +1,9 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 export module spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
 import spp.analyse.errors.semantic_error;
 import spp.utils.errors;
 import spp.utils.error_formatter;
@@ -9,14 +11,42 @@ import colex;
 import genex;
 import std;
 
-
 namespace spp::analyse::errors {
-    SPP_EXP_CLS template <typename T> requires std::derived_from<T, SemanticError>
+    template <typename T> requires std::derived_from<T, SemanticError>
     struct SemanticErrorBuilder;
 }
 
+namespace spp {
+    SPP_EXP_FUN template <typename... Args>
+    auto make_err_args(Args&&... args) -> auto {
+        return [&] { return std::make_tuple(std::forward<Args>(args)...); };
+    }
 
-SPP_EXP_CLS template <typename T> requires std::derived_from<T, spp::analyse::errors::SemanticError>
+    SPP_EXP_FUN template <typename E, typename A>
+    requires std::derived_from<E, analyse::errors::SemanticError> // and std::constructible_from<analyse::errors::SemanticErrorBuilder<E>, Args...>
+    auto raise(std::vector<analyse::scopes::Scope const*> const &scopes, A &&arg_binder) -> void {
+        std::apply(
+            [&]<typename... Args2>(Args2 &&... unpacked_args) {
+                analyse::errors::SemanticErrorBuilder<E>().with_args(std::forward<Args2>(unpacked_args)...).raises_from_vec(scopes);
+            },
+            std::forward<A>(arg_binder)());
+    }
+
+    SPP_EXP_FUN template <typename E, typename A>
+    requires std::derived_from<E, analyse::errors::SemanticError> // and std::constructible_from<analyse::errors::SemanticErrorBuilder<E>, Args...>
+    auto raise_if(const bool condition, std::vector<analyse::scopes::Scope const*> const &scopes, A &&arg_binder) -> void {
+        if (condition) { raise<E>(std::move(scopes), std::forward<A>(arg_binder)); }
+    }
+
+    SPP_EXP_FUN template <typename E, typename A>
+    requires std::derived_from<E, analyse::errors::SemanticError> // and std::constructible_from<analyse::errors::SemanticErrorBuilder<E>, Args...>
+    auto raise_unless(const bool condition, std::vector<analyse::scopes::Scope const*> const &scopes, A&& arg_binder) -> void {
+        if (not condition) { raise<E>(std::move(scopes), std::forward<A>(arg_binder)); }
+    }
+}
+
+
+template <typename T> requires std::derived_from<T, spp::analyse::errors::SemanticError>
 struct spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::AbstractErrorBuilder<T> {
     SemanticErrorBuilder() = default;
     ~SemanticErrorBuilder() override = default;

@@ -65,11 +65,9 @@ auto spp::asts::PatternGuardAst::stage_7_analyse_semantics(
 
     // Check the guard's type is boolean.
     const auto expr_type = expr->infer_type(sm, meta);
-    if (not analyse::utils::type_utils::is_type_boolean(*expr_type, *sm->current_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionNotBooleanError>()
-            .with_args(*expr, *expr_type, "pattern guard")
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppExpressionNotBooleanError>(
+        not analyse::utils::type_utils::is_type_boolean(*expr_type, *sm->current_scope),
+        {sm->current_scope}, ERR_ARGS(*expr, *expr_type, "pattern guard"));
 }
 
 

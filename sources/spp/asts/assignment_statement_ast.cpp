@@ -129,25 +129,19 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
         auto &&[lhs_sym, _] = lhs_sym_and_scope;
 
         // Full assignment (ie "x" = "y") requires the "x" symbol to be marked as "mut" or never initialized.
-        if (is_identifier(lhs_expr) and not(lhs_sym->is_mutable or lhs_sym->memory_info->initialization_counter == 0)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>()
-                .with_args(*lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_initialization))
-                .raises_from(sm->current_scope);
-        }
+        raise_if<analyse::errors::SppInvalidMutationError>(
+            is_identifier(lhs_expr) and not(lhs_sym->is_mutable or lhs_sym->memory_info->initialization_counter == 0),
+            {sm->current_scope}, ERR_ARGS(*lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_initialization)));
 
         // Attribute assignment (ie "x.y = z"), for a non-borrowed symbol, requires an outermost "mut" symbol.
-        if (is_attr(lhs_expr, sm) and not(std::get<0>(lhs_sym->memory_info->ast_borrowed) or lhs_sym->is_mutable)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>()
-                .with_args(*lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_initialization))
-                .raises_from(sm->current_scope);
-        }
+        raise_if<analyse::errors::SppInvalidMutationError>(
+            is_attr(lhs_expr, sm) and not(std::get<0>(lhs_sym->memory_info->ast_borrowed) or lhs_sym->is_mutable),
+            {sm->current_scope}, ERR_ARGS(*lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_initialization)));
 
         // Attribute assignment (ie "x.y = z"), for a borrowed symbol, cannot be immutably borrowed.
-        if (is_attr(lhs_expr, sm) and lhs_sym->type->get_convention() and *lhs_sym->type->get_convention() == ConventionTag::REF) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>()
-                .with_args(*lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_borrowed))
-                .raises_from(sm->current_scope);
-        }
+        raise_if<analyse::errors::SppInvalidMutationError>(
+            is_attr(lhs_expr, sm) and lhs_sym->type->get_convention() and *lhs_sym->type->get_convention() == ConventionTag::REF,
+            {sm->current_scope}, ERR_ARGS(*lhs_sym->name, *tok_assign, *std::get<0>(lhs_sym->memory_info->ast_borrowed)));
 
         // Prevent double initializations to immutable uninitialized let statements.
         if (is_identifier(lhs_expr)) {
@@ -157,11 +151,9 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
         // Ensure the lhs and rhs have the same type.
         auto lhs_type = lhs_expr->infer_type(sm, meta);
         auto rhs_type = rhs_expr->infer_type(sm, meta);
-        if (not analyse::utils::type_utils::symbolic_eq(*lhs_type, *rhs_type, *sm->current_scope, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
-                .with_args(*lhs_expr, *lhs_type, *rhs_expr, *rhs_type)
-                .raises_from(sm->current_scope);
-        }
+        raise_if<analyse::errors::SppTypeMismatchError>(
+            not analyse::utils::type_utils::symbolic_eq(*lhs_type, *rhs_type, *sm->current_scope, *sm->current_scope),
+            {sm->current_scope}, ERR_ARGS(*lhs_expr, *lhs_type, *rhs_expr, *rhs_type));
     }
 }
 
@@ -224,11 +216,9 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
             });
             if (lhs_init_scope != nullptr) {
                 const auto scope_depth_difference = genex::position(lhs_init_scope->ancestors(), genex::operations::eq_fixed{rhs_borrow_scope});
-                if (scope_depth_difference < 0) {
-                    analyse::errors::SemanticErrorBuilder<analyse::errors::SppBorrowLifetimeIncreaseError>()
-                        .with_args(*this, *lhs_outermost->name, *std::get<0>(rhs_outermost->memory_info->ast_borrowed))
-                        .raises_from(sm->current_scope);
-                }
+                raise_if<analyse::errors::SppBorrowLifetimeIncreaseError>(
+                    scope_depth_difference < 0, {sm->current_scope},
+                    ERR_ARGS(*this, *lhs_outermost->name, *std::get<0>(rhs_outermost->memory_info->ast_borrowed)));
             }
         }
     }
@@ -257,9 +247,8 @@ auto spp::asts::AssignmentStatementAst::stage_9_comptime_resolution(
 
         // Otherwise, unsupported in the comptime context.
         else {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidComptimeOperationError>()
-                .with_args(*lhs[i])
-                .raises_from(sm->current_scope);
+            raise<analyse::errors::SppInvalidComptimeOperationError>(
+                {sm->current_scope}, ERR_ARGS(*lhs[i]));
         }
     }
 }

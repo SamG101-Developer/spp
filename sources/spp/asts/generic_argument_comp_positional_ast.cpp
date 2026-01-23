@@ -69,7 +69,7 @@ auto spp::asts::GenericArgumentCompPositionalAst::stage_7_analyse_semantics(
     CompilerMetaData *meta)
     -> void {
     // Analyse the value.
-    SPP_ENFORCE_EXPRESSION_SUBTYPE(val.get())
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(val.get());
     val->stage_7_analyse_semantics(sm, meta);
 }
 

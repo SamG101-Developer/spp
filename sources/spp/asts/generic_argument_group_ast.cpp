@@ -298,11 +298,9 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
-    if (not type_arg_names.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>()
-            .with_args(*type_arg_names[0], *type_arg_names[1], "keyword function-argument")
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppIdentifierDuplicateError>(
+        not type_arg_names.empty(),
+        {sm->current_scope}, ERR_ARGS(*type_arg_names[0], *type_arg_names[1], "keyword function-argument"));
 
     // Check there are no duplicate comp argument names.
     const auto comp_arg_names = get_keyword_args()
@@ -312,11 +310,9 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
-    if (not comp_arg_names.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>()
-            .with_args(*comp_arg_names[0], *comp_arg_names[1], "keyword function-argument")
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppIdentifierDuplicateError>(
+        not comp_arg_names.empty(),
+        {sm->current_scope}, ERR_ARGS(*comp_arg_names[0], *comp_arg_names[1], "keyword function-argument"));
 
     // Check the arguments are in the correct order.
     const auto unordered_args = analyse::utils::order_utils::order_args(args
@@ -324,11 +320,9 @@ auto spp::asts::GenericArgumentGroupAst::stage_7_analyse_semantics(
         | genex::views::cast_dynamic<mixins::OrderableAst*>()
         | genex::to<std::vector>());
 
-    if (not unordered_args.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>()
-            .with_args(unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second)
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppOrderInvalidError>(
+        not unordered_args.empty(),
+        {sm->current_scope}, ERR_ARGS(unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second));
 
     // Analyse the arguments.
     for (auto const &x : args) {

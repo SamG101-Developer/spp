@@ -76,11 +76,9 @@ auto spp::asts::RetStatementAst::stage_7_analyse_semantics(
 
     // Check the enclosing function is a subroutine and not a subroutine, if a value is being returned.
     const auto function_flavour = meta->enclosing_function_flavour;
-    if (function_flavour->token_type != lex::SppTokenType::KW_FUN and expr != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppCoroutineContainsRetExprExpressionError>()
-            .with_args(*function_flavour, *tok_ret)
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppCoroutineContainsRetExprExpressionError>(
+        function_flavour->token_type != lex::SppTokenType::KW_FUN and expr != nullptr,
+        {sm->current_scope}, ERR_ARGS(*function_flavour, *tok_ret));
 
     // Analyse the expression if it exists, and determine the type of the expression.
     auto expr_type = generate::common_types::void_type(pos_start());
@@ -98,11 +96,9 @@ auto spp::asts::RetStatementAst::stage_7_analyse_semantics(
         meta->restore();
 
         // Check the expr_type isn't Void (don't allow "ret void_func()" => "void_func(); ret").
-        if (analyse::utils::type_utils::is_type_void(*expr_type, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidVoidValueError>()
-                .with_args(*expr, "return value")
-                .raises_from(sm->current_scope);
-        }
+        raise_if<analyse::errors::SppInvalidVoidValueError>(
+            analyse::utils::type_utils::is_type_void(*expr_type, *sm->current_scope),
+            {sm->current_scope}, ERR_ARGS(*expr, "return value"));
     }
 
     // Functions provide the return type, closures require inference; handle the inference.
@@ -117,12 +113,10 @@ auto spp::asts::RetStatementAst::stage_7_analyse_semantics(
     // Type check the expression type against the return type of the enclosing subroutine.
     if (function_flavour->token_type == lex::SppTokenType::KW_FUN) {
         const auto direct_match = analyse::utils::type_utils::symbolic_eq(*m_ret_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
-        if (not direct_match) {
-            const auto expr_for_err = expr ? expr->to<Ast>() : tok_ret->to<Ast>();
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
-                .with_args(*expr_type, *expr_type, *expr_for_err, *m_ret_type)
-                .raises_from(sm->current_scope);
-        }
+        const auto expr_for_err = expr ? expr->to<Ast>() : tok_ret->to<Ast>();
+        raise_if<analyse::errors::SppTypeMismatchError>(
+            not direct_match, {sm->current_scope},
+            ERR_ARGS(*expr_type, *expr_type, *expr_for_err, *m_ret_type));
     }
 }
 

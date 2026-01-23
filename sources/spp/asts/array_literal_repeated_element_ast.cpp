@@ -102,24 +102,21 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
     const auto elem_type_sym = sm->current_scope->get_type_symbol(elem_type);
 
     // Ensure the element type is copyable, so that is can be repeated in the array.
-    if (not elem_type_sym->is_copyable()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidExpressionNonCopyableTypeError>()
-            .with_args(*elem, *elem_type)
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppInvalidExpressionNonCopyableTypeError>(
+        not elem_type_sym->is_copyable(),
+        {sm->current_scope}, ERR_ARGS(*elem, *elem_type));
 
     // Ensure the element's type is not a borrow type, as array elements cannot be borrows.
     SPP_ENFORCE_EXPRESSION_SUBTYPE(size.get());
-    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(elem, elem_type, *sm, "repeated array element type");
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(
+        elem, elem_type, *sm, "repeated array element type");
 
     // Ensure the size is a constant expression (if symbolic).
     auto symbolic_size = ast_clone(size->to<IdentifierAst>());
     const auto size_sym = sm->current_scope->get_var_symbol(std::move(symbolic_size));
-    if (size_sym != nullptr and size_sym->memory_info->ast_comptime == nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppCompileTimeConstantError>()
-            .with_args(*size)
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppCompileTimeConstantError>(
+        size_sym != nullptr and size_sym->comptime_value == nullptr,
+        {sm->current_scope}, ERR_ARGS(*size));
 }
 
 

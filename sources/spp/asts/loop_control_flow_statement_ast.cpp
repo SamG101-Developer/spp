@@ -97,11 +97,9 @@ auto spp::asts::LoopControlFlowStatementAst::stage_7_analyse_semantics(
     }
 
     // Check the depth of the loop is greater than or equal to the number of control statements.
-    if (num_controls > nested_loop_depth) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppLoopTooManyControlFlowStatementsError>()
-            .with_args(*meta->current_loop_ast->tok_loop, *this, num_controls, nested_loop_depth)
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppLoopTooManyControlFlowStatementsError>(
+        num_controls > nested_loop_depth, {sm->current_scope},
+        ERR_ARGS(*meta->current_loop_ast->tok_loop, *this, num_controls, nested_loop_depth));
 
     // Save and compare the loop's "exiting" type against other nested loop's exit statement types.
     if (not has_skip) {
@@ -116,11 +114,9 @@ auto spp::asts::LoopControlFlowStatementAst::stage_7_analyse_semantics(
         if (meta->loop_return_types->contains(depth)) {
             // If the type is already set, check it matches the current expression's type.
             auto [that_expr, that_expr_type, that_scope] = meta->loop_return_types->at(depth);
-            if (not analyse::utils::type_utils::symbolic_eq(*expr_type, *that_expr_type, *sm->current_scope, *that_scope)) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
-                    .with_args(*expr, *expr_type, *that_expr, *that_expr_type)
-                    .raises_from(sm->current_scope, that_scope);
-            }
+            raise_if<analyse::errors::SppTypeMismatchError>(
+                not analyse::utils::type_utils::symbolic_eq(*expr_type, *that_expr_type, *sm->current_scope, *that_scope),
+                {sm->current_scope, that_scope}, ERR_ARGS(*expr, *expr_type, *that_expr, *that_expr_type));
         }
         else {
             auto stored_expr = expr ? expr.get() : nullptr;

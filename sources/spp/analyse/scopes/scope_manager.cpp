@@ -274,16 +274,14 @@ auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statement
 
     // Check for conflicting "type" statements.
     std::vector<std::shared_ptr<asts::TypeIdentifierAst>> new_types;
-    for (const auto scope : existing_scopes) {
+    for (auto const *scope : existing_scopes) {
         auto body = asts::ast_body(scope->ast);
-        for (const auto member : body) {
-            if (const auto type_stmt = member->to<asts::TypeStatementAst>(); type_stmt != nullptr) {
-                for (const auto &new_type : new_types) {
-                    if (*new_type == *type_stmt->new_type) {
-                        errors::SemanticErrorBuilder<errors::SppIdentifierDuplicateError>()
-                            .with_args(*new_type, *type_stmt->new_type, "associated type")
-                            .raises_from(scope, (&sup_scope));
-                    }
+        for (auto const *member : body) {
+            if (auto const *type_stmt = member->to<asts::TypeStatementAst>(); type_stmt != nullptr) {
+                for (auto const &new_type : new_types) {
+                    raise_if<errors::SppIdentifierDuplicateError>(
+                        *new_type == *type_stmt->new_type, {scope, &sup_scope},
+                        ERR_ARGS(*new_type, *type_stmt->new_type, "associated type"));
                 }
                 new_types.emplace_back(type_stmt->new_type);
             }
@@ -292,16 +290,14 @@ auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statement
 
     // Check for conflicting "cmp" statements.
     std::vector<std::shared_ptr<asts::IdentifierAst>> new_cmps;
-    for (const auto scope : existing_scopes) {
+    for (const auto *scope : existing_scopes) {
         auto body = asts::ast_body(scope->ast);
-        for (const auto member : body) {
-            if (const auto cmp_stmt = member->to<asts::CmpStatementAst>(); cmp_stmt != nullptr and cmp_stmt->type->type_parts().back()->name[0] != '$') {
-                for (const auto &new_cmp : new_cmps) {
-                    if (*new_cmp == *cmp_stmt->name) {
-                        errors::SemanticErrorBuilder<errors::SppIdentifierDuplicateError>()
-                            .with_args(*new_cmp, *cmp_stmt->name, "comptime constant")
-                            .raises_from(scope, (&sup_scope));
-                    }
+        for (auto const *member : body) {
+            if (auto const *cmp_stmt = member->to<asts::CmpStatementAst>(); cmp_stmt != nullptr and cmp_stmt->type->type_parts().back()->name[0] != '$') {
+                for (auto const &new_cmp : new_cmps) {
+                    raise_if<errors::SppIdentifierDuplicateError>(
+                        *new_cmp == *cmp_stmt->name, {scope, &sup_scope},
+                        ERR_ARGS(*new_cmp, *cmp_stmt->name, "comptime constant"));
                 }
                 new_cmps.emplace_back(cmp_stmt->name);
             }

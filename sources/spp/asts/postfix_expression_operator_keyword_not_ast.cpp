@@ -62,11 +62,9 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::stage_7_analyse_semantic
     -> void {
     // Check the left-hand-side is a boolean expression.
     const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
-    if (not analyse::utils::type_utils::is_type_boolean(*lhs_type, *sm->current_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionNotBooleanError>()
-            .with_args(*meta->postfix_expression_lhs, *lhs_type, "not expression")
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppExpressionNotBooleanError>(
+        not analyse::utils::type_utils::is_type_boolean(*lhs_type, *sm->current_scope),
+        {sm->current_scope}, ERR_ARGS(*meta->postfix_expression_lhs, *lhs_type, "not expression"));
 }
 
 

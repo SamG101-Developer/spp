@@ -82,11 +82,9 @@ auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
     const auto base_cls_sym = sm->current_scope->get_type_symbol(type->without_generics());
 
     // Generic types cannot have any attributes set | TODO: future with constraints will allow some.
-    if (base_cls_sym->is_generic and not arg_group->args.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppObjectInitializerGenericWithArgsError>()
-            .with_args(*type, *arg_group->args[0])
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppObjectInitializerGenericWithArgsError>(
+        base_cls_sym->is_generic and not arg_group->args.empty(),
+        {sm->current_scope}, ERR_ARGS(*type, *arg_group->args[0]));
 
     // Generic types being initialized uses pure default initialization, so there is no inference to be done.
     if (base_cls_sym->is_generic) {

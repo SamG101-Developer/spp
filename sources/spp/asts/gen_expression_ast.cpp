@@ -87,11 +87,9 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
 
     // Check the enclosing function is a coroutine and not a subroutine.
     const auto function_flavour = meta->enclosing_function_flavour;
-    if (function_flavour->token_type != lex::SppTokenType::KW_COR) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionSubroutineContainsGenExpressionError>()
-            .with_args(*function_flavour, *tok_gen)
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppFunctionSubroutineContainsGenExpressionError>(
+        function_flavour->token_type != lex::SppTokenType::KW_COR,
+        {sm->current_scope}, ERR_ARGS(*function_flavour, *tok_gen));
 
     // Analyse the expression if it exists, and determine the type of the expression.
     auto expr_type = generate::common_types::void_type(pos_start());
@@ -103,8 +101,9 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
             meta->return_type_overload_resolver_type = std::move(yield_type);
         }
 
+        // Todo: What is ->assignment_target(_type) doing here?
         meta->assignment_target_type = meta->enclosing_function_ret_type.empty() ? nullptr : meta->enclosing_function_ret_type[0];
-        meta->assignment_target = IdentifierAst::from_type(*meta->assignment_target_type);
+        meta->assignment_target = meta->assignment_target_type ? IdentifierAst::from_type(*meta->assignment_target_type) : nullptr;
         expr->stage_7_analyse_semantics(sm, meta);
         expr_type = expr->infer_type(sm, meta)->with_convention(ast_clone(conv));
         meta->restore();
@@ -124,12 +123,12 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
     // Determine the "Yield" type of the enclosing function (to type check the expression against).
     auto [_, yield_type, _] = analyse::utils::type_utils::get_generator_and_yield_type(
         *m_gen_type, *sm->current_scope, *m_gen_type, "coroutine");
-    const auto direct_match = analyse::utils::type_utils::symbolic_eq(*yield_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
-    if (not direct_match) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppYieldedTypeMismatchError>()
-            .with_args(*yield_type, *yield_type, expr ? *expr->to<Ast>() : *tok_gen->to<Ast>(), *expr_type)
-            .raises_from(sm->current_scope);
-    }
+    const auto direct_match = analyse::utils::type_utils::symbolic_eq(
+        *yield_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
+
+    raise_if<analyse::errors::SppYieldedTypeMismatchError>(
+        not direct_match, {sm->current_scope},
+        ERR_ARGS(*yield_type, *yield_type, expr ? *expr->to<Ast>() : *tok_gen->to<Ast>(), *expr_type));
 }
 
 
@@ -156,12 +155,9 @@ auto spp::asts::GenExpressionAst::stage_8_check_memory(
             *expr, *tok_gen, *sm, false, false, true, true, true, true, meta);
     }
 
-    else if (*conv == ConventionTag::MUT and not sym->is_mutable) {
-        // Check the argument's symbol is mutable, if the symbol exists.
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>()
-            .with_args(*expr, *conv, *std::get<0>(sym->memory_info->ast_initialization))
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppInvalidMutationError>(
+        conv and *conv == ConventionTag::MUT and not sym->is_mutable, {sm->current_scope},
+        ERR_ARGS(*expr, *conv, *std::get<0>(sym->memory_info->ast_initialization)));
 }
 
 

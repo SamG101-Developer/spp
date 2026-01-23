@@ -68,9 +68,8 @@ auto spp::asts::mixins::CompilerStages::stage_9_comptime_resolution(
     ScopeManager *sm,
     CompilerMetaData *)
     -> void {
-    analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidComptimeOperationError>()
-        .with_args(dynamic_cast<Ast&>(*this))
-        .raises_from(sm->current_scope);
+    raise<analyse::errors::SppInvalidComptimeOperationError>(
+        {sm->current_scope}, ERR_ARGS(dynamic_cast<Ast&>(*this)));
     std::unreachable();
 }
 

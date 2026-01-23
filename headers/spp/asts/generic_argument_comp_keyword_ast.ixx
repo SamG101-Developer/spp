@@ -41,7 +41,7 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgum
      * @param val The value of the generic comp argument.
      */
     GenericArgumentCompKeywordAst(
-        decltype(name) &&name,
+        decltype(name) name,
         decltype(tok_assign) &&tok_assign,
         decltype(val) &&val);
 

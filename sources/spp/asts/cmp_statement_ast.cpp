@@ -141,18 +141,15 @@ auto spp::asts::CmpStatementAst::stage_7_analyse_semantics(
     CompilerMetaData *meta)
     -> void {
     // Analyse the type and value.
-    type->stage_7_analyse_semantics(sm, meta);
     value->stage_7_analyse_semantics(sm, meta);
 
     // Check the value's type is the same as the given type.
     const auto given_type = type.get();
     const auto inferred_type = value->infer_type(sm, meta);
 
-    if (not analyse::utils::type_utils::symbolic_eq(*given_type, *inferred_type, *sm->current_scope, *sm->current_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
-            .with_args(*type, *given_type, *value, *inferred_type)
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppTypeMismatchError>(
+        not analyse::utils::type_utils::symbolic_eq(*given_type, *inferred_type, *sm->current_scope, *sm->current_scope),
+        {sm->current_scope}, ERR_ARGS(*type, *given_type, *value, *inferred_type));
 }
 
 

@@ -139,11 +139,9 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
-    if (not duplicates.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>()
-            .with_args(*duplicates[0], *duplicates[1], "keyword object initializer arguments")
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppIdentifierDuplicateError>(
+        not duplicates.empty(), {sm->current_scope},
+        ERR_ARGS(*duplicates[0], *duplicates[1], "keyword object initializer arguments"));
 
     // Get the attributes on the type and supertypes.
     const auto all_attrs = analyse::utils::type_utils::get_all_attrs(*meta->object_init_type, sm);
@@ -189,11 +187,9 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
         | genex::views::filter([](auto &&x) { return x->tok_ellipsis != nullptr; })
         | genex::to<std::vector>();
 
-    if (af_args.size() > 1) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError>()
-            .with_args(*af_args[0], *af_args[1])
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError>(
+        af_args.size() > 1, {sm->current_scope},
+        ERR_ARGS(*af_args[0], *af_args[1]));
 
     // Check there are no invalidly named arguments.
     auto arg_names = get_non_autofill_args()
@@ -201,14 +197,12 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
         | genex::to<std::vector>();
 
     const auto invalid_args = arg_names
-        | genex::views::set_difference_unsorted(all_attr_names, genex::meta::deref, genex::meta::deref)
+        | genex::views::not_in(all_attr_names, genex::meta::deref, genex::meta::deref)
         | genex::to<std::vector>();
 
-    if (not invalid_args.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppArgumentNameInvalidError>()
-            .with_args(*meta->object_init_type, "attribute", *invalid_args[0], "object initializer argument")
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppArgumentNameInvalidError>(
+        not invalid_args.empty(), {sm->current_scope},
+        ERR_ARGS(*meta->object_init_type, "attribute", *invalid_args[0], "object initializer argument"));
 
     // Type check the non-autofill arguments against the class attributes.
     for (auto &&arg : get_non_autofill_args()) {
@@ -216,11 +210,9 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
             | genex::views::filter([&arg](auto const &x) { return *x.first == *arg->name; })
             | genex::to<std::vector>();
 
-        if (matching_attrs.size() > 1) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppAmbiguousMemberAccessError>()
-                .with_args(*std::get<0>(matching_attrs[0]), *std::get<0>(matching_attrs[1]), *this)
-                .raises_from(sm->current_scope);
-        }
+        raise_if<analyse::errors::SppAmbiguousMemberAccessError>(
+            matching_attrs.size() > 1, {sm->current_scope},
+            ERR_ARGS(*std::get<0>(matching_attrs[0]), *std::get<0>(matching_attrs[1]), *this));
 
         auto [attr, attr_type_sym] = matching_attrs[0];
         const auto attr_type = attr_type_sym->fq_name();
@@ -230,21 +222,17 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
         auto arg_type = arg->infer_type(sm, meta);
         meta->restore();
 
-        if (not analyse::utils::type_utils::symbolic_eq(*attr_type, *arg_type, *sm->current_scope, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
-                .with_args(*attr, *attr_type, *arg, *arg_type)
-                .raises_from(sm->current_scope);
-        }
+        raise_if<analyse::errors::SppTypeMismatchError>(
+            not analyse::utils::type_utils::symbolic_eq(*attr_type, *arg_type, *sm->current_scope, *sm->current_scope),
+            {sm->current_scope}, ERR_ARGS(*attr, *attr_type, *arg, *arg_type));
     }
 
     // Type check the default argument (if it exists).
     if (const auto af_arg = get_autofill_arg(); af_arg != nullptr) {
         const auto af_arg_type = af_arg->val->infer_type(sm, meta);
-        if (not analyse::utils::type_utils::symbolic_eq(*af_arg_type, *meta->object_init_type, *sm->current_scope, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
-                .with_args(*meta->object_init_type, *meta->object_init_type, *af_arg, *af_arg_type)
-                .raises_from(sm->current_scope);
-        }
+        raise_if<analyse::errors::SppTypeMismatchError>(
+            not analyse::utils::type_utils::symbolic_eq(*af_arg_type, *meta->object_init_type, *sm->current_scope, *sm->current_scope),
+            {sm->current_scope}, ERR_ARGS(*meta->object_init_type, *meta->object_init_type, *af_arg, *af_arg_type));
     }
 }
 

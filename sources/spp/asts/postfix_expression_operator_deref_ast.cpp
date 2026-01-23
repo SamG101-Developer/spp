@@ -59,18 +59,14 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::stage_7_analyse_semantics(
     const auto lhs_type = lhs->infer_type(sm, meta);
 
     // Check the right-hand-side expression is a borrowable type.
-    if (lhs_type->get_convention() == nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppDereferenceInvalidExpressionNonBorrowedTypeError>()
-            .with_args(*tok_deref, *lhs, *lhs_type)
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppDereferenceInvalidExpressionNonBorrowedTypeError>(
+        lhs_type->get_convention() == nullptr,
+        {sm->current_scope}, ERR_ARGS(*tok_deref, *lhs, *lhs_type));
 
     // Check the right-hand-side expression is a "Copy" type.
-    if (not sm->current_scope->get_type_symbol(lhs_type)->is_copyable() and not meta->allow_move_deref) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidExpressionNonCopyableTypeError>()
-            .with_args(*lhs, *lhs_type)
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppInvalidExpressionNonCopyableTypeError>(
+        not sm->current_scope->get_type_symbol(lhs_type)->is_copyable() and not meta->allow_move_deref,
+        {sm->current_scope}, ERR_ARGS(*lhs, *lhs_type));
 }
 
 

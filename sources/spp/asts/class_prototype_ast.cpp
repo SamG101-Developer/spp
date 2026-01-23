@@ -251,11 +251,10 @@ auto spp::asts::ClassPrototypeAst::stage_6_pre_analyse_semantics(
     impl->stage_6_pre_analyse_semantics(sm, meta);
 
     // Check the type isn't recursive.
-    if (auto &&recursion = analyse::utils::type_utils::is_type_recursive(*this, *sm)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppRecursiveTypeError>()
-            .with_args(*this, *recursion)
-            .raises_from(sm->current_scope);
-    }
+    const auto recursion = analyse::utils::type_utils::is_type_recursive(*this, *sm);
+    raise_if<analyse::errors::SppRecursiveTypeError>(
+        recursion != nullptr, {sm->current_scope},
+        ERR_ARGS(*this, *recursion));
 
     sm->move_out_of_current_scope();
 }

@@ -45,6 +45,7 @@ auto spp::asts::GenericParameterCompAst::stage_2_gen_top_level_scopes(
     sym->memory_info->ast_pins.emplace_back(name.get());
     sym->memory_info->ast_comptime = ast_clone(this);
     sym->memory_info->initialized_by(*this, sm->current_scope);
+    sym->comptime_value = ast_clone(this);
     sm->current_scope->add_var_symbol(std::move(sym));
 }
 

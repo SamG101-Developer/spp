@@ -122,6 +122,10 @@ public:
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
+    SPP_ATTR_NODISCARD auto to_string() const -> std::string {
+        return static_cast<std::string>(*this);
+    }
+
     SPP_ATTR_NODISCARD auto get_ast_scope() const -> analyse::scopes::Scope* {
         return m_scope;
     }

@@ -207,12 +207,9 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
     const auto lhs_type_sym = scope->get_type_symbol(lhs_type);
 
     // Check the left-hand-side isn't a generic type. Todo: until constraints
-    if (lhs_type_sym->is_generic) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppGenericTypeInvalidUsageError>()
-            .with_args(*lhs, *lhs_type, "postfix type")
-            .raises_from(sm->current_scope);
-    }
-
+    raise_if<analyse::errors::SppGenericTypeInvalidUsageError>(
+        lhs_type_sym->is_generic, {sm->current_scope},
+        ERR_ARGS(*lhs, *lhs_type, "postfix type"));
     const auto lhs_type_scope = lhs_type_sym->scope;
 
     // Check there is only 1 target field on the lhs at the highest level.
@@ -226,22 +223,22 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
         | genex::to<std::vector>();
 
     auto min_depth = scopes_and_syms.empty() ? 0 : genex::min_element(scopes_and_syms
-                             | genex::views::transform([](auto &&x) { return std::get<0>(x); })
-                             | genex::to<std::vector>());
+        | genex::views::transform([](auto &&x) { return std::get<0>(x); })
+        | genex::to<std::vector>());
 
     auto closest = scopes_and_syms
         | genex::views::filter([min_depth](auto &&x) { return std::get<0>(x) == min_depth; })
         | genex::views::transform([](auto &&x) { return std::make_pair(std::get<1>(x), std::get<2>(x)); })
         | genex::to<std::vector>();
 
+    // Can't use raise_if because closest[1] may be out of bounds.
     if (closest.size() > 1) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppAmbiguousMemberAccessError>()
-            .with_args(*closest[0].second->name, *closest[1].second->name, *op_nested->name)
-            .raises_from(closest[0].first, closest[1].first, sm->current_scope);
+        raise<analyse::errors::SppAmbiguousMemberAccessError>(
+            {closest[0].first, closest[1].first, sm->current_scope},
+            ERR_ARGS(*closest[0].second->name, *closest[1].second->name, *op_nested->name));
     }
 
     // Ensure the type exists on the "lhs" part.
-
     meta->save();
     meta->type_analysis_type_scope = lhs_type_scope;
     op_nested->name->stage_7_analyse_semantics(sm, meta);

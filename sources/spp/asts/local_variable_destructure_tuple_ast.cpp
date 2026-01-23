@@ -98,29 +98,23 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
         | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>()
         | genex::to<std::vector>();
 
-    if (multi_arg_skips.size() > 1) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMultipleSkipMultiArgumentsError>()
-            .with_args(*this, *multi_arg_skips[0], *multi_arg_skips[1])
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppMultipleSkipMultiArgumentsError>(
+        multi_arg_skips.size() > 1, {sm->current_scope},
+        ERR_ARGS(*this, *multi_arg_skips[0], *multi_arg_skips[1]));
 
     // Ensure the right-hand-side is a tuple type.
     const auto val = meta->let_stmt_value;
     const auto val_type = val->infer_type(sm, meta);
-    if (not analyse::utils::type_utils::is_type_tuple(*val_type, *sm->current_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppVariableTupleDestructureTupleTypeMismatchError>()
-            .with_args(*this, *val, *val_type)
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppVariableTupleDestructureTupleTypeMismatchError>(
+        not analyse::utils::type_utils::is_type_tuple(*val_type, *sm->current_scope),
+        {sm->current_scope}, ERR_ARGS(*this, *val, *val_type));
 
     // Determine number of elements in the left-hand-side and right-hand-side tuples.
     const auto num_lhs_arr_elems = elems.size();
     const auto num_rhs_arr_elems = val->infer_type(sm, meta)->type_parts().back()->generic_arg_group->args.size();
-    if ((num_lhs_arr_elems < num_rhs_arr_elems and multi_arg_skips.empty()) or (num_lhs_arr_elems > num_rhs_arr_elems)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppVariableTupleDestructureTupleSizeMismatchError>()
-            .with_args(*this, num_lhs_arr_elems, *val, num_rhs_arr_elems)
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppVariableTupleDestructureTupleSizeMismatchError>(
+        (num_lhs_arr_elems < num_rhs_arr_elems and multi_arg_skips.empty()) or (num_lhs_arr_elems > num_rhs_arr_elems),
+        {sm->current_scope}, ERR_ARGS(*this, num_lhs_arr_elems, *val, num_rhs_arr_elems));
 
     // For a bound ".." destructure, ie "let [a, ..b, c] = t", create an intermediary type.
     auto bound_multi_skip = std::unique_ptr<TupleLiteralAst>(nullptr);
@@ -141,8 +135,8 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
 
     // Create new indexes.
     const auto skip_index = not multi_arg_skips.empty()
-                                ? genex::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize
-                                : elems.size() - 1;
+        ? genex::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize
+        : elems.size() - 1;
     auto indexes = genex::views::iota(0uz, skip_index + 1uz) | genex::to<std::vector>();
     indexes.append_range(genex::views::iota(num_lhs_arr_elems, num_rhs_arr_elems) | genex::to<std::vector>());
 

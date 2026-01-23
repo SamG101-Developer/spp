@@ -107,9 +107,8 @@ auto spp::asts::IdentifierAst::stage_7_analyse_semantics(
             | genex::to<std::vector>();
 
         const auto closest_match = spp::utils::strings::closest_match(val, alternatives);
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierUnknownError>()
-            .with_args(*this, "identifier", closest_match)
-            .raises_from(sm->current_scope);
+        raise<analyse::errors::SppIdentifierUnknownError>(
+            {sm->current_scope}, ERR_ARGS(*this, "identifier", closest_match));
     }
 }
 

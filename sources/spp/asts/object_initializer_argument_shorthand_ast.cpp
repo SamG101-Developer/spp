@@ -66,10 +66,8 @@ auto spp::asts::ObjectInitializerArgumentShorthandAst::stage_7_analyse_semantics
     CompilerMetaData *meta)
     -> void {
     // The parser allows Type(123) as a postfix function call over a type, which is invalid as type initialization.
-    if (val->to<IdentifierAst>() == nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppObjectInitializerInvalidArgumentError>()
-            .with_args(*this)
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppObjectInitializerInvalidArgumentError>(
+        val->to<IdentifierAst>() == nullptr,
+        {sm->current_scope}, ERR_ARGS(*this));
     ObjectInitializerArgumentAst::stage_7_analyse_semantics(sm, meta);
 }

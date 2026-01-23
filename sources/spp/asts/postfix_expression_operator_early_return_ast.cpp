@@ -86,11 +86,10 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_7_analyse_semanti
 
     // Check the Residual type is compatible with the function's return type.
     const auto residual_type = try_type->type_parts().back()->generic_arg_group->type_at("Residual")->val;
-    if (not analyse::utils::type_utils::symbolic_eq(*meta->enclosing_function_ret_type[0], *residual_type, *meta->enclosing_function_scope, *sm->current_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
-            .with_args(*meta->enclosing_function_ret_type[0], *meta->enclosing_function_ret_type[0], *lhs, *residual_type)
-            .raises_from(meta->enclosing_function_scope, sm->current_scope);
-    }
+    raise_if<analyse::errors::SppTypeMismatchError>(
+        not analyse::utils::type_utils::symbolic_eq(*meta->enclosing_function_ret_type[0], *residual_type, *meta->enclosing_function_scope, *sm->current_scope),
+        {meta->enclosing_function_scope, sm->current_scope},
+        ERR_ARGS(*meta->enclosing_function_ret_type[0], *meta->enclosing_function_ret_type[0], *lhs, *residual_type));
 }
 
 

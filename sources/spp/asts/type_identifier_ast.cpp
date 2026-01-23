@@ -30,6 +30,9 @@ import absl;
 import genex;
 
 
+// int count = 0;
+
+
 spp::asts::TypeIdentifierAst::TypeIdentifierAst(
     const std::size_t pos,
     decltype(name) &&name,
@@ -284,6 +287,9 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // count += 1;
+    // std::cout << "Analysing TypeIdentifierAst: " << to_string() << " (" << count << ")" << std::endl;
+
     // Determine the scope and get the type symbol.
     const auto scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
     const auto type_sym = analyse::utils::type_utils::get_type_part_symbol_with_error(
@@ -297,10 +303,10 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
         as_unary != nullptr and *as_unary == *generate::common_types_precompiled::TUP->to<TypeUnaryExpressionAst>();
     });
 
-    analyse::utils::func_utils::name_generic_args(
-        generic_arg_group->args,
-        type_sym->alias_stmt ? type_sym->alias_stmt->generic_param_group->get_all_params() : type_sym->type->generic_param_group->get_all_params(),
-        *this, *sm, meta, is_tuple);
+    analyse::utils::func_utils::name_gn_args(
+        *generic_arg_group,
+        *(type_sym->alias_stmt ? type_sym->alias_stmt->generic_param_group : type_sym->type->generic_param_group),
+        *this, *sm, *meta, is_tuple);
 
     // Stop here is there is a flag to not check generics.
     if (meta->skip_type_analysis_generic_checks) {
@@ -316,13 +322,13 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
         *scope, *without_generics()->to<TypeIdentifierAst>(), *sm, meta)->fq_name();
     const auto owner_sym = sm->current_scope->get_type_symbol(owner);
 
-    analyse::utils::func_utils::infer_generic_args(
-        generic_arg_group->args,
-        type_sym->alias_stmt ? type_sym->alias_stmt->generic_param_group->get_all_params() : type_sym->type->generic_param_group->get_all_params(),
-        type_sym->alias_stmt ? type_sym->alias_stmt->generic_param_group->get_optional_params() : type_sym->type->generic_param_group->get_optional_params(),
+    analyse::utils::func_utils::infer_gn_args(
+        *generic_arg_group,
+        *(type_sym->alias_stmt ? type_sym->alias_stmt->generic_param_group : type_sym->type->generic_param_group),
         generic_arg_group->get_all_args(),
         meta->infer_source, meta->infer_target,
-        owner, owner_sym != nullptr ? owner_sym->scope : type_sym->scope, nullptr, is_tuple, *sm, meta);
+        owner, *(owner_sym != nullptr ? owner_sym->scope : type_sym->scope),
+        nullptr, is_tuple, *sm, *meta);
     meta->infer_source = {};
     meta->infer_target = {};
     generic_arg_group->stage_7_analyse_semantics(sm, meta);
@@ -359,5 +365,6 @@ auto spp::asts::TypeIdentifierAst::infer_type(
 
 auto spp::asts::TypeIdentifierAst::ankerl_hash() const
     -> std::size_t {
+    // Hash based on the name only.
     return absl::Hash<std::string>()(name);
 }

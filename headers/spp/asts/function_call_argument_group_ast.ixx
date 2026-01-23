@@ -55,6 +55,8 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentGroupAst final : virtual Ast {
 
     static auto new_empty() -> std::unique_ptr<FunctionCallArgumentGroupAst>;
 
+    SPP_ATTR_NODISCARD auto get_all_args() const -> std::vector<FunctionCallArgumentAst*>;
+
     SPP_ATTR_NODISCARD auto get_keyword_args() const -> std::vector<FunctionCallArgumentKeywordAst*>;
 
     SPP_ATTR_NODISCARD auto get_positional_args() const -> std::vector<FunctionCallArgumentPositionalAst*>;

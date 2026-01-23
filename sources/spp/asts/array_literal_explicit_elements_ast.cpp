@@ -104,10 +104,9 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_7_analyse_semantics(
         | genex::to<std::vector>();
 
     for (auto &&[elem, elem_type] : genex::views::zip(elems | genex::views::ptr, elem_types)) {
-        if (not analyse::utils::type_utils::symbolic_eq(*zeroth_type, *elem_type, *sm->current_scope, *sm->current_scope))
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
-                .with_args(*zeroth_elem, *zeroth_type, *elem, *elem_type)
-                .raises_from(sm->current_scope);
+        raise_if<analyse::errors::SppTypeMismatchError>(
+            not analyse::utils::type_utils::symbolic_eq(*zeroth_type, *elem_type, *sm->current_scope, *sm->current_scope),
+            {sm->current_scope}, ERR_ARGS(*zeroth_elem, *zeroth_type, *elem, *elem_type));
     }
 
     // Check all the elements are owned by the array, not borrowed.

@@ -84,6 +84,14 @@ spp::asts::FunctionCallArgumentGroupAst::operator std::string() const {
 }
 
 
+auto spp::asts::FunctionCallArgumentGroupAst::get_all_args() const
+    -> std::vector<FunctionCallArgumentAst*> {
+    return args
+        | genex::views::ptr
+        | genex::to<std::vector>();
+}
+
+
 auto spp::asts::FunctionCallArgumentGroupAst::get_keyword_args() const
     -> std::vector<FunctionCallArgumentKeywordAst*> {
     return args
@@ -113,11 +121,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
-    if (not arg_names.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>()
-            .with_args(*arg_names[0], *arg_names[1], "keyword function-argument")
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppIdentifierDuplicateError>(
+        not arg_names.empty(), {sm->current_scope},
+        ERR_ARGS(*arg_names[0], *arg_names[1], "keyword function-argument"));
 
     // Check the arguments are in the correct order.
     const auto unordered_args = analyse::utils::order_utils::order_args(args
@@ -125,11 +131,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         | genex::views::cast_dynamic<mixins::OrderableAst*>()
         | genex::to<std::vector>());
 
-    if (not unordered_args.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>()
-            .with_args(unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second)
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppOrderInvalidError>(
+        not unordered_args.empty(), {sm->current_scope},
+        ERR_ARGS(unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second));
 
     // Expand tuple-expansion arguments ("..tuple" => "tuple.0, tuple.1, ...")
     // Must use "materialize" because the list gets updates from within the loop.
@@ -140,11 +144,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
 
         // Check the argument value is a tuple expression.
         auto arg_type = arg->infer_type(sm, meta);
-        if (not analyse::utils::type_utils::is_type_tuple(*arg_type, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpansionOfNonTupleError>()
-                .with_args(*arg->val, *arg_type)
-                .raises_from(sm->current_scope);
-        }
+        raise_if<analyse::errors::SppExpansionOfNonTupleError>(
+            not analyse::utils::type_utils::is_type_tuple(*arg_type, *sm->current_scope),
+            {sm->current_scope}, ERR_ARGS(*arg->val, *arg_type));
 
         // Replace the tuple-expansion argument with the expanded arguments.
         const auto max = static_cast<sys::ssize_t>(arg_type->type_parts().back()->generic_arg_group->args.size());
@@ -167,18 +169,14 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         if (arg->conv == nullptr or *arg->conv == ConventionTag::REF) { continue; }
 
         // Immutable symbols cannot be mutated.
-        if (not sym->is_mutable) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>()
-                .with_args(*arg->val, *arg->val, *std::get<0>(sym->memory_info->ast_initialization))
-                .raises_from(sm->current_scope);
-        }
+        raise_if<analyse::errors::SppInvalidMutationError>(
+            not sym->is_mutable, {sm->current_scope},
+            ERR_ARGS(*arg->val, *arg->val, *std::get<0>(sym->memory_info->ast_initialization)));
 
         // Immutable borrows, even if their symbol is mutable, cannot be mutated.
-        if (std::get<0>(sym->memory_info->ast_borrowed) and *sym->type->get_convention() == ConventionTag::REF) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>()
-                .with_args(*arg->val, *arg->val, *std::get<0>(sym->memory_info->ast_borrowed))
-                .raises_from(sm->current_scope);
-        }
+        raise_if<analyse::errors::SppInvalidMutationError>(
+            std::get<0>(sym->memory_info->ast_borrowed) and *sym->type->get_convention() == ConventionTag::REF,
+            {sm->current_scope}, ERR_ARGS(*arg->val, *arg->val, *std::get<0>(sym->memory_info->ast_borrowed)));
     }
 }
 
@@ -224,11 +222,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                     | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
                     | genex::to<std::vector>();
 
-                if (not overlaps.empty()) {
-                    analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemoryOverlapUsageError>()
-                        .with_args(*overlaps[0], *arg->val)
-                        .raises_from(sm->current_scope);
-                }
+                raise_if<analyse::errors::SppMemoryOverlapUsageError>(
+                    not overlaps.empty(), {sm->current_scope},
+                    ERR_ARGS(*overlaps[0], *arg->val));
             }
         }
 
@@ -244,11 +240,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 | genex::to<std::vector>();
 
             // Check the immutable borrow doesn't overlap with any other mutable borrows in the same scope.
-            if (not overlaps.empty()) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemoryOverlapUsageError>()
-                    .with_args(*overlaps[0], *arg->val)
-                    .raises_from(sm->current_scope);
-            }
+            raise_if<analyse::errors::SppMemoryOverlapUsageError>(
+                not overlaps.empty(), {sm->current_scope},
+                ERR_ARGS(*overlaps[0], *arg->val));
 
             // Invalidate any linked pins.
             for (auto const &pin : linked_pin_syms) {
@@ -281,11 +275,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 | genex::to<std::vector>();
 
             // Check the mutable borrow doesn't overlap with any other borrows in the same scope.
-            if (not overlaps.empty()) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemoryOverlapUsageError>()
-                    .with_args(*overlaps[0], *arg->val)
-                    .raises_from(sm->current_scope);
-            }
+            raise_if<analyse::errors::SppMemoryOverlapUsageError>(
+                not overlaps.empty(), {sm->current_scope},
+                ERR_ARGS(*overlaps[0], *arg->val));
 
             // Invalidate any linked pins.
             for (auto const &pin : linked_pin_syms) {

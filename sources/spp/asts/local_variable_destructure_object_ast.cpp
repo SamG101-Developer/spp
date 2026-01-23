@@ -125,36 +125,28 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
     const auto missing_attributes = attributes
         | genex::views::transform([](auto const &x) { return x->name; })
         | genex::to<std::vector>()
-        | genex::views::set_difference_unsorted(assigned_attributes, genex::meta::deref, genex::meta::deref)
+        | genex::views::not_in(assigned_attributes, genex::meta::deref, genex::meta::deref)
         | genex::to<std::vector>();
 
     // Check the type matches.
-    if (not analyse::utils::type_utils::symbolic_eq(*val_type, *type, *sm->current_scope, *sm->current_scope, m_from_case_pattern)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
-            .with_args(*val, *val_type, *type, *type)
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppTypeMismatchError>(
+        not analyse::utils::type_utils::symbolic_eq(*val_type, *type, *sm->current_scope, *sm->current_scope, m_from_case_pattern),
+        {sm->current_scope}, ERR_ARGS(*val, *val_type, *type, *type));
 
     // Only 1 "multi-skip" allowed in a destructure.
-    if (multi_arg_skips.size() > 1) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMultipleSkipMultiArgumentsError>()
-            .with_args(*this, *multi_arg_skips[0], *multi_arg_skips[1])
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppMultipleSkipMultiArgumentsError>(
+        multi_arg_skips.size() > 1,
+        {sm->current_scope}, ERR_ARGS(*this, *multi_arg_skips[0], *multi_arg_skips[1]));
 
     // Multi skips cannot be bound.
-    if (not multi_arg_skips.empty() and multi_arg_skips[0]->binding != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppVariableObjectDestructureWithBoundMultiSkipError>()
-            .with_args(*this, *multi_arg_skips[0])
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppVariableObjectDestructureWithBoundMultiSkipError>(
+        not multi_arg_skips.empty() and multi_arg_skips[0]->binding != nullptr,
+        {sm->current_scope}, ERR_ARGS(*this, *multi_arg_skips[0]));
 
     // Check all attributes are provided unless there is a multi-skip.
-    if (not missing_attributes.empty() and multi_arg_skips.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppArgumentMissingError>()
-            .with_args(*missing_attributes[0], "attribute", *this, "destructure argument")
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppArgumentMissingError>(
+        not missing_attributes.empty() and multi_arg_skips.empty(),
+        {sm->current_scope}, ERR_ARGS(*missing_attributes[0], "attribute", *this, "destructure argument"));
 
     // Create expanded "let" statements for each part of the destructure.
     for (const auto elem : elems | genex::views::ptr) {

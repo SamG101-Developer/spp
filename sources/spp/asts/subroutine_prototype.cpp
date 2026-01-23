@@ -82,14 +82,10 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
         *return_type, *generate::common_types_precompiled::VOID,
         *sm->current_scope, *sm->current_scope);
 
-    if (is_void or is_never or no_impl_annotation or abstract_annotation or (not impl->members.empty() and impl->members.back()->to<RetStatementAst>())) {
-    }
-    else {
-        const auto final_member = impl->final_member();
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionSubroutineMissingReturnStatementError>()
-            .with_args(*final_member, *return_type)
-            .raises_from(sm->current_scope);
-    }
+    const auto final_member = impl->final_member();
+    raise_unless<analyse::errors::SppFunctionSubroutineMissingReturnStatementError>(
+        is_void or is_never or no_impl_annotation or abstract_annotation or (not impl->members.empty() and impl->members.back()->to<RetStatementAst>()),
+        {sm->current_scope}, ERR_ARGS(*final_member, *return_type));
 
     sm->move_out_of_current_scope();
     meta->restore(true);

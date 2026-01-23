@@ -101,11 +101,9 @@ auto spp::asts::ClassImplementationAst::stage_6_pre_analyse_semantics(
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
-    if (not duplicates.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>()
-            .with_args(*duplicates[0], *duplicates[1], "attribute")
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppIdentifierDuplicateError>(
+        not duplicates.empty(),
+        {sm->current_scope}, ERR_ARGS(*duplicates[0], *duplicates[1], "attribute"));
 }
 
 

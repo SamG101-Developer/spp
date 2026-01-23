@@ -331,11 +331,9 @@ auto spp::asts::FunctionPrototypeAst::stage_2_gen_top_level_scopes(
     Ast::stage_2_gen_top_level_scopes(sm, meta);
 
     // If there is a self parameter in a free function, throw as error.
-    if (m_ctx->to<ModulePrototypeAst>() and param_group->get_self_param()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSelfParamInFreeFunctionError>()
-            .with_args(*this, *param_group->get_self_param())
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppSelfParamInFreeFunctionError>(
+        m_ctx->to<ModulePrototypeAst>() and param_group->get_self_param() != nullptr,
+        {sm->current_scope}, ERR_ARGS(*this, *param_group->get_self_param()));
 
     // Run steps for the annotations.
     for (auto &&x : annotations) {
@@ -402,11 +400,9 @@ auto spp::asts::FunctionPrototypeAst::stage_6_pre_analyse_semantics(
         : m_ctx->get_ast_scope()->get_type_symbol(ast_name(m_ctx))->scope;
 
     // Error if there are conflicts.
-    if (const auto conflict = analyse::utils::func_utils::check_for_conflicting_overload(*sm->current_scope, type_scope, *this, *sm, meta)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionPrototypeConflictError>()
-            .with_args(*this, *conflict)
-            .raises_from(sm->current_scope);
-    }
+    const auto conflict = analyse::utils::func_utils::check_for_conflicting_overload(*sm->current_scope, type_scope, *this, *sm, meta);
+    raise_if<analyse::errors::SppFunctionPrototypeConflictError>(
+        conflict, {sm->current_scope}, ERR_ARGS(*this, *conflict));
 
     // Move out of the function scope, as it is now complete.
     sm->move_out_of_current_scope();

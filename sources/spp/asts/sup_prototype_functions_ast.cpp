@@ -97,18 +97,16 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_2_gen_top_level_scopes(
     Ast::stage_2_gen_top_level_scopes(sm, meta);
 
     // Check there are optional generic parameters.
-    if (const auto optional = generic_param_group->get_optional_params(); not optional.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionOptionalGenericParameterError>()
-            .with_args(*optional[0])
-            .raises_from(sm->current_scope);
-    }
+    const auto optional = generic_param_group->get_optional_params();
+    raise_if<analyse::errors::SppSuperimpositionOptionalGenericParameterError>(
+        not optional.empty(), {sm->current_scope}, ERR_ARGS(*optional[0]));
 
     // Check every generic parameter is constrained by the type.
-    if (const auto unconstrained = generic_param_group->get_all_params() | genex::views::filter([this](auto &&x) { return not name->contains_generic(*x); }) | genex::to<std::vector>(); not unconstrained.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError>()
-            .with_args(*unconstrained[0])
-            .raises_from(sm->current_scope);
-    }
+    const auto unconstrained = generic_param_group->get_all_params()
+        | genex::views::filter([this](auto &&x) { return not name->contains_generic(*x); })
+        | genex::to<std::vector>();
+    raise_if<analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError>(
+        not unconstrained.empty(), {sm->current_scope}, ERR_ARGS(*unconstrained[0]));
 
     // Generate symbols for the generic parameter group, and the self type.
     generic_param_group->stage_2_gen_top_level_scopes(sm, meta);

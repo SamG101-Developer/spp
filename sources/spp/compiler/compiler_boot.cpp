@@ -263,16 +263,33 @@ auto spp::compiler::CompilerBoot::stage_11_code_gen_2(
     std::filesystem::create_directories(out_path);
 
     for (auto const &ctx : m_llvm_ctxs) {
+        // auto structs = ctx->module->getIdentifiedStructTypes();
+        // for (auto const &strct : structs) {
+        //     llvm::errs() << "Struct : " << strct->getName() << "\n";
+        //     llvm::errs() << "\tIs opaque: " << (strct->isOpaque() ? "yes" : "no") << "\n";
+        //     if (not strct->isOpaque()) {
+        //         for (auto const &field : strct->elements()) {
+        //             llvm::errs() << "\tField type: ";
+        //             field->print(llvm::errs());
+        //             llvm::errs() << "\n";
+        //         }
+        //     }
+        // }
+
+        llvm::errs() << "=== IR for module: " << ctx->module->getName() << " ===\n";
+        ctx->module->print(llvm::errs(), nullptr);
+        llvm::errs() << "=== End IR for module: " << ctx->module->getName() << " ===\n";
+
         if (llvm::verifyModule(*ctx->module, &llvm::errs())) {
             llvm::errs() << "Invalid module: " << ctx->module->getName() << "\n";
             std::abort();
         }
 
-        auto ec = std::error_code();
-        auto file = out_path / (ctx->module->getName().str() + ".ll");
-        auto out = llvm::raw_fd_ostream(file.string(), ec, static_cast<llvm::sys::fs::OpenFlags>(0));
-        ctx->module->print(out, nullptr);
-        out.flush();
+        // auto ec = std::error_code();
+        // auto file = out_path / (ctx->module->getName().str() + ".ll");
+        // auto out = llvm::raw_fd_ostream(file.string(), ec, static_cast<llvm::sys::fs::OpenFlags>(0));
+        // ctx->module->print(out, nullptr);
+        // out.flush();
     }
 }
 
@@ -296,15 +313,11 @@ auto spp::compiler::CompilerBoot::validate_entry_point(
     }
 
     catch (analyse::errors::SppFunctionCallNoValidSignaturesError const &) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMissingMainFunctionError>()
-            .with_args(*main_mod)
-            .raises_from(sm->global_scope.get());
+        raise<analyse::errors::SppMissingMainFunctionError>({sm->global_scope.get()}, ERR_ARGS(*main_mod));
     }
 
     catch (analyse::errors::SppIdentifierUnknownError const &) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMissingMainFunctionError>()
-            .with_args(*main_mod)
-            .raises_from(sm->global_scope.get());
+        raise<analyse::errors::SppMissingMainFunctionError>({sm->global_scope.get()}, ERR_ARGS(*main_mod));
     }
 }
 

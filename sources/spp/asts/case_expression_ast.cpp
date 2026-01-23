@@ -130,18 +130,14 @@ auto spp::asts::CaseExpressionAst::stage_7_analyse_semantics(
     // Analyse eac branch of the case expression.
     for (auto &&branch : branches) {
         // Destructures can only use 1 pattern.
-        if (branch->op != nullptr and branch->op->token_type == lex::SppTokenType::KW_IS and branch->patterns.size() > 1) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppCaseBranchMultipleDestructuresError>()
-                .with_args(*branch->patterns[0], *branch->patterns[1])
-                .raises_from(sm->current_scope);
-        }
+        raise_if<analyse::errors::SppCaseBranchMultipleDestructuresError>(
+            branch->op != nullptr and branch->op->token_type == lex::SppTokenType::KW_IS and branch->patterns.size() > 1,
+            {sm->current_scope}, ERR_ARGS(*branch->patterns[0], *branch->patterns[1]));
 
         // Check the "else" branch is the last branch (also checks there is only 1 "else" branch).
-        if (branch->patterns[0]->to<CasePatternVariantElseAst>() and branch != branches.back()) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppCaseBranchElseNotLastError>()
-                .with_args(*branch, *branches.back())
-                .raises_from(sm->current_scope);
-        }
+        raise_if<analyse::errors::SppCaseBranchElseNotLastError>(
+            branch->patterns[0]->to<CasePatternVariantElseAst>() and branch != branches.back(),
+            {sm->current_scope}, ERR_ARGS(*branch, *branches.back()));
 
         // Analyse the branch.
         meta->save();
@@ -259,11 +255,9 @@ auto spp::asts::CaseExpressionAst::infer_type(
 
     // Ensure there is an "else" branch if the branches are not exhaustive.
     // Todo: Need to investigate how to detect exhaustion.
-    if (branches.back()->patterns[0]->to<CasePatternVariantElseAst>() == nullptr and not meta->ignore_missing_else_branch_for_inference) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppCaseBranchMissingElseError>()
-            .with_args(*this, *branches.back())
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppCaseBranchMissingElseError>(
+        branches.back()->patterns[0]->to<CasePatternVariantElseAst>() == nullptr and not meta->ignore_missing_else_branch_for_inference,
+        {sm->current_scope}, ERR_ARGS(*this, *branches.back()));
 
     // Return the branches' return type. If there are any branches, otherwise Void.
     return branches_type_info.empty()

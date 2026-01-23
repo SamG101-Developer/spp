@@ -107,16 +107,13 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::stage_7_analyse_semantics(
         | genex::views::filter([&sm, &index_type](auto const &sup_type) { return analyse::utils::type_utils::symbolic_eq(*sup_type->without_generics(), *index_type, *sm->current_scope, *sm->current_scope); })
         | genex::to<std::vector>();
 
-    if (index_type_candidates.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionNotIndexableError>()
-            .with_args(*meta->postfix_expression_lhs, *lhs_type, "runtime indexing")
-            .raises_from(sm->current_scope);
-    }
-    if (index_type_candidates.size() > 1) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionAmbiguousIndexableError>()
-            .with_args(*meta->postfix_expression_lhs, *lhs_type, "runtime indexing")
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppExpressionNotIndexableError>(
+        index_type_candidates.empty(), {sm->current_scope},
+        ERR_ARGS(*meta->postfix_expression_lhs, *lhs_type, "runtime indexing"));
+
+    raise_if<analyse::errors::SppExpressionAmbiguousIndexableError>(
+        index_type_candidates.size() > 1, {sm->current_scope},
+        ERR_ARGS(*meta->postfix_expression_lhs, *lhs_type, "runtime indexing"));
 
     // Create the mapped function for the index operator; create the index argument.
     std::unique_ptr<FunctionCallArgumentAst> arg = std::make_unique<FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(expr));

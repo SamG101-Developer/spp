@@ -49,11 +49,9 @@ auto spp::asts::InnerScopeExpressionAst<T>::stage_7_analyse_semantics(
     for (auto &&[i, member] : this->members | genex::views::ptr | genex::views::enumerate) {
         auto ret_stmt = member->template to<RetStatementAst>();
         auto loop_flow_stmt = member->template to<LoopControlFlowStatementAst>();
-        if ((ret_stmt or loop_flow_stmt) and (member != this->members.back().get())) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppUnreachableCodeError>()
-                .with_args(*member, *this->members[i + 1])
-                .raises_from(sm->current_scope);
-        }
+        raise_if<analyse::errors::SppUnreachableCodeError>(
+            (ret_stmt or loop_flow_stmt) and (member != this->members.back().get()),
+            {sm->current_scope}, ERR_ARGS(*member, *this->members[i + 1]));
     }
 
     // Analyse the members of the inner scope.

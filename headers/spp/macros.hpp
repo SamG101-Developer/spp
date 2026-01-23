@@ -73,42 +73,40 @@
 
 #define SPP_STRING_END return raw_string
 
-#define SPP_AST_KEY_FUNCTIONS                                          \
-    SPP_ATTR_NODISCARD auto pos_start() const -> std::size_t override;                    \
-    SPP_ATTR_NODISCARD auto pos_end() const -> std::size_t override;                      \
-    SPP_ATTR_NODISCARD auto clone() const -> std::unique_ptr<Ast> override;               \
-    SPP_ATTR_NODISCARD explicit operator std::string() const override;                    \
-
-#define SPP_ENFORCE_EXPRESSION_SUBTYPE(ast)                                                     \
-    if (ast and ((ast->to<TypeAst>() != nullptr) or (ast->to<TokenAst>() != nullptr))) {        \
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionTypeInvalidError>() \
-            .with_args(*ast)                                                                    \
-            .raises_from(sm->current_scope);                                                    \
-    }
+#define SPP_AST_KEY_FUNCTIONS                                               \
+    SPP_ATTR_NODISCARD auto pos_start() const -> std::size_t override;      \
+    SPP_ATTR_NODISCARD auto pos_end() const -> std::size_t override;        \
+    SPP_ATTR_NODISCARD auto clone() const -> std::unique_ptr<Ast> override; \
+    SPP_ATTR_NODISCARD explicit operator std::string() const override;
 
 
-#define SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(ast)                                         \
-    if (ast and ast->to<TypeAst>() != nullptr) {                                                \
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionTypeInvalidError>() \
-            .with_args(*ast)                                                                    \
-            .raises_from(sm->current_scope);                                                    \
-    }
+// Macro to take the 0th element of a list if the list is not empty, else return a default value.
+#define OR_NULL(list) \
+    ((not (list).empty()) ? (list)[0] : decltype(list)::value_type{})
 
 
-#define SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TYPE(ast)                                          \
-    if (ast and ast->to<TokenAst>() != nullptr) {                                               \
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionTypeInvalidError>() \
-            .with_args(*ast)                                                                    \
-            .raises_from(sm->current_scope);                                                    \
-    }
+#define SPP_ENFORCE_EXPRESSION_SUBTYPE(ast)                                            \
+    raise_if<analyse::errors::SppExpressionTypeInvalidError>(                          \
+        ast and ((ast->to<TypeAst>() != nullptr) or (ast->to<TokenAst>() != nullptr)), \
+        {sm->current_scope}, ERR_ARGS(*ast))
 
 
-#define SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(ast, type, m, what, ...)                           \
-    if (analyse::utils::type_utils::is_type_borrowed(*type, m __VA_OPT__(, __VA_ARGS__))) {          \
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>() \
-            .with_args(*ast, *type, what)                                                            \
-            .raises_from(sm->current_scope);                                                         \
-    }
+#define SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(ast)       \
+    raise_if<analyse::errors::SppExpressionTypeInvalidError>( \
+        ast and ast->to<TypeAst>() != nullptr,                \
+        {sm->current_scope}, ERR_ARGS(*ast))
+
+
+#define SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TYPE(ast)        \
+    raise_if<analyse::errors::SppExpressionTypeInvalidError>( \
+        ast and ast->to<TokenAst>() != nullptr,               \
+        {sm->current_scope}, ERR_ARGS(*ast))
+
+
+#define SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(ast, type, m, what, ...)                \
+    raise_if<analyse::errors::SppSecondClassBorrowViolationError>(                        \
+        analyse::utils::type_utils::is_type_borrowed(*type, m __VA_OPT__(, __VA_ARGS__)), \
+        {sm->current_scope}, ERR_ARGS(*ast, *type, what))
 
 
 #define SPP_RETURN_TYPE_OVERLOAD_HELPER(expr) \

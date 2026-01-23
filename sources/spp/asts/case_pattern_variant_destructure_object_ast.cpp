@@ -157,11 +157,9 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantic
 
     // Flow type the condition symbol if necessary.
     if (analyse::utils::type_utils::is_type_variant(*m_cond_sym->type, *sm->current_scope)) {
-        if (not analyse::utils::type_utils::symbolic_eq(*m_cond_sym->type, *type, *sm->current_scope, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
-                .with_args(*meta->case_condition, *m_cond_sym->type, *type, *type)
-                .raises_from(sm->current_scope);
-        }
+        raise_if<analyse::errors::SppTypeMismatchError>(
+            not analyse::utils::type_utils::symbolic_eq(*m_cond_sym->type, *type, *sm->current_scope, *sm->current_scope),
+            {sm->current_scope}, ERR_ARGS(*meta->case_condition, *m_cond_sym->type, *type, *type));
 
         m_flow_sym = std::make_shared<analyse::scopes::VariableSymbol>(*m_cond_sym);
         m_flow_sym->type = type;

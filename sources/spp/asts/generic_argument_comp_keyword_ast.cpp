@@ -21,7 +21,7 @@ import spp.lex.tokens;
 
 
 spp::asts::GenericArgumentCompKeywordAst::GenericArgumentCompKeywordAst(
-    decltype(name) &&name,
+    decltype(name) name,
     decltype(tok_assign) &&tok_assign,
     decltype(val) &&val) :
     GenericArgumentCompAst(std::move(val), utils::OrderableTag::KEYWORD_ARG),

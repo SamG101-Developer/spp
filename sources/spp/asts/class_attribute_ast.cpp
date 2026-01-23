@@ -138,11 +138,9 @@ auto spp::asts::ClassAttributeAst::stage_7_analyse_semantics(
         const auto default_type = default_val->infer_type(sm, meta);
 
         // Make sure the default's inferred type matches the attribute's type.
-        if (not analyse::utils::type_utils::symbolic_eq(*type, *default_type, *sm->current_scope, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
-                .with_args(*this, *type, *default_val, *default_type)
-                .raises_from(sm->current_scope);
-        }
+        raise_if<analyse::errors::SppTypeMismatchError>(
+            not analyse::utils::type_utils::symbolic_eq(*type, *default_type, *sm->current_scope, *sm->current_scope),
+            {sm->current_scope}, ERR_ARGS(*this, *type, *default_val, *default_type));
     }
 }
 

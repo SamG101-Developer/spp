@@ -84,11 +84,9 @@ auto spp::asts::GenWithExpressionAst::stage_7_analyse_semantics(
 
     // Check the enclosing function is a coroutine and not a subroutine.
     const auto function_flavour = meta->enclosing_function_flavour;
-    if (function_flavour->token_type != lex::SppTokenType::KW_COR) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionSubroutineContainsGenExpressionError>()
-            .with_args(*function_flavour, *tok_gen)
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppFunctionSubroutineContainsGenExpressionError>(
+        function_flavour->token_type != lex::SppTokenType::KW_COR,
+        {sm->current_scope}, ERR_ARGS(*function_flavour, *tok_gen));
 
     // Analyse the expression (guaranteed to exist), and determine the type of the expression.
     auto expr_type = generate::common_types::void_type(pos_start());
@@ -120,11 +118,9 @@ auto spp::asts::GenWithExpressionAst::stage_7_analyse_semantics(
         *meta->enclosing_function_ret_type[0], *sm->current_scope, *meta->enclosing_function_ret_type[0], "coroutine");
 
     // The expression type must be a Gen type that exactly matches the function_ret_type.
-    if (not analyse::utils::type_utils::symbolic_eq(*meta->enclosing_function_ret_type[0], *expr_type, *meta->enclosing_function_scope, *sm->current_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
-            .with_args(*meta->enclosing_function_ret_type[0], *meta->enclosing_function_ret_type[0], *expr, *expr_type)
-            .raises_from(meta->enclosing_function_scope, sm->current_scope);
-    }
+    raise_if<analyse::errors::SppTypeMismatchError>(
+        not analyse::utils::type_utils::symbolic_eq(*meta->enclosing_function_ret_type[0], *expr_type, *meta->enclosing_function_scope, *sm->current_scope),
+        {meta->enclosing_function_scope, sm->current_scope}, ERR_ARGS(*meta->enclosing_function_ret_type[0], *meta->enclosing_function_ret_type[0], *expr, *expr_type));
 }
 
 

@@ -41,7 +41,9 @@ auto spp::analyse::utils::bin_utils::fix_associativity(
     }
 
     // If the ast precedence > the right-hand-side binary expression's operator's precedence, re-arrange the AST.
-    auto bin_rhs = std::unique_ptr<asts::BinaryExpressionAst>(bin_expr.rhs.release()->to<asts::BinaryExpressionAst>());
+    auto bin_rhs = std::unique_ptr<asts::BinaryExpressionAst>(
+        bin_expr.rhs.release()->to<asts::BinaryExpressionAst>());
+
     if (BIN_OP_PRECEDENCE.at(bin_expr.tok_op->token_type) >= BIN_OP_PRECEDENCE.at(bin_rhs->tok_op->token_type)) {
         bin_expr.rhs = std::move(bin_rhs->rhs);
         bin_rhs->rhs = std::move(bin_rhs->lhs);
@@ -82,10 +84,16 @@ auto spp::analyse::utils::bin_utils::combine_comp_ops(
 
     // Non-symbolic value being re-used -> put it into a variable first.
     if (sm->current_scope->get_var_symbol_outermost(*bin_lhs->rhs).first == nullptr) {
-        const auto uid = spp::utils::generate_uid(bin_lhs->rhs.get());
-        auto temp_var_name = std::make_shared<asts::IdentifierAst>(bin_lhs->rhs->pos_start(), uid);
-        auto temp_var_ast = std::make_unique<asts::LocalVariableSingleIdentifierAst>(nullptr, temp_var_name, nullptr);
-        const auto temp_let = std::make_unique<asts::LetStatementInitializedAst>(nullptr, std::move(temp_var_ast), nullptr, nullptr, std::move(bin_lhs->rhs));
+        const auto temp_var_name = ( {
+            const auto uid = spp::utils::generate_uid(bin_lhs->rhs.get());
+            std::make_shared<asts::IdentifierAst>(bin_lhs->rhs->pos_start(), uid);
+        });
+
+        const auto temp_let = ( {
+            auto var = std::make_unique<asts::LocalVariableSingleIdentifierAst>(nullptr, temp_var_name, nullptr);
+            std::make_unique<asts::LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, std::move(bin_lhs->rhs));
+        });
+
         temp_let->stage_7_analyse_semantics(sm, meta);
         bin_lhs->rhs = asts::ast_clone(temp_var_name);
     }
@@ -112,7 +120,8 @@ auto spp::analyse::utils::bin_utils::convert_bin_expr_to_function_call(
 
     // Get the method names based on the operator token.
     auto method_name = BIN_METHODS.at(new_bin_expr->tok_op->token_type);
-    auto method_name_wrapped = std::make_unique<asts::IdentifierAst>(new_bin_expr->tok_op->pos_start(), std::move(method_name));
+    auto method_name_wrapped = std::make_unique<asts::IdentifierAst>(
+        new_bin_expr->tok_op->pos_start(), std::move(method_name));
 
     // Construct the function call AST.
     auto field = std::make_unique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(method_name_wrapped));
@@ -120,7 +129,9 @@ auto spp::analyse::utils::bin_utils::convert_bin_expr_to_function_call(
     auto fn_call = std::make_unique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
 
     // Set the arguments for the function call, and return the AST.
-    auto conv = genex::contains(BIN_COMPARISON_OPS, new_bin_expr->tok_op->token_type) ? std::make_unique<asts::ConventionRefAst>(nullptr) : nullptr;
+    auto conv = genex::contains(BIN_COMPARISON_OPS, new_bin_expr->tok_op->token_type)
+        ? std::make_unique<asts::ConventionRefAst>(nullptr)
+        : nullptr;
     auto arg = std::make_unique<asts::FunctionCallArgumentPositionalAst>(std::move(conv), nullptr, std::move(new_bin_expr->rhs));
     fn_call->arg_group->args.emplace_back(std::move(arg));
     auto new_ast = std::make_unique<asts::PostfixExpressionAst>(std::move(field_access), std::move(fn_call));
@@ -139,11 +150,13 @@ auto spp::analyse::utils::bin_utils::convert_is_expr_to_function_call(
     patterns.emplace_back(std::move(pattern));
 
     // Construct the case expression branch that contains the pattern.
-    auto branch = std::make_unique<asts::CaseExpressionBranchAst>(std::move(is_expr.tok_op), std::move(patterns), nullptr, nullptr);
+    auto branch = std::make_unique<asts::CaseExpressionBranchAst>(
+        std::move(is_expr.tok_op), std::move(patterns), nullptr, nullptr);
     auto branches = std::vector<std::unique_ptr<asts::CaseExpressionBranchAst>>();
     branches.emplace_back(std::move(branch));
 
     // Construct and return the case expression AST.
-    auto case_expr = std::make_unique<asts::CaseExpressionAst>(nullptr, std::move(is_expr.lhs), nullptr, std::move(branches));
+    auto case_expr = std::make_unique<asts::CaseExpressionAst>(
+        nullptr, std::move(is_expr.lhs), nullptr, std::move(branches));
     return case_expr;
 }

@@ -78,11 +78,9 @@ auto spp::asts::LetStatementInitializedAst::stage_7_analyse_semantics(
     SPP_ENFORCE_EXPRESSION_SUBTYPE(val.get());
 
     // An explicit type can only be applied if the left-hand-side is a single identifier.
-    if (type != nullptr and var->to<LocalVariableSingleIdentifierAst>() == nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidTypeAnnotationError>()
-            .with_args(*type, *var)
-            .raises_from(sm->current_scope);
-    }
+    raise_if<analyse::errors::SppInvalidTypeAnnotationError>(
+        type != nullptr and var->to<LocalVariableSingleIdentifierAst>() == nullptr,
+        {sm->current_scope}, ERR_ARGS(*type, *var));
 
     // Analyse the type if it has been given.
     if (type != nullptr) {
@@ -100,11 +98,9 @@ auto spp::asts::LetStatementInitializedAst::stage_7_analyse_semantics(
     if (type != nullptr) {
         meta->assignment_target_type = type;
         const auto val_type = val->infer_type(sm, meta);
-        if (not analyse::utils::type_utils::symbolic_eq(*type, *val_type, *sm->current_scope, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>()
-                .with_args(*type, *type, *val, *val_type)
-                .raises_from(sm->current_scope);
-        }
+        raise_if<analyse::errors::SppTypeMismatchError>(
+            not analyse::utils::type_utils::symbolic_eq(*type, *val_type, *sm->current_scope, *sm->current_scope),
+            {sm->current_scope}, ERR_ARGS(*type, *type, *val, *val_type));
     }
 
     meta->let_stmt_explicit_type = type;
