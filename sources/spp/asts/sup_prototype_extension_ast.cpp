@@ -103,7 +103,7 @@ auto spp::asts::SupPrototypeExtensionAst::check_cyclic_extension(
         auto dummy = analyse::utils::type_utils::GenericInferenceMap();
         const auto ext = sc->ast->to<SupPrototypeExtensionAst>();
         return ext and
-            analyse::utils::type_utils::relaxed_symbolic_eq(*ext->name, *super_class, sc, &check_scope, dummy, false) and
+            analyse::utils::type_utils::relaxed_symbolic_eq(*ext->name, *super_class, *sc, check_scope, dummy, false) and
             analyse::utils::type_utils::symbolic_eq(*ext->super_class, *name, *sc, check_scope, false);
     };
 
@@ -132,7 +132,7 @@ auto spp::asts::SupPrototypeExtensionAst::check_double_extension(
         auto dummy = analyse::utils::type_utils::GenericInferenceMap();
         const auto ext = sc->ast->to<SupPrototypeExtensionAst>();
         return ext and
-            analyse::utils::type_utils::relaxed_symbolic_eq(*ext->name, *name, sc, &check_scope, dummy, false) and
+            analyse::utils::type_utils::relaxed_symbolic_eq(*ext->name, *name, *sc, check_scope, dummy, false) and
             analyse::utils::type_utils::symbolic_eq(*ext->super_class, *super_class, *sc, check_scope, false);
     };
 

@@ -1,6 +1,7 @@
 module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
+#include <spp/parse/macros.hpp>
 
 module spp.analyse.utils.type_utils;
 import spp.analyse.errors.semantic_error;
@@ -100,9 +101,7 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
     if (not convention_eq(lhs_type, rhs_type)) { return false; }
 
     // If the stripped types are not equal, return false (comparing by address is fine -- ClassPrototypeAst* nodes).
-    if (stripped_lhs_sym->type != stripped_rhs_sym->type) {
-        return false;
-    }
+    if (stripped_lhs_sym->type != stripped_rhs_sym->type) { return false; }
 
     // Get the generic arguments for both types.
     const auto lhs_type_fq = lhs_scope.get_type_symbol(lhs_type.shared_from_this(), false)->fq_name();
@@ -126,16 +125,12 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
         if (lhs_generic->to<asts::GenericArgumentTypeAst>()) {
             const auto lhs_generic_part = lhs_generic->to<asts::GenericArgumentTypeAst>();
             const auto rhs_generic_part = rhs_generic->to<asts::GenericArgumentTypeAst>();
-            if (not symbolic_eq(*lhs_generic_part->val, *rhs_generic_part->val, lhs_scope, rhs_scope)) {
-                return false;
-            }
+            if (not symbolic_eq(*lhs_generic_part->val, *rhs_generic_part->val, lhs_scope, rhs_scope)) { return false; }
         }
         else {
             const auto lhs_generic_part = lhs_generic->to<asts::GenericArgumentCompAst>();
             const auto rhs_generic_part = rhs_generic->to<asts::GenericArgumentCompAst>();
-            if (not symbolic_eq(*lhs_generic_part->val, *rhs_generic_part->val, lhs_scope, rhs_scope)) {
-                return false;
-            }
+            if (not symbolic_eq(*lhs_generic_part->val, *rhs_generic_part->val, lhs_scope, rhs_scope)) { return false; }
         }
     }
 
@@ -158,21 +153,16 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
 auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     asts::TypeAst const &lhs_type,
     asts::TypeAst const &rhs_type,
-    scopes::Scope const *lhs_scope,
-    scopes::Scope const *rhs_scope,
+    scopes::Scope const &lhs_scope,
+    scopes::Scope const &rhs_scope,
     GenericInferenceMap &generic_args,
     const bool check_variant) -> bool {
-    // If the right-hand-side scope is nullptr, the scope is generic so auto-match it.
-    if (rhs_scope == nullptr) {
-        return true;
-    }
-
     // Strip the generics from the right-hand-side type (possible generic).
     const auto stripped_lhs = std::const_pointer_cast<asts::TypeAst>(lhs_type.without_generics()->without_convention());
     const auto stripped_rhs = std::const_pointer_cast<asts::TypeAst>(rhs_type.without_generics()->without_convention());
 
     // If the right-hand-side is generic, then return a match: "sup[T] T { ... }" matches all types.
-    const auto stripped_rhs_sym = rhs_scope->get_type_symbol(stripped_rhs);
+    const auto stripped_rhs_sym = rhs_scope.get_type_symbol(stripped_rhs);
     if (stripped_rhs_sym->is_generic) {
         const auto t = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(stripped_rhs);
         generic_args.insert({t, &lhs_type});
@@ -181,7 +171,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
 
     if (not convention_eq(lhs_type, rhs_type)) { return false; }
 
-    const auto stripped_lhs_sym = lhs_scope->get_type_symbol(stripped_lhs);
+    const auto stripped_lhs_sym = lhs_scope.get_type_symbol(stripped_lhs);
     if (stripped_lhs_sym->is_generic) {
         const auto t = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(stripped_lhs);
         generic_args.insert({t, &rhs_type});
@@ -190,8 +180,8 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
 
     // If the left-hand-side is a "Variant" type, check the composite types first.
     // Todo: on the failure of a variant match in "any_of", does the generic map need rolling back?
-    if (check_variant and symbolic_eq(*asts::generate::common_types_precompiled::VAR, *stripped_rhs_sym->fq_name()->without_generics(), *rhs_scope, *rhs_scope)) {
-        auto rhs_composite_types = deduplicate_variant_inner_types(*rhs_scope->get_type_symbol(rhs_type.shared_from_this())->fq_name(), *rhs_scope);
+    if (check_variant and symbolic_eq(*asts::generate::common_types_precompiled::VAR, *stripped_rhs_sym->fq_name()->without_generics(), rhs_scope, rhs_scope)) {
+        auto rhs_composite_types = deduplicate_variant_inner_types(*rhs_scope.get_type_symbol(rhs_type.shared_from_this())->fq_name(), rhs_scope);
         if (genex::any_of(rhs_composite_types, [&](auto &&rhs_composite_type) { return relaxed_symbolic_eq(lhs_type, *rhs_composite_type, lhs_scope, rhs_scope, generic_args); })) {
             return true;
         }
@@ -203,14 +193,14 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     }
 
     // The next step is to get the generic arguments for both types.
-    const auto lhs_type_fq = lhs_scope->get_type_symbol(lhs_type.shared_from_this())->fq_name();
-    const auto rhs_type_fq = rhs_scope->get_type_symbol(rhs_type.shared_from_this())->fq_name();
+    const auto lhs_type_fq = lhs_scope.get_type_symbol(lhs_type.shared_from_this())->fq_name();
+    const auto rhs_type_fq = rhs_scope.get_type_symbol(rhs_type.shared_from_this())->fq_name();
 
     auto &lhs_generics = lhs_type_fq->type_parts().back()->generic_arg_group->args;
     auto &rhs_generics = rhs_type_fq->type_parts().back()->generic_arg_group->args;
 
     // Special case for variadic parameter types.
-    const auto temp_type_proto = lhs_scope->get_type_symbol(lhs_type.shared_from_this())->type;
+    const auto temp_type_proto = lhs_scope.get_type_symbol(lhs_type.shared_from_this())->type;
     if (temp_type_proto and not temp_type_proto->generic_param_group->params.empty()) {
         if (temp_type_proto->generic_param_group->params.back()->to<asts::FunctionParameterVariadicAst>() != nullptr) {
             if (lhs_generics.size() != rhs_generics.size()) {
@@ -231,7 +221,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
         else {
             const auto lhs_generic_part = lhs_generic->to<asts::GenericArgumentCompAst>();
             const auto rhs_generic_part = rhs_generic->to<asts::GenericArgumentCompAst>();
-            if (not relaxed_symbolic_eq(*lhs_generic_part->val, *rhs_generic_part->val, *lhs_scope, *rhs_scope, generic_args)) {
+            if (not relaxed_symbolic_eq(*lhs_generic_part->val, *rhs_generic_part->val, lhs_scope, rhs_scope, generic_args)) {
                 return false;
             }
         }
@@ -393,7 +383,7 @@ auto spp::analyse::utils::type_utils::is_type_recursive(
 auto spp::analyse::utils::type_utils::is_type_borrowed(
     asts::TypeAst const &type,
     scopes::ScopeManager const &sm,
-    bool deep)
+    const bool deep)
     -> bool {
     // Check that either this type, or any inner types for variants, are "&" or "&mut".
     if (type.get_convention() != nullptr) { return true; }
@@ -581,8 +571,8 @@ auto spp::analyse::utils::type_utils::validate_inconsistent_types(
 
     // Set the master branch type to the first branch's type, if it exists. This is the default and may be subsequently changed.
     auto master_branch_type_info = not branches.empty()
-                                       ? std::make_pair(branches_type_info[0].first, branches_type_info[0].second)
-                                       : std::make_pair(nullptr, nullptr);
+        ? std::make_pair(branches_type_info[0].first, branches_type_info[0].second)
+        : std::make_pair(nullptr, nullptr);
 
     // Override the master type if a pre-provided type (for assignment) has been given.
     if (meta->assignment_target_type != nullptr) {
@@ -901,7 +891,7 @@ auto spp::analyse::utils::type_utils::register_generic_syms(
 }
 
 
-auto spp::analyse::utils::type_utils::get_type_part_symbol_with_error(
+auto spp::analyse::utils::type_utils::get_type_sym_or_error(
     scopes::Scope const &scope,
     asts::TypeIdentifierAst const &type_part,
     scopes::ScopeManager const &sm,
@@ -925,12 +915,13 @@ auto spp::analyse::utils::type_utils::get_type_part_symbol_with_error(
 }
 
 
-auto spp::analyse::utils::type_utils::get_namespaced_scope_with_error( // todo: change to accept a scope like above function
-    scopes::ScopeManager const &sm,
-    asts::IdentifierAst const &ns)
+auto spp::analyse::utils::type_utils::get_ns_scope_or_error(
+    scopes::Scope const &scope,
+    asts::IdentifierAst const &ns,
+    scopes::ScopeManager const &sm)
     -> scopes::Scope* {
     // If the namespace does not exist, raise an error.
-    const auto ns_sym = sm.current_scope->get_ns_symbol(ns.shared_from_this());
+    const auto ns_sym = scope.get_ns_symbol(ns.shared_from_this());
     if (ns_sym == nullptr) {
         const auto alternatives = sm.current_scope->all_var_symbols()
             | genex::views::transform([](auto const &x) { return x->name->val; })
@@ -983,13 +974,12 @@ auto spp::analyse::utils::type_utils::substitute_sup_scope_name(
         | genex::views::transform([](auto &&x) { return std::string(x.begin(), x.end()); })
         | genex::to<std::vector>();
 
-    // Todo: use the code injection macro?
     if (not parts[1].contains(" ext ")) {
-        const auto t = parse::ParserSpp(lex::Lexer(parts[1]).lex()).parse_type_expression()->substitute_generics(generic_args.get_all_args());
+        const auto t = INJECT_CODE(parts[1], parse_type_expression)->substitute_generics(generic_args.get_all_args());
         return parts[0] + "#" + static_cast<std::string>(*t) + "#" + parts[2];
     }
-    const auto t = parse::ParserSpp(lex::Lexer(parts[1].substr(0, parts[1].find(" ext "))).lex()).parse_type_expression()->substitute_generics(generic_args.get_all_args());
-    const auto u = parse::ParserSpp(lex::Lexer(parts[1].substr(parts[1].find(" ext ") + 5)).lex()).parse_type_expression()->substitute_generics(generic_args.get_all_args());
+    const auto t = INJECT_CODE(parts[1].substr(0, parts[1].find(" ext ")), parse_type_expression)->substitute_generics(generic_args.get_all_args());
+    const auto u = INJECT_CODE(parts[1].substr(parts[1].find(" ext ") + 5), parse_type_expression)->substitute_generics(generic_args.get_all_args());
     return parts[0] + "#" + static_cast<std::string>(*t) + " ext " + static_cast<std::string>(*u) + "#" + parts[2];
 }
 

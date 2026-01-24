@@ -292,7 +292,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
 
     // Determine the scope and get the type symbol.
     const auto scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
-    const auto type_sym = analyse::utils::type_utils::get_type_part_symbol_with_error(
+    const auto type_sym = analyse::utils::type_utils::get_type_sym_or_error(
         *scope, *std::dynamic_pointer_cast<TypeIdentifierAst>(without_generics()), *sm, meta);
     // const auto type_scope = type_sym->scope;
     if (type_sym->is_generic or name == "Self") { return; }
@@ -318,7 +318,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     generic_arg_group->stage_7_analyse_semantics(sm, meta);
 
     // Infer the generic arguments from information given from object initialization.
-    const auto owner = analyse::utils::type_utils::get_type_part_symbol_with_error(
+    const auto owner = analyse::utils::type_utils::get_type_sym_or_error(
         *scope, *without_generics()->to<TypeIdentifierAst>(), *sm, meta)->fq_name();
     const auto owner_sym = sm->current_scope->get_type_symbol(owner);
 

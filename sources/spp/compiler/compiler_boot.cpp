@@ -26,7 +26,6 @@ import llvm;
 import genex;
 
 
-// todo: genex
 #define PREP_SCOPE_MANAGER \
     auto const &mod_in_tree = *genex::find_if(tree, [&](auto &m) { return m->module_ast.get() == mod; })
 

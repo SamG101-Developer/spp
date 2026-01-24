@@ -211,7 +211,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
     for (auto *sup_scope : sup_scopes) {
         // Perform a relaxed comparison between the two types (allows for specializations to match bases).
         auto scope_generics_map = utils::type_utils::GenericInferenceMap();
-        if (not utils::type_utils::relaxed_symbolic_eq(*fq_type, *asts::ast_name(sup_scope->ast), scope.ty_sym->scope_defined_in, sup_scope, scope_generics_map)) {
+        if (not utils::type_utils::relaxed_symbolic_eq(*fq_type, *asts::ast_name(sup_scope->ast), *scope.ty_sym->scope_defined_in, *sup_scope, scope_generics_map)) {
             // Todo: Is this eliminating too many cases?
             // Todo: For example, superimposing a type will be omitted here because the type won't be the same.
             continue;
@@ -269,7 +269,7 @@ auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statement
     auto dummy = utils::type_utils::GenericInferenceMap();
     const auto existing_scopes = cls_sym.scope->direct_sup_scopes
         | genex::views::filter([&](auto *scope) { return scope->ast->template to<asts::SupPrototypeExtensionAst>() or scope->ast->template to<asts::SupPrototypeFunctionsAst>(); })
-        | genex::views::filter([&](auto *scope) { return utils::type_utils::relaxed_symbolic_eq(*ast_name(sup_scope.ast), *ast_name(scope->ast), &sup_scope, scope->ast->get_ast_scope(), dummy); })
+        | genex::views::filter([&](auto *scope) { return utils::type_utils::relaxed_symbolic_eq(*ast_name(sup_scope.ast), *ast_name(scope->ast), sup_scope, *scope->ast->get_ast_scope(), dummy); })
         | genex::to<std::vector>();
 
     // Check for conflicting "type" statements.

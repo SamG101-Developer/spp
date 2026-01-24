@@ -797,7 +797,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
                 type_utils::relaxed_symbolic_eq(
                     *infer_source.at(infer_target_name)->without_convention(),
                     *infer_target_type->without_convention(),
-                    sm.current_scope, &owner_scope, temp_gs, true);
+                    *sm.current_scope, owner_scope, temp_gs, true);
                 inferred_arg = temp_gs[param_name];
             }
 
@@ -942,7 +942,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
                 type_utils::relaxed_symbolic_eq(
                     *infer_source.at(infer_target_name)->without_convention(),
                     *infer_target_type->without_convention(),
-                    sm.current_scope, &owner_scope, temp_gs, true);
+                    *sm.current_scope, owner_scope, temp_gs, true);
                 auto inferred_arg_raw = temp_gs.contains(param_name) ? temp_gs[param_name]->to<asts::TypeAst>() : nullptr;
                 inferred_arg = inferred_arg_raw ? inferred_arg_raw->shared_from_this() : nullptr;
             }

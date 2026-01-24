@@ -79,8 +79,8 @@ namespace spp::analyse::utils::type_utils {
     SPP_EXP_FUN auto relaxed_symbolic_eq(
         asts::TypeAst const &lhs_type,
         asts::TypeAst const &rhs_type,
-        scopes::Scope const *lhs_scope,
-        scopes::Scope const *rhs_scope,
+        scopes::Scope const &lhs_scope,
+        scopes::Scope const &rhs_scope,
         GenericInferenceMap &generic_args,
         bool check_variant = false)
         -> bool;
@@ -247,16 +247,17 @@ namespace spp::analyse::utils::type_utils {
         asts::meta::CompilerMetaData *meta)
         -> void;
 
-    SPP_EXP_FUN auto get_type_part_symbol_with_error(
+    SPP_EXP_FUN auto get_type_sym_or_error(
         scopes::Scope const &scope,
         asts::TypeIdentifierAst const &type_part,
         scopes::ScopeManager const &sm,
         asts::meta::CompilerMetaData *meta)
         -> scopes::TypeSymbol*;
 
-    SPP_EXP_FUN auto get_namespaced_scope_with_error(
-        scopes::ScopeManager const &sm,
-        asts::IdentifierAst const &ns)
+    SPP_EXP_FUN auto get_ns_scope_or_error(
+        scopes::Scope const &scope,
+        asts::IdentifierAst const &ns,
+        scopes::ScopeManager const &sm)
         -> scopes::Scope*;
 
     SPP_EXP_FUN auto deduplicate_variant_inner_types(

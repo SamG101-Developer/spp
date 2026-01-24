@@ -373,7 +373,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 // Todo: Is this needed for the arg folding variation?
                 else if (not analyse::utils::type_utils::symbolic_eq(*p_type, *a_type, *fn_scope, *sm->current_scope)) {
                     raise_if<analyse::errors::SppTypeMismatchError>(
-                        not analyse::utils::type_utils::relaxed_symbolic_eq(*a_type, *p_type, sm->current_scope, fn_scope, temp),
+                        not analyse::utils::type_utils::relaxed_symbolic_eq(*a_type, *p_type, *sm->current_scope, *fn_scope, temp),
                         {fn_scope, sm->current_scope}, ERR_ARGS(*param, *p_type, *arg, *a_type));
                 }
             }
