@@ -329,8 +329,6 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
         meta->infer_source, meta->infer_target,
         owner, *(owner_sym != nullptr ? owner_sym->scope : type_sym->scope),
         nullptr, is_tuple, *sm, *meta);
-    meta->infer_source = {};
-    meta->infer_target = {};
     generic_arg_group->stage_7_analyse_semantics(sm, meta);
 
     // For variant types, collapse any duplicate generic arguments.
