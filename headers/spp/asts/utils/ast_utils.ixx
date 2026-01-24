@@ -66,6 +66,17 @@ namespace spp::asts {
 
     SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
+    auto ast_clone_vec(std::vector<std::shared_ptr<T>> const &asts) -> std::vector<std::unique_ptr<T>> {
+        std::vector<std::unique_ptr<T>> cloned_asts;
+        cloned_asts.reserve(asts.size());
+        for (auto const &x : asts) {
+            cloned_asts.emplace_back(ast_clone(x));
+        }
+        return cloned_asts;
+    }
+
+    SPP_EXP_FUN template <typename T>
+    SPP_ATTR_ALWAYS_INLINE
     auto ast_clone_vec_shared(std::vector<std::shared_ptr<T>> const &asts) -> std::vector<std::shared_ptr<T>> {
         std::vector<std::shared_ptr<T>> cloned_asts;
         cloned_asts.reserve(asts.size());
