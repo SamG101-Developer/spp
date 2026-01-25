@@ -377,7 +377,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_generic_inline_constraints, R"(
-    fun my_function[T: Copy, U: Clone]() -> Void { }
+    fun my_function[T: Copy, U: Clone & Copy]() -> Void { }
 )");
 
 

@@ -147,6 +147,15 @@ namespace spp::analyse::utils::func_utils {
         scopes::ScopeManager &sm)
         -> void;
 
+    SPP_EXP_FUN auto enforce_no_generic_constraint_violations(
+        std::vector<std::shared_ptr<asts::TypeIdentifierAst>> const &p_names,
+        std::vector<std::vector<std::shared_ptr<asts::TypeAst>>> const &p_con_groups,
+        asts::GenericArgumentGroupAst const &a_group,
+        scopes::Scope const &owner_scope,
+        scopes::ScopeManager &sm,
+        asts::meta::CompilerMetaData &meta)
+        -> void;
+
     SPP_EXP_FUN auto name_fn_args(
         asts::FunctionCallArgumentGroupAst &a_group,
         asts::FunctionParameterGroupAst const &p_group,
@@ -175,8 +184,8 @@ namespace spp::analyse::utils::func_utils {
         asts::GenericArgumentGroupAst &a_group,
         asts::GenericParameterGroupAst const &p_group,
         std::vector<asts::GenericArgumentAst*> const &explicit_args,
-        InferenceSourceMap const &infer_source,
-        InferenceTargetMap const &infer_target,
+        InferenceSourceMap infer_source,
+        InferenceTargetMap infer_target,
         std::shared_ptr<asts::Ast> const &owner,
         scopes::Scope const &owner_scope,
         std::shared_ptr<asts::IdentifierAst> const &variadic_fn_param_name,

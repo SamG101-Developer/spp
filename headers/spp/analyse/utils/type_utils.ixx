@@ -15,7 +15,9 @@ namespace spp::asts {
     SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct GenericArgumentAst;
     SPP_EXP_CLS struct GenericArgumentGroupAst;
+    SPP_EXP_CLS struct GenericParameterAst;
     SPP_EXP_CLS struct GenericParameterGroupAst;
+    SPP_EXP_CLS struct GenericParameterTypeAst;
     SPP_EXP_CLS struct TypeAst;
     SPP_EXP_CLS struct TypeIdentifierAst;
     SPP_EXP_CLS struct TypeStatementAst;
@@ -259,6 +261,13 @@ namespace spp::analyse::utils::type_utils {
         asts::IdentifierAst const &ns,
         scopes::ScopeManager const &sm)
         -> scopes::Scope*;
+
+    SPP_EXP_FUN auto enforce_generic_constraints(
+        std::vector<std::shared_ptr<asts::TypeAst>> const &constraints,
+        asts::TypeAst const &concrete_type,
+        scopes::Scope const &generic_scope,
+        scopes::Scope const &concrete_scope)
+        -> void;
 
     SPP_EXP_FUN auto deduplicate_variant_inner_types(
         asts::TypeAst const &type,

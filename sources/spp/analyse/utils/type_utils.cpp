@@ -907,7 +907,7 @@ auto spp::analyse::utils::type_utils::get_type_sym_or_error(
 
         const auto closest_match = spp::utils::strings::closest_match(type_part.name, alternatives);
         raise<errors::SppIdentifierUnknownError>(
-            {sm.current_scope}, ERR_ARGS(*type_part.without_generics(), "type", closest_match));
+            {sm.current_scope}, ERR_ARGS(type_part, "type", closest_match));
     }
 
     // Return the found type symbol.
@@ -934,6 +934,39 @@ auto spp::analyse::utils::type_utils::get_ns_scope_or_error(
 
     // Return the found namespace scope.
     return ns_sym->scope;
+}
+
+
+auto spp::analyse::utils::type_utils::enforce_generic_constraints(
+    std::vector<std::shared_ptr<asts::TypeAst>> const &constraints,
+    asts::TypeAst const &concrete_type,
+    scopes::Scope const &generic_scope,
+    scopes::Scope const &concrete_scope)
+    -> void {
+    // Get all the sup scopes of the concrete type.
+    const auto concrete_sym = concrete_scope.get_type_symbol(concrete_type.shared_from_this());
+    if (concrete_sym->is_generic) { return; }
+    auto sup_info = std::vector<std::pair<std::shared_ptr<asts::TypeAst>, scopes::Scope const*>>{};
+    sup_info.emplace_back(concrete_sym->fq_name(), concrete_sym->scope);
+    for (auto const *sup_scope : concrete_sym->scope->sup_scopes()) {
+        if (sup_scope->ast->to<asts::ClassPrototypeAst>() == nullptr) { continue; }
+        const auto sup_sym = sup_scope->ty_sym;
+        sup_info.emplace_back(sup_sym->fq_name(), sup_scope);
+    }
+
+    // Compare each constraint against the concrete type and its supertypes.
+    for (auto const &constraint : constraints) {
+        auto matched = false;
+        for (auto const &[sup_type, sup_scope] : sup_info ) {
+            matched = symbolic_eq(*constraint, *sup_type, *sup_scope, *sup_scope);
+            if (matched) { break; }
+        }
+
+        // If any constraint is not met, raise en error.
+        raise_if<errors::SppGenericConstraintError>(
+            not matched, {&generic_scope, &concrete_scope},
+            ERR_ARGS(*constraint, concrete_type));
+    }
 }
 
 
@@ -994,6 +1027,10 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
     // Todo: Contender for worst function is the program, second to "func_utils::get_all_function_scopes"
     // Todo: Detect cycles to prevent infinite loops of type aliasing.
     // Create lists for tracking chains.
+    if (alias_stmt.new_type->operator std::string().contains("BBB")) {
+        auto _ = 123;
+    }
+
     auto type_list = std::vector<std::shared_ptr<asts::TypeAst>>{};
     auto scope_list = std::vector<scopes::Scope*>{};
     auto alias_list = std::vector<asts::TypeStatementAst*>{};
@@ -1115,6 +1152,15 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
         func_utils::name_gn_args(*args, *params, *cls_proto->name, *sm, *meta);
         for (auto *p : params->get_all_params() | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
             p->default_val = p->default_val->substitute_generics(args->get_all_args());
+        }
+        for (auto *p : params->get_type_params()) {
+            if (p->constraints) {
+                auto subbed_constraints = std::vector<std::shared_ptr<asts::TypeAst>>{};
+                for (auto const &c: p->constraints->constraints) {
+                    subbed_constraints.emplace_back(c->substitute_generics(args->get_all_args()));
+                }
+                p->constraints->constraints = std::move(subbed_constraints);
+            }
         }
         // todo: comp param's types need substituting?
 

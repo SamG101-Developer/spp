@@ -131,6 +131,7 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppBorrowLifetimeIncreaseError;
     SPP_EXP_CLS struct SppInvalidComptimeOperationError;
     SPP_EXP_CLS struct SppInternalCompilerError;
+    SPP_EXP_CLS struct SppGenericConstraintError;
 }
 
 
@@ -595,4 +596,9 @@ SPP_EXP_CLS struct spp::analyse::errors::SppInvalidComptimeOperationError final 
 
 SPP_EXP_CLS struct spp::analyse::errors::SppInternalCompilerError final : SemanticError {
     explicit SppInternalCompilerError(asts::Ast const& ast, std::string_view message);
+};
+
+
+SPP_EXP_CLS struct spp::analyse::errors::SppGenericConstraintError final : SemanticError {
+    explicit SppGenericConstraintError(asts::Ast const& constraint, asts::Ast const &concrete_type);
 };

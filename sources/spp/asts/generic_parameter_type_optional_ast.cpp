@@ -67,6 +67,9 @@ auto spp::asts::GenericParameterTypeOptionalAst::stage_4_qualify_types(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // Default behaviour (inline constraints).
+    GenericParameterTypeAst::stage_4_qualify_types(sm, meta);
+
     // Handle the default type.
     default_val->stage_7_analyse_semantics(sm, meta);
     if (const auto sym = sm->current_scope->get_type_symbol(default_val->without_generics()); sym != nullptr) {

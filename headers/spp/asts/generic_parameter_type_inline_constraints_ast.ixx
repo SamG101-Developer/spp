@@ -23,7 +23,7 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeInlineConstraintsAst final : v
      * The constraints for the generic type parameter. Any generic argument passed into the generic parameter must
      * satisfy these constraints.
      */
-    std::vector<std::unique_ptr<TypeAst>> constraints;
+    std::vector<std::shared_ptr<TypeAst>> constraints;
 
     /**
      * Construct the GenericParameterTypeInlineConstraintsAst with the arguments matching the members.
@@ -32,9 +32,13 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeInlineConstraintsAst final : v
      */
     GenericParameterTypeInlineConstraintsAst(
         decltype(tok_colon) &&tok_colon,
-        decltype(constraints) &&constraints);
+        std::vector<std::unique_ptr<TypeAst>> &&constraints);
 
     ~GenericParameterTypeInlineConstraintsAst() override;
 
+    static auto new_empty() -> std::unique_ptr<GenericParameterTypeInlineConstraintsAst>;
+
     SPP_AST_KEY_FUNCTIONS;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };

@@ -504,6 +504,45 @@ auto spp::analyse::utils::func_utils::enforce_no_uninferred_gn_args(
 }
 
 
+auto spp::analyse::utils::func_utils::enforce_no_generic_constraint_violations(
+    std::vector<std::shared_ptr<asts::TypeIdentifierAst>> const &p_names,
+    std::vector<std::vector<std::shared_ptr<asts::TypeAst>>> const &p_con_groups,
+    asts::GenericArgumentGroupAst const &a_group,
+    scopes::Scope const &owner_scope,
+    scopes::ScopeManager &sm,
+    asts::meta::CompilerMetaData &meta)
+    -> void {
+    // Define the cloned constraint groups.
+    auto p_con_groups_cloned = std::vector<std::vector<std::shared_ptr<asts::TypeAst>>>();
+    p_con_groups_cloned.reserve(p_names.size());
+
+    // Cross apply inferred into constraints firstly.
+    for (auto const& p_con_group : p_con_groups) {
+        auto con_group_cloned = std::vector<std::shared_ptr<asts::TypeAst>>();
+        for (auto p_con : p_con_group) {
+            auto def_type_raw = p_con->without_generics();
+            if (auto def_val_type_sym = owner_scope.get_type_symbol(def_type_raw); def_val_type_sym != nullptr and meta.current_stage > 4) {
+                auto temp = def_val_type_sym->fq_name();
+                temp = temp->with_generics(asts::ast_clone(p_con->type_parts().back()->generic_arg_group));
+                p_con = std::move(temp);
+            }
+            const auto sub = p_con->substitute_generics(a_group.get_all_args());
+            sub->stage_7_analyse_semantics(&sm, &meta);
+            con_group_cloned.push_back(sub);
+        }
+        p_con_groups_cloned.push_back(std::move(con_group_cloned));
+    }
+
+    // Now check that each argument satisfied its constraints.
+    const auto args = a_group.get_type_args();
+    for (auto [i, p_name] : p_names | genex::views::enumerate) {
+        const auto p_cons = p_con_groups_cloned[i];
+        const auto a = args[i];
+        type_utils::enforce_generic_constraints(p_cons, *a->val, owner_scope, *sm.current_scope);
+    }
+}
+
+
 auto spp::analyse::utils::func_utils::name_fn_args(
     asts::FunctionCallArgumentGroupAst &a_group,
     asts::FunctionParameterGroupAst const &p_group,
@@ -923,6 +962,9 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
     auto p_names = p_group.get_type_params()
         | genex::views::transform([](auto &&x) { return std::dynamic_pointer_cast<asts::TypeIdentifierAst>(x->name); })
         | genex::to<std::vector>();
+    auto p_con_groups = p_group.get_type_params()
+        | genex::views::transform([](auto &&x) { return x->constraints ? x->constraints->constraints : std::vector<std::shared_ptr<asts::TypeAst>>{}; })
+        | genex::to<std::vector>();
     auto ea_names = explicit_args
         | genex::views::transform([](auto &&x) { return std::dynamic_pointer_cast<asts::TypeIdentifierAst>(x->name); })
         | genex::to<std::vector>();
@@ -1029,6 +1071,10 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
         const auto b_index = genex::position(p_names, [&](auto const &p) { return *p == *b->template to<asts::GenericArgumentTypeKeywordAst>()->name; });
         return a_index < b_index;
     });
+
+    // Finally, enforce the constraints on the inferred generic arguments.
+    if (meta.current_stage < 9) { return; }
+    enforce_no_generic_constraint_violations(p_names, p_con_groups, a_group, owner_scope, sm, meta);
 }
 
 

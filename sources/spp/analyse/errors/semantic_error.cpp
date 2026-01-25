@@ -1462,10 +1462,10 @@ spp::analyse::errors::SppGenericParameterInferredConflictInferredError::SppGener
         "Generic parameter defined here");
     add_context_for_error(
         &first_infer,
-        "First inference defined here");
+        "First inference defined here: " + static_cast<std::string>(first_infer));
     add_error(
         &second_infer,
-        "Conflicting inference defined here");
+        "Conflicting inference defined here: " + static_cast<std::string>(second_infer));
     add_footer(
         "There is a conflict between inferred types for this generic parameter.",
         "Resolve the inference conflict");
@@ -1582,4 +1582,21 @@ spp::analyse::errors::SppInternalCompilerError::SppInternalCompilerError(
     add_footer(
         "An internal compiler error has occurred: " + std::string(message),
         "Please report this issue to the SPP development team with the relevant code context");
+}
+
+
+spp::analyse::errors::SppGenericConstraintError::SppGenericConstraintError(
+    asts::Ast const &constraint,
+    asts::Ast const &concrete_type) {
+    add_header(
+        85, "SPP Generic Constraint Error");
+    add_context_for_error(
+        &constraint,
+        "Generic constraint required here: " + static_cast<std::string>(constraint));
+    add_error(
+        &concrete_type,
+        "Concrete type defined here: " + static_cast<std::string>(concrete_type));
+    add_footer(
+        "The concrete type does not satisfy the generic constraint.",
+        "Ensure the concrete type meets all requirements of the generic constraint");
 }

@@ -2,6 +2,9 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.generic_parameter_type_inline_constraints_ast;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.symbols;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
@@ -10,13 +13,22 @@ import genex;
 
 spp::asts::GenericParameterTypeInlineConstraintsAst::GenericParameterTypeInlineConstraintsAst(
     decltype(tok_colon) &&tok_colon,
-    decltype(constraints) &&constraints) :
-    tok_colon(std::move(tok_colon)),
-    constraints(std::move(constraints)) {
+    std::vector<std::unique_ptr<TypeAst>> && constraints) :
+    tok_colon(std::move(tok_colon)) {
+    for (auto &&constraint : constraints) {
+        this->constraints.emplace_back(std::move(constraint));
+    }
 }
 
 
 spp::asts::GenericParameterTypeInlineConstraintsAst::~GenericParameterTypeInlineConstraintsAst() = default;
+
+
+auto spp::asts::GenericParameterTypeInlineConstraintsAst::new_empty()
+    -> std::unique_ptr<GenericParameterTypeInlineConstraintsAst> {
+    return std::make_unique<GenericParameterTypeInlineConstraintsAst>(
+        nullptr, std::vector<std::unique_ptr<TypeAst>>{});
+}
 
 
 auto spp::asts::GenericParameterTypeInlineConstraintsAst::pos_start() const
@@ -44,4 +56,24 @@ spp::asts::GenericParameterTypeInlineConstraintsAst::operator std::string() cons
     SPP_STRING_APPEND(tok_colon);
     SPP_STRING_EXTEND(constraints, " & ");
     SPP_STRING_END;
+}
+
+
+auto spp::asts::GenericParameterTypeInlineConstraintsAst::stage_7_analyse_semantics(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Prepare the fully qualified constraints vector.
+    auto fq_constraints = decltype(constraints)();
+    fq_constraints.reserve(constraints.size());
+
+    // Analyse each constraint type.
+    for (auto const &constraint : constraints) {
+        constraint->stage_7_analyse_semantics(sm,  meta);
+        auto const constraint_type_sym = sm->current_scope->get_type_symbol(constraint);
+        fq_constraints.emplace_back(constraint_type_sym->fq_name());
+    }
+
+    // Replace the constraints with their fully qualified versions.
+    constraints = std::move(fq_constraints);
 }

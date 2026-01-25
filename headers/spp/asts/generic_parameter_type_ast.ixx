@@ -35,6 +35,8 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *) -> void override;
 
+    auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *) -> void override;
+
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
 

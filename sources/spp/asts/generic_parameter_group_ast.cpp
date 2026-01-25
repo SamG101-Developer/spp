@@ -52,8 +52,16 @@ auto spp::asts::GenericParameterGroupAst::operator+(
 auto spp::asts::GenericParameterGroupAst::operator+=(
     GenericParameterGroupAst const &other)
     -> GenericParameterGroupAst& {
+    auto existing_names = std::vector<std::string>();
+    for (auto &&p : params) {
+        existing_names.push_back(p->name->to_string());
+    }
     for (auto &&p : other.params) {
+        // Don't add duplicate named parameters.
+        auto new_name = p->name->to_string();
+        if (genex::contains(existing_names, new_name)) { continue; }
         params.push_back(ast_clone(p));
+        existing_names.push_back(new_name);
     }
     return *this;
 }
