@@ -913,18 +913,18 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
         return a_index < b_index;
     });
 
-    for (auto &&[param, arg] : genex::views::zip(p_group.get_all_params(), a_group.get_all_args())) {
-        auto comp_arg = arg->to<asts::GenericArgumentCompKeywordAst>();
-        auto comp_param = param->to<asts::GenericParameterCompAst>();
-        if (comp_arg == nullptr) { continue; }
+    for (auto &&[param, arg] : genex::views::zip(p_group.get_comp_params(), a_group.get_comp_args())) {
+        // auto comp_arg = arg->to<asts::GenericArgumentCompKeywordAst>();
+        // auto comp_param = param->to<asts::GenericParameterCompAst>();
+        // if (comp_arg == nullptr) { continue; }
 
         // Not convinces owner_scope mapping is correct here (see scopes for equality below)
-        auto a_type = owner_scope.get_type_symbol(comp_arg->val->infer_type(&sm, &meta))->fq_name();
-        auto p_type = comp_param->type->substitute_generics(a_group.get_all_args());
+        auto a_type = owner_scope.get_type_symbol(arg->val->infer_type(&sm, &meta))->fq_name();
+        auto p_type = param->type->substitute_generics(a_group.get_all_args());
         // p_type->stage_7_analyse_semantics(&sm, meta); // TODO: Needed?
 
         // For a variadic comp argument, check every element of the args tuple.
-        if (comp_param->to<asts::GenericParameterCompVariadicAst>()) {
+        if (param->to<asts::GenericParameterCompVariadicAst>()) {
             auto variadic_types = a_type->type_parts().back()->generic_arg_group->args
                 | genex::views::ptr
                 | genex::views::cast_dynamic<asts::GenericArgumentTypePositionalAst*>()
@@ -934,7 +934,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
             for (auto const &a_type_inner : variadic_types) {
                 raise_if<errors::SppTypeMismatchError>(
                     not type_utils::symbolic_eq(*p_type, *a_type_inner, owner_scope, *sm.current_scope),
-                    {&owner_scope, sm.current_scope}, ERR_ARGS(*comp_param, *p_type, *comp_arg, *a_type_inner));
+                    {&owner_scope, sm.current_scope}, ERR_ARGS(*param, *p_type, *arg, *a_type_inner));
             }
             break;
         }
@@ -942,7 +942,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
         // Otherwise, just check the argument type against the parameter type.
         raise_if<errors::SppTypeMismatchError>(
             not type_utils::symbolic_eq(*p_type, *a_type, owner_scope, *sm.current_scope),
-            {&owner_scope, sm.current_scope}, ERR_ARGS(*comp_param, *p_type, *comp_arg, *a_type));
+            {&owner_scope, sm.current_scope}, ERR_ARGS(*param, *p_type, *arg, *a_type));
     }
 }
 

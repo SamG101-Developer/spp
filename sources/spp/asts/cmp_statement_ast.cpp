@@ -125,12 +125,12 @@ auto spp::asts::CmpStatementAst::stage_5_load_super_scopes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // Check the type exists before attaching super scopes
-    type->stage_7_analyse_semantics(sm, meta);
-
     // Ensure that the convention type doesn't have a convention.
     SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(
         this, type, *sm, "global constant type");
+
+    // Check the type exists before attaching super scopes
+    type->stage_7_analyse_semantics(sm, meta);
     type = sm->current_scope->get_type_symbol(type)->fq_name();
     sm->current_scope->get_var_symbol(name)->type = type;
 }

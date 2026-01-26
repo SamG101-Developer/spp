@@ -64,56 +64,77 @@ spp::asts::FunctionParameterGroupAst::operator std::string() const {
 
 auto spp::asts::FunctionParameterGroupAst::get_all_params() const
     -> std::vector<FunctionParameterAst*> {
-    return params
-        | genex::views::ptr
-        | genex::to<std::vector>();
+    // Filter by casting.
+    auto out = std::vector<FunctionParameterAst*>();
+    for (auto const &param : params) {
+        out.push_back(param.get());
+    }
+    return out;
 }
 
 
 auto spp::asts::FunctionParameterGroupAst::get_self_param() const
     -> FunctionParameterSelfAst* {
-    const auto ps = params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<FunctionParameterSelfAst*>()
-        | genex::to<std::vector>();
-    return ps.empty() ? nullptr : ps[0];
+    // Filter by casting.
+    auto out = std::vector<FunctionParameterSelfAst*>();
+    for (auto const &param : params) {
+        if (auto *self_param = dynamic_cast<FunctionParameterSelfAst*>(param.get())) {
+            out.push_back(self_param);
+        }
+    }
+    return out.empty() ? nullptr : out[0];
 }
 
 
 auto spp::asts::FunctionParameterGroupAst::get_required_params() const
     -> std::vector<FunctionParameterRequiredAst*> {
-    return params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<FunctionParameterRequiredAst*>()
-        | genex::to<std::vector>();
+    // Filter by casting.
+    auto out = std::vector<FunctionParameterRequiredAst*>();
+    for (auto const &param : params) {
+        if (auto *req_param = dynamic_cast<FunctionParameterRequiredAst*>(param.get())) {
+            out.push_back(req_param);
+        }
+    }
+    return out;
 }
 
 
 auto spp::asts::FunctionParameterGroupAst::get_optional_params() const
     -> std::vector<FunctionParameterOptionalAst*> {
-    return params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<FunctionParameterOptionalAst*>()
-        | genex::to<std::vector>();
+    // Filter by casting.
+    auto out = std::vector<FunctionParameterOptionalAst*>();
+    for (auto const &param : params) {
+        if (auto *opt_param = dynamic_cast<FunctionParameterOptionalAst*>(param.get())) {
+            out.push_back(opt_param);
+        }
+    }
+    return out;
 }
 
 
 auto spp::asts::FunctionParameterGroupAst::get_variadic_param() const
     -> FunctionParameterVariadicAst* {
-    const auto ps = params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<FunctionParameterVariadicAst*>()
-        | genex::to<std::vector>();
-    return ps.empty() ? nullptr : ps[0];
+    // Filter by casting.
+    auto out = std::vector<FunctionParameterVariadicAst*>();
+    for (auto const &param : params) {
+        if (auto *var_param = dynamic_cast<FunctionParameterVariadicAst*>(param.get())) {
+            out.push_back(var_param);
+        }
+    }
+    return out.empty() ? nullptr : out[0];
 }
 
 
 auto spp::asts::FunctionParameterGroupAst::get_non_self_params() const
     -> std::vector<FunctionParameterAst*> {
-    return params
-        | genex::views::ptr
-        | genex::views::filter([](auto &&x) { return not x->template to<FunctionParameterSelfAst>(); })
-        | genex::to<std::vector>();
+    // Filter by casting.
+    auto out = std::vector<FunctionParameterAst*>();
+    for (auto const &param : params) {
+        if (dynamic_cast<FunctionParameterSelfAst*>(param.get()) == nullptr) {
+            out.push_back(param.get());
+        }
+    }
+    return out;
 }
 
 

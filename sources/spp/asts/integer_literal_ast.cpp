@@ -144,56 +144,60 @@ auto spp::asts::IntegerLiteralAst::stage_11_code_gen_2(
 
 
 auto spp::asts::IntegerLiteralAst::infer_type(
-    ScopeManager *,
+    ScopeManager *sm,
     CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Map the type string literal to the correct SPP type.
+    auto spp_type = std::shared_ptr<TypeAst>(nullptr);
     if (type.empty()) {
-        return generate::common_types::s32(pos_start());
+        spp_type = generate::common_types::s32(pos_start());
     }
-    if (type == "s8") {
-        return generate::common_types::s8(pos_start());
+    else if (type == "s8") {
+        spp_type = generate::common_types::s8(pos_start());
     }
-    if (type == "s16") {
-        return generate::common_types::s16(pos_start());
+    else if (type == "s16") {
+        spp_type = generate::common_types::s16(pos_start());
     }
-    if (type == "s32") {
-        return generate::common_types::s32(pos_start());
+    else if (type == "s32") {
+        spp_type = generate::common_types::s32(pos_start());
     }
-    if (type == "s64") {
-        return generate::common_types::s64(pos_start());
+    else if (type == "s64") {
+        spp_type = generate::common_types::s64(pos_start());
     }
-    if (type == "s128") {
-        return generate::common_types::s128(pos_start());
+    else if (type == "s128") {
+        spp_type = generate::common_types::s128(pos_start());
     }
-    if (type == "s256") {
-        return generate::common_types::s256(pos_start());
+    else if (type == "s256") {
+        spp_type = generate::common_types::s256(pos_start());
     }
-    if (type == "sz") {
-        return generate::common_types::ssize(pos_start());
+    else if (type == "sz") {
+        spp_type = generate::common_types::ssize(pos_start());
     }
-    if (type == "u8") {
-        return generate::common_types::u8(pos_start());
+    else if (type == "u8") {
+        spp_type = generate::common_types::u8(pos_start());
     }
-    if (type == "u16") {
-        return generate::common_types::u16(pos_start());
+    else if (type == "u16") {
+        spp_type = generate::common_types::u16(pos_start());
     }
-    if (type == "u32") {
-        return generate::common_types::u32(pos_start());
+    else if (type == "u32") {
+        spp_type = generate::common_types::u32(pos_start());
     }
-    if (type == "u64") {
-        return generate::common_types::u64(pos_start());
+    else if (type == "u64") {
+        spp_type = generate::common_types::u64(pos_start());
     }
-    if (type == "u128") {
-        return generate::common_types::u128(pos_start());
+    else if (type == "u128") {
+        spp_type = generate::common_types::u128(pos_start());
     }
-    if (type == "u256") {
-        return generate::common_types::u256(pos_start());
+    else if (type == "u256") {
+        spp_type = generate::common_types::u256(pos_start());
     }
-    if (type == "uz") {
-        return generate::common_types::usize(pos_start());
+    else if (type == "uz") {
+        spp_type = generate::common_types::usize(pos_start());
     }
 
-    // This should never happen, due to parsing rules.
-    std::unreachable();
+    const auto sym = sm->current_scope->get_type_symbol(spp_type);
+    if (sym == nullptr) {
+        auto _ = 123;
+    }
+    return sym->fq_name();
 }

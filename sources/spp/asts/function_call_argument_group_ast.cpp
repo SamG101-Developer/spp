@@ -86,27 +86,38 @@ spp::asts::FunctionCallArgumentGroupAst::operator std::string() const {
 
 auto spp::asts::FunctionCallArgumentGroupAst::get_all_args() const
     -> std::vector<FunctionCallArgumentAst*> {
-    return args
-        | genex::views::ptr
-        | genex::to<std::vector>();
+    // Filter by casting.
+    auto out = std::vector<FunctionCallArgumentAst*>();
+    for (auto const &arg : args) {
+        out.emplace_back(arg.get());
+    }
+    return out;
 }
 
 
 auto spp::asts::FunctionCallArgumentGroupAst::get_keyword_args() const
     -> std::vector<FunctionCallArgumentKeywordAst*> {
-    return args
-        | genex::views::ptr
-        | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>()
-        | genex::to<std::vector>();
+    // Filter by casting.
+    auto out = std::vector<FunctionCallArgumentKeywordAst*>();
+    for (auto const &arg : args) {
+        if (auto *kw_arg = arg->to<FunctionCallArgumentKeywordAst>(); kw_arg != nullptr) {
+            out.emplace_back(kw_arg);
+        }
+    }
+    return out;
 }
 
 
 auto spp::asts::FunctionCallArgumentGroupAst::get_positional_args() const
     -> std::vector<FunctionCallArgumentPositionalAst*> {
-    return args
-        | genex::views::ptr
-        | genex::views::cast_dynamic<FunctionCallArgumentPositionalAst*>()
-        | genex::to<std::vector>();
+    // Filter by casting.
+    auto out = std::vector<FunctionCallArgumentPositionalAst*>();
+    for (auto const &arg : args) {
+        if (auto *pos_arg = arg->to<FunctionCallArgumentPositionalAst>(); pos_arg != nullptr) {
+            out.emplace_back(pos_arg);
+        }
+    }
+    return out;
 }
 
 

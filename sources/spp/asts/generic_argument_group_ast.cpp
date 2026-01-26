@@ -210,69 +210,69 @@ auto spp::asts::GenericArgumentGroupAst::merge_generics(
 auto spp::asts::GenericArgumentGroupAst::get_type_args() const
     -> std::vector<GenericArgumentTypeAst*> {
     // Filter by casting.
-    return args
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericArgumentTypeAst*>()
-        | genex::to<std::vector>();
+    auto out = std::vector<GenericArgumentTypeAst*>();
+    for (auto const &arg : args) {
+        if (const auto type_arg = arg->to<GenericArgumentTypeAst>()) {
+            out.emplace_back(type_arg);
+        }
+    }
+    return out;
 }
 
 
 auto spp::asts::GenericArgumentGroupAst::get_comp_args() const
     -> std::vector<GenericArgumentCompAst*> {
     // Filter by casting.
-    return args
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericArgumentCompAst*>()
-        | genex::to<std::vector>();
+    auto out = std::vector<GenericArgumentCompAst*>();
+    for (auto const &arg : args) {
+        if (const auto comp_arg = arg->to<GenericArgumentCompAst>()) {
+            out.emplace_back(comp_arg);
+        }
+    }
+    return out;
 }
 
 
 auto spp::asts::GenericArgumentGroupAst::get_keyword_args() const
     -> std::vector<GenericArgumentAst*> {
     // Filter by casting.
-    auto keyword_types = args
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()
-        | genex::views::cast_dynamic<GenericArgumentAst*>()
-        | genex::to<std::vector>();
-
-    auto keyword_comps = args
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()
-        | genex::views::cast_dynamic<GenericArgumentAst*>()
-        | genex::to<std::vector>();
-
-    keyword_types.append_range(keyword_comps);
-    return keyword_types;
+    auto out = std::vector<GenericArgumentAst*>();
+    for (auto const &arg : args) {
+        if (const auto kw_t_arg = arg->to<GenericArgumentTypeKeywordAst>()) {
+            out.emplace_back(kw_t_arg);
+        }
+        else if (const auto kw_c_arg = arg->to<GenericArgumentCompKeywordAst>()) {
+            out.emplace_back(kw_c_arg);
+        }
+    }
+    return out;
 }
 
 
 auto spp::asts::GenericArgumentGroupAst::get_positional_args() const
     -> std::vector<GenericArgumentAst*> {
     // Filter by casting.
-    auto positional_types = args
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericArgumentTypePositionalAst*>()
-        | genex::views::cast_dynamic<GenericArgumentAst*>()
-        | genex::to<std::vector>();
-
-    auto positional_comps = args
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericArgumentCompPositionalAst*>()
-        | genex::views::cast_dynamic<GenericArgumentAst*>()
-        | genex::to<std::vector>();
-
-    positional_types.append_range(positional_comps);
-    return positional_types;
+    auto out = std::vector<GenericArgumentAst*>();
+    for (auto const &arg : args) {
+        if (const auto pos_t_arg = arg->to<GenericArgumentTypePositionalAst>()) {
+            out.emplace_back(pos_t_arg);
+        }
+        else if (const auto pos_c_arg = arg->to<GenericArgumentCompPositionalAst>()) {
+            out.emplace_back(pos_c_arg);
+        }
+    }
+    return out;
 }
 
 
 auto spp::asts::GenericArgumentGroupAst::get_all_args() const
     -> std::vector<GenericArgumentAst*> {
     // Convert args to raw pointers.
-    return args
-        | genex::views::ptr
-        | genex::to<std::vector>();
+    auto out = std::vector<GenericArgumentAst*>();
+    for (auto const &arg : args) {
+        out.emplace_back(arg.get());
+    }
+    return out;
 }
 
 

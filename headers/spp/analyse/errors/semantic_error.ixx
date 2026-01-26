@@ -22,7 +22,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct FunctionParameterVariadicAst;
     SPP_EXP_CLS struct FunctionPrototypeAst;
     SPP_EXP_CLS struct TokenAst;
-    SPP_EXP_CLS struct IterPatternVariantAst;
     SPP_EXP_CLS struct LocalVariableAst;
     SPP_EXP_CLS struct LocalVariableDestructureSkipMultipleArgumentsAst;
     SPP_EXP_CLS struct LocalVariableDestructureArrayAst;
@@ -55,7 +54,7 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppPartiallyInitializedMemoryUseError;
     SPP_EXP_CLS struct SppMoveFromBorrowedMemoryError;
     SPP_EXP_CLS struct SppMoveFromPinnedMemoryError;
-    SPP_EXP_CLS struct SppMoveFromPinLinkedMemoryError;
+    // SPP_EXP_CLS struct SppMoveFromPinLinkedMemoryError;
     SPP_EXP_CLS struct SppInconsistentlyInitializedMemoryUseError;
     SPP_EXP_CLS struct SppInconsistentlyPinnedMemoryUseError;
     SPP_EXP_CLS struct SppMemberAccessNonIndexableError;
@@ -219,9 +218,9 @@ SPP_EXP_CLS struct spp::analyse::errors::SppMoveFromPinnedMemoryError final : Se
 };
 
 
-SPP_EXP_CLS struct spp::analyse::errors::SppMoveFromPinLinkedMemoryError final : SemanticError {
-    explicit SppMoveFromPinLinkedMemoryError(asts::ExpressionAst const &ast, asts::Ast const &init_location, asts::Ast const &move_location, asts::Ast const &pin_location);
-};
+// SPP_EXP_CLS struct spp::analyse::errors::SppMoveFromPinLinkedMemoryError final : SemanticError {
+//     explicit SppMoveFromPinLinkedMemoryError(asts::ExpressionAst const &ast, asts::Ast const &init_location, asts::Ast const &move_location, asts::Ast const &pin_location);
+// };
 
 
 SPP_EXP_CLS struct spp::analyse::errors::SppInconsistentlyInitializedMemoryUseError final : SemanticError {

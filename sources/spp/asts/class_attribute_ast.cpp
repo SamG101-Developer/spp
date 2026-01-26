@@ -56,7 +56,7 @@ auto spp::asts::ClassAttributeAst::clone() const
         ast_clone(default_val));
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
-    for (auto const &a: ast->annotations) {
+    for (auto const &a : ast->annotations) {
         a->set_ast_ctx(ast.get());
     }
     return ast;
@@ -95,7 +95,8 @@ auto spp::asts::ClassAttributeAst::stage_2_gen_top_level_scopes(
     }
 
     // Create a variable symbol for this attribute in the current scope (class scope).
-    auto sym = std::make_unique<analyse::scopes::VariableSymbol>(name, type, false, false, visibility.first);
+    auto sym = std::make_unique<analyse::scopes::VariableSymbol>(
+        name, type, false, false, visibility.first);
     sm->current_scope->add_var_symbol(std::move(sym));
 }
 
@@ -104,9 +105,12 @@ auto spp::asts::ClassAttributeAst::stage_5_load_super_scopes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // Ensure that the convention type doesn't have a convention.
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(
+        type, type, *sm, "attribute type");
+
     // Check the type is valid before scopes are attached.
     type->stage_7_analyse_semantics(sm, meta);
-    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(type, type, *sm, "attribute type");
     type = sm->current_scope->get_type_symbol(type)->fq_name();
     sm->current_scope->get_var_symbol(name)->type = type;
 }

@@ -108,62 +108,46 @@ auto spp::asts::GenericParameterGroupAst::new_empty()
 
 auto spp::asts::GenericParameterGroupAst::get_required_params() const
     -> std::vector<GenericParameterAst*> {
-    auto required_types = params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericParameterTypeRequiredAst*>()
-        | genex::views::cast_dynamic<GenericParameterAst*>()
-        | genex::to<std::vector>();
-
-    auto required_comps = params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericParameterCompRequiredAst*>()
-        | genex::views::cast_dynamic<GenericParameterAst*>()
-        | genex::to<std::vector>();
-
-    required_types.append_range(required_comps);
-    return required_types;
+    // Filter by casting.
+    auto out = std::vector<GenericParameterAst*>();
+    for (auto &&p : params) {
+        if (const auto req_type = p->to<GenericParameterTypeRequiredAst>()) {
+            out.push_back(req_type->to<GenericParameterAst>());
+        }
+        else if (const auto req_comp = p->to<GenericParameterCompRequiredAst>()) {
+            out.push_back(req_comp->to<GenericParameterAst>());
+        }
+    }
+    return out;
 }
 
 
 auto spp::asts::GenericParameterGroupAst::get_optional_params() const
     -> std::vector<GenericParameterAst*> {
-    auto optional_types = params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericParameterTypeOptionalAst*>()
-        | genex::views::cast_dynamic<GenericParameterAst*>()
-        | genex::to<std::vector>();
-
-    auto optional_comps = params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericParameterCompOptionalAst*>()
-        | genex::views::cast_dynamic<GenericParameterAst*>()
-        | genex::to<std::vector>();
-
-    optional_types.append_range(optional_comps);
-    return optional_types;
+    // Filter by casting.
+    auto out = std::vector<GenericParameterAst*>();
+    for (auto &&p : params) {
+        if (const auto opt_type = p->to<GenericParameterTypeOptionalAst>()) {
+            out.push_back(opt_type->to<GenericParameterAst>());
+        }
+        else if (const auto opt_comp = p->to<GenericParameterCompOptionalAst>()) {
+            out.push_back(opt_comp->to<GenericParameterAst>());
+        }
+    }
+    return out;
 }
 
 
 auto spp::asts::GenericParameterGroupAst::get_variadic_param() const
     -> GenericParameterAst* {
-    auto variadic_type = params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericParameterTypeVariadicAst*>()
-        | genex::views::cast_dynamic<GenericParameterAst*>()
-        | genex::to<std::vector>();
-
-    auto variadic_comp = params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericParameterCompVariadicAst*>()
-        | genex::views::cast_dynamic<GenericParameterAst*>()
-        | genex::to<std::vector>();
-
-    auto variadics = variadic_type;
-    variadics.append_range(variadic_comp);
-
-    if (variadics.size() > 1) {
-        // This should have been caught in parsing, but just in case.
-        throw std::runtime_error("Internal compiler error: Multiple variadic generic parameters found.");
+    auto variadics = std::vector<GenericParameterAst*>();
+    for (auto &&p : params) {
+        if (const auto var_type = p->to<GenericParameterTypeVariadicAst>()) {
+            variadics.push_back(var_type->to<GenericParameterAst>());
+        }
+        else if (const auto var_comp = p->to<GenericParameterCompVariadicAst>()) {
+            variadics.push_back(var_comp->to<GenericParameterAst>());
+        }
     }
 
     return variadics.empty() ? nullptr : variadics[0];
@@ -172,28 +156,38 @@ auto spp::asts::GenericParameterGroupAst::get_variadic_param() const
 
 auto spp::asts::GenericParameterGroupAst::get_comp_params() const
     -> std::vector<GenericParameterCompAst*> {
-    return params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericParameterCompAst*>()
-        | genex::to<std::vector>();
+    // Filter by casting.
+    auto out = std::vector<GenericParameterCompAst*>();
+    for (auto &&p : params) {
+        if (const auto comp_param = p->to<GenericParameterCompAst>()) {
+            out.push_back(comp_param);
+        }
+    }
+    return out;
 }
 
 
 auto spp::asts::GenericParameterGroupAst::get_type_params() const
     -> std::vector<GenericParameterTypeAst*> {
-    return params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericParameterTypeAst*>()
-        | genex::to<std::vector>();
+    // Filter by casting.
+    auto out = std::vector<GenericParameterTypeAst*>();
+    for (auto &&p : params) {
+        if (const auto type_param = p->to<GenericParameterTypeAst>()) {
+            out.push_back(type_param);
+        }
+    }
+    return out;
 }
 
 
 auto spp::asts::GenericParameterGroupAst::get_all_params() const
     -> std::vector<GenericParameterAst*> {
-    return params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericParameterAst*>()
-        | genex::to<std::vector>();
+    // Return all parameters.
+    auto out = std::vector<GenericParameterAst*>();
+    for (auto &&p : params) {
+        out.push_back(p.get());
+    }
+    return out;
 }
 
 

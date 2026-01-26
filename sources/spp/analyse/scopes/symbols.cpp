@@ -60,6 +60,9 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
     memory_info(std::make_unique<utils::mem_info_utils::MemoryInfo>()) {
     llvm_info = std::make_unique<codegen::LlvmVarSymInfo>();
     comptime_value = nullptr;
+    if (this->type->operator std::string() == "std::number::S32") {
+        auto _ = 123;
+    }
 }
 
 

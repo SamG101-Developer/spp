@@ -54,23 +54,30 @@ auto spp::asts::GenericParameterCompAst::stage_4_qualify_types(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // Qualify the type on the generic parameter (and in the symbol). Note: not possible to have a convention here.
+    // Qualify the type on the generic parameter.
     meta->save();
     meta->ignore_cmp_generic = name;
+
+    // Ensure that the convention type doesn't have a convention.
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(
+        type, type, *sm, "function return type");
+
+    // Check the type exists and qualify.
     type->stage_7_analyse_semantics(sm, meta);
-    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(type, type, *sm, "function return type");
     type = sm->current_scope->get_type_symbol(type)->fq_name();
+    const auto sym = sm->current_scope->get_var_symbol(
+        IdentifierAst::from_type(*name));
+    sym->type = type;
     meta->restore();
-    sm->current_scope->get_var_symbol(IdentifierAst::from_type(*name))->type = type;
 }
 
 
 auto spp::asts::GenericParameterCompAst::stage_7_analyse_semantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
+    ScopeManager *,
+    CompilerMetaData *)
     -> void {
     // Analyse the type.
-    type->stage_7_analyse_semantics(sm, meta);
+    // type->stage_7_analyse_semantics(sm, meta);
 }
 
 
