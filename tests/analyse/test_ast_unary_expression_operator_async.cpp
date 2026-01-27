@@ -37,7 +37,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestUnaryExpressionOperatorAsyncAst,
     test_invalid_async_moving_future_with_pins_mov,
-    SppMoveFromPinLinkedMemoryError, R"(
+    SppMoveFromPinnedMemoryError, R"(
     fun f(a: &std::string::Str) -> std::string::Str { ret "hello" }
     fun g() -> std::void::Void {
         let x = "hello"
@@ -50,7 +50,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestUnaryExpressionOperatorAsyncAst,
     test_invalid_async_moving_future_with_pins_ret,
-    SppMoveFromPinLinkedMemoryError, R"(
+    SppMoveFromPinnedMemoryError, R"(
     fun f(a: &std::string::Str) -> std::string::Str { ret "hello" }
     fun g() -> std::future::Fut[std::string::Str] {
         let x = "hello"

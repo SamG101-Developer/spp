@@ -159,8 +159,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionPrototypeAst,
     test_invalid_return_type_mut_via_generic_substitution,
     SppSecondClassBorrowViolationError, R"(
-    @no_impl
-    fun f[T]() -> T { }
+    fun f[T]() -> T { ret T() }
 
     fun g() -> std::void::Void {
         let x = f[&mut std::string::Str]()
@@ -172,8 +171,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionPrototypeAst,
     test_invalid_return_type_ref_via_generic_substitution,
     SppSecondClassBorrowViolationError, R"(
-    @no_impl
-    fun f[T]() -> T { }
+    fun f[T]() -> T { ret T() }
 
     fun g() -> std::void::Void {
         let x = f[&std::string::Str]()

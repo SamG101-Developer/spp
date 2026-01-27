@@ -143,3 +143,81 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls B[T: A] { }
     type C[U: A] = B[U]
 )");
+
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstGenericConstraints,
+    test_invalid_sup_constraint_mismatch,
+    SppGenericConstraintError, R"(
+    cls A { }
+    cls B[T: A] { }
+
+    sup [X] B[X] { }
+)");
+
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstGenericConstraints,
+    test_valid_sup_constraint, R"(
+    cls A { }
+    cls B[T: A] { }
+
+    sup [X: A] B[X] { }
+)");
+
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstGenericConstraints,
+    test_invalid_ext_constraint_mismatch,
+    SppGenericConstraintError, R"(
+    cls A { }
+    cls B[T: A] { }
+    cls C { }
+
+    sup [X] C ext B[X] { }
+)");
+
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstGenericConstraints,
+    test_valid_ext_constraint, R"(
+    cls A { }
+    cls B[T: A] { }
+    cls C { }
+
+    sup [X: A] C ext B[X] { }
+)");
+
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstGenericCosntraints,
+    test_invalid_sup_function_for_constraint_mismatch,
+    SppIdentifierUnknownError, R"(
+    cls A[T] { }
+
+    sup [T: std::copy::Copy] A[T] {
+        fun my_function() -> Void { }
+    }
+
+    fun f() -> Void {
+        let a = A[std::string::Str]()
+        a.my_function()  # invalid; Str is not Copy
+    }
+)");
+
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstGenericConstraints,
+    test_valid_sup_function_for_constraint,
+    R"(
+    cls A[T] { }
+
+    sup [T: std::copy::Copy] A[T] {
+        fun my_function() -> Void { }
+    }
+
+    fun f() -> Void {
+        let a = A[std::number::U32]()
+        a.my_function()  # valid; U32 is Copy
+    }
+)");

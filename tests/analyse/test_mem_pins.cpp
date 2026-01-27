@@ -132,7 +132,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryPins,
     test_invalid_moving_pinned_borrow_ret,
-    SppMoveFromPinLinkedMemoryError, R"(
+    SppMoveFromPinnedMemoryError, R"(
     cor g(a: &std::string::Str) -> std::generator::Gen[std::string::Str, std::boolean::Bool] { }
 
     fun h() -> std::generator::Gen[std::string::Str, std::boolean::Bool] {
