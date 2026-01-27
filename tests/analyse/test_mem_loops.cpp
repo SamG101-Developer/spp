@@ -7,7 +7,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_loop_with_memory_move,
     SppUninitializedMemoryUseError, R"(
     fun f() -> std::void::Void {
-        let x = "hello world"
+        let x = std::string::Str::from("hello world")
         loop true {
             let y = x
         }
@@ -20,7 +20,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_loop_with_memory_move_nested,
     SppUninitializedMemoryUseError, R"(
     fun f() -> std::void::Void {
-        let x = "hello world"
+        let x = std::string::Str::from("hello world")
         loop true {
             let d = x.data
         }

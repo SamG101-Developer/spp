@@ -3,10 +3,12 @@
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
-    test_invalid_partial_move_from_yielded_borrow_via_variable,
+    test_invalid_memory_partial_move_from_yielded_borrow_via_variable,
     SppMoveFromBorrowedMemoryError, R"(
+    use std::string::Str
+
     cls A {
-        a: std::string::Str
+        a: Str
     }
 
     cor g() -> std::generator::Gen[&A] { }
@@ -14,9 +16,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let mut generator = g()
         let a = generator.res()
-        let b = iter a of {
-            value { value.a }
-            !! { "nothing" }
+        let b = case a of {
+            is &A { value.a }
+            else { Str::from("nothing") }
         }
     }
 )");
@@ -24,19 +26,21 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
-    test_invalid_partial_move_from_yielded_borrow_directly,
+    test_invalid_memory_partial_move_from_yielded_borrow_directly,
     SppMoveFromBorrowedMemoryError, R"(
+    use std::option::None
+
     cls A {
-        a: std::string::Str
+        a: Str
     }
 
     cor g() -> std::generator::Gen[&A] { }
 
     fun f() -> std::void::Void {
         let mut generator = g()
-        let b = iter generator.res() of {
-            value { value.a }
-            !! { "nothing" }
+        let b = case generator.res() of {
+            is &A { value.a }
+            else { Str::from("nothing") }
         }
     }
 )");
@@ -44,14 +48,17 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
-    test_invalid_use_mut_borrow_after_conflicting_ref_borrow_created_simple,
+    test_invalid_memory_use_mut_borrow_after_conflicting_ref_borrow_created_simple,
     SppUninitializedMemoryUseError, R"(
-    cor g(a: &std::string::Str) -> std::generator::Gen[std::string::Str] { }
+    use std::string::Str
+    use std::void::Void
 
-    fun h(a: &mut std::string::Str) -> std::void::Void { }
+    cor g(a: &Str) -> std::generator::Gen[Str] { }
 
-    fun f() -> std::void::Void {
-        let mut x = "hello world"
+    fun h(a: &mut Str) -> Void { }
+
+    fun f() -> Void {
+        let mut x = Str::from("hello world")
         let mut coroutine = g(&x)  # take an immutable borrow
         h(&mut x)                  # conflicting mutable borrow invalidates the immutable borrow
         coroutine.res()            # use of the invalidated immutable borrow
@@ -61,14 +68,17 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
-    test_invalid_use_ref_borrow_after_conflicting_mut_borrow_created_simple,
+    test_invalid_memory_use_ref_borrow_after_conflicting_mut_borrow_created_simple,
     SppUninitializedMemoryUseError, R"(
-    cor g(a: &mut std::string::Str) -> std::generator::Gen[std::string::Str] { }
+    use std::string::Str
+    use std::void::Void
 
-    fun h(a: &std::string::Str) -> std::void::Void { }
+    cor g(a: &mut Str) -> std::generator::Gen[Str] { }
 
-    fun f() -> std::void::Void {
-        let mut x = "hello world"
+    fun h(a: &Str) -> Void { }
+
+    fun f() -> Void {
+        let mut x = Str::from("hello world")
         let mut coroutine = g(&mut x)  # take a mutable borrow
         h(&x)                          # conflicting immutable borrow invalidates the mutable borrow
         coroutine.res()                # use of the invalidated mutable borrow
@@ -78,14 +88,17 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
-    test_invalid_use_mut_borrow_after_conflicting_mut_borrow_created_simple,
+    test_invalid_memory_use_mut_borrow_after_conflicting_mut_borrow_created_simple,
     SppUninitializedMemoryUseError, R"(
-    cor g(a: &mut std::string::Str) -> std::generator::Gen[std::string::Str] { }
+    use std::string::Str
+    use std::void::Void
 
-    fun h(a: &mut std::string::Str) -> std::void::Void { }
+    cor g(a: &mut Str) -> std::generator::Gen[Str] { }
 
-    fun f() -> std::void::Void {
-        let mut x = "hello world"
+    fun h(a: &mut Str) -> Void { }
+
+    fun f() -> Void {
+        let mut x = Str::from("hello world")
         let mut coroutine = g(&mut x)  # take a mutable borrow
         h(&mut x)                      # conflicting mutable borrow invalidates the first mutable borrow
         coroutine.res()                # use of the invalidated mutable borrow
@@ -95,13 +108,16 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstYieldedBorrow,
-    test_valid_use_ref_borrow_after_conflicting_ref_borrow_created_simple, R"(
-    cor g(a: &std::string::Str) -> std::generator::Gen[std::string::Str] { }
+    test_valid_memory_use_ref_borrow_after_conflicting_ref_borrow_created_simple, R"(
+    use std::string::Str
+    use std::void::Void
 
-    fun h(a: &std::string::Str) -> std::void::Void { }
+    cor g(a: &Str) -> std::generator::Gen[Str] { }
 
-    fun f() -> std::void::Void {
-        let x = "hello world"
+    fun h(a: &Str) -> Void { }
+
+    fun f() -> Void {
+        let x = Str::from("hello world")
         let mut coroutine = g(&x)  # take an immutable borrow
         h(&x)                      # conflicting immutable borrow does not invalidate the first immutable borrow
         coroutine.res()            # use of the valid immutable borrow
@@ -111,7 +127,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstYieldedBorrow,
-    test_valid_define_conflicting_mut_borrow_after_mut_borrow_created, R"(
+    test_valid_memory_define_conflicting_mut_borrow_after_mut_borrow_created, R"(
     cls MyType { }
     sup MyType {
         cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
@@ -128,7 +144,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstYieldedBorrow,
-    test_valid_define_conflicting_ref_borrow_after_mut_borrow_created, R"(
+    test_valid_memory_define_conflicting_ref_borrow_after_mut_borrow_created, R"(
     cls MyType { }
     sup MyType {
         cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
@@ -145,7 +161,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstYieldedBorrow,
-    test_valid_define_conflicting_mut_borrow_after_ref_borrow_created, R"(
+    test_valid_memory_define_conflicting_mut_borrow_after_ref_borrow_created, R"(
     cls MyType { }
     sup MyType {
         cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
@@ -162,7 +178,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstYieldedBorrow,
-    test_valid_define_conflicting_ref_borrow_after_ref_borrow_created, R"(
+    test_valid_memory_define_conflicting_ref_borrow_after_ref_borrow_created, R"(
     cls MyType { }
     sup MyType {
         cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
@@ -179,7 +195,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
-    test_invalid_create_mut_borrow_create_ref_borrow_use_mut_borrow,
+    test_invalid_memory_create_mut_borrow_create_ref_borrow_use_mut_borrow,
     SppUninitializedMemoryUseError, R"(
     cls MyType { }
     sup MyType {
@@ -198,7 +214,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
-    test_invalid_create_ref_borrow_create_mut_borrow_use_ref_borrow,
+    test_invalid_memory_create_ref_borrow_create_mut_borrow_use_ref_borrow,
     SppUninitializedMemoryUseError, R"(
     cls MyType { }
     sup MyType {
@@ -217,7 +233,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
-    test_invalid_create_mut_borrow_create_mut_borrow_use_mut_borrow,
+    test_invalid_memory_create_mut_borrow_create_mut_borrow_use_mut_borrow,
     SppUninitializedMemoryUseError, R"(
     cls MyType { }
     sup MyType {
@@ -236,7 +252,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
-    test_invalid_create_mut_borrow_create_ref_borrow_use_mut_borrow_with_scoping,
+    test_invalid_memory_create_mut_borrow_create_ref_borrow_use_mut_borrow_with_scoping,
     SppUninitializedMemoryUseError, R"(
     cls MyType { }
     sup MyType {
@@ -258,7 +274,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
-    test_invalid_create_ref_borrow_create_mut_borrow_use_ref_borrow_with_scoping,
+    test_invalid_memory_create_ref_borrow_create_mut_borrow_use_ref_borrow_with_scoping,
     SppUninitializedMemoryUseError, R"(
     cls MyType { }
     sup MyType {
@@ -280,7 +296,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
-    test_invalid_create_mut_borrow_create_mut_borrow_use_mut_borrow_with_scoping,
+    test_invalid_memory_create_mut_borrow_create_mut_borrow_use_mut_borrow_with_scoping,
     SppUninitializedMemoryUseError, R"(
     cls MyType { }
     sup MyType {
@@ -302,7 +318,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstYieldedBorrow,
-    test_valid_create_ref_borrow_create_ref_borrow_use_ref_borrow_with_scoping, R"(
+    test_valid_memory_create_ref_borrow_create_ref_borrow_use_ref_borrow_with_scoping, R"(
     cls MyType { }
     sup MyType {
         cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
@@ -323,7 +339,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
-    test_invalid_use_mut_borrow_after_conflicting_mut_borrow_created_for_resume,
+    test_invalid_memory_use_mut_borrow_after_conflicting_mut_borrow_created_for_resume,
     SppUninitializedMemoryUseError, R"(
     cls MyType { }
     sup MyType {
@@ -335,9 +351,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut generator_mut = object.custom_iter_mut()
         let x = generator_mut.res()
         let y = generator_mut.res()
-        let z = iter x of {
-            val { val.to_ascii_uppercase() }
-            !! { "" }
+        let z = case x of {
+            is std::string::Str(..) { x.to_ascii_uppercase() }
+            else { std::string::Str::from("") }
         }
     }
 )");
@@ -345,8 +361,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstYieldedBorrow,
-    test_valid_use_ref_borrow_after_conflicting_ref_borrow_created_for_resume,
-    R"(
+    test_valid_memory_use_ref_borrow_after_conflicting_ref_borrow_created_for_resume, R"(
     cls MyType { }
     sup MyType {
         cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
@@ -357,9 +372,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut generator_ref = object.custom_iter_ref()
         let x = generator_ref.res()
         let y = generator_ref.res()
-        let z = iter x of {
-            val { val.to_ascii_uppercase() }
-            !! { "" }
+        let z = case x of {
+            is std::string::Str(..) { x.to_ascii_uppercase() }
+            else { std::string::Str::from("") }
         }
     }
 )");
@@ -367,7 +382,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstYieldedBorrow,
-    test_valid_use_mut_borrow_after_conflicting_ref_borrow_created_with_scoping, R"(
+    test_valid_memory_use_mut_borrow_after_conflicting_ref_borrow_created_with_scoping, R"(
     cls MyType { }
     sup MyType {
         cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
@@ -387,8 +402,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstYieldedBorrow,
-    test_valid_use_ref_borrow_after_conflicting_mut_borrow_created_with_scoping,
-    R"(
+    test_valid_memory_use_ref_borrow_after_conflicting_mut_borrow_created_with_scoping, R"(
     cls MyType { }
     sup MyType {
         cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
@@ -408,8 +422,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstYieldedBorrow,
-    test_valid_use_mut_borrow_after_conflicting_mut_borrow_created_with_scoping,
-    R"(
+    test_valid_memory_use_mut_borrow_after_conflicting_mut_borrow_created_with_scoping, R"(
     cls MyType { }
     sup MyType {
         cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
@@ -429,8 +442,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstYieldedBorrow,
-    test_valid_use_ref_borrow_after_conflicting_ref_borrow_created_with_scoping_2,
-    R"(
+    test_valid_memory_use_ref_borrow_after_conflicting_ref_borrow_created_with_scoping_2, R"(
     cls MyType { }
     sup MyType {
         cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
