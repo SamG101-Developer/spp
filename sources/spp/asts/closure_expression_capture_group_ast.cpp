@@ -108,14 +108,17 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_8_check_memory(
         if (cap->conv != nullptr) {
             // Mark the pins on the capture and the target.
             const auto cap_val = cap->val->to<IdentifierAst>();
-            const auto cap_sym = sm->current_scope->get_var_symbol(ast_clone(cap_val));
+            auto cap_sym = sm->current_scope->get_var_symbol(ast_clone(cap_val));
+            cap_sym->memory_info->ast_borrowed = {cap->conv.get(), sm->current_scope};
             if (ass_sym != nullptr) { ass_sym->memory_info->ast_pins.emplace_back(cap->val.get()); }
-            if (cap_sym != nullptr) { cap_sym->memory_info->ast_pins.emplace_back(cap->val.get()); }
 
-            // Mark the extended borrow. TODO
-            // auto is_mut = *cap->conv == ConventionAst::ConventionTag::MUT;
-            // cap_sym->memory_info->extended_borrows.emplace_back(
-            //     cap->val.get(), is_mut, meta->current_lambda_outer_scope);
+            cap_sym = meta->current_lambda_outer_scope->get_var_symbol(ast_clone(cap_val));
+            cap_sym->memory_info->ast_pins.emplace_back(cap->val.get());
+        }
+        else {
+            // Mark the symbol from the outer context as moved.
+            auto cap_sym = meta->current_lambda_outer_scope->get_var_symbol(ast_clone(cap->val->to<IdentifierAst>()));
+            cap_sym->memory_info->ast_moved = {this, sm->current_scope};
         }
     }
 }
