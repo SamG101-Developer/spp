@@ -100,15 +100,15 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
 
     if (not convention_eq(lhs_type, rhs_type)) { return false; }
 
-    // If the stripped types are not equal, return false (comparing by address is fine -- ClassPrototypeAst* nodes).
+
+
+
+
+
+    // If the stripped types are not equal, return false (comparing by address is fine: ClassPrototypeAst* nodes).
     if (stripped_lhs_sym->type != stripped_rhs_sym->type) { return false; }
-
-    // Get the generic arguments for both types.
-    const auto lhs_type_fq = lhs_scope.get_type_symbol(lhs_type.shared_from_this(), false)->fq_name();
-    const auto rhs_type_fq = rhs_scope.get_type_symbol(rhs_type.shared_from_this(), false)->fq_name();
-
-    auto &lhs_generics = lhs_type_fq->type_parts().back()->generic_arg_group->args;
-    auto &rhs_generics = rhs_type_fq->type_parts().back()->generic_arg_group->args;
+    auto &lhs_generics = lhs_type.type_parts().back()->generic_arg_group->args;
+    auto &rhs_generics = rhs_type.type_parts().back()->generic_arg_group->args;
 
     // Special case for variadic parameter types.
     const auto temp_type_proto = lhs_scope.get_type_symbol(lhs_type.shared_from_this())->type;
@@ -188,16 +188,16 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     }
 
     // If the stripped types aren't equal, then return false.
-    if (stripped_lhs_sym->type != stripped_rhs_sym->type) {
-        return false;
-    }
+    if (stripped_lhs_sym->type != stripped_rhs_sym->type) { return false; }
+    auto &lhs_generics = lhs_type.type_parts().back()->generic_arg_group->args;
+    auto &rhs_generics = rhs_type.type_parts().back()->generic_arg_group->args;
 
     // The next step is to get the generic arguments for both types.
-    const auto lhs_type_fq = lhs_scope.get_type_symbol(lhs_type.shared_from_this())->fq_name();
-    const auto rhs_type_fq = rhs_scope.get_type_symbol(rhs_type.shared_from_this())->fq_name();
-
-    auto &lhs_generics = lhs_type_fq->type_parts().back()->generic_arg_group->args;
-    auto &rhs_generics = rhs_type_fq->type_parts().back()->generic_arg_group->args;
+    // const auto lhs_type_fq = lhs_scope.get_type_symbol(lhs_type.shared_from_this())->fq_name();
+    // const auto rhs_type_fq = rhs_scope.get_type_symbol(rhs_type.shared_from_this())->fq_name();
+    //
+    // auto &lhs_generics = lhs_type_fq->type_parts().back()->generic_arg_group->args;
+    // auto &rhs_generics = rhs_type_fq->type_parts().back()->generic_arg_group->args;
 
     // Special case for variadic parameter types.
     const auto temp_type_proto = lhs_scope.get_type_symbol(lhs_type.shared_from_this())->type;
@@ -847,7 +847,7 @@ auto spp::analyse::utils::type_utils::create_generic_sym(
     if (const auto comp_arg = generic.to<asts::GenericArgumentCompKeywordAst>(); comp_arg != nullptr) {
         auto sym = std::make_unique<scopes::VariableSymbol>(
             asts::IdentifierAst::from_type(*comp_arg->name),
-            (tm ? *tm : sm).current_scope->get_type_symbol(comp_arg->val->infer_type(tm ? tm : &sm, meta))->fq_name(),
+            comp_arg->val->infer_type(tm ? tm : &sm, meta),
             false, true, asts::utils::Visibility::PUBLIC);
         sym->memory_info->ast_comptime = asts::ast_clone(comp_arg);
         return sym;
