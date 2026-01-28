@@ -140,7 +140,8 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_11_code_gen_2(
         const auto cap_val = capture->val->to<IdentifierAst>();
         const auto cap_ty = capture->infer_type(sm, meta);
         const auto cap_ty_sym = sm->current_scope->get_type_symbol(cap_ty);
-        const auto cap_llvm_type = codegen::llvm_type(*sm->current_scope->get_type_symbol(cap_ty), ctx);
+        const auto cap_llvm_type = codegen::llvm_type(
+            *sm->current_scope->get_type_symbol(cap_ty), ctx);
 
         // Create the alloca for the variable.
         const auto alloca = ctx->builder.CreateAlloca(

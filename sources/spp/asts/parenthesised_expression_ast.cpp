@@ -73,7 +73,7 @@ auto spp::asts::ParenthesisedExpressionAst::stage_8_check_memory(
     // Check the memory of the expression.
     expr->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
-        *expr, *this, *sm, true, true, true, false, false, false, meta);
+        *expr, *this, *sm, true, true, true, false, false, meta);
 }
 
 

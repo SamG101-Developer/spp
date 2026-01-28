@@ -119,5 +119,5 @@ auto spp::asts::GenericArgumentCompKeywordAst::stage_8_check_memory(
     // Check the value for memory issues.
     val->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
-        *val, *val, *sm, true, true, true, true, true, true, meta);
+        *val, *val, *sm, true, true, true, true, true, meta);
 }

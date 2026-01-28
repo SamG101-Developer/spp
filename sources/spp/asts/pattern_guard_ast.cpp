@@ -79,7 +79,7 @@ auto spp::asts::PatternGuardAst::stage_8_check_memory(
     // Todo: how is this even applied? just truth check => barely any mem checks needed
     expr->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
-        *expr, *this, *sm, true, true, false, false, false, false, meta);
+        *expr, *this, *sm, true, true, false, false, false, meta);
 }
 
 

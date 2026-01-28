@@ -133,7 +133,7 @@ auto spp::asts::GenWithExpressionAst::stage_8_check_memory(
     // Todo: Investigate pin checks here.
     expr->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
-        *expr, *tok_gen, *sm, true, true, false, false, false, false, meta);
+        *expr, *tok_gen, *sm, true, true, false, false, false, meta);
 }
 
 

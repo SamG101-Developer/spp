@@ -128,7 +128,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_8_check_memory(
     for (auto const &elem : elems) {
         elem->stage_8_check_memory(sm, meta);
         analyse::utils::mem_utils::validate_symbol_memory(
-            *elem, *elem, *sm, true, true, true, true, true, false, meta);
+            *elem, *elem, *sm, true, true, true, true, false, meta);
     }
 }
 

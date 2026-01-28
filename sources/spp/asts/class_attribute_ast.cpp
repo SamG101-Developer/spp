@@ -157,6 +157,6 @@ auto spp::asts::ClassAttributeAst::stage_8_check_memory(
     if (default_val != nullptr) {
         default_val->stage_8_check_memory(sm, meta);
         analyse::utils::mem_utils::validate_symbol_memory(
-            *default_val, *default_val, *sm, true, true, true, true, true, true, meta);
+            *default_val, *default_val, *sm, true, true, true, true, true, meta);
     }
 }

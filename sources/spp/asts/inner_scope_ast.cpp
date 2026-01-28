@@ -128,7 +128,7 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
     if (const auto move = meta->assignment_target; not members.empty() and move != nullptr) {
         if (const auto expr_member = final_member()->template to<ExpressionAst>(); expr_member != nullptr) {
             analyse::utils::mem_utils::validate_symbol_memory(
-                *expr_member, *move, *sm, true, true, true, true, true, true, meta);
+                *expr_member, *move, *sm, true, true, true, true, true, meta);
         }
     }
 

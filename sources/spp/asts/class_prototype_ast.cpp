@@ -92,6 +92,7 @@ spp::asts::ClassPrototypeAst::operator std::string() const {
 auto spp::asts::ClassPrototypeAst::m_generate_symbols(
     ScopeManager *sm)
     -> analyse::scopes::TypeSymbol* {
+    auto is_dollar_type = name->to<TypeIdentifierAst>()->name[0] == '$';
     auto sym_name = ast_clone(name->type_parts()[0]);
     sym_name->generic_arg_group = GenericArgumentGroupAst::from_params(*generic_param_group);
 
@@ -101,7 +102,8 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
 
     // Create the symbol for the type, include generics if applicable, like Vec[T].
     symbol_1 = std::make_unique<analyse::scopes::TypeSymbol>(
-        std::move(sym_name), this, sm->current_scope, sm->current_scope, sm->current_scope->parent_module());
+        std::move(sym_name), this, sm->current_scope, sm->current_scope, sm->current_scope->parent_module(), false,
+        is_dollar_type);
     sm->current_scope->ty_sym = symbol_1;
     sm->current_scope->parent->add_type_symbol(symbol_1);
     m_cls_sym = sm->current_scope->ty_sym;
@@ -110,7 +112,7 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
     if (not generic_param_group->params.empty()) {
         symbol_2 = std::make_unique<analyse::scopes::TypeSymbol>(
             ast_clone(name->type_parts()[0]), this, sm->current_scope, sm->current_scope,
-            sm->current_scope->parent_module());
+            sm->current_scope->parent_module(), false, is_dollar_type);
         symbol_2->generic_impl = symbol_1.get();
         sm->current_scope->ty_sym = symbol_2;
         const auto ret_sym = symbol_2.get();

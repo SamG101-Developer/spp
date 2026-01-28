@@ -135,7 +135,7 @@ auto spp::asts::LoopControlFlowStatementAst::stage_8_check_memory(
     if (expr != nullptr) {
         expr->stage_8_check_memory(sm, meta);
         analyse::utils::mem_utils::validate_symbol_memory(
-            *expr, *tok_seq_exit.back(), *sm, true, true, true, true, true, true, meta);
+            *expr, *tok_seq_exit.back(), *sm, true, true, true, true, true, meta);
     }
 }
 

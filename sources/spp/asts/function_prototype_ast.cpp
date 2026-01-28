@@ -97,7 +97,9 @@ auto spp::asts::FunctionPrototypeAst::pos_end() const
 
 auto spp::asts::FunctionPrototypeAst::clone() const
     -> std::unique_ptr<Ast> {
-    throw std::runtime_error("Use SubroutinePrototypeAst or CoroutinePrototypeAst instead");
+    // FunctionPrototypeAst is abstract, so cloning it is not allowed.
+    throw std::runtime_error(
+        "Use SubroutinePrototypeAst or CoroutinePrototypeAst instead");
 }
 
 

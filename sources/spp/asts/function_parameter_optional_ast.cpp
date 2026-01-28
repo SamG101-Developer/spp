@@ -91,5 +91,5 @@ auto spp::asts::FunctionParameterOptionalAst::stage_8_check_memory(
     // Check the memory status of the default value expression.
     default_val->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
-        *default_val, *default_val, *sm, true, true, true, true, true, true, meta);
+        *default_val, *default_val, *sm, true, true, true, true, true, meta);
 }

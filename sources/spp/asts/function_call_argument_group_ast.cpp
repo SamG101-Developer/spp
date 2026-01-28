@@ -216,14 +216,14 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
         // nested checking is done via the argument itself (tuples, arrays, etc). Can borrow attributes so don't check
         // for moving from borrowed context right here.
         analyse::utils::mem_utils::validate_symbol_memory(
-            *arg->val, *arg, *sm, true, true, false, false, false, false, meta);
+            *arg->val, *arg, *sm, true, true, false, false, false, meta);
 
         if (arg->conv == nullptr) {
             // Ensure that attributes aren't being moved off of a borrowed value and that pins are maintained. Mark the
             // move or partial move of the argument. Note the "check_pins_linked=False" because function calls can only
             // imply an inner scope, so it is guaranteed that lifetimes aren't being extended.
             analyse::utils::mem_utils::validate_symbol_memory(
-                *arg->val, *arg, *sm, true, true, true, true, true, true, meta);
+                *arg->val, *arg, *sm, true, true, true, true, true, meta);
 
             // Check the move doesn't overlap with any borrows. This is to ensure that "f(&x, x)" can never happen,
             // because the first argument requires the owned object to outlive the function call, and moving it as the

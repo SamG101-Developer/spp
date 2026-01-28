@@ -82,7 +82,6 @@ namespace spp::analyse::utils::mem_utils {
         bool check_partial_move,
         bool check_move_from_borrowed_ctx,
         bool check_pins,
-        bool check_linked_pins,
         bool mark_moves,
         asts::meta::CompilerMetaData *meta)
         -> void;

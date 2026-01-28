@@ -160,7 +160,7 @@ auto spp::asts::CmpStatementAst::stage_8_check_memory(
     // Check the memory of the type.
     value->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
-        *value, *value, *sm, true, true, true, true, true, true, meta);
+        *value, *value, *sm, true, true, true, true, true, meta);
 }
 
 

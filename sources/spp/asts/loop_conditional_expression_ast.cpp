@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.boolean_literal_ast;
 import spp.asts.inner_scope_expression_ast;
@@ -120,6 +121,9 @@ auto spp::asts::LoopConditionalExpressionAst::stage_8_check_memory(
     // Todo: use the "reset" on "sm" like in TypeStatementAst?
     auto tm = ScopeManager(sm->global_scope, sm->current_scope);
     tm.reset(sm->current_scope, sm->current_iterator());
+
+    analyse::utils::mem_utils::validate_symbol_memory(
+        *cond, *tok_loop, *sm, true, true, true, true, true, meta);
     for (auto &m : {sm, &tm}) {
         cond->stage_8_check_memory(m, meta);
         body->stage_8_check_memory(m, meta);

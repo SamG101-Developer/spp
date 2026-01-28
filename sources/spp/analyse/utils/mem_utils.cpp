@@ -49,24 +49,23 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
     const bool check_partial_move,
     const bool check_move_from_borrowed_ctx,
     const bool check_pins,
-    const bool check_linked_pins,
     const bool mark_moves,
     asts::meta::CompilerMetaData *meta) -> void {
     // For tuple and array literals, recursively analyse each element.
     if (auto const *arr_literal = value_ast.to<asts::ArrayLiteralRepeatedElementAst>(); arr_literal != nullptr) {
         const auto x = arr_literal->elem.get();
-        validate_symbol_memory(*x, move_ast, sm, true, true, true, true, true, mark_moves, meta);
+        validate_symbol_memory(*x, move_ast, sm, true, true, true, true, mark_moves, meta);
         return;
     }
     if (auto const *arr_literal = value_ast.to<asts::ArrayLiteralExplicitElementsAst>(); arr_literal != nullptr) {
         for (auto &&x: arr_literal->elems) {
-            validate_symbol_memory(*x, move_ast, sm, true, true, true, true, true, mark_moves, meta);
+            validate_symbol_memory(*x, move_ast, sm, true, true, true, true, mark_moves, meta);
         }
         return;
     }
     if (auto const *tup_literal = value_ast.to<asts::TupleLiteralAst>(); tup_literal != nullptr) {
         for (auto &&x: tup_literal->elems) {
-            validate_symbol_memory(*x, move_ast, sm, true, true, true, true, true, mark_moves, meta);
+            validate_symbol_memory(*x, move_ast, sm, true, true, true, true, mark_moves, meta);
         }
         return;
     }
@@ -147,23 +146,11 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
         | genex::views::cast_dynamic<asts::IdentifierAst const*>()
         | genex::to<std::vector>();
 
-    const auto symbolic_pin_links = var_sym->memory_info->ast_linked_pins
-        | genex::views::transform([](auto const &x) { return std::get<0>(x)->name; })
-        | genex::to<std::vector>();
-
     if (check_pins and not symbolic_pins.empty() and not copies and not partial_copies) {
         const auto [where_init, _] = var_sym->memory_info->ast_initialization_origin;
         const auto where_move = &move_ast;
         const auto where_pin = symbolic_pins.front();
         raise<errors::SppMoveFromPinnedMemoryError>(
-            {sm.current_scope}, ERR_ARGS(value_ast, *where_init, *where_move, *where_pin));
-    }
-
-    if (check_linked_pins and not symbolic_pin_links.empty()) {
-        const auto [where_init, _] = var_sym->memory_info->ast_initialization_origin;
-        const auto where_move = &move_ast;
-        const auto where_pin = symbolic_pin_links.front().get();
-        raise<errors::SppMoveFromPinLinkedMemoryError>(
             {sm.current_scope}, ERR_ARGS(value_ast, *where_init, *where_move, *where_pin));
     }
 

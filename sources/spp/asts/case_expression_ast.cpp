@@ -162,7 +162,7 @@ auto spp::asts::CaseExpressionAst::stage_8_check_memory(
     // Check the memory state of the condition.
     cond->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
-        *cond, *cond, *sm, true, true, false, false, false, false, meta);
+        *cond, *cond, *sm, true, true, false, false, false, meta);
 
     // Validate the memory state across all branches (also calls stage 8 from within).
     meta->save();

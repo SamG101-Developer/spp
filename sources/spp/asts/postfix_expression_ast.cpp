@@ -7,7 +7,9 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.mem_utils;
 import spp.asts.ast;
+import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -90,7 +92,14 @@ auto spp::asts::PostfixExpressionAst::stage_8_check_memory(
     -> void {
     // Check the memory of the lhs.
     lhs->stage_8_check_memory(sm, meta);
+    meta->save();
+    meta->postfix_expression_lhs = lhs.get();
+    if (lhs->to<IdentifierAst>() != nullptr) {
+        analyse::utils::mem_utils::validate_symbol_memory(
+        *meta->postfix_expression_lhs, *op, *sm, true, false, false, false, false, meta);
+    }
     op->stage_8_check_memory(sm, meta);
+    meta->restore();
 }
 
 

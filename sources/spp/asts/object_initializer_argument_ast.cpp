@@ -41,7 +41,7 @@ auto spp::asts::ObjectInitializerArgumentAst::stage_8_check_memory(
     // Check the memory of the value expression.
     val->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
-        *val, *this, *sm, true, true, true, true, true, true, meta);
+        *val, *this, *sm, true, true, true, true, true, meta);
 }
 
 

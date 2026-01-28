@@ -173,7 +173,7 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
         // Partially validate the memory of the right-hand-side expression, if it is an attribute being set. Don't mark
         // the move, but do some checks before calling the internal memory checker on the postfix expression.
         analyse::utils::mem_utils::validate_symbol_memory(
-            *rhs_expr, *tok_assign, *sm, is_attr(lhs_expr, sm), false, true, true, true, false, meta);
+            *rhs_expr, *tok_assign, *sm, is_attr(lhs_expr, sm), false, true, true, false, meta);
 
         meta->save();
         meta->assignment_target = ast_clone(lhs_expr->to<IdentifierAst>());
@@ -183,12 +183,12 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
 
         // Fully validate the memory of the right-hand-side expression, marking the move.
         analyse::utils::mem_utils::validate_symbol_memory(
-            *rhs_expr, *tok_assign, *sm, true, true, true, true, true, true, meta);
+            *rhs_expr, *tok_assign, *sm, true, true, true, true, true, meta);
 
         if (is_attr(lhs_expr, sm)) {
             const auto pf = lhs_expr->to<PostfixExpressionAst>();
             analyse::utils::mem_utils::validate_symbol_memory(
-                *lhs_expr, *tok_assign, *sm, true, is_attr(pf->lhs.get(), sm), false, true, true, false, meta);
+                *lhs_expr, *tok_assign, *sm, true, is_attr(pf->lhs.get(), sm), false, true, false, meta);
         }
 
         // Resolve moved identifiers to the "initialised" state, otherwise resolve a partial move.
