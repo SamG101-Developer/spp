@@ -459,7 +459,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_uninitialized_symbol_in_postfix_expression_operator_res_keyword,
     SppUninitializedMemoryUseError, R"(
     fun f() -> std::void::Void {
-        let elem: std::generator::Gen[std::boolean::Bool]
+        let elem: std::generator::Gen[std::boolean::Bool, std::boolean::Bool]
         elem.res(false)
     }
 )");
@@ -503,7 +503,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_uninitialized_symbol_in_postfix_expression_operator_function_call,
     SppUninitializedMemoryUseError, R"(
     fun f() -> std::void::Void {
-        let elem: std::function::FunRef[(std::string_viwe::StrView,), std::void::Void]
+        let elem: std::function::FunRef[(std::string_view::StrView,), std::void::Void]
         let a = elem("hello world")
     }
 )");
