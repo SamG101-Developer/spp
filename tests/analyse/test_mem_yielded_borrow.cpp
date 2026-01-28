@@ -17,7 +17,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut generator = g()
         let a = generator.res()
         let b = case a of {
-            is &A { value.a }
+            is &A(..) { a.a }
             else { Str::from("nothing") }
         }
     }
@@ -39,7 +39,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let mut generator = g()
         let b = case generator.res() of {
-            is &A { value.a }
+            is &A(..) { Str::from("smth") }
             else { Str::from("nothing") }
         }
     }
@@ -352,7 +352,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = generator_mut.res()
         let y = generator_mut.res()
         let z = case x of {
-            is std::string::Str(..) { x.to_ascii_uppercase() }
+            is &mut std::string::Str(..) { x.to_ascii_uppercase() }
             else { std::string::Str::from("") }
         }
     }
@@ -373,7 +373,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = generator_ref.res()
         let y = generator_ref.res()
         let z = case x of {
-            is std::string::Str(..) { x.to_ascii_uppercase() }
+            is &std::string::Str(..) { x.to_ascii_uppercase() }
             else { std::string::Str::from("") }
         }
     }
