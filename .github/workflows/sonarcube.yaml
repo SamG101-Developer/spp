@@ -13,7 +13,7 @@ jobs:
     name: SonarQube Job
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -22,3 +22,4 @@ jobs:
         uses: sonarsource/sonarqube-scan-action@v2
         with:
             token: ${{ secrets.SONAR_TOKEN }}
+            host-url: https://sonarcloud.io
