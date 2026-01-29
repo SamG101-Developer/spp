@@ -19,7 +19,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup CMake
-        uses: lukka/get-cmake@v3
+        uses: lukka/get-cmake@latest
         with:
           cmake-version: 4.1.2
 
