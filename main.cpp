@@ -20,7 +20,7 @@ auto print_stacktrace_for_sigsegv(void *user_data, const char *reason, bool gen_
 }
 
 
-int main(const std::int32_t, char **argv) {
+auto main(const std::int32_t, char **argv) -> int {
     // Temporary test code to test a small project.
     llvm::install_fatal_error_handler(print_stacktrace_for_sigsegv);
     std::filesystem::current_path(std::filesystem::absolute(argv[0]).parent_path().parent_path() / "project");
