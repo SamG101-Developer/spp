@@ -1,12 +1,9 @@
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module spp.asts.local_variable_ast;
+import spp.asts.let_statement_initialized_ast;
 
 
 spp::asts::LocalVariableAst::LocalVariableAst() :
-    m_mapped_let(nullptr),
-    m_from_pattern(false) {
+    m_from_case_pattern(false) {
 }
 
 
@@ -22,4 +19,10 @@ auto spp::asts::LocalVariableAst::extract_names() const
 auto spp::asts::LocalVariableAst::extract_name() const
     -> std::shared_ptr<IdentifierAst> {
     return nullptr;
+}
+
+
+auto spp::asts::LocalVariableAst::mark_from_case_pattern()
+    -> void {
+    m_from_case_pattern = true;
 }

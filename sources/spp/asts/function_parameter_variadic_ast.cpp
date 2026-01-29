@@ -1,8 +1,15 @@
-#include <spp/asts/function_parameter_variadic_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.function_parameter_variadic_ast;
+import spp.asts.local_variable_ast;
+import spp.asts.ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.mixins.orderable_ast;
+import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
+import spp.lex.tokens;
 
 
 spp::asts::FunctionParameterVariadicAst::FunctionParameterVariadicAst(
@@ -10,7 +17,7 @@ spp::asts::FunctionParameterVariadicAst::FunctionParameterVariadicAst(
     decltype(var) &&var,
     decltype(tok_colon) &&tok_colon,
     decltype(type) type) :
-    FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type), mixins::OrderableTag::VARIADIC_PARAM),
+    FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type), utils::OrderableTag::VARIADIC_PARAM),
     tok_ellipsis(std::move(tok_ellipsis)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_ellipsis, lex::SppTokenType::TK_DOUBLE_DOT, "..", var ? var->pos_start() : 0);
 }
@@ -48,16 +55,4 @@ spp::asts::FunctionParameterVariadicAst::operator std::string() const {
     SPP_STRING_APPEND(tok_colon).append(" ");
     SPP_STRING_APPEND(type);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::FunctionParameterVariadicAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_ellipsis);
-    SPP_PRINT_APPEND(var);
-    SPP_PRINT_APPEND(tok_colon).append(" ");
-    SPP_PRINT_APPEND(type);
-    SPP_PRINT_END;
 }

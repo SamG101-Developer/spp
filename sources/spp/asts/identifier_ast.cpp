@@ -1,33 +1,48 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/utils/strings.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
-#include <genex/to_container.hpp>
-#include <genex/views/transform.hpp>
+module spp.asts.identifier_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import spp.utils.strings;
+import spp.utils.uid;
+import absl;
+import genex;
+import llvm;
 
 
 spp::asts::IdentifierAst::IdentifierAst(
     const std::size_t pos,
     decltype(val) val) :
     std::enable_shared_from_this<IdentifierAst>(),
-    val(std::move(val)),
-    m_pos(pos) {
+    m_pos(pos),
+    val(std::move(val)) {
 }
 
 
-spp::asts::IdentifierAst::IdentifierAst(
-    IdentifierAst const &other) :
-    std::enable_shared_from_this<IdentifierAst>(),
-    val(other.val),
-    m_pos(other.m_pos) {
+auto spp::asts::IdentifierAst::equals(
+    ExpressionAst const &other) const
+    -> std::strong_ordering {
+    return other.equals_identifier(*this);
 }
 
 
-spp::asts::IdentifierAst::~IdentifierAst() = default;
+auto spp::asts::IdentifierAst::equals_identifier(
+    IdentifierAst const &other) const
+    -> std::strong_ordering {
+    if (val == other.val) {
+        return std::strong_ordering::equal;
+    }
+    return std::strong_ordering::less;
+}
 
 
 auto spp::asts::IdentifierAst::pos_start() const
@@ -49,13 +64,6 @@ auto spp::asts::IdentifierAst::clone() const
 
 
 spp::asts::IdentifierAst::operator std::string() const {
-    return val;
-}
-
-
-auto spp::asts::IdentifierAst::print(
-    meta::AstPrinter &) const
-    -> std::string {
     return val;
 }
 
@@ -89,7 +97,7 @@ auto spp::asts::IdentifierAst::to_function_identifier() const
 
 auto spp::asts::IdentifierAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *)
+    CompilerMetaData *)
     -> void {
     // Check there is a symbol with the same name in the current scope.
     const auto shared = std::shared_ptr(ast_clone(this));
@@ -99,17 +107,60 @@ auto spp::asts::IdentifierAst::stage_7_analyse_semantics(
             | genex::to<std::vector>();
 
         const auto closest_match = spp::utils::strings::closest_match(val, alternatives);
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierUnknownError>().with_args(
-            *this, "identifier", closest_match).with_scopes({sm->current_scope}).raise();
+        raise<analyse::errors::SppIdentifierUnknownError>(
+            {sm->current_scope}, ERR_ARGS(*this, "identifier", closest_match));
     }
+}
+
+
+auto spp::asts::IdentifierAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Extract the value from the symbol table and return it.
+    const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));
+    const auto cmp_id = var_sym->comptime_value.get();
+    meta->cmp_result = ast_clone(cmp_id->to<ExpressionAst>());
+}
+
+
+auto spp::asts::IdentifierAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Get the allocation for the variable from the current scope.
+    const auto uid = spp::utils::generate_uid(this);
+    const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));
+    SPP_ASSERT(var_sym->llvm_info->alloca != nullptr);
+
+    // Handle local variable allocation extraction + load.
+    if (llvm::isa<llvm::AllocaInst>(var_sym->llvm_info->alloca)) {
+        const auto alloca = llvm::cast<llvm::AllocaInst>(var_sym->llvm_info->alloca);
+        return ctx->builder.CreateLoad(alloca->getAllocatedType(), alloca, "load.local" + uid);
+    }
+
+    // Handle global variable (load from global).
+    if (llvm::isa<llvm::GlobalVariable>(var_sym->llvm_info->alloca)) {
+        const auto global_var = llvm::cast<llvm::GlobalVariable>(var_sym->llvm_info->alloca);
+        return ctx->builder.CreateLoad(global_var->getValueType(), global_var, "load.global" + uid);
+    }
+
+    std::unreachable();
 }
 
 
 auto spp::asts::IdentifierAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *)
+    CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Extract the symbol from the current scope, as a variable symbol.
     const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));
     return var_sym ? var_sym->type : nullptr;
+}
+
+
+auto spp::asts::IdentifierAst::ankerl_hash() const
+    -> std::size_t {
+    return absl::Hash<std::string>()(val);
 }

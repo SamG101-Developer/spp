@@ -1,18 +1,25 @@
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/function_parameter_self_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.function_parameter_self_ast;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.asts.convention_ast;
+import spp.asts.local_variable_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.generate.common_types;
+import spp.asts.mixins.orderable_ast;
+import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
 
 
 spp::asts::FunctionParameterSelfAst::FunctionParameterSelfAst(
     decltype(conv) &&conv,
     decltype(var) &&var) :
-    FunctionParameterAst(std::move(var), nullptr, nullptr, mixins::OrderableTag::SELF_PARAM),
+    FunctionParameterAst(std::move(var), nullptr, nullptr, utils::OrderableTag::SELF_PARAM),
     conv(std::move(conv)) {
     type = generate::common_types::self_type(pos_start());
 }
@@ -51,27 +58,17 @@ spp::asts::FunctionParameterSelfAst::operator std::string() const {
 }
 
 
-auto spp::asts::FunctionParameterSelfAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(conv);
-    SPP_PRINT_APPEND(var);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::FunctionParameterSelfAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Perform default analysis steps.
     FunctionParameterAst::stage_7_analyse_semantics(sm, meta);
 
     // Special mutability rules for the "self" parameter.
     const auto sym = sm->current_scope->get_var_symbol(var->extract_name());
-    sym->is_mutable = ast_cast<LocalVariableSingleIdentifierAst>(var.get())->tok_mut != nullptr
-        or (conv and *conv == ConventionAst::ConventionTag::MUT);
+    sym->is_mutable = var->to<LocalVariableSingleIdentifierAst>()->tok_mut != nullptr
+        or (conv and *conv == ConventionTag::MUT);
 
     // Apply the convention from the attribute.
     sym->type = type->with_convention(ast_clone(conv));

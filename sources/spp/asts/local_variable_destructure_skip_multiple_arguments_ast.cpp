@@ -1,14 +1,20 @@
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/local_variable_destructure_skip_multiple_arguments_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
+import spp.asts.identifier_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
+import spp.utils.ptr;
 
 
 spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::LocalVariableDestructureSkipMultipleArgumentsAst(
     decltype(tok_ellipsis) &&tok_ellipsis,
     std::unique_ptr<LocalVariableAst> &&binding) :
     tok_ellipsis(std::move(tok_ellipsis)),
-    binding(ast_cast<LocalVariableSingleIdentifierAst>(std::move(binding))) {
+    binding(utils::ptr::unique_cast<LocalVariableSingleIdentifierAst>(std::move(binding))) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_ellipsis, lex::SppTokenType::TK_DOUBLE_DOT, "..");
 }
 
@@ -41,16 +47,6 @@ spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::operator std::strin
     SPP_STRING_APPEND(tok_ellipsis);
     SPP_STRING_APPEND(binding);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_ellipsis);
-    SPP_PRINT_APPEND(binding);
-    SPP_PRINT_END;
 }
 
 

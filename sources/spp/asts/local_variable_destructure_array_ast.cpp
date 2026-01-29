@@ -1,39 +1,33 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/array_literal_explicit_elements_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/generic_argument_comp_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/integer_literal_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_destructure_array_ast.hpp>
-#include <spp/asts/local_variable_destructure_skip_multiple_arguments_ast.hpp>
-#include <spp/asts/local_variable_destructure_skip_single_argument_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
-#include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
+module;
+#include <opex/macros.hpp>
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
-#include <genex/to_container.hpp>
-#include <genex/algorithms/count.hpp>
-#include <genex/algorithms/position.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/cast_smart.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/for_each.hpp>
-#include <genex/views/iota.hpp>
-#include <genex/views/join.hpp>
-#include <genex/views/ptr.hpp>
-#include <genex/views/zip.hpp>
-#include <opex/cast.hpp>
+module spp.asts.local_variable_destructure_array_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.type_utils;
+import spp.asts.array_literal_explicit_elements_ast;
+import spp.asts.expression_ast;
+import spp.asts.integer_literal_ast;
+import spp.asts.generic_argument_comp_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.identifier_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
+import spp.asts.local_variable_destructure_skip_single_argument_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.utils.ast_utils;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.type_identifier_ast;
+import spp.lex.tokens;
+import opex.cast;
+import genex;
 
 
 spp::asts::LocalVariableDestructureArrayAst::LocalVariableDestructureArrayAst(
@@ -75,20 +69,9 @@ auto spp::asts::LocalVariableDestructureArrayAst::clone() const
 spp::asts::LocalVariableDestructureArrayAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_l);
-    SPP_STRING_EXTEND(elems);
+    SPP_STRING_EXTEND(elems, ", ");
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::LocalVariableDestructureArrayAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(elems);
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
 }
 
 
@@ -109,7 +92,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::extract_names() const
 
 auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Only 1 "multi-skip" allowed in a destructure.
     const auto multi_arg_skips = elems
@@ -117,31 +100,28 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
         | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>()
         | genex::to<std::vector>();
 
-    if (multi_arg_skips.size() > 1) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMultipleSkipMultiArgumentsError>().with_args(
-            *this, *multi_arg_skips[0], *multi_arg_skips[1]).with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppMultipleSkipMultiArgumentsError>(
+        multi_arg_skips.size() > 1, {sm->current_scope},
+        ERR_ARGS(*this, *multi_arg_skips[0], *multi_arg_skips[1]));
 
     // Ensure the right-hand-side is an array type.
     const auto val = meta->let_stmt_value;
     const auto val_type = val->infer_type(sm, meta);
-    if (not analyse::utils::type_utils::is_type_array(*val_type, *sm->current_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppVariableArrayDestructureArrayTypeMismatchError>().with_args(
-            *this, *val, *val_type).with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppVariableArrayDestructureArrayTypeMismatchError>(
+        not analyse::utils::type_utils::is_type_array(*val_type, *sm->current_scope),
+        {sm->current_scope}, ERR_ARGS(*this, *val, *val_type));
 
     // Determine number of elements in the left-hand-side and right-hand-side arrays.
     const auto num_lhs_arr_elems = elems.size();
-    const auto num_rhs_arr_elems = std::stoul(ast_cast<IntegerLiteralAst>(ast_cast<GenericArgumentCompAst>(val_type->type_parts().back()->generic_arg_group->args[1].get())->val.get())->val->token_data);
-    if ((num_lhs_arr_elems < num_rhs_arr_elems and multi_arg_skips.empty()) or (num_lhs_arr_elems > num_rhs_arr_elems)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppVariableArrayDestructureArraySizeMismatchError>().with_args(
-            *this, num_lhs_arr_elems, *val, num_rhs_arr_elems).with_scopes({sm->current_scope}).raise();
-    }
+    const auto num_rhs_arr_elems = std::stoul(val_type->type_parts().back()->generic_arg_group->args[1]->to<GenericArgumentCompAst>()->val->to<IntegerLiteralAst>()->val->token_data);
+    raise_if<analyse::errors::SppVariableArrayDestructureArraySizeMismatchError>(
+        (num_lhs_arr_elems < num_rhs_arr_elems and multi_arg_skips.empty()) or (num_lhs_arr_elems > num_rhs_arr_elems),
+        {sm->current_scope}, ERR_ARGS(*this, num_lhs_arr_elems, *val, num_rhs_arr_elems));
 
     // For a bound ".." destructure, ie "let [a, ..b, c] = t", create an intermediary type.
     auto bound_multi_skip = std::unique_ptr<ArrayLiteralExplicitElementsAst>(nullptr);
     if (not multi_arg_skips.empty() and multi_arg_skips[0]->binding != nullptr) {
-        const auto m = genex::algorithms::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize;
+        const auto m = genex::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize;
         auto new_elems = genex::views::iota(m, m + num_rhs_arr_elems - num_lhs_arr_elems + 1)
             | genex::views::transform([val](const auto i) {
                 auto identifier = std::make_unique<IdentifierAst>(0uz, std::to_string(i));
@@ -157,29 +137,29 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
 
     // Create new indexes.
     const auto skip_index = not multi_arg_skips.empty()
-                                ? genex::algorithms::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize
-                                : elems.size() - 1;
-    auto indexes = genex::views::iota(0uz, skip_index + 1)
-        | genex::views::concat(genex::views::iota(num_lhs_arr_elems, num_rhs_arr_elems))
-        | genex::to<std::vector>();
+        ? genex::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize
+        : elems.size() - 1;
+    auto indexes = genex::views::iota(0uz, skip_index + 1uz) | genex::to<std::vector>();
+    indexes.append_range(genex::views::iota(num_lhs_arr_elems, num_rhs_arr_elems) | genex::to<std::vector>());
 
     // Create expanded "let" statements for each part of the destructure.
     for (auto &&[i, elem] : genex::views::zip(indexes, elems | genex::views::ptr)) {
-        const auto cast_elem = ast_cast<LocalVariableDestructureSkipMultipleArgumentsAst>(elem);
+        const auto cast_elem = elem->to<LocalVariableDestructureSkipMultipleArgumentsAst>();
 
         // Handle bound multi argument skipping, by assigning the skipped elements into a variable.
         if (cast_elem != nullptr and multi_arg_skips[0]->binding != nullptr) {
             auto new_ast = std::make_unique<LetStatementInitializedAst>(nullptr, ast_clone(cast_elem->binding), nullptr, nullptr, std::move(bound_multi_skip));
+            if (m_from_case_pattern) { new_ast->var->mark_from_case_pattern(); }
             new_ast->stage_7_analyse_semantics(sm, meta);
             m_new_asts.emplace_back(std::move(new_ast));
         }
 
         // Skip any conversion for single argument skipping.
-        else if (ast_cast<LocalVariableDestructureSkipSingleArgumentAst>(elem) != nullptr) {
+        else if (elem->to<LocalVariableDestructureSkipSingleArgumentAst>() != nullptr) {
         }
 
         // Skip any conversion for unbound multi argument skipping.
-        else if (ast_cast<LocalVariableDestructureSkipMultipleArgumentsAst>(elem) != nullptr) {
+        else if (elem->to<LocalVariableDestructureSkipMultipleArgumentsAst>() != nullptr) {
         }
 
         // Handle and other nested destructure or single identifier.
@@ -188,6 +168,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
             auto field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(index));
             auto pstfx = std::make_unique<PostfixExpressionAst>(ast_clone(val), std::move(field));
             auto new_ast = std::make_unique<LetStatementInitializedAst>(nullptr, ast_clone(elem), nullptr, nullptr, std::move(pstfx));
+            if (m_from_case_pattern) { new_ast->var->mark_from_case_pattern(); }
             new_ast->stage_7_analyse_semantics(sm, meta);
             m_new_asts.emplace_back(std::move(new_ast));
         }
@@ -197,21 +178,34 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
 
 auto spp::asts::LocalVariableDestructureArrayAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory state of the elements.
-    m_new_asts | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });
+    for (auto &&x : m_new_asts) {
+        x->stage_8_check_memory(sm, meta);
+    }
 }
 
 
-auto spp::asts::LocalVariableDestructureArrayAst::stage_10_code_gen_2(
+auto spp::asts::LocalVariableDestructureArrayAst::stage_9_comptime_resolution(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    CompilerMetaData *meta)
+    -> void {
+    // Comptime resolve each element.
+    for (auto &&x : m_new_asts) {
+        x->stage_9_comptime_resolution(sm, meta);
+    }
+}
+
+
+auto spp::asts::LocalVariableDestructureArrayAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the "let" statements for each element.
     for (auto &&ast : m_new_asts) {
-        ast->stage_10_code_gen_2(sm, meta, ctx);
+        ast->stage_11_code_gen_2(sm, meta, ctx);
     }
     return nullptr;
 }

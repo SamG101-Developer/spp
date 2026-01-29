@@ -1,6 +1,10 @@
-#include <spp/pch.hpp>
-#include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.convention_ref_ast;
+import spp.asts.token_ast;
+import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 
 
 spp::asts::ConventionRefAst::ConventionRefAst(
@@ -37,13 +41,4 @@ spp::asts::ConventionRefAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_borrow);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::ConventionRefAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_borrow);
-    SPP_PRINT_END;
 }

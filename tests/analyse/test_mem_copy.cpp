@@ -9,7 +9,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = x
         let b = x
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -27,7 +27,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = p
         let b = p
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -45,4 +45,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = p
         let b = p
     }
-)")
+)");

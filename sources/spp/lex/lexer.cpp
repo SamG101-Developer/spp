@@ -1,10 +1,7 @@
-#include <spp/lex/lexer.hpp>
-#include <spp/pch.hpp>
-#include <spp/utils/strings.hpp>
-
-#include <genex/to_container.hpp>
-#include <genex/views/transform.hpp>
-#include <magic_enum/magic_enum.hpp>
+module spp.lex.lexer;
+import spp.utils.strings;
+import genex;
+import magic_enum;
 
 
 spp::lex::Lexer::Lexer(std::string code)
@@ -12,9 +9,11 @@ spp::lex::Lexer::Lexer(std::string code)
 }
 
 
-auto spp::lex::Lexer::lex() const -> std::vector<RawToken> {
+auto spp::lex::Lexer::lex() const
+    -> std::vector<RawToken> {
     // Define tracker variables.
     auto tokens = std::vector<RawToken>();
+    auto in_char = false;
     auto in_string = false;
     auto in_single_line_comment = false;
     auto in_multi_line_comment = false;
@@ -24,7 +23,7 @@ auto spp::lex::Lexer::lex() const -> std::vector<RawToken> {
     for (auto [kw, kw_string] : magic_enum::enum_entries<RawTokenType>()) {
         if (kw_string.starts_with("KW_")) {
             keywords[kw] = kw_string.substr(3)
-                | genex::views::transform([](auto c) { return std::tolower(c); })
+                | genex::views::transform([](auto c) { return static_cast<char>(std::tolower(c)); })
                 | genex::to<std::string>();
         }
     }
@@ -40,6 +39,13 @@ auto spp::lex::Lexer::lex() const -> std::vector<RawToken> {
             continue;
         }
 
+        // Append any characters in a character literal as a character token (except terminating apostrophe).
+        if (in_char and c != '\'') {
+            tokens.emplace_back(RawTokenType::LX_CHARACTER, std::string(1, c));
+            ++i;
+            continue;
+        }
+
         // Append any characters in a string literal as a character token (except terminating quotation mark).
         if (in_string and c != '"') {
             tokens.emplace_back(RawTokenType::LX_CHARACTER, std::string(1, c));
@@ -47,19 +53,21 @@ auto spp::lex::Lexer::lex() const -> std::vector<RawToken> {
             continue;
         }
 
-        // Multiline comments.
+        // Enter a multi-line comment on '##' (not currently in a multi-line comment).
         if (not in_multi_line_comment and c == '#' and m_code[i + 1] == '#') {
             in_multi_line_comment = true;
             i += 2;
             continue;
         }
 
+        // Exit a multi-line comment on '##' (currently in a multi-line comment).
         if (in_multi_line_comment and c == '#' and m_code[i + 1] == '#') {
             in_multi_line_comment = false;
             i += 2;
             continue;
         }
 
+        // Skip any characters in a multi-line comment.
         if (in_multi_line_comment) {
             ++i;
             continue;
@@ -184,6 +192,12 @@ auto spp::lex::Lexer::lex() const -> std::vector<RawToken> {
         }
         case '_': {
             tokens.emplace_back(RawTokenType::TK_UNDERSCORE, "_");
+            ++i;
+            continue;
+        }
+        case '\'': {
+            tokens.emplace_back(RawTokenType::TK_APOSTROPHE, "'");
+            in_char = !in_char;
             ++i;
             continue;
         }

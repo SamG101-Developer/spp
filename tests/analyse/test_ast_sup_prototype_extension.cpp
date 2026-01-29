@@ -8,7 +8,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup A {
         fun f(&self) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -18,7 +18,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup std::boolean::Bool ext A {
         fun f(&self) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -26,7 +26,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_superimposition_extension_generic_name, R"(
     cls A { }
     sup [T] T ext A { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -53,7 +53,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = 123
         let y = x.borrow_ref()
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -61,7 +61,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_superimposition_extension_generic_superclass,
     SppGenericTypeInvalidUsageError, R"(
     sup [T] std::vector::Vec[T] ext T { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -69,7 +69,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_superimposition_extension_unconstrained_generic,
     SppSuperimpositionUnconstrainedGenericParameterError, R"(
     sup [T] std::boolean::Bool ext std::number::S32 { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -78,7 +78,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppSuperimpositionDoubleExtensionError, R"(
     sup std::boolean::Bool ext std::string::Str { }
     sup std::boolean::Bool ext std::string::Str { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -87,7 +87,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppSuperimpositionCyclicExtensionError, R"(
     sup std::boolean::Bool ext std::string::Str { }
     sup std::string::Str ext std::boolean::Bool { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -96,7 +96,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppSuperimpositionSelfExtensionError, R"(
     cls A { }
     sup A ext A { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -112,7 +112,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup B ext A {
         fun g(&self) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -128,7 +128,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup B ext A {
         fun f(&mut self) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -144,7 +144,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup B ext A {
         fun f(&self, x: std::boolean::Bool = true) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -160,7 +160,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup B ext A {
         fun f(&self) -> std::boolean::Bool { ret true }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -176,7 +176,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup B ext A {
         fun f(&self) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -189,7 +189,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup B ext A {
         type X = std::string::Str
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -202,7 +202,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup B ext A {
         cmp x: std::string::Str = "hello world"
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -211,7 +211,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppSecondClassBorrowViolationError, R"(
     cls A { }
     sup &mut A ext std::number::S32 { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -220,7 +220,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppSecondClassBorrowViolationError, R"(
     cls A { }
     sup &A ext std::number::S32 { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -229,7 +229,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppSecondClassBorrowViolationError, R"(
     cls A { }
     sup A ext &mut std::number::S32 { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -238,7 +238,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppSecondClassBorrowViolationError, R"(
     cls A { }
     sup A ext &std::number::S32 { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -249,7 +249,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A { }
     sup A ext BaseClass[std::number::S32] { }
     sup A ext BaseClass[std::boolean::Bool] { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -274,7 +274,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let b = B(b=200)
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -297,4 +297,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let b = B(b=100)
     }
-)");
+)");;

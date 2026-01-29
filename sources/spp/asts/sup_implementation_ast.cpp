@@ -1,10 +1,7 @@
-#include <spp/asts/sup_implementation_ast.hpp>
-#include <spp/asts/sup_member_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-
-#include <genex/to_container.hpp>
-#include <genex/views/for_each.hpp>
-#include <genex/views/ptr.hpp>
+module spp.asts.sup_implementation_ast;
+import spp.asts.sup_member_ast;
+import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::SupImplementationAst::~SupImplementationAst() = default;
@@ -18,7 +15,7 @@ auto spp::asts::SupImplementationAst::new_empty()
 
 auto spp::asts::SupImplementationAst::clone() const
     -> std::unique_ptr<Ast> {
-    auto *c = ast_cast<InnerScopeAst>(InnerScopeAst::clone().release());
+    auto *c = InnerScopeAst::clone().release()->to<InnerScopeAst>();
     return std::make_unique<SupImplementationAst>(
         std::move(c->tok_l),
         std::move(c->members),
@@ -30,71 +27,121 @@ auto spp::asts::SupImplementationAst::stage_1_pre_process(
     Ast *ctx)
     -> void {
     // Shift to members.
-    members
-        | genex::views::ptr
-        | genex::to<std::vector>()
-        | genex::views::for_each([ctx](auto *m) { m->stage_1_pre_process(ctx); });
+    for (auto *m: members | genex::views::ptr | genex::to<std::vector>()) {
+        m->stage_1_pre_process(ctx);
+    }
 }
 
 
 auto spp::asts::SupImplementationAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward to members.
-    members | genex::views::for_each([sm, meta](auto &&m) { m->stage_2_gen_top_level_scopes(sm, meta); });
+    for (auto const &m : members) {
+        m->stage_2_gen_top_level_scopes(sm, meta);
+    }
 }
 
 
 auto spp::asts::SupImplementationAst::stage_3_gen_top_level_aliases(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward to members.
-    members | genex::views::for_each([sm, meta](auto &&m) { m->stage_3_gen_top_level_aliases(sm, meta); });
+    for (auto const &m : members) {
+        m->stage_3_gen_top_level_aliases(sm, meta);
+    }
 }
 
 
 auto spp::asts::SupImplementationAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward to members.
-    members | genex::views::for_each([sm, meta](auto &&m) { m->stage_4_qualify_types(sm, meta); });
+    for (auto const &m : members) {
+        m->stage_4_qualify_types(sm, meta);
+    }
 }
 
 
 auto spp::asts::SupImplementationAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward to members.
-    members | genex::views::for_each([sm, meta](auto &&m) { m->stage_5_load_super_scopes(sm, meta); });
+    for (auto const &m : members) {
+        m->stage_5_load_super_scopes(sm, meta);
+    }
 }
 
 
 auto spp::asts::SupImplementationAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward to members.
-    members | genex::views::for_each([sm, meta](auto &&m) { m->stage_6_pre_analyse_semantics(sm, meta); });
+    for (auto const &m : members) {
+        m->stage_6_pre_analyse_semantics(sm, meta);
+    }
 }
 
 
 auto spp::asts::SupImplementationAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward to members.
-    members | genex::views::for_each([sm, meta](auto &&m) { m->stage_7_analyse_semantics(sm, meta); });
+    for (auto const &m : members) {
+        m->stage_7_analyse_semantics(sm, meta);
+    }
 }
 
 
 auto spp::asts::SupImplementationAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward to members.
-    members | genex::views::for_each([sm, meta](auto &&m) { m->stage_8_check_memory(sm, meta); });
+    for (auto const &m : members) {
+        m->stage_8_check_memory(sm, meta);
+    }
+}
+
+
+auto spp::asts::SupImplementationAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Forward to members.
+    for (auto const &m : members) {
+        m->stage_9_comptime_resolution(sm, meta);
+    }
+}
+
+
+auto spp::asts::SupImplementationAst::stage_10_code_gen_1(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Forward to members.
+    for (auto const &m : members) {
+        m->stage_10_code_gen_1(sm, meta, ctx);
+    }
+    return nullptr;
+}
+
+
+auto spp::asts::SupImplementationAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Forward to members.
+    for (auto const &m : members) {
+        m->stage_11_code_gen_2(sm, meta, ctx);
+    }
+    return nullptr;
 }

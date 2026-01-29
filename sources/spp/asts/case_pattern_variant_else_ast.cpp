@@ -1,8 +1,13 @@
-#include <spp/asts/case_pattern_variant_else_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.case_pattern_variant_else_ast;
+import spp.lex.tokens;
+import spp.asts.boolean_literal_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.token_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::CasePatternVariantElseAst::CasePatternVariantElseAst(
@@ -41,20 +46,20 @@ spp::asts::CasePatternVariantElseAst::operator std::string() const {
 }
 
 
-auto spp::asts::CasePatternVariantElseAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_else);
-    SPP_PRINT_END;
+auto spp::asts::CasePatternVariantElseAst::stage_9_comptime_resolution(
+    ScopeManager *,
+    CompilerMetaData *meta)
+    -> void {
+    // The "else" pattern always matches, so return "true".
+    meta->cmp_result = BooleanLiteralAst::True(tok_else->pos_start());
 }
 
 
-auto spp::asts::CasePatternVariantElseAst::stage_10_code_gen_2(
+auto spp::asts::CasePatternVariantElseAst::stage_11_code_gen_2(
     ScopeManager *,
-    mixins::CompilerMetaData *,
+    CompilerMetaData *,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // The "else" pattern always matches, so return "true".
-    return llvm::ConstantInt::getTrue(ctx->context);
+    return llvm::ConstantInt::getTrue(*ctx->context);
 }

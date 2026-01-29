@@ -1,6 +1,11 @@
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/local_variable_destructure_attribute_binding_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.local_variable_destructure_attribute_binding_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 
 
 spp::asts::LocalVariableDestructureAttributeBindingAst::LocalVariableDestructureAttributeBindingAst(
@@ -44,16 +49,6 @@ spp::asts::LocalVariableDestructureAttributeBindingAst::operator std::string() c
     SPP_STRING_APPEND(tok_assign).append(" ");
     SPP_STRING_APPEND(val);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::LocalVariableDestructureAttributeBindingAst::print(meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(name).append(" ");
-    SPP_PRINT_APPEND(tok_assign).append(" ");
-    SPP_PRINT_APPEND(val);
-    SPP_PRINT_END;
 }
 
 

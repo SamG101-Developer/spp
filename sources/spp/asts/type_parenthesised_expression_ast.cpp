@@ -1,6 +1,10 @@
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_parenthesised_expression_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.type_parenthesised_expression_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::TypeParenthesisedExpressionAst::TypeParenthesisedExpressionAst(
@@ -44,17 +48,6 @@ spp::asts::TypeParenthesisedExpressionAst::operator std::string() const {
     SPP_STRING_APPEND(expr);
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::TypeParenthesisedExpressionAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_APPEND(expr);
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
 }
 
 

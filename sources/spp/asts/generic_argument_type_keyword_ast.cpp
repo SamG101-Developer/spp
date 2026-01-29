@@ -1,24 +1,30 @@
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/scopes/symbols.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/generic_argument_type_keyword_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.generic_argument_type_keyword_ast;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.asts.ast;
+import spp.asts.convention_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.mixins.orderable_ast;
+import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
+import spp.lex.tokens;
 
 
 spp::asts::GenericArgumentTypeKeywordAst::GenericArgumentTypeKeywordAst(
     decltype(name) name,
     decltype(tok_assign) &&tok_assign,
     decltype(val) val) :
-    GenericArgumentTypeAst(std::move(val), mixins::OrderableTag::KEYWORD_ARG),
+    GenericArgumentTypeAst(std::move(val), utils::OrderableTag::KEYWORD_ARG),
     name(std::move(name)),
     tok_assign(std::move(tok_assign)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
 }
-
-
-spp::asts::GenericArgumentTypeKeywordAst::~GenericArgumentTypeKeywordAst() = default;
 
 
 auto spp::asts::GenericArgumentTypeKeywordAst::equals(
@@ -68,17 +74,6 @@ spp::asts::GenericArgumentTypeKeywordAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenericArgumentTypeKeywordAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(tok_assign);
-    SPP_PRINT_APPEND(val);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::GenericArgumentTypeKeywordAst::from_symbol(
     analyse::scopes::TypeSymbol const &sym)
     -> std::unique_ptr<GenericArgumentTypeKeywordAst> {
@@ -92,7 +87,7 @@ auto spp::asts::GenericArgumentTypeKeywordAst::from_symbol(
 
 auto spp::asts::GenericArgumentTypeKeywordAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the name and value of the generic type argument.
     val->stage_7_analyse_semantics(sm, meta);

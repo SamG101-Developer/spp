@@ -13,7 +13,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let a: Point = Point(x=1, y=2)
         case a is std::string::Str(..) { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -24,7 +24,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let a: std::string::Str or std::boolean::Bool = "hello"
         case a is std::number::S32() { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -39,7 +39,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let a: Point[std::number::S32] = Point[std::number::S32](x=1, y=2)
         case a is Point[std::string::Str](x, y) { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -53,7 +53,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a: Point = Point(x=1, y=2)
         case a is Point(x, y) { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -63,7 +63,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a: std::string::Str or std::boolean::Bool = "hello"
         case a is std::string::Str(..) { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -77,7 +77,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a: std::option::Opt[std::string::Str] = std::option::Some(val="hello world")
         case a is std::option::Some(mut val) { val = "bye" }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -91,7 +91,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a: Point[std::number::S32] = Point[std::number::S32](x=1, y=2)
         case a is Point[std::number::S32](x, y) { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -105,5 +105,5 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a: Point[std::number::S32] = Point[std::number::S32](x=1, y=2)
         case a is Point(x, y) { }
     }
-)")
+)");
 

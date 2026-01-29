@@ -1,10 +1,11 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
+module spp.asts.generic_argument_type_ast;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.asts.convention_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::GenericArgumentTypeAst::GenericArgumentTypeAst(
@@ -15,12 +16,9 @@ spp::asts::GenericArgumentTypeAst::GenericArgumentTypeAst(
 }
 
 
-spp::asts::GenericArgumentTypeAst::~GenericArgumentTypeAst() = default;
-
-
 auto spp::asts::GenericArgumentTypeAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Qualify the type value without generics, then re-add the generics.
     val->stage_4_qualify_types(sm, meta);

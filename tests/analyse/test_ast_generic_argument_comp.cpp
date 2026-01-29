@@ -10,7 +10,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g() -> std::void::Void {
         f[T=std::boolean::Bool, T=std::boolean::Bool]()
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -22,7 +22,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g() -> std::void::Void {
         f[T=std::boolean::Bool, std::boolean::Bool]()
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -39,7 +39,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = A(a=5)
         a.f()
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -60,4 +60,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut b = a.f()
         b = a.a
     }
-)");
+)");;

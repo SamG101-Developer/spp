@@ -1,7 +1,16 @@
-#include <spp/asts/string_literal_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.string_literal_ast;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.asts.ast;
+import spp.asts.token_ast;
+import spp.asts.generate.common_types;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import llvm;
 
 
 spp::asts::StringLiteralAst::StringLiteralAst(
@@ -9,9 +18,6 @@ spp::asts::StringLiteralAst::StringLiteralAst(
     LiteralAst(),
     val(std::move(val)) {
 }
-
-
-spp::asts::StringLiteralAst::~StringLiteralAst() = default;
 
 
 auto spp::asts::StringLiteralAst::equals(
@@ -31,17 +37,20 @@ auto spp::asts::StringLiteralAst::equals_string_literal(
 }
 
 
-auto spp::asts::StringLiteralAst::pos_start() const -> std::size_t {
+auto spp::asts::StringLiteralAst::pos_start() const
+    -> std::size_t {
     return val->pos_start();
 }
 
 
-auto spp::asts::StringLiteralAst::pos_end() const -> std::size_t {
+auto spp::asts::StringLiteralAst::pos_end() const
+    -> std::size_t {
     return val->pos_end();
 }
 
 
-auto spp::asts::StringLiteralAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::StringLiteralAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<StringLiteralAst>(
         ast_clone(val));
 }
@@ -54,17 +63,31 @@ spp::asts::StringLiteralAst::operator std::string() const {
 }
 
 
-auto spp::asts::StringLiteralAst::print(meta::AstPrinter &printer) const -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(val);
-    SPP_PRINT_END;
+auto spp::asts::StringLiteralAst::stage_9_comptime_resolution(
+    ScopeManager *,
+    CompilerMetaData *meta)
+    -> void {
+    // Clone and return the float literal as is for compile-time resolution.
+    meta->cmp_result = ast_clone(this);
+}
+
+
+auto spp::asts::StringLiteralAst::stage_11_code_gen_2(
+    ScopeManager *,
+    CompilerMetaData *,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Create a global string for the string literal.
+    const auto bytes = val->token_data;
+    const auto str_alloc = ctx->builder.CreateGlobalString(bytes, "string_literal", 0, ctx->module.get(), false);
+    return str_alloc;
 }
 
 
 auto spp::asts::StringLiteralAst::infer_type(
     ScopeManager *,
-    mixins::CompilerMetaData *)
+    CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // The type of a string literal is always a string type.
-    return generate::common_types::string_type(val->pos_start());
+    return generate::common_types::string_view_type(val->pos_start());
 }

@@ -1,38 +1,35 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/scopes/symbols.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/order_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/coroutine_prototype_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/function_call_argument_ast.hpp>
-#include <spp/asts/function_call_argument_group_ast.hpp>
-#include <spp/asts/function_call_argument_keyword_ast.hpp>
-#include <spp/asts/function_call_argument_positional_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/mixins/orderable_ast.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
-#include <genex/to_container.hpp>
-#include <genex/actions/erase.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/duplicates.hpp>
-#include <genex/views/enumerate.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/materialize.hpp>
-#include <genex/views/ptr.hpp>
-#include <genex/views/transform.hpp>
+module spp.asts.function_call_argument_group_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.order_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.convention_ast;
+import spp.asts.coroutine_prototype_ast;
+import spp.asts.function_prototype_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.function_call_argument_ast;
+import spp.asts.function_call_argument_positional_ast;
+import spp.asts.function_call_argument_keyword_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.mixins.orderable_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
+import genex;
+import sys;
 
 
 spp::asts::FunctionCallArgumentGroupAst::FunctionCallArgumentGroupAst(
@@ -81,56 +78,63 @@ auto spp::asts::FunctionCallArgumentGroupAst::clone() const
 spp::asts::FunctionCallArgumentGroupAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_l);
-    SPP_STRING_EXTEND(args);
+    SPP_STRING_EXTEND(args, ", ");
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;
 }
 
 
-auto spp::asts::FunctionCallArgumentGroupAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(args);
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
+auto spp::asts::FunctionCallArgumentGroupAst::get_all_args() const
+    -> std::vector<FunctionCallArgumentAst*> {
+    // Filter by casting.
+    auto out = std::vector<FunctionCallArgumentAst*>();
+    for (auto const &arg : args) {
+        out.emplace_back(arg.get());
+    }
+    return out;
 }
 
 
 auto spp::asts::FunctionCallArgumentGroupAst::get_keyword_args() const
     -> std::vector<FunctionCallArgumentKeywordAst*> {
-    return args
-        | genex::views::ptr
-        | genex::views::cast_dynamic<FunctionCallArgumentKeywordAst*>()
-        | genex::to<std::vector>();
+    // Filter by casting.
+    auto out = std::vector<FunctionCallArgumentKeywordAst*>();
+    for (auto const &arg : args) {
+        if (auto *kw_arg = arg->to<FunctionCallArgumentKeywordAst>(); kw_arg != nullptr) {
+            out.emplace_back(kw_arg);
+        }
+    }
+    return out;
 }
 
 
 auto spp::asts::FunctionCallArgumentGroupAst::get_positional_args() const
     -> std::vector<FunctionCallArgumentPositionalAst*> {
-    return args
-        | genex::views::ptr
-        | genex::views::cast_dynamic<FunctionCallArgumentPositionalAst*>()
-        | genex::to<std::vector>();
+    // Filter by casting.
+    auto out = std::vector<FunctionCallArgumentPositionalAst*>();
+    for (auto const &arg : args) {
+        if (auto *pos_arg = arg->to<FunctionCallArgumentPositionalAst>(); pos_arg != nullptr) {
+            out.emplace_back(pos_arg);
+        }
+    }
+    return out;
 }
 
 
 auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check there are no duplicate argument names.
     const auto arg_names = get_keyword_args()
         | genex::views::transform([](auto &&x) { return x->name.get(); })
-        | genex::views::materialize
+        | genex::to<std::vector>()
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
-    if (not arg_names.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
-            *arg_names[0], *arg_names[1], "keyword function-argument").with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppIdentifierDuplicateError>(
+        not arg_names.empty(), {sm->current_scope},
+        ERR_ARGS(*arg_names[0], *arg_names[1], "keyword function-argument"));
 
     // Check the arguments are in the correct order.
     const auto unordered_args = analyse::utils::order_utils::order_args(args
@@ -138,36 +142,34 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         | genex::views::cast_dynamic<mixins::OrderableAst*>()
         | genex::to<std::vector>());
 
-    if (not unordered_args.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>().with_args(
-            unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second).with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppOrderInvalidError>(
+        not unordered_args.empty(), {sm->current_scope},
+        ERR_ARGS(unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second));
 
     // Expand tuple-expansion arguments ("..tuple" => "tuple.0, tuple.1, ...")
     // Must use "materialize" because the list gets updates from within the loop.
-    for (auto &&[i, arg] : args | genex::views::ptr | genex::views::enumerate | genex::views::materialize) {
+    for (auto &&[i, arg] : args | genex::views::ptr | genex::views::enumerate | genex::to<std::vector>()) {
         // Only check position arguments that have ".." tokens.
-        const auto pos_arg = ast_cast<FunctionCallArgumentPositionalAst>(arg);
+        const auto pos_arg = arg->to<FunctionCallArgumentPositionalAst>();
         if (pos_arg == nullptr or pos_arg->tok_unpack == nullptr) { continue; }
 
         // Check the argument value is a tuple expression.
         auto arg_type = arg->infer_type(sm, meta);
-        if (not analyse::utils::type_utils::is_type_tuple(*arg_type, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpansionOfNonTupleError>().with_args(
-                *arg->val, *arg_type).with_scopes({sm->current_scope}).raise();
-        }
+        raise_if<analyse::errors::SppExpansionOfNonTupleError>(
+            not analyse::utils::type_utils::is_type_tuple(*arg_type, *sm->current_scope),
+            {sm->current_scope}, ERR_ARGS(*arg->val, *arg_type));
 
         // Replace the tuple-expansion argument with the expanded arguments.
-        const auto max = static_cast<ssize_t>(arg_type->type_parts().back()->generic_arg_group->args.size());
-        for (auto j = max - 1; j > -1; --j) {
+        const auto max = static_cast<sys::ssize_t>(arg_type->type_parts().back()->generic_arg_group->args.size());
+        for (auto j = max - 1; j > -1z; --j) {
             auto field = std::make_unique<IdentifierAst>(arg->val->pos_start(), std::to_string(j));
             auto new_ast = std::make_unique<PostfixExpressionAst>(
                 ast_clone(arg->val),
                 std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
             auto new_arg = std::make_unique<FunctionCallArgumentPositionalAst>(ast_clone(arg->conv), nullptr, std::move(new_ast));
-            args.insert(args.begin() + static_cast<ssize_t>(i), std::move(new_arg));
+            args.insert(args.begin() + static_cast<std::ptrdiff_t>(i), std::move(new_arg));
         }
-        genex::actions::erase(args, args.begin() + static_cast<ssize_t>(i) + max);
+        genex::actions::erase(args, args.begin() + static_cast<std::ptrdiff_t>(i) + static_cast<std::ptrdiff_t>(max));
     }
 
     // Analyse the arguments
@@ -175,29 +177,28 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
         arg->stage_7_analyse_semantics(sm, meta);
         const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*arg->val);
         if (sym == nullptr) { continue; }
-        if (arg->conv == nullptr or *arg->conv == ConventionAst::ConventionTag::REF) { continue; }
+        if (arg->conv == nullptr or *arg->conv == ConventionTag::REF) { continue; }
 
         // Immutable symbols cannot be mutated.
-        if (not sym->is_mutable) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
-                *arg->val, *arg->val, *std::get<0>(sym->memory_info->ast_initialization)).with_scopes({sm->current_scope}).raise();
-        }
+        raise_if<analyse::errors::SppInvalidMutationError>(
+            not sym->is_mutable, {sm->current_scope},
+            ERR_ARGS(*arg->val, *arg->val, *std::get<0>(sym->memory_info->ast_initialization)));
 
         // Immutable borrows, even if their symbol is mutable, cannot be mutated.
-        if (std::get<0>(sym->memory_info->ast_borrowed) and *sym->type->get_convention() == ConventionAst::ConventionTag::REF) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
-                *arg->val, *arg->val, *std::get<0>(sym->memory_info->ast_borrowed)).with_scopes({sm->current_scope}).raise();
-        }
+        raise_if<analyse::errors::SppInvalidMutationError>(
+            std::get<0>(sym->memory_info->ast_borrowed) and *sym->type->get_convention() == ConventionTag::REF,
+            {sm->current_scope}, ERR_ARGS(*arg->val, *arg->val, *std::get<0>(sym->memory_info->ast_borrowed)));
     }
 }
 
 
 auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // If the target is a coroutine, or the target is called as "async", then pins are required.
-    const auto is_target_coro = ast_cast<CoroutinePrototypeAst>(meta->target_call_function_prototype) != nullptr;
+    const auto is_target_coro = meta->target_call_function_prototype and
+        meta->target_call_function_prototype->to<CoroutinePrototypeAst>() != nullptr;
     const auto pins_required = meta->target_call_was_function_async or is_target_coro;
 
     // Define the borrow sets to maintain the law of exclusivity.
@@ -215,14 +216,14 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
         // nested checking is done via the argument itself (tuples, arrays, etc). Can borrow attributes so don't check
         // for moving from borrowed context right here.
         analyse::utils::mem_utils::validate_symbol_memory(
-            *arg->val, *arg, *sm, true, true, false, false, false, false, meta);
+            *arg->val, *arg, *sm, true, true, false, false, false, meta);
 
         if (arg->conv == nullptr) {
             // Ensure that attributes aren't being moved off of a borrowed value and that pins are maintained. Mark the
             // move or partial move of the argument. Note the "check_pins_linked=False" because function calls can only
             // imply an inner scope, so it is guaranteed that lifetimes aren't being extended.
             analyse::utils::mem_utils::validate_symbol_memory(
-                *arg->val, *arg, *sm, true, true, true, true, true, true, meta);
+                *arg->val, *arg, *sm, true, true, true, true, true, meta);
 
             // Check the move doesn't overlap with any borrows. This is to ensure that "f(&x, x)" can never happen,
             // because the first argument requires the owned object to outlive the function call, and moving it as the
@@ -232,14 +233,13 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                     | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
                     | genex::to<std::vector>();
 
-                if (not overlaps.empty()) {
-                    analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemoryOverlapUsageError>().with_args(
-                        *overlaps[0], *arg->val).with_scopes({sm->current_scope}).raise();
-                }
+                raise_if<analyse::errors::SppMemoryOverlapUsageError>(
+                    not overlaps.empty(), {sm->current_scope},
+                    ERR_ARGS(*overlaps[0], *arg->val));
             }
         }
 
-        else if (arg->conv and *arg->conv == ConventionAst::ConventionTag::REF) {
+        else if (arg->conv and *arg->conv == ConventionTag::REF) {
             // Generate the list of overlapping borrows for immutable borrows.
             auto overlaps = borrows_mut
                 | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
@@ -251,10 +251,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 | genex::to<std::vector>();
 
             // Check the immutable borrow doesn't overlap with any other mutable borrows in the same scope.
-            if (not overlaps.empty()) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemoryOverlapUsageError>().with_args(
-                    *overlaps[0], *arg->val).with_scopes({sm->current_scope}).raise();
-            }
+            raise_if<analyse::errors::SppMemoryOverlapUsageError>(
+                not overlaps.empty(), {sm->current_scope},
+                ERR_ARGS(*overlaps[0], *arg->val));
 
             // Invalidate any linked pins.
             for (auto const &pin : linked_pin_syms) {
@@ -276,7 +275,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
             borrows_ref.emplace_back(arg->val.get());
         }
 
-        else if (arg->conv and *arg->conv == ConventionAst::ConventionTag::MUT) {
+        else if (arg->conv and *arg->conv == ConventionTag::MUT) {
             // Generate the list of overlapping borrows for mutable borrows.
             auto overlaps = genex::views::concat(borrows_ref, borrows_mut)
                 | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
@@ -287,10 +286,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 | genex::to<std::vector>();
 
             // Check the mutable borrow doesn't overlap with any other borrows in the same scope.
-            if (not overlaps.empty()) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemoryOverlapUsageError>().with_args(
-                    *overlaps[0], *arg->val).with_scopes({sm->current_scope}).raise();
-            }
+            raise_if<analyse::errors::SppMemoryOverlapUsageError>(
+                not overlaps.empty(), {sm->current_scope},
+                ERR_ARGS(*overlaps[0], *arg->val));
 
             // Invalidate any linked pins.
             for (auto const &pin : linked_pin_syms) {

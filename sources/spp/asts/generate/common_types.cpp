@@ -1,14 +1,16 @@
-#include <spp/asts/generate/common_types.hpp>
-#include <spp/asts/generic_argument_comp_positional_ast.hpp>
-#include <spp/asts/generic_argument_type_positional_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/type_unary_expression_ast.hpp>
-#include <spp/asts/type_unary_expression_operator_namespace_ast.hpp>
-
-#include <genex/views/enumerate.hpp>
+module spp.asts.generate.common_types;
+import spp.asts.expression_ast;
+import spp.asts.generic_argument_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_comp_positional_ast;
+import spp.asts.generic_argument_type_positional_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.type_unary_expression_ast;
+import spp.asts.type_unary_expression_operator_namespace_ast;
+import spp.asts.type_ast;
+import genex;
 
 
 auto spp::asts::generate::common_types::f8(std::size_t pos) -> std::shared_ptr<TypeAst> {
@@ -187,6 +189,14 @@ auto spp::asts::generate::common_types::string_type(std::size_t pos) -> std::sha
 }
 
 
+auto spp::asts::generate::common_types::string_view_type(std::size_t pos) -> std::shared_ptr<TypeAst> {
+    std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("StrView"), nullptr);
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("string_view")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
+    return type;
+}
+
+
 auto spp::asts::generate::common_types::never_type(std::size_t pos) -> std::shared_ptr<TypeAst> {
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("Never"), nullptr);
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("never")), nullptr), std::move(type));
@@ -282,6 +292,50 @@ auto spp::asts::generate::common_types::option_type(std::size_t pos, std::shared
 }
 
 
+auto spp::asts::generate::common_types::memory_type(std::size_t pos, std::shared_ptr<TypeAst> inner_type) -> std::shared_ptr<TypeAst> {
+    auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(1);
+    generics_lst[0] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(inner_type));
+    auto generics = std::make_unique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+
+    std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("Memory"), std::move(generics));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("memory")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
+    return type;
+}
+
+
+auto spp::asts::generate::common_types::single_type(std::size_t pos, std::shared_ptr<TypeAst> inner_type) -> std::shared_ptr<TypeAst> {
+    auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(1);
+    generics_lst[0] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(inner_type));
+    auto generics = std::make_unique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+
+    std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("Single"), std::move(generics));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("single")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
+    return type;
+}
+
+
+auto spp::asts::generate::common_types::some_type(std::size_t pos, std::shared_ptr<TypeAst> inner_type) -> std::shared_ptr<TypeAst> {
+    auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(1);
+    generics_lst[0] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(inner_type));
+    auto generics = std::make_unique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+
+    std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("Some"), std::move(generics));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("option")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
+    return type;
+}
+
+
+auto spp::asts::generate::common_types::none_type(std::size_t pos) -> std::shared_ptr<TypeAst> {
+    std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("None"), nullptr);
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("option")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
+    return type;
+}
+
+
 auto spp::asts::generate::common_types::gen_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type, std::shared_ptr<TypeAst> send_type) -> std::shared_ptr<TypeAst> {
     auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(2);
     generics_lst[0] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(yield_type));
@@ -301,70 +355,6 @@ auto spp::asts::generate::common_types::gen_once_type(std::size_t pos, std::shar
     auto generics = std::make_unique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
 
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("GenOnce"), std::move(generics));
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("generator")), nullptr), std::move(type));
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
-    return type;
-}
-
-
-auto spp::asts::generate::common_types::gen_opt_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type, std::shared_ptr<TypeAst> send_type) -> std::shared_ptr<TypeAst> {
-    auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(2);
-    generics_lst[0] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(yield_type));
-    generics_lst[1] = std::make_unique<GenericArgumentTypePositionalAst>(send_type ? std::move(send_type) : void_type(pos));
-    auto generics = std::make_unique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
-
-    std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("GenOpt"), std::move(generics));
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("generator")), nullptr), std::move(type));
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
-    return type;
-}
-
-
-auto spp::asts::generate::common_types::gen_res_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type, std::shared_ptr<TypeAst> err_type, std::shared_ptr<TypeAst> send_type) -> std::shared_ptr<TypeAst> {
-    auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(3);
-    generics_lst[0] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(yield_type));
-    generics_lst[1] = std::make_unique<GenericArgumentTypePositionalAst>(err_type ? std::move(err_type) : void_type(pos));
-    generics_lst[2] = std::make_unique<GenericArgumentTypePositionalAst>(send_type ? std::move(send_type) : void_type(pos));
-    auto generics = std::make_unique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
-
-    std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("GenRes"), std::move(generics));
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("generator")), nullptr), std::move(type));
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
-    return type;
-}
-
-
-auto spp::asts::generate::common_types::generated_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type) -> std::shared_ptr<TypeAst> {
-    auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(1);
-    generics_lst[0] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(yield_type));
-    auto generics = std::make_unique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
-
-    std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("Generated"), std::move(generics));
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("generator")), nullptr), std::move(type));
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
-    return type;
-}
-
-
-auto spp::asts::generate::common_types::generated_opt_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type) -> std::shared_ptr<TypeAst> {
-    auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(1);
-    generics_lst[0] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(yield_type));
-    auto generics = std::make_unique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
-
-    std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("GeneratedOpt"), std::move(generics));
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("generator")), nullptr), std::move(type));
-    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
-    return type;
-}
-
-
-auto spp::asts::generate::common_types::generated_res_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type, std::shared_ptr<TypeAst> err_type) -> std::shared_ptr<TypeAst> {
-    auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(2);
-    generics_lst[0] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(yield_type));
-    generics_lst[1] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(err_type));
-    auto generics = std::make_unique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
-
-    std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("GeneratedRes"), std::move(generics));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("generator")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
@@ -431,6 +421,32 @@ auto spp::asts::generate::common_types::fun_mov_type(std::size_t pos, std::share
 
     std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("FunMov"), std::move(generics));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("function")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
+    return type;
+}
+
+
+auto spp::asts::generate::common_types::forward_ref_type(std::size_t pos, std::shared_ptr<TypeAst> inner_type) -> std::shared_ptr<TypeAst> {
+    auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(1);
+    generics_lst[0] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(inner_type));
+    auto generics = std::make_unique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+
+    std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("FwdRef"), std::move(generics));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("fwd")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("ops")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
+    return type;
+}
+
+
+auto spp::asts::generate::common_types::forward_mut_type(std::size_t pos, std::shared_ptr<TypeAst> inner_type) -> std::shared_ptr<TypeAst> {
+    auto generics_lst = std::vector<std::unique_ptr<GenericArgumentAst>>(1);
+    generics_lst[0] = std::make_unique<GenericArgumentTypePositionalAst>(std::move(inner_type));
+    auto generics = std::make_unique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+
+    std::unique_ptr<TypeAst> type = std::make_unique<TypeIdentifierAst>(pos, std::string("FwdMut"), std::move(generics));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("fwd")), nullptr), std::move(type));
+    type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("ops")), nullptr), std::move(type));
     type = std::make_unique<TypeUnaryExpressionAst>(std::make_unique<TypeUnaryExpressionOperatorNamespaceAst>(std::make_unique<IdentifierAst>(pos, std::string("std")), nullptr), std::move(type));
     return type;
 }

@@ -1,18 +1,22 @@
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/scopes/symbols.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/generic_argument_type_positional_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.generic_argument_type_positional_ast;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.asts.convention_ast;
+import spp.asts.type_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.mixins.orderable_ast;
+import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
 
 
 spp::asts::GenericArgumentTypePositionalAst::GenericArgumentTypePositionalAst(
     decltype(val) val) :
-    GenericArgumentTypeAst(std::move(val), mixins::OrderableTag::POSITIONAL_ARG) {
+    GenericArgumentTypeAst(std::move(val), utils::OrderableTag::POSITIONAL_ARG) {
 }
-
-
-spp::asts::GenericArgumentTypePositionalAst::~GenericArgumentTypePositionalAst() = default;
 
 
 auto spp::asts::GenericArgumentTypePositionalAst::equals(
@@ -58,18 +62,9 @@ spp::asts::GenericArgumentTypePositionalAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenericArgumentTypePositionalAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(val);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::GenericArgumentTypePositionalAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the name and value of the generic type argument.
     val->stage_7_analyse_semantics(sm, meta);

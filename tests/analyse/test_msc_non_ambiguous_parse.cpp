@@ -13,7 +13,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = v[1_u64]()
         x = false
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -24,4 +24,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = (v[1_u64])()
         x = "hello"
     }
-)")
+)");

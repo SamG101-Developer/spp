@@ -1,18 +1,14 @@
-#include <genex/views/reverse.hpp>
-#include <spp/analyse/scopes/symbols.hpp>
-#include <spp/asts/cmp_statement_ast.hpp>
-#include <spp/asts/function_parameter_ast.hpp>
-#include <spp/asts/function_parameter_group_ast.hpp>
-#include <spp/asts/function_prototype_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/codegen/llvm_mangle.hpp>
-
-#include <genex/to_container.hpp>
-#include <genex/views/join_with.hpp>
-#include <genex/views/materialize.hpp>
-#include <genex/views/reverse.hpp>
-#include <genex/views/transform.hpp>
+module spp.codegen.llvm_mangle;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.symbols;
+import spp.asts.cmp_statement_ast;
+import spp.asts.function_parameter_ast;
+import spp.asts.function_parameter_group_ast;
+import spp.asts.function_prototype_ast;
+import spp.asts.identifier_ast;
+import spp.asts.type_ast;
+import genex;
 
 
 auto spp::codegen::mangle::mangle_type_name(
@@ -30,8 +26,9 @@ auto spp::codegen::mangle::mangle_mod_name(
     // Generate the module name by joining the ancestor scope names with '#'.
     return mod_scope.ancestors()
         | genex::views::reverse
-        | genex::views::transform([](auto *scope) { return std::get<analyse::scopes::ScopeBlockName>(scope->name).name; })
-        | genex::views::materialize
+        | genex::views::filter([](auto *scope) { return not scope->name_as_string().contains("<"); })
+        | genex::views::transform([](auto *scope) { return scope->name_as_string(); })
+        | genex::to<std::vector>()
         | genex::views::join_with('#')
         | genex::to<std::string>();
 }
@@ -66,12 +63,12 @@ auto spp::codegen::mangle::mangle_fun_name(
     types.append_range(param_type_syms);
 
     // Convert the mangled type names into a single function name.
-    const auto fun_name = types
+    const auto fun_sig = types
         | genex::views::transform([](auto const &type_sym) { return mangle_type_name(*type_sym); })
         | genex::to<std::vector>()
         | genex::views::join_with('#')
         | genex::to<std::string>();
 
     // Append the module name and function name.
-    return mod_name + "#" + fun_name;
+    return mod_name + "#" + fun_proto.name->val + "#" + fun_sig;
 }

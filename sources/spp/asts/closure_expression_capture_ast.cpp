@@ -1,7 +1,11 @@
-#include <spp/asts/closure_expression_capture_ast.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.closure_expression_capture_ast;
+import spp.asts.convention_ast;
+import spp.asts.expression_ast;
+import spp.asts.token_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::ClosureExpressionCaptureAst::ClosureExpressionCaptureAst(
@@ -39,14 +43,4 @@ spp::asts::ClosureExpressionCaptureAst::operator std::string() const {
     SPP_STRING_APPEND(conv);
     SPP_STRING_APPEND(val);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::ClosureExpressionCaptureAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(conv);
-    SPP_PRINT_APPEND(val);
-    SPP_PRINT_END;
 }

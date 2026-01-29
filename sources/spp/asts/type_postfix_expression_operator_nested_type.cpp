@@ -1,8 +1,12 @@
-#include <spp/asts/generic_argument_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/type_postfix_expression_operator_nested_type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.type_postfix_expression_operator_nested_type_ast;
+import spp.asts.ast;
+import spp.asts.token_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 
 
 spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypePostfixExpressionOperatorNestedTypeAst(
@@ -13,9 +17,6 @@ spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypePostfixExpressionOper
     name(std::move(name)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_sep, lex::SppTokenType::TK_DOUBLE_COLON, "::");
 }
-
-
-spp::asts::TypePostfixExpressionOperatorNestedTypeAst::~TypePostfixExpressionOperatorNestedTypeAst() = default;
 
 
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::equals(
@@ -58,16 +59,6 @@ spp::asts::TypePostfixExpressionOperatorNestedTypeAst::operator std::string() co
     SPP_STRING_APPEND(tok_sep);
     SPP_STRING_APPEND(name);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_sep);
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_END;
 }
 
 

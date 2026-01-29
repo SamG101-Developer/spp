@@ -9,7 +9,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = 10
         let y = *x
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -19,7 +19,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(x: &std::boolean::Bool) -> std::void::Void {
         let y = *x
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -29,7 +29,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut x: &mut std::boolean::Bool) -> std::void::Void {
         let y = *x
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -40,4 +40,4 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let y = *x
         ret y
     }
-)")
+)");

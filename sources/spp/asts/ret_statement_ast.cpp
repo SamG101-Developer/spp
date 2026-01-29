@@ -1,15 +1,30 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/ret_statement_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
+
+module spp.asts.ret_statement_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.expression_ast;
+import spp.asts.identifier_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.generate.common_types;
+import spp.asts.utils.ast_utils;
+import spp.asts.meta.compiler_meta_data;
+import spp.codegen.llvm_materialize;
+import spp.codegen.llvm_type;
+import spp.lex.tokens;
+import spp.utils.uid;
 
 
 spp::asts::RetStatementAst::RetStatementAst(
@@ -17,6 +32,7 @@ spp::asts::RetStatementAst::RetStatementAst(
     decltype(expr) &&val) :
     tok_ret(std::move(tok_ret)),
     expr(std::move(val)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_ret, lex::SppTokenType::KW_RET, "ret", expr ? expr->pos_start() : 0);
 }
 
 
@@ -51,42 +67,38 @@ spp::asts::RetStatementAst::operator std::string() const {
 }
 
 
-auto spp::asts::RetStatementAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_ret).append(" ");
-    SPP_PRINT_APPEND(expr);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::RetStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the expression.
-    ENFORCE_EXPRESSION_SUBTYPE(expr.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
 
     // Check the enclosing function is a subroutine and not a subroutine, if a value is being returned.
     const auto function_flavour = meta->enclosing_function_flavour;
-    if (function_flavour->token_type != lex::SppTokenType::KW_FUN and expr != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppCoroutineContainsRetExprExpressionError>().with_args(
-            *function_flavour, *tok_ret).with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppCoroutineContainsRetExprExpressionError>(
+        function_flavour->token_type != lex::SppTokenType::KW_FUN and expr != nullptr,
+        {sm->current_scope}, ERR_ARGS(*function_flavour, *tok_ret));
 
     // Analyse the expression if it exists, and determine the type of the expression.
     auto expr_type = generate::common_types::void_type(pos_start());
     if (expr != nullptr) {
         meta->save();
-        RETURN_TYPE_OVERLOAD_HELPER(expr.get()) {
+        SPP_RETURN_TYPE_OVERLOAD_HELPER(expr.get()) {
             meta->return_type_overload_resolver_type = meta->enclosing_function_ret_type[0];
         }
 
+        // For case conditions, we need an assignment target in case of variants.
         meta->assignment_target_type = meta->enclosing_function_ret_type.empty() ? nullptr : meta->enclosing_function_ret_type[0];
+        meta->assignment_target = meta->assignment_target_type ? IdentifierAst::from_type(*meta->assignment_target_type) : nullptr;
         expr->stage_7_analyse_semantics(sm, meta);
         expr_type = expr->infer_type(sm, meta);
         meta->restore();
+
+        // Check the expr_type isn't Void (don't allow "ret void_func()" => "void_func(); ret").
+        raise_if<analyse::errors::SppInvalidVoidValueError>(
+            analyse::utils::type_utils::is_type_void(*expr_type, *sm->current_scope),
+            {sm->current_scope}, ERR_ARGS(*expr, "return value"));
     }
 
     // Functions provide the return type, closures require inference; handle the inference.
@@ -95,24 +107,23 @@ auto spp::asts::RetStatementAst::stage_7_analyse_semantics(
         meta->enclosing_function_ret_type.emplace_back(m_ret_type);
     }
     else {
-        m_ret_type = meta->enclosing_function_ret_type[0];
+        m_ret_type = meta->enclosing_function_ret_type.back();
     }
 
     // Type check the expression type against the return type of the enclosing subroutine.
     if (function_flavour->token_type == lex::SppTokenType::KW_FUN) {
         const auto direct_match = analyse::utils::type_utils::symbolic_eq(*m_ret_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
-        if (not direct_match) {
-            const auto expr_for_err = expr ? ast_cast<Ast>(expr.get()) : ast_cast<Ast>(tok_ret.get());
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-                *expr_type, *expr_type, *expr_for_err, *m_ret_type).with_scopes({sm->current_scope}).raise();
-        }
+        const auto expr_for_err = expr ? expr->to<Ast>() : tok_ret->to<Ast>();
+        raise_if<analyse::errors::SppTypeMismatchError>(
+            not direct_match, {sm->current_scope},
+            ERR_ARGS(*expr_type, *expr_type, *expr_for_err, *m_ret_type));
     }
 }
 
 
 auto spp::asts::RetStatementAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // If there is no expression, then now ork needs to be done.
     if (expr == nullptr) return;
@@ -120,5 +131,64 @@ auto spp::asts::RetStatementAst::stage_8_check_memory(
     // Ensure the argument isn't moved or partially moved (for all conventions)
     expr->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
-        *expr, *tok_ret, *sm, true, true, true, true, true, true, meta);
+        *expr, *tok_ret, *sm, true, true, true, true, true, meta);
+}
+
+
+auto spp::asts::RetStatementAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // If there is no expression, then return nullptr.
+    if (expr == nullptr) { return; }
+
+    // Resolve the expression.
+    expr->stage_9_comptime_resolution(sm, meta);
+}
+
+
+auto spp::asts::RetStatementAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate the return value, if there is one.
+        if (expr != nullptr) {
+        // Temp holder for non-symbolic condition.
+        if (sm->current_scope->get_var_symbol_outermost(*expr).first == nullptr) {
+            meta->save();
+            meta->assignment_target_type = m_ret_type;
+            const auto ret_val = codegen::llvm_materialize(*expr, sm, meta, ctx);
+            const auto llvm_ret_val = ret_val->stage_11_code_gen_2(sm, meta, ctx);
+            ctx->builder.CreateRet(llvm_ret_val);
+            meta->restore();
+        }
+
+        // Otherwise, generate normally.
+        else {
+            const auto llvm_ret_val = expr->stage_11_code_gen_2(sm, meta, ctx);
+            ctx->builder.CreateRet(llvm_ret_val);
+        }
+
+        return nullptr;
+    }
+
+    // Otherwise, use the return "void" instruction.
+    ctx->builder.CreateRetVoid();
+    return nullptr;
+}
+
+
+auto spp::asts::RetStatementAst::infer_type(
+    ScopeManager *,
+    CompilerMetaData *)
+    -> std::shared_ptr<TypeAst> {
+    return generate::common_types::void_type(pos_start());
+}
+
+
+auto spp::asts::RetStatementAst::terminates() const
+    -> bool {
+    // This is the only statement that always terminates.
+    return true;
 }

@@ -1,21 +1,28 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/case_pattern_variant_expression_ast.hpp>
-#include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/fold_expression_ast.hpp>
-#include <spp/asts/function_call_argument_positional_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
+
+module spp.asts.case_pattern_variant_expression_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.case_utils;
+import spp.analyse.utils.mem_utils;
+import spp.asts.convention_ref_ast;
+import spp.asts.expression_ast;
+import spp.asts.fold_expression_ast;
+import spp.asts.function_call_argument_group_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.identifier_ast;
+import spp.asts.function_call_argument_positional_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::CasePatternVariantExpressionAst::CasePatternVariantExpressionAst(
@@ -52,57 +59,49 @@ spp::asts::CasePatternVariantExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::CasePatternVariantExpressionAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(expr);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::CasePatternVariantExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward analysis into the expression.
-    ENFORCE_EXPRESSION_SUBTYPE(expr.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
     expr->stage_7_analyse_semantics(sm, meta);
+
+    analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_dummy_core(
+        {this}, sm, meta);
 }
 
 
 auto spp::asts::CasePatternVariantExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory of the expression. todo: maybe do this via generated == function?
     expr->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
-        *expr, *expr, *sm, true, true, true, true, true, true, meta);
+        *expr, *expr, *sm, true, true, true, true, true, meta);
 }
 
 
-auto spp::asts::CasePatternVariantExpressionAst::stage_10_code_gen_2(
+auto spp::asts::CasePatternVariantExpressionAst::stage_9_comptime_resolution(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    CompilerMetaData *meta)
+    -> void {
+    // Transform the pattern into comptime values; all need to be true.
+    auto comptime_tranforms = analyse::utils::case_utils::create_and_analyse_pattern_eq_comptime(
+        {this}, sm, meta);
+
+    // Return the single result (only one expression will be here).
+    meta->cmp_result = std::move(comptime_tranforms[0]);
+}
+
+
+auto spp::asts::CasePatternVariantExpressionAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Turn the "literal part" into a function argument.
-    auto eq_arg_conv = std::make_unique<ConventionRefAst>(nullptr);
-    auto eq_arg_val = ast_clone(expr.get());
-    auto eq_arg = std::make_unique<FunctionCallArgumentPositionalAst>(std::move(eq_arg_conv), nullptr, std::move(eq_arg_val));
-
-    // Create the ".eq" part.
-    auto eq_field_name = std::make_unique<IdentifierAst>(0, "eq");
-    auto eq_field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(eq_field_name));
-    auto eq_pf_expr = std::make_unique<PostfixExpressionAst>(ast_clone(meta->case_condition), std::move(eq_field));
-
-    // Make the ".eq" part callable, as ".eq()" (no arguments right now)
-    auto eq_call = std::make_unique<PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
-    const auto eq_call_expr = std::make_unique<PostfixExpressionAst>(std::move(eq_pf_expr), std::move(eq_call));
-    eq_call->arg_group->args.emplace_back(std::move(eq_arg));
-
-    // Generate the equality check.
-    const auto llvm_call = eq_call_expr->stage_10_code_gen_2(sm, meta, ctx);
-    return llvm_call;
+    const auto llvm_master_transform = analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_llvm(
+        {this}, sm, meta, ctx);
+    return llvm_master_transform[0];
 }

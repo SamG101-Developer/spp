@@ -1,14 +1,20 @@
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/generic_argument_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/type_unary_expression_ast.hpp>
-#include <spp/asts/type_unary_expression_operator_ast.hpp>
-#include <spp/asts/type_unary_expression_operator_borrow_ast.hpp>
-#include <spp/asts/type_unary_expression_operator_namespace_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.type_unary_expression_ast;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
+import spp.asts.convention_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.type_unary_expression_operator_ast;
+import spp.asts.type_unary_expression_operator_borrow_ast;
+import spp.asts.type_unary_expression_operator_namespace_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::TypeUnaryExpressionAst::TypeUnaryExpressionAst(
@@ -17,9 +23,6 @@ spp::asts::TypeUnaryExpressionAst::TypeUnaryExpressionAst(
     op(std::move(op)),
     rhs(std::move(rhs)) {
 }
-
-
-spp::asts::TypeUnaryExpressionAst::~TypeUnaryExpressionAst() = default;
 
 
 auto spp::asts::TypeUnaryExpressionAst::equals(
@@ -69,18 +72,8 @@ spp::asts::TypeUnaryExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypeUnaryExpressionAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(op);
-    SPP_PRINT_APPEND(rhs);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::TypeUnaryExpressionAst::iterator() const
-    -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> {
+    -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
     // Iterate from the right-hand-side.
     return rhs->iterator();
 }
@@ -126,7 +119,7 @@ auto spp::asts::TypeUnaryExpressionAst::type_parts()
 
 auto spp::asts::TypeUnaryExpressionAst::without_convention() const
     -> std::shared_ptr<const TypeAst> {
-    if (ast_cast<TypeUnaryExpressionOperatorBorrowAst>(op.get())) {
+    if (op->to<TypeUnaryExpressionOperatorBorrowAst>() != nullptr) {
         return rhs;
     }
     return std::dynamic_pointer_cast<const TypeAst>(shared_from_this());
@@ -135,7 +128,7 @@ auto spp::asts::TypeUnaryExpressionAst::without_convention() const
 
 auto spp::asts::TypeUnaryExpressionAst::get_convention() const
     -> ConventionAst* {
-    if (auto const *op_borrow = ast_cast<TypeUnaryExpressionOperatorBorrowAst>(op.get())) {
+    if (auto const *op_borrow = op->to<TypeUnaryExpressionOperatorBorrowAst>()) {
         return op_borrow->conv.get();
     }
     return nullptr;
@@ -148,7 +141,7 @@ auto spp::asts::TypeUnaryExpressionAst::with_convention(
     if (conv == nullptr) {
         return std::make_shared<TypeUnaryExpressionAst>(op, rhs);
     }
-    if (ast_cast<TypeUnaryExpressionOperatorBorrowAst>(op.get())) {
+    if (op->to<TypeUnaryExpressionOperatorBorrowAst>()) {
         return std::make_shared<TypeUnaryExpressionAst>(
             std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)),
             rhs);
@@ -191,12 +184,12 @@ auto spp::asts::TypeUnaryExpressionAst::with_generics(
 
 auto spp::asts::TypeUnaryExpressionAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Qualify the RHS type.
-    if (const auto op_ns = ast_cast<TypeUnaryExpressionOperatorNamespaceAst>(op.get())) {
+    if (const auto op_ns = op->to<TypeUnaryExpressionOperatorNamespaceAst>()) {
         const auto tm = ScopeManager(sm->global_scope, meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope);
-        const auto type_scope = analyse::utils::type_utils::get_namespaced_scope_with_error(tm, *op_ns->ns);
+        const auto type_scope = analyse::utils::type_utils::get_ns_scope_or_error(*tm.current_scope, *op_ns->ns, tm);
         meta->save();
         meta->type_analysis_type_scope = type_scope;
         rhs->stage_4_qualify_types(sm, meta);
@@ -210,12 +203,12 @@ auto spp::asts::TypeUnaryExpressionAst::stage_4_qualify_types(
 
 auto spp::asts::TypeUnaryExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the RHS type.
-    if (const auto op_ns = ast_cast<TypeUnaryExpressionOperatorNamespaceAst>(op.get())) {
+    if (const auto op_ns = op->to<TypeUnaryExpressionOperatorNamespaceAst>()) {
         const auto tm = ScopeManager(sm->global_scope, meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope);
-        const auto type_scope = analyse::utils::type_utils::get_namespaced_scope_with_error(tm, *op_ns->ns);
+        const auto type_scope = analyse::utils::type_utils::get_ns_scope_or_error(*tm.current_scope, *op_ns->ns, tm);
         meta->save();
         meta->type_analysis_type_scope = type_scope;
         rhs->stage_7_analyse_semantics(sm, meta);
@@ -229,7 +222,7 @@ auto spp::asts::TypeUnaryExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::TypeUnaryExpressionAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Infer the RHS type.
     const auto type_scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;

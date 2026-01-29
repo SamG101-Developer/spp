@@ -1,5 +1,6 @@
 #pragma once
 
+#define SPP_VERSION "0.1.0"
 
 #define SPP_ATTR_NODISCARD [[nodiscard]]
 
@@ -29,16 +30,110 @@
 
 #define SPP_ATTR_COLD [[gnu::cold]]
 
-#define SPP_INSTANT_INDIRECT [](auto &&x) -> decltype(auto) { return *x; }
-
-#define SPP_NO_ASAN __attribute__((no_sanitize_address))
-
 #define SPP_IS_DEBUG_BUILD (defined(_DEBUG) || !defined(NDEBUG))
 
-#define SPP_ASSERT(x)                                                                                         \
-    do {                                                                                                      \
-        if (!(x)) {                                                                                           \
-            std::cerr << "Assertion failed: " #x ", file " << __FILE__ << ", line " << __LINE__ << std::endl; \
-            std::abort();                                                                                     \
-        }                                                                                                     \
-    } while (0)
+#ifndef NDEBUG
+    #define SPP_ASSERT(x)                                                                                         \
+        do {                                                                                                      \
+            if (!(x)) {                                                                                           \
+                std::cerr << "Assertion failed: " #x ", file " << __FILE__ << ", line " << __LINE__ << std::endl; \
+                std::abort();                                                                                     \
+            }                                                                                                     \
+        } while (0)
+#else
+    #define SPP_ASSERT(x) do {} while (0)
+#endif
+
+#ifndef NDEBUG
+    #define SPP_LOG(x)                                                                                            \
+        do {                                                                                                      \
+            std::cerr << "[SPP LOG] " << x << " (file " << __FILE__ << ", line " << __LINE__ << ")" << std::endl; \
+        } while (0)
+#else
+    #define SPP_LOG(x) do {} while (0)
+#endif
+
+
+#define SPP_ASSERT_LLVM_TYPE_OPAQUE(llvm_type)                                  \
+    if (auto st = llvm::dyn_cast<llvm::StructType>(llvm_type); st != nullptr) { \
+        SPP_ASSERT(st->isOpaque());                                             \
+    }
+
+
+#define SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(ast_attr, ...)                               \
+    if ((ast_attr).get() == nullptr) {                                                 \
+        (ast_attr) = std::remove_cvref_t<decltype(*ast_attr)>::new_empty(__VA_ARGS__); \
+    }
+
+#define SPP_STRING_START auto raw_string = std::string()
+
+#define SPP_STRING_APPEND(x) raw_string.append(x != nullptr ? static_cast<std::string>(*x) : "")
+
+#define SPP_STRING_EXTEND(x, j) raw_string.append(x | genex::views::transform([&](auto &&x) { return static_cast<std::string>(*x); }) | genex::views::intersperse(std::string(j)) | genex::views::join | genex::to<std::string>())
+
+#define SPP_STRING_END return raw_string
+
+#define SPP_AST_KEY_FUNCTIONS                                               \
+    SPP_ATTR_NODISCARD auto pos_start() const -> std::size_t override;      \
+    SPP_ATTR_NODISCARD auto pos_end() const -> std::size_t override;        \
+    SPP_ATTR_NODISCARD auto clone() const -> std::unique_ptr<Ast> override; \
+    SPP_ATTR_NODISCARD explicit operator std::string() const override;
+
+
+// Macro to take the 0th element of a list if the list is not empty, else return a default value.
+#define OR_NULL(list) \
+    ((not (list).empty()) ? (list)[0] : decltype(list)::value_type{})
+
+
+#define SPP_ENFORCE_EXPRESSION_SUBTYPE(ast)                                            \
+    raise_if<analyse::errors::SppExpressionTypeInvalidError>(                          \
+        ast and ((ast->to<TypeAst>() != nullptr) or (ast->to<TokenAst>() != nullptr)), \
+        {sm->current_scope}, ERR_ARGS(*ast))
+
+
+#define SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(ast)       \
+    raise_if<analyse::errors::SppExpressionTypeInvalidError>( \
+        ast and ast->to<TypeAst>() != nullptr,                \
+        {sm->current_scope}, ERR_ARGS(*ast))
+
+
+#define SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TYPE(ast)        \
+    raise_if<analyse::errors::SppExpressionTypeInvalidError>( \
+        ast and ast->to<TokenAst>() != nullptr,               \
+        {sm->current_scope}, ERR_ARGS(*ast))
+
+
+#define SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(ast, type, m, what, ...)                \
+    raise_if<analyse::errors::SppSecondClassBorrowViolationError>(                        \
+        analyse::utils::type_utils::is_type_borrowed(*type, m __VA_OPT__(, __VA_ARGS__)), \
+        {sm->current_scope}, ERR_ARGS(*ast, *type, what))
+
+
+#define SPP_RETURN_TYPE_OVERLOAD_HELPER(expr) \
+    if (auto pe = expr->to<PostfixExpressionAst>(); pe != nullptr and pe->op->to<PostfixExpressionOperatorFunctionCallAst>() != nullptr)
+
+
+#define SPP_DEREF_ALLOW_MOVE_HELPER(expr) \
+    if (auto pe = expr->to<PostfixExpressionAst>(); pe != nullptr and pe->op->to<PostfixExpressionOperatorDerefAst>() != nullptr)
+
+
+#define SPP_EXP_CLS export extern "C++"
+
+#define SPP_EXP_ENUM export extern "C++"
+
+#define SPP_EXP_FUN export
+
+#define SPP_EXP_CMP export inline
+
+
+/**
+ * Shortcut to create an empty list of annotations for structs that contain an annotation list. The usual @c {} cannot
+ * be used, because it is interpreted as an "empty initializer list".
+ */
+#define SPP_NO_ANNOTATIONS std::vector<std::unique_ptr<asts::AnnotationAst>>()
+
+#define SPP_LLVM_FUNC_INFO analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto
+
+#define co_yield_from(expr)  \
+    for (auto && val : expr) \
+        co_yield val;

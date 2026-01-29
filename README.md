@@ -22,4 +22,19 @@ The S++ Compiler is currently in development and has not reached its first offic
 - Until that time, use of the compiler is at your own discretion and no license enforcement will be applied.
 - By using pre-release versions, you acknowledge that features are incomplete and subject to change.
 
+## C++ Todo
 
+- Some destructors have to be defined in the `.ixx` file to force `typeinfo` to be available.
+- This creates the need for the cycle breaking `std::map` that stores object pairs (**must** remove).
+
+## Feature Roadmap
+
+1. Generic constraints. Apply them to function arguments, object arguments and superimposition restrictions. They need
+   to include fallthrough, so a constrained class generic's argument must be constrained from `sup` in the same way.
+   Equality checker should be able to handle this.
+
+
+2. Constant expressions. Allow `cmp` as a regular statement in function bodies, and attach the literal value to the
+   variable symbol. Allow `cmp` functions (maybe subroutines only?) that can be evaluated at compile time. Low level
+   functions can be defined as `cmp` and have built in computation logic because they are `@compiler_builtin`? Add
+   `cmp loop` to iterate elements of a tuple -> unroll at compile time.

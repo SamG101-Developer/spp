@@ -1,28 +1,28 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/order_utils.hpp>
-#include <spp/asts/function_parameter_self_ast.hpp>
-#include <spp/asts/generic_parameter_ast.hpp>
-#include <spp/asts/generic_parameter_comp_optional_ast.hpp>
-#include <spp/asts/generic_parameter_comp_required_ast.hpp>
-#include <spp/asts/generic_parameter_comp_variadic_ast.hpp>
-#include <spp/asts/generic_parameter_group_ast.hpp>
-#include <spp/asts/generic_parameter_type_inline_constraints_ast.hpp>
-#include <spp/asts/generic_parameter_type_optional_ast.hpp>
-#include <spp/asts/generic_parameter_type_required_ast.hpp>
-#include <spp/asts/generic_parameter_type_variadic_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
-#include <genex/to_container.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/duplicates.hpp>
-#include <genex/views/for_each.hpp>
-#include <genex/views/materialize.hpp>
-#include <genex/views/ptr.hpp>
+module spp.asts.generic_parameter_group_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.order_utils;
+import spp.asts.generic_parameter_ast;
+import spp.asts.generic_parameter_comp_ast;
+import spp.asts.generic_parameter_comp_optional_ast;
+import spp.asts.generic_parameter_comp_required_ast;
+import spp.asts.generic_parameter_comp_variadic_ast;
+import spp.asts.generic_parameter_type_ast;
+import spp.asts.generic_parameter_type_required_ast;
+import spp.asts.generic_parameter_type_optional_ast;
+import spp.asts.generic_parameter_type_variadic_ast;
+import spp.asts.generic_parameter_type_inline_constraints_ast;
+import spp.asts.token_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.mixins.orderable_ast;
+import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
+import genex;
 
 
 spp::asts::GenericParameterGroupAst::GenericParameterGroupAst(
@@ -52,8 +52,16 @@ auto spp::asts::GenericParameterGroupAst::operator+(
 auto spp::asts::GenericParameterGroupAst::operator+=(
     GenericParameterGroupAst const &other)
     -> GenericParameterGroupAst& {
+    auto existing_names = std::vector<std::string>();
+    for (auto &&p : params) {
+        existing_names.push_back(p->name->to_string());
+    }
     for (auto &&p : other.params) {
+        // Don't add duplicate named parameters.
+        auto new_name = p->name->to_string();
+        if (genex::contains(existing_names, new_name)) { continue; }
         params.push_back(ast_clone(p));
+        existing_names.push_back(new_name);
     }
     return *this;
 }
@@ -84,23 +92,10 @@ spp::asts::GenericParameterGroupAst::operator std::string() const {
     SPP_STRING_START;
     if (not params.empty()) {
         SPP_STRING_APPEND(tok_l);
-        SPP_STRING_EXTEND(params);
+        SPP_STRING_EXTEND(params, ", ");
         SPP_STRING_APPEND(tok_r);
     }
     SPP_STRING_END;
-}
-
-
-auto spp::asts::GenericParameterGroupAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    if (not params.empty()) {
-        SPP_PRINT_APPEND(tok_l);
-        SPP_PRINT_EXTEND(params);
-        SPP_PRINT_APPEND(tok_r);
-    }
-    SPP_PRINT_END;
 }
 
 
@@ -113,62 +108,46 @@ auto spp::asts::GenericParameterGroupAst::new_empty()
 
 auto spp::asts::GenericParameterGroupAst::get_required_params() const
     -> std::vector<GenericParameterAst*> {
-    auto required_type = params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericParameterTypeRequiredAst*>()
-        | genex::views::cast_dynamic<GenericParameterAst*>()
-        | genex::to<std::vector>();
-
-    auto required_comp = params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericParameterCompRequiredAst*>()
-        | genex::views::cast_dynamic<GenericParameterAst*>()
-        | genex::to<std::vector>();
-
-    return genex::views::concat(required_type, required_comp)
-        | genex::to<std::vector>();
+    // Filter by casting.
+    auto out = std::vector<GenericParameterAst*>();
+    for (auto &&p : params) {
+        if (const auto req_type = p->to<GenericParameterTypeRequiredAst>()) {
+            out.push_back(req_type->to<GenericParameterAst>());
+        }
+        else if (const auto req_comp = p->to<GenericParameterCompRequiredAst>()) {
+            out.push_back(req_comp->to<GenericParameterAst>());
+        }
+    }
+    return out;
 }
 
 
 auto spp::asts::GenericParameterGroupAst::get_optional_params() const
     -> std::vector<GenericParameterAst*> {
-    auto optional_type = params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericParameterTypeOptionalAst*>()
-        | genex::views::cast_dynamic<GenericParameterAst*>()
-        | genex::to<std::vector>();
-
-    auto optional_comp = params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericParameterCompOptionalAst*>()
-        | genex::views::cast_dynamic<GenericParameterAst*>()
-        | genex::to<std::vector>();
-
-    return genex::views::concat(optional_type, optional_comp)
-        | genex::to<std::vector>();
+    // Filter by casting.
+    auto out = std::vector<GenericParameterAst*>();
+    for (auto &&p : params) {
+        if (const auto opt_type = p->to<GenericParameterTypeOptionalAst>()) {
+            out.push_back(opt_type->to<GenericParameterAst>());
+        }
+        else if (const auto opt_comp = p->to<GenericParameterCompOptionalAst>()) {
+            out.push_back(opt_comp->to<GenericParameterAst>());
+        }
+    }
+    return out;
 }
 
 
 auto spp::asts::GenericParameterGroupAst::get_variadic_param() const
     -> GenericParameterAst* {
-    auto variadic_type = params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericParameterTypeVariadicAst*>()
-        | genex::views::cast_dynamic<GenericParameterAst*>()
-        | genex::to<std::vector>();
-
-    auto variadic_comp = params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericParameterCompVariadicAst*>()
-        | genex::views::cast_dynamic<GenericParameterAst*>()
-        | genex::to<std::vector>();
-
-    const auto variadics = genex::views::concat(variadic_type, variadic_comp)
-        | genex::to<std::vector>();
-
-    if (variadics.size() > 1) {
-        // This should have been caught in parsing, but just in case.
-        throw std::runtime_error("Internal compiler error: Multiple variadic generic parameters found.");
+    auto variadics = std::vector<GenericParameterAst*>();
+    for (auto &&p : params) {
+        if (const auto var_type = p->to<GenericParameterTypeVariadicAst>()) {
+            variadics.push_back(var_type->to<GenericParameterAst>());
+        }
+        else if (const auto var_comp = p->to<GenericParameterCompVariadicAst>()) {
+            variadics.push_back(var_comp->to<GenericParameterAst>());
+        }
     }
 
     return variadics.empty() ? nullptr : variadics[0];
@@ -177,28 +156,38 @@ auto spp::asts::GenericParameterGroupAst::get_variadic_param() const
 
 auto spp::asts::GenericParameterGroupAst::get_comp_params() const
     -> std::vector<GenericParameterCompAst*> {
-    return params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericParameterCompAst*>()
-        | genex::to<std::vector>();
+    // Filter by casting.
+    auto out = std::vector<GenericParameterCompAst*>();
+    for (auto &&p : params) {
+        if (const auto comp_param = p->to<GenericParameterCompAst>()) {
+            out.push_back(comp_param);
+        }
+    }
+    return out;
 }
 
 
 auto spp::asts::GenericParameterGroupAst::get_type_params() const
     -> std::vector<GenericParameterTypeAst*> {
-    return params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericParameterTypeAst*>()
-        | genex::to<std::vector>();
+    // Filter by casting.
+    auto out = std::vector<GenericParameterTypeAst*>();
+    for (auto &&p : params) {
+        if (const auto type_param = p->to<GenericParameterTypeAst>()) {
+            out.push_back(type_param);
+        }
+    }
+    return out;
 }
 
 
 auto spp::asts::GenericParameterGroupAst::get_all_params() const
     -> std::vector<GenericParameterAst*> {
-    return params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<GenericParameterAst*>()
-        | genex::to<std::vector>();
+    // Return all parameters.
+    auto out = std::vector<GenericParameterAst*>();
+    for (auto &&p : params) {
+        out.push_back(p.get());
+    }
+    return out;
 }
 
 
@@ -207,14 +196,14 @@ auto spp::asts::GenericParameterGroupAst::opt_to_req() const
     // Convert all optional parameters to required parameters.
     auto new_params = std::vector<std::unique_ptr<GenericParameterAst>>();
     for (auto &&p : params) {
-        if (const auto opt_type = ast_cast<GenericParameterTypeOptionalAst>(p.get())) {
+        if (const auto opt_type = p->to<GenericParameterTypeOptionalAst>(); opt_type != nullptr) {
             auto param = std::make_unique<GenericParameterTypeRequiredAst>(ast_clone(opt_type->name), ast_clone(opt_type->constraints));
-            auto cast_param = ast_cast<GenericParameterAst>(std::move(param));
+            auto cast_param = std::unique_ptr<GenericParameterAst>(param.release()->to<GenericParameterAst>());
             new_params.emplace_back(std::move(cast_param));
         }
-        else if (const auto opt_comp = ast_cast<GenericParameterCompOptionalAst>(p.get())) {
+        else if (const auto opt_comp = p->to<GenericParameterCompOptionalAst>(); opt_comp != nullptr) {
             auto param = std::make_unique<GenericParameterCompRequiredAst>(nullptr, ast_clone(opt_comp->name), nullptr, ast_clone(opt_comp->type));
-            auto cast_param = ast_cast<GenericParameterAst>(std::move(param));
+            auto cast_param = std::unique_ptr<GenericParameterAst>(param.release()->to<GenericParameterAst>());
             new_params.emplace_back(std::move(cast_param));
         }
         else {
@@ -228,30 +217,33 @@ auto spp::asts::GenericParameterGroupAst::opt_to_req() const
 
 auto spp::asts::GenericParameterGroupAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Run the generation steps on the parameters in the group.
-    params | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
+    for (auto &&x : params) {
+        x->stage_2_gen_top_level_scopes(sm, meta);
+    }
 }
 
 
 auto spp::asts::GenericParameterGroupAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Run the type qualifier steps on each parameter in the group.
-    params | genex::views::for_each([sm, meta](auto &&x) { x->stage_4_qualify_types(sm, meta); });
+    for (auto &&x : params) {
+        x->stage_4_qualify_types(sm, meta);
+    }
 }
 
 
 auto spp::asts::GenericParameterGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
-
     const auto param_names = params
         | genex::views::transform([](auto &&x) { return x->name.get(); })
-        | genex::views::materialize
+        | genex::to<std::vector>()
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
@@ -261,26 +253,41 @@ auto spp::asts::GenericParameterGroupAst::stage_7_analyse_semantics(
         | genex::to<std::vector>());
 
     // Check there are no duplicate parameter names.
-    if (not param_names.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
-            *param_names[0], *param_names[1], "keyword function-argument").with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppIdentifierDuplicateError>(
+        not param_names.empty(), {sm->current_scope},
+        ERR_ARGS(*param_names[0], *param_names[1], "keyword function-argument"));
 
     // Check the parameters are in the correct order.
-    if (not unordered_params.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>().with_args(
-            unordered_params[0].first, *unordered_params[0].second, unordered_params[1].first, *unordered_params[1].second).with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppOrderInvalidError>(
+        not unordered_params.empty(), {sm->current_scope},
+        ERR_ARGS(unordered_params[0].first, *unordered_params[0].second, unordered_params[1].first, *unordered_params[1].second));
 
     // Run the semantic analysis steps on each parameter in the group.
-    params | genex::views::for_each([sm, meta](auto &&x) { x->stage_7_analyse_semantics(sm, meta); });
+    for (auto &&x : params) {
+        x->stage_7_analyse_semantics(sm, meta);
+    }
 }
 
 
 auto spp::asts::GenericParameterGroupAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Run the memory checks on each parameter in the group.
-    params | genex::views::for_each([sm, meta](auto &&x) { x->stage_8_check_memory(sm, meta); });
+    for (auto &&x : params) {
+        x->stage_8_check_memory(sm, meta);
+    }
+}
+
+
+auto spp::asts::GenericParameterGroupAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Run the code generation steps on each parameter in the group.
+    for (auto &&x : params) {
+        x->stage_11_code_gen_2(sm, meta, ctx);
+    }
+    return nullptr;
 }

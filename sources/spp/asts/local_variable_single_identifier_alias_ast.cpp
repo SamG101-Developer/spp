@@ -1,6 +1,11 @@
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.local_variable_single_identifier_alias_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 
 
 spp::asts::LocalVariableSingleIdentifierAliasAst::LocalVariableSingleIdentifierAliasAst(
@@ -8,6 +13,7 @@ spp::asts::LocalVariableSingleIdentifierAliasAst::LocalVariableSingleIdentifierA
     decltype(name) &&name) :
     tok_as(std::move(tok_as)),
     name(std::move(name)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_as, lex::SppTokenType::KW_AS, "as");
 }
 
 
@@ -36,17 +42,7 @@ auto spp::asts::LocalVariableSingleIdentifierAliasAst::clone() const
 
 spp::asts::LocalVariableSingleIdentifierAliasAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_as);
+    SPP_STRING_APPEND(tok_as).append_range(" ");
     SPP_STRING_APPEND(name);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::LocalVariableSingleIdentifierAliasAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_as);
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_END;
 }

@@ -1,17 +1,23 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/tuple_literal_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
-#include <genex/algorithms/all_of.hpp>
-#include <genex/views/indirect.hpp>
-#include <genex/views/zip.hpp>
+module spp.asts.tuple_literal_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.generate.common_types;
+import spp.lex.tokens;
+import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_type;
+import spp.utils.uid;
+import genex;
 
 
 spp::asts::TupleLiteralAst::TupleLiteralAst(
@@ -27,9 +33,6 @@ spp::asts::TupleLiteralAst::TupleLiteralAst(
 }
 
 
-spp::asts::TupleLiteralAst::~TupleLiteralAst() = default;
-
-
 auto spp::asts::TupleLiteralAst::equals(
     ExpressionAst const &other) const
     -> std::strong_ordering {
@@ -40,7 +43,7 @@ auto spp::asts::TupleLiteralAst::equals(
 auto spp::asts::TupleLiteralAst::equals_tuple_literal(
     TupleLiteralAst const &other) const
     -> std::strong_ordering {
-    if (elems.size() == other.elems.size() and genex::algorithms::all_of(
+    if (elems.size() == other.elems.size() and genex::all_of(
         genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::to<std::vector>(),
         [](auto const &pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
         return std::strong_ordering::equal;
@@ -73,63 +76,99 @@ auto spp::asts::TupleLiteralAst::clone() const
 spp::asts::TupleLiteralAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_l);
-    SPP_STRING_EXTEND(elems);
+    SPP_STRING_EXTEND(elems, ", ");
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;
 }
 
 
-auto spp::asts::TupleLiteralAst::print(meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(elems);
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::TupleLiteralAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the elements in the tuple.
     for (auto const &elem : elems) {
-        ENFORCE_EXPRESSION_SUBTYPE(elem.get());
+        SPP_ENFORCE_EXPRESSION_SUBTYPE(elem.get());
         elem->stage_7_analyse_semantics(sm, meta);
     }
 
     // Check all the elements are owned by the tuple, not borrowed.
-    for (auto const &elem : elems | genex::views::indirect) {
-        if (auto [elem_sym, _] = sm->current_scope->get_var_symbol_outermost(elem); elem_sym != nullptr) {
-            if (const auto borrow_ast = std::get<0>(elem_sym->memory_info->ast_borrowed)) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
-                    elem, *borrow_ast, "explicit array element type").with_scopes({sm->current_scope}).raise();
-            }
-        }
+    for (auto const &elem : elems | genex::views::ptr) {
+        auto elem_type = elem->infer_type(sm, meta);
+        SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(elem, elem_type, *sm, "tuple literal element");
     }
 
-    // Analyse the inferred array type to generate the generic implementation.
+    // Analyse the inferred tuple type to generate the generic implementation.
     infer_type(sm, meta)->stage_7_analyse_semantics(sm, meta);
 }
 
 
 auto spp::asts::TupleLiteralAst::stage_8_check_memory(
-    ScopeManager * sm,
-    mixins::CompilerMetaData * meta)
+    ScopeManager *sm,
+    CompilerMetaData *meta)
     -> void {
-    // Check the memory of each element in the array literal.
+    // Check the memory of each element in the tuple literal.
     for (auto &&elem : elems) {
         elem->stage_8_check_memory(sm, meta);
         analyse::utils::mem_utils::validate_symbol_memory(
-            *elem, *elem, *sm, true, true, true, true, true, false, meta);
+            *elem, *elem, *sm, true, true, true, true, false, meta);
     }
+}
+
+
+auto spp::asts::TupleLiteralAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Convert the inner elements to compile-time values.
+    auto cmp_elems = std::vector<std::unique_ptr<ExpressionAst>>();
+    for (auto const &elem : elems) {
+        elem->stage_9_comptime_resolution(sm, meta);
+        cmp_elems.emplace_back(std::move(meta->cmp_result));
+    }
+
+    // Wrap the compile-time array value.
+    meta->cmp_result = std::make_unique<TupleLiteralAst>(
+        nullptr, std::move(cmp_elems), nullptr);
+}
+
+
+auto spp::asts::TupleLiteralAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Create a struct, to hold the tuple elements (runtime numeric access maps to field indices).
+    const auto uid = spp::utils::generate_uid(this);
+    const auto tuple_type = infer_type(sm, meta);
+    const auto tuple_type_sym = sm->current_scope->get_type_symbol(tuple_type);
+    const auto llvm_type = codegen::llvm_type(*tuple_type_sym, ctx);
+    SPP_ASSERT(llvm_type != nullptr);
+
+    // Create the alloca for the tuple.
+    const auto alloca = ctx->builder.CreateAlloca(llvm_type, nullptr, "tuple.alloca" + uid);
+    SPP_ASSERT(alloca != nullptr);
+
+    // Store each element into the tuple alloca.
+    for (std::size_t i = 0; i < elems.size(); ++i) {
+        const auto elem_value = elems[i]->stage_11_code_gen_2(sm, meta, ctx);
+        SPP_ASSERT(elem_value != nullptr);
+
+        const auto const_idx_0 = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), 0);
+        const auto const_idx_1 = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), i);
+        const auto elem_ptr = ctx->builder.CreateGEP(llvm_type, alloca, {const_idx_0, const_idx_1}, "tuple.elem.ptr" + uid);
+        ctx->builder.CreateStore(elem_value, elem_ptr);
+    }
+
+    // Load the tuple value from the alloca and return it.
+    const auto tuple_value = ctx->builder.CreateLoad(llvm_type, alloca, "tuple.val" + uid);
+    return tuple_value;
 }
 
 
 auto spp::asts::TupleLiteralAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Create a "..Ts" type, for the tuple type.
     auto types_gen = elems

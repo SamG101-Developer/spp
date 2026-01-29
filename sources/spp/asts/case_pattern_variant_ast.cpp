@@ -1,15 +1,18 @@
-#include <spp/asts/case_pattern_variant_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-
-
-spp::asts::CasePatternVariantAst::~CasePatternVariantAst() = default;
+module spp.asts.case_pattern_variant_ast;
+import spp.asts.local_variable_ast;
+import spp.asts.meta.compiler_meta_data;
 
 
 auto spp::asts::CasePatternVariantAst::convert_to_variable(
-    mixins::CompilerMetaData *)
+    meta::CompilerMetaData *)
     -> std::unique_ptr<LocalVariableAst> {
+    // Default implementation for case pattern variants that do not create variables.
     return nullptr;
+}
+
+
+auto spp::asts::CasePatternVariantAst::stage_9_comptime_resolution(
+    ScopeManager *,
+    CompilerMetaData *)
+    -> void {
 }

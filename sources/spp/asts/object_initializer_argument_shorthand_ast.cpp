@@ -1,17 +1,32 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/object_initializer_argument_shorthand_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
+
+module spp.asts.object_initializer_argument_shorthand_ast;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.asts.expression_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 
 
 spp::asts::ObjectInitializerArgumentShorthandAst::ObjectInitializerArgumentShorthandAst(
     std::unique_ptr<TokenAst> tok_ellipsis,
     std::unique_ptr<ExpressionAst> &&val) :
-    ObjectInitializerArgumentAst(ast_cast<IdentifierAst>(ast_clone(val)), std::move(val)),
+    ObjectInitializerArgumentAst(ast_clone(val->to<IdentifierAst>()), std::move(val)),
     tok_ellipsis(std::move(tok_ellipsis)) {
+}
+
+
+auto spp::asts::ObjectInitializerArgumentShorthandAst::create_autofill(
+    std::unique_ptr<ExpressionAst> &&val)
+    -> std::unique_ptr<ObjectInitializerArgumentShorthandAst> {
+    return std::make_unique<ObjectInitializerArgumentShorthandAst>(
+        TokenAst::new_empty(lex::SppTokenType::TK_DOUBLE_DOT, ".."),
+        std::move(val));
 }
 
 
@@ -46,23 +61,13 @@ spp::asts::ObjectInitializerArgumentShorthandAst::operator std::string() const {
 }
 
 
-auto spp::asts::ObjectInitializerArgumentShorthandAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_ellipsis);
-    SPP_PRINT_APPEND(val);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::ObjectInitializerArgumentShorthandAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    CompilerMetaData *meta)
+    -> void {
     // The parser allows Type(123) as a postfix function call over a type, which is invalid as type initialization.
-    if (ast_cast<IdentifierAst>(val.get()) == nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppObjectInitializerInvalidArgumentError>().with_args(
-            *this).with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppObjectInitializerInvalidArgumentError>(
+        val->to<IdentifierAst>() == nullptr,
+        {sm->current_scope}, ERR_ARGS(*this));
     ObjectInitializerArgumentAst::stage_7_analyse_semantics(sm, meta);
 }

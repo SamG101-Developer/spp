@@ -1,25 +1,31 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/fold_expression_ast.hpp>
-#include <spp/asts/function_call_argument_positional_ast.hpp>
-#include <spp/asts/function_prototype_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/postfix_expression_operator_index_ast.hpp>
-#include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/generate/common_types_precompiled.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
-#include <genex/to_container.hpp>
-#include <genex/views/filter.hpp>
+module spp.asts.postfix_expression_operator_index_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
+import spp.asts.convention_ast;
+import spp.asts.expression_ast;
+import spp.asts.fold_expression_ast;
+import spp.asts.function_call_argument_ast;
+import spp.asts.function_call_argument_group_ast;
+import spp.asts.function_call_argument_positional_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.generate.common_types_precompiled;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
+import genex;
 
 
 spp::asts::PostfixExpressionOperatorIndexAst::PostfixExpressionOperatorIndexAst(
@@ -66,37 +72,32 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::clone() const
 
 spp::asts::PostfixExpressionOperatorIndexAst::operator std::string() const {
     SPP_STRING_START;
+    if (m_mapped_func != nullptr) {
+        SPP_STRING_APPEND(m_mapped_func->op);
+        SPP_STRING_END;
+    }
     SPP_STRING_APPEND(tok_l);
-    SPP_STRING_APPEND(tok_mut);
+    SPP_STRING_APPEND(tok_mut).append(tok_mut ? " " : "");
     SPP_STRING_APPEND(expr);
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;
 }
 
 
-auto spp::asts::PostfixExpressionOperatorIndexAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_APPEND(tok_mut);
-    SPP_PRINT_APPEND(expr);
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::PostfixExpressionOperatorIndexAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
+    // Already analysed => return early.
+    if (m_mapped_func != nullptr) { return; }
+
     // Determine the left-hand-side type.
     const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
 
     // Ensure the type superimposes the correct indexing variation.
     const auto index_type = tok_mut != nullptr
-        ? generate::common_types_precompiled::INDEX_MUT
-        : generate::common_types_precompiled::INDEX_REF;
+                                ? generate::common_types_precompiled::INDEX_MUT
+                                : generate::common_types_precompiled::INDEX_REF;
 
     const auto type_sym = sm->current_scope->get_type_symbol(lhs_type);
     auto sup_types = std::vector{lhs_type};
@@ -106,14 +107,13 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::stage_7_analyse_semantics(
         | genex::views::filter([&sm, &index_type](auto const &sup_type) { return analyse::utils::type_utils::symbolic_eq(*sup_type->without_generics(), *index_type, *sm->current_scope, *sm->current_scope); })
         | genex::to<std::vector>();
 
-    if (index_type_candidates.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionNotIndexableError>().with_args(
-            *meta->postfix_expression_lhs, *lhs_type, "runtime indexing").with_scopes({sm->current_scope}).raise();
-    }
-    if (index_type_candidates.size() > 1) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionAmbiguousIndexableError>().with_args(
-            *meta->postfix_expression_lhs, *lhs_type, "runtime indexing").with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppExpressionNotIndexableError>(
+        index_type_candidates.empty(), {sm->current_scope},
+        ERR_ARGS(*meta->postfix_expression_lhs, *lhs_type, "runtime indexing"));
+
+    raise_if<analyse::errors::SppExpressionAmbiguousIndexableError>(
+        index_type_candidates.size() > 1, {sm->current_scope},
+        ERR_ARGS(*meta->postfix_expression_lhs, *lhs_type, "runtime indexing"));
 
     // Create the mapped function for the index operator; create the index argument.
     std::unique_ptr<FunctionCallArgumentAst> arg = std::make_unique<FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(expr));
@@ -130,9 +130,18 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::stage_7_analyse_semantics(
 }
 
 
+auto spp::asts::PostfixExpressionOperatorIndexAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Forward to the mapped function.
+    m_mapped_func->stage_9_comptime_resolution(sm, meta);
+}
+
+
 auto spp::asts::PostfixExpressionOperatorIndexAst::infer_type(
     analyse::scopes::ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Forward to the mapped function's return type.
     return m_mapped_func->infer_type(sm, meta);

@@ -1,4 +1,4 @@
-#include <spp/asts/token_ast.hpp>
+module spp.asts.token_ast;
 
 
 spp::asts::TokenAst::TokenAst(
@@ -33,12 +33,6 @@ auto spp::asts::TokenAst::clone() const
 
 
 spp::asts::TokenAst::operator std::string() const {
-    return token_data;
-}
-
-
-auto spp::asts::TokenAst::print(meta::AstPrinter &) const
-    -> std::string {
     return token_data;
 }
 

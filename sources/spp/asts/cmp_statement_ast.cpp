@@ -1,19 +1,27 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/cmp_statement_ast.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/codegen/llvm_mangle.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
-#include <genex/views/for_each.hpp>
+module spp.asts.cmp_statement_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.symbols;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.annotation_ast;
+import spp.asts.convention_ast;
+import spp.asts.identifier_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_mangle;
+import spp.codegen.llvm_type;
+import spp.lex.tokens;
+import llvm;
+import genex;
 
 
 spp::asts::CmpStatementAst::CmpStatementAst(
@@ -35,9 +43,6 @@ spp::asts::CmpStatementAst::CmpStatementAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_colon, lex::SppTokenType::TK_COLON, ":");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
 }
-
-
-spp::asts::CmpStatementAst::~CmpStatementAst() = default;
 
 
 auto spp::asts::CmpStatementAst::pos_start() const
@@ -64,15 +69,17 @@ auto spp::asts::CmpStatementAst::clone() const
         ast_clone(value));
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
-    ast->m_visibility = m_visibility;
-    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->m_ctx = ast; });
+    ast->visibility = visibility;
+    for (auto const &a : ast->annotations) {
+        a->set_ast_ctx(ast.get());
+    }
     return ast;
 }
 
 
 spp::asts::CmpStatementAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(annotations);
+    SPP_STRING_EXTEND(annotations, "\n").append(not annotations.empty() ? "\n" : "");
     SPP_STRING_APPEND(tok_cmp).append(" ");
     SPP_STRING_APPEND(name);
     SPP_STRING_APPEND(tok_colon).append(" ");
@@ -83,47 +90,30 @@ spp::asts::CmpStatementAst::operator std::string() const {
 }
 
 
-auto spp::asts::CmpStatementAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_EXTEND(annotations);
-    SPP_PRINT_APPEND(tok_cmp).append(" ");
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(tok_colon).append(" ");
-    SPP_PRINT_APPEND(type).append(" ");
-    SPP_PRINT_APPEND(tok_assign).append(" ");
-    SPP_PRINT_APPEND(value);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::CmpStatementAst::stage_1_pre_process(
     Ast *ctx)
     -> void {
     // No pre-processing needed for cmp statements.
     Ast::stage_1_pre_process(ctx);
-    annotations | genex::views::for_each([this](auto &&x) { x->stage_1_pre_process(this); });
+    for (auto &&a : annotations) {
+        a->stage_1_pre_process(this);
+    }
 }
 
 
 auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // No top-level scopes needed for cmp statements.
     Ast::stage_2_gen_top_level_scopes(sm, meta);
-    annotations | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
-
-    // Ensure that the convention type doesn't have a convention.
-    if (const auto conv = type->get_convention(); conv != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
-            *this, *conv, "global constant type").with_scopes({sm->current_scope}).raise();
+    for (auto &&a : annotations) {
+        a->stage_2_gen_top_level_scopes(sm, meta);
     }
 
     // Create a symbol for this constant declaration, pin to prevent moving.
     auto sym = std::make_unique<analyse::scopes::VariableSymbol>(
-        name, type, false, false, m_visibility.first);
+        name, type, false, false, visibility.first);
     sym->memory_info->ast_pins.emplace_back(name.get());
     sym->memory_info->ast_comptime = ast_clone(this);
     sym->memory_info->initialized_by(*this, sm->current_scope);
@@ -133,50 +123,81 @@ auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::CmpStatementAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
+    // Ensure that the convention type doesn't have a convention.
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(
+        this, type, *sm, "global constant type");
+
     // Check the type exists before attaching super scopes
     type->stage_7_analyse_semantics(sm, meta);
+    type = sm->current_scope->get_type_symbol(type)->fq_name();
+    sm->current_scope->get_var_symbol(name)->type = type;
 }
 
 
 auto spp::asts::CmpStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the type and value.
-    type->stage_7_analyse_semantics(sm, meta);
     value->stage_7_analyse_semantics(sm, meta);
 
     // Check the value's type is the same as the given type.
     const auto given_type = type.get();
     const auto inferred_type = value->infer_type(sm, meta);
 
-    if (not analyse::utils::type_utils::symbolic_eq(*given_type, *inferred_type, *sm->current_scope, *sm->current_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-            *type, *given_type, *value, *inferred_type).with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppTypeMismatchError>(
+        not analyse::utils::type_utils::symbolic_eq(*given_type, *inferred_type, *sm->current_scope, *sm->current_scope),
+        {sm->current_scope}, ERR_ARGS(*type, *given_type, *value, *inferred_type));
 }
 
 
 auto spp::asts::CmpStatementAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory of the type.
     value->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
-        *value, *value, *sm, true, true, true, true, true, true, meta);
+        *value, *value, *sm, true, true, true, true, true, meta);
 }
 
 
-auto spp::asts::CmpStatementAst::stage_10_code_gen_2(
+auto spp::asts::CmpStatementAst::stage_9_comptime_resolution(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    CompilerMetaData *meta)
+    -> void {
+    // Generate the value and assign it to the variable symbol's compile-time value.
+    if (type->operator std::string()[0] != '$') {
+        const auto var_sym = sm->current_scope->get_var_symbol(name);
+        value->stage_9_comptime_resolution(sm, meta);
+        var_sym->comptime_value = std::move(meta->cmp_result);
+        // var_sym->comptime_value == nullptr // Todo: => ERROR?
+    }
+}
+
+
+auto spp::asts::CmpStatementAst::stage_10_code_gen_1(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Generate the value and store the constant.
-    const auto val = value->stage_10_code_gen_2(sm, meta, ctx);
-    ctx->global_constants[codegen::mangle::mangle_cmp_name(*sm->current_scope, *this)] = llvm::cast<llvm::Constant>(val);
+    // Generate the value in a constant context.
+    ctx->in_constant_context = true;
+    const auto val = value->stage_11_code_gen_2(sm, meta, ctx);
+    ctx->in_constant_context = false;
+
+    // Create the global variable for the constant.
+    const auto type_sym = sm->current_scope->get_type_symbol(type);
+    const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
+    const auto llvm_global_var = new llvm::GlobalVariable(
+        *ctx->module, llvm_type, true, llvm::GlobalValue::ExternalLinkage, llvm::cast<llvm::Constant>(val),
+        codegen::mangle::mangle_cmp_name(*sm->current_scope, *this));
+
+    // Register in the llvm info.
+    const auto var_sym = sm->current_scope->get_var_symbol(name);
+    var_sym->llvm_info->alloca = llvm_global_var;
+
     return nullptr;
 }

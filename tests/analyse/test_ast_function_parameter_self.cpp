@@ -8,7 +8,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup TestType {
         fun f(self) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -18,7 +18,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup TestType {
         fun f(mut self) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -28,7 +28,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup TestType {
         fun f(&mut self) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -38,4 +38,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup TestType {
         fun f(&self) -> std::void::Void { }
     }
-)");
+)");;

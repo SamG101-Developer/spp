@@ -1,12 +1,19 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
+
+module spp.asts.let_statement_initialized_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.type_utils;
+import spp.asts.local_variable_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 
 
 spp::asts::LetStatementInitializedAst::LetStatementInitializedAst(
@@ -62,31 +69,18 @@ spp::asts::LetStatementInitializedAst::operator std::string() const {
 }
 
 
-auto spp::asts::LetStatementInitializedAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_let).append(" ");
-    SPP_PRINT_APPEND(var);
-    SPP_PRINT_APPEND(type).append(" ");
-    SPP_PRINT_APPEND(tok_assign).append(" ");
-    SPP_PRINT_APPEND(val);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::LetStatementInitializedAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
+    // Todo: Test preventing "let x = void_type()" + same for "let x: Void"
     // Check the value is a valid expression type.
-    ENFORCE_EXPRESSION_SUBTYPE(val.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(val.get());
 
     // An explicit type can only be applied if the left-hand-side is a single identifier.
-    if (type != nullptr and ast_cast<LocalVariableSingleIdentifierAst>(var.get()) == nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidTypeAnnotationError>().with_args(
-            *type, *var).with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppInvalidTypeAnnotationError>(
+        type != nullptr and var->to<LocalVariableSingleIdentifierAst>() == nullptr,
+        {sm->current_scope}, ERR_ARGS(*type, *var));
 
     // Analyse the type if it has been given.
     if (type != nullptr) {
@@ -104,10 +98,9 @@ auto spp::asts::LetStatementInitializedAst::stage_7_analyse_semantics(
     if (type != nullptr) {
         meta->assignment_target_type = type;
         const auto val_type = val->infer_type(sm, meta);
-        if (not analyse::utils::type_utils::symbolic_eq(*type, *val_type, *sm->current_scope, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-                *type, *type, *val, *val_type).with_scopes({sm->current_scope}).raise();
-        }
+        raise_if<analyse::errors::SppTypeMismatchError>(
+            not analyse::utils::type_utils::symbolic_eq(*type, *val_type, *sm->current_scope, *sm->current_scope),
+            {sm->current_scope}, ERR_ARGS(*type, *type, *val, *val_type));
     }
 
     meta->let_stmt_explicit_type = type;
@@ -119,27 +112,47 @@ auto spp::asts::LetStatementInitializedAst::stage_7_analyse_semantics(
 
 auto spp::asts::LetStatementInitializedAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the variable's memory (which in turn checks the values memory - must be done this way for destructuring).
     meta->save();
     meta->assignment_target = var->extract_name();
+    meta->let_stmt_explicit_type = type;
     meta->let_stmt_value = val.get();
     var->stage_8_check_memory(sm, meta);
     meta->restore();
 }
 
 
-auto spp::asts::LetStatementInitializedAst::stage_10_code_gen_2(
+auto spp::asts::LetStatementInitializedAst::stage_9_comptime_resolution(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    CompilerMetaData *meta)
+    -> void {
+    // Comptime resolve the value.
+    val->stage_9_comptime_resolution(sm, meta);
+
+    // Assign the comptime value to the variable.
+    meta->save();
+    meta->assignment_target = var->extract_name();
+    meta->let_stmt_explicit_type = type;
+    meta->let_stmt_value = val.get();
+    var->stage_9_comptime_resolution(sm, meta);
+    meta->restore();
+}
+
+
+auto spp::asts::LetStatementInitializedAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Delegate the code generation to the variable, after setting up the meta.
     meta->save();
     meta->assignment_target = var->extract_name();
+    meta->assignment_target_type = type ? type : val->infer_type(sm, meta);
+    meta->let_stmt_explicit_type = type ? type : val->infer_type(sm, meta);
     meta->let_stmt_value = val.get();
-    const auto alloca = var->stage_10_code_gen_2(sm, meta, ctx);
+    const auto alloca = var->stage_11_code_gen_2(sm, meta, ctx);
     meta->restore();
     return alloca;
 }

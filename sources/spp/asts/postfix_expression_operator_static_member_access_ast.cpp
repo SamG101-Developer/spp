@@ -1,21 +1,24 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/utils/strings.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
-#include <genex/to_container.hpp>
-#include <genex/algorithms/min_element.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/reverse.hpp>
-#include <genex/views/transform.hpp>
+module spp.asts.postfix_expression_operator_static_member_access_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
+import spp.asts.generic_argument_type_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
+import spp.utils.strings;
+import genex;
 
 
 spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOperatorStaticMemberAccessAst(
@@ -58,29 +61,18 @@ spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::operator std::string(
 }
 
 
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_dbl_colon);
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Handle types on the left-hand-side of a static member access.
-    if (const auto lhs_as_type = ast_cast<TypeAst>(meta->postfix_expression_lhs)) {
+    if (const auto lhs_as_type = meta->postfix_expression_lhs->to<TypeAst>(); lhs_as_type != nullptr) {
         const auto lhs_type_sym = sm->current_scope->get_type_symbol(ast_clone(lhs_as_type));
 
         // Check the left-hand-side isn't a generic type. Todo: until constraints.
-        if (lhs_type_sym->is_generic) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppGenericTypeInvalidUsageError>().with_args(
-                *lhs_as_type, *lhs_as_type, "member access").with_scopes({sm->current_scope}).raise();
-        }
+        raise_if<analyse::errors::SppGenericTypeInvalidUsageError>(
+            lhs_type_sym->is_generic, {sm->current_scope},
+            ERR_ARGS(*lhs_as_type, *lhs_as_type, "member access"));
 
         // Check the target field exists on the type.
         if (not lhs_type_sym->scope->has_var_symbol(name, true)) {
@@ -89,8 +81,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
                 | genex::to<std::vector>();
 
             const auto closest_match = spp::utils::strings::closest_match(name->val, alternatives);
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierUnknownError>().with_args(
-                *this, "type member", closest_match).with_scopes({sm->current_scope}).raise();
+            raise<analyse::errors::SppIdentifierUnknownError>(
+                {sm->current_scope}, ERR_ARGS(*this, "type member", closest_match));
         }
 
         // Check there is only 1 target field on the type at the highest level.
@@ -105,7 +97,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
             | genex::views::transform([lhs_type_sym](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
             | genex::to<std::vector>();
 
-        auto min_depth = genex::algorithms::min_element(scopes_and_syms
+        auto min_depth = genex::min_element(scopes_and_syms
             | genex::views::transform([](auto &&x) { return std::get<0>(x); })
             | genex::to<std::vector>());
 
@@ -114,21 +106,20 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
             | genex::views::transform([](auto &&x) { return std::make_pair(std::get<1>(x), std::get<2>(x)); })
             | genex::to<std::vector>();
 
-        if (closest.size() > 1) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppAmbiguousMemberAccessError>().with_args(
-                *closest[0].second->name, *closest[1].second->name, *name).with_scopes({closest[0].first, closest[1].first, sm->current_scope}).raise();
-        }
+        if (closest.size() <= 1) { return; }
+        raise<analyse::errors::SppAmbiguousMemberAccessError>(
+            {closest[0].first, closest[1].first, sm->current_scope},
+            ERR_ARGS(*closest[0].second->name, *closest[1].second->name, *name));
     }
 
     else {
-        const auto lhs_as_ident = ast_cast<IdentifierAst>(meta->postfix_expression_lhs);
+        const auto lhs_as_ident = meta->postfix_expression_lhs->to<IdentifierAst>();
         const auto lhs_var_sym = sm->current_scope->get_var_symbol(ast_clone(lhs_as_ident));
 
         // Check the lhs is a namespace and not a variable.
-        if (lhs_var_sym != nullptr) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppMemberAccessRuntimeOperatorExpectedError>().with_args(
-                *meta->postfix_expression_lhs, *tok_dbl_colon).with_scopes({sm->current_scope}).raise();
-        }
+        raise_if<analyse::errors::SppMemberAccessRuntimeOperatorExpectedError>(
+            lhs_var_sym != nullptr, {sm->current_scope},
+            ERR_ARGS(*meta->postfix_expression_lhs, *tok_dbl_colon));
 
         // Check the constant exists inside the namespace.
         const auto lhs_ns_sym = sm->current_scope->convert_postfix_to_nested_scope(meta->postfix_expression_lhs)->ns_sym;
@@ -138,9 +129,11 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
                 | genex::to<std::vector>();
 
             // Todo: get the last part of postfix otherwise identifier value for string.
-            const auto closest_match = spp::utils::strings::closest_match(static_cast<std::string>(*meta->postfix_expression_lhs), alternatives);
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierUnknownError>().with_args(
-                *this, "namespace member", closest_match).with_scopes({sm->current_scope}).raise();
+            const auto closest_match = spp::utils::strings::closest_match(
+                static_cast<std::string>(*meta->postfix_expression_lhs), alternatives);
+
+            raise<analyse::errors::SppIdentifierUnknownError>(
+                {sm->current_scope}, ERR_ARGS(*this, "namespace member", closest_match));
         }
     }
 }
@@ -148,12 +141,21 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
 
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Get the left-hand-side type's member's type.
-    if (const auto lhs_as_type = ast_cast<TypeAst>(meta->postfix_expression_lhs)) {
+    if (const auto lhs_as_type = meta->postfix_expression_lhs->to<TypeAst>(); lhs_as_type != nullptr) {
         const auto lhs_type_sym = sm->current_scope->get_type_symbol(ast_clone(lhs_as_type));
-        return lhs_type_sym->scope->get_var_symbol(name, true)->type;
+        const auto sym = lhs_type_sym->scope->get_var_symbol(name, true);
+        if (sym != nullptr) { return sym->type; }
+
+        // This is where we need to handle the FwdRef/FwdMut logic.
+        auto lhs_as_type_clone = std::shared_ptr(ast_clone(lhs_as_type));
+        auto [fwd_ref_type, _] = analyse::utils::type_utils::get_fwd_types(*lhs_as_type_clone, *sm);
+        const auto inner_type = fwd_ref_type->type_parts().back()->generic_arg_group->type_at("T")->val;
+        const auto inner_type_sym = sm->current_scope->get_type_symbol(inner_type);
+        const auto fwd_sym = inner_type_sym->scope->get_var_symbol(name, true);
+        return fwd_sym->type;
     }
 
     // Get the left-hand-side namespace's member's type.

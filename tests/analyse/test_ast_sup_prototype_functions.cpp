@@ -8,7 +8,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup A {
         fun f(&self) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -21,7 +21,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 
     sup [T] Point { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -34,7 +34,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 
     sup [T, U] Point[T] { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -47,7 +47,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 
     sup [T=std::boolean::Bool] Point[T] { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -56,7 +56,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup [T] T {
         fun f(&self) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -65,7 +65,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppSecondClassBorrowViolationError, R"(
     cls A { }
     sup &mut A { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -74,7 +74,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppSecondClassBorrowViolationError, R"(
     cls A { }
     sup &A { }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -84,7 +84,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A {
         fun f(&self) -> std::void::Void { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -100,7 +100,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut y = x.f()
         y = false
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -116,4 +116,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut y = x.f()
         y = false
     }
-)");
+)");;

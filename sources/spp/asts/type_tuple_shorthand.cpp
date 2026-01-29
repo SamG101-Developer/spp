@@ -1,8 +1,12 @@
-#include <spp/pch.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_tuple_shorthand_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.type_tuple_shorthand_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.generate.common_types;
+import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::TypeTupleShorthandAst::TypeTupleShorthandAst(
@@ -43,20 +47,9 @@ auto spp::asts::TypeTupleShorthandAst::clone() const
 spp::asts::TypeTupleShorthandAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_l);
-    SPP_STRING_EXTEND(element_types);
+    SPP_STRING_EXTEND(element_types, ", ");
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::TypeTupleShorthandAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(element_types);
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
 }
 
 

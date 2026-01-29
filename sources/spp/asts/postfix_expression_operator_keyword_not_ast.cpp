@@ -1,11 +1,19 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/postfix_expression_operator_keyword_not_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
+
+module spp.asts.postfix_expression_operator_keyword_not_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.type_utils;
+import spp.asts.boolean_literal_ast;
+import spp.asts.expression_ast;
+import spp.asts.token_ast;
+import spp.asts.generate.common_types;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::PostfixExpressionOperatorKeywordNotAst::PostfixExpressionOperatorKeywordNotAst(
@@ -48,32 +56,35 @@ spp::asts::PostfixExpressionOperatorKeywordNotAst::operator std::string() const 
 }
 
 
-auto spp::asts::PostfixExpressionOperatorKeywordNotAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_dot);
-    SPP_PRINT_APPEND(tok_not);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::PostfixExpressionOperatorKeywordNotAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the left-hand-side is a boolean expression.
     const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
-    if (not analyse::utils::type_utils::is_type_boolean(*lhs_type, *sm->current_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionNotBooleanError>().with_args(
-            *meta->postfix_expression_lhs, *lhs_type, "not expression").with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppExpressionNotBooleanError>(
+        not analyse::utils::type_utils::is_type_boolean(*lhs_type, *sm->current_scope),
+        {sm->current_scope}, ERR_ARGS(*meta->postfix_expression_lhs, *lhs_type, "not expression"));
+}
+
+
+auto spp::asts::PostfixExpressionOperatorKeywordNotAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // The "lhs" will be boolean based on prevous analysis.
+    meta->postfix_expression_lhs->stage_9_comptime_resolution(sm, meta);
+    const auto cmp_lhs_bool = meta->cmp_result->to<BooleanLiteralAst>();
+
+    // Extract the value inside the boolean and invert it.
+    const auto p = pos_start();
+    meta->cmp_result = cmp_lhs_bool->is_true() ? BooleanLiteralAst::False(p) : BooleanLiteralAst::True(p);
 }
 
 
 auto spp::asts::PostfixExpressionOperatorKeywordNotAst::infer_type(
     ScopeManager *,
-    mixins::CompilerMetaData *)
+    CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // The type of a "not" expression is always boolean.
     return generate::common_types::boolean_type(pos_start());

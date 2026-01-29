@@ -1,23 +1,24 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/array_literal_explicit_elements_ast.hpp>
-#include <spp/asts/integer_literal_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
-#include <genex/to_container.hpp>
-#include <genex/algorithms/all_of.hpp>
-#include <genex/views/address.hpp>
-#include <genex/views/for_each.hpp>
-#include <genex/views/zip.hpp>
-
-#include <llvm/IR/Type.h>
+module spp.asts.array_literal_explicit_elements_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.integer_literal_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.generate.common_types;
+import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
+import spp.utils.uid;
+import genex;
+import llvm;
 
 
 spp::asts::ArrayLiteralExplicitElementsAst::ArrayLiteralExplicitElementsAst(
@@ -32,13 +33,12 @@ spp::asts::ArrayLiteralExplicitElementsAst::ArrayLiteralExplicitElementsAst(
 }
 
 
-spp::asts::ArrayLiteralExplicitElementsAst::~ArrayLiteralExplicitElementsAst() = default;
-
-
 auto spp::asts::ArrayLiteralExplicitElementsAst::equals_array_literal_explicit_elements(
     ArrayLiteralExplicitElementsAst const &other) const
     -> std::strong_ordering {
-    if (genex::algorithms::all_of(
+    // Two array literals with explicit elements are equal if all their elements are equal.
+    // Todo: what about different sized arrays?
+    if (genex::all_of(
         genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::to<std::vector>(),
         [](auto &&pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
         return std::strong_ordering::equal;
@@ -78,31 +78,19 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::clone() const
 spp::asts::ArrayLiteralExplicitElementsAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_l);
-    SPP_STRING_EXTEND(elems);
+    SPP_STRING_EXTEND(elems, ", ");
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;
 }
 
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(elems);
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::ArrayLiteralExplicitElementsAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
-
     // Analyse the element inside the array.
     for (auto &&elem : elems) {
-        ENFORCE_EXPRESSION_SUBTYPE(elem.get());
+        SPP_ENFORCE_EXPRESSION_SUBTYPE(elem.get());
         elem->stage_7_analyse_semantics(sm, meta);
     }
 
@@ -116,19 +104,15 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_7_analyse_semantics(
         | genex::to<std::vector>();
 
     for (auto &&[elem, elem_type] : genex::views::zip(elems | genex::views::ptr, elem_types)) {
-        if (not analyse::utils::type_utils::symbolic_eq(*zeroth_type, *elem_type, *sm->current_scope, *sm->current_scope))
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-                *zeroth_elem, *zeroth_type, *elem, *elem_type).with_scopes({sm->current_scope}).raise();
+        raise_if<analyse::errors::SppTypeMismatchError>(
+            not analyse::utils::type_utils::symbolic_eq(*zeroth_type, *elem_type, *sm->current_scope, *sm->current_scope),
+            {sm->current_scope}, ERR_ARGS(*zeroth_elem, *zeroth_type, *elem, *elem_type));
     }
 
     // Check all the elements are owned by the array, not borrowed.
-    for (auto &&elem : elems | genex::views::ptr) {
-        if (auto [elem_sym, _] = sm->current_scope->get_var_symbol_outermost(*elem); elem_sym != nullptr) {
-            if (const auto borrow_ast = std::get<0>(elem_sym->memory_info->ast_borrowed)) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
-                    *elem, *borrow_ast, "explicit array element type").with_scopes({sm->current_scope}).raise();
-            }
-        }
+    for (auto const &elem : elems | genex::views::ptr) {
+        auto elem_type = elem->infer_type(sm, meta);
+        SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(elem, elem_type, *sm, "array element type");
     }
 
     // Analyse the inferred array type to generate the generic implementation.
@@ -138,51 +122,87 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_7_analyse_semantics(
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory of each element in the array literal.
     for (auto const &elem : elems) {
         elem->stage_8_check_memory(sm, meta);
         analyse::utils::mem_utils::validate_symbol_memory(
-            *elem, *elem, *sm, true, true, true, true, true, false, meta);
+            *elem, *elem, *sm, true, true, true, true, false, meta);
     }
 }
 
 
-auto spp::asts::ArrayLiteralExplicitElementsAst::stage_10_code_gen_2(
+auto spp::asts::ArrayLiteralExplicitElementsAst::stage_9_comptime_resolution(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    CompilerMetaData *meta)
+    -> void {
+    // Convert the inner elements to compile-time values.
+    auto cmp_elems = std::vector<std::unique_ptr<ExpressionAst>>();
+    for (auto const &elem : elems) {
+        elem->stage_9_comptime_resolution(sm, meta);
+        cmp_elems.emplace_back(std::move(meta->cmp_result));
+    }
+
+    // Wrap the compile-time array value.
+    meta->cmp_result = std::make_unique<ArrayLiteralExplicitElementsAst>(
+        nullptr, std::move(cmp_elems), nullptr);
+}
+
+
+auto spp::asts::ArrayLiteralExplicitElementsAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Collect the generated versions of the elements.
-    auto vals = std::vector<llvm::Value*>{};
-    vals.reserve(elems.size());
+    // Runtime allocation. Todo: Can this be removed for comp only?
+    if (not ctx->in_constant_context) {
+        // Collect the generated versions of the elements.
+        auto vals = std::vector<llvm::Value*>{};
+        vals.reserve(elems.size());
+        for (auto const &elem : elems) {
+            vals.emplace_back(elem->stage_11_code_gen_2(sm, meta, ctx));
+        }
+
+        // Create the array type and allocation.
+        const auto uid = spp::utils::generate_uid(this);
+        const auto elem_ty = vals[0]->getType();
+        const auto arr_ty = llvm::ArrayType::get(elem_ty, vals.size());
+        SPP_ASSERT(arr_ty != nullptr);
+        const auto arr_alloc = ctx->builder.CreateAlloca(arr_ty, nullptr, "array.explicit.alloca" + uid);
+
+        // Store the elements in the array allocation.
+        for (auto i = 0uz; i < vals.size(); ++i) {
+            const auto idx0 = llvm::ConstantInt::get(*ctx->context, llvm::APInt(64, 0));
+            const auto idx1 = llvm::ConstantInt::get(*ctx->context, llvm::APInt(64, i));
+            const auto elem_ptr = ctx->builder.CreateGEP(arr_ty, arr_alloc, {idx0, idx1});
+
+            SPP_ASSERT(vals[i] != nullptr and elem_ptr != nullptr);
+            ctx->builder.CreateStore(vals[i], elem_ptr);
+        }
+
+        // Return the array allocation.
+        return arr_alloc;
+    }
+
+    // Constant array creation.
+    auto comp_vals = std::vector<llvm::Constant*>{};
+    comp_vals.reserve(elems.size());
     for (auto const &elem : elems) {
-        vals.emplace_back(elem->stage_10_code_gen_2(sm, meta, ctx));
+        const auto comp_val = llvm::cast<llvm::Constant>(elem->stage_11_code_gen_2(sm, meta, ctx));
+        comp_vals.emplace_back(comp_val);
     }
-
-    // Create the array type and allocation.
-    const auto elem_ty = vals[0]->getType();
-    const auto arr_ty = llvm::ArrayType::get(elem_ty, vals.size());
-    const auto arr_alloc = ctx->builder.CreateAlloca(arr_ty);
-
-    // Store the elements in the array allocation.
-    for (auto i = 0uz; i < vals.size(); ++i) {
-        const auto idx0 = llvm::ConstantInt::get(ctx->context, llvm::APInt(64, 0));
-        const auto idx1 = llvm::ConstantInt::get(ctx->context, llvm::APInt(64, i));
-        const auto elem_ptr = ctx->builder.CreateGEP(arr_ty, arr_alloc, {idx0, idx1});
-        ctx->builder.CreateStore(vals[i], elem_ptr);
-    }
-
-    // Return the array allocation.
+    const auto elem_ty = comp_vals[0]->getType();
+    const auto arr_ty = llvm::ArrayType::get(elem_ty, comp_vals.size());
+    const auto arr_alloc = llvm::ConstantArray::get(arr_ty, comp_vals);
     return arr_alloc;
 }
 
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> {
-
+    CompilerMetaData *meta)
+    -> std::shared_ptr<TypeAst> {
     // Create a "T" type and "n" size, for the array type.
     auto size_tok = std::make_unique<TokenAst>(tok_l->pos_start(), lex::SppTokenType::LX_NUMBER, std::to_string(elems.size()));
     auto size_gen = std::make_unique<IntegerLiteralAst>(nullptr, std::move(size_tok), "uz");

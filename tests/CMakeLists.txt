@@ -1,14 +1,12 @@
-# Find and configure GoogleTest.
-find_package(GTest REQUIRED)
-set(gtest_disable_pthreads on)
-set(BUILD_GTEST ON)
-set(BUILD_GMOCK OFF)
-
 # Build the test executable.
 file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
-add_executable(spp_tests ${TEST_SOURCES})
-target_link_libraries(spp_tests PRIVATE spp_lib GTest::gtest_main)
+add_executable(${PROJECT_NAME}_tests ${TEST_SOURCES})
 
-# Register the tests.
+# GTest configuration.
+find_package(GTest REQUIRED)
+target_link_libraries(${PROJECT_NAME}_tests PRIVATE spp_lib GTest::gtest GTest::gtest_main)
+
+# Include test frameworks for discovering tests.
+include(CTest)
 include(GoogleTest)
-gtest_discover_tests(spp_tests)
+gtest_discover_tests(${PROJECT_NAME}_tests)

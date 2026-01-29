@@ -1,27 +1,22 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/order_utils.hpp>
-#include <spp/asts/function_parameter_ast.hpp>
-#include <spp/asts/function_parameter_group_ast.hpp>
-#include <spp/asts/function_parameter_optional_ast.hpp>
-#include <spp/asts/function_parameter_required_ast.hpp>
-#include <spp/asts/function_parameter_self_ast.hpp>
-#include <spp/asts/function_parameter_variadic_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/mixins/orderable_ast.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
-#include <genex/to_container.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/duplicates.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/materialize.hpp>
-#include <genex/views/ptr.hpp>
+module spp.asts.function_parameter_group_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.order_utils;
+import spp.asts.function_parameter_ast;
+import spp.asts.function_parameter_optional_ast;
+import spp.asts.function_parameter_required_ast;
+import spp.asts.function_parameter_self_ast;
+import spp.asts.function_parameter_variadic_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.mixins.orderable_ast;
+import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::FunctionParameterGroupAst::FunctionParameterGroupAst(
@@ -61,83 +56,92 @@ auto spp::asts::FunctionParameterGroupAst::clone() const
 spp::asts::FunctionParameterGroupAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_l);
-    SPP_STRING_EXTEND(params);
+    SPP_STRING_EXTEND(params, ", ");
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;
 }
 
 
-auto spp::asts::FunctionParameterGroupAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(params);
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::FunctionParameterGroupAst::get_all_params() const
     -> std::vector<FunctionParameterAst*> {
-    return params
-        | genex::views::ptr
-        | genex::to<std::vector>();
+    // Filter by casting.
+    auto out = std::vector<FunctionParameterAst*>();
+    for (auto const &param : params) {
+        out.push_back(param.get());
+    }
+    return out;
 }
 
 
 auto spp::asts::FunctionParameterGroupAst::get_self_param() const
     -> FunctionParameterSelfAst* {
-    const auto ps = params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<FunctionParameterSelfAst*>()
-        | genex::to<std::vector>();
-    return ps.empty() ? nullptr : ps[0];
+    // Filter by casting.
+    auto out = std::vector<FunctionParameterSelfAst*>();
+    for (auto const &param : params) {
+        if (auto *self_param = dynamic_cast<FunctionParameterSelfAst*>(param.get())) {
+            out.push_back(self_param);
+        }
+    }
+    return out.empty() ? nullptr : out[0];
 }
 
 
 auto spp::asts::FunctionParameterGroupAst::get_required_params() const
     -> std::vector<FunctionParameterRequiredAst*> {
-    return params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<FunctionParameterRequiredAst*>()
-        | genex::to<std::vector>();
+    // Filter by casting.
+    auto out = std::vector<FunctionParameterRequiredAst*>();
+    for (auto const &param : params) {
+        if (auto *req_param = dynamic_cast<FunctionParameterRequiredAst*>(param.get())) {
+            out.push_back(req_param);
+        }
+    }
+    return out;
 }
 
 
 auto spp::asts::FunctionParameterGroupAst::get_optional_params() const
     -> std::vector<FunctionParameterOptionalAst*> {
-    return params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<FunctionParameterOptionalAst*>()
-        | genex::to<std::vector>();
+    // Filter by casting.
+    auto out = std::vector<FunctionParameterOptionalAst*>();
+    for (auto const &param : params) {
+        if (auto *opt_param = dynamic_cast<FunctionParameterOptionalAst*>(param.get())) {
+            out.push_back(opt_param);
+        }
+    }
+    return out;
 }
 
 
 auto spp::asts::FunctionParameterGroupAst::get_variadic_param() const
     -> FunctionParameterVariadicAst* {
-    const auto ps = params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<FunctionParameterVariadicAst*>()
-        | genex::to<std::vector>();
-    return ps.empty() ? nullptr : ps[0];
+    // Filter by casting.
+    auto out = std::vector<FunctionParameterVariadicAst*>();
+    for (auto const &param : params) {
+        if (auto *var_param = dynamic_cast<FunctionParameterVariadicAst*>(param.get())) {
+            out.push_back(var_param);
+        }
+    }
+    return out.empty() ? nullptr : out[0];
 }
 
 
 auto spp::asts::FunctionParameterGroupAst::get_non_self_params() const
     -> std::vector<FunctionParameterAst*> {
-    return params
-        | genex::views::ptr
-        | genex::views::filter([](auto &&x) { return not ast_cast<FunctionParameterSelfAst>(x); })
-        | genex::to<std::vector>();
+    // Filter by casting.
+    auto out = std::vector<FunctionParameterAst*>();
+    for (auto const &param : params) {
+        if (dynamic_cast<FunctionParameterSelfAst*>(param.get()) == nullptr) {
+            out.push_back(param.get());
+        }
+    }
+    return out;
 }
 
 
 auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
-
     // Create sets of parameters based on conditions.
     const auto self_params = params
         | genex::views::ptr
@@ -152,7 +156,7 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
     const auto param_names = params
         | genex::views::transform([](auto &&x) { return x->extract_names(); })
         | genex::views::join
-        | genex::views::materialize
+        | genex::to<std::vector>()
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
@@ -162,28 +166,21 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
         | genex::to<std::vector>());
 
     // Check there is only 1 "self" parameter.
-    if (self_params.size() > 1) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMultipleSelfParametersError>().with_args(
-            *self_params[0], *self_params[1]).with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppMultipleSelfParametersError>(
+        self_params.size() > 1, {sm->current_scope}, ERR_ARGS(*self_params[0], *self_params[1]));
 
     // Check there is only 1 variadic parameter, and it is last.
-    if (variadic_params.size() > 1) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppMultipleVariadicParametersError>().with_args(
-            *variadic_params[0], *variadic_params[1]).with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppMultipleVariadicParametersError>(
+        variadic_params.size() > 1, {sm->current_scope}, ERR_ARGS(*variadic_params[0], *variadic_params[1]));
 
     // Check there are no duplicate parameter names.
-    if (not param_names.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
-            *param_names[0], *param_names[1], "keyword function-argument").with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppIdentifierDuplicateError>(
+        not param_names.empty(), {sm->current_scope}, ERR_ARGS(*param_names[0], *param_names[1], "keyword function-argument"));
 
     // Check the parameters are in the correct order.
-    if (not unordered_params.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppOrderInvalidError>().with_args(
-            unordered_params[0].first, *unordered_params[0].second, unordered_params[1].first, *unordered_params[1].second).with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppOrderInvalidError>(
+        not unordered_params.empty(), {sm->current_scope},
+        ERR_ARGS(unordered_params[0].first, *unordered_params[0].second, unordered_params[1].first, *unordered_params[1].second));
 
     // Analyse the parameters.
     for (auto const &param : params) {
@@ -194,10 +191,23 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
 
 auto spp::asts::FunctionParameterGroupAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check each parameter's memory.
     for (auto &&param : params) {
         param->stage_8_check_memory(sm, meta);
     }
+}
+
+
+auto spp::asts::FunctionParameterGroupAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Code generate each parameter.
+    for (auto &&param : params) {
+        param->stage_11_code_gen_2(sm, meta, ctx);
+    }
+    return nullptr;
 }

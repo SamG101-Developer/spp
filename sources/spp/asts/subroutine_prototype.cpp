@@ -1,30 +1,32 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/function_implementation_ast.hpp>
-#include <spp/asts/function_parameter_ast.hpp>
-#include <spp/asts/function_parameter_group_ast.hpp>
-#include <spp/asts/generic_parameter_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/ret_statement_ast.hpp>
-#include <spp/asts/subroutine_prototype_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types_precompiled.hpp>
-#include <spp/codegen/llvm_mangle.hpp>
+module;
+#include <spp/analyse/macros.hpp>
 
-#include <genex/views/for_each.hpp>
-
-
-spp::asts::SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;
+module spp.asts.subroutine_prototype_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
+import spp.asts.annotation_ast;
+import spp.asts.identifier_ast;
+import spp.asts.function_implementation_ast;
+import spp.asts.function_parameter_group_ast;
+import spp.asts.generic_parameter_group_ast;
+import spp.asts.ret_statement_ast;
+import spp.asts.statement_ast;
+import spp.asts.token_ast;
+import spp.asts.generate.common_types_precompiled;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import genex;
 
 
 auto spp::asts::SubroutinePrototypeAst::clone() const
     -> std::unique_ptr<Ast> {
     auto ast = std::make_unique<SubroutinePrototypeAst>(
         ast_clone_vec(annotations),
+        ast_clone(tok_cmp),
         ast_clone(tok_fun),
         ast_clone(name),
         ast_clone(generic_param_group),
@@ -33,23 +35,26 @@ auto spp::asts::SubroutinePrototypeAst::clone() const
         ast_clone(return_type),
         ast_clone(impl));
     ast->orig_name = ast_clone(orig_name);
+    ast->m_original_impl = ast_clone(m_original_impl);
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
-    ast->m_abstract_annotation = m_abstract_annotation;
-    ast->m_virtual_annotation = m_virtual_annotation;
-    ast->m_temperature_annotation = m_temperature_annotation;
-    ast->m_no_impl_annotation = m_no_impl_annotation;
-    ast->m_inline_annotation = m_inline_annotation;
-    ast->m_visibility = m_visibility;
-    ast->m_llvm_func = m_llvm_func;
-    ast->annotations | genex::views::for_each([ast=ast.get()](auto const &a) { a->m_ctx = ast; });
+    ast->abstract_annotation = abstract_annotation;
+    ast->virtual_annotation = virtual_annotation;
+    ast->temperature_annotation = temperature_annotation;
+    ast->no_impl_annotation = no_impl_annotation;
+    ast->inline_annotation = inline_annotation;
+    ast->visibility = visibility;
+    ast->llvm_func = llvm_func;
+    for (auto const &a: ast->annotations) {
+        a->set_ast_ctx(ast.get());
+    }
     return ast;
 }
 
 
 auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Perform default function prototype semantic analysis
     FunctionPrototypeAst::stage_7_analyse_semantics(sm, meta);
@@ -60,6 +65,7 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
     meta->enclosing_function_flavour = this->tok_fun.get();
     meta->enclosing_function_ret_type.emplace_back(ret_type_sym->fq_name());
     meta->enclosing_function_scope = sm->current_scope;
+    meta->enclosing_function_cmp = tok_cmp.get();
     impl->stage_7_analyse_semantics(sm, meta);
 
     // Handle the "!" never type.
@@ -67,21 +73,19 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
     meta->save();
     meta->ignore_missing_else_branch_for_inference = true;
     const auto is_never = not impl->members.empty() and analyse::utils::type_utils::symbolic_eq(
-        *ast_cast<StatementAst>(impl->final_member())->infer_type(&tm, meta), *generate::common_types_precompiled::NEVER,
+        *impl->final_member()->to<StatementAst>()->infer_type(&tm, meta), *generate::common_types_precompiled::NEVER,
         *tm.current_scope, *sm->current_scope);
     meta->restore();
 
     // Check there is a return statement at the end (for non-void functions).
     const auto is_void = analyse::utils::type_utils::symbolic_eq(
-        *return_type, *generate::common_types_precompiled::VOID, *sm->current_scope, *sm->current_scope);
+        *return_type, *generate::common_types_precompiled::VOID,
+        *sm->current_scope, *sm->current_scope);
 
-    if (is_void or is_never or m_no_impl_annotation or m_abstract_annotation or (not impl->members.empty() and ast_cast<RetStatementAst>(impl->members.back().get()))) {
-    }
-    else {
-        const auto final_member = impl->final_member();
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionSubroutineMissingReturnStatementError>().with_args(
-            *final_member, *return_type).with_scopes({sm->current_scope}).raise();
-    }
+    const auto final_member = impl->final_member();
+    raise_unless<analyse::errors::SppFunctionSubroutineMissingReturnStatementError>(
+        is_void or is_never or no_impl_annotation or abstract_annotation or (not impl->members.empty() and impl->members.back()->to<RetStatementAst>()),
+        {sm->current_scope}, ERR_ARGS(*final_member, *return_type));
 
     sm->move_out_of_current_scope();
     meta->restore(true);

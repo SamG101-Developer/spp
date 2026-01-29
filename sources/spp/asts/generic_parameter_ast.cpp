@@ -1,4 +1,4 @@
-#include <spp/asts/generic_parameter_ast.hpp>
+module spp.asts.generic_parameter_ast;
 
 
 spp::asts::GenericParameterAst::GenericParameterAst(

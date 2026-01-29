@@ -1,31 +1,36 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/func_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/generic_argument_comp_keyword_ast.hpp>
-#include <spp/asts/generic_argument_comp_positional_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_keyword_ast.hpp>
-#include <spp/asts/generic_argument_type_positional_ast.hpp>
-#include <spp/asts/generic_parameter_ast.hpp>
-#include <spp/asts/generic_parameter_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/type_statement_ast.hpp>
-#include <spp/asts/type_unary_expression_ast.hpp>
-#include <spp/asts/type_unary_expression_operator_borrow_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
-#include <spp/asts/generate/common_types_precompiled.hpp>
+module;
+#include <spp/macros.hpp>
 
-#include <genex/algorithms/any_of.hpp>
-#include <genex/operations/cmp.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/ptr.hpp>
+module spp.asts.type_identifier_ast;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.func_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.class_prototype_ast;
+import spp.asts.generic_argument_comp_ast;
+import spp.asts.generic_argument_comp_keyword_ast;
+import spp.asts.generic_argument_comp_positional_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
+import spp.asts.generic_argument_type_keyword_ast;
+import spp.asts.generic_argument_type_positional_ast;
+import spp.asts.generic_parameter_ast;
+import spp.asts.generic_parameter_group_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.type_statement_ast;
+import spp.asts.type_unary_expression_ast;
+import spp.asts.type_unary_expression_operator_ast;
+import spp.asts.type_unary_expression_operator_borrow_ast;
+import spp.asts.generate.common_types_precompiled;
+import spp.asts.utils.ast_utils;
+
+import absl;
+import genex;
+
+
+// int count = 0;
 
 
 spp::asts::TypeIdentifierAst::TypeIdentifierAst(
@@ -37,12 +42,7 @@ spp::asts::TypeIdentifierAst::TypeIdentifierAst(
     m_pos(pos),
     m_is_never_type(false) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_arg_group);
-    this->generic_arg_group->tok_l->m_pos = this->generic_arg_group->tok_l->m_pos ? this->generic_arg_group->tok_l->m_pos : pos + this->pos_start() + this->name.length();
-    this->generic_arg_group->tok_r->m_pos = this->generic_arg_group->tok_r->m_pos ? this->generic_arg_group->tok_r->m_pos : this->generic_arg_group->tok_l->m_pos + 1;
 }
-
-
-spp::asts::TypeIdentifierAst::~TypeIdentifierAst() = default;
 
 
 auto spp::asts::TypeIdentifierAst::equals(
@@ -93,16 +93,6 @@ spp::asts::TypeIdentifierAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypeIdentifierAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    formatted_string.append(name);
-    SPP_PRINT_APPEND(generic_arg_group);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::TypeIdentifierAst::from_identifier(
     IdentifierAst const &identifier)
     -> std::shared_ptr<TypeIdentifierAst> {
@@ -118,39 +108,42 @@ auto spp::asts::TypeIdentifierAst::from_string(
 
 
 auto spp::asts::TypeIdentifierAst::iterator() const
-    -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> {
+    -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
     // First yield is the original type being iterated over.
-    co_yield std::dynamic_pointer_cast<const TypeIdentifierAst>(shared_from_this());
+    auto parts = std::vector<std::shared_ptr<const TypeIdentifierAst>>{};
+    parts.emplace_back(std::dynamic_pointer_cast<const TypeIdentifierAst>(shared_from_this()));
 
     for (auto &&g : generic_arg_group->args) {
         // Positional generic comp argument with identifier value.
-        if (auto &&comp_positional_arg = ast_cast<GenericArgumentCompPositionalAst>(g.get())) {
-            if (auto &&ident_val = ast_cast<IdentifierAst>(comp_positional_arg->val.get())) {
-                co_yield from_identifier(*ident_val);
+        if (auto &&comp_positional_arg = g->to<GenericArgumentCompPositionalAst>()) {
+            if (auto &&ident_val = comp_positional_arg->val->to<IdentifierAst>()) {
+                parts.emplace_back(from_identifier(*ident_val));
             }
         }
 
         // Keyword generic comp argument with identifier value.
-        else if (auto &&comp_keyword_arg = ast_cast<GenericArgumentCompKeywordAst>(g.get())) {
-            if (auto &&ident_val = ast_cast<IdentifierAst>(comp_keyword_arg->val.get())) {
-                co_yield from_identifier(*ident_val);
+        else if (auto &&comp_keyword_arg = g->to<GenericArgumentCompKeywordAst>()) {
+            if (auto &&ident_val = comp_keyword_arg->val->to<IdentifierAst>()) {
+                parts.emplace_back(from_identifier(*ident_val));
             }
         }
 
         // Positional generic type arguments => recursive iteration.
-        else if (auto &&type_positional_arg = ast_cast<GenericArgumentTypePositionalAst>(g.get())) {
+        else if (auto &&type_positional_arg = g->to<GenericArgumentTypePositionalAst>()) {
             for (auto &&ti : type_positional_arg->val->iterator()) {
-                co_yield ti;
+                parts.emplace_back(ti);
             }
         }
 
         // Keyword generic type arguments => recursive iteration.
-        else if (auto &&type_keyword_arg = ast_cast<GenericArgumentTypeKeywordAst>(g.get())) {
+        else if (auto &&type_keyword_arg = g->to<GenericArgumentTypeKeywordAst>()) {
             for (auto &&ti : type_keyword_arg->val->iterator()) {
-                co_yield ti;
+                parts.emplace_back(ti);
             }
         }
     }
+
+    return parts;
 }
 
 
@@ -199,9 +192,7 @@ auto spp::asts::TypeIdentifierAst::get_convention() const
 auto spp::asts::TypeIdentifierAst::with_convention(
     std::unique_ptr<ConventionAst> &&conv) const
     -> std::shared_ptr<TypeAst> {
-    if (conv == nullptr) {
-        return ast_clone(this);
-    }
+    if (conv == nullptr) { return ast_clone(this); }
 
     auto borrow_op = std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv));
     auto wrapped = std::make_shared<TypeUnaryExpressionAst>(std::move(borrow_op), ast_clone(this));
@@ -219,11 +210,12 @@ auto spp::asts::TypeIdentifierAst::substitute_generics(
     std::vector<GenericArgumentAst*> const &args) const
     -> std::shared_ptr<TypeAst> {
     auto name_clone = ast_clone(this);
+    if (args.empty() or generic_arg_group == nullptr) { return name_clone; }
 
     // Get the generic type arguments.
     auto gen_type_args = args
         | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()
-        | genex::views::transform([](auto &&g) { return std::make_pair(g->name, ast_cast<ExpressionAst>(g->val.get())); })
+        | genex::views::transform([](auto &&g) { return std::make_pair(g->name, g->val->template to<ExpressionAst>()); })
         | genex::to<std::vector>();
 
     // Get the generic comp arguments.
@@ -233,16 +225,17 @@ auto spp::asts::TypeIdentifierAst::substitute_generics(
         | genex::to<std::vector>();
 
     // Check if this type directly matches any generic type argument name.
-    for (auto &&[gen_arg_name, gen_arg_val] : gen_type_args) {
-        if (*this == *ast_cast<TypeIdentifierAst>(gen_arg_name.get())) {
-            return ast_clone(ast_cast<TypeAst>(gen_arg_val));
+    for (auto const &[gen_arg_name, gen_arg_val] : gen_type_args) {
+        if (*this == *gen_arg_name->to<TypeIdentifierAst>()) {
+            return ast_clone(gen_arg_val->to<TypeAst>());
         }
     }
 
     // Substitute generics in the comp arguments' types.
-    for (auto &&[gen_arg_name, gen_arg_val] : genex::views::concat(gen_type_args, gen_comp_args)) {
+    gen_type_args.append_range(gen_comp_args);
+    for (auto const &[gen_arg_name, gen_arg_val] : gen_comp_args) {
         for (auto const &g : name_clone->generic_arg_group->get_comp_args()) {
-            if (auto const *ident_val = ast_cast<IdentifierAst>(g->val.get()); ident_val != nullptr and *ident_val == *IdentifierAst::from_type(*gen_arg_name)) {
+            if (auto const *ident_val = g->val->to<IdentifierAst>(); ident_val != nullptr and *ident_val == *IdentifierAst::from_type(*gen_arg_name)) {
                 g->val = ast_clone(gen_arg_val);
             }
         }
@@ -262,8 +255,8 @@ auto spp::asts::TypeIdentifierAst::contains_generic(
     GenericParameterAst const &generic) const
     -> bool {
     // Check if the parameter's name is in the type parts iterated from this type.
-    auto cast_name = ast_cast<TypeIdentifierAst>(generic.name.get());
-    return genex::algorithms::any_of(
+    auto cast_name = generic.name->to<TypeIdentifierAst>();
+    return genex::any_of(
         iterator() | genex::to<std::vector>(), [&cast_name](auto ti) { return *ti == *cast_name; });
 }
 
@@ -278,7 +271,7 @@ auto spp::asts::TypeIdentifierAst::with_generics(
 
 auto spp::asts::TypeIdentifierAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Qualify the generic argument types.
     // meta->save();
@@ -292,11 +285,14 @@ auto spp::asts::TypeIdentifierAst::stage_4_qualify_types(
 
 auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
+    // count += 1;
+    // std::cout << "Analysing TypeIdentifierAst: " << to_string() << " (" << count << ")" << std::endl;
+
     // Determine the scope and get the type symbol.
     const auto scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
-    const auto type_sym = analyse::utils::type_utils::get_type_part_symbol_with_error(
+    const auto type_sym = analyse::utils::type_utils::get_type_sym_or_error(
         *scope, *std::dynamic_pointer_cast<TypeIdentifierAst>(without_generics()), *sm, meta);
     // const auto type_scope = type_sym->scope;
     if (type_sym->is_generic or name == "Self") { return; }
@@ -304,13 +300,13 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     // Name all the generic arguments.
     const auto is_tuple = ( {
         const auto as_unary = std::dynamic_pointer_cast<TypeUnaryExpressionAst>(type_sym->fq_name()->without_generics());
-        as_unary != nullptr and *as_unary == ast_cast<TypeUnaryExpressionAst>(*generate::common_types_precompiled::TUP);
+        as_unary != nullptr and *as_unary == *generate::common_types_precompiled::TUP->to<TypeUnaryExpressionAst>();
     });
 
-    analyse::utils::func_utils::name_generic_args(
-        generic_arg_group->args,
-        type_sym->alias_stmt ? type_sym->alias_stmt->generic_param_group->get_all_params() : type_sym->type->generic_param_group->get_all_params(),
-        *this, *sm, meta, is_tuple);
+    analyse::utils::func_utils::name_gn_args(
+        *generic_arg_group,
+        *(type_sym->alias_stmt ? type_sym->alias_stmt->generic_param_group : type_sym->type->generic_param_group),
+        *this, *sm, *meta, is_tuple);
 
     // Stop here is there is a flag to not check generics.
     if (meta->skip_type_analysis_generic_checks) {
@@ -322,19 +318,17 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     generic_arg_group->stage_7_analyse_semantics(sm, meta);
 
     // Infer the generic arguments from information given from object initialization.
-    const auto owner = analyse::utils::type_utils::get_type_part_symbol_with_error(
-        *scope, ast_cast<TypeIdentifierAst>(*without_generics()), *sm, meta)->fq_name();
+    const auto owner = analyse::utils::type_utils::get_type_sym_or_error(
+        *scope, *without_generics()->to<TypeIdentifierAst>(), *sm, meta)->fq_name();
     const auto owner_sym = sm->current_scope->get_type_symbol(owner);
 
-    analyse::utils::func_utils::infer_generic_args(
-        generic_arg_group->args,
-        type_sym->alias_stmt ? type_sym->alias_stmt->generic_param_group->get_all_params() : type_sym->type->generic_param_group->get_all_params(),
-        type_sym->alias_stmt ? type_sym->alias_stmt->generic_param_group->get_optional_params() : type_sym->type->generic_param_group->get_optional_params(),
+    analyse::utils::func_utils::infer_gn_args(
+        *generic_arg_group,
+        *(type_sym->alias_stmt ? type_sym->alias_stmt->generic_param_group : type_sym->type->generic_param_group),
         generic_arg_group->get_all_args(),
         meta->infer_source, meta->infer_target,
-        owner, owner_sym != nullptr ? owner_sym->scope : type_sym->scope, nullptr, is_tuple, *sm, meta);
-    meta->infer_source = {};
-    meta->infer_target = {};
+        owner, *(owner_sym != nullptr ? owner_sym->scope : type_sym->scope),
+        nullptr, is_tuple, *sm, *meta);
     generic_arg_group->stage_7_analyse_semantics(sm, meta);
 
     // For variant types, collapse any duplicate generic arguments.
@@ -358,10 +352,17 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
 
 auto spp::asts::TypeIdentifierAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Fully qualify this type name from the scope.
     const auto type_scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
     const auto type_sym = type_scope->get_type_symbol(shared_from_this());
     return type_sym->fq_name();
+}
+
+
+auto spp::asts::TypeIdentifierAst::ankerl_hash() const
+    -> std::size_t {
+    // Hash based on the name only.
+    return absl::Hash<std::string>()(name);
 }

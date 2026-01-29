@@ -1,15 +1,22 @@
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/function_parameter_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/let_statement_uninitialized_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.function_parameter_ast;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_utils;
+import spp.asts.convention_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
+import spp.asts.let_statement_uninitialized_ast;
+import spp.asts.type_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
+import spp.utils.uid;
 
 
 spp::asts::FunctionParameterAst::FunctionParameterAst(
@@ -23,7 +30,8 @@ spp::asts::FunctionParameterAst::FunctionParameterAst(
     type(std::move(type)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_colon, lex::SppTokenType::TK_COLON, ":", var ? var->pos_end() : 0);
     if (this->var == nullptr) {
-        auto var_name = std::make_unique<IdentifierAst>(0, std::format("$_{}", reinterpret_cast<std::uintptr_t>(this)));
+        const auto uid = spp::utils::generate_uid(this);
+        auto var_name = std::make_unique<IdentifierAst>(0, uid);
         this->var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
     }
 }
@@ -46,7 +54,7 @@ auto spp::asts::FunctionParameterAst::extract_name() const
 
 auto spp::asts::FunctionParameterAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the type.
     type->stage_7_analyse_semantics(sm, meta);
@@ -69,11 +77,26 @@ auto spp::asts::FunctionParameterAst::stage_7_analyse_semantics(
 
 auto spp::asts::FunctionParameterAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *)
+    CompilerMetaData *)
     -> void {
     // Check the memory of each name.
     for (auto &&name : extract_names()) {
         const auto sym = sm->current_scope->get_var_symbol(name);
         sym->memory_info->initialized_by(*this, sm->current_scope);
     }
+}
+
+
+auto spp::asts::FunctionParameterAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate the local variable so that the symbol table receives the alloca.
+    meta->save();
+    meta->let_stmt_explicit_type = type;
+    meta->let_stmt_from_uninitialized = true;  // Its not uninitialized but as the value is external we need this behaviour
+    var->stage_11_code_gen_2(sm, meta, ctx);
+    meta->restore();
+    return nullptr;
 }

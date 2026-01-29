@@ -1,6 +1,10 @@
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/local_variable_destructure_skip_single_argument_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.local_variable_destructure_skip_single_argument_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::LocalVariableDestructureSkipSingleArgumentAst::LocalVariableDestructureSkipSingleArgumentAst(
@@ -34,15 +38,6 @@ spp::asts::LocalVariableDestructureSkipSingleArgumentAst::operator std::string()
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_underscore);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_underscore);
-    SPP_PRINT_END;
 }
 
 

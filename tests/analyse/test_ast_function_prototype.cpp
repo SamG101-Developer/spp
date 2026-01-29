@@ -7,7 +7,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppFunctionPrototypeConflictError, R"(
     fun f(a: std::boolean::Bool) -> std::void::Void { }
     fun f(a: std::boolean::Bool) -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -23,7 +23,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup MyType {
         fun f(a: std::boolean::Bool) -> std::void::Void { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -36,7 +36,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         fun f(a: std::boolean::Bool) -> std::void::Void { }
         fun f(a: std::boolean::Bool) -> std::void::Void { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -45,7 +45,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppFunctionPrototypeConflictError, R"(
     fun f() -> std::void::Void { }
     fun f(a: std::boolean::Bool = false) -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -54,7 +54,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppFunctionPrototypeConflictError, R"(
     fun f(a: std::boolean::Bool) -> std::void::Void { }
     fun f(a: std::boolean::Bool, b: std::boolean::Bool = true) -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -63,7 +63,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppFunctionPrototypeConflictError, R"(
     fun f() -> std::void::Void { }
     fun f(..a: std::boolean::Bool) -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -72,7 +72,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppFunctionPrototypeConflictError, R"(
     fun f(a: std::boolean::Bool) -> std::void::Void { }
     fun f(a: std::boolean::Bool, ..b: std::boolean::Bool) -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -81,7 +81,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppFunctionPrototypeConflictError, R"(
     fun f(a: std::boolean::Bool = false) -> std::void::Void { }
     fun f(a: std::boolean::Bool) -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -90,7 +90,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppFunctionPrototypeConflictError, R"(
     fun f(a: std::string::Str, b: std::boolean::Bool = false) -> std::void::Void { }
     fun f(a: std::string::Str, b: std::boolean::Bool) -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -102,7 +102,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         fun f(&self, a: std::boolean::Bool) -> std::void::Void { }
         fun f(&mut self, a: std::boolean::Bool) -> std::void::Void { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -114,7 +114,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         fun f(&self, a: std::boolean::Bool = false) -> std::void::Void { }
         fun f(&self) -> std::void::Void { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -128,7 +128,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup A {
         fun f(&self) -> std::void::Void { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -136,7 +136,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_self_in_free_function,
     SppSelfParamInFreeFunctionError, R"(
     fun f(&self) -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -144,7 +144,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_return_type_mut,
     SppSecondClassBorrowViolationError, R"(
     fun f() -> &mut std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -152,44 +152,42 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_return_type_ref,
     SppSecondClassBorrowViolationError, R"(
     fun f() -> &std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionPrototypeAst,
     test_invalid_return_type_mut_via_generic_substitution,
     SppSecondClassBorrowViolationError, R"(
-    @no_impl
-    fun f[T]() -> T { }
+    fun f[T]() -> T { ret T() }
 
     fun g() -> std::void::Void {
         let x = f[&mut std::string::Str]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionPrototypeAst,
     test_invalid_return_type_ref_via_generic_substitution,
     SppSecondClassBorrowViolationError, R"(
-    @no_impl
-    fun f[T]() -> T { }
+    fun f[T]() -> T { ret T() }
 
     fun g() -> std::void::Void {
         let x = f[&std::string::Str]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     FunctionPrototypeAst,
     test_valid_one_parameter, R"(
     fun f[T](a: T) -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     FunctionPrototypeAst,
     test_valid_no_parameters, R"(
     fun f[T]() -> std::void::Void { }
-)")
+)");

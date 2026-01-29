@@ -1,23 +1,23 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/class_member_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/generic_argument_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/inner_scope_ast.hpp>
-#include <spp/asts/loop_control_flow_statement_ast.hpp>
-#include <spp/asts/ret_statement_ast.hpp>
-#include <spp/asts/statement_ast.hpp>
-#include <spp/asts/sup_implementation_ast.hpp>
-#include <spp/asts/sup_member_ast.hpp>
-#include <spp/asts/sup_prototype_extension_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
 
-#include <genex/actions/remove.hpp>
-#include <genex/views/enumerate.hpp>
+module spp.asts.inner_scope_ast;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_utils;
+import spp.asts.class_member_ast;
+import spp.asts.expression_ast;
+import spp.asts.identifier_ast;
+import spp.asts.ret_statement_ast;
+import spp.asts.statement_ast;
+import spp.asts.sup_member_ast;
+import spp.asts.token_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
+import genex;
 
 
 template <typename T>
@@ -25,6 +25,8 @@ spp::asts::InnerScopeAst<T>::InnerScopeAst() :
     tok_l(nullptr),
     members(),
     tok_r(nullptr) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_l, lex::SppTokenType::TK_LEFT_CURLY_BRACE, "{");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_r, lex::SppTokenType::TK_RIGHT_CURLY_BRACE, "}");
 }
 
 
@@ -72,22 +74,10 @@ auto spp::asts::InnerScopeAst<T>::clone() const
 template <typename T>
 spp::asts::InnerScopeAst<T>::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_l);
-    SPP_STRING_EXTEND(members);
+    SPP_STRING_APPEND(tok_l).append(not members.empty() ? "\n" : "");
+    SPP_STRING_EXTEND(members, "\n").append(not members.empty() ? "\n" : "");
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;
-}
-
-
-template <typename T>
-auto spp::asts::InnerScopeAst<T>::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(members);
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
 }
 
 
@@ -102,20 +92,18 @@ auto spp::asts::InnerScopeAst<T>::new_empty()
 template <typename T>
 auto spp::asts::InnerScopeAst<T>::final_member() const
     -> Ast* {
-    return members.empty()
-               ? ast_cast<Ast>(tok_r.get())
-               : ast_cast<Ast>(members.back().get());
+    return members.empty() ? tok_r->to<Ast>() : members.back()->template to<Ast>();
 }
 
 
 template <typename T>
 auto spp::asts::InnerScopeAst<T>::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Create a scope for the InnerScopeAst node.
     auto scope_name = analyse::scopes::ScopeBlockName("<inner-scope#" + std::to_string(pos_start()) + ">");
-    sm->create_and_move_into_new_scope(std::move(scope_name), this);
+    sm->create_and_move_into_new_scope(scope_name, this);
     m_scope = sm->current_scope;
 
     // Analyse the members of the inner scope.
@@ -127,21 +115,20 @@ auto spp::asts::InnerScopeAst<T>::stage_7_analyse_semantics(
 template <typename T>
 auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Move into the next scope.
     sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
 
     // Check the memory of each member.
     for (auto const &x : members) { x->stage_8_check_memory(sm, meta); }
-    auto all_syms = sm->current_scope->all_var_symbols() | genex::to<std::vector>();
-    auto inner_syms = sm->current_scope->all_var_symbols(true);
 
     // If the final expression of the inner scope is being used (ie assigned ot outer variable), then memory check it.
     if (const auto move = meta->assignment_target; not members.empty() and move != nullptr) {
-        if (const auto expr_member = ast_cast<ExpressionAst>(final_member())) {
+        if (const auto expr_member = final_member()->template to<ExpressionAst>(); expr_member != nullptr) {
             analyse::utils::mem_utils::validate_symbol_memory(
-                *expr_member, *move, *sm, true, true, true, true, true, true, meta);
+                *expr_member, *move, *sm, true, true, true, true, true, meta);
         }
     }
 
@@ -150,17 +137,22 @@ auto spp::asts::InnerScopeAst<T>::stage_8_check_memory(
 
 
 template <typename T>
-auto spp::asts::InnerScopeAst<T>::stage_10_code_gen_2(
+auto spp::asts::InnerScopeAst<T>::stage_11_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Add all the expressions/statements into the current scope.
     sm->move_to_next_scope();
-    for (auto *member : members | genex::views::ptr) {
-        if (ast_cast<ExpressionAst>(member) != nullptr) {
-            member->stage_10_code_gen_2(sm, meta, ctx);
-        }
+    // SPP_ASSERT(sm->current_scope == m_scope);
+
+    for (auto const &member : members) {
+        member->stage_11_code_gen_2(sm, meta, ctx);
+    }
+
+    // Need to add a "return void" if the final member isn't a RetStatementAst.
+    if (members.empty() or members.back()->template to<RetStatementAst>() == nullptr) {
+        ctx->builder.CreateRetVoid();
     }
 
     // Exit the scope.
@@ -170,5 +162,5 @@ auto spp::asts::InnerScopeAst<T>::stage_10_code_gen_2(
 
 
 template struct spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::ClassMemberAst>>;
-template struct spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::FunctionMemberAst>>;
+template struct spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::StatementAst>>;
 template struct spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::SupMemberAst>>;

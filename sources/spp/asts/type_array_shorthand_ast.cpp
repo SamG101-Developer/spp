@@ -1,8 +1,11 @@
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_array_shorthand_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
 
-#include <spp/asts/generate/common_types.hpp>
+module spp.asts.type_array_shorthand_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.generate.common_types;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::TypeArrayShorthandAst::TypeArrayShorthandAst(
@@ -53,19 +56,6 @@ spp::asts::TypeArrayShorthandAst::operator std::string() const {
     SPP_STRING_APPEND(size);
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::TypeArrayShorthandAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_APPEND(element_type);
-    SPP_PRINT_APPEND(tok_semicolon);
-    SPP_PRINT_APPEND(size);
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
 }
 
 

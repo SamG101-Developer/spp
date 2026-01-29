@@ -1,6 +1,4 @@
-#include <spp/utils/strings.hpp>
-
-#include <rapidfuzz/fuzz.hpp>
+module spp.utils.strings;
 
 
 auto spp::utils::strings::is_alphanumeric(
@@ -34,22 +32,59 @@ auto spp::utils::strings::snake_to_pascal(
 
 
 auto spp::utils::strings::closest_match(
-    std::string const &query,
+    const std::string_view query,
     std::vector<std::string> const &choices)
     -> std::optional<std::string> {
     auto match_found = false;
     auto best_score = 0.0;
     auto best_match = std::string();
 
-    const auto scorer = rapidfuzz::fuzz::CachedRatio(query);
     for (const auto &choice : choices) {
-        const auto score = scorer.similarity(choice, best_score);
+        const auto score = similarity_ratio(query, choice);
         if (score > best_score) {
-            match_found = true;
             best_score = score;
             best_match = choice;
+            match_found = true;
         }
     }
 
     return match_found ? std::make_optional(best_match) : std::nullopt;
+}
+
+
+auto spp::utils::strings::levenshtein(
+    const std::string_view s1,
+    const std::string_view s2)
+    -> std::size_t {
+    const auto m = s1.size();
+    const auto n = s2.size();
+
+    auto prev = std::vector<std::size_t>(n + 1);
+    auto curr = std::vector<std::size_t>(n + 1);
+    for (auto j = 0uz; j <= n; ++j) {
+        prev[j] = j;
+    }
+
+    for (auto i = 0uz; i < m; ++i) {
+        curr[0] = i + 1;
+        for (auto j = 0uz; j < n; ++j) {
+            const auto cost = (s1[i] == s2[j]) ? 0uz : 1uz;
+            curr[j + 1] = std::min({curr[j] + 1, prev[j + 1] + 1, prev[j] + cost});
+        }
+        std::swap(prev, curr);
+    }
+
+    return prev[n];
+}
+
+
+auto spp::utils::strings::similarity_ratio(
+    const std::string_view s1,
+    const std::string_view s2)
+    -> double {
+    const auto max_len = std::max(s1.size(), s2.size());
+    if (max_len == 0) { return 1.0; }
+
+    const auto distance = levenshtein(s1, s2);
+    return 1.0 - static_cast<double>(distance) / static_cast<double>(max_len);
 }

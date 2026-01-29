@@ -1,26 +1,24 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/class_implementation_ast.hpp>
-#include <spp/asts/class_member_ast.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/generic_argument_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_parameter_ast.hpp>
-#include <spp/asts/generic_parameter_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/sup_implementation_ast.hpp>
-#include <spp/asts/sup_prototype_extension_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/type_statement_ast.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
-#include <genex/views/for_each.hpp>
+module spp.asts.type_statement_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
+import spp.asts.annotation_ast;
+import spp.asts.convention_ast;
+import spp.asts.generic_parameter_group_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
+import genex;
 
 
 spp::asts::TypeStatementAst::TypeStatementAst(
@@ -31,7 +29,7 @@ spp::asts::TypeStatementAst::TypeStatementAst(
     decltype(tok_assign) &&tok_assign,
     decltype(old_type) old_type) :
     m_generated(false),
-    m_for_use_statement(false),
+    m_from_use_statement(false),
     m_temp_scope_1(nullptr),
     m_temp_scope_2(nullptr),
     annotations(std::move(annotations)),
@@ -43,19 +41,6 @@ spp::asts::TypeStatementAst::TypeStatementAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_type, lex::SppTokenType::KW_TYPE, "type");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_param_group);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
-}
-
-
-spp::asts::TypeStatementAst::~TypeStatementAst() {
-    // Because the TypeStatementAst is passed as a unique pointer to the TypeSymbol, we need to clear it from the type
-    // symbol without destroying it, otherwise there is a use after free because of a double destruction; the unique
-    // pointer destroying the type statement, then the type statement destroying itself (via the destructor). Releasing
-    // it here prevents the type symbol from destroying it.
-    if (m_type_symbol != nullptr) {
-        m_type_symbol->alias_stmt.release();
-    }
-
-    // Now this pointer has been released from the type symbol, we can safely destroy the type statement.
 }
 
 
@@ -83,15 +68,17 @@ auto spp::asts::TypeStatementAst::clone() const
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
     ast->m_temp_scope_1 = m_temp_scope_1;
-    ast->m_visibility = m_visibility;
-    ast->annotations | genex::views::for_each([ast=ast.get()](auto &&a) { a->m_ctx = ast; });
+    ast->visibility = visibility;
+    for (auto const &a: ast->annotations) {
+        a->set_ast_ctx(ast.get());
+    }
     return ast;
 }
 
 
 spp::asts::TypeStatementAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(annotations);
+    SPP_STRING_EXTEND(annotations, "\n").append(not annotations.empty() ? "\n" : "");
     SPP_STRING_APPEND(tok_type).append(" ");
     SPP_STRING_APPEND(new_type);
     SPP_STRING_APPEND(generic_param_group).append(" ");
@@ -101,54 +88,35 @@ spp::asts::TypeStatementAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypeStatementAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_EXTEND(annotations);
-    SPP_PRINT_APPEND(tok_type).append(" ");
-    SPP_PRINT_APPEND(new_type);
-    SPP_PRINT_APPEND(generic_param_group).append(" ");
-    SPP_PRINT_APPEND(tok_assign).append(" ");
-    SPP_PRINT_APPEND(old_type);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::TypeStatementAst::stage_1_pre_process(
     Ast *ctx)
     -> void {
     // Pre-process the annotations.
     Ast::stage_1_pre_process(ctx);
-    annotations | genex::views::for_each([this](auto &&x) { x->stage_1_pre_process(this); });
+    for (auto const &annotation: annotations) {
+        annotation->stage_1_pre_process(this);
+    }
 }
 
 
 auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Run top level scope generation for the annotations.
-    Ast::stage_2_gen_top_level_scopes(sm, meta);
-    annotations | genex::views::for_each([sm, meta](auto &&x) { x->stage_2_gen_top_level_scopes(sm, meta); });
-
-    // Check there are no conventions on the old type.
-    if (auto &&conv = old_type->get_convention(); conv != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
-            *old_type, *conv, "use statement's old type").with_scopes({sm->current_scope}).raise();
+    for (auto const &annotation : annotations) {
+        annotation->stage_2_gen_top_level_scopes(sm, meta);
     }
 
     // Check there are no conventions on the new type.
-    if (auto &&conv = new_type->get_convention(); conv != nullptr) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppSecondClassBorrowViolationError>().with_args(
-            *new_type, *conv, "use statement's new type").with_scopes({sm->current_scope}).raise();
-    }
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(new_type, new_type, *sm, "use statement's new type", false);
 
     // Create the type symbol for this type, that will point to the old type.
-    m_type_symbol = std::make_shared<analyse::scopes::TypeSymbol>(
+    const auto type_sym = std::make_shared<analyse::scopes::TypeSymbol>(
         new_type, nullptr, nullptr, sm->current_scope, sm->current_scope->parent_module());
-    m_type_symbol->alias_stmt = std::unique_ptr<TypeStatementAst>(this);
-    sm->current_scope->add_type_symbol(m_type_symbol);
+    sm->current_scope->add_type_symbol(type_sym);
+    m_alias_sym = type_sym;
+    m_alias_sym->alias_stmt = std::unique_ptr<TypeStatementAst>(this);  // This is BAD but "cleanup" handles mem error.
 
     // Create a new scope for the type statement.
     auto scope_name = analyse::scopes::ScopeBlockName("<type-stmt#" + static_cast<std::string>(*new_type) + "#" + std::to_string(pos_start()) + ">");
@@ -162,7 +130,7 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
 
 auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Skip the class scope, and enter the type statement scope.
     sm->move_to_next_scope();
@@ -175,9 +143,9 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     m_temp_scope_2 = scope2;
 
     const auto final_sym = sm->current_scope->get_type_symbol(actual_old_type->without_generics());
-    m_type_symbol->type = final_sym->type;
-    m_type_symbol->scope = final_sym->scope;
-    m_type_symbol->is_copyable = [final_sym] { return final_sym->is_copyable(); };
+    m_alias_sym->type = final_sym->type;
+    m_alias_sym->scope = final_sym->scope;
+    m_alias_sym->is_copyable = [final_sym] { return final_sym->is_copyable(); };
     old_type = actual_old_type;
 
     if (attach_generics != nullptr and not attach_generics->params.empty()) {
@@ -191,7 +159,7 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
 
 auto spp::asts::TypeStatementAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Skip the class scope, and enter the type statement scope.
     sm->move_to_next_scope();
@@ -203,7 +171,7 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
         auto tm_1 = ScopeManager(sm->global_scope, stripped_old_sym->scope);
         auto tm_2 = ScopeManager(sm->global_scope, m_temp_scope_1);
 
-        auto temp_scope = std::make_unique<analyse::scopes::Scope>(*m_temp_scope_2->parent);
+        auto temp_scope = std::make_unique<analyse::scopes::Scope>(*m_temp_scope_2->parent);  // todo: remove copy, store as raw pointer?
         auto tm_3 = ScopeManager(sm->global_scope, temp_scope.get());
         generic_param_group->stage_2_gen_top_level_scopes(&tm_3, meta);
 
@@ -214,9 +182,10 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
         old_type->stage_7_analyse_semantics(sm, meta); // Analyse the fq old type in this scope (for generics)
 
         const auto old_sym = sm->current_scope->get_type_symbol(old_type);
-        m_type_symbol->type = old_sym->type;
-        m_type_symbol->scope = old_sym->scope;
+        m_alias_sym->type = old_sym->type;
+        m_alias_sym->scope = old_sym->scope;
         m_temp_scope_3 = std::move(temp_scope);
+        old_sym->aliased_by_symbols.push_back(m_alias_sym);
     }
     sm->move_out_of_current_scope();
 }
@@ -224,7 +193,8 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
 
 auto spp::asts::TypeStatementAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    mixins::CompilerMetaData *) -> void {
+    CompilerMetaData *)
+    -> void {
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
     sm->move_out_of_current_scope();
@@ -233,7 +203,8 @@ auto spp::asts::TypeStatementAst::stage_5_load_super_scopes(
 
 auto spp::asts::TypeStatementAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *) -> void {
+    CompilerMetaData *)
+    -> void {
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
     sm->move_out_of_current_scope();
@@ -242,7 +213,7 @@ auto spp::asts::TypeStatementAst::stage_6_pre_analyse_semantics(
 
 auto spp::asts::TypeStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // If this is a pre-generated AST (mod/sup context), skip any generation steps.
     if (m_generated) {
@@ -254,14 +225,14 @@ auto spp::asts::TypeStatementAst::stage_7_analyse_semantics(
 
     // Otherwise, run all generation steps.
     const auto current_scope = sm->current_scope;
-    auto iter_copy = sm->m_it;
+    auto iter_copy = sm->current_iterator();
 
     sm->reset(current_scope, iter_copy);
-    iter_copy = sm->m_it;
+    iter_copy = sm->current_iterator();
     stage_2_gen_top_level_scopes(sm, meta);
 
     sm->reset(current_scope, iter_copy);
-    iter_copy = sm->m_it;
+    iter_copy = sm->current_iterator();
     stage_3_gen_top_level_aliases(sm, meta);
 
     sm->reset(current_scope, iter_copy);
@@ -271,8 +242,63 @@ auto spp::asts::TypeStatementAst::stage_7_analyse_semantics(
 
 auto spp::asts::TypeStatementAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *) -> void {
+    CompilerMetaData *)
+    -> void {
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
     sm->move_out_of_current_scope();
+}
+
+
+auto spp::asts::TypeStatementAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *)
+    -> void {
+    sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+    sm->move_out_of_current_scope();
+}
+
+
+auto spp::asts::TypeStatementAst::stage_10_code_gen_1(
+    ScopeManager *sm,
+    CompilerMetaData *,
+    codegen::LLvmCtx *)
+    -> llvm::Value* {
+    sm->move_to_next_scope();
+    SPP_ASSERT(sm->current_scope == m_scope);
+    sm->move_out_of_current_scope();
+    return nullptr;
+}
+
+
+auto spp::asts::TypeStatementAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *,
+    codegen::LLvmCtx *)
+    -> llvm::Value* {
+    sm->move_to_next_scope();
+    // SPP_ASSERT(sm->current_scope == m_scope);
+    sm->move_out_of_current_scope();
+    return nullptr;
+}
+
+
+auto spp::asts::TypeStatementAst::mark_from_use_statement()
+    -> void {
+    m_from_use_statement = true;
+}
+
+
+auto spp::asts::TypeStatementAst::cleanup() const
+    -> void {
+    // Because the TypeStatementAst is passed as a unique pointer to the TypeSymbol, we need to clear it from the type
+    // symbol without destroying it, otherwise there is a use after free because of a double destruction; the unique
+    // pointer destroying the type statement, then the type statement destroying itself (via the destructor). Releasing
+    // it here prevents the type symbol from destroying it.
+    if (m_alias_sym != nullptr) {
+        m_alias_sym->alias_stmt.release();
+    }
+
+    // Now this pointer has been released from the type symbol, we can safely destroy the type statement.
 }

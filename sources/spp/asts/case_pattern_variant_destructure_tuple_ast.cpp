@@ -1,24 +1,33 @@
-#include <spp/pch.hpp>
-#include <spp/asts/case_pattern_variant_destructure_array_ast.hpp>
-#include <spp/asts/case_pattern_variant_destructure_object_ast.hpp>
-#include <spp/asts/case_pattern_variant_destructure_tuple_ast.hpp>
-#include <spp/asts/case_pattern_variant_literal_ast.hpp>
-#include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/function_call_argument_positional_ast.hpp>
-#include <spp/asts/fold_expression_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/literal_ast.hpp>
-#include <spp/asts/local_variable_destructure_tuple_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
 
-#include <genex/views/enumerate.hpp>
-#include <genex/views/ptr.hpp>
+module spp.asts.case_pattern_variant_destructure_tuple_ast;
+import spp.lex.tokens;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.case_utils;
+import spp.asts.boolean_literal_ast;
+import spp.asts.case_pattern_variant_literal_ast;
+import spp.asts.case_pattern_variant_destructure_array_ast;
+import spp.asts.case_pattern_variant_destructure_object_ast;
+import spp.asts.convention_ref_ast;
+import spp.asts.expression_ast;
+import spp.asts.function_call_argument_group_ast;
+import spp.asts.function_call_argument_positional_ast;
+import spp.asts.identifier_ast;
+import spp.asts.fold_expression_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.literal_ast;
+import spp.asts.local_variable_destructure_tuple_ast;
+import spp.asts.object_initializer_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.token_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::CasePatternVariantDestructureTupleAst::CasePatternVariantDestructureTupleAst(
@@ -50,35 +59,26 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::pos_end() const
 
 auto spp::asts::CasePatternVariantDestructureTupleAst::clone() const
     -> std::unique_ptr<Ast> {
-    return std::make_unique<CasePatternVariantDestructureTupleAst>(
+    auto c = std::make_unique<CasePatternVariantDestructureTupleAst>(
         ast_clone(tok_l),
         ast_clone_vec(elems),
         ast_clone(tok_r));
+    c->m_mapped_let = ast_clone(m_mapped_let);
+    return c;
 }
 
 
 spp::asts::CasePatternVariantDestructureTupleAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_l);
-    SPP_STRING_EXTEND(elems);
+    SPP_STRING_EXTEND(elems, ", ");
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;
 }
 
 
-auto spp::asts::CasePatternVariantDestructureTupleAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(elems);
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::CasePatternVariantDestructureTupleAst::convert_to_variable(
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     ->
     std::unique_ptr<LocalVariableAst> {
     // Recursively map the elements to their local variable counterparts.
@@ -88,91 +88,79 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::convert_to_variable(
 
     // Create the final local variable wrapping, tag it and return it.
     auto var = std::make_unique<LocalVariableDestructureTupleAst>(nullptr, std::move(mapped_elems), nullptr);
-    var->m_from_pattern = true;
+    var->mark_from_case_pattern();
     return var;
 }
 
 
 auto spp::asts::CasePatternVariantDestructureTupleAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Create the new variable from the pattern in the patterns scope.
     auto var = convert_to_variable(meta);
     m_mapped_let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
     m_mapped_let->stage_7_analyse_semantics(sm, meta);
+
+    // Note there is no nested analysis of "elems", because the "let" statement handles it.
+    analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_dummy_core(
+        elems | genex::views::ptr | genex::to<std::vector>(), sm, meta);
 }
 
 
 auto spp::asts::CasePatternVariantDestructureTupleAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward memory checking to the mapped let statement.
     m_mapped_let->stage_8_check_memory(sm, meta);
 }
 
 
-auto spp::asts::CasePatternVariantDestructureTupleAst::stage_10_code_gen_2(
+auto spp::asts::CasePatternVariantDestructureTupleAst::stage_9_comptime_resolution(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    CompilerMetaData *meta)
+    -> void {
+    // Transform the pattern into comptime values; all need to be true.
+    auto comptime_tranforms = analyse::utils::case_utils::create_and_analyse_pattern_eq_comptime(
+        elems | genex::views::ptr | genex::to<std::vector>(), sm, meta);
+
+    // All must be true for the pattern to match (look for any false).
+    const auto all_true = genex::all_of(
+        comptime_tranforms,
+        [](auto const &x) { return x->template to<BooleanLiteralAst>()->is_true(); });
+
+    // Generate the "let" statement to introduce all the symbols.
+    m_mapped_let->stage_9_comptime_resolution(sm, meta);
+
+    // Based on the result, return the corresponding comptime value.
+    const auto p = pos_start();
+    meta->cmp_result = all_true ? BooleanLiteralAst::True(p) : BooleanLiteralAst::False(p);
+}
+
+
+auto spp::asts::CasePatternVariantDestructureTupleAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the "let" statement to introduce all the symbols.
-    m_mapped_let->stage_10_code_gen_2(sm, meta, ctx);
-
-    // Create a "master" statement that will be "AND"ed with all the literal checks.
-    auto master_stmt = dynamic_cast<llvm::Value*>(llvm::ConstantInt::getTrue(ctx->context));
-
-    // Iterate over each element in the destructuring pattern.
-    for (auto const &[i, part] : elems | genex::views::ptr | genex::views::enumerate) {
-        // For literals, generate the equality checks.
-        if (const auto literal_part = ast_cast<CasePatternVariantLiteralAst>(part); literal_part != nullptr) {
-            // Generate the extraction on the condition for this part, like "cond.0".
-            auto field_name = std::make_unique<IdentifierAst>(0, std::to_string(i));
-            auto field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
-            auto pf_expr = std::make_unique<PostfixExpressionAst>(ast_clone(meta->case_condition), std::move(field));
-
-            // Turn the "literal part" into a function argument.
-            auto eq_arg_conv = std::make_unique<ConventionRefAst>(nullptr);
-            auto eq_arg_val = ast_cast<ExpressionAst>(ast_clone(literal_part->literal.get()));
-            auto eq_arg = std::make_unique<FunctionCallArgumentPositionalAst>(std::move(eq_arg_conv), nullptr, std::move(eq_arg_val));
-
-            // Create the ".eq" part.
-            auto eq_field_name = std::make_unique<IdentifierAst>(0, "eq");
-            auto eq_field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(eq_field_name));
-            auto eq_pf_expr = std::make_unique<PostfixExpressionAst>(std::move(pf_expr), std::move(eq_field));
-
-            // Make the ".eq" part callable, as ".eq()" (no arguments right now)
-            auto eq_call = std::make_unique<PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
-            const auto eq_call_expr = std::make_unique<PostfixExpressionAst>(std::move(eq_pf_expr), std::move(eq_call));
-            eq_call->arg_group->args.emplace_back(std::move(eq_arg));
-
-            // Generate the equality check.
-            const auto llvm_call = eq_call_expr->stage_10_code_gen_2(sm, meta, ctx);
-            master_stmt = ctx->builder.CreateAnd(master_stmt, llvm_call);
-        }
-
-        // For nested objects (array, tuple, object)
-        else if (dynamic_cast<CasePatternVariantDestructureArrayAst*>(part) != nullptr or
-            dynamic_cast<CasePatternVariantDestructureTupleAst*>(part) != nullptr or
-            dynamic_cast<CasePatternVariantDestructureObjectAst*>(part) != nullptr) {
-            // Generate the extraction on the condition for this part, like "cond.0".
-            auto field_name = std::make_unique<IdentifierAst>(0, std::to_string(i));
-            auto field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
-            auto pf_expr = std::make_unique<PostfixExpressionAst>(ast_clone(meta->case_condition), std::move(field));
-
-            // Update the "meta->cond" with the "pf_expr", and analyse against the inner part.
-            meta->save();
-            meta->case_condition = pf_expr.get();
-
-            // Combine the result.
-            const auto llvm_call = part->stage_10_code_gen_2(sm, meta, ctx);
-            master_stmt = ctx->builder.CreateAnd(master_stmt, llvm_call);
-            meta->restore();
-        }
+    if (m_mapped_let == nullptr) {
+        auto var = convert_to_variable(meta);
+        m_mapped_let = std::make_unique<LetStatementInitializedAst>(
+            nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
+        m_mapped_let->stage_7_analyse_semantics(sm, meta);
     }
+    m_mapped_let->stage_11_code_gen_2(sm, meta, ctx);
+
+    // Combine all the generated transforms into a single "AND"ed statement.
+    auto llvm_transforms = analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_llvm(
+        elems | genex::views::ptr | genex::to<std::vector>(), sm, meta, ctx);
+    const auto combine_func = [&ctx](auto *a, auto *b) { return ctx->builder.CreateAnd(a, b); };
+    const auto llvm_master_transform = llvm_transforms.empty()
+        ? dynamic_cast<llvm::Value*>(llvm::ConstantInt::getTrue(*ctx->context))
+        : genex::fold_left_first(llvm_transforms, std::move(combine_func));
 
     // Return the combined statement.
-    return master_stmt;
+    return llvm_master_transform;
 }

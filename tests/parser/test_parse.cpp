@@ -1,186 +1,176 @@
 #include "../test_macros.hpp"
-
-#include <spp/asts/annotation_ast.hpp>
-#include <spp/asts/array_literal_ast.hpp>
-#include <spp/asts/array_literal_explicit_elements_ast.hpp>
-#include <spp/asts/array_literal_repeated_element_ast.hpp>
-#include <spp/asts/assignment_statement_ast.hpp>
-#include <spp/asts/ast.hpp>
-#include <spp/asts/binary_expression_ast.hpp>
-#include <spp/asts/binary_expression_temp_ast.hpp>
-#include <spp/asts/boolean_literal_ast.hpp>
-#include <spp/asts/case_expression_ast.hpp>
-#include <spp/asts/case_expression_branch_ast.hpp>
-#include <spp/asts/case_pattern_variant_ast.hpp>
-#include <spp/asts/case_pattern_variant_destructure_array_ast.hpp>
-#include <spp/asts/case_pattern_variant_destructure_attribute_binding_ast.hpp>
-#include <spp/asts/case_pattern_variant_destructure_object_ast.hpp>
-#include <spp/asts/case_pattern_variant_destructure_skip_multiple_arguments_ast.hpp>
-#include <spp/asts/case_pattern_variant_destructure_skip_single_argument_ast.hpp>
-#include <spp/asts/case_pattern_variant_destructure_tuple_ast.hpp>
-#include <spp/asts/case_pattern_variant_else_ast.hpp>
-#include <spp/asts/case_pattern_variant_else_case_ast.hpp>
-#include <spp/asts/case_pattern_variant_expression_ast.hpp>
-#include <spp/asts/case_pattern_variant_literal_ast.hpp>
-#include <spp/asts/case_pattern_variant_single_identifier_ast.hpp>
-#include <spp/asts/class_attribute_ast.hpp>
-#include <spp/asts/class_implementation_ast.hpp>
-#include <spp/asts/class_member_ast.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
-#include <spp/asts/closure_expression_ast.hpp>
-#include <spp/asts/closure_expression_capture_ast.hpp>
-#include <spp/asts/closure_expression_capture_group_ast.hpp>
-#include <spp/asts/closure_expression_parameter_and_capture_group_ast.hpp>
-#include <spp/asts/cmp_statement_ast.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/coroutine_prototype_ast.hpp>
-#include <spp/asts/float_literal_ast.hpp>
-#include <spp/asts/fold_expression_ast.hpp>
-#include <spp/asts/function_call_argument_ast.hpp>
-#include <spp/asts/function_call_argument_group_ast.hpp>
-#include <spp/asts/function_call_argument_keyword_ast.hpp>
-#include <spp/asts/function_call_argument_positional_ast.hpp>
-#include <spp/asts/function_implementation_ast.hpp>
-#include <spp/asts/function_parameter_ast.hpp>
-#include <spp/asts/function_parameter_group_ast.hpp>
-#include <spp/asts/function_parameter_optional_ast.hpp>
-#include <spp/asts/function_parameter_required_ast.hpp>
-#include <spp/asts/function_parameter_self_ast.hpp>
-#include <spp/asts/function_parameter_variadic_ast.hpp>
-#include <spp/asts/function_prototype_ast.hpp>
-#include <spp/asts/generic_argument_ast.hpp>
-#include <spp/asts/generic_argument_comp_ast.hpp>
-#include <spp/asts/generic_argument_comp_keyword_ast.hpp>
-#include <spp/asts/generic_argument_comp_positional_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_ast.hpp>
-#include <spp/asts/generic_argument_type_keyword_ast.hpp>
-#include <spp/asts/generic_argument_type_positional_ast.hpp>
-#include <spp/asts/generic_parameter_ast.hpp>
-#include <spp/asts/generic_parameter_comp_ast.hpp>
-#include <spp/asts/generic_parameter_comp_optional_ast.hpp>
-#include <spp/asts/generic_parameter_comp_required_ast.hpp>
-#include <spp/asts/generic_parameter_comp_variadic_ast.hpp>
-#include <spp/asts/generic_parameter_group_ast.hpp>
-#include <spp/asts/generic_parameter_type_ast.hpp>
-#include <spp/asts/generic_parameter_type_inline_constraints_ast.hpp>
-#include <spp/asts/generic_parameter_type_optional_ast.hpp>
-#include <spp/asts/generic_parameter_type_required_ast.hpp>
-#include <spp/asts/generic_parameter_type_variadic_ast.hpp>
-#include <spp/asts/gen_expression_ast.hpp>
-#include <spp/asts/gen_with_expression_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/inner_scope_ast.hpp>
-#include <spp/asts/inner_scope_expression_ast.hpp>
-#include <spp/asts/integer_literal_ast.hpp>
-#include <spp/asts/is_expression_ast.hpp>
-#include <spp/asts/is_expression_temp_ast.hpp>
-#include <spp/asts/iter_expression_ast.hpp>
-#include <spp/asts/iter_expression_branch_ast.hpp>
-#include <spp/asts/iter_pattern_variant_ast.hpp>
-#include <spp/asts/iter_pattern_variant_exception_ast.hpp>
-#include <spp/asts/iter_pattern_variant_exhausted_ast.hpp>
-#include <spp/asts/iter_pattern_variant_no_value_ast.hpp>
-#include <spp/asts/iter_pattern_variant_variable_ast.hpp>
-#include <spp/asts/let_statement_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/let_statement_uninitialized_ast.hpp>
-#include <spp/asts/literal_ast.hpp>
-#include <spp/asts/local_variable_destructure_array_ast.hpp>
-#include <spp/asts/local_variable_destructure_attribute_binding_ast.hpp>
-#include <spp/asts/local_variable_destructure_object_ast.hpp>
-#include <spp/asts/local_variable_destructure_skip_multiple_arguments_ast.hpp>
-#include <spp/asts/local_variable_destructure_skip_single_argument_ast.hpp>
-#include <spp/asts/local_variable_destructure_tuple_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
-#include <spp/asts/loop_condition_ast.hpp>
-#include <spp/asts/loop_condition_boolean_ast.hpp>
-#include <spp/asts/loop_condition_iterable_ast.hpp>
-#include <spp/asts/loop_control_flow_statement_ast.hpp>
-#include <spp/asts/loop_else_statement_ast.hpp>
-#include <spp/asts/loop_expression_ast.hpp>
-#include <spp/asts/module_implementation_ast.hpp>
-#include <spp/asts/module_prototype_ast.hpp>
-#include <spp/asts/object_initializer_argument_group_ast.hpp>
-#include <spp/asts/object_initializer_argument_keyword_ast.hpp>
-#include <spp/asts/object_initializer_argument_shorthand_ast.hpp>
-#include <spp/asts/object_initializer_ast.hpp>
-#include <spp/asts/parenthesised_expression.hpp>
-#include <spp/asts/pattern_guard_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_ast.hpp>
-#include <spp/asts/postfix_expression_operator_early_return_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/postfix_expression_operator_keyword_not_ast.hpp>
-#include <spp/asts/postfix_expression_operator_keyword_res_ast.hpp>
-#include <spp/asts/postfix_expression_operator_runtime_member_access_ast.hpp>
-#include <spp/asts/postfix_expression_operator_static_member_access_ast.hpp>
-#include <spp/asts/ret_statement_ast.hpp>
-#include <spp/asts/string_literal_ast.hpp>
-#include <spp/asts/subroutine_prototype_ast.hpp>
-#include <spp/asts/sup_implementation_ast.hpp>
-#include <spp/asts/sup_prototype_extension_ast.hpp>
-#include <spp/asts/sup_prototype_functions_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/tuple_literal_ast.hpp>
-#include <spp/asts/type_array_shorthand_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_binary_expression_ast.hpp>
-#include <spp/asts/type_binary_expression_temp_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/type_parenthesised_expression_ast.hpp>
-#include <spp/asts/type_postfix_expression_ast.hpp>
-#include <spp/asts/type_postfix_expression_operator_ast.hpp>
-#include <spp/asts/type_postfix_expression_operator_nested_type_ast.hpp>
-#include <spp/asts/type_statement_ast.hpp>
-#include <spp/asts/type_tuple_shorthand_ast.hpp>
-#include <spp/asts/type_unary_expression_ast.hpp>
-#include <spp/asts/type_unary_expression_operator_borrow_ast.hpp>
-#include <spp/asts/type_unary_expression_operator_namespace_ast.hpp>
-#include <spp/asts/unary_expression_ast.hpp>
-#include <spp/asts/unary_expression_operator_ast.hpp>
-#include <spp/asts/unary_expression_operator_async_ast.hpp>
-#include <spp/asts/unary_expression_operator_deref_ast.hpp>
-#include <spp/asts/use_statement_ast.hpp>
-#include <spp/parse/errors/parser_error.hpp>
-
-#include <gtest/gtest.h>
+import spp.analyse.errors.semantic_error;
+import spp.asts.annotation_ast;
+import spp.asts.array_literal_ast;
+import spp.asts.array_literal_explicit_elements_ast;
+import spp.asts.array_literal_repeated_element_ast;
+import spp.asts.assignment_statement_ast;
+import spp.asts.ast;
+import spp.asts.binary_expression_ast;
+import spp.asts.binary_expression_temp_ast;
+import spp.asts.boolean_literal_ast;
+import spp.asts.case_expression_ast;
+import spp.asts.case_expression_branch_ast;
+import spp.asts.case_pattern_variant_ast;
+import spp.asts.case_pattern_variant_destructure_array_ast;
+import spp.asts.case_pattern_variant_destructure_attribute_binding_ast;
+import spp.asts.case_pattern_variant_destructure_object_ast;
+import spp.asts.case_pattern_variant_destructure_skip_multiple_arguments_ast;
+import spp.asts.case_pattern_variant_destructure_skip_single_argument_ast;
+import spp.asts.case_pattern_variant_destructure_tuple_ast;
+import spp.asts.case_pattern_variant_else_ast;
+import spp.asts.case_pattern_variant_else_case_ast;
+import spp.asts.case_pattern_variant_expression_ast;
+import spp.asts.case_pattern_variant_literal_ast;
+import spp.asts.case_pattern_variant_single_identifier_ast;
+import spp.asts.class_attribute_ast;
+import spp.asts.class_implementation_ast;
+import spp.asts.class_member_ast;
+import spp.asts.class_prototype_ast;
+import spp.asts.closure_expression_ast;
+import spp.asts.closure_expression_capture_ast;
+import spp.asts.closure_expression_capture_group_ast;
+import spp.asts.closure_expression_parameter_and_capture_group_ast;
+import spp.asts.cmp_statement_ast;
+import spp.asts.convention_ast;
+import spp.asts.convention_mut_ast;
+import spp.asts.convention_ref_ast;
+import spp.asts.coroutine_prototype_ast;
+import spp.asts.float_literal_ast;
+import spp.asts.fold_expression_ast;
+import spp.asts.function_call_argument_ast;
+import spp.asts.function_call_argument_group_ast;
+import spp.asts.function_call_argument_keyword_ast;
+import spp.asts.function_call_argument_positional_ast;
+import spp.asts.function_implementation_ast;
+import spp.asts.function_parameter_ast;
+import spp.asts.function_parameter_group_ast;
+import spp.asts.function_parameter_optional_ast;
+import spp.asts.function_parameter_required_ast;
+import spp.asts.function_parameter_self_ast;
+import spp.asts.function_parameter_variadic_ast;
+import spp.asts.function_prototype_ast;
+import spp.asts.generic_argument_ast;
+import spp.asts.generic_argument_comp_ast;
+import spp.asts.generic_argument_comp_keyword_ast;
+import spp.asts.generic_argument_comp_positional_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
+import spp.asts.generic_argument_type_keyword_ast;
+import spp.asts.generic_argument_type_positional_ast;
+import spp.asts.generic_parameter_ast;
+import spp.asts.generic_parameter_comp_ast;
+import spp.asts.generic_parameter_comp_optional_ast;
+import spp.asts.generic_parameter_comp_required_ast;
+import spp.asts.generic_parameter_comp_variadic_ast;
+import spp.asts.generic_parameter_group_ast;
+import spp.asts.generic_parameter_type_ast;
+import spp.asts.generic_parameter_type_inline_constraints_ast;
+import spp.asts.generic_parameter_type_optional_ast;
+import spp.asts.generic_parameter_type_required_ast;
+import spp.asts.generic_parameter_type_variadic_ast;
+import spp.asts.gen_expression_ast;
+import spp.asts.gen_with_expression_ast;
+import spp.asts.identifier_ast;
+import spp.asts.inner_scope_ast;
+import spp.asts.inner_scope_expression_ast;
+import spp.asts.integer_literal_ast;
+import spp.asts.is_expression_ast;
+import spp.asts.is_expression_temp_ast;
+import spp.asts.let_statement_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.let_statement_uninitialized_ast;
+import spp.asts.literal_ast;
+import spp.asts.local_variable_destructure_array_ast;
+import spp.asts.local_variable_destructure_attribute_binding_ast;
+import spp.asts.local_variable_destructure_object_ast;
+import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
+import spp.asts.local_variable_destructure_skip_single_argument_ast;
+import spp.asts.local_variable_destructure_tuple_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.loop_control_flow_statement_ast;
+import spp.asts.loop_else_statement_ast;
+import spp.asts.loop_expression_ast;
+import spp.asts.module_implementation_ast;
+import spp.asts.module_prototype_ast;
+import spp.asts.object_initializer_argument_group_ast;
+import spp.asts.object_initializer_argument_keyword_ast;
+import spp.asts.object_initializer_argument_shorthand_ast;
+import spp.asts.object_initializer_ast;
+import spp.asts.parenthesised_expression_ast;
+import spp.asts.pattern_guard_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_early_return_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.postfix_expression_operator_index_ast;
+import spp.asts.postfix_expression_operator_keyword_not_ast;
+import spp.asts.postfix_expression_operator_keyword_res_ast;
+import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.postfix_expression_operator_static_member_access_ast;
+import spp.asts.primary_expression_ast;
+import spp.asts.ret_statement_ast;
+import spp.asts.string_literal_ast;
+import spp.asts.subroutine_prototype_ast;
+import spp.asts.sup_implementation_ast;
+import spp.asts.sup_prototype_extension_ast;
+import spp.asts.sup_prototype_functions_ast;
+import spp.asts.token_ast;
+import spp.asts.tuple_literal_ast;
+import spp.asts.type_array_shorthand_ast;
+import spp.asts.type_ast;
+import spp.asts.type_binary_expression_ast;
+import spp.asts.type_binary_expression_temp_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.type_parenthesised_expression_ast;
+import spp.asts.type_postfix_expression_ast;
+import spp.asts.type_postfix_expression_operator_ast;
+import spp.asts.type_postfix_expression_operator_nested_type_ast;
+import spp.asts.type_statement_ast;
+import spp.asts.type_tuple_shorthand_ast;
+import spp.asts.type_unary_expression_ast;
+import spp.asts.type_unary_expression_operator_borrow_ast;
+import spp.asts.type_unary_expression_operator_namespace_ast;
+import spp.asts.unary_expression_ast;
+import spp.asts.unary_expression_operator_ast;
+import spp.asts.unary_expression_operator_async_ast;
+import spp.asts.postfix_expression_operator_deref_ast;
+import spp.asts.use_statement_ast;
+import spp.parse.errors.parser_error;
 
 
 SPP_TEST_SHOULD_FAIL_SYNTACTIC(
     parse_intentional_error, R"(
     3254gGG
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_class_prototype, R"(
     cls MyClass { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_class_attribute, R"(
     cls MyClass {
-        my_attr_1: I32
-        my_attr_2: I32
+        my_attr_1: S32
+        my_attr_2: S32
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_sup_prototype_extension, R"(
     sup MyClass ext Copy { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_sup_prototype_functions, R"(
     sup MyClass { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -188,19 +178,19 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     sup MyClass {
         type NewType = OldType
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_subroutine_prototype, R"(
     fun my_function() -> Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_coroutine_prototype, R"(
     cor my_coroutine() -> Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -208,7 +198,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         other_function(arg1=other_thing, arg2=2)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -216,7 +206,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         other_function(1, 2)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -224,7 +214,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         other_function()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -232,7 +222,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         other_function(1, arg=false)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -240,7 +230,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     sup MyClass {
         fun my_method(self) -> Void { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -248,7 +238,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     sup MyClass {
         fun my_method(mut self) -> Void { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -256,7 +246,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     sup MyClass {
         fun my_method(&mut self) -> Void { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -264,47 +254,47 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     sup MyClass {
         fun my_method(&self) -> Void { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_function_required_parameters, R"(
-    fun my_function(arg1: I32, arg2: I32) -> Void { }
-)")
+    fun my_function(arg1: S32, arg2: S32) -> Void { }
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_function_optional_parameters, R"(
-    fun my_function(arg2: I32 = 0) -> Void { }
-)")
+    fun my_function(arg2: S32 = 0) -> Void { }
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_function_variadic_parameters, R"(
-    fun my_function(arg1: I32, ..arg2: I32) -> Void { }
-)")
+    fun my_function(arg1: S32, ..arg2: S32) -> Void { }
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_function_parameters, R"(
-    fun my_function(arg1: I32, arg2: I32 = 0, ..arg3: I32) -> Void { }
-)")
+    fun my_function(arg1: S32, arg2: S32 = 0, ..arg3: S32) -> Void { }
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_generic_argument_type_named, R"(
     fun my_function() -> Void {
-        other_function[T=I32, U=Str]()
+        other_function[T=S32, U=Str]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_generic_argument_type_unnamed, R"(
     fun my_function() -> Void {
-        other_function[I32, Str]()
+        other_function[S32, Str]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -312,7 +302,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         other_function[n=1, m=2]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -320,89 +310,89 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         other_function[1, 2]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_generic_arguments, R"(
     fun my_function() -> Void {
-        other_function[I32, Str, T=Bool, n=1]()
+        other_function[S32, Str, T=Bool, n=1]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_generic_parameter_type_required, R"(
     fun my_function[T, U]() -> Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_generic_parameter_type_optional, R"(
-    fun my_function[T=I32, U=Str]() -> Void { }
-)")
+    fun my_function[T=S32, U=Str]() -> Void { }
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_generic_parameter_type_variadic, R"(
     fun my_function[T, ..U]() -> Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_generic_parameter_type, R"(
-    fun my_function[T, U=I32, ..V]() -> Void { }
-)")
+    fun my_function[T, U=S32, ..V]() -> Void { }
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_generic_parameter_comp_required, R"(
-    fun my_function[cmp n: I32, cmp m: I32]() -> Void { }
-)")
+    fun my_function[cmp n: S32, cmp m: S32]() -> Void { }
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_generic_parameter_comp_optional, R"(
-    fun my_function[cmp n: I32=1, cmp m: I32=2]() -> Void { }
-)")
+    fun my_function[cmp n: S32=1, cmp m: S32=2]() -> Void { }
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_generic_parameter_comp_variadic, R"(
-    fun my_function[cmp ..m: I32]() -> Void { }
-)")
+    fun my_function[cmp ..m: S32]() -> Void { }
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_generic_parameter_comp, R"(
-    fun my_function[cmp n: I32, cmp m: I32=1, cmp ..o: I32]() -> Void { }
-)")
+    fun my_function[cmp n: S32, cmp m: S32=1, cmp ..o: S32]() -> Void { }
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_generic_parameters, R"(
-    fun my_function[cmp n: I32, T, cmp m: I32=1, U=Str, cmp ..o: I32, ..V]() -> Void { }
-)")
+    fun my_function[cmp n: S32, T, cmp m: S32=1, U=Str, cmp ..o: S32, ..V]() -> Void { }
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_generic_inline_constraints, R"(
-    fun my_function[T: Copy, U: Clone]() -> Void { }
-)")
+    fun my_function[T: Copy, U: Clone & Copy]() -> Void { }
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_annotations_function, R"(
     @annotation1
     fun my_function() -> Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_annotations_class, R"(
     @annotation1
     cls MyClass { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -410,7 +400,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable |= other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -418,7 +408,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable ^= other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -426,7 +416,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable &= other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -434,7 +424,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable += other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -442,7 +432,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable -= other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -450,7 +440,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable *= other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -458,7 +448,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable /= other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -466,7 +456,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable %= other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -474,7 +464,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable **= other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -482,7 +472,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable or other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -490,7 +480,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable and another_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -498,7 +488,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable is Destructure(a=1, b, ..)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -506,7 +496,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable == other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -514,7 +504,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable != other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -522,7 +512,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable < other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -530,7 +520,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable <= other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -538,7 +528,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable > other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -546,7 +536,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable >= other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -554,7 +544,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable | other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -562,7 +552,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable ^ other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -570,7 +560,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable & other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -578,7 +568,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable << other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -586,7 +576,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable >> other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -594,7 +584,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable + other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -602,7 +592,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable - other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -610,7 +600,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable * other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -618,7 +608,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable / other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -626,7 +616,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable % other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -634,7 +624,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable ** other_variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -642,7 +632,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         async function()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -650,7 +640,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         *borrow
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -658,7 +648,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         function()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -666,7 +656,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable.field
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -674,7 +664,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         tuple.0
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -682,7 +672,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         Type::method()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -690,7 +680,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         function()?
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -698,7 +688,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable.not
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -706,7 +696,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         generator.step
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -714,7 +704,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         (variable)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -722,7 +712,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         self
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -730,7 +720,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         tuple + ..
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -738,7 +728,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         .. + tuple
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -750,7 +740,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
             is (c, 5, 6) { }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -763,7 +753,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
         else {
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -772,7 +762,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
         loop true {
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -781,7 +771,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
         loop i in some_vector {
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -792,7 +782,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
         else {
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -800,7 +790,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         gen
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -808,7 +798,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         gen variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -816,7 +806,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         gen &variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -824,7 +814,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         gen &mut variable
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -832,7 +822,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         gen with another_generator
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -840,7 +830,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         ret
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -848,7 +838,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         ret 1
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -860,7 +850,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
             }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -872,7 +862,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
             }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -884,7 +874,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
             }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -896,7 +886,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
             }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -906,27 +896,27 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
             inner_function()
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_global_type_statement, R"(
     type MyString = Str
 
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_global_constant, R"(
-    cmp constant: I32 = 1
+    cmp constant: S32 = 1
 
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_global_constant_advanced, R"(
     cmp glob_array_1: Arr[std::bignum::bigint::BigInt, 100_uz] = std::array::Arr[std::bignum::bigint::BigInt, 100_uz]()
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -934,15 +924,15 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let a = 1
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_let_statement_uninitialized, R"(
     fun my_function() -> Void {
-        let a: I32
+        let a: S32
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -950,7 +940,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let (a, _, b, _) = tuple
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -958,7 +948,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let (a, .., b) = tuple
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -966,7 +956,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let MyType(attr as a) = object
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -974,7 +964,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let a = 1
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -982,7 +972,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let [a, b, c] = array
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -990,7 +980,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let (a, b, c) = tuple
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -998,7 +988,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let MyType(a, b, c) = object
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1006,7 +996,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let MyType(attr1=Point(x, y), attr2) = object
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1014,7 +1004,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         variable = 1
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1022,7 +1012,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         a, b, c = 1, 2, 3
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1033,7 +1023,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
         else {
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1048,7 +1038,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
         else {
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1058,7 +1048,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
             is [a, b, c] { }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1068,7 +1058,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
             is (a, b, c) { }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1078,7 +1068,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
             is MyType(a, b, c) { }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1088,7 +1078,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
             is MyType(attr1=Point(x, y), attr2) { }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1098,7 +1088,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
             == 1 { }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1109,7 +1099,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
             == other_function_call { }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1120,21 +1110,21 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
             == 2 and other_condition { }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_convention_mutable_borrow, R"(
-    fun my_function(a: &mut I32) -> Void {
+    fun my_function(a: &mut S32) -> Void {
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_convention_immutable_borrow, R"(
-    fun my_function(a: &I32) -> Void {
+    fun my_function(a: &S32) -> Void {
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1142,7 +1132,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         MyType(attr1=1, attr2=2)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1150,7 +1140,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         MyType(attr1, attr2)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1158,7 +1148,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         MyType(1, ..other)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1166,31 +1156,31 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         MyType(attr1, attr2=other, ..other)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_type_tuple, R"(
     fun my_function() -> Void {
-        let a: (I32, I32)
+        let a: (S32, S32)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_type_union, R"(
     fun my_function() -> Void {
-        let a: I32 or Str
+        let a: S32 or Str
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_type_single, R"(
     fun my_function() -> Void {
-        let a: I32
+        let a: S32
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1198,7 +1188,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let a: std::inner::Str
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1206,7 +1196,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let a: std::inner::Str::ValueType::Other
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1214,7 +1204,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let a: Self
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1222,7 +1212,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let a: Self::InnerType
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1230,7 +1220,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let a = 1.0
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1238,7 +1228,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let a = 1
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1246,7 +1236,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let a = -1
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1254,7 +1244,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let a = 1_u64
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1262,7 +1252,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let a = 0b101
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1270,7 +1260,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let a = 0x1F
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1278,7 +1268,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let a = "string"
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1286,7 +1276,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let a = true
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1294,7 +1284,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let a = ()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1302,7 +1292,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let a = (1,)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1310,15 +1300,15 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let a = (1, 2, 3)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_array_0_items, R"(
     fun my_function() -> Void {
-        let a = [I32, 8]
+        let a = [S32, 8]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
@@ -1326,59 +1316,59 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     fun my_function() -> Void {
         let a = [1,2,3]
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_main, R"(
     fun main(args: std::vector::Vec[std::string::Str]) -> std::void::Void {
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_closure_no_params, R"(
     fun my_function() -> Void {
-        let my_closure = || { }
+        let my_closure = () { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_closure_with_params, R"(
     fun my_function() -> Void {
-        let my_closure = |a: I32, b: I32| { }
+        let my_closure = (a: S32, b: S32) { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_closure_with_capture, R"(
     fun my_function() -> Void {
-        let my_closure = |caps a, &b, &mut c| { }
+        let my_closure = (caps a, &b, &mut c) { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_closure_with_params_and_capture, R"(
     fun my_function() -> Void {
-        let my_closure = |a: I32, b: I32 caps c, &d, &mut e| { }
+        let my_closure = (a: S32, b: S32 caps c, &d, &mut e) { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_closure_with_param_optional, R"(
     fun my_function() -> Void {
-        let my_closure = |a: I32, b: I32 = 0| { }
+        let my_closure = (a: S32, b: S32 = 0) { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_closure_with_param_variadic, R"(
     fun my_function() -> Void {
-        let my_closure = |a: I32, ..b: I32| { a }
+        let my_closure = (a: S32, ..b: S32) { a }
     }
-)")
+)");

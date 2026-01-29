@@ -1,29 +1,38 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/integer_literal_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <spp/macros.hpp>
 
-using CppBigInt = boost::multiprecision::cpp_int;
+module spp.asts.integer_literal_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.asts.token_ast;
+import spp.asts.generate.common_types;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_ctx;
+import spp.codegen.llvm_type;
+import spp.lex.tokens;
+import llvm;
+import mppp;
 
 
-const auto INTEGER_TYPE_MIN_MAX = std::map<std::string, std::pair<CppBigInt, CppBigInt>>{
-    {"s8", {CppBigInt("-128"), CppBigInt("127")}},
-    {"s16", {CppBigInt("-32768"), CppBigInt("32767")}},
-    {"s32", {CppBigInt("-2147483648"), CppBigInt("2147483647")}},
-    {"s64", {CppBigInt("-9223372036854775808"), CppBigInt("9223372036854775807")}},
-    {"sz", {CppBigInt("-9223372036854775808"), CppBigInt("9223372036854775807")}},
-    {"s128", {CppBigInt("-170141183460469231731687303715884105728"), CppBigInt("170141183460469231731687303715884105727")}},
-    {"s256", {CppBigInt("-57896044618658097711785492504343953926634992332820282019728792003956564819968"), CppBigInt("57896044618658097711785492504343953926634992332820282019728792003956564819967")}},
-    {"u8", {CppBigInt("0"), CppBigInt("255")}},
-    {"u16", {CppBigInt("0"), CppBigInt("65535")}},
-    {"u32", {CppBigInt("0"), CppBigInt("4294967295")}},
-    {"u64", {CppBigInt("0"), CppBigInt("18446744073709551615")}},
-    {"uz", {CppBigInt("0"), CppBigInt("18446744073709551615")}},
-    {"u128", {CppBigInt("0"), CppBigInt("340282366841710300949128831971969468211455")}},
-    {"u256", {CppBigInt("0"), CppBigInt("115792089237316195423570985008687907853269984665640564039457584007913129639935")}}
+const auto INTEGER_TYPE_MIN_MAX = std::map<std::string, std::pair<mppp::BigInt, mppp::BigInt>>{
+    {"s8", {mppp::BigInt("-128"), mppp::BigInt("127")}},
+    {"s16", {mppp::BigInt("-32768"), mppp::BigInt("32767")}},
+    {"s32", {mppp::BigInt("-2147483648"), mppp::BigInt("2147483647")}},
+    {"s64", {mppp::BigInt("-9223372036854775808"), mppp::BigInt("9223372036854775807")}},
+    {"sz", {mppp::BigInt("-9223372036854775808"), mppp::BigInt("9223372036854775807")}},
+    {"s128", {mppp::BigInt("-170141183460469231731687303715884105728"), mppp::BigInt("170141183460469231731687303715884105727")}},
+    {"s256", {mppp::BigInt("-57896044618658097711785492504343953926634992332820282019728792003956564819968"), mppp::BigInt("57896044618658097711785492504343953926634992332820282019728792003956564819967")}},
+    {"u8", {mppp::BigInt("0"), mppp::BigInt("255")}},
+    {"u16", {mppp::BigInt("0"), mppp::BigInt("65535")}},
+    {"u32", {mppp::BigInt("0"), mppp::BigInt("4294967295")}},
+    {"u64", {mppp::BigInt("0"), mppp::BigInt("18446744073709551615")}},
+    {"uz", {mppp::BigInt("0"), mppp::BigInt("18446744073709551615")}},
+    {"u128", {mppp::BigInt("0"), mppp::BigInt("340282366841710300949128831971969468211455")}},
+    {"u256", {mppp::BigInt("0"), mppp::BigInt("115792089237316195423570985008687907853269984665640564039457584007913129639935")}}
 };
 
 
@@ -36,9 +45,6 @@ spp::asts::IntegerLiteralAst::IntegerLiteralAst(
     val(std::move(val)),
     type(std::move(type)) {
 }
-
-
-spp::asts::IntegerLiteralAst::~IntegerLiteralAst() = default;
 
 
 auto spp::asts::IntegerLiteralAst::equals(
@@ -91,88 +97,107 @@ spp::asts::IntegerLiteralAst::operator std::string() const {
 }
 
 
-auto spp::asts::IntegerLiteralAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_sign);
-    SPP_PRINT_APPEND(val);
-    formatted_string.append("_").append(type);
-    SPP_PRINT_END;
+auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
+    ScopeManager *,
+    CompilerMetaData *)
+    -> void {
+    // Get the lower and upper bounds as big ints.
+    type = type.empty() ? "s32" : type;
+    // auto const &[lower, upper] = INTEGER_TYPE_MIN_MAX.at(type);
+    // auto mapped_val = mppp::BigInt(val->token_data.c_str());
+    // if (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB) {
+    //     mapped_val = mapped_val.neg();
+    // }
+
+    // Check if the value is within the bounds.
+    // if (mapped_val < lower or mapped_val > upper) {
+    //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppIntegerOutOfBoundsError>().with_args(
+    //         *this, mapped_val, lower, upper, "int").with_scopes({sm->current_scope}).raise();
+    // }
 }
 
 
-auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
-    ScopeManager *sm,
-    mixins::CompilerMetaData *)
+auto spp::asts::IntegerLiteralAst::stage_9_comptime_resolution(
+    ScopeManager *,
+    CompilerMetaData *meta)
     -> void {
-    // Get the lower and upper bounds as big floats.
-    type = type.empty() ? "s32" : type;
-    auto const &[lower, upper] = INTEGER_TYPE_MIN_MAX.at(type);
-    auto mapped_val = CppBigInt(val->token_data.c_str());
-    if (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB) {
-        mapped_val = -mapped_val;
-    }
+    // Clone and return the float literal as is for compile-time resolution.
+    meta->cmp_result = ast_clone(this);
+}
 
-    // Check if the value is within the bounds.
-    if (mapped_val < lower or mapped_val > upper) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIntegerOutOfBoundsError>().with_args(
-            *this, mapped_val, lower, upper, "float").with_scopes({sm->current_scope}).raise();
-    }
+
+auto spp::asts::IntegerLiteralAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Get the type of the integer literal.
+    const auto type_ast = infer_type(sm, meta);
+    const auto type_sym = sm->current_scope->get_type_symbol(type_ast);
+    const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
+
+    // Create the LLVM constant integer value.
+    const auto bit_width = llvm_type->getIntegerBitWidth();
+    const auto ap_int = llvm::APInt(bit_width, val->token_data, 10);
+    return llvm::ConstantInt::get(*ctx->context, ap_int);
 }
 
 
 auto spp::asts::IntegerLiteralAst::infer_type(
-    ScopeManager *,
-    mixins::CompilerMetaData *)
+    ScopeManager *sm,
+    CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Map the type string literal to the correct SPP type.
+    auto spp_type = std::shared_ptr<TypeAst>(nullptr);
     if (type.empty()) {
-        return generate::common_types::s32(pos_start());
+        spp_type = generate::common_types::s32(pos_start());
     }
-    if (type == "s8") {
-        return generate::common_types::s8(pos_start());
+    else if (type == "s8") {
+        spp_type = generate::common_types::s8(pos_start());
     }
-    if (type == "s16") {
-        return generate::common_types::s16(pos_start());
+    else if (type == "s16") {
+        spp_type = generate::common_types::s16(pos_start());
     }
-    if (type == "s32") {
-        return generate::common_types::s32(pos_start());
+    else if (type == "s32") {
+        spp_type = generate::common_types::s32(pos_start());
     }
-    if (type == "s64") {
-        return generate::common_types::s64(pos_start());
+    else if (type == "s64") {
+        spp_type = generate::common_types::s64(pos_start());
     }
-    if (type == "s128") {
-        return generate::common_types::s128(pos_start());
+    else if (type == "s128") {
+        spp_type = generate::common_types::s128(pos_start());
     }
-    if (type == "s256") {
-        return generate::common_types::s256(pos_start());
+    else if (type == "s256") {
+        spp_type = generate::common_types::s256(pos_start());
     }
-    if (type == "sz") {
-        return generate::common_types::ssize(pos_start());
+    else if (type == "sz") {
+        spp_type = generate::common_types::ssize(pos_start());
     }
-    if (type == "u8") {
-        return generate::common_types::u8(pos_start());
+    else if (type == "u8") {
+        spp_type = generate::common_types::u8(pos_start());
     }
-    if (type == "u16") {
-        return generate::common_types::u16(pos_start());
+    else if (type == "u16") {
+        spp_type = generate::common_types::u16(pos_start());
     }
-    if (type == "u32") {
-        return generate::common_types::u32(pos_start());
+    else if (type == "u32") {
+        spp_type = generate::common_types::u32(pos_start());
     }
-    if (type == "u64") {
-        return generate::common_types::u64(pos_start());
+    else if (type == "u64") {
+        spp_type = generate::common_types::u64(pos_start());
     }
-    if (type == "u128") {
-        return generate::common_types::u128(pos_start());
+    else if (type == "u128") {
+        spp_type = generate::common_types::u128(pos_start());
     }
-    if (type == "u256") {
-        return generate::common_types::u256(pos_start());
+    else if (type == "u256") {
+        spp_type = generate::common_types::u256(pos_start());
     }
-    if (type == "uz") {
-        return generate::common_types::usize(pos_start());
+    else if (type == "uz") {
+        spp_type = generate::common_types::usize(pos_start());
     }
 
-    // This should never happen, due to parsing rules.
-    std::unreachable();
+    const auto sym = sm->current_scope->get_type_symbol(spp_type);
+    if (sym == nullptr) {
+        auto _ = 123;
+    }
+    return sym->fq_name();
 }

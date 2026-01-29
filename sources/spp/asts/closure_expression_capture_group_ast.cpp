@@ -1,23 +1,29 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/closure_expression_capture_ast.hpp>
-#include <spp/asts/closure_expression_capture_group_ast.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
-#include <spp/asts/object_initializer_argument_group_ast.hpp>
-#include <spp/asts/object_initializer_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
 
-#include <genex/views/filter.hpp>
-#include <genex/views/for_each.hpp>
-#include <genex/views/ptr.hpp>
+module spp.asts.closure_expression_capture_group_ast;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_utils;
+import spp.asts.closure_expression_ast;
+import spp.asts.closure_expression_capture_ast;
+import spp.asts.convention_ast;
+import spp.asts.expression_ast;
+import spp.asts.identifier_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.object_initializer_ast;
+import spp.asts.object_initializer_argument_group_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_type;
+import spp.lex.tokens;
+import spp.utils.uid;
+import genex;
 
 
 spp::asts::ClosureExpressionCaptureGroupAst::ClosureExpressionCaptureGroupAst(
@@ -55,18 +61,8 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::clone() const
 spp::asts::ClosureExpressionCaptureGroupAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_caps).append(" ");
-    SPP_STRING_EXTEND(captures);
+    SPP_STRING_EXTEND(captures, ", ");
     SPP_STRING_END;
-}
-
-
-auto spp::asts::ClosureExpressionCaptureGroupAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_caps).append(" ");
-    SPP_PRINT_EXTEND(captures);
-    SPP_PRINT_END;
 }
 
 
@@ -79,21 +75,19 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::new_empty()
 
 auto spp::asts::ClosureExpressionCaptureGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Add the capture variables after analysis, otherwise their symbol checks refer to the new captures, not the
     // original asts from the argument group analysis.
     for (auto &&cap : captures) {
         // Create a "let" statement to insert the symbol into the current scope.
-        auto cap_val = ast_cast<IdentifierAst>(ast_clone(cap->val));
-        auto var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(cap_val), nullptr);
-        auto var_type = cap->val->infer_type(sm, meta);
-        auto let_val = std::make_unique<ObjectInitializerAst>(std::move(var_type), nullptr);
-        const auto let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, std::move(let_val));
+        auto cap_val = ast_clone(cap->val->to<IdentifierAst>());
+        auto var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, ast_clone(cap_val), nullptr);
+        const auto let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, ast_clone(cap->val));
         let->stage_7_analyse_semantics(sm, meta);
 
         // Apply the borrow to the symbol.
-        const auto sym = sm->current_scope->get_var_symbol(ast_cast<IdentifierAst>(ast_clone(cap->val)));
+        const auto sym = sm->current_scope->get_var_symbol(ast_clone(cap->val->to<IdentifierAst>()));
         const auto conv = cap->conv.get();
         sym->memory_info->ast_borrowed = {conv, sm->current_scope};
         sym->type = sym->type->with_convention(ast_clone(cap->conv));
@@ -103,23 +97,71 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_7_analyse_semantics(
 
 auto spp::asts::ClosureExpressionCaptureGroupAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
-
     // Any borrowed captures need pinning and marking as extended borrows.
-    const auto [ass_sym, _] = meta->current_lambda_outer_scope->get_var_symbol_outermost(*meta->assignment_target);
+    auto ass_sym = std::shared_ptr<analyse::scopes::VariableSymbol>(nullptr);
+    if (meta->assignment_target != nullptr) {
+        ass_sym = meta->current_lambda_outer_scope->get_var_symbol_outermost(*meta->assignment_target).first;
+    }
     for (auto const &cap : captures) {
         if (cap->conv != nullptr) {
             // Mark the pins on the capture and the target.
-            const auto cap_val = ast_cast<IdentifierAst>(cap->val.get());
-            const auto cap_sym = sm->current_scope->get_var_symbol(ast_clone(cap_val));
+            const auto cap_val = cap->val->to<IdentifierAst>();
+            auto cap_sym = sm->current_scope->get_var_symbol(ast_clone(cap_val));
+            cap_sym->memory_info->ast_borrowed = {cap->conv.get(), sm->current_scope};
             if (ass_sym != nullptr) { ass_sym->memory_info->ast_pins.emplace_back(cap->val.get()); }
-            if (cap_sym != nullptr) { cap_sym->memory_info->ast_pins.emplace_back(cap->val.get()); }
 
-            // Mark the extended borrow. TODO
-            // auto is_mut = *cap->conv == ConventionAst::ConventionTag::MUT;
-            // cap_sym->memory_info->extended_borrows.emplace_back(
-            //     cap->val.get(), is_mut, meta->current_lambda_outer_scope);
+            cap_sym = meta->current_lambda_outer_scope->get_var_symbol(ast_clone(cap_val));
+            cap_sym->memory_info->ast_pins.emplace_back(cap->val.get());
+        }
+        else {
+            // Mark the symbol from the outer context as moved.
+            auto cap_sym = meta->current_lambda_outer_scope->get_var_symbol(ast_clone(cap->val->to<IdentifierAst>()));
+            cap_sym->memory_info->ast_moved = {this, sm->current_scope};
         }
     }
+}
+
+
+auto spp::asts::ClosureExpressionCaptureGroupAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Build the variable bindings from the environment object. This allows the body to remain unchanged as the
+    // variables get loaded from the environment struct.
+    const auto uid = spp::utils::generate_uid(this);
+    for (auto const &[i, capture] : captures | genex::views::ptr | genex::views::enumerate) {
+        const auto zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), 0);
+        const auto idx = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), i);
+
+        // For the capture x, mock "let x = env.x".
+        const auto cap_val = capture->val->to<IdentifierAst>();
+        const auto cap_ty = capture->infer_type(sm, meta);
+        const auto cap_ty_sym = sm->current_scope->get_type_symbol(cap_ty);
+        const auto cap_llvm_type = codegen::llvm_type(
+            *sm->current_scope->get_type_symbol(cap_ty), ctx);
+
+        // Create the alloca for the variable.
+        const auto alloca = ctx->builder.CreateAlloca(
+            cap_llvm_type, nullptr, "capture.alloca." + uid);
+
+        const auto gep = ctx->builder.CreateInBoundsGEP(
+            ctx->current_closure_type,
+            ctx->current_closure_scope->ast->to<ClosureExpressionAst>()->llvm_func->getArg(0),
+            std::vector<llvm::Value*>{zero, idx});
+
+        const auto load = ctx->builder.CreateLoad(cap_llvm_type, gep, "capture.load." + uid);
+
+        ctx->builder.CreateStore(load, alloca);
+
+        // Add the alloca to the current scope as a variable symbol.
+        // Todo: Handle mutability properly.
+        auto var_sym = std::make_unique<analyse::scopes::VariableSymbol>(
+            asts::ast_clone(cap_val), cap_ty, false, false);
+        var_sym->llvm_info->alloca = alloca;
+        sm->current_scope->add_var_symbol(std::move(var_sym));
+    }
+    return nullptr;
 }

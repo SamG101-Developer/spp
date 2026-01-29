@@ -1,6 +1,11 @@
-#include <spp/pch.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.convention_mut_ast;
+import spp.asts.ast;
+import spp.asts.token_ast;
+import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 
 
 spp::asts::ConventionMutAst::ConventionMutAst(
@@ -42,14 +47,4 @@ spp::asts::ConventionMutAst::operator std::string() const {
     SPP_STRING_APPEND(tok_borrow);
     SPP_STRING_APPEND(tok_mut).append(" ");
     SPP_STRING_END;
-}
-
-
-auto spp::asts::ConventionMutAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_borrow);
-    SPP_PRINT_APPEND(tok_mut).append(" ");
-    SPP_PRINT_END;
 }

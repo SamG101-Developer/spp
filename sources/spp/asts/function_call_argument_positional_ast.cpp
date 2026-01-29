@@ -1,15 +1,20 @@
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/function_call_argument_positional_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.function_call_argument_positional_ast;
+import spp.asts.convention_ast;
+import spp.asts.expression_ast;
+import spp.asts.token_ast;
+import spp.asts.mixins.orderable_ast;
+import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
 
 
 spp::asts::FunctionCallArgumentPositionalAst::FunctionCallArgumentPositionalAst(
     decltype(conv) &&conv,
     decltype(tok_unpack) &&tok_unpack,
     decltype(val) &&val) :
-    FunctionCallArgumentAst(std::move(conv), std::move(val), mixins::OrderableTag::POSITIONAL_ARG),
+    FunctionCallArgumentAst(std::move(conv), std::move(val), utils::OrderableTag::POSITIONAL_ARG),
     tok_unpack(std::move(tok_unpack)) {
 }
 
@@ -44,15 +49,4 @@ spp::asts::FunctionCallArgumentPositionalAst::operator std::string() const {
     SPP_STRING_APPEND(conv);
     SPP_STRING_APPEND(val);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::FunctionCallArgumentPositionalAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_unpack);
-    SPP_PRINT_APPEND(conv);
-    SPP_PRINT_APPEND(val);
-    SPP_PRINT_END;
 }

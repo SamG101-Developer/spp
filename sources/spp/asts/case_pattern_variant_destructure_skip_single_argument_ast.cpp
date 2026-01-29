@@ -1,8 +1,12 @@
-#include <spp/asts/case_pattern_variant_destructure_skip_single_argument_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_destructure_skip_single_argument_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.case_pattern_variant_destructure_skip_single_argument_ast;
+import spp.asts.ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.local_variable_destructure_skip_single_argument_ast;
+import spp.asts.token_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::CasePatternVariantDestructureSkipSingleArgumentAst(
@@ -28,7 +32,8 @@ auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::pos_end() co
 
 auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::clone() const
     -> std::unique_ptr<Ast> {
-    return std::make_unique<CasePatternVariantDestructureSkipSingleArgumentAst>(ast_clone(tok_underscore));
+    return std::make_unique<CasePatternVariantDestructureSkipSingleArgumentAst>(
+        ast_clone(tok_underscore));
 }
 
 
@@ -39,20 +44,11 @@ spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::operator std::str
 }
 
 
-auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_underscore);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::convert_to_variable(
-    mixins::CompilerMetaData *)
+    CompilerMetaData *)
     -> std::unique_ptr<LocalVariableAst> {
     // Create the local variable destructure attribute binding AST.
     auto var = std::make_unique<LocalVariableDestructureSkipSingleArgumentAst>(nullptr);
-    var->m_from_pattern = true;
+    var->mark_from_case_pattern();
     return var;
 }

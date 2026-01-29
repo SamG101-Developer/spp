@@ -1,9 +1,12 @@
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_binary_expression_ast.hpp>
-#include <spp/lex/tokens.hpp>
+module;
+#include <spp/macros.hpp>
 
-#include <spp/asts/generate/common_types.hpp>
+module spp.asts.type_binary_expression_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.generate.common_types;
+import spp.lex.tokens;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::TypeBinaryExpressionAst::TypeBinaryExpressionAst(
@@ -20,17 +23,20 @@ spp::asts::TypeBinaryExpressionAst::TypeBinaryExpressionAst(
 spp::asts::TypeBinaryExpressionAst::~TypeBinaryExpressionAst() = default;
 
 
-auto spp::asts::TypeBinaryExpressionAst::pos_start() const -> std::size_t {
+auto spp::asts::TypeBinaryExpressionAst::pos_start() const
+    -> std::size_t {
     return lhs->pos_start();
 }
 
 
-auto spp::asts::TypeBinaryExpressionAst::pos_end() const -> std::size_t {
+auto spp::asts::TypeBinaryExpressionAst::pos_end() const
+    -> std::size_t {
     return rhs->pos_end();
 }
 
 
-auto spp::asts::TypeBinaryExpressionAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::TypeBinaryExpressionAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<TypeBinaryExpressionAst>(
         ast_clone(lhs),
         ast_clone(tok_op),
@@ -47,16 +53,8 @@ spp::asts::TypeBinaryExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypeBinaryExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(lhs);
-    SPP_PRINT_APPEND(tok_op);
-    SPP_PRINT_APPEND(rhs);
-    SPP_PRINT_END;
-}
-
-
-auto spp::asts::TypeBinaryExpressionAst::convert() -> std::unique_ptr<TypeAst> {
+auto spp::asts::TypeBinaryExpressionAst::convert()
+    -> std::unique_ptr<TypeAst> {
     using namespace std::string_literals;
 
     if (tok_op->token_type == lex::SppTokenType::KW_OR) {

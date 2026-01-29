@@ -1,5 +1,10 @@
-#include <spp/asts/fold_expression_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.fold_expression_ast;
+import spp.asts.token_ast;
+import spp.asts.generate.common_types;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::FoldExpressionAst::FoldExpressionAst(
@@ -37,10 +42,9 @@ spp::asts::FoldExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::FoldExpressionAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_ellipsis);
-    SPP_PRINT_END;
+auto spp::asts::FoldExpressionAst::infer_type(
+    ScopeManager *,
+    CompilerMetaData *)
+    -> std::shared_ptr<TypeAst> {
+    return generate::common_types::void_type(pos_start());
 }

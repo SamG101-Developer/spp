@@ -10,7 +10,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g() -> std::void::Void {
         f(std::boolean::Bool)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -22,7 +22,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g() -> std::void::Void {
         f(a=std::boolean::Bool)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -34,7 +34,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(a: &std::boolean::Bool) -> std::void::Void {
         f(&mut a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -46,7 +46,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(a: std::boolean::Bool) -> std::void::Void {
         f(&mut a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -58,7 +58,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(mut a: std::boolean::Bool) -> std::void::Void {
         f(&mut a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -70,7 +70,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(a: &mut std::boolean::Bool) -> std::void::Void {
         f(a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -82,7 +82,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(mut a: &mut std::boolean::Bool) -> std::void::Void {
         f(&mut a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -94,7 +94,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(a: std::boolean::Bool) -> std::void::Void {
         f(&a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -106,7 +106,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(a: &std::boolean::Bool) -> std::void::Void {
         f(a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -118,7 +118,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(a: &std::boolean::Bool) -> std::void::Void {
         f(&a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -130,7 +130,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(a: std::boolean::Bool) -> std::void::Void {
         f(a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -142,7 +142,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(a: std::boolean::Bool) -> std::void::Void {
         f(&a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -154,7 +154,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(a: &std::boolean::Bool) -> std::void::Void {
         f(a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -166,7 +166,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(a: &std::boolean::Bool) -> std::void::Void {
         f(&a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -178,7 +178,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g(a: std::boolean::Bool) -> std::void::Void {
         f(a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -190,7 +190,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(mut a: std::boolean::Bool) -> std::void::Void {
         f(&mut a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -202,7 +202,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(a: &mut std::boolean::Bool) -> std::void::Void {
         f(a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -214,7 +214,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(mut a: &mut std::boolean::Bool) -> std::void::Void {
         f(&mut a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -226,7 +226,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> std::void::Void {
         f(true)
     }
-)")
+)");
 
 
 
@@ -239,7 +239,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(a: std::boolean::Bool) -> std::void::Void {
         f(a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -251,7 +251,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(a: &std::boolean::Bool) -> std::void::Void {
         f(a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -263,7 +263,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(a: std::boolean::Bool) -> std::void::Void {
         f(&a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -275,7 +275,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(a: &std::boolean::Bool) -> std::void::Void {
         f(&a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -287,7 +287,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(a: &mut std::boolean::Bool) -> std::void::Void {
         f(a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -299,7 +299,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(mut a: std::boolean::Bool) -> std::void::Void {
         f(&mut a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -311,7 +311,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g(mut a: &mut std::boolean::Bool) -> std::void::Void {
         f(&mut a)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -323,4 +323,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> std::void::Void {
         f(a=true)
     }
-)")
+)");

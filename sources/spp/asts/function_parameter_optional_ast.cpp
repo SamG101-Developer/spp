@@ -1,15 +1,20 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/function_parameter_optional_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
+
+module spp.asts.function_parameter_optional_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.identifier_ast;
+import spp.asts.local_variable_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
+import spp.asts.mixins.orderable_ast;
 
 
 spp::asts::FunctionParameterOptionalAst::FunctionParameterOptionalAst(
@@ -18,7 +23,7 @@ spp::asts::FunctionParameterOptionalAst::FunctionParameterOptionalAst(
     decltype(type) type,
     decltype(tok_assign) &&tok_assign,
     decltype(default_val) &&default_val) :
-    FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type), mixins::OrderableTag::OPTIONAL_PARAM),
+    FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type), utils::OrderableTag::OPTIONAL_PARAM),
     tok_assign(std::move(tok_assign)),
     default_val(std::move(default_val)) {
 }
@@ -61,38 +66,24 @@ spp::asts::FunctionParameterOptionalAst::operator std::string() const {
 }
 
 
-auto spp::asts::FunctionParameterOptionalAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(var);
-    SPP_PRINT_APPEND(tok_colon).append(" ");
-    SPP_PRINT_APPEND(type).append(" ");
-    SPP_PRINT_APPEND(tok_assign).append(" ");
-    SPP_PRINT_APPEND(default_val);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::FunctionParameterOptionalAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Perform default analysis steps.
     FunctionParameterAst::stage_7_analyse_semantics(sm, meta);
 
     // Make sure the default expression the correct type.
     const auto default_type = default_val->infer_type(sm, meta);
-    if (not analyse::utils::type_utils::symbolic_eq(*type, *default_type, *sm->current_scope, *sm->current_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-            *extract_name(), *type, *default_val, *default_type).with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppTypeMismatchError>(
+        not analyse::utils::type_utils::symbolic_eq(*type, *default_type, *sm->current_scope, *sm->current_scope),
+        {sm->current_scope}, ERR_ARGS(*extract_name(), *type, *default_val, *default_type));
 }
 
 
 auto spp::asts::FunctionParameterOptionalAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Perform default memory checking steps.
     FunctionParameterAst::stage_8_check_memory(sm, meta);
@@ -100,5 +91,5 @@ auto spp::asts::FunctionParameterOptionalAst::stage_8_check_memory(
     // Check the memory status of the default value expression.
     default_val->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
-        *default_val, *default_val, *sm, true, true, true, true, true, true, meta);
+        *default_val, *default_val, *sm, true, true, true, true, true, meta);
 }

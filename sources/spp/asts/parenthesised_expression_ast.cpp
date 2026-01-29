@@ -1,10 +1,15 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/parenthesised_expression.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
+
+module spp.asts.parenthesised_expression_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.mem_utils;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::ParenthesisedExpressionAst::ParenthesisedExpressionAst(
@@ -51,51 +56,49 @@ spp::asts::ParenthesisedExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::ParenthesisedExpressionAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_open_paren);
-    SPP_PRINT_APPEND(expr);
-    SPP_PRINT_APPEND(tok_close_paren);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::ParenthesisedExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward analysis into the expression.
-    ENFORCE_EXPRESSION_SUBTYPE(expr.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
     expr->stage_7_analyse_semantics(sm, meta);
 }
 
 
 auto spp::asts::ParenthesisedExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory of the expression.
     expr->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
-        *expr, *this, *sm, true, true, true, false, false, false, meta);
+        *expr, *this, *sm, true, true, true, false, false, meta);
 }
 
 
-auto spp::asts::ParenthesisedExpressionAst::stage_10_code_gen_2(
+auto spp::asts::ParenthesisedExpressionAst::stage_9_comptime_resolution(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    CompilerMetaData *meta)
+    -> void {
+    // Forward comptime resolution into the expression.
+    expr->stage_9_comptime_resolution(sm, meta);
+}
+
+
+auto spp::asts::ParenthesisedExpressionAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the inner expression.
-    return expr->stage_10_code_gen_2(sm, meta, ctx);
+    return expr->stage_11_code_gen_2(sm, meta, ctx);
 }
 
 
 auto spp::asts::ParenthesisedExpressionAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Get the inner expression's type.
     return expr->infer_type(sm, meta);

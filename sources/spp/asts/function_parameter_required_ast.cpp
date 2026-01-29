@@ -1,15 +1,21 @@
-#include <spp/asts/function_parameter_required_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.function_parameter_required_ast;
+import spp.asts.ast;
+import spp.asts.local_variable_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.mixins.orderable_ast;
+import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
 
 
 spp::asts::FunctionParameterRequiredAst::FunctionParameterRequiredAst(
     decltype(var) &&var,
     decltype(tok_colon) &&tok_colon,
     decltype(type) type) :
-    FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type), mixins::OrderableTag::REQUIRED_PARAM) {
+    FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type), utils::OrderableTag::REQUIRED_PARAM) {
 }
 
 
@@ -39,19 +45,8 @@ auto spp::asts::FunctionParameterRequiredAst::clone() const
 
 spp::asts::FunctionParameterRequiredAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(var).append(" ");
+    SPP_STRING_APPEND(var);
     SPP_STRING_APPEND(tok_colon).append(" ");
     SPP_STRING_APPEND(type);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::FunctionParameterRequiredAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(var).append(" ");
-    SPP_PRINT_APPEND(tok_colon).append(" ");
-    SPP_PRINT_APPEND(type);
-    SPP_PRINT_END;
 }

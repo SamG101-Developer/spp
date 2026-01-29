@@ -9,7 +9,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut x = y
         x = z
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -20,4 +20,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let y = 2
         x = y
     }
-)");
+)");;

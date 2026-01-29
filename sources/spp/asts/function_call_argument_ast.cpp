@@ -1,10 +1,22 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/function_call_argument_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
+
+module spp.asts.function_call_argument_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.asts.convention_ast;
+import spp.asts.expression_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_materialize;
+import spp.utils.uid;
 
 
 spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(
@@ -12,65 +24,92 @@ spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(
     decltype(val) &&val,
     const decltype(m_order_tag) order_tag) :
     OrderableAst(order_tag),
-    m_self_type(nullptr),
+    injected_self_type(nullptr),
     conv(std::move(conv)),
     val(std::move(val)) {
 }
-
-
-spp::asts::FunctionCallArgumentAst::~FunctionCallArgumentAst() = default;
 
 
 auto spp::asts::FunctionCallArgumentAst::set_self_type(
     std::shared_ptr<TypeAst> self_type)
     -> void {
     // Set the self type to the given type.
-    m_self_type = std::move(self_type);
+    injected_self_type = std::move(self_type);
 }
 
 
 auto spp::asts::FunctionCallArgumentAst::get_self_type()
     -> std::shared_ptr<TypeAst> {
     // Get the self type.
-    return m_self_type;
+    return injected_self_type;
 }
 
 
 auto spp::asts::FunctionCallArgumentAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the semantics of the value expression.
-    ENFORCE_EXPRESSION_SUBTYPE(val.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(val.get());
     val->stage_7_analyse_semantics(sm, meta);
 }
 
 
 auto spp::asts::FunctionCallArgumentAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory status of the value expression.
     val->stage_8_check_memory(sm, meta);
 }
 
 
-auto spp::asts::FunctionCallArgumentAst::stage_10_code_gen_2(
+auto spp::asts::FunctionCallArgumentAst::stage_9_comptime_resolution(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    CompilerMetaData *meta)
+    -> void {
+    // Delegate comptime resolution to the value expression.
+    val->stage_9_comptime_resolution(sm, meta);
+}
+
+
+auto spp::asts::FunctionCallArgumentAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Delegate to the value.
-    return val->stage_10_code_gen_2(sm, meta, ctx);
+    // Handle the convention (to pointer).
+    if (conv != nullptr) {
+        // If the lhs is symbolic, get the address of the outermost part.
+        const auto uid = spp::utils::generate_uid(this);
+        const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*meta->postfix_expression_lhs);
+
+        if (sym != nullptr) {
+            // Get the alloca for the lhs symbol (the base pointer).
+            const auto llvm_alloca = sym->llvm_info->alloca;
+            SPP_ASSERT(llvm_alloca->getType()->isPointerTy());
+            return llvm_alloca;
+        }
+
+        // Materialize the lhs expression into a temporary.
+        const auto materialized_val = codegen::llvm_materialize(*val, sm, meta, ctx);
+        const auto materialized_sym = sm->current_scope->get_var_symbol(ast_clone(materialized_val));
+
+        const auto llvm_alloca = materialized_sym->llvm_info->alloca;
+        SPP_ASSERT(llvm_alloca->getType()->isPointerTy());
+        return llvm_alloca;
+    }
+
+    return val->stage_11_code_gen_2(sm, meta, ctx);
 }
 
 
 auto spp::asts::FunctionCallArgumentAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Infer the type from the value expression, unless an explicit "self" type has been given.
-    return m_self_type != nullptr
-               ? m_self_type
-               : val->infer_type(sm, meta)->with_convention(ast_clone(conv));
+    return injected_self_type != nullptr
+        ? injected_self_type
+        : val->infer_type(sm, meta)->with_convention(ast_clone(conv));
 }

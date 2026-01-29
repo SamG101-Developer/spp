@@ -1,14 +1,15 @@
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/type_unary_expression_operator_borrow_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.type_unary_expression_operator_borrow_ast;
+import spp.asts.convention_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::TypeUnaryExpressionOperatorBorrowAst::TypeUnaryExpressionOperatorBorrowAst(
     decltype(conv) &&conv) :
     conv(std::move(conv)) {
 }
-
-
-spp::asts::TypeUnaryExpressionOperatorBorrowAst::~TypeUnaryExpressionOperatorBorrowAst() = default;
 
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::equals(
@@ -53,15 +54,6 @@ spp::asts::TypeUnaryExpressionOperatorBorrowAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(conv);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(conv);
-    SPP_PRINT_END;
 }
 
 

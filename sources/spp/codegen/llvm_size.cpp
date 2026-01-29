@@ -1,19 +1,19 @@
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/class_attribute_ast.hpp>
-#include <spp/asts/class_implementation_ast.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
-#include <spp/asts/generic_argument_comp_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_ast.hpp>
-#include <spp/asts/integer_literal_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/generate/common_types_precompiled.hpp>
-#include <spp/codegen/llvm_size.hpp>
-
-#include <genex/algorithms/fold_left_first.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/transform.hpp>
+module spp.codegen.llvm_size;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
+import spp.asts.ast;
+import spp.asts.class_attribute_ast;
+import spp.asts.generic_argument_comp_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
+import spp.asts.integer_literal_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.generate.common_types_precompiled;
+import spp.asts.utils.ast_utils;
+import genex;
 
 
 auto spp::codegen::size_of(
@@ -131,7 +131,7 @@ auto spp::codegen::size_of(
     // Array (fixed length) size is element size * length.
     if (analyse::utils::type_utils::symbolic_eq(*type->without_generics(), *asts::generate::common_types_precompiled::ARR, *sm.current_scope, *sm.current_scope)) {
         const auto element_type = type->type_parts().back()->generic_arg_group->type_at("T")->val;
-        const auto length = std::stoll(asts::ast_cast<asts::IntegerLiteralAst>(type->type_parts().back()->generic_arg_group->comp_at("n")->val.get())->val->token_data);
+        const auto length = std::stoll(type->type_parts().back()->generic_arg_group->comp_at("n")->val->to<asts::IntegerLiteralAst>()->val->token_data);
         return size_of(sm, element_type) * static_cast<std::size_t>(length);
     }
 
@@ -140,7 +140,7 @@ auto spp::codegen::size_of(
         const auto all_types = type->type_parts().back()->generic_arg_group->get_type_args()
             | genex::views::transform([&sm](auto &&x) { return size_of(sm, x->val); })
             | genex::to<std::vector>();
-        const auto total_size = genex::algorithms::fold_left_first(all_types, std::plus{});
+        const auto total_size = genex::fold_left_first(all_types, std::plus{});
         return total_size;
     }
 
@@ -155,9 +155,9 @@ auto spp::codegen::size_of(
 
     // Otherwise, sum the attributes of the struct/class.
     const auto all_types = analyse::utils::type_utils::get_all_attrs(*type, &sm)
-        | genex::views::transform([](auto &&x) { return std::get<0>(x)->type; })
+        | genex::views::transform([](auto &&x) { return x.second->fq_name(); })
         | genex::views::transform([&sm](auto &&x) { return size_of(sm, x); })
         | genex::to<std::vector>();
-    const auto total_size = genex::algorithms::fold_left_first(all_types, std::plus{});
+    const auto total_size = genex::fold_left_first(all_types, std::plus{});
     return total_size;
 }

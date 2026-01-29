@@ -3,7 +3,7 @@
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryMoveFromMutBorrowedCtx,
-    test_invalid_moved_from_borrowed_context,
+    test_invalid_memory_moved_from_borrowed_context,
     SppMoveFromBorrowedMemoryError, R"(
     cls T { }
 
@@ -15,12 +15,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(p: &mut Point) -> std::void::Void {
         let x = p.x
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryMoveFromMutBorrowedCtx,
-    test_invalid_moved_from_borrowed_context_with_symbol_alias,
+    test_invalid_memory_moved_from_borrowed_context_with_symbol_alias,
     SppMoveFromBorrowedMemoryError, R"(
     cls T { }
 
@@ -33,12 +33,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let q = p
         let x = q.x
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryMoveFromMutBorrowedCtx,
-    test_invalid_moved_from_borrowed_context_nested,
+    test_invalid_memory_moved_from_borrowed_context_nested,
     SppMoveFromBorrowedMemoryError, R"(
     cls U { }
     cls T { u: U }
@@ -52,12 +52,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let q = p
         let x = q.x.u
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryMoveFromRefBorrowedCtx,
-    test_invalid_moved_from_borrowed_context,
+    test_invalid_memory_moved_from_borrowed_context,
     SppMoveFromBorrowedMemoryError, R"(
     cls T { }
 
@@ -69,12 +69,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(p: &Point) -> std::void::Void {
         let x = p.x
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryMoveFromRefBorrowedCtx,
-    test_invalid_moved_from_borrowed_context_with_symbol_alias,
+    test_invalid_memory_moved_from_borrowed_context_with_symbol_alias,
     SppMoveFromBorrowedMemoryError, R"(
     cls T { }
 
@@ -87,12 +87,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let q = p
         let x = q.x
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryMoveFromRefBorrowedCtx,
-    test_invalid_moved_from_borrowed_context_nested,
+    test_invalid_memory_moved_from_borrowed_context_nested,
     SppMoveFromBorrowedMemoryError, R"(
     cls U { }
     cls T { u: U }
@@ -106,4 +106,4 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let q = p
         let x = q.x.u
     }
-)")
+)");

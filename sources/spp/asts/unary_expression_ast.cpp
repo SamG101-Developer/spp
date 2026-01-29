@@ -1,10 +1,16 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/unary_expression_ast.hpp>
-#include <spp/asts/unary_expression_operator_ast.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
+
+module spp.asts.unary_expression_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.unary_expression_operator_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::UnaryExpressionAst::UnaryExpressionAst(
@@ -18,17 +24,20 @@ spp::asts::UnaryExpressionAst::UnaryExpressionAst(
 spp::asts::UnaryExpressionAst::~UnaryExpressionAst() = default;
 
 
-auto spp::asts::UnaryExpressionAst::pos_start() const -> std::size_t {
+auto spp::asts::UnaryExpressionAst::pos_start() const
+    -> std::size_t {
     return op->pos_start();
 }
 
 
-auto spp::asts::UnaryExpressionAst::pos_end() const -> std::size_t {
+auto spp::asts::UnaryExpressionAst::pos_end() const
+    -> std::size_t {
     return expr->pos_end();
 }
 
 
-auto spp::asts::UnaryExpressionAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::UnaryExpressionAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<UnaryExpressionAst>(
         ast_clone(op),
         ast_clone(expr));
@@ -43,19 +52,12 @@ spp::asts::UnaryExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::UnaryExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(op);
-    SPP_PRINT_APPEND(expr);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::UnaryExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    CompilerMetaData *meta)
+    -> void {
     // Analyse the semantics of the right-hand-side.
-    ENFORCE_EXPRESSION_SUBTYPE(expr.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
 
     // Analyse the operator and right-hand-side expression.
     expr->stage_7_analyse_semantics(sm, meta);
@@ -69,15 +71,31 @@ auto spp::asts::UnaryExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::UnaryExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> void {
+    CompilerMetaData *meta)
+    -> void {
     // Check the memory of the right-hand-side.
     expr->stage_8_check_memory(sm, meta);
 }
 
 
+auto spp::asts::UnaryExpressionAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate the right-hand-side expression.
+    meta->save();
+    meta->unary_expression_rhs = expr.get();
+    const auto lhs_val = op->stage_11_code_gen_2(sm, meta, ctx);
+    meta->restore();
+    return lhs_val;
+}
+
+
 auto spp::asts::UnaryExpressionAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta) -> std::shared_ptr<TypeAst> {
+    CompilerMetaData *meta)
+    -> std::shared_ptr<TypeAst> {
     // Infer the type of the right-hand-side expression, adjusted by the operator.
     meta->save();
     meta->unary_expression_rhs = expr.get();

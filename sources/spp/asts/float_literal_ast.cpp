@@ -1,21 +1,30 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/float_literal_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <spp/macros.hpp>
 
-using CppBigFloat = boost::multiprecision::cpp_dec_float_100;
+module spp.asts.float_literal_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.asts.token_ast;
+import spp.asts.generate.common_types;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_ctx;
+import spp.codegen.llvm_type;
+import spp.lex.tokens;
+import llvm;
+import mppp;
 
 
-const auto FLOAT_TYPE_MIN_MAX = std::map<std::string, std::pair<CppBigFloat, CppBigFloat>>{
-    {"f8", {CppBigFloat("-5.7344e+4"), CppBigFloat("5.7344e+4")}},
-    {"f16", {CppBigFloat("-6.55e+4"), CppBigFloat("6.55e+4")}},
-    {"f32", {CppBigFloat("-3.4028235e+38"), CppBigFloat("3.4028235e+38")}},
-    {"f64", {CppBigFloat("-1.7976931348623157e+308"), CppBigFloat("1.7976931348623157e+308")}},
-    {"f128", {CppBigFloat("-1.189731495357231765e+4932"), CppBigFloat("1.189731495357231765e+4932")}}, // check this
-};
+// const auto FLOAT_TYPE_MIN_MAX = std::map<std::string, std::pair<mppp::BigDec, mppp::BigDec>>{
+//     {"f8", {mppp::BigDec("-5.7344e+4"), mppp::BigDec("5.7344e+4")}},
+//     {"f16", {mppp::BigDec("-6.55e+4"), mppp::BigDec("6.55e+4")}},
+//     {"f32", {mppp::BigDec("-3.4028235e+38"), mppp::BigDec("3.4028235e+38")}},
+//     {"f64", {mppp::BigDec("-1.7976931348623157e+308"), mppp::BigDec("1.7976931348623157e+308")}},
+//     {"f128", {mppp::BigDec("-1.189731495357231765e+4932"), mppp::BigDec("1.189731495357231765e+4932")}}, // check this
+// };
 
 
 spp::asts::FloatLiteralAst::FloatLiteralAst(
@@ -32,7 +41,21 @@ spp::asts::FloatLiteralAst::FloatLiteralAst(
 }
 
 
-spp::asts::FloatLiteralAst::~FloatLiteralAst() = default;
+auto spp::asts::FloatLiteralAst::from_single_token(
+    decltype(tok_sign) &&tok_sign,
+    std::unique_ptr<TokenAst> &&token,
+    std::string &&type)
+    -> std::unique_ptr<FloatLiteralAst> {
+    // Split the token data into integer and fractional parts.
+    auto int_part = token->token_data.substr(0, token->token_data.find('.'));
+    auto frac_part = token->token_data.substr(token->token_data.find('.') + 1);
+    return std::make_unique<FloatLiteralAst>(
+        std::move(tok_sign),
+        std::make_unique<TokenAst>(token->pos_start(), lex::SppTokenType::LX_NUMBER, std::move(int_part)),
+        std::make_unique<TokenAst>(token->pos_start() + int_part.size(), lex::SppTokenType::TK_DOT, "."),
+        std::make_unique<TokenAst>(token->pos_start() + int_part.size() + 1, lex::SppTokenType::LX_NUMBER, std::move(frac_part)),
+        std::move(type));
+}
 
 
 auto spp::asts::FloatLiteralAst::equals(
@@ -90,57 +113,56 @@ spp::asts::FloatLiteralAst::operator std::string() const {
 }
 
 
-auto spp::asts::FloatLiteralAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_sign);
-    SPP_PRINT_APPEND(int_val);
-    SPP_PRINT_APPEND(tok_dot);
-    SPP_PRINT_APPEND(frac_val);
-    formatted_string.append("_").append(type);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::FloatLiteralAst::stage_7_analyse_semantics(
-    ScopeManager *sm,
-    mixins::CompilerMetaData *)
+    ScopeManager *,
+    CompilerMetaData *)
     -> void {
     // Get the lower and upper bounds as big floats.
     type = type.empty() ? "f32" : type;
-    auto const &[lower, upper] = FLOAT_TYPE_MIN_MAX.at(type);
-    auto mapped_val = CppBigFloat((int_val->token_data + "." + frac_val->token_data).c_str());
-    if (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB) {
-        mapped_val = -mapped_val;
-    }
+    // auto const &[lower, upper] = FLOAT_TYPE_MIN_MAX.at(type);
+    // auto mapped_val = mppp::BigDec((int_val->token_data + "." + frac_val->token_data).c_str());
+    // if (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB) {
+    //     mapped_val = mapped_val.neg();
+    // }
 
     // Check if the value is within the bounds.
-    if (mapped_val < lower or mapped_val > upper) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFloatOutOfBoundsError>().with_args(
-            *this, mapped_val, lower, upper, "float").with_scopes({sm->current_scope}).raise();
-    }
+    // if (mapped_val < lower or mapped_val > upper) {
+    //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppFloatOutOfBoundsError>().with_args(
+    //         *this, mapped_val, lower, upper, "float").with_scopes({sm->current_scope}).raise();
+    // }
 }
 
 
-auto spp::asts::FloatLiteralAst::stage_10_code_gen_2(
+auto spp::asts::FloatLiteralAst::stage_9_comptime_resolution(
+    ScopeManager *,
+    CompilerMetaData *meta)
+    -> void {
+    // Clone and return the float literal as is for compile-time resolution.
+    meta->cmp_result = ast_clone(this);
+}
+
+
+auto spp::asts::FloatLiteralAst::stage_11_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Map the float literal to the correct LLVM type.
-    const auto llvm_type = sm->current_scope->get_type_symbol(infer_type(sm, meta))->llvm_info->llvm_type;
-    const auto full_val = (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB ? "-" : "") + int_val->token_data + "." + frac_val->token_data;
-    const auto llvm_const = llvm::ConstantFP::get(
-        ctx->context,
-        llvm::APFloat(llvm_type->getFltSemantics(), full_val));
-    return llvm_const;
+    // Get the type of the float literal.
+    const auto type_ast = infer_type(sm, meta);
+    const auto type_sym = sm->current_scope->get_type_symbol(type_ast);
+    const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
+
+    // Create the LLVM constant float value.
+    const auto &semantics = llvm_type->getFltSemantics();
+    const auto val = int_val->token_data + "." + frac_val->token_data;
+    const auto ap_float = llvm::APFloat(semantics, val);
+    return llvm::ConstantFP::get(*ctx->context, ap_float);
 }
 
 
 auto spp::asts::FloatLiteralAst::infer_type(
     ScopeManager *,
-    mixins::CompilerMetaData *)
+    CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Map the type string literal to the correct SPP type.
     if (type.empty()) {

@@ -12,7 +12,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         g[123]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -26,7 +26,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         g[123, 456, 789]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -40,7 +40,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         g[std::string::Str, 123, 456, 789]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -53,7 +53,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         g[std::string::Str]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -66,7 +66,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         g[std::string::Str, std::number::U32, std::number::U64]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -80,7 +80,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         g[std::string::Str]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -94,7 +94,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         g[std::string::Str, std::number::U32, std::number::U64]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -108,7 +108,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         g[123, std::string::Str, std::number::U32, std::number::U64]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -121,7 +121,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         g[false]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -134,7 +134,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         g[false, true, false]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -146,7 +146,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut type1 = Type[std::boolean::Bool, std::string::Str]()
         type1 = Type[T=std::boolean::Bool, U=std::string::Str]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -158,7 +158,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut type1 = Type[std::boolean::Bool, std::string::Str]()
         type1 = Type[U=std::string::Str, T=std::boolean::Bool]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -175,7 +175,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = g[std::string::Str]()
         x.push(element="hello")
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -193,4 +193,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = g[std::string::Str]()
         x = Some(val="hello")
     }
-)")
+)");

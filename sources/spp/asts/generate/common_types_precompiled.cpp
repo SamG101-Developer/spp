@@ -1,17 +1,11 @@
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
-#include <spp/asts/generate/common_types_precompiled.hpp>
+module spp.asts.generate.common_types_precompiled;
+import spp.asts.generate.common_types;
+import spp.asts.utils.ast_utils;
 
 
 auto spp::asts::generate::common_types_precompiled::initialize_types() -> void {
     GEN = common_types::gen_type(0, common_types::void_type(0), common_types::void_type(0))->without_generics();
-    GEN_OPT = common_types::gen_opt_type(0, common_types::void_type(0), common_types::void_type(0))->without_generics();
-    GEN_RES = common_types::gen_res_type(0, common_types::void_type(0), common_types::void_type(0), common_types::void_type(0))->without_generics();
     GEN_ONCE = common_types::gen_once_type(0, common_types::void_type(0))->without_generics();
-
-    GENERATED = common_types::generated_type(0, common_types::void_type(0))->without_generics();
-    GENERATED_OPT = common_types::generated_opt_type(0, common_types::void_type(0))->without_generics();
-    GENERATED_RES = common_types::generated_res_type(0, common_types::void_type(0), common_types::void_type(0))->without_generics();
 
     INDEX_MUT = common_types::index_mut_type(0, common_types::void_type(0))->without_generics();
     INDEX_REF = common_types::index_ref_type(0, common_types::void_type(0))->without_generics();
@@ -31,4 +25,7 @@ auto spp::asts::generate::common_types_precompiled::initialize_types() -> void {
 
     NEVER = common_types::never_type(0)->without_generics();
     COPY = common_types::copy_type(0)->without_generics();
+
+    FWD_MUT = common_types::forward_mut_type(0, common_types::void_type(0))->without_generics();
+    FWD_REF = common_types::forward_ref_type(0, common_types::void_type(0))->without_generics();
 }

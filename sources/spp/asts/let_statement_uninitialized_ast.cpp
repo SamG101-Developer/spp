@@ -1,9 +1,17 @@
-#include <spp/asts/let_statement_uninitialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/object_initializer_argument_group_ast.hpp>
-#include <spp/asts/object_initializer_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.let_statement_uninitialized_ast;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.symbols;
+import spp.asts.local_variable_ast;
+import spp.asts.object_initializer_ast;
+import spp.asts.object_initializer_argument_group_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::LetStatementUninitializedAst::LetStatementUninitializedAst(
@@ -54,21 +62,9 @@ spp::asts::LetStatementUninitializedAst::operator std::string() const {
 }
 
 
-auto spp::asts::LetStatementUninitializedAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_let).append(" ");
-    SPP_PRINT_APPEND(var);
-    SPP_PRINT_APPEND(tok_colon).append(" ");
-    SPP_PRINT_APPEND(type);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::LetStatementUninitializedAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the type.
     type->stage_7_analyse_semantics(sm, meta);
@@ -88,7 +84,7 @@ auto spp::asts::LetStatementUninitializedAst::stage_7_analyse_semantics(
 
 auto spp::asts::LetStatementUninitializedAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the variable for memory issues.
     meta->save();
@@ -96,14 +92,14 @@ auto spp::asts::LetStatementUninitializedAst::stage_8_check_memory(
     meta->let_stmt_explicit_type = type;
     meta->let_stmt_from_uninitialized = true;
     var->stage_8_check_memory(sm, meta);
+    sm->current_scope->get_var_symbol(var->extract_name())->memory_info->moved_by(*this, sm->current_scope);
     meta->restore();
 }
 
 
-
-auto spp::asts::LetStatementUninitializedAst::stage_10_code_gen_2(
+auto spp::asts::LetStatementUninitializedAst::stage_11_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Delegate the code generation to the variable, after setting up the meta.
@@ -111,8 +107,7 @@ auto spp::asts::LetStatementUninitializedAst::stage_10_code_gen_2(
     meta->let_stmt_value = nullptr;
     meta->let_stmt_explicit_type = type;
     meta->let_stmt_from_uninitialized = true;
-    const auto alloca = var->stage_10_code_gen_2(sm, meta, ctx);
+    const auto alloca = var->stage_11_code_gen_2(sm, meta, ctx);
     meta->restore();
     return alloca;
 }
-

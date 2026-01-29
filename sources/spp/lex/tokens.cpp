@@ -1,4 +1,4 @@
-#include <spp/lex/tokens.hpp>
+module spp.lex.tokens;
 
 
 spp::lex::RawToken::RawToken(const RawTokenType type, std::string data) :

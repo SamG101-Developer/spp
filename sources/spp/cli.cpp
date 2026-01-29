@@ -1,22 +1,24 @@
-#include <filesystem>
+module;
+#include <spp/macros.hpp>
 
-#include <spp/cli.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/module_prototype_ast.hpp>
-#include <spp/compiler/compiler.hpp>
-#include <spp/utils/files.hpp>
+module spp.cli;
+import spp.analyse.scopes.scope_manager;
+import spp.asts.module_prototype_ast;
+import spp.compiler.compiler;
+import spp.compiler.compiler_boot;
+import spp.compiler.module_tree;
+import spp.lex.tokens;
+import spp.utils.files;
 
-#include <boost/process/v1.hpp>
-#include <toml++/toml.hpp>
-
-namespace bp = boost::process;
+import cli11;
+import toml;
 
 
 #define SPP_VALIDATE_STRUCTURE \
     if (not handle_validate()) { return; }
 
 #define SPP_CLI_NULL \
-    boost::process::v1::std_out > boost::process::v1::null
+    bp::v1::std_out > bp::v1::null
 
 
 inline constexpr std::string OUT_FOLDER = "out";
@@ -45,7 +47,7 @@ auto spp::cli::run_cli(
     char **argv)
     -> std::int32_t {
     // Create the CLI object and require that a subcommand is provided.
-    auto app = CLI::App("SPP build tool", "spp");
+    auto app = cli11::App("SPP build tool", "spp");
     app.require_subcommand(1);
     auto mode = std::string();
 
@@ -58,19 +60,19 @@ auto spp::cli::run_cli(
     app.add_subcommand("build", "Build the project")
        ->callback([&mode] { handle_build(mode); })
        ->add_option("-m,--mode", mode, "Build mode (dev or rel)")
-       ->check(CLI::IsMember({"dev", "rel"}))
+       ->check(cli11::IsMember({"dev", "rel"}))
        ->default_val("dev");
 
     app.add_subcommand("run", "Run the project")
        ->callback([&mode] { handle_run(mode); })
        ->add_option("-m,--mode", mode, "Run mode (dev or rel)")
-       ->check(CLI::IsMember({"dev", "rel"}))
+       ->check(cli11::IsMember({"dev", "rel"}))
        ->default_val("dev");
 
     app.add_subcommand("clean", "Clean the project")
        ->callback([&mode] { handle_clean(mode); })
        ->add_option("-m,--mode", mode, "Clean mode (dev, rel or all)")
-       ->check(CLI::IsMember({"dev", "rel", "all"}))
+       ->check(cli11::IsMember({"dev", "rel", "all"}))
        ->default_val("all");
 
     app.add_subcommand("test", "Test the project")
@@ -83,7 +85,7 @@ auto spp::cli::run_cli(
        ->callback(handle_version);
 
     // Parse the command line arguments.
-    CLI11_PARSE(app, argc, argv);
+    app.parse(argc, argv);
     return 0;
 }
 
@@ -139,12 +141,12 @@ auto spp::cli::handle_vcs()
 
         // Repo doesn't exist locally => clone it.
         if (not std::filesystem::exists(repo_folder)) {
-            boost::process::v1::system("git clone --branch " + repo_branch + " " + repo_url + " " + repo_folder.string(), SPP_CLI_NULL);
+            std::system(("git clone --branch " + repo_branch + " " + repo_url + " " + repo_folder.string()).c_str());
             std::cout << "Cloned "s + repo_name + " from " + repo_url + "\n";
         }
         else {
-            boost::process::v1::system("git -C " + repo_folder.string() + " pull origin " + repo_branch, SPP_CLI_NULL);
-            boost::process::v1::system("git -C " + repo_folder.string() + " checkout " + repo_branch, SPP_CLI_NULL);
+            std::system(("git -C " + repo_folder.string() + " pull origin " + repo_branch).c_str());
+            std::system(("git -C " + repo_folder.string() + " checkout " + repo_branch).c_str());
             std::cout << "Updated "s + repo_name + " from " + repo_url + " (" + repo_branch + ")" + "\n";
         }
 

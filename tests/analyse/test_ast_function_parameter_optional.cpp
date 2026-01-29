@@ -6,7 +6,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_function_parameter_optional_invalid_type,
     SppTypeMismatchError, R"(
     fun f(a: std::boolean::Bool = 1) -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -14,4 +14,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_function_parameter_optional,
     R"(
     fun f(a: std::boolean::Bool = true) -> std::void::Void { }
-)")
+)");

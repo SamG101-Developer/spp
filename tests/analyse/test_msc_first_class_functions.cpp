@@ -17,7 +17,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let p = || "string"
         g(p)
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -40,4 +40,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let p = h
         g(p)
     }
-)");
+)");;

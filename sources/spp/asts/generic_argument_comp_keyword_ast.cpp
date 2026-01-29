@@ -1,30 +1,34 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/scopes/symbols.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/generic_argument_comp_keyword_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_parameter_comp_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
-#include <spp/asts/type_identifier_ast.hpp>
+module spp.asts.generic_argument_comp_keyword_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_utils;
+import spp.asts.expression_ast;
+import spp.asts.token_ast;
+import spp.asts.generic_parameter_comp_ast;
+import spp.asts.identifier_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.mixins.orderable_ast;
+import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
+import spp.lex.tokens;
 
 
 spp::asts::GenericArgumentCompKeywordAst::GenericArgumentCompKeywordAst(
-    decltype(name) &&name,
+    decltype(name) name,
     decltype(tok_assign) &&tok_assign,
     decltype(val) &&val) :
-    GenericArgumentCompAst(std::move(val), mixins::OrderableTag::KEYWORD_ARG),
+    GenericArgumentCompAst(std::move(val), utils::OrderableTag::KEYWORD_ARG),
     name(std::move(name)),
     tok_assign(std::move(tok_assign)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
 }
-
-
-spp::asts::GenericArgumentCompKeywordAst::~GenericArgumentCompKeywordAst() = default;
 
 
 auto spp::asts::GenericArgumentCompKeywordAst::equals(
@@ -74,17 +78,6 @@ spp::asts::GenericArgumentCompKeywordAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenericArgumentCompKeywordAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(tok_assign);
-    SPP_PRINT_APPEND(val);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
     analyse::scopes::VariableSymbol const &sym)
     -> std::unique_ptr<GenericArgumentCompKeywordAst> {
@@ -93,13 +86,13 @@ auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
     std::unique_ptr<ExpressionAst> value = nullptr;
 
     // Depending on that the comptime AST is, get the value.
-    if (const auto comptime_param = ast_cast<GenericParameterCompAst>(c)) {
-        value = asts::ast_cast<ExpressionAst>(ast_clone(comptime_param->name));
+    if (const auto comptime_param = c->to<GenericParameterCompAst>(); comptime_param != nullptr) {
+        value = ast_clone(comptime_param->name->to<ExpressionAst>());
     }
-    else if (const auto comptime_arg = ast_cast<GenericArgumentCompAst>(c)) {
+    else if (const auto comptime_arg = c->to<GenericArgumentCompAst>(); comptime_arg != nullptr) {
         value = ast_clone(comptime_arg->val);
     }
-    if (auto const *value_as_type = asts::ast_cast<TypeIdentifierAst>(value.get()); value_as_type != nullptr) {
+    if (auto const *value_as_type = value->to<TypeIdentifierAst>(); value_as_type != nullptr) {
         value = IdentifierAst::from_type(*std::shared_ptr(ast_clone(value_as_type))); // Don't remove "shared_ptr"
     }
 
@@ -111,20 +104,20 @@ auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
 
 auto spp::asts::GenericArgumentCompKeywordAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the value.
-    ENFORCE_EXPRESSION_SUBTYPE(val.get())
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(val.get());
     val->stage_7_analyse_semantics(sm, meta);
 }
 
 
 auto spp::asts::GenericArgumentCompKeywordAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the value for memory issues.
     val->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
-        *val, *val, *sm, true, true, true, true, true, true, meta);
+        *val, *val, *sm, true, true, true, true, true, meta);
 }

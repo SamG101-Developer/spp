@@ -1,1 +1,1 @@
-#include <spp/asts/type_ast.hpp>
+module spp.asts.type_ast;

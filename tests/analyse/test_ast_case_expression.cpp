@@ -8,7 +8,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         case std::boolean::Bool == 1 { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -20,7 +20,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             is (a, b), (a, 1) { }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -33,7 +33,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             == 2 { }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -46,7 +46,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             else { }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -58,7 +58,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             is [2, c, d] { }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -70,7 +70,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             is (2, c, d) { }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -87,7 +87,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             "neither"
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -105,4 +105,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             else { 0 }
         }
     }
-)")
+)");

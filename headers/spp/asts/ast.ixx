@@ -1,0 +1,147 @@
+module;
+#include <spp/macros.hpp>
+
+export module spp.asts.ast;
+import spp.asts.mixins.compiler_stages;
+import std;
+
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class Scope;
+    SPP_EXP_CLS class ScopeManager;
+}
+
+namespace spp::asts {
+    SPP_EXP_CLS struct AnnotationAst;
+    SPP_EXP_CLS struct Ast;
+    SPP_EXP_CLS struct ClassAttributeAst;
+    SPP_EXP_CLS struct ClassPrototypeAst;
+    SPP_EXP_CLS struct CmpStatementAst;
+    SPP_EXP_CLS struct CoroutinePrototypeAst;
+    SPP_EXP_CLS struct SubroutinePrototypeAst;
+    SPP_EXP_CLS struct TypeAst;
+    SPP_EXP_CLS struct TypeStatementAst;
+}
+
+namespace spp::asts::meta {
+    SPP_EXP_CLS class AstPrinter;
+}
+
+
+/**
+ * The AST base class is inherited by all other AST classes, provided base functionality, including formatted printing
+ * and end position identification.
+ */
+SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
+protected:
+    /**
+     * The context of an AST is used in certain analysis steps. This might be the parent AST, such as a
+     * FunctionPrototypeAst etc.
+     */
+    Ast *m_ctx = nullptr;
+
+    /**
+     * The scope of an AST is used when generating top level scopes, to create a simple link between scope and AST.
+     */
+    analyse::scopes::Scope *m_scope = nullptr;
+
+    /**
+     * Create a new AST (base class for all derived ASTs). This constructor is protected to prevent direct instantiation
+     * as an AST should always be a specific type of AST, such as a TokenAst, IdentifierAst, etc.
+     */
+    explicit Ast() = default;
+
+public:
+    ~Ast() override;
+
+    /**
+     * The start position is the first position in the source code that contains this AST. An AST will recursively get
+     * the start position of the first field, until a TokenAst is reached.
+     * @return The first position this AST encompasses.
+     */
+    SPP_ATTR_NODISCARD virtual auto pos_start() const -> std::size_t = 0;
+
+    /**
+     * The end position is the final position in the source code that contains this AST. An AST will recursively get the
+     * end position of the final field, until a TokenAst is reached.
+     * @return The final position this AST encompasses.
+     */
+    SPP_ATTR_NODISCARD virtual auto pos_end() const -> std::size_t = 0;
+
+    /**
+     * The size of an AST is the number of tokens it encompasses. This is used to determine the size of the AST in the
+     * source code, and is used for error reporting. Calculated by subtracting the start position from the end position.
+     * @return The size of the AST in tokens.
+     */
+    SPP_ATTR_NODISCARD auto size() const -> std::size_t;
+
+    /**
+     * The clone operator that deep-copies the AST and all its children ASTs. This is used to create a new AST that is a
+     * copy of the original AST, preserving its structure and contents. This is useful for creating a new AST that can
+     * be modified without affecting the original AST. Can be cast down as needed, as the return type is a
+     * @code std::unique_ptr<T>@endcode to the base @c Ast class.
+     * @return The cloned AST as a unique pointer to the base Ast class.
+     */
+    SPP_ATTR_NODISCARD virtual auto clone() const -> std::unique_ptr<Ast> = 0;
+
+    /**
+     * Print an AST using raw-formatting. This does not handle indentation, and prints the AST as a single line.
+     * Recursively prints child nodes using their respective "operator std::string()" methods.
+     */
+    SPP_ATTR_NODISCARD virtual explicit operator std::string() const = 0;
+
+    /**
+     * Overridable hash function for AST nodes, used for hashing ASTs in data structures (particularly in Ankerl's hash
+     * map). Implemented in the @c IdentifierAst and @c TypeIdentifierAst nodes.
+     * @return The hash value of the AST.
+     */
+    SPP_ATTR_NODISCARD virtual auto ankerl_hash() const -> std::size_t;
+
+    /**
+     * Non-constant node casting to a target @T type. This uses @c dynamic_cast to safely cast the AST node to the
+     * desired type, returning @c nullptr if the cast is impossible. Supports cross casting to AST mixin types too.
+     * @tparam T The target AST type to cast to.
+     * @return The cast AST node, or @c nullptr if the cast is not possible.
+     */
+    template <typename T>
+    auto to() -> T* {
+        return dynamic_cast<T*>(this);
+    }
+
+    /**
+     * Constant node casting to a target @T type. This uses @c dynamic_cast to safely cast the AST node to the
+     * desired type, returning @c nullptr if the cast is impossible. Supports cross casting to AST mixin types too.
+     * @tparam T The target AST type to cast to.
+     * @return The cast AST node, or @c nullptr if the cast is not possible.
+     */
+    template <typename T>
+    auto to() const -> T const* {
+        return dynamic_cast<T const*>(this);
+    }
+
+    auto stage_1_pre_process(Ast *ctx) -> void override;
+
+    auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    SPP_ATTR_NODISCARD auto to_string() const -> std::string {
+        return static_cast<std::string>(*this);
+    }
+
+    SPP_ATTR_NODISCARD auto get_ast_scope() const -> analyse::scopes::Scope* {
+        return m_scope;
+    }
+
+    SPP_ATTR_NODISCARD auto get_ast_ctx() const -> Ast* {
+        return m_ctx;
+    }
+
+    auto set_ast_scope(analyse::scopes::Scope *scope) -> void {
+        m_scope = scope;
+    }
+
+    auto set_ast_ctx(Ast *ctx) -> void {
+        m_ctx = ctx;
+    }
+};
+
+
+spp::asts::Ast::~Ast() = default;

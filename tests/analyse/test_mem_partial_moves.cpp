@@ -3,7 +3,7 @@
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryPartialMoves,
-    test_invalid_assign_attribute_to_non_initialized_value,
+    test_invalid_memory_assign_attribute_to_non_initialized_value,
     SppUninitializedMemoryUseError, R"(
     use std::string::Str
     use std::number::U8
@@ -13,16 +13,16 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut x: Str
         x.data = Vec[U8]()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryPartialMoves,
-    test_invalid_assign_to_non_initialized_attribute,
+    test_invalid_memory_assign_to_non_initialized_attribute,
     SppUninitializedMemoryUseError, R"(
-    use std::string::Str
+    use std::string_view::StrView
 
-    cls A { str: Str }
+    cls A { str: StrView }
     cls B { a: A }
 
     fun f() -> std::void::Void {
@@ -30,16 +30,16 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let a = b.a
         b.a.str = "hello"
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryPartialMoves,
-    test_invalid_assign_to_non_initialized_attributes_attribute,
+    test_invalid_memory_assign_to_non_initialized_attributes_attribute,
     SppUninitializedMemoryUseError, R"(
-    use std::string::Str
+    use std::string_view::StrView
 
-    cls A { str: Str }
+    cls A { str: StrView }
     cls B { a: A }
     cls C { b: B }
 
@@ -48,16 +48,16 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let b = c.b
         c.b.a.str = "hello"
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryPartialMoves,
-    test_invalid_assign_to_non_initialized_attributes_attribute_deep,
+    test_invalid_memory_assign_to_non_initialized_attributes_attribute_deep,
     SppUninitializedMemoryUseError, R"(
-    use std::string::Str
+    use std::string_view::StrView
 
-    cls A { str: Str }
+    cls A { str: StrView }
     cls B { a: A }
     cls C { b: B }
 
@@ -66,15 +66,15 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let b = c.b.a
         c.b.a.str = "hello"
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstMemoryPartialMoves,
-    test_valid_assign_attribute_on_non_initialized_attribute_4, R"(
-    use std::string::Str
+    test_valid_memory_assign_attribute_on_non_initialized_attribute_4, R"(
+    use std::string_view::StrView
 
-    cls A { str: Str }
+    cls A { str: StrView }
     cls B { a: A }
     cls C { b: B }
 
@@ -83,4 +83,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = c.b.a.str
         c.b.a.str = "hello"
     }
-)")
+)");

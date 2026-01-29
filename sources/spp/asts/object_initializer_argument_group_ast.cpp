@@ -1,32 +1,27 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/class_attribute_ast.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
-#include <spp/asts/class_implementation_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/object_initializer_argument_group_ast.hpp>
-#include <spp/asts/object_initializer_argument_shorthand_ast.hpp>
-#include <spp/asts/object_initializer_argument_keyword_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
 #include <spp/macros.hpp>
-#include <spp/pch.hpp>
+#include <spp/analyse/macros.hpp>
 
-#include <genex/to_container.hpp>
-#include <genex/operations/access.hpp>
-#include <genex/views/cast_dynamic.hpp>
-#include <genex/views/duplicates.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/materialize.hpp>
-#include <genex/views/ptr.hpp>
-#include <genex/views/remove.hpp>
-#include <genex/views/set_algorithms.hpp>
-#include <genex/views/transform.hpp>
+module spp.asts.object_initializer_argument_group_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
+import spp.asts.class_attribute_ast;
+import spp.asts.identifier_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.object_initializer_argument_ast;
+import spp.asts.object_initializer_argument_keyword_ast;
+import spp.asts.object_initializer_argument_shorthand_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
+import genex;
 
 
 spp::asts::ObjectInitializerArgumentGroupAst::ObjectInitializerArgumentGroupAst(
@@ -44,17 +39,20 @@ spp::asts::ObjectInitializerArgumentGroupAst::ObjectInitializerArgumentGroupAst(
 spp::asts::ObjectInitializerArgumentGroupAst::~ObjectInitializerArgumentGroupAst() = default;
 
 
-auto spp::asts::ObjectInitializerArgumentGroupAst::pos_start() const -> std::size_t {
+auto spp::asts::ObjectInitializerArgumentGroupAst::pos_start() const
+    -> std::size_t {
     return tok_l->pos_start();
 }
 
 
-auto spp::asts::ObjectInitializerArgumentGroupAst::pos_end() const -> std::size_t {
+auto spp::asts::ObjectInitializerArgumentGroupAst::pos_end() const
+    -> std::size_t {
     return tok_r->pos_end();
 }
 
 
-auto spp::asts::ObjectInitializerArgumentGroupAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::ObjectInitializerArgumentGroupAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<ObjectInitializerArgumentGroupAst>(
         ast_clone(tok_l),
         ast_clone_vec(args),
@@ -65,18 +63,9 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::clone() const -> std::unique_
 spp::asts::ObjectInitializerArgumentGroupAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_l);
-    SPP_STRING_EXTEND(args);
+    SPP_STRING_EXTEND(args, ", ");
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::ObjectInitializerArgumentGroupAst::print(meta::AstPrinter &printer) const -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_EXTEND(args);
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
 }
 
 
@@ -84,6 +73,15 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::new_empty()
     -> std::unique_ptr<ObjectInitializerArgumentGroupAst> {
     return std::make_unique<ObjectInitializerArgumentGroupAst>(
         nullptr, decltype(args)(), nullptr);
+}
+
+
+auto spp::asts::ObjectInitializerArgumentGroupAst::get_all_args()
+    -> std::vector<ObjectInitializerArgumentAst*> {
+    // Get all arguments in the group.
+    return args
+        | genex::views::ptr
+        | genex::to<std::vector>();
 }
 
 
@@ -131,20 +129,19 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::get_keyword_args()
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Ensure there are no duplicate member names. This needs to be done before semantic analysis as other ASTs might
     // try reading a duplicate attribute before an error is raised.
     const auto duplicates = get_keyword_args()
         | genex::views::transform([](auto &&x) { return x->name; })
-        | genex::views::materialize
+        | genex::to<std::vector>()
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
 
-    if (not duplicates.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppIdentifierDuplicateError>().with_args(
-            *duplicates[0], *duplicates[1], "keyword object initializer arguments").with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppIdentifierDuplicateError>(
+        not duplicates.empty(), {sm->current_scope},
+        ERR_ARGS(*duplicates[0], *duplicates[1], "keyword object initializer arguments"));
 
     // Get the attributes on the type and supertypes.
     const auto all_attrs = analyse::utils::type_utils::get_all_attrs(*meta->object_init_type, sm);
@@ -153,16 +150,16 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics
     for (auto &&arg : args) {
         // Return type overload helper.
         meta->save();
-        if (const auto kw_arg = ast_cast<ObjectInitializerArgumentKeywordAst>(arg.get()); kw_arg != nullptr) {
-            RETURN_TYPE_OVERLOAD_HELPER(arg->val.get()) {
+        if (const auto kw_arg = arg->to<ObjectInitializerArgumentKeywordAst>(); kw_arg != nullptr) {
+            SPP_RETURN_TYPE_OVERLOAD_HELPER(arg->val.get()) {
                 // Multiple attributes with same name (via base classes) -> can't infer the one to use.
                 auto attrs = all_attrs
-                    | genex::views::filter([kw_arg](auto &&x) { return *x.first->name == *kw_arg->name; })
+                    | genex::views::filter([kw_arg](auto &&x) { return *x.first == *kw_arg->name; })
                     | genex::to<std::vector>();
                 if (attrs.size() > 1) { continue; }
 
                 // Use the type off the single matching attribute.
-                const auto attr_type_sym = attrs[0].second->get_type_symbol(attrs[0].first->type);
+                const auto attr_type_sym = attrs[0].second;
                 const auto attr_type = attr_type_sym->is_generic ? nullptr : attr_type_sym->fq_name();
                 meta->return_type_overload_resolver_type = std::move(attr_type);
             }
@@ -176,13 +173,13 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Get the attributes on the type and supertypes.
     const auto cls_sym = sm->current_scope->get_type_symbol(meta->object_init_type);
     const auto all_attrs = analyse::utils::type_utils::get_all_attrs(*meta->object_init_type, sm);
     const auto all_attr_names = all_attrs
-        | genex::views::transform([](auto &&x) { return x.first->name; })
+        | genex::views::transform([](auto &&x) { return x.first; })
         | genex::to<std::vector>();
 
     // Check there is at most 1 autofill argument.
@@ -190,10 +187,9 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
         | genex::views::filter([](auto &&x) { return x->tok_ellipsis != nullptr; })
         | genex::to<std::vector>();
 
-    if (af_args.size() > 1) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError>().with_args(
-            *af_args[0], *af_args[1]).with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError>(
+        af_args.size() > 1, {sm->current_scope},
+        ERR_ARGS(*af_args[0], *af_args[1]));
 
     // Check there are no invalidly named arguments.
     auto arg_names = get_non_autofill_args()
@@ -201,52 +197,49 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
         | genex::to<std::vector>();
 
     const auto invalid_args = arg_names
-        | genex::views::set_difference_unsorted(all_attr_names, SPP_INSTANT_INDIRECT, SPP_INSTANT_INDIRECT)
+        | genex::views::not_in(all_attr_names, genex::meta::deref, genex::meta::deref)
         | genex::to<std::vector>();
 
-    if (not invalid_args.empty()) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppArgumentNameInvalidError>().with_args(
-            *meta->object_init_type, "attribute", *invalid_args[0], "object initializer argument").with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppArgumentNameInvalidError>(
+        not invalid_args.empty(), {sm->current_scope},
+        ERR_ARGS(*meta->object_init_type, "attribute", *invalid_args[0], "object initializer argument"));
 
     // Type check the non-autofill arguments against the class attributes.
     for (auto &&arg : get_non_autofill_args()) {
         auto matching_attrs = all_attrs
-            | genex::views::filter([&arg](auto const &x) { return *x.first->name == *arg->name; })
+            | genex::views::filter([&arg](auto const &x) { return *x.first == *arg->name; })
             | genex::to<std::vector>();
 
-        if (matching_attrs.size() > 1) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppAmbiguousMemberAccessError>().with_args(
-                *std::get<0>(matching_attrs[0]), *std::get<0>(matching_attrs[1]), *this).with_scopes({sm->current_scope}).raise();
-        }
+        raise_if<analyse::errors::SppAmbiguousMemberAccessError>(
+            matching_attrs.size() > 1, {sm->current_scope},
+            ERR_ARGS(*std::get<0>(matching_attrs[0]), *std::get<0>(matching_attrs[1]), *this));
 
-        auto [attr, scope] = matching_attrs[0];
-        const auto attr_type = scope->get_type_symbol(cls_sym->scope->get_var_symbol(attr->name)->type)->fq_name();
+        auto [attr, attr_type_sym] = matching_attrs[0];
+        const auto attr_type = attr_type_sym->fq_name();
         meta->save();
         meta->assignment_target_type = attr_type;
+        meta->assignment_target = IdentifierAst::from_type(*meta->assignment_target_type);
         auto arg_type = arg->infer_type(sm, meta);
         meta->restore();
 
-        if (not analyse::utils::type_utils::symbolic_eq(*attr_type, *arg_type, *sm->current_scope, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-                *attr, *attr_type, *arg, *arg_type).with_scopes({sm->current_scope}).raise();
-        }
+        raise_if<analyse::errors::SppTypeMismatchError>(
+            not analyse::utils::type_utils::symbolic_eq(*attr_type, *arg_type, *sm->current_scope, *sm->current_scope),
+            {sm->current_scope}, ERR_ARGS(*attr, *attr_type, *arg, *arg_type));
     }
 
     // Type check the default argument (if it exists).
     if (const auto af_arg = get_autofill_arg(); af_arg != nullptr) {
         const auto af_arg_type = af_arg->val->infer_type(sm, meta);
-        if (not analyse::utils::type_utils::symbolic_eq(*af_arg_type, *meta->object_init_type, *sm->current_scope, *sm->current_scope)) {
-            analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-                *meta->object_init_type, *meta->object_init_type, *af_arg, *af_arg_type).with_scopes({sm->current_scope}).raise();
-        }
+        raise_if<analyse::errors::SppTypeMismatchError>(
+            not analyse::utils::type_utils::symbolic_eq(*af_arg_type, *meta->object_init_type, *sm->current_scope, *sm->current_scope),
+            {sm->current_scope}, ERR_ARGS(*meta->object_init_type, *meta->object_init_type, *af_arg, *af_arg_type));
     }
 }
 
 
 auto spp::asts::ObjectInitializerArgumentGroupAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory of the arguments.
     for (auto &&arg : args) {

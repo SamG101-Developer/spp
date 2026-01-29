@@ -1,8 +1,13 @@
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/inner_scope_expression_ast.hpp>
-#include <spp/asts/loop_else_statement_ast.hpp>
-#include <spp/asts/token_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.loop_else_statement_ast;
+import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.scope_manager;
+import spp.asts.inner_scope_expression_ast;
+import spp.asts.statement_ast;
+import spp.asts.token_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::LoopElseStatementAst::LoopElseStatementAst(
@@ -44,19 +49,9 @@ spp::asts::LoopElseStatementAst::operator std::string() const {
 }
 
 
-auto spp::asts::LoopElseStatementAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_else);
-    SPP_PRINT_APPEND(body);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::LoopElseStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Create a scope and analyse the body.
     auto scope_name = analyse::scopes::ScopeBlockName("<case-expr#" + std::to_string(pos_start()) + ">");
@@ -68,18 +63,31 @@ auto spp::asts::LoopElseStatementAst::stage_7_analyse_semantics(
 
 auto spp::asts::LoopElseStatementAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the body for memory issues.
-    sm->move_out_of_current_scope();
+    sm->move_to_next_scope();
     body->stage_8_check_memory(sm, meta);
     sm->move_out_of_current_scope();
 }
 
 
+auto spp::asts::LoopElseStatementAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate code for the body.
+    sm->move_to_next_scope();
+    const auto val = body->stage_11_code_gen_2(sm, meta, ctx);
+    sm->move_out_of_current_scope();
+    return val;
+}
+
+
 auto spp::asts::LoopElseStatementAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // The type of an else statement is the type of its body.
     return body->infer_type(sm, meta);

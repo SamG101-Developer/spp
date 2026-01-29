@@ -8,7 +8,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let a = (std::boolean::Bool)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -18,4 +18,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut a = (true)
         a = false
     }
-)")
+)");

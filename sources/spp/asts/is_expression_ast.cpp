@@ -1,20 +1,24 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/bin_utils.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/case_expression_ast.hpp>
-#include <spp/asts/case_pattern_variant_ast.hpp>
-#include <spp/asts/is_expression_ast.hpp>
-#include <spp/asts/let_statement_initialized_ast.hpp>
-#include <spp/asts/local_variable_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
-#include <genex/views/for_each.hpp>
+module spp.asts.is_expression_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.bin_utils;
+import spp.asts.case_expression_ast;
+import spp.asts.case_pattern_variant_ast;
+import spp.asts.identifier_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.generate.common_types;
+import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
+import genex;
 
 
 spp::asts::IsExpressionAst::IsExpressionAst(
@@ -25,6 +29,7 @@ spp::asts::IsExpressionAst::IsExpressionAst(
     lhs(std::move(lhs)),
     tok_op(std::move(tok_op)),
     rhs(std::move(rhs)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_op, lex::SppTokenType::KW_IS, "is");
 }
 
 
@@ -56,6 +61,10 @@ auto spp::asts::IsExpressionAst::clone() const
 
 spp::asts::IsExpressionAst::operator std::string() const {
     SPP_STRING_START;
+    if (m_mapped_func) {
+        SPP_STRING_APPEND(m_mapped_func);
+        SPP_STRING_END;
+    }
     SPP_STRING_APPEND(lhs);
     SPP_STRING_APPEND(tok_op);
     SPP_STRING_APPEND(rhs);
@@ -63,24 +72,20 @@ spp::asts::IsExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::IsExpressionAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(lhs);
-    SPP_PRINT_APPEND(tok_op);
-    SPP_PRINT_APPEND(rhs);
-    SPP_PRINT_END;
+auto spp::asts::IsExpressionAst::mapped_func() const
+    -> std::shared_ptr<CaseExpressionAst> {
+    return m_mapped_func;
 }
 
 
 auto spp::asts::IsExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Ensure TypeAst's aren't used for expression for binary operands.
-    ENFORCE_EXPRESSION_SUBTYPE(lhs.get());
-    ENFORCE_EXPRESSION_SUBTYPE(rhs.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(lhs.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(rhs.get());
+    m_lhs_as_id = ast_clone(lhs->to<IdentifierAst>());
 
     // Convert to a "case" destructure and analyse it.
     const auto n = sm->current_scope->children.size();
@@ -88,25 +93,49 @@ auto spp::asts::IsExpressionAst::stage_7_analyse_semantics(
     m_mapped_func->stage_7_analyse_semantics(sm, meta);
 
     // Add the destructure symbols to the current scope.
-    auto destructure_syms = sm->current_scope->children[n]->children[0]->all_var_symbols(true, true);
-    destructure_syms | genex::views::for_each([sm](auto &&x) {
-        sm->current_scope->add_var_symbol(std::shared_ptr<analyse::scopes::VariableSymbol>(x));
-    });
+    // This includes the lhs symbol if it's been flow typed.
+    if (not sm->current_scope->name_as_string().starts_with("<inner-scope#")) {
+        const auto destructure_syms = sm->current_scope->children[n]->children[0]->all_var_symbols(true, true);
+        for (auto &&x: destructure_syms) {
+            sm->current_scope->add_var_symbol(x);
+        }
+    }
 }
 
 
 auto spp::asts::IsExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Forward the memory checking to the mapped function.
     m_mapped_func->stage_8_check_memory(sm, meta);
 }
 
 
+auto spp::asts::IsExpressionAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // If the lhs was an identifier, the "is" causes it to get flow types, so we need to promote the original "alloca"
+    // into the flow typed symbol.
+    if (m_lhs_as_id) {
+        const auto flow_typed_lhs_sym = sm->current_scope->get_var_symbol(m_lhs_as_id, true);
+        if (flow_typed_lhs_sym != nullptr) {
+            auto original_sym = sm->current_scope->parent->get_var_symbol(m_lhs_as_id);
+            original_sym = original_sym ? original_sym : flow_typed_lhs_sym;
+            flow_typed_lhs_sym->llvm_info->alloca = original_sym->llvm_info->alloca;
+        }
+    }
+
+    // Forward the code generation to the mapped function.
+    return m_mapped_func->stage_11_code_gen_2(sm, meta, ctx);
+}
+
+
 auto spp::asts::IsExpressionAst::infer_type(
     ScopeManager *,
-    mixins::CompilerMetaData *)
+    CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Always return a boolean type (successful or failed match).
     return generate::common_types::boolean_type(m_mapped_func->pos_start());

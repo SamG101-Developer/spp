@@ -6,7 +6,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_unknown_type,
     SppIdentifierUnknownError, R"(
     fun f() -> Unknown { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -14,7 +14,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_unknown_namespaced_type,
     SppIdentifierUnknownError, R"(
     fun f() -> std::Unknown { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -22,7 +22,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_type_unknown_namespace,
     SppIdentifierUnknownError, R"(
     fun f() -> test::Type { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -30,7 +30,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_type_unknown_namespace_nested,
     SppIdentifierUnknownError, R"(
     fun f() -> std::other::Unknown { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -40,7 +40,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let x: std::string::Str::Type
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -50,56 +50,56 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f[T]() -> std::void::Void {
         let x: T::Type
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type, R"(
     fun f() -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_namespaced, R"(
     fun f() -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant, R"(
     fun f(mut a: std::string::Str or std::boolean::Bool) -> std::void::Void { a = "hello" }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant_default, R"(
     fun f(a: std::string::Str or std::boolean::Bool = "hello") -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant_tuple_1, R"(
     fun f(mut a: (std::string::Str,)) -> std::void::Void { a = ("hello",) }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant_tuple_n, R"(
     fun f(mut a: (std::string::Str, std::boolean::Bool)) -> std::void::Void { a = ("hello", true) }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant_tuple_default, R"(
     fun f(a: (std::string::Str, std::boolean::Bool) = ("hello", true)) -> std::void::Void { }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -109,7 +109,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = a("hello", "world")
         x = false
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -119,7 +119,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut x = a(b, c)
         x = false
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -134,7 +134,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x: MyType::X
         x = "hello"
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -156,7 +156,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x: MyTypeA::X::Y
         x = MyTypeC()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -171,7 +171,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x: MyType[std::number::S32]::X
         x = 10
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -197,7 +197,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x: TypeC[std::number::S32]::InnerC[std::string::Str]::InnerB[std::boolean::Bool]::InnerA[std::number::U64]
         x = (10, "hello", false, 10_u64)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -211,4 +211,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(a: TypeA::X) -> TypeA::X {
         ret "hello world"
     }
-)")
+)");

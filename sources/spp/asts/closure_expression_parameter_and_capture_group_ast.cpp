@@ -1,21 +1,23 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/scopes/scope.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/closure_expression_capture_ast.hpp>
-#include <spp/asts/closure_expression_capture_group_ast.hpp>
-#include <spp/asts/closure_expression_parameter_and_capture_group_ast.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/function_call_argument_ast.hpp>
-#include <spp/asts/function_call_argument_group_ast.hpp>
-#include <spp/asts/function_parameter_ast.hpp>
-#include <spp/asts/function_parameter_group_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
 
-#include <genex/to_container.hpp>
-#include <genex/views/cast_smart.hpp>
-#include <genex/views/move.hpp>
+module spp.asts.closure_expression_parameter_and_capture_group_ast;
+import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.asts.convention_ast;
+import spp.asts.closure_expression_capture_ast;
+import spp.asts.closure_expression_capture_group_ast;
+import spp.asts.expression_ast;
+import spp.asts.function_parameter_group_ast;
+import spp.asts.function_call_argument_ast;
+import spp.asts.function_call_argument_group_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_type;
+import genex;
 
 
 spp::asts::ClosureExpressionParameterAndCaptureGroupAst::ClosureExpressionParameterAndCaptureGroupAst(
@@ -66,21 +68,9 @@ spp::asts::ClosureExpressionParameterAndCaptureGroupAst::operator std::string() 
 }
 
 
-auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_l);
-    SPP_PRINT_APPEND(param_group);
-    SPP_PRINT_APPEND(capture_group);
-    SPP_PRINT_APPEND(tok_r);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the arguments against the outer scope's symbols (temp move asts).
     auto caps = capture_group->captures
@@ -106,7 +96,7 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_7_analyse_se
 
 auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the arguments against the outer scope's symbols (temp move asts).
     meta->current_lambda_outer_scope = sm->current_scope;
@@ -127,4 +117,17 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_8_check_memo
     // Check the parameters and captures.
     param_group->stage_8_check_memory(sm, meta);
     capture_group->stage_8_check_memory(sm, meta);
+}
+
+
+auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Generate the parameters into the current scope.
+    sm->move_to_next_scope();
+    param_group->stage_11_code_gen_2(sm, meta, ctx);
+    capture_group->stage_11_code_gen_2(sm, meta, ctx);
+    return nullptr;
 }

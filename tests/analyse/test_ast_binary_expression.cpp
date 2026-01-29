@@ -7,7 +7,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let a = 1 + 2
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -16,7 +16,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let a = 1 + 2 + 3
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -25,7 +25,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let a = 1 < 2 < 3
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -34,7 +34,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(b: (std::bignum::bigint::BigInt, std::bignum::bigint::BigInt, std::bignum::bigint::BigInt, std::bignum::bigint::BigInt)) -> std::void::Void {
         let a = .. + b
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -43,7 +43,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(a: (std::bignum::bigint::BigInt, std::bignum::bigint::BigInt, std::bignum::bigint::BigInt, std::bignum::bigint::BigInt)) -> std::void::Void {
         let b = a + ..
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -53,7 +53,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let a = std::bignum::bigint::BigInt + 2
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -63,7 +63,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let a = 1 + std::bignum::bigint::BigInt
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -73,7 +73,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(b: std::bignum::bigint::BigInt) -> std::void::Void {
         let a = .. + b
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -83,5 +83,5 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(a: std::bignum::bigint::BigInt) -> std::void::Void {
         let b = a + ..
     }
-)")
+)");
 

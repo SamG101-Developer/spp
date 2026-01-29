@@ -1,9 +1,20 @@
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/generic_parameter_type_inline_constraints_ast.hpp>
-#include <spp/asts/generic_parameter_type_optional_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.generic_parameter_type_optional_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.asts.convention_ast;
+import spp.asts.generic_parameter_type_inline_constraints_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.mixins.orderable_ast;
+import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
 
 
 spp::asts::GenericParameterTypeOptionalAst::GenericParameterTypeOptionalAst(
@@ -11,7 +22,7 @@ spp::asts::GenericParameterTypeOptionalAst::GenericParameterTypeOptionalAst(
     decltype(constraints) &&constraints,
     decltype(tok_assign) &&tok_assign,
     decltype(default_val) &&default_val) :
-    GenericParameterTypeAst(std::move(name), std::move(constraints), mixins::OrderableTag::OPTIONAL_PARAM),
+    GenericParameterTypeAst(std::move(name), std::move(constraints), utils::OrderableTag::OPTIONAL_PARAM),
     tok_assign(std::move(tok_assign)),
     default_val(std::move(default_val)) {
 }
@@ -52,26 +63,16 @@ spp::asts::GenericParameterTypeOptionalAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenericParameterTypeOptionalAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(constraints);
-    SPP_PRINT_APPEND(tok_assign);
-    SPP_PRINT_APPEND(default_val);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::GenericParameterTypeOptionalAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
+    // Default behaviour (inline constraints).
+    GenericParameterTypeAst::stage_4_qualify_types(sm, meta);
+
     // Handle the default type.
     default_val->stage_7_analyse_semantics(sm, meta);
-    const auto raw = default_val->without_generics();
-    if (const auto sym = sm->current_scope->get_type_symbol(raw); sym != nullptr) {
+    if (const auto sym = sm->current_scope->get_type_symbol(default_val->without_generics()); sym != nullptr) {
         auto temp = sym->fq_name()->with_convention(ast_clone(default_val->get_convention()));
         temp = temp->with_generics(std::move(default_val->type_parts().back()->generic_arg_group));
         default_val = std::move(temp);
@@ -81,7 +82,7 @@ auto spp::asts::GenericParameterTypeOptionalAst::stage_4_qualify_types(
 
 auto spp::asts::GenericParameterTypeOptionalAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the name and default value of the generic type parameter.
     GenericParameterTypeAst::stage_7_analyse_semantics(sm, meta);

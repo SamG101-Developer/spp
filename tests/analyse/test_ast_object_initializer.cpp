@@ -8,7 +8,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f[T]() -> std::void::Void {
         let foo = T(a=1)
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -17,7 +17,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f[T]() -> std::void::Void {
         let foo = T()
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -30,7 +30,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let foo = Foo(a=1)
     }
-)")
+)");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstObjectInitializerAst,
@@ -53,5 +53,5 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let foo = Bar()
     }
-)")
+)");
 

@@ -1,12 +1,18 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/pattern_guard_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
+
+module spp.asts.pattern_guard_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.expression_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 
 
 spp::asts::PatternGuardAst::PatternGuardAst(
@@ -49,50 +55,48 @@ spp::asts::PatternGuardAst::operator std::string() const {
 }
 
 
-auto spp::asts::PatternGuardAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_and);
-    SPP_PRINT_APPEND(expr);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::PatternGuardAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the expression in the pattern guard.
-    ENFORCE_EXPRESSION_SUBTYPE(expr.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
     expr->stage_7_analyse_semantics(sm, meta);
 
     // Check the guard's type is boolean.
     const auto expr_type = expr->infer_type(sm, meta);
-    if (not analyse::utils::type_utils::is_type_boolean(*expr_type, *sm->current_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppExpressionNotBooleanError>().with_args(
-            *expr, *expr_type, "pattern guard").with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppExpressionNotBooleanError>(
+        not analyse::utils::type_utils::is_type_boolean(*expr_type, *sm->current_scope),
+        {sm->current_scope}, ERR_ARGS(*expr, *expr_type, "pattern guard"));
 }
 
 
 auto spp::asts::PatternGuardAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory of the expression.
     // Todo: how is this even applied? just truth check => barely any mem checks needed
     expr->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
-        *expr, *this, *sm, true, true, false, false, false, false, meta);
+        *expr, *this, *sm, true, true, false, false, false, meta);
 }
 
 
-auto spp::asts::PatternGuardAst::stage_10_code_gen_2(
+auto spp::asts::PatternGuardAst::stage_9_comptime_resolution(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    CompilerMetaData *meta)
+    -> void {
+    // Resolve the expression at compile-time.
+    expr->stage_9_comptime_resolution(sm, meta);
+}
+
+
+auto spp::asts::PatternGuardAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the expression.
-    return expr->stage_10_code_gen_2(sm, meta, ctx);
+    return expr->stage_11_code_gen_2(sm, meta, ctx);
 }

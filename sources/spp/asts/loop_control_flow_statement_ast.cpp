@@ -1,15 +1,21 @@
-#include <spp/pch.hpp>
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/expression_ast.hpp>
-#include <spp/asts/loop_control_flow_statement_ast.hpp>
-#include <spp/asts/loop_expression_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
+
+module spp.asts.loop_control_flow_statement_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.expression_ast;
+import spp.asts.loop_expression_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.utils.ast_utils;
+import spp.asts.generate.common_types;
+import spp.lex.tokens;
+import genex;
 
 
 spp::asts::LoopControlFlowStatementAst::LoopControlFlowStatementAst(
@@ -24,6 +30,26 @@ spp::asts::LoopControlFlowStatementAst::LoopControlFlowStatementAst(
 
 
 spp::asts::LoopControlFlowStatementAst::~LoopControlFlowStatementAst() = default;
+
+
+auto spp::asts::LoopControlFlowStatementAst::Skip(
+    std::size_t pos)
+    -> std::unique_ptr<LoopControlFlowStatementAst> {
+    // No exit statements, one skip statement.
+    auto exits = std::vector<std::unique_ptr<TokenAst>>();
+    auto skip = std::make_unique<TokenAst>(pos, lex::SppTokenType::KW_SKIP, "skip");
+    return std::make_unique<LoopControlFlowStatementAst>(std::move(exits), std::move(skip), nullptr);
+}
+
+
+auto spp::asts::LoopControlFlowStatementAst::Exit(
+    std::size_t pos)
+    -> std::unique_ptr<LoopControlFlowStatementAst> {
+    // One exit statement, no skip statements.
+    auto exits = std::vector<std::unique_ptr<TokenAst>>();
+    exits.emplace_back(std::make_unique<TokenAst>(pos, lex::SppTokenType::KW_EXIT, "exit"));
+    return std::make_unique<LoopControlFlowStatementAst>(std::move(exits), nullptr, nullptr);
+}
 
 
 auto spp::asts::LoopControlFlowStatementAst::pos_start() const
@@ -49,27 +75,16 @@ auto spp::asts::LoopControlFlowStatementAst::clone() const
 
 spp::asts::LoopControlFlowStatementAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(tok_seq_exit).append(" ");
+    SPP_STRING_EXTEND(tok_seq_exit, " ").append(" ");
     SPP_STRING_APPEND(tok_skip).append(" ");
     SPP_STRING_APPEND(expr);
     SPP_STRING_END;
 }
 
 
-auto spp::asts::LoopControlFlowStatementAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_EXTEND(tok_seq_exit).append(" ");
-    SPP_PRINT_APPEND(tok_skip).append(" ");
-    SPP_PRINT_APPEND(expr);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::LoopControlFlowStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Get the number of control flow statements, and the loop's nesting level.
     const auto has_skip = tok_skip != nullptr;
@@ -78,14 +93,13 @@ auto spp::asts::LoopControlFlowStatementAst::stage_7_analyse_semantics(
 
     // Analyse the expression if it is present.
     if (expr != nullptr) {
-        ENFORCE_EXPRESSION_SUBTYPE(expr.get());
+        SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
     }
 
     // Check the depth of the loop is greater than or equal to the number of control statements.
-    if (num_controls > nested_loop_depth) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppLoopTooManyControlFlowStatementsError>().with_args(
-            *meta->current_loop_ast->tok_loop, *this, num_controls, nested_loop_depth).with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppLoopTooManyControlFlowStatementsError>(
+        num_controls > nested_loop_depth, {sm->current_scope},
+        ERR_ARGS(*meta->current_loop_ast->tok_loop, *this, num_controls, nested_loop_depth));
 
     // Save and compare the loop's "exiting" type against other nested loop's exit statement types.
     if (not has_skip) {
@@ -100,10 +114,9 @@ auto spp::asts::LoopControlFlowStatementAst::stage_7_analyse_semantics(
         if (meta->loop_return_types->contains(depth)) {
             // If the type is already set, check it matches the current expression's type.
             auto [that_expr, that_expr_type, that_scope] = meta->loop_return_types->at(depth);
-            if (not analyse::utils::type_utils::symbolic_eq(*expr_type, *that_expr_type, *sm->current_scope, *that_scope)) {
-                analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-                    *expr, *expr_type, *that_expr, *that_expr_type).with_scopes({sm->current_scope, that_scope}).raise();
-            }
+            raise_if<analyse::errors::SppTypeMismatchError>(
+                not analyse::utils::type_utils::symbolic_eq(*expr_type, *that_expr_type, *sm->current_scope, *that_scope),
+                {sm->current_scope, that_scope}, ERR_ARGS(*expr, *expr_type, *that_expr, *that_expr_type));
         }
         else {
             auto stored_expr = expr ? expr.get() : nullptr;
@@ -115,13 +128,43 @@ auto spp::asts::LoopControlFlowStatementAst::stage_7_analyse_semantics(
 
 auto spp::asts::LoopControlFlowStatementAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the memory state of the expression if it is present. Expression is being moved into outer context, so
     // strict memory checks.
     if (expr != nullptr) {
         expr->stage_8_check_memory(sm, meta);
         analyse::utils::mem_utils::validate_symbol_memory(
-            *expr, *tok_seq_exit.back(), *sm, true, true, true, true, true, true, meta);
+            *expr, *tok_seq_exit.back(), *sm, true, true, true, true, true, meta);
     }
+}
+
+
+auto spp::asts::LoopControlFlowStatementAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // For "exit" statements, we need to branch to the end bb of N loops, N being the number of exit tokens.
+    // TODO
+
+    // For "skip" statements, we need to branch to the condition check bb of the innermost loop.
+    // TODO
+
+    // If there is an attached expression, code generate it.
+    return expr ? expr->stage_11_code_gen_2(sm, meta, ctx) : nullptr;
+}
+
+
+auto spp::asts::LoopControlFlowStatementAst::infer_type(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> std::shared_ptr<TypeAst> {
+    // If there is an attached expression, return its type.
+    if (expr != nullptr) {
+        return expr->infer_type(sm, meta);
+    }
+
+    // Otherwise, return the void type.
+    return generate::common_types::void_type(pos_start());
 }

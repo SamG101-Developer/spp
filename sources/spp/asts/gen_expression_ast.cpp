@@ -1,20 +1,36 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/coroutine_prototype_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_keyword_ast.hpp>
-#include <spp/asts/gen_expression_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
-#include <spp/asts/generate/common_types_precompiled.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
+
+module spp.asts.gen_expression_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.convention_ast;
+import spp.asts.coroutine_prototype_ast;
+import spp.asts.function_prototype_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
+import spp.asts.identifier_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.generate.common_types;
+import spp.asts.generate.common_types_precompiled;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_coros;
+import spp.lex.tokens;
+import spp.utils.uid;
+
+import llvm;
 
 
 spp::asts::GenExpressionAst::GenExpressionAst(
@@ -25,23 +41,27 @@ spp::asts::GenExpressionAst::GenExpressionAst(
     tok_gen(std::move(tok_gen)),
     conv(std::move(conv)),
     expr(std::move(expr)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_gen, lex::SppTokenType::KW_GEN, "gen");
 }
 
 
 spp::asts::GenExpressionAst::~GenExpressionAst() = default;
 
 
-auto spp::asts::GenExpressionAst::pos_start() const -> std::size_t {
+auto spp::asts::GenExpressionAst::pos_start() const
+    -> std::size_t {
     return tok_gen->pos_start();
 }
 
 
-auto spp::asts::GenExpressionAst::pos_end() const -> std::size_t {
+auto spp::asts::GenExpressionAst::pos_end() const
+    -> std::size_t {
     return expr->pos_end();
 }
 
 
-auto spp::asts::GenExpressionAst::clone() const -> std::unique_ptr<Ast> {
+auto spp::asts::GenExpressionAst::clone() const
+    -> std::unique_ptr<Ast> {
     return std::make_unique<GenExpressionAst>(
         ast_clone(tok_gen),
         ast_clone(conv),
@@ -51,47 +71,39 @@ auto spp::asts::GenExpressionAst::clone() const -> std::unique_ptr<Ast> {
 
 spp::asts::GenExpressionAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_gen);
+    SPP_STRING_APPEND(tok_gen).append(" ");
     SPP_STRING_APPEND(conv);
     SPP_STRING_APPEND(expr);
     SPP_STRING_END;
 }
 
 
-auto spp::asts::GenExpressionAst::print(meta::AstPrinter &printer) const -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_gen);
-    SPP_PRINT_APPEND(conv);
-    SPP_PRINT_APPEND(expr);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the expression.
-    ENFORCE_EXPRESSION_SUBTYPE(expr.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
 
     // Check the enclosing function is a coroutine and not a subroutine.
     const auto function_flavour = meta->enclosing_function_flavour;
-    if (function_flavour->token_type != lex::SppTokenType::KW_COR) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionSubroutineContainsGenExpressionError>().with_args(
-            *function_flavour, *tok_gen).with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppFunctionSubroutineContainsGenExpressionError>(
+        function_flavour->token_type != lex::SppTokenType::KW_COR,
+        {sm->current_scope}, ERR_ARGS(*function_flavour, *tok_gen));
 
     // Analyse the expression if it exists, and determine the type of the expression.
     auto expr_type = generate::common_types::void_type(pos_start());
     if (expr != nullptr) {
         meta->save();
-        RETURN_TYPE_OVERLOAD_HELPER(expr.get()) {
-            auto [gen_type, yield_type, _, _, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(
-                *meta->enclosing_function_ret_type[0], *sm, *meta->enclosing_function_ret_type[0], "coroutine");
+        SPP_RETURN_TYPE_OVERLOAD_HELPER(expr.get()) {
+            auto [gen_type, yield_type, _] = analyse::utils::type_utils::get_generator_and_yield_type(
+                *meta->enclosing_function_ret_type[0], *sm->current_scope, *meta->enclosing_function_ret_type[0], "coroutine");
             meta->return_type_overload_resolver_type = std::move(yield_type);
         }
 
+        // Todo: What is ->assignment_target(_type) doing here?
         meta->assignment_target_type = meta->enclosing_function_ret_type.empty() ? nullptr : meta->enclosing_function_ret_type[0];
+        meta->assignment_target = meta->assignment_target_type ? IdentifierAst::from_type(*meta->assignment_target_type) : nullptr;
         expr->stage_7_analyse_semantics(sm, meta);
         expr_type = expr->infer_type(sm, meta)->with_convention(ast_clone(conv));
         meta->restore();
@@ -104,25 +116,25 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
         meta->enclosing_function_ret_type.emplace_back(m_gen_type);
     }
     else {
-        m_gen_type = meta->enclosing_function_ret_type[0];
+        // Todo - this list isn't getting cleared, so [0] != [last] (using .back() hides the bug - TEMP FIX).
+        m_gen_type = meta->enclosing_function_ret_type.back();
     }
 
     // Determine the "Yield" type of the enclosing function (to type check the expression against).
-    auto [_, yield_type, _, is_optional, is_fallible, error_type] = analyse::utils::type_utils::get_generator_and_yield_type(
-        *m_gen_type, *sm, *m_gen_type, "coroutine");
-    const auto direct_match = analyse::utils::type_utils::symbolic_eq(*yield_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
-    const auto optional_match = is_optional and analyse::utils::type_utils::symbolic_eq(*generate::common_types_precompiled::VOID, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
-    const auto fallible_match = is_fallible and analyse::utils::type_utils::symbolic_eq(*error_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
-    if (not(direct_match or optional_match or fallible_match)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppYieldedTypeMismatchError>().with_args(
-            *yield_type, *yield_type, expr ? *ast_cast<Ast>(expr.get()) : *ast_cast<Ast>(tok_gen.get()), *expr_type, is_optional, is_fallible, error_type ? *error_type : *generate::common_types_precompiled::VOID).with_scopes({sm->current_scope}).raise();
-    }
+    auto [_, yield_type, _] = analyse::utils::type_utils::get_generator_and_yield_type(
+        *m_gen_type, *sm->current_scope, *m_gen_type, "coroutine");
+    const auto direct_match = analyse::utils::type_utils::symbolic_eq(
+        *yield_type, *expr_type, *meta->enclosing_function_scope, *sm->current_scope);
+
+    raise_if<analyse::errors::SppYieldedTypeMismatchError>(
+        not direct_match, {sm->current_scope},
+        ERR_ARGS(*yield_type, *yield_type, expr ? *expr->to<Ast>() : *tok_gen->to<Ast>(), *expr_type));
 }
 
 
 auto spp::asts::GenExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // If there is no expression, then now ork needs to be done.
     if (expr == nullptr) return;
@@ -130,7 +142,7 @@ auto spp::asts::GenExpressionAst::stage_8_check_memory(
     // Ensure the argument isn't moved or partially moved (for all conventions)
     expr->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
-        *expr, *tok_gen, *sm, true, true, false, false, false, false, meta);
+        *expr, *tok_gen, *sm, true, true, false, false, false, meta);
 
     // If the value is non-symbolic, then there is no borrow logic to implement, so return.
     auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*expr);
@@ -140,57 +152,83 @@ auto spp::asts::GenExpressionAst::stage_8_check_memory(
         // Ensure that attributes aren't being moved off of a borrowed value and that pins are maintained. Mark the move
         // or partial move of the argument.
         analyse::utils::mem_utils::validate_symbol_memory(
-            *expr, *tok_gen, *sm, false, false, true, true, true, true, meta);
+            *expr, *tok_gen, *sm, false, false, true, true, true, meta);
     }
 
-    else if (*conv == ConventionAst::ConventionTag::MUT and not sym->is_mutable) {
-        // Check the argument's symbol is mutable, if the symbol exists.
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidMutationError>().with_args(
-            *expr, *conv, *std::get<0>(sym->memory_info->ast_initialization)).with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppInvalidMutationError>(
+        conv and *conv == ConventionTag::MUT and not sym->is_mutable, {sm->current_scope},
+        ERR_ARGS(*expr, *conv, *std::get<0>(sym->memory_info->ast_initialization)));
 }
 
 
-auto spp::asts::GenExpressionAst::stage_10_code_gen_2(
+auto spp::asts::GenExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Generate the expression.
-    const auto llvm_yield_val = expr == nullptr ? nullptr : expr->stage_10_code_gen_2(sm, meta, ctx);
+    // Get the generator environment.
+    const auto coro = meta->enclosing_function_scope->ast->to<CoroutinePrototypeAst>();
+    const auto llvm_gen_env = coro->llvm_gen_env;
+    SPP_ASSERT(llvm_gen_env != nullptr);
 
-    // Insert the suspension intrinsic call for LLVM.
-    const auto llvm_suspend = llvm::Intrinsic::getOrInsertDeclaration(ctx->module.get(), llvm::Intrinsic::coro_suspend);
+    const auto uid = spp::utils::generate_uid(this);
+    const auto [_, yield_type, _] = analyse::utils::type_utils::get_generator_and_yield_type(
+        *m_gen_type, *sm->current_scope, *m_gen_type, "gen");
+    const auto yielded_type = expr ? expr->infer_type(sm, meta) : nullptr;
+    const auto is_exception = yielded_type and analyse::utils::type_utils::symbolic_eq(
+        *yield_type, *yielded_type, *sm->current_scope, *sm->current_scope);
+    const auto gen_env_type = llvm::PointerType::get(*ctx->context, 0);
 
-    const auto none_token = llvm::ConstantTokenNone::get(ctx->context);
-    const auto false_val = llvm::ConstantInt::get(llvm::Type::getInt1Ty(ctx->context), 0);
-    const auto suspend_result_val = ctx->builder.CreateCall(llvm_suspend, {none_token, false_val}, "coro.suspend");
+    // Generate the value and store it in the generator environment.
+    if (expr != nullptr and not is_exception) {
+        ctx->builder.CreateStore(
+            llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->context), static_cast<std::uint8_t>(codegen::CoroutineState::VARIABLE)),
+            ctx->builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::STATE)));
 
-    // Model the branch control.
-    const auto enclosing_fn_proto = ast_cast<FunctionPrototypeAst>(meta->enclosing_function_scope->ast);
-    const auto resume_bb = llvm::BasicBlock::Create(ctx->context, "resume", enclosing_fn_proto->m_llvm_func);
-    const auto cleanup_bb = llvm::BasicBlock::Create(ctx->context, "cleanup", enclosing_fn_proto->m_llvm_func);
-    const auto suspend_bb = llvm::BasicBlock::Create(ctx->context, "suspend", enclosing_fn_proto->m_llvm_func);
-    ctx->builder.CreateSwitch(suspend_result_val, resume_bb, 2);
-
-    // Store the yielded value into the coroutine frame.
-    const auto coro_proto = ast_cast<CoroutinePrototypeAst>(enclosing_fn_proto);
-    if (llvm_yield_val != nullptr) {
-        ctx->builder.CreateStore(llvm_yield_val, coro_proto->m_llvm_coro_yield_slot);
+        ctx->builder.CreateStore(
+            expr->stage_11_code_gen_2(sm, meta, ctx),
+            ctx->builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::YIELD_SLOT)));
     }
 
-    ctx->builder.SetInsertPoint(cleanup_bb);
+    // Generate the exception and store it in the generator environment.
+    else if (is_exception) {
+        ctx->builder.CreateStore(
+            llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->context), static_cast<std::uint8_t>(codegen::CoroutineState::EXCEPTION)),
+            ctx->builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::STATE)));
+
+        ctx->builder.CreateStore(
+            expr->stage_11_code_gen_2(sm, meta, ctx),
+            ctx->builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::ERROR_SLOT)));
+    }
+
+    // No expression => store "no value" state.
+    else {
+        ctx->builder.CreateStore(
+            llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->context), static_cast<std::uint8_t>(codegen::CoroutineState::NO_VALUE)),
+            ctx->builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::STATE)));
+
+        ctx->builder.CreateStore(
+            llvm::UndefValue::get(llvm::Type::getVoidTy(*ctx->context)),
+            ctx->builder.CreateStructGEP(gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::YIELD_SLOT)));
+    }
+
     ctx->builder.CreateRetVoid();
-    ctx->builder.SetInsertPoint(suspend_bb);
-    ctx->builder.CreateRetVoid();
-    ctx->builder.SetInsertPoint(resume_bb);
-    return nullptr;
+
+    // Continuation block.
+    const auto cont_bb = llvm::BasicBlock::Create(*ctx->context, "gen.cont" + uid, ctx->builder.GetInsertBlock()->getParent());
+    ctx->yield_continuations.push_back(cont_bb);
+    ctx->builder.SetInsertPoint(cont_bb);
+
+    // If this gen expression was "sent" a value, return it. Read off of the "send" slot.
+    const auto send_slot_ptr = ctx->builder.CreateStructGEP(
+        gen_env_type, llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::SEND_SLOT));
+    return ctx->builder.CreateLoad(ctx->builder.getInt8Ty(), send_slot_ptr, "gen.send.val" + uid);
 }
 
 
 auto spp::asts::GenExpressionAst::infer_type(
     ScopeManager *,
-    mixins::CompilerMetaData *)
+    CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Get the "Send" generic type parameter from the generator type.
     auto send_type = m_gen_type->type_parts().back()->generic_arg_group->type_at("Send")->val;

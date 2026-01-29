@@ -1,11 +1,14 @@
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/object_initializer_argument_keyword_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.object_initializer_argument_keyword_ast;
+import spp.asts.identifier_ast;
+import spp.asts.token_ast;
+import spp.asts.utils.ast_utils;
 
 
 spp::asts::ObjectInitializerArgumentKeywordAst::ObjectInitializerArgumentKeywordAst(
-    decltype(name) &&name,
+    decltype(name) name,
     decltype(tok_assign) &&tok_assign,
     decltype(val) &&val) :
     ObjectInitializerArgumentAst(std::move(name), std::move(val)),
@@ -43,15 +46,4 @@ spp::asts::ObjectInitializerArgumentKeywordAst::operator std::string() const {
     SPP_STRING_APPEND(tok_assign);
     SPP_STRING_APPEND(val);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::ObjectInitializerArgumentKeywordAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(tok_assign);
-    SPP_PRINT_APPEND(val);
-    SPP_PRINT_END;
 }

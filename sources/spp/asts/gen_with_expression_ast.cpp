@@ -1,26 +1,32 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/generic_argument_type_keyword_ast.hpp>
-#include <spp/asts/gen_expression_ast.hpp>
-#include <spp/asts/gen_with_expression_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/inner_scope_expression_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
-#include <spp/asts/loop_condition_iterable_ast.hpp>
-#include <spp/asts/loop_else_statement_ast.hpp>
-#include <spp/asts/loop_expression_ast.hpp>
-#include <spp/asts/postfix_expression_ast.hpp>
-#include <spp/asts/postfix_expression_operator_function_call_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/generate/common_types.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
+
+module spp.asts.gen_with_expression_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_utils;
+import spp.asts.convention_ast;
+import spp.asts.gen_expression_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_argument_type_ast;
+import spp.asts.identifier_ast;
+import spp.asts.inner_scope_expression_ast;
+import spp.asts.local_variable_single_identifier_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
+import spp.asts.loop_else_statement_ast;
+import spp.asts.loop_iterable_expression_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.generate.common_types;
+import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 
 
 spp::asts::GenWithExpressionAst::GenWithExpressionAst(
@@ -69,39 +75,28 @@ spp::asts::GenWithExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenWithExpressionAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_gen).append(" ");
-    SPP_PRINT_APPEND(tok_with).append(" ");
-    SPP_PRINT_APPEND(expr);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::GenWithExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Analyse the expression.
-    ENFORCE_EXPRESSION_SUBTYPE(expr.get());
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(expr.get());
 
     // Check the enclosing function is a coroutine and not a subroutine.
     const auto function_flavour = meta->enclosing_function_flavour;
-    if (function_flavour->token_type != lex::SppTokenType::KW_COR) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppFunctionSubroutineContainsGenExpressionError>().with_args(
-            *function_flavour, *tok_gen).with_scopes({sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppFunctionSubroutineContainsGenExpressionError>(
+        function_flavour->token_type != lex::SppTokenType::KW_COR,
+        {sm->current_scope}, ERR_ARGS(*function_flavour, *tok_gen));
 
     // Analyse the expression (guaranteed to exist), and determine the type of the expression.
     auto expr_type = generate::common_types::void_type(pos_start());
     meta->save();
-    RETURN_TYPE_OVERLOAD_HELPER(expr.get()) {
+    SPP_RETURN_TYPE_OVERLOAD_HELPER(expr.get()) {
         meta->return_type_overload_resolver_type = meta->enclosing_function_ret_type[0];
     }
 
     meta->assignment_target_type = meta->enclosing_function_ret_type.empty() ? nullptr : meta->enclosing_function_ret_type[0];
+    meta->assignment_target = IdentifierAst::from_type(*meta->assignment_target_type);
     meta->prevent_auto_generator_resume = true;
     expr->stage_7_analyse_semantics(sm, meta);
     expr_type = expr->infer_type(sm, meta);
@@ -119,55 +114,62 @@ auto spp::asts::GenWithExpressionAst::stage_7_analyse_semantics(
     }
 
     // Determine the "yield" type of the enclosing function (to type check the expression against).
-    auto [_, yield_type, _, _, _, error_type] = analyse::utils::type_utils::get_generator_and_yield_type(
-        *meta->enclosing_function_ret_type[0], *sm, *meta->enclosing_function_ret_type[0], "coroutine");
+    auto [_, yield_type, _] = analyse::utils::type_utils::get_generator_and_yield_type(
+        *meta->enclosing_function_ret_type[0], *sm->current_scope, *meta->enclosing_function_ret_type[0], "coroutine");
 
     // The expression type must be a Gen type that exactly matches the function_ret_type.
-    if (not analyse::utils::type_utils::symbolic_eq(*meta->enclosing_function_ret_type[0], *expr_type, *meta->enclosing_function_scope, *sm->current_scope)) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppTypeMismatchError>().with_args(
-            *meta->enclosing_function_ret_type[0], *meta->enclosing_function_ret_type[0], *expr, *expr_type).with_scopes({meta->enclosing_function_scope, sm->current_scope}).raise();
-    }
+    raise_if<analyse::errors::SppTypeMismatchError>(
+        not analyse::utils::type_utils::symbolic_eq(*meta->enclosing_function_ret_type[0], *expr_type, *meta->enclosing_function_scope, *sm->current_scope),
+        {meta->enclosing_function_scope, sm->current_scope}, ERR_ARGS(*meta->enclosing_function_ret_type[0], *meta->enclosing_function_ret_type[0], *expr, *expr_type));
 }
 
 
 auto spp::asts::GenWithExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Check the expression for memory issues.
     // Ensure the argument isn't moved or partially moved (for all conventions)
     // Todo: Investigate pin checks here.
     expr->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
-        *expr, *tok_gen, *sm, true, true, false, false, false, false, meta);
+        *expr, *tok_gen, *sm, true, true, false, false, false, meta);
 }
 
 
-auto spp::asts::GenWithExpressionAst::stage_10_code_gen_2(
+auto spp::asts::GenWithExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Build the iterable for the loop; the iterable is just the expression, mapped into a different AST.
     auto temp_var_name = std::make_unique<IdentifierAst>(0, "_coro_temp");
     auto temp_var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(temp_var_name), nullptr);
-    auto loop_cond_iter = std::make_unique<LoopConditionIterableAst>(std::move(temp_var), nullptr, std::move(expr));
 
     // Build the "gen" expression for the individual yielding.
     auto gen_value = std::make_unique<IdentifierAst>(0, "_coro_temp");
     auto gen_expression = std::make_unique<GenExpressionAst>(nullptr, nullptr, std::move(gen_value));
-    auto loop_body = std::make_unique<decltype(LoopExpressionAst::body)::element_type>(nullptr, std::vector<std::unique_ptr<StatementAst>>(), nullptr);
-    loop_body->members.emplace_back(ast_cast<StatementAst>(std::move(gen_expression)));
+    auto loop_body = std::make_unique<decltype(LoopIterableExpressionAst::body)::element_type>(nullptr, std::vector<std::unique_ptr<StatementAst>>(), nullptr);
+    loop_body->members.emplace_back(std::unique_ptr<StatementAst>(gen_expression.release()));
 
     // Build the loop expression with the iterable condition.
-    const auto loop_expr = std::make_unique<LoopExpressionAst>(nullptr, std::move(loop_cond_iter), std::move(loop_body), nullptr);
-    return loop_expr->stage_10_code_gen_2(sm, meta, ctx);
+    const auto loop_expr = std::make_unique<LoopIterableExpressionAst>(
+        nullptr, std::move(temp_var), nullptr, std::move(expr), std::move(loop_body), nullptr);
+
+    // Analyse it to transform into the correct form (conditional loop).
+    const auto current_scope = sm->current_scope;
+    auto iter_copy = sm->current_iterator();
+    loop_expr->stage_7_analyse_semantics(sm, meta);
+    sm->reset(current_scope, iter_copy);
+
+    // Reset the scope to before the loop and then generate it.
+    return loop_expr->stage_11_code_gen_2(sm, meta, ctx);
 }
 
 
 auto spp::asts::GenWithExpressionAst::infer_type(
     ScopeManager *,
-    mixins::CompilerMetaData *)
+    CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Get the "Send" generic type parameter from the generator type.
     auto send_type = m_generator_type->type_parts().back()->generic_arg_group->type_at("Send")->val;

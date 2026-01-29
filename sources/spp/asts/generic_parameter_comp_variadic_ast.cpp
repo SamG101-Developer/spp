@@ -1,6 +1,12 @@
-#include <spp/asts/generic_parameter_comp_variadic_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.generic_parameter_comp_variadic_ast;
+import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.mixins.orderable_ast;
+import spp.asts.utils.ast_utils;
+import spp.asts.utils.orderable;
 
 
 spp::asts::GenericParameterCompVariadicAst::GenericParameterCompVariadicAst(
@@ -9,7 +15,7 @@ spp::asts::GenericParameterCompVariadicAst::GenericParameterCompVariadicAst(
     decltype(name) &&name,
     decltype(tok_colon) &&tok_colon,
     decltype(type) &&type) :
-    GenericParameterCompAst(std::move(tok_cmp), std::move(name), std::move(tok_colon), std::move(type), mixins::OrderableTag::VARIADIC_PARAM),
+    GenericParameterCompAst(std::move(tok_cmp), std::move(name), std::move(tok_colon), std::move(type), utils::OrderableTag::VARIADIC_PARAM),
     tok_ellipsis(std::move(tok_ellipsis)) {
 }
 
@@ -48,17 +54,4 @@ spp::asts::GenericParameterCompVariadicAst::operator std::string() const {
     SPP_STRING_APPEND(tok_colon).append(" ");
     SPP_STRING_APPEND(type);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::GenericParameterCompVariadicAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_cmp).append(" ");
-    SPP_PRINT_APPEND(tok_ellipsis);
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(tok_colon).append(" ");
-    SPP_PRINT_APPEND(type);
-    SPP_PRINT_END;
 }

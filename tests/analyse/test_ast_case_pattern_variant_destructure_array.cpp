@@ -8,7 +8,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(p: std::array::Arr[std::bignum::bigint::BigInt, 2_uz]) -> std::void::Void {
         case p is [.., ..] { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -18,7 +18,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(p: std::array::Arr[std::bignum::bigint::BigInt, 2_uz]) -> std::void::Void {
         case p is [x] { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -28,7 +28,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(p: std::array::Arr[std::bignum::bigint::BigInt, 2_uz]) -> std::void::Void {
         case p is [x, y, z] { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -37,7 +37,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: std::array::Arr[std::bignum::bigint::BigInt, 2_uz]) -> std::void::Void {
         case p is [x, y] { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -46,7 +46,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: std::array::Arr[std::bignum::bigint::BigInt, 2_uz]) -> std::void::Void {
         case p is [x, _] { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -55,7 +55,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: std::array::Arr[std::bignum::bigint::BigInt, 2_uz]) -> std::void::Void {
         case p is [x, ..] { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -64,7 +64,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: std::array::Arr[std::bignum::bigint::BigInt, 2_uz]) -> std::void::Void {
         case p is [..x] { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -76,7 +76,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             is [x, ..] { }
         }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -85,7 +85,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: std::array::Arr[std::array::Arr[std::bignum::bigint::BigInt, 2_uz], 2_uz]) -> std::void::Void {
         case p is [[a, b], [c, d]] { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -94,7 +94,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: std::array::Arr[(std::bignum::bigint::BigInt, std::bignum::bigint::BigInt), 2_uz]) -> std::void::Void {
         case p is [(a, b), (c, d)] { }
     }
-)")
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -107,4 +107,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: std::array::Arr[Point, 2_uz]) -> std::void::Void {
         case p is [Point(x=10, y), Point(x, y=20)] { }
     }
-)")
+)");

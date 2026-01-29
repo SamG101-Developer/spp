@@ -1,4 +1,4 @@
-#include <spp/asts/expression_ast.hpp>
+module spp.asts.expression_ast;
 
 
 auto spp::asts::ExpressionAst::equals_array_literal_explicit_elements(
@@ -17,6 +17,13 @@ auto spp::asts::ExpressionAst::equals_array_literal_repeated_elements(
 
 auto spp::asts::ExpressionAst::equals_boolean_literal(
     BooleanLiteralAst const &) const
+    -> std::strong_ordering {
+    return std::strong_ordering::less;
+}
+
+
+auto spp::asts::ExpressionAst::equals_char_literal(
+    CharLiteralAst const &) const
     -> std::strong_ordering {
     return std::strong_ordering::less;
 }
@@ -86,6 +93,9 @@ auto spp::asts::ExpressionAst::equals(
 
 
 spp::asts::ExpressionAst::ExpressionAst(ExpressionAst const &) = default;
+
+
+spp::asts::ExpressionAst::~ExpressionAst() = default;
 
 
 auto spp::asts::ExpressionAst::operator<=>(

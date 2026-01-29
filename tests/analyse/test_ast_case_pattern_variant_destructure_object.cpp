@@ -1,4 +1,4 @@
-#include "../tests/test_macros.hpp"
+#include "../test_macros.hpp"
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -13,7 +13,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(p: Point) -> std::void::Void {
         case p is Point(.., ..) { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -28,7 +28,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(p: Point) -> std::void::Void {
         case p is Point(..x) { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -43,7 +43,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(p: Point) -> std::void::Void {
         case p is Point(x) { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -58,7 +58,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(p: Point) -> std::void::Void {
         case p is Point(x, y, z) { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -73,7 +73,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(p: Point1) -> std::void::Void {
         case p is Point1(x as x_value, ..) { let xxx = x }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -87,7 +87,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: Point) -> std::void::Void {
         case p is Point(x, y) { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -101,7 +101,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: Point) -> std::void::Void {
         case p is Point(x, ..) { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -123,7 +123,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             is Point2(x, y) { }
         }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -140,7 +140,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             is Point1(y as y_value, ..) { let yyy = y_value }
         }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -153,7 +153,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: Point) -> std::void::Void {
         case p is Point(x=[a, b], y) { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -166,7 +166,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: Point) -> std::void::Void {
         case p is Point(x=(a, b), y) { }
     }
-)");
+)");;
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -185,4 +185,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: Line) -> std::void::Void {
         case p is Line(start=Point(x as x1, y as y1), end=Point(x as x2, y as y2)) { }
     }
-)");
+)");;

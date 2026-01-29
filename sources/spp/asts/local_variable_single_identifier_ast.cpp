@@ -1,13 +1,20 @@
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/scopes/symbols.hpp>
-#include <spp/analyse/utils/mem_utils.hpp>
-#include <spp/asts/convention_mut_ast.hpp>
-#include <spp/asts/convention_ref_ast.hpp>
-#include <spp/asts/identifier_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_alias_ast.hpp>
-#include <spp/asts/local_variable_single_identifier_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
+module;
+#include <spp/macros.hpp>
+
+module spp.asts.local_variable_single_identifier_ast;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_utils;
+import spp.asts.convention_ast;
+import spp.asts.identifier_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
+import spp.asts.token_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import spp.asts.type_ast;
+import spp.codegen.llvm_type;
+import spp.utils.uid;
 
 
 spp::asts::LocalVariableSingleIdentifierAst::LocalVariableSingleIdentifierAst(
@@ -37,32 +44,22 @@ auto spp::asts::LocalVariableSingleIdentifierAst::pos_end() const
 
 auto spp::asts::LocalVariableSingleIdentifierAst::clone() const
     -> std::unique_ptr<Ast> {
-    return std::make_unique<LocalVariableSingleIdentifierAst>(
+    auto l = std::make_unique<LocalVariableSingleIdentifierAst>(
         ast_clone(tok_mut),
         ast_clone(name),
         ast_clone(alias));
+    l->conv = ast_clone(conv);
+    l->m_from_case_pattern = m_from_case_pattern;
+    return l;
 }
 
 
 spp::asts::LocalVariableSingleIdentifierAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_mut);
-    raw_string.append(tok_mut ? " " : "");
-    SPP_STRING_APPEND(name);
+    SPP_STRING_APPEND(tok_mut).append(tok_mut ? " " : "");
+    SPP_STRING_APPEND(name).append(alias ? " " : "");
     SPP_STRING_APPEND(alias);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::LocalVariableSingleIdentifierAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(tok_mut);
-    formatted_string.append(tok_mut ? " " : "");
-    SPP_PRINT_APPEND(name);
-    SPP_PRINT_APPEND(alias);
-    SPP_PRINT_END;
 }
 
 
@@ -80,7 +77,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::extract_names() const
 
 auto spp::asts::LocalVariableSingleIdentifierAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Get the value and its type from the "meta" information.
     const auto val = meta->let_stmt_from_uninitialized ? nullptr : meta->let_stmt_value;
@@ -90,7 +87,12 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_7_analyse_semantics(
     auto sym = std::make_unique<analyse::scopes::VariableSymbol>(
         alias != nullptr ? alias->name : name,
         meta->let_stmt_explicit_type != nullptr ? meta->let_stmt_explicit_type : val_type,
-        tok_mut != nullptr);
+        tok_mut != nullptr or (conv and *conv == ConventionTag::MUT));
+
+    // Update the type if there is a convention present.
+    if (conv != nullptr) {
+        sym->type = sym->type->with_convention(ast_clone(conv));
+    }
 
     // Set the initialization AST (for errors).
     sym->memory_info->ast_initialization = {name.get(), sm->current_scope};
@@ -118,7 +120,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_7_analyse_semantics(
 
 auto spp::asts::LocalVariableSingleIdentifierAst::stage_8_check_memory(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // No value => nothing to check.
     if (meta->let_stmt_from_uninitialized) { return; }
@@ -126,28 +128,56 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_8_check_memory(
     // Check the value's memory.
     meta->let_stmt_value->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
-        *meta->let_stmt_value, *this, *sm, true, true, true, true, true, true, meta);
+        *meta->let_stmt_value, *this, *sm, true, true, true, true, true, meta);
 
     // Get the name or alias symbol to mark it as initialized.
     const auto sym = sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name);
     sym->memory_info->initialized_by(*name, sm->current_scope);
+    if (conv != nullptr) {
+        sym->memory_info->ast_borrowed = {conv.get(), sm->current_scope};
+    }
 }
 
 
-auto spp::asts::LocalVariableSingleIdentifierAst::stage_10_code_gen_2(
+auto spp::asts::LocalVariableSingleIdentifierAst::stage_9_comptime_resolution(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta,
+    CompilerMetaData *meta)
+    -> void {
+    // Assign the generated value into the variable symbol.
+    meta->save();
+    meta->assignment_target = alias != nullptr ? alias->name : name;
+    meta->let_stmt_value->stage_9_comptime_resolution(sm, meta);
+    sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name)->comptime_value = std::move(meta->cmp_result);
+    meta->restore();
+}
+
+
+auto spp::asts::LocalVariableSingleIdentifierAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Create the alloca for the variable.
-    const auto llvm_type = sm->current_scope->get_type_symbol(meta->let_stmt_explicit_type)->llvm_info->llvm_type;
-    const auto alloca = ctx->builder.CreateAlloca(llvm_type, nullptr, alias != nullptr ? alias->name->val : name->val);
+    const auto uid = spp::utils::generate_uid(this);
+    const auto type_sym = sm->current_scope->get_type_symbol(meta->let_stmt_explicit_type);
+    const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
+    SPP_ASSERT(llvm_type != nullptr);
+
+    // Always alloca at the top of the function for stack variables.
+    const auto func = ctx->builder.GetInsertBlock()->getParent();
+    const auto entry = &func->getEntryBlock();
+    auto temp_builder = llvm::IRBuilder(entry, entry->begin());
+
+    const auto alloca = temp_builder.CreateAlloca(llvm_type, nullptr, "local.alloca" + uid);
     sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name)->llvm_info->alloca = alloca;
 
     // Generate the initializer expression.
     if (not meta->let_stmt_from_uninitialized) {
-        const auto val = meta->let_stmt_value->stage_10_code_gen_2(sm, meta, ctx);
-        ctx->builder.CreateStore(val, alloca);
+        meta->save();
+        meta->assignment_target = alias != nullptr ? alias->name : name;
+        const auto llvm_val = meta->let_stmt_value->stage_11_code_gen_2(sm, meta, ctx);
+        ctx->builder.CreateStore(llvm_val, alloca);
+        meta->restore();
     }
 
     // Alloca already added; return nullptr.

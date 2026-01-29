@@ -1,21 +1,26 @@
-#include <spp/asts/module_prototype_ast.hpp>
-#include <spp/compiler/module_tree.hpp>
+module spp.compiler.module_tree;
+import spp.asts.module_prototype_ast;
+import glob;
+import genex;
+import std;
 
-#include <genex/to_container.hpp>
-#include <genex/actions/remove_if.hpp>
-#include <genex/views/borrow.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/drop.hpp>
-#include <genex/views/join_with.hpp>
-#include <genex/views/materialize.hpp>
-#include <genex/views/move.hpp>
-#include <genex/views/split.hpp>
-#include <genex/views/transform.hpp>
-#include <Glob-1.0/glob/glob.h>
+
+spp::compiler::Module::Module(
+    std::filesystem::path path,
+    std::string code,
+    std::vector<lex::RawToken> tokens,
+    std::unique_ptr<asts::ModulePrototypeAst> module_ast,
+    std::shared_ptr<utils::errors::ErrorFormatter> error_formatter) :
+    path(std::move(path)),
+    code(std::move(code)),
+    tokens(std::move(tokens)),
+    module_ast(std::move(module_ast)),
+    error_formatter(std::move(error_formatter)) {
+}
 
 
 auto spp::compiler::Module::from_path(std::filesystem::path const &path) {
-    return Module(path, "", {}, nullptr, nullptr);
+    return std::make_unique<Module>(path, "", std::vector<lex::RawToken>{}, nullptr, nullptr);
 }
 
 
@@ -34,7 +39,6 @@ spp::compiler::ModuleTree::ModuleTree(
         | genex::views::transform([](auto const &p) { return Module::from_path(p); })
         | genex::to<std::vector>();
 
-    auto test = glob::rglob(m_vcs_path / "**/*.spp");
     auto vcs_modules = glob::rglob(m_vcs_path / "**/*.spp")
         | genex::views::transform([](auto const &p) { return Module::from_path(p); })
         | genex::to<std::vector>();
@@ -44,12 +48,12 @@ spp::compiler::ModuleTree::ModuleTree(
         | genex::to<std::vector>();
 
     // Remove the "main.spp" files from the vcs modules.
-    auto filtered_vcs_modules = std::vector<Module>();
-    for (auto &m : vcs_modules) {
-        auto relative_path = std::filesystem::relative(m.path, m_vcs_path);
+    auto filtered_vcs_modules = decltype(vcs_modules)();
+    for (auto &&m : vcs_modules) {
+        auto relative_path = std::filesystem::relative(m->path, m_vcs_path);
         auto inner_path = std::filesystem::path();
         constexpr auto sep = std::filesystem::path::preferred_separator;
-        for (auto const &part : std::filesystem::path(relative_path.string() | genex::views::split(sep) | genex::views::drop(1) | genex::views::materialize | genex::views::join_with(sep) | genex::to<std::string>())) {
+        for (auto const &part : std::filesystem::path(relative_path.string() | genex::views::split(sep) | genex::views::drop(1) | genex::to<std::vector>() | genex::views::join_with(sep) | genex::to<std::string>())) {
             inner_path /= part;
         }
 
@@ -58,25 +62,35 @@ spp::compiler::ModuleTree::ModuleTree(
             filtered_vcs_modules.emplace_back(std::move(m));
         }
     }
+    vcs_modules = std::move(filtered_vcs_modules);
 
     // Merge the src, vcs and ffi modules together.
-    m_modules = genex::views::concat(src_modules | genex::views::move, filtered_vcs_modules | genex::views::move, ffi_modules | genex::views::move) | genex::to<std::vector>();
+    auto all_modules = std::move(src_modules);
+    all_modules.insert(all_modules.end(), std::make_move_iterator(vcs_modules.begin()), std::make_move_iterator(vcs_modules.end()));
+    all_modules.insert(all_modules.end(), std::make_move_iterator(ffi_modules.begin()), std::make_move_iterator(ffi_modules.end()));
+    m_modules = std::move(all_modules);
 }
 
 
 auto spp::compiler::ModuleTree::begin()
-    -> std::vector<Module>::iterator {
+    -> std::vector<std::unique_ptr<Module>>::iterator {
     return m_modules.begin();
 }
 
 
 auto spp::compiler::ModuleTree::end()
-    -> std::vector<Module>::iterator {
+    -> std::vector<std::unique_ptr<Module>>::iterator {
     return m_modules.end();
 }
 
 
 auto spp::compiler::ModuleTree::get_modules()
-    -> std::vector<Module>& {
-    return m_modules;
+    -> std::vector<Module*> {
+    return m_modules | genex::views::ptr | genex::to<std::vector>();
+}
+
+
+auto spp::compiler::ModuleTree::root_path() const
+    -> std::filesystem::path {
+    return m_root;
 }

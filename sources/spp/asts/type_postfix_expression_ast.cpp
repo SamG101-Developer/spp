@@ -1,25 +1,24 @@
-#include <spp/analyse/errors/semantic_error.hpp>
-#include <spp/analyse/errors/semantic_error_builder.hpp>
-#include <spp/analyse/scopes/scope_manager.hpp>
-#include <spp/analyse/utils/type_utils.hpp>
-#include <spp/asts/class_prototype_ast.hpp>
-#include <spp/asts/convention_ast.hpp>
-#include <spp/asts/generic_argument_ast.hpp>
-#include <spp/asts/generic_argument_group_ast.hpp>
-#include <spp/asts/token_ast.hpp>
-#include <spp/asts/type_ast.hpp>
-#include <spp/asts/type_identifier_ast.hpp>
-#include <spp/asts/type_postfix_expression_ast.hpp>
-#include <spp/asts/type_postfix_expression_operator_ast.hpp>
-#include <spp/asts/type_postfix_expression_operator_nested_type_ast.hpp>
-#include <spp/asts/type_unary_expression_ast.hpp>
-#include <spp/asts/type_unary_expression_operator_borrow_ast.hpp>
+module;
+#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
-#include <genex/to_container.hpp>
-#include <genex/algorithms/min_element.hpp>
-#include <genex/views/concat.hpp>
-#include <genex/views/filter.hpp>
-#include <genex/views/transform.hpp>
+module spp.asts.type_postfix_expression_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_utils;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.token_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.type_postfix_expression_operator_ast;
+import spp.asts.type_postfix_expression_operator_nested_type_ast;
+import spp.asts.type_unary_expression_ast;
+import spp.asts.type_unary_expression_operator_borrow_ast;
+import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
+import genex;
 
 
 spp::asts::TypePostfixExpressionAst::TypePostfixExpressionAst(
@@ -28,9 +27,6 @@ spp::asts::TypePostfixExpressionAst::TypePostfixExpressionAst(
     lhs(std::move(lhs)),
     tok_op(std::move(tok_op)) {
 }
-
-
-spp::asts::TypePostfixExpressionAst::~TypePostfixExpressionAst() = default;
 
 
 auto spp::asts::TypePostfixExpressionAst::equals(
@@ -80,18 +76,8 @@ spp::asts::TypePostfixExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypePostfixExpressionAst::print(
-    meta::AstPrinter &printer) const
-    -> std::string {
-    SPP_PRINT_START;
-    SPP_PRINT_APPEND(lhs);
-    SPP_PRINT_APPEND(tok_op);
-    SPP_PRINT_END;
-}
-
-
 auto spp::asts::TypePostfixExpressionAst::iterator() const
-    -> genex::generator<std::shared_ptr<const TypeIdentifierAst>> {
+    -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
     // Iterate from the left-hand-side.
     return lhs->iterator();
 }
@@ -164,7 +150,7 @@ auto spp::asts::TypePostfixExpressionAst::with_convention(
 
 auto spp::asts::TypePostfixExpressionAst::without_generics() const
     -> std::shared_ptr<TypeAst> {
-    const auto rhs = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
+    const auto rhs = tok_op->to<TypePostfixExpressionOperatorNestedTypeAst>();
     auto new_lhs = ast_clone(lhs); // Todo: clone needed?
     auto new_rhs = std::make_unique<TypePostfixExpressionOperatorNestedTypeAst>(nullptr, std::dynamic_pointer_cast<TypeIdentifierAst>(rhs->name->without_generics()));
     return std::make_shared<TypePostfixExpressionAst>(std::move(new_lhs), std::move(new_rhs));
@@ -174,7 +160,7 @@ auto spp::asts::TypePostfixExpressionAst::without_generics() const
 auto spp::asts::TypePostfixExpressionAst::substitute_generics(
     std::vector<GenericArgumentAst*> const &args) const
     -> std::shared_ptr<TypeAst> {
-    const auto rhs = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
+    const auto rhs = tok_op->to<TypePostfixExpressionOperatorNestedTypeAst>();
     auto new_lhs = lhs->substitute_generics(args);
     auto new_rhs = std::make_unique<TypePostfixExpressionOperatorNestedTypeAst>(
         nullptr, std::dynamic_pointer_cast<TypeIdentifierAst>(rhs->name->substitute_generics(std::move(args))));
@@ -185,7 +171,7 @@ auto spp::asts::TypePostfixExpressionAst::substitute_generics(
 auto spp::asts::TypePostfixExpressionAst::contains_generic(
     GenericParameterAst const &generic) const
     -> bool {
-    const auto rhs = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
+    const auto rhs = tok_op->to<TypePostfixExpressionOperatorNestedTypeAst>();
     return rhs->name->contains_generic(generic);
 }
 
@@ -202,7 +188,7 @@ auto spp::asts::TypePostfixExpressionAst::with_generics(
 
 auto spp::asts::TypePostfixExpressionAst::stage_4_qualify_types(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     (void)sm;
     (void)meta;
@@ -212,7 +198,7 @@ auto spp::asts::TypePostfixExpressionAst::stage_4_qualify_types(
 
 auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void {
     // Move through the left-hand-side type.
     lhs->stage_7_analyse_semantics(sm, meta);
@@ -221,38 +207,38 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
     const auto lhs_type_sym = scope->get_type_symbol(lhs_type);
 
     // Check the left-hand-side isn't a generic type. Todo: until constraints
-    if (lhs_type_sym->is_generic) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppGenericTypeInvalidUsageError>().with_args(
-            *lhs, *lhs_type, "postfix type").with_scopes({sm->current_scope}).raise();
-    }
-
+    raise_if<analyse::errors::SppGenericTypeInvalidUsageError>(
+        lhs_type_sym->is_generic, {sm->current_scope},
+        ERR_ARGS(*lhs, *lhs_type, "postfix type"));
     const auto lhs_type_scope = lhs_type_sym->scope;
 
     // Check there is only 1 target field on the lhs at the highest level.
-    const auto op_nested = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
-    auto scopes_and_syms = std::vector{lhs_type_sym->scope}
-        | genex::views::concat(lhs_type_sym->scope->sup_scopes())
+    const auto op_nested = tok_op->to<TypePostfixExpressionOperatorNestedTypeAst>();
+    auto sup_scopes = lhs_type_sym->scope->sup_scopes();
+    sup_scopes.insert(sup_scopes.begin(), lhs_type_sym->scope);
+    auto scopes_and_syms = sup_scopes
         | genex::views::transform([name=op_nested->name.get()](auto &&x) { return std::make_pair(x, x->table.type_tbl.get(ast_clone(name))); })
         | genex::views::filter([](auto &&x) { return x.second != nullptr; })
         | genex::views::transform([lhs_type_sym](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
         | genex::to<std::vector>();
 
-    auto min_depth = scopes_and_syms.empty() ? 0 : genex::algorithms::min_element(scopes_and_syms
-                             | genex::views::transform([](auto &&x) { return std::get<0>(x); })
-                             | genex::to<std::vector>());
+    auto min_depth = scopes_and_syms.empty() ? 0 : genex::min_element(scopes_and_syms
+        | genex::views::transform([](auto &&x) { return std::get<0>(x); })
+        | genex::to<std::vector>());
 
     auto closest = scopes_and_syms
         | genex::views::filter([min_depth](auto &&x) { return std::get<0>(x) == min_depth; })
         | genex::views::transform([](auto &&x) { return std::make_pair(std::get<1>(x), std::get<2>(x)); })
         | genex::to<std::vector>();
 
+    // Can't use raise_if because closest[1] may be out of bounds.
     if (closest.size() > 1) {
-        analyse::errors::SemanticErrorBuilder<analyse::errors::SppAmbiguousMemberAccessError>().with_args(
-            *closest[0].second->name, *closest[1].second->name, *op_nested->name).with_scopes({closest[0].first, closest[1].first, sm->current_scope}).raise();
+        raise<analyse::errors::SppAmbiguousMemberAccessError>(
+            {closest[0].first, closest[1].first, sm->current_scope},
+            ERR_ARGS(*closest[0].second->name, *closest[1].second->name, *op_nested->name));
     }
 
     // Ensure the type exists on the "lhs" part.
-
     meta->save();
     meta->type_analysis_type_scope = lhs_type_scope;
     op_nested->name->stage_7_analyse_semantics(sm, meta);
@@ -262,7 +248,7 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
 
 auto spp::asts::TypePostfixExpressionAst::infer_type(
     ScopeManager *sm,
-    mixins::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Infer the type of the left-hand-side.
     lhs->stage_7_analyse_semantics(sm, meta);
@@ -271,8 +257,8 @@ auto spp::asts::TypePostfixExpressionAst::infer_type(
     const auto lhs_type_scope = lhs_type_sym->scope;
 
     // Infer the type of the postfix operation.
-    const auto op_nested = ast_cast<TypePostfixExpressionOperatorNestedTypeAst>(tok_op.get());
-    const auto part = analyse::utils::type_utils::get_type_part_symbol_with_error(*lhs_type_scope, *op_nested->name, *sm, meta)->fq_name();
+    const auto op_nested = tok_op->to<TypePostfixExpressionOperatorNestedTypeAst>();
+    const auto part = analyse::utils::type_utils::get_type_sym_or_error(*lhs_type_scope, *op_nested->name, *sm, meta)->fq_name();
     const auto sym = lhs_type_scope->get_type_symbol(part);
     return sym->fq_name();
 }
