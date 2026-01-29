@@ -28,6 +28,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
     test_invalid_memory_partial_move_from_yielded_borrow_directly,
     SppMoveFromBorrowedMemoryError, R"(
+    use std::string::Str # TODO: Removing this "use" causes an error: add to tests
     use std::option::None
 
     cls A {
@@ -39,7 +40,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let mut generator = g()
         let b = case generator.res() of {
-            is &A(..) { Str::from("smth") }
+            is &A(a) { a }
             else { Str::from("nothing") }
         }
     }

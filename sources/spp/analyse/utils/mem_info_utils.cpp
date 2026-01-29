@@ -33,7 +33,9 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::remove_partial_move(
     asts::Ast const &ast,
     scopes::Scope *scope)
     -> void {
-    genex::actions::remove(ast_partial_moves, &ast);
+    // Use "string" comparison; same as overlap checking mechanism.
+    genex::actions::remove(ast_partial_moves, ast.operator std::string(),
+        [](auto const &x) { return x->operator std::string(); });
     if (not ast_partial_moves.empty()) {
         initialized_by(ast, scope);
     }

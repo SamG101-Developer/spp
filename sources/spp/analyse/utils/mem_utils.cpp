@@ -76,18 +76,18 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
     const auto copies = var_scope->get_type_symbol(var_sym->type)->is_copyable();
     const auto partial_copies = var_scope->get_type_symbol(value_ast.infer_type(&sm, meta))->is_copyable();
 
-    // Check for inconsistent memory moving (from branching).
-    if (check_move and var_sym->memory_info->is_inconsistently_moved.has_value()) {
-        const auto pair = *var_sym->memory_info->is_inconsistently_moved;
-        raise<errors::SppInconsistentlyInitializedMemoryUseError>(
-            {sm.current_scope}, ERR_ARGS(value_ast, *std::get<0>(pair), *std::get<1>(pair), "moved"));
-    }
-
     // Check for inconsistent memory initialization (from branching).
     if (check_move and var_sym->memory_info->is_inconsistently_initialized.has_value()) {
         const auto pair = *var_sym->memory_info->is_inconsistently_initialized;
         raise<errors::SppInconsistentlyInitializedMemoryUseError>(
             {sm.current_scope}, ERR_ARGS(value_ast, *std::get<0>(pair), *std::get<1>(pair), "initialized"));
+    }
+
+    // Check for inconsistent memory moving (from branching).
+    if (check_move and var_sym->memory_info->is_inconsistently_moved.has_value()) {
+        const auto pair = *var_sym->memory_info->is_inconsistently_moved;
+        raise<errors::SppInconsistentlyInitializedMemoryUseError>(
+            {sm.current_scope}, ERR_ARGS(value_ast, *std::get<0>(pair), *std::get<1>(pair), "moved"));
     }
 
     // Check for inconsistent partial memory moving (from branching).
@@ -181,12 +181,12 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
         | genex::views::transform([](auto const &x) { return std::make_pair(x.get(), x->memory_info->snapshot()); })
         | genex::to<std::vector>();
 
-    for (auto &&branch : branches) {
-        // Make a record of the symbols' memory status in the scope before the branch is analysed.
-        auto old_symbol_mem_info = vs
-            | genex::views::transform([](auto const &x) { return std::make_pair(x.get(), x->memory_info->snapshot()); })
-            | genex::to<std::vector>();
+    // Make a record of the symbols' memory status in the scope before the branch is analysed.
+    auto old_symbol_mem_info = vs
+        | genex::views::transform([](auto const &x) { return std::make_pair(x.get(), x->memory_info->snapshot()); })
+        | genex::to<std::vector>();
 
+    for (auto &&branch : branches) {
         // Analyse the memory and then recheck the symbols' memory status.
         branch->stage_8_check_memory(sm, meta);
         auto new_symbol_mem_info = vs
@@ -194,6 +194,7 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
             | genex::to<std::vector>();
 
         // Reset the memory status of the symbols for the next branch to analyse with the same original memory states.
+        // Todo: Scopes need restoring properly too.
         for (auto &&[sym, old_mem_status] : old_symbol_mem_info) {
             sym->memory_info->ast_initialization = {old_mem_status.ast_initialization, std::get<1>(sym->memory_info->ast_initialization)};
             sym->memory_info->ast_moved = {old_mem_status.ast_moved, std::get<1>(sym->memory_info->ast_moved)};
@@ -213,11 +214,11 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
     }
 
     // Get the first "non-terminating" branch, and update the symbols to reflect its memory state.
-    auto non_terminating_branch = genex::find_if(
+    const auto non_terminating_branch = genex::find_if(
         branches, [](auto const &x) { return not x->body->terminates(); });
-    auto first_branch = non_terminating_branch == branches.end() ? parent : *non_terminating_branch;
-    auto first_branch_index = non_terminating_branch != branches.end() ? genex::iterators::distance(branches.begin(), non_terminating_branch) as SSize : -1;
-    auto first_branch_mem_info_getter = [&](auto const &branch_mem_info) {
+    const auto first_branch = non_terminating_branch == branches.end() ? parent : *non_terminating_branch;
+    const auto first_branch_index = non_terminating_branch != branches.end() ? genex::iterators::distance(branches.begin(), non_terminating_branch) as SSize : -1;
+    const auto first_branch_mem_info_getter = [&](auto const &branch_mem_info) {
         return first_branch_index != -1 ? branch_mem_info.at(first_branch_index as USize).second : branch_mem_info.back().second;
     };
 

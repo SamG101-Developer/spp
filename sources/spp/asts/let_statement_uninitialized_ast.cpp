@@ -2,6 +2,9 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.let_statement_uninitialized_ast;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.symbols;
 import spp.asts.local_variable_ast;
 import spp.asts.object_initializer_ast;
 import spp.asts.object_initializer_argument_group_ast;
@@ -89,6 +92,7 @@ auto spp::asts::LetStatementUninitializedAst::stage_8_check_memory(
     meta->let_stmt_explicit_type = type;
     meta->let_stmt_from_uninitialized = true;
     var->stage_8_check_memory(sm, meta);
+    sm->current_scope->get_var_symbol(var->extract_name())->memory_info->moved_by(*this, sm->current_scope);
     meta->restore();
 }
 
