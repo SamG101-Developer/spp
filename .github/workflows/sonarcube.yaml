@@ -23,16 +23,29 @@ jobs:
         with:
           cmake-version: 4.1.2
 
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build build-essential
+
+      - name: Download SonarCloud build-wrapper
+        run: |
+          curl -sSLo build-wrapper.zip \
+            https://sonarcloud.io/static/cpp/build-wrapper-linux-x86.zip
+          unzip build-wrapper.zip
+          sudo mv build-wrapper-linux-x86 /opt/build-wrapper
+
       - name: Generate compilation database
         run: |
-          mkdir build
           cmake -S . -B build -G Ninja
+
+      - name: Build (wrapped)
+        run: |
+          /opt/build-wrapper/build-wrapper-linux-x86-64 \
+            --out-dir build/bw-output \
+            cmake --build build
 
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@v2
         env:
-            SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-            SONAR_HOST_URL: https://sonarcloud.io
-        with:
-            args: >
-              --define sonar.cfamily.compile-commands=build/compile_commands.json
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
