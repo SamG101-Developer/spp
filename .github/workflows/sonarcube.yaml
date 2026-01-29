@@ -19,9 +19,9 @@ jobs:
           fetch-depth: 0
 
       - name: Generate compilation database
-          run: |
-            mkdir build
-            cmake -S . -B build -G Ninja
+        run: |
+          mkdir build
+          cmake -S . -B build -G Ninja
 
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@v2
