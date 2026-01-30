@@ -24,3 +24,8 @@ General compiler design
 
 - [x] Use the `robin_map` for symbol tables instead of `std::map`.
 - [x] Remove most of `genex::to<std::vector>` calls.
+
+## CXX Modules
+
+- Some destructors have to be defined in the `.ixx` file to force `typeinfo` to be available.
+- This creates the need for the cycle breaking `std::map` that stores object pairs (**must** remove).
