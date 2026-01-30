@@ -24,4 +24,4 @@ jobs:
           args:
             -Dsonar.projectKey=SamG101-Developer_spp
             -Dsonar.organization=samg101-developer
-          projectBaseDir: spp/sources
+          projectBaseDir: .
