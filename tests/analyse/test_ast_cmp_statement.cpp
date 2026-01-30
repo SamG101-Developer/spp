@@ -1,5 +1,8 @@
 #include "../test_macros.hpp"
 
+// Todo:
+//  - test cmp functions
+//  - test namespaced constants
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     CmpStatementAst,
