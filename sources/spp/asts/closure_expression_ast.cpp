@@ -163,7 +163,7 @@ auto spp::asts::ClosureExpressionAst::stage_11_code_gen_2(
     llvm_param_types.insert(llvm_param_types.begin(), llvm::PointerType::get(*ctx->context, 0));
     const auto llvm_ret_ty = codegen::llvm_type(*sm->current_scope->get_type_symbol(m_ret_type), ctx);
     const auto llvm_fn_ty = llvm::FunctionType::get(llvm_ret_ty, llvm_param_types, pc_group->param_group->get_variadic_param() != nullptr);
-    const auto llvm_fn = llvm::Function::Create(llvm_fn_ty, llvm::Function::InternalLinkage, "$closure_fn_" + uid, ctx->module.get());
+    const auto llvm_fn = llvm::Function::Create(llvm_fn_ty, llvm::Function::InternalLinkage, "$closure_fn_" + uid, ctx->llvm_module.get());
     const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry", llvm_fn);
 
     const auto saved_bb = ctx->builder.GetInsertBlock();

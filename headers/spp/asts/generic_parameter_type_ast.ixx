@@ -4,7 +4,7 @@ module;
 export module spp.asts.generic_parameter_type_ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_type_inline_constraints_ast;
-
+import spp.asts.utils.orderable;
 import std;
 
 namespace spp::asts {
@@ -29,7 +29,7 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
     GenericParameterTypeAst(
         decltype(name) name,
         decltype(constraints) &&constraints,
-        decltype(m_order_tag) order_tag);
+        utils::OrderableTag order_tag);
 
     ~GenericParameterTypeAst() override;
 

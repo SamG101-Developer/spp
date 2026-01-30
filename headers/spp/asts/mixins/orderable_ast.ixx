@@ -16,7 +16,7 @@ namespace spp::asts::mixins {
  * precede optional parameters fr example.
  */
 SPP_EXP_CLS struct spp::asts::mixins::OrderableAst {
-protected:
+private:
     utils::OrderableTag m_order_tag;
 
 public:
@@ -24,5 +24,9 @@ public:
 
     virtual ~OrderableAst();
 
-    auto get_order_tag() const -> utils::OrderableTag;
+    /**
+     * Get the order tag of this orderable AST. This is used as a simple wrapping accessor for the order tag.
+     * @return The order tag of this AST.
+     */
+    SPP_ATTR_NODISCARD auto get_order_tag() const -> utils::OrderableTag;
 };

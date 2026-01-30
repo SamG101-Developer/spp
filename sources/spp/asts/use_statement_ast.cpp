@@ -43,8 +43,8 @@ auto spp::asts::UseStatementAst::clone() const
         ast_clone_vec(annotations),
         ast_clone(tok_use),
         ast_clone(old_type));
-    ast->m_ctx = m_ctx;
-    ast->m_scope = m_scope;
+    ast->set_ast_ctx(get_ast_ctx());
+    ast->set_ast_scope(get_ast_scope());
     for (auto const &a: ast->annotations) {
         a->set_ast_ctx(ast.get());
     }

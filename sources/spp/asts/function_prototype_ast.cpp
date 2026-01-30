@@ -181,7 +181,7 @@ auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
         // Create the LLVM function and add it to the context.
         const auto created_llvm_func = llvm::Function::Create(
             llvm_fun_type, llvm::Function::ExternalLinkage, codegen::mangle::mangle_fun_name(*sm->current_scope, *this),
-            ctx->module.get());
+            ctx->llvm_module.get());
         llvm_func = created_llvm_func;
 
         // Apply standard optimization flags.
@@ -245,6 +245,19 @@ auto spp::asts::FunctionPrototypeAst::registered_generic_substitutions() const
 auto spp::asts::FunctionPrototypeAst::registered_generic_substitutions()
     -> std::list<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>>& {
     return m_generic_substitutions;
+}
+
+
+auto spp::asts::FunctionPrototypeAst::mark_non_generic_impl(
+    FunctionPrototypeAst *impl)
+    -> void {
+    m_non_generic_impl = impl;
+}
+
+
+auto spp::asts::FunctionPrototypeAst::non_generic_impl() const
+    -> FunctionPrototypeAst* {
+    return m_non_generic_impl;
 }
 
 

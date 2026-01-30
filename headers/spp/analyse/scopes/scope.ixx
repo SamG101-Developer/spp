@@ -109,10 +109,10 @@ public:
      * compilation. A global scope has no parent or corresponding ast; it is the root node of all
      * namespaces. A corresponding namespace symbol is created for the global scope, for uniform
      * handling of namespaces.
-     * @param module The "main" module being compiled.
+     * @param mod The "main" module being compiled.
      * @return
      */
-    static auto new_global(compiler::Module const &module) -> std::unique_ptr<Scope>;
+    static auto new_global(compiler::Module const &mod) -> std::unique_ptr<Scope>;
 
     /**
      * Search all "sup" scopes of an existing scope (this will be a type scope), for a variable

@@ -55,5 +55,5 @@ SPP_EXP_CLS struct spp::asts::ExpressionAst : StatementAst {
     ExpressionAst(ExpressionAst const &other);
     ~ExpressionAst() override;
     auto operator<=>(const ExpressionAst &) const -> std::strong_ordering;
-    virtual auto operator==(const ExpressionAst &) const -> bool;
+    auto operator==(const ExpressionAst &) const -> bool;
 };

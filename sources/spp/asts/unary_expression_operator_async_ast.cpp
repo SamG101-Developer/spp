@@ -96,7 +96,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_11_code_gen_2(
 
         const auto fut_closure = llvm::Function::Create(
             fut_closure_type, llvm::Function::InternalLinkage,
-            "async.fut.closure" + uid, ctx->module.get());
+            "async.fut.closure" + uid, ctx->llvm_module.get());
 
         // Create the entry block for the closure.
         const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "async.fut.closure.entry" + uid, fut_closure);

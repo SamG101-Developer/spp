@@ -275,12 +275,12 @@ auto spp::compiler::CompilerBoot::stage_11_code_gen_2(
         //     }
         // }
 
-        llvm::errs() << "=== IR for module: " << ctx->module->getName() << " ===\n";
-        ctx->module->print(llvm::errs(), nullptr);
-        llvm::errs() << "=== End IR for module: " << ctx->module->getName() << " ===\n";
+        llvm::errs() << "=== IR for module: " << ctx->llvm_module->getName() << " ===\n";
+        ctx->llvm_module->print(llvm::errs(), nullptr);
+        llvm::errs() << "=== End IR for module: " << ctx->llvm_module->getName() << " ===\n";
 
-        if (llvm::verifyModule(*ctx->module, &llvm::errs())) {
-            llvm::errs() << "Invalid module: " << ctx->module->getName() << "\n";
+        if (llvm::verifyModule(*ctx->llvm_module, &llvm::errs())) {
+            llvm::errs() << "Invalid module: " << ctx->llvm_module->getName() << "\n";
             std::abort();
         }
 

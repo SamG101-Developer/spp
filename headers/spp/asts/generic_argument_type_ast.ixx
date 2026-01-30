@@ -3,7 +3,7 @@ module;
 
 export module spp.asts.generic_argument_type_ast;
 import spp.asts.generic_argument_ast;
-
+import spp.asts.utils.orderable;
 import std;
 
 namespace spp::asts {
@@ -31,7 +31,7 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeAst : GenericArgumentAst {
      */
     explicit GenericArgumentTypeAst(
         decltype(val) val,
-        decltype(m_order_tag) order_tag);
+        utils::OrderableTag order_tag);
 
     ~GenericArgumentTypeAst() override;
 

@@ -101,7 +101,7 @@ auto spp::codegen::create_coro_gen_ctor(
     const auto llvm_func_type = llvm::FunctionType::get(
         coro_env_type, {}, false);
     const auto llvm_func = llvm::Function::Create(
-        llvm_func_type, llvm::Function::InternalLinkage, llvm_func_name, ctx->module.get());
+        llvm_func_type, llvm::Function::InternalLinkage, llvm_func_name, ctx->llvm_module.get());
 
     // Entry block to construct the generator environment into.
     const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry" + uid, llvm_func);
@@ -168,7 +168,7 @@ auto spp::codegen::create_coro_res_func(
         llvm::Type::getVoidTy(*ctx->context),
         {llvm::PointerType::get(*ctx->context, 0), llvm_send_type}, false);
     const auto llvm_func = llvm::Function::Create(
-        llvm_func_type, llvm::Function::InternalLinkage, llvm_func_name, ctx->module.get());
+        llvm_func_type, llvm::Function::InternalLinkage, llvm_func_name, ctx->llvm_module.get());
 
     // Entry block to construct the coroutine body into.
     const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry" + uid, llvm_func);
@@ -216,13 +216,13 @@ auto spp::codegen::create_async_spawn_func(
         {llvm_closure_func_ptr_type, llvm_fut_ptr_type}, false);
 
     const auto internal_spawn_func_name = std::string("async_internal_spawn") + mangle::mangle_type_name(fut_type_sym);
-    if (const auto func = ctx->module->getFunction(internal_spawn_func_name); func != nullptr) {
+    if (const auto func = ctx->llvm_module->getFunction(internal_spawn_func_name); func != nullptr) {
         return func;
     }
 
     const auto internal_spawn_func = llvm::Function::Create(
         spawn_func_type, llvm::Function::InternalLinkage,
-        internal_spawn_func_name, ctx->module.get());
+        internal_spawn_func_name, ctx->llvm_module.get());
 
     internal_spawn_func->addFnAttr(llvm::Attribute::NoUnwind);
     internal_spawn_func->addFnAttr(llvm::Attribute::NoInline);

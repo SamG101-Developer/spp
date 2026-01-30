@@ -270,7 +270,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             auto generic_args_raw = combined_generics->get_all_args();
             if (not generic_args_raw.empty()) {
                 auto new_fn_proto = ast_clone(fn_proto); // Todo: if the fn_proto hasn't been analysed -> issues.
-                new_fn_proto->m_non_generic_impl = fn_proto;
+                new_fn_proto->mark_non_generic_impl(fn_proto);
                 auto external_generics = sm->current_scope->get_extended_generic_symbols(generic_args_raw);
                 auto new_fn_scope = analyse::utils::type_utils::create_generic_fun_scope(
                     *fn_scope, GenericArgumentGroupAst(nullptr, ast_clone_vec(combined_generics->args), nullptr),
@@ -576,7 +576,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_9_comptime_resol
     CompilerMetaData *meta)
     -> void {
     // Get the function prototype and resolve it.
-    const auto fn_proto = std::get<1>(*m_overload_info)->m_non_generic_impl;
+    const auto fn_proto = std::get<1>(*m_overload_info)->non_generic_impl();
 
     // Create the argument map for the function to use.
     auto args = std::vector<std::pair<std::shared_ptr<IdentifierAst>, std::unique_ptr<ExpressionAst>>>();

@@ -280,34 +280,6 @@ spp::analyse::errors::SppMoveFromPinnedMemoryError::SppMoveFromPinnedMemoryError
 }
 
 
-// spp::analyse::errors::SppMoveFromPinLinkedMemoryError::SppMoveFromPinLinkedMemoryError(
-//     asts::ExpressionAst const &ast,
-//     asts::Ast const &init_location,
-//     asts::Ast const &move_location,
-//     asts::Ast const &pin_location) {
-//     add_header(
-//         12, "SPP Move From Pin-Linked Memory Error");
-//     add_context_for_error(
-//         &ast,
-//         "Expression attempting to move from pin-linked memory");
-//     add_context_for_error(
-//         &init_location,
-//         "Memory was initialized here");
-//     // add_context_for_error(
-//     //     &pin_init_location,
-//     //     "Pin was initialized here");
-//     add_context_for_error(
-//         &pin_location,
-//         "Memory was pinned here");
-//     add_error(
-//         &move_location,
-//         "Move attempted here");
-//     add_footer(
-//         "This expression attempts to move from memory that is linked to a pin.",
-//         "Ensure the memory is unlinked from the pin before moving from it");
-// }
-
-
 spp::analyse::errors::SppInconsistentlyInitializedMemoryUseError::SppInconsistentlyInitializedMemoryUseError(
     asts::ExpressionAst const &ast,
     asts::Ast const &branch_1,

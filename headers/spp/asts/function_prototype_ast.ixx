@@ -30,7 +30,7 @@ namespace spp::analyse::scopes {
 
 
 /**
- * The FunctionPrototypeAst represents the prototype of a function. It defines the structure of a function, including
+ * The @c FunctionPrototypeAst represents the prototype of a function. It defines the structure of a function, including
  * its name, parameters, and return type. The body of the function is defined in the FunctionImplementationAst.
  *
  * @n
@@ -50,8 +50,7 @@ protected:
 
     std::unique_ptr<FunctionImplementationAst> m_original_impl;
 
-public:
-    FunctionPrototypeAst* m_non_generic_impl;
+    FunctionPrototypeAst *m_non_generic_impl;
 
 public:
     /**
@@ -148,6 +147,7 @@ public:
 
     /**
      * Save the original function name prior to AST transformations.
+     * @todo: REMOVE THIS, JUST USE "name"
      */
     std::unique_ptr<IdentifierAst> orig_name;
 
@@ -194,6 +194,10 @@ public:
     auto registered_generic_substitutions() const -> std::list<std::pair<analyse::scopes::Scope*, FunctionPrototypeAst*>>;
 
     auto registered_generic_substitutions() -> std::list<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>>&;
+
+    auto mark_non_generic_impl(FunctionPrototypeAst * impl) -> void;
+
+    auto non_generic_impl() const -> FunctionPrototypeAst*;
 
     auto stage_1_pre_process(Ast *ctx) -> void override;
 

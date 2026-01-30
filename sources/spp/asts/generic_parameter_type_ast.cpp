@@ -16,7 +16,7 @@ import spp.asts.utils.ast_utils;
 spp::asts::GenericParameterTypeAst::GenericParameterTypeAst(
     decltype(name) name,
     decltype(constraints) &&constraints,
-    const decltype(m_order_tag) order_tag) :
+    const utils::OrderableTag order_tag) :
     GenericParameterAst(std::move(name), order_tag),
     constraints(std::move(constraints)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(constraints);

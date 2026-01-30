@@ -16,10 +16,18 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst {
-protected:
+private:
+    /**
+     * The inferred return type of the closure. This is determined during semantic analysis and type inference. Must be
+     * consistent with each returning value of the closure body.
+     */
     std::shared_ptr<TypeAst> m_ret_type;
 
 public:
+    /**
+     * The LLVM function representing the closure. This is generated during code generation stage 11, and is used to
+     * call the closure when it is invoked.
+     */
     llvm::Function *llvm_func;
 
     /**

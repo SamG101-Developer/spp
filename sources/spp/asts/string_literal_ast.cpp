@@ -79,7 +79,7 @@ auto spp::asts::StringLiteralAst::stage_11_code_gen_2(
     -> llvm::Value* {
     // Create a global string for the string literal.
     const auto bytes = val->token_data;
-    const auto str_alloc = ctx->builder.CreateGlobalString(bytes, "string_literal", 0, ctx->module.get(), false);
+    const auto str_alloc = ctx->builder.CreateGlobalString(bytes, "string_literal", 0, ctx->llvm_module.get(), false);
     return str_alloc;
 }
 

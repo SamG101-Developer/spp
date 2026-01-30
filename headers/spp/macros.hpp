@@ -1,6 +1,6 @@
 #pragma once
 
-#define SPP_VERSION "0.1.0"
+constexpr auto SPP_VERSION = "0.1.0";
 
 #define SPP_ATTR_NODISCARD [[nodiscard]]
 
@@ -133,7 +133,3 @@
 #define SPP_NO_ANNOTATIONS std::vector<std::unique_ptr<asts::AnnotationAst>>()
 
 #define SPP_LLVM_FUNC_INFO analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto
-
-#define co_yield_from(expr)  \
-    for (auto && val : expr) \
-        co_yield val;

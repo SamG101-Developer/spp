@@ -71,12 +71,12 @@ spp::analyse::scopes::Scope::~Scope() = default;
 
 
 auto spp::analyse::scopes::Scope::new_global(
-    compiler::Module const &module)
+    compiler::Module const &mod)
     -> std::unique_ptr<Scope> {
     // Create a new global scope (no parent or ast for the global scope).
     auto glob_scope_name = ScopeBlockName("<global>");
     auto glob_scope = std::make_unique<Scope>(
-        std::move(glob_scope_name), nullptr, nullptr, module.error_formatter.get());
+        std::move(glob_scope_name), nullptr, nullptr, mod.error_formatter.get());
 
     // Inject the "_global" namespace symbol into this scope (makes lookups orthogonal).
     auto glob_ns_sym_name = std::make_unique<asts::IdentifierAst>(0, "_global");

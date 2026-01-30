@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.local_variable_ast;
 import spp.asts.ast;
-
 import std;
 
 namespace spp::asts {

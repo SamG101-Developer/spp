@@ -4,6 +4,7 @@ module;
 export module spp.asts.function_parameter_ast;
 import spp.asts.ast;
 import spp.asts.mixins.orderable_ast;
+import spp.asts.utils.orderable;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
@@ -51,7 +52,7 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterAst : virtual Ast, mixins::Ordera
         decltype(var) &&var,
         decltype(tok_colon) &&tok_colon,
         decltype(type) type,
-        decltype(m_order_tag) order_tag);
+        utils::OrderableTag order_tag);
 
     ~FunctionParameterAst() override;
 

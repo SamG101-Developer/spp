@@ -192,7 +192,7 @@ auto spp::asts::CmpStatementAst::stage_10_code_gen_1(
     const auto type_sym = sm->current_scope->get_type_symbol(type);
     const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
     const auto llvm_global_var = new llvm::GlobalVariable(
-        *ctx->module, llvm_type, true, llvm::GlobalValue::ExternalLinkage, llvm::cast<llvm::Constant>(val),
+        *ctx->llvm_module, llvm_type, true, llvm::GlobalValue::ExternalLinkage, llvm::cast<llvm::Constant>(val),
         codegen::mangle::mangle_cmp_name(*sm->current_scope, *this));
 
     // Register in the llvm info.

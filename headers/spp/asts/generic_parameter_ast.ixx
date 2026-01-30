@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.generic_parameter_ast;
 import spp.asts.mixins.orderable_ast;
+import spp.asts.utils.orderable;
 import spp.asts.ast;
 
 import std;
@@ -109,5 +110,5 @@ SPP_EXP_CLS struct spp::asts::GenericParameterAst : virtual Ast, mixins::Orderab
 
     explicit GenericParameterAst(
         std::shared_ptr<TypeAst> name,
-        decltype(m_order_tag) order_tag);
+        utils::OrderableTag order_tag);
 };

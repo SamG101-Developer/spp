@@ -4,6 +4,7 @@ module;
 export module spp.asts.generic_parameter_comp_ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.token_ast;
+import spp.asts.utils.orderable;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
@@ -46,7 +47,7 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
         decltype(name) name,
         decltype(tok_colon) &&tok_colon,
         decltype(type) type,
-        decltype(m_order_tag) order_tag);
+        utils::OrderableTag order_tag);
 
     ~GenericParameterCompAst() override;
 

@@ -4,6 +4,7 @@ module;
 export module spp.asts.generic_argument_ast;
 import spp.asts.ast;
 import spp.asts.mixins.orderable_ast;
+import spp.asts.utils.orderable;
 import std;
 
 namespace spp::asts {
@@ -69,7 +70,7 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentAst : virtual Ast, mixins::Orderabl
     SPP_ATTR_NODISCARD virtual auto equals_generic_argument_type_positional(GenericArgumentTypePositionalAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals(GenericArgumentAst const &other) const -> std::strong_ordering = 0;
 
-    explicit GenericArgumentAst(decltype(m_order_tag) order_tag);
+    explicit GenericArgumentAst(utils::OrderableTag order_tag);
     ~GenericArgumentAst() override;
     auto operator<=>(GenericArgumentAst const &other) const -> std::strong_ordering;
     auto operator==(GenericArgumentAst const &other) const -> bool;

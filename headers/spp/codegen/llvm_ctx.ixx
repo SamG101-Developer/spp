@@ -17,7 +17,7 @@ namespace spp::codegen {
 
 SPP_EXP_CLS struct spp::codegen::LLvmCtx {
     llvm::LLVMContext *context;
-    std::unique_ptr<llvm::Module> module;
+    std::unique_ptr<llvm::Module> llvm_module;
     llvm::IRBuilder<> builder;
     std::map<std::string, llvm::Constant*> global_constants;
     bool in_constant_context = false;
@@ -40,14 +40,14 @@ SPP_EXP_CLS struct spp::codegen::LLvmCtx {
 
     LLvmCtx() :
         context(global_context),
-        module(nullptr),
+        llvm_module(nullptr),
         builder(*context) {
     }
 
     static auto new_ctx(std::string const &module_name) -> std::unique_ptr<LLvmCtx> {
         auto ctx = std::make_unique<LLvmCtx>();
-        ctx->module = std::make_unique<llvm::Module>(module_name, *ctx->context);
-        ctx->module->setTargetTriple(llvm::Triple("x86_64-pc-linux-gnu"));
+        ctx->llvm_module = std::make_unique<llvm::Module>(module_name, *ctx->context);
+        ctx->llvm_module->setTargetTriple(llvm::Triple("x86_64-pc-linux-gnu"));
         return ctx;
     }
 };

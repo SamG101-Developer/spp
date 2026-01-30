@@ -5,12 +5,37 @@ module;
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <functional>
 
-export module sys;
+#define LEGACY_STDERR stderr
+#define LEGACY_STDIN stdin
+#define LEGACY_STDOUT stdout
+#define LEGACY_FWRLCK F_WRLCK
+#define LEGACY_FRDLCK F_RDLCK
+#define LEGACY_ORDWR O_RDWR
+#define LEGACY_OCREAT O_CREAT
+#define LEGACY_SEEKSET SEEK_SET
+#define LEGACY_FSETLK F_SETLK
+#define LEGACY_FSETLKW F_SETLKW
+#define LEGACY_FUNLCK F_UNLCK
+#define LEGACY_ERRNO errno
+#define LEGACY_S_ISDIR S_ISDIR
 
 #undef stderr
 #undef stdin
 #undef stdout
+#undef F_WRLCK
+#undef F_RDLCK
+#undef O_RDWR
+#undef O_CREAT
+#undef SEEK_SET
+#undef F_SETLK
+#undef F_SETLKW
+#undef F_UNLCK
+#undef errno
+#undef S_ISDIR
+
+export module sys;
 
 export namespace sys {
     using ::close;
@@ -28,39 +53,19 @@ export namespace sys {
     using ::flock;
     using ::ssize_t;
 
-    #undef F_WRLCK
-    constexpr auto F_WRLCK = 1;
-
-    #undef F_RDLCK
-    constexpr auto F_RDLCK = 0;
-
-    #undef O_RDWR
-    constexpr auto O_RDWR = 02;
-
-    #undef O_CREAT
-    constexpr auto O_CREAT = 0100;
-
-    #undef SEEK_SET
-    constexpr auto SEEK_SET = 0;
-
-    #undef F_SETLK
-    constexpr auto F_SETLK = 6;
-
-    #undef F_SETLKW
-    constexpr auto F_SETLKW = 7;
-
-    #undef F_UNLCK
-    constexpr auto F_UNLCK = 2;
-
-    #undef errno
-    auto errno = *__errno_location();
-
-    #undef S_ISDIR
-    auto S_ISDIR = [](const mode_t mode) {
-        return __S_ISTYPE(mode, __S_IFDIR);
+    FILE *stdout = LEGACY_STDERR;
+    FILE *stdin = LEGACY_STDIN;
+    FILE *stderr = LEGACY_STDOUT;
+    const short F_WRLCK = LEGACY_FWRLCK;
+    const short F_RDLCK = LEGACY_FRDLCK;
+    const int O_RDWR = LEGACY_ORDWR;
+    const int O_CREAT = LEGACY_OCREAT;
+    const short SEEK_SET = LEGACY_SEEKSET;
+    const int F_SETLK = LEGACY_FSETLK;
+    const int F_SETLKW = LEGACY_FSETLKW;
+    const short F_UNLCK = LEGACY_FUNLCK;
+    int errno = LEGACY_ERRNO;
+    std::function<int(mode_t)> S_ISDIR = [](const mode_t mode) {
+        return LEGACY_S_ISDIR(mode);
     };
-
-    const auto stdout = ::stdout;
-    const auto stdin = ::stdin;
-    const auto stderr = ::stderr;
 }

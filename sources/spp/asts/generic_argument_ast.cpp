@@ -37,7 +37,7 @@ auto spp::asts::GenericArgumentAst::equals(
 
 
 spp::asts::GenericArgumentAst::GenericArgumentAst(
-    const decltype(m_order_tag) order_tag) :
+    const utils::OrderableTag order_tag) :
     OrderableAst(order_tag) {
 }
 

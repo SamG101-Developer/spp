@@ -22,7 +22,7 @@ import spp.utils.uid;
 spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(
     decltype(conv) &&conv,
     decltype(val) &&val,
-    const decltype(m_order_tag) order_tag) :
+    const utils::OrderableTag order_tag) :
     OrderableAst(order_tag),
     injected_self_type(nullptr),
     conv(std::move(conv)),

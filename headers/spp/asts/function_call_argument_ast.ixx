@@ -5,6 +5,7 @@ export module spp.asts.function_call_argument_ast;
 import spp.asts.ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.mixins.type_inferrable_ast;
+import spp.asts.utils.orderable;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
@@ -58,7 +59,7 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst :
     FunctionCallArgumentAst(
         decltype(conv) &&conv,
         decltype(val) &&val,
-        decltype(m_order_tag) order_tag);
+        utils::OrderableTag order_tag);
 
     auto set_self_type(std::shared_ptr<TypeAst> self_type) -> void;
 

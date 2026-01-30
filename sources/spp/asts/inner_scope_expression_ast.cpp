@@ -43,7 +43,7 @@ auto spp::asts::InnerScopeExpressionAst<T>::stage_7_analyse_semantics(
     // Create a scope for the InnerScopeAst node.
     auto scope_name = analyse::scopes::ScopeBlockName("<inner-scope#" + std::to_string(pos_start()) + ">");
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
-    m_scope = sm->current_scope;
+    set_ast_scope(sm->current_scope);
 
     // Check for unreachable code.
     for (auto &&[i, member] : this->members | genex::views::ptr | genex::views::enumerate) {
@@ -111,7 +111,7 @@ auto spp::asts::InnerScopeExpressionAst<T>::infer_type(
     -> std::shared_ptr<TypeAst> {
     // If there are any members, return the last member's inferred type.
     if (not this->members.empty()) {
-        auto tm = ScopeManager(sm->global_scope, m_scope);
+        auto tm = ScopeManager(sm->global_scope, get_ast_scope());
         return this->members.back()->infer_type(&tm, meta);
     }
 
