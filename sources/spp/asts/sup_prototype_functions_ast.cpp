@@ -258,7 +258,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_11_code_gen_2(
 
     // Check if this block is purely generic.
     const auto is_generic_scope =
-        genex::any_of(sm->current_scope->all_type_symbols(true), [](auto &&x) { return x->scope == nullptr; }) or
+        genex::any_of(sm->current_scope->all_type_symbols(true), [](auto &&x) { return x->is_generic; }) or
         genex::any_of(sm->current_scope->all_var_symbols(true), [](auto &&x) { return x->memory_info->ast_comptime == nullptr; });
 
     // Generate the implementation if not a generic scope.

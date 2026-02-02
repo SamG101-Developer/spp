@@ -427,6 +427,11 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
             // If the overload has too many generic arguments, we cannot use it.
             fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
         }
+
+        catch (const analyse::errors::SppGenericConstraintError &e) {
+            // If the overload has too many generic arguments, we cannot use it.
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
+        }
     }
 
     // Perform the return type overload selection separately here, for error reasons.

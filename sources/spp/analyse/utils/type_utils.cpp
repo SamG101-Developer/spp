@@ -101,10 +101,6 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
     if (not convention_eq(lhs_type, rhs_type)) { return false; }
 
 
-
-
-
-
     // If the stripped types are not equal, return false (comparing by address is fine: ClassPrototypeAst* nodes).
     if (stripped_lhs_sym->type != stripped_rhs_sym->type) { return false; }
     auto &lhs_generics = lhs_type.type_parts().back()->generic_arg_group->args;
@@ -408,7 +404,7 @@ auto spp::analyse::utils::type_utils::get_attr_types(
     for (auto const &member : cls_proto->impl->members | genex::views::ptr | genex::views::cast_dynamic<asts::ClassAttributeAst*>) {
         auto type_sym = cls_scope->get_type_symbol(member->type);
         if (genex::contains(attr_symbols, type_sym, genex::get<0>)) { continue; }
-        if (type_sym->scope == nullptr) { continue; }
+        if (type_sym->is_generic) { continue; }
 
         attr_symbols.emplace_back(type_sym, member);
         get_attr_types(type_sym->type, type_sym->scope, attr_symbols);
@@ -465,7 +461,7 @@ auto spp::analyse::utils::type_utils::get_generator_and_yield_type(
     // Generic types are not generators, so raise an error.
     const auto type_sym = scope.get_type_symbol(type.shared_from_this());
     raise_if<errors::SppExpressionNotGeneratorError>(
-        type_sym->scope == nullptr, {&scope}, ERR_ARGS(expr, type, what));
+        type_sym->is_generic, {&scope}, ERR_ARGS(expr, type, what));
 
     // Discover the supertypes and add the current type to it.=.
     auto sup_types = std::vector{type.shared_from_this()};
@@ -502,9 +498,7 @@ auto spp::analyse::utils::type_utils::get_try_type(
     -> std::shared_ptr<const asts::TypeAst> {
     // Generic types are not Try types, so return nullptr.
     const auto type_sym = sm.current_scope->get_type_symbol(type.shared_from_this());
-    if (type_sym->scope == nullptr) {
-        return nullptr;
-    }
+    if (type_sym->is_generic) { return nullptr; }
 
     // Discover the supertypes and add the current type to it.
     auto sup_types = std::vector{type.shared_from_this()};
@@ -529,9 +523,7 @@ auto spp::analyse::utils::type_utils::get_fwd_types(
     -> std::pair<std::shared_ptr<const asts::TypeAst>, std::shared_ptr<const asts::TypeAst>> {
     // Generic types do not have forward types, so return nullptr.
     const auto type_sym = sm.current_scope->get_type_symbol(type.shared_from_this());
-    if (type_sym->scope == nullptr) {
-        return {nullptr, nullptr};
-    }
+    if (type_sym->is_generic) { return {nullptr, nullptr}; }
 
     // Discover the supertypes and add the current type to it.
     auto sup_types = std::vector{type.shared_from_this()};
@@ -772,10 +764,11 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     const auto self_type = asts::ast_name(old_sup_scope.ast)->substitute_generics(generic_args.args | genex::views::ptr | genex::to<std::vector>());
     auto new_sup_scope = std::make_unique<scopes::Scope>(old_sup_scope);
     auto new_sup_scope_ptr = new_sup_scope.get();
+    new_sup_scope_ptr->table = old_sup_scope.table;
     old_sup_scope.parent->children.emplace_back(std::move(new_sup_scope));
 
-    // std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name =
-    //     substitute_sup_scope_name(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name, generic_args);
+    std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name =
+        substitute_sup_scope_name(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name, generic_args);
 
     // Register the generic symbols.
     auto tm = scopes::ScopeManager(sm->global_scope, new_sup_scope_ptr);
@@ -795,7 +788,7 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     for (auto const &scoped_sym : new_sup_scope_ptr->all_type_symbols(true)) {
         if (scoped_sym->alias_stmt != nullptr) {
             auto old_type_sub = scoped_sym->alias_stmt->old_type->substitute_generics(generic_args.args | genex::views::ptr | genex::to<std::vector>());
-            // old_type_sub->stage_7_analyse_semantics(&tm, meta);  Todo: Why is this commented?
+            // old_type_sub->stage_7_analyse_semantics(&tm, meta);  // Todo: Why is this commented?
             const auto old_type_sub_sym = new_sup_scope_ptr->get_type_symbol(old_type_sub);
 
             scoped_sym->alias_stmt->old_type = std::move(old_type_sub);
@@ -835,11 +828,24 @@ auto spp::analyse::utils::type_utils::create_generic_sym(
     if (const auto type_arg = generic.to<asts::GenericArgumentTypeKeywordAst>(); type_arg != nullptr) {
         const auto true_val_sym = sm.current_scope->get_type_symbol(type_arg->val);
 
-        auto sym = std::make_unique<scopes::TypeSymbol>(
+        // If the target is generic, then create a generic scope for it.
+        // auto generic_scope = generic_scope = ( {
+        //     auto generic_scope_name = scopes::ScopeBlockName("<generic#" + type_arg->name->type_parts().back()->name + ">");
+        //     std::make_unique<scopes::Scope>(generic_scope_name, nullptr);
+        // });
+
+        // Build the type symbol for the generic type argument.
+        auto sym = std::make_shared<scopes::TypeSymbol>(
             type_arg->name->type_parts().back(), true_val_sym ? true_val_sym->type : nullptr,
             true_val_sym ? true_val_sym->scope : nullptr, sm.current_scope, sm.current_scope->parent_module(), true,
             true_val_sym ? true_val_sym->is_directly_copyable : false, asts::utils::Visibility::PUBLIC,
             asts::ast_clone(type_arg->val->get_convention()));
+
+        // Link the generic scope to the type symbol if it was created.
+        // if (true_val_sym) {
+        //     generic_scope->ty_sym = sym;
+        //     scopes::ScopeManager::temp_scopes.emplace_back(std::move(generic_scope));
+        // }
         return sym;
     }
 
@@ -943,12 +949,14 @@ auto spp::analyse::utils::type_utils::enforce_generic_constraints(
     scopes::Scope const &generic_scope,
     scopes::Scope const &concrete_scope)
     -> void {
-    // Get all the sup scopes of the concrete type.
+    // Determine the concrete symbol, and if non-generic, add its scope.
     const auto concrete_sym = concrete_scope.get_type_symbol(concrete_type.shared_from_this());
-    if (concrete_sym->is_generic) { return; }
     auto sup_info = std::vector<std::pair<std::shared_ptr<asts::TypeAst>, scopes::Scope const*>>{};
     sup_info.emplace_back(concrete_sym->fq_name(), concrete_sym->scope);
-    for (auto const *sup_scope : concrete_sym->scope->sup_scopes()) {
+
+    // Get all the sup scopes of the concrete type (none for generic).
+    const auto sup_scopes = concrete_sym->scope ? concrete_sym->scope->sup_scopes() : std::vector<scopes::Scope*>{};
+    for (auto const *sup_scope : sup_scopes) {
         if (sup_scope->ast->to<asts::ClassPrototypeAst>() == nullptr) { continue; }
         const auto sup_sym = sup_scope->ty_sym;
         sup_info.emplace_back(sup_sym->fq_name(), sup_scope);
@@ -957,7 +965,7 @@ auto spp::analyse::utils::type_utils::enforce_generic_constraints(
     // Compare each constraint against the concrete type and its supertypes.
     for (auto const &constraint : constraints) {
         auto matched = false;
-        for (auto const &[sup_type, sup_scope] : sup_info ) {
+        for (auto const &[sup_type, sup_scope] : sup_info) {
             matched = symbolic_eq(*constraint, *sup_type, *sup_scope, *sup_scope);
             if (matched) { break; }
         }
@@ -1027,10 +1035,6 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
     // Todo: Contender for worst function is the program, second to "func_utils::get_all_function_scopes"
     // Todo: Detect cycles to prevent infinite loops of type aliasing.
     // Create lists for tracking chains.
-    if (alias_stmt.new_type->operator std::string().contains("BBB")) {
-        auto _ = 123;
-    }
-
     auto type_list = std::vector<std::shared_ptr<asts::TypeAst>>{};
     auto scope_list = std::vector<scopes::Scope*>{};
     auto alias_list = std::vector<asts::TypeStatementAst*>{};
@@ -1110,9 +1114,9 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
         type_list[layer + 1]->stage_7_analyse_semantics(&tm, meta);
         meta->restore();
 
-        for (auto p : params->get_optional_params() | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
-            p->default_val = p->default_val->substitute_generics(args->get_all_args());
-        }
+        // for (auto p : params->get_optional_params() | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
+        //     p->default_val = p->default_val->substitute_generics(args->get_all_args());
+        // }
     }
 
     auto strip_params = [](asts::GenericParameterGroupAst &params, asts::GenericArgumentGroupAst const &args) {
@@ -1150,19 +1154,33 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
         auto params = asts::ast_clone(cls_proto->generic_param_group);
         auto args = asts::ast_clone(type_list.back()->type_parts().back()->generic_arg_group);
         func_utils::name_gn_args(*args, *params, *cls_proto->name, *sm, *meta);
+
         for (auto *p : params->get_all_params() | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
             p->default_val = p->default_val->substitute_generics(args->get_all_args());
         }
         for (auto *p : params->get_type_params()) {
             if (p->constraints) {
                 auto subbed_constraints = std::vector<std::shared_ptr<asts::TypeAst>>{};
-                for (auto const &c: p->constraints->constraints) {
+                for (auto const &c : p->constraints->constraints) {
                     subbed_constraints.emplace_back(c->substitute_generics(args->get_all_args()));
                 }
                 p->constraints->constraints = std::move(subbed_constraints);
             }
         }
         // todo: comp param's types need substituting?
+
+        // If the param has a default value and there is NOT an arg for it, use the default
+        // in the arg list, and remove from param list.
+        for (auto *p : params->get_all_params() | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
+            const auto has_arg = genex::any_of(
+                args->get_all_args() | genex::views::cast_dynamic<asts::GenericArgumentTypeKeywordAst*>() | genex::to<std::vector>(),
+                [&](auto const *arg) { return *arg->name == *p->name; });
+
+            if (not has_arg) {
+                args->args.emplace_back(std::make_unique<asts::GenericArgumentTypeKeywordAst>(p->name, nullptr, p->default_val));
+                params->params |= genex::actions::remove_if([&p](auto &&x) { return x.get() == p; });
+            }
+        }
 
         strip_params(*params, *args);
         auto base_args = asts::GenericArgumentGroupAst::from_params(*cls_proto->generic_param_group);

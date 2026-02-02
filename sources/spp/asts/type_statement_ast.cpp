@@ -69,7 +69,7 @@ auto spp::asts::TypeStatementAst::clone() const
     ast->m_scope = m_scope;
     ast->m_temp_scope_1 = m_temp_scope_1;
     ast->visibility = visibility;
-    for (auto const &a: ast->annotations) {
+    for (auto const &a : ast->annotations) {
         a->set_ast_ctx(ast.get());
     }
     return ast;
@@ -93,7 +93,7 @@ auto spp::asts::TypeStatementAst::stage_1_pre_process(
     -> void {
     // Pre-process the annotations.
     Ast::stage_1_pre_process(ctx);
-    for (auto const &annotation: annotations) {
+    for (auto const &annotation : annotations) {
         annotation->stage_1_pre_process(this);
     }
 }
@@ -116,7 +116,7 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
         new_type, nullptr, nullptr, sm->current_scope, sm->current_scope->parent_module());
     sm->current_scope->add_type_symbol(type_sym);
     m_alias_sym = type_sym;
-    m_alias_sym->alias_stmt = std::unique_ptr<TypeStatementAst>(this);  // This is BAD but "cleanup" handles mem error.
+    m_alias_sym->alias_stmt = std::unique_ptr<TypeStatementAst>(this); // This is BAD but "cleanup" handles mem error.
 
     // Create a new scope for the type statement.
     auto scope_name = analyse::scopes::ScopeBlockName("<type-stmt#" + static_cast<std::string>(*new_type) + "#" + std::to_string(pos_start()) + ">");
@@ -136,6 +136,14 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
 
+    std::cout << operator std::string() << std::endl;
+    if (operator std::string().starts_with("type BoolVec")) {
+        auto _ = 123;
+    }
+    if (operator std::string().starts_with("type Vec")) {
+        auto _ = 123;
+    }
+
     // Recursively discover the actual type being mapped to.
     auto [actual_old_type, attach_generics, scope1, scope2] = analyse::utils::type_utils::recursive_alias_search(
         *this, sm->current_scope->parent, old_type, sm, meta);
@@ -153,6 +161,11 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
         generic_param_group->stage_2_gen_top_level_scopes(sm, meta);
     }
 
+    if (operator std::string().starts_with("type Vec[ZZ, ")) {
+        auto _ = 123;
+    }
+
+
     sm->move_out_of_current_scope();
 }
 
@@ -165,20 +178,36 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
 
+    if (operator std::string().starts_with("type Vec[ZZ, ")) {
+        auto _ = 123;
+    }
+    if (operator std::string().starts_with("type BoolVec")) {
+        auto _ = 123;
+    }
+    if (this == reinterpret_cast<spp::asts::TypeStatementAst*>(0x21c8d80)) {
+        auto _ = 123;
+    }
+
     // Get the old type's symbol, without generics.
     const auto stripped_old_sym = sm->current_scope->get_type_symbol(old_type->without_generics(), false);
     if (not stripped_old_sym->is_generic) {
         auto tm_1 = ScopeManager(sm->global_scope, stripped_old_sym->scope);
         auto tm_2 = ScopeManager(sm->global_scope, m_temp_scope_1);
 
-        auto temp_scope = std::make_unique<analyse::scopes::Scope>(*m_temp_scope_2->parent);  // todo: remove copy, store as raw pointer?
+        auto temp_scope = std::make_unique<analyse::scopes::Scope>(*m_temp_scope_2->parent); // todo: remove copy, store as raw pointer?
         auto tm_3 = ScopeManager(sm->global_scope, temp_scope.get());
         generic_param_group->stage_2_gen_top_level_scopes(&tm_3, meta);
+        generic_param_group->stage_4_qualify_types(&tm_3, meta);
 
         // Qualify the generics, and the overall type.
         // generic_param_group->stage_4_qualify_types(&tm_3, meta);
         old_type->stage_4_qualify_types(&tm_1, meta); // Extends generics into fq from the old symbols scope.
+
+        meta->save();
+        meta->alias_qualifier_scope = sm->current_scope;
         old_type->stage_4_qualify_types(&tm_2, meta); // Extends generics into fq from the old symbols scope.
+        meta->restore();
+
         old_type->stage_7_analyse_semantics(sm, meta); // Analyse the fq old type in this scope (for generics)
 
         const auto old_sym = sm->current_scope->get_type_symbol(old_type);
@@ -219,6 +248,7 @@ auto spp::asts::TypeStatementAst::stage_7_analyse_semantics(
     if (m_generated) {
         sm->move_to_next_scope();
         SPP_ASSERT(sm->current_scope == m_scope);
+        old_type->stage_7_analyse_semantics(sm, meta);
         sm->move_out_of_current_scope();
         return;
     }

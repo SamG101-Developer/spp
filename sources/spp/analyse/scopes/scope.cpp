@@ -136,7 +136,7 @@ auto spp::analyse::scopes::Scope::shift_scope_for_namespaced_type(
     // Iterate through the type parts (except the final one) next.
     for (auto &&type_part : type_parts | genex::views::drop_last(1)) {
         const auto sym = shifted_scope->get_type_symbol(type_part);
-        if (sym == nullptr or sym->scope == nullptr) { break; }
+        if (sym == nullptr or sym->is_generic) { break; }
         shifted_scope = sym->scope;
     }
 
@@ -165,7 +165,7 @@ auto spp::analyse::scopes::Scope::get_generics() const
     // Check each ancestor scope, accumulating generic symbols.
     for (auto const *scope : scopes) {
         auto all_type_syms = scope->all_type_symbols(true)
-            | genex::views::filter([](auto const &sym) { return sym->is_generic and sym->scope != nullptr; })
+            | genex::views::filter([](auto const &sym) { return sym->is_generic; })
             | genex::to<std::vector>();
 
         for (auto &&t : all_type_syms) {

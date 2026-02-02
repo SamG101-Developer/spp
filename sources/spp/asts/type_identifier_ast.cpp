@@ -30,9 +30,6 @@ import absl;
 import genex;
 
 
-// int count = 0;
-
-
 spp::asts::TypeIdentifierAst::TypeIdentifierAst(
     const std::size_t pos,
     decltype(name) &&name,
@@ -209,6 +206,10 @@ auto spp::asts::TypeIdentifierAst::without_generics() const
 auto spp::asts::TypeIdentifierAst::substitute_generics(
     std::vector<GenericArgumentAst*> const &args) const
     -> std::shared_ptr<TypeAst> {
+    if (this == reinterpret_cast<TypeIdentifierAst*>(0x460dd80)) {
+        auto _ = 123;
+    }
+
     auto name_clone = ast_clone(this);
     if (args.empty() or generic_arg_group == nullptr) { return name_clone; }
 
@@ -274,12 +275,9 @@ auto spp::asts::TypeIdentifierAst::stage_4_qualify_types(
     CompilerMetaData *meta)
     -> void {
     // Qualify the generic argument types.
-    // meta->save();
-    // meta->type_analysis_type_scope = sm->current_scope->get_type_symbol(without_generics())->scope;
     for (auto &&g : generic_arg_group->get_type_args()) {
         g->stage_4_qualify_types(sm, meta);
     }
-    // meta->restore();
 }
 
 
@@ -287,9 +285,6 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // count += 1;
-    // std::cout << "Analysing TypeIdentifierAst: " << to_string() << " (" << count << ")" << std::endl;
-
     // Determine the scope and get the type symbol.
     const auto scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
     const auto type_sym = analyse::utils::type_utils::get_type_sym_or_error(
@@ -321,6 +316,8 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     const auto owner = analyse::utils::type_utils::get_type_sym_or_error(
         *scope, *without_generics()->to<TypeIdentifierAst>(), *sm, meta)->fq_name();
     const auto owner_sym = sm->current_scope->get_type_symbol(owner);
+    // const auto owner_scope = owner_sym->alias_stmt ? owner_sym->alias_stmt->
+    //     owner_sym != nullptr ? owner_sym->scope : type_sym->scope;
 
     analyse::utils::func_utils::infer_gn_args(
         *generic_arg_group,
