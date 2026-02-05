@@ -186,7 +186,8 @@ auto spp::asts::SupPrototypeExtensionAst::stage_2_gen_top_level_scopes(
     CompilerMetaData *meta)
     -> void {
     // Create a new scope for the superimposition extension.
-    auto scope_name = analyse::scopes::ScopeBlockName("<sup#" + static_cast<std::string>(*name) + " ext " + static_cast<std::string>(*super_class) + "#" + std::to_string(pos_start()) + ">");
+    auto scope_name = analyse::scopes::ScopeBlockName::from_parts(
+        "sup-prototype-extension", {name.get(), super_class.get()}, pos_start());
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
     Ast::stage_2_gen_top_level_scopes(sm, meta);
 
@@ -268,7 +269,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_5_load_super_scopes(
         const auto self_sym = std::make_shared<analyse::scopes::TypeSymbol>(
             std::make_unique<TypeIdentifierAst>(name->pos_start(), "Self", nullptr),
             cls_sym->type, cls_sym->scope, sm->current_scope);
-        self_sym->alias_stmt = std::make_unique<TypeStatementAst>(
+        self_sym->alias_stmt = new TypeStatementAst(
             SPP_NO_ANNOTATIONS, nullptr,
             TypeIdentifierAst::from_string("Self"), nullptr, nullptr, name);
         sm->current_scope->add_type_symbol(self_sym);

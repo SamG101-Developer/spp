@@ -95,7 +95,8 @@ auto spp::asts::ClosureExpressionAst::stage_7_analyse_semantics(
     meta->enclosing_function_scope = sm->current_scope; // this will be the closure-outer scope
     sm->current_scope->parent = sm->current_scope->parent_module();
 
-    auto scope_name = analyse::scopes::ScopeBlockName("<closure-inner#" + std::to_string(pos_start()) + ">");
+    auto scope_name = analyse::scopes::ScopeBlockName::from_parts(
+        "closure-inner", {}, pos_start());
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
     meta->enclosing_function_flavour = tok.get();
     meta->enclosing_function_ret_type = {};

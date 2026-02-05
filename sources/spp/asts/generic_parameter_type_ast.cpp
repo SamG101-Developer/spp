@@ -29,10 +29,10 @@ auto spp::asts::GenericParameterTypeAst::stage_2_gen_top_level_scopes(
     CompilerMetaData *)
     -> void {
     // Create the generic scope for the generic parameter.
-    auto generic_scope = ( {
-        auto generic_scope_name = analyse::scopes::ScopeBlockName("<generic#" + name->type_parts().back()->name + ">");
-        std::make_unique<analyse::scopes::Scope>(generic_scope_name, sm->current_scope);
-    });
+    auto scope_name = analyse::scopes::ScopeBlockName::from_parts(
+        "generic-param-type", {name.get()}, pos_start());
+    auto generic_scope = std::make_unique<analyse::scopes::Scope>(
+        std::move(scope_name), sm->current_scope);
 
     // Create the type symbol for the generic parameter.
     const auto sym = std::make_shared<analyse::scopes::TypeSymbol>(
