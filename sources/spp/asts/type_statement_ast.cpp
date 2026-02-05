@@ -147,7 +147,7 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     m_alias_sym->is_copyable = [final_sym] { return final_sym->is_copyable(); };
     old_type = actual_old_type;
 
-    if (attach_generics != nullptr) {
+    if (attach_generics != nullptr and not attach_generics->params.empty()) {
         generic_param_group = attach_generics;
         generic_param_group->stage_2_gen_top_level_scopes(sm, meta);
     }
