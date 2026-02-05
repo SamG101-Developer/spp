@@ -87,5 +87,5 @@ public:
 
     auto restore(bool heavy = false) -> void;
 
-    auto depth() const -> std::size_t;
+    SPP_ATTR_NODISCARD auto depth() const -> std::size_t;
 };

@@ -190,13 +190,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstGenericCosntraints,
+    TestAstGenericConstraints,
     test_invalid_sup_function_for_constraint_mismatch,
     SppIdentifierUnknownError, R"(
+    use std::void::Void
     cls A[T] { }
 
     sup [T: std::copy::Copy] A[T] {
-        fun my_function() -> Void { }
+        fun my_function(&self) -> Void { }
     }
 
     fun f() -> Void {
@@ -210,10 +211,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericConstraints,
     test_valid_sup_function_for_constraint,
     R"(
+    use std::void::Void
     cls A[T] { }
 
     sup [T: std::copy::Copy] A[T] {
-        fun my_function() -> Void { }
+        fun my_function(&self) -> Void { }
     }
 
     fun f() -> Void {

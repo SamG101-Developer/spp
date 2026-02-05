@@ -68,6 +68,14 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
         ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, std::shared_ptr<const TypeAst>> &&map)
         -> std::unique_ptr<GenericArgumentGroupAst>;
 
+    auto operator+=(
+        const GenericArgumentGroupAst &other)
+        -> GenericArgumentGroupAst&;
+
+    auto operator+(
+        const GenericArgumentGroupAst &other) const
+        -> std::unique_ptr<GenericArgumentGroupAst>;
+
     auto operator==(GenericArgumentGroupAst const &other) const -> bool;
 
     auto type_at(const char *key) const -> GenericArgumentTypeAst const*;
@@ -76,15 +84,15 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
 
     auto merge_generics(decltype(args) &&other_args) -> void;
 
-    auto get_type_args() const -> std::vector<GenericArgumentTypeAst*>;
+    SPP_ATTR_NODISCARD auto get_type_args() const -> std::vector<GenericArgumentTypeAst*>;
 
-    auto get_comp_args() const -> std::vector<GenericArgumentCompAst*>;
+    SPP_ATTR_NODISCARD auto get_comp_args() const -> std::vector<GenericArgumentCompAst*>;
 
-    auto get_keyword_args() const -> std::vector<GenericArgumentAst*>;
+    SPP_ATTR_NODISCARD auto get_keyword_args() const -> std::vector<GenericArgumentAst*>;
 
-    auto get_positional_args() const -> std::vector<GenericArgumentAst*>;
+    SPP_ATTR_NODISCARD auto get_positional_args() const -> std::vector<GenericArgumentAst*>;
 
-    auto get_all_args() const -> std::vector<GenericArgumentAst*>;
+    SPP_ATTR_NODISCARD auto get_all_args() const -> std::vector<GenericArgumentAst*>;
 
     auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

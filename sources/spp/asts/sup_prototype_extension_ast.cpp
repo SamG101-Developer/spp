@@ -186,7 +186,8 @@ auto spp::asts::SupPrototypeExtensionAst::stage_2_gen_top_level_scopes(
     CompilerMetaData *meta)
     -> void {
     // Create a new scope for the superimposition extension.
-    auto scope_name = analyse::scopes::ScopeBlockName("<sup#" + static_cast<std::string>(*name) + " ext " + static_cast<std::string>(*super_class) + "#" + std::to_string(pos_start()) + ">");
+    auto scope_name = analyse::scopes::ScopeBlockName::from_parts(
+        "sup-prototype-extension", {name.get(), super_class.get()}, pos_start());
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
     Ast::stage_2_gen_top_level_scopes(sm, meta);
 
@@ -430,7 +431,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_11_code_gen_2(
 
     // Check if this block is purely generic.
     const auto is_generic_scope =
-        genex::any_of(sm->current_scope->all_type_symbols(true), [](auto &&x) { return x->scope == nullptr; }) or
+        genex::any_of(sm->current_scope->all_type_symbols(true), [](auto &&x) { return x->is_generic; }) or
         genex::any_of(sm->current_scope->all_var_symbols(true), [](auto &&x) { return x->memory_info->ast_comptime == nullptr; });
 
     // Generate the implementation if not a generic scope.

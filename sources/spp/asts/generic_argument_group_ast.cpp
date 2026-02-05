@@ -149,6 +149,23 @@ auto spp::asts::GenericArgumentGroupAst::from_map(
 }
 
 
+auto spp::asts::GenericArgumentGroupAst::operator+=(
+    const GenericArgumentGroupAst &other)
+    -> GenericArgumentGroupAst& {
+    merge_generics(ast_clone_vec(other.args));
+    return *this;
+}
+
+
+auto spp::asts::GenericArgumentGroupAst::operator+(
+    const GenericArgumentGroupAst &other) const
+    -> std::unique_ptr<GenericArgumentGroupAst> {
+    auto result = ast_clone(this);
+    *result += other;
+    return result;
+}
+
+
 auto spp::asts::GenericArgumentGroupAst::operator==(
     GenericArgumentGroupAst const &other) const
     -> bool {

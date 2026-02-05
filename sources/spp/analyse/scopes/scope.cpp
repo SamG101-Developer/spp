@@ -34,6 +34,23 @@ spp::analyse::scopes::ScopeBlockName::ScopeBlockName(
 }
 
 
+auto spp::analyse::scopes::ScopeBlockName::from_parts(
+    std::string &&header,
+    std::vector<asts::Ast*> const &parts,
+    const std::size_t pos)
+    -> ScopeBlockName {
+    // Build the name string.
+    auto builder = std::string();
+    builder.append("<").append(header);
+    for (auto const &part : parts) {
+        builder.append("#").append(part->to_string());
+    }
+    builder.append("#").append(std::to_string(pos));
+    builder.append(">");
+    return ScopeBlockName(std::move(builder));
+}
+
+
 spp::analyse::scopes::Scope::Scope(
     ScopeName name,
     Scope *parent,
@@ -74,9 +91,10 @@ auto spp::analyse::scopes::Scope::new_global(
     compiler::Module const &mod)
     -> std::unique_ptr<Scope> {
     // Create a new global scope (no parent or ast for the global scope).
-    auto glob_scope_name = ScopeBlockName("<global>");
+    auto scope_name = ScopeBlockName::from_parts(
+        "global", {}, 0);
     auto glob_scope = std::make_unique<Scope>(
-        std::move(glob_scope_name), nullptr, nullptr, mod.error_formatter.get());
+        std::move(scope_name), nullptr, nullptr, mod.error_formatter.get());
 
     // Inject the "_global" namespace symbol into this scope (makes lookups orthogonal).
     auto glob_ns_sym_name = std::make_unique<asts::IdentifierAst>(0, "_global");
@@ -136,7 +154,7 @@ auto spp::analyse::scopes::Scope::shift_scope_for_namespaced_type(
     // Iterate through the type parts (except the final one) next.
     for (auto &&type_part : type_parts | genex::views::drop_last(1)) {
         const auto sym = shifted_scope->get_type_symbol(type_part);
-        if (sym == nullptr or sym->scope == nullptr) { break; }
+        if (sym == nullptr or sym->is_generic) { break; }
         shifted_scope = sym->scope;
     }
 
@@ -165,7 +183,7 @@ auto spp::analyse::scopes::Scope::get_generics() const
     // Check each ancestor scope, accumulating generic symbols.
     for (auto const *scope : scopes) {
         auto all_type_syms = scope->all_type_symbols(true)
-            | genex::views::filter([](auto const &sym) { return sym->is_generic and sym->scope != nullptr; })
+            | genex::views::filter([](auto const &sym) { return sym->is_generic; })
             | genex::to<std::vector>();
 
         for (auto &&t : all_type_syms) {

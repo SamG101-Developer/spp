@@ -74,7 +74,8 @@ auto spp::asts::LoopConditionalExpressionAst::stage_7_analyse_semantics(
     CompilerMetaData *meta)
     -> void {
     // Create the loop scope.
-    auto scope_name = analyse::scopes::ScopeBlockName("<loop-cond-expr#" + std::to_string(pos_start()) + ">");
+    auto scope_name = analyse::scopes::ScopeBlockName::from_parts(
+        "loop-cond-expr", {}, pos_start());
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
     Ast::stage_2_gen_top_level_scopes(sm, meta);
 

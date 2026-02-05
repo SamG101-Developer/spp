@@ -113,7 +113,8 @@ auto spp::asts::CaseExpressionAst::stage_7_analyse_semantics(
     SPP_ENFORCE_EXPRESSION_SUBTYPE(cond.get());
 
     // Create the scope for the case expression.
-    auto scope_name = analyse::scopes::ScopeBlockName("<case-expr#" + std::to_string(pos_start()) + ">");
+    auto scope_name = analyse::scopes::ScopeBlockName::from_parts(
+        "case-expr", {}, pos_start());
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
     Ast::stage_2_gen_top_level_scopes(sm, meta);
 

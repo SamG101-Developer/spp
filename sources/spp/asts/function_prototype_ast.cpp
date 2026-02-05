@@ -341,7 +341,8 @@ auto spp::asts::FunctionPrototypeAst::stage_2_gen_top_level_scopes(
     CompilerMetaData *meta)
     -> void {
     // Create a new scope for the function prototype, and move into it.
-    auto scope_name = analyse::scopes::ScopeBlockName("<function#" + orig_name->val + "#" + std::to_string(pos_start()) + ">");
+    auto scope_name = analyse::scopes::ScopeBlockName::from_parts(
+        "function", {name.get()}, pos_start());
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
     Ast::stage_2_gen_top_level_scopes(sm, meta);
 

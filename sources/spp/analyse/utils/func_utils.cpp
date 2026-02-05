@@ -707,7 +707,7 @@ auto spp::analyse::utils::func_utils::name_gn_args_impl(
 
                 // Variadic check: map arguments "func[U32, U32]" for "func[..Ts]" to "func[Ts = (U32, U32)]".
                 auto tup_type = asts::generate::common_types::tuple_type(positional_arg->pos_start(), std::move(elems));
-                tup_type->stage_7_analyse_semantics(&sm, &meta);
+                if (meta.current_stage > 5) { tup_type->stage_7_analyse_semantics(&sm, &meta); }
                 kw_arg->val = tup_type;
             }
 

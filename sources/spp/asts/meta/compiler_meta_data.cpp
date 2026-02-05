@@ -54,8 +54,8 @@ auto spp::asts::meta::CompilerMetaData::save() -> void {
         prevent_auto_generator_resume, let_stmt_explicit_type, let_stmt_value, let_stmt_from_uninitialized,
         loop_double_check_active, current_loop_depth, current_loop_ast, loop_return_types, object_init_type,
         infer_source, infer_target, postfix_expression_lhs, unary_expression_rhs, skip_type_analysis_generic_checks,
-        type_analysis_type_scope, ignore_cmp_generic, allow_move_deref, end_bb, llvm_ctx, llvm_assignment_target,
-        llvm_assignment_target_type, llvm_phi, std::move(cmp_args), nullptr);
+        type_analysis_type_scope, ignore_cmp_generic, allow_move_deref, end_bb, llvm_ctx,
+        llvm_assignment_target, llvm_assignment_target_type, llvm_phi, std::move(cmp_args), nullptr);
 }
 
 

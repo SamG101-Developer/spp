@@ -171,6 +171,12 @@ auto spp::asts::ClassPrototypeAst::registered_generic_substitutions() const
 }
 
 
+auto spp::asts::ClassPrototypeAst::get_cls_sym() const
+    -> std::shared_ptr<analyse::scopes::TypeSymbol> {
+    return m_cls_sym;
+}
+
+
 auto spp::asts::ClassPrototypeAst::stage_1_pre_process(
     Ast *ctx)
     -> void {
@@ -340,10 +346,4 @@ auto spp::asts::ClassPrototypeAst::stage_11_code_gen_2(
     impl->stage_11_code_gen_2(sm, meta, ctx);
     sm->move_out_of_current_scope();
     return nullptr;
-}
-
-
-auto spp::asts::ClassPrototypeAst::get_cls_sym() const
-    -> std::shared_ptr<analyse::scopes::TypeSymbol> {
-    return m_cls_sym;
 }

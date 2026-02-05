@@ -8,6 +8,10 @@ namespace spp::analyse::scopes {
     SPP_EXP_CLS struct ScopeBlockName;
 }
 
+namespace spp::asts {
+    SPP_EXP_CLS struct Ast;
+}
+
 
 /**
  * For scopes that aren't for a function or type, they don't have an @c IdentifierAst or @c TypeIdentifierAst to name
@@ -22,12 +26,24 @@ SPP_EXP_CLS struct spp::analyse::scopes::ScopeBlockName {
      */
     std::string name;
 
+private:
     /**
      * The constructor for the ScopeBlockName. This takes a string and moves it into the struct. This is to avoid
      * unnecessary copies.
      * @param name The name of the scope block.
      */
     explicit ScopeBlockName(std::string &&name);
+
+public:
+    /**
+     * Create a ScopeBlockName from a header and parts. The format created is "<header#part1#part2#...>". This is
+     * the standard format for scope block names in SPP.
+     * @param header The header of the scope block name, like "type-stmt" or "loop".
+     * @param parts The parts to append to the header, typically strings representing metadata of the AST.
+     * @param pos The position of the AST in the source code, to make scope names unique.
+     * @return The constructed ScopeBlockName.
+     */
+    static auto from_parts(std::string &&header, std::vector<asts::Ast*> const &parts, std::size_t pos) -> ScopeBlockName;
 
     /**
      * Allow default copy constructors for easy passing around of scope block names.

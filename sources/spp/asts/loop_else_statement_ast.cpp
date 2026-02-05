@@ -54,7 +54,8 @@ auto spp::asts::LoopElseStatementAst::stage_7_analyse_semantics(
     CompilerMetaData *meta)
     -> void {
     // Create a scope and analyse the body.
-    auto scope_name = analyse::scopes::ScopeBlockName("<case-expr#" + std::to_string(pos_start()) + ">");
+    auto scope_name = analyse::scopes::ScopeBlockName::from_parts(
+        "loop-else-stmt", {}, pos_start());
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
     body->stage_7_analyse_semantics(sm, meta);
     sm->move_out_of_current_scope();
