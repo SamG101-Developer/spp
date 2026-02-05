@@ -667,9 +667,9 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
 
         const auto target_scope = new_alias_stmt->get_ast_scope()->parent;
         target_scope->add_type_symbol(new_cls_sym);
-        new_alias_stmt->m_temp_scope_1->add_type_symbol(new_cls_sym);
-        new_alias_stmt->m_temp_scope_1->children.emplace_back(std::move(new_cls_scope));
-        new_cls_sym->alias_stmt = std::move(new_alias_stmt);
+        // new_alias_stmt->m_temp_scope_1->add_type_symbol(new_cls_sym);
+        // new_alias_stmt->m_temp_scope_1->children.emplace_back(std::move(new_cls_scope));
+        new_cls_sym->alias_stmt = new_alias_stmt.get(); // todo: drops unique ptr
     }
 
     // Configure the new scope based on the base (old) scope.
@@ -779,7 +779,7 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     const auto old_self_sym = new_sup_scope_ptr->get_type_symbol(self_type);
     const auto new_self_sym = std::make_shared<scopes::TypeSymbol>(
         std::make_unique<asts::TypeIdentifierAst>(0, "Self", nullptr), new_cls_scope.ty_sym->type, &new_cls_scope, new_sup_scope_ptr);
-    new_self_sym->alias_stmt = std::make_unique<asts::TypeStatementAst>(
+    new_self_sym->alias_stmt = new asts::TypeStatementAst(
         SPP_NO_ANNOTATIONS, nullptr, asts::TypeIdentifierAst::from_string("Self"), nullptr, nullptr, self_type);
     old_self_sym->aliased_by_symbols.emplace_back(new_self_sym);
     new_sup_scope_ptr->add_type_symbol(new_self_sym);
@@ -1027,169 +1027,70 @@ auto spp::analyse::utils::type_utils::substitute_sup_scope_name(
 
 auto spp::analyse::utils::type_utils::recursive_alias_search(
     asts::TypeStatementAst const &alias_stmt,
+    const bool from_use_stmt,
     scopes::Scope *tracking_scope,
-    std::shared_ptr<asts::TypeAst> actual_old_type,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
-    -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>, scopes::Scope*, scopes::Scope*> {
-    // Todo: Contender for worst function is the program, second to "func_utils::get_all_function_scopes"
-    // Todo: Detect cycles to prevent infinite loops of type aliasing.
-    // Create lists for tracking chains.
-    auto type_list = std::vector<std::shared_ptr<asts::TypeAst>>{};
-    auto scope_list = std::vector<scopes::Scope*>{};
-    auto alias_list = std::vector<asts::TypeStatementAst*>{};
-    auto generic_list = std::vector<std::unique_ptr<asts::GenericParameterGroupAst>>{};
-    auto sym_list = std::vector<scopes::TypeSymbol*>{};
+    -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>> {
 
-    auto cls_proto = static_cast<asts::ClassPrototypeAst*>(nullptr);
-    auto ts_proto = static_cast<asts::TypeStatementAst*>(nullptr);
-
-    while (true) {
-        auto tm = scopes::ScopeManager(sm->global_scope, tracking_scope);
-        meta->save();
-        meta->skip_type_analysis_generic_checks = true;
-        actual_old_type->without_generics()->stage_7_analyse_semantics(&tm, meta);
-        meta->restore();
-        const auto sym = tracking_scope->get_type_symbol(actual_old_type->without_generics());
-
-        type_list.emplace_back(actual_old_type);
-        scope_list.emplace_back(tracking_scope);
-        alias_list.emplace_back(sym->alias_stmt.get());
-        sym_list.emplace_back(sym.get());
-
-        // Always check for alias first, because type might have been set by prev alias analysis.
-        if (sym->alias_stmt != nullptr) {
-            generic_list.emplace_back(asts::ast_clone(sym->alias_stmt->generic_param_group));
-            actual_old_type = sym->alias_stmt->old_type;
-            tracking_scope = sym->scope_defined_in;
-            const auto new_sym = tracking_scope->get_type_symbol(actual_old_type->without_generics());
-            ts_proto = ts_proto ? : sym->alias_stmt.get(); // always override, so last one is gotten.
-        }
-
-        // See if we have found a non-alias type (concrete class definition).
-        else if (sym->type != nullptr) {
-            cls_proto = sym->type;
-            generic_list.emplace_back(asts::ast_clone(cls_proto->generic_param_group));
-            break;
-        }
-
-        // If the aliased type is generic, then just return it as-is.
-        else {
-            return {actual_old_type, nullptr, scope_list.back(), sym_list.back()->scope};
-        }
-    }
-
-    // For the last alias, which maps to a class, we need to attach generics. So for example, the vector class is
-    // defined as: "cls Vec[T, A] { ... }", so for "use std::vector::Vec" => "type Vec = std::vector::Vec" =>
-    // "type Vec[T, A] = std::vector::Vec[T, A]". This only needs to happen for the lowest level alias, which maps to a
-    // class (see the immediate "break")
-    for (auto layer = type_list.size() - 1; layer > 0; --layer) {
-        auto generics = generic_list[layer] ? std::move(generic_list[layer]) : asts::GenericParameterGroupAst::new_empty();
-        const auto alias = alias_list[layer - 1];
-
-        if (alias->old_type->type_parts().back()->generic_arg_group->args.empty()) {
-            alias->generic_param_group = std::move(generics);
-            alias->old_type->type_parts().back()->generic_arg_group = asts::GenericArgumentGroupAst::from_params(*alias->generic_param_group);
-        }
-    }
-
-    // At this point, we have the lowest level type that the type alias has mapped to, potentially via other aliases.
-    // Next, we need to move back up the chain to re-apply generics.
-    for (auto layer = 0uz; layer < type_list.size() - 1; ++layer) {
-        // We substitute the current generics into the current type, then update the current type.
-        const auto args = asts::ast_clone(type_list[layer]->type_parts().back()->generic_arg_group);
-        const auto params = alias_list[layer]->generic_param_group.get();
-        func_utils::name_gn_args(*args, *params, *type_list[layer], *sm, *meta);
-        auto tm = scopes::ScopeManager(sm->global_scope, scope_list[layer + 1]);
-
-        meta->save();
-        meta->skip_type_analysis_generic_checks = true;
-        type_list[layer + 1]->stage_7_analyse_semantics(&tm, meta);
-        meta->restore();
-
-        type_list[layer + 1] = type_list[layer + 1]->substitute_generics(args->get_all_args());
-
-        meta->save();
-        meta->skip_type_analysis_generic_checks = true;
-        type_list[layer + 1]->stage_7_analyse_semantics(&tm, meta);
-        meta->restore();
-
-        // for (auto p : params->get_optional_params() | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
-        //     p->default_val = p->default_val->substitute_generics(args->get_all_args());
-        // }
-    }
-
-    auto strip_params = [](asts::GenericParameterGroupAst &params, asts::GenericArgumentGroupAst const &args) {
-        // Remove type parameters who have been given arguments in the type part's generic argument group.
-        for (auto *p : params.get_type_params()) {
-            for (auto const *q : args.get_type_args() | genex::views::cast_dynamic<asts::GenericArgumentTypeKeywordAst*>()) {
-                if (*p->name == *q->name and *p->name != *q->val) {
-                    params.params |= genex::actions::remove_if([&p](auto &&x) { return x.get() == p; });
-                    break;
-                }
-            }
-        }
-
-        // Remove comp parameters who have been given arguments in the type part's generic argument group.
-        for (auto *p : params.get_comp_params()) {
-            for (auto const *q : args.get_comp_args() | genex::views::cast_dynamic<asts::GenericArgumentCompKeywordAst*>()) {
-                if (*p->name == *q->name and *asts::IdentifierAst::from_type(*p->name) != *q->val) {
-                    params.params |= genex::actions::remove_if([&p](auto &&x) { return x.get() == p; });
-                    break;
-                }
-            }
-        }
+    // How to extract generic parameters from a type symbol: alias, then type, otherwise none (generic).
+    const auto NO_PARAMS = asts::GenericParameterGroupAst::new_empty();
+    auto extract_params = [&NO_PARAMS](scopes::TypeSymbol const &ts) {
+        return ts.alias_stmt
+            ? ts.alias_stmt->generic_param_group.get()
+            : ts.type ? ts.type->generic_param_group.get() : NO_PARAMS.get();
     };
 
-    if (ts_proto != nullptr) {
-        auto params = asts::ast_clone(ts_proto->generic_param_group);
-        auto args = asts::ast_clone(type_list.front()->type_parts().back()->generic_arg_group);
-        func_utils::name_gn_args(*args, *params, *ts_proto->old_type, *sm, *meta);
+    // Get the next type in the search, and its symbol.
+    auto old_type = alias_stmt.old_type;
+    auto old_sym = tracking_scope->get_type_symbol(old_type->without_generics());
+    auto use_stmt_propagating_generics = static_cast<asts::GenericArgumentGroupAst*>(nullptr);
 
-        strip_params(*params, *args);
-        return {type_list.back(), std::move(params), scope_list.back(), sym_list.back()->scope};
+    // If this is a use statemetnto to a class, then grab its generics and return immediately.
+    // For example, use std::vector::Vec => type Vec[T, A: ... = ...] = std::vector::Vec[T=T, A=A]
+    if (from_use_stmt and old_sym->alias_stmt == nullptr) {
+        auto generic_params = old_sym->type->generic_param_group;
+        old_type = old_type->with_generics(asts::GenericArgumentGroupAst::from_params(*generic_params));
+        return {old_type, generic_params};
     }
 
-    if (cls_proto != nullptr) {
-        auto params = asts::ast_clone(cls_proto->generic_param_group);
-        auto args = asts::ast_clone(type_list.back()->type_parts().back()->generic_arg_group);
-        func_utils::name_gn_args(*args, *params, *cls_proto->name, *sm, *meta);
-
-        for (auto *p : params->get_all_params() | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
-            p->default_val = p->default_val->substitute_generics(args->get_all_args());
-        }
-        for (auto *p : params->get_type_params()) {
-            if (p->constraints) {
-                auto subbed_constraints = std::vector<std::shared_ptr<asts::TypeAst>>{};
-                for (auto const &c : p->constraints->constraints) {
-                    subbed_constraints.emplace_back(c->substitute_generics(args->get_all_args()));
-                }
-                p->constraints->constraints = std::move(subbed_constraints);
-            }
-        }
-        // todo: comp param's types need substituting?
-
-        // If the param has a default value and there is NOT an arg for it, use the default
-        // in the arg list, and remove from param list.
-        for (auto *p : params->get_all_params() | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
-            const auto has_arg = genex::any_of(
-                args->get_all_args() | genex::views::cast_dynamic<asts::GenericArgumentTypeKeywordAst*>() | genex::to<std::vector>(),
-                [&](auto const *arg) { return *arg->name == *p->name; });
-
-            if (not has_arg) {
-                args->args.emplace_back(std::make_unique<asts::GenericArgumentTypeKeywordAst>(p->name, nullptr, p->default_val));
-                params->params |= genex::actions::remove_if([&p](auto &&x) { return x.get() == p; });
-            }
-        }
-
-        strip_params(*params, *args);
-        auto base_args = asts::GenericArgumentGroupAst::from_params(*cls_proto->generic_param_group);
-        params = *asts::ast_clone(alias_stmt.generic_param_group) + *params;
-
-        const auto t = type_list.back()->with_generics(std::move(base_args))->substitute_generics(args->get_all_args());
-        return {t, std::move(params), scope_list.back(), sym_list.back()->scope};
+    // If the first alias is a use statement to an alias, we need to us the generic propagation feature. This keeps the
+    // generics stored for the next search (the actual namespace-extended type.
+    if (old_sym->alias_stmt and old_sym->alias_stmt->is_from_use_statement()) {
+        use_stmt_propagating_generics = old_type->type_parts().back()->generic_arg_group.get();
     }
-    return {type_list.back(), nullptr, scope_list.back(), sym_list.back()->scope};
+    else {
+        func_utils::name_gn_args(*old_type->type_parts().back()->generic_arg_group, *extract_params(*old_sym), *old_type, *sm, *meta, false);
+    }
+
+    // Start the generic tracking loop.
+    const auto generic_args = old_type->type_parts().back()->generic_arg_group.get();
+    tracking_scope = old_sym->scope_defined_in;
+
+    while (old_sym->alias_stmt != nullptr) {
+        old_type = old_sym->alias_stmt->old_type;
+        old_sym = tracking_scope->get_type_symbol(old_type->without_generics());
+
+        // If there are generics to propagate from a use statement, apply them now, then reset the propagation.
+        if (use_stmt_propagating_generics) {
+            old_type = old_type->with_generics(asts::ast_clone(use_stmt_propagating_generics));
+            use_stmt_propagating_generics = nullptr;
+        }
+
+        // If this alias is from a use statement, we need to propagate its generics for the next alias search.
+        if (old_sym->alias_stmt and old_sym->alias_stmt->is_from_use_statement()) {
+            use_stmt_propagating_generics = old_type->type_parts().back()->generic_arg_group.get();
+            continue;  // Will need to propagate generics from true alias.
+        }
+
+        // Name the generics for this alias, and shift into the next scope.
+        func_utils::name_gn_args(*old_type->type_parts().back()->generic_arg_group, *extract_params(*old_sym), *old_type, *sm, *meta, false);
+        old_type = old_type->substitute_generics(generic_args->get_all_args());
+        *generic_args += *old_type->type_parts().back()->generic_arg_group;
+        tracking_scope = old_sym->scope_defined_in;
+    }
+
+    return {old_type, nullptr};
 }
 
 

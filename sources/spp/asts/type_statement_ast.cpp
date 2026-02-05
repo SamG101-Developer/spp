@@ -30,8 +30,6 @@ spp::asts::TypeStatementAst::TypeStatementAst(
     decltype(old_type) old_type) :
     m_generated(false),
     m_from_use_statement(false),
-    m_temp_scope_1(nullptr),
-    m_temp_scope_2(nullptr),
     annotations(std::move(annotations)),
     tok_type(std::move(tok_type)),
     new_type(std::move(new_type)),
@@ -67,7 +65,6 @@ auto spp::asts::TypeStatementAst::clone() const
         ast_clone(old_type));
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
-    ast->m_temp_scope_1 = m_temp_scope_1;
     ast->visibility = visibility;
     for (auto const &a : ast->annotations) {
         a->set_ast_ctx(ast.get());
@@ -109,21 +106,25 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
     }
 
     // Check there are no conventions on the new type.
-    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(new_type, new_type, *sm, "use statement's new type", false);
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(
+        new_type, new_type, *sm, "use statement's new type", false);
 
     // Create the type symbol for this type, that will point to the old type.
     const auto type_sym = std::make_shared<analyse::scopes::TypeSymbol>(
         new_type, nullptr, nullptr, sm->current_scope, sm->current_scope->parent_module());
     sm->current_scope->add_type_symbol(type_sym);
     m_alias_sym = type_sym;
-    m_alias_sym->alias_stmt = std::unique_ptr<TypeStatementAst>(this); // This is BAD but "cleanup" handles mem error.
+    m_alias_sym->alias_stmt = this;
 
     // Create a new scope for the type statement.
-    auto scope_name = analyse::scopes::ScopeBlockName("<type-stmt#" + static_cast<std::string>(*new_type) + "#" + std::to_string(pos_start()) + ">");
+    auto scope_name = analyse::scopes::ScopeBlockName::from_parts(
+        "type-stmt", {new_type.get()}, pos_start());
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
+
     Ast::stage_2_gen_top_level_scopes(sm, meta);
     generic_param_group->stage_2_gen_top_level_scopes(sm, meta);
     sm->move_out_of_current_scope();
+
     m_generated = true;
 }
 
@@ -136,19 +137,9 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
 
-    std::cout << operator std::string() << std::endl;
-    if (operator std::string().starts_with("type BoolVec")) {
-        auto _ = 123;
-    }
-    if (operator std::string().starts_with("type Vec")) {
-        auto _ = 123;
-    }
-
     // Recursively discover the actual type being mapped to.
-    auto [actual_old_type, attach_generics, scope1, scope2] = analyse::utils::type_utils::recursive_alias_search(
-        *this, sm->current_scope->parent, old_type, sm, meta);
-    m_temp_scope_1 = scope1;
-    m_temp_scope_2 = scope2;
+    auto [actual_old_type, attach_generics] = analyse::utils::type_utils::recursive_alias_search(
+        *this, m_from_use_statement, sm->current_scope->parent, sm, meta);
 
     const auto final_sym = sm->current_scope->get_type_symbol(actual_old_type->without_generics());
     m_alias_sym->type = final_sym->type;
@@ -156,16 +147,10 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     m_alias_sym->is_copyable = [final_sym] { return final_sym->is_copyable(); };
     old_type = actual_old_type;
 
-    if (attach_generics != nullptr and not attach_generics->params.empty()) {
+    if (attach_generics != nullptr) {
         generic_param_group = attach_generics;
-        generic_param_group->stage_2_gen_top_level_scopes(sm, meta);
     }
-
-    if (operator std::string().starts_with("type Vec[ZZ, ")) {
-        auto _ = 123;
-    }
-
-
+    generic_param_group->stage_2_gen_top_level_scopes(sm, meta);
     sm->move_out_of_current_scope();
 }
 
@@ -178,42 +163,16 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
 
-    if (operator std::string().starts_with("type Vec[ZZ, ")) {
-        auto _ = 123;
-    }
-    if (operator std::string().starts_with("type BoolVec")) {
-        auto _ = 123;
-    }
-    if (this == reinterpret_cast<spp::asts::TypeStatementAst*>(0x21c8d80)) {
-        auto _ = 123;
-    }
-
     // Get the old type's symbol, without generics.
     const auto stripped_old_sym = sm->current_scope->get_type_symbol(old_type->without_generics(), false);
     if (not stripped_old_sym->is_generic) {
-        auto tm_1 = ScopeManager(sm->global_scope, stripped_old_sym->scope);
-        auto tm_2 = ScopeManager(sm->global_scope, m_temp_scope_1);
-
-        auto temp_scope = std::make_unique<analyse::scopes::Scope>(*m_temp_scope_2->parent); // todo: remove copy, store as raw pointer?
-        auto tm_3 = ScopeManager(sm->global_scope, temp_scope.get());
-        generic_param_group->stage_2_gen_top_level_scopes(&tm_3, meta);
-        generic_param_group->stage_4_qualify_types(&tm_3, meta);
-
-        // Qualify the generics, and the overall type.
-        // generic_param_group->stage_4_qualify_types(&tm_3, meta);
-        old_type->stage_4_qualify_types(&tm_1, meta); // Extends generics into fq from the old symbols scope.
-
-        meta->save();
-        meta->alias_qualifier_scope = sm->current_scope;
-        old_type->stage_4_qualify_types(&tm_2, meta); // Extends generics into fq from the old symbols scope.
-        meta->restore();
-
-        old_type->stage_7_analyse_semantics(sm, meta); // Analyse the fq old type in this scope (for generics)
+        generic_param_group->stage_4_qualify_types(sm, meta);
+        old_type->stage_4_qualify_types(sm, meta);
+        old_type->stage_7_analyse_semantics(sm, meta);
 
         const auto old_sym = sm->current_scope->get_type_symbol(old_type);
         m_alias_sym->type = old_sym->type;
         m_alias_sym->scope = old_sym->scope;
-        m_temp_scope_3 = std::move(temp_scope);
         old_sym->aliased_by_symbols.push_back(m_alias_sym);
     }
     sm->move_out_of_current_scope();
@@ -320,15 +279,21 @@ auto spp::asts::TypeStatementAst::mark_from_use_statement()
 }
 
 
+auto spp::asts::TypeStatementAst::is_from_use_statement() const
+    -> bool {
+    return m_from_use_statement;
+}
+
+
 auto spp::asts::TypeStatementAst::cleanup() const
     -> void {
     // Because the TypeStatementAst is passed as a unique pointer to the TypeSymbol, we need to clear it from the type
     // symbol without destroying it, otherwise there is a use after free because of a double destruction; the unique
     // pointer destroying the type statement, then the type statement destroying itself (via the destructor). Releasing
     // it here prevents the type symbol from destroying it.
-    if (m_alias_sym != nullptr) {
-        m_alias_sym->alias_stmt.release();
-    }
+    // if (m_alias_sym != nullptr) {
+    //     m_alias_sym->alias_stmt.release();
+    // }
 
     // Now this pointer has been released from the type symbol, we can safely destroy the type statement.
 }

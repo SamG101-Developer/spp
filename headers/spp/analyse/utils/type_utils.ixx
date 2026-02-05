@@ -281,11 +281,11 @@ namespace spp::analyse::utils::type_utils {
 
     SPP_EXP_FUN auto recursive_alias_search(
         asts::TypeStatementAst const &alias_stmt,
+        bool from_use_stmt,
         scopes::Scope *tracking_scope,
-        std::shared_ptr<asts::TypeAst> actual_old_type,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
-        -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>, scopes::Scope*, scopes::Scope*>;
+        -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>>;
 
     SPP_EXP_FUN auto get_field_index_in_type(
         asts::TypeAst const &type_sym,

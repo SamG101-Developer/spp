@@ -68,6 +68,14 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
         ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, std::shared_ptr<const TypeAst>> &&map)
         -> std::unique_ptr<GenericArgumentGroupAst>;
 
+    auto operator+=(
+        const GenericArgumentGroupAst &other)
+        -> GenericArgumentGroupAst&;
+
+    auto operator+(
+        const GenericArgumentGroupAst &other) const
+        -> std::unique_ptr<GenericArgumentGroupAst>;
+
     auto operator==(GenericArgumentGroupAst const &other) const -> bool;
 
     auto type_at(const char *key) const -> GenericArgumentTypeAst const*;
