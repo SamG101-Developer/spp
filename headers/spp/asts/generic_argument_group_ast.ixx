@@ -84,15 +84,15 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
 
     auto merge_generics(decltype(args) &&other_args) -> void;
 
-    auto get_type_args() const -> std::vector<GenericArgumentTypeAst*>;
+    SPP_ATTR_NODISCARD auto get_type_args() const -> std::vector<GenericArgumentTypeAst*>;
 
-    auto get_comp_args() const -> std::vector<GenericArgumentCompAst*>;
+    SPP_ATTR_NODISCARD auto get_comp_args() const -> std::vector<GenericArgumentCompAst*>;
 
-    auto get_keyword_args() const -> std::vector<GenericArgumentAst*>;
+    SPP_ATTR_NODISCARD auto get_keyword_args() const -> std::vector<GenericArgumentAst*>;
 
-    auto get_positional_args() const -> std::vector<GenericArgumentAst*>;
+    SPP_ATTR_NODISCARD auto get_positional_args() const -> std::vector<GenericArgumentAst*>;
 
-    auto get_all_args() const -> std::vector<GenericArgumentAst*>;
+    SPP_ATTR_NODISCARD auto get_all_args() const -> std::vector<GenericArgumentAst*>;
 
     auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

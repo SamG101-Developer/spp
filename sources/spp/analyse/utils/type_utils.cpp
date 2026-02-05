@@ -100,7 +100,6 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
 
     if (not convention_eq(lhs_type, rhs_type)) { return false; }
 
-
     // If the stripped types are not equal, return false (comparing by address is fine: ClassPrototypeAst* nodes).
     if (stripped_lhs_sym->type != stripped_rhs_sym->type) { return false; }
     auto &lhs_generics = lhs_type.type_parts().back()->generic_arg_group->args;

@@ -60,7 +60,6 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     ExpressionAst *unary_expression_rhs;
     bool skip_type_analysis_generic_checks;
     analyse::scopes::Scope *type_analysis_type_scope;
-    analyse::scopes::Scope *alias_qualifier_scope;
     std::shared_ptr<TypeAst> ignore_cmp_generic;
     bool allow_move_deref;
     llvm::BasicBlock *end_bb;
@@ -88,5 +87,5 @@ public:
 
     auto restore(bool heavy = false) -> void;
 
-    auto depth() const -> std::size_t;
+    SPP_ATTR_NODISCARD auto depth() const -> std::size_t;
 };
