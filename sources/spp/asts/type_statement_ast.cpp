@@ -149,8 +149,8 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
 
     if (attach_generics != nullptr) {
         generic_param_group = attach_generics;
+        generic_param_group->stage_2_gen_top_level_scopes(sm, meta);
     }
-    generic_param_group->stage_2_gen_top_level_scopes(sm, meta);
     sm->move_out_of_current_scope();
 }
 
