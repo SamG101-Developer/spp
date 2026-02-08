@@ -206,10 +206,6 @@ auto spp::asts::TypeIdentifierAst::without_generics() const
 auto spp::asts::TypeIdentifierAst::substitute_generics(
     std::vector<GenericArgumentAst*> const &args) const
     -> std::shared_ptr<TypeAst> {
-    if (this == reinterpret_cast<TypeIdentifierAst*>(0x460dd80)) {
-        auto _ = 123;
-    }
-
     auto name_clone = ast_clone(this);
     if (args.empty() or generic_arg_group == nullptr) { return name_clone; }
 

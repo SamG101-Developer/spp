@@ -196,8 +196,5 @@ auto spp::asts::IntegerLiteralAst::infer_type(
     }
 
     const auto sym = sm->current_scope->get_type_symbol(spp_type);
-    if (sym == nullptr) {
-        auto _ = 123;
-    }
     return sym->fq_name();
 }
