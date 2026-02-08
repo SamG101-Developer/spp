@@ -86,7 +86,7 @@ auto spp::asts::SupPrototypeExtensionAst::clone() const
 spp::asts::SupPrototypeExtensionAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_sup).append(" ");
-    SPP_STRING_APPEND(generic_param_group).append(" ");
+    SPP_STRING_APPEND(generic_param_group).append(generic_param_group->params.empty() ? "" : " ");
     SPP_STRING_APPEND(name).append(" ");
     SPP_STRING_APPEND(tok_ext).append(" ");
     SPP_STRING_APPEND(super_class).append(" ");

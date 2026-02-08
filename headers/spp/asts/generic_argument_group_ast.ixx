@@ -11,8 +11,10 @@ namespace spp::asts {
     SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct GenericArgumentGroupAst;
     SPP_EXP_CLS struct GenericArgumentAst;
-    SPP_EXP_CLS struct GenericArgumentTypeAst;
     SPP_EXP_CLS struct GenericArgumentCompAst;
+    SPP_EXP_CLS struct GenericArgumentCompKeywordAst;
+    SPP_EXP_CLS struct GenericArgumentTypeAst;
+    SPP_EXP_CLS struct GenericArgumentTypeKeywordAst;
     SPP_EXP_CLS struct GenericParameterGroupAst;
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeIdentifierAst;
@@ -91,6 +93,10 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
     SPP_ATTR_NODISCARD auto get_keyword_args() const -> std::vector<GenericArgumentAst*>;
 
     SPP_ATTR_NODISCARD auto get_positional_args() const -> std::vector<GenericArgumentAst*>;
+
+    SPP_ATTR_NODISCARD auto get_type_keyword_args() const -> std::vector<GenericArgumentTypeKeywordAst*>;
+
+    SPP_ATTR_NODISCARD auto get_comp_keyword_args() const -> std::vector<GenericArgumentCompKeywordAst*>;
 
     SPP_ATTR_NODISCARD auto get_all_args() const -> std::vector<GenericArgumentAst*>;
 

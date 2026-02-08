@@ -30,6 +30,7 @@ spp::asts::TypeStatementAst::TypeStatementAst(
     decltype(old_type) old_type) :
     m_generated(false),
     m_from_use_statement(false),
+    m_mapped_old_type(nullptr),
     annotations(std::move(annotations)),
     tok_type(std::move(tok_type)),
     new_type(std::move(new_type)),
@@ -65,6 +66,9 @@ auto spp::asts::TypeStatementAst::clone() const
         ast_clone(old_type));
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
+    ast->m_tracking_scope = m_tracking_scope;
+    ast->m_from_use_statement = m_from_use_statement;
+    ast->m_mapped_old_type = m_mapped_old_type;
     ast->visibility = visibility;
     for (auto const &a : ast->annotations) {
         a->set_ast_ctx(ast.get());
@@ -138,14 +142,15 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     SPP_ASSERT(sm->current_scope == m_scope);
 
     // Recursively discover the actual type being mapped to.
-    auto [actual_old_type, attach_generics] = analyse::utils::type_utils::recursive_alias_search(
+    auto [mapped_old_type, attach_generics, tracking_scope] = analyse::utils::type_utils::recursive_alias_search(
         *this, m_from_use_statement, sm->current_scope->parent, sm, meta);
 
-    const auto final_sym = sm->current_scope->get_type_symbol(actual_old_type->without_generics());
+    const auto final_sym = sm->current_scope->get_type_symbol(mapped_old_type->without_generics());
     m_alias_sym->type = final_sym->type;
     m_alias_sym->scope = final_sym->scope;
     m_alias_sym->is_copyable = [final_sym] { return final_sym->is_copyable(); };
-    old_type = actual_old_type;
+    m_tracking_scope = tracking_scope;
+    m_mapped_old_type = mapped_old_type;
 
     if (attach_generics != nullptr and not attach_generics->params.empty()) {
         generic_param_group = attach_generics;
@@ -162,12 +167,14 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
     // Skip the class scope, and enter the type statement scope.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
+    old_type = m_mapped_old_type;
 
     // Get the old type's symbol, without generics.
     const auto stripped_old_sym = sm->current_scope->get_type_symbol(old_type->without_generics(), false);
     if (not stripped_old_sym->is_generic) {
-        generic_param_group->stage_4_qualify_types(sm, meta);
-        old_type->stage_4_qualify_types(sm, meta);
+        auto tm = analyse::scopes::ScopeManager(sm->global_scope, m_tracking_scope ? m_tracking_scope : sm->current_scope);
+        generic_param_group->stage_4_qualify_types(&tm, meta);
+        old_type->stage_4_qualify_types(&tm, meta);
         old_type->stage_7_analyse_semantics(sm, meta);
 
         const auto old_sym = sm->current_scope->get_type_symbol(old_type);

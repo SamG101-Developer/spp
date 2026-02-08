@@ -285,7 +285,7 @@ namespace spp::analyse::utils::type_utils {
         scopes::Scope *tracking_scope,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
-        -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>>;
+        -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>, scopes::Scope*>;
 
     SPP_EXP_FUN auto get_field_index_in_type(
         asts::TypeAst const &type_sym,

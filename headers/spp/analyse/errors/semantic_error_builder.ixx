@@ -12,13 +12,17 @@ import genex;
 import std;
 
 namespace spp::analyse::errors {
-    template <typename T> requires std::derived_from<T, SemanticError>
+    SPP_EXP_CLS template <typename T> requires std::derived_from<T, SemanticError>
     struct SemanticErrorBuilder;
+}
+
+namespace spp::asts {
+    SPP_EXP_CLS struct Ast;
 }
 
 namespace spp {
     SPP_EXP_FUN template <typename... Args>
-    auto make_err_args(Args&&... args) -> auto {
+    auto make_err_args(Args &&... args) -> auto {
         return [&] { return std::make_tuple(std::forward<Args>(args)...); };
     }
 
@@ -40,13 +44,13 @@ namespace spp {
 
     SPP_EXP_FUN template <typename E, typename A>
     requires std::derived_from<E, analyse::errors::SemanticError> // and std::constructible_from<analyse::errors::SemanticErrorBuilder<E>, Args...>
-    auto raise_unless(const bool condition, std::vector<analyse::scopes::Scope const*> const &scopes, A&& arg_binder) -> void {
+    auto raise_unless(const bool condition, std::vector<analyse::scopes::Scope const*> const &scopes, A &&arg_binder) -> void {
         if (not condition) { raise<E>(std::move(scopes), std::forward<A>(arg_binder)); }
     }
 }
 
 
-template <typename T> requires std::derived_from<T, spp::analyse::errors::SemanticError>
+SPP_EXP_CLS template <typename T> requires std::derived_from<T, spp::analyse::errors::SemanticError>
 struct spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::AbstractErrorBuilder<T> {
     SemanticErrorBuilder() = default;
     ~SemanticErrorBuilder() override = default;

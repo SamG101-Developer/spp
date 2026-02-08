@@ -155,7 +155,7 @@ auto spp::analyse::scopes::TypeSymbol::fq_name() const
     -> std::shared_ptr<asts::TypeAst> {
     // For aliases, return the fully qualified name of the aliased type.
     if (alias_stmt != nullptr) {
-        return asts::ast_clone(alias_stmt->old_type);
+        return asts::ast_clone(alias_stmt->m_mapped_old_type);
     }
 
     // If the type is generic, or the name starts with a '$', return the name as-is.

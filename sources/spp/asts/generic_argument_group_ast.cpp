@@ -214,11 +214,11 @@ auto spp::asts::GenericArgumentGroupAst::merge_generics(
     for (auto &&other_arg : other_args) {
         if (const auto kw_comp = other_arg->to<GenericArgumentCompKeywordAst>(); kw_comp != nullptr) {
             if (comp_at(kw_comp->name->to<TypeIdentifierAst>()->name.c_str()) != nullptr) { continue; }
-            args.emplace_back(std::move(other_arg));
+            args.emplace_back(ast_clone(other_arg));
         }
         else if (const auto kw_type = other_arg->to<GenericArgumentTypeKeywordAst>(); kw_type != nullptr) {
             if (type_at(kw_type->name->to<TypeIdentifierAst>()->name.c_str()) != nullptr) { continue; }
-            args.emplace_back(std::move(other_arg));
+            args.emplace_back(ast_clone(other_arg));
         }
     }
 }
@@ -276,6 +276,32 @@ auto spp::asts::GenericArgumentGroupAst::get_positional_args() const
         }
         else if (const auto pos_c_arg = arg->to<GenericArgumentCompPositionalAst>()) {
             out.emplace_back(pos_c_arg);
+        }
+    }
+    return out;
+}
+
+
+auto spp::asts::GenericArgumentGroupAst::get_type_keyword_args() const
+    -> std::vector<GenericArgumentTypeKeywordAst*> {
+    // Filter by casting.
+    auto out = std::vector<GenericArgumentTypeKeywordAst*>();
+    for (auto const &arg : args) {
+        if (const auto kw_t_arg = arg->to<GenericArgumentTypeKeywordAst>()) {
+            out.emplace_back(kw_t_arg);
+        }
+    }
+    return out;
+}
+
+
+auto spp::asts::GenericArgumentGroupAst::get_comp_keyword_args() const
+    -> std::vector<GenericArgumentCompKeywordAst*> {
+    // Filter by casting.
+    auto out = std::vector<GenericArgumentCompKeywordAst*>();
+    for (auto const &arg : args) {
+        if (const auto kw_c_arg = arg->to<GenericArgumentCompKeywordAst>()) {
+            out.emplace_back(kw_c_arg);
         }
     }
     return out;

@@ -41,6 +41,11 @@ private:
     std::shared_ptr<analyse::scopes::TypeSymbol> m_alias_sym;
 
 public:
+    analyse::scopes::Scope *m_tracking_scope;
+
+    std::shared_ptr<TypeAst> m_mapped_old_type;
+
+public:
     /**
      * The list of annotations that are applied to this type statement. Typically, access modifiers in this context.
      */
@@ -116,7 +121,7 @@ public:
 
     auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm , CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto mark_from_use_statement() -> void;
 

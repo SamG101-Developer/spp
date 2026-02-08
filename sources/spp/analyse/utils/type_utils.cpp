@@ -661,13 +661,13 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     new_cls_sym->is_copyable = [&old_cls_sym] { return old_cls_sym.is_copyable(); };
     auto new_alias_stmt = asts::ast_clone(old_cls_sym.alias_stmt);
     if (new_alias_stmt) {
-        new_alias_stmt->old_type = new_alias_stmt->old_type->substitute_generics(type_part.generic_arg_group->get_all_args());
+        new_alias_stmt->old_type = new_alias_stmt->m_mapped_old_type->substitute_generics(type_part.generic_arg_group->get_all_args());
         new_alias_stmt->old_type->stage_7_analyse_semantics(sm, meta);
 
         const auto target_scope = new_alias_stmt->get_ast_scope()->parent;
         target_scope->add_type_symbol(new_cls_sym);
-        // new_alias_stmt->m_temp_scope_1->add_type_symbol(new_cls_sym);
-        // new_alias_stmt->m_temp_scope_1->children.emplace_back(std::move(new_cls_scope));
+        new_alias_stmt->m_tracking_scope->add_type_symbol(new_cls_sym); // ?
+        new_alias_stmt->m_tracking_scope->children.emplace_back(std::move(new_cls_scope)); // ?
         new_cls_sym->alias_stmt = std::move(new_alias_stmt);
     }
 
@@ -1030,14 +1030,28 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
     scopes::Scope *tracking_scope,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
-    -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>> {
-
+    -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>, scopes::Scope*> {
     // How to extract generic parameters from a type symbol: alias, then type, otherwise none (generic).
     const auto NO_PARAMS = asts::GenericParameterGroupAst::new_empty();
-    auto extract_params = [&NO_PARAMS](scopes::TypeSymbol const &ts) {
+    const auto extract_params = [&NO_PARAMS](scopes::TypeSymbol const &ts) {
         return ts.alias_stmt
-            ? ts.alias_stmt->generic_param_group.get()
-            : ts.type ? ts.type->generic_param_group.get() : NO_PARAMS.get();
+            ? ts.alias_stmt->generic_param_group.get() : ts.type
+            ? ts.type->generic_param_group.get() : NO_PARAMS.get();
+    };
+
+    const auto filter_params = [](asts::GenericParameterGroupAst const &pg, asts::GenericArgumentGroupAst const &ag) {
+        auto out = asts::GenericParameterGroupAst::new_empty();
+        for (auto const &param : pg.get_type_params()) {
+            if (not genex::any_of(ag.get_type_keyword_args(), [&](auto const *arg) { return *arg->name == *param->name; })) {
+                out->params.emplace_back(param);
+            }
+        }
+        for (auto const &param : pg.get_comp_params()) {
+            if (not genex::any_of(ag.get_comp_keyword_args(), [&](auto const *arg) { return *arg->name == *param->name; })) {
+                out->params.emplace_back(param);
+            }
+        }
+        return std::shared_ptr(std::move(out));
     };
 
     // Get the next type in the search, and its symbol.
@@ -1050,26 +1064,14 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
     if (from_use_stmt and old_sym->alias_stmt == nullptr) {
         auto generic_params = old_sym->type->generic_param_group;
         old_type = old_type->with_generics(asts::GenericArgumentGroupAst::from_params(*generic_params));
-        return {old_type, generic_params};
+        return {old_type, generic_params, old_sym->scope};
     }
 
-    // If the first alias is a use statement to an alias, we need to us the generic propagation feature. This keeps the
-    // generics stored for the next search (the actual namespace-extended type.
-    if (old_sym->alias_stmt and old_sym->alias_stmt->is_from_use_statement()) {
-        use_stmt_propagating_generics = old_type->type_parts().back()->generic_arg_group.get();
-    }
-    else {
-        func_utils::name_gn_args(*old_type->type_parts().back()->generic_arg_group, *extract_params(*old_sym), *old_type, *sm, *meta, false);
-    }
-
-    // Start the generic tracking loop.
-    const auto generic_args = old_type->type_parts().back()->generic_arg_group.get();
+    auto generic_args = asts::ast_clone(old_type->type_parts().back()->generic_arg_group.get());
+    auto final_generic_params = std::shared_ptr(asts::GenericParameterGroupAst::new_empty());
     tracking_scope = old_sym->scope_defined_in;
 
-    while (old_sym->alias_stmt != nullptr) {
-        old_type = old_sym->alias_stmt->old_type;
-        old_sym = tracking_scope->get_type_symbol(old_type->without_generics());
-
+    while (true) {
         // If there are generics to propagate from a use statement, apply them now, then reset the propagation.
         if (use_stmt_propagating_generics) {
             old_type = old_type->with_generics(asts::ast_clone(use_stmt_propagating_generics));
@@ -1079,17 +1081,39 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
         // If this alias is from a use statement, we need to propagate its generics for the next alias search.
         if (old_sym->alias_stmt and old_sym->alias_stmt->is_from_use_statement()) {
             use_stmt_propagating_generics = old_type->type_parts().back()->generic_arg_group.get();
-            continue;  // Will need to propagate generics from true alias.
+            tracking_scope = old_sym->scope_defined_in;
         }
 
         // Name the generics for this alias, and shift into the next scope.
-        func_utils::name_gn_args(*old_type->type_parts().back()->generic_arg_group, *extract_params(*old_sym), *old_type, *sm, *meta, false);
-        old_type = old_type->substitute_generics(generic_args->get_all_args());
-        *generic_args += *old_type->type_parts().back()->generic_arg_group;
-        tracking_scope = old_sym->scope_defined_in;
+        else {
+            func_utils::name_gn_args(*old_type->type_parts().back()->generic_arg_group, *extract_params(*old_sym), *old_type, *sm, *meta, false);
+            if (old_sym->alias_stmt) {
+                final_generic_params = filter_params(*old_sym->alias_stmt->generic_param_group, *old_type->type_parts().back()->generic_arg_group);
+            }
+            old_type = old_type->substitute_generics(generic_args->get_all_args());
+            *generic_args += *old_type->type_parts().back()->generic_arg_group;
+            tracking_scope = old_sym->scope_defined_in;
+        }
+
+        if (old_sym->alias_stmt == nullptr) { break; }
+
+        old_type = old_sym->alias_stmt->old_type;
+        old_sym = tracking_scope->get_type_symbol(old_type->without_generics());
+        if (old_sym->alias_stmt == nullptr and (use_stmt_propagating_generics == nullptr or use_stmt_propagating_generics->args.empty())) { break; }
     }
 
-    return {old_type, nullptr};
+    func_utils::name_gn_args(*old_type->type_parts().back()->generic_arg_group, *extract_params(*old_sym), *old_type, *sm, *meta, false);
+
+    // old_type = old_sym->fq_name();
+    // if (use_stmt_propagating_generics) {
+    //     old_type = old_type->with_generics(asts::ast_clone(use_stmt_propagating_generics));
+    //     func_utils::name_gn_args(*old_type->type_parts().back()->generic_arg_group, *extract_params(*old_sym), *old_type, *sm, *meta, false);
+    // }
+
+    old_type = old_type->substitute_generics(generic_args->get_all_args());
+    // old_sym = tracking_scope->get_type_symbol(old_type->without_generics());
+    // tracking_scope = old_sym->scope_defined_in;
+    return {old_type, final_generic_params, tracking_scope};
 }
 
 
