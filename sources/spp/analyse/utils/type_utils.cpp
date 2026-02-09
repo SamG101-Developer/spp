@@ -661,7 +661,8 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     new_cls_sym->is_copyable = [&old_cls_sym] { return old_cls_sym.is_copyable(); };
     auto new_alias_stmt = asts::ast_clone(old_cls_sym.alias_stmt);
     if (new_alias_stmt) {
-        new_alias_stmt->old_type = new_alias_stmt->m_mapped_old_type->substitute_generics(type_part.generic_arg_group->get_all_args());
+        new_alias_stmt->m_mapped_old_type = new_alias_stmt->m_mapped_old_type->substitute_generics(type_part.generic_arg_group->get_all_args());
+        new_alias_stmt->old_type = new_alias_stmt->m_mapped_old_type;
         new_alias_stmt->old_type->stage_7_analyse_semantics(sm, meta);
 
         const auto target_scope = new_alias_stmt->get_ast_scope()->parent;

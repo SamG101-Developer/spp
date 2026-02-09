@@ -182,6 +182,7 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
         m_alias_sym->scope = old_sym->scope;
         old_sym->aliased_by_symbols.push_back(m_alias_sym);
     }
+    m_mapped_old_type = old_type;
     sm->move_out_of_current_scope();
 }
 
