@@ -30,7 +30,7 @@ spp::asts::TypeStatementAst::TypeStatementAst(
     decltype(old_type) old_type) :
     m_generated(false),
     m_from_use_statement(false),
-    m_mapped_old_type(nullptr),
+    m_mapped_old_type(old_type),
     annotations(std::move(annotations)),
     tok_type(std::move(tok_type)),
     new_type(std::move(new_type)),
