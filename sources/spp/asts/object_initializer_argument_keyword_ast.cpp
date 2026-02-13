@@ -5,6 +5,7 @@ module spp.asts.object_initializer_argument_keyword_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 
 
 spp::asts::ObjectInitializerArgumentKeywordAst::ObjectInitializerArgumentKeywordAst(
@@ -13,6 +14,7 @@ spp::asts::ObjectInitializerArgumentKeywordAst::ObjectInitializerArgumentKeyword
     decltype(val) &&val) :
     ObjectInitializerArgumentAst(std::move(name), std::move(val)),
     tok_assign(std::move(tok_assign)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
 }
 
 
