@@ -3,6 +3,7 @@ module;
 
 module spp.asts.generic_parameter_type_ast;
 import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.convention_ast;
@@ -27,10 +28,19 @@ auto spp::asts::GenericParameterTypeAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
     CompilerMetaData *)
     -> void {
+    // Create a dummy scope for the generic type.
+    auto dummy_scope_name = analyse::scopes::ScopeBlockName::from_parts(
+        "generic-parameter-type", {name->type_parts().back().get()}, pos_start());
+    auto dummy_scope = std::make_unique<analyse::scopes::Scope>(dummy_scope_name, sm->current_scope);
+
     // Create the type symbol for the generic parameter.
-    auto sym = std::make_unique<analyse::scopes::TypeSymbol>(
-        ast_clone(name->type_parts().back().get()), nullptr, nullptr, sm->current_scope, nullptr, true);
-    sm->current_scope->add_type_symbol(std::move(sym));
+    const auto sym = std::make_shared<analyse::scopes::TypeSymbol>(
+        ast_clone(name->type_parts().back().get()), nullptr, dummy_scope.get(), sm->current_scope, nullptr, true);
+    sm->current_scope->add_type_symbol(sym);
+    dummy_scope->ty_sym = sym;
+
+    m_dummy_scopes.emplace_back(dummy_scope.get());
+    ScopeManager::temp_scopes.emplace_back(std::move(dummy_scope));
 }
 
 
@@ -42,6 +52,15 @@ auto spp::asts::GenericParameterTypeAst::stage_4_qualify_types(
     name->stage_4_qualify_types(sm, nullptr);
     if (constraints != nullptr) {
         constraints->stage_7_analyse_semantics(sm, meta);
+
+        // Attach the scopes of the cosntraint types as sup-scopes to the generic scope.
+        for (auto const &constraint : constraints->constraints) {
+            auto constraint_scope = sm->current_scope->get_type_symbol(constraint)->scope;
+
+            for (auto const &dummy_scope : m_dummy_scopes) {
+                dummy_scope->direct_sup_scopes.emplace_back(constraint_scope);
+            }
+        }
     }
 }
 

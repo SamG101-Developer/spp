@@ -7,12 +7,20 @@ import spp.asts.generic_parameter_type_inline_constraints_ast;
 import spp.asts.utils.orderable;
 import std;
 
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class Scope;
+}
+
 namespace spp::asts {
     SPP_EXP_CLS struct GenericParameterTypeAst;
 }
 
 
 SPP_EXP_CLS struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
+private:
+    std::vector<analyse::scopes::Scope *> m_dummy_scopes;
+
+public:
     /**
      * The optional inline constraints for the generic type parameter. This is used to specify constraints on the type
      * parameter, such as @c I32 or @c F64 . An example is @code fun func[T: Copy]()@endcode, where @c T is the
