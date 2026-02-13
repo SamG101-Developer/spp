@@ -792,6 +792,8 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
             const auto old_type_sub_sym = new_sup_scope_ptr->get_type_symbol(old_type_sub);
 
             scoped_sym->alias_stmt->old_type = std::move(old_type_sub);
+            scoped_sym->alias_stmt->m_mapped_old_type = scoped_sym->alias_stmt->old_type;
+
             if (old_type_sub_sym != nullptr) {
                 old_type_sub_sym->aliased_by_symbols.push_back(scoped_sym);
                 scoped_sym->type = old_type_sub_sym->type;
@@ -952,7 +954,9 @@ auto spp::analyse::utils::type_utils::enforce_generic_constraints(
     // Determine the concrete symbol, and if non-generic, add its scope.
     const auto concrete_sym = concrete_scope.get_type_symbol(concrete_type.shared_from_this());
     auto sup_info = std::vector<std::pair<std::shared_ptr<asts::TypeAst>, scopes::Scope const*>>{};
-    sup_info.emplace_back(concrete_sym->fq_name(), concrete_sym->scope);
+    if (not concrete_sym->is_generic) {
+        sup_info.emplace_back(concrete_sym->fq_name(), concrete_sym->scope);
+    }
 
     // Get all the sup scopes of the concrete type (none for generic).
     const auto sup_scopes = concrete_sym->scope ? concrete_sym->scope->sup_scopes() : std::vector<scopes::Scope*>{};
