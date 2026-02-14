@@ -108,9 +108,9 @@ auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
         | genex::views::transform([base_cls_sym](auto &&x) { return std::make_pair(x->name, base_cls_sym->scope->get_type_symbol(x->type)->fq_name()); })
         | genex::to<std::vector>();
 
-    // Analyse the type and object argument group.
-    auto tm = ScopeManager(sm->global_scope, base_cls_sym->scope);
-    base_cls_sym->type->impl->stage_7_analyse_semantics(&tm, meta);
+    // Analyse the type and object argument group. TODO: might still need this
+    // auto tm = ScopeManager(sm->global_scope, base_cls_sym->scope);
+    // base_cls_sym->type->impl->stage_7_analyse_semantics(&tm, meta);
 
     meta->save();
     meta->infer_source = {generic_infer_source.begin(), generic_infer_source.end()};

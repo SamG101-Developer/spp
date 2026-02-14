@@ -807,7 +807,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args(
 auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
     asts::GenericArgumentGroupAst &a_group,
     asts::GenericParameterGroupAst const &p_group,
-    std::vector<asts::GenericArgumentCompKeywordAst*> const &explicit_args,
+    std::vector<asts::GenericArgumentCompKeywordAst*> explicit_args,
     InferenceSourceMap const &infer_source,
     InferenceTargetMap const &infer_target,
     std::shared_ptr<asts::Ast> const &owner,
@@ -950,7 +950,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
 auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
     asts::GenericArgumentGroupAst &a_group,
     asts::GenericParameterGroupAst const &p_group,
-    std::vector<asts::GenericArgumentTypeKeywordAst*> const &explicit_args,
+    std::vector<asts::GenericArgumentTypeKeywordAst*> explicit_args,
     InferenceSourceMap const &infer_source,
     InferenceTargetMap const &infer_target,
     std::shared_ptr<asts::Ast> const &owner,
@@ -969,13 +969,6 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
         | genex::views::transform([](auto &&x) { return std::dynamic_pointer_cast<asts::TypeIdentifierAst>(x->name); })
         | genex::to<std::vector>();
     auto inferred_args = InferenceResultTypeMap();
-
-    // Preload the explicit generic arguments into the inference map, as the consistency of these arguments needs
-    // checking too.
-    for (auto *arg : explicit_args) {
-        auto cast_name = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(arg->name);
-        inferred_args[cast_name].emplace_back(arg->val);
-    }
 
     // Infer the generic arguments from the source/target maps.
     for (auto const &p_name : p_names) {
@@ -996,6 +989,17 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
             // Handle the match if it exists.
             if (inferred_arg != nullptr) {
                 inferred_args[p_name].emplace_back(inferred_arg);
+
+                // If we are inferring, remove the argument from the explicit args list.
+                // Todo: Same needed for "cmp" generic args.
+                if (genex::contains(ea_names, *p_name, genex::meta::deref)) {
+                    auto it = genex::find_if(explicit_args, [&](auto *arg) {
+                        return *std::dynamic_pointer_cast<asts::TypeIdentifierAst>(arg->name) == *p_name;
+                    });
+                    if (it != explicit_args.end()) {
+                        explicit_args.erase(it);
+                    }
+                }
             }
 
             // Handle the variadic parameter if it exists.
@@ -1006,6 +1010,13 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
                 inferred_args[p_name].emplace_back(temp2);
             }
         }
+    }
+
+    // Load the explicit generic arguments into the inference map, as the consistency of these arguments needs checking
+    // too.
+    for (auto *arg : explicit_args) {
+        auto cast_name = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(arg->name);
+        inferred_args[cast_name].emplace_back(arg->val);
     }
 
     // Fully qualify and type arguments (replaced within the inference map).

@@ -149,18 +149,23 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     }
 
     for (auto &&[fn_scope, fn_proto, ctx_generic_arg_group, fwd_type] : all_overloads) {
+        // The lhs args are the generics of the type directly to the left of this operator. This allows
+        // Type[T]().method() to use T on the lhs type.
         auto lhs_arg_group = GenericArgumentGroupAst::new_empty();
         if (fwd_type == nullptr) {
             if (auto p = meta->postfix_expression_lhs->to<PostfixExpressionAst>(); p != nullptr) {
                 if (auto pp = p->lhs->to<TypeAst>(); pp != nullptr) {
-                    auto args = std::move(std::shared_ptr(ast_clone(pp))->type_parts().back()->generic_arg_group->args);
-                    lhs_arg_group->merge_generics(std::move(args));
+                    auto args = std::move(std::shared_ptr(ast_clone(pp))->type_parts().back()->generic_arg_group);
+                    lhs_arg_group->merge_generics(std::move(args->args));
                 }
             }
         }
         else {
             lhs_arg_group->merge_generics(std::move(fwd_type->type_parts().back()->generic_arg_group->args));
         }
+
+        // The contextual generic arguments are from the sup block. For example, "sup [T] Type[T]" needs T to be
+        // available; for "Type[Str]", we need "T=Str".
         lhs_arg_group->merge_generics(std::move(ctx_generic_arg_group->args));
         auto ctx_generic_args = lhs_arg_group->get_all_args();
 
@@ -595,7 +600,6 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_9_comptime_resol
     }
 
     // Resolve the function with the arguments.
-    // Todo: Remove the "const_cast" here.
     meta->save();
     meta->cmp_args = std::move(arg_map);
     auto tm = ScopeManager(sm->global_scope, fn_proto->get_ast_scope()); // const_cast<analyse::scopes::Scope*>(std::get<0>(*m_overload_info)));
