@@ -61,5 +61,10 @@ auto spp::asts::ast_body(Ast *ast) -> std::vector<Ast*> {
             | genex::to<std::vector>();
     }
 
+    // Special case for the top level scope for generic types (sup scopes are constraints).
+    if (ast == nullptr) {
+        return {};
+    }
+
     throw std::runtime_error("ast_body: Unsupported AST type");
 }
