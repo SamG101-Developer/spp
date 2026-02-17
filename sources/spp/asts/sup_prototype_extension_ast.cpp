@@ -326,7 +326,8 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
         if (const auto ext_member = member->to<SupPrototypeExtensionAst>()) {
             // Get the method and identify the base method it is overriding.
             const auto this_method = ext_member->impl->final_member()->to<FunctionPrototypeAst>();
-            const auto base_method = analyse::utils::func_utils::check_for_conflicting_override(*sm->current_scope, sup_sym->scope, *this_method, *sm, meta);
+            const auto base_method = analyse::utils::func_utils::check_for_conflicting_override(
+                *member->get_ast_scope(), sup_sym->scope, *this_method, *sm, meta);
 
             // Check the base method exists.
             raise_if<analyse::errors::SppSuperimpositionExtensionMethodInvalidError>(

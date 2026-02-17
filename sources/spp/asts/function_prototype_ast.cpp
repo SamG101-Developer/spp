@@ -214,9 +214,9 @@ auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
 
 
 auto spp::asts::FunctionPrototypeAst::print_signature(
-    std::string const &owner) const
+    std::string const &) const
     -> std::string {
-    SPP_STRING_START.append(owner);
+    SPP_STRING_START.append(name->val);
     SPP_STRING_APPEND(generic_param_group);
     SPP_STRING_APPEND(param_group).append(" ");
     SPP_STRING_APPEND(tok_arrow).append(" ");

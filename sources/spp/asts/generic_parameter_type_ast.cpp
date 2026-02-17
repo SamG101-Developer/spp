@@ -6,6 +6,8 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.asts.annotation_ast;
+import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
 import spp.asts.generic_parameter_type_inline_constraints_ast;
 import spp.asts.type_ast;
@@ -31,7 +33,9 @@ auto spp::asts::GenericParameterTypeAst::stage_2_gen_top_level_scopes(
     // Create a dummy scope for the generic type.
     auto dummy_scope_name = analyse::scopes::ScopeBlockName::from_parts(
         "generic-parameter-type", {name->type_parts().back().get()}, pos_start());
-    auto dummy_scope = std::make_unique<analyse::scopes::Scope>(dummy_scope_name, sm->current_scope);
+    m_dummy_ast = std::make_unique<ClassPrototypeAst>(SPP_NO_ANNOTATIONS, nullptr, nullptr, nullptr, nullptr);
+    auto dummy_scope = std::make_unique<analyse::scopes::Scope>(
+        dummy_scope_name, sm->current_scope, m_dummy_ast.get());
 
     // Create the type symbol for the generic parameter.
     const auto sym = std::make_shared<analyse::scopes::TypeSymbol>(

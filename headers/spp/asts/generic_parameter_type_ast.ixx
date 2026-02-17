@@ -20,6 +20,8 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
 private:
     std::vector<analyse::scopes::Scope *> m_dummy_scopes;
 
+    std::unique_ptr<Ast> m_dummy_ast;
+
 public:
     /**
      * The optional inline constraints for the generic type parameter. This is used to specify constraints on the type
