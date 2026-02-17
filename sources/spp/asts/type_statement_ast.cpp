@@ -141,6 +141,12 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
 
+    // Check the "old type" exists (non-generic).
+    meta->save();
+    meta->skip_type_analysis_generic_checks = true;
+    old_type->without_generics()->stage_7_analyse_semantics(sm, meta);
+    meta->restore();
+
     // Recursively discover the actual type being mapped to.
     auto [mapped_old_type, attach_generics, tracking_scope] = analyse::utils::type_utils::recursive_alias_search(
         *this, m_from_use_statement, sm->current_scope->parent, sm, meta);
