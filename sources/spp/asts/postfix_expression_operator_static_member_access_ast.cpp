@@ -69,11 +69,6 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
     if (const auto lhs_as_type = meta->postfix_expression_lhs->to<TypeAst>(); lhs_as_type != nullptr) {
         const auto lhs_type_sym = sm->current_scope->get_type_symbol(ast_clone(lhs_as_type));
 
-        // Check the left-hand-side isn't a generic type. Todo: until constraints.
-        raise_if<analyse::errors::SppGenericTypeInvalidUsageError>(
-            lhs_type_sym->is_generic, {sm->current_scope},
-            ERR_ARGS(*lhs_as_type, *lhs_as_type, "member access"));
-
         // Check the target field exists on the type.
         if (not lhs_type_sym->scope->has_var_symbol(name, true)) {
             const auto alternatives = sm->current_scope->all_type_symbols(true, true)

@@ -108,7 +108,9 @@ auto spp::asts::InnerScopeAst<T>::stage_7_analyse_semantics(
     m_scope = sm->current_scope;
 
     // Analyse the members of the inner scope.
-    for (auto const &x : members) { x->stage_7_analyse_semantics(sm, meta); }
+    for (auto const &x : members) {
+        x->stage_7_analyse_semantics(sm, meta);
+    }
     sm->move_out_of_current_scope();
 }
 

@@ -136,7 +136,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
         all_overloads = analyse::utils::func_utils::get_all_function_scopes(*fn_name, fn_owner_scope, *sm, meta);
     }
     auto pass_overloads = std::vector<std::tuple<analyse::scopes::Scope const*, FunctionPrototypeAst*, std::unique_ptr<FunctionCallArgumentGroupAst>, std::vector<GenericArgumentAst*>>>();
-    auto fail_overloads = std::vector<std::tuple<analyse::scopes::Scope const*, FunctionPrototypeAst*, std::unique_ptr<analyse::errors::SemanticError>>>();
+    auto fail_overloads = std::vector<std::tuple<analyse::scopes::Scope const*, FunctionPrototypeAst*, std::unique_ptr<analyse::errors::SemanticError>, std::string>>();
 
     // Create a dummy overload for no-overload identifiers that are function types (closures etc).
     auto is_closure = false;
@@ -211,11 +211,12 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 | genex::views::transform([](auto const &x) { return x->name.get(); })
                 | genex::to<std::vector>();
 
-            auto generic_infer_source = func_args->get_keyword_args()
+            auto generic_infer_source = func_args->get_keyword_args() // remove "self="
+                | genex::views::remove_if([](auto const &a) { return a->name->val == "self"; })
                 | genex::views::transform([sm, meta](auto const &x) { return std::make_pair(x->name, x->val->infer_type(sm, meta)); })
                 | genex::to<std::vector>();
 
-            auto generic_infer_target = func_params->get_all_params()
+            auto generic_infer_target = func_params->get_non_self_params()
                 | genex::views::transform([](auto *x) { return std::make_pair(x->extract_name(), x->type); })
                 | genex::to<std::vector>();
 
@@ -390,52 +391,52 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
 
         catch (const analyse::errors::SppFunctionCallAbstractFunctionError &e) {
             // If the overload is abstract, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone(), "calling an abstract function");
         }
 
         catch (const analyse::errors::SppFunctionCallNotImplFunctionError &e) {
             // If the overload is abstract, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone(), "calling a function that is not implemented");
         }
 
         catch (const analyse::errors::SppFunctionCallTooManyArgumentsError &e) {
             // If the overload has too many arguments, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone(), "too many arguments");
         }
 
         catch (const analyse::errors::SppArgumentNameInvalidError &e) {
             // If the overload has an invalid argument name, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone(), "invalid argument name");
         }
 
         catch (const analyse::errors::SppArgumentMissingError &e) {
             // If the overload is missing a required argument name, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone(), "missing required argument");
         }
 
         catch (const analyse::errors::SppTypeMismatchError &e) {
             // If the overload has a type mismatch, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone(), "type mismatch");
         }
 
         catch (const analyse::errors::SppGenericParameterInferredConflictInferredError &e) {
             // If the overload has an inferred generic parameter conflict, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone(), "inferred generic parameter conflict");
         }
 
         catch (const analyse::errors::SppGenericParameterNotInferredError &e) {
             // If the overload has a generic parameter that is not inferred, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone(), "generic parameter not inferred");
         }
 
         catch (const analyse::errors::SppGenericArgumentTooManyError &e) {
             // If the overload has too many generic arguments, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone(), "too many generic arguments");
         }
 
         catch (const analyse::errors::SppGenericConstraintError &e) {
             // If the overload has too many generic arguments, we cannot use it.
-            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone());
+            fail_overloads.emplace_back(fn_scope, fn_proto, e.clone(), "generic constraint not satisfied");
         }
     }
 
@@ -456,7 +457,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
     using namespace std::string_literals;
     if (pass_overloads.empty()) {
         auto failed_signatures_and_errors = "\n" + (fail_overloads
-            | genex::views::transform([](auto const &f) { return "    - "s + std::get<1>(f)->print_signature(""); })
+            | genex::views::transform([](auto const &f) { return "    - "s + std::get<1>(f)->print_signature("") + ": "s + std::get<3>(f); })
             | genex::views::intersperse("\n"s)
             | genex::views::join
             | genex::to<std::string>());

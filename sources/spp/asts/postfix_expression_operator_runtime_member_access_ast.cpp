@@ -86,11 +86,6 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
         const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
         const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_type);
 
-        // Check the left-hand-side isn't a generic type. Todo: until constraints.
-        raise_if<analyse::errors::SppGenericTypeInvalidUsageError>(
-            lhs_type_sym->is_generic,
-            {sm->current_scope}, ERR_ARGS(*meta->postfix_expression_lhs, *lhs_type, "member access"));
-
         // Check the lhs is a tuple/array (the only indexable types).
         raise_if<analyse::errors::SppMemberAccessNonIndexableError>(
             not analyse::utils::type_utils::is_type_comptime_indexable(*lhs_type, *sm->current_scope),
@@ -116,11 +111,6 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
         raise_if<analyse::errors::SppMemberAccessStaticOperatorExpectedError>(
             lhs_var_sym == nullptr and lhs_ns_sym != nullptr, {sm->current_scope},
             ERR_ARGS(*meta->postfix_expression_lhs, *tok_dot));
-
-        // Check the left-hand-side isn't a generic type.#
-        raise_if<analyse::errors::SppGenericTypeInvalidUsageError>(
-            lhs_type_sym->is_generic, {sm->current_scope},
-            ERR_ARGS(*meta->postfix_expression_lhs, *lhs_type, "member access"));
 
         // Check the target field exists on the type.
         if (not lhs_type_sym->scope->has_var_symbol(name, true)) {

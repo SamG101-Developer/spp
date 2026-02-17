@@ -281,6 +281,8 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    if (m_has_analysed) { return; }
+
     // Determine the scope and get the type symbol.
     const auto scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
     const auto type_sym = analyse::utils::type_utils::get_type_sym_or_error(
@@ -340,6 +342,8 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
         const auto external_generics = sm->current_scope->get_extended_generic_symbols(generic_arg_group->get_all_args(), meta->ignore_cmp_generic);
         analyse::utils::type_utils::create_generic_cls_scope(*this, *type_sym, external_generics, is_tuple, sm, meta);
     }
+
+    m_has_analysed = true;
 }
 
 

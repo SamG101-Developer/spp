@@ -244,10 +244,14 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
         for (auto &&[scope_1, fn_1, _, _] : overload_scopes) {
             for (auto &&[scope_2, fn_2, _, _] : overload_scopes) {
                 if (fn_1 != fn_2 and target_scope->depth_difference(scope_1) < target_scope->depth_difference(scope_2)) {
-                    auto conflict = check_for_conflicting_override(*scope_1, scope_2, *fn_1, sm, meta);
+                    auto temp = fn_1->get_ast_scope()->parent->parent;
+                    fn_1->get_ast_scope()->parent->parent = const_cast<scopes::Scope*>(scope_1);
+
+                    auto conflict = check_for_conflicting_override(*fn_1->get_ast_scope()->parent, scope_2, *fn_1, sm, meta);
                     if (conflict != nullptr) {
                         overload_scopes |= genex::actions::remove_if([conflict](auto &&info) { return std::get<1>(info) == conflict; });
                     }
+                    fn_1->get_ast_scope()->parent->parent = temp;
                 }
             }
         }
@@ -526,8 +530,9 @@ auto spp::analyse::utils::func_utils::enforce_no_generic_constraint_violations(
                 temp = temp->with_generics(asts::ast_clone(p_con->type_parts().back()->generic_arg_group));
                 p_con = std::move(temp);
             }
+
             const auto sub = p_con->substitute_generics(a_group.get_all_args());
-            sub->stage_7_analyse_semantics(&sm, &meta);
+            // sub->stage_7_analyse_semantics(&sm, &meta);
             con_group_cloned.push_back(sub);
         }
         p_con_groups_cloned.push_back(std::move(con_group_cloned));
