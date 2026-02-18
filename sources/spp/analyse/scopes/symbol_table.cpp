@@ -60,7 +60,10 @@ template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::rem(
     std::shared_ptr<I> const &sym_name) -> void {
     // Remove a symbol from the table.
-    m_table.erase(m_table.find(sym_name));
+    auto it = m_table.find(sym_name);
+    if (it != m_table.end()) {
+        m_table.erase(it);
+    }
 }
 
 

@@ -721,8 +721,8 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
         // Remove void attributes from the class.
         if (is_type_void(*attr->type, *new_cls_scope_ptr)) {
             // new_ast_ptr->impl |= genex::actions::remove_if([&](auto &&x) { return x == attr; }, [](auto &&x) { return x.get(); });
-            new_ast_ptr->impl->members |= genex::actions::remove_if([&](auto &&x) { return x.get() == attr; });
             new_cls_scope_ptr->rem_var_symbol(attr->name);
+            new_ast_ptr->impl->members |= genex::actions::remove_if([&](auto &&x) { return x.get() == attr; });
         }
     }
 
@@ -1048,12 +1048,12 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
         auto out = asts::GenericParameterGroupAst::new_empty_shared();
         for (auto const &param : pg.get_type_params()) {
             if (not genex::any_of(ag.get_type_keyword_args(), [&](auto const *arg) { return *arg->name == *param->name; })) {
-                out->params.emplace_back(param);
+                out->params.emplace_back(asts::ast_clone(param));
             }
         }
         for (auto const &param : pg.get_comp_params()) {
             if (not genex::any_of(ag.get_comp_keyword_args(), [&](auto const *arg) { return *arg->name == *param->name; })) {
-                out->params.emplace_back(param);
+                out->params.emplace_back(asts::ast_clone(param));
             }
         }
         return out;
