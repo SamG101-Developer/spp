@@ -70,6 +70,9 @@ auto spp::asts::TypeStatementAst::clone() const
     ast->m_from_use_statement = m_from_use_statement;
     ast->m_mapped_old_type = m_mapped_old_type;
     ast->visibility = visibility;
+    // Explicitly set m_alias_sym to nullptr to avoid dangling pointer issues.
+    // The cloned TypeStatementAst should not share the same TypeSymbol relationship.
+    ast->m_alias_sym = nullptr;
     for (auto const &a : ast->annotations) {
         a->set_ast_ctx(ast.get());
     }

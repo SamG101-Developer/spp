@@ -129,7 +129,10 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
     visibility(that.visibility),
     convention(asts::ast_clone(that.convention)),
     generic_impl(that.generic_impl) {
-    alias_stmt = asts::ast_clone(that.alias_stmt);
+    // Don't clone alias_stmt because the cloned TypeStatementAst would have an invalid m_alias_sym pointer.
+    // The alias_stmt represents a unique relationship between this TypeSymbol and a specific TypeStatementAst.
+    // When copying a TypeSymbol, this relationship should not be copied as it would create an inconsistent state.
+    alias_stmt = nullptr;
     llvm_info = that.llvm_info;
 }
 

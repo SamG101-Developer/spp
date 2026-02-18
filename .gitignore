@@ -1,3 +1,5 @@
 .idea
 .gitignore
 *.spp
+build/
+cmake-build-*/
