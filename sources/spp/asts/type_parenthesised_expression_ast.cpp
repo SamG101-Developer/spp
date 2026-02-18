@@ -53,5 +53,5 @@ spp::asts::TypeParenthesisedExpressionAst::operator std::string() const {
 
 auto spp::asts::TypeParenthesisedExpressionAst::convert()
     -> std::unique_ptr<TypeAst> {
-    return std::unique_ptr<TypeAst>(expr.get());
+    return std::unique_ptr<TypeAst>(expr.get()); // TODO: Release?
 }

@@ -127,10 +127,11 @@ public:
 
     auto is_from_use_statement() const -> bool;
 
-    auto cleanup() const -> void;
+    auto cleanup() -> void;
 };
 
 
 spp::asts::TypeStatementAst::~TypeStatementAst() {
+    // std::cout << to_string() << std::endl;
     cleanup();
 }

@@ -106,6 +106,13 @@ auto spp::asts::GenericParameterGroupAst::new_empty()
 }
 
 
+auto spp::asts::GenericParameterGroupAst::new_empty_shared()
+    -> std::shared_ptr<GenericParameterGroupAst> {
+    return std::make_shared<GenericParameterGroupAst>(
+        nullptr, decltype(params)(), nullptr);
+}
+
+
 auto spp::asts::GenericParameterGroupAst::get_required_params() const
     -> std::vector<GenericParameterAst*> {
     // Filter by casting.

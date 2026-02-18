@@ -202,11 +202,11 @@ auto spp::compiler::CompilerBoot::stage_8_check_memory(
     bar.finish();
 
     // Attach all LLVM type info to all types now.
-    for (auto const &mod : m_modules) {
-        auto ctx = codegen::LLvmCtx::new_ctx(mod->file_path);
-        sm->attach_llvm_type_info(*mod, ctx.get());
-        m_llvm_ctxs.emplace_back(std::move(ctx));
-    }
+    // for (auto const &mod : m_modules) {
+    //     auto ctx = codegen::LLvmCtx::new_ctx(mod->file_path);
+    //     sm->attach_llvm_type_info(*mod, ctx.get());
+    //     m_llvm_ctxs.emplace_back(std::move(ctx));
+    // }
 }
 
 

@@ -1045,7 +1045,7 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
     };
 
     const auto filter_params = [](asts::GenericParameterGroupAst const &pg, asts::GenericArgumentGroupAst const &ag) {
-        auto out = asts::GenericParameterGroupAst::new_empty();
+        auto out = asts::GenericParameterGroupAst::new_empty_shared();
         for (auto const &param : pg.get_type_params()) {
             if (not genex::any_of(ag.get_type_keyword_args(), [&](auto const *arg) { return *arg->name == *param->name; })) {
                 out->params.emplace_back(param);
@@ -1056,7 +1056,7 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
                 out->params.emplace_back(param);
             }
         }
-        return std::shared_ptr(std::move(out));
+        return out;
     };
 
     // Get the next type in the search, and its symbol.
@@ -1073,7 +1073,7 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
     }
 
     auto generic_args = asts::ast_clone(old_type->type_parts().back()->generic_arg_group.get());
-    auto final_generic_params = std::shared_ptr(asts::GenericParameterGroupAst::new_empty());
+    auto final_generic_params = asts::GenericParameterGroupAst::new_empty_shared();
     tracking_scope = old_sym->scope_defined_in;
 
     while (true) {
@@ -1107,17 +1107,9 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
         if (old_sym->alias_stmt == nullptr and (use_stmt_propagating_generics == nullptr or use_stmt_propagating_generics->args.empty())) { break; }
     }
 
-    func_utils::name_gn_args(*old_type->type_parts().back()->generic_arg_group, *extract_params(*old_sym), *old_type, *sm, *meta, false);
-
-    // old_type = old_sym->fq_name();
-    // if (use_stmt_propagating_generics) {
-    //     old_type = old_type->with_generics(asts::ast_clone(use_stmt_propagating_generics));
-    //     func_utils::name_gn_args(*old_type->type_parts().back()->generic_arg_group, *extract_params(*old_sym), *old_type, *sm, *meta, false);
-    // }
-
+    func_utils::name_gn_args(
+        *old_type->type_parts().back()->generic_arg_group, *extract_params(*old_sym), *old_type, *sm, *meta, false);
     old_type = old_type->substitute_generics(generic_args->get_all_args());
-    // old_sym = tracking_scope->get_type_symbol(old_type->without_generics());
-    // tracking_scope = old_sym->scope_defined_in;
     return {old_type, final_generic_params, tracking_scope};
 }
 

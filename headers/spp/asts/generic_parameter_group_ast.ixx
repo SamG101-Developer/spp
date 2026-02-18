@@ -55,6 +55,8 @@ SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : virtual Ast {
 
     static auto new_empty() -> std::unique_ptr<GenericParameterGroupAst>;
 
+    static auto new_empty_shared() -> std::shared_ptr<GenericParameterGroupAst>;
+
     auto get_required_params() const -> std::vector<GenericParameterAst*>;
 
     auto get_optional_params() const -> std::vector<GenericParameterAst*>;

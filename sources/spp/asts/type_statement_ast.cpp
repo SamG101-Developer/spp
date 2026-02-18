@@ -299,14 +299,15 @@ auto spp::asts::TypeStatementAst::is_from_use_statement() const
 }
 
 
-auto spp::asts::TypeStatementAst::cleanup() const
+auto spp::asts::TypeStatementAst::cleanup()
     -> void {
     // Because the TypeStatementAst is passed as a unique pointer to the TypeSymbol, we need to clear it from the type
     // symbol without destroying it, otherwise there is a use after free because of a double destruction; the unique
     // pointer destroying the type statement, then the type statement destroying itself (via the destructor). Releasing
     // it here prevents the type symbol from destroying it.
     if (m_alias_sym != nullptr) {
-        m_alias_sym->alias_stmt.release();
+        (void)m_alias_sym->alias_stmt.release();
+        m_alias_sym = nullptr;
     }
 
     // Now this pointer has been released from the type symbol, we can safely destroy the type statement.
