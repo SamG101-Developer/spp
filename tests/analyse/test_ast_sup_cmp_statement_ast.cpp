@@ -23,12 +23,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppMoveFromPinnedMemoryError, R"(
     cls MyType { }
     sup MyType {
-        cmp n: std::string::Str = "hello world"
+        cmp n: (std::string_view::StrView, std::string_view::StrView) = ("hello world", "hello world")
     }
 
     fun f() -> std::void::Void {
         let mut local_n = MyType::n
-        local_n = "hello world"
+        local_n = ("hello world", "hello world")
     }
 )");
 
@@ -74,7 +74,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 
     fun f() -> std::void::Void {
-        let mut x = MyType[std::string::Str, "123"]::n
+        let mut x = MyType[std::string_view::StrView, "123"]::n
     }
 )");
 

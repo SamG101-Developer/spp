@@ -198,13 +198,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_variant_type_assign_1, R"(
     use std::boolean::Bool
     use std::number::U64
-    use std::string::Str
+    use std::string_view::StrView
     use std::void::Void
 
-    fun f(mut a: Str or U64 or Bool) -> Void {
+    fun f(mut a: StrView or U64 or Bool) -> Void {
         a = "hello world"
     }
-)");;
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -218,7 +218,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: Str or U64 or Bool) -> Void {
         a = 123_u64
     }
-)");;
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -232,7 +232,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: Str or U64 or Bool) -> Void {
         a = true
     }
-)");;
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -246,7 +246,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: Str or U64 or Bool, b: Str or U64) -> Void {
         a = b
     }
-)");;
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -260,7 +260,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: Str or U64 or Bool, b: Str or Bool) -> Void {
         a = b
     }
-)");;
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -274,7 +274,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: Str or U64 or Bool, b: U64 or Bool) -> Void {
         a = b
     }
-)");;
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -288,7 +288,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: Str or U64 or Bool, b: Str or U64 or Bool) -> Void {
         a = b
     }
-)");;
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -302,7 +302,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: Str or U64 or Bool, b: Str or U64 or Bool or Bool) -> Void {
         a = b
     }
-)");;
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -317,7 +317,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(mut a: Str or U64 or Bool) -> Void {
         a = 123_s64
     }
-)");;
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -333,7 +333,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(mut a: Str or U64 or Bool, b: Str or U64 or Bool or U32) -> Void {
         a = b
     }
-)");;
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -349,7 +349,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(mut a: Str or U64 or Bool, b: Str or U64 or U32) -> Void {
         a = b
     }
-)");;
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -358,12 +358,15 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppSecondClassBorrowViolationError, R"(
     use std::boolean::Bool
     use std::number::U64
-    use std::string::Str
+    use std::string_view::StrView
 
-    fun f(a: &Str or U64 or Bool) -> Str {
-        ret a
+    fun f(a: &StrView or U64 or Bool) -> StrView {
+        case a of {
+            is &StrView(..) { a@ }
+            else { "hello world" }
+        }
     }
-)");;
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -377,7 +380,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(a: Str or &mut U64 or Bool) -> Str {
         ret a
     }
-)");;
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -386,10 +389,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     use std::option::Opt
     use std::option::Some
     use std::number::U64
-    use std::string::Str
+    use std::string_view::StrView
     use std::void::Void
 
-    fun g(a: (Opt[Str], U64)) -> Str {
+    fun g(a: (Opt[StrView], U64)) -> StrView {
         ret "hello world"
     }
 
@@ -397,4 +400,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let t = (Some(val="hello world"), 123_u64)
         let a = g(t)
     }
-)");;
+)");

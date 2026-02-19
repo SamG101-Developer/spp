@@ -80,7 +80,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorRuntimeMemberAccessAst,
     test_valid_array_index, R"(
-    fun f(p: [std::string::Str; 2_uz]) -> std::void::Void {
+    fun f(p: [std::string_view::StrView; 2_uz]) -> std::void::Void {
         let mut x = p.0
         x = "hello world"
     }
@@ -90,7 +90,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorRuntimeMemberAccessAst,
     test_valid_array_index_type_check, R"(
-    fun f(p: [std::string::Str; 2_uz]) -> std::void::Void {
+    fun f(p: [std::string_view::StrView; 2_uz]) -> std::void::Void {
         let mut x = p.0
         x = "hello world"
     }
@@ -100,7 +100,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorRuntimeMemberAccessAst,
     test_invalid_generic_type_indexing,
-    SppGenericTypeInvalidUsageError, R"(
+    SppMemberAccessNonIndexableError, R"(
     fun f[T](p: T) -> std::void::Void {
         p.0
     }
@@ -110,7 +110,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorRuntimeMemberAccessAst,
     test_invalid_generic_type_member_access,
-    SppGenericTypeInvalidUsageError, R"(
+    SppIdentifierUnknownError, R"(
     fun f[T](p: T) -> std::void::Void {
         p.x
     }

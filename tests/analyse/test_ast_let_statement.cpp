@@ -146,7 +146,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     LetStatementAst,
     test_valid_variant_2_types, R"(
     fun f() -> std::void::Void {
-        let x: std::string::Str or std::number::S32 = "hello world"
+        let x: std::string_view::StrView or std::number::S32 = "hello world"
     }
 )");
 

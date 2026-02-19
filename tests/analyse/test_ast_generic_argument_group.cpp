@@ -164,7 +164,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericArgumentGroup,
     test_generic_replaced_with_generic, R"(
-    use std::string::Str
+    use std::string_view::StrView
     use std::vector::Vec
 
     fun g[U]() -> Vec[U] {
@@ -172,8 +172,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> std::void::Void {
-        let mut x = g[std::string::Str]()
-        x.push(element="hello")
+        let mut x = g[std::string_view::StrView]()
+        x.push_back(element="hello")
     }
 )");
 
@@ -183,14 +183,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_generic_replaced_with_generic_stateful, R"(
     use std::option::Opt
     use std::option::Some
-    use std::string::Str
+    use std::string_view::StrView
 
     fun g[U]() -> Opt[U] {
         ret Some[U]()
     }
 
     fun f() -> std::void::Void {
-        let mut x = g[std::string::Str]()
+        let mut x = g[std::string_view::StrView]()
         x = Some(val="hello")
     }
 )");

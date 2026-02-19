@@ -259,7 +259,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls B { b: std::number::S32 }
 
     sup A {
-        @virtual_method
+        !virtual_method
         fun f(mut self) -> std::void::Void {
             self.a = 100
         }
@@ -284,7 +284,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls B[T] { b: T }
 
     sup [T] A[T] {
-        @virtual_method
+        !virtual_method
         fun f(mut self) -> std::void::Void { }
     }
 

@@ -42,7 +42,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls Bar { }
 
     sup Foo {
-        @abstract_method
+        !abstract_method
         fun f() -> std::void::Void { }
     }
 

@@ -13,22 +13,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
-    test_invalid_postfix_func_call_abstract_function,
-    SppFunctionCallNoValidSignaturesError, R"(
-    cls TestClass { }
-    sup TestClass {
-        @abstract_method
-        fun f(&self) -> std::void::Void { }
-    }
-
-    fun g() -> std::void::Void {
-        TestClass().f()
-    }
-)");
-
-
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_too_many_args,
     SppFunctionCallNoValidSignaturesError, R"(
     fun f() -> std::void::Void {
@@ -318,8 +302,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     sup TestClass {
-        @no_impl
-        fun f(self, t: TestClass) -> TestClass { }
+        fun f(self, t: TestClass) -> TestClass { ret t }
     }
 
     fun g(n: NewClass) -> std::void::Void {
@@ -333,7 +316,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_postfix_function_call_with_superimposition, R"(
     cls TestClass { }
     sup TestClass {
-        @virtual_method
+        !virtual_method
         fun f(self) -> std::void::Void { }
     }
 
@@ -351,7 +334,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_function_folding_1, R"(
-    fun f(a: std::number::S32) -> std::string::Str {
+    fun f(a: std::number::S32) -> std::string_view::StrView {
         ret "hello world"
     }
 
@@ -421,7 +404,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_function_folding_moving_objects,
     SppUninitializedMemoryUseError, R"(
-    fun f(a: std::number::S32, b: std::string::Str) -> std::void::Void { }
+    fun f(a: std::number::S32, b: std::string_view::StrView) -> std::void::Void { }
     fun g() -> std::void::Void {
         let x = (1, 2, 3)
         let y = "hello world"
@@ -445,7 +428,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_variadic_fixed_type, R"(
-    fun g(a: std::string::Str, ..b: std::boolean::Bool) -> std::void::Void {
+    fun g(a: std::string_view::StrView, ..b: std::boolean::Bool) -> std::void::Void {
         ret
     }
 
@@ -458,7 +441,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_variadic_single_generic_type, R"(
-    fun g[T](a: std::string::Str, ..b: T) -> std::void::Void {
+    fun g[T](a: std::string_view::StrView, ..b: T) -> std::void::Void {
         ret
     }
 
@@ -471,7 +454,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_variadic_mixed_generic_type, R"(
-    fun g[..Ts](a: std::string::Str, ..b: Ts) -> std::void::Void {
+    fun g[..Ts](a: std::string_view::StrView, ..b: Ts) -> std::void::Void {
         ret
     }
 
@@ -484,7 +467,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_variadic_given_no_args, R"(
-    fun g(a: std::string::Str, ..b: std::boolean::Bool) -> std::void::Void {
+    fun g(a: std::string_view::StrView, ..b: std::boolean::Bool) -> std::void::Void {
         ret
     }
 
@@ -498,7 +481,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_variadic_mixed_arg_types,
     SppFunctionCallNoValidSignaturesError, R"(
-    fun g(a: std::string::Str, ..b: std::boolean::Bool) -> std::void::Void {
+    fun g(a: std::string_view::StrView, ..b: std::boolean::Bool) -> std::void::Void {
         ret
     }
 

@@ -38,7 +38,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorStaticMemberAccessAst,
     test_valid_field_on_namespace, R"(
     fun f() -> std::void::Void {
-        std::io::print(&"hello")
+        std::io::print("hello")
     }
 )");
 

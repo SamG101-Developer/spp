@@ -38,7 +38,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_type_unknown_nested_type,
     SppIdentifierUnknownError, R"(
     fun f() -> std::void::Void {
-        let x: std::string::Str::Type
+        let x: std::string_view::StrView::Type
     }
 )");
 
@@ -70,42 +70,42 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant, R"(
-    fun f(mut a: std::string::Str or std::boolean::Bool) -> std::void::Void { a = "hello" }
+    fun f(mut a: std::string_view::StrView or std::boolean::Bool) -> std::void::Void { a = "hello" }
 )");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant_default, R"(
-    fun f(a: std::string::Str or std::boolean::Bool = "hello") -> std::void::Void { }
+    fun f(a: std::string_view::StrView or std::boolean::Bool = "hello") -> std::void::Void { }
 )");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant_tuple_1, R"(
-    fun f(mut a: (std::string::Str,)) -> std::void::Void { a = ("hello",) }
+    fun f(mut a: (std::string_view::StrView,)) -> std::void::Void { a = ("hello",) }
 )");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant_tuple_n, R"(
-    fun f(mut a: (std::string::Str, std::boolean::Bool)) -> std::void::Void { a = ("hello", true) }
+    fun f(mut a: (std::string_view::StrView, std::boolean::Bool)) -> std::void::Void { a = ("hello", true) }
 )");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant_tuple_default, R"(
-    fun f(a: (std::string::Str, std::boolean::Bool) = ("hello", true)) -> std::void::Void { }
+    fun f(a: (std::string_view::StrView, std::boolean::Bool) = ("hello", true)) -> std::void::Void { }
 )");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_function_type_with_function_call_1, R"(
-    fun f(a: std::function::FunRef[(std::string::Str, std::string::Str), std::boolean::Bool]) -> std::void::Void {
+    fun f(a: std::function::FunRef[(std::string_view::StrView, std::string_view::StrView), std::boolean::Bool]) -> std::void::Void {
         let mut x = a("hello", "world")
         x = false
     }
@@ -115,7 +115,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_function_type_with_function_call_2, R"(
-    fun f(a: std::function::FunRef[(&std::string::Str, &std::string::Str), std::boolean::Bool], b: &std::string::Str, c: &std::string::Str) -> std::void::Void {
+    fun f(a: std::function::FunRef[(&std::string_view::StrView, &std::string_view::StrView), std::boolean::Bool], b: &std::string_view::StrView, c: &std::string_view::StrView) -> std::void::Void {
         let mut x = a(b, c)
         x = false
     }
@@ -127,7 +127,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_nested_type, R"(
     cls MyType { }
     sup MyType {
-        type X = std::string::Str
+        type X = std::string_view::StrView
     }
 
     fun f() -> std::void::Void {
@@ -194,7 +194,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> std::void::Void {
-        let x: TypeC[std::number::S32]::InnerC[std::string::Str]::InnerB[std::boolean::Bool]::InnerA[std::number::U64]
+        let x: TypeC[std::number::S32]::InnerC[std::string_view::StrView]::InnerB[std::boolean::Bool]::InnerA[std::number::U64]
         x = (10, "hello", false, 10_u64)
     }
 )");
@@ -205,7 +205,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_nested_type_at_top_level, R"(
     cls TypeA { }
     sup TypeA {
-        type X = std::string::Str
+        type X = std::string_view::StrView
     }
 
     fun f(a: TypeA::X) -> TypeA::X {
