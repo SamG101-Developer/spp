@@ -125,7 +125,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> std::void::Void {
-        let s = "123"
+        let s = std::string::Str::from("123")
         let mut n = S32::from(s)
         n = 0
     }
@@ -146,11 +146,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun f() -> std::void::Void {
-        let s = "1,2,3"
+        let s = std::string::Str::from("1,2,3")
         let mut v = Vec[S32]::from(s)
         v = std::vector::Vec[S32]::new()
 
-        let s = "1,2,3"
+        let s = std::string::Str::from("1,2,3")
         let mut v = std::vector::Vec[S32]::from(s)
         v = Vec[S32]::new()
     }
@@ -173,7 +173,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let n = 42
         let mut s = Str::from(n)
-        s = "changed"
+        s = Str::from("changed")
     }
 )");
 

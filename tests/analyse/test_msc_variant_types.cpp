@@ -361,7 +361,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     use std::string_view::StrView
 
     fun f(a: &StrView or U64 or Bool) -> StrView {
-        case a of {
+        ret case a of {
             is &StrView(..) { a@ }
             else { "hello world" }
         }
