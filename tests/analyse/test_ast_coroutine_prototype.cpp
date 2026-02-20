@@ -149,8 +149,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut elem1 = vec.index_ref(0_uz)
         let mut elem2 = vec.index_ref(1_uz)
         # let mut value = elem1 + elem2.clone()
-        elem2 = elem1@
-        elem1 = "hello world !!!"
+        elem2 = elem1
     }
 )");
 

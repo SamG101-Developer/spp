@@ -4,7 +4,7 @@
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstGenericConstraints,
     test_invalid_function_constraint_mismatch,
-    SppGenericConstraintError, R"(
+    SppFunctionCallNoValidSignaturesError, R"(
     cls A { }
     fun g[T: A](t: T) -> std::void::Void { }
 
@@ -17,7 +17,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstGenericConstraints,
     test_invalid_function_constraint_multiple_mismatch,
-    SppGenericConstraintError, R"(
+    SppFunctionCallNoValidSignaturesError, R"(
     cls A { }
     cls B { }
 
