@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.float_literal_ast;
 import spp.analyse.errors.semantic_error;
@@ -14,17 +15,18 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.utils.strings;
 import llvm;
 import mppp;
 
 
-// const auto FLOAT_TYPE_MIN_MAX = std::map<std::string, std::pair<mppp::BigDec, mppp::BigDec>>{
-//     {"f8", {mppp::BigDec("-5.7344e+4"), mppp::BigDec("5.7344e+4")}},
-//     {"f16", {mppp::BigDec("-6.55e+4"), mppp::BigDec("6.55e+4")}},
-//     {"f32", {mppp::BigDec("-3.4028235e+38"), mppp::BigDec("3.4028235e+38")}},
-//     {"f64", {mppp::BigDec("-1.7976931348623157e+308"), mppp::BigDec("1.7976931348623157e+308")}},
-//     {"f128", {mppp::BigDec("-1.189731495357231765e+4932"), mppp::BigDec("1.189731495357231765e+4932")}}, // check this
-// };
+const auto FLOAT_TYPE_MIN_MAX = std::map<std::string, std::pair<mppp::BigDec, mppp::BigDec>>{
+    {"f8", {spp::utils::strings::expand_scientific_notation("-5.7344e+4"), spp::utils::strings::expand_scientific_notation("5.7344e+4")}},
+    {"f16", {spp::utils::strings::expand_scientific_notation("-6.55e+4"), spp::utils::strings::expand_scientific_notation("6.55e+4")}},
+    {"f32", {spp::utils::strings::expand_scientific_notation("-3.4028235e+38"), spp::utils::strings::expand_scientific_notation("3.4028235e+38")}},
+    {"f64", {spp::utils::strings::expand_scientific_notation("-1.7976931348623157e+308"), spp::utils::strings::expand_scientific_notation("1.7976931348623157e+308")}},
+    {"f128", {spp::utils::strings::expand_scientific_notation("-1.189731495357231765e+4932"), spp::utils::strings::expand_scientific_notation("1.189731495357231765e+4932")}}, // check this
+};
 
 
 spp::asts::FloatLiteralAst::FloatLiteralAst(
@@ -114,22 +116,21 @@ spp::asts::FloatLiteralAst::operator std::string() const {
 
 
 auto spp::asts::FloatLiteralAst::stage_7_analyse_semantics(
-    ScopeManager *,
+    ScopeManager *sm,
     CompilerMetaData *)
     -> void {
     // Get the lower and upper bounds as big floats.
     type = type.empty() ? "f32" : type;
-    // auto const &[lower, upper] = FLOAT_TYPE_MIN_MAX.at(type);
-    // auto mapped_val = mppp::BigDec((int_val->token_data + "." + frac_val->token_data).c_str());
-    // if (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB) {
-    //     mapped_val = mapped_val.neg();
-    // }
+    auto const &[lower, upper] = FLOAT_TYPE_MIN_MAX.at(type);
+    auto mapped_val = spp::utils::strings::normalize_float_string(int_val->token_data, frac_val->token_data);
+    if (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB) {
+        mapped_val = mapped_val.neg();
+    }
 
     // Check if the value is within the bounds.
-    // if (mapped_val < lower or mapped_val > upper) {
-    //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppFloatOutOfBoundsError>().with_args(
-    //         *this, mapped_val, lower, upper, "float").with_scopes({sm->current_scope}).raise();
-    // }
+    raise_if<analyse::errors::SppFloatOutOfBoundsError>(
+        mapped_val < lower or mapped_val > upper,
+        {sm->current_scope}, ERR_ARGS(*this, mapped_val, lower, upper, "float"));
 }
 
 

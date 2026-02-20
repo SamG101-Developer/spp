@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.integer_literal_ast;
 import spp.analyse.errors.semantic_error;
@@ -14,6 +15,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.utils.strings;
 import llvm;
 import mppp;
 
@@ -43,8 +45,7 @@ spp::asts::IntegerLiteralAst::IntegerLiteralAst(
     LiteralAst(),
     tok_sign(std::move(tok_sign)),
     val(std::move(val)),
-    type(std::move(type)) {
-}
+    type(std::move(type)) {}
 
 
 auto spp::asts::IntegerLiteralAst::equals(
@@ -98,22 +99,21 @@ spp::asts::IntegerLiteralAst::operator std::string() const {
 
 
 auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
-    ScopeManager *,
+    ScopeManager *sm,
     CompilerMetaData *)
     -> void {
     // Get the lower and upper bounds as big ints.
     type = type.empty() ? "s32" : type;
-    // auto const &[lower, upper] = INTEGER_TYPE_MIN_MAX.at(type);
-    // auto mapped_val = mppp::BigInt(val->token_data.c_str());
-    // if (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB) {
-    //     mapped_val = mapped_val.neg();
-    // }
+    auto const &[lower, upper] = INTEGER_TYPE_MIN_MAX.at(type);
+    auto mapped_val = spp::utils::strings::normalize_integer_string(val->token_data);
+    if (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB) {
+        mapped_val = mapped_val.neg();
+    }
 
     // Check if the value is within the bounds.
-    // if (mapped_val < lower or mapped_val > upper) {
-    //     analyse::errors::SemanticErrorBuilder<analyse::errors::SppIntegerOutOfBoundsError>().with_args(
-    //         *this, mapped_val, lower, upper, "int").with_scopes({sm->current_scope}).raise();
-    // }
+    raise_if<analyse::errors::SppIntegerOutOfBoundsError>(
+        mapped_val < lower or mapped_val > upper,
+        {sm->current_scope}, ERR_ARGS(*this, mapped_val, lower, upper, "int"));
 }
 
 
