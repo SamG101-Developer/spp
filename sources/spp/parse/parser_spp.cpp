@@ -758,7 +758,7 @@ auto spp::parse::ParserSpp::parse_binary_expression_op_precedence_level_9()
 auto spp::parse::ParserSpp::parse_binary_expression_op_precedence_level_10()
     -> std::unique_ptr<asts::TokenAst> {
     PARSE_ALTERNATE(
-        p1, asts::TokenAst, parse_token_mul, parse_token_div, parse_token_rem, parse_token_pow);
+        p1, asts::TokenAst, parse_token_pow, parse_token_mul, parse_token_div, parse_token_rem);
     return FORWARD_AST(p1);
 }
 
