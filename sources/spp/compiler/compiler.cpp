@@ -12,11 +12,25 @@ import spp.utils.progress;
 import std;
 
 
-spp::compiler::Compiler::Compiler(const Mode mode) :
+spp::compiler::Compiler::Compiler(
+    const Mode mode) :
     m_modules(std::make_unique<ModuleTree>(std::filesystem::current_path())),
     m_mode(mode) {
     m_path = std::filesystem::current_path() / "src";
     m_boot = std::make_unique<CompilerBoot>();
+}
+
+
+auto spp::compiler::Compiler::for_unit_tests(
+    const Mode mode,
+    std::string &&main_code) -> std::unique_ptr<Compiler> {
+    auto c = std::make_unique<Compiler>();
+    c->m_modules = ModuleTree::for_unit_tests(std::filesystem::current_path(), std::move(main_code));
+    c->m_mode = mode;
+    c->m_path = std::filesystem::current_path() / "src";
+    c->m_boot = std::make_unique<CompilerBoot>();
+    c->m_for_unit_tests = true;
+    return c;
 }
 
 
@@ -27,7 +41,7 @@ auto spp::compiler::Compiler::compile() -> void {
     auto progress_bars = std::vector<std::unique_ptr<utils::ProgressBar>>();
     auto num_modules = m_modules->get_modules().size();
     for (auto stage : COMPILER_STAGE_NAMES) {
-        auto p = std::make_unique<utils::ProgressBar>(stage, num_modules);
+        auto p = std::make_unique<utils::ProgressBar>(stage, num_modules, not m_for_unit_tests);
         progress_bars.emplace_back(std::move(p));
     }
 

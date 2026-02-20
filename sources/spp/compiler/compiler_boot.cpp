@@ -43,7 +43,6 @@ auto spp::compiler::CompilerBoot::lex(
     -> void {
     // Lexing stage.
     for (auto const &mod : tree) {
-        mod->code = utils::files::read_file(std::filesystem::current_path() / mod->path);
         mod->tokens = lex::Lexer(mod->code).lex();
         mod->error_formatter = std::make_unique<utils::errors::ErrorFormatter>(mod->tokens, mod->path.string());
         bar.next();

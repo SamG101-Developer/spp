@@ -1,10 +1,10 @@
 module;
 #include <errno.h>
-#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/file.h>
 #include <functional>
 
 #define LEGACY_STDERR stderr
@@ -20,6 +20,10 @@ module;
 #define LEGACY_FUNLCK F_UNLCK
 #define LEGACY_ERRNO errno
 #define LEGACY_S_ISDIR S_ISDIR
+#define LEGACY_LOCK_EX LOCK_EX
+#define LEGACY_LOCK_SH LOCK_SH
+#define LEGACY_LOCK_UN LOCK_UN
+#define LEGACY_LOCK_NB LOCK_NB
 
 #undef stderr
 #undef stdin
@@ -34,13 +38,16 @@ module;
 #undef F_UNLCK
 #undef errno
 #undef S_ISDIR
+#undef LOCK_EX
+#undef LOCK_SH
+#undef LOCK_UN
+#undef LOCK_NB
 
 export module sys;
 
 export namespace sys {
     using ::close;
     using ::chdir;
-    using ::fcntl;
     using ::fdopen;
     using ::fileno;
     using ::isatty;
@@ -68,4 +75,8 @@ export namespace sys {
     std::function<int(mode_t)> S_ISDIR = [](const mode_t mode) {
         return LEGACY_S_ISDIR(mode);
     };
+    const int LOCK_EX = LEGACY_LOCK_EX;
+    const int LOCK_SH = LEGACY_LOCK_SH;
+    const int LOCK_UN = LEGACY_LOCK_UN;
+    const int LOCK_NB = LEGACY_LOCK_NB;
 }

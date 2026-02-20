@@ -338,3 +338,22 @@ auto spp::cli::get_system_shared_library_extension()
     return "so";
 #endif
 }
+
+
+auto spp::cli::unit_test(
+    std::string const &mode,
+    std::string &&main_code)
+    -> void {
+    // Validate the project structure first.
+    SPP_VALIDATE_STRUCTURE;
+
+    // Create the inner directory (rel or dev).
+    const auto cwd = std::filesystem::current_path();
+    std::filesystem::create_directory(cwd / OUT_FOLDER / mode);
+    SPP_VALIDATE_STRUCTURE;
+
+    // Compile the code.
+    const auto m = mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL;
+    const auto c = compiler::Compiler::for_unit_tests(m, std::move(main_code));
+    c->compile();
+}

@@ -42,9 +42,17 @@ private:
     std::filesystem::path m_vcs_path;
     std::filesystem::path m_ffi_path;
     std::vector<std::unique_ptr<Module>> m_modules;
+    int m_lock_fd = -1;
+
+private:
+    auto lock() -> void;
+
+    auto unlock() const -> void;
 
 public:
     explicit ModuleTree(std::filesystem::path path);
+
+    static auto for_unit_tests(std::filesystem::path path, std::string &&main_code) -> std::unique_ptr<ModuleTree>;
 
     auto begin() -> std::vector<std::unique_ptr<Module>>::iterator;
 

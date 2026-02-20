@@ -14,9 +14,10 @@ SPP_EXP_CLS class spp::utils::ProgressBar {
     std::string m_label;
     std::uint32_t m_total_steps;
     std::uint32_t m_current_step;
+    bool m_enabled;
 
 public:
-    explicit ProgressBar(std::string label, std::uint32_t total_steps);
+    explicit ProgressBar(std::string label, std::uint32_t total_steps, bool enabled = true);
     auto next() -> void;
     auto finish() -> void;
 };

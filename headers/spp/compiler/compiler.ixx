@@ -49,8 +49,14 @@ private:
 
     std::unique_ptr<analyse::scopes::ScopeManager> m_scope_manager;
 
+    bool m_for_unit_tests = false;
+
 public:
+    Compiler() = default; // TODO: Private
+
     explicit Compiler(Mode mode);
+
+    static auto for_unit_tests(Mode mode, std::string &&main_code) -> std::unique_ptr<Compiler>;
 
     ~Compiler();
 

@@ -47,4 +47,9 @@ namespace spp::cli {
 
     SPP_EXP_FUN auto get_system_shared_library_extension()
         -> std::string;
+
+    SPP_EXP_FUN auto unit_test(
+        std::string const &mode,
+        std::string &&main_code)
+        -> void;
 }
