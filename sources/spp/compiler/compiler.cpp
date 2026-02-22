@@ -13,9 +13,11 @@ import std;
 
 
 spp::compiler::Compiler::Compiler(
-    const Mode mode) :
+    const Mode mode,
+    const BuildType build_type) :
     m_modules(std::make_unique<ModuleTree>(std::filesystem::current_path())),
-    m_mode(mode) {
+    m_mode(mode),
+    m_build_type(build_type) {
     m_path = std::filesystem::current_path() / "src";
     m_boot = std::make_unique<CompilerBoot>();
 }
@@ -27,6 +29,7 @@ auto spp::compiler::Compiler::for_unit_tests(
     auto c = std::make_unique<Compiler>();
     c->m_modules = ModuleTree::for_unit_tests(std::filesystem::current_path(), std::move(main_code));
     c->m_mode = mode;
+    c->m_build_type = BuildType::EXE;  // Tests for "main" in the test suite.
     c->m_path = std::filesystem::current_path() / "src";
     c->m_boot = std::make_unique<CompilerBoot>();
     c->m_for_unit_tests = true;
@@ -38,6 +41,7 @@ spp::compiler::Compiler::~Compiler() = default;
 
 
 auto spp::compiler::Compiler::compile() -> void {
+    auto is_exe = m_build_type == BuildType::EXE;
     auto progress_bars = std::vector<std::unique_ptr<utils::ProgressBar>>();
     auto num_modules = m_modules->get_modules().size();
     for (auto stage : COMPILER_STAGE_NAMES) {
@@ -59,7 +63,7 @@ auto spp::compiler::Compiler::compile() -> void {
     m_boot->stage_4_qualify_types(**ps++, *m_modules, m_scope_manager.get());
     m_boot->stage_5_load_super_scopes(**ps++, *m_modules, m_scope_manager.get());
     m_boot->stage_6_pre_analyse_semantics(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->stage_7_analyse_semantics(**ps++, *m_modules, m_scope_manager.get());
+    m_boot->stage_7_analyse_semantics(**ps++, *m_modules, is_exe, m_scope_manager.get());
     m_boot->stage_8_check_memory(**ps++, *m_modules, m_scope_manager.get());
     m_boot->stage_9_comptime_resolution(**ps++, *m_modules, m_scope_manager.get());
     // m_boot->stage_10_code_gen_1(**ps++, *m_modules, m_scope_manager.get());

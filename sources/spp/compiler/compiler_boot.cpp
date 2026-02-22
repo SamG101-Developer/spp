@@ -170,6 +170,7 @@ auto spp::compiler::CompilerBoot::stage_6_pre_analyse_semantics(
 auto spp::compiler::CompilerBoot::stage_7_analyse_semantics(
     utils::ProgressBar &bar,
     ModuleTree &tree,
+    const bool is_exe,
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Analyse semantics stage.
@@ -182,7 +183,7 @@ auto spp::compiler::CompilerBoot::stage_7_analyse_semantics(
     bar.finish();
 
     // Validate entry point now.
-    validate_entry_point(sm);
+    if (is_exe) { validate_entry_point(sm); }
 }
 
 
@@ -310,11 +311,13 @@ auto spp::compiler::CompilerBoot::validate_entry_point(
         main_call->stage_7_analyse_semantics(sm, &meta);
     }
 
-    catch (analyse::errors::SppFunctionCallNoValidSignaturesError const &) {
+    // Check that the "main" function exists,
+    catch (analyse::errors::SppIdentifierUnknownError const &) {
         raise<analyse::errors::SppMissingMainFunctionError>({sm->global_scope.get()}, ERR_ARGS(*main_mod));
     }
 
-    catch (analyse::errors::SppIdentifierUnknownError const &) {
+    // Check that if the "main" function eixsts, the signature is compatible.
+    catch (analyse::errors::SppFunctionCallNoValidSignaturesError const &) {
         raise<analyse::errors::SppMissingMainFunctionError>({sm->global_scope.get()}, ERR_ARGS(*main_mod));
     }
 }

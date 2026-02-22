@@ -11,6 +11,7 @@ import spp.lex.tokens;
 import spp.utils.files;
 
 import cli11;
+import genex;
 import toml;
 
 
@@ -29,14 +30,19 @@ inline constexpr std::string MAIN_FILE = "main.spp";
 inline constexpr std::string CONFIG_FILE = "spp.toml";
 
 inline const std::string MAIN_FILE_CONTENTS = R"(
-    fun main(args: std::vector::Vec[std::string::Str]) -> std::void::Void {
-        std::io::println("Hello, SPP!")
+    use std::string::Str
+    use std::vector::Vec
+    use std::void::Void
+
+    fun main(args: Vec[Str]) -> Void {
+        std::io::println("Hello world!")
     })";
 
 const auto CONFIG_FILE_CONTENTS = R"(
     [project]
     name = "$"
     version = "0.1.0"
+    build = "executable"
 
     [vcs]
     std = { git = "https://github.com/SamG101-Developer/SPP-STL", branch = "master" })";
@@ -178,15 +184,23 @@ auto spp::cli::handle_build(
     std::filesystem::create_directory(cwd / OUT_FOLDER / mode);
 
     // Handle VCS if not skipped.
-    if (not skip_vcs) {
-        handle_vcs();
-    }
+    if (not skip_vcs) { handle_vcs(); }
 
     // Revalidate (after including the VCS folders).
     SPP_VALIDATE_STRUCTURE;
+    const auto build_type =
+        toml::parse_file(CONFIG_FILE)["project"].as_table()->at("build").value<std::string>();
+
+    // Validate the mode is "dev" or "rel".
+    if (mode != "dev" and mode != "rel") {
+        std::cerr << "Error: Invalid mode. Mode must be 'dev' or 'rel'.\n";
+        return;
+    }
 
     // Compile the code.
-    auto c = compiler::Compiler(mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL);
+    auto c = compiler::Compiler(
+        mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL,
+        build_type == "exe" ? compiler::Compiler::BuildType::EXE : compiler::Compiler::BuildType::LIB);
     c.compile();
 }
 
@@ -235,15 +249,15 @@ auto spp::cli::handle_validate()
     // Check for the key folders/files.
     const auto cwd = std::filesystem::current_path();
     if (not std::filesystem::exists(cwd / SRC_FOLDER)) {
-        std::cout << "Error: Missing 'src' folder.\n";
+        std::cerr << "Error: Missing 'src' folder.\n";
         return false;
     }
     if (not std::filesystem::exists(cwd / SRC_FOLDER / MAIN_FILE)) {
-        std::cout << "Error: Missing 'src/main.spp' file.\n";
+        std::cerr << "Error: Missing 'src/main.spp' file.\n";
         return false;
     }
     if (not std::filesystem::exists(cwd / CONFIG_FILE)) {
-        std::cout << "Error: Missing 'spp.toml' file.\n";
+        std::cerr << "Error: Missing 'spp.toml' file.\n";
         return false;
     }
 
@@ -265,14 +279,33 @@ auto spp::cli::handle_validate()
         return false;
     }
 
-    // Check the project section has a name and version.
+    // Check the project section has a name, version and build type.
     const auto project = toml["project"].as_table();
     if (not project->contains("name")) {
-        std::cout << "Error: No name found in [project] section of spp.toml.\n";
+        std::cerr << "Error: No name found in [project] section of spp.toml.\n";
         return false;
     }
     if (not project->contains("version")) {
-        std::cout << "Error: No version found in [project] section of spp.toml.\n";
+        std::cerr << "Error: No version found in [project] section of spp.toml.\n";
+        return false;
+    }
+    if (not project->contains("build")) {
+        std::cerr << "Error: No build type found in [project] section of spp.toml.\n";
+        return false;
+    }
+
+    // Check the version follows "major.minor.patch" format.
+    const auto version = project->at("version").value<std::string>().value_or("");
+    const auto version_parts = version | genex::views::split('.') | genex::to<std::vector>();
+    if (version_parts.size() != 3) {
+        std::cerr << "Error: Invalid version format in spp.toml. Version must follow 'major.minor.patch' format.\n";
+        return false;
+    }
+
+    // Check the build type is either "exe" or "lib".
+    const auto build_type = project->at("build").value<std::string>().value_or("");
+    if (build_type != "exe" and build_type != "lib") {
+        std::cerr << "Error: Invalid build type in spp.toml. Build type must be 'exe' or 'lib'.\n";
         return false;
     }
 
