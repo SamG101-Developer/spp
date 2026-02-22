@@ -1823,10 +1823,7 @@ auto spp::parse::ParserSpp::parse_type_parenthesised_expression()
     -> std::unique_ptr<asts::TypeAst> {
     PARSE_ONCE(p1, parse_token_left_parenthesis);
     PARSE_ONCE(p2, parse_type_expression);
-    auto p3 = parse_token_right_parenthesis();
-    if (p3 == nullptr) {
-        return nullptr;
-    };
+    PARSE_ONCE(p3, parse_token_right_parenthesis);
     return CREATE_AST(asts::TypeParenthesisedExpressionAst, p1, p2, p3)->convert();
 }
 
