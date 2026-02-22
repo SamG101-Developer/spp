@@ -173,7 +173,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
         return true;
     }
 
-    // If the left-hand-side is a "Variant" type, check the composite types first.
+    // If the right-hand-side is a "Variant" type, check the composite types first.
     // Todo: on the failure of a variant match in "any_of", does the generic map need rolling back?
     if (check_variant and symbolic_eq(*asts::generate::common_types_precompiled::VAR, *stripped_rhs_sym->fq_name()->without_generics(), rhs_scope, rhs_scope)) {
         auto rhs_composite_types = deduplicate_variant_inner_types(*rhs_scope.get_type_symbol(rhs_type.shared_from_this())->fq_name(), rhs_scope);
@@ -186,13 +186,6 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     if (stripped_lhs_sym->type != stripped_rhs_sym->type) { return false; }
     auto &lhs_generics = lhs_type.type_parts().back()->generic_arg_group->args;
     auto &rhs_generics = rhs_type.type_parts().back()->generic_arg_group->args;
-
-    // The next step is to get the generic arguments for both types.
-    // const auto lhs_type_fq = lhs_scope.get_type_symbol(lhs_type.shared_from_this())->fq_name();
-    // const auto rhs_type_fq = rhs_scope.get_type_symbol(rhs_type.shared_from_this())->fq_name();
-    //
-    // auto &lhs_generics = lhs_type_fq->type_parts().back()->generic_arg_group->args;
-    // auto &rhs_generics = rhs_type_fq->type_parts().back()->generic_arg_group->args;
 
     // Special case for variadic parameter types.
     const auto temp_type_proto = lhs_scope.get_type_symbol(lhs_type.shared_from_this())->type;
