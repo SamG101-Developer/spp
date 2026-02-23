@@ -23,7 +23,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut v = Vec[Str]()
         let mut x = v.test_func()
         x = 1234
-        v.push(x.to_string())
+        v.push_back(x.to_string())
     }
 )");
 
