@@ -55,7 +55,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     sup Bool {
         fun test(&self) -> Bool {
-            ret *self
+            ret self@
         }
     }
 
@@ -100,7 +100,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     sup S32 {
         fun test(&self) -> S32 {
-            ret *self + 1
+            ret self@ + 1
         }
     }
 
@@ -166,7 +166,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     sup Str ext From[Str, S32] {
         fun from(that: S32) -> Str {
-            ret "test"
+            ret Str::from("test")
         }
     }
 

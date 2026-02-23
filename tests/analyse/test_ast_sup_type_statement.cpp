@@ -64,7 +64,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_sup_type_statement, R"(
     cls MyType { }
     sup MyType {
-        type X = std::string::Str
+        type X = std::string_view::StrView
     }
 
     fun f() -> std::void::Void {
@@ -79,7 +79,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_sup_type_statement_nested, R"(
     cls MyType1 { }
     sup MyType1 {
-        type Z = std::string::Str
+        type Z = std::string_view::StrView
     }
 
     cls MyType2 { }
