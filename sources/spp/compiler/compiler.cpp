@@ -41,7 +41,7 @@ spp::compiler::Compiler::~Compiler() = default;
 
 
 auto spp::compiler::Compiler::compile() -> void {
-    auto is_exe = m_build_type == BuildType::EXE;
+    const auto is_exe = m_build_type == BuildType::EXE;
     auto progress_bars = std::vector<std::unique_ptr<utils::ProgressBar>>();
     auto num_modules = m_modules->get_modules().size();
     for (auto stage : COMPILER_STAGE_NAMES) {
@@ -66,8 +66,8 @@ auto spp::compiler::Compiler::compile() -> void {
     m_boot->stage_7_analyse_semantics(**ps++, *m_modules, is_exe, m_scope_manager.get());
     m_boot->stage_8_check_memory(**ps++, *m_modules, m_scope_manager.get());
     m_boot->stage_9_comptime_resolution(**ps++, *m_modules, m_scope_manager.get());
-    // m_boot->stage_10_code_gen_1(**ps++, *m_modules, m_scope_manager.get());
-    // m_boot->stage_11_code_gen_2(**ps++, *m_modules, m_scope_manager.get());
+    m_boot->stage_10_code_gen_1(**ps++, *m_modules, m_scope_manager.get());
+    m_boot->stage_11_code_gen_2(**ps++, *m_modules, m_scope_manager.get());
     cleanup();
 }
 

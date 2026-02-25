@@ -202,11 +202,11 @@ auto spp::compiler::CompilerBoot::stage_8_check_memory(
     bar.finish();
 
     // Attach all LLVM type info to all types now.
-    // for (auto const &mod : m_modules) {
-    //     auto ctx = codegen::LLvmCtx::new_ctx(mod->file_path);
-    //     sm->attach_llvm_type_info(*mod, ctx.get());
-    //     m_llvm_ctxs.emplace_back(std::move(ctx));
-    // }
+    for (auto const &mod : m_modules) {
+        auto ctx = codegen::LLvmCtx::new_ctx(mod->file_path);
+        sm->attach_llvm_type_info(*mod, ctx.get());
+        m_llvm_ctxs.emplace_back(std::move(ctx));
+    }
 }
 
 
@@ -260,6 +260,7 @@ auto spp::compiler::CompilerBoot::stage_11_code_gen_2(
     // Write the llvm modules to file.
     const auto out_path = tree.root_path() / "out" / "llvm";
     std::filesystem::create_directories(out_path);
+    std::cout << "Writing LLVM IR to: " << out_path << "\n";
 
     for (auto const &ctx : m_llvm_ctxs) {
         // auto structs = ctx->module->getIdentifiedStructTypes();
