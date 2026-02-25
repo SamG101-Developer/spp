@@ -9,8 +9,7 @@ namespace spp::asts {
 }
 
 
-SPP_EXP_CLS struct spp::asts::ModuleMemberAst : virtual Ast {
-    ModuleMemberAst() = default;
-
+SPP_EXP_CLS struct spp::asts::ModuleMemberAst : Ast {
+    explicit ModuleMemberAst();
     ~ModuleMemberAst() override;
 };

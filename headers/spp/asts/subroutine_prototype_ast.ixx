@@ -12,13 +12,6 @@ namespace spp::asts {
 
 SPP_EXP_CLS struct spp::asts::SubroutinePrototypeAst final : FunctionPrototypeAst {
     using FunctionPrototypeAst::FunctionPrototypeAst;
-
     ~SubroutinePrototypeAst() override;
-
-    auto clone() const -> std::unique_ptr<Ast> override;
-
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto to_rust() const -> std::string override;
 };
-
-
-spp::asts::SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;

@@ -7,10 +7,6 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct ArrayLiteralAst;
-    SPP_EXP_CLS struct ArrayLiteralExplicitElementsAst; // *
-    SPP_EXP_CLS struct ArrayLiteralRepeatedElementAst;
-    SPP_EXP_CLS struct IdentifierAst;
-    SPP_EXP_CLS struct TypeAst;
 }
 
 
@@ -19,7 +15,6 @@ namespace spp::asts {
  * @c ArrayLiteralNElements. The common base class is for type checking only.
  */
 SPP_EXP_CLS struct spp::asts::ArrayLiteralAst : LiteralAst {
-    ArrayLiteralAst() = default;
-
+    explicit ArrayLiteralAst();
     ~ArrayLiteralAst() override;
 };

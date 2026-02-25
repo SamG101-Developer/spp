@@ -3,8 +3,6 @@ module;
 
 export module spp.asts.local_variable_single_identifier_ast;
 import spp.asts.local_variable_ast;
-import spp.codegen.llvm_ctx;
-import llvm;
 import std;
 
 namespace spp::asts {
@@ -29,57 +27,15 @@ namespace spp::asts {
  * be introducing a symbol into the local scope.
  */
 SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVariableAst {
-    /**
-     * A convention can ONLY be attached via the @c case expression pattern matching system. This allows borrows to be
-     * introduced into an inner scope (the case branch scope), and is needed in this class as-well as
-     * @c CasePatternVaruantSingleIdentifierAst, for mutability checking reasons.
-     */
     std::unique_ptr<ConventionAst> conv;
-
-    /**
-     * The optional mutability token. If the @c mut keyword was provided, then this will be given a value. Otherwise, it
-     * will be @c nullptr. This is used to indicate that the variable is mutable, and can be modified after being
-     * assigned its initial value.
-     */
     std::unique_ptr<TokenAst> tok_mut;
-
-    /**
-     * The name of the local variable. This is the identifier that is used to refer to the variable in the local scope.
-     * It will be saved against the symbol in the symbol table of the current scope.
-     */
-    std::shared_ptr<IdentifierAst> name;
-
-    /**
-     * The optional alias for the local variable. This is used to create an alias for the variable, which can be used to
-     * refer to the variable by a different name. This is useful in destructuring, to prevent conflicting variables when
-     * types have the same name attributes: @code case my_value is Some(val as alias)@endcode.
-     */
+    std::unique_ptr<IdentifierAst> name;
     std::unique_ptr<LocalVariableSingleIdentifierAliasAst> alias;
 
-    /**
-     * Construct the LocalVariableSingleIdentifierAst with the arguments matching the members.
-     * @param tok_mut The optional mutability token.
-     * @param name The name of the local variable.
-     * @param alias The optional alias for the local variable.
-     */
-    LocalVariableSingleIdentifierAst(
+    explicit LocalVariableSingleIdentifierAst(
         decltype(tok_mut) &&tok_mut,
-        decltype(name) name,
+        decltype(name) &&name,
         decltype(alias) &&alias);
-
     ~LocalVariableSingleIdentifierAst() override;
-
-    SPP_AST_KEY_FUNCTIONS;
-
-    auto extract_name() const -> std::shared_ptr<IdentifierAst> override;
-
-    auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>> override;
-
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto to_rust() const -> std::string override;
 };

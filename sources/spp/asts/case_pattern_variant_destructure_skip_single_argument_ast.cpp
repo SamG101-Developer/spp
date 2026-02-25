@@ -1,12 +1,4 @@
-module;
-#include <spp/macros.hpp>
-
 module spp.asts.case_pattern_variant_destructure_skip_single_argument_ast;
-import spp.asts.ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.local_variable_destructure_skip_single_argument_ast;
-import spp.asts.token_ast;
-import spp.asts.utils.ast_utils;
 
 
 spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::CasePatternVariantDestructureSkipSingleArgumentAst(
@@ -18,37 +10,7 @@ spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::CasePatternVarian
 spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::~CasePatternVariantDestructureSkipSingleArgumentAst() = default;
 
 
-auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::pos_start() const
-    -> std::size_t {
-    return tok_underscore->pos_start();
-}
-
-
-auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::pos_end() const
-    -> std::size_t {
-    return tok_underscore->pos_end();
-}
-
-
-auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<CasePatternVariantDestructureSkipSingleArgumentAst>(
-        ast_clone(tok_underscore));
-}
-
-
-spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::operator std::string() const {
-    SPP_STRING_START;
-    SPP_STRING_APPEND(tok_underscore);
-    SPP_STRING_END;
-}
-
-
-auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::convert_to_variable(
-    CompilerMetaData *)
-    -> std::unique_ptr<LocalVariableAst> {
-    // Create the local variable destructure attribute binding AST.
-    auto var = std::make_unique<LocalVariableDestructureSkipSingleArgumentAst>(nullptr);
-    var->mark_from_case_pattern();
-    return var;
+auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::to_rust() const
+    -> std::string {
+    return "_";
 }

@@ -17,15 +17,8 @@ namespace spp::asts {
  * function and contains the statements that make up the function's implementation. Semantically equivalent to a basic
  * InnerScopeAst.
  */
-SPP_EXP_CLS struct spp::asts::FunctionImplementationAst :
-    InnerScopeAst<std::unique_ptr<FunctionMemberAst>> {
+SPP_EXP_CLS struct spp::asts::FunctionImplementationAst : InnerScopeAst<std::unique_ptr<FunctionMemberAst>> {
     using InnerScopeAst::InnerScopeAst;
-
     ~FunctionImplementationAst() override;
-
-    static auto new_empty() -> std::unique_ptr<FunctionImplementationAst>;
-
-    auto clone() const -> std::unique_ptr<Ast> override;
-
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto to_rust() const -> std::string override;
 };

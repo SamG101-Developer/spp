@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.function_call_argument_keyword_ast;
 import spp.asts.function_call_argument_ast;
-
 import std;
 
 namespace spp::asts {
@@ -18,32 +17,14 @@ namespace spp::asts {
  * to be matched by a keyword rather than an index.
  */
 SPP_EXP_CLS struct spp::asts::FunctionCallArgumentKeywordAst final : FunctionCallArgumentAst {
-    /**
-     * The name of the keyword argument. This is the identifier that is used to refer to the argument in the function
-     * call.
-     */
-    std::shared_ptr<IdentifierAst> name;
-
-    /**
-     * The token that represents the assignment operator @c = in the keyword argument. This separates the name of the
-     * argument from the expression that is being passed as the argument's value.
-     */
+    std::unique_ptr<IdentifierAst> name;
     std::unique_ptr<TokenAst> tok_assign;
 
-    /**
-     * Construct the FunctionCallArgumentKeywordAst with the arguments matching the members.
-     * @param name The name of the keyword argument.
-     * @param tok_assign The token that represents the assignment operator @c = in the keyword argument.
-     * @param conv The convention on the argument being passed into the function call.
-     * @param val The expression that is being passed as the argument to the function call.
-     */
-    FunctionCallArgumentKeywordAst(
-        decltype(name) name,
+    explicit FunctionCallArgumentKeywordAst(
+        decltype(name) &&name,
         decltype(tok_assign) &&tok_assign,
         decltype(conv) &&conv,
         decltype(val) &&val);
-
     ~FunctionCallArgumentKeywordAst() override;
-
-    SPP_AST_KEY_FUNCTIONS;
+    auto to_rust() const -> std::string override;
 };

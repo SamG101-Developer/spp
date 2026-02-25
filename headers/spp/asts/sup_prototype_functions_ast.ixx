@@ -4,15 +4,12 @@ module;
 export module spp.asts.sup_prototype_functions_ast;
 import spp.asts.ast;
 import spp.asts.module_member_ast;
-import spp.codegen.llvm_ctx;
-import llvm;
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct GenericParameterGroupAst;
     SPP_EXP_CLS struct SupImplementationAst;
     SPP_EXP_CLS struct SupPrototypeFunctionsAst;
-    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
@@ -26,67 +23,15 @@ namespace spp::asts {
  * }
  * @endcode
  */
-SPP_EXP_CLS struct spp::asts::SupPrototypeFunctionsAst final : virtual Ast, ModuleMemberAst {
-    /**
-     * The @c sup keyword that represents the start of the superimposition. This is used to indicate that a type is
-     * being extended with additional methods.
-     */
-    std::unique_ptr<TokenAst> tok_sup;
-
-    /**
-     * The generics available for this superimposition. This is used to superimpose over generic types (all generics
-     * must be used by the type being extended).
-     */
+SPP_EXP_CLS struct spp::asts::SupPrototypeFunctionsAst final : Ast, ModuleMemberAst {
     std::unique_ptr<GenericParameterGroupAst> generic_param_group;
-
-    /**
-     * The name of the type that is being extended. This is the type that will gain the additional methods defined in
-     * the body of this superimposition.
-     */
-    std::shared_ptr<TypeAst> name;
-
-    /**
-     * The body of the superimposition. This is a list of methods that are being added to the type. Each method is
-     * defined as a FunctionPrototypeAst, which includes the method's name, parameters, and return type.
-     */
+    std::unique_ptr<TypeAst> name;
     std::unique_ptr<SupImplementationAst> impl;
 
-    /**
-     * Construct the SupPrototypeFunctionsAst with the arguments matching the members.
-     * @param tok_sup The @c sup keyword that represents the start of the superimposition.
-     * @param generic_param_group The generics available for this superimposition.
-     * @param name The name of the type that is being extended.
-     * @param impl The body of the superimposition.
-     */
     SupPrototypeFunctionsAst(
-        decltype(tok_sup) &&tok_sup,
         decltype(generic_param_group) &&generic_param_group,
         decltype(name) &&name,
         decltype(impl) &&impl);
-
     ~SupPrototypeFunctionsAst() override;
-
-    SPP_AST_KEY_FUNCTIONS;
-
-    auto stage_1_pre_process(Ast *ctx) -> void override;
-
-    auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *) -> void override;
-
-    auto stage_3_gen_top_level_aliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_5_load_super_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_6_pre_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
-
-    auto stage_11_code_gen_2(ScopeManager *sm , CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto to_rust() const -> std::string override;
 };

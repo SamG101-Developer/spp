@@ -62,6 +62,14 @@ target_compile_definitions(spp_lib PRIVATE
 add_executable(spp main.cpp)
 target_link_libraries(spp PRIVATE spp_lib)
 
+# Attach ASAN to Debug builds.
+#if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+#    target_compile_options(spp PRIVATE -fsanitize=address)
+#    target_link_options(spp PRIVATE -fsanitize=address)
+#    target_compile_options(spp_lib PRIVATE -fsanitize=address)
+#    target_link_options(spp_lib PRIVATE -fsanitize=address)
+#endif ()
+
 # Unit test support.
 enable_testing()
 add_subdirectory(tests)

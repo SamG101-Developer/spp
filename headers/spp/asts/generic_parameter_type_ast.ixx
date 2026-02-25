@@ -3,52 +3,21 @@ module;
 
 export module spp.asts.generic_parameter_type_ast;
 import spp.asts.generic_parameter_ast;
-import spp.asts.generic_parameter_type_inline_constraints_ast;
-import spp.asts.utils.orderable;
 import std;
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
-}
 
 namespace spp::asts {
     SPP_EXP_CLS struct GenericParameterTypeAst;
+    SPP_EXP_CLS struct GenericParameterTypeInlineConstraintsAst;
 }
 
 
 SPP_EXP_CLS struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
-private:
-    std::vector<analyse::scopes::Scope *> m_dummy_scopes;
-
-    std::unique_ptr<Ast> m_dummy_ast;
-
-public:
-    /**
-     * The optional inline constraints for the generic type parameter. This is used to specify constraints on the type
-     * parameter, such as @c I32 or @c F64 . An example is @code fun func[T: Copy]()@endcode, where @c T is the
-     * generic type parameter and @c Copy is the constraint.
-     */
+    std::unique_ptr<TypeAst> name;
     std::unique_ptr<GenericParameterTypeInlineConstraintsAst> constraints;
 
-    /**
-     * Construct the GenericParameterTypeAst with the arguments matching the members.
-     * @param name The name of the generic type parameter.
-     * @param constraints The optional inline constraints for the generic type parameter.
-     * @param order_tag The order tag for the generic parameter.
-     */
-    GenericParameterTypeAst(
+    explicit GenericParameterTypeAst(
         decltype(name) name,
-        decltype(constraints) &&constraints,
-        utils::OrderableTag order_tag);
-
+        decltype(constraints) &&constraints);
     ~GenericParameterTypeAst() override;
-
-    auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *) -> void override;
-
-    auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *) -> void override;
-
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto to_rust() const -> std::string override;
 };
-
-
-spp::asts::GenericParameterTypeAst::~GenericParameterTypeAst() = default;

@@ -1,12 +1,5 @@
-module;
-#include <spp/macros.hpp>
-
 module spp.asts.case_pattern_variant_destructure_attribute_binding_ast;
 import spp.asts.identifier_ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.local_variable_destructure_attribute_binding_ast;
-import spp.asts.token_ast;
-import spp.asts.utils.ast_utils;
 
 
 spp::asts::CasePatternVariantDestructureAttributeBindingAst::CasePatternVariantDestructureAttributeBindingAst(
@@ -22,42 +15,7 @@ spp::asts::CasePatternVariantDestructureAttributeBindingAst::CasePatternVariantD
 spp::asts::CasePatternVariantDestructureAttributeBindingAst::~CasePatternVariantDestructureAttributeBindingAst() = default;
 
 
-auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::pos_start() const
-    -> std::size_t {
-    return name->pos_start();
-}
-
-
-auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::pos_end() const
-    -> std::size_t {
-    return val->pos_end();
-}
-
-
-auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<CasePatternVariantDestructureAttributeBindingAst>(
-        ast_clone(name),
-        ast_clone(tok_assign),
-        ast_clone(val));
-}
-
-
-spp::asts::CasePatternVariantDestructureAttributeBindingAst::operator std::string() const {
-    SPP_STRING_START;
-    SPP_STRING_APPEND(name);
-    SPP_STRING_APPEND(tok_assign);
-    SPP_STRING_APPEND(val);
-    SPP_STRING_END;
-}
-
-
-auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::convert_to_variable(
-    CompilerMetaData *meta)
-    -> std::unique_ptr<LocalVariableAst> {
-    // Create the local variable destructure attribute binding AST.
-    auto var = std::make_unique<LocalVariableDestructureAttributeBindingAst>(
-        ast_clone(name), nullptr, val->convert_to_variable(meta));
-    var->mark_from_case_pattern();
-    return var;
+auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::to_rust() const
+    -> std::string {
+    return std::format("{} = {}", name->to_rust(), val->to_rust());
 }

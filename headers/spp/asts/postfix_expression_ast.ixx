@@ -3,8 +3,6 @@ module;
 
 export module spp.asts.postfix_expression_ast;
 import spp.asts.expression_ast;
-import spp.codegen.llvm_ctx;
-import llvm;
 import std;
 
 namespace spp::asts {
@@ -47,5 +45,5 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionAst final : ExpressionAst {
 
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::unique_ptr<TypeAst> override;
 };

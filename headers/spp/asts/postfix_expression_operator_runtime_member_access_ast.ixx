@@ -3,47 +3,19 @@ module;
 
 export module spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_ast;
-import spp.codegen.llvm_ctx;
-import llvm;
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct PostfixExpressionOperatorRuntimeMemberAccessAst;
-    SPP_EXP_CLS struct TokenAst;
-    SPP_EXP_CLS struct TypeAst;
 }
 
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst final : PostfixExpressionOperatorAst {
-    /**
-     * The @c . token that indicates a runtime member access operation in a postfix expression.
-     */
-    std::unique_ptr<TokenAst> tok_dot;
+    std::unique_ptr<IdentifierAst> name;
 
-    /**
-     * The identifier that represents the member being accessed. This is the name of the member in the class or struct.
-     */
-    std::shared_ptr<IdentifierAst> name;
-
-    /**
-     * Construct the PostfixExpressionOperatorMemberAccessAst with the arguments matching the members.
-     * @param[in] tok_dot The @c . token that indicates a runtime member access operation in a postfix expression.
-     * @param[in] name The identifier that represents the member being accessed.
-     */
     explicit PostfixExpressionOperatorRuntimeMemberAccessAst(
-        decltype(tok_dot) &&tok_dot,
         decltype(name) name);
-
     ~PostfixExpressionOperatorRuntimeMemberAccessAst() override;
-
-    SPP_AST_KEY_FUNCTIONS;
-
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
-
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto to_rust() const -> std::string override;
 };
