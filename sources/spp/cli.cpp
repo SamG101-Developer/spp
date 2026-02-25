@@ -42,7 +42,7 @@ const auto CONFIG_FILE_CONTENTS = R"(
     [project]
     name = "$"
     version = "0.1.0"
-    build = "executable"
+    build = "exe"
 
     [vcs]
     std = { git = "https://github.com/SamG101-Developer/SPP-STL", branch = "master" })";

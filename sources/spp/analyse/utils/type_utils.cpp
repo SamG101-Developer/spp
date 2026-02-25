@@ -182,6 +182,14 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
         }
     }
 
+    // If the left-hand-side is a "$" (function overload) type, check the composite overload types.
+    if (lhs_type.type_parts().back()->name[0] == '$') {
+        auto lhs_composite_types = func_utils::get_overload_types(lhs_type, lhs_scope);
+        if (genex::any_of(lhs_composite_types, [&](auto &&lhs_composite_type) { return relaxed_symbolic_eq(*lhs_composite_type, rhs_type, lhs_scope, rhs_scope, generic_args); })) {
+            return true;
+        }
+    }
+
     // If the stripped types aren't equal, then return false.
     if (stripped_lhs_sym->type != stripped_rhs_sym->type) { return false; }
     auto &lhs_generics = lhs_type.type_parts().back()->generic_arg_group->args;
@@ -657,6 +665,8 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
         new_alias_stmt->m_mapped_old_type = new_alias_stmt->m_mapped_old_type->substitute_generics(type_part.generic_arg_group->get_all_args());
         new_alias_stmt->old_type = new_alias_stmt->m_mapped_old_type;
         new_alias_stmt->old_type->stage_7_analyse_semantics(sm, meta);
+        // TODO: Remove generic parameters that have been given arguments (not always all generic args).
+        //  Move the argument filter out of the recursive alias searcher and re-use it here.
 
         const auto target_scope = new_alias_stmt->get_ast_scope()->parent;
         target_scope->add_type_symbol(new_cls_sym);
@@ -760,8 +770,8 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
     new_sup_scope_ptr->table = old_sup_scope.table;
     old_sup_scope.parent->children.emplace_back(std::move(new_sup_scope));
 
-    // std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name =
-    //     substitute_sup_scope_name(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name, generic_args);
+    std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name =
+        substitute_sup_scope_name(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->name).name, generic_args);
 
     // Register the generic symbols.
     auto tm = scopes::ScopeManager(sm->global_scope, new_sup_scope_ptr);
@@ -786,6 +796,9 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
 
             scoped_sym->alias_stmt->old_type = std::move(old_type_sub);
             scoped_sym->alias_stmt->m_mapped_old_type = scoped_sym->alias_stmt->old_type;
+            if (scoped_sym->alias_stmt->get_ast_scope()) { // Self doesnt have a scope on it
+                scoped_sym->alias_stmt->get_ast_scope()->parent = new_sup_scope_ptr;
+            }
 
             if (old_type_sub_sym != nullptr) {
                 old_type_sub_sym->aliased_by_symbols.push_back(scoped_sym);
@@ -1014,11 +1027,14 @@ auto spp::analyse::utils::type_utils::substitute_sup_scope_name(
 
     if (not parts[1].contains(" ext ")) {
         const auto t = INJECT_CODE(parts[1], parse_type_expression)->substitute_generics(generic_args.get_all_args());
-        return parts[0] + "#" + static_cast<std::string>(*t) + "#" + parts[2];
+        const auto o = parts[0] + "#" + static_cast<std::string>(*t) + "#" + parts[2];
+        return o;
     }
     const auto t = INJECT_CODE(parts[1].substr(0, parts[1].find(" ext ")), parse_type_expression)->substitute_generics(generic_args.get_all_args());
     const auto u = INJECT_CODE(parts[1].substr(parts[1].find(" ext ") + 5), parse_type_expression)->substitute_generics(generic_args.get_all_args());
-    return parts[0] + "#" + static_cast<std::string>(*t) + " ext " + static_cast<std::string>(*u) + "#" + parts[2];
+    const auto o = parts[0] + "#" + static_cast<std::string>(*t) + " ext " + static_cast<std::string>(*u) + "#" + parts[2];
+
+    return o;
 }
 
 

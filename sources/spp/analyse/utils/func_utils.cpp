@@ -1131,6 +1131,17 @@ auto spp::analyse::utils::func_utils::create_callable_prototype(
 }
 
 
+auto spp::analyse::utils::func_utils::get_overload_types(
+    asts::TypeAst const &overload_set_type,
+    scopes::Scope const& scope)
+    -> std::vector<std::shared_ptr<asts::TypeAst>> {
+    // Extract the overload types from the overload set type and are functional.
+    return scope.get_type_symbol(overload_set_type.shared_from_this())->scope->sup_types()
+        | genex::views::filter([&](auto &&t) { return type_utils::is_type_function(*t, scope); })
+        | genex::to<std::vector>();
+}
+
+
 template auto spp::analyse::utils::func_utils::name_gn_args_impl<
     spp::asts::GenericArgumentCompAst,
     spp::asts::GenericParameterCompAst>(
