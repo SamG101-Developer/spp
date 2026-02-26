@@ -183,9 +183,13 @@ auto spp::asts::CmpStatementAst::stage_10_code_gen_1(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
+    // No generation for $ types.
+    if (type->operator std::string()[0] == '$') { return nullptr; }
+
     // Generate the value in a constant context.
     ctx->in_constant_context = true;
-    const auto val = value->stage_11_code_gen_2(sm, meta, ctx);
+    const auto var_sym = sm->current_scope->get_var_symbol(name);
+    const auto val = var_sym->comptime_value->stage_11_code_gen_2(sm, meta, ctx);
     ctx->in_constant_context = false;
 
     // Create the global variable for the constant.
@@ -196,8 +200,6 @@ auto spp::asts::CmpStatementAst::stage_10_code_gen_1(
         codegen::mangle::mangle_cmp_name(*sm->current_scope, *this));
 
     // Register in the llvm info.
-    const auto var_sym = sm->current_scope->get_var_symbol(name);
     var_sym->llvm_info->alloca = llvm_global_var;
-
     return nullptr;
 }
