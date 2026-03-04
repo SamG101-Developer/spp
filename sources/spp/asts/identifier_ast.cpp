@@ -146,7 +146,10 @@ auto spp::asts::IdentifierAst::stage_11_code_gen_2(
         return ctx->builder.CreateLoad(global_var->getValueType(), global_var, "load.global" + uid);
     }
 
-    std::unreachable();
+    // If the variable is neither local nor global, this is an internal compiler error.
+    raise<analyse::errors::SppInternalCompilerError>(
+        {sm->current_scope},
+        ERR_ARGS(*this, "Target identifier ie neither local or global"));
 }
 
 

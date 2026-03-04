@@ -28,12 +28,13 @@ namespace spp {
 
     SPP_EXP_FUN template <typename E, typename A>
     requires std::derived_from<E, analyse::errors::SemanticError> // and std::constructible_from<analyse::errors::SemanticErrorBuilder<E>, Args...>
-    auto raise(std::vector<analyse::scopes::Scope const*> const &scopes, A &&arg_binder) -> void {
+    SPP_ATTR_NORETURN auto raise(std::vector<analyse::scopes::Scope const*> const &scopes, A &&arg_binder) -> void {
         std::apply(
             [&]<typename... Args2>(Args2 &&... unpacked_args) {
                 analyse::errors::SemanticErrorBuilder<E>().with_args(std::forward<Args2>(unpacked_args)...).raises_from_vec(scopes);
             },
             std::forward<A>(arg_binder)());
+        std::unreachable();
     }
 
     SPP_EXP_FUN template <typename E, typename A>

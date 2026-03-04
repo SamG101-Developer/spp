@@ -236,7 +236,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::determine_overload(
                 // Populate the list of arguments to fold.
                 for (auto &&arg : func_args->get_keyword_args()) {
                     if (analyse::utils::type_utils::is_type_tuple(*arg->infer_type(sm, meta), *sm->current_scope)) {
-                        for (auto && _: func_params->get_all_params()
+                        for (auto &&_ : func_params->get_all_params()
                              | genex::views::filter([arg](auto &&x) { return *x->extract_name() == *arg->name; })
                              | genex::views::filter([sm](auto &&x) { return not analyse::utils::type_utils::is_type_tuple(*x->type, *sm->current_scope); })) {
                             m_folded_args.emplace_back(arg);

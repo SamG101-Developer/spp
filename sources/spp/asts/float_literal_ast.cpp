@@ -162,9 +162,10 @@ auto spp::asts::FloatLiteralAst::stage_11_code_gen_2(
 
 
 auto spp::asts::FloatLiteralAst::infer_type(
-    ScopeManager *,
+    ScopeManager *sm,
     CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
+    // Todo: Use the IntergerLiteralAst implementation (it's better).
     // Map the type string literal to the correct SPP type.
     if (type.empty()) {
         return generate::common_types::f32(pos_start());
@@ -186,5 +187,7 @@ auto spp::asts::FloatLiteralAst::infer_type(
     }
 
     // This should never happen, due to parsing rules.
-    std::unreachable();
+    raise<analyse::errors::SppInternalCompilerError>(
+        {sm->current_scope},
+        ERR_ARGS(*this, "invalid float literal type"));
 }

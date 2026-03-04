@@ -170,13 +170,13 @@ namespace spp::analyse::utils::type_utils {
     SPP_EXP_FUN auto is_index_within_type_bound(
         std::size_t index,
         asts::TypeAst const &type,
-        scopes::Scope const &sm)
+        scopes::Scope const &scope)
         -> bool;
 
     SPP_EXP_FUN auto get_nth_type_of_indexable_type(
         std::size_t index,
         asts::TypeAst const &type,
-        scopes::Scope const &sm)
+        scopes::Scope const &scope)
         -> std::shared_ptr<asts::TypeAst>;
 
     SPP_EXP_FUN auto get_generator_and_yield_type(

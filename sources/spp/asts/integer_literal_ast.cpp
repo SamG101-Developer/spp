@@ -194,6 +194,11 @@ auto spp::asts::IntegerLiteralAst::infer_type(
     else if (type == "uz") {
         spp_type = generate::common_types::usize(pos_start());
     }
+    else {
+        raise<analyse::errors::SppInternalCompilerError>(
+            {sm->current_scope},
+            ERR_ARGS(*this, "invalid integer literal type"));
+    }
 
     const auto sym = sm->current_scope->get_type_symbol(spp_type);
     return sym->fq_name();

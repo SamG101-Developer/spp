@@ -415,40 +415,44 @@ auto spp::analyse::utils::type_utils::get_attr_types(
 auto spp::analyse::utils::type_utils::is_index_within_type_bound(
     const std::size_t index,
     asts::TypeAst const &type,
-    scopes::Scope const &sm)
+    scopes::Scope const &scope)
     -> bool {
     // For tuples, count the number of generic arguments.
-    if (is_type_tuple(type, sm)) {
+    if (is_type_tuple(type, scope)) {
         return index < type.type_parts().back()->generic_arg_group->args.size();
     }
 
     // For arrays, check the size argument.
-    if (is_type_array(type, sm)) {
+    if (is_type_array(type, scope)) {
         const auto size_arg = type.type_parts().back()->generic_arg_group->comp_at("n");
         const auto size_arg_cast = size_arg->val->to<asts::IntegerLiteralAst>();
         return index < std::stoull(size_arg_cast->val->token_data);
     }
 
-    std::unreachable();
+    raise<errors::SppInternalCompilerError>(
+        {&scope},
+        ERR_ARGS(type, "Non indexable type used in index check"));
 }
 
 
 auto spp::analyse::utils::type_utils::get_nth_type_of_indexable_type(
     const std::size_t index,
     asts::TypeAst const &type,
-    scopes::Scope const &sm)
+    scopes::Scope const &scope)
     -> std::shared_ptr<asts::TypeAst> {
     // For tuples, return the nth generic argument.
-    if (is_type_tuple(type, sm)) {
+    if (is_type_tuple(type, scope)) {
         return type.type_parts().back()->generic_arg_group->get_type_args()[index]->val;
     }
 
     // For arrays, return the element type.
-    if (is_type_array(type, sm)) {
+    if (is_type_array(type, scope)) {
         return type.type_parts().back()->generic_arg_group->get_type_args()[0]->val;
     }
 
-    std::unreachable();
+    raise<errors::SppInternalCompilerError>(
+        {&scope},
+        ERR_ARGS(type, "Non indexable type used in index access"));
 }
 
 
