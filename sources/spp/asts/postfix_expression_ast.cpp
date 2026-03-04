@@ -96,7 +96,7 @@ auto spp::asts::PostfixExpressionAst::stage_8_check_memory(
     meta->postfix_expression_lhs = lhs.get();
     if (lhs->to<IdentifierAst>() != nullptr) {
         analyse::utils::mem_utils::validate_symbol_memory(
-        *meta->postfix_expression_lhs, *op, *sm, true, false, false, false, false, meta);
+            *meta->postfix_expression_lhs, *op, *sm, true, false, false, false, false, meta);
     }
     op->stage_8_check_memory(sm, meta);
     meta->restore();
