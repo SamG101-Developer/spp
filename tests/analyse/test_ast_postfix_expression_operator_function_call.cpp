@@ -376,21 +376,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
-    test_invalid_postfix_function_folding_1,
-    SppFunctionFoldTupleLengthMismatchError, R"(
-    fun f(a: std::number::S32, b: std::number::S32) -> std::void::Void { }
-    fun g() -> std::void::Void {
-        let x = (1, 2, 3, 4)
-        let y = (1, 2)
-        f(x, y)..
-    }
-)");
-
-
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_function_folding_2,
-    SppFunctionFoldTupleElementTypeMismatchError, R"(
+    SppFunctionCallNoValidSignaturesError, R"(
     fun f(a: std::number::S32, b: std::number::S32) -> std::void::Void { }
     fun g() -> std::void::Void {
         let x = (1, 2, 3, "4")
@@ -404,10 +391,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_function_folding_moving_objects,
     SppUninitializedMemoryUseError, R"(
-    fun f(a: std::number::S32, b: std::string_view::StrView) -> std::void::Void { }
+    fun f(a: std::number::S32, b: std::string::Str) -> std::void::Void { }
     fun g() -> std::void::Void {
         let x = (1, 2, 3)
-        let y = "hello world"
+        let y = std::string::Str::from("hello world")
         f(x, y)..
     }
 )");
