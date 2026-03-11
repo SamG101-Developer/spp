@@ -15,8 +15,8 @@ import genex;
 import toml;
 
 
-#define SPP_VALIDATE_STRUCTURE \
-    if (not handle_validate()) { return; }
+#define SPP_VALIDATE_STRUCTURE(is_exe) \
+    if (not handle_validate(is_exe)) { return; }
 
 #define SPP_CLI_NULL \
     bp::v1::std_out > bp::v1::null
@@ -85,7 +85,7 @@ auto spp::cli::run_cli(
        ->callback(handle_test);
 
     app.add_subcommand("validate", "Validate the project")
-       ->callback(handle_validate);
+       ->callback([] { handle_validate(false); });
 
     app.add_subcommand("version", "Show version information")
        ->callback(handle_version);
@@ -124,7 +124,7 @@ auto spp::cli::handle_vcs()
     -> void {
     // Validate the project structure first.
     using namespace std::string_literals;
-    SPP_VALIDATE_STRUCTURE;
+    SPP_VALIDATE_STRUCTURE(false);
 
     // Parse the spp.toml config file and get the optional "vcs" section.
     const auto toml = toml::parse_file(CONFIG_FILE);
@@ -177,7 +177,7 @@ auto spp::cli::handle_build(
     const bool skip_vcs)
     -> void {
     // Validate the project structure first.
-    SPP_VALIDATE_STRUCTURE;
+    SPP_VALIDATE_STRUCTURE(false);
 
     // Create the inner directory (rel or dev).
     const auto cwd = std::filesystem::current_path();
@@ -187,7 +187,7 @@ auto spp::cli::handle_build(
     if (not skip_vcs) { handle_vcs(); }
 
     // Revalidate (after including the VCS folders).
-    SPP_VALIDATE_STRUCTURE;
+    SPP_VALIDATE_STRUCTURE(false);
     const auto build_type =
         toml::parse_file(CONFIG_FILE)["project"].as_table()->at("build").value<std::string>();
 
@@ -220,7 +220,7 @@ auto spp::cli::handle_clean(
     std::string const &mode)
     -> void {
     // Validate the project structure first.
-    SPP_VALIDATE_STRUCTURE;
+    SPP_VALIDATE_STRUCTURE(false);
 
     // Remove the appropriate folders.
     const auto cwd = std::filesystem::current_path();
@@ -236,13 +236,14 @@ auto spp::cli::handle_clean(
 auto spp::cli::handle_test()
     -> void {
     // Validate the project structure first.
-    SPP_VALIDATE_STRUCTURE;
+    SPP_VALIDATE_STRUCTURE(false);
 
     // TODO
 }
 
 
-auto spp::cli::handle_validate()
+auto spp::cli::handle_validate(
+    const bool is_exe)
     -> bool {
     using namespace std::string_literals;
 
@@ -252,7 +253,7 @@ auto spp::cli::handle_validate()
         std::cerr << "Error: Missing 'src' folder.\n";
         return false;
     }
-    if (not std::filesystem::exists(cwd / SRC_FOLDER / MAIN_FILE)) {
+    if (not std::filesystem::exists(cwd / SRC_FOLDER / MAIN_FILE) and is_exe) {
         std::cerr << "Error: Missing 'src/main.spp' file.\n";
         return false;
     }
@@ -312,7 +313,7 @@ auto spp::cli::handle_validate()
     // For the VCS folders, validate each VCS entry (if it exists).
     for (auto const &vcs_dir : std::filesystem::directory_iterator(cwd / VCS_FOLDER)) {
         std::filesystem::current_path(cwd / vcs_dir);
-        handle_validate();
+        handle_validate(build_type == "exe");
         std::filesystem::current_path(cwd);
     }
 
@@ -378,12 +379,12 @@ auto spp::cli::unit_test(
     std::string &&main_code)
     -> void {
     // Validate the project structure first.
-    SPP_VALIDATE_STRUCTURE;
+    SPP_VALIDATE_STRUCTURE(false);
 
     // Create the inner directory (rel or dev).
     const auto cwd = std::filesystem::current_path();
     std::filesystem::create_directory(cwd / OUT_FOLDER / mode);
-    SPP_VALIDATE_STRUCTURE;
+    SPP_VALIDATE_STRUCTURE(false);
 
     // Compile the code.
     const auto m = mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL;

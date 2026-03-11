@@ -35,7 +35,8 @@ namespace spp::cli {
     SPP_EXP_FUN auto handle_test()
         -> void;
 
-    SPP_EXP_FUN auto handle_validate()
+    SPP_EXP_FUN auto handle_validate(
+        bool is_exe)
         -> bool;
 
     SPP_EXP_FUN auto handle_version()
