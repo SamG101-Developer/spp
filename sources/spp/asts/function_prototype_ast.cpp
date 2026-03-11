@@ -57,11 +57,11 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     decltype(tok_arrow) &&tok_arrow,
     decltype(return_type) &&return_type,
     decltype(impl) &&impl) :
+    m_llvm_func(nullptr),
     abstract_annotation(nullptr),
     virtual_annotation(nullptr),
     temperature_annotation(nullptr),
     no_impl_annotation(nullptr), inline_annotation(nullptr),
-    llvm_func(nullptr),
     annotations(std::move(annotations)),
     tok_cmp(std::move(tok_cmp)),
     tok_fun(std::move(tok_fun)),
@@ -77,6 +77,7 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->impl);
     m_original_impl = ast_clone(this->impl.get());
     m_non_generic_impl = this;
+    m_llvm_func = std::make_shared<std::shared_ptr<codegen::LlvmFuncWrapper>>(nullptr);
 }
 
 
@@ -146,6 +147,10 @@ auto spp::asts::FunctionPrototypeAst::m_deduce_mock_class_type() const
     }
 
     std::unreachable();
+
+    // raise<analyse::errors::SppInternalCompilerError>(
+    //     {sm->current_scope},
+    //     ERR_ARGS(*this, "Self convention escaped possible enum values"));
 }
 
 
@@ -155,7 +160,7 @@ auto spp::asts::FunctionPrototypeAst::m_is_pure_generic(
     -> std::tuple<bool, llvm::Type*, std::vector<llvm::Type*>> {
     // Convert the return and parameter types to LLVM types.
     const auto llvm_ret_type = codegen::llvm_type(*sm->current_scope->get_type_symbol(return_type), ctx);
-    const auto llvm_param_types = param_group->params
+    const auto llvm_param_types = param_group->get_non_self_params()
         | genex::views::transform([&](auto const &x) { return codegen::llvm_type(*sm->current_scope->get_type_symbol(x->type), ctx); })
         | genex::to<std::vector>();
 
@@ -169,7 +174,7 @@ auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
     ScopeManager *sm,
     CompilerMetaData *,
     codegen::LLvmCtx *ctx)
-    -> llvm::Function* {
+    -> std::shared_ptr<codegen::LlvmFuncWrapper> {
     // Generate the return and parameter types.
     auto [is_generic, llvm_ret_type, llvm_param_types] = m_is_pure_generic(sm, ctx);
 
@@ -182,11 +187,11 @@ auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
         const auto created_llvm_func = llvm::Function::Create(
             llvm_fun_type, llvm::Function::ExternalLinkage, codegen::mangle::mangle_fun_name(*sm->current_scope, *this),
             ctx->llvm_module.get());
-        llvm_func = created_llvm_func;
+        const auto func = std::make_shared<codegen::LlvmFuncWrapper>(created_llvm_func);
 
         // Apply standard optimization flags.
-        llvm_func->addFnAttr(llvm::Attribute::NoUnwind);
-        llvm_func->addFnAttr(llvm::Attribute::NoInline);
+        func->target->addFnAttr(llvm::Attribute::NoUnwind);
+        func->target->addFnAttr(llvm::Attribute::NoInline);
         // llvm_func->addFnAttr(analyse::utils::type_utils::is_type_never(*return_type, *sm->current_scope)
         //                          ? llvm::Attribute::NoReturn
         //                          : llvm::Attribute::WillReturn);
@@ -208,8 +213,10 @@ auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
         //         llvm_func->addParamAttr(i, llvm::Attribute::Dereferenceable);
         //     }
         // }
+
+        *m_llvm_func = func;
     }
-    return llvm_func;
+    return *m_llvm_func;
 }
 
 
@@ -506,7 +513,7 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_1(
     -> llvm::Value* {
     // Create the declaration, but not the definition, of the function. This allows for order-agnostic behaviour.
     sm->move_to_next_scope();
-    SPP_ASSERT(sm->current_scope == m_scope);
+    // SPP_ASSERT(sm->current_scope == m_scope);
 
     // Handle the main function prototype.
     m_generate_llvm_declaration(sm, meta, ctx);
@@ -537,11 +544,11 @@ auto spp::asts::FunctionPrototypeAst::stage_11_code_gen_2(
     // SPP_ASSERT(sm->current_scope == m_scope);
 
     // Add the entry block to the function.
-    const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry", llvm_func);
+    const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry", get_llvm_func()->target);
     ctx->builder.SetInsertPoint(entry_bb);
 
     // Generate the parameters as variables.
-    if (llvm_func != nullptr) {
+    if (get_llvm_func()->target != nullptr) {
         param_group->stage_11_code_gen_2(sm, meta, ctx);
         generic_param_group->stage_11_code_gen_2(sm, meta, ctx);
     }
@@ -554,7 +561,7 @@ auto spp::asts::FunctionPrototypeAst::stage_11_code_gen_2(
 
     // If there is an implementation, generate its code.
     const auto is_extern = no_impl_annotation || abstract_annotation;
-    if (llvm_func == nullptr) {
+    if (get_llvm_func()->target == nullptr) {
         // Generic base function so not generating for it.
         // Manual scope skipping.
         const auto final_scope = sm->current_scope->final_child_scope();
@@ -579,6 +586,8 @@ auto spp::asts::FunctionPrototypeAst::stage_11_code_gen_2(
     sm->move_out_of_current_scope();
 
     // Analyse to make a new scope in the correct place.
+    // TODO: Remove this? func_call() generates generic target when needed,
+    //  Do same with generic classes & object instantiation?
     for (auto &&[generic_scope, generic_proto] : m_generic_substitutions) {
         auto tm = ScopeManager(sm->global_scope, generic_scope.get());
         if (std::get<0>(generic_proto->m_is_pure_generic(&tm, ctx))) { continue; }
@@ -600,4 +609,10 @@ auto spp::asts::FunctionPrototypeAst::stage_11_code_gen_2(
     }
 
     return nullptr;
+}
+
+
+auto spp::asts::FunctionPrototypeAst::get_llvm_func() const
+    -> std::shared_ptr<codegen::LlvmFuncWrapper> {
+    return *m_llvm_func;
 }

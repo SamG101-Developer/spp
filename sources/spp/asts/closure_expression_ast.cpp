@@ -175,7 +175,7 @@ auto spp::asts::ClosureExpressionAst::stage_11_code_gen_2(
 
     ctx->builder.SetInsertPoint(entry_bb);
     sm->current_scope->ast = this;
-    llvm_func = llvm_fn;
+    m_llvm_func = std::make_shared<codegen::LlvmFuncWrapper>(llvm_fn);
     meta->enclosing_function_scope = sm->current_scope;
     meta->enclosing_function_ret_type = {m_ret_type};
     meta->enclosing_function_flavour = tok.get();
@@ -269,4 +269,10 @@ auto spp::asts::ClosureExpressionAst::infer_type(
     // Analyse the type and return it.
     ty->stage_7_analyse_semantics(sm, meta);
     return ty;
+}
+
+
+auto spp::asts::ClosureExpressionAst::get_llvm_func() const
+    -> std::shared_ptr<codegen::LlvmFuncWrapper> {
+    return m_llvm_func;
 }

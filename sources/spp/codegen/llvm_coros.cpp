@@ -97,7 +97,7 @@ auto spp::codegen::create_coro_gen_ctor(
     SPP_ASSERT(coro_env_type != nullptr);
 
     // Create the gen ctor function - accept, fill, and return the generator environment.
-    const auto llvm_func_name = coro->llvm_func->getName().str() + ".gen.ctor" + uid;
+    const auto llvm_func_name = coro->get_llvm_func()->target->getName().str() + ".gen.ctor" + uid;
     const auto llvm_func_type = llvm::FunctionType::get(
         coro_env_type, {}, false);
     const auto llvm_func = llvm::Function::Create(
@@ -163,7 +163,7 @@ auto spp::codegen::create_coro_res_func(
     const auto llvm_send_type = llvm_type(*scope.get_type_symbol(send_type), ctx);
 
     // Create the resume function.
-    const auto llvm_func_name = coro->llvm_func->getName().str() + ".coro.resume" + uid;
+    const auto llvm_func_name = coro->get_llvm_func()->target->getName().str() + ".coro.resume" + uid;
     const auto llvm_func_type = llvm::FunctionType::get(
         llvm::Type::getVoidTy(*ctx->context),
         {llvm::PointerType::get(*ctx->context, 0), llvm_send_type}, false);

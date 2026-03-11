@@ -82,11 +82,12 @@ auto spp::asts::FunctionCallArgumentAst::stage_11_code_gen_2(
     if (conv != nullptr) {
         // If the lhs is symbolic, get the address of the outermost part.
         const auto uid = spp::utils::generate_uid(this);
-        const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*meta->postfix_expression_lhs);
+        const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*val);
 
         if (sym != nullptr) {
             // Get the alloca for the lhs symbol (the base pointer).
             const auto llvm_alloca = sym->llvm_info->alloca;
+            SPP_ASSERT(llvm_alloca != nullptr);
             SPP_ASSERT(llvm_alloca->getType()->isPointerTy());
             return llvm_alloca;
         }

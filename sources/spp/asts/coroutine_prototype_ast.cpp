@@ -49,7 +49,7 @@ auto spp::asts::CoroutinePrototypeAst::clone() const
     ast->no_impl_annotation = no_impl_annotation;
     ast->inline_annotation = inline_annotation;
     ast->visibility = visibility;
-    ast->llvm_func = llvm_func;
+    ast->m_llvm_func = m_llvm_func;
     ast->llvm_coro_yield_slot = llvm_coro_yield_slot;
     ast->llvm_gen_env = llvm_gen_env;
     ast->m_llvm_resume_fn = m_llvm_resume_fn;
