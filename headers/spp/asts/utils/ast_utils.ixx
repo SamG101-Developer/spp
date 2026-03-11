@@ -33,6 +33,20 @@ namespace spp::asts {
 
     SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
+    auto ast_clone_shared(std::unique_ptr<T> &&ast) -> std::shared_ptr<std::remove_cvref_t<T>> {
+        if (ast == nullptr) { return nullptr; }
+        return std::shared_ptr<T>(std::move(ast).release());
+    }
+
+    SPP_EXP_FUN template <typename T>
+    SPP_ATTR_ALWAYS_INLINE
+    auto ast_clone_shared(T *ast) -> std::shared_ptr<std::remove_cvref_t<T>> {
+        if (ast == nullptr) { return nullptr; }
+        return std::shared_ptr<T>(dynamic_cast<T*>(ast->clone().release()));
+    }
+
+    SPP_EXP_FUN template <typename T>
+    SPP_ATTR_ALWAYS_INLINE
     auto ast_clone_vec(std::vector<T*> const &asts) -> std::vector<std::unique_ptr<T>> {
         std::vector<std::unique_ptr<T>> cloned_asts;
         cloned_asts.reserve(asts.size());
