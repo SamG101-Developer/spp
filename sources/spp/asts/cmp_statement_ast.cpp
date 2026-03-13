@@ -112,12 +112,12 @@ auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
     }
 
     // Create a symbol for this constant declaration, pin to prevent moving.
-    auto sym = std::make_unique<analyse::scopes::VariableSymbol>(
+    m_alias_sym = std::make_shared<analyse::scopes::VariableSymbol>(
         name, type, false, false, visibility.first);
-    sym->memory_info->ast_pins.emplace_back(name.get());
-    sym->memory_info->ast_comptime = ast_clone(this);
-    sym->memory_info->initialized_by(*this, sm->current_scope);
-    sm->current_scope->add_var_symbol(std::move(sym));
+    m_alias_sym->memory_info->ast_pins.emplace_back(name.get());
+    m_alias_sym->memory_info->ast_comptime = ast_clone(this);
+    m_alias_sym->memory_info->initialized_by(*this, sm->current_scope);
+    sm->current_scope->add_var_symbol(m_alias_sym);
 }
 
 
@@ -202,4 +202,16 @@ auto spp::asts::CmpStatementAst::stage_10_code_gen_1(
     // Register in the llvm info.
     var_sym->llvm_info->alloca = llvm_global_var;
     return nullptr;
+}
+
+
+auto spp::asts::CmpStatementAst::mark_from_use_statement()
+    -> void {
+    m_from_use_statement = true;
+}
+
+
+auto spp::asts::CmpStatementAst::is_from_use_statement() const
+    -> bool {
+    return m_from_use_statement;
 }
