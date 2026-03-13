@@ -1,6 +1,12 @@
 module;
 #include <spp/macros.hpp>
 
+#define SPP_VALIDATE_STRUCTURE(is_exe) \
+    if (not handle_validate(is_exe)) { return; }
+
+#define SPP_CLI_NULL \
+    bp::v1::std_out > bp::v1::null
+
 module spp.cli;
 import spp.analyse.scopes.scope_manager;
 import spp.asts.module_prototype_ast;
@@ -13,13 +19,6 @@ import spp.utils.files;
 import cli11;
 import genex;
 import toml;
-
-
-#define SPP_VALIDATE_STRUCTURE(is_exe) \
-    if (not handle_validate(is_exe)) { return; }
-
-#define SPP_CLI_NULL \
-    bp::v1::std_out > bp::v1::null
 
 
 inline constexpr std::string OUT_FOLDER = "out";

@@ -147,3 +147,4 @@ export import spp.asts.unary_expression_ast;
 export import spp.asts.unary_expression_operator_ast;
 export import spp.asts.unary_expression_operator_async_ast;
 export import spp.asts.use_statement_ast;
+export import spp.asts.use_statement_variable_ast;
