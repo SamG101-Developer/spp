@@ -510,7 +510,7 @@ auto spp::analyse::scopes::Scope::get_var_symbol_outermost(
         }
 
         // Get the symbol (will be in this scope), and return it with the scope.
-        auto sym = get_var_symbol(ast_clone(adjusted_name->to<asts::IdentifierAst>()));
+        auto sym = get_var_symbol(asts::ast_clone(adjusted_name->to<asts::IdentifierAst>()));
         return std::make_pair(sym, this);
     }
 
@@ -521,18 +521,19 @@ auto spp::analyse::scopes::Scope::get_var_symbol_outermost(
 
         // Type based left-hand-side, such as "some_namespace::Type::static_member()"
         if (const auto type_lhs = postfix_expr->lhs->to<asts::TypeAst>()) {
-            const auto type_sym = get_type_symbol(ast_clone(type_lhs));
+            const auto type_sym = get_type_symbol(asts::ast_clone(type_lhs));
             const auto var_sym = type_sym->scope->get_var_symbol(postfix_op->name);
             return std::make_pair(var_sym, type_sym->scope);
         }
 
         // Namespace based left-hand-side, such as "a::b::c::my_function()"
         auto namespace_scope = this;
-        while (is_valid_postfix_expression_static(adjusted_name)) {
+        if (is_valid_postfix_expression_static(adjusted_name)) {
             adjusted_name = adjusted_name->to<asts::PostfixExpressionAst>()->lhs.get();
             namespace_scope = namespace_scope->convert_postfix_to_nested_scope(adjusted_name->to<asts::ExpressionAst>());
         }
-        return std::make_pair(namespace_scope->get_var_symbol(postfix_op->name), namespace_scope);
+        auto sym = namespace_scope->get_var_symbol(postfix_op->name);
+        return std::make_pair(sym, namespace_scope);
     }
 
     // Identifiers or non-symbolic expressions can use the normal lookup.
@@ -630,7 +631,7 @@ auto spp::analyse::scopes::Scope::convert_postfix_to_nested_scope(
     -> Scope const* {
     // Get the left-hand-side namespace's member's type.
     if (const auto lhs_as_ident = postfix_ast->to<asts::IdentifierAst>()) {
-        return get_ns_symbol(ast_clone(lhs_as_ident))->scope;
+        return get_ns_symbol(asts::ast_clone(lhs_as_ident))->scope;
     }
 
     // Postfix lhs -> get the ns scopes.
