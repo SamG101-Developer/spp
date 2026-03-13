@@ -154,6 +154,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeArrayShorthandAst;
     SPP_EXP_CLS struct TypeTupleShorthandAst;
     SPP_EXP_CLS struct UseStatementAst;
+    SPP_EXP_CLS struct UseStatementVariableAst;
     SPP_EXP_CLS struct TypeStatementAst;
     SPP_EXP_CLS struct SupPrototypeFunctionsAst;
     SPP_EXP_CLS struct SupPrototypeExtensionAst;
@@ -342,6 +343,7 @@ public:
     auto parse_exit_statement_with_value() -> std::unique_ptr<asts::LoopControlFlowStatementAst>;
     auto parse_skip_statement() -> std::unique_ptr<asts::LoopControlFlowStatementAst>;
     auto parse_use_statement() -> std::unique_ptr<asts::UseStatementAst>;
+    auto parse_use_var_statement() -> std::unique_ptr<asts::UseStatementVariableAst>;
     auto parse_type_statement() -> std::unique_ptr<asts::TypeStatementAst>;
     auto parse_cmp_statement() -> std::unique_ptr<asts::CmpStatementAst>;
     auto parse_let_statement() -> std::unique_ptr<asts::LetStatementAst>;
@@ -350,6 +352,7 @@ public:
     auto parse_let_statement_uninitialized() -> std::unique_ptr<asts::LetStatementAst>;
 
     auto parse_global_use_statement() -> std::unique_ptr<asts::UseStatementAst>;
+    auto parse_global_use_var_statement() -> std::unique_ptr<asts::UseStatementVariableAst>;
     auto parse_global_type_statement() -> std::unique_ptr<asts::TypeStatementAst>;
     auto parse_global_cmp_statement() -> std::unique_ptr<asts::CmpStatementAst>;
 

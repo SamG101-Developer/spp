@@ -125,7 +125,7 @@ public:
 
     auto mark_from_use_statement() -> void;
 
-    auto is_from_use_statement() const -> bool;
+    SPP_ATTR_NODISCARD auto is_from_use_statement() const -> bool;
 
     auto cleanup() -> void;
 };

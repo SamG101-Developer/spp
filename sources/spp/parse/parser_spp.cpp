@@ -1,6 +1,10 @@
 module;
 #include <spp/parse/macros.hpp>
 
+#define NO_ANNOTATIONS std::vector<std::unique_ptr<spp::asts::AnnotationAst>>()
+
+#define NO_TOKENS std::vector<std::unique_ptr<spp::asts::TokenAst>>()
+
 module spp.parse.parser_spp;
 import spp.asts._all;
 import spp.asts.generate.common_types;
@@ -10,12 +14,6 @@ import spp.parse.errors.parser_error_builder;
 import spp.utils.algorithms;
 import genex;
 import std;
-
-
-#define NO_ANNOTATIONS std::vector<std::unique_ptr<spp::asts::AnnotationAst>>()
-
-
-#define NO_TOKENS std::vector<std::unique_ptr<spp::asts::TokenAst>>()
 
 
 const auto IDENTIFIER_TOKENS = std::vector{
@@ -74,8 +72,8 @@ auto spp::parse::ParserSpp::parse_module_member()
     -> std::unique_ptr<asts::ModuleMemberAst> {
     PARSE_ALTERNATE(
         p1, asts::ModuleMemberAst, parse_function_prototype, parse_class_prototype, parse_sup_prototype_extension,
-        parse_sup_prototype_functions, parse_global_use_statement, parse_global_type_statement,
-        parse_global_cmp_statement);
+        parse_sup_prototype_functions, parse_global_use_statement, parse_global_use_var_statement,
+        parse_global_type_statement, parse_global_cmp_statement);
     return FORWARD_AST(p1);
 }
 
@@ -1274,9 +1272,9 @@ auto spp::parse::ParserSpp::parse_inner_scope_expression(auto &&parser)
 auto spp::parse::ParserSpp::parse_statement()
     -> std::unique_ptr<asts::StatementAst> {
     PARSE_ALTERNATE(
-        p1, asts::StatementAst, parse_use_statement, parse_type_statement, parse_let_statement, parse_ret_statement,
-        parse_exit_statement, parse_exit_statement_with_value, parse_skip_statement, parse_assignment_statement,
-        parse_expression);
+        p1, asts::StatementAst, parse_use_statement, parse_use_var_statement, parse_type_statement, parse_let_statement,
+        parse_ret_statement, parse_exit_statement, parse_exit_statement_with_value, parse_skip_statement,
+        parse_assignment_statement, parse_expression);
     return FORWARD_AST(p1);
 }
 
@@ -1368,6 +1366,14 @@ auto spp::parse::ParserSpp::parse_use_statement()
 }
 
 
+auto spp::parse::ParserSpp::parse_use_var_statement()
+    -> std::unique_ptr<asts::UseStatementVariableAst> {
+    PARSE_ONCE(p1, parse_keyword_use);
+    PARSE_ONCE(p2, parse_postfix_expression_strictly_static_access);
+    return CREATE_AST(asts::UseStatementVariableAst, NO_ANNOTATIONS, p1, p2);
+}
+
+
 auto spp::parse::ParserSpp::parse_type_statement()
     -> std::unique_ptr<asts::TypeStatementAst> {
     PARSE_ONCE(p1, parse_keyword_type);
@@ -1431,6 +1437,15 @@ auto spp::parse::ParserSpp::parse_global_use_statement()
     -> std::unique_ptr<asts::UseStatementAst> {
     PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_newline);
     PARSE_ONCE(p2, parse_use_statement);
+    p2->annotations = std::move(p1);
+    return FORWARD_AST(p2);
+}
+
+
+auto spp::parse::ParserSpp::parse_global_use_var_statement()
+    -> std::unique_ptr<asts::UseStatementVariableAst> {
+    PARSE_ZERO_OR_MORE(p1, parse_annotation, parse_newline);
+    PARSE_ONCE(p2, parse_use_var_statement);
     p2->annotations = std::move(p1);
     return FORWARD_AST(p2);
 }

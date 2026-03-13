@@ -1,28 +1,31 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.use_statement_ast;
+export module spp.asts.use_statement_variable_ast;
 import spp.asts.statement_ast;
 import spp.asts.module_member_ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS struct VariableSymbol;
+}
+
 namespace spp::asts {
     SPP_EXP_CLS struct AnnotationAst;
+    SPP_EXP_CLS struct CmpStatementAst;
+    SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct TokenAst;
-    SPP_EXP_CLS struct TypeStatementAst;
-    SPP_EXP_CLS struct TypeAst;
-    SPP_EXP_CLS struct UseStatementAst;
+    SPP_EXP_CLS struct UseStatementVariableAst;
 }
 
 
 /**
- * The UseStatementAst reduces a fully qualified type into the current scope, making the symbol accessible without the
- * associated namespace. It is internal mapped to a TypeStatementAst: @code use std::Str@endcode is equivalent to
- * @code type Str = std::Str@endcode.
+ * The UseStatementVariableAst reduces a fully qualified variable into the current scope, making the symbol accessible
+ * without the associated namespace. Internal symbol mapping for variables or namespaces are used.
  */
-SPP_EXP_CLS struct spp::asts::UseStatementAst final : StatementAst, ModuleMemberAst {
+SPP_EXP_CLS struct spp::asts::UseStatementVariableAst final : StatementAst, ModuleMemberAst {
 private:
     /**
      * The @c m_generated flag indicates whether this use statement has been generated yet. This is required, because
@@ -35,7 +38,7 @@ private:
      * The @c m_conversion is the type statement that is generated from this use statement. It is used to analyse new
      * types in a uniform way with @code type Str = std::Str@endcode.
      */
-    std::unique_ptr<TypeStatementAst> m_conversion;
+    std::unique_ptr<CmpStatementAst> m_conversion;
 
 public:
     /**
@@ -49,23 +52,23 @@ public:
     std::unique_ptr<TokenAst> tok_use;
 
     /**
-     * The old (fully qualified) type that this use statement is reducing. For example, for @code use
-     * std::string::Str@endcode, the fully qualified type is @c std::string::Str.
+     * The old (fully qualified) variable that this use statement is reducing. For example, for @code use
+     * std::annotations::public@endcode, the fully qualified type is @c std::annotations::public.
      */
-    std::shared_ptr<TypeAst> old_type;
+    std::unique_ptr<ExpressionAst> old_var;
 
     /**
      * Construct the UseStatementAst with the arguments matching the members.
      * @param annotations The list of annotations that are applied to this use statement.
      * @param tok_use The @c use token that starts this statement.
-     * @param old_type The old (fully qualified) type that this use statement is reducing.
+     * @param old_var The old (fully qualified) variable that this use statement is reducing.
      */
-    UseStatementAst(
+    UseStatementVariableAst(
         decltype(annotations) &&annotations,
         decltype(tok_use) &&tok_use,
-        decltype(old_type) old_type);
+        decltype(old_var) old_var);
 
-    ~UseStatementAst() override;
+    ~UseStatementVariableAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
@@ -88,6 +91,4 @@ public:
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
-
-    auto stage_11_code_gen_2(ScopeManager *sm , CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

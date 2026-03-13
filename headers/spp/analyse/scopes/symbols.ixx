@@ -91,6 +91,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
 
     std::unique_ptr<asts::Ast> comptime_value;
 
+    std::shared_ptr<VariableSymbol> alias_sym;
+
     VariableSymbol(
         std::shared_ptr<asts::IdentifierAst> name,
         std::shared_ptr<asts::TypeAst> type,

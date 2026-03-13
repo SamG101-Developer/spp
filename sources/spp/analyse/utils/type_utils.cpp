@@ -1099,6 +1099,7 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
         // If this alias is from a use statement, we need to propagate its generics for the next alias search.
         if (old_sym->alias_stmt and old_sym->alias_stmt->is_from_use_statement()) {
             use_stmt_propagating_generics = old_type->type_parts().back()->generic_arg_group.get();
+            if (use_stmt_propagating_generics->args.empty()) { use_stmt_propagating_generics = nullptr; }
             tracking_scope = old_sym->scope_defined_in;
         }
 

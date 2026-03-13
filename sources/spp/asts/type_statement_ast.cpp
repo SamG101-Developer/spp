@@ -114,11 +114,10 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
         new_type, new_type, *sm, "use statement's new type", false);
 
     // Create the type symbol for this type, that will point to the old type.
-    const auto type_sym = std::make_shared<analyse::scopes::TypeSymbol>(
+    m_alias_sym = std::make_shared<analyse::scopes::TypeSymbol>(
         new_type, nullptr, nullptr, sm->current_scope, sm->current_scope->parent_module());
-    sm->current_scope->add_type_symbol(type_sym);
-    m_alias_sym = type_sym;
     m_alias_sym->alias_stmt = std::unique_ptr<TypeStatementAst>(this);  // This is BAD but "cleanup" handles mem error.
+    sm->current_scope->add_type_symbol(m_alias_sym);
 
     // Create a new scope for the type statement.
     auto scope_name = analyse::scopes::ScopeBlockName::from_parts(

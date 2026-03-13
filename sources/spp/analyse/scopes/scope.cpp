@@ -407,6 +407,11 @@ auto spp::analyse::scopes::Scope::get_var_symbol(
         sym = search_sup_scopes_for_var(*scope, sym_name);
     }
 
+    // Check for a linked aliased variable symbol.
+    if (sym != nullptr and sym->alias_sym != nullptr) {
+        sym = sym->alias_sym;
+    }
+
     // Return the found symbol, or nullptr.
     return sym;
 }
