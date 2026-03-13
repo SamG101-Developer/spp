@@ -46,4 +46,6 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst fi
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+
+    SPP_ATTR_NODISCARD auto expr_parts() const -> std::vector<Ast *> override;
 };

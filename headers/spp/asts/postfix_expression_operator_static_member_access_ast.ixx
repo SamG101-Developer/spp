@@ -39,5 +39,9 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorStaticMemberAccessAst fin
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
+    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+
+    SPP_ATTR_NODISCARD auto expr_parts() const -> std::vector<Ast*> override;
 };

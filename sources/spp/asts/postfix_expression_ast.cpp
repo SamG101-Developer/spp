@@ -140,3 +140,15 @@ auto spp::asts::PostfixExpressionAst::infer_type(
     meta->restore();
     return ret_type;
 }
+
+
+auto spp::asts::PostfixExpressionAst::expr_parts() const
+    -> std::vector<Ast*> {
+    // Recursively search the lhs, and add the rhs if it exists.
+    auto lhs_parts = lhs->expr_parts();
+    auto rhs_parts = op->expr_parts();
+    if (not rhs_parts.empty()) {
+        lhs_parts.append_range(std::move(rhs_parts));
+    }
+    return lhs_parts;
+}

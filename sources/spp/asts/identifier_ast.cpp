@@ -167,3 +167,9 @@ auto spp::asts::IdentifierAst::ankerl_hash() const
     -> std::size_t {
     return absl::Hash<std::string>()(val);
 }
+
+
+auto spp::asts::IdentifierAst::expr_parts() const
+    -> std::vector<Ast*> {
+    return {const_cast<IdentifierAst*>(this)};
+}

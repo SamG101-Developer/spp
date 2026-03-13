@@ -114,7 +114,6 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
 
         // Check the target field exists on the type.
         if (not lhs_type_sym->scope->has_var_symbol(name, true)) {
-
             // At this point, we need to check for the presence of "FwdMut" or "FwdRef" superimpositions, allowing
             // access to their members.
             auto [fwd_ref_type, _] = analyse::utils::type_utils::get_fwd_types(*lhs_type, *sm);
@@ -252,4 +251,10 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::infer_type(
     const auto lhs_sym = sm->current_scope->get_type_symbol(lhs_type);
     const auto field_type = lhs_sym->scope->get_var_symbol(name)->type;
     return lhs_sym->scope->get_type_symbol(field_type)->fq_name();
+}
+
+
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::expr_parts() const
+    -> std::vector<Ast*> {
+    return {name.get()};
 }

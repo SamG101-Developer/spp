@@ -110,3 +110,9 @@ auto spp::asts::ExpressionAst::operator==(
     -> bool {
     return equals(rhs_expr) == std::strong_ordering::equal;
 }
+
+
+auto spp::asts::ExpressionAst::expr_parts() const
+    -> std::vector<Ast*> {
+    return {};
+}
