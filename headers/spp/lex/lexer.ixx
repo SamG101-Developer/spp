@@ -20,6 +20,6 @@ SPP_EXP_CLS class spp::lex::Lexer {
     std::string m_code;
 
 public:
-    explicit Lexer(std::string code);
+    explicit Lexer(std::string code, bool add_prelude = false);
     auto lex() const -> std::vector<RawToken>;
 };
