@@ -44,6 +44,8 @@ use std::function::FunRef
 use std::function::FunMut
 use std::function::FunMov
 use std::cast::From
+use std::generator::Gen
+use std::generator::GenOnce
 
 )";
 }
