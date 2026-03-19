@@ -279,6 +279,8 @@ public:
     auto parse_postfix_expression_op_keyword_not() -> std::unique_ptr<asts::PostfixExpressionOperatorKeywordNotAst>;
     auto parse_postfix_expression_op_keyword_res() -> std::unique_ptr<asts::PostfixExpressionOperatorKeywordResAst>;
     auto parse_postfix_expression_op_index() -> std::unique_ptr<asts::PostfixExpressionOperatorIndexAst>;
+    auto parse_postfix_expression_strictly_runtime_access() -> std::unique_ptr<asts::ExpressionAst>;
+    auto parse_postfix_expression_strictly_static_access() -> std::unique_ptr<asts::ExpressionAst>;
 
     auto parse_primary_expression() -> std::unique_ptr<asts::ExpressionAst>;
 
@@ -424,6 +426,7 @@ public:
     auto parse_numeric_identifier() -> std::unique_ptr<asts::IdentifierAst>;
     auto parse_self_identifier() -> std::unique_ptr<asts::IdentifierAst>;
     auto parse_upper_identifier() -> std::unique_ptr<asts::IdentifierAst>;
+    auto parse_identifier_as_expression() -> std::unique_ptr<asts::ExpressionAst>;
 
     auto parse_literal() -> std::unique_ptr<asts::LiteralAst>;
     auto parse_literal_char() -> std::unique_ptr<asts::CharLiteralAst>;

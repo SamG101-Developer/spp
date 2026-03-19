@@ -879,6 +879,30 @@ auto spp::parse::ParserSpp::parse_postfix_expression_op_index()
 }
 
 
+auto spp::parse::ParserSpp::parse_postfix_expression_strictly_runtime_access()
+    -> std::unique_ptr<asts::ExpressionAst> {
+    PARSE_ONCE(p1, parse_identifier_as_expression);
+    PARSE_ONE_OR_MORE(p2, parse_postfix_expression_op_runtime_member_access, parse_nothing);
+    return utils::algorithms::move_accumulate(
+        p2.begin(), p2.end(), std::move(p1),
+        [](std::unique_ptr<asts::ExpressionAst> &&acc, std::unique_ptr<asts::PostfixExpressionOperatorRuntimeMemberAccessAst> &&x) {
+            return CREATE_AST(asts::PostfixExpressionAst, std::move(acc), std::move(x));
+        });
+}
+
+
+auto spp::parse::ParserSpp::parse_postfix_expression_strictly_static_access()
+    -> std::unique_ptr<asts::ExpressionAst> {
+    PARSE_ONCE(p1, parse_identifier_as_expression);
+    PARSE_ONE_OR_MORE(p2, parse_postfix_expression_op_static_member_access, parse_nothing);
+    return utils::algorithms::move_accumulate(
+        p2.begin(), p2.end(), std::move(p1),
+        [](std::unique_ptr<asts::ExpressionAst> &&acc, std::unique_ptr<asts::PostfixExpressionOperatorStaticMemberAccessAst> &&x) {
+            return CREATE_AST(asts::PostfixExpressionAst, std::move(acc), std::move(x));
+        });
+}
+
+
 auto spp::parse::ParserSpp::parse_primary_expression()
     -> std::unique_ptr<asts::ExpressionAst> {
     PARSE_ALTERNATE(
@@ -1970,6 +1994,13 @@ auto spp::parse::ParserSpp::parse_upper_identifier()
     auto p1 = parse_lexeme_upper_identifier();
     if (p1 == nullptr) { return nullptr; };
     return CREATE_AST(asts::IdentifierAst, p1->pos_start(), p1->token_data);
+}
+
+
+auto spp::parse::ParserSpp::parse_identifier_as_expression()
+    -> std::unique_ptr<asts::ExpressionAst> {
+    PARSE_ALTERNATE(p1, asts::IdentifierAst, parse_identifier, parse_self_identifier);
+    return std::unique_ptr<asts::ExpressionAst>(p1.release());
 }
 
 
