@@ -117,7 +117,7 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
     m_alias_sym = std::make_shared<analyse::scopes::TypeSymbol>(
         new_type, nullptr, nullptr, sm->current_scope, sm->current_scope->parent_module());
     m_alias_sym->alias_stmt = std::unique_ptr<TypeStatementAst>(this);  // This is BAD but "cleanup" handles mem error.
-    sm->current_scope->add_type_symbol(m_alias_sym);
+    sm->current_scope->add_type_symbol_check_conflict(m_alias_sym);
 
     // Create a new scope for the type statement.
     auto scope_name = analyse::scopes::ScopeBlockName::from_parts(

@@ -674,8 +674,8 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
 
         const auto target_scope = new_alias_stmt->get_ast_scope()->parent;
         target_scope->add_type_symbol(new_cls_sym);
-        new_alias_stmt->m_tracking_scope->add_type_symbol(new_cls_sym); // ?
-        new_alias_stmt->m_tracking_scope->children.emplace_back(std::move(new_cls_scope)); // ?
+        new_alias_stmt->m_tracking_scope->add_type_symbol(new_cls_sym);
+        new_alias_stmt->m_tracking_scope->children.emplace_back(std::move(new_cls_scope));
         new_cls_sym->alias_stmt = std::move(new_alias_stmt);
     }
 
@@ -899,11 +899,13 @@ auto spp::analyse::utils::type_utils::register_generic_syms(
 
     // Register the created generic symbols to the scope.
     for (auto const &e : generic_syms | genex::views::cast_smart<scopes::TypeSymbol>()) {
+        scope->rem_type_symbol(e->name);
         scope->add_type_symbol(e);
     }
 
     // Register the created generic symbols to the scope.
     for (auto const &e : generic_syms | genex::views::cast_smart<scopes::VariableSymbol>()) {
+        scope->rem_var_symbol(e->name);
         scope->add_var_symbol(e);
     }
 }

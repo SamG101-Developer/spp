@@ -156,10 +156,12 @@ public:
 
     SPP_ATTR_NODISCARD auto get_generics() const -> std::vector<std::unique_ptr<asts::GenericArgumentAst>>;
 
-    auto get_extended_generic_symbols(std::vector<asts::GenericArgumentAst*> const &generics, std::shared_ptr<asts::TypeAst> const &ignore = nullptr) const -> std::vector<std::shared_ptr<Symbol>>;
+    SPP_ATTR_NODISCARD auto get_extended_generic_symbols(std::vector<asts::GenericArgumentAst*> const &generics, std::shared_ptr<asts::TypeAst> const &ignore = nullptr) const -> std::vector<std::shared_ptr<Symbol>>;
 
     auto add_var_symbol(std::shared_ptr<VariableSymbol> const &sym) -> void;
+    auto add_var_symbol_check_conflict(std::shared_ptr<VariableSymbol> const &sym) -> void;
     auto add_type_symbol(std::shared_ptr<TypeSymbol> const &sym) -> void;
+    auto add_type_symbol_check_conflict(std::shared_ptr<TypeSymbol> const &sym) -> void;
     auto add_ns_symbol(std::shared_ptr<NamespaceSymbol> const &sym) -> void;
 
     auto rem_var_symbol(std::shared_ptr<asts::IdentifierAst> const &sym_name) -> void;
@@ -174,8 +176,8 @@ public:
     SPP_ATTR_NODISCARD auto has_type_symbol(std::shared_ptr<asts::TypeAst> const &sym_name, bool exclusive = false) const -> bool;
     SPP_ATTR_NODISCARD auto has_ns_symbol(std::shared_ptr<asts::IdentifierAst> const &sym_name, bool exclusive = false) const -> bool;
 
-    SPP_ATTR_NODISCARD SPP_ATTR_HOT auto get_var_symbol(std::shared_ptr<asts::IdentifierAst> const &sym_name, bool exclusive = false) const -> std::shared_ptr<VariableSymbol>;
-    SPP_ATTR_NODISCARD SPP_ATTR_HOT auto get_type_symbol(std::shared_ptr<const asts::TypeAst> const &sym_name, bool exclusive = false) const -> std::shared_ptr<TypeSymbol>;
+    SPP_ATTR_NODISCARD SPP_ATTR_HOT auto get_var_symbol(std::shared_ptr<asts::IdentifierAst> const &sym_name, bool exclusive = false, bool sup_scope_search = true) const -> std::shared_ptr<VariableSymbol>;
+    SPP_ATTR_NODISCARD SPP_ATTR_HOT auto get_type_symbol(std::shared_ptr<const asts::TypeAst> const &sym_name, bool exclusive = false, bool sup_scope_search = true) const -> std::shared_ptr<TypeSymbol>;
     SPP_ATTR_NODISCARD SPP_ATTR_HOT auto get_ns_symbol(std::shared_ptr<const asts::IdentifierAst> const &sym_name, bool exclusive = false) const -> std::shared_ptr<NamespaceSymbol>;
 
     SPP_ATTR_NODISCARD auto get_var_symbol_outermost(asts::Ast const &expr) const -> std::pair<std::shared_ptr<VariableSymbol>, Scope const*>;

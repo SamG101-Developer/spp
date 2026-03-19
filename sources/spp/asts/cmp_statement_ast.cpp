@@ -117,7 +117,7 @@ auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
     m_alias_sym->memory_info->ast_pins.emplace_back(name.get());
     m_alias_sym->memory_info->ast_comptime = ast_clone(this);
     m_alias_sym->memory_info->initialized_by(*this, sm->current_scope);
-    sm->current_scope->add_var_symbol(m_alias_sym);
+    sm->current_scope->add_var_symbol_check_conflict(m_alias_sym);
 }
 
 

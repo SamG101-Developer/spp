@@ -105,7 +105,7 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
         std::move(sym_name), this, sm->current_scope, sm->current_scope, sm->current_scope->parent_module(), false,
         is_dollar_type);
     sm->current_scope->ty_sym = symbol_1;
-    sm->current_scope->parent->add_type_symbol(symbol_1);
+    sm->current_scope->parent->add_type_symbol_check_conflict(symbol_1);
     m_cls_sym = sm->current_scope->ty_sym;
 
     // If the type was generic, like Vec[T], also create a base Vec symbol.
@@ -116,7 +116,7 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
         symbol_2->generic_impl = symbol_1.get();
         sm->current_scope->ty_sym = symbol_2;
         const auto ret_sym = symbol_2.get();
-        sm->current_scope->parent->add_type_symbol(symbol_2);
+        sm->current_scope->parent->add_type_symbol_check_conflict(symbol_2);
         return ret_sym;
     }
 

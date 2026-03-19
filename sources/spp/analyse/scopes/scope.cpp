@@ -1,8 +1,10 @@
 module;
-#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
 import spp.asts.ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.expression_ast;
@@ -262,9 +264,47 @@ auto spp::analyse::scopes::Scope::add_var_symbol(
 }
 
 
+auto spp::analyse::scopes::Scope::add_var_symbol_check_conflict(
+    std::shared_ptr<VariableSymbol> const &sym)
+    -> void {
+    // Cannot allow for duplicate comptime definitions.
+    const auto existing_sym = get_var_symbol(sym->name, false);
+    if (existing_sym != nullptr) {
+        // const auto is_generic = sym->is_generic;
+        // const auto is_comptime = sym->memory_info->ast_comptime != nullptr;
+        const auto is_functional = existing_sym->type->to_string()[0] == '$';
+        raise_if<errors::SppIdentifierDuplicateError>(
+            not is_functional,
+            {this, this},
+            ERR_ARGS(*existing_sym->name, *sym->name, "comptime variable identifier"));
+    }
+
+    // Add a type symbol to the corresponding symbol table.
+    table.var_tbl.add(sym->name, sym);
+}
+
+
 auto spp::analyse::scopes::Scope::add_type_symbol(
     std::shared_ptr<TypeSymbol> const &sym)
     -> void {
+    // Add a type symbol to the corresponding symbol table.
+    table.type_tbl.add(sym->name, sym);
+}
+
+
+auto spp::analyse::scopes::Scope::add_type_symbol_check_conflict(
+    std::shared_ptr<TypeSymbol> const &sym)
+    -> void {
+    // Cannot allow for duplicate definitions.
+    const auto existing_sym = get_type_symbol(sym->name, false);
+    if (existing_sym != nullptr) {
+        const auto is_functional = sym->name->name[0] == '$';
+        raise_if<errors::SppIdentifierDuplicateError>(
+            not is_functional,
+            {existing_sym->scope_defined_in, sym->scope_defined_in},
+            ERR_ARGS(*existing_sym->name, *sym->name, "type identifier"));
+    }
+
     // Add a type symbol to the corresponding symbol table.
     table.type_tbl.add(sym->name, sym);
 }
@@ -390,7 +430,8 @@ auto spp::analyse::scopes::Scope::has_ns_symbol(
 
 auto spp::analyse::scopes::Scope::get_var_symbol(
     std::shared_ptr<asts::IdentifierAst> const &sym_name,
-    const bool exclusive) const
+    const bool exclusive,
+    const bool sup_scope_search) const
     -> std::shared_ptr<VariableSymbol> {
     // Get the symbol from the symbol table if it exists.
     if (sym_name == nullptr) { return nullptr; }
@@ -403,7 +444,7 @@ auto spp::analyse::scopes::Scope::get_var_symbol(
     }
 
     // If the symbol still hasn't been found, check the super scopes for it.
-    if (sym == nullptr) {
+    if (sym == nullptr and sup_scope_search) {
         sym = search_sup_scopes_for_var(*scope, sym_name);
     }
 
@@ -419,7 +460,8 @@ auto spp::analyse::scopes::Scope::get_var_symbol(
 
 auto spp::analyse::scopes::Scope::get_type_symbol(
     std::shared_ptr<const asts::TypeAst> const &sym_name,
-    const bool exclusive) const
+    const bool exclusive,
+    const bool sup_scope_search) const
     -> std::shared_ptr<TypeSymbol> {
     // Adjust the scope for the namespace of the type identifier if there is one.
     if (sym_name == nullptr) { return nullptr; }
@@ -449,7 +491,7 @@ auto spp::analyse::scopes::Scope::get_type_symbol(
     }
 
     // If the symbol still hasn't been found, check the super scopes for it.
-    if (sym == nullptr) {
+    if (sym == nullptr and sup_scope_search) {
         sym = search_sup_scopes_for_type(*scope, sym_name_extracted);
     }
 
@@ -532,7 +574,7 @@ auto spp::analyse::scopes::Scope::get_var_symbol_outermost(
             adjusted_name = adjusted_name->to<asts::PostfixExpressionAst>()->lhs.get();
             namespace_scope = namespace_scope->convert_postfix_to_nested_scope(adjusted_name->to<asts::ExpressionAst>());
         }
-        auto sym = namespace_scope->get_var_symbol(postfix_op->name);
+        auto sym = namespace_scope ? namespace_scope->get_var_symbol(postfix_op->name) : nullptr;
         return std::make_pair(sym, namespace_scope);
     }
 
@@ -631,7 +673,8 @@ auto spp::analyse::scopes::Scope::convert_postfix_to_nested_scope(
     -> Scope const* {
     // Get the left-hand-side namespace's member's type.
     if (const auto lhs_as_ident = postfix_ast->to<asts::IdentifierAst>()) {
-        return get_ns_symbol(asts::ast_clone(lhs_as_ident))->scope;
+        const auto ns_sym = get_ns_symbol(asts::ast_clone(lhs_as_ident));
+        return ns_sym ? ns_sym->scope : nullptr;
     }
 
     // Postfix lhs -> get the ns scopes.
