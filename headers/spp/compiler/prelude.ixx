@@ -46,6 +46,6 @@ use std::function::FunMov
 use std::cast::From
 use std::generator::Gen
 use std::generator::GenOnce
-
+use std::copy::Copy
 )";
 }
