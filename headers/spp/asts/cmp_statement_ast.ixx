@@ -107,6 +107,8 @@ public:
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *) -> void override;
 
+    auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
     auto stage_5_load_super_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;

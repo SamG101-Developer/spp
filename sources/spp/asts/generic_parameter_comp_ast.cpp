@@ -41,7 +41,8 @@ auto spp::asts::GenericParameterCompAst::stage_2_gen_top_level_scopes(
     -> void {
     // Create a variable symbol for this constant in the current scope (class / function).
     auto sym = std::make_unique<analyse::scopes::VariableSymbol>(
-        IdentifierAst::from_type(*name), type, false, true, utils::Visibility::PUBLIC);
+        IdentifierAst::from_type(*name), type, sm->current_scope,
+        false, true, utils::Visibility::PUBLIC);
     sym->memory_info->ast_pins.emplace_back(name.get());
     sym->memory_info->ast_comptime = ast_clone(this);
     sym->memory_info->initialized_by(*this, sm->current_scope);

@@ -79,6 +79,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
 
     std::shared_ptr<asts::TypeAst> type;
 
+    Scope *scope_defined_in;
+
     bool is_mutable = false;
 
     bool is_generic = false;
@@ -96,6 +98,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
     VariableSymbol(
         std::shared_ptr<asts::IdentifierAst> name,
         std::shared_ptr<asts::TypeAst> type,
+        Scope *scope_defined_in,
         bool is_mutable = false,
         bool is_generic = false,
         asts::utils::Visibility visibility = asts::utils::Visibility::PUBLIC);
@@ -110,6 +113,9 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
     auto operator==(
         VariableSymbol const &that) const
         -> bool;
+
+    SPP_ATTR_NODISCARD auto fq_name() const
+        -> std::shared_ptr<asts::ExpressionAst>;
 };
 
 
@@ -164,7 +170,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
         TypeSymbol const &that) const
         -> bool;
 
-    SPP_ATTR_NODISCARD auto fq_name() const
+    SPP_ATTR_NODISCARD auto fq_name(bool ignore_dollar = true) const
         -> std::shared_ptr<asts::TypeAst>;
 };
 

@@ -87,7 +87,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_7_analyse_semantics(
     auto sym = std::make_unique<analyse::scopes::VariableSymbol>(
         alias != nullptr ? alias->name : name,
         meta->let_stmt_explicit_type != nullptr ? meta->let_stmt_explicit_type : val_type,
-        tok_mut != nullptr or (conv and *conv == ConventionTag::MUT));
+        sm->current_scope, tok_mut != nullptr or (conv and *conv == ConventionTag::MUT));
 
     // Update the type if there is a convention present.
     if (conv != nullptr) {

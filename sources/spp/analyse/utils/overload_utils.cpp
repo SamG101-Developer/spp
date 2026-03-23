@@ -12,6 +12,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.ast;
+import spp.asts.expression_ast;
 import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_keyword_ast;
 import spp.asts.function_call_argument_group_ast;
@@ -53,7 +54,19 @@ auto spp::analyse::utils::overload_utils::determine_overload(
     asts::meta::CompilerMetaData *meta)
     -> std::pair<PassOverloadInfo, bool> {
     // Extract metadata about the target function's overloads (owner, scope, etc).
-    const auto lhs = meta->postfix_expression_lhs;
+    auto lhs = meta->postfix_expression_lhs;
+
+    // Todo: Workaround for alised variable symbols being used as function targets, due
+    //  to scope lookup.
+    auto temp = std::shared_ptr<asts::ExpressionAst>(nullptr);
+    if (const auto id = lhs->to<asts::IdentifierAst>()) {
+        const auto x = sm->current_scope->get_var_symbol(asts::ast_clone(id));
+        if (x->memory_info->ast_comptime) {
+            temp = x->fq_name();
+            lhs = temp.get();
+        }
+    }
+
     const auto [fn_owner_type, fn_owner_scope, fn_name] = func_utils::get_function_owner_type_and_function_name(
         *lhs, *sm, meta);
 

@@ -16,6 +16,7 @@ import spp.asts.identifier_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
@@ -113,7 +114,7 @@ auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
 
     // Create a symbol for this constant declaration, pin to prevent moving.
     m_alias_sym = std::make_shared<analyse::scopes::VariableSymbol>(
-        name, type, false, false, visibility.first);
+        name, type, sm->current_scope, false, false, visibility.first);
     m_alias_sym->memory_info->ast_pins.emplace_back(name.get());
     m_alias_sym->memory_info->ast_comptime = ast_clone(this);
     m_alias_sym->memory_info->initialized_by(*this, sm->current_scope);
@@ -121,18 +122,30 @@ auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
 }
 
 
-auto spp::asts::CmpStatementAst::stage_5_load_super_scopes(
+auto spp::asts::CmpStatementAst::stage_4_qualify_types(
     ScopeManager *sm,
     CompilerMetaData *meta)
+    -> void {
+    // Qualify the type.
+    type->stage_4_qualify_types(sm, meta);
+    type->stage_7_analyse_semantics(sm, meta);
+    if (not m_from_use_statement and type->type_parts().back()->to_string()[0] != '$') {
+        type = sm->current_scope->get_type_symbol(type)->fq_name();
+        m_alias_sym->type = type;
+    }
+}
+
+
+auto spp::asts::CmpStatementAst::stage_5_load_super_scopes(
+    ScopeManager *sm,
+    CompilerMetaData *)
     -> void {
     // Ensure that the convention type doesn't have a convention.
     SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(
         this, type, *sm, "global constant type");
 
     // Check the type exists before attaching super scopes
-    type->stage_7_analyse_semantics(sm, meta);
-    type = sm->current_scope->get_type_symbol(type)->fq_name();
-    sm->current_scope->get_var_symbol(name)->type = type;
+    // type->stage_7_analyse_semantics(sm, meta);
 }
 
 
@@ -148,7 +161,7 @@ auto spp::asts::CmpStatementAst::stage_7_analyse_semantics(
     const auto inferred_type = value->infer_type(sm, meta);
 
     raise_if<analyse::errors::SppTypeMismatchError>(
-        not analyse::utils::type_utils::symbolic_eq(*given_type, *inferred_type, *sm->current_scope, *sm->current_scope),
+        not is_from_use_statement() and not analyse::utils::type_utils::symbolic_eq(*given_type, *inferred_type, *sm->current_scope, *sm->current_scope),
         {sm->current_scope}, ERR_ARGS(*type, *given_type, *value, *inferred_type));
 }
 

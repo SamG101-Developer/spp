@@ -159,7 +159,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_11_code_gen_2(
         // Add the alloca to the current scope as a variable symbol.
         // Todo: Handle mutability properly.
         auto var_sym = std::make_unique<analyse::scopes::VariableSymbol>(
-            asts::ast_clone(cap_val), cap_ty, false, false);
+            asts::ast_clone(cap_val), cap_ty, sm->current_scope, false, false);
         var_sym->llvm_info->alloca = alloca;
         sm->current_scope->add_var_symbol(std::move(var_sym));
     }

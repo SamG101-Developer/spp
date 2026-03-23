@@ -692,7 +692,9 @@ auto spp::analyse::scopes::Scope::convert_postfix_to_nested_scope(
 
     auto scope = this;
     for (auto const *ns : namespaces | genex::views::reverse) {
-        scope = scope->get_ns_symbol(asts::ast_clone(ns))->scope;
+        const auto ns_sym = scope->get_ns_symbol(asts::ast_clone(ns));
+        scope = ns_sym ? ns_sym->scope : nullptr;
+        if (scope == nullptr) { break; }
     }
     return scope;
 }

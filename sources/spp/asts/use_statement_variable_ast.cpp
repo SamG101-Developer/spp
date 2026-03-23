@@ -12,7 +12,9 @@ import spp.asts.annotation_ast;
 import spp.asts.cmp_statement_ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
+import spp.asts.postfix_expression_ast;
 import spp.asts.token_ast;
+import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.utils.strings;
@@ -105,16 +107,22 @@ auto spp::asts::UseStatementVariableAst::stage_3_gen_top_level_aliases(
     CompilerMetaData *meta)
     -> void {
     // Generate the top-level alias for the converted type statement.
-    const auto old_var_sym = sm->current_scope->get_var_symbol_outermost(*old_var).first;
+    // const auto scope = sm->current_scope->convert_postfix_to_nested_scope(old_var->to<PostfixExpressionAst>()->lhs.get());
+    const auto [old_var_sym, scope] = sm->current_scope->get_var_symbol_outermost(*old_var);
     if (old_var_sym != nullptr) {
-        m_conversion->type = old_var_sym->type;
+        // Cmp statements
+        m_conversion->type = scope->get_type_symbol(old_var_sym->type)->fq_name(false);
+        old_var_sym->type = m_conversion->type;
+
         m_conversion->m_alias_sym->alias_sym = old_var_sym;
+        m_conversion->m_alias_sym->type = m_conversion->type;
         m_conversion->stage_3_gen_top_level_aliases(sm, meta);
         return;
     }
 
     // const auto old_ns_sym = sm->current_scope->convert_postfix_to_nested_scope(old_var.get());
-    if (old_var_sym == nullptr) { // and old_ns_sym == nullptr) {
+    if (old_var_sym == nullptr) {
+        // and old_ns_sym == nullptr) {
         // Todo: alternatives based on lhs of the old var.
         const auto closest_match = spp::utils::strings::closest_match(
             old_var->to_string(), {});
