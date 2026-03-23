@@ -383,6 +383,7 @@ auto spp::analyse::utils::type_utils::is_type_borrowed(
     -> bool {
     // Check that either this type, or any inner types for variants, are "&" or "&mut".
     if (type.get_convention() != nullptr) { return true; }
+    // if (type.type_parts().back()->name[0] == '$') { return false; }
 
     // Check the inner types for variant types.
     const auto variant_type = asts::generate::common_types_precompiled::VAR;
@@ -866,6 +867,7 @@ auto spp::analyse::utils::type_utils::create_generic_sym(
         auto sym = std::make_unique<scopes::VariableSymbol>(
             asts::IdentifierAst::from_type(*comp_arg->name),
             comp_arg->val->infer_type(tm ? tm : &sm, meta),
+            sm.current_scope, // or tm?
             false, true, asts::utils::Visibility::PUBLIC);
         sym->memory_info->ast_comptime = asts::ast_clone(comp_arg);
         return sym;

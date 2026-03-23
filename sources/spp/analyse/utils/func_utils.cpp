@@ -141,7 +141,6 @@ auto spp::analyse::utils::func_utils::convert_method_to_function_form(
     -> std::pair<
         std::unique_ptr<asts::PostfixExpressionAst>,
         std::unique_ptr<asts::PostfixExpressionOperatorFunctionCallAst>> {
-    /* REFACTOR TO OWN FUNCTION */
     // The "self" argument will be the lhs.lhs if is symbolic, otherwise a materialization.
     auto self_arg_val = std::unique_ptr<asts::ExpressionAst>(nullptr);
     if (const auto o = sm.current_scope->get_var_symbol_outermost(*lhs.lhs).first; o != nullptr) {
