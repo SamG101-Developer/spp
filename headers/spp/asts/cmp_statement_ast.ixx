@@ -13,8 +13,13 @@ import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS struct VariableSymbol;
+}
+
 namespace spp::asts {
     SPP_EXP_CLS struct CmpStatementAst;
+    SPP_EXP_CLS struct UseStatementVariableAst;
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct TypeAst;
 }
@@ -25,6 +30,14 @@ namespace spp::asts {
  * is analogous to Rust's "const" statement.
  */
 SPP_EXP_CLS struct spp::asts::CmpStatementAst final : StatementAst, ModuleMemberAst, SupMemberAst, mixins::VisibilityEnabledAst {
+private:
+    std::shared_ptr<analyse::scopes::VariableSymbol> m_alias_sym;
+
+    bool m_from_use_statement;
+
+public:
+    friend struct UseStatementVariableAst;
+
     /**
      * The list of annotations that are applied to this cmp statement. Typically, access modifiers in this context.
      */
@@ -94,6 +107,8 @@ SPP_EXP_CLS struct spp::asts::CmpStatementAst final : StatementAst, ModuleMember
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *) -> void override;
 
+    auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
     auto stage_5_load_super_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -103,6 +118,10 @@ SPP_EXP_CLS struct spp::asts::CmpStatementAst final : StatementAst, ModuleMember
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+
+    auto mark_from_use_statement() -> void;
+
+    SPP_ATTR_NODISCARD auto is_from_use_statement() const -> bool;
 };
 
 

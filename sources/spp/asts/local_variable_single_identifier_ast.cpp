@@ -87,7 +87,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_7_analyse_semantics(
     auto sym = std::make_unique<analyse::scopes::VariableSymbol>(
         alias != nullptr ? alias->name : name,
         meta->let_stmt_explicit_type != nullptr ? meta->let_stmt_explicit_type : val_type,
-        tok_mut != nullptr or (conv and *conv == ConventionTag::MUT));
+        sm->current_scope, tok_mut != nullptr or (conv and *conv == ConventionTag::MUT));
 
     // Update the type if there is a convention present.
     if (conv != nullptr) {
@@ -169,7 +169,8 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_11_code_gen_2(
     auto temp_builder = llvm::IRBuilder(entry, entry->begin());
 
     const auto alloca = temp_builder.CreateAlloca(llvm_type, nullptr, "local.alloca" + uid);
-    sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name)->llvm_info->alloca = alloca;
+    const auto var_sym = sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name);
+    var_sym->llvm_info->alloca = alloca;
 
     // Generate the initializer expression.
     if (not meta->let_stmt_from_uninitialized) {

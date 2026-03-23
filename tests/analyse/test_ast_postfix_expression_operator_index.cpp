@@ -16,8 +16,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_indexing_ref, R"(
     cls A { }
 
-    sup A ext std::iterator::IndexRef[std::string::Str, std::number::S32] {
-        cor index_ref(&self, index: std::number::S32) -> std::generator::GenOnce[&std::string::Str] {
+    sup A ext std::ops::idx::IndexRef[std::string_view::StrView, std::number::S32] {
+        cor index_ref(&self, index: std::number::S32) -> std::generator::GenOnce[&std::string_view::StrView] {
             gen &"1"
             gen &"2"
             gen &"3"
@@ -35,8 +35,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_indexing_mut, R"(
     cls A { }
 
-    sup A ext std::iterator::IndexMut[std::string::Str, std::number::S32] {
-        cor index_mut(&mut self, index: std::number::S32) -> std::generator::GenOnce[&mut std::string::Str] {
+    sup A ext std::ops::idx::IndexMut[std::string_view::StrView, std::number::S32] {
+        cor index_mut(&mut self, index: std::number::S32) -> std::generator::GenOnce[&mut std::string_view::StrView] {
             gen &mut "1"
             gen &mut "2"
             gen &mut "3"
@@ -55,8 +55,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppExpressionNotIndexableError, R"(
     cls A { }
 
-    sup A ext std::iterator::IndexRef[std::string::Str, std::number::S32] {
-        cor index_ref(&self, index: std::number::S32) -> std::generator::GenOnce[&std::string::Str] {
+    sup A ext std::ops::idx::IndexRef[std::string_view::StrView, std::number::S32] {
+        cor index_ref(&self, index: std::number::S32) -> std::generator::GenOnce[&std::string_view::StrView] {
             gen &"1"
             gen &"2"
             gen &"3"
@@ -75,8 +75,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppExpressionNotIndexableError, R"(
     cls A { }
 
-    sup A ext std::iterator::IndexMut[std::string::Str, std::number::S32] {
-        cor index_mut(&mut self, index: std::number::S32) -> std::generator::GenOnce[&mut std::string::Str] {
+    sup A ext std::ops::idx::IndexMut[std::string_view::StrView, std::number::S32] {
+        cor index_mut(&mut self, index: std::number::S32) -> std::generator::GenOnce[&mut std::string_view::StrView] {
             gen &mut "1"
             gen &mut "2"
             gen &mut "3"

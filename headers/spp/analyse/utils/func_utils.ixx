@@ -197,7 +197,7 @@ namespace spp::analyse::utils::func_utils {
     SPP_EXP_FUN auto infer_gn_args_impl_comp(
         asts::GenericArgumentGroupAst &a_group,
         asts::GenericParameterGroupAst const &p_group,
-        std::vector<asts::GenericArgumentCompKeywordAst*> const &explicit_args,
+        std::vector<asts::GenericArgumentCompKeywordAst*> explicit_args,
         InferenceSourceMap const &infer_source,
         InferenceTargetMap const &infer_target,
         std::shared_ptr<asts::Ast> const &owner,
@@ -210,7 +210,7 @@ namespace spp::analyse::utils::func_utils {
     SPP_EXP_FUN auto infer_gn_args_impl_type(
         asts::GenericArgumentGroupAst &a_group,
         asts::GenericParameterGroupAst const &p_group,
-        std::vector<asts::GenericArgumentTypeKeywordAst*> const &explicit_args,
+        std::vector<asts::GenericArgumentTypeKeywordAst*> explicit_args,
         InferenceSourceMap const &infer_source,
         InferenceTargetMap const &infer_target,
         std::shared_ptr<asts::Ast> const &owner,
@@ -229,4 +229,9 @@ namespace spp::analyse::utils::func_utils {
     SPP_EXP_FUN auto create_callable_prototype(
         asts::TypeAst const &expr_type)
         -> std::unique_ptr<asts::FunctionPrototypeAst>;
+
+    SPP_EXP_FUN auto get_overload_types(
+        asts::TypeAst const &overload_set_type,
+        scopes::Scope const& scope)
+        -> std::vector<std::shared_ptr<asts::TypeAst>>;
 }

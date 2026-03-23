@@ -84,11 +84,13 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::stage_11_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Not implemented yet.
-    (void)sm;
-    (void)meta;
-    (void)ctx;
-    throw std::runtime_error("PostfixExpressionOperatorDerefAst::stage_11_code_gen_2 not implemented yet");
+    // Get the value underlying the borrow.
+    const auto borrow_val = meta->postfix_expression_lhs->stage_11_code_gen_2(sm, meta, ctx);
+    SPP_ASSERT(borrow_val != nullptr);
+
+    // Dereference the borrow to get the underlying value.
+    const auto deref_val = ctx->builder.CreateLoad(borrow_val->getType(), borrow_val, "deref");
+    return deref_val;
 }
 
 

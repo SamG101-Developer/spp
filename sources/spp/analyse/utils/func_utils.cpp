@@ -141,7 +141,6 @@ auto spp::analyse::utils::func_utils::convert_method_to_function_form(
     -> std::pair<
         std::unique_ptr<asts::PostfixExpressionAst>,
         std::unique_ptr<asts::PostfixExpressionOperatorFunctionCallAst>> {
-    /* REFACTOR TO OWN FUNCTION */
     // The "self" argument will be the lhs.lhs if is symbolic, otherwise a materialization.
     auto self_arg_val = std::unique_ptr<asts::ExpressionAst>(nullptr);
     if (const auto o = sm.current_scope->get_var_symbol_outermost(*lhs.lhs).first; o != nullptr) {
@@ -244,10 +243,14 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
         for (auto &&[scope_1, fn_1, _, _] : overload_scopes) {
             for (auto &&[scope_2, fn_2, _, _] : overload_scopes) {
                 if (fn_1 != fn_2 and target_scope->depth_difference(scope_1) < target_scope->depth_difference(scope_2)) {
-                    auto conflict = check_for_conflicting_override(*scope_1, scope_2, *fn_1, sm, meta);
+                    auto temp = fn_1->get_ast_scope()->parent->parent;
+                    fn_1->get_ast_scope()->parent->parent = const_cast<scopes::Scope*>(scope_1);
+
+                    auto conflict = check_for_conflicting_override(*fn_1->get_ast_scope()->parent, scope_2, *fn_1, sm, meta);
                     if (conflict != nullptr) {
                         overload_scopes |= genex::actions::remove_if([conflict](auto &&info) { return std::get<1>(info) == conflict; });
                     }
+                    fn_1->get_ast_scope()->parent->parent = temp;
                 }
             }
         }
@@ -526,8 +529,9 @@ auto spp::analyse::utils::func_utils::enforce_no_generic_constraint_violations(
                 temp = temp->with_generics(asts::ast_clone(p_con->type_parts().back()->generic_arg_group));
                 p_con = std::move(temp);
             }
+
             const auto sub = p_con->substitute_generics(a_group.get_all_args());
-            sub->stage_7_analyse_semantics(&sm, &meta);
+            // sub->stage_7_analyse_semantics(&sm, &meta);
             con_group_cloned.push_back(sub);
         }
         p_con_groups_cloned.push_back(std::move(con_group_cloned));
@@ -707,7 +711,7 @@ auto spp::analyse::utils::func_utils::name_gn_args_impl(
 
                 // Variadic check: map arguments "func[U32, U32]" for "func[..Ts]" to "func[Ts = (U32, U32)]".
                 auto tup_type = asts::generate::common_types::tuple_type(positional_arg->pos_start(), std::move(elems));
-                tup_type->stage_7_analyse_semantics(&sm, &meta);
+                if (meta.current_stage > 5) { tup_type->stage_7_analyse_semantics(&sm, &meta); }
                 kw_arg->val = tup_type;
             }
 
@@ -807,7 +811,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args(
 auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
     asts::GenericArgumentGroupAst &a_group,
     asts::GenericParameterGroupAst const &p_group,
-    std::vector<asts::GenericArgumentCompKeywordAst*> const &explicit_args,
+    std::vector<asts::GenericArgumentCompKeywordAst*> explicit_args,
     InferenceSourceMap const &infer_source,
     InferenceTargetMap const &infer_target,
     std::shared_ptr<asts::Ast> const &owner,
@@ -950,7 +954,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
 auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
     asts::GenericArgumentGroupAst &a_group,
     asts::GenericParameterGroupAst const &p_group,
-    std::vector<asts::GenericArgumentTypeKeywordAst*> const &explicit_args,
+    std::vector<asts::GenericArgumentTypeKeywordAst*> explicit_args,
     InferenceSourceMap const &infer_source,
     InferenceTargetMap const &infer_target,
     std::shared_ptr<asts::Ast> const &owner,
@@ -969,13 +973,6 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
         | genex::views::transform([](auto &&x) { return std::dynamic_pointer_cast<asts::TypeIdentifierAst>(x->name); })
         | genex::to<std::vector>();
     auto inferred_args = InferenceResultTypeMap();
-
-    // Preload the explicit generic arguments into the inference map, as the consistency of these arguments needs
-    // checking too.
-    for (auto *arg : explicit_args) {
-        auto cast_name = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(arg->name);
-        inferred_args[cast_name].emplace_back(arg->val);
-    }
 
     // Infer the generic arguments from the source/target maps.
     for (auto const &p_name : p_names) {
@@ -996,6 +993,17 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
             // Handle the match if it exists.
             if (inferred_arg != nullptr) {
                 inferred_args[p_name].emplace_back(inferred_arg);
+
+                // If we are inferring, remove the argument from the explicit args list.
+                // Todo: Same needed for "cmp" generic args.
+                if (genex::contains(ea_names, *p_name, genex::meta::deref)) {
+                    auto it = genex::find_if(explicit_args, [&](auto *arg) {
+                        return *std::dynamic_pointer_cast<asts::TypeIdentifierAst>(arg->name) == *p_name;
+                    });
+                    if (it != explicit_args.end()) {
+                        explicit_args.erase(it);
+                    }
+                }
             }
 
             // Handle the variadic parameter if it exists.
@@ -1006,6 +1014,13 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
                 inferred_args[p_name].emplace_back(temp2);
             }
         }
+    }
+
+    // Load the explicit generic arguments into the inference map, as the consistency of these arguments needs checking
+    // too.
+    for (auto *arg : explicit_args) {
+        auto cast_name = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(arg->name);
+        inferred_args[cast_name].emplace_back(arg->val);
     }
 
     // Fully qualify and type arguments (replaced within the inference map).
@@ -1112,6 +1127,17 @@ auto spp::analyse::utils::func_utils::create_callable_prototype(
 
     // Return the function prototype.
     return dummy_overload;
+}
+
+
+auto spp::analyse::utils::func_utils::get_overload_types(
+    asts::TypeAst const &overload_set_type,
+    scopes::Scope const& scope)
+    -> std::vector<std::shared_ptr<asts::TypeAst>> {
+    // Extract the overload types from the overload set type and are functional.
+    return scope.get_type_symbol(overload_set_type.shared_from_this())->scope->sup_types()
+        | genex::views::filter([&](auto &&t) { return type_utils::is_type_function(*t, scope); })
+        | genex::to<std::vector>();
 }
 
 

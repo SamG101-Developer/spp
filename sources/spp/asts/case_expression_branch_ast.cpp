@@ -97,7 +97,8 @@ auto spp::asts::CaseExpressionBranchAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    auto scope_name = analyse::scopes::ScopeBlockName("<case-pattern#" + std::to_string(pos_start()) + ">");
+    auto scope_name = analyse::scopes::ScopeBlockName::from_parts(
+        "case-branch", {}, pos_start());
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
 
     // Analyse the patterns, ensuring comparison methods exist is needed.

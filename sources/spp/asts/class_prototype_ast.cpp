@@ -105,7 +105,7 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
         std::move(sym_name), this, sm->current_scope, sm->current_scope, sm->current_scope->parent_module(), false,
         is_dollar_type);
     sm->current_scope->ty_sym = symbol_1;
-    sm->current_scope->parent->add_type_symbol(symbol_1);
+    sm->current_scope->parent->add_type_symbol_check_conflict(symbol_1);
     m_cls_sym = sm->current_scope->ty_sym;
 
     // If the type was generic, like Vec[T], also create a base Vec symbol.
@@ -116,7 +116,7 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
         symbol_2->generic_impl = symbol_1.get();
         sm->current_scope->ty_sym = symbol_2;
         const auto ret_sym = symbol_2.get();
-        sm->current_scope->parent->add_type_symbol(symbol_2);
+        sm->current_scope->parent->add_type_symbol_check_conflict(symbol_2);
         return ret_sym;
     }
 
@@ -168,6 +168,12 @@ auto spp::asts::ClassPrototypeAst::registered_generic_substitutions() const
     return m_generic_substitutions
         | genex::views::transform([](auto &&x) { return std::make_pair(x.first, x.second.get()); })
         | genex::to<std::vector>();
+}
+
+
+auto spp::asts::ClassPrototypeAst::get_cls_sym() const
+    -> std::shared_ptr<analyse::scopes::TypeSymbol> {
+    return m_cls_sym;
 }
 
 
@@ -340,10 +346,4 @@ auto spp::asts::ClassPrototypeAst::stage_11_code_gen_2(
     impl->stage_11_code_gen_2(sm, meta, ctx);
     sm->move_out_of_current_scope();
     return nullptr;
-}
-
-
-auto spp::asts::ClassPrototypeAst::get_cls_sym() const
-    -> std::shared_ptr<analyse::scopes::TypeSymbol> {
-    return m_cls_sym;
 }

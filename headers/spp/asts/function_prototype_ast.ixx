@@ -7,6 +7,7 @@ import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.module_member_ast;
 import spp.asts.sup_member_ast;
 import spp.codegen.llvm_ctx;
+import spp.codegen.llvm_func;
 import llvm;
 import std;
 
@@ -52,6 +53,13 @@ protected:
 
     FunctionPrototypeAst *m_non_generic_impl;
 
+    /**
+     * The LLVM generated function for this prototype. This is set during the first pass of code generation, and used
+     * for further codegen in the second pass (for function calls, etc). Double shared pointer for altering the value,
+     * and updating in cloned ASTs that share this target.
+     */
+    std::shared_ptr<std::shared_ptr<codegen::LlvmFuncWrapper>> m_llvm_func;
+
 public:
     /**
      * Optional @c \@abstractmethod annotation. This is used to indicate that the function is abstract and must be
@@ -82,12 +90,6 @@ public:
      * function should be inlined, or not inlined, or always inlined.
      */
     AnnotationAst *inline_annotation;
-
-    /**
-     * The LLVM generated function for this prototype. This is set during the first pass of code generation, and used
-     * for further codegen in the second pass (for function calls, etc).
-     */
-    llvm::Function *llvm_func;
 
     /**
      * The list of annotations that are applied to this function prototype. There are quite a lot of annotations that
@@ -184,7 +186,7 @@ private:
     auto m_is_pure_generic(ScopeManager *sm, codegen::LLvmCtx *ctx) const -> std::tuple<bool, llvm::Type*, std::vector<llvm::Type*>>;
 
 public:
-    virtual auto m_generate_llvm_declaration(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Function*;
+    virtual auto m_generate_llvm_declaration(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> std::shared_ptr<codegen::LlvmFuncWrapper>;
 
 public:
     auto print_signature(std::string const &owner) const -> std::string;
@@ -195,7 +197,7 @@ public:
 
     auto registered_generic_substitutions() -> std::list<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>>&;
 
-    auto mark_non_generic_impl(FunctionPrototypeAst * impl) -> void;
+    auto mark_non_generic_impl(FunctionPrototypeAst *impl) -> void;
 
     auto non_generic_impl() const -> FunctionPrototypeAst*;
 
@@ -220,4 +222,6 @@ public:
     auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+
+    auto get_llvm_func() const -> std::shared_ptr<codegen::LlvmFuncWrapper>;
 };

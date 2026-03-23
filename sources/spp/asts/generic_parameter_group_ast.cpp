@@ -40,6 +40,23 @@ spp::asts::GenericParameterGroupAst::GenericParameterGroupAst(
 spp::asts::GenericParameterGroupAst::~GenericParameterGroupAst() = default;
 
 
+auto spp::asts::GenericParameterGroupAst::merge_generics(
+    decltype(params) &&other_params) -> void {
+    // Merge the given parameters into this generic parameter group, ensuring no duplicates by name.
+    auto existing_names = std::vector<std::string>();
+    for (auto &&p : params) {
+        existing_names.push_back(p->name->to_string());
+    }
+    for (auto &&p : other_params) {
+        // Don't add duplicate named parameters.
+        auto new_name = p->name->to_string();
+        if (genex::contains(existing_names, new_name)) { continue; }
+        params.push_back(ast_clone(p));
+        existing_names.push_back(new_name);
+    }
+}
+
+
 auto spp::asts::GenericParameterGroupAst::operator+(
     GenericParameterGroupAst const &other) const
     -> std::unique_ptr<GenericParameterGroupAst> {
@@ -52,17 +69,7 @@ auto spp::asts::GenericParameterGroupAst::operator+(
 auto spp::asts::GenericParameterGroupAst::operator+=(
     GenericParameterGroupAst const &other)
     -> GenericParameterGroupAst& {
-    auto existing_names = std::vector<std::string>();
-    for (auto &&p : params) {
-        existing_names.push_back(p->name->to_string());
-    }
-    for (auto &&p : other.params) {
-        // Don't add duplicate named parameters.
-        auto new_name = p->name->to_string();
-        if (genex::contains(existing_names, new_name)) { continue; }
-        params.push_back(ast_clone(p));
-        existing_names.push_back(new_name);
-    }
+    merge_generics(ast_clone_vec(other.params));
     return *this;
 }
 
@@ -102,6 +109,13 @@ spp::asts::GenericParameterGroupAst::operator std::string() const {
 auto spp::asts::GenericParameterGroupAst::new_empty()
     -> std::unique_ptr<GenericParameterGroupAst> {
     return std::make_unique<GenericParameterGroupAst>(
+        nullptr, decltype(params)(), nullptr);
+}
+
+
+auto spp::asts::GenericParameterGroupAst::new_empty_shared()
+    -> std::shared_ptr<GenericParameterGroupAst> {
+    return std::make_shared<GenericParameterGroupAst>(
         nullptr, decltype(params)(), nullptr);
 }
 

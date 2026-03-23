@@ -10,12 +10,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
     }
 
-    use std::vector::Vec
-    use std::string::Str
-
     sup std::number::S32 {
         fun to_string(&self) -> std::string::Str {
-            ret ""
+            ret std::string::Str::from("")
         }
     }
 
@@ -23,9 +20,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut v = Vec[Str]()
         let mut x = v.test_func()
         x = 1234
-        v.push(x.to_string())
+        v.push_back(x.to_string())
     }
-)");;
+)");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
@@ -38,14 +35,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         }
     }
 
-    use std::vector::Vec
-    use std::boolean::Bool
-
     fun f() -> std::void::Void {
         let v = Vec[Bool]()
         let x = v.test_func()
     }
-)");;
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -69,7 +63,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     sup std::number::S32 {
         fun to_string(&self) -> std::string::Str {
-            ret ""
+            ret std::string::Str::from("")
         }
     }
 
@@ -82,7 +76,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
         b = a.to_string()
     }
-)");;
+)");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -97,4 +91,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void {
         let x = 1.test_func()
     }
-)");;
+)");

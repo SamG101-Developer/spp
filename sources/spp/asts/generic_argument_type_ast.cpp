@@ -5,6 +5,7 @@ import spp.analyse.scopes.symbols;
 import spp.asts.convention_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 
@@ -20,6 +21,12 @@ auto spp::asts::GenericArgumentTypeAst::stage_4_qualify_types(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // If the generic arg is generic itself, from type aliasing, do nothing.
+    // if (meta->alias_qualifier_scope != nullptr) {
+    //     const auto sym = meta->alias_qualifier_scope->get_type_symbol(val, true);
+    //     if (sym and sym->is_generic) { return; }
+    // }
+
     // Qualify the type value without generics, then re-add the generics.
     val->stage_4_qualify_types(sm, meta);
 

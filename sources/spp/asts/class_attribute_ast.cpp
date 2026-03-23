@@ -96,7 +96,7 @@ auto spp::asts::ClassAttributeAst::stage_2_gen_top_level_scopes(
 
     // Create a variable symbol for this attribute in the current scope (class scope).
     auto sym = std::make_unique<analyse::scopes::VariableSymbol>(
-        name, type, false, false, visibility.first);
+        name, type, sm->current_scope, false, false, visibility.first);
     sm->current_scope->add_var_symbol(std::move(sym));
 }
 

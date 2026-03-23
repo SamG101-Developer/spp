@@ -34,9 +34,8 @@ inline constexpr auto COMPILER_STAGE_NAMES = std::array{
 
 SPP_EXP_CLS class spp::compiler::Compiler {
 public:
-    enum class Mode {
-        DEV, REL
-    };
+    enum class Mode { DEV, REL };
+    enum class BuildType { EXE, LIB };
 
 private:
     std::filesystem::path m_path;
@@ -45,12 +44,20 @@ private:
 
     Mode m_mode = Mode::DEV;
 
+    BuildType m_build_type = BuildType::EXE;
+
     std::unique_ptr<CompilerBoot> m_boot;
 
     std::unique_ptr<analyse::scopes::ScopeManager> m_scope_manager;
 
+    bool m_for_unit_tests = false;
+
 public:
-    explicit Compiler(Mode mode);
+    Compiler() = default; // TODO: Private
+
+    explicit Compiler(Mode mode, BuildType build_type);
+
+    static auto for_unit_tests(Mode mode, std::string &&main_code) -> std::unique_ptr<Compiler>;
 
     ~Compiler();
 

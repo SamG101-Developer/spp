@@ -35,7 +35,8 @@ namespace spp::cli {
     SPP_EXP_FUN auto handle_test()
         -> void;
 
-    SPP_EXP_FUN auto handle_validate()
+    SPP_EXP_FUN auto handle_validate(
+        bool is_exe)
         -> bool;
 
     SPP_EXP_FUN auto handle_version()
@@ -47,4 +48,9 @@ namespace spp::cli {
 
     SPP_EXP_FUN auto get_system_shared_library_extension()
         -> std::string;
+
+    SPP_EXP_FUN auto unit_test(
+        std::string const &mode,
+        std::string &&main_code)
+        -> void;
 }

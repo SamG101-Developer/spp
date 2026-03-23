@@ -71,14 +71,15 @@ auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // Check this type isn't a borrow violation.
-    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(this, type, *sm, "object initializer");
-
     // Get the base class symbol (no generics) and check it exists.
     meta->save();
     meta->skip_type_analysis_generic_checks = true;
     type->without_generics()->stage_7_analyse_semantics(sm, meta);
     meta->restore();
+
+    // Check this type isn't a borrow violation.
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(this, type, *sm, "object initializer");
+
     const auto base_cls_sym = sm->current_scope->get_type_symbol(type->without_generics());
 
     // Generic types cannot have any attributes set | TODO: future with constraints will allow some.
@@ -108,9 +109,9 @@ auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
         | genex::views::transform([base_cls_sym](auto &&x) { return std::make_pair(x->name, base_cls_sym->scope->get_type_symbol(x->type)->fq_name()); })
         | genex::to<std::vector>();
 
-    // Analyse the type and object argument group.
-    auto tm = ScopeManager(sm->global_scope, base_cls_sym->scope);
-    base_cls_sym->type->impl->stage_7_analyse_semantics(&tm, meta);
+    // Analyse the type and object argument group. TODO: might still need this
+    // auto tm = ScopeManager(sm->global_scope, base_cls_sym->scope);
+    // base_cls_sym->type->impl->stage_7_analyse_semantics(&tm, meta);
 
     meta->save();
     meta->infer_source = {generic_infer_source.begin(), generic_infer_source.end()};

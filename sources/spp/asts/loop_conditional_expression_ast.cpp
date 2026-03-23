@@ -74,7 +74,8 @@ auto spp::asts::LoopConditionalExpressionAst::stage_7_analyse_semantics(
     CompilerMetaData *meta)
     -> void {
     // Create the loop scope.
-    auto scope_name = analyse::scopes::ScopeBlockName("<loop-cond-expr#" + std::to_string(pos_start()) + ">");
+    auto scope_name = analyse::scopes::ScopeBlockName::from_parts(
+        "loop-cond-expr", {}, pos_start());
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
     Ast::stage_2_gen_top_level_scopes(sm, meta);
 
@@ -220,6 +221,16 @@ auto spp::asts::LoopConditionalExpressionAst::infer_type(
     //         }
     //     }
     // }
+
+    // A "loop true" with no exit statements returns "Never".
+    const auto cond_lit = cond->to<BooleanLiteralAst>();
+    if (cond_lit != nullptr and cond_lit->tok_bool->token_type == lex::SppTokenType::KW_TRUE) {
+
+        // Check the internal flow controls.
+        if (not m_loop_exit_type_info.has_value()) {
+            return generate::common_types::never_type(pos_start());
+        }
+    }
 
     return LoopExpressionAst::infer_type(sm, meta);
 }

@@ -20,7 +20,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementAst,
     test_valid_type_statement_simple_alias, R"(
-    type MyString = std::string::Str
+    type MyString = std::string_view::StrView
     type MyBool = std::boolean::Bool
 
     fun f(a: MyString, b: MyBool) -> std::void::Void { }
@@ -32,7 +32,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementAst,
     test_valid_type_statement_local_simple_alias, R"(
     fun f() -> std::void::Void {
-        type MyString = std::string::Str
+        type MyString = std::string_view::StrView
         type MyBool = std::boolean::Bool
 
         let x: (MyString, MyBool)
@@ -44,7 +44,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementAst,
     test_valid_type_statement_variant, R"(
-    type SomeType = std::string::Str or std::boolean::Bool
+    type SomeType = std::string_view::StrView or std::boolean::Bool
     fun f(a: SomeType) -> std::void::Void { }
     fun g() -> std::void::Void { f("hello") }
 )");
@@ -54,7 +54,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementAst,
     test_valid_type_statement_local_variant, R"(
     fun f() -> std::void::Void {
-        type SomeType = std::string::Str or std::boolean::Bool
+        type SomeType = std::string_view::StrView or std::boolean::Bool
         let x: SomeType
         x = "hello"
     }
@@ -72,7 +72,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     fun g() -> std::void::Void {
-        let x = std::vector::Vec[std::string::Str]()
+        let x = std::vector::Vec[std::string_view::StrView]()
         f(x, "test")
     }
 )");
@@ -83,7 +83,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_type_statement_local_generics_alias, R"(
     fun f() -> std::void::Void {
         type MyVec[T] = std::vector::Vec[T]
-        let x = MyVec[std::string::Str]()
+        let x = MyVec[std::string_view::StrView]()
     }
 )");
 

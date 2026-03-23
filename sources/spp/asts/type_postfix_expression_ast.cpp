@@ -205,11 +205,6 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
     const auto scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
     const auto lhs_type = lhs->infer_type(sm, meta);
     const auto lhs_type_sym = scope->get_type_symbol(lhs_type);
-
-    // Check the left-hand-side isn't a generic type. Todo: until constraints
-    raise_if<analyse::errors::SppGenericTypeInvalidUsageError>(
-        lhs_type_sym->is_generic, {sm->current_scope},
-        ERR_ARGS(*lhs, *lhs_type, "postfix type"));
     const auto lhs_type_scope = lhs_type_sym->scope;
 
     // Check there is only 1 target field on the lhs at the highest level.

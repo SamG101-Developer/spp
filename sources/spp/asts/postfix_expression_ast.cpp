@@ -96,7 +96,7 @@ auto spp::asts::PostfixExpressionAst::stage_8_check_memory(
     meta->postfix_expression_lhs = lhs.get();
     if (lhs->to<IdentifierAst>() != nullptr) {
         analyse::utils::mem_utils::validate_symbol_memory(
-        *meta->postfix_expression_lhs, *op, *sm, true, false, false, false, false, meta);
+            *meta->postfix_expression_lhs, *op, *sm, true, false, false, false, false, meta);
     }
     op->stage_8_check_memory(sm, meta);
     meta->restore();
@@ -139,4 +139,16 @@ auto spp::asts::PostfixExpressionAst::infer_type(
     auto ret_type = op->infer_type(sm, meta);
     meta->restore();
     return ret_type;
+}
+
+
+auto spp::asts::PostfixExpressionAst::expr_parts() const
+    -> std::vector<Ast*> {
+    // Recursively search the lhs, and add the rhs if it exists.
+    auto lhs_parts = lhs->expr_parts();
+    auto rhs_parts = op->expr_parts();
+    if (not rhs_parts.empty()) {
+        lhs_parts.append_range(std::move(rhs_parts));
+    }
+    return lhs_parts;
 }

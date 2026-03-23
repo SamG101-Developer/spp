@@ -21,6 +21,11 @@ namespace spp::asts {
  * IdentifierAst of the ExpressionAst.
  */
 SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
+private:
+    bool m_has_analysed = false;
+
+public:
+
     /**
      * The name for the type. This is the name of the type, such as @c Str or @code Vec[BigInt]@endcode.
      */

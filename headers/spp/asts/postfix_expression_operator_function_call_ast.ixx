@@ -11,6 +11,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct FunctionCallArgumentAst;
     SPP_EXP_CLS struct FunctionCallArgumentGroupAst;
     SPP_EXP_CLS struct FunctionCallArgumentPositionalAst;
+    SPP_EXP_CLS struct FunctionParameterGroupAst;
     SPP_EXP_CLS struct FoldExpressionAst;
     SPP_EXP_CLS struct FunctionPrototypeAst;
     SPP_EXP_CLS struct GenericArgumentAst;
@@ -29,14 +30,16 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
 private:
     std::optional<std::tuple<analyse::scopes::Scope const*, FunctionPrototypeAst*, std::vector<GenericArgumentAst*>>> m_overload_info;
     Ast *m_is_async;
-    std::vector<FunctionCallArgumentAst*> m_folded_args;
-    std::unique_ptr<FunctionCallArgumentGroupAst> m_folded_arg_group;
+    // std::vector<FunctionCallArgumentAst*> m_folded_args;
+    // std::unique_ptr<FunctionCallArgumentGroupAst> m_folded_arg_group;
     std::unique_ptr<FunctionCallArgumentGroupAst> m_closure_dummy_arg_group;
     std::unique_ptr<FunctionCallArgumentPositionalAst> m_closure_dummy_arg;
-    std::unique_ptr<FunctionPrototypeAst> m_closure_dummy_proto;
+    std::vector<std::unique_ptr<PostfixExpressionOperatorFunctionCallAst>> m_folded_asts;
     bool m_is_coro_and_auto_resume;
 
 public:
+    std::unique_ptr<FunctionPrototypeAst> closure_dummy_proto;
+
     /**
      * The generic argument group that contains the generic arguments for the function call.
      */
@@ -70,7 +73,10 @@ public:
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto determine_overload(ScopeManager *sm, CompilerMetaData *meta) -> void;
+    auto handle_function_folding(
+        ScopeManager *sm,
+        CompilerMetaData *meta)
+        -> std::vector<std::unique_ptr<PostfixExpressionOperatorFunctionCallAst>>;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

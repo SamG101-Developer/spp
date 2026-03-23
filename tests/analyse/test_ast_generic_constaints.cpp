@@ -4,7 +4,7 @@
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstGenericConstraints,
     test_invalid_function_constraint_mismatch,
-    SppGenericConstraintError, R"(
+    SppFunctionCallNoValidSignaturesError, R"(
     cls A { }
     fun g[T: A](t: T) -> std::void::Void { }
 
@@ -17,7 +17,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstGenericConstraints,
     test_invalid_function_constraint_multiple_mismatch,
-    SppGenericConstraintError, R"(
+    SppFunctionCallNoValidSignaturesError, R"(
     cls A { }
     cls B { }
 
@@ -190,13 +190,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestAstGenericCosntraints,
+    TestAstGenericConstraints,
     test_invalid_sup_function_for_constraint_mismatch,
     SppIdentifierUnknownError, R"(
     cls A[T] { }
 
     sup [T: std::copy::Copy] A[T] {
-        fun my_function() -> Void { }
+        fun my_function(&self) -> Void { }
     }
 
     fun f() -> Void {
@@ -213,7 +213,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A[T] { }
 
     sup [T: std::copy::Copy] A[T] {
-        fun my_function() -> Void { }
+        fun my_function(&self) -> Void { }
     }
 
     fun f() -> Void {

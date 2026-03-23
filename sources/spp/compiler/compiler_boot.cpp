@@ -43,8 +43,7 @@ auto spp::compiler::CompilerBoot::lex(
     -> void {
     // Lexing stage.
     for (auto const &mod : tree) {
-        mod->code = utils::files::read_file(std::filesystem::current_path() / mod->path);
-        mod->tokens = lex::Lexer(mod->code).lex();
+        mod->tokens = lex::Lexer(mod->code, not mod->path.string().contains("/src/std/")).lex();
         mod->error_formatter = std::make_unique<utils::errors::ErrorFormatter>(mod->tokens, mod->path.string());
         bar.next();
     }
@@ -171,6 +170,7 @@ auto spp::compiler::CompilerBoot::stage_6_pre_analyse_semantics(
 auto spp::compiler::CompilerBoot::stage_7_analyse_semantics(
     utils::ProgressBar &bar,
     ModuleTree &tree,
+    const bool is_exe,
     analyse::scopes::ScopeManager *sm)
     -> void {
     // Analyse semantics stage.
@@ -183,7 +183,7 @@ auto spp::compiler::CompilerBoot::stage_7_analyse_semantics(
     bar.finish();
 
     // Validate entry point now.
-    validate_entry_point(sm);
+    if (is_exe) { validate_entry_point(sm); }
 }
 
 
@@ -260,6 +260,7 @@ auto spp::compiler::CompilerBoot::stage_11_code_gen_2(
     // Write the llvm modules to file.
     const auto out_path = tree.root_path() / "out" / "llvm";
     std::filesystem::create_directories(out_path);
+    std::cout << "Writing LLVM IR to: " << out_path << "\n";
 
     for (auto const &ctx : m_llvm_ctxs) {
         // auto structs = ctx->module->getIdentifiedStructTypes();
@@ -311,11 +312,13 @@ auto spp::compiler::CompilerBoot::validate_entry_point(
         main_call->stage_7_analyse_semantics(sm, &meta);
     }
 
-    catch (analyse::errors::SppFunctionCallNoValidSignaturesError const &) {
+    // Check that the "main" function exists,
+    catch (analyse::errors::SppIdentifierUnknownError const &) {
         raise<analyse::errors::SppMissingMainFunctionError>({sm->global_scope.get()}, ERR_ARGS(*main_mod));
     }
 
-    catch (analyse::errors::SppIdentifierUnknownError const &) {
+    // Check that if the "main" function eixsts, the signature is compatible.
+    catch (analyse::errors::SppFunctionCallNoValidSignaturesError const &) {
         raise<analyse::errors::SppMissingMainFunctionError>({sm->global_scope.get()}, ERR_ARGS(*main_mod));
     }
 }

@@ -170,13 +170,13 @@ namespace spp::analyse::utils::type_utils {
     SPP_EXP_FUN auto is_index_within_type_bound(
         std::size_t index,
         asts::TypeAst const &type,
-        scopes::Scope const &sm)
+        scopes::Scope const &scope)
         -> bool;
 
     SPP_EXP_FUN auto get_nth_type_of_indexable_type(
         std::size_t index,
         asts::TypeAst const &type,
-        scopes::Scope const &sm)
+        scopes::Scope const &scope)
         -> std::shared_ptr<asts::TypeAst>;
 
     SPP_EXP_FUN auto get_generator_and_yield_type(
@@ -281,11 +281,11 @@ namespace spp::analyse::utils::type_utils {
 
     SPP_EXP_FUN auto recursive_alias_search(
         asts::TypeStatementAst const &alias_stmt,
+        bool from_use_stmt,
         scopes::Scope *tracking_scope,
-        std::shared_ptr<asts::TypeAst> actual_old_type,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
-        -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>, scopes::Scope*, scopes::Scope*>;
+        -> std::tuple<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::GenericParameterGroupAst>, scopes::Scope*>;
 
     SPP_EXP_FUN auto get_field_index_in_type(
         asts::TypeAst const &type_sym,

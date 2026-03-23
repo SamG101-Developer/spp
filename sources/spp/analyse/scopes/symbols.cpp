@@ -4,6 +4,8 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.utils.mem_utils;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -12,6 +14,7 @@ import spp.asts.type_unary_expression_operator_namespace_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_sym_info;
+import genex;
 import nlohmann.json;
 
 
@@ -49,11 +52,13 @@ auto spp::analyse::scopes::NamespaceSymbol::operator==(
 spp::analyse::scopes::VariableSymbol::VariableSymbol(
     std::shared_ptr<asts::IdentifierAst> name,
     std::shared_ptr<asts::TypeAst> type,
+    Scope *scope_defined_in,
     const bool is_mutable,
     const bool is_generic,
     const asts::utils::Visibility visibility) :
     name(std::move(name)),
     type(std::move(type)),
+    scope_defined_in(scope_defined_in),
     is_mutable(is_mutable),
     is_generic(is_generic),
     visibility(visibility),
@@ -67,6 +72,7 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
     VariableSymbol const &that) :
     name(ast_clone(that.name)),
     type(ast_clone(that.type)),
+    scope_defined_in(that.scope_defined_in),
     is_mutable(that.is_mutable),
     is_generic(that.is_generic),
     visibility(that.visibility),
@@ -89,6 +95,40 @@ auto spp::analyse::scopes::VariableSymbol::operator==(
     VariableSymbol const &that) const
     -> bool {
     return this == &that;
+}
+
+
+auto spp::analyse::scopes::VariableSymbol::fq_name() const
+    -> std::shared_ptr<asts::ExpressionAst> {
+    if (is_generic) { return name; }
+
+    // Fully qualify the name from the root scope.
+    auto qualifier_scope = scope_defined_in;
+    auto scopes = std::vector<Scope*>();
+
+    while (qualifier_scope->parent != nullptr) {
+        while (std::holds_alternative<ScopeBlockName>(qualifier_scope->name)) {
+            qualifier_scope = qualifier_scope->parent;
+        }
+        scopes.emplace_back(qualifier_scope);
+        qualifier_scope = qualifier_scope->parent;
+    }
+
+    auto qualified_name = std::unique_ptr<asts::ExpressionAst>(nullptr);
+    qualified_name = asts::ast_clone(std::get<std::shared_ptr<asts::IdentifierAst>>(scopes.back()->name));
+    for (auto qualifier_scope: scopes | genex::views::reverse | genex::views::drop(1)) {
+        const auto raw_ns_name = std::get<std::shared_ptr<asts::IdentifierAst>>(qualifier_scope->name);
+        auto ns_name = std::make_shared<asts::IdentifierAst>(raw_ns_name->pos_start(), raw_ns_name->val);
+        auto ns_op = std::make_unique<asts::PostfixExpressionOperatorStaticMemberAccessAst>(nullptr, std::move(ns_name));
+        qualified_name = std::make_unique<asts::PostfixExpressionAst>(std::move(qualified_name), std::move(ns_op));
+        qualifier_scope = qualifier_scope->parent;
+    }
+
+    auto ns_op = std::make_unique<asts::PostfixExpressionOperatorStaticMemberAccessAst>(nullptr, asts::ast_clone(name));
+    qualified_name = std::make_unique<asts::PostfixExpressionAst>(std::move(qualified_name), std::move(ns_op));
+
+    // Return the qualified expression (either IdentifierAst or PostfixExpressionAst)
+    return qualified_name;
 }
 
 
@@ -151,15 +191,16 @@ auto spp::analyse::scopes::TypeSymbol::operator==(
 }
 
 
-auto spp::analyse::scopes::TypeSymbol::fq_name() const
+auto spp::analyse::scopes::TypeSymbol::fq_name(
+    const bool ignore_dollar) const
     -> std::shared_ptr<asts::TypeAst> {
     // For aliases, return the fully qualified name of the aliased type.
     if (alias_stmt != nullptr) {
-        return asts::ast_clone(alias_stmt->old_type);
+        return asts::ast_clone(alias_stmt->m_mapped_old_type);
     }
 
     // If the type is generic, or the name starts with a '$', return the name as-is.
-    if (is_generic or scope == nullptr or name->name[0] == '$') {
+    if (is_generic or scope == nullptr or (ignore_dollar and name->name[0] == '$')) {
         return ast_clone(name);
     }
 

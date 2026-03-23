@@ -1,6 +1,12 @@
 module;
 #include <spp/macros.hpp>
 
+#define SPP_VALIDATE_STRUCTURE(is_exe) \
+    if (not handle_validate(is_exe)) { return; }
+
+#define SPP_CLI_NULL \
+    bp::v1::std_out > bp::v1::null
+
 module spp.cli;
 import spp.analyse.scopes.scope_manager;
 import spp.asts.module_prototype_ast;
@@ -11,14 +17,8 @@ import spp.lex.tokens;
 import spp.utils.files;
 
 import cli11;
+import genex;
 import toml;
-
-
-#define SPP_VALIDATE_STRUCTURE \
-    if (not handle_validate()) { return; }
-
-#define SPP_CLI_NULL \
-    bp::v1::std_out > bp::v1::null
 
 
 inline constexpr std::string OUT_FOLDER = "out";
@@ -29,14 +29,19 @@ inline constexpr std::string MAIN_FILE = "main.spp";
 inline constexpr std::string CONFIG_FILE = "spp.toml";
 
 inline const std::string MAIN_FILE_CONTENTS = R"(
-    fun main(args: std::vector::Vec[std::string::Str]) -> std::void::Void {
-        std::io::println("Hello, SPP!")
+    use std::string::Str
+    use std::vector::Vec
+    use std::void::Void
+
+    fun main(args: Vec[Str]) -> Void {
+        std::io::println("Hello world!")
     })";
 
 const auto CONFIG_FILE_CONTENTS = R"(
     [project]
     name = "$"
     version = "0.1.0"
+    build = "exe"
 
     [vcs]
     std = { git = "https://github.com/SamG101-Developer/SPP-STL", branch = "master" })";
@@ -79,7 +84,7 @@ auto spp::cli::run_cli(
        ->callback(handle_test);
 
     app.add_subcommand("validate", "Validate the project")
-       ->callback(handle_validate);
+       ->callback([] { handle_validate(false); });
 
     app.add_subcommand("version", "Show version information")
        ->callback(handle_version);
@@ -118,7 +123,7 @@ auto spp::cli::handle_vcs()
     -> void {
     // Validate the project structure first.
     using namespace std::string_literals;
-    SPP_VALIDATE_STRUCTURE;
+    SPP_VALIDATE_STRUCTURE(false);
 
     // Parse the spp.toml config file and get the optional "vcs" section.
     const auto toml = toml::parse_file(CONFIG_FILE);
@@ -171,22 +176,30 @@ auto spp::cli::handle_build(
     const bool skip_vcs)
     -> void {
     // Validate the project structure first.
-    SPP_VALIDATE_STRUCTURE;
+    SPP_VALIDATE_STRUCTURE(false);
 
     // Create the inner directory (rel or dev).
     const auto cwd = std::filesystem::current_path();
     std::filesystem::create_directory(cwd / OUT_FOLDER / mode);
 
     // Handle VCS if not skipped.
-    if (not skip_vcs) {
-        handle_vcs();
-    }
+    if (not skip_vcs) { handle_vcs(); }
 
     // Revalidate (after including the VCS folders).
-    SPP_VALIDATE_STRUCTURE;
+    SPP_VALIDATE_STRUCTURE(false);
+    const auto build_type =
+        toml::parse_file(CONFIG_FILE)["project"].as_table()->at("build").value<std::string>();
+
+    // Validate the mode is "dev" or "rel".
+    if (mode != "dev" and mode != "rel") {
+        std::cerr << "Error: Invalid mode. Mode must be 'dev' or 'rel'.\n";
+        return;
+    }
 
     // Compile the code.
-    auto c = compiler::Compiler(mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL);
+    auto c = compiler::Compiler(
+        mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL,
+        build_type == "exe" ? compiler::Compiler::BuildType::EXE : compiler::Compiler::BuildType::LIB);
     c.compile();
 }
 
@@ -206,7 +219,7 @@ auto spp::cli::handle_clean(
     std::string const &mode)
     -> void {
     // Validate the project structure first.
-    SPP_VALIDATE_STRUCTURE;
+    SPP_VALIDATE_STRUCTURE(false);
 
     // Remove the appropriate folders.
     const auto cwd = std::filesystem::current_path();
@@ -222,28 +235,29 @@ auto spp::cli::handle_clean(
 auto spp::cli::handle_test()
     -> void {
     // Validate the project structure first.
-    SPP_VALIDATE_STRUCTURE;
+    SPP_VALIDATE_STRUCTURE(false);
 
     // TODO
 }
 
 
-auto spp::cli::handle_validate()
+auto spp::cli::handle_validate(
+    const bool is_exe)
     -> bool {
     using namespace std::string_literals;
 
     // Check for the key folders/files.
     const auto cwd = std::filesystem::current_path();
     if (not std::filesystem::exists(cwd / SRC_FOLDER)) {
-        std::cout << "Error: Missing 'src' folder.\n";
+        std::cerr << "Error: Missing 'src' folder.\n";
         return false;
     }
-    if (not std::filesystem::exists(cwd / SRC_FOLDER / MAIN_FILE)) {
-        std::cout << "Error: Missing 'src/main.spp' file.\n";
+    if (not std::filesystem::exists(cwd / SRC_FOLDER / MAIN_FILE) and is_exe) {
+        std::cerr << "Error: Missing 'src/main.spp' file.\n";
         return false;
     }
     if (not std::filesystem::exists(cwd / CONFIG_FILE)) {
-        std::cout << "Error: Missing 'spp.toml' file.\n";
+        std::cerr << "Error: Missing 'spp.toml' file.\n";
         return false;
     }
 
@@ -265,21 +279,40 @@ auto spp::cli::handle_validate()
         return false;
     }
 
-    // Check the project section has a name and version.
+    // Check the project section has a name, version and build type.
     const auto project = toml["project"].as_table();
     if (not project->contains("name")) {
-        std::cout << "Error: No name found in [project] section of spp.toml.\n";
+        std::cerr << "Error: No name found in [project] section of spp.toml.\n";
         return false;
     }
     if (not project->contains("version")) {
-        std::cout << "Error: No version found in [project] section of spp.toml.\n";
+        std::cerr << "Error: No version found in [project] section of spp.toml.\n";
+        return false;
+    }
+    if (not project->contains("build")) {
+        std::cerr << "Error: No build type found in [project] section of spp.toml.\n";
+        return false;
+    }
+
+    // Check the version follows "major.minor.patch" format.
+    const auto version = project->at("version").value<std::string>().value_or("");
+    const auto version_parts = version | genex::views::split('.') | genex::to<std::vector>();
+    if (version_parts.size() != 3) {
+        std::cerr << "Error: Invalid version format in spp.toml. Version must follow 'major.minor.patch' format.\n";
+        return false;
+    }
+
+    // Check the build type is either "exe" or "lib".
+    const auto build_type = project->at("build").value<std::string>().value_or("");
+    if (build_type != "exe" and build_type != "lib") {
+        std::cerr << "Error: Invalid build type in spp.toml. Build type must be 'exe' or 'lib'.\n";
         return false;
     }
 
     // For the VCS folders, validate each VCS entry (if it exists).
     for (auto const &vcs_dir : std::filesystem::directory_iterator(cwd / VCS_FOLDER)) {
         std::filesystem::current_path(cwd / vcs_dir);
-        handle_validate();
+        handle_validate(build_type == "exe");
         std::filesystem::current_path(cwd);
     }
 
@@ -337,4 +370,23 @@ auto spp::cli::get_system_shared_library_extension()
 #else
     return "so";
 #endif
+}
+
+
+auto spp::cli::unit_test(
+    std::string const &mode,
+    std::string &&main_code)
+    -> void {
+    // Validate the project structure first.
+    SPP_VALIDATE_STRUCTURE(false);
+
+    // Create the inner directory (rel or dev).
+    const auto cwd = std::filesystem::current_path();
+    std::filesystem::create_directory(cwd / OUT_FOLDER / mode);
+    SPP_VALIDATE_STRUCTURE(false);
+
+    // Compile the code.
+    const auto m = mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL;
+    const auto c = compiler::Compiler::for_unit_tests(m, std::move(main_code));
+    c->compile();
 }

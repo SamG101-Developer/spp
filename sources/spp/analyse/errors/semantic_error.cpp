@@ -418,10 +418,10 @@ spp::analyse::errors::SppIdentifierDuplicateError::SppIdentifierDuplicateError(
         18, "SPP Identifier Duplicate Error");
     add_context_for_error(
         &first_identifier,
-        "First " + std::string(what) + " identifier defined here");
+        "First " + std::string(what) + " '" + first_identifier.to_string() +  "' defined here");
     add_error(
         &duplicate_identifier,
-        "Duplicate " + std::string(what) + " identifier defined here");
+        "Duplicate " + std::string(what) + " '" + duplicate_identifier.to_string() + "' defined here");
     add_footer(
         "This " + std::string(what) + " identifier has already been defined in the current scope.",
         "Rename or remove the duplicate identifier");

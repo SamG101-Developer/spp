@@ -1,7 +1,10 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.loop_iterable_expression_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
@@ -93,6 +96,9 @@ auto spp::asts::LoopIterableExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // Exp check.
+    SPP_ENFORCE_EXPRESSION_SUBTYPE(iterable);
+
     // Simple statements to move from.
     const auto uid = spp::utils::generate_uid(this);
     auto skip_stmt = LoopControlFlowStatementAst::Skip(pos_start());

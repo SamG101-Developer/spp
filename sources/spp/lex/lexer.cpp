@@ -1,11 +1,17 @@
 module spp.lex.lexer;
+import spp.compiler.prelude;
 import spp.utils.strings;
 import genex;
 import magic_enum;
 
 
-spp::lex::Lexer::Lexer(std::string code)
+spp::lex::Lexer::Lexer(std::string code, const bool add_prelude)
     : m_code("\n" + std::move(code)) {
+    // Add the prelude at the end so it doesn't offset line numbers from the actual code. Due to the order-agnostic
+    // definition system, this is fine.
+    if (add_prelude) {
+        m_code += "\n" + compiler::PRELUDE;
+    }
 }
 
 

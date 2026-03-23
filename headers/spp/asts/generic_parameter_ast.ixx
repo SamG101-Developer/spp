@@ -111,4 +111,6 @@ SPP_EXP_CLS struct spp::asts::GenericParameterAst : virtual Ast, mixins::Orderab
     explicit GenericParameterAst(
         std::shared_ptr<TypeAst> name,
         utils::OrderableTag order_tag);
+
+    ~GenericParameterAst() override;
 };

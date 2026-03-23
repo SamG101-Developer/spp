@@ -5,8 +5,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
     test_invalid_memory_partial_move_from_yielded_borrow_via_variable,
     SppMoveFromBorrowedMemoryError, R"(
-    use std::string::Str
-
     cls A {
         a: Str
     }
@@ -28,9 +26,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
     test_invalid_memory_partial_move_from_yielded_borrow_directly,
     SppMoveFromBorrowedMemoryError, R"(
-    use std::string::Str # TODO: Removing this "use" causes an error: add to tests
-    use std::option::None
-
     cls A {
         a: Str
     }
@@ -51,9 +46,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
     test_invalid_memory_use_mut_borrow_after_conflicting_ref_borrow_created_simple,
     SppUninitializedMemoryUseError, R"(
-    use std::string::Str
-    use std::void::Void
-
     cor g(a: &Str) -> std::generator::Gen[Str] { }
 
     fun h(a: &mut Str) -> Void { }
@@ -71,9 +63,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
     test_invalid_memory_use_ref_borrow_after_conflicting_mut_borrow_created_simple,
     SppUninitializedMemoryUseError, R"(
-    use std::string::Str
-    use std::void::Void
-
     cor g(a: &mut Str) -> std::generator::Gen[Str] { }
 
     fun h(a: &Str) -> Void { }
@@ -91,9 +80,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
     test_invalid_memory_use_mut_borrow_after_conflicting_mut_borrow_created_simple,
     SppUninitializedMemoryUseError, R"(
-    use std::string::Str
-    use std::void::Void
-
     cor g(a: &mut Str) -> std::generator::Gen[Str] { }
 
     fun h(a: &mut Str) -> Void { }
@@ -110,9 +96,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstYieldedBorrow,
     test_valid_memory_use_ref_borrow_after_conflicting_ref_borrow_created_simple, R"(
-    use std::string::Str
-    use std::void::Void
-
     cor g(a: &Str) -> std::generator::Gen[Str] { }
 
     fun h(a: &Str) -> Void { }

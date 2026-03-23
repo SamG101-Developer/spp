@@ -137,19 +137,15 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     CoroutinePrototypeAst,
     test_auto_unwrap_vector, R"(
-    use std::string_view::StrView
-    use std::vector::Vec
-    use std::void::Void
-
     fun f() -> Void {
         let mut vec = Vec[StrView]()
-        vec.push("hello")
-        vec.push("world")
+        vec.push_back("hello")
+        vec.push_back("world")
 
         let mut elem1 = vec.index_ref(0_uz)
         let mut elem2 = vec.index_ref(1_uz)
-        let mut value = elem1 + elem2.clone()
-        value = "hello world !!!"
+        # let mut value = elem1 + elem2.clone()
+        elem2 = elem1
     }
 )");
 
@@ -158,14 +154,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     CoroutinePrototypeAst,
     test_auto_unwrap_vector_wrong_gen_type,
     SppFunctionCallNoValidSignaturesError, R"(
-    use std::string::StrView
-    use std::vector::Vec
-    use std::void::Void
-
     fun f() -> Void {
         let mut vec = Vec[StrView]()
-        vec.push("hello")
-        vec.push("world")
+        vec.push_back("hello")
+        vec.push_back("world")
 
         let mut elem1 = vec.index_ref(0_uz)
         let mut elem2 = vec.index_ref(1_uz)

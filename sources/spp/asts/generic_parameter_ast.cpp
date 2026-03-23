@@ -7,3 +7,6 @@ spp::asts::GenericParameterAst::GenericParameterAst(
     OrderableAst(order_tag),
     name(std::move(name)) {
 }
+
+
+spp::asts::GenericParameterAst::~GenericParameterAst() = default;

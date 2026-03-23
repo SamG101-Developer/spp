@@ -154,6 +154,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeArrayShorthandAst;
     SPP_EXP_CLS struct TypeTupleShorthandAst;
     SPP_EXP_CLS struct UseStatementAst;
+    SPP_EXP_CLS struct UseStatementVariableAst;
     SPP_EXP_CLS struct TypeStatementAst;
     SPP_EXP_CLS struct SupPrototypeFunctionsAst;
     SPP_EXP_CLS struct SupPrototypeExtensionAst;
@@ -278,6 +279,8 @@ public:
     auto parse_postfix_expression_op_keyword_not() -> std::unique_ptr<asts::PostfixExpressionOperatorKeywordNotAst>;
     auto parse_postfix_expression_op_keyword_res() -> std::unique_ptr<asts::PostfixExpressionOperatorKeywordResAst>;
     auto parse_postfix_expression_op_index() -> std::unique_ptr<asts::PostfixExpressionOperatorIndexAst>;
+    auto parse_postfix_expression_strictly_runtime_access() -> std::unique_ptr<asts::ExpressionAst>;
+    auto parse_postfix_expression_strictly_static_access() -> std::unique_ptr<asts::ExpressionAst>;
 
     auto parse_primary_expression() -> std::unique_ptr<asts::ExpressionAst>;
 
@@ -342,6 +345,7 @@ public:
     auto parse_exit_statement_with_value() -> std::unique_ptr<asts::LoopControlFlowStatementAst>;
     auto parse_skip_statement() -> std::unique_ptr<asts::LoopControlFlowStatementAst>;
     auto parse_use_statement() -> std::unique_ptr<asts::UseStatementAst>;
+    auto parse_use_var_statement() -> std::unique_ptr<asts::UseStatementVariableAst>;
     auto parse_type_statement() -> std::unique_ptr<asts::TypeStatementAst>;
     auto parse_cmp_statement() -> std::unique_ptr<asts::CmpStatementAst>;
     auto parse_let_statement() -> std::unique_ptr<asts::LetStatementAst>;
@@ -350,6 +354,7 @@ public:
     auto parse_let_statement_uninitialized() -> std::unique_ptr<asts::LetStatementAst>;
 
     auto parse_global_use_statement() -> std::unique_ptr<asts::UseStatementAst>;
+    auto parse_global_use_var_statement() -> std::unique_ptr<asts::UseStatementVariableAst>;
     auto parse_global_type_statement() -> std::unique_ptr<asts::TypeStatementAst>;
     auto parse_global_cmp_statement() -> std::unique_ptr<asts::CmpStatementAst>;
 
@@ -421,6 +426,7 @@ public:
     auto parse_numeric_identifier() -> std::unique_ptr<asts::IdentifierAst>;
     auto parse_self_identifier() -> std::unique_ptr<asts::IdentifierAst>;
     auto parse_upper_identifier() -> std::unique_ptr<asts::IdentifierAst>;
+    auto parse_identifier_as_expression() -> std::unique_ptr<asts::ExpressionAst>;
 
     auto parse_literal() -> std::unique_ptr<asts::LiteralAst>;
     auto parse_literal_char() -> std::unique_ptr<asts::CharLiteralAst>;

@@ -96,7 +96,9 @@ private:
 public:
     auto register_generic_substitution(analyse::scopes::Scope *scope, std::unique_ptr<ClassPrototypeAst> &&new_ast) -> void;
 
-    auto registered_generic_substitutions() const -> std::vector<std::pair<analyse::scopes::Scope*, ClassPrototypeAst*>>;
+    SPP_ATTR_NODISCARD auto registered_generic_substitutions() const -> std::vector<std::pair<analyse::scopes::Scope*, ClassPrototypeAst*>>;
+
+    SPP_ATTR_NODISCARD auto get_cls_sym() const -> std::shared_ptr<analyse::scopes::TypeSymbol>;
 
     auto stage_1_pre_process(Ast *ctx) -> void override;
 
@@ -119,8 +121,6 @@ public:
     auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
-
-    auto get_cls_sym() const -> std::shared_ptr<analyse::scopes::TypeSymbol>;
 };
 
 

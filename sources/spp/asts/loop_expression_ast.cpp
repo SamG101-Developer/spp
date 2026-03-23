@@ -52,7 +52,7 @@ auto spp::asts::LoopExpressionAst::infer_type(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
-    // Get the loop's exit type (or Void if there are no exits fro inside the loop).
+    // Get the loop's exit type (or Void if there are no exits from inside the loop).
     auto [exit_expr, loop_type, _] = m_loop_exit_type_info.has_value()
         ? *m_loop_exit_type_info
         : std::make_tuple(nullptr, generate::common_types::void_type(pos_start()), nullptr);

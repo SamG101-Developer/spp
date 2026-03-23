@@ -11,8 +11,8 @@ import std;
 
 
 inline auto build_temp_project(std::string code, const bool add_main = true) -> void {
-    auto cwd = std::filesystem::current_path();
-    auto fp = "../../tests/test_outputs";
+    const auto cwd = std::filesystem::current_path();
+    const auto fp = "../../tests/test_outputs";
 
     std::cout << (cwd / fp).string() << std::endl;
 
@@ -31,14 +31,11 @@ inline auto build_temp_project(std::string code, const bool add_main = true) -> 
 
     // Write the code to "cwd / fp / src / main.spp".
     std::filesystem::create_directories(cwd / fp / "src");
-    std::ofstream ofs(cwd / fp / "src" / "main.spp");
-    ofs << code;
-    ofs.close();
 
     // Build the project.
     std::filesystem::current_path(cwd / fp);
     try {
-        spp::cli::handle_build("rel", true);
+        spp::cli::unit_test("rel", std::move(code));
     }
     catch (const spp::analyse::errors::SemanticError &e) {
         std::cout << e.what() << std::endl;

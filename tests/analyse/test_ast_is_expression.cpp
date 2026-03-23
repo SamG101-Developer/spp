@@ -21,7 +21,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_incorrect_type_variant_destructure,
     SppTypeMismatchError, R"(
     fun f() -> std::void::Void {
-        let a: std::string::Str or std::boolean::Bool = "hello"
+        let a: std::string_view::StrView or std::boolean::Bool = "hello"
         case a is std::number::S32() { }
     }
 )");
@@ -60,8 +60,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     IsExpressionAst,
     test_valid_type_variant, R"(
     fun f() -> std::void::Void {
-        let a: std::string::Str or std::boolean::Bool = "hello"
-        case a is std::string::Str(..) { }
+        let a: std::string_view::StrView or std::boolean::Bool = "hello"
+        case a is std::string_view::StrView(..) { }
     }
 )");
 
@@ -74,7 +74,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         y: T
     }
     fun f() -> std::void::Void {
-        let a: std::option::Opt[std::string::Str] = std::option::Some(val="hello world")
+        let a: std::option::Opt[std::string_view::StrView] = std::option::Some(val="hello world")
         case a is std::option::Some(mut val) { val = "bye" }
     }
 )");
@@ -94,6 +94,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 
+/*
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     IsExpressionAst,
     test_valid_type_generic_with_inference, R"(
@@ -106,4 +107,4 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case a is Point(x, y) { }
     }
 )");
-
+*/

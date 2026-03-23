@@ -86,7 +86,7 @@ auto spp::asts::SupPrototypeExtensionAst::clone() const
 spp::asts::SupPrototypeExtensionAst::operator std::string() const {
     SPP_STRING_START;
     SPP_STRING_APPEND(tok_sup).append(" ");
-    SPP_STRING_APPEND(generic_param_group).append(" ");
+    SPP_STRING_APPEND(generic_param_group).append(generic_param_group->params.empty() ? "" : " ");
     SPP_STRING_APPEND(name).append(" ");
     SPP_STRING_APPEND(tok_ext).append(" ");
     SPP_STRING_APPEND(super_class).append(" ");
@@ -186,7 +186,8 @@ auto spp::asts::SupPrototypeExtensionAst::stage_2_gen_top_level_scopes(
     CompilerMetaData *meta)
     -> void {
     // Create a new scope for the superimposition extension.
-    auto scope_name = analyse::scopes::ScopeBlockName("<sup#" + static_cast<std::string>(*name) + " ext " + static_cast<std::string>(*super_class) + "#" + std::to_string(pos_start()) + ">");
+    auto scope_name = analyse::scopes::ScopeBlockName::from_parts(
+        "sup-prototype-extension", {name.get(), super_class.get()}, pos_start());
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
     Ast::stage_2_gen_top_level_scopes(sm, meta);
 
@@ -325,7 +326,8 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
         if (const auto ext_member = member->to<SupPrototypeExtensionAst>()) {
             // Get the method and identify the base method it is overriding.
             const auto this_method = ext_member->impl->final_member()->to<FunctionPrototypeAst>();
-            const auto base_method = analyse::utils::func_utils::check_for_conflicting_override(*sm->current_scope, sup_sym->scope, *this_method, *sm, meta);
+            const auto base_method = analyse::utils::func_utils::check_for_conflicting_override(
+                *member->get_ast_scope(), sup_sym->scope, *this_method, *sm, meta);
 
             // Check the base method exists.
             raise_if<analyse::errors::SppSuperimpositionExtensionMethodInvalidError>(
@@ -430,7 +432,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_11_code_gen_2(
 
     // Check if this block is purely generic.
     const auto is_generic_scope =
-        genex::any_of(sm->current_scope->all_type_symbols(true), [](auto &&x) { return x->scope == nullptr; }) or
+        genex::any_of(sm->current_scope->all_type_symbols(true), [](auto &&x) { return x->is_generic; }) or
         genex::any_of(sm->current_scope->all_var_symbols(true), [](auto &&x) { return x->memory_info->ast_comptime == nullptr; });
 
     // Generate the implementation if not a generic scope.

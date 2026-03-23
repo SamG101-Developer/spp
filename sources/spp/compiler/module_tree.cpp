@@ -1,8 +1,10 @@
 module spp.compiler.module_tree;
 import spp.asts.module_prototype_ast;
-import glob;
+import spp.utils.files;
 import genex;
+import glob;
 import std;
+import sys;
 
 
 spp::compiler::Module::Module(
@@ -15,8 +17,7 @@ spp::compiler::Module::Module(
     code(std::move(code)),
     tokens(std::move(tokens)),
     module_ast(std::move(module_ast)),
-    error_formatter(std::move(error_formatter)) {
-}
+    error_formatter(std::move(error_formatter)) {}
 
 
 auto spp::compiler::Module::from_path(std::filesystem::path const &path) {
@@ -69,6 +70,35 @@ spp::compiler::ModuleTree::ModuleTree(
     all_modules.insert(all_modules.end(), std::make_move_iterator(vcs_modules.begin()), std::make_move_iterator(vcs_modules.end()));
     all_modules.insert(all_modules.end(), std::make_move_iterator(ffi_modules.begin()), std::make_move_iterator(ffi_modules.end()));
     m_modules = std::move(all_modules);
+
+    lock();
+    for (auto &&m : m_modules) {
+        m->code = utils::files::read_file(std::filesystem::current_path() / m->path);
+    }
+    unlock();
+}
+
+
+auto spp::compiler::ModuleTree::for_unit_tests(
+    std::filesystem::path path,
+    std::string &&main_code)
+    -> std::unique_ptr<ModuleTree> {
+    // Create a new ModuleTree with a single module containing the main_code.
+    auto c = std::make_unique<ModuleTree>(std::move(path));
+    c->m_modules[0]->code = std::move(main_code);
+    return c;
+}
+
+
+auto spp::compiler::ModuleTree::lock() -> void {
+    m_lock_fd = sys::open(".lock", sys::O_RDWR | sys::O_CREAT);
+    sys::flock(m_lock_fd, sys::LOCK_EX);
+}
+
+
+auto spp::compiler::ModuleTree::unlock() const -> void {
+    sys::flock(m_lock_fd, sys::LOCK_UN);
+    sys::close(m_lock_fd);
 }
 
 

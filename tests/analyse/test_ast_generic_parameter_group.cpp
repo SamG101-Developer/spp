@@ -65,7 +65,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstGenericParameterGroup,
     test_valid_req_opt, R"(
-    cls A[T, U = std::number::S32] {}
+    cls A[T, U = std::boolean::Bool] {}
 )");
 
 

@@ -10,15 +10,15 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct AnnotationAst;
-    SPP_EXP_CLS struct UseStatementAst;
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeStatementAst;
     SPP_EXP_CLS struct TypeAst;
+    SPP_EXP_CLS struct UseStatementAst;
 }
 
 
 /**
- * The UseStatementAst reduces a fully qualified tpy into the current scope, making the symbol accessible without the
+ * The UseStatementAst reduces a fully qualified type into the current scope, making the symbol accessible without the
  * associated namespace. It is internal mapped to a TypeStatementAst: @code use std::Str@endcode is equivalent to
  * @code type Str = std::Str@endcode.
  */
@@ -49,8 +49,8 @@ public:
     std::unique_ptr<TokenAst> tok_use;
 
     /**
-     * The old (fully qualified) type that this use statement is reducing. For example, for @code use std::Str@endcode,
-     * the fully qualified type is @c std::Str.
+     * The old (fully qualified) type that this use statement is reducing. For example, for @code use
+     * std::string::Str@endcode, the fully qualified type is @c std::string::Str.
      */
     std::shared_ptr<TypeAst> old_type;
 

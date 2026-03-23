@@ -64,7 +64,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     ArrayLiteralRepeatedElementAst,
     test_valid_size_constant, R"(
-    use std::number::USize
     fun f[cmp n: USize]() -> std::void::Void {
         let a = [false; n]
     }

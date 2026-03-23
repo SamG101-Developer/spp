@@ -66,10 +66,10 @@ auto spp::codegen::register_llvm_type_info(
 
     if (ancestor_names[0] == "std" and ancestor_names[1] == "num" and ancestor_names[2].starts_with("sized") and ancestor_names[3].starts_with("Sized")) {
         const auto type_part = ancestor_names[2];
-        const auto bit_width_ast = scope->ty_sym->fq_name()->type_parts().back()->generic_arg_group->comp_at("bit_width")->val->to<asts::IntegerLiteralAst>();
+        const auto bit_width_ast = scope->ty_sym->fq_name()->type_parts().back()->generic_arg_group->comp_at("w")->val->to<asts::IntegerLiteralAst>();
         if (bit_width_ast == nullptr) { return; }
 
-        const auto bit_width = std::stoul(scope->ty_sym->fq_name()->type_parts().back()->generic_arg_group->comp_at("bit_width")->val->to<asts::IntegerLiteralAst>()->val->token_data);
+        const auto bit_width = std::stoul(scope->ty_sym->fq_name()->type_parts().back()->generic_arg_group->comp_at("w")->val->to<asts::IntegerLiteralAst>()->val->token_data);
         if (type_part == "sized_integer") {
             cls_sym->llvm_info->llvm_type = llvm::Type::getIntNTy(*ctx->context, static_cast<unsigned int>(bit_width));
             return;

@@ -86,11 +86,6 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
         const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
         const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_type);
 
-        // Check the left-hand-side isn't a generic type. Todo: until constraints.
-        raise_if<analyse::errors::SppGenericTypeInvalidUsageError>(
-            lhs_type_sym->is_generic,
-            {sm->current_scope}, ERR_ARGS(*meta->postfix_expression_lhs, *lhs_type, "member access"));
-
         // Check the lhs is a tuple/array (the only indexable types).
         raise_if<analyse::errors::SppMemberAccessNonIndexableError>(
             not analyse::utils::type_utils::is_type_comptime_indexable(*lhs_type, *sm->current_scope),
@@ -117,14 +112,8 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
             lhs_var_sym == nullptr and lhs_ns_sym != nullptr, {sm->current_scope},
             ERR_ARGS(*meta->postfix_expression_lhs, *tok_dot));
 
-        // Check the left-hand-side isn't a generic type.#
-        raise_if<analyse::errors::SppGenericTypeInvalidUsageError>(
-            lhs_type_sym->is_generic, {sm->current_scope},
-            ERR_ARGS(*meta->postfix_expression_lhs, *lhs_type, "member access"));
-
         // Check the target field exists on the type.
         if (not lhs_type_sym->scope->has_var_symbol(name, true)) {
-
             // At this point, we need to check for the presence of "FwdMut" or "FwdRef" superimpositions, allowing
             // access to their members.
             auto [fwd_ref_type, _] = analyse::utils::type_utils::get_fwd_types(*lhs_type, *sm);
@@ -262,4 +251,10 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::infer_type(
     const auto lhs_sym = sm->current_scope->get_type_symbol(lhs_type);
     const auto field_type = lhs_sym->scope->get_var_symbol(name)->type;
     return lhs_sym->scope->get_type_symbol(field_type)->fq_name();
+}
+
+
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::expr_parts() const
+    -> std::vector<Ast*> {
+    return {name.get()};
 }

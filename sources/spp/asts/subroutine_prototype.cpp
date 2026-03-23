@@ -44,7 +44,7 @@ auto spp::asts::SubroutinePrototypeAst::clone() const
     ast->no_impl_annotation = no_impl_annotation;
     ast->inline_annotation = inline_annotation;
     ast->visibility = visibility;
-    ast->llvm_func = llvm_func;
+    ast->m_llvm_func = m_llvm_func;
     for (auto const &a: ast->annotations) {
         a->set_ast_ctx(ast.get());
     }

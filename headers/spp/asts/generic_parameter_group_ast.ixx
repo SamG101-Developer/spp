@@ -47,6 +47,8 @@ SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : virtual Ast {
 
     ~GenericParameterGroupAst() override;
 
+    auto merge_generics(decltype(params) &&other_params) -> void;
+
     auto operator+(GenericParameterGroupAst const &other) const -> std::unique_ptr<GenericParameterGroupAst>;
 
     auto operator +=(GenericParameterGroupAst const &other) -> GenericParameterGroupAst&;
@@ -54,6 +56,8 @@ SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : virtual Ast {
     SPP_AST_KEY_FUNCTIONS;
 
     static auto new_empty() -> std::unique_ptr<GenericParameterGroupAst>;
+
+    static auto new_empty_shared() -> std::shared_ptr<GenericParameterGroupAst>;
 
     auto get_required_params() const -> std::vector<GenericParameterAst*>;
 

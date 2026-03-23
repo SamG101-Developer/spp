@@ -59,6 +59,8 @@ public:
      */
     inline static std::vector<Scope*> generic_sup_blocks = {};
 
+    inline static std::vector<std::unique_ptr<Scope>> temp_scopes = {};
+
     /**
      * The global scope is the root scope fo the entire program. It is a @c std::shared_ptr as temp scope manager's need
      * to be created sometimes, where the global scope will be shared. Not a raw pointer as the scope managers do own

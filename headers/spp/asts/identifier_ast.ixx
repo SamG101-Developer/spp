@@ -65,6 +65,8 @@ public:
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 
     auto ankerl_hash() const -> std::size_t override;
+
+    SPP_ATTR_NODISCARD auto expr_parts() const -> std::vector<Ast *> override;
 };
 
 

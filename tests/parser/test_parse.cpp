@@ -383,14 +383,14 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_annotations_function, R"(
-    @annotation1
+    !annotation1
     fun my_function() -> Void { }
 )");
 
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_annotations_class, R"(
-    @annotation1
+    !annotation1
     cls MyClass { }
 )");
 
@@ -638,7 +638,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_unary_expression_deref_op, R"(
     fun my_function() -> Void {
-        *borrow
+        borrow@
     }
 )");
 

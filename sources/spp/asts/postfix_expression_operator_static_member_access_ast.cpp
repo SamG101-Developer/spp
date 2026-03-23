@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
+import spp.asts.expression_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
@@ -68,11 +69,6 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
     // Handle types on the left-hand-side of a static member access.
     if (const auto lhs_as_type = meta->postfix_expression_lhs->to<TypeAst>(); lhs_as_type != nullptr) {
         const auto lhs_type_sym = sm->current_scope->get_type_symbol(ast_clone(lhs_as_type));
-
-        // Check the left-hand-side isn't a generic type. Todo: until constraints.
-        raise_if<analyse::errors::SppGenericTypeInvalidUsageError>(
-            lhs_type_sym->is_generic, {sm->current_scope},
-            ERR_ARGS(*lhs_as_type, *lhs_as_type, "member access"));
 
         // Check the target field exists on the type.
         if (not lhs_type_sym->scope->has_var_symbol(name, true)) {
@@ -139,6 +135,15 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
 }
 
 
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Due to aliasing rules, getting the new symbol will pull the old symbol.
+    meta->cmp_result = ast_clone(sm->current_scope->get_var_symbol(name)->comptime_value->to<ExpressionAst>());
+}
+
+
 auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::infer_type(
     ScopeManager *sm,
     CompilerMetaData *meta)
@@ -162,4 +167,11 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::infer_type(
     const auto lhs_ns_scope = sm->current_scope->convert_postfix_to_nested_scope(meta->postfix_expression_lhs);
     const auto type = lhs_ns_scope->get_var_symbol(name, true)->type;
     return lhs_ns_scope->get_type_symbol(type)->fq_name();
+}
+
+
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::expr_parts() const
+    -> std::vector<Ast*> {
+    // Static member access does not have any expression parts.
+    return {name.get()};
 }

@@ -102,12 +102,15 @@ auto spp::asts::InnerScopeAst<T>::stage_7_analyse_semantics(
     CompilerMetaData *meta)
     -> void {
     // Create a scope for the InnerScopeAst node.
-    auto scope_name = analyse::scopes::ScopeBlockName("<inner-scope#" + std::to_string(pos_start()) + ">");
+    auto scope_name = analyse::scopes::ScopeBlockName::from_parts(
+        "inner-scope", {}, pos_start());
     sm->create_and_move_into_new_scope(scope_name, this);
     m_scope = sm->current_scope;
 
     // Analyse the members of the inner scope.
-    for (auto const &x : members) { x->stage_7_analyse_semantics(sm, meta); }
+    for (auto const &x : members) {
+        x->stage_7_analyse_semantics(sm, meta);
+    }
     sm->move_out_of_current_scope();
 }
 

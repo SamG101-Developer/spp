@@ -149,7 +149,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_11_code_gen_2(
 
         const auto gep = ctx->builder.CreateInBoundsGEP(
             ctx->current_closure_type,
-            ctx->current_closure_scope->ast->to<ClosureExpressionAst>()->llvm_func->getArg(0),
+            ctx->current_closure_scope->ast->to<ClosureExpressionAst>()->get_llvm_func()->target->getArg(0),
             std::vector<llvm::Value*>{zero, idx});
 
         const auto load = ctx->builder.CreateLoad(cap_llvm_type, gep, "capture.load." + uid);
@@ -159,7 +159,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_11_code_gen_2(
         // Add the alloca to the current scope as a variable symbol.
         // Todo: Handle mutability properly.
         auto var_sym = std::make_unique<analyse::scopes::VariableSymbol>(
-            asts::ast_clone(cap_val), cap_ty, false, false);
+            asts::ast_clone(cap_val), cap_ty, sm->current_scope, false, false);
         var_sym->llvm_info->alloca = alloca;
         sm->current_scope->add_var_symbol(std::move(var_sym));
     }
