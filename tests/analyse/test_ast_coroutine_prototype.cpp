@@ -137,10 +137,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     CoroutinePrototypeAst,
     test_auto_unwrap_vector, R"(
-    use std::string_view::StrView
-    use std::vector::Vec
-    use std::void::Void
-
     fun f() -> Void {
         let mut vec = Vec[StrView]()
         vec.push_back("hello")
@@ -158,10 +154,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     CoroutinePrototypeAst,
     test_auto_unwrap_vector_wrong_gen_type,
     SppFunctionCallNoValidSignaturesError, R"(
-    use std::string::StrView
-    use std::vector::Vec
-    use std::void::Void
-
     fun f() -> Void {
         let mut vec = Vec[StrView]()
         vec.push_back("hello")

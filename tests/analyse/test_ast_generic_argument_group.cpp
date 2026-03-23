@@ -164,9 +164,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericArgumentGroup,
     test_generic_replaced_with_generic, R"(
-    use std::string_view::StrView
-    use std::vector::Vec
-
     fun g[U]() -> Vec[U] {
         ret Vec[U]()
     }
@@ -181,10 +178,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericArgumentGroup,
     test_generic_replaced_with_generic_stateful, R"(
-    use std::option::Opt
-    use std::option::Some
-    use std::string_view::StrView
-
     fun g[U]() -> Opt[U] {
         ret Some[U]()
     }

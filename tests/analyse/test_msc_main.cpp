@@ -18,9 +18,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
 SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
     TestMain,
     test_valid_main_aliased_types, R"(
-    use std::vector::Vec
-    use std::string::Str
-    use std::void::Void
     fun main(args: Vec[Str]) -> Void { }
 )");
 

@@ -4,10 +4,6 @@
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
     test_valid_return_type_overloading_infer_from_assignment, R"(
-    use std::string_view::StrView
-    use std::boolean::Bool
-    use std::void::Void
-
     fun g() -> StrView { ret "" }
     fun g() -> Bool { ret false }
 
@@ -21,10 +17,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
     test_valid_return_type_overloading_infer_from_let_statement, R"(
-    use std::string_view::StrView
-    use std::boolean::Bool
-    use std::void::Void
-
     fun g() -> StrView { ret "" }
     fun g() -> Bool { ret false }
 
@@ -37,10 +29,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
     test_valid_return_type_overloading_infer_from_return_statement, R"(
-    use std::string_view::StrView
-    use std::boolean::Bool
-    use std::void::Void
-
     fun g() -> StrView { ret "" }
     fun g() -> Bool { ret false }
 
@@ -53,11 +41,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
     test_valid_return_type_overloading_infer_from_gen_expression, R"(
-    use std::string_view::StrView
-    use std::boolean::Bool
-    use std::void::Void
-    use std::generator::Gen
-
     fun g() -> StrView { ret "" }
     fun g() -> Bool { ret false }
 
@@ -70,10 +53,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
     test_valid_return_type_overloading_complex, R"(
-    use std::string_view::StrView
-    use std::boolean::Bool
-    use std::void::Void
-
     cls MyType { }
 
     cls To[Target] { }
@@ -100,11 +79,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
-    test_valid_return_type_overloading_infer_from_class_attribute, R"(
-    use std::string_view::StrView
-    use std::boolean::Bool
-    use std::void::Void
-
+    test_valid_return_type_overloading_infer_from_class_attribute, R"(d
     cls MyType {
         a: Bool
     }
@@ -121,10 +96,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
     test_valid_return_type_overloading_infer_from_generic_class_attribute_explicit_argument, R"(
-    use std::string_view::StrView
-    use std::boolean::Bool
-    use std::void::Void
-
     cls MyType[T] {
         a: T
     }
@@ -142,10 +113,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestReturnTypeOverloading,
     test_invalid_return_type_overloading_infer_from_generic_class_attribute,
     SppFunctionCallOverloadAmbiguousError, R"(
-    use std::string_view::StrView
-    use std::boolean::Bool
-    use std::void::Void
-
     cls MyType[T] {
         a: T
     }
@@ -162,10 +129,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
     test_valid_return_type_overloading_infer_from_function_parameter, R"(
-    use std::string_view::StrView
-    use std::boolean::Bool
-    use std::void::Void
-
     fun g() -> StrView { ret "" }
     fun g() -> Bool { ret false }
     fun h(x: Bool) -> Void { }
@@ -180,10 +143,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestReturnTypeOverloading,
     test_invalid_return_type_overloading_infer_from_function_parameter,
     SppFunctionCallOverloadAmbiguousError, R"(
-    use std::string_view::StrView
-    use std::boolean::Bool
-    use std::void::Void
-
     fun g() -> StrView { ret "" }
     fun g() -> Bool { ret false }
     fun h(x: StrView) -> Void { }

@@ -10,9 +10,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
     }
 
-    use std::vector::Vec
-    use std::string::Str
-
     sup std::number::S32 {
         fun to_string(&self) -> std::string::Str {
             ret std::string::Str::from("")
@@ -37,9 +34,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             ret 1
         }
     }
-
-    use std::vector::Vec
-    use std::boolean::Bool
 
     fun f() -> std::void::Void {
         let v = Vec[Bool]()
