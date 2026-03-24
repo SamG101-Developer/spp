@@ -61,6 +61,8 @@ protected:
      */
     std::shared_ptr<std::shared_ptr<codegen::LlvmFuncWrapper>> m_llvm_func;
 
+    std::unique_ptr<analyse::utils::annotation_utils::AnnotationInfo> m_annotation_info;
+
 public:
     /**
      * Optional @c \@abstractmethod annotation. This is used to indicate that the function is abstract and must be
@@ -160,6 +162,8 @@ public:
      */
     std::unique_ptr<IdentifierAst> orig_name;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the FunctionPrototypeAst with the arguments matching the members.
      * @param annotations The list of annotations that are applied to this function prototype.
@@ -200,17 +204,17 @@ public:
 
     auto register_generic_substitution(std::unique_ptr<analyse::scopes::Scope> &&scope, std::unique_ptr<FunctionPrototypeAst> &&new_ast) -> void;
 
-    auto registered_generic_substitutions() const -> std::list<std::pair<analyse::scopes::Scope*, FunctionPrototypeAst*>>;
+    SPP_ATTR_NODISCARD auto registered_generic_substitutions() const -> std::list<std::pair<analyse::scopes::Scope*, FunctionPrototypeAst*>>;
 
-    auto registered_generic_substitutions() -> std::list<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>>&;
+    SPP_ATTR_NODISCARD auto registered_generic_substitutions() -> std::list<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>>&;
 
     auto mark_non_generic_impl(FunctionPrototypeAst *impl) -> void;
 
-    auto non_generic_impl() const -> FunctionPrototypeAst*;
+    SPP_ATTR_NODISCARD auto non_generic_impl() const -> FunctionPrototypeAst*;
 
     auto mark_as_annotation() -> void;
 
-    auto annotation_info() const -> analyse::utils::annotation_utils::AnnotationInfo*;
+    SPP_ATTR_NODISCARD auto annotation_info() const -> analyse::utils::annotation_utils::AnnotationInfo*;
 
     auto stage_1_pre_process(Ast *ctx) -> void override;
 
@@ -234,5 +238,10 @@ public:
 
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto get_llvm_func() const -> std::shared_ptr<codegen::LlvmFuncWrapper>;
+    SPP_ATTR_NODISCARD auto get_llvm_func() const -> std::shared_ptr<codegen::LlvmFuncWrapper>;
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::FunctionPrototypeAst::_spp_key_function() const -> void {}
+SPP_MOD_END

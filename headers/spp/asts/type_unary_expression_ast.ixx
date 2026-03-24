@@ -29,6 +29,8 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
      */
     std::shared_ptr<TypeAst> rhs;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the UnaryExpressionAst with the arguments matching the members.
      * @param[in] op The operator token that represents the unary operation.
@@ -54,31 +56,31 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
         return equals(other) == std::strong_ordering::equal;
     }
 
-    auto iterator() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto iterator() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
 
-    auto is_never_type() const -> bool override;
+    SPP_ATTR_NODISCARD auto is_never_type() const -> bool override;
 
-    auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
 
-    auto ns_parts() -> std::vector<std::shared_ptr<IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto ns_parts() -> std::vector<std::shared_ptr<IdentifierAst>> override;
 
-    auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
 
-    auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
 
-    auto without_convention() const -> std::shared_ptr<const TypeAst> override;
+    SPP_ATTR_NODISCARD auto without_convention() const -> std::shared_ptr<const TypeAst> override;
 
-    auto get_convention() const -> ConventionAst* override;
+    SPP_ATTR_NODISCARD auto get_convention() const -> ConventionAst* override;
 
-    auto with_convention(std::unique_ptr<ConventionAst> &&conv) const -> std::shared_ptr<TypeAst> override;
+    SPP_ATTR_NODISCARD auto with_convention(std::unique_ptr<ConventionAst> &&conv) const -> std::shared_ptr<TypeAst> override;
 
-    auto without_generics() const -> std::shared_ptr<TypeAst> override;
+    SPP_ATTR_NODISCARD auto without_generics() const -> std::shared_ptr<TypeAst> override;
 
-    auto substitute_generics(std::vector<GenericArgumentAst*> const &args) const -> std::shared_ptr<TypeAst> override;
+    SPP_ATTR_NODISCARD auto substitute_generics(std::vector<GenericArgumentAst*> const &args) const -> std::shared_ptr<TypeAst> override;
 
-    auto contains_generic(GenericParameterAst const &generic) const -> bool override;
+    SPP_ATTR_NODISCARD auto contains_generic(GenericParameterAst const &generic) const -> bool override;
 
-    auto with_generics(std::unique_ptr<GenericArgumentGroupAst> &&arg_group) const -> std::shared_ptr<TypeAst> override;
+    SPP_ATTR_NODISCARD auto with_generics(std::unique_ptr<GenericArgumentGroupAst> &&arg_group) const -> std::shared_ptr<TypeAst> override;
 
     auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -86,3 +88,8 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::TypeUnaryExpressionAst::_spp_key_function() const -> void {}
+SPP_MOD_END

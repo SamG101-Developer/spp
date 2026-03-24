@@ -15,6 +15,8 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
+    auto _spp_key_function() const -> void override;
+
     /**
      * The string value of the string literal. This is the actual string that is represented by the literal.
      */
@@ -41,3 +43,8 @@ SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::StringLiteralAst::_spp_key_function() const -> void {}
+SPP_MOD_END

@@ -34,6 +34,8 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgum
      */
     std::unique_ptr<TokenAst> tok_assign;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the GenericArgumentCompKeywordAst with the arguments matching the members.
      * @param name The name of the keyword argument.
@@ -63,3 +65,8 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgum
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::GenericArgumentCompKeywordAst::_spp_key_function() const -> void {}
+SPP_MOD_END

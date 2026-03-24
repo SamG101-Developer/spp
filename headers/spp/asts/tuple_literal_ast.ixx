@@ -30,6 +30,8 @@ SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
      */
     std::unique_ptr<TokenAst> tok_r;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the TupleLiteralAst with the arguments matching the members.
      * @param tok_l The left parenthesis token.
@@ -59,3 +61,8 @@ SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::TupleLiteralAst::_spp_key_function() const -> void {}
+SPP_MOD_END

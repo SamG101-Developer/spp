@@ -21,6 +21,8 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeU
      */
     std::unique_ptr<ConventionAst> conv;
 
+    auto _spp_key_function() const -> void override;
+
     /**
     * Construct the TypeUnaryOperatorBorrowAst with the arguments matching the members.
     * @param conv The convention token representing the borrowing convention.
@@ -44,3 +46,8 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeU
 
     SPP_ATTR_NODISCARD auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::_spp_key_function() const -> void {}
+SPP_MOD_END

@@ -49,6 +49,8 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
      */
     std::string type;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the FloatLiteralAst with the arguments matching the members.
      * @param[in] tok_sign The optional sign of the float literal.
@@ -89,3 +91,8 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::FloatLiteralAst::_spp_key_function() const -> void {}
+SPP_MOD_END

@@ -48,6 +48,8 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : virtual Ast {
      */
     std::unique_ptr<FunctionCallArgumentGroupAst> fn_arg_group;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the AnnotationAst with the arguments matching the members.
      * @param[in] tok_at_sign The token that represents the @c @ sign in the annotation.
@@ -61,9 +63,9 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : virtual Ast {
         decltype(gn_arg_group) &&gn_arg_group,
         decltype(fn_arg_group) &&fn_arg_group);
 
-    SPP_AST_KEY_FUNCTIONS;
-
     ~AnnotationAst() override;
+
+    SPP_AST_KEY_FUNCTIONS;
 
     /**
      * Custom comparison involves comparing the identifier of the annotation. This makes checking for duplicate
@@ -97,3 +99,8 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : virtual Ast {
 
     auto stage_7_analyse_semantics(analyse::scopes::ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::AnnotationAst::_spp_key_function() const -> void {}
+SPP_MOD_END

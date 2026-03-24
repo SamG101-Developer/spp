@@ -26,6 +26,8 @@ public:
         std::size_t pos,
         decltype(val) val);
 
+    auto _spp_key_function() const -> void override;
+
     IdentifierAst(IdentifierAst const &) = default;
 
     ~IdentifierAst() override;
@@ -68,3 +70,9 @@ public:
 
     SPP_ATTR_NODISCARD auto expr_parts() const -> std::vector<Ast *> override;
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::IdentifierAst::_spp_key_function() const -> void {}
+SPP_MOD_END
+

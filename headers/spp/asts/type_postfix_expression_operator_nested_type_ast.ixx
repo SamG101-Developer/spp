@@ -25,6 +25,8 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final :
      */
     std::shared_ptr<TypeIdentifierAst> name;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the TypePostfixExpressionOperatorNestedTypeAst with the arguments matching the members.
      * @param tok_sep The @c :: operator token that represents the namespace operator.
@@ -50,3 +52,8 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final :
 
     SPP_ATTR_NODISCARD auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::_spp_key_function() const -> void {}
+SPP_MOD_END

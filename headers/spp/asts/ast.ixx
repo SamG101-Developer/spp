@@ -32,6 +32,9 @@ namespace spp::asts::meta {
  * and end position identification.
  */
 SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
+public:
+    virtual auto _spp_key_function() const -> void;
+
 protected:
     /**
      * The context of an AST is used in certain analysis steps. This might be the parent AST, such as a
@@ -142,3 +145,8 @@ public:
         m_ctx = ctx;
     }
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::Ast::_spp_key_function() const -> void {}
+SPP_MOD_END

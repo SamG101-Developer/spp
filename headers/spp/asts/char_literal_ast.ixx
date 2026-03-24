@@ -20,6 +20,8 @@ SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {
      */
     std::unique_ptr<TokenAst> val;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the CharLiteralAst with the arguments matching the members.
      * @param[in] val The char value of the char literal.
@@ -41,3 +43,8 @@ SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::CharLiteralAst::_spp_key_function() const -> void {}
+SPP_MOD_END

@@ -30,6 +30,8 @@ public:
      */
     std::unique_ptr<GenericParameterTypeInlineConstraintsAst> constraints;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the GenericParameterTypeAst with the arguments matching the members.
      * @param name The name of the generic type parameter.
@@ -49,3 +51,8 @@ public:
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::GenericParameterTypeAst::_spp_key_function() const -> void {}
+SPP_MOD_END

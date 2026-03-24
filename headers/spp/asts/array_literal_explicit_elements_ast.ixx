@@ -42,6 +42,8 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiter
      */
     std::unique_ptr<TokenAst> tok_r;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the ArrayLiteralNElements with the arguments matching the members.
      * @param[in] tok_l The token that represents the left square bracket @c [ in the array literal.
@@ -108,3 +110,8 @@ public:
      */
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::ArrayLiteralExplicitElementsAst::_spp_key_function() const -> void {}
+SPP_MOD_END

@@ -24,6 +24,8 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : Ty
      */
     std::unique_ptr<TokenAst> tok_sep;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the TypeUnaryExpressionOperatorNamespaceAst with the arguments matching the members.
      * @param[in] ns The namespace token that represents the namespace in which the type is defined.
@@ -49,3 +51,8 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : Ty
 
     SPP_ATTR_NODISCARD auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::_spp_key_function() const -> void {}
+SPP_MOD_END

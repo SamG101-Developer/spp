@@ -204,4 +204,8 @@ auto spp::asts::FloatLiteralAst::infer_type(
         ERR_ARGS(*this, "invalid float literal type"));
 }
 
+
+template auto spp::asts::FloatLiteralAst::cpp_value<std::float16_t>() const -> std::float16_t;
+template auto spp::asts::FloatLiteralAst::cpp_value<std::float32_t>() const -> std::float32_t;
+template auto spp::asts::FloatLiteralAst::cpp_value<std::float64_t>() const -> std::float64_t;
 SPP_MOD_END

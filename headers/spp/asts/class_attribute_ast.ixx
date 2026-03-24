@@ -50,6 +50,8 @@ SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : virtual Ast, ClassMember
      */
     std::unique_ptr<ExpressionAst> default_val;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the ClassAttributeAst with the arguments matching the members.
      * @param[in] annotations The list of annotations that are applied to this class attribute.
@@ -80,3 +82,7 @@ SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : virtual Ast, ClassMember
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
 
+
+SPP_MOD_BEGIN
+auto spp::asts::ClassAttributeAst::_spp_key_function() const -> void {}
+SPP_MOD_END

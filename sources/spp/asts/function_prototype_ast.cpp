@@ -60,10 +60,13 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     decltype(return_type) &&return_type,
     decltype(impl) &&impl) :
     m_llvm_func(nullptr),
+    m_annotation_info(nullptr),
     abstract_annotation(nullptr),
     virtual_annotation(nullptr),
     temperature_annotation(nullptr),
-    ffi_annotation(nullptr), inline_annotation(nullptr),
+    ffi_annotation(nullptr),
+    builtin_annotation(nullptr),
+    inline_annotation(nullptr),
     annotations(std::move(annotations)),
     tok_cmp(std::move(tok_cmp)),
     tok_fun(std::move(tok_fun)),
@@ -267,6 +270,19 @@ auto spp::asts::FunctionPrototypeAst::mark_non_generic_impl(
 auto spp::asts::FunctionPrototypeAst::non_generic_impl() const
     -> FunctionPrototypeAst* {
     return m_non_generic_impl;
+}
+
+
+auto spp::asts::FunctionPrototypeAst::mark_as_annotation()
+    -> void {
+    // Mark this function prototype as an annotation, by adding the appropriate annotation to it.
+    m_annotation_info = std::make_unique<analyse::utils::annotation_utils::AnnotationInfo>();
+}
+
+
+auto spp::asts::FunctionPrototypeAst::annotation_info() const
+    -> analyse::utils::annotation_utils::AnnotationInfo* {
+    return m_annotation_info.get();
 }
 
 

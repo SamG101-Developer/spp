@@ -24,6 +24,8 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
      */
     std::unique_ptr<TokenAst> tok_bool;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the BooleanLiteralAst with the arguments matching the members.
      * @param[in] tok_bool The token that represents the boolean literal.
@@ -85,3 +87,8 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
      */
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::BooleanLiteralAst::_spp_key_function() const -> void {}
+SPP_MOD_END

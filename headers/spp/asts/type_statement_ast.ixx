@@ -96,6 +96,8 @@ public:
         decltype(tok_assign) &&tok_assign,
         decltype(old_type) old_type);
 
+    auto _spp_key_function() const -> void override;
+
     ~TypeStatementAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
@@ -128,3 +130,8 @@ public:
 
     auto cleanup() -> void;
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::TypeStatementAst::_spp_key_function() const -> void {}
+SPP_MOD_END

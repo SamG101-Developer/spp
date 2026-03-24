@@ -63,56 +63,56 @@ auto spp::analyse::errors::SemanticError::clone() const
 }
 
 
-spp::analyse::errors::SppAnnotationInvalidApplicationError::SppAnnotationInvalidApplicationError(
-    asts::AnnotationAst const &annotation,
-    asts::Ast const &ctx,
-    const std::string_view block_list) {
-    add_header(
-        0, "SPP Annotation Invalid Application Error");
-    add_context_for_error(
-        &annotation,
-        "Annotation defined here");
-    add_error(
-        &ctx,
-        "Invalid " + std::string(block_list) + " context defined here");
-    add_footer(
-        "This annotation is not compatible with the current context.",
-        "Remove the annotation from here");
-}
-
-
-spp::analyse::errors::SppAnnotationConflictError::SppAnnotationConflictError(
-    asts::AnnotationAst const &first_annotation,
-    asts::AnnotationAst const &conflicting_annotation,
-    asts::Ast const &ctx) {
-    add_header(
-        1, "SPP Annotation Conflict Error");
-    add_context_for_error(
-        &first_annotation,
-        "First annotation defined here");
-    add_context_for_error(
-        &conflicting_annotation,
-        "Conflicting annotation defined here");
-    add_error(
-        &ctx,
-        "In this context");
-    add_footer(
-        "These two annotations cannot be applied in the same context.",
-        "Remove one of the annotations");
-}
-
-
-spp::analyse::errors::SppAnnotationInvalidError::SppAnnotationInvalidError(
-    asts::AnnotationAst const &annotation) {
-    add_header(
-        2, "SPP Annotation Invalid Error");
-    add_error(
-        &annotation,
-        "Invalid annotation defined here");
-    add_footer(
-        "This annotation is not recognized.",
-        "Remove or correct the annotation");
-}
+// spp::analyse::errors::SppAnnotationInvalidApplicationError::SppAnnotationInvalidApplicationError(
+//     asts::AnnotationAst const &annotation,
+//     asts::Ast const &ctx,
+//     const std::string_view block_list) {
+//     add_header(
+//         0, "SPP Annotation Invalid Application Error");
+//     add_context_for_error(
+//         &annotation,
+//         "Annotation defined here");
+//     add_error(
+//         &ctx,
+//         "Invalid " + std::string(block_list) + " context defined here");
+//     add_footer(
+//         "This annotation is not compatible with the current context.",
+//         "Remove the annotation from here");
+// }
+//
+//
+// spp::analyse::errors::SppAnnotationConflictError::SppAnnotationConflictError(
+//     asts::AnnotationAst const &first_annotation,
+//     asts::AnnotationAst const &conflicting_annotation,
+//     asts::Ast const &ctx) {
+//     add_header(
+//         1, "SPP Annotation Conflict Error");
+//     add_context_for_error(
+//         &first_annotation,
+//         "First annotation defined here");
+//     add_context_for_error(
+//         &conflicting_annotation,
+//         "Conflicting annotation defined here");
+//     add_error(
+//         &ctx,
+//         "In this context");
+//     add_footer(
+//         "These two annotations cannot be applied in the same context.",
+//         "Remove one of the annotations");
+// }
+//
+//
+// spp::analyse::errors::SppAnnotationInvalidError::SppAnnotationInvalidError(
+//     asts::AnnotationAst const &annotation) {
+//     add_header(
+//         2, "SPP Annotation Invalid Error");
+//     add_error(
+//         &annotation,
+//         "Invalid annotation defined here");
+//     add_footer(
+//         "This annotation is not recognized.",
+//         "Remove or correct the annotation");
+// }
 
 
 spp::analyse::errors::SppExpressionTypeInvalidError::SppExpressionTypeInvalidError(
@@ -1576,5 +1576,61 @@ spp::analyse::errors::SppGenericConstraintError::SppGenericConstraintError(
         "The concrete type does not satisfy the generic constraint.",
         "Ensure the concrete type meets all requirements of the generic constraint");
 }
+
+
+spp::analyse::errors::SppAnnotationTargetNotAnAnnotationError::SppAnnotationTargetNotAnAnnotationError(
+    asts::AnnotationAst const &call_site,
+    asts::FunctionPrototypeAst const &target_definition) {
+    add_header(
+        86, "SPP Annotation Target Not An Annotation Error");
+    add_context_for_error(
+        &target_definition,
+        "Function defined here is missing '!annotation' tag");
+    add_error(
+        &call_site,
+        "Calling annotation candidate '" + call_site.to_string() + "' here.");
+    add_footer(
+        "This annotation cannot be applied because the target is not an annotation.",
+        "Ensure the target function is defined with the '!annotation' tag");
+}
+
+
+spp::analyse::errors::SppAnnotationNotAFunctionError::SppAnnotationNotAFunctionError(
+    asts::AnnotationAst const &annotation_marker,
+    asts::Ast const &non_function_ast) {
+    add_header(
+        87, "SPP Annotation Not A Function Error");
+    add_context_for_error(
+        &non_function_ast,
+        "Non-function defined here");
+    add_error(
+        &annotation_marker,
+        "Annotation marker '" + annotation_marker.to_string() + "' defined here");
+    add_footer(
+        "This annotation cannot be applied because the target is not a function.",
+        "Ensure the annotation is applied to a function");
+}
+
+
+spp::analyse::errors::SppCalledAnnotationAppliedToInvalidAstError::SppCalledAnnotationAppliedToInvalidAstError(
+    asts::Ast const &invalid_ast,
+    asts::Ast const &annotation_call,
+    asts::AnnotationAst const &annotation_definition) {
+    add_header(
+        88, "SPP Called Annotation Applied To Invalid Ast Error");
+    add_context_for_error(
+        &annotation_definition,
+        "Annotation & possible targets defined here");
+    add_error(
+        &annotation_call,
+        "Annotation call defined here");
+    add_context_for_error(
+        &invalid_ast,
+        "Invalid target of annotation defined here");
+    add_footer(
+        "This annotation cannot be applied to the target AST node.",
+        "Ensure the annotation is applied to a valid target as defined in the annotation's definition");
+}
+
 
 SPP_MOD_END

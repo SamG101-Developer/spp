@@ -34,6 +34,8 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
      */
     std::shared_ptr<TypeAst> type;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the GenericParameterCompAst with the arguments matching the members.
      * @param tok_cmp The @c cmp token that represents the generic comp parameter.
@@ -59,3 +61,8 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
 
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::GenericParameterCompAst::_spp_key_function() const -> void {}
+SPP_MOD_END

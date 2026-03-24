@@ -54,6 +54,8 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
      */
     std::unique_ptr<TokenAst> tok_r;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the ArrayLiteral0Elements with the arguments matching the members.
      * @param[in] tok_l The token that represents the left square bracket @code [@endcode in the array literal.
@@ -122,3 +124,8 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
      */
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::ArrayLiteralRepeatedElementAst::_spp_key_function() const -> void {}
+SPP_MOD_END

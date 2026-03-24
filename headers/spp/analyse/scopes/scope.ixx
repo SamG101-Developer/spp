@@ -8,7 +8,6 @@ import spp.analyse.scopes.symbol_table;
 import std;
 import sys;
 
-
 namespace spp::asts {
     SPP_EXP_CLS struct Ast;
     SPP_EXP_CLS struct ExpressionAst;

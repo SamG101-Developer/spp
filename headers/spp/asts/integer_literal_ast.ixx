@@ -32,6 +32,8 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
      */
     std::string type;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the IntegerLiteralAst with the arguments matching the members.
      * @param[in] tok_sign The optionally provided sign token.
@@ -68,3 +70,8 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::IntegerLiteralAst::_spp_key_function() const -> void {}
+SPP_MOD_END

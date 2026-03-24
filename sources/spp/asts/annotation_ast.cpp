@@ -154,23 +154,23 @@ auto spp::asts::AnnotationAst::stage_7_analyse_semantics(
     // Annotation target checks.
     const auto outer_mod_ctx = m_ctx->get_ast_ctx()->to<ModulePrototypeAst>();
 
-    raise_if<analyse::errors::SppCalledAnnotationFromInvalidContextError>(
+    raise_if<analyse::errors::SppCalledAnnotationAppliedToInvalidAstError>(
         m_ctx->to<ClassPrototypeAst>() and ~(annotation_info->ctx & analyse::utils::annotation_utils::AnnotationInfo::CLASS_CTX),
         {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 
-    raise_if<analyse::errors::SppCalledAnnotationFromInvalidContextError>(
+    raise_if<analyse::errors::SppCalledAnnotationAppliedToInvalidAstError>(
         m_ctx->to<FunctionPrototypeAst>() and outer_mod_ctx and ~(annotation_info->ctx & analyse::utils::annotation_utils::AnnotationInfo::FUNCTION_CTX),
         {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 
-    raise_if<analyse::errors::SppCalledAnnotationFromInvalidContextError>(
+    raise_if<analyse::errors::SppCalledAnnotationAppliedToInvalidAstError>(
         m_ctx->to<FunctionPrototypeAst>() and not outer_mod_ctx and ~(annotation_info->ctx & analyse::utils::annotation_utils::AnnotationInfo::METHOD_CTX),
         {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 
-    raise_if<analyse::errors::SppCalledAnnotationFromInvalidContextError>(
+    raise_if<analyse::errors::SppCalledAnnotationAppliedToInvalidAstError>(
         m_ctx->to<TypeStatementAst>() and ~(annotation_info->ctx & analyse::utils::annotation_utils::AnnotationInfo::TYPE_CTX),
         {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 
-    raise_if<analyse::errors::SppCalledAnnotationFromInvalidContextError>(
+    raise_if<analyse::errors::SppCalledAnnotationAppliedToInvalidAstError>(
         m_ctx->to<CmpStatementAst>() and ~(annotation_info->ctx & analyse::utils::annotation_utils::AnnotationInfo::CMP_CTX),
         {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 

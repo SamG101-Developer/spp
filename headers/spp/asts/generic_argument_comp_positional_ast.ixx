@@ -17,6 +17,8 @@ namespace spp::asts {
  * argument to be matched by an index rather than a keyword.
  */
 SPP_EXP_CLS struct spp::asts::GenericArgumentCompPositionalAst final : GenericArgumentCompAst {
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the GenericArgumentCompPositionalAst with the arguments matching the members.
      * @param val The value of the generic comp argument.
@@ -27,6 +29,7 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompPositionalAst final : GenericAr
     ~GenericArgumentCompPositionalAst() override;
 
     SPP_ATTR_NODISCARD auto equals(GenericArgumentAst const &other) const -> std::strong_ordering override;
+
     SPP_ATTR_NODISCARD auto equals_generic_argument_comp_positional(GenericArgumentCompPositionalAst const &other) const -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
@@ -35,3 +38,8 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompPositionalAst final : GenericAr
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
+
+
+SPP_MOD_BEGIN
+auto spp::asts::GenericArgumentCompPositionalAst::_spp_key_function() const -> void {}
+SPP_MOD_END
