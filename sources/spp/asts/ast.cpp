@@ -8,6 +8,9 @@ import std;
 
 
 SPP_MOD_BEGIN
+spp::asts::Ast::Ast() = default;
+
+
 spp::asts::Ast::~Ast() = default;
 
 

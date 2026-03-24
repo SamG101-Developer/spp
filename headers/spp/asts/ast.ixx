@@ -48,7 +48,7 @@ protected:
      * Create a new AST (base class for all derived ASTs). This constructor is protected to prevent direct instantiation
      * as an AST should always be a specific type of AST, such as a TokenAst, IdentifierAst, etc.
      */
-    explicit Ast() = default;
+    explicit Ast();
 
 public:
     ~Ast() override;
