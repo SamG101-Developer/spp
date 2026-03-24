@@ -6,27 +6,46 @@ module spp.asts.annotation_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.annotation_utils;
+import spp.asts.class_prototype_ast;
+import spp.asts.cmp_statement_ast;
+import spp.asts.fold_expression_ast;
+import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_prototype_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.token_ast;
+import spp.asts.type_statement_ast;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
 
 
 spp::asts::AnnotationAst::AnnotationAst(
-    decltype(tok_at_sign) &&tok_at_sign,
-    decltype(name) &&name) :
-    tok_at_sign(std::move(tok_at_sign)),
-    name(std::move(name)) {
+    decltype(tok_exclamation_mark) &&tok_at_sign,
+    decltype(name) &&name,
+    decltype(gn_arg_group) &&gn_arg_group,
+    decltype(fn_arg_group) &&fn_arg_group) :
+    tok_exclamation_mark(std::move(tok_at_sign)),
+    name(std::move(name)),
+    gn_arg_group(std::move(gn_arg_group)),
+    fn_arg_group(std::move(fn_arg_group)) {
 }
+
+
+spp::asts::AnnotationAst::~AnnotationAst() = default;
 
 
 auto spp::asts::AnnotationAst::pos_start() const
     -> std::size_t {
-    return tok_at_sign->pos_start();
+    return tok_exclamation_mark->pos_start();
 }
 
 
@@ -39,8 +58,10 @@ auto spp::asts::AnnotationAst::pos_end() const
 auto spp::asts::AnnotationAst::clone() const
     -> std::unique_ptr<Ast> {
     auto ast = std::make_unique<AnnotationAst>(
-        ast_clone(tok_at_sign),
-        ast_clone(name));
+        ast_clone(tok_exclamation_mark),
+        ast_clone(name),
+        ast_clone(gn_arg_group),
+        ast_clone(fn_arg_group));
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
     return ast;
@@ -49,7 +70,7 @@ auto spp::asts::AnnotationAst::clone() const
 
 spp::asts::AnnotationAst::operator std::string() const {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_at_sign);
+    SPP_STRING_APPEND(tok_exclamation_mark);
     SPP_STRING_APPEND(name);
     SPP_STRING_END;
 }
@@ -67,56 +88,6 @@ auto spp::asts::AnnotationAst::stage_1_pre_process(
     -> void {
     // Default AST processing (sets context).
     Ast::stage_1_pre_process(ctx);
-    using utils::Visibility;
-
-    // Define some cast contexts for attribute assignment.
-    const auto fun_ctx = ctx->to<FunctionPrototypeAst>();
-    const auto vis_ctx = ctx->to<mixins::VisibilityEnabledAst>();
-
-    // Mark a method as virtual.
-    if (fun_ctx != nullptr and name->val == "virtual_method") {
-        fun_ctx->virtual_annotation = this;
-    }
-
-    // Mark a method as abstract.
-    else if (fun_ctx != nullptr and name->val == "abstract_method") {
-        fun_ctx->abstract_annotation = this;
-    }
-
-    // Mark a method as non-implemented (ffi).
-    else if (fun_ctx != nullptr and name->val == "ffi") {
-        fun_ctx->no_impl_annotation = this;
-    }
-
-    // Mark a method as non-implemented (intrinsic).
-    else if (fun_ctx != nullptr and name->val == "compiler_builtin") {
-        fun_ctx->no_impl_annotation = this;
-    }
-
-    // Mark an AST as public.
-    else if (vis_ctx != nullptr and name->val == "public") {
-        vis_ctx->visibility = std::make_pair(Visibility::PUBLIC, this);
-    }
-
-    // Mark an AST as protected.
-    else if (vis_ctx != nullptr and name->val == "protected") {
-        vis_ctx->visibility = std::make_pair(Visibility::PROTECTED, this);
-    }
-
-    // Mark an AST as private.
-    else if (vis_ctx != nullptr and name->val == "private") {
-        vis_ctx->visibility = std::make_pair(Visibility::PRIVATE, this);
-    }
-
-    // Mark a function as hot.
-    else if (fun_ctx != nullptr and name->val == "hot") {
-        fun_ctx->temperature_annotation = this;
-    }
-
-    // Mark a function as cold.
-    else if (fun_ctx != nullptr and name->val == "cold") {
-        fun_ctx->temperature_annotation = this;
-    }
 }
 
 
@@ -126,108 +97,144 @@ auto spp::asts::AnnotationAst::stage_2_gen_top_level_scopes(
     -> void {
     // Default AST processing (sets scope).
     Ast::stage_2_gen_top_level_scopes(sm, meta);
-    using utils::Visibility;
+}
 
-    // Define some cast contexts for attribute assignment.
-    const auto fun_ctx = m_ctx->to<FunctionPrototypeAst>();
-    const auto vis_ctx = m_ctx->to<mixins::VisibilityEnabledAst>();
-    const auto ctx_mod_ctx = m_ctx->get_ast_ctx()->to<ModulePrototypeAst>();
-    const auto ctx_ext_ctx = m_ctx->get_ast_ctx()->to<SupPrototypeExtensionAst>();
 
-    if (name->val == "virtual_method") {
-        // The "virtual_method" annotation can only be applied to function ASTs.
-        raise_if<analyse::errors::SppAnnotationInvalidApplicationError>(
-            not fun_ctx, {m_scope},
-            ERR_ARGS(*this, *m_ctx, "non-function"));
+auto spp::asts::AnnotationAst::stage_6_pre_analyse_semantics(
+    ScopeManager *sm,
+    CompilerMetaData *)
+    -> void {
+    // Special annotation handling.
+    const auto fq_name = sm->current_scope->get_var_symbol_outermost(*name).first->fq_name()->to_string();
+    const auto func_ctx = m_ctx->to<FunctionPrototypeAst>();
 
-        // The function ast must be a class method, not a free function.
-        raise_if<analyse::errors::SppAnnotationInvalidApplicationError>(
-            ctx_mod_ctx, {m_scope},
-            ERR_ARGS(*this, *m_ctx, "non-class-method"));
+    // If this is a "!annotation" annotation, mark it.
+    if (fq_name == "std::annotation::annotation") {
+        raise_if<analyse::errors::SppAnnotationNotAFunctionError>(
+            not func_ctx, {m_scope},
+            ERR_ARGS(*this, *m_ctx));
 
-        // The "virtual_method" annotation cannot be applied to an abstract method.
-        raise_if<analyse::errors::SppAnnotationConflictError>(
-            fun_ctx and fun_ctx->abstract_annotation, {m_scope},
-            ERR_ARGS(*this, *fun_ctx->abstract_annotation, *m_ctx));
-
-        // The "virtual_method" annotation cannot be applied to a virtual method.
-        raise_if<analyse::errors::SppAnnotationConflictError>(
-            fun_ctx and fun_ctx->virtual_annotation and fun_ctx->virtual_annotation != this, {m_scope},
-            ERR_ARGS(*this, *fun_ctx->virtual_annotation, *m_ctx));
+        func_ctx->mark_as_annotation();
     }
 
-    else if (name->val == "abstract_method") {
-        // The "abstract_method" annotation can only be applied to function ASTs.
-        raise_if<analyse::errors::SppAnnotationInvalidApplicationError>(
-            not fun_ctx, {m_scope},
-            ERR_ARGS(*this, *m_ctx, "non-function"));
+    // If this is a "!compiler_builtin" annotation, mark it.
+    if (fq_name == "std::annotations::compiler_builtin") {
+        raise_if<analyse::errors::SppAnnotationNotAFunctionError>(
+            not func_ctx, {m_scope},
+            ERR_ARGS(*this, *m_ctx));
 
-        // The function ast must be a class method, not a free function.
-        raise_if<analyse::errors::SppAnnotationInvalidApplicationError>(
-            ctx_mod_ctx, {m_scope},
-            ERR_ARGS(*this, *m_ctx, "non-class-method"));
-
-        // The "abstract_method" annotation cannot be applied to a virtual method.
-        raise_if<analyse::errors::SppAnnotationConflictError>(
-             fun_ctx and fun_ctx->virtual_annotation, {m_scope},
-             ERR_ARGS(*this, *fun_ctx->virtual_annotation, *m_ctx));
-
-        // The "abstract_method" annotation cannot be applied to an abstract method.
-        raise_if<analyse::errors::SppAnnotationConflictError>(
-             fun_ctx and fun_ctx->abstract_annotation and fun_ctx->abstract_annotation != this, {m_scope},
-             ERR_ARGS(*this, *fun_ctx->abstract_annotation, *m_ctx));
+        func_ctx->annotation_info()->is_builtin = true;
     }
+}
 
-    else if (name->val == "ffi" or name->val == "compiler_builtin") {
-        // The "ffi/compiler_builtin" annotation can only be applied to function ASTs.
-        raise_if<analyse::errors::SppAnnotationInvalidApplicationError>(
-             not fun_ctx, {m_scope},
-             ERR_ARGS(*this, *m_ctx, "non-function"));
-    }
 
-    else if (name->val == "public" or name->val == "protected" or name->val == "private") {
-        // The visibility annotations can only be applied to ASTs that support visibility.
-        raise_if<analyse::errors::SppAnnotationInvalidApplicationError>(
-            not vis_ctx, {m_scope},
-            ERR_ARGS(*this, *m_ctx, "non-visibility-enabled"));
+auto spp::asts::AnnotationAst::stage_7_analyse_semantics(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Steps to take.
+    //  1. Ensure that the target annotation exists and is callable (a function).
+    //  2. Ensure that the target annotation is annotated as "!annotation(...)".
+    //  3. Ensure that the target annotation's target is valid for the context AST.
+    //  4. For compiler_builtin annotations, ensure they have handlers.
 
-        // Access modifiers cannot be applied to methods in sup-ext blocks (only in module or sup).
-        raise_if<analyse::errors::SppAnnotationInvalidApplicationError>(
-            ctx_ext_ctx, {m_scope},
-            ERR_ARGS(*this, *m_ctx->get_ast_ctx(), "extension"));
+    // Convert the target into a function call to ensure it exists.
+    auto fn = std::make_unique<PostfixExpressionOperatorFunctionCallAst>(std::move(gn_arg_group), std::move(fn_arg_group), nullptr);
+    const auto pf = std::make_unique<PostfixExpressionAst>(ast_clone(name), std::move(fn));
+    pf->stage_7_analyse_semantics(sm, meta);
 
-        // The visibility annotation cannot be applied to an AST that already has a visibility annotation.
-        raise_if<analyse::errors::SppAnnotationConflictError>(
-            vis_ctx and vis_ctx->visibility.second and vis_ctx->visibility.second != this, {m_scope},
-            ERR_ARGS(*this, *vis_ctx->visibility.second, *m_ctx));
-    }
+    // Check the target function is an annotation (via "!annotation").
+    const auto overload = pf->op->to<PostfixExpressionOperatorFunctionCallAst>()->target();
+    const auto annotation_info = overload ? overload->annotation_info() : nullptr;
+    raise_if<analyse::errors::SppAnnotationTargetNotAnAnnotationError>(
+        not annotation_info,
+        {m_scope}, ERR_ARGS(*this, *overload));
 
-    else if (name->val == "hot" or name->val == "cold") {
-        // The "hot" and "cold" annotations can only be applied to function ASTs.
-        raise_if<analyse::errors::SppAnnotationInvalidApplicationError>(
-             not fun_ctx, {m_scope},
-             ERR_ARGS(*this, *m_ctx, "non-function"));
+    // Annotation target checks.
+    const auto outer_mod_ctx = m_ctx->get_ast_ctx()->to<ModulePrototypeAst>();
 
-        // The "hot" and "cold" annotations cannot be applied already temperate functions.
-        raise_if<analyse::errors::SppAnnotationConflictError>(
-             fun_ctx and fun_ctx->temperature_annotation and fun_ctx->temperature_annotation != this, {m_scope},
-             ERR_ARGS(*this, *fun_ctx->temperature_annotation, *m_ctx));
-    }
+    raise_if<analyse::errors::SppCalledAnnotationFromInvalidContextError>(
+        m_ctx->to<ClassPrototypeAst>() and ~(annotation_info->ctx & analyse::utils::annotation_utils::AnnotationInfo::CLASS_CTX),
+        {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 
-    else if (name->val == "always_inline" or name->val == "inline" or name->val == "no_inline") {
-        // The "always_inline", "inline" and "no_inline" annotations can only be applied to function ASTs.
-        raise_if<analyse::errors::SppAnnotationInvalidApplicationError>(
-             not fun_ctx, {m_scope},
-             ERR_ARGS(*this, *m_ctx, "non-function"));
+    raise_if<analyse::errors::SppCalledAnnotationFromInvalidContextError>(
+        m_ctx->to<FunctionPrototypeAst>() and outer_mod_ctx and ~(annotation_info->ctx & analyse::utils::annotation_utils::AnnotationInfo::FUNCTION_CTX),
+        {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 
-        // The "always_inline", "inline" and "no_inline" annotations cannot be applied already temperate functions.
-        raise_if<analyse::errors::SppAnnotationConflictError>(
-             fun_ctx and fun_ctx->inline_annotation, {m_scope},
-             ERR_ARGS(*this, *fun_ctx->inline_annotation, *m_ctx));
-    }
+    raise_if<analyse::errors::SppCalledAnnotationFromInvalidContextError>(
+        m_ctx->to<FunctionPrototypeAst>() and not outer_mod_ctx and ~(annotation_info->ctx & analyse::utils::annotation_utils::AnnotationInfo::METHOD_CTX),
+        {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 
-    else {
-        // Unknown annotations are not allowed.
-        raise<analyse::errors::SppAnnotationInvalidError>({m_scope}, ERR_ARGS(*this));
+    raise_if<analyse::errors::SppCalledAnnotationFromInvalidContextError>(
+        m_ctx->to<TypeStatementAst>() and ~(annotation_info->ctx & analyse::utils::annotation_utils::AnnotationInfo::TYPE_CTX),
+        {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
+
+    raise_if<analyse::errors::SppCalledAnnotationFromInvalidContextError>(
+        m_ctx->to<CmpStatementAst>() and ~(annotation_info->ctx & analyse::utils::annotation_utils::AnnotationInfo::CMP_CTX),
+        {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
+
+    // Handle builtin annotations.
+    if (annotation_info->is_builtin) {
+        const auto fq_name = sm->current_scope->get_var_symbol_outermost(*name).first->fq_name()->to_string();
+        if (fq_name == "std::annotations::public") {
+            const auto vis_ctx = m_ctx->to<mixins::VisibilityEnabledAst>();
+            SPP_ASSERT(vis_ctx != nullptr);
+            vis_ctx->visibility = std::make_pair(utils::Visibility::PUBLIC, annotation_info->definition);
+        }
+        else if (fq_name == "std::annotations::protected") {
+            const auto vis_ctx = m_ctx->to<mixins::VisibilityEnabledAst>();
+            SPP_ASSERT(vis_ctx != nullptr);
+            vis_ctx->visibility = std::make_pair(utils::Visibility::PROTECTED, annotation_info->definition);
+        }
+        else if (fq_name == "std::annotations::private") {
+            const auto vis_ctx = m_ctx->to<mixins::VisibilityEnabledAst>();
+            SPP_ASSERT(vis_ctx != nullptr);
+            vis_ctx->visibility = std::make_pair(utils::Visibility::PRIVATE, annotation_info->definition);
+        }
+        else if (fq_name == "std::annotations::virtual_method") {
+            const auto fun_ctx = m_ctx->to<FunctionPrototypeAst>();
+            SPP_ASSERT(fun_ctx != nullptr);
+            fun_ctx->virtual_annotation = annotation_info->definition;
+        }
+        else if (fq_name == "std::annotations::abstract_method") {
+            const auto fun_ctx = m_ctx->to<FunctionPrototypeAst>();
+            SPP_ASSERT(fun_ctx != nullptr);
+            fun_ctx->abstract_annotation = annotation_info->definition;
+        }
+        else if (fq_name == "std::annotations::ffi") {
+            const auto fun_ctx = m_ctx->to<FunctionPrototypeAst>();
+            SPP_ASSERT(fun_ctx != nullptr);
+            fun_ctx->ffi_annotation = annotation_info->definition;
+        }
+        else if (fq_name == "std::llvm::inline") {
+            const auto fun_ctx = m_ctx->to<FunctionPrototypeAst>();
+            SPP_ASSERT(fun_ctx != nullptr);
+            fun_ctx->inline_annotation = annotation_info->definition;
+        }
+        else if (fq_name == "std::llvm::always_inline") {
+            const auto fun_ctx = m_ctx->to<FunctionPrototypeAst>();
+            SPP_ASSERT(fun_ctx != nullptr);
+            fun_ctx->inline_annotation = annotation_info->definition;
+        }
+        else if (fq_name == "std::llvm::noinline") {
+            const auto fun_ctx = m_ctx->to<FunctionPrototypeAst>();
+            SPP_ASSERT(fun_ctx != nullptr);
+            fun_ctx->inline_annotation = annotation_info->definition;
+        }
+        else if (fq_name == "std::llvm::hot") {
+            const auto fun_ctx = m_ctx->to<FunctionPrototypeAst>();
+            SPP_ASSERT(fun_ctx != nullptr);
+            fun_ctx->temperature_annotation = annotation_info->definition;
+        }
+        else if (fq_name == "std::llvm::cold") {
+            const auto fun_ctx = m_ctx->to<FunctionPrototypeAst>();
+            SPP_ASSERT(fun_ctx != nullptr);
+            fun_ctx->temperature_annotation = annotation_info->definition;
+        }
+
+        // TODO: "extends", "variant_default"
+
+        raise<analyse::errors::SppInternalCompilerError>(
+            {sm->current_scope}, ERR_ARGS(*this, "Unknown builtin annoation"));
     }
 }

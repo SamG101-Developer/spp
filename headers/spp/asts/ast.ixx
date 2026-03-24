@@ -142,6 +142,3 @@ public:
         m_ctx = ctx;
     }
 };
-
-
-spp::asts::Ast::~Ast() = default;
