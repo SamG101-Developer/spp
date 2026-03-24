@@ -19,6 +19,7 @@ import genex;
 import llvm;
 
 
+SPP_MOD_BEGIN
 spp::asts::IdentifierAst::IdentifierAst(
     const std::size_t pos,
     decltype(val) val) :
@@ -26,6 +27,9 @@ spp::asts::IdentifierAst::IdentifierAst(
     m_pos(pos),
     val(std::move(val)) {
 }
+
+
+spp::asts::IdentifierAst::~IdentifierAst() = default;
 
 
 auto spp::asts::IdentifierAst::equals(
@@ -173,3 +177,5 @@ auto spp::asts::IdentifierAst::expr_parts() const
     -> std::vector<Ast*> {
     return {const_cast<IdentifierAst*>(this)};
 }
+
+SPP_MOD_END

@@ -1,5 +1,6 @@
 module;
 #include <spp/analyse/macros.hpp>
+#include <spp/macros.hpp>
 
 module spp.asts.inner_scope_expression_ast;
 import spp.analyse.errors.semantic_error;
@@ -16,6 +17,7 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 
+SPP_MOD_BEGIN
 template <typename T>
 auto spp::asts::InnerScopeExpressionAst<T>::clone() const
     -> std::unique_ptr<Ast> {
@@ -131,3 +133,5 @@ auto spp::asts::InnerScopeExpressionAst<T>::terminates() const
 
 
 template struct spp::asts::InnerScopeExpressionAst<std::unique_ptr<spp::asts::StatementAst>>;
+
+SPP_MOD_END

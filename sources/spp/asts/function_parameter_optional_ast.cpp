@@ -17,6 +17,7 @@ import spp.asts.utils.orderable;
 import spp.asts.mixins.orderable_ast;
 
 
+SPP_MOD_BEGIN
 spp::asts::FunctionParameterOptionalAst::FunctionParameterOptionalAst(
     decltype(var) &&var,
     decltype(tok_colon) &&tok_colon,
@@ -93,3 +94,4 @@ auto spp::asts::FunctionParameterOptionalAst::stage_8_check_memory(
     analyse::utils::mem_utils::validate_symbol_memory(
         *default_val, *default_val, *sm, true, true, true, true, true, meta);
 }
+SPP_MOD_END

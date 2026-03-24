@@ -27,6 +27,7 @@ import spp.lex.tokens;
 import spp.utils.uid;
 
 
+SPP_MOD_BEGIN
 spp::asts::RetStatementAst::RetStatementAst(
     decltype(tok_ret) &&tok_ret,
     decltype(expr) &&val) :
@@ -153,7 +154,7 @@ auto spp::asts::RetStatementAst::stage_11_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the return value, if there is one.
-        if (expr != nullptr) {
+    if (expr != nullptr) {
         // Temp holder for non-symbolic condition.
         if (sm->current_scope->get_var_symbol_outermost(*expr).first == nullptr) {
             meta->save();
@@ -192,3 +193,5 @@ auto spp::asts::RetStatementAst::terminates() const
     // This is the only statement that always terminates.
     return true;
 }
+
+SPP_MOD_END

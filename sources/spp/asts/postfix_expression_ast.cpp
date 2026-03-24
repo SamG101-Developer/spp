@@ -17,6 +17,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::PostfixExpressionAst::PostfixExpressionAst(
     decltype(lhs) &&lhs,
     decltype(op) &&op) :
@@ -152,3 +153,5 @@ auto spp::asts::PostfixExpressionAst::expr_parts() const
     }
     return lhs_parts;
 }
+
+SPP_MOD_END

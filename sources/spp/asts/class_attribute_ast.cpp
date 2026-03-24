@@ -20,6 +20,7 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::ClassAttributeAst::ClassAttributeAst(
     decltype(annotations) &&annotations,
     decltype(name) &&name,
@@ -32,6 +33,9 @@ spp::asts::ClassAttributeAst::ClassAttributeAst(
     type(std::move(type)),
     default_val(std::move(default_val)) {
 }
+
+
+spp::asts::ClassAttributeAst::~ClassAttributeAst() = default;
 
 
 auto spp::asts::ClassAttributeAst::pos_start() const
@@ -160,3 +164,5 @@ auto spp::asts::ClassAttributeAst::stage_8_check_memory(
             *default_val, *default_val, *sm, true, true, true, true, true, meta);
     }
 }
+
+SPP_MOD_END

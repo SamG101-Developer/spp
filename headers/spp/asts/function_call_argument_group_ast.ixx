@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.function_call_argument_group_ast;
 import spp.asts.ast;
-
 import std;
 
 namespace spp::asts {

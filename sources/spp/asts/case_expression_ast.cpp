@@ -36,6 +36,7 @@ import genex;
 import opex.cast;
 
 
+SPP_MOD_BEGIN
 spp::asts::CaseExpressionAst::CaseExpressionAst(
     decltype(tok_case) &&tok_case,
     decltype(cond) &&cond,
@@ -262,8 +263,8 @@ auto spp::asts::CaseExpressionAst::infer_type(
 
     // Return the branches' return type. If there are any branches, otherwise Void.
     return branches_type_info.empty()
-        ? generate::common_types::void_type(pos_start())
-        : std::get<1>(master_branch_type_info);
+               ? generate::common_types::void_type(pos_start())
+               : std::get<1>(master_branch_type_info);
 }
 
 
@@ -273,3 +274,5 @@ auto spp::asts::CaseExpressionAst::terminates() const
     return not genex::any_of(
         branches, [](auto const &branch) { return not branch->body->terminates(); });
 }
+
+SPP_MOD_END

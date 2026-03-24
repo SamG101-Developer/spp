@@ -8,8 +8,6 @@ import llvm;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct CasePatternVariantLiteralAst;
-    SPP_EXP_CLS struct CasePatternVariantSingleIdentifierAst;
     SPP_EXP_CLS struct ConventionAst;
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct LocalVariableSingleIdentifierAst;
@@ -71,9 +69,9 @@ SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVari
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto extract_name() const -> std::shared_ptr<IdentifierAst> override;
+    SPP_ATTR_NODISCARD auto extract_name() const -> std::shared_ptr<IdentifierAst> override;
 
-    auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>> override;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

@@ -5,7 +5,6 @@ module;
 export module spp.asts.token_ast;
 import spp.asts.ast;
 import spp.lex.tokens;
-
 import std;
 
 namespace spp::asts {

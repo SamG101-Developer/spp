@@ -21,6 +21,7 @@ import spp.lex.tokens;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::IsExpressionAst::IsExpressionAst(
     decltype(lhs) &&lhs,
     decltype(tok_op) &&tok_op,
@@ -96,7 +97,7 @@ auto spp::asts::IsExpressionAst::stage_7_analyse_semantics(
     // This includes the lhs symbol if it's been flow typed.
     if (not sm->current_scope->name_as_string().starts_with("<inner-scope#")) {
         const auto destructure_syms = sm->current_scope->children[n]->children[0]->all_var_symbols(true, true);
-        for (auto &&x: destructure_syms) {
+        for (auto &&x : destructure_syms) {
             sm->current_scope->add_var_symbol(x);
         }
     }
@@ -140,3 +141,5 @@ auto spp::asts::IsExpressionAst::infer_type(
     // Always return a boolean type (successful or failed match).
     return generate::common_types::boolean_type(m_mapped_func->pos_start());
 }
+
+SPP_MOD_END

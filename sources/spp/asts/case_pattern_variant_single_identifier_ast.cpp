@@ -16,6 +16,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::CasePatternVariantSingleIdentifierAst::CasePatternVariantSingleIdentifierAst(
     decltype(conv) &&conv,
     decltype(tok_mut) &&tok_mut,
@@ -98,3 +99,5 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::stage_8_check_memory(
     // Forward memory checks into the name and alias.
     m_mapped_let->stage_8_check_memory(sm, meta);
 }
+
+SPP_MOD_END

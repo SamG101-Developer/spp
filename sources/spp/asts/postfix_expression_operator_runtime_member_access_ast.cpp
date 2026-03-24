@@ -14,6 +14,7 @@ import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.identifier_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.object_initializer_ast;
 import spp.asts.object_initializer_argument_group_ast;
@@ -32,6 +33,7 @@ import spp.utils.uid;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOperatorRuntimeMemberAccessAst(
     decltype(tok_dot) &&tok_dot,
     decltype(name) name) :
@@ -258,3 +260,5 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::expr_parts() co
     -> std::vector<Ast*> {
     return {name.get()};
 }
+
+SPP_MOD_END

@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_identifier_ast;
-import spp.asts.generic_argument_group_ast;
 import spp.asts.type_ast;
 import std;
 
@@ -107,6 +106,3 @@ public:
 
     auto ankerl_hash() const -> std::size_t override;
 };
-
-
-spp::asts::TypeIdentifierAst::~TypeIdentifierAst() = default;

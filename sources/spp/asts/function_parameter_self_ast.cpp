@@ -16,6 +16,7 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
 
+SPP_MOD_BEGIN
 spp::asts::FunctionParameterSelfAst::FunctionParameterSelfAst(
     decltype(conv) &&conv,
     decltype(var) &&var) :
@@ -73,3 +74,5 @@ auto spp::asts::FunctionParameterSelfAst::stage_7_analyse_semantics(
     // Apply the convention from the attribute.
     sym->type = type->with_convention(ast_clone(conv));
 }
+
+SPP_MOD_END

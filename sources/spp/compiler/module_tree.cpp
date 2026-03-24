@@ -1,3 +1,6 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.compiler.module_tree;
 import spp.asts.module_prototype_ast;
 import spp.utils.files;
@@ -7,6 +10,7 @@ import std;
 import sys;
 
 
+SPP_MOD_BEGIN
 spp::compiler::Module::Module(
     std::filesystem::path path,
     std::string code,
@@ -124,3 +128,5 @@ auto spp::compiler::ModuleTree::root_path() const
     -> std::filesystem::path {
     return m_root;
 }
+
+SPP_MOD_END

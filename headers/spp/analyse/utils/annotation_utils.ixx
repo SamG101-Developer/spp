@@ -1,7 +1,7 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.analyse.utils:annotation_utils;
+export module spp.analyse.utils.annotation_utils;
 import std;
 
 namespace spp::asts {

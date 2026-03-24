@@ -46,9 +46,9 @@ SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : virtual Ast {
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto name() const -> std::unique_ptr<IdentifierAst>;
+    SPP_ATTR_NODISCARD auto name() const -> std::unique_ptr<IdentifierAst>;
 
-    auto file_name() const -> std::unique_ptr<IdentifierAst>;
+    SPP_ATTR_NODISCARD auto file_name() const -> std::unique_ptr<IdentifierAst>;
 
     auto stage_1_pre_process(Ast *ctx) -> void override;
 

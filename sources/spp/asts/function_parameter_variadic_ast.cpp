@@ -12,6 +12,7 @@ import spp.asts.utils.orderable;
 import spp.lex.tokens;
 
 
+SPP_MOD_BEGIN
 spp::asts::FunctionParameterVariadicAst::FunctionParameterVariadicAst(
     decltype(tok_ellipsis) &&tok_ellipsis,
     decltype(var) &&var,
@@ -56,3 +57,5 @@ spp::asts::FunctionParameterVariadicAst::operator std::string() const {
     SPP_STRING_APPEND(type);
     SPP_STRING_END;
 }
+
+SPP_MOD_END

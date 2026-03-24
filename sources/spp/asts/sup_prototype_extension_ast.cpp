@@ -33,6 +33,7 @@ import spp.lex.tokens;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::SupPrototypeExtensionAst::SupPrototypeExtensionAst(
     decltype(tok_sup) &&tok_sup,
     decltype(generic_param_group) &&generic_param_group,
@@ -453,3 +454,5 @@ auto spp::asts::SupPrototypeExtensionAst::stage_11_code_gen_2(
 
     return nullptr;
 }
+
+SPP_MOD_END

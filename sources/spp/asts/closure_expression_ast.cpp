@@ -26,6 +26,7 @@ import spp.utils.uid;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::ClosureExpressionAst::ClosureExpressionAst(
     decltype(tok) &&tok,
     decltype(pc_group) &&pc_group,
@@ -276,3 +277,5 @@ auto spp::asts::ClosureExpressionAst::get_llvm_func() const
     -> std::shared_ptr<codegen::LlvmFuncWrapper> {
     return m_llvm_func;
 }
+
+SPP_MOD_END

@@ -59,6 +59,3 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
 
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };
-
-
-spp::asts::GenericParameterCompAst::~GenericParameterCompAst() = default;

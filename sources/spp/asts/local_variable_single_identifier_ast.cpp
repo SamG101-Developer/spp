@@ -17,6 +17,7 @@ import spp.codegen.llvm_type;
 import spp.utils.uid;
 
 
+SPP_MOD_BEGIN
 spp::asts::LocalVariableSingleIdentifierAst::LocalVariableSingleIdentifierAst(
     decltype(tok_mut) &&tok_mut,
     decltype(name) name,
@@ -184,3 +185,5 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_11_code_gen_2(
     // Alloca already added; return nullptr.
     return nullptr;
 }
+
+SPP_MOD_END

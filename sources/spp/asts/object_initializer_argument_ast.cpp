@@ -13,6 +13,7 @@ import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::ObjectInitializerArgumentAst::ObjectInitializerArgumentAst(
     decltype(name) name,
     decltype(val) &&val) :
@@ -61,3 +62,5 @@ auto spp::asts::ObjectInitializerArgumentAst::infer_type(
     // Infer the type of the value expression.
     return val->infer_type(sm, meta);
 }
+
+SPP_MOD_END

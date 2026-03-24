@@ -1,5 +1,6 @@
 module;
 #include <opex/macros.hpp>
+#include <spp/macros.hpp>
 
 module spp.utils.error_formatter;
 import spp.asts.ast;
@@ -10,6 +11,7 @@ import genex;
 import std;
 
 
+SPP_MOD_BEGIN
 spp::utils::errors::ErrorFormatter::ErrorFormatter(std::vector<lex::RawToken> tokens, std::string file_path) :
     m_tokens(std::move(tokens)),
     m_file_path(std::move(file_path)) {
@@ -17,7 +19,7 @@ spp::utils::errors::ErrorFormatter::ErrorFormatter(std::vector<lex::RawToken> to
 
 
 auto spp::utils::errors::ErrorFormatter::internal_parse_error_raw_pos(
-    std::size_t ast_start_pos,
+    const std::size_t ast_start_pos,
     std::size_t ast_size, std::string &&tag_message)
     -> std::tuple<std::string, std::string, std::string, std::string, std::string> {
     using lex::RawTokenType;
@@ -133,3 +135,5 @@ auto spp::utils::errors::ErrorFormatter::error_ast_minimal(
     return error_raw_pow_minimal(
         ast->pos_start(), ast->pos_end() - ast->pos_start(), std::move(tag_message));
 }
+
+SPP_MOD_END

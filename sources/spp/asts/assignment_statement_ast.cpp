@@ -26,6 +26,7 @@ import spp.lex.tokens;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::AssignmentStatementAst::AssignmentStatementAst(
     decltype(lhs) &&lhs,
     decltype(tok_assign) &&tok_assign,
@@ -278,3 +279,5 @@ auto spp::asts::AssignmentStatementAst::stage_11_code_gen_2(
     // Statements are always generated into a builder so no need to return anything.
     return nullptr;
 }
+
+SPP_MOD_END

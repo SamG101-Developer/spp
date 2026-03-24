@@ -1,5 +1,6 @@
 module;
 #include <spp/analyse/macros.hpp>
+#include <spp/macros.hpp>
 
 module spp.asts.class_implementation_ast;
 import spp.analyse.errors.semantic_error;
@@ -12,6 +13,7 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::ClassImplementationAst::~ClassImplementationAst() = default;
 
 
@@ -34,7 +36,7 @@ auto spp::asts::ClassImplementationAst::new_empty()
 auto spp::asts::ClassImplementationAst::stage_1_pre_process(
     Ast *ctx)
     -> void {
-    for (auto const &m: members) {
+    for (auto const &m : members) {
         m->stage_1_pre_process(ctx);
     }
 }
@@ -140,3 +142,5 @@ auto spp::asts::ClassImplementationAst::stage_11_code_gen_2(
     }
     return nullptr;
 }
+
+SPP_MOD_END

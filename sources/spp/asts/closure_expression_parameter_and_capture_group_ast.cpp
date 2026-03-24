@@ -20,6 +20,7 @@ import spp.codegen.llvm_type;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::ClosureExpressionParameterAndCaptureGroupAst::ClosureExpressionParameterAndCaptureGroupAst(
     decltype(tok_l) &&tok_l,
     decltype(param_group) &&param_group,
@@ -132,3 +133,5 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_11_code_gen_
     capture_group->stage_11_code_gen_2(sm, meta, ctx);
     return nullptr;
 }
+
+SPP_MOD_END

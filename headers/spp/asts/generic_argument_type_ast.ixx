@@ -37,6 +37,3 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeAst : GenericArgumentAst {
 
     auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
-
-
-spp::asts::GenericArgumentTypeAst::~GenericArgumentTypeAst() = default;

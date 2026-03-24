@@ -2,12 +2,12 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_unary_expression_operator_borrow_ast;
-import spp.asts.convention_ast;
 import spp.asts.type_unary_expression_operator_ast;
 
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct ConventionAst;
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct TypeIdentifierAst;
     SPP_EXP_CLS struct TypeUnaryExpressionOperatorBorrowAst;
@@ -30,20 +30,17 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeU
 
     ~TypeUnaryExpressionOperatorBorrowAst() override;
 
-    auto equals(TypeUnaryExpressionOperatorAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals(TypeUnaryExpressionOperatorAst const &) const -> std::strong_ordering override;
 
-    auto equals_op_borrow(TypeUnaryExpressionOperatorBorrowAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals_op_borrow(TypeUnaryExpressionOperatorBorrowAst const &) const -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
 
-    auto ns_parts() -> std::vector<std::shared_ptr<IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto ns_parts() -> std::vector<std::shared_ptr<IdentifierAst>> override;
 
-    auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
 
-    auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
 };
-
-
-spp::asts::TypeUnaryExpressionOperatorBorrowAst::~TypeUnaryExpressionOperatorBorrowAst() = default;

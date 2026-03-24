@@ -12,6 +12,7 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 
+SPP_MOD_BEGIN
 spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::CasePatternVariantDestructureSkipMultipleArgumentsAst(
     decltype(tok_ellipsis) &&tok_ellipsis,
     std::unique_ptr<CasePatternVariantAst> &&binding) :
@@ -61,3 +62,5 @@ auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::convert_t
     var->mark_from_case_pattern();
     return var;
 }
+
+SPP_MOD_END

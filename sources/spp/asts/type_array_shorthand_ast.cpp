@@ -8,6 +8,7 @@ import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::TypeArrayShorthandAst::TypeArrayShorthandAst(
     decltype(tok_l) &&tok_l,
     decltype(element_type) &&element_type,
@@ -64,3 +65,5 @@ auto spp::asts::TypeArrayShorthandAst::convert()
     const auto type = generate::common_types::array_type(pos_start(), std::move(element_type), std::move(size));
     return ast_clone(type);
 }
+
+SPP_MOD_END

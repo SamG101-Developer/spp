@@ -29,6 +29,7 @@ import genex;
 import llvm;
 
 
+SPP_MOD_BEGIN
 spp::asts::ClassPrototypeAst::ClassPrototypeAst(
     decltype(annotations) &&annotations,
     decltype(tok_cls) &&tok_cls,
@@ -45,6 +46,9 @@ spp::asts::ClassPrototypeAst::ClassPrototypeAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_param_group);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->impl);
 }
+
+
+spp::asts::ClassPrototypeAst::~ClassPrototypeAst() = default;
 
 
 auto spp::asts::ClassPrototypeAst::pos_start() const
@@ -71,7 +75,7 @@ auto spp::asts::ClassPrototypeAst::clone() const
     ast->m_scope = m_scope;
     ast->m_cls_sym = m_cls_sym;
     ast->visibility = visibility;
-    for (auto const &a: ast->annotations) {
+    for (auto const &a : ast->annotations) {
         a->set_ast_ctx(ast.get());
     }
     return ast;
@@ -347,3 +351,5 @@ auto spp::asts::ClassPrototypeAst::stage_11_code_gen_2(
     sm->move_out_of_current_scope();
     return nullptr;
 }
+
+SPP_MOD_END

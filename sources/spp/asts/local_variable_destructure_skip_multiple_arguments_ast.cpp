@@ -10,6 +10,7 @@ import spp.lex.tokens;
 import spp.utils.ptr;
 
 
+SPP_MOD_BEGIN
 spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::LocalVariableDestructureSkipMultipleArgumentsAst(
     decltype(tok_ellipsis) &&tok_ellipsis,
     std::unique_ptr<LocalVariableAst> &&binding) :
@@ -60,3 +61,5 @@ auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::extract_names(
     -> std::vector<std::shared_ptr<IdentifierAst>> {
     return binding != nullptr ? binding->extract_names() : std::vector<std::shared_ptr<IdentifierAst>>();
 }
+
+SPP_MOD_END

@@ -1,3 +1,6 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.asts.generic_argument_type_ast;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
@@ -9,12 +12,16 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::GenericArgumentTypeAst::GenericArgumentTypeAst(
     decltype(val) val,
     const utils::OrderableTag order_tag) :
     GenericArgumentAst(order_tag),
     val(std::move(val)) {
 }
+
+
+spp::asts::GenericArgumentTypeAst::~GenericArgumentTypeAst() = default;
 
 
 auto spp::asts::GenericArgumentTypeAst::stage_4_qualify_types(
@@ -43,3 +50,5 @@ auto spp::asts::GenericArgumentTypeAst::stage_4_qualify_types(
         val = std::move(temp);
     }
 }
+
+SPP_MOD_END

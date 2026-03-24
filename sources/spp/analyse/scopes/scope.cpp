@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.scopes.scope;
@@ -30,6 +31,7 @@ import ankerl;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::analyse::scopes::ScopeBlockName::ScopeBlockName(
     std::string &&name) :
     name(std::move(name)) {
@@ -744,3 +746,5 @@ auto spp::analyse::scopes::Scope::fix_children_parent_pointers()
         child->fix_children_parent_pointers();
     }
 }
+
+SPP_MOD_END

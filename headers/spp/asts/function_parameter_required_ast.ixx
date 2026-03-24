@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.function_parameter_required_ast;
 import spp.asts.function_parameter_ast;
-
 import std;
 
 namespace spp::asts {

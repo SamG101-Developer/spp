@@ -5,7 +5,6 @@ export module spp.asts.generic_parameter_ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.orderable;
 import spp.asts.ast;
-
 import std;
 
 namespace spp::asts {

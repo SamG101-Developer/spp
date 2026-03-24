@@ -49,6 +49,3 @@ public:
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
-
-
-spp::asts::GenericParameterTypeAst::~GenericParameterTypeAst() = default;

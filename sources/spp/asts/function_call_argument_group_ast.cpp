@@ -32,6 +32,7 @@ import genex;
 import sys;
 
 
+SPP_MOD_BEGIN
 spp::asts::FunctionCallArgumentGroupAst::FunctionCallArgumentGroupAst(
     decltype(tok_l) &&tok_l,
     decltype(args) &&args,
@@ -311,3 +312,5 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
         }
     }
 }
+
+SPP_MOD_END

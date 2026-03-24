@@ -19,6 +19,8 @@ import spp.codegen.llvm_materialize;
 import spp.utils.uid;
 
 
+SPP_MOD_BEGIN
+
 spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(
     decltype(conv) &&conv,
     decltype(val) &&val,
@@ -114,3 +116,6 @@ auto spp::asts::FunctionCallArgumentAst::infer_type(
         ? injected_self_type
         : val->infer_type(sm, meta)->with_convention(ast_clone(conv));
 }
+
+
+SPP_MOD_END

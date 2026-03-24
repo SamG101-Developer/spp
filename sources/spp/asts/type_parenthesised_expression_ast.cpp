@@ -7,6 +7,7 @@ import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::TypeParenthesisedExpressionAst::TypeParenthesisedExpressionAst(
     decltype(tok_l) &&tok_l,
     decltype(expr) &&expr,
@@ -55,3 +56,5 @@ auto spp::asts::TypeParenthesisedExpressionAst::convert()
     -> std::unique_ptr<TypeAst> {
     return std::unique_ptr<TypeAst>(expr.get()); // TODO: Release?
 }
+
+SPP_MOD_END

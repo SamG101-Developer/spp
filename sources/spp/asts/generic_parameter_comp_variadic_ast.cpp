@@ -9,6 +9,7 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
 
+SPP_MOD_BEGIN
 spp::asts::GenericParameterCompVariadicAst::GenericParameterCompVariadicAst(
     decltype(tok_cmp) &&tok_cmp,
     decltype(tok_ellipsis) &&tok_ellipsis,
@@ -55,3 +56,5 @@ spp::asts::GenericParameterCompVariadicAst::operator std::string() const {
     SPP_STRING_APPEND(type);
     SPP_STRING_END;
 }
+
+SPP_MOD_END

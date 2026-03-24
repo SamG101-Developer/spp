@@ -7,6 +7,10 @@ import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class Scope;
+}
+
 namespace spp::asts {
     SPP_EXP_CLS struct FunctionCallArgumentAst;
     SPP_EXP_CLS struct FunctionCallArgumentGroupAst;
@@ -19,10 +23,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct PostfixExpressionOperatorFunctionCallAst;
     SPP_EXP_CLS struct TypeAst;
     SPP_EXP_CLS struct UnaryExpressionOperatorAsyncAst;
-}
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
 }
 
 
@@ -89,4 +89,6 @@ public:
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 
     auto mark_as_async(Ast *async_token) -> void;
+
+    auto target() const -> FunctionPrototypeAst*;
 };

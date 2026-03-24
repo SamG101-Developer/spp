@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.object_initializer_argument_keyword_ast;
 import spp.asts.object_initializer_argument_ast;
-
 import std;
 
 namespace spp::asts {

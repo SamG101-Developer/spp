@@ -48,6 +48,7 @@ import spp.lex.tokens;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     decltype(annotations) &&annotations,
     decltype(tok_fun) &&tok_cmp,
@@ -266,18 +267,6 @@ auto spp::asts::FunctionPrototypeAst::mark_non_generic_impl(
 auto spp::asts::FunctionPrototypeAst::non_generic_impl() const
     -> FunctionPrototypeAst* {
     return m_non_generic_impl;
-}
-
-
-auto spp::asts::FunctionPrototypeAst::mark_as_annotation()
-    -> void {
-    m_annotation_info = std::make_unique<analyse::utils::annotation_utils::AnnotationInfo>();
-}
-
-
-auto spp::asts::FunctionPrototypeAst::annotation_info() const
-    -> analyse::utils::annotation_utils::AnnotationInfo* {
-    return m_annotation_info.get();
 }
 
 
@@ -633,3 +622,5 @@ auto spp::asts::FunctionPrototypeAst::get_llvm_func() const
     -> std::shared_ptr<codegen::LlvmFuncWrapper> {
     return *m_llvm_func;
 }
+
+SPP_MOD_END

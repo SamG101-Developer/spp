@@ -3,7 +3,6 @@ module;
 
 export module spp.analyse.utils.bin_utils;
 import spp.lex.tokens;
-
 import std;
 
 namespace spp::asts {

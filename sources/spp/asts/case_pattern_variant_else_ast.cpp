@@ -10,6 +10,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::CasePatternVariantElseAst::CasePatternVariantElseAst(
     decltype(tok_else) &&tok_else) :
     tok_else(std::move(tok_else)) {
@@ -63,3 +64,5 @@ auto spp::asts::CasePatternVariantElseAst::stage_11_code_gen_2(
     // The "else" pattern always matches, so return "true".
     return llvm::ConstantInt::getTrue(*ctx->context);
 }
+
+SPP_MOD_END

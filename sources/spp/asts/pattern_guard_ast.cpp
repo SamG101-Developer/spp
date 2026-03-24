@@ -15,6 +15,7 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 
+SPP_MOD_BEGIN
 spp::asts::PatternGuardAst::PatternGuardAst(
     decltype(tok_and) &&tok_and,
     decltype(expr) &&expression) :
@@ -100,3 +101,5 @@ auto spp::asts::PatternGuardAst::stage_11_code_gen_2(
     // Generate the expression.
     return expr->stage_11_code_gen_2(sm, meta, ctx);
 }
+
+SPP_MOD_END

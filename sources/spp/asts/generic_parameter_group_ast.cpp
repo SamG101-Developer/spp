@@ -25,6 +25,7 @@ import spp.lex.tokens;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::GenericParameterGroupAst::GenericParameterGroupAst(
     decltype(tok_l) &&tok_l,
     decltype(params) &&params,
@@ -305,3 +306,5 @@ auto spp::asts::GenericParameterGroupAst::stage_11_code_gen_2(
     }
     return nullptr;
 }
+
+SPP_MOD_END

@@ -8,6 +8,7 @@ import spp.codegen.llvm_ctx;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::ModuleImplementationAst::ModuleImplementationAst(
     decltype(members) &&members) :
     members(std::move(members)) {
@@ -47,7 +48,7 @@ auto spp::asts::ModuleImplementationAst::stage_1_pre_process(
     Ast *ctx)
     -> void {
     // Shift to members.
-    for (auto *member: members | genex::views::ptr | genex::to<std::vector>()) {
+    for (auto *member : members | genex::views::ptr | genex::to<std::vector>()) {
         member->stage_1_pre_process(ctx);
     }
 }
@@ -165,3 +166,5 @@ auto spp::asts::ModuleImplementationAst::stage_11_code_gen_2(
     }
     return nullptr;
 }
+
+SPP_MOD_END

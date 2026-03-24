@@ -16,6 +16,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorKeywordNotAst::PostfixExpressionOperatorKeywordNotAst(
     decltype(tok_dot) &&tok_dot,
     decltype(tok_not) &&tok_not) :
@@ -89,3 +90,5 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::infer_type(
     // The type of a "not" expression is always boolean.
     return generate::common_types::boolean_type(pos_start());
 }
+
+SPP_MOD_END

@@ -9,6 +9,7 @@ import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::CasePatternVariantDestructureAttributeBindingAst::CasePatternVariantDestructureAttributeBindingAst(
     decltype(name) &&name,
     decltype(tok_assign) &&tok_assign,
@@ -61,3 +62,5 @@ auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::convert_to_var
     var->mark_from_case_pattern();
     return var;
 }
+
+SPP_MOD_END

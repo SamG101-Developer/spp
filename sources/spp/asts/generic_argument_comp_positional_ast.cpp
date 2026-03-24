@@ -15,10 +15,14 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
 
+SPP_MOD_BEGIN
 spp::asts::GenericArgumentCompPositionalAst::GenericArgumentCompPositionalAst(
     decltype(val) &&val) :
     GenericArgumentCompAst(std::move(val), utils::OrderableTag::POSITIONAL_ARG) {
 }
+
+
+spp::asts::GenericArgumentCompPositionalAst::~GenericArgumentCompPositionalAst() = default;
 
 
 auto spp::asts::GenericArgumentCompPositionalAst::equals(
@@ -83,3 +87,5 @@ auto spp::asts::GenericArgumentCompPositionalAst::stage_8_check_memory(
     analyse::utils::mem_utils::validate_symbol_memory(
         *val, *val, *sm, true, true, true, true, true, meta);
 }
+
+SPP_MOD_END

@@ -3,13 +3,13 @@ module;
 
 export module spp.asts.array_literal_repeated_element_ast;
 import spp.asts.array_literal_ast;
-import spp.asts.token_ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct ArrayLiteralRepeatedElementAst;
+    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
@@ -71,10 +71,10 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
 
     ~ArrayLiteralRepeatedElementAst() override;
 
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-    auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
-public:
+    SPP_ATTR_NODISCARD auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> std::strong_ordering override;
+
     SPP_AST_KEY_FUNCTIONS;
 
     /**
@@ -122,6 +122,3 @@ public:
      */
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-spp::asts::ArrayLiteralRepeatedElementAst::~ArrayLiteralRepeatedElementAst() = default;

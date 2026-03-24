@@ -117,13 +117,16 @@ constexpr auto SPP_VERSION = "0.1.0";
     if (auto pe = expr->to<PostfixExpressionAst>(); pe != nullptr and pe->op->to<PostfixExpressionOperatorDerefAst>() != nullptr)
 
 
-#define SPP_EXP_CLS export extern "C++"
-
 #define SPP_EXP_ENUM export extern "C++"
 
 #define SPP_EXP_FUN export
 
 #define SPP_EXP_CMP export inline
+
+#define SPP_EXP_CLS export extern "C++"
+
+#define SPP_MOD_BEGIN extern "C++" {
+#define SPP_MOD_END }
 
 
 /**

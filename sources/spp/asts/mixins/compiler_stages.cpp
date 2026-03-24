@@ -1,5 +1,6 @@
 module;
 #include <spp/analyse/macros.hpp>
+#include <spp/macros.hpp>
 
 module spp.asts.mixins.compiler_stages;
 import spp.analyse.errors.semantic_error;
@@ -9,6 +10,7 @@ import spp.asts.ast;
 import spp.codegen.llvm_ctx;
 
 
+SPP_MOD_BEGIN
 auto spp::asts::mixins::CompilerStages::stage_1_pre_process(
     Ast *)
     -> void {
@@ -90,3 +92,5 @@ auto spp::asts::mixins::CompilerStages::stage_11_code_gen_2(
     -> llvm::Value* {
     return nullptr;
 }
+
+SPP_MOD_END

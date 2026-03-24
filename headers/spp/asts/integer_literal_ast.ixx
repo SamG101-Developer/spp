@@ -45,9 +45,9 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
 
     ~IntegerLiteralAst() override;
 
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
-    auto equals_integer_literal(IntegerLiteralAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals_integer_literal(IntegerLiteralAst const &) const -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
@@ -68,6 +68,3 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-spp::asts::IntegerLiteralAst::~IntegerLiteralAst() = default;

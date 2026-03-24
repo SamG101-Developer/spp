@@ -25,11 +25,11 @@ import spp.asts.type_unary_expression_operator_ast;
 import spp.asts.type_unary_expression_operator_borrow_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
-
 import absl;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::TypeIdentifierAst::TypeIdentifierAst(
     const std::size_t pos,
     decltype(name) &&name,
@@ -40,6 +40,9 @@ spp::asts::TypeIdentifierAst::TypeIdentifierAst(
     m_is_never_type(false) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_arg_group);
 }
+
+
+spp::asts::TypeIdentifierAst::~TypeIdentifierAst() = default;
 
 
 auto spp::asts::TypeIdentifierAst::equals(
@@ -363,3 +366,5 @@ auto spp::asts::TypeIdentifierAst::ankerl_hash() const
     // Hash based on the name only.
     return absl::Hash<std::string>()(name);
 }
+
+SPP_MOD_END

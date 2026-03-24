@@ -16,6 +16,7 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 
+SPP_MOD_BEGIN
 spp::asts::LetStatementInitializedAst::LetStatementInitializedAst(
     decltype(tok_let) &&tok_let,
     decltype(var) &&var,
@@ -156,3 +157,5 @@ auto spp::asts::LetStatementInitializedAst::stage_11_code_gen_2(
     meta->restore();
     return alloca;
 }
+
+SPP_MOD_END

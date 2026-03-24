@@ -9,6 +9,7 @@ import spp.lex.tokens;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::TypeBinaryExpressionAst::TypeBinaryExpressionAst(
     decltype(lhs) &&lhs,
     decltype(tok_op) &&tok_op,
@@ -70,3 +71,5 @@ auto spp::asts::TypeBinaryExpressionAst::convert()
 
     std::unreachable();
 }
+
+SPP_MOD_END

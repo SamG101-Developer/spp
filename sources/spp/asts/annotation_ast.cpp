@@ -28,6 +28,7 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
 
 
+SPP_MOD_BEGIN
 spp::asts::AnnotationAst::AnnotationAst(
     decltype(tok_exclamation_mark) &&tok_at_sign,
     decltype(name) &&name,
@@ -238,3 +239,5 @@ auto spp::asts::AnnotationAst::stage_7_analyse_semantics(
             {sm->current_scope}, ERR_ARGS(*this, "Unknown builtin annoation"));
     }
 }
+
+SPP_MOD_END

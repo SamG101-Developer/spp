@@ -12,11 +12,7 @@ namespace spp::analyse::scopes {
 }
 
 namespace spp::asts {
-    SPP_EXP_CLS struct LoopElseStatementAst;
     SPP_EXP_CLS struct LoopConditionalExpressionAst;
-    SPP_EXP_CLS template <typename T>
-    struct InnerScopeExpressionAst;
-    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
 

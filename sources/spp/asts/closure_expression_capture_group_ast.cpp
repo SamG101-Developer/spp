@@ -26,6 +26,7 @@ import spp.utils.uid;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::ClosureExpressionCaptureGroupAst::ClosureExpressionCaptureGroupAst(
     decltype(tok_caps) &&tok_caps,
     decltype(captures) &&captures) :
@@ -165,3 +166,5 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_11_code_gen_2(
     }
     return nullptr;
 }
+
+SPP_MOD_END

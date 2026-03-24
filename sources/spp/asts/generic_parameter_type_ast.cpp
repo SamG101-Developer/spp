@@ -16,6 +16,7 @@ import spp.asts.type_statement_ast;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::GenericParameterTypeAst::GenericParameterTypeAst(
     decltype(name) name,
     decltype(constraints) &&constraints,
@@ -24,6 +25,9 @@ spp::asts::GenericParameterTypeAst::GenericParameterTypeAst(
     constraints(std::move(constraints)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(constraints);
 }
+
+
+spp::asts::GenericParameterTypeAst::~GenericParameterTypeAst() = default;
 
 
 auto spp::asts::GenericParameterTypeAst::stage_2_gen_top_level_scopes(
@@ -76,3 +80,5 @@ auto spp::asts::GenericParameterTypeAst::stage_7_analyse_semantics(
     // Analyse the name.
     name->stage_7_analyse_semantics(sm, meta);
 }
+
+SPP_MOD_END

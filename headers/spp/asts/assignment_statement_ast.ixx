@@ -13,7 +13,7 @@ namespace spp::analyse::scopes {
 
 namespace spp::asts {
     SPP_EXP_CLS struct AssignmentStatementAst;
-    SPP_EXP_CLS struct ExpressionAst; // *
+    SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct TokenAst;
 }
 

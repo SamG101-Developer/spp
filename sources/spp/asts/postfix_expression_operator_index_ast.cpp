@@ -28,6 +28,7 @@ import spp.lex.tokens;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorIndexAst::PostfixExpressionOperatorIndexAst(
     std::unique_ptr<TokenAst> tok_l,
     std::unique_ptr<TokenAst> tok_mut,
@@ -146,3 +147,5 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::infer_type(
     // Forward to the mapped function's return type.
     return m_mapped_func->infer_type(sm, meta);
 }
+
+SPP_MOD_END

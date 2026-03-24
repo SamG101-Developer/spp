@@ -1,9 +1,13 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.asts.meta.compiler_meta_data;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import ankerl;
 
 
+SPP_MOD_BEGIN
 spp::asts::meta::CompilerMetaData::CompilerMetaData() {
     current_stage = 0;
     return_type_overload_resolver_type = nullptr;
@@ -108,3 +112,5 @@ auto spp::asts::meta::CompilerMetaData::depth() const
     -> std::size_t {
     return m_history.size();
 }
+
+SPP_MOD_END

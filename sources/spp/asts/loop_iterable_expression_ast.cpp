@@ -38,6 +38,7 @@ import spp.lex.tokens;
 import spp.utils.uid;
 
 
+SPP_MOD_BEGIN
 spp::asts::LoopIterableExpressionAst::LoopIterableExpressionAst(
     decltype(tok_loop) &&tok_loop,
     decltype(var) &&var,
@@ -216,3 +217,5 @@ auto spp::asts::LoopIterableExpressionAst::stage_11_code_gen_2(
     m_transform_let->stage_11_code_gen_2(sm, meta, ctx);
     return m_transform_loop->stage_11_code_gen_2(sm, meta, ctx);
 }
+
+SPP_MOD_END

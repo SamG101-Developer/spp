@@ -10,6 +10,7 @@ import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::LoopElseStatementAst::LoopElseStatementAst(
     decltype(tok_else) &&tok_else,
     decltype(body) &&body) :
@@ -93,3 +94,5 @@ auto spp::asts::LoopElseStatementAst::infer_type(
     // The type of an else statement is the type of its body.
     return body->infer_type(sm, meta);
 }
+
+SPP_MOD_END

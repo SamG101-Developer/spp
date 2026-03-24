@@ -10,6 +10,7 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
 
+SPP_MOD_BEGIN
 spp::asts::GenericParameterTypeVariadicAst::GenericParameterTypeVariadicAst(
     decltype(tok_ellipsis) &&tok_ellipsis,
     decltype(name) &&name,
@@ -50,3 +51,5 @@ spp::asts::GenericParameterTypeVariadicAst::operator std::string() const {
     SPP_STRING_APPEND(constraints);
     SPP_STRING_END;
 }
+
+SPP_MOD_END

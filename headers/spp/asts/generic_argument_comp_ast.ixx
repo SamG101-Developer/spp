@@ -37,6 +37,3 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompAst : GenericArgumentAst {
 
     ~GenericArgumentCompAst() override;
 };
-
-
-spp::asts::GenericArgumentCompAst::~GenericArgumentCompAst() = default;

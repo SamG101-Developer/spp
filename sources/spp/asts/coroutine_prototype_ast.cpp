@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.asts.coroutine_prototype_ast;
@@ -27,6 +28,10 @@ import genex;
 import llvm;
 
 
+SPP_MOD_BEGIN
+spp::asts::CoroutinePrototypeAst::~CoroutinePrototypeAst() = default;
+
+
 auto spp::asts::CoroutinePrototypeAst::clone() const
     -> std::unique_ptr<Ast> {
     auto ast = std::make_unique<CoroutinePrototypeAst>(
@@ -46,14 +51,15 @@ auto spp::asts::CoroutinePrototypeAst::clone() const
     ast->abstract_annotation = abstract_annotation;
     ast->virtual_annotation = virtual_annotation;
     ast->temperature_annotation = temperature_annotation;
-    ast->no_impl_annotation = no_impl_annotation;
+    ast->ffi_annotation = ffi_annotation;
+    ast->builtin_annotation = builtin_annotation;
     ast->inline_annotation = inline_annotation;
     ast->visibility = visibility;
     ast->m_llvm_func = m_llvm_func;
     ast->llvm_coro_yield_slot = llvm_coro_yield_slot;
     ast->llvm_gen_env = llvm_gen_env;
     ast->m_llvm_resume_fn = m_llvm_resume_fn;
-    for (auto const &a: ast->annotations) {
+    for (auto const &a : ast->annotations) {
         a->set_ast_ctx(ast.get());
     }
     return ast;
@@ -84,7 +90,7 @@ auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
         | genex::to<std::vector>();
 
     raise_if<analyse::errors::SppCoroutineInvalidReturnTypeError>(
-    genex::none_of(superimposed_types, [sm](auto &&x) { return analyse::utils::type_utils::is_type_generator(*x->without_generics(), *sm->current_scope); }),
+        genex::none_of(superimposed_types, [sm](auto &&x) { return analyse::utils::type_utils::is_type_generator(*x->without_generics(), *sm->current_scope); }),
         {sm->current_scope}, ERR_ARGS(*this, *return_type));
 
     // Analyse the semantics of the function body, and move out the scope.
@@ -176,3 +182,5 @@ auto spp::asts::CoroutinePrototypeAst::stage_11_code_gen_2(
 
     return llvm_coro_ctor;
 }
+
+SPP_MOD_END

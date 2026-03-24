@@ -25,6 +25,7 @@ import llvm;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::CmpStatementAst::CmpStatementAst(
     decltype(annotations) &&annotations,
     decltype(tok_cmp) &&tok_cmp,
@@ -44,6 +45,9 @@ spp::asts::CmpStatementAst::CmpStatementAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_colon, lex::SppTokenType::TK_COLON, ":");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
 }
+
+
+spp::asts::CmpStatementAst::~CmpStatementAst() = default;
 
 
 auto spp::asts::CmpStatementAst::pos_start() const
@@ -228,3 +232,5 @@ auto spp::asts::CmpStatementAst::is_from_use_statement() const
     -> bool {
     return m_from_use_statement;
 }
+
+SPP_MOD_END

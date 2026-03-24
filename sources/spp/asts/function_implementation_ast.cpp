@@ -1,3 +1,6 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.asts.function_implementation_ast;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
@@ -10,6 +13,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::FunctionImplementationAst::~FunctionImplementationAst() = default;
 
 
@@ -46,3 +50,5 @@ auto spp::asts::FunctionImplementationAst::stage_9_comptime_resolution(
         if (did_ret) { break; }
     }
 }
+
+SPP_MOD_END

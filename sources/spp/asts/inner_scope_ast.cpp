@@ -20,6 +20,7 @@ import spp.lex.tokens;
 import genex;
 
 
+SPP_MOD_BEGIN
 template <typename T>
 spp::asts::InnerScopeAst<T>::InnerScopeAst() :
     tok_l(nullptr),
@@ -167,3 +168,4 @@ auto spp::asts::InnerScopeAst<T>::stage_11_code_gen_2(
 template struct spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::ClassMemberAst>>;
 template struct spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::StatementAst>>;
 template struct spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::SupMemberAst>>;
+SPP_MOD_END

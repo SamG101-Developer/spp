@@ -9,6 +9,7 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 
+SPP_MOD_BEGIN
 spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypePostfixExpressionOperatorNestedTypeAst(
     decltype(tok_sep) &&tok_sep,
     decltype(name) &&name) :
@@ -17,6 +18,9 @@ spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypePostfixExpressionOper
     name(std::move(name)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_sep, lex::SppTokenType::TK_DOUBLE_COLON, "::");
 }
+
+
+spp::asts::TypePostfixExpressionOperatorNestedTypeAst::~TypePostfixExpressionOperatorNestedTypeAst() = default;
 
 
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::equals(
@@ -84,3 +88,5 @@ auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::type_parts()
     -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
     return {name};
 }
+
+SPP_MOD_END

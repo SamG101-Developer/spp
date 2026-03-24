@@ -19,6 +19,7 @@ import spp.lex.tokens;
 import spp.utils.uid;
 
 
+SPP_MOD_BEGIN
 spp::asts::FunctionParameterAst::FunctionParameterAst(
     decltype(var) &&var,
     decltype(tok_colon) &&tok_colon,
@@ -95,8 +96,10 @@ auto spp::asts::FunctionParameterAst::stage_11_code_gen_2(
     // Generate the local variable so that the symbol table receives the alloca.
     meta->save();
     meta->let_stmt_explicit_type = type;
-    meta->let_stmt_from_uninitialized = true;  // Its not uninitialized but as the value is external we need this behaviour
+    meta->let_stmt_from_uninitialized = true; // Its not uninitialized but as the value is external we need this behaviour
     var->stage_11_code_gen_2(sm, meta, ctx);
     meta->restore();
     return nullptr;
 }
+
+SPP_MOD_END

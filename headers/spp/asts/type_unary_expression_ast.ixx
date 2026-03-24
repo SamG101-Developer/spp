@@ -41,6 +41,7 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
     ~TypeUnaryExpressionAst() override;
 
     auto equals_type_unary_expression(TypeUnaryExpressionAst const &other) const -> std::strong_ordering override;
+
     auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
@@ -85,6 +86,3 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-spp::asts::TypeUnaryExpressionAst::~TypeUnaryExpressionAst() = default;

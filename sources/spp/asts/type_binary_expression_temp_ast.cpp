@@ -1,8 +1,12 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.asts.type_binary_expression_temp_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 
 
+SPP_MOD_BEGIN
 spp::asts::TypeBinaryExpressionTempAst::TypeBinaryExpressionTempAst(
     decltype(tok_op) &&tok_op,
     decltype(rhs) &&rhs) :
@@ -12,3 +16,5 @@ spp::asts::TypeBinaryExpressionTempAst::TypeBinaryExpressionTempAst(
 
 
 spp::asts::TypeBinaryExpressionTempAst::~TypeBinaryExpressionTempAst() = default;
+
+SPP_MOD_END

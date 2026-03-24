@@ -8,6 +8,7 @@ import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::ClosureExpressionCaptureAst::ClosureExpressionCaptureAst(
     decltype(conv) &&conv,
     decltype(val) &&val) :
@@ -44,3 +45,5 @@ spp::asts::ClosureExpressionCaptureAst::operator std::string() const {
     SPP_STRING_APPEND(val);
     SPP_STRING_END;
 }
+
+SPP_MOD_END

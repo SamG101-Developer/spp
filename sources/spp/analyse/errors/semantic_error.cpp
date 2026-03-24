@@ -1,3 +1,6 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.analyse.errors.semantic_error;
 import spp.asts.ast;
 import spp.asts.annotation_ast;
@@ -32,6 +35,7 @@ import spp.asts.type_statement_ast;
 // TODO: READ ALL ERRORS: CURRENTLY WRITTEN BY AI
 
 
+SPP_MOD_BEGIN
 auto spp::analyse::errors::SemanticError::add_header(const std::size_t err_code, std::string &&msg) -> void {
     m_error_info.emplace_back(nullptr, ErrorInformationType::HEADER, std::move(msg), "E" + std::to_string(err_code));
 }
@@ -418,7 +422,7 @@ spp::analyse::errors::SppIdentifierDuplicateError::SppIdentifierDuplicateError(
         18, "SPP Identifier Duplicate Error");
     add_context_for_error(
         &first_identifier,
-        "First " + std::string(what) + " '" + first_identifier.to_string() +  "' defined here");
+        "First " + std::string(what) + " '" + first_identifier.to_string() + "' defined here");
     add_error(
         &duplicate_identifier,
         "Duplicate " + std::string(what) + " '" + duplicate_identifier.to_string() + "' defined here");
@@ -1572,3 +1576,5 @@ spp::analyse::errors::SppGenericConstraintError::SppGenericConstraintError(
         "The concrete type does not satisfy the generic constraint.",
         "Ensure the concrete type meets all requirements of the generic constraint");
 }
+
+SPP_MOD_END

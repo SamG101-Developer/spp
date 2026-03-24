@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/parse/macros.hpp>
 
 #define NO_ANNOTATIONS std::vector<std::unique_ptr<spp::asts::AnnotationAst>>()
@@ -16,6 +17,7 @@ import genex;
 import std;
 
 
+SPP_MOD_BEGIN
 const auto IDENTIFIER_TOKENS = std::vector{
     spp::lex::RawTokenType::LX_CHARACTER,
     spp::lex::RawTokenType::LX_DIGIT,
@@ -3131,3 +3133,5 @@ auto spp::parse::ParserSpp::m_store_error(const std::size_t pos, std::string &&e
     }
     return false;
 }
+
+SPP_MOD_END

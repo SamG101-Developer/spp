@@ -3,7 +3,6 @@ module;
 
 export module spp.lex.lexer;
 import spp.lex.tokens;
-
 import std;
 
 
@@ -21,5 +20,5 @@ SPP_EXP_CLS class spp::lex::Lexer {
 
 public:
     explicit Lexer(std::string code, bool add_prelude = false);
-    auto lex() const -> std::vector<RawToken>;
+    SPP_ATTR_NODISCARD auto lex() const -> std::vector<RawToken>;
 };

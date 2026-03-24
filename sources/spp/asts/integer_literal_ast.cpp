@@ -20,6 +20,7 @@ import llvm;
 import mppp;
 
 
+SPP_MOD_BEGIN
 const auto INTEGER_TYPE_MIN_MAX = std::map<std::string, std::pair<mppp::BigInt, mppp::BigInt>>{
     {"s8", {mppp::BigInt("-128"), mppp::BigInt("127")}},
     {"s16", {mppp::BigInt("-32768"), mppp::BigInt("32767")}},
@@ -46,6 +47,9 @@ spp::asts::IntegerLiteralAst::IntegerLiteralAst(
     tok_sign(std::move(tok_sign)),
     val(std::move(val)),
     type(std::move(type)) {}
+
+
+spp::asts::IntegerLiteralAst::~IntegerLiteralAst() = default;
 
 
 auto spp::asts::IntegerLiteralAst::equals(
@@ -203,3 +207,5 @@ auto spp::asts::IntegerLiteralAst::infer_type(
     const auto sym = sm->current_scope->get_type_symbol(spp_type);
     return sym->fq_name();
 }
+
+SPP_MOD_END

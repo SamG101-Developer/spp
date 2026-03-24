@@ -11,6 +11,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct IsExpressionAst;
     SPP_EXP_CLS struct CaseExpressionAst;
     SPP_EXP_CLS struct CasePatternVariantAst;
+    SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }

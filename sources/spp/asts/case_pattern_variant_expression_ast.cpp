@@ -25,6 +25,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::CasePatternVariantExpressionAst::CasePatternVariantExpressionAst(
     decltype(expr) &&expr) :
     expr(std::move(expr)) {
@@ -105,3 +106,5 @@ auto spp::asts::CasePatternVariantExpressionAst::stage_11_code_gen_2(
         {this}, sm, meta, ctx);
     return llvm_master_transform[0];
 }
+
+SPP_MOD_END

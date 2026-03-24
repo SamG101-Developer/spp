@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_prototype_ast;
+import spp.analyse.utils.annotation_utils;
 import spp.asts.ast;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.module_member_ast;
@@ -80,10 +81,16 @@ public:
     AnnotationAst *temperature_annotation;
 
     /**
-     * Optional @c \@no_impl annotation. This is used to indicate that the function is not implemented, and the usual
-     * type checking rules can be suspended (but this function cannot be called).
+     * Optional @c \@ffi annotation. This is used to indicate that the function is not implemented, because it is being
+     * used for ffi, and therefore the usual type checking rules can be suspended.
      */
-    AnnotationAst *no_impl_annotation;
+    AnnotationAst *ffi_annotation;
+
+    /**
+     * Optional @c \@compiler_builtin annotation. This is used to indicate that the function is specially implemented
+     * with llvm, and therefore the usual type checking rules can be suspended.
+     */
+    AnnotationAst *builtin_annotation;
 
     /**
      * Optional @c \@always_inline, @c \@inline, or @c \@no_inline annotation. This is used to indicate that the
@@ -181,15 +188,15 @@ public:
     SPP_AST_KEY_FUNCTIONS;
 
 private:
-    auto m_deduce_mock_class_type() const -> std::shared_ptr<TypeAst>;
+    SPP_ATTR_NODISCARD auto m_deduce_mock_class_type() const -> std::shared_ptr<TypeAst>;
 
-    auto m_is_pure_generic(ScopeManager *sm, codegen::LLvmCtx *ctx) const -> std::tuple<bool, llvm::Type*, std::vector<llvm::Type*>>;
+    SPP_ATTR_NODISCARD auto m_is_pure_generic(ScopeManager *sm, codegen::LLvmCtx *ctx) const -> std::tuple<bool, llvm::Type*, std::vector<llvm::Type*>>;
 
 public:
     virtual auto m_generate_llvm_declaration(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> std::shared_ptr<codegen::LlvmFuncWrapper>;
 
 public:
-    auto print_signature(std::string const &owner) const -> std::string;
+    SPP_ATTR_NODISCARD auto print_signature(std::string const &owner) const -> std::string;
 
     auto register_generic_substitution(std::unique_ptr<analyse::scopes::Scope> &&scope, std::unique_ptr<FunctionPrototypeAst> &&new_ast) -> void;
 
@@ -200,6 +207,10 @@ public:
     auto mark_non_generic_impl(FunctionPrototypeAst *impl) -> void;
 
     auto non_generic_impl() const -> FunctionPrototypeAst*;
+
+    auto mark_as_annotation() -> void;
+
+    auto annotation_info() const -> analyse::utils::annotation_utils::AnnotationInfo*;
 
     auto stage_1_pre_process(Ast *ctx) -> void override;
 

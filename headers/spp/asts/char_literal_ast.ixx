@@ -29,9 +29,9 @@ SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {
 
     ~CharLiteralAst() override;
 
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
-    auto equals_char_literal(CharLiteralAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals_char_literal(CharLiteralAst const &) const -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
@@ -41,6 +41,3 @@ SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-spp::asts::CharLiteralAst::~CharLiteralAst() = default;

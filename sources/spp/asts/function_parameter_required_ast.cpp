@@ -11,6 +11,7 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
 
+SPP_MOD_BEGIN
 spp::asts::FunctionParameterRequiredAst::FunctionParameterRequiredAst(
     decltype(var) &&var,
     decltype(tok_colon) &&tok_colon,
@@ -50,3 +51,5 @@ spp::asts::FunctionParameterRequiredAst::operator std::string() const {
     SPP_STRING_APPEND(type);
     SPP_STRING_END;
 }
+
+SPP_MOD_END

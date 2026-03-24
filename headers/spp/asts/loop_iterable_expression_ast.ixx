@@ -14,7 +14,6 @@ namespace spp::analyse::scopes {
 namespace spp::asts {
     SPP_EXP_CLS struct LetStatementInitializedAst;
     SPP_EXP_CLS struct LocalVariableAst;
-    SPP_EXP_CLS struct LoopElseStatementAst;
     SPP_EXP_CLS struct LoopConditionalExpressionAst;
     SPP_EXP_CLS struct LoopIterableExpressionAst;
     SPP_EXP_CLS template <typename T>

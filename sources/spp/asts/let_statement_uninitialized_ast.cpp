@@ -14,6 +14,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::LetStatementUninitializedAst::LetStatementUninitializedAst(
     decltype(tok_let) &&tok_let,
     decltype(var) &&var,
@@ -92,7 +93,7 @@ auto spp::asts::LetStatementUninitializedAst::stage_8_check_memory(
     meta->let_stmt_explicit_type = type;
     meta->let_stmt_from_uninitialized = true;
     var->stage_8_check_memory(sm, meta);
-    for (auto const &v: var->extract_names()) {
+    for (auto const &v : var->extract_names()) {
         sm->current_scope->get_var_symbol(v)->memory_info->moved_by(*this, sm->current_scope);
     }
     meta->restore();
@@ -113,3 +114,5 @@ auto spp::asts::LetStatementUninitializedAst::stage_11_code_gen_2(
     meta->restore();
     return alloca;
 }
+
+SPP_MOD_END

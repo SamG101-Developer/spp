@@ -8,6 +8,7 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 
+SPP_MOD_BEGIN
 spp::asts::LocalVariableSingleIdentifierAliasAst::LocalVariableSingleIdentifierAliasAst(
     decltype(tok_as) &&tok_as,
     decltype(name) &&name) :
@@ -46,3 +47,5 @@ spp::asts::LocalVariableSingleIdentifierAliasAst::operator std::string() const {
     SPP_STRING_APPEND(name);
     SPP_STRING_END;
 }
+
+SPP_MOD_END

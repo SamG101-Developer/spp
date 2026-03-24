@@ -22,6 +22,7 @@ import spp.asts.utils.ast_utils;
 import spp.utils.uid;
 
 
+SPP_MOD_BEGIN
 spp::asts::CasePatternVariantLiteralAst::CasePatternVariantLiteralAst(
     decltype(literal) &&literal) :
     CasePatternVariantAst(),
@@ -110,3 +111,5 @@ auto spp::asts::CasePatternVariantLiteralAst::stage_11_code_gen_2(
         {this}, sm, meta, ctx);
     return llvm_master_transform[0];
 }
+
+SPP_MOD_END

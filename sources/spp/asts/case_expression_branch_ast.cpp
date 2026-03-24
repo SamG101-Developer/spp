@@ -25,6 +25,7 @@ import spp.utils.uid;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::CaseExpressionBranchAst::CaseExpressionBranchAst(
     decltype(op) &&op,
     decltype(patterns) &&patterns,
@@ -156,7 +157,7 @@ auto spp::asts::CaseExpressionBranchAst::stage_9_comptime_resolution(
     -> void {
     // Combine the case expression with the pattern to determine if this branch should be taken, at compile-time.
     sm->move_to_next_scope();
-    for (auto const& pattern: patterns) {
+    for (auto const &pattern : patterns) {
         pattern->stage_9_comptime_resolution(sm, meta);
 
         // Determine if this branch is not a match (false).
@@ -237,3 +238,5 @@ auto spp::asts::CaseExpressionBranchAst::infer_type(
     // Forward type inference to the body.
     return body->infer_type(sm, meta);
 }
+
+SPP_MOD_END

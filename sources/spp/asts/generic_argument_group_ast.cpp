@@ -31,6 +31,7 @@ import ankerl;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::GenericArgumentGroupAst::GenericArgumentGroupAst(
     decltype(tok_l) &&tok_l,
     decltype(args) &&args,
@@ -383,3 +384,5 @@ auto spp::asts::GenericArgumentGroupAst::stage_8_check_memory(
         x->stage_8_check_memory(sm, meta);
     }
 }
+
+SPP_MOD_END

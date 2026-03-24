@@ -85,6 +85,3 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-spp::asts::TypePostfixExpressionAst::~TypePostfixExpressionAst() = default;

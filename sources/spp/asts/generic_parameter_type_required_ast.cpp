@@ -9,6 +9,7 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
 
+SPP_MOD_BEGIN
 spp::asts::GenericParameterTypeRequiredAst::GenericParameterTypeRequiredAst(
     decltype(name) &&name,
     decltype(constraints) &&constraints) :
@@ -45,3 +46,5 @@ spp::asts::GenericParameterTypeRequiredAst::operator std::string() const {
     SPP_STRING_APPEND(constraints);
     SPP_STRING_END;
 }
+
+SPP_MOD_END

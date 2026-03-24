@@ -21,6 +21,7 @@ import spp.lex.tokens;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::TypeStatementAst::TypeStatementAst(
     decltype(annotations) &&annotations,
     decltype(tok_type) &&tok_type,
@@ -40,6 +41,11 @@ spp::asts::TypeStatementAst::TypeStatementAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_type, lex::SppTokenType::KW_TYPE, "type");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_param_group);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
+}
+
+
+spp::asts::TypeStatementAst::~TypeStatementAst() {
+    cleanup();
 }
 
 
@@ -116,7 +122,7 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
     // Create the type symbol for this type, that will point to the old type.
     m_alias_sym = std::make_shared<analyse::scopes::TypeSymbol>(
         new_type, nullptr, nullptr, sm->current_scope, sm->current_scope->parent_module());
-    m_alias_sym->alias_stmt = std::unique_ptr<TypeStatementAst>(this);  // This is BAD but "cleanup" handles mem error.
+    m_alias_sym->alias_stmt = std::unique_ptr<TypeStatementAst>(this); // This is BAD but "cleanup" handles mem error.
     sm->current_scope->add_type_symbol_check_conflict(m_alias_sym);
 
     // Create a new scope for the type statement.
@@ -311,3 +317,5 @@ auto spp::asts::TypeStatementAst::cleanup()
 
     // Now this pointer has been released from the type symbol, we can safely destroy the type statement.
 }
+
+SPP_MOD_END

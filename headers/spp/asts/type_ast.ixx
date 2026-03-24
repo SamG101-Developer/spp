@@ -35,6 +35,3 @@ SPP_EXP_CLS struct spp::asts::TypeAst : PrimaryExpressionAst, mixins::AbstractTy
 
     mutable utils::Cache<analyse::scopes::Scope const*, std::shared_ptr<analyse::scopes::TypeSymbol>> cached_type_symbols;
 };
-
-
-spp::asts::TypeAst::~TypeAst() = default;

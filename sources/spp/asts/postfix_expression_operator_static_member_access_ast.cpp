@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
 import spp.asts.expression_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
@@ -22,6 +23,7 @@ import spp.utils.strings;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOperatorStaticMemberAccessAst(
     decltype(tok_dbl_colon) &&tok_dbl_colon,
     decltype(name) &&name) :
@@ -175,3 +177,5 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::expr_parts() con
     // Static member access does not have any expression parts.
     return {name.get()};
 }
+
+SPP_MOD_END

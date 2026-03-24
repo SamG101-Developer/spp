@@ -1,7 +1,7 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts:annotation_ast;
+export module spp.asts.annotation_ast;
 import spp.asts.ast;
 import std;
 

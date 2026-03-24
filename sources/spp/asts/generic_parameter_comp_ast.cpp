@@ -22,6 +22,7 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
 
 
+SPP_MOD_BEGIN
 spp::asts::GenericParameterCompAst::GenericParameterCompAst(
     decltype(tok_cmp) &&tok_cmp,
     decltype(name) name,
@@ -33,6 +34,9 @@ spp::asts::GenericParameterCompAst::GenericParameterCompAst(
     tok_colon(std::move(tok_colon)),
     type(std::move(type)) {
 }
+
+
+spp::asts::GenericParameterCompAst::~GenericParameterCompAst() = default;
 
 
 auto spp::asts::GenericParameterCompAst::stage_2_gen_top_level_scopes(
@@ -102,3 +106,5 @@ auto spp::asts::GenericParameterCompAst::stage_11_code_gen_2(
 
     return alloca;
 }
+
+SPP_MOD_END

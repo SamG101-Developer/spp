@@ -25,6 +25,7 @@ import spp.lex.tokens;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::SupPrototypeFunctionsAst::SupPrototypeFunctionsAst(
     decltype(tok_sup) &&tok_sup,
     decltype(generic_param_group) &&generic_param_group,
@@ -279,3 +280,5 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_11_code_gen_2(
     sm->move_out_of_current_scope();
     return nullptr;
 }
+
+SPP_MOD_END

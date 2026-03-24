@@ -17,6 +17,7 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
 
+SPP_MOD_BEGIN
 spp::asts::GenericParameterTypeOptionalAst::GenericParameterTypeOptionalAst(
     decltype(name) &&name,
     decltype(constraints) &&constraints,
@@ -88,3 +89,5 @@ auto spp::asts::GenericParameterTypeOptionalAst::stage_7_analyse_semantics(
     GenericParameterTypeAst::stage_7_analyse_semantics(sm, meta);
     default_val->stage_7_analyse_semantics(sm, meta);
 }
+
+SPP_MOD_END

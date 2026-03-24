@@ -9,6 +9,7 @@ import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::CasePatternVariantElseCaseAst::CasePatternVariantElseCaseAst(
     decltype(tok_else) &&tok_else,
     decltype(case_expr) &&case_expr) :
@@ -48,7 +49,6 @@ spp::asts::CasePatternVariantElseCaseAst::operator std::string() const {
 }
 
 
-
 auto spp::asts::CasePatternVariantElseCaseAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
@@ -83,3 +83,5 @@ auto spp::asts::CasePatternVariantElseCaseAst::stage_11_code_gen_2(
     // Delegate code generation to the case expression.
     return case_expr->stage_11_code_gen_2(sm, meta, ctx);
 }
+
+SPP_MOD_END

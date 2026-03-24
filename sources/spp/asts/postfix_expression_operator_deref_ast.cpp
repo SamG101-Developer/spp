@@ -15,6 +15,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorDerefAst::PostfixExpressionOperatorDerefAst(
     decltype(tok_deref) &&tok_deref) :
     tok_deref(std::move(tok_deref)) {
@@ -105,3 +106,5 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::infer_type(
     // Return the dereferenced type.
     return ast_clone(lhs_type->without_convention());
 }
+
+SPP_MOD_END

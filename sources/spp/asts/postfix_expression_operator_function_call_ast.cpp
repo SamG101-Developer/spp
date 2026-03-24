@@ -54,6 +54,7 @@ import genex;
 import opex.cast;
 
 
+SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFunctionCallAst(
     decltype(generic_arg_group) &&generic_arg_group,
     decltype(arg_group) &&arg_group,
@@ -117,7 +118,6 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::handle_function_foldin
     analyse::scopes::ScopeManager *sm,
     meta::CompilerMetaData *meta)
     -> std::vector<std::unique_ptr<PostfixExpressionOperatorFunctionCallAst>> {
-
     // Populate the list of arguments to fold.
     auto folded_args = std::vector<FunctionCallArgumentAst*>{};
     auto folded_arg_types = std::vector<TypeAst*>{};
@@ -138,7 +138,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::handle_function_foldin
     auto transformed_asts = std::vector<std::unique_ptr<PostfixExpressionOperatorFunctionCallAst>>{};
     for (auto i = 0uz; i < smallest_tuple; ++i) {
         auto new_arg_group = ast_clone(arg_group);
-        for (const auto fold_index: fold_indexes) {
+        for (const auto fold_index : fold_indexes) {
             // Create the postfix access into the tuple.
             auto id = std::make_unique<IdentifierAst>(0, std::to_string(fold_index));
             auto ma = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(id));
@@ -181,7 +181,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_7_analyse_semant
 
     // Resolve the overload for this function call.
     auto [overload, is_closure] = analyse::utils::overload_utils::determine_overload(*this, sm, meta);
-    
+
     // Special case for closures; apply the convention the closure name to ensure is it movable/mutable etc.
     // Todo: move this from overload selection to semantic_analysis?
     if (is_closure) {
@@ -394,3 +394,11 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::mark_as_async(
     -> void {
     m_is_async = async_token;
 }
+
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::target() const
+    -> FunctionPrototypeAst* {
+    return m_overload_info.has_value() ? std::get<1>(*m_overload_info) : nullptr;
+}
+
+
+SPP_MOD_END

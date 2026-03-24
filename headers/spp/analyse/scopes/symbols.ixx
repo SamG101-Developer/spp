@@ -41,14 +41,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::Symbol {
      * as it allows for proper cleanup of resources when a derived class is deleted.
      */
     virtual ~Symbol();
-
-    /**
-     * Enforce a string conversion operator for the Symbol class. This is to ensure that all derived classes can be
-     * converted to a string representation. This is useful for debugging and logging purposes, as it allows for easy
-     * JSON serialization of symbols.
-     * @return A string representation of the symbol, which can be used for debugging or logging purposes.
-     */
-    virtual explicit operator std::string() const = 0;
 };
 
 
@@ -65,8 +57,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
         NamespaceSymbol const &that);
 
     ~NamespaceSymbol() override;
-
-    explicit operator std::string() const override;
 
     auto operator==(
         NamespaceSymbol const &that) const
@@ -107,8 +97,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
         VariableSymbol const &that);
 
     ~VariableSymbol() override;
-
-    explicit operator std::string() const override;
 
     auto operator==(
         VariableSymbol const &that) const
@@ -164,8 +152,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
     ~TypeSymbol() override;
 
-    explicit operator std::string() const override;
-
     auto operator==(
         TypeSymbol const &that) const
         -> bool;
@@ -173,12 +159,3 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     SPP_ATTR_NODISCARD auto fq_name(bool ignore_dollar = true) const
         -> std::shared_ptr<asts::TypeAst>;
 };
-
-
-spp::analyse::scopes::Symbol::~Symbol() = default;
-
-spp::analyse::scopes::NamespaceSymbol::~NamespaceSymbol() = default;
-
-spp::analyse::scopes::VariableSymbol::~VariableSymbol() = default;
-
-spp::analyse::scopes::TypeSymbol::~TypeSymbol() = default;

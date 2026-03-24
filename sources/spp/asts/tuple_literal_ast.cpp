@@ -20,6 +20,7 @@ import spp.utils.uid;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::TupleLiteralAst::TupleLiteralAst(
     decltype(tok_l) &&tok_l,
     decltype(elems) &&elements,
@@ -31,6 +32,9 @@ spp::asts::TupleLiteralAst::TupleLiteralAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_l, lex::SppTokenType::TK_LEFT_PARENTHESIS, "(", 0);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_r, lex::SppTokenType::TK_RIGHT_PARENTHESIS, ")", 0);
 }
+
+
+spp::asts::TupleLiteralAst::~TupleLiteralAst() = default;
 
 
 auto spp::asts::TupleLiteralAst::equals(
@@ -180,3 +184,5 @@ auto spp::asts::TupleLiteralAst::infer_type(
     tuple_type->stage_7_analyse_semantics(sm, meta);
     return tuple_type;
 }
+
+SPP_MOD_END

@@ -43,9 +43,9 @@ SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
 
     ~TupleLiteralAst() override;
 
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
-    auto equals_tuple_literal(TupleLiteralAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals_tuple_literal(TupleLiteralAst const &) const -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
@@ -59,6 +59,3 @@ SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-spp::asts::TupleLiteralAst::~TupleLiteralAst() = default;

@@ -11,10 +11,14 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 
+SPP_MOD_BEGIN
 spp::asts::BooleanLiteralAst::BooleanLiteralAst(
     decltype(tok_bool) &&tok_bool) :
     tok_bool(std::move(tok_bool)) {
 }
+
+
+spp::asts::BooleanLiteralAst::~BooleanLiteralAst() = default;
 
 
 auto spp::asts::BooleanLiteralAst::equals(
@@ -119,3 +123,5 @@ auto spp::asts::BooleanLiteralAst::infer_type(
     // The boolean ast is always inferred as "std::boolean::Bool".
     return generate::common_types::boolean_type(pos_start());
 }
+
+SPP_MOD_END
