@@ -266,13 +266,6 @@ auto spp::asts::GenericParameterGroupAst::stage_4_qualify_types(
                 for (auto const &dummy_scope : x->m_dummy_scopes) {
                     dummy_scope->direct_sup_scopes.emplace_back(constraint_scope);
                 }
-
-                // If a generic is Copy constrained, treat it as a copyable type for memory analysis rules.
-                auto &copy_type = generate::common_types_precompiled::COPY;
-                if (analyse::utils::type_utils::symbolic_eq(*constraint, *copy_type, *sm->current_scope, *sm->current_scope, false)) {
-                    const auto generic_sym = sm->current_scope->get_type_symbol(x->name);
-                    generic_sym->is_directly_copyable = true;
-                }
             }
         }
     }
@@ -293,6 +286,17 @@ auto spp::asts::GenericParameterGroupAst::stage_7_analyse_semantics(
         | genex::views::ptr
         | genex::views::cast_dynamic<mixins::OrderableAst*>()
         | genex::to<std::vector>());
+
+    // Mark copyable generics.
+    for (auto &&param : get_type_params()) {
+        if (param->constraints == nullptr) { continue; }
+        for (auto &&constraint: param->constraints->constraints) {
+            if (analyse::utils::type_utils::is_type_copyable(*constraint, *sm)) {
+                const auto generic_sym = sm->current_scope->get_type_symbol(param->name);
+                generic_sym->is_directly_copyable = true;
+            }
+        }
+    }
 
     // Check there are no duplicate parameter names.
     raise_if<analyse::errors::SppIdentifierDuplicateError>(

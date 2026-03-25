@@ -377,6 +377,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_7_analyse_semantics(
     // Move to the next scope.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
+    generic_param_group->stage_7_analyse_semantics(sm, meta);
     // name->stage_7_analyse_semantics(sm, meta);
     // super_class->stage_7_analyse_semantics(sm, meta);
     impl->stage_7_analyse_semantics(sm, meta);
