@@ -122,6 +122,17 @@ auto spp::asts::FunctionCallArgumentGroupAst::get_positional_args() const
 }
 
 
+auto spp::asts::FunctionCallArgumentGroupAst::at(
+    const char *key) const
+    -> FunctionCallArgumentAst const* {
+    // Iterate the comptime arguments to find the matching key.
+    for (const auto *arg : get_keyword_args()) {
+        if (arg->name->val == key) { return arg; }
+    }
+    return nullptr;
+}
+
+
 auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)

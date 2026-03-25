@@ -274,7 +274,7 @@ auto spp::analyse::scopes::Scope::add_var_symbol_check_conflict(
     if (existing_sym != nullptr) {
         // const auto is_generic = sym->is_generic;
         // const auto is_comptime = sym->memory_info->ast_comptime != nullptr;
-        const auto is_functional = existing_sym->type->to_string()[0] == '$';
+        const auto is_functional = existing_sym->type && existing_sym->type->to_string()[0] == '$';
         raise_if<errors::SppIdentifierDuplicateError>(
             not is_functional,
             {this, this},

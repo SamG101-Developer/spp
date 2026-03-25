@@ -6,6 +6,12 @@ import std;
 
 namespace spp::compiler {
     SPP_EXP_CMP const std::string PRELUDE = R"(
+use std::annotations::public
+use std::annotations::protected
+use std::annotations::private
+use std::annotations::virtual_method
+use std::annotations::abstract_method
+use std::annotations::ffi
 use std::string::Str
 use std::string_view::StrView
 use std::boolean::Bool

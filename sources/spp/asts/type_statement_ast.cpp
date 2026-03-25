@@ -100,8 +100,8 @@ auto spp::asts::TypeStatementAst::stage_1_pre_process(
     -> void {
     // Pre-process the annotations.
     Ast::stage_1_pre_process(ctx);
-    for (auto const &annotation : annotations) {
-        annotation->stage_1_pre_process(this);
+    for (auto const &a : annotations) {
+        a->stage_1_pre_process(this);
     }
 }
 
@@ -111,8 +111,8 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
     CompilerMetaData *meta)
     -> void {
     // Run top level scope generation for the annotations.
-    for (auto const &annotation : annotations) {
-        annotation->stage_2_gen_top_level_scopes(sm, meta);
+    for (auto const &a : annotations) {
+        a->stage_2_gen_top_level_scopes(sm, meta);
     }
 
     // Check there are no conventions on the new type.
@@ -178,6 +178,9 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
     // Skip the class scope, and enter the type statement scope.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
+    for (auto const &a : annotations) {
+        a->stage_4_qualify_types(sm, meta);
+    }
     old_type = m_mapped_old_type;
 
     // Get the old type's symbol, without generics.
@@ -200,10 +203,13 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
 
 auto spp::asts::TypeStatementAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    CompilerMetaData *)
+    CompilerMetaData *meta)
     -> void {
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
+    for (auto const &a : annotations) {
+        a->stage_5_load_super_scopes(sm, meta);
+    }
     sm->move_out_of_current_scope();
 }
 
@@ -222,6 +228,10 @@ auto spp::asts::TypeStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    for (auto const &a : annotations) {
+        a->stage_7_analyse_semantics(sm, meta);
+    }
+
     // If this is a pre-generated AST (mod/sup context), skip any generation steps.
     if (m_generated) {
         sm->move_to_next_scope();

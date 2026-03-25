@@ -524,7 +524,7 @@ auto spp::parse::ParserSpp::parse_annotation()
 auto spp::parse::ParserSpp::parse_annotation_call()
     -> std::unique_ptr<asts::AnnotationAst> {
     PARSE_ONCE(p1, parse_token_exclamation_mark);
-    PARSE_ONCE(p2, parse_postfix_expression_strictly_static_access_one)
+    PARSE_ONCE(p2, parse_postfix_expression_strictly_static_access_zero)
     PARSE_OPTIONAL(p3, parse_generic_argument_group);
     PARSE_ONCE(p4, parse_function_call_argument_group);
     return CREATE_AST(asts::AnnotationAst, p1, p2, p3, p4);

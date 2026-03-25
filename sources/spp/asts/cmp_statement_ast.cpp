@@ -100,7 +100,7 @@ auto spp::asts::CmpStatementAst::stage_1_pre_process(
     -> void {
     // No pre-processing needed for cmp statements.
     Ast::stage_1_pre_process(ctx);
-    for (auto &&a : annotations) {
+    for (auto const &a : annotations) {
         a->stage_1_pre_process(this);
     }
 }
@@ -112,7 +112,7 @@ auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
     -> void {
     // No top-level scopes needed for cmp statements.
     Ast::stage_2_gen_top_level_scopes(sm, meta);
-    for (auto &&a : annotations) {
+    for (auto const &a : annotations) {
         a->stage_2_gen_top_level_scopes(sm, meta);
     }
 
@@ -130,6 +130,10 @@ auto spp::asts::CmpStatementAst::stage_4_qualify_types(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    for (auto const &a : annotations) {
+        a->stage_4_qualify_types(sm, meta);
+    }
     // Qualify the type.
     type->stage_4_qualify_types(sm, meta);
     type->stage_7_analyse_semantics(sm, meta);
@@ -142,11 +146,14 @@ auto spp::asts::CmpStatementAst::stage_4_qualify_types(
 
 auto spp::asts::CmpStatementAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    CompilerMetaData *)
+    CompilerMetaData *meta)
     -> void {
     // Ensure that the convention type doesn't have a convention.
     SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(
         this, type, *sm, "global constant type");
+    for (auto const &a : annotations) {
+        a->stage_5_load_super_scopes(sm, meta);
+    }
 
     // Check the type exists before attaching super scopes
     // type->stage_7_analyse_semantics(sm, meta);
@@ -157,6 +164,10 @@ auto spp::asts::CmpStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    for (auto const &a : annotations) {
+        a->stage_7_analyse_semantics(sm, meta);
+    }
     // Analyse the type and value.
     value->stage_7_analyse_semantics(sm, meta);
 

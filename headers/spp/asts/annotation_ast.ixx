@@ -15,6 +15,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct GenericArgumentGroupAst;
     SPP_EXP_CLS struct FunctionCallArgumentGroupAst;
+    SPP_EXP_CLS struct FunctionPrototypeAst;
     SPP_EXP_CLS struct TokenAst;
 }
 
@@ -25,6 +26,10 @@ namespace spp::asts {
  * additional behaviour in the compiler.
  */
 SPP_EXP_CLS struct spp::asts::AnnotationAst final : virtual Ast {
+private:
+    FunctionPrototypeAst *m_target;
+
+public:
     /**
      * The token that represents the @c ! sign in the annotation. This introduces the annotation.
      */
@@ -95,9 +100,13 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : virtual Ast {
      */
     auto stage_2_gen_top_level_scopes(analyse::scopes::ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_6_pre_analyse_semantics(analyse::scopes::ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_5_load_super_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_7_analyse_semantics(analyse::scopes::ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
 
 

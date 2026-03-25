@@ -405,6 +405,9 @@ auto spp::asts::FunctionPrototypeAst::stage_4_qualify_types(
     // Skip the function scope, as it is already qualified.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
+    for (auto const &a : annotations) {
+        a->stage_4_qualify_types(sm, meta);
+    }
     generic_param_group->stage_4_qualify_types(sm, meta);
     impl->stage_4_qualify_types(sm, meta);
     sm->move_out_of_current_scope();
@@ -418,6 +421,10 @@ auto spp::asts::FunctionPrototypeAst::stage_5_load_super_scopes(
     // Analyse the parameter and return types before sup scopes are attached.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
+    for (auto const &a : annotations) {
+        a->stage_5_load_super_scopes(sm, meta);
+    }
+
     param_group->stage_7_analyse_semantics(sm, meta);
     return_type->stage_7_analyse_semantics(sm, meta);
 
@@ -435,9 +442,6 @@ auto spp::asts::FunctionPrototypeAst::stage_6_pre_analyse_semantics(
     // Perform conflict checking before standard semantic analysis errors due to multiple possible prototypes.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
-    for (auto const &a : annotations) {
-        a->stage_6_pre_analyse_semantics(sm, meta);
-    }
 
     const auto mod_ctx = m_ctx->to<ModulePrototypeAst>();
     const auto type_scope = mod_ctx
@@ -461,6 +465,9 @@ auto spp::asts::FunctionPrototypeAst::stage_7_analyse_semantics(
     // Move into the function scope, as it is now ready for semantic analysis.
     sm->move_to_next_scope();
     // SPP_ASSERT(sm->current_scope == m_scope);
+    for (auto const &a : annotations) {
+        a->stage_7_analyse_semantics(sm, meta);
+    }
 
     // Repeated convention check for generic substitutions.
     SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(return_type, return_type, *sm, "function return type");

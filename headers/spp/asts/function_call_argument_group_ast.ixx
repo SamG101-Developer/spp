@@ -60,6 +60,8 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentGroupAst final : virtual Ast {
 
     SPP_ATTR_NODISCARD auto get_positional_args() const -> std::vector<FunctionCallArgumentPositionalAst*>;
 
+    auto at(const char *key) const -> FunctionCallArgumentAst const*;
+
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;

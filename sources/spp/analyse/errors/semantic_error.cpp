@@ -1595,20 +1595,20 @@ spp::analyse::errors::SppAnnotationTargetNotAnAnnotationError::SppAnnotationTarg
 }
 
 
-spp::analyse::errors::SppAnnotationNotAFunctionError::SppAnnotationNotAFunctionError(
+spp::analyse::errors::SppAnnotationTargetNotACmpFunctionError::SppAnnotationTargetNotACmpFunctionError(
     asts::AnnotationAst const &annotation_marker,
     asts::Ast const &non_function_ast) {
     add_header(
-        87, "SPP Annotation Not A Function Error");
+        87, "SPP Annotation Not A Cmp Function Error");
     add_context_for_error(
         &non_function_ast,
-        "Non-function defined here");
+        "Non-cmp-function or non-function defined here");
     add_error(
         &annotation_marker,
         "Annotation marker '" + annotation_marker.to_string() + "' defined here");
     add_footer(
-        "This annotation cannot be applied because the target is not a function.",
-        "Ensure the annotation is applied to a function");
+        "This annotation cannot be applied because the target is not a cmp function.",
+        "Ensure the annotation is applied to a cmp function");
 }
 
 

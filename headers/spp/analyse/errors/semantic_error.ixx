@@ -131,7 +131,7 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppInternalCompilerError;
     SPP_EXP_CLS struct SppGenericConstraintError;
     SPP_EXP_CLS struct SppAnnotationTargetNotAnAnnotationError;
-    SPP_EXP_CLS struct SppAnnotationNotAFunctionError;
+    SPP_EXP_CLS struct SppAnnotationTargetNotACmpFunctionError;
     SPP_EXP_CLS struct SppCalledAnnotationAppliedToInvalidAstError;
 }
 
@@ -326,7 +326,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppYieldedTypeMismatchError final : Sem
 
 
 SPP_EXP_CLS struct spp::analyse::errors::SppIdentifierUnknownError final : SemanticError {
-    explicit SppIdentifierUnknownError(asts::Ast const &name, std::string_view what, std::optional<std::string> const &closest);
+    explicit SppIdentifierUnknownError(asts::Ast const &name, std::string_view what, std::optional<std::string> const &closest = {});
 };
 
 
@@ -605,8 +605,8 @@ SPP_EXP_CLS struct spp::analyse::errors::SppAnnotationTargetNotAnAnnotationError
 };
 
 
-SPP_EXP_CLS struct spp::analyse::errors::SppAnnotationNotAFunctionError final : SemanticError {
-    explicit SppAnnotationNotAFunctionError(asts::AnnotationAst const &annotation_marker, asts::Ast const &non_function_ast);
+SPP_EXP_CLS struct spp::analyse::errors::SppAnnotationTargetNotACmpFunctionError final : SemanticError {
+    explicit SppAnnotationTargetNotACmpFunctionError(asts::AnnotationAst const &annotation_marker, asts::Ast const &non_function_ast);
 };
 
 

@@ -79,8 +79,8 @@ auto spp::asts::UseStatementAst::stage_2_gen_top_level_scopes(
     -> void {
     // Run the steps for the annotations.
     Ast::stage_2_gen_top_level_scopes(sm, meta);
-    for (const auto &annotation : annotations) {
-        annotation->stage_2_gen_top_level_scopes(sm, meta);
+    for (auto const &a : annotations) {
+        a->stage_2_gen_top_level_scopes(sm, meta);
     }
 
     // Create the type statement AST conversion.
