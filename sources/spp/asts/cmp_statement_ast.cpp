@@ -34,6 +34,7 @@ spp::asts::CmpStatementAst::CmpStatementAst(
     decltype(type) type,
     decltype(tok_assign) &&tok_assign,
     decltype(value) &&value) :
+    m_from_use_statement(false),
     annotations(std::move(annotations)),
     tok_cmp(std::move(tok_cmp)),
     name(std::move(name)),

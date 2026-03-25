@@ -42,6 +42,7 @@ spp::asts::AnnotationAst::AnnotationAst(
     gn_arg_group(std::move(gn_arg_group)),
     fn_arg_group(std::move(fn_arg_group)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->gn_arg_group);
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->fn_arg_group);
 }
 
 

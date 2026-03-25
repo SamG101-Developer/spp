@@ -423,7 +423,6 @@ auto spp::analyse::utils::overload_utils::validate_args_match_params(
     for (auto [arg, param] : genex::views::zip(sorted_func_arguments, func_params->get_all_params())) {
         auto p_type = fn_scope->get_type_symbol(param->type)->fq_name()->with_convention(ast_clone(param->type->get_convention()));
         auto a_type = arg->infer_type(sm, meta);
-        arg->infer_type(sm, meta);
         auto temp = type_utils::GenericInferenceMap();
 
         // Special case for variadic parameters (updates p_type so don't follow with "else if").

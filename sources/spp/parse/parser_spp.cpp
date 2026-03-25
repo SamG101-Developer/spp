@@ -927,8 +927,8 @@ auto spp::parse::ParserSpp::parse_primary_expression()
         p1, asts::PrimaryExpressionAst, parse_closure_expression, parse_parenthesised_expression, parse_literal,
         parse_object_initializer, parse_case_of_expression, parse_case_expression, parse_loop_expression,
         parse_gen_unroll_expression, parse_gen_expression, parse_type_expression, parse_identifier,
-        parse_self_identifier,
-        [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); }, parse_fold_expression);
+        parse_self_identifier, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); },
+        parse_fold_expression);
     return FORWARD_AST(p1);
 }
 
