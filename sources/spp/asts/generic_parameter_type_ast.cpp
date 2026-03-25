@@ -57,19 +57,7 @@ auto spp::asts::GenericParameterTypeAst::stage_4_qualify_types(
     CompilerMetaData *meta)
     -> void {
     // Qualify the name.
-    name->stage_4_qualify_types(sm, nullptr);
-    if (constraints != nullptr) {
-        constraints->stage_7_analyse_semantics(sm, meta);
-
-        // Attach the scopes of the cosntraint types as sup-scopes to the generic scope.
-        for (auto const &constraint : constraints->constraints) {
-            auto constraint_scope = sm->current_scope->get_type_symbol(constraint)->scope;
-
-            for (auto const &dummy_scope : m_dummy_scopes) {
-                dummy_scope->direct_sup_scopes.emplace_back(constraint_scope);
-            }
-        }
-    }
+    name->stage_4_qualify_types(sm, meta);
 }
 
 

@@ -17,9 +17,10 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
-private:
+public:
     std::vector<analyse::scopes::Scope *> m_dummy_scopes;
 
+private:
     std::unique_ptr<Ast> m_dummy_ast;
 
 public:

@@ -5,8 +5,11 @@ module;
 module spp.asts.generic_parameter_group_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.order_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_comp_ast;
 import spp.asts.generic_parameter_comp_optional_ast;
@@ -19,6 +22,7 @@ import spp.asts.generic_parameter_type_variadic_ast;
 import spp.asts.generic_parameter_type_inline_constraints_ast;
 import spp.asts.token_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
@@ -248,6 +252,29 @@ auto spp::asts::GenericParameterGroupAst::stage_4_qualify_types(
     // Run the type qualifier steps on each parameter in the group.
     for (auto &&x : params) {
         x->stage_4_qualify_types(sm, meta);
+    }
+
+    // Do the constraints after all the parameters are qualified. This is because of external generic symbols using
+    // non-qualified types when analysing generically subsitututed contraint types.
+    for (auto &&x : get_type_params()) {
+        if (x->constraints != nullptr) {
+            x->constraints->stage_7_analyse_semantics(sm, meta);
+
+            // Attach the scopes of the cosntraint types as sup-scopes to the generic scope.
+            for (auto const &constraint : x->constraints->constraints) {
+                auto constraint_scope = sm->current_scope->get_type_symbol(constraint)->scope;
+                for (auto const &dummy_scope : x->m_dummy_scopes) {
+                    dummy_scope->direct_sup_scopes.emplace_back(constraint_scope);
+                }
+
+                // If a generic is Copy constrained, treat it as a copyable type for memory analysis rules.
+                auto &copy_type = generate::common_types_precompiled::COPY;
+                if (analyse::utils::type_utils::symbolic_eq(*constraint, *copy_type, *sm->current_scope, *sm->current_scope, false)) {
+                    const auto generic_sym = sm->current_scope->get_type_symbol(x->name);
+                    generic_sym->is_directly_copyable = true;
+                }
+            }
+        }
     }
 }
 
