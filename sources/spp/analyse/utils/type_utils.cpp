@@ -396,6 +396,32 @@ auto spp::analyse::utils::type_utils::is_type_borrowed(
 }
 
 
+auto spp::analyse::utils::type_utils::is_type_copyable(
+    asts::TypeAst const &type,
+    scopes::ScopeManager const &sm)
+    -> bool {
+    // Generic types are not Copy types, so return nullptr.
+    const auto type_sym = sm.current_scope->get_type_symbol(type.shared_from_this());
+    if (type_sym->is_generic) { return false; }
+
+    // Discover the supertypes and add the current type to it.
+    auto sup_types = std::vector{type.shared_from_this()};
+    sup_types.append_range(type_sym->scope->sup_types());
+
+    auto inner_copy_check = [&](auto &&t) {
+        return symbolic_eq(*t.without_generics(), *asts::generate::common_types_precompiled::COPY, *sm.current_scope, *sm.current_scope, false);
+    };
+
+    // Search through the supertypes for a direct Copy type.
+    const auto copy_type_candidates = sup_types
+        | genex::views::filter([&](auto &&sup_type) { return inner_copy_check(*sup_type); })
+        | genex::to<std::vector>();
+
+    // If there is an explicit Copy type, return true, otherwise return false.
+    return not copy_type_candidates.empty();
+}
+
+
 auto spp::analyse::utils::type_utils::get_attr_types(
     const asts::ClassPrototypeAst *cls_proto,
     const scopes::Scope *cls_scope,

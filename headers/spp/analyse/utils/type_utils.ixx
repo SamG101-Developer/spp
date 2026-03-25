@@ -161,6 +161,12 @@ namespace spp::analyse::utils::type_utils {
         bool deep = true)
         -> bool;
 
+    SPP_EXP_FUN auto is_type_copyable(
+        asts::TypeAst const &type,
+        scopes::ScopeManager const &sm)
+        -> bool;
+
+
     SPP_EXP_FUN auto get_attr_types(
         const asts::ClassPrototypeAst *cls_proto,
         const scopes::Scope *cls_scope,
