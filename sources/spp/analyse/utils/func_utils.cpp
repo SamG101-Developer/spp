@@ -135,7 +135,7 @@ auto spp::analyse::utils::func_utils::convert_method_to_function_form(
     asts::TypeAst const &function_owner_type,
     asts::IdentifierAst const &function_name,
     asts::PostfixExpressionAst const &lhs,
-    asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
+    asts::PostfixExpressionOperatorFunctionCallAst &fn_call,
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData *meta)
     -> std::pair<
@@ -145,11 +145,6 @@ auto spp::analyse::utils::func_utils::convert_method_to_function_form(
     auto self_arg_val = std::unique_ptr<asts::ExpressionAst>(nullptr);
     if (const auto o = sm.current_scope->get_var_symbol_outermost(*lhs.lhs).first; o != nullptr) {
         self_arg_val = asts::ast_clone(lhs.lhs);
-    }
-    else if (lhs.lhs->to<asts::LiteralAst>() == nullptr) {
-        // Use object initializer mock object.
-        auto mock = std::make_unique<asts::ObjectInitializerAst>(lhs.lhs->infer_type(&sm, meta), nullptr);
-        self_arg_val = std::move(mock);
     }
     else {
         // Create a "let" statement, then use the identifier.
@@ -161,10 +156,11 @@ auto spp::analyse::utils::func_utils::convert_method_to_function_form(
         });
         let_stmt->stage_7_analyse_semantics(&sm, meta);
         sm.current_scope->get_var_symbol(var_name)->comptime_value = asts::ast_clone(lhs.lhs);
+        fn_call.self_comptime = var_name;
         self_arg_val = asts::ast_clone(var_name);
     }
 
-    // Create the static method access (without the function call and args)
+    // Create the static method access (without the function call and args).
     auto field = std::make_unique<asts::PostfixExpressionOperatorStaticMemberAccessAst>(nullptr, ast_clone(&function_name));
     auto field_access = std::make_unique<asts::PostfixExpressionAst>(ast_clone(&function_owner_type), std::move(field));
 

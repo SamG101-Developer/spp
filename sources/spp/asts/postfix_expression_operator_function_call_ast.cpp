@@ -263,9 +263,21 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_9_comptime_resol
     // Get the function prototype and resolve it.
     const auto fn_proto = std::get<1>(*m_overload_info)->non_generic_impl();
 
+    if (this == reinterpret_cast<PostfixExpressionOperatorFunctionCallAst *>(0x3e53350)) {
+        auto _ = 123;
+    }
+
     // Create the argument map for the function to use.
     auto args = std::vector<std::pair<std::shared_ptr<IdentifierAst>, std::unique_ptr<ExpressionAst>>>();
+
+    const auto check_self = self_comptime != nullptr;
+    if (check_self and not arg_group->get_keyword_args().empty() and arg_group->get_keyword_args().front()->name->val == "self") { // todo: use: .at("self") != nullptr
+        self_comptime->stage_9_comptime_resolution(sm, meta);
+        args.emplace_back(std::make_unique<IdentifierAst>(0, "self"), std::move(meta->cmp_result));
+    }
+
     for (auto const &arg : arg_group->get_keyword_args()) {
+        if (check_self and arg->name->val == "self") { continue; }
         arg->stage_9_comptime_resolution(sm, meta);
         args.emplace_back(arg->name, std::move(meta->cmp_result));
     }

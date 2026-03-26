@@ -123,8 +123,7 @@ auto spp::asts::IdentifierAst::stage_9_comptime_resolution(
     -> void {
     // Extract the value from the symbol table and return it.
     const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));
-    const auto cmp_id = var_sym->comptime_value.get();
-    meta->cmp_result = ast_clone(cmp_id->to<ExpressionAst>());
+    var_sym->comptime_value->stage_9_comptime_resolution(sm, meta);
 }
 
 

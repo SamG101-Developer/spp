@@ -20,6 +20,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct FunctionPrototypeAst;
     SPP_EXP_CLS struct GenericArgumentAst;
     SPP_EXP_CLS struct GenericArgumentGroupAst;
+    SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct PostfixExpressionOperatorFunctionCallAst;
     SPP_EXP_CLS struct TypeAst;
     SPP_EXP_CLS struct UnaryExpressionOperatorAsyncAst;
@@ -39,6 +40,7 @@ private:
 
 public:
     std::unique_ptr<FunctionPrototypeAst> closure_dummy_proto;
+    std::shared_ptr<IdentifierAst> self_comptime;
 
     /**
      * The generic argument group that contains the generic arguments for the function call.
