@@ -79,6 +79,8 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    if (m_mapped_func) { return; }
+
     // Ensure TypeAst's aren't used for expression for binary operands.
     SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(lhs.get());
     SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(rhs.get());
