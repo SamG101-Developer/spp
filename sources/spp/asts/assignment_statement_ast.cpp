@@ -9,7 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.obj_utils;
+import spp.analyse.utils.cmp_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
@@ -242,7 +242,7 @@ auto spp::asts::AssignmentStatementAst::stage_9_comptime_resolution(
 
         // Assign to an attribute.
         else if (is_attr(lhs[i].get(), sm)) {
-            analyse::utils::obj_utils::set_attribute_value(
+            analyse::utils::cmp_utils::set_attribute_value(
                 lhs_sym->comptime_value->to<ObjectInitializerAst>(), lhs[i].get(), std::move(meta->cmp_result), sm);
         }
 

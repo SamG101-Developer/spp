@@ -6,11 +6,18 @@ export module spp.analyse.utils.cmp_utils;
 import opex.ops;
 import std;
 
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class ScopeManager;
+}
+
 namespace spp::asts {
-    SPP_EXP_CLS struct ExpressionAst;
+    SPP_EXP_CLS struct Ast;
     SPP_EXP_CLS struct BooleanLiteralAst;
+    SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct FloatLiteralAst;
+    SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct IntegerLiteralAst;
+    SPP_EXP_CLS struct ObjectInitializerAst;
 }
 
 
@@ -117,6 +124,18 @@ namespace spp::analyse::utils::cmp_utils {
             }
         }
     };
+
+    SPP_EXP_FUN auto set_attribute_value(
+        asts::ObjectInitializerAst *object,
+        asts::Ast *attribute,
+        std::unique_ptr<asts::ExpressionAst> &&value,
+        scopes::ScopeManager const *sm)
+        -> void;
+
+    SPP_EXP_FUN auto get_attribute_value(
+        asts::ObjectInitializerAst const *object,
+        asts::IdentifierAst const *attribute)
+        -> std::unique_ptr<asts::ExpressionAst>;
 
     SPP_EXP_FUN template <typename Ret, typename... Args>
     auto make_cmp_fn(Ret (*fn)(Args...)) -> std::unique_ptr<CmpFn> {
