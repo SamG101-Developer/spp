@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.annotation_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.identifier_ast;
@@ -40,6 +41,9 @@ auto spp::asts::SubroutinePrototypeAst::clone() const
         ast_clone(return_type),
         ast_clone(impl));
     ast->orig_name = ast_clone(orig_name);
+    ast->m_annotation_info = m_annotation_info
+        ? std::make_unique<analyse::utils::annotation_utils::AnnotationInfo>(*m_annotation_info)
+        : nullptr;
     ast->m_original_impl = ast_clone(m_original_impl);
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;

@@ -21,5 +21,9 @@ namespace spp::analyse::utils::annotation_utils {
         std::uint32_t ctx = 0;
         asts::AnnotationAst *definition = nullptr;
         bool is_builtin = false;
+
+        AnnotationInfo() = default;
+        AnnotationInfo(AnnotationInfo const &) = default;
+        ~AnnotationInfo() = default;
     };
 }
