@@ -528,9 +528,13 @@ auto spp::asts::FunctionPrototypeAst::stage_8_check_memory(
 
 auto spp::asts::FunctionPrototypeAst::stage_9_comptime_resolution(
     analyse::scopes::ScopeManager *sm,
-    CompilerMetaData *)
+    CompilerMetaData *meta)
     -> void {
     // Manual scope skipping.
+    sm->move_to_next_scope();
+    for (auto const &a : annotations) {
+        a->stage_9_comptime_resolution(sm, meta);
+    }
     sm->exhaust_scope();
 }
 

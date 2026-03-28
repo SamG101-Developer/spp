@@ -197,6 +197,10 @@ auto spp::asts::CmpStatementAst::stage_9_comptime_resolution(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    for (auto const &a : annotations) {
+        a->stage_9_comptime_resolution(sm, meta);
+    }
     // Generate the value and assign it to the variable symbol's compile-time value.
     if (type->operator std::string()[0] != '$') {
         const auto var_sym = sm->current_scope->get_var_symbol(name);

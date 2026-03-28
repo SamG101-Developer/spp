@@ -270,10 +270,13 @@ auto spp::asts::TypeStatementAst::stage_8_check_memory(
 
 auto spp::asts::TypeStatementAst::stage_9_comptime_resolution(
     ScopeManager *sm,
-    CompilerMetaData *)
+    CompilerMetaData *meta)
     -> void {
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
+    for (auto const &a : annotations) {
+        a->stage_9_comptime_resolution(sm, meta);
+    }
     sm->move_out_of_current_scope();
 }
 
