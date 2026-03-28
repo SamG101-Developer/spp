@@ -213,7 +213,7 @@ auto spp::asts::AnnotationAst::stage_7_analyse_semantics(
     -> void {
     // Convert the target into a function call to ensure it exists.
     auto fn = std::make_unique<PostfixExpressionOperatorFunctionCallAst>(
-        std::move(gn_arg_group), std::move(fn_arg_group), nullptr);
+        ast_clone(gn_arg_group), ast_clone(fn_arg_group), nullptr);
     const auto pf = std::make_unique<PostfixExpressionAst>(ast_clone(name), std::move(fn));
     pf->stage_7_analyse_semantics(sm, meta);
 
