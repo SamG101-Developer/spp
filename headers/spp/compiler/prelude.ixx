@@ -12,6 +12,7 @@ use std::annotations::private
 use std::annotations::virtual_method
 use std::annotations::abstract_method
 use std::annotations::ffi
+use std::annotations::Annotation
 use std::string::Str
 use std::string_view::StrView
 use std::boolean::Bool
