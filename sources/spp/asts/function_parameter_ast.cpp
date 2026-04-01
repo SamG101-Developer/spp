@@ -81,7 +81,7 @@ auto spp::asts::FunctionParameterAst::stage_8_check_memory(
     CompilerMetaData *)
     -> void {
     // Check the memory of each name.
-    for (auto &&name : extract_names()) {
+    for (auto const &name : extract_names()) {
         const auto sym = sm->current_scope->get_var_symbol(name);
         sym->memory_info->initialized_by(*this, sm->current_scope);
     }
