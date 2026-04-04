@@ -1,6 +1,7 @@
 module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
+#include <spp/parse/macros.hpp>
 
 module spp.asts.annotation_ast;
 import spp.analyse.errors.semantic_error;
@@ -29,6 +30,8 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
+import spp.parse.parser_spp;
+import spp.lex.lexer;
 
 
 SPP_MOD_BEGIN
@@ -214,9 +217,13 @@ auto spp::asts::AnnotationAst::stage_7_analyse_semantics(
     -> void {
     // Convert the target into a function call to ensure it exists.
     auto fn = std::make_unique<PostfixExpressionOperatorFunctionCallAst>(
-        ast_clone(gn_arg_group), ast_clone(fn_arg_group), nullptr);
+        std::move(gn_arg_group), std::move(fn_arg_group), nullptr);
     const auto pf = std::make_unique<PostfixExpressionAst>(ast_clone(name), std::move(fn));
     pf->stage_7_analyse_semantics(sm, meta);
+
+    // Restore the function and generic arguments.
+    gn_arg_group = std::move(pf->op->to<PostfixExpressionOperatorFunctionCallAst>()->generic_arg_group);
+    fn_arg_group = std::move(pf->op->to<PostfixExpressionOperatorFunctionCallAst>()->arg_group);
 
     // Check the target function is an annotation (via "!annotation").
     const auto overload = pf->op->to<PostfixExpressionOperatorFunctionCallAst>()->target();
@@ -238,7 +245,11 @@ auto spp::asts::AnnotationAst::stage_9_comptime_resolution(
     const auto outer_mod_ctx = m_ctx->get_ast_ctx()->to<ModulePrototypeAst>();
 
     meta->save();
-    annotation_info->definition->fn_arg_group->at("target")->val->stage_9_comptime_resolution(sm, meta);
+    const auto annotation_scope_name = INJECT_CODE("std::annotations", parse_expression);
+    const auto annotation_scope = const_cast<analyse::scopes::Scope*>(
+        sm->current_scope->convert_postfix_to_nested_scope(annotation_scope_name.get()));
+    auto tm = ScopeManager(sm->global_scope, annotation_scope);
+    annotation_info->definition->fn_arg_group->at("target")->val->stage_9_comptime_resolution(&tm, meta);
     auto result = std::move(meta->cmp_result);
     const auto allowed_ctx = result->to<IntegerLiteralAst>()->cpp_value<std::uint64_t>();
     meta->restore();

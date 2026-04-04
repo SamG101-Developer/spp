@@ -263,10 +263,6 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_9_comptime_resol
     // Get the function prototype and resolve it.
     const auto fn_proto = std::get<1>(*m_overload_info)->non_generic_impl();
 
-    if (this == reinterpret_cast<PostfixExpressionOperatorFunctionCallAst *>(0x3e53350)) {
-        auto _ = 123;
-    }
-
     // Create the argument map for the function to use.
     auto args = std::vector<std::pair<std::shared_ptr<IdentifierAst>, std::unique_ptr<ExpressionAst>>>();
 
