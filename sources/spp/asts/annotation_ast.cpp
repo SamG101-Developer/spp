@@ -24,6 +24,7 @@ import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.sup_prototype_extension_ast;
+import spp.asts.sup_prototype_functions_ast;
 import spp.asts.token_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.meta.compiler_meta_data;
@@ -243,6 +244,8 @@ auto spp::asts::AnnotationAst::stage_9_comptime_resolution(
     // Annotation target checks.
     const auto annotation_info = m_target->annotation_info();
     const auto outer_mod_ctx = m_ctx->get_ast_ctx()->to<ModulePrototypeAst>();
+    const auto outer_sup_ctx = m_ctx->get_ast_ctx()->to<SupPrototypeFunctionsAst>();
+    const auto outer_ext_ctx = m_ctx->get_ast_ctx()->to<SupPrototypeExtensionAst>();
 
     meta->save();
     const auto annotation_scope_name = INJECT_CODE("std::annotations", parse_expression);
@@ -250,7 +253,7 @@ auto spp::asts::AnnotationAst::stage_9_comptime_resolution(
         sm->current_scope->convert_postfix_to_nested_scope(annotation_scope_name.get()));
     auto tm = ScopeManager(sm->global_scope, annotation_scope);
     annotation_info->definition->fn_arg_group->at("target")->val->stage_9_comptime_resolution(&tm, meta);
-    auto result = std::move(meta->cmp_result);
+    const auto result = std::move(meta->cmp_result);
     const auto allowed_ctx = result->to<IntegerLiteralAst>()->cpp_value<std::uint64_t>();
     meta->restore();
 
@@ -263,7 +266,11 @@ auto spp::asts::AnnotationAst::stage_9_comptime_resolution(
         {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 
     raise_if<analyse::errors::SppCalledAnnotationAppliedToInvalidAstError>(
-        m_ctx->to<FunctionPrototypeAst>() and not outer_mod_ctx and not(allowed_ctx & analyse::utils::annotation_utils::AnnotationInfo::METHOD_CTX),
+        m_ctx->to<FunctionPrototypeAst>() and outer_sup_ctx and not(allowed_ctx & analyse::utils::annotation_utils::AnnotationInfo::METHOD_CTX),
+        {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
+
+    raise_if<analyse::errors::SppCalledAnnotationAppliedToInvalidAstError>(
+        m_ctx->to<FunctionPrototypeAst>() and outer_ext_ctx and not(allowed_ctx & analyse::utils::annotation_utils::AnnotationInfo::EXT_METHOD_CTX),
         {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 
     raise_if<analyse::errors::SppCalledAnnotationAppliedToInvalidAstError>(
