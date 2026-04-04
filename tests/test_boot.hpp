@@ -17,7 +17,7 @@ inline auto build_temp_project(std::string code, const bool add_main = true) -> 
     std::cout << (cwd / fp).string() << std::endl;
 
     if (add_main) {
-        code = "fun main(args: std::vector::Vec[std::string::Str]) -> std::void::Void { }\n" + code;
+        code = "fun main(args: Vec[Str]) -> Void { }\n" + code;
     }
 
     // Build the temporary project directory if it doesn't exist.
