@@ -536,6 +536,7 @@ auto spp::asts::FunctionPrototypeAst::stage_9_comptime_resolution(
         a->stage_9_comptime_resolution(sm, meta);
     }
     sm->exhaust_scope();
+    sm->move_out_of_current_scope();
 }
 
 

@@ -75,7 +75,9 @@ auto spp::analyse::utils::overload_utils::determine_overload(
     const auto is_postfix = meta->postfix_expression_lhs->to<asts::PostfixExpressionAst>();
     const auto is_runtime = is_postfix ? is_postfix->op->to<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>() : nullptr;
     if (is_runtime != nullptr) {
-        return propagate_method_to_function(fn_call, *fn_owner_type, *fn_name, *is_postfix, sm, meta);
+        auto [overload_info, is_closure, pf] = propagate_method_to_function(fn_call, *fn_owner_type, *fn_name, *is_postfix, sm, meta);
+        fn_call.transformed_ast = std::move(pf);
+        return std::make_pair(std::move(overload_info), is_closure);
     }
 
     // Get all the overloads to deail with, and handle closure mechanics.
@@ -159,7 +161,7 @@ auto spp::analyse::utils::overload_utils::propagate_method_to_function(
     asts::PostfixExpressionAst const &cast_lhs,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
-    -> std::pair<PassOverloadInfo, bool> {
+    -> std::tuple<PassOverloadInfo, bool, std::unique_ptr<asts::PostfixExpressionAst>> {
     // Get the function conversion of the method (free function with self argument).
     auto [transformed_lhs, transformed_fn_call] = func_utils::convert_method_to_function_form(
         fn_owner_type, fn_name, cast_lhs, fn_call, *sm, meta);
@@ -167,12 +169,15 @@ auto spp::analyse::utils::overload_utils::propagate_method_to_function(
     // Determine the overload based off the function (uniform system).
     meta->save();
     meta->postfix_expression_lhs = transformed_lhs.get();
-    auto info = determine_overload(*transformed_fn_call, sm, meta);
+    auto [overload_info, is_closure] = determine_overload(*transformed_fn_call, sm, meta);
     meta->restore();
 
     // Get the argument group with the "self" injection, and bind it to the function call.
-    fn_call.arg_group = std::move(transformed_fn_call->arg_group);
-    return info;
+    fn_call.arg_group = asts::ast_clone(transformed_fn_call->arg_group);
+
+    // Create a mock postfix based on the transformation.
+    auto pf = std::make_unique<asts::PostfixExpressionAst>(std::move(transformed_lhs), std::move(transformed_fn_call));
+    return std::make_tuple(std::move(overload_info), is_closure, std::move(pf));
 }
 
 

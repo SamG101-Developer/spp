@@ -218,6 +218,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
     auto borrows_mut = std::vector<Ast*>();
 
     for (auto const &arg : args) {
+        if (this->at("self") == arg.get()) { continue; }
+
         // Get the outermost part of the argument as a symbol. If the argument is non-symbolic then there is no need to
         // track borrows to it, as it is a temporary value.
         arg->stage_8_check_memory(sm, meta);
