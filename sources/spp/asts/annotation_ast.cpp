@@ -17,6 +17,7 @@ import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
+import spp.asts.integer_literal_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
@@ -238,30 +239,31 @@ auto spp::asts::AnnotationAst::stage_9_comptime_resolution(
 
     meta->save();
     annotation_info->definition->fn_arg_group->at("target")->val->stage_9_comptime_resolution(sm, meta);
-    const auto allowed_ctx = std::move(meta->cmp_result);
+    auto result = std::move(meta->cmp_result);
+    const auto allowed_ctx = result->to<IntegerLiteralAst>()->cpp_value<std::uint64_t>();
     meta->restore();
 
     raise_if<analyse::errors::SppCalledAnnotationAppliedToInvalidAstError>(
-        m_ctx->to<ClassPrototypeAst>() and ~(annotation_info->ctx & analyse::utils::annotation_utils::AnnotationInfo::CLASS_CTX),
+        m_ctx->to<ClassPrototypeAst>() and not(allowed_ctx & analyse::utils::annotation_utils::AnnotationInfo::CLASS_CTX),
         {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 
     raise_if<analyse::errors::SppCalledAnnotationAppliedToInvalidAstError>(
-        m_ctx->to<FunctionPrototypeAst>() and outer_mod_ctx and ~(annotation_info->ctx & analyse::utils::annotation_utils::AnnotationInfo::FUNCTION_CTX),
+        m_ctx->to<FunctionPrototypeAst>() and outer_mod_ctx and not(allowed_ctx & analyse::utils::annotation_utils::AnnotationInfo::FUNCTION_CTX),
         {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 
     raise_if<analyse::errors::SppCalledAnnotationAppliedToInvalidAstError>(
-        m_ctx->to<FunctionPrototypeAst>() and not outer_mod_ctx and ~(annotation_info->ctx & analyse::utils::annotation_utils::AnnotationInfo::METHOD_CTX),
+        m_ctx->to<FunctionPrototypeAst>() and not outer_mod_ctx and not(allowed_ctx & analyse::utils::annotation_utils::AnnotationInfo::METHOD_CTX),
         {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 
     raise_if<analyse::errors::SppCalledAnnotationAppliedToInvalidAstError>(
-        m_ctx->to<TypeStatementAst>() and ~(annotation_info->ctx & analyse::utils::annotation_utils::AnnotationInfo::TYPE_CTX),
+        m_ctx->to<TypeStatementAst>() and not(allowed_ctx & analyse::utils::annotation_utils::AnnotationInfo::TYPE_CTX),
         {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 
     raise_if<analyse::errors::SppCalledAnnotationAppliedToInvalidAstError>(
-        m_ctx->to<CmpStatementAst>() and ~(annotation_info->ctx & analyse::utils::annotation_utils::AnnotationInfo::CMP_CTX),
+        m_ctx->to<CmpStatementAst>() and not(allowed_ctx & analyse::utils::annotation_utils::AnnotationInfo::CMP_CTX),
         {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 
-    (void)allowed_ctx;
+    // (void)allowed_ctx;
 }
 
 
