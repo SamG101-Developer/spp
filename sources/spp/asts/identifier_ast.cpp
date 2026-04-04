@@ -123,7 +123,8 @@ auto spp::asts::IdentifierAst::stage_9_comptime_resolution(
     -> void {
     // Extract the value from the symbol table and return it.
     const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));
-    var_sym->comptime_value->stage_9_comptime_resolution(sm, meta);
+    auto tm = analyse::scopes::ScopeManager(sm->global_scope, var_sym->scope_defined_in ?: sm->current_scope);
+    var_sym->comptime_value->stage_9_comptime_resolution(&tm, meta);
 }
 
 

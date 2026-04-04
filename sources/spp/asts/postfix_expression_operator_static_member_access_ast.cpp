@@ -145,7 +145,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_9_comptime
     if (const auto lhs_as_type = meta->postfix_expression_lhs->to<TypeAst>(); lhs_as_type != nullptr) {
         const auto lhs_type_sym = sm->current_scope->get_type_symbol(ast_clone(lhs_as_type));
         const auto sym = lhs_type_sym->scope->get_var_symbol(name, true);
-        sym->comptime_value->stage_9_comptime_resolution(sm, meta);
+        auto tm = ScopeManager(sm->global_scope, lhs_type_sym->scope);
+        sym->comptime_value->stage_9_comptime_resolution(&tm, meta);
         meta->cmp_result = ast_clone(meta->cmp_result);
         return;
     }
