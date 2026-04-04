@@ -190,6 +190,12 @@ auto spp::asts::CmpStatementAst::stage_8_check_memory(
     value->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
         *value, *value, *sm, true, true, true, true, true, meta);
+
+    // Generate the value and assign it to the variable symbol's compile-time value.
+    if (type->operator std::string()[0] != '$') {
+        const auto var_sym = sm->current_scope->get_var_symbol(name);
+        var_sym->comptime_value = ast_clone(value);
+    }
 }
 
 
@@ -201,12 +207,12 @@ auto spp::asts::CmpStatementAst::stage_9_comptime_resolution(
     for (auto const &a : annotations) {
         a->stage_9_comptime_resolution(sm, meta);
     }
+
     // Generate the value and assign it to the variable symbol's compile-time value.
     if (type->operator std::string()[0] != '$') {
         const auto var_sym = sm->current_scope->get_var_symbol(name);
         value->stage_9_comptime_resolution(sm, meta);
         var_sym->comptime_value = std::move(meta->cmp_result);
-        // var_sym->comptime_value == nullptr // Todo: => ERROR?
     }
 }
 
