@@ -42,9 +42,6 @@ namespace spp::asts {
 namespace spp::analyse::errors {
     SPP_EXP_CLS struct SemanticError;
 
-    SPP_EXP_CLS struct SppAnnotationInvalidApplicationError;
-    SPP_EXP_CLS struct SppAnnotationConflictError;
-    SPP_EXP_CLS struct SppAnnotationInvalidError;
     SPP_EXP_CLS struct SppExpressionTypeInvalidError;
     SPP_EXP_CLS struct SppTypeMismatchError;
     SPP_EXP_CLS struct SppSecondClassBorrowViolationError;
