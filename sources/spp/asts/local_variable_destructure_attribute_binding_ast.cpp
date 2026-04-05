@@ -8,6 +8,7 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 
+SPP_MOD_BEGIN
 spp::asts::LocalVariableDestructureAttributeBindingAst::LocalVariableDestructureAttributeBindingAst(
     decltype(name) &&name,
     decltype(tok_assign) &&tok_assign,
@@ -56,3 +57,5 @@ auto spp::asts::LocalVariableDestructureAttributeBindingAst::extract_name() cons
     -> std::shared_ptr<IdentifierAst> {
     return name;
 }
+
+SPP_MOD_END

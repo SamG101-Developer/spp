@@ -30,6 +30,7 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::CasePatternVariantDestructureArrayAst::CasePatternVariantDestructureArrayAst(
     decltype(tok_l) &&tok_l,
     decltype(elems) &&elems,
@@ -158,9 +159,11 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::stage_11_code_gen_2(
         elems | genex::views::ptr | genex::to<std::vector>(), sm, meta, ctx);
     const auto combine_func = [&ctx](auto *a, auto *b) { return ctx->builder.CreateAnd(a, b); };
     const auto llvm_master_transform = llvm_transforms.empty()
-        ? dynamic_cast<llvm::Value*>(llvm::ConstantInt::getTrue(*ctx->context))
-        : genex::fold_left_first(llvm_transforms, std::move(combine_func));
+                                           ? dynamic_cast<llvm::Value*>(llvm::ConstantInt::getTrue(*ctx->context))
+                                           : genex::fold_left_first(llvm_transforms, std::move(combine_func));
 
     // Return the combined statement.
     return llvm_master_transform;
 }
+
+SPP_MOD_END

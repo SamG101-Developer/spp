@@ -8,12 +8,13 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.obj_utils;
+import spp.analyse.utils.cmp_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.identifier_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.object_initializer_ast;
 import spp.asts.object_initializer_argument_group_ast;
@@ -32,6 +33,7 @@ import spp.utils.uid;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOperatorRuntimeMemberAccessAst(
     decltype(tok_dot) &&tok_dot,
     decltype(name) name) :
@@ -192,7 +194,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_9_comptim
 
     // Handle normal attribute access (for objects).
     auto cmp_obj = meta->cmp_result->to<ObjectInitializerAst>();
-    meta->cmp_result = analyse::utils::obj_utils::get_attribute_value(cmp_obj, name.get());
+    meta->cmp_result = analyse::utils::cmp_utils::get_attribute_value(cmp_obj, name.get());
 }
 
 
@@ -258,3 +260,5 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::expr_parts() co
     -> std::vector<Ast*> {
     return {name.get()};
 }
+
+SPP_MOD_END

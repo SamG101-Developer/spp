@@ -13,6 +13,7 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 
+SPP_MOD_BEGIN
 spp::asts::ObjectInitializerArgumentShorthandAst::ObjectInitializerArgumentShorthandAst(
     std::unique_ptr<TokenAst> tok_ellipsis,
     std::unique_ptr<ExpressionAst> &&val) :
@@ -71,3 +72,5 @@ auto spp::asts::ObjectInitializerArgumentShorthandAst::stage_7_analyse_semantics
         {sm->current_scope}, ERR_ARGS(*this));
     ObjectInitializerArgumentAst::stage_7_analyse_semantics(sm, meta);
 }
+
+SPP_MOD_END

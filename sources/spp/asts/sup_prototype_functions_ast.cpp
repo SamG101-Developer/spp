@@ -25,6 +25,7 @@ import spp.lex.tokens;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::SupPrototypeFunctionsAst::SupPrototypeFunctionsAst(
     decltype(tok_sup) &&tok_sup,
     decltype(generic_param_group) &&generic_param_group,
@@ -204,6 +205,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_7_analyse_semantics(
     // Move to the next scope.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
+    generic_param_group->stage_7_analyse_semantics(sm, meta);
     name->stage_7_analyse_semantics(sm, meta);
     impl->stage_7_analyse_semantics(sm, meta);
     sm->move_out_of_current_scope();
@@ -279,3 +281,5 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_11_code_gen_2(
     sm->move_out_of_current_scope();
     return nullptr;
 }
+
+SPP_MOD_END

@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_identifier_ast;
-import spp.asts.generic_argument_group_ast;
 import spp.asts.type_ast;
 import std;
 
@@ -47,6 +46,8 @@ public:
         decltype(name) &&name,
         decltype(generic_arg_group) generic_arg_group);
 
+    auto _spp_key_function() const -> void override;
+
     ~TypeIdentifierAst() override;
 
     auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
@@ -77,27 +78,27 @@ public:
 
     auto is_never_type() const -> bool override;
 
-    auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
 
-    auto ns_parts() -> std::vector<std::shared_ptr<IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto ns_parts() -> std::vector<std::shared_ptr<IdentifierAst>> override;
 
-    auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
 
-    auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
 
-    auto without_convention() const -> std::shared_ptr<const TypeAst> override;
+    SPP_ATTR_NODISCARD auto without_convention() const -> std::shared_ptr<const TypeAst> override;
 
-    auto get_convention() const -> ConventionAst* override;
+    SPP_ATTR_NODISCARD auto get_convention() const -> ConventionAst* override;
 
-    auto with_convention(std::unique_ptr<ConventionAst> &&conv) const -> std::shared_ptr<TypeAst> override;
+    SPP_ATTR_NODISCARD auto with_convention(std::unique_ptr<ConventionAst> &&conv) const -> std::shared_ptr<TypeAst> override;
 
-    auto without_generics() const -> std::shared_ptr<TypeAst> override;
+    SPP_ATTR_NODISCARD auto without_generics() const -> std::shared_ptr<TypeAst> override;
 
-    auto substitute_generics(std::vector<GenericArgumentAst*> const &args) const -> std::shared_ptr<TypeAst> override;
+    SPP_ATTR_NODISCARD auto substitute_generics(std::vector<GenericArgumentAst*> const &args) const -> std::shared_ptr<TypeAst> override;
 
-    auto contains_generic(GenericParameterAst const &generic) const -> bool override;
+    SPP_ATTR_NODISCARD auto contains_generic(GenericParameterAst const &generic) const -> bool override;
 
-    auto with_generics(std::unique_ptr<GenericArgumentGroupAst> &&arg_group) const -> std::shared_ptr<TypeAst> override;
+    SPP_ATTR_NODISCARD auto with_generics(std::unique_ptr<GenericArgumentGroupAst> &&arg_group) const -> std::shared_ptr<TypeAst> override;
 
     auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -109,4 +110,6 @@ public:
 };
 
 
-spp::asts::TypeIdentifierAst::~TypeIdentifierAst() = default;
+SPP_MOD_BEGIN
+auto spp::asts::TypeIdentifierAst::_spp_key_function() const -> void {}
+SPP_MOD_END

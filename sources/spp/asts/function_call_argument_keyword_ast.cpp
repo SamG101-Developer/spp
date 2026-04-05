@@ -11,6 +11,7 @@ import spp.lex.tokens;
 import spp.asts.utils.orderable;
 
 
+SPP_MOD_BEGIN
 spp::asts::FunctionCallArgumentKeywordAst::FunctionCallArgumentKeywordAst(
     decltype(name) name,
     decltype(tok_assign) &&tok_assign,
@@ -56,3 +57,5 @@ spp::asts::FunctionCallArgumentKeywordAst::operator std::string() const {
     SPP_STRING_APPEND(val);
     SPP_STRING_END;
 }
+
+SPP_MOD_END

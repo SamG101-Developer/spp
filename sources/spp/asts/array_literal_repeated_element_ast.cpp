@@ -23,6 +23,7 @@ import spp.utils.uid;
 import llvm;
 
 
+SPP_MOD_BEGIN
 spp::asts::ArrayLiteralRepeatedElementAst::ArrayLiteralRepeatedElementAst(
     decltype(tok_l) &&tok_l,
     decltype(elem) &&elem,
@@ -38,6 +39,9 @@ spp::asts::ArrayLiteralRepeatedElementAst::ArrayLiteralRepeatedElementAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_semicolon, lex::SppTokenType::TK_SEMICOLON, ";");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_r, lex::SppTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
 }
+
+
+spp::asts::ArrayLiteralRepeatedElementAst::~ArrayLiteralRepeatedElementAst() = default;
 
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::equals(
@@ -203,3 +207,5 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::infer_type(
     array_type->stage_7_analyse_semantics(sm, meta);
     return array_type;
 }
+
+SPP_MOD_END

@@ -56,9 +56,9 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterAst : virtual Ast, mixins::Ordera
 
     ~FunctionParameterAst() override;
 
-    auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>>;
+    SPP_ATTR_NODISCARD auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>>;
 
-    auto extract_name() const -> std::shared_ptr<IdentifierAst>;
+    SPP_ATTR_NODISCARD auto extract_name() const -> std::shared_ptr<IdentifierAst>;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

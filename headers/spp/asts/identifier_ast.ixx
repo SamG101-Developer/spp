@@ -26,14 +26,16 @@ public:
         std::size_t pos,
         decltype(val) val);
 
+    auto _spp_key_function() const -> void override;
+
     IdentifierAst(IdentifierAst const &) = default;
 
     ~IdentifierAst() override;
 
     SPP_ATTR_NODISCARD auto equals_identifier(IdentifierAst const &) const -> std::strong_ordering override;
+
     SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
-public:
     SPP_AST_KEY_FUNCTIONS;
 
     SPP_ATTR_ALWAYS_INLINE auto operator<=>(IdentifierAst const &that) const -> std::strong_ordering {
@@ -70,4 +72,7 @@ public:
 };
 
 
-spp::asts::IdentifierAst::~IdentifierAst() = default;
+SPP_MOD_BEGIN
+auto spp::asts::IdentifierAst::_spp_key_function() const -> void {}
+SPP_MOD_END
+

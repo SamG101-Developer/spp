@@ -46,3 +46,26 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let b = p
     }
 )");
+
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstMemoryCopy,
+    test_valid_memory_copy_by_constrained_generic, R"(
+    fun g[T: Copy](t: T) -> T {
+        let x = t
+        ret t
+    }
+)");
+
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstMemoryCopy,
+    test_valid_memory_copy_by_constrained_generic_layered, R"(
+    cls CopyableType { }
+    sup CopyableType ext Copy { }
+
+    fun g[T: CopyableType](t: T) -> T {
+        let x = t
+        ret t
+    }
+)");

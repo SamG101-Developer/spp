@@ -28,6 +28,7 @@ import genex;
 import opex.cast;
 
 
+SPP_MOD_BEGIN
 spp::asts::LocalVariableDestructureTupleAst::LocalVariableDestructureTupleAst(
     decltype(tok_l) &&tok_l,
     decltype(elems) &&elems,
@@ -135,8 +136,8 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
 
     // Create new indexes.
     const auto skip_index = not multi_arg_skips.empty()
-        ? genex::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize
-        : elems.size() - 1;
+                                ? genex::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize
+                                : elems.size() - 1;
     auto indexes = genex::views::iota(0uz, skip_index + 1uz) | genex::to<std::vector>();
     indexes.append_range(genex::views::iota(num_lhs_arr_elems, num_rhs_arr_elems) | genex::to<std::vector>());
 
@@ -207,3 +208,5 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_11_code_gen_2(
     }
     return nullptr;
 }
+
+SPP_MOD_END

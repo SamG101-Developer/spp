@@ -38,6 +38,7 @@ import spp.lex.tokens;
 import spp.utils.uid;
 
 
+SPP_MOD_BEGIN
 spp::asts::LoopIterableExpressionAst::LoopIterableExpressionAst(
     decltype(tok_loop) &&tok_loop,
     decltype(var) &&var,
@@ -152,10 +153,11 @@ auto spp::asts::LoopIterableExpressionAst::stage_7_analyse_semantics(
     });
 
     // Otherwise, exit the loop.
-    // Translated: "<case-of-expr> else { exit; }".
+    // Translated: "<case-of-expr> else { exit }".
     auto case_else_branch = ( {
         auto case_else_pattern = std::make_unique<CasePatternVariantElseAst>(nullptr);
         auto case_else_body = InnerScopeExpressionAst<std::unique_ptr<StatementAst>>::new_empty();
+        case_else_pattern->mark_for_iter_loop_exit();
 
         auto is_tok = std::make_unique<TokenAst>(pos_start(), lex::SppTokenType::KW_IS, "is");
         auto patterns = std::vector<std::unique_ptr<CasePatternVariantAst>>();
@@ -216,3 +218,5 @@ auto spp::asts::LoopIterableExpressionAst::stage_11_code_gen_2(
     m_transform_let->stage_11_code_gen_2(sm, meta, ctx);
     return m_transform_loop->stage_11_code_gen_2(sm, meta, ctx);
 }
+
+SPP_MOD_END

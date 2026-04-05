@@ -24,6 +24,7 @@ import spp.lex.tokens;
 import spp.utils.uid;
 
 
+SPP_MOD_BEGIN
 spp::asts::LoopConditionalExpressionAst::LoopConditionalExpressionAst(
     decltype(tok_loop) &&tok_loop,
     decltype(cond) &&cond,
@@ -225,7 +226,6 @@ auto spp::asts::LoopConditionalExpressionAst::infer_type(
     // A "loop true" with no exit statements returns "Never".
     const auto cond_lit = cond->to<BooleanLiteralAst>();
     if (cond_lit != nullptr and cond_lit->tok_bool->token_type == lex::SppTokenType::KW_TRUE) {
-
         // Check the internal flow controls.
         if (not m_loop_exit_type_info.has_value()) {
             return generate::common_types::never_type(pos_start());
@@ -241,3 +241,5 @@ auto spp::asts::LoopConditionalExpressionAst::terminates() const
     // The loop conditional expression only terminates if the body terminates.
     return body->terminates();
 }
+
+SPP_MOD_END

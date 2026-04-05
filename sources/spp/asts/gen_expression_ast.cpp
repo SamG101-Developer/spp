@@ -29,10 +29,10 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
 import spp.lex.tokens;
 import spp.utils.uid;
-
 import llvm;
 
 
+SPP_MOD_BEGIN
 spp::asts::GenExpressionAst::GenExpressionAst(
     decltype(tok_gen) &&tok_gen,
     decltype(conv) &&conv,
@@ -234,3 +234,5 @@ auto spp::asts::GenExpressionAst::infer_type(
     auto send_type = m_gen_type->type_parts().back()->generic_arg_group->type_at("Send")->val;
     return send_type;
 }
+
+SPP_MOD_END

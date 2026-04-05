@@ -1,6 +1,10 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.asts.generic_parameter_ast;
 
 
+SPP_MOD_BEGIN
 spp::asts::GenericParameterAst::GenericParameterAst(
     decltype(name) name,
     const utils::OrderableTag order_tag) :
@@ -10,3 +14,4 @@ spp::asts::GenericParameterAst::GenericParameterAst(
 
 
 spp::asts::GenericParameterAst::~GenericParameterAst() = default;
+SPP_MOD_END

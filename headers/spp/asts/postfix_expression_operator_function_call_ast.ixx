@@ -7,6 +7,10 @@ import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class Scope;
+}
+
 namespace spp::asts {
     SPP_EXP_CLS struct FunctionCallArgumentAst;
     SPP_EXP_CLS struct FunctionCallArgumentGroupAst;
@@ -16,13 +20,11 @@ namespace spp::asts {
     SPP_EXP_CLS struct FunctionPrototypeAst;
     SPP_EXP_CLS struct GenericArgumentAst;
     SPP_EXP_CLS struct GenericArgumentGroupAst;
+    SPP_EXP_CLS struct IdentifierAst;
+    SPP_EXP_CLS struct PostfixExpressionAst;
     SPP_EXP_CLS struct PostfixExpressionOperatorFunctionCallAst;
     SPP_EXP_CLS struct TypeAst;
     SPP_EXP_CLS struct UnaryExpressionOperatorAsyncAst;
-}
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
 }
 
 
@@ -39,6 +41,8 @@ private:
 
 public:
     std::unique_ptr<FunctionPrototypeAst> closure_dummy_proto;
+    std::shared_ptr<IdentifierAst> self_comptime;
+    std::unique_ptr<PostfixExpressionAst> transformed_ast;
 
     /**
      * The generic argument group that contains the generic arguments for the function call.
@@ -89,4 +93,6 @@ public:
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 
     auto mark_as_async(Ast *async_token) -> void;
+
+    auto target() const -> FunctionPrototypeAst*;
 };

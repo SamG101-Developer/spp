@@ -32,6 +32,8 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
      */
     std::string type;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the IntegerLiteralAst with the arguments matching the members.
      * @param[in] tok_sign The optionally provided sign token.
@@ -45,9 +47,9 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
 
     ~IntegerLiteralAst() override;
 
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
-    auto equals_integer_literal(IntegerLiteralAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals_integer_literal(IntegerLiteralAst const &) const -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
@@ -70,4 +72,6 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
 };
 
 
-spp::asts::IntegerLiteralAst::~IntegerLiteralAst() = default;
+SPP_MOD_BEGIN
+auto spp::asts::IntegerLiteralAst::_spp_key_function() const -> void {}
+SPP_MOD_END

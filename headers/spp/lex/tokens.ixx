@@ -10,9 +10,6 @@ namespace spp::lex {
     SPP_EXP_ENUM enum class SppTokenType : std::uint8_t;
     SPP_EXP_CLS struct SppTokenSets;
     SPP_EXP_CLS class RawToken;
-}
-
-namespace spp::lex {
     SPP_EXP_FUN auto tok_to_string(SppTokenType token) noexcept -> std::string;
 }
 

@@ -23,8 +23,6 @@ struct spp::asts::InnerScopeExpressionAst final : InnerScopeAst<T>, PrimaryExpre
 
     static auto new_empty() -> std::unique_ptr<InnerScopeExpressionAst>;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;

@@ -9,6 +9,7 @@ import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::CasePatternVariantDestructureSkipSingleArgumentAst(
     decltype(tok_underscore) &&tok_underscore) :
     tok_underscore(std::move(tok_underscore)) {
@@ -52,3 +53,5 @@ auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::convert_to_v
     var->mark_from_case_pattern();
     return var;
 }
+
+SPP_MOD_END

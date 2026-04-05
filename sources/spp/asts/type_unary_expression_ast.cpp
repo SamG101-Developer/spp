@@ -17,12 +17,16 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::TypeUnaryExpressionAst::TypeUnaryExpressionAst(
     decltype(op) op,
     decltype(rhs) rhs) :
     op(std::move(op)),
     rhs(std::move(rhs)) {
 }
+
+
+spp::asts::TypeUnaryExpressionAst::~TypeUnaryExpressionAst() = default;
 
 
 auto spp::asts::TypeUnaryExpressionAst::equals(
@@ -229,3 +233,5 @@ auto spp::asts::TypeUnaryExpressionAst::infer_type(
     const auto type_sym = type_scope->get_type_symbol(shared_from_this());
     return type_sym->fq_name()->with_convention(ast_clone(get_convention()));
 }
+
+SPP_MOD_END

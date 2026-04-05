@@ -2,28 +2,27 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_statement_ast;
-import spp.analyse.scopes.scope;
-import spp.asts.annotation_ast;
 import spp.asts.statement_ast;
 import spp.asts.module_member_ast;
 import spp.asts.sup_member_ast;
-import spp.asts.token_ast;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
+namespace spp::analyse::scopes {
+    SPP_EXP_CLS class Scope;
+    SPP_EXP_CLS struct TypeSymbol;
+}
+
 namespace spp::asts {
+    SPP_EXP_CLS struct AnnotationAst;
     SPP_EXP_CLS struct GenericParameterGroupAst;
+    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
     SPP_EXP_CLS struct TypeIdentifierAst;
     SPP_EXP_CLS struct TypeStatementAst;
     SPP_EXP_CLS struct UseStatementAst;
-}
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
-    SPP_EXP_CLS struct TypeSymbol;
 }
 
 
@@ -97,6 +96,8 @@ public:
         decltype(tok_assign) &&tok_assign,
         decltype(old_type) old_type);
 
+    auto _spp_key_function() const -> void override;
+
     ~TypeStatementAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
@@ -131,7 +132,6 @@ public:
 };
 
 
-spp::asts::TypeStatementAst::~TypeStatementAst() {
-    // std::cout << to_string() << std::endl;
-    cleanup();
-}
+SPP_MOD_BEGIN
+auto spp::asts::TypeStatementAst::_spp_key_function() const -> void {}
+SPP_MOD_END

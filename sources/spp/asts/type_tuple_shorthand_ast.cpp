@@ -9,6 +9,7 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::TypeTupleShorthandAst::TypeTupleShorthandAst(
     decltype(tok_l) &&tok_l,
     decltype(element_types) &&element_types,
@@ -58,3 +59,5 @@ auto spp::asts::TypeTupleShorthandAst::convert()
     const auto type = generate::common_types::tuple_type(pos_start(), std::move(element_types));
     return ast_clone(type);
 }
+
+SPP_MOD_END

@@ -29,6 +29,7 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 
+SPP_MOD_BEGIN
 spp::asts::GenWithExpressionAst::GenWithExpressionAst(
     decltype(tok_gen) &&tok_gen,
     decltype(tok_with) &&tok_with,
@@ -175,3 +176,5 @@ auto spp::asts::GenWithExpressionAst::infer_type(
     auto send_type = m_generator_type->type_parts().back()->generic_arg_group->type_at("Send")->val;
     return send_type;
 }
+
+SPP_MOD_END

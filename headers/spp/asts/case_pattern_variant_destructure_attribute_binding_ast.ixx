@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.case_pattern_variant_destructure_attribute_binding_ast;
 import spp.asts.case_pattern_variant_ast;
-
 import std;
 
 namespace spp::asts {

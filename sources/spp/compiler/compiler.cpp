@@ -1,3 +1,6 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.compiler.compiler;
 
 import spp.analyse.scopes.scope;
@@ -12,6 +15,7 @@ import spp.utils.progress;
 import std;
 
 
+SPP_MOD_BEGIN
 spp::compiler::Compiler::Compiler(
     const Mode mode,
     const BuildType build_type) :
@@ -29,7 +33,7 @@ auto spp::compiler::Compiler::for_unit_tests(
     auto c = std::make_unique<Compiler>();
     c->m_modules = ModuleTree::for_unit_tests(std::filesystem::current_path(), std::move(main_code));
     c->m_mode = mode;
-    c->m_build_type = BuildType::EXE;  // Tests for "main" in the test suite.
+    c->m_build_type = BuildType::EXE; // Tests for "main" in the test suite.
     c->m_path = std::filesystem::current_path() / "src";
     c->m_boot = std::make_unique<CompilerBoot>();
     c->m_for_unit_tests = true;
@@ -75,3 +79,5 @@ auto spp::compiler::Compiler::compile() -> void {
 auto spp::compiler::Compiler::cleanup() -> void {
     analyse::scopes::ScopeManager::cleanup();
 }
+
+SPP_MOD_END

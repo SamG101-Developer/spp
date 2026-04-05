@@ -19,6 +19,7 @@ import genex;
 import llvm;
 
 
+SPP_MOD_BEGIN
 spp::asts::IdentifierAst::IdentifierAst(
     const std::size_t pos,
     decltype(val) val) :
@@ -26,6 +27,9 @@ spp::asts::IdentifierAst::IdentifierAst(
     m_pos(pos),
     val(std::move(val)) {
 }
+
+
+spp::asts::IdentifierAst::~IdentifierAst() = default;
 
 
 auto spp::asts::IdentifierAst::equals(
@@ -119,8 +123,8 @@ auto spp::asts::IdentifierAst::stage_9_comptime_resolution(
     -> void {
     // Extract the value from the symbol table and return it.
     const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));
-    const auto cmp_id = var_sym->comptime_value.get();
-    meta->cmp_result = ast_clone(cmp_id->to<ExpressionAst>());
+    auto tm = analyse::scopes::ScopeManager(sm->global_scope, var_sym->scope_defined_in ?: sm->current_scope);
+    var_sym->comptime_value->stage_9_comptime_resolution(&tm, meta);
 }
 
 
@@ -173,3 +177,5 @@ auto spp::asts::IdentifierAst::expr_parts() const
     -> std::vector<Ast*> {
     return {const_cast<IdentifierAst*>(this)};
 }
+
+SPP_MOD_END

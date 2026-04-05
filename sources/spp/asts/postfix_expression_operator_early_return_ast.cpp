@@ -37,6 +37,7 @@ import spp.codegen.llvm_materialize;
 import spp.utils.uid;
 
 
+SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorEarlyReturnAst::PostfixExpressionOperatorEarlyReturnAst(
     decltype(tok_qst) &&tok_qst) :
     PostfixExpressionOperatorAst(),
@@ -169,3 +170,5 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::infer_type(
     const auto try_type = analyse::utils::type_utils::get_try_type(*lhs_type, *lhs, *sm);
     return try_type->type_parts().back()->generic_arg_group->type_at("Value")->val;
 }
+
+SPP_MOD_END

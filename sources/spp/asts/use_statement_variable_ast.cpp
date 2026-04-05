@@ -21,6 +21,7 @@ import spp.utils.strings;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::UseStatementVariableAst::UseStatementVariableAst(
     decltype(annotations) &&annotations,
     decltype(tok_use) &&tok_use,
@@ -87,8 +88,8 @@ auto spp::asts::UseStatementVariableAst::stage_2_gen_top_level_scopes(
     -> void {
     // Run the steps for the annotations.
     Ast::stage_2_gen_top_level_scopes(sm, meta);
-    for (const auto &annotation : annotations) {
-        annotation->stage_2_gen_top_level_scopes(sm, meta);
+    for (auto const &a : annotations) {
+        a->stage_2_gen_top_level_scopes(sm, meta);
     }
 
     // Create the conversion.
@@ -199,3 +200,5 @@ auto spp::asts::UseStatementVariableAst::stage_10_code_gen_1(
     // Code gen for the conversion AST.
     return m_conversion->stage_10_code_gen_1(sm, meta, ctx);
 }
+
+SPP_MOD_END

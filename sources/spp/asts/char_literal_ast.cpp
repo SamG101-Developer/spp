@@ -13,11 +13,15 @@ import spp.asts.utils.ast_utils;
 import llvm;
 
 
+SPP_MOD_BEGIN
 spp::asts::CharLiteralAst::CharLiteralAst(
     decltype(val) &&val) :
     LiteralAst(),
     val(std::move(val)) {
 }
+
+
+spp::asts::CharLiteralAst::~CharLiteralAst() = default;
 
 
 auto spp::asts::CharLiteralAst::equals(
@@ -90,3 +94,5 @@ auto spp::asts::CharLiteralAst::infer_type(
     // The type of a string literal is always a string type.
     return generate::common_types::u8(val->pos_start());
 }
+
+SPP_MOD_END

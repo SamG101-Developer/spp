@@ -26,6 +26,8 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompAst : GenericArgumentAst {
      */
     std::unique_ptr<ExpressionAst> val;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the GenericArgumentCompAst with the arguments matching the members.
      * @param val The value of the generic comp argument.
@@ -39,4 +41,6 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompAst : GenericArgumentAst {
 };
 
 
-spp::asts::GenericArgumentCompAst::~GenericArgumentCompAst() = default;
+SPP_MOD_BEGIN
+auto spp::asts::GenericArgumentCompAst::_spp_key_function() const -> void {}
+SPP_MOD_END

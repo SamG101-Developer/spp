@@ -30,6 +30,7 @@ import opex.cast;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::LocalVariableDestructureArrayAst::LocalVariableDestructureArrayAst(
     decltype(tok_l) &&tok_l,
     decltype(elems) &&elems,
@@ -209,3 +210,5 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_11_code_gen_2(
     }
     return nullptr;
 }
+
+SPP_MOD_END

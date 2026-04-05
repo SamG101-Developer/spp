@@ -1,3 +1,6 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.analyse.scopes.symbol_table;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
@@ -9,6 +12,7 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 
+SPP_MOD_BEGIN
 template <typename I, typename S>
 spp::analyse::scopes::IndividualSymbolTable<I, S>::IndividualSymbolTable() :
     m_table() {
@@ -107,8 +111,7 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::all() const
 }
 
 
-spp::analyse::scopes::SymbolTable::SymbolTable() {
-}
+spp::analyse::scopes::SymbolTable::SymbolTable() = default;
 
 
 spp::analyse::scopes::SymbolTable::SymbolTable(
@@ -136,3 +139,4 @@ auto spp::analyse::scopes::SymbolTable::operator=(
 template class spp::analyse::scopes::IndividualSymbolTable<spp::asts::IdentifierAst, spp::analyse::scopes::NamespaceSymbol>;
 template class spp::analyse::scopes::IndividualSymbolTable<spp::asts::TypeIdentifierAst, spp::analyse::scopes::TypeSymbol>;
 template class spp::analyse::scopes::IndividualSymbolTable<spp::asts::IdentifierAst, spp::analyse::scopes::VariableSymbol>;
+SPP_MOD_END

@@ -8,6 +8,7 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 
+SPP_MOD_BEGIN
 spp::asts::ConventionMutAst::ConventionMutAst(
     decltype(tok_borrow) &&tok_borrow,
     decltype(tok_mut) &&tok_mut) :
@@ -48,3 +49,5 @@ spp::asts::ConventionMutAst::operator std::string() const {
     SPP_STRING_APPEND(tok_mut).append(" ");
     SPP_STRING_END;
 }
+
+SPP_MOD_END

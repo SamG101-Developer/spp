@@ -29,6 +29,7 @@ import genex;
 import llvm;
 
 
+SPP_MOD_BEGIN
 spp::asts::ClassPrototypeAst::ClassPrototypeAst(
     decltype(annotations) &&annotations,
     decltype(tok_cls) &&tok_cls,
@@ -45,6 +46,9 @@ spp::asts::ClassPrototypeAst::ClassPrototypeAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_param_group);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->impl);
 }
+
+
+spp::asts::ClassPrototypeAst::~ClassPrototypeAst() = default;
 
 
 auto spp::asts::ClassPrototypeAst::pos_start() const
@@ -71,7 +75,7 @@ auto spp::asts::ClassPrototypeAst::clone() const
     ast->m_scope = m_scope;
     ast->m_cls_sym = m_cls_sym;
     ast->visibility = visibility;
-    for (auto const &a: ast->annotations) {
+    for (auto const &a : ast->annotations) {
         a->set_ast_ctx(ast.get());
     }
     return ast;
@@ -182,7 +186,7 @@ auto spp::asts::ClassPrototypeAst::stage_1_pre_process(
     -> void {
     // Pre-process the AST by calling the base class method and then processing annotations and the body.
     Ast::stage_1_pre_process(ctx);
-    for (auto &&a : annotations) {
+    for (auto const &a : annotations) {
         a->stage_1_pre_process(this);
     }
     impl->stage_1_pre_process(this);
@@ -199,7 +203,7 @@ auto spp::asts::ClassPrototypeAst::stage_2_gen_top_level_scopes(
     Ast::stage_2_gen_top_level_scopes(sm, meta);
 
     // Run the generation steps for the annotations.
-    for (auto &&a : annotations) {
+    for (auto const &a : annotations) {
         a->stage_2_gen_top_level_scopes(sm, meta);
     }
 
@@ -231,6 +235,9 @@ auto spp::asts::ClassPrototypeAst::stage_4_qualify_types(
     // Qualify the types in the class body.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
+    for (auto const &a : annotations) {
+        a->stage_4_qualify_types(sm, meta);
+    }
     generic_param_group->stage_4_qualify_types(sm, meta);
     impl->stage_4_qualify_types(sm, meta);
     sm->move_out_of_current_scope();
@@ -244,6 +251,9 @@ auto spp::asts::ClassPrototypeAst::stage_5_load_super_scopes(
     // Load the super scopes for the class body.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
+    for (auto const &a : annotations) {
+        a->stage_5_load_super_scopes(sm, meta);
+    }
     impl->stage_5_load_super_scopes(sm, meta);
     sm->move_out_of_current_scope();
 }
@@ -275,6 +285,9 @@ auto spp::asts::ClassPrototypeAst::stage_7_analyse_semantics(
     // Analyse semantics for the class body.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
+    for (auto const &a : annotations) {
+        a->stage_7_analyse_semantics(sm, meta);
+    }
     generic_param_group->stage_7_analyse_semantics(sm, meta);
     impl->stage_7_analyse_semantics(sm, meta);
     sm->move_out_of_current_scope();
@@ -295,11 +308,15 @@ auto spp::asts::ClassPrototypeAst::stage_8_check_memory(
 
 auto spp::asts::ClassPrototypeAst::stage_9_comptime_resolution(
     ScopeManager *sm,
-    CompilerMetaData *)
+    CompilerMetaData *meta)
     -> void {
     // Skip the class body.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
+    for (auto const &a : annotations) {
+        a->stage_9_comptime_resolution(sm, meta);
+    }
+    impl->stage_9_comptime_resolution(sm, meta);
     sm->move_out_of_current_scope();
 }
 
@@ -347,3 +364,5 @@ auto spp::asts::ClassPrototypeAst::stage_11_code_gen_2(
     sm->move_out_of_current_scope();
     return nullptr;
 }
+
+SPP_MOD_END

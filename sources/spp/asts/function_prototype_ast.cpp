@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.builtins;
+import spp.analyse.utils.annotation_utils;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
@@ -47,6 +48,7 @@ import spp.lex.tokens;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     decltype(annotations) &&annotations,
     decltype(tok_fun) &&tok_cmp,
@@ -58,10 +60,13 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     decltype(return_type) &&return_type,
     decltype(impl) &&impl) :
     m_llvm_func(nullptr),
+    m_annotation_info(nullptr),
     abstract_annotation(nullptr),
     virtual_annotation(nullptr),
     temperature_annotation(nullptr),
-    no_impl_annotation(nullptr), inline_annotation(nullptr),
+    ffi_annotation(nullptr),
+    builtin_annotation(nullptr),
+    inline_annotation(nullptr),
     annotations(std::move(annotations)),
     tok_cmp(std::move(tok_cmp)),
     tok_fun(std::move(tok_fun)),
@@ -155,7 +160,7 @@ auto spp::asts::FunctionPrototypeAst::m_deduce_mock_class_type() const
 
 
 auto spp::asts::FunctionPrototypeAst::m_is_pure_generic(
-    ScopeManager *sm,
+    analyse::scopes::ScopeManager *sm,
     codegen::LLvmCtx *ctx) const
     -> std::tuple<bool, llvm::Type*, std::vector<llvm::Type*>> {
     // Convert the return and parameter types to LLVM types.
@@ -171,7 +176,7 @@ auto spp::asts::FunctionPrototypeAst::m_is_pure_generic(
 
 
 auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
-    ScopeManager *sm,
+    analyse::scopes::ScopeManager *sm,
     CompilerMetaData *,
     codegen::LLvmCtx *ctx)
     -> std::shared_ptr<codegen::LlvmFuncWrapper> {
@@ -268,6 +273,19 @@ auto spp::asts::FunctionPrototypeAst::non_generic_impl() const
 }
 
 
+auto spp::asts::FunctionPrototypeAst::mark_as_annotation()
+    -> void {
+    // Mark this function prototype as an annotation, by adding the appropriate annotation to it.
+    m_annotation_info = std::make_unique<analyse::utils::annotation_utils::AnnotationInfo>();
+}
+
+
+auto spp::asts::FunctionPrototypeAst::annotation_info() const
+    -> analyse::utils::annotation_utils::AnnotationInfo* {
+    return m_annotation_info.get();
+}
+
+
 auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     Ast *ctx)
     -> void {
@@ -319,7 +337,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     orig_name = ast_clone(name);
     auto sup_ext_impl_members = std::vector<std::unique_ptr<SupMemberAst>>();
     auto clone = ast_clone(this);
-    for (auto const &x : clone->annotations) { x->stage_1_pre_process(clone.get()); }
+    for (auto const &a : clone->annotations) { a->stage_1_pre_process(clone.get()); }
     sup_ext_impl_members.emplace_back(std::move(clone));
     auto mock_sup_ext_impl = std::make_unique<SupImplementationAst>(nullptr, std::move(sup_ext_impl_members), nullptr);
     auto mock_sup_ext = std::make_unique<SupPrototypeExtensionAst>(
@@ -344,7 +362,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
 
 
 auto spp::asts::FunctionPrototypeAst::stage_2_gen_top_level_scopes(
-    ScopeManager *sm,
+    analyse::scopes::ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Create a new scope for the function prototype, and move into it.
@@ -359,8 +377,8 @@ auto spp::asts::FunctionPrototypeAst::stage_2_gen_top_level_scopes(
         {sm->current_scope}, ERR_ARGS(*this, *param_group->get_self_param()));
 
     // Run steps for the annotations.
-    for (auto &&x : annotations) {
-        x->stage_2_gen_top_level_scopes(sm, meta);
+    for (auto const &a : annotations) {
+        a->stage_2_gen_top_level_scopes(sm, meta);
     }
 
     // Generate the generic parameters and attributes of the function.
@@ -370,7 +388,7 @@ auto spp::asts::FunctionPrototypeAst::stage_2_gen_top_level_scopes(
 
 
 auto spp::asts::FunctionPrototypeAst::stage_3_gen_top_level_aliases(
-    ScopeManager *sm,
+    analyse::scopes::ScopeManager *sm,
     CompilerMetaData *)
     -> void {
     // Skip the function scope, as it is already generated.
@@ -381,12 +399,15 @@ auto spp::asts::FunctionPrototypeAst::stage_3_gen_top_level_aliases(
 
 
 auto spp::asts::FunctionPrototypeAst::stage_4_qualify_types(
-    ScopeManager *sm,
+    analyse::scopes::ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Skip the function scope, as it is already qualified.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
+    for (auto const &a : annotations) {
+        a->stage_4_qualify_types(sm, meta);
+    }
     generic_param_group->stage_4_qualify_types(sm, meta);
     impl->stage_4_qualify_types(sm, meta);
     sm->move_out_of_current_scope();
@@ -394,12 +415,16 @@ auto spp::asts::FunctionPrototypeAst::stage_4_qualify_types(
 
 
 auto spp::asts::FunctionPrototypeAst::stage_5_load_super_scopes(
-    ScopeManager *sm,
+    analyse::scopes::ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Analyse the parameter and return types before sup scopes are attached.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
+    for (auto const &a : annotations) {
+        a->stage_5_load_super_scopes(sm, meta);
+    }
+
     param_group->stage_7_analyse_semantics(sm, meta);
     return_type->stage_7_analyse_semantics(sm, meta);
 
@@ -411,12 +436,13 @@ auto spp::asts::FunctionPrototypeAst::stage_5_load_super_scopes(
 
 
 auto spp::asts::FunctionPrototypeAst::stage_6_pre_analyse_semantics(
-    ScopeManager *sm,
+    analyse::scopes::ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Perform conflict checking before standard semantic analysis errors due to multiple possible prototypes.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
+
     const auto mod_ctx = m_ctx->to<ModulePrototypeAst>();
     const auto type_scope = mod_ctx
         ? sm->current_scope->parent_module()
@@ -433,12 +459,15 @@ auto spp::asts::FunctionPrototypeAst::stage_6_pre_analyse_semantics(
 
 
 auto spp::asts::FunctionPrototypeAst::stage_7_analyse_semantics(
-    ScopeManager *sm,
+    analyse::scopes::ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Move into the function scope, as it is now ready for semantic analysis.
     sm->move_to_next_scope();
     // SPP_ASSERT(sm->current_scope == m_scope);
+    for (auto const &a : annotations) {
+        a->stage_7_analyse_semantics(sm, meta);
+    }
 
     // Repeated convention check for generic substitutions.
     SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(return_type, return_type, *sm, "function return type");
@@ -448,7 +477,7 @@ auto spp::asts::FunctionPrototypeAst::stage_7_analyse_semantics(
     param_group->stage_7_analyse_semantics(sm, meta);
 
     // If this is a !compiler_builtin function, ensure a key exists in the "BUILTINS".
-    if (no_impl_annotation and no_impl_annotation->name->val == "compiler_builtin") {
+    if (builtin_annotation) {
         auto scope_vec = sm->current_scope->parent_module()->ancestors()
             | genex::views::transform([](auto const &x) { return x->name_as_string(); })
             | genex::to<std::vector>()
@@ -481,7 +510,7 @@ auto spp::asts::FunctionPrototypeAst::stage_7_analyse_semantics(
 
 
 auto spp::asts::FunctionPrototypeAst::stage_8_check_memory(
-    ScopeManager *sm,
+    analyse::scopes::ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Move into the function scope, as it is now ready for memory checking.
@@ -498,16 +527,21 @@ auto spp::asts::FunctionPrototypeAst::stage_8_check_memory(
 
 
 auto spp::asts::FunctionPrototypeAst::stage_9_comptime_resolution(
-    ScopeManager *sm,
-    CompilerMetaData *)
+    analyse::scopes::ScopeManager *sm,
+    CompilerMetaData *meta)
     -> void {
     // Manual scope skipping.
+    sm->move_to_next_scope();
+    for (auto const &a : annotations) {
+        a->stage_9_comptime_resolution(sm, meta);
+    }
     sm->exhaust_scope();
+    sm->move_out_of_current_scope();
 }
 
 
 auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_1(
-    ScopeManager *sm,
+    analyse::scopes::ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
@@ -535,7 +569,7 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_1(
 
 
 auto spp::asts::FunctionPrototypeAst::stage_11_code_gen_2(
-    ScopeManager *sm,
+    analyse::scopes::ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
@@ -560,7 +594,7 @@ auto spp::asts::FunctionPrototypeAst::stage_11_code_gen_2(
     meta->enclosing_function_scope = sm->current_scope;
 
     // If there is an implementation, generate its code.
-    const auto is_extern = no_impl_annotation || abstract_annotation;
+    const auto is_extern = ffi_annotation || abstract_annotation;
     if (get_llvm_func()->target == nullptr) {
         // Generic base function so not generating for it.
         // Manual scope skipping.
@@ -569,7 +603,7 @@ auto spp::asts::FunctionPrototypeAst::stage_11_code_gen_2(
             sm->move_to_next_scope(false);
         }
     }
-    else if (no_impl_annotation and no_impl_annotation->name->val == "compiler_builtin") {
+    else if (builtin_annotation or ffi_annotation) {
         // Get manual IR from a codegen module.
         impl->stage_11_code_gen_2(sm, meta, ctx);
     }
@@ -616,3 +650,5 @@ auto spp::asts::FunctionPrototypeAst::get_llvm_func() const
     -> std::shared_ptr<codegen::LlvmFuncWrapper> {
     return *m_llvm_func;
 }
+
+SPP_MOD_END

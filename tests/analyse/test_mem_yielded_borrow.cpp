@@ -45,7 +45,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
     test_invalid_memory_use_mut_borrow_after_conflicting_ref_borrow_created_simple,
-    SppUninitializedMemoryUseError, R"(
+    SppMemoryOverlapUsageError, R"(
     cor g(a: &Str) -> std::generator::Gen[Str] { }
 
     fun h(a: &mut Str) -> Void { }
@@ -53,8 +53,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> Void {
         let mut x = Str::from("hello world")
         let mut coroutine = g(&x)  # take an immutable borrow
-        h(&mut x)                  # conflicting mutable borrow invalidates the immutable borrow
-        coroutine.res()            # use of the invalidated immutable borrow
+        h(&mut x)                  # conflicting mutable borrow
     }
 )");
 
@@ -62,7 +61,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
     test_invalid_memory_use_ref_borrow_after_conflicting_mut_borrow_created_simple,
-    SppUninitializedMemoryUseError, R"(
+    SppMemoryOverlapUsageError, R"(
     cor g(a: &mut Str) -> std::generator::Gen[Str] { }
 
     fun h(a: &Str) -> Void { }
@@ -70,8 +69,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> Void {
         let mut x = Str::from("hello world")
         let mut coroutine = g(&mut x)  # take a mutable borrow
-        h(&x)                          # conflicting immutable borrow invalidates the mutable borrow
-        coroutine.res()                # use of the invalidated mutable borrow
+        h(&x)                          # conflicting immutable
     }
 )");
 
@@ -79,7 +77,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
     test_invalid_memory_use_mut_borrow_after_conflicting_mut_borrow_created_simple,
-    SppUninitializedMemoryUseError, R"(
+    SppMemoryOverlapUsageError, R"(
     cor g(a: &mut Str) -> std::generator::Gen[Str] { }
 
     fun h(a: &mut Str) -> Void { }
@@ -87,8 +85,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> Void {
         let mut x = Str::from("hello world")
         let mut coroutine = g(&mut x)  # take a mutable borrow
-        h(&mut x)                      # conflicting mutable borrow invalidates the first mutable borrow
-        coroutine.res()                # use of the invalidated mutable borrow
+        h(&mut x)                      # conflicting mutable borrow
     }
 )");
 
@@ -104,7 +101,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = Str::from("hello world")
         let mut coroutine = g(&x)  # take an immutable borrow
         h(&x)                      # conflicting immutable borrow does not invalidate the first immutable borrow
-        coroutine.res()            # use of the valid immutable borrow
     }
 )");
 
@@ -180,7 +176,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
     test_invalid_memory_create_mut_borrow_create_ref_borrow_use_mut_borrow,
-    SppUninitializedMemoryUseError, R"(
+    SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
         cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
@@ -191,7 +187,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut object = MyType()
         let mut generator_mut = object.custom_iter_mut()
         let generator_ref = object.custom_iter_ref()
-        let x = generator_mut.res()
     }
 )");
 
@@ -199,7 +194,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
     test_invalid_memory_create_ref_borrow_create_mut_borrow_use_ref_borrow,
-    SppUninitializedMemoryUseError, R"(
+    SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
         cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
@@ -210,7 +205,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut object = MyType()
         let generator_ref = object.custom_iter_ref()
         let mut generator_mut = object.custom_iter_mut()
-        let x = generator_ref.res()
     }
 )");
 
@@ -218,7 +212,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
     test_invalid_memory_create_mut_borrow_create_mut_borrow_use_mut_borrow,
-    SppUninitializedMemoryUseError, R"(
+    SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
         cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
@@ -229,7 +223,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut object = MyType()
         let mut generator_mut_1 = object.custom_iter_mut()
         let mut generator_mut_2 = object.custom_iter_mut()
-        let x = generator_mut_1.res()
     }
 )");
 
@@ -237,7 +230,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
     test_invalid_memory_create_mut_borrow_create_ref_borrow_use_mut_borrow_with_scoping,
-    SppUninitializedMemoryUseError, R"(
+    SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
         cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
@@ -251,7 +244,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             generator_mut = object.custom_iter_mut()
         }
         let generator_ref = object.custom_iter_ref()
-        generator_mut.res()
     }
 )");
 
@@ -259,7 +251,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
     test_invalid_memory_create_ref_borrow_create_mut_borrow_use_ref_borrow_with_scoping,
-    SppUninitializedMemoryUseError, R"(
+    SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
         cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
@@ -273,7 +265,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             generator_ref = object.custom_iter_ref()
         }
         let mut generator_mut = object.custom_iter_mut()
-        generator_ref.res()
     }
 )");
 
@@ -281,7 +272,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
     test_invalid_memory_create_mut_borrow_create_mut_borrow_use_mut_borrow_with_scoping,
-    SppUninitializedMemoryUseError, R"(
+    SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
         cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
@@ -295,7 +286,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             generator_mut_1 = object.custom_iter_mut()
         }
         let mut generator_mut_2 = object.custom_iter_mut()
-        generator_mut_1.res()
     }
 )");
 

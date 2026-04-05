@@ -17,9 +17,10 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
-private:
+public:
     std::vector<analyse::scopes::Scope *> m_dummy_scopes;
 
+private:
     std::unique_ptr<Ast> m_dummy_ast;
 
 public:
@@ -29,6 +30,8 @@ public:
      * generic type parameter and @c Copy is the constraint.
      */
     std::unique_ptr<GenericParameterTypeInlineConstraintsAst> constraints;
+
+    auto _spp_key_function() const -> void override;
 
     /**
      * Construct the GenericParameterTypeAst with the arguments matching the members.
@@ -51,4 +54,6 @@ public:
 };
 
 
-spp::asts::GenericParameterTypeAst::~GenericParameterTypeAst() = default;
+SPP_MOD_BEGIN
+auto spp::asts::GenericParameterTypeAst::_spp_key_function() const -> void {}
+SPP_MOD_END

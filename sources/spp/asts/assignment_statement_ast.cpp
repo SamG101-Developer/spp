@@ -9,7 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.obj_utils;
+import spp.analyse.utils.cmp_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
@@ -26,6 +26,7 @@ import spp.lex.tokens;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::AssignmentStatementAst::AssignmentStatementAst(
     decltype(lhs) &&lhs,
     decltype(tok_assign) &&tok_assign,
@@ -202,25 +203,8 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
         // Ensure a borrow is not increasing its lifetime.
         const auto lhs_outermost = sm->current_scope->get_var_symbol_outermost(*lhs_expr).first;
         const auto rhs_outermost = sm->current_scope->get_var_symbol_outermost(*rhs_expr).first;
-        const auto is_rhs_borrow = rhs_outermost and std::get<0>(rhs_outermost->memory_info->ast_borrowed) != nullptr;
-        if (lhs_outermost != nullptr and rhs_outermost != nullptr and is_rhs_borrow) {
-            const auto rhs_borrow_scope = std::get<1>(rhs_outermost->memory_info->ast_borrowed);
-            const auto lhs_init_scope = ( {
-                auto ret_scope = static_cast<analyse::scopes::Scope const*>(nullptr);
-                for (auto const &ancestor : rhs_borrow_scope->ancestors()) {
-                    if (not ancestor->has_var_symbol(lhs_outermost->name, true)) { continue; }
-                    ret_scope = ancestor;
-                    break;
-                }
-                ret_scope;
-            });
-            if (lhs_init_scope != nullptr) {
-                const auto scope_depth_difference = genex::position(lhs_init_scope->ancestors(), genex::operations::eq_fixed{rhs_borrow_scope});
-                raise_if<analyse::errors::SppBorrowLifetimeIncreaseError>(
-                    scope_depth_difference < 0, {sm->current_scope},
-                    ERR_ARGS(*this, *lhs_outermost->name, *std::get<0>(rhs_outermost->memory_info->ast_borrowed)));
-            }
-        }
+        analyse::utils::mem_utils::prevent_borrow_lifetime_extension(
+            lhs_outermost.get(), rhs_outermost.get(), this, *sm);
     }
 }
 
@@ -241,7 +225,7 @@ auto spp::asts::AssignmentStatementAst::stage_9_comptime_resolution(
 
         // Assign to an attribute.
         else if (is_attr(lhs[i].get(), sm)) {
-            analyse::utils::obj_utils::set_attribute_value(
+            analyse::utils::cmp_utils::set_attribute_value(
                 lhs_sym->comptime_value->to<ObjectInitializerAst>(), lhs[i].get(), std::move(meta->cmp_result), sm);
         }
 
@@ -278,3 +262,5 @@ auto spp::asts::AssignmentStatementAst::stage_11_code_gen_2(
     // Statements are always generated into a builder so no need to return anything.
     return nullptr;
 }
+
+SPP_MOD_END

@@ -20,6 +20,8 @@ SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {
      */
     std::unique_ptr<TokenAst> val;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the CharLiteralAst with the arguments matching the members.
      * @param[in] val The char value of the char literal.
@@ -29,9 +31,9 @@ SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {
 
     ~CharLiteralAst() override;
 
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
-    auto equals_char_literal(CharLiteralAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals_char_literal(CharLiteralAst const &) const -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
@@ -43,4 +45,6 @@ SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {
 };
 
 
-spp::asts::CharLiteralAst::~CharLiteralAst() = default;
+SPP_MOD_BEGIN
+auto spp::asts::CharLiteralAst::_spp_key_function() const -> void {}
+SPP_MOD_END

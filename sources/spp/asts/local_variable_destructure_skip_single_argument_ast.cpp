@@ -7,6 +7,7 @@ import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::LocalVariableDestructureSkipSingleArgumentAst::LocalVariableDestructureSkipSingleArgumentAst(
     decltype(tok_underscore) &&tok_underscore) :
     tok_underscore(std::move(tok_underscore)) {
@@ -51,3 +52,5 @@ auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::extract_names() c
     -> std::vector<std::shared_ptr<IdentifierAst>> {
     return {};
 }
+
+SPP_MOD_END

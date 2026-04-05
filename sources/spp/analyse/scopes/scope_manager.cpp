@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.scopes.scope_manager;
@@ -30,6 +31,7 @@ import spp.utils.error_formatter;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::analyse::scopes::ScopeManager::ScopeManager(
     std::shared_ptr<Scope> const &global_scope,
     Scope *current_scope) :
@@ -310,3 +312,5 @@ auto spp::analyse::scopes::ScopeManager::cleanup() -> void {
     normal_sup_blocks.clear();
     generic_sup_blocks.clear();
 }
+
+SPP_MOD_END

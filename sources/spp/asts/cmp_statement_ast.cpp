@@ -25,6 +25,7 @@ import llvm;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::CmpStatementAst::CmpStatementAst(
     decltype(annotations) &&annotations,
     decltype(tok_cmp) &&tok_cmp,
@@ -33,6 +34,7 @@ spp::asts::CmpStatementAst::CmpStatementAst(
     decltype(type) type,
     decltype(tok_assign) &&tok_assign,
     decltype(value) &&value) :
+    m_from_use_statement(false),
     annotations(std::move(annotations)),
     tok_cmp(std::move(tok_cmp)),
     name(std::move(name)),
@@ -44,6 +46,9 @@ spp::asts::CmpStatementAst::CmpStatementAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_colon, lex::SppTokenType::TK_COLON, ":");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
 }
+
+
+spp::asts::CmpStatementAst::~CmpStatementAst() = default;
 
 
 auto spp::asts::CmpStatementAst::pos_start() const
@@ -96,7 +101,7 @@ auto spp::asts::CmpStatementAst::stage_1_pre_process(
     -> void {
     // No pre-processing needed for cmp statements.
     Ast::stage_1_pre_process(ctx);
-    for (auto &&a : annotations) {
+    for (auto const &a : annotations) {
         a->stage_1_pre_process(this);
     }
 }
@@ -108,7 +113,7 @@ auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
     -> void {
     // No top-level scopes needed for cmp statements.
     Ast::stage_2_gen_top_level_scopes(sm, meta);
-    for (auto &&a : annotations) {
+    for (auto const &a : annotations) {
         a->stage_2_gen_top_level_scopes(sm, meta);
     }
 
@@ -126,6 +131,15 @@ auto spp::asts::CmpStatementAst::stage_4_qualify_types(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // Ensure that the type type doesn't have a convention.
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(
+        this, type, *sm, "global constant type");
+
+    //
+    for (auto const &a : annotations) {
+        a->stage_4_qualify_types(sm, meta);
+    }
+
     // Qualify the type.
     type->stage_4_qualify_types(sm, meta);
     type->stage_7_analyse_semantics(sm, meta);
@@ -138,11 +152,11 @@ auto spp::asts::CmpStatementAst::stage_4_qualify_types(
 
 auto spp::asts::CmpStatementAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    CompilerMetaData *)
+    CompilerMetaData *meta)
     -> void {
-    // Ensure that the convention type doesn't have a convention.
-    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(
-        this, type, *sm, "global constant type");
+    for (auto const &a : annotations) {
+        a->stage_5_load_super_scopes(sm, meta);
+    }
 
     // Check the type exists before attaching super scopes
     // type->stage_7_analyse_semantics(sm, meta);
@@ -153,6 +167,10 @@ auto spp::asts::CmpStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    for (auto const &a : annotations) {
+        a->stage_7_analyse_semantics(sm, meta);
+    }
     // Analyse the type and value.
     value->stage_7_analyse_semantics(sm, meta);
 
@@ -174,6 +192,12 @@ auto spp::asts::CmpStatementAst::stage_8_check_memory(
     value->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
         *value, *value, *sm, true, true, true, true, true, meta);
+
+    // Generate the value and assign it to the variable symbol's compile-time value.
+    if (type->operator std::string()[0] != '$') {
+        const auto var_sym = sm->current_scope->get_var_symbol(name);
+        var_sym->comptime_value = ast_clone(value);
+    }
 }
 
 
@@ -181,12 +205,16 @@ auto spp::asts::CmpStatementAst::stage_9_comptime_resolution(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    for (auto const &a : annotations) {
+        a->stage_9_comptime_resolution(sm, meta);
+    }
+
     // Generate the value and assign it to the variable symbol's compile-time value.
     if (type->operator std::string()[0] != '$') {
         const auto var_sym = sm->current_scope->get_var_symbol(name);
         value->stage_9_comptime_resolution(sm, meta);
         var_sym->comptime_value = std::move(meta->cmp_result);
-        // var_sym->comptime_value == nullptr // Todo: => ERROR?
     }
 }
 
@@ -228,3 +256,5 @@ auto spp::asts::CmpStatementAst::is_from_use_statement() const
     -> bool {
     return m_from_use_statement;
 }
+
+SPP_MOD_END

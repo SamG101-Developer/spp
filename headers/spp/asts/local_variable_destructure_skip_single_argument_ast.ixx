@@ -3,11 +3,9 @@ module;
 
 export module spp.asts.local_variable_destructure_skip_single_argument_ast;
 import spp.asts.local_variable_ast;
-
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct CasePatternVariantDestructureSkipSingleArgumentAst;
     SPP_EXP_CLS struct LocalVariableDestructureSkipSingleArgumentAst;
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct TokenAst;
@@ -33,7 +31,7 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureSkipSingleArgumentAst fina
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto extract_name() const -> std::shared_ptr<IdentifierAst> override;
+    SPP_ATTR_NODISCARD auto extract_name() const -> std::shared_ptr<IdentifierAst> override;
 
-    auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>> override;
 };

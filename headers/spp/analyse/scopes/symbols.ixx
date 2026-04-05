@@ -35,20 +35,14 @@ namespace spp::analyse::scopes {
  * need for a base class.
  */
 SPP_EXP_CLS struct spp::analyse::scopes::Symbol {
+    virtual auto _spp_key_function() const -> void;
+
     /**
      * Enforce a virtual destructor for the Symbol class. This is to ensure that derived classes can be properly
      * destructed when deleted through a base class pointer. This is important for polymorphism and memory management,
      * as it allows for proper cleanup of resources when a derived class is deleted.
      */
     virtual ~Symbol();
-
-    /**
-     * Enforce a string conversion operator for the Symbol class. This is to ensure that all derived classes can be
-     * converted to a string representation. This is useful for debugging and logging purposes, as it allows for easy
-     * JSON serialization of symbols.
-     * @return A string representation of the symbol, which can be used for debugging or logging purposes.
-     */
-    virtual explicit operator std::string() const = 0;
 };
 
 
@@ -56,6 +50,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
     std::shared_ptr<asts::IdentifierAst> name;
 
     Scope *scope;
+
+    auto _spp_key_function() const -> void override;
 
     NamespaceSymbol(
         std::shared_ptr<asts::IdentifierAst> name,
@@ -65,8 +61,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
         NamespaceSymbol const &that);
 
     ~NamespaceSymbol() override;
-
-    explicit operator std::string() const override;
 
     auto operator==(
         NamespaceSymbol const &that) const
@@ -95,6 +89,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
 
     std::shared_ptr<VariableSymbol> alias_sym;
 
+    auto _spp_key_function() const -> void override;
+
     VariableSymbol(
         std::shared_ptr<asts::IdentifierAst> name,
         std::shared_ptr<asts::TypeAst> type,
@@ -107,8 +103,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
         VariableSymbol const &that);
 
     ~VariableSymbol() override;
-
-    explicit operator std::string() const override;
 
     auto operator==(
         VariableSymbol const &that) const
@@ -148,6 +142,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
     std::vector<std::shared_ptr<TypeSymbol>> aliased_by_symbols = {};
 
+    auto _spp_key_function() const -> void override;
+
     TypeSymbol(
         std::shared_ptr<asts::TypeIdentifierAst> name,
         asts::ClassPrototypeAst *type,
@@ -164,8 +160,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
     ~TypeSymbol() override;
 
-    explicit operator std::string() const override;
-
     auto operator==(
         TypeSymbol const &that) const
         -> bool;
@@ -175,10 +169,9 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 };
 
 
-spp::analyse::scopes::Symbol::~Symbol() = default;
-
-spp::analyse::scopes::NamespaceSymbol::~NamespaceSymbol() = default;
-
-spp::analyse::scopes::VariableSymbol::~VariableSymbol() = default;
-
-spp::analyse::scopes::TypeSymbol::~TypeSymbol() = default;
+SPP_MOD_BEGIN
+auto spp::analyse::scopes::Symbol::_spp_key_function() const -> void {}
+auto spp::analyse::scopes::VariableSymbol::_spp_key_function() const -> void {}
+auto spp::analyse::scopes::NamespaceSymbol::_spp_key_function() const -> void {}
+auto spp::analyse::scopes::TypeSymbol::_spp_key_function() const -> void {}
+SPP_MOD_END

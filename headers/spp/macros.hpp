@@ -69,7 +69,7 @@ constexpr auto SPP_VERSION = "0.1.0";
 
 #define SPP_STRING_APPEND(x) raw_string.append(x != nullptr ? static_cast<std::string>(*x) : "")
 
-#define SPP_STRING_EXTEND(x, j) raw_string.append(x | genex::views::transform([&](auto &&x) { return static_cast<std::string>(*x); }) | genex::views::intersperse(std::string(j)) | genex::views::join | genex::to<std::string>())
+#define SPP_STRING_EXTEND(x, j) raw_string.append(x | genex::views::transform([&](auto &&x) { return x ? static_cast<std::string>(*x) : ""; }) | genex::views::intersperse(std::string(j)) | genex::views::join | genex::to<std::string>())
 
 #define SPP_STRING_END return raw_string
 
@@ -117,13 +117,16 @@ constexpr auto SPP_VERSION = "0.1.0";
     if (auto pe = expr->to<PostfixExpressionAst>(); pe != nullptr and pe->op->to<PostfixExpressionOperatorDerefAst>() != nullptr)
 
 
-#define SPP_EXP_CLS export extern "C++"
-
 #define SPP_EXP_ENUM export extern "C++"
 
 #define SPP_EXP_FUN export
 
 #define SPP_EXP_CMP export inline
+
+#define SPP_EXP_CLS export extern "C++"
+
+#define SPP_MOD_BEGIN extern "C++" {
+#define SPP_MOD_END }
 
 
 /**

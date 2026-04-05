@@ -12,6 +12,7 @@ import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::ParenthesisedExpressionAst::ParenthesisedExpressionAst(
     decltype(tok_open_paren) &&tok_open_paren,
     decltype(expr) &&expr,
@@ -103,3 +104,5 @@ auto spp::asts::ParenthesisedExpressionAst::infer_type(
     // Get the inner expression's type.
     return expr->infer_type(sm, meta);
 }
+
+SPP_MOD_END

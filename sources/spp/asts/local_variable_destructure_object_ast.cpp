@@ -30,6 +30,7 @@ import spp.lex.tokens;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::LocalVariableDestructureObjectAst::LocalVariableDestructureObjectAst(
     decltype(type) &&type,
     decltype(tok_l) &&tok_l,
@@ -98,7 +99,6 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-
     // Get the value and analyse it and the type.
     const auto val = meta->let_stmt_value;
     const auto val_type = val->infer_type(sm, meta);
@@ -214,3 +214,5 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_11_code_gen_2(
     }
     return nullptr;
 }
+
+SPP_MOD_END

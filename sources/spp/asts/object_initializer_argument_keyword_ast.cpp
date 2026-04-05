@@ -8,6 +8,7 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 
+SPP_MOD_BEGIN
 spp::asts::ObjectInitializerArgumentKeywordAst::ObjectInitializerArgumentKeywordAst(
     decltype(name) name,
     decltype(tok_assign) &&tok_assign,
@@ -49,3 +50,5 @@ spp::asts::ObjectInitializerArgumentKeywordAst::operator std::string() const {
     SPP_STRING_APPEND(val);
     SPP_STRING_END;
 }
+
+SPP_MOD_END

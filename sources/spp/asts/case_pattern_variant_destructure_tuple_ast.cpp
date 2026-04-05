@@ -30,6 +30,7 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::CasePatternVariantDestructureTupleAst::CasePatternVariantDestructureTupleAst(
     decltype(tok_l) &&tok_l,
     decltype(elems) &&elems,
@@ -164,3 +165,5 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::stage_11_code_gen_2(
     // Return the combined statement.
     return llvm_master_transform;
 }
+
+SPP_MOD_END

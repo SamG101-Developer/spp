@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.function_call_argument_group_ast;
 import spp.asts.ast;
-
 import std;
 
 namespace spp::asts {
@@ -60,6 +59,8 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentGroupAst final : virtual Ast {
     SPP_ATTR_NODISCARD auto get_keyword_args() const -> std::vector<FunctionCallArgumentKeywordAst*>;
 
     SPP_ATTR_NODISCARD auto get_positional_args() const -> std::vector<FunctionCallArgumentPositionalAst*>;
+
+    auto at(const char *key) const -> FunctionCallArgumentAst const*;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

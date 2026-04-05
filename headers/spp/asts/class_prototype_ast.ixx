@@ -84,6 +84,8 @@ public:
         decltype(generic_param_group) &&generic_param_group,
         decltype(impl) &&impl);
 
+    auto _spp_key_function() const -> void override;
+
     ~ClassPrototypeAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
@@ -124,4 +126,6 @@ public:
 };
 
 
-spp::asts::ClassPrototypeAst::~ClassPrototypeAst() = default;
+SPP_MOD_BEGIN
+auto spp::asts::ClassPrototypeAst::_spp_key_function() const -> void {}
+SPP_MOD_END

@@ -1,5 +1,5 @@
 module;
-#include <spp/analyse/macros.hpp>
+#include <spp/macros.hpp>
 
 module spp.asts.function_implementation_lowered_ast;
 import spp.analyse.errors.semantic_error;
@@ -13,6 +13,7 @@ import spp.utils.traits;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::FunctionImplementationLoweredAst::~FunctionImplementationLoweredAst() = default;
 
 
@@ -71,3 +72,5 @@ auto spp::asts::FunctionImplementationLoweredAst::set_scope_str(
     // Set the scope string for this lowered function implementation.
     m_scope_str = scope_str;
 }
+
+SPP_MOD_END

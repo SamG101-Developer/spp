@@ -3,13 +3,13 @@ module;
 
 export module spp.asts.array_literal_repeated_element_ast;
 import spp.asts.array_literal_ast;
-import spp.asts.token_ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct ArrayLiteralRepeatedElementAst;
+    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
@@ -54,6 +54,8 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
      */
     std::unique_ptr<TokenAst> tok_r;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the ArrayLiteral0Elements with the arguments matching the members.
      * @param[in] tok_l The token that represents the left square bracket @code [@endcode in the array literal.
@@ -71,10 +73,10 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
 
     ~ArrayLiteralRepeatedElementAst() override;
 
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-    auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
-public:
+    SPP_ATTR_NODISCARD auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> std::strong_ordering override;
+
     SPP_AST_KEY_FUNCTIONS;
 
     /**
@@ -124,4 +126,6 @@ public:
 };
 
 
-spp::asts::ArrayLiteralRepeatedElementAst::~ArrayLiteralRepeatedElementAst() = default;
+SPP_MOD_BEGIN
+auto spp::asts::ArrayLiteralRepeatedElementAst::_spp_key_function() const -> void {}
+SPP_MOD_END

@@ -20,6 +20,7 @@ import spp.asts.utils.orderable;
 import spp.lex.tokens;
 
 
+SPP_MOD_BEGIN
 spp::asts::GenericArgumentCompKeywordAst::GenericArgumentCompKeywordAst(
     decltype(name) name,
     decltype(tok_assign) &&tok_assign,
@@ -29,6 +30,9 @@ spp::asts::GenericArgumentCompKeywordAst::GenericArgumentCompKeywordAst(
     tok_assign(std::move(tok_assign)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
 }
+
+
+spp::asts::GenericArgumentCompKeywordAst::~GenericArgumentCompKeywordAst() = default;
 
 
 auto spp::asts::GenericArgumentCompKeywordAst::equals(
@@ -121,3 +125,5 @@ auto spp::asts::GenericArgumentCompKeywordAst::stage_8_check_memory(
     analyse::utils::mem_utils::validate_symbol_memory(
         *val, *val, *sm, true, true, true, true, true, meta);
 }
+
+SPP_MOD_END

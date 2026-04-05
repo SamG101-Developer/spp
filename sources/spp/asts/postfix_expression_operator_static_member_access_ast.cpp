@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
 import spp.asts.expression_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
@@ -22,6 +23,7 @@ import spp.utils.strings;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOperatorStaticMemberAccessAst(
     decltype(tok_dbl_colon) &&tok_dbl_colon,
     decltype(name) &&name) :
@@ -139,8 +141,21 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_9_comptime
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // Due to aliasing rules, getting the new symbol will pull the old symbol.
-    meta->cmp_result = ast_clone(sm->current_scope->get_var_symbol(name)->comptime_value->to<ExpressionAst>());
+    // Handle accessing a symbol on a type.
+    if (const auto lhs_as_type = meta->postfix_expression_lhs->to<TypeAst>(); lhs_as_type != nullptr) {
+        const auto lhs_type_sym = sm->current_scope->get_type_symbol(ast_clone(lhs_as_type));
+        const auto sym = lhs_type_sym->scope->get_var_symbol(name, true);
+        auto tm = ScopeManager(sm->global_scope, lhs_type_sym->scope);
+        sym->comptime_value->stage_9_comptime_resolution(&tm, meta);
+        meta->cmp_result = ast_clone(meta->cmp_result);
+        return;
+    }
+
+    // Handle accessing a variable on a namespace.
+    const auto lhs = meta->postfix_expression_lhs;
+    const auto lhs_ns_sym = sm->current_scope->convert_postfix_to_nested_scope(lhs)->ns_sym;
+    const auto sym = lhs_ns_sym->scope->get_var_symbol(name, true);
+    meta->cmp_result = ast_clone(sym->comptime_value->to<ExpressionAst>());
 }
 
 
@@ -175,3 +190,5 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::expr_parts() con
     // Static member access does not have any expression parts.
     return {name.get()};
 }
+
+SPP_MOD_END

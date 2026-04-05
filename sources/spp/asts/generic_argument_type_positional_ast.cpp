@@ -13,10 +13,14 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
 
+SPP_MOD_BEGIN
 spp::asts::GenericArgumentTypePositionalAst::GenericArgumentTypePositionalAst(
     decltype(val) val) :
     GenericArgumentTypeAst(std::move(val), utils::OrderableTag::POSITIONAL_ARG) {
 }
+
+
+spp::asts::GenericArgumentTypePositionalAst::~GenericArgumentTypePositionalAst() = default;
 
 
 auto spp::asts::GenericArgumentTypePositionalAst::equals(
@@ -74,3 +78,5 @@ auto spp::asts::GenericArgumentTypePositionalAst::stage_7_analyse_semantics(
     const auto tmp4 = tmp2->with_convention(std::move(tmp3));
     val = tmp4;
 }
+
+SPP_MOD_END

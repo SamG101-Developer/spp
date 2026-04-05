@@ -72,5 +72,5 @@ public:
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 
-    auto get_llvm_func() const -> std::shared_ptr<codegen::LlvmFuncWrapper>;
+    SPP_ATTR_NODISCARD auto get_llvm_func() const -> std::shared_ptr<codegen::LlvmFuncWrapper>;
 };

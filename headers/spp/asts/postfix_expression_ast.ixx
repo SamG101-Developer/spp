@@ -49,5 +49,5 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionAst final : ExpressionAst {
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 
-    auto expr_parts() const -> std::vector<Ast *> override;
+    SPP_ATTR_NODISCARD auto expr_parts() const -> std::vector<Ast *> override;
 };

@@ -1,3 +1,6 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.analyse.scopes.symbols;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
@@ -15,7 +18,10 @@ import spp.asts.type_statement_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_sym_info;
 import genex;
-import nlohmann.json;
+
+
+SPP_MOD_BEGIN
+spp::analyse::scopes::Symbol::~Symbol() = default;
 
 
 spp::analyse::scopes::NamespaceSymbol::NamespaceSymbol(
@@ -33,13 +39,7 @@ spp::analyse::scopes::NamespaceSymbol::NamespaceSymbol(
 }
 
 
-spp::analyse::scopes::NamespaceSymbol::operator std::string() const {
-    return nlohmann::json(std::map<std::string, std::string>{
-        {"what", "type"},
-        {"name", static_cast<std::string>(*name)},
-        {"scope", static_cast<std::string>(*std::get<std::shared_ptr<asts::IdentifierAst>>(scope->name))}
-    }).dump();
-}
+spp::analyse::scopes::NamespaceSymbol::~NamespaceSymbol() = default;
 
 
 auto spp::analyse::scopes::NamespaceSymbol::operator==(
@@ -82,13 +82,7 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
 }
 
 
-spp::analyse::scopes::VariableSymbol::operator std::string() const {
-    return nlohmann::json(std::map<std::string, std::string>{
-        {"what", "variable"},
-        {"name", static_cast<std::string>(*name)},
-        {"type", static_cast<std::string>(*type)}
-    }).dump();
-}
+spp::analyse::scopes::VariableSymbol::~VariableSymbol() = default;
 
 
 auto spp::analyse::scopes::VariableSymbol::operator==(
@@ -116,7 +110,7 @@ auto spp::analyse::scopes::VariableSymbol::fq_name() const
 
     auto qualified_name = std::unique_ptr<asts::ExpressionAst>(nullptr);
     qualified_name = asts::ast_clone(std::get<std::shared_ptr<asts::IdentifierAst>>(scopes.back()->name));
-    for (auto qualifier_scope: scopes | genex::views::reverse | genex::views::drop(1)) {
+    for (auto qualifier_scope : scopes | genex::views::reverse | genex::views::drop(1)) {
         const auto raw_ns_name = std::get<std::shared_ptr<asts::IdentifierAst>>(qualifier_scope->name);
         auto ns_name = std::make_shared<asts::IdentifierAst>(raw_ns_name->pos_start(), raw_ns_name->val);
         auto ns_op = std::make_unique<asts::PostfixExpressionOperatorStaticMemberAccessAst>(nullptr, std::move(ns_name));
@@ -174,14 +168,7 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
 }
 
 
-spp::analyse::scopes::TypeSymbol::operator std::string() const {
-    return nlohmann::json(std::map<std::string, std::string>{
-        {"what", "type"},
-        {"name", static_cast<std::string>(*name)},
-        {"defined_in", static_cast<std::string>(*std::get<std::shared_ptr<asts::IdentifierAst>>(scope_defined_in->name))},
-        {"scope", static_cast<std::string>(*std::get<std::shared_ptr<asts::IdentifierAst>>(scope->name))}
-    }).dump();
-}
+spp::analyse::scopes::TypeSymbol::~TypeSymbol() = default;
 
 
 auto spp::analyse::scopes::TypeSymbol::operator==(
@@ -221,3 +208,5 @@ auto spp::analyse::scopes::TypeSymbol::fq_name(
     // Re-add the convention of the type if it exists.
     return convention ? qualified_name->with_convention(ast_clone(convention)) : qualified_name;
 }
+
+SPP_MOD_END

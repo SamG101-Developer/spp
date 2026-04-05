@@ -21,6 +21,7 @@ import spp.lex.tokens;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::TypeStatementAst::TypeStatementAst(
     decltype(annotations) &&annotations,
     decltype(tok_type) &&tok_type,
@@ -40,6 +41,11 @@ spp::asts::TypeStatementAst::TypeStatementAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_type, lex::SppTokenType::KW_TYPE, "type");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_param_group);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
+}
+
+
+spp::asts::TypeStatementAst::~TypeStatementAst() {
+    cleanup();
 }
 
 
@@ -94,8 +100,8 @@ auto spp::asts::TypeStatementAst::stage_1_pre_process(
     -> void {
     // Pre-process the annotations.
     Ast::stage_1_pre_process(ctx);
-    for (auto const &annotation : annotations) {
-        annotation->stage_1_pre_process(this);
+    for (auto const &a : annotations) {
+        a->stage_1_pre_process(this);
     }
 }
 
@@ -105,8 +111,8 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
     CompilerMetaData *meta)
     -> void {
     // Run top level scope generation for the annotations.
-    for (auto const &annotation : annotations) {
-        annotation->stage_2_gen_top_level_scopes(sm, meta);
+    for (auto const &a : annotations) {
+        a->stage_2_gen_top_level_scopes(sm, meta);
     }
 
     // Check there are no conventions on the new type.
@@ -116,7 +122,7 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
     // Create the type symbol for this type, that will point to the old type.
     m_alias_sym = std::make_shared<analyse::scopes::TypeSymbol>(
         new_type, nullptr, nullptr, sm->current_scope, sm->current_scope->parent_module());
-    m_alias_sym->alias_stmt = std::unique_ptr<TypeStatementAst>(this);  // This is BAD but "cleanup" handles mem error.
+    m_alias_sym->alias_stmt = std::unique_ptr<TypeStatementAst>(this); // This is BAD but "cleanup" handles mem error.
     sm->current_scope->add_type_symbol_check_conflict(m_alias_sym);
 
     // Create a new scope for the type statement.
@@ -172,6 +178,9 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
     // Skip the class scope, and enter the type statement scope.
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
+    for (auto const &a : annotations) {
+        a->stage_4_qualify_types(sm, meta);
+    }
     old_type = m_mapped_old_type;
 
     // Get the old type's symbol, without generics.
@@ -194,10 +203,13 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
 
 auto spp::asts::TypeStatementAst::stage_5_load_super_scopes(
     ScopeManager *sm,
-    CompilerMetaData *)
+    CompilerMetaData *meta)
     -> void {
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
+    for (auto const &a : annotations) {
+        a->stage_5_load_super_scopes(sm, meta);
+    }
     sm->move_out_of_current_scope();
 }
 
@@ -216,6 +228,10 @@ auto spp::asts::TypeStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    for (auto const &a : annotations) {
+        a->stage_7_analyse_semantics(sm, meta);
+    }
+
     // If this is a pre-generated AST (mod/sup context), skip any generation steps.
     if (m_generated) {
         sm->move_to_next_scope();
@@ -254,10 +270,13 @@ auto spp::asts::TypeStatementAst::stage_8_check_memory(
 
 auto spp::asts::TypeStatementAst::stage_9_comptime_resolution(
     ScopeManager *sm,
-    CompilerMetaData *)
+    CompilerMetaData *meta)
     -> void {
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
+    for (auto const &a : annotations) {
+        a->stage_9_comptime_resolution(sm, meta);
+    }
     sm->move_out_of_current_scope();
 }
 
@@ -311,3 +330,5 @@ auto spp::asts::TypeStatementAst::cleanup()
 
     // Now this pointer has been released from the type symbol, we can safely destroy the type statement.
 }
+
+SPP_MOD_END

@@ -2,12 +2,9 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.cmp_statement_ast;
-import spp.asts.annotation_ast;
-import spp.asts.expression_ast;
-import spp.asts.statement_ast;
 import spp.asts.module_member_ast;
+import spp.asts.statement_ast;
 import spp.asts.sup_member_ast;
-import spp.asts.token_ast;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.codegen.llvm_ctx;
 import llvm;
@@ -18,9 +15,12 @@ namespace spp::analyse::scopes {
 }
 
 namespace spp::asts {
+    SPP_EXP_CLS struct AnnotationAst;
     SPP_EXP_CLS struct CmpStatementAst;
+    SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct UseStatementVariableAst;
     SPP_EXP_CLS struct IdentifierAst;
+    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
@@ -123,6 +123,3 @@ public:
 
     SPP_ATTR_NODISCARD auto is_from_use_statement() const -> bool;
 };
-
-
-spp::asts::CmpStatementAst::~CmpStatementAst() = default;

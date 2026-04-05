@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.asts.subroutine_prototype_ast;
@@ -7,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.annotation_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.identifier_ast;
@@ -22,6 +24,10 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 
+SPP_MOD_BEGIN
+spp::asts::SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;
+
+
 auto spp::asts::SubroutinePrototypeAst::clone() const
     -> std::unique_ptr<Ast> {
     auto ast = std::make_unique<SubroutinePrototypeAst>(
@@ -35,17 +41,21 @@ auto spp::asts::SubroutinePrototypeAst::clone() const
         ast_clone(return_type),
         ast_clone(impl));
     ast->orig_name = ast_clone(orig_name);
+    ast->m_annotation_info = m_annotation_info
+        ? std::make_unique<analyse::utils::annotation_utils::AnnotationInfo>(*m_annotation_info)
+        : nullptr;
     ast->m_original_impl = ast_clone(m_original_impl);
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
     ast->abstract_annotation = abstract_annotation;
     ast->virtual_annotation = virtual_annotation;
     ast->temperature_annotation = temperature_annotation;
-    ast->no_impl_annotation = no_impl_annotation;
+    ast->ffi_annotation = ffi_annotation;
+    ast->builtin_annotation = builtin_annotation;
     ast->inline_annotation = inline_annotation;
     ast->visibility = visibility;
     ast->m_llvm_func = m_llvm_func;
-    for (auto const &a: ast->annotations) {
+    for (auto const &a : ast->annotations) {
         a->set_ast_ctx(ast.get());
     }
     return ast;
@@ -84,10 +94,12 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
 
     const auto final_member = impl->final_member();
     raise_unless<analyse::errors::SppFunctionSubroutineMissingReturnStatementError>(
-        is_void or is_never or no_impl_annotation or abstract_annotation or (not impl->members.empty() and impl->members.back()->to<RetStatementAst>()),
+        is_void or is_never or ffi_annotation or builtin_annotation or abstract_annotation or (not impl->members.empty() and impl->members.back()->to<RetStatementAst>()),
         {sm->current_scope}, ERR_ARGS(*final_member, *return_type));
 
     sm->move_out_of_current_scope();
     meta->restore(true);
     meta->loop_return_types->clear();
 }
+
+SPP_MOD_END

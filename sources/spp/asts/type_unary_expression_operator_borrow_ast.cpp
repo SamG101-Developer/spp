@@ -6,10 +6,14 @@ import spp.asts.convention_ast;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::TypeUnaryExpressionOperatorBorrowAst::TypeUnaryExpressionOperatorBorrowAst(
     decltype(conv) &&conv) :
     conv(std::move(conv)) {
 }
+
+
+spp::asts::TypeUnaryExpressionOperatorBorrowAst::~TypeUnaryExpressionOperatorBorrowAst() = default;
 
 
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::equals(
@@ -79,3 +83,5 @@ auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::type_parts()
     -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
     return {};
 }
+
+SPP_MOD_END

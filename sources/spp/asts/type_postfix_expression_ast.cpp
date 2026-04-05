@@ -21,12 +21,16 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::TypePostfixExpressionAst::TypePostfixExpressionAst(
     decltype(lhs) &&lhs,
     decltype(tok_op) &&tok_op) :
     lhs(std::move(lhs)),
     tok_op(std::move(tok_op)) {
 }
+
+
+spp::asts::TypePostfixExpressionAst::~TypePostfixExpressionAst() = default;
 
 
 auto spp::asts::TypePostfixExpressionAst::equals(
@@ -217,9 +221,9 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
         | genex::views::transform([lhs_type_sym](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
         | genex::to<std::vector>();
 
-    auto min_depth = scopes_and_syms.empty() ? 0 : genex::min_element(scopes_and_syms
-        | genex::views::transform([](auto &&x) { return std::get<0>(x); })
-        | genex::to<std::vector>());
+    auto min_depth = scopes_and_syms.empty()
+         ? 0
+         : genex::min_element(scopes_and_syms | genex::views::transform([](auto &&x) { return std::get<0>(x); }) | genex::to<std::vector>());
 
     auto closest = scopes_and_syms
         | genex::views::filter([min_depth](auto &&x) { return std::get<0>(x) == min_depth; })
@@ -257,3 +261,5 @@ auto spp::asts::TypePostfixExpressionAst::infer_type(
     const auto sym = lhs_type_scope->get_type_symbol(part);
     return sym->fq_name();
 }
+
+SPP_MOD_END

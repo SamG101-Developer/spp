@@ -22,6 +22,7 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
 
 
+SPP_MOD_BEGIN
 spp::asts::GenericParameterCompAst::GenericParameterCompAst(
     decltype(tok_cmp) &&tok_cmp,
     decltype(name) name,
@@ -35,6 +36,9 @@ spp::asts::GenericParameterCompAst::GenericParameterCompAst(
 }
 
 
+spp::asts::GenericParameterCompAst::~GenericParameterCompAst() = default;
+
+
 auto spp::asts::GenericParameterCompAst::stage_2_gen_top_level_scopes(
     ScopeManager *sm,
     CompilerMetaData *)
@@ -46,7 +50,7 @@ auto spp::asts::GenericParameterCompAst::stage_2_gen_top_level_scopes(
     sym->memory_info->ast_pins.emplace_back(name.get());
     sym->memory_info->ast_comptime = ast_clone(this);
     sym->memory_info->initialized_by(*this, sm->current_scope);
-    sym->comptime_value = ast_clone(this);
+    sym->comptime_value = ast_clone(this); // TODO: this or name?
     sm->current_scope->add_var_symbol(std::move(sym));
 }
 
@@ -102,3 +106,5 @@ auto spp::asts::GenericParameterCompAst::stage_11_code_gen_2(
 
     return alloca;
 }
+
+SPP_MOD_END

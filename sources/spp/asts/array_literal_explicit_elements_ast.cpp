@@ -21,6 +21,7 @@ import genex;
 import llvm;
 
 
+SPP_MOD_BEGIN
 spp::asts::ArrayLiteralExplicitElementsAst::ArrayLiteralExplicitElementsAst(
     decltype(tok_l) &&tok_l,
     decltype(elems) &&elements,
@@ -31,6 +32,9 @@ spp::asts::ArrayLiteralExplicitElementsAst::ArrayLiteralExplicitElementsAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_l, lex::SppTokenType::TK_LEFT_SQUARE_BRACKET, "[");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_r, lex::SppTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
 }
+
+
+spp::asts::ArrayLiteralExplicitElementsAst::~ArrayLiteralExplicitElementsAst() = default;
 
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::equals_array_literal_explicit_elements(
@@ -213,3 +217,5 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::infer_type(
     array_type->stage_7_analyse_semantics(sm, meta);
     return array_type;
 }
+
+SPP_MOD_END

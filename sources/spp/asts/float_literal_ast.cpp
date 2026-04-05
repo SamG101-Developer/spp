@@ -20,6 +20,7 @@ import llvm;
 import mppp;
 
 
+SPP_MOD_BEGIN
 const auto FLOAT_TYPE_MIN_MAX = std::map<std::string, std::pair<mppp::BigDec, mppp::BigDec>>{
     {"f8", {spp::utils::strings::expand_scientific_notation("-5.7344e+4"), spp::utils::strings::expand_scientific_notation("5.7344e+4")}},
     {"f16", {spp::utils::strings::expand_scientific_notation("-6.55e+4"), spp::utils::strings::expand_scientific_notation("6.55e+4")}},
@@ -41,6 +42,9 @@ spp::asts::FloatLiteralAst::FloatLiteralAst(
     frac_val(std::move(frac_val)),
     type(std::move(type)) {
 }
+
+
+spp::asts::FloatLiteralAst::~FloatLiteralAst() = default;
 
 
 auto spp::asts::FloatLiteralAst::from_single_token(
@@ -78,6 +82,14 @@ auto spp::asts::FloatLiteralAst::equals_float_literal(
         return std::strong_ordering::equal;
     }
     return std::strong_ordering::less;
+}
+
+
+template <typename T> requires std::floating_point<T>
+auto spp::asts::FloatLiteralAst::cpp_value() const -> T {
+    const auto raw_str = int_val->to_string() + "." + frac_val->to_string();
+    const auto signed_str = tok_sign != nullptr ? "-" + raw_str : raw_str;
+    return static_cast<T>(std::stold(signed_str));
 }
 
 
@@ -191,3 +203,9 @@ auto spp::asts::FloatLiteralAst::infer_type(
         {sm->current_scope},
         ERR_ARGS(*this, "invalid float literal type"));
 }
+
+
+template auto spp::asts::FloatLiteralAst::cpp_value<std::float16_t>() const -> std::float16_t;
+template auto spp::asts::FloatLiteralAst::cpp_value<std::float32_t>() const -> std::float32_t;
+template auto spp::asts::FloatLiteralAst::cpp_value<std::float64_t>() const -> std::float64_t;
+SPP_MOD_END

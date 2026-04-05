@@ -1,7 +1,17 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.asts.ast;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import std;
+
+
+SPP_MOD_BEGIN
+spp::asts::Ast::Ast() = default;
+
+
+spp::asts::Ast::~Ast() = default;
 
 
 auto spp::asts::Ast::size() const
@@ -29,3 +39,5 @@ auto spp::asts::Ast::stage_2_gen_top_level_scopes(
     -> void {
     m_scope = sm->current_scope;
 }
+
+SPP_MOD_END

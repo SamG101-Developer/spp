@@ -17,6 +17,7 @@ import spp.asts.utils.orderable;
 import spp.asts.mixins.orderable_ast;
 
 
+SPP_MOD_BEGIN
 spp::asts::FunctionParameterOptionalAst::FunctionParameterOptionalAst(
     decltype(var) &&var,
     decltype(tok_colon) &&tok_colon,
@@ -73,11 +74,14 @@ auto spp::asts::FunctionParameterOptionalAst::stage_7_analyse_semantics(
     // Perform default analysis steps.
     FunctionParameterAst::stage_7_analyse_semantics(sm, meta);
 
-    // Make sure the default expression the correct type.
-    const auto default_type = default_val->infer_type(sm, meta);
-    raise_if<analyse::errors::SppTypeMismatchError>(
-        not analyse::utils::type_utils::symbolic_eq(*type, *default_type, *sm->current_scope, *sm->current_scope),
-        {sm->current_scope}, ERR_ARGS(*extract_name(), *type, *default_val, *default_type));
+    // Make sure the default expression the correct type. Only do this from true stage 7 analysis, not via stage 5.
+    if (meta->current_stage >= 9) {
+        default_val->stage_7_analyse_semantics(sm, meta);
+        const auto default_type = default_val->infer_type(sm, meta);
+        raise_if<analyse::errors::SppTypeMismatchError>(
+            not analyse::utils::type_utils::symbolic_eq(*type, *default_type, *sm->current_scope, *sm->current_scope),
+            {sm->current_scope}, ERR_ARGS(*extract_name(), *type, *default_val, *default_type));
+    }
 }
 
 
@@ -93,3 +97,4 @@ auto spp::asts::FunctionParameterOptionalAst::stage_8_check_memory(
     analyse::utils::mem_utils::validate_symbol_memory(
         *default_val, *default_val, *sm, true, true, true, true, true, meta);
 }
+SPP_MOD_END

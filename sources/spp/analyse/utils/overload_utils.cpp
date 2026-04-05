@@ -32,6 +32,7 @@ import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
+import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
@@ -74,7 +75,10 @@ auto spp::analyse::utils::overload_utils::determine_overload(
     const auto is_postfix = meta->postfix_expression_lhs->to<asts::PostfixExpressionAst>();
     const auto is_runtime = is_postfix ? is_postfix->op->to<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>() : nullptr;
     if (is_runtime != nullptr) {
-        return propagate_method_to_function(fn_call, *fn_owner_type, *fn_name, *is_postfix, sm, meta);
+        auto [overload_info, is_closure, pf] = propagate_method_to_function(
+            fn_call, *fn_owner_type, *fn_name, *is_postfix, sm, meta);
+        fn_call.transformed_ast = std::move(pf);
+        return std::make_pair(std::move(overload_info), is_closure);
     }
 
     // Get all the overloads to deail with, and handle closure mechanics.
@@ -158,7 +162,7 @@ auto spp::analyse::utils::overload_utils::propagate_method_to_function(
     asts::PostfixExpressionAst const &cast_lhs,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
-    -> std::pair<PassOverloadInfo, bool> {
+    -> std::tuple<PassOverloadInfo, bool, std::unique_ptr<asts::PostfixExpressionAst>> {
     // Get the function conversion of the method (free function with self argument).
     auto [transformed_lhs, transformed_fn_call] = func_utils::convert_method_to_function_form(
         fn_owner_type, fn_name, cast_lhs, fn_call, *sm, meta);
@@ -166,12 +170,15 @@ auto spp::analyse::utils::overload_utils::propagate_method_to_function(
     // Determine the overload based off the function (uniform system).
     meta->save();
     meta->postfix_expression_lhs = transformed_lhs.get();
-    auto info = determine_overload(*transformed_fn_call, sm, meta);
+    auto [overload_info, is_closure] = determine_overload(*transformed_fn_call, sm, meta);
     meta->restore();
 
     // Get the argument group with the "self" injection, and bind it to the function call.
-    fn_call.arg_group = std::move(transformed_fn_call->arg_group);
-    return info;
+    fn_call.arg_group = asts::ast_clone(transformed_fn_call->arg_group);
+
+    // Create a mock postfix based on the transformation.
+    auto pf = std::make_unique<asts::PostfixExpressionAst>(std::move(transformed_lhs), std::move(transformed_fn_call));
+    return std::make_tuple(std::move(overload_info), is_closure, std::move(pf));
 }
 
 
@@ -182,7 +189,9 @@ auto spp::analyse::utils::overload_utils::retrieve_all_overloads(
     asts::meta::CompilerMetaData *meta)
     -> std::tuple<bool, std::unique_ptr<asts::FunctionPrototypeAst>, std::vector<OverloadInfo>> {
     // For named functions (ie non-closures), get all the function overload implementation scopes.
-    auto all_overloads = func_utils::get_all_function_scopes(*fn_name, &fn_owner_scope, *sm, meta);
+    auto all_overloads = fn_name
+        ? func_utils::get_all_function_scopes(*fn_name, &fn_owner_scope, *sm, meta)
+        : std::vector<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, std::unique_ptr<asts::GenericArgumentGroupAst>, std::shared_ptr<asts::TypeAst>>>{};
     if (not all_overloads.empty()) { return std::make_tuple(false, nullptr, std::move(all_overloads)); };
 
     // If there are no scopes, assume that this is a closure (do functional type check).
@@ -422,7 +431,6 @@ auto spp::analyse::utils::overload_utils::validate_args_match_params(
     for (auto [arg, param] : genex::views::zip(sorted_func_arguments, func_params->get_all_params())) {
         auto p_type = fn_scope->get_type_symbol(param->type)->fq_name()->with_convention(ast_clone(param->type->get_convention()));
         auto a_type = arg->infer_type(sm, meta);
-        arg->infer_type(sm, meta);
         auto temp = type_utils::GenericInferenceMap();
 
         // Special case for variadic parameters (updates p_type so don't follow with "else if").

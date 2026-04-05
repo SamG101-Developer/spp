@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/parse/macros.hpp>
 
 #define NO_ANNOTATIONS std::vector<std::unique_ptr<spp::asts::AnnotationAst>>()
@@ -16,6 +17,7 @@ import genex;
 import std;
 
 
+SPP_MOD_BEGIN
 const auto IDENTIFIER_TOKENS = std::vector{
     spp::lex::RawTokenType::LX_CHARACTER,
     spp::lex::RawTokenType::LX_DIGIT,
@@ -514,10 +516,26 @@ auto spp::parse::ParserSpp::parse_generic_argument_type_keyword()
 
 auto spp::parse::ParserSpp::parse_annotation()
     -> std::unique_ptr<asts::AnnotationAst> {
+    PARSE_ALTERNATE(p1, asts::AnnotationAst, parse_annotation_call, parse_annotation_no_call);
+    return FORWARD_AST(p1);
+}
+
+
+auto spp::parse::ParserSpp::parse_annotation_call()
+    -> std::unique_ptr<asts::AnnotationAst> {
     PARSE_ONCE(p1, parse_token_exclamation_mark);
-    PARSE_ONCE(p2, parse_identifier);
-    auto x = CREATE_AST(asts::AnnotationAst, p1, p2);
-    return x;
+    PARSE_ONCE(p2, parse_postfix_expression_strictly_static_access_zero)
+    PARSE_OPTIONAL(p3, parse_generic_argument_group);
+    PARSE_ONCE(p4, parse_function_call_argument_group);
+    return CREATE_AST(asts::AnnotationAst, p1, p2, p3, p4);
+}
+
+
+auto spp::parse::ParserSpp::parse_annotation_no_call()
+    -> std::unique_ptr<asts::AnnotationAst> {
+    PARSE_ONCE(p1, parse_token_exclamation_mark);
+    PARSE_ONCE(p2, parse_postfix_expression_strictly_static_access_zero);
+    return CREATE_AST(asts::AnnotationAst, p1, p2, nullptr, nullptr);
 }
 
 
@@ -879,19 +897,19 @@ auto spp::parse::ParserSpp::parse_postfix_expression_op_index()
 }
 
 
-auto spp::parse::ParserSpp::parse_postfix_expression_strictly_runtime_access()
+auto spp::parse::ParserSpp::parse_postfix_expression_strictly_static_access_zero()
     -> std::unique_ptr<asts::ExpressionAst> {
     PARSE_ONCE(p1, parse_identifier_as_expression);
-    PARSE_ONE_OR_MORE(p2, parse_postfix_expression_op_runtime_member_access, parse_nothing);
+    PARSE_ZERO_OR_MORE(p2, parse_postfix_expression_op_static_member_access, parse_nothing);
     return utils::algorithms::move_accumulate(
         p2.begin(), p2.end(), std::move(p1),
-        [](std::unique_ptr<asts::ExpressionAst> &&acc, std::unique_ptr<asts::PostfixExpressionOperatorRuntimeMemberAccessAst> &&x) {
+        [](std::unique_ptr<asts::ExpressionAst> &&acc, std::unique_ptr<asts::PostfixExpressionOperatorStaticMemberAccessAst> &&x) {
             return CREATE_AST(asts::PostfixExpressionAst, std::move(acc), std::move(x));
         });
 }
 
 
-auto spp::parse::ParserSpp::parse_postfix_expression_strictly_static_access()
+auto spp::parse::ParserSpp::parse_postfix_expression_strictly_static_access_one()
     -> std::unique_ptr<asts::ExpressionAst> {
     PARSE_ONCE(p1, parse_identifier_as_expression);
     PARSE_ONE_OR_MORE(p2, parse_postfix_expression_op_static_member_access, parse_nothing);
@@ -909,8 +927,8 @@ auto spp::parse::ParserSpp::parse_primary_expression()
         p1, asts::PrimaryExpressionAst, parse_closure_expression, parse_parenthesised_expression, parse_literal,
         parse_object_initializer, parse_case_of_expression, parse_case_expression, parse_loop_expression,
         parse_gen_unroll_expression, parse_gen_expression, parse_type_expression, parse_identifier,
-        parse_self_identifier,
-        [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); }, parse_fold_expression);
+        parse_self_identifier, [this] { return parse_inner_scope_expression([this] { return parse_statement(); }); },
+        parse_fold_expression);
     return FORWARD_AST(p1);
 }
 
@@ -1393,7 +1411,7 @@ auto spp::parse::ParserSpp::parse_use_statement()
 auto spp::parse::ParserSpp::parse_use_var_statement()
     -> std::unique_ptr<asts::UseStatementVariableAst> {
     PARSE_ONCE(p1, parse_keyword_use);
-    PARSE_ONCE(p2, parse_postfix_expression_strictly_static_access);
+    PARSE_ONCE(p2, parse_postfix_expression_strictly_static_access_one);
     return CREATE_AST(asts::UseStatementVariableAst, NO_ANNOTATIONS, p1, p2);
 }
 
@@ -1991,8 +2009,8 @@ auto spp::parse::ParserSpp::parse_self_identifier()
 
 auto spp::parse::ParserSpp::parse_upper_identifier()
     -> std::unique_ptr<asts::IdentifierAst> {
-    auto p1 = parse_lexeme_upper_identifier();
-    if (p1 == nullptr) { return nullptr; };
+    PARSE_ONCE(p1, parse_lexeme_upper_identifier);
+    if (p1 == nullptr) { return nullptr; }
     return CREATE_AST(asts::IdentifierAst, p1->pos_start(), p1->token_data);
 }
 
@@ -3115,3 +3133,5 @@ auto spp::parse::ParserSpp::m_store_error(const std::size_t pos, std::string &&e
     }
     return false;
 }
+
+SPP_MOD_END

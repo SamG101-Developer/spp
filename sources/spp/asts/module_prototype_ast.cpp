@@ -9,6 +9,7 @@ import spp.codegen.llvm_ctx;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::ModulePrototypeAst::ModulePrototypeAst(
     decltype(impl) &&impl) :
     impl(std::move(impl)) {
@@ -183,3 +184,5 @@ auto spp::asts::ModulePrototypeAst::stage_11_code_gen_2(
     // Shift to implementation.
     return impl->stage_11_code_gen_2(sm, meta, ctx);
 }
+
+SPP_MOD_END

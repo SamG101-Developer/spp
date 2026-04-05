@@ -24,6 +24,7 @@ import spp.lex.tokens;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::ObjectInitializerArgumentGroupAst::ObjectInitializerArgumentGroupAst(
     decltype(tok_l) &&tok_l,
     decltype(args) &&args,
@@ -246,3 +247,5 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_8_check_memory(
         arg->stage_8_check_memory(sm, meta);
     }
 }
+
+SPP_MOD_END

@@ -24,6 +24,8 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeAst : GenericArgumentAst {
      */
     std::shared_ptr<TypeAst> val;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the GenericArgumentTypeAst with the arguments matching the members.
      * @param val The value of the generic type argument.
@@ -39,4 +41,6 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeAst : GenericArgumentAst {
 };
 
 
-spp::asts::GenericArgumentTypeAst::~GenericArgumentTypeAst() = default;
+SPP_MOD_BEGIN
+auto spp::asts::GenericArgumentTypeAst::_spp_key_function() const -> void {}
+SPP_MOD_END

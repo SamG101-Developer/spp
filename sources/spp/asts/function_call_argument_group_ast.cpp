@@ -13,6 +13,7 @@ import spp.analyse.utils.order_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.convention_ast;
 import spp.asts.coroutine_prototype_ast;
+import spp.asts.expression_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
@@ -32,6 +33,7 @@ import genex;
 import sys;
 
 
+SPP_MOD_BEGIN
 spp::asts::FunctionCallArgumentGroupAst::FunctionCallArgumentGroupAst(
     decltype(tok_l) &&tok_l,
     decltype(args) &&args,
@@ -121,6 +123,17 @@ auto spp::asts::FunctionCallArgumentGroupAst::get_positional_args() const
 }
 
 
+auto spp::asts::FunctionCallArgumentGroupAst::at(
+    const char *key) const
+    -> FunctionCallArgumentAst const* {
+    // Iterate the comptime arguments to find the matching key.
+    for (const auto *arg : get_keyword_args()) {
+        if (arg->name->val == key) { return arg; }
+    }
+    return nullptr;
+}
+
+
 auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
@@ -202,8 +215,20 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
     const auto pins_required = meta->target_call_was_function_async or is_target_coro;
 
     // Define the borrow sets to maintain the law of exclusivity.
-    auto borrows_ref = std::vector<Ast*>();
-    auto borrows_mut = std::vector<Ast*>();
+    auto borrows_ref = std::vector<Ast const*>();
+    auto borrows_mut = std::vector<Ast const*>();
+
+    // Load pre-existing escaping borrows into the vectors.
+    const auto all_syms = sm->current_scope->all_var_symbols();
+    for (auto const &sym : all_syms) {
+        for (auto const &[borrow, is_mut, _] : sym->memory_info->ast_escaping_borrows) {
+            (is_mut ? borrows_mut : borrows_ref).emplace_back(borrow);
+        }
+    }
+
+    // Get potential handle to bind escpaing borrows to.
+    const auto handle = meta->assignment_target;
+    const auto handle_sym = handle ? sm->current_scope->get_var_symbol_outermost(*handle).first : nullptr;
 
     for (auto const &arg : args) {
         // Get the outermost part of the argument as a symbol. If the argument is non-symbolic then there is no need to
@@ -245,30 +270,15 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
                 | genex::to<std::vector>();
 
-            auto linked_pin_syms = sym->memory_info->ast_linked_pins
-                | genex::views::filter([](auto const &tuple) { return std::get<1>(tuple); })
-                | genex::views::transform([](auto const &tuple) { return std::get<0>(tuple); })
-                | genex::to<std::vector>();
-
             // Check the immutable borrow doesn't overlap with any other mutable borrows in the same scope.
             raise_if<analyse::errors::SppMemoryOverlapUsageError>(
                 not overlaps.empty(), {sm->current_scope},
                 ERR_ARGS(*overlaps[0], *arg->val));
 
-            // Invalidate any linked pins.
-            for (auto const &pin : linked_pin_syms) {
-                if (sm->current_scope->get_var_symbol(pin->name)) {
-                    sm->current_scope->get_var_symbol(pin->name)->memory_info->moved_by(*this, sm->current_scope);
-                }
-            }
-
-            // Auto-pin the argument and the assignment target if required.
-            if (pins_required) {
+            // Save any escaping borrows into the handle's memory info.
+            if (handle and pins_required) {
+                handle_sym->memory_info->ast_escaping_borrows.emplace_back(arg->val.get(), false, sm->current_scope);
                 sym->memory_info->ast_pins.emplace_back(arg->val.get());
-                if (meta->assignment_target != nullptr) {
-                    const auto [ass_sym, _] = sm->current_scope->get_var_symbol_outermost(*meta->assignment_target);
-                    sym->memory_info->ast_linked_pins.emplace_back(ass_sym.get(), false, sm->current_scope);
-                }
             }
 
             // Add the immutable borrow to the immutable borrow set.
@@ -281,29 +291,15 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
                 | genex::to<std::vector>();
 
-            auto linked_pin_syms = sym->memory_info->ast_linked_pins
-                | genex::views::transform([](auto const &tuple) { return std::get<0>(tuple); })
-                | genex::to<std::vector>();
-
             // Check the mutable borrow doesn't overlap with any other borrows in the same scope.
             raise_if<analyse::errors::SppMemoryOverlapUsageError>(
                 not overlaps.empty(), {sm->current_scope},
                 ERR_ARGS(*overlaps[0], *arg->val));
 
-            // Invalidate any linked pins.
-            for (auto const &pin : linked_pin_syms) {
-                if (sm->current_scope->get_var_symbol(pin->name)) {
-                    sm->current_scope->get_var_symbol(pin->name)->memory_info->moved_by(*this, sm->current_scope);
-                }
-            }
-
-            // Auto-pin the argument and the assignment target if required.
-            if (pins_required) {
+            // Save any escaping borrows into the handle's memory info.
+            if (handle and pins_required) {
+                handle_sym->memory_info->ast_escaping_borrows.emplace_back(arg->val.get(), true, sm->current_scope);
                 sym->memory_info->ast_pins.emplace_back(arg->val.get());
-                if (meta->assignment_target != nullptr) {
-                    const auto [ass_sym, _] = sm->current_scope->get_var_symbol_outermost(*meta->assignment_target);
-                    sym->memory_info->ast_linked_pins.emplace_back(ass_sym.get(), true, sm->current_scope);
-                }
             }
 
             // Add the mutable borrow to the mutable borrow set.
@@ -311,3 +307,5 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
         }
     }
 }
+
+SPP_MOD_END

@@ -19,6 +19,7 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::FunctionParameterGroupAst::FunctionParameterGroupAst(
     decltype(tok_l) &&tok_l,
     decltype(params) &&params,
@@ -211,3 +212,5 @@ auto spp::asts::FunctionParameterGroupAst::stage_11_code_gen_2(
     }
     return nullptr;
 }
+
+SPP_MOD_END

@@ -11,6 +11,7 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::UseStatementAst::UseStatementAst(
     decltype(annotations) &&annotations,
     decltype(tok_use) &&tok_use,
@@ -45,7 +46,7 @@ auto spp::asts::UseStatementAst::clone() const
         ast_clone(old_type));
     ast->set_ast_ctx(get_ast_ctx());
     ast->set_ast_scope(get_ast_scope());
-    for (auto const &a: ast->annotations) {
+    for (auto const &a : ast->annotations) {
         a->set_ast_ctx(ast.get());
     }
     return ast;
@@ -78,8 +79,8 @@ auto spp::asts::UseStatementAst::stage_2_gen_top_level_scopes(
     -> void {
     // Run the steps for the annotations.
     Ast::stage_2_gen_top_level_scopes(sm, meta);
-    for (const auto &annotation : annotations) {
-        annotation->stage_2_gen_top_level_scopes(sm, meta);
+    for (auto const &a : annotations) {
+        a->stage_2_gen_top_level_scopes(sm, meta);
     }
 
     // Create the type statement AST conversion.
@@ -173,3 +174,5 @@ auto spp::asts::UseStatementAst::stage_11_code_gen_2(
     // Code gen for the conversion AST.
     return m_conversion->stage_11_code_gen_2(sm, meta, ctx);
 }
+
+SPP_MOD_END

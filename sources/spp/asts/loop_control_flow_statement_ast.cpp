@@ -18,6 +18,7 @@ import spp.lex.tokens;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::LoopControlFlowStatementAst::LoopControlFlowStatementAst(
     decltype(tok_seq_exit) &&tok_seq_exit,
     decltype(tok_skip) &&tok_skip,
@@ -168,3 +169,5 @@ auto spp::asts::LoopControlFlowStatementAst::infer_type(
     // Otherwise, return the void type.
     return generate::common_types::void_type(pos_start());
 }
+
+SPP_MOD_END

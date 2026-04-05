@@ -214,7 +214,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_u128_upper_bound,
     SppIntegerOutOfBoundsError, R"(
     fun f() -> std::void::Void {
-        let x = 340282366920938463463374607431768211456_u128
+        let x = 340282366841710300949128831971969468211456_u128
     }
 )");
 

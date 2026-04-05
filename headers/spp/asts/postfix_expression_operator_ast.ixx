@@ -8,7 +8,7 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct PostfixExpressionOperatorAst;
-    SPP_EXP_CLS struct TypeAst;
+    SPP_EXP_CLS struct TypeAst; // [KEEP]
 }
 
 
@@ -17,5 +17,5 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorAst : virtual Ast, mixins
 
     ~PostfixExpressionOperatorAst() override;
 
-    virtual auto expr_parts() const -> std::vector<Ast*>;
+    SPP_ATTR_NODISCARD virtual auto expr_parts() const -> std::vector<Ast*>;
 };

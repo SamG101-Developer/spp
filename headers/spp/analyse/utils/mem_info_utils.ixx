@@ -80,12 +80,7 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo {
      */
     std::vector<asts::Ast const*> ast_pins;
 
-    /**
-     * A linked pin in a pin that is caused via assignment. For example, @code let x = coro(&y)@endcode will cause @c x
-     * to be a linked pin for @y, because @c y is pinned due to being borrowed into the coroutine that is assigned to
-     * @c x. The boolean determines if the pin from a mutable borrow.
-     */
-    std::vector<std::tuple<scopes::VariableSymbol*, bool, scopes::Scope*>> ast_linked_pins;
+    std::vector<std::tuple<asts::Ast const*, bool, scopes::Scope*>> ast_escaping_borrows;
 
     /**
      * The @c ast_comptime AST is the AST that represents the compile-time declaration of the symbol. This might be the
@@ -125,6 +120,8 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo {
      * symbol in different pinned states.
      */
     std::optional<InconsistentCondMemState> is_inconsistently_pinned;
+
+    std::optional<InconsistentCondMemState> is_inconsistently_borrow_escaping;
 
     /**
      * Set the @c ast_initialization AST to the given AST, reset the @c ast_moved AST to @c nullptr, and remove all
@@ -206,10 +203,7 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfoSnapshot {
      */
     std::vector<asts::Ast const*> ast_pins;
 
-    /**
-     * List of linked pins that were present in the owning @c MemoryInfo at the time of the snapshot.
-     */
-    std::vector<std::tuple<scopes::VariableSymbol*, bool, scopes::Scope*>> ast_linked_pins;
+    std::vector<std::tuple<asts::Ast const*, bool, scopes::Scope*>> ast_escaping_borrows;
 
     /**
      * The @c initialization_counter that was present in the owning @c MemoryInfo at the time of the snapshot.

@@ -17,6 +17,7 @@ import spp.codegen.llvm_type;
 import spp.utils.uid;
 
 
+SPP_MOD_BEGIN
 spp::asts::LocalVariableSingleIdentifierAst::LocalVariableSingleIdentifierAst(
     decltype(tok_mut) &&tok_mut,
     decltype(name) name,
@@ -147,7 +148,9 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_9_comptime_resolution(
     meta->save();
     meta->assignment_target = alias != nullptr ? alias->name : name;
     meta->let_stmt_value->stage_9_comptime_resolution(sm, meta);
-    sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name)->comptime_value = std::move(meta->cmp_result);
+
+    const auto var_sym =sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name);
+    var_sym->comptime_value = std::move(meta->cmp_result);
     meta->restore();
 }
 
@@ -184,3 +187,5 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_11_code_gen_2(
     // Alloca already added; return nullptr.
     return nullptr;
 }
+
+SPP_MOD_END

@@ -9,6 +9,7 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
 
+SPP_MOD_BEGIN
 spp::asts::GenericParameterCompRequiredAst::GenericParameterCompRequiredAst(
     decltype(tok_cmp) &&tok_cmp,
     decltype(name) &&name,
@@ -51,3 +52,5 @@ spp::asts::GenericParameterCompRequiredAst::operator std::string() const {
     SPP_STRING_APPEND(type);
     SPP_STRING_END;
 }
+
+SPP_MOD_END

@@ -31,10 +31,14 @@ namespace spp::asts {
 SPP_EXP_CLS struct spp::asts::TypeAst : PrimaryExpressionAst, mixins::AbstractTypeAst, std::enable_shared_from_this<TypeAst> {
     using PrimaryExpressionAst::PrimaryExpressionAst;
 
+    auto _spp_key_function() const -> void override;
+
     ~TypeAst() override;
 
     mutable utils::Cache<analyse::scopes::Scope const*, std::shared_ptr<analyse::scopes::TypeSymbol>> cached_type_symbols;
 };
 
 
-spp::asts::TypeAst::~TypeAst() = default;
+SPP_MOD_BEGIN
+auto spp::asts::TypeAst::_spp_key_function() const -> void {}
+SPP_MOD_END

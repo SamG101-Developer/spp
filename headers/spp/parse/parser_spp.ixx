@@ -235,6 +235,8 @@ public:
     auto parse_generic_argument_type_keyword() -> std::unique_ptr<asts::GenericArgumentTypeKeywordAst>;
 
     auto parse_annotation() -> std::unique_ptr<asts::AnnotationAst>;
+    auto parse_annotation_no_call() -> std::unique_ptr<asts::AnnotationAst>;
+    auto parse_annotation_call() -> std::unique_ptr<asts::AnnotationAst>;
 
     auto parse_expression() -> std::unique_ptr<asts::ExpressionAst>;
 
@@ -279,8 +281,8 @@ public:
     auto parse_postfix_expression_op_keyword_not() -> std::unique_ptr<asts::PostfixExpressionOperatorKeywordNotAst>;
     auto parse_postfix_expression_op_keyword_res() -> std::unique_ptr<asts::PostfixExpressionOperatorKeywordResAst>;
     auto parse_postfix_expression_op_index() -> std::unique_ptr<asts::PostfixExpressionOperatorIndexAst>;
-    auto parse_postfix_expression_strictly_runtime_access() -> std::unique_ptr<asts::ExpressionAst>;
-    auto parse_postfix_expression_strictly_static_access() -> std::unique_ptr<asts::ExpressionAst>;
+    auto parse_postfix_expression_strictly_static_access_zero() -> std::unique_ptr<asts::ExpressionAst>;
+    auto parse_postfix_expression_strictly_static_access_one() -> std::unique_ptr<asts::ExpressionAst>;
 
     auto parse_primary_expression() -> std::unique_ptr<asts::ExpressionAst>;
 

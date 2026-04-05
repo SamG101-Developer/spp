@@ -11,12 +11,14 @@ import spp.analyse.utils.mem_utils;
 import spp.asts.ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::PostfixExpressionAst::PostfixExpressionAst(
     decltype(lhs) &&lhs,
     decltype(op) &&op) :
@@ -90,6 +92,12 @@ auto spp::asts::PostfixExpressionAst::stage_8_check_memory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // Memory analysis used the transformed AST to not repeat lhs as self.
+    if (const auto func = op->to<PostfixExpressionOperatorFunctionCallAst>(); func != nullptr and func->transformed_ast != nullptr) {
+        func->transformed_ast->stage_8_check_memory(sm, meta);
+        return;
+    }
+
     // Check the memory of the lhs.
     lhs->stage_8_check_memory(sm, meta);
     meta->save();
@@ -152,3 +160,5 @@ auto spp::asts::PostfixExpressionAst::expr_parts() const
     }
     return lhs_parts;
 }
+
+SPP_MOD_END

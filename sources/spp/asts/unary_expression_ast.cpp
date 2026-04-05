@@ -13,6 +13,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::UnaryExpressionAst::UnaryExpressionAst(
     decltype(op) &&tok_op,
     decltype(expr) &&expr) :
@@ -104,3 +105,5 @@ auto spp::asts::UnaryExpressionAst::infer_type(
 
     return type;
 }
+
+SPP_MOD_END

@@ -42,9 +42,6 @@ namespace spp::asts {
 namespace spp::analyse::errors {
     SPP_EXP_CLS struct SemanticError;
 
-    SPP_EXP_CLS struct SppAnnotationInvalidApplicationError;
-    SPP_EXP_CLS struct SppAnnotationConflictError;
-    SPP_EXP_CLS struct SppAnnotationInvalidError;
     SPP_EXP_CLS struct SppExpressionTypeInvalidError;
     SPP_EXP_CLS struct SppTypeMismatchError;
     SPP_EXP_CLS struct SppSecondClassBorrowViolationError;
@@ -130,6 +127,9 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppInvalidComptimeOperationError;
     SPP_EXP_CLS struct SppInternalCompilerError;
     SPP_EXP_CLS struct SppGenericConstraintError;
+    SPP_EXP_CLS struct SppAnnotationTargetNotAnAnnotationError;
+    SPP_EXP_CLS struct SppAnnotationTargetNotACmpFunctionError;
+    SPP_EXP_CLS struct SppCalledAnnotationAppliedToInvalidAstError;
 }
 
 
@@ -157,19 +157,19 @@ SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::Abs
 };
 
 
-SPP_EXP_CLS struct spp::analyse::errors::SppAnnotationInvalidApplicationError final : SemanticError {
-    explicit SppAnnotationInvalidApplicationError(asts::AnnotationAst const &annotation, asts::Ast const &ctx, std::string_view block_list);
-};
-
-
-SPP_EXP_CLS struct spp::analyse::errors::SppAnnotationConflictError final : SemanticError {
-    explicit SppAnnotationConflictError(asts::AnnotationAst const &first_annotation, asts::AnnotationAst const &conflicting_annotation, asts::Ast const &ctx);
-};
-
-
-SPP_EXP_CLS struct spp::analyse::errors::SppAnnotationInvalidError final : SemanticError {
-    explicit SppAnnotationInvalidError(asts::AnnotationAst const &annotation);
-};
+// SPP_EXP_CLS struct spp::analyse::errors::SppAnnotationInvalidApplicationError final : SemanticError {
+//     explicit SppAnnotationInvalidApplicationError(asts::AnnotationAst const &annotation, asts::Ast const &ctx, std::string_view block_list);
+// };
+//
+//
+// SPP_EXP_CLS struct spp::analyse::errors::SppAnnotationConflictError final : SemanticError {
+//     explicit SppAnnotationConflictError(asts::AnnotationAst const &first_annotation, asts::AnnotationAst const &conflicting_annotation, asts::Ast const &ctx);
+// };
+//
+//
+// SPP_EXP_CLS struct spp::analyse::errors::SppAnnotationInvalidError final : SemanticError {
+//     explicit SppAnnotationInvalidError(asts::AnnotationAst const &annotation);
+// };
 
 
 SPP_EXP_CLS struct spp::analyse::errors::SppExpressionTypeInvalidError final : SemanticError {
@@ -323,7 +323,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppYieldedTypeMismatchError final : Sem
 
 
 SPP_EXP_CLS struct spp::analyse::errors::SppIdentifierUnknownError final : SemanticError {
-    explicit SppIdentifierUnknownError(asts::Ast const &name, std::string_view what, std::optional<std::string> const &closest);
+    explicit SppIdentifierUnknownError(asts::Ast const &name, std::string_view what, std::optional<std::string> const &closest = {});
 };
 
 
@@ -588,10 +588,25 @@ SPP_EXP_CLS struct spp::analyse::errors::SppInvalidComptimeOperationError final 
 
 
 SPP_EXP_CLS struct spp::analyse::errors::SppInternalCompilerError final : SemanticError {
-    explicit SppInternalCompilerError(asts::Ast const& ast, std::string_view message);
+    explicit SppInternalCompilerError(asts::Ast const &ast, std::string_view message);
 };
 
 
 SPP_EXP_CLS struct spp::analyse::errors::SppGenericConstraintError final : SemanticError {
-    explicit SppGenericConstraintError(asts::Ast const& constraint, asts::Ast const &concrete_type);
+    explicit SppGenericConstraintError(asts::Ast const &constraint, asts::Ast const &concrete_type);
+};
+
+
+SPP_EXP_CLS struct spp::analyse::errors::SppAnnotationTargetNotAnAnnotationError final : SemanticError {
+    explicit SppAnnotationTargetNotAnAnnotationError(asts::AnnotationAst const &call_site, asts::FunctionPrototypeAst const &target_definition);
+};
+
+
+SPP_EXP_CLS struct spp::analyse::errors::SppAnnotationTargetNotACmpFunctionError final : SemanticError {
+    explicit SppAnnotationTargetNotACmpFunctionError(asts::AnnotationAst const &annotation_marker, asts::Ast const &non_function_ast);
+};
+
+
+SPP_EXP_CLS struct spp::analyse::errors::SppCalledAnnotationAppliedToInvalidAstError final : SemanticError {
+    explicit SppCalledAnnotationAppliedToInvalidAstError(asts::Ast const &invalid_ast, asts::Ast const &annotation_call, asts::AnnotationAst const &annotation_definition);
 };

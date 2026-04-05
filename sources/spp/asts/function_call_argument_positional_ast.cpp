@@ -10,6 +10,7 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
 
+SPP_MOD_BEGIN
 spp::asts::FunctionCallArgumentPositionalAst::FunctionCallArgumentPositionalAst(
     decltype(conv) &&conv,
     decltype(tok_unpack) &&tok_unpack,
@@ -50,3 +51,5 @@ spp::asts::FunctionCallArgumentPositionalAst::operator std::string() const {
     SPP_STRING_APPEND(val);
     SPP_STRING_END;
 }
+
+SPP_MOD_END

@@ -17,6 +17,8 @@ namespace spp::asts {
  * argument to be matched by an index rather than a keyword.
  */
 SPP_EXP_CLS struct spp::asts::GenericArgumentTypePositionalAst final : GenericArgumentTypeAst {
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the GenericArgumentTypePositionalAst with the arguments matching the members.
      * @param val The value of the generic type argument.
@@ -27,6 +29,7 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypePositionalAst final : GenericAr
     ~GenericArgumentTypePositionalAst() override;
 
     SPP_ATTR_NODISCARD auto equals(GenericArgumentAst const &other) const -> std::strong_ordering override;
+
     SPP_ATTR_NODISCARD auto equals_generic_argument_type_positional(GenericArgumentTypePositionalAst const &other) const -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
@@ -35,4 +38,6 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypePositionalAst final : GenericAr
 };
 
 
-spp::asts::GenericArgumentTypePositionalAst::~GenericArgumentTypePositionalAst() = default;
+SPP_MOD_BEGIN
+auto spp::asts::GenericArgumentTypePositionalAst::_spp_key_function() const -> void {}
+SPP_MOD_END

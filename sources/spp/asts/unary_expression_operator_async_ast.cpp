@@ -21,6 +21,7 @@ import spp.codegen.llvm_type;
 import spp.utils.uid;
 
 
+SPP_MOD_BEGIN
 spp::asts::UnaryExpressionOperatorAsyncAst::UnaryExpressionOperatorAsyncAst(
     decltype(tok_async) &&tok_async) :
     tok_async(std::move(tok_async)) {
@@ -146,3 +147,5 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::infer_type(
     future_type->stage_7_analyse_semantics(sm, meta);
     return future_type;
 }
+
+SPP_MOD_END

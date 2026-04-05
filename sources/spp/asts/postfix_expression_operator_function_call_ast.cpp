@@ -54,6 +54,7 @@ import genex;
 import opex.cast;
 
 
+SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFunctionCallAst(
     decltype(generic_arg_group) &&generic_arg_group,
     decltype(arg_group) &&arg_group,
@@ -93,12 +94,13 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::clone() const
         ast_clone(generic_arg_group),
         ast_clone(arg_group),
         ast_clone(fold));
+    ast->closure_dummy_proto = ast_clone(closure_dummy_proto);
+    ast->transformed_ast = ast_clone(transformed_ast);
     ast->m_overload_info = m_overload_info;
     ast->m_is_async = m_is_async;
     ast->m_folded_asts = ast_clone_vec(m_folded_asts);
     ast->m_closure_dummy_arg_group = ast_clone(m_closure_dummy_arg_group);
     ast->m_closure_dummy_arg = ast_clone(m_closure_dummy_arg);
-    ast->closure_dummy_proto = ast_clone(closure_dummy_proto);
     ast->m_is_coro_and_auto_resume = m_is_coro_and_auto_resume;
     return ast;
 }
@@ -117,7 +119,6 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::handle_function_foldin
     analyse::scopes::ScopeManager *sm,
     meta::CompilerMetaData *meta)
     -> std::vector<std::unique_ptr<PostfixExpressionOperatorFunctionCallAst>> {
-
     // Populate the list of arguments to fold.
     auto folded_args = std::vector<FunctionCallArgumentAst*>{};
     auto folded_arg_types = std::vector<TypeAst*>{};
@@ -138,7 +139,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::handle_function_foldin
     auto transformed_asts = std::vector<std::unique_ptr<PostfixExpressionOperatorFunctionCallAst>>{};
     for (auto i = 0uz; i < smallest_tuple; ++i) {
         auto new_arg_group = ast_clone(arg_group);
-        for (const auto fold_index: fold_indexes) {
+        for (const auto fold_index : fold_indexes) {
             // Create the postfix access into the tuple.
             auto id = std::make_unique<IdentifierAst>(0, std::to_string(fold_index));
             auto ma = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(id));
@@ -181,7 +182,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_7_analyse_semant
 
     // Resolve the overload for this function call.
     auto [overload, is_closure] = analyse::utils::overload_utils::determine_overload(*this, sm, meta);
-    
+
     // Special case for closures; apply the convention the closure name to ensure is it movable/mutable etc.
     // Todo: move this from overload selection to semantic_analysis?
     if (is_closure) {
@@ -218,6 +219,16 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_7_analyse_semant
             *sm->current_scope, *std::get<0>(*m_overload_info));
     }
     meta->prevent_auto_generator_resume = false;
+
+    // Copy some properties into the transform (clone arg group for the self arg convention).
+    if (transformed_ast) {
+        const auto transformed_op = transformed_ast->op->to<PostfixExpressionOperatorFunctionCallAst>();
+        transformed_op->arg_group = ast_clone(arg_group);
+        transformed_op->m_overload_info = m_overload_info;
+        transformed_op->m_is_async = m_is_async;
+        transformed_op->m_folded_asts = ast_clone_vec(m_folded_asts);
+        transformed_op->m_closure_dummy_arg = ast_clone(m_closure_dummy_arg);
+    }
 }
 
 
@@ -265,7 +276,15 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_9_comptime_resol
 
     // Create the argument map for the function to use.
     auto args = std::vector<std::pair<std::shared_ptr<IdentifierAst>, std::unique_ptr<ExpressionAst>>>();
+
+    const auto check_self = self_comptime != nullptr;
+    if (check_self and not arg_group->get_keyword_args().empty() and arg_group->get_keyword_args().front()->name->val == "self") { // todo: use: .at("self") != nullptr
+        self_comptime->stage_9_comptime_resolution(sm, meta);
+        args.emplace_back(std::make_unique<IdentifierAst>(0, "self"), std::move(meta->cmp_result));
+    }
+
     for (auto const &arg : arg_group->get_keyword_args()) {
+        if (check_self and arg->name->val == "self") { continue; }
         arg->stage_9_comptime_resolution(sm, meta);
         args.emplace_back(arg->name, std::move(meta->cmp_result));
     }
@@ -394,3 +413,11 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::mark_as_async(
     -> void {
     m_is_async = async_token;
 }
+
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::target() const
+    -> FunctionPrototypeAst* {
+    return m_overload_info.has_value() ? std::get<1>(*m_overload_info) : nullptr;
+}
+
+
+SPP_MOD_END

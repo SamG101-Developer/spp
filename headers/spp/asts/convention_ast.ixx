@@ -4,11 +4,11 @@ module;
 export module spp.asts.convention_ast;
 import spp.asts.ast;
 
-
 namespace spp::asts {
     SPP_EXP_ENUM enum class ConventionTag { MOV, MUT, REF };
     SPP_EXP_CLS struct ConventionAst;
 }
+
 
 /**
  * The ConventionAst class represents a convention for either a function parameter, function argument, or a generated
@@ -24,6 +24,8 @@ private:
 
 public:
     explicit ConventionAst(ConventionTag tag);
+
+    ~ConventionAst() override;
 
     auto operator==(ConventionAst const *that) const -> bool;
 

@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.generic_argument_group_ast;
 import spp.asts.ast;
-
 import ankerl;
 import std;
 
@@ -17,8 +16,8 @@ namespace spp::asts {
     SPP_EXP_CLS struct GenericArgumentTypeKeywordAst;
     SPP_EXP_CLS struct GenericParameterGroupAst;
     SPP_EXP_CLS struct TokenAst;
-    SPP_EXP_CLS struct TypeIdentifierAst;
     SPP_EXP_CLS struct TypeAst;
+    SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
 

@@ -25,6 +25,8 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final :
      */
     std::shared_ptr<TypeIdentifierAst> name;
 
+    auto _spp_key_function() const -> void override;
+
     /**
      * Construct the TypePostfixExpressionOperatorNestedTypeAst with the arguments matching the members.
      * @param tok_sep The @c :: operator token that represents the namespace operator.
@@ -36,20 +38,22 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final :
 
     ~TypePostfixExpressionOperatorNestedTypeAst() override;
 
-    auto equals(TypePostfixExpressionOperatorAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals(TypePostfixExpressionOperatorAst const &) const -> std::strong_ordering override;
 
-    auto equals_nested_type(TypePostfixExpressionOperatorNestedTypeAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals_nested_type(TypePostfixExpressionOperatorNestedTypeAst const &) const -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
 
-    auto ns_parts() -> std::vector<std::shared_ptr<IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto ns_parts() -> std::vector<std::shared_ptr<IdentifierAst>> override;
 
-    auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
 
-    auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
 };
 
 
-spp::asts::TypePostfixExpressionOperatorNestedTypeAst::~TypePostfixExpressionOperatorNestedTypeAst() = default;
+SPP_MOD_BEGIN
+auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::_spp_key_function() const -> void {}
+SPP_MOD_END

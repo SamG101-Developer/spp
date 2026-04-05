@@ -22,6 +22,7 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::BinaryExpressionAst::BinaryExpressionAst(
     decltype(lhs) &&lhs,
     decltype(tok_op) &&tok_op,
@@ -78,6 +79,8 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    if (m_mapped_func) { return; }
+
     // Ensure TypeAst's aren't used for expression for binary operands.
     SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(lhs.get());
     SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(rhs.get());
@@ -185,8 +188,11 @@ auto spp::asts::BinaryExpressionAst::infer_type(
     CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Infer the type from the function mapping of the binary expression.
-    if (m_mapped_func == nullptr) { // Todo: Needed?
+    if (m_mapped_func == nullptr) {
+        // Todo: Needed?
         stage_7_analyse_semantics(sm, meta);
     }
     return m_mapped_func->infer_type(sm, meta);
 }
+
+SPP_MOD_END

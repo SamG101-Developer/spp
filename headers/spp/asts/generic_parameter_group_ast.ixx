@@ -59,19 +59,19 @@ SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : virtual Ast {
 
     static auto new_empty_shared() -> std::shared_ptr<GenericParameterGroupAst>;
 
-    auto get_required_params() const -> std::vector<GenericParameterAst*>;
+    SPP_ATTR_NODISCARD auto get_required_params() const -> std::vector<GenericParameterAst*>;
 
-    auto get_optional_params() const -> std::vector<GenericParameterAst*>;
+    SPP_ATTR_NODISCARD auto get_optional_params() const -> std::vector<GenericParameterAst*>;
 
-    auto get_variadic_param() const -> GenericParameterAst*;
+    SPP_ATTR_NODISCARD auto get_variadic_param() const -> GenericParameterAst*;
 
-    auto get_comp_params() const -> std::vector<GenericParameterCompAst*>;
+    SPP_ATTR_NODISCARD auto get_comp_params() const -> std::vector<GenericParameterCompAst*>;
 
-    auto get_type_params() const -> std::vector<GenericParameterTypeAst*>;
+    SPP_ATTR_NODISCARD auto get_type_params() const -> std::vector<GenericParameterTypeAst*>;
 
-    auto get_all_params() const -> std::vector<GenericParameterAst*>;
+    SPP_ATTR_NODISCARD auto get_all_params() const -> std::vector<GenericParameterAst*>;
 
-    auto opt_to_req() const -> std::unique_ptr<GenericParameterGroupAst>;
+    SPP_ATTR_NODISCARD auto opt_to_req() const -> std::unique_ptr<GenericParameterGroupAst>;
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

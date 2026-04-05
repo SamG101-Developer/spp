@@ -32,6 +32,9 @@ namespace spp::asts::meta {
  * and end position identification.
  */
 SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
+public:
+    virtual auto _spp_key_function() const -> void;
+
 protected:
     /**
      * The context of an AST is used in certain analysis steps. This might be the parent AST, such as a
@@ -48,7 +51,7 @@ protected:
      * Create a new AST (base class for all derived ASTs). This constructor is protected to prevent direct instantiation
      * as an AST should always be a specific type of AST, such as a TokenAst, IdentifierAst, etc.
      */
-    explicit Ast() = default;
+    explicit Ast();
 
 public:
     ~Ast() override;
@@ -144,4 +147,6 @@ public:
 };
 
 
-spp::asts::Ast::~Ast() = default;
+SPP_MOD_BEGIN
+auto spp::asts::Ast::_spp_key_function() const -> void {}
+SPP_MOD_END

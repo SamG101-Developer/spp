@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 #include <spp/parse/macros.hpp>
 
@@ -37,6 +38,7 @@ import genex;
     meta.current_stage = (s)
 
 
+SPP_MOD_BEGIN
 auto spp::compiler::CompilerBoot::lex(
     utils::ProgressBar &bar,
     ModuleTree &tree)
@@ -362,3 +364,5 @@ auto spp::compiler::CompilerBoot::move_scope_manager_to_ns(
         }
     }
 }
+
+SPP_MOD_END

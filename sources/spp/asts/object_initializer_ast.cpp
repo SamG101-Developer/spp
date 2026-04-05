@@ -26,6 +26,7 @@ import llvm;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::ObjectInitializerAst::ObjectInitializerAst(
     decltype(type) type,
     decltype(arg_group) &&arg_group) :
@@ -222,3 +223,5 @@ auto spp::asts::ObjectInitializerAst::infer_type(
     // created into values during other ast's analysis. Types cannot be instantiated as borrows in user code.
     return sm->current_scope->get_type_symbol(type)->fq_name()->with_convention(ast_clone(type->get_convention()));
 }
+
+SPP_MOD_END

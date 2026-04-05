@@ -7,6 +7,7 @@ import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::FoldExpressionAst::FoldExpressionAst(
     decltype(tok_ellipsis) &&tok_ellipsis) :
     tok_ellipsis(std::move(tok_ellipsis)) {
@@ -48,3 +49,5 @@ auto spp::asts::FoldExpressionAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     return generate::common_types::void_type(pos_start());
 }
+
+SPP_MOD_END

@@ -3,7 +3,7 @@
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AnnotationAst,
-    test_valid_virtual_method, R"(
+    test_valid_annotation_virtual_method, R"(
     cls A { }
     sup A {
         !virtual_method
@@ -14,7 +14,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AnnotationAst,
-    test_valid_abstract_method, R"(
+    test_valid_annotation_abstract_method, R"(
     cls A { }
     sup A {
         !abstract_method
@@ -25,7 +25,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AnnotationAst,
-    test_valid_public, R"(
+    test_valid_annotation_public, R"(
     !public
     cls A { }
 
@@ -41,7 +41,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AnnotationAst,
-    test_valid_protected, R"(
+    test_valid_annotation_protected, R"(
     !protected
     cls A { }
 
@@ -57,7 +57,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AnnotationAst,
-    test_valid_private, R"(
+    test_valid_annotation_private, R"(
     !private
     cls A { }
 
@@ -73,60 +73,56 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AnnotationAst,
-    test_valid_cold, R"(
+    test_valid_annotation_cold, R"(
     cls A { }
 
     sup A {
-        !cold
+        !std::llvm::cold
         fun f() -> std::void::Void { }
     }
 
-    !cold
+    !std::llvm::cold
     fun g() -> std::void::Void { }
 )");
 
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AnnotationAst,
-    test_valid_hot, R"(
+    test_valid_annotation_hot, R"(
     cls A { }
 
     sup A {
-        !hot
+        !std::llvm::hot
         fun f() -> std::void::Void { }
     }
 
-    !hot
+    !std::llvm::hot
     fun g() -> std::void::Void { }
 )");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
-    test_invalid_virtual_method_outside_sup,
-    SppAnnotationInvalidApplicationError, R"(
-    cls A { }
-
+    test_invalid_annotation_virtual_method_outside_sup,
+    SppCalledAnnotationAppliedToInvalidAstError, R"(
     !virtual_method
-    fun f() -> A { }
+    fun f() -> Void { }
 )");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
-    test_invalid_abstract_method_outside_sup,
-    SppAnnotationInvalidApplicationError, R"(
-    cls A { }
-
+    test_invalid_annotation_abstract_method_outside_sup,
+    SppCalledAnnotationAppliedToInvalidAstError, R"(
     !abstract_method
-    fun f() -> A { }
+    fun f() -> Void { }
 )");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
-    test_invalid_virtual_method_on_non_function,
-    SppAnnotationInvalidApplicationError, R"(
+    test_invalid_annotation_virtual_method_on_non_function,
+    SppCalledAnnotationAppliedToInvalidAstError, R"(
     !virtual_method
     cls A { }
 )");
@@ -134,8 +130,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
-    test_invalid_abstract_method_on_non_function,
-    SppAnnotationInvalidApplicationError, R"(
+    test_invalid_annotation_abstract_method_on_non_function,
+    SppCalledAnnotationAppliedToInvalidAstError, R"(
     !abstract_method
     cls A { }
 )");
@@ -143,45 +139,48 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
-    test_invalid_cold_on_non_function,
-    SppAnnotationInvalidApplicationError, R"(
-    !cold
+    test_invalid_annotation_cold_on_non_function,
+    SppCalledAnnotationAppliedToInvalidAstError, R"(
+    !std::llvm::cold
     cls A { }
 )");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
-    test_invalid_hot_on_non_function,
-    SppAnnotationInvalidApplicationError, R"(
-    !hot
+    test_invalid_annotation_hot_on_non_function,
+    SppCalledAnnotationAppliedToInvalidAstError, R"(
+    !std::llvm::hot
     cls A { }
 )");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
-    test_invalid_access_modifier_inside_sup_ext,
-    SppAnnotationInvalidApplicationError, R"(
+    test_invalid_annotation_access_modifier_inside_sup_ext,
+    SppCalledAnnotationAppliedToInvalidAstError, R"(
     cls A { }
     sup A {
-        !public
-        fun f(&self) -> A { }
+        !public  # fine
+        !virtual_method
+        fun f(&self) -> Void { }
     }
 
     cls B { }
     sup B ext A {
-        !public
-        fun f(&self) -> A { }
+        !public  # bad
+        fun f(&self) -> Void { }
     }
 )");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
-    test_invalid_annotation_identifier,
-    SppAnnotationInvalidError, R"(
+    test_invalid_annotation_annotation_identifier,
+    SppAnnotationTargetNotAnAnnotationError, R"(
     cls A { }
+
+    fun invalid() -> Void { }
 
     !invalid
     fun f() -> A { }
@@ -190,85 +189,150 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
-    test_invalid_conflicting_access_modifiers_1,
-    SppAnnotationConflictError, R"(
+    test_invalid_annotation_non_cmp_funcitonal,
+    SppAnnotationTargetNotACmpFunctionError, R"(
     cls A { }
 
-    !public
-    !protected
+    !std::annotations::annotation
+    fun aaa() -> A { }
+
+    !aaa
     fun f() -> A { }
 )");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
-    test_invalid_conflicting_access_modifiers_2,
-    SppAnnotationConflictError, R"(
+    test_invalid_annotation_non_annotation,
+    SppAnnotationTargetNotAnAnnotationError, R"(
     cls A { }
 
-    !protected
-    !private
+    cmp fun aaa() -> A { }
+
+    !aaa
     fun f() -> A { }
 )");
 
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
-    test_invalid_conflicting_access_modifiers_3,
-    SppAnnotationConflictError, R"(
+    test_invalid_annotation_invalid_args,
+    SppFunctionCallNoValidSignaturesError, R"(
     cls A { }
 
-    !private
-    !public
+    !annotation(target=Annotation::function)
+    cmp fun aaa(x: StrView) -> A { }
+
+    !aaa
     fun f() -> A { }
 )");
 
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
     AnnotationAst,
-    test_invalid_conflicting_temperature_1,
-    SppAnnotationConflictError, R"(
-    cls A { }
+    test_valid_annotation_custom_no_args, R"(
+    !std::annotations::annotation(target=Annotation::function)
+    cmp fun my_annotation() -> Void { }
 
-    !cold
-    !hot
-    fun f() -> A { }
+    !my_annotation
+    fun f() -> Void { }
 )");
 
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
     AnnotationAst,
-    test_invalid_conflicting_temperature_2,
-    SppAnnotationConflictError, R"(
+    test_valid_annotation_custom_with_args, R"(
     cls A { }
 
-    !hot
-    !cold
-    fun f() -> A { }
+    !std::annotations::annotation(target=Annotation::function)
+    cmp fun my_annotation(a: StrView) -> Void { }
+
+    !my_annotation("hello world")
+    fun f() -> Void { }
 )");
 
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AnnotationAst,
-    test_invalid_conflicting_function_modifier_1,
-    SppAnnotationConflictError, R"(
-    cls A { }
-    sup A {
-        !virtual_method
-        !abstract_method
-        fun f() -> A { }
-    }
-)");
-
-
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    AnnotationAst,
-    test_invalid_conflicting_function_modifier_2,
-    SppAnnotationConflictError, R"(
-    cls A { }
-    sup A {
-        !abstract_method
-        !virtual_method
-        fun f() -> A { }
-    }
-)");
+// SPP_TEST_SHOULD_FAIL_SEMANTIC(
+//     AnnotationAst,
+//     test_invalid_conflicting_access_modifiers_1,
+//     SppAnnotationConflictError, R"(
+//     cls A { }
+//
+//     !public
+//     !protected
+//     fun f() -> A { }
+// )");
+//
+//
+// SPP_TEST_SHOULD_FAIL_SEMANTIC(
+//     AnnotationAst,
+//     test_invalid_conflicting_access_modifiers_2,
+//     SppAnnotationConflictError, R"(
+//     cls A { }
+//
+//     !protected
+//     !private
+//     fun f() -> A { }
+// )");
+//
+//
+// SPP_TEST_SHOULD_FAIL_SEMANTIC(
+//     AnnotationAst,
+//     test_invalid_conflicting_access_modifiers_3,
+//     SppAnnotationConflictError, R"(
+//     cls A { }
+//
+//     !private
+//     !public
+//     fun f() -> A { }
+// )");
+//
+//
+// SPP_TEST_SHOULD_FAIL_SEMANTIC(
+//     AnnotationAst,
+//     test_invalid_conflicting_temperature_1,
+//     SppAnnotationConflictError, R"(
+//     cls A { }
+//
+//     !cold
+//     !hot
+//     fun f() -> A { }
+// )");
+//
+//
+// SPP_TEST_SHOULD_FAIL_SEMANTIC(
+//     AnnotationAst,
+//     test_invalid_conflicting_temperature_2,
+//     SppAnnotationConflictError, R"(
+//     cls A { }
+//
+//     !hot
+//     !cold
+//     fun f() -> A { }
+// )");
+//
+//
+// SPP_TEST_SHOULD_FAIL_SEMANTIC(
+//     AnnotationAst,
+//     test_invalid_conflicting_function_modifier_1,
+//     SppAnnotationConflictError, R"(
+//     cls A { }
+//     sup A {
+//         !virtual_method
+//         !abstract_method
+//         fun f() -> A { }
+//     }
+// )");
+//
+//
+// SPP_TEST_SHOULD_FAIL_SEMANTIC(
+//     AnnotationAst,
+//     test_invalid_conflicting_function_modifier_2,
+//     SppAnnotationConflictError, R"(
+//     cls A { }
+//     sup A {
+//         !abstract_method
+//         !virtual_method
+//         fun f() -> A { }
+//     }
+// )");

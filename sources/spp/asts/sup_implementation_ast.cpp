@@ -1,9 +1,13 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.asts.sup_implementation_ast;
 import spp.asts.sup_member_ast;
 import spp.asts.utils.ast_utils;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::SupImplementationAst::~SupImplementationAst() = default;
 
 
@@ -27,7 +31,7 @@ auto spp::asts::SupImplementationAst::stage_1_pre_process(
     Ast *ctx)
     -> void {
     // Shift to members.
-    for (auto *m: members | genex::views::ptr | genex::to<std::vector>()) {
+    for (auto *m : members | genex::views::ptr | genex::to<std::vector>()) {
         m->stage_1_pre_process(ctx);
     }
 }
@@ -145,3 +149,5 @@ auto spp::asts::SupImplementationAst::stage_11_code_gen_2(
     }
     return nullptr;
 }
+
+SPP_MOD_END

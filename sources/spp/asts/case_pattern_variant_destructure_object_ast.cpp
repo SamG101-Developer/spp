@@ -40,6 +40,7 @@ import spp.utils.uid;
 import genex;
 
 
+SPP_MOD_BEGIN
 spp::asts::CasePatternVariantDestructureObjectAst::CasePatternVariantDestructureObjectAst(
     decltype(type) type,
     decltype(tok_l) &&tok_l,
@@ -240,3 +241,5 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_11_code_gen_2(
     // Return the combined statement.
     return llvm_master_transform;
 }
+
+SPP_MOD_END

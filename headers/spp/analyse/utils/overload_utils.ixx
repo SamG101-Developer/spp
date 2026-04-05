@@ -63,7 +63,7 @@ namespace spp::analyse::utils::overload_utils {
         asts::PostfixExpressionAst const &cast_lhs,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
-        -> std::pair<PassOverloadInfo, bool>;
+        -> std::tuple<PassOverloadInfo, bool, std::unique_ptr<asts::PostfixExpressionAst>>;
 
     SPP_EXP_FUN auto retrieve_all_overloads(
         asts::IdentifierAst const *fn_name,

@@ -7,6 +7,7 @@ import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 
 
+SPP_MOD_BEGIN
 spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypeUnaryExpressionOperatorNamespaceAst(
     decltype(ns) ns,
     decltype(tok_sep) &&tok_sep) :
@@ -14,6 +15,9 @@ spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypeUnaryExpressionOperatorN
     ns(std::move(ns)),
     tok_sep(std::move(tok_sep)) {
 }
+
+
+spp::asts::TypeUnaryExpressionOperatorNamespaceAst::~TypeUnaryExpressionOperatorNamespaceAst() = default;
 
 
 auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::equals(
@@ -85,3 +89,5 @@ auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::type_parts()
     -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
     return {};
 }
+
+SPP_MOD_END
