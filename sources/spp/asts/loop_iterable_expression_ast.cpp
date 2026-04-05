@@ -153,10 +153,11 @@ auto spp::asts::LoopIterableExpressionAst::stage_7_analyse_semantics(
     });
 
     // Otherwise, exit the loop.
-    // Translated: "<case-of-expr> else { exit; }".
+    // Translated: "<case-of-expr> else { exit }".
     auto case_else_branch = ( {
         auto case_else_pattern = std::make_unique<CasePatternVariantElseAst>(nullptr);
         auto case_else_body = InnerScopeExpressionAst<std::unique_ptr<StatementAst>>::new_empty();
+        case_else_pattern->mark_for_iter_loop_exit();
 
         auto is_tok = std::make_unique<TokenAst>(pos_start(), lex::SppTokenType::KW_IS, "is");
         auto patterns = std::vector<std::unique_ptr<CasePatternVariantAst>>();
@@ -185,6 +186,11 @@ auto spp::asts::LoopIterableExpressionAst::stage_7_analyse_semantics(
     // Analyse the initial let statement.
     iterable_let->stage_7_analyse_semantics(sm, meta);
     m_transform_let = std::move(iterable_let);
+
+    std::cout << "\n\n"
+        << to_string() << ":\n"
+        << m_transform_let->to_string() << "\n"
+        << m_transform_loop->to_string() << std::endl;
 
     // Analyse the transformed loop (makes its own scope).
     meta->save();

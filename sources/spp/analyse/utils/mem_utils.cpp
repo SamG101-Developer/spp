@@ -13,6 +13,8 @@ import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.array_literal_repeated_element_ast;
 import spp.asts.ast;
 import spp.asts.case_expression_branch_ast;
+import spp.asts.case_pattern_variant_ast;
+import spp.asts.case_pattern_variant_else_ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
@@ -58,13 +60,13 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
         return;
     }
     if (auto const *arr_literal = value_ast.to<asts::ArrayLiteralExplicitElementsAst>(); arr_literal != nullptr) {
-        for (auto &&x: arr_literal->elems) {
+        for (auto &&x : arr_literal->elems) {
             validate_symbol_memory(*x, move_ast, sm, true, true, true, true, mark_moves, meta);
         }
         return;
     }
     if (auto const *tup_literal = value_ast.to<asts::TupleLiteralAst>(); tup_literal != nullptr) {
-        for (auto &&x: tup_literal->elems) {
+        for (auto &&x : tup_literal->elems) {
             validate_symbol_memory(*x, move_ast, sm, true, true, true, true, mark_moves, meta);
         }
         return;
@@ -222,15 +224,21 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
         return first_branch_index != -1 ? branch_mem_info.at(first_branch_index as USize).second : branch_mem_info.back().second;
     };
 
+    const auto has_else_branch = not branches.empty() ? branches.back()->patterns[0]->to<asts::CasePatternVariantElseAst>() : nullptr;
+    const auto skip_else = has_else_branch and has_else_branch->marked_for_iter_loop_exit();
+
     // Check for consistency among the branches' symbols' memory states.
+    auto current_branch = branches.begin();
     for (auto &&[sym, branches_memory_info_lists] : sym_mem_info) {
         auto first_branch_mem_info = first_branch_mem_info_getter(branches_memory_info_lists);
+        if (current_branch == branches.end() - 1 and skip_else) { break; }
 
         // Assuming all new memory states are consistent across branches, update to the first "new" state list.
         sym->memory_info->ast_initialization = {first_branch_mem_info.ast_initialization, std::get<1>(sym->memory_info->ast_initialization)};
         sym->memory_info->ast_moved = {first_branch_mem_info.ast_moved, std::get<1>(sym->memory_info->ast_moved)};
         sym->memory_info->ast_partial_moves = first_branch_mem_info.ast_partial_moves;
         sym->memory_info->ast_pins = first_branch_mem_info.ast_pins;
+        sym->memory_info->ast_escaping_borrows = first_branch_mem_info.ast_escaping_borrows;
         sym->memory_info->initialization_counter = first_branch_mem_info.initialization_counter;
 
         // Check the new memory status for each symbol is consistent across all branches that don't terminate.
@@ -259,6 +267,13 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
             if (first_branch_mem_info.ast_pins != branch_memory_info_list.ast_pins) {
                 sym->memory_info->is_inconsistently_pinned = std::make_pair(first_branch, branch);
             }
+
+            // Check for consistent escaping borrows.
+            if (first_branch_mem_info.ast_escaping_borrows != branch_memory_info_list.ast_escaping_borrows) {
+                sym->memory_info->is_inconsistently_borrow_escaping = std::make_pair(first_branch, branch);
+            }
         }
+
+        ++current_branch;
     }
 }
