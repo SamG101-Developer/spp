@@ -38,32 +38,6 @@ auto spp::asts::InnerScopeExpressionAst<T>::new_empty()
 
 
 template <typename T>
-auto spp::asts::InnerScopeExpressionAst<T>::stage_7_analyse_semantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> void {
-    // Create a scope for the InnerScopeAst node.
-    auto scope_name = analyse::scopes::ScopeBlockName::from_parts(
-        "inner-scope", {}, pos_start());
-    sm->create_and_move_into_new_scope(std::move(scope_name), this);
-    set_ast_scope(sm->current_scope);
-
-    // Check for unreachable code.
-    for (auto &&[i, member] : this->members | genex::views::ptr | genex::views::enumerate) {
-        auto ret_stmt = member->template to<RetStatementAst>();
-        auto loop_flow_stmt = member->template to<LoopControlFlowStatementAst>();
-        raise_if<analyse::errors::SppUnreachableCodeError>(
-            (ret_stmt or loop_flow_stmt) and (member != this->members.back().get()),
-            {sm->current_scope}, ERR_ARGS(*member, *this->members[i + 1]));
-    }
-
-    // Analyse the members of the inner scope.
-    for (auto const &x : this->members) { x->stage_7_analyse_semantics(sm, meta); }
-    sm->move_out_of_current_scope();
-}
-
-
-template <typename T>
 auto spp::asts::InnerScopeExpressionAst<T>::stage_9_comptime_resolution(
     ScopeManager *sm,
     CompilerMetaData *meta)
