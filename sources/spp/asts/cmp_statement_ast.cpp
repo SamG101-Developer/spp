@@ -131,10 +131,15 @@ auto spp::asts::CmpStatementAst::stage_4_qualify_types(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // Ensure that the type type doesn't have a convention.
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(
+        this, type, *sm, "global constant type");
+
     //
     for (auto const &a : annotations) {
         a->stage_4_qualify_types(sm, meta);
     }
+
     // Qualify the type.
     type->stage_4_qualify_types(sm, meta);
     type->stage_7_analyse_semantics(sm, meta);
@@ -149,9 +154,6 @@ auto spp::asts::CmpStatementAst::stage_5_load_super_scopes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // Ensure that the convention type doesn't have a convention.
-    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(
-        this, type, *sm, "global constant type");
     for (auto const &a : annotations) {
         a->stage_5_load_super_scopes(sm, meta);
     }
