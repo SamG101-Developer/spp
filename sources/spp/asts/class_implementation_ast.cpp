@@ -131,6 +131,17 @@ auto spp::asts::ClassImplementationAst::stage_8_check_memory(
 }
 
 
+auto spp::asts::ClassImplementationAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Compile-time resolution for each member.
+    for (auto const &m : members) {
+        m->stage_9_comptime_resolution(sm, meta);
+    }
+}
+
+
 auto spp::asts::ClassImplementationAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,

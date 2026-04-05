@@ -316,6 +316,7 @@ auto spp::asts::ClassPrototypeAst::stage_9_comptime_resolution(
     for (auto const &a : annotations) {
         a->stage_9_comptime_resolution(sm, meta);
     }
+    impl->stage_9_comptime_resolution(sm, meta);
     sm->move_out_of_current_scope();
 }
 

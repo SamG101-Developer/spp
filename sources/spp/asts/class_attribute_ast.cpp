@@ -105,10 +105,26 @@ auto spp::asts::ClassAttributeAst::stage_2_gen_top_level_scopes(
 }
 
 
+auto spp::asts::ClassAttributeAst::stage_4_qualify_types(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    //
+    for (auto const &a : annotations) {
+        a->stage_4_qualify_types(sm, meta);
+    }
+}
+
+
 auto spp::asts::ClassAttributeAst::stage_5_load_super_scopes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    for (auto const &a : annotations) {
+        a->stage_5_load_super_scopes(sm, meta);
+    }
+
     // Ensure that the convention type doesn't have a convention.
     SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(
         type, type, *sm, "attribute type");
@@ -124,24 +140,22 @@ auto spp::asts::ClassAttributeAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // Repeated convention check for generic substitutions.
-    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(type, type, *sm, "attribute type");
-
-    // Todo: I hate this, yet it works. Will fix later.
-    const auto meta_depth = meta->depth();
-    try {
-        type->stage_7_analyse_semantics(sm, meta);
-        type = sm->current_scope->get_type_symbol(type)->fq_name();
-        const auto var_sym = sm->current_scope->get_var_symbol(name);
-        var_sym->type = type;
-    }
-    catch (analyse::errors::SppIdentifierUnknownError const &) {
-        while (meta->depth() > meta_depth) {
-            meta->restore();
+    // This can be reached via stage 4 generic substitution, so prevent that.
+    if (meta->current_stage == 9) {
+        for (auto const &a : annotations) {
+            a->stage_7_analyse_semantics(sm, meta);
         }
     }
 
-    if (default_val != nullptr) {
+    // Repeated convention check for generic substitutions.
+    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(type, type, *sm, "attribute type");
+
+    type->stage_7_analyse_semantics(sm, meta);
+    type = sm->current_scope->get_type_symbol(type)->fq_name();
+    const auto var_sym = sm->current_scope->get_var_symbol(name);
+    var_sym->type = type;
+
+    if (meta->current_stage == 9 and default_val != nullptr) {
         default_val->stage_7_analyse_semantics(sm, meta);
         const auto default_type = default_val->infer_type(sm, meta);
 
@@ -164,5 +178,17 @@ auto spp::asts::ClassAttributeAst::stage_8_check_memory(
             *default_val, *default_val, *sm, true, true, true, true, true, meta);
     }
 }
+
+
+auto spp::asts::ClassAttributeAst::stage_9_comptime_resolution(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    //
+    for (auto const &a : annotations) {
+        a->stage_9_comptime_resolution(sm, meta);
+    }
+}
+
 
 SPP_MOD_END
