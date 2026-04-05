@@ -187,11 +187,6 @@ auto spp::asts::LoopIterableExpressionAst::stage_7_analyse_semantics(
     iterable_let->stage_7_analyse_semantics(sm, meta);
     m_transform_let = std::move(iterable_let);
 
-    std::cout << "\n\n"
-        << to_string() << ":\n"
-        << m_transform_let->to_string() << "\n"
-        << m_transform_loop->to_string() << std::endl;
-
     // Analyse the transformed loop (makes its own scope).
     meta->save();
     meta->current_loop_depth += 1;
