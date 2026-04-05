@@ -188,7 +188,9 @@ auto spp::analyse::utils::overload_utils::retrieve_all_overloads(
     asts::meta::CompilerMetaData *meta)
     -> std::tuple<bool, std::unique_ptr<asts::FunctionPrototypeAst>, std::vector<OverloadInfo>> {
     // For named functions (ie non-closures), get all the function overload implementation scopes.
-    auto all_overloads = func_utils::get_all_function_scopes(*fn_name, &fn_owner_scope, *sm, meta);
+    auto all_overloads = fn_name
+        ? func_utils::get_all_function_scopes(*fn_name, &fn_owner_scope, *sm, meta)
+        : std::vector<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, std::unique_ptr<asts::GenericArgumentGroupAst>, std::shared_ptr<asts::TypeAst>>>{};
     if (not all_overloads.empty()) { return std::make_tuple(false, nullptr, std::move(all_overloads)); };
 
     // If there are no scopes, assume that this is a closure (do functional type check).
@@ -428,6 +430,9 @@ auto spp::analyse::utils::overload_utils::validate_args_match_params(
     for (auto [arg, param] : genex::views::zip(sorted_func_arguments, func_params->get_all_params())) {
         auto p_type = fn_scope->get_type_symbol(param->type)->fq_name()->with_convention(ast_clone(param->type->get_convention()));
         auto a_type = arg->infer_type(sm, meta);
+        if (arg->val->to_string() == "oogabooga") {
+            auto _ = 123;
+        }
         auto temp = type_utils::GenericInferenceMap();
 
         // Special case for variadic parameters (updates p_type so don't follow with "else if").
