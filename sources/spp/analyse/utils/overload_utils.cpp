@@ -75,7 +75,8 @@ auto spp::analyse::utils::overload_utils::determine_overload(
     const auto is_postfix = meta->postfix_expression_lhs->to<asts::PostfixExpressionAst>();
     const auto is_runtime = is_postfix ? is_postfix->op->to<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>() : nullptr;
     if (is_runtime != nullptr) {
-        auto [overload_info, is_closure, pf] = propagate_method_to_function(fn_call, *fn_owner_type, *fn_name, *is_postfix, sm, meta);
+        auto [overload_info, is_closure, pf] = propagate_method_to_function(
+            fn_call, *fn_owner_type, *fn_name, *is_postfix, sm, meta);
         fn_call.transformed_ast = std::move(pf);
         return std::make_pair(std::move(overload_info), is_closure);
     }
@@ -430,9 +431,6 @@ auto spp::analyse::utils::overload_utils::validate_args_match_params(
     for (auto [arg, param] : genex::views::zip(sorted_func_arguments, func_params->get_all_params())) {
         auto p_type = fn_scope->get_type_symbol(param->type)->fq_name()->with_convention(ast_clone(param->type->get_convention()));
         auto a_type = arg->infer_type(sm, meta);
-        if (arg->val->to_string() == "oogabooga") {
-            auto _ = 123;
-        }
         auto temp = type_utils::GenericInferenceMap();
 
         // Special case for variadic parameters (updates p_type so don't follow with "else if").

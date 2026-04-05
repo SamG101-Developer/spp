@@ -138,9 +138,7 @@ auto spp::analyse::utils::func_utils::convert_method_to_function_form(
     asts::PostfixExpressionOperatorFunctionCallAst &fn_call,
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData *meta)
-    -> std::pair<
-        std::unique_ptr<asts::PostfixExpressionAst>,
-        std::unique_ptr<asts::PostfixExpressionOperatorFunctionCallAst>> {
+    -> std::pair<std::unique_ptr<asts::PostfixExpressionAst>, std::unique_ptr<asts::PostfixExpressionOperatorFunctionCallAst>> {
     auto self_arg_val = asts::ast_clone(lhs.lhs);
 
     // Create the static method access (without the function call and args).

@@ -94,12 +94,13 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::clone() const
         ast_clone(generic_arg_group),
         ast_clone(arg_group),
         ast_clone(fold));
+    ast->closure_dummy_proto = ast_clone(closure_dummy_proto);
+    ast->transformed_ast = ast_clone(transformed_ast);
     ast->m_overload_info = m_overload_info;
     ast->m_is_async = m_is_async;
     ast->m_folded_asts = ast_clone_vec(m_folded_asts);
     ast->m_closure_dummy_arg_group = ast_clone(m_closure_dummy_arg_group);
     ast->m_closure_dummy_arg = ast_clone(m_closure_dummy_arg);
-    ast->closure_dummy_proto = ast_clone(closure_dummy_proto);
     ast->m_is_coro_and_auto_resume = m_is_coro_and_auto_resume;
     return ast;
 }
@@ -218,6 +219,16 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_7_analyse_semant
             *sm->current_scope, *std::get<0>(*m_overload_info));
     }
     meta->prevent_auto_generator_resume = false;
+
+    // Copy some properties into the transform (clone arg group for the self arg convention).
+    if (transformed_ast) {
+        const auto transformed_op = transformed_ast->op->to<PostfixExpressionOperatorFunctionCallAst>();
+        transformed_op->arg_group = ast_clone(arg_group);
+        transformed_op->m_overload_info = m_overload_info;
+        transformed_op->m_is_async = m_is_async;
+        transformed_op->m_folded_asts = ast_clone_vec(m_folded_asts);
+        transformed_op->m_closure_dummy_arg = ast_clone(m_closure_dummy_arg);
+    }
 }
 
 

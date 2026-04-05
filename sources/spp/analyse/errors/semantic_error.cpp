@@ -210,7 +210,7 @@ spp::analyse::errors::SppUninitializedMemoryUseError::SppUninitializedMemoryUseE
         "Memory was initialized here");
     add_context_for_error(
         &move_location,
-        "Memory was moved here (possibly via linked pin)");
+        "Memory was moved here");
     add_error(
         &ast,
         "Expression using uninitialized memory");

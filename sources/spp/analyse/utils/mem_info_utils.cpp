@@ -26,7 +26,6 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::initialized_by(
 
 auto spp::analyse::utils::mem_info_utils::MemoryInfo::moved_by(
     asts::Ast const &ast, scopes::Scope *scope)
-
     -> void {
     ast_moved = {&ast, scope};
     ast_initialization = {nullptr, nullptr};
@@ -53,7 +52,7 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::snapshot() const
     return MemoryInfoSnapshot(
         std::get<0>(ast_initialization), std::get<1>(ast_initialization),
         std::get<0>(ast_moved), std::get<1>(ast_moved),
-        ast_partial_moves, ast_pins, ast_linked_pins, initialization_counter);
+        ast_partial_moves, ast_pins, ast_escaping_borrows, initialization_counter);
 }
 
 
@@ -66,6 +65,7 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::clone() const
     out->ast_borrowed = ast_borrowed;
     out->ast_partial_moves = ast_partial_moves;
     out->ast_pins = ast_pins;
+    out->ast_escaping_borrows = ast_escaping_borrows;
     out->ast_comptime = asts::ast_clone(ast_comptime);
     out->initialization_counter = initialization_counter;
     out->is_inconsistently_initialized = is_inconsistently_initialized;
@@ -83,6 +83,7 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::fill_from_snapshot(
     ast_moved = {snapshot.ast_moved, snapshot.scope_moved};
     ast_partial_moves = snapshot.ast_partial_moves;
     ast_pins = snapshot.ast_pins;
+    ast_escaping_borrows = snapshot.ast_escaping_borrows;
     initialization_counter = snapshot.initialization_counter;
 }
 
