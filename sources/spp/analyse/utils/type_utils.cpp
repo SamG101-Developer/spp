@@ -61,11 +61,11 @@ auto spp::analyse::utils::type_utils::convention_eq(
     const auto lhs_conv = lhs_type.get_convention();
     const auto rhs_conv = rhs_type.get_convention();
 
-    // If the conventions are not equal, return false (allow "&mut" to coerce to "&").
+    // If the conventions are not equal, return false - but allow "&mut" (rhs) to coerce to "&" (lhs)
     if ((lhs_conv and *lhs_conv != rhs_conv) or (not lhs_conv and rhs_conv)) {
-        if (not((lhs_conv and *lhs_conv == asts::ConventionTag::REF) and (rhs_conv and *rhs_conv == asts::ConventionTag::MUT))) {
-            return false;
-        }
+        const auto is_lhs_mut = lhs_conv and *lhs_conv == asts::ConventionTag::MUT;
+        const auto is_rhs_ref = rhs_conv and *rhs_conv == asts::ConventionTag::REF;
+        return not (is_lhs_mut and is_rhs_ref);
     }
     return true;
 }
@@ -164,7 +164,9 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
         return true;
     }
 
-    if (not convention_eq(lhs_type, rhs_type)) { return false; }
+    // Deliberately inverted for the param/arg checker. This will be removed once that type check is actually done
+    // properly.
+    if (not convention_eq(rhs_type, lhs_type)) { return false; }
 
     const auto stripped_lhs_sym = lhs_scope.get_type_symbol(stripped_lhs);
     if (stripped_lhs_sym->is_generic) {
