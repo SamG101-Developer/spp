@@ -87,9 +87,16 @@ namespace spp::analyse::utils::mem_utils {
         -> void;
 
     SPP_EXP_FUN auto validate_inconsistent_memory(
-        asts::Ast* parent,
+        asts::Ast *parent,
         std::vector<asts::CaseExpressionBranchAst*> const &branches,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
+        -> void;
+
+    SPP_EXP_FUN auto prevent_borrow_lifetime_extension(
+        scopes::VariableSymbol const *lhs_outermost,
+        scopes::VariableSymbol const *rhs_outermost,
+        asts::Ast *owner,
+        scopes::ScopeManager const &sm)
         -> void;
 }

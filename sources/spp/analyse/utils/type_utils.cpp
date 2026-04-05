@@ -61,12 +61,18 @@ auto spp::analyse::utils::type_utils::convention_eq(
     const auto lhs_conv = lhs_type.get_convention();
     const auto rhs_conv = rhs_type.get_convention();
 
+    // Quick exits based on existence of conventions.
+    if (lhs_conv == nullptr and rhs_conv == nullptr) { return true; }
+    if (lhs_conv == nullptr and rhs_conv != nullptr) { return false; }
+    if (lhs_conv != nullptr and rhs_conv == nullptr) { return false; }
+
     // If the conventions are not equal, return false - but allow "&mut" (rhs) to coerce to "&" (lhs)
-    if ((lhs_conv and *lhs_conv != rhs_conv) or (not lhs_conv and rhs_conv)) {
-        const auto is_lhs_mut = lhs_conv and *lhs_conv == asts::ConventionTag::MUT;
-        const auto is_rhs_ref = rhs_conv and *rhs_conv == asts::ConventionTag::REF;
-        return not (is_lhs_mut and is_rhs_ref);
+    if (*lhs_conv != rhs_conv) {
+        const auto is_lhs_mut = *lhs_conv == asts::ConventionTag::MUT;
+        const auto is_rhs_ref = *rhs_conv == asts::ConventionTag::REF;
+        return not(is_lhs_mut and is_rhs_ref);
     }
+
     return true;
 }
 
@@ -596,8 +602,8 @@ auto spp::analyse::utils::type_utils::validate_inconsistent_types(
 
     // Set the master branch type to the first branch's type, if it exists. This is the default and may be subsequently changed.
     auto master_branch_type_info = not branches.empty()
-        ? std::make_pair(branches_type_info[0].first, branches_type_info[0].second)
-        : std::make_pair(nullptr, nullptr);
+                                       ? std::make_pair(branches_type_info[0].first, branches_type_info[0].second)
+                                       : std::make_pair(nullptr, nullptr);
 
     // Override the master type if a pre-provided type (for assignment) has been given.
     if (meta->assignment_target_type != nullptr) {
@@ -829,7 +835,8 @@ auto spp::analyse::utils::type_utils::create_generic_sup_scope(
 
             scoped_sym->alias_stmt->old_type = std::move(old_type_sub);
             scoped_sym->alias_stmt->m_mapped_old_type = scoped_sym->alias_stmt->old_type;
-            if (scoped_sym->alias_stmt->get_ast_scope()) { // Self doesnt have a scope on it
+            if (scoped_sym->alias_stmt->get_ast_scope()) {
+                // Self doesnt have a scope on it
                 scoped_sym->alias_stmt->get_ast_scope()->parent = new_sup_scope_ptr;
             }
 
@@ -1085,8 +1092,10 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
     const auto NO_PARAMS = asts::GenericParameterGroupAst::new_empty();
     const auto extract_params = [&NO_PARAMS](scopes::TypeSymbol const &ts) {
         return ts.alias_stmt
-            ? ts.alias_stmt->generic_param_group.get() : ts.type
-            ? ts.type->generic_param_group.get() : NO_PARAMS.get();
+                   ? ts.alias_stmt->generic_param_group.get()
+                   : ts.type
+                   ? ts.type->generic_param_group.get()
+                   : NO_PARAMS.get();
     };
 
     const auto filter_params = [](asts::GenericParameterGroupAst const &pg, asts::GenericArgumentGroupAst const &ag) {
