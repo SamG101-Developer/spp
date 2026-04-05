@@ -286,6 +286,9 @@ auto spp::analyse::utils::mem_utils::prevent_borrow_lifetime_extension(
     asts::Ast *owner,
     scopes::ScopeManager const& sm)
     -> void {
+    // Todo: A similar version of this function will be needed for "return" statements as-well as the currently used "="
+    //  statements.
+
     // Prevent a borrow being placed into a value with a longer lifetime.
     const auto is_rhs_borrow = rhs_outermost and std::get<0>(rhs_outermost->memory_info->ast_borrowed) != nullptr;
     if (lhs_outermost != nullptr and rhs_outermost != nullptr and is_rhs_borrow) {
