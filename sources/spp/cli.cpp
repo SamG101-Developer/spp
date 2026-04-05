@@ -44,7 +44,7 @@ const auto CONFIG_FILE_CONTENTS = R"(
     build = "exe"
 
     [vcs]
-    std = { git = "https://github.com/SamG101-Developer/SPP-STL", branch = "annotations-v2" })";
+    std = { git = "https://github.com/SamG101-Developer/SPP-STL", branch = "master" })";
 
 
 auto spp::cli::run_cli(

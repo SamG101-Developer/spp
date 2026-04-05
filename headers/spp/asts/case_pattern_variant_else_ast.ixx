@@ -15,7 +15,7 @@ namespace spp::asts {
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantElseAst final : CasePatternVariantAst {
 private:
-    bool m_for_iter_loop_exit;
+    bool m_for_iter_loop_exit = false;
 
 public:
     /**
