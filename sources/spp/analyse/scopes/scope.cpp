@@ -485,7 +485,8 @@ auto spp::analyse::scopes::Scope::get_type_symbol(
     }
 
     // Get the symbol from the symbol table if it exists.
-    auto sym = scope->table.type_tbl.get(sym_name_extracted);
+    auto sym = scope->table.type_tbl.get(
+        std::const_pointer_cast<asts::TypeIdentifierAst>(sym_name_extracted));
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym == nullptr and not exclusive and scope->parent != nullptr) {
@@ -512,7 +513,8 @@ auto spp::analyse::scopes::Scope::get_ns_symbol(
     // Get the symbol from the symbol table if it exists.
     if (sym_name == nullptr) { return nullptr; }
     const auto scope = this;
-    auto sym = table.ns_tbl.get(sym_name);
+    auto sym = table.ns_tbl.get(
+        std::const_pointer_cast<asts::IdentifierAst>(sym_name));
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym == nullptr and not exclusive and scope->parent != nullptr) {

@@ -48,7 +48,7 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::add(
     std::shared_ptr<S> const &sym)
     -> void {
     // Add a symbol to the table.
-    if (has(asts::ast_clone(sym_name))) {
+    if (has(sym_name)) {
         for (auto it = m_table.begin(); it != m_table.end(); ++it) {
             if (*it->first == *sym_name) {
                 m_table.erase(it);
@@ -73,16 +73,12 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::rem(
 
 template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::get(
-    std::shared_ptr<const I> const &sym_name) const
+    std::shared_ptr<I> const &sym_name) const
     -> std::shared_ptr<S> {
     // Get a symbol from the table.
     if (sym_name == nullptr) { return nullptr; }
-    for (auto const &[k, v] : m_table) {
-        if (*k == *sym_name) {
-            return v;
-        }
-    }
-    return nullptr;
+    auto ptr = m_table.find(sym_name);
+    return ptr != m_table.end() ? ptr->second : nullptr;
 }
 
 
@@ -92,12 +88,8 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::has(
     -> bool {
     // Check if a symbol exists in the table.
     if (sym_name == nullptr) { return false; }
-    for (auto const &[k, _] : m_table) {
-        if (*k == *sym_name) {
-            return true;
-        }
-    }
-    return false;
+    auto ptr = m_table.find(sym_name);
+    return ptr != m_table.end();
 }
 
 

@@ -51,7 +51,7 @@ public:
     auto rem(std::shared_ptr<I> const &sym_name) -> void;
 
     SPP_ATTR_HOT
-    auto get(std::shared_ptr<const I> const &sym_name) const -> std::shared_ptr<S>;
+    auto get(std::shared_ptr<I> const &sym_name) const -> std::shared_ptr<S>;
 
     auto has(std::shared_ptr<I> const &sym_name) const -> bool;
 

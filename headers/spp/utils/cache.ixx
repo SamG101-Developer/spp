@@ -16,7 +16,7 @@ namespace spp::utils {
     SPP_EXP_CLS template <typename K, typename V>
     requires std::is_pointer_v<K>
     class Cache {
-        std::vector<std::pair<K, V>> m_cache;
+        std::unordered_map<K, V> m_cache;
 
     public:
         /**
@@ -25,7 +25,7 @@ namespace spp::utils {
          * @param[in] value The value to set in the cache.
          */
         auto set(K key, V const &value) -> void {
-            m_cache.emplace_back(key, value);
+            m_cache.emplace(key, value);
         }
 
         /**
@@ -35,11 +35,8 @@ namespace spp::utils {
          * @return The value associated with the key.
          */
         SPP_ATTR_HOT SPP_ATTR_ALWAYS_INLINE
-        auto get(K key) const noexcept -> V {
-            for (const auto &[k, v] : m_cache) {
-                if (k == key) { return v; }
-            }
-            std::unreachable();
+        auto get(K key) const noexcept -> V const& {
+            return m_cache.at(key);
         }
 
         /**
@@ -49,10 +46,7 @@ namespace spp::utils {
          */
         SPP_ATTR_HOT SPP_ATTR_ALWAYS_INLINE
         auto contains(K key) const noexcept -> bool {
-            for (const auto &[k, v] : m_cache) {
-                if (k == key) { return true; }
-            }
-            return false;
+            return m_cache.contains(key);
         }
     };
 }
