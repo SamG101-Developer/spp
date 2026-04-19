@@ -62,8 +62,9 @@ auto spp::compiler::CompilerBoot::stage_1_pre_process(
     // Pre-processing stage.
     for (auto const &mod : m_modules) {
         PREP_SCOPE_MANAGER;
-        mod->file_path = mod_in_tree->path;
-        mod->stage_1_pre_process(ctx);
+        const auto cast_mod = mod->to<asts::ModulePrototypeAst>()
+        cast_mod->file_path = mod_in_tree->path;
+        cast_mod->stage_1_pre_process(ctx);
         bar.next();
     }
     bar.finish();

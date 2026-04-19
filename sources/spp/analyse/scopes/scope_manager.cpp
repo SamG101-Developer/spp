@@ -83,51 +83,6 @@ auto spp::analyse::scopes::ScopeManager::exhaust_scope()
 }
 
 
-auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statements(
-    TypeSymbol const &cls_sym,
-    Scope const &sup_scope)
-    -> void {
-    // Get the scopes to check for conflicts in.
-    auto dummy = utils::type_utils::GenericInferenceMap();
-    const auto existing_scopes = cls_sym.scope->direct_sup_scopes
-        | genex::views::filter([&](auto *scope) { return scope->ast->template to<asts::SupPrototypeExtensionAst>() or scope->ast->template to<asts::SupPrototypeFunctionsAst>(); })
-        | genex::views::filter([&](auto *scope) { return utils::type_utils::relaxed_symbolic_eq(*ast_name(sup_scope.ast), *ast_name(scope->ast), sup_scope, *scope->ast->get_ast_scope(), dummy); })
-        | genex::to<std::vector>();
-
-    // Check for conflicting "type" statements.
-    std::vector<std::shared_ptr<asts::TypeIdentifierAst>> new_types;
-    for (auto const *scope : existing_scopes) {
-        auto body = asts::ast_body(scope->ast);
-        for (auto const *member : body) {
-            if (auto const *type_stmt = member->to<asts::TypeStatementAst>(); type_stmt != nullptr) {
-                for (auto const &new_type : new_types) {
-                    raise_if<errors::SppIdentifierDuplicateError>(
-                        *new_type == *type_stmt->new_type, {scope, &sup_scope},
-                        ERR_ARGS(*new_type, *type_stmt->new_type, "associated type"));
-                }
-                new_types.emplace_back(type_stmt->new_type);
-            }
-        }
-    }
-
-    // Check for conflicting "cmp" statements.
-    std::vector<std::shared_ptr<asts::IdentifierAst>> new_cmps;
-    for (const auto *scope : existing_scopes) {
-        auto body = asts::ast_body(scope->ast);
-        for (auto const *member : body) {
-            if (auto const *cmp_stmt = member->to<asts::CmpStatementAst>(); cmp_stmt != nullptr and cmp_stmt->type->type_parts().back()->name[0] != '$') {
-                for (auto const &new_cmp : new_cmps) {
-                    raise_if<errors::SppIdentifierDuplicateError>(
-                        *new_cmp == *cmp_stmt->name, {scope, &sup_scope},
-                        ERR_ARGS(*new_cmp, *cmp_stmt->name, "comptime constant"));
-                }
-                new_cmps.emplace_back(cmp_stmt->name);
-            }
-        }
-    }
-}
-
-
 auto spp::analyse::scopes::ScopeManager::cleanup() -> void {
     normal_sup_blocks.clear();
     generic_sup_blocks.clear();

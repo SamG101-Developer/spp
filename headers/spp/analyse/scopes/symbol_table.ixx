@@ -43,7 +43,7 @@ public:
 
     SPP_ATTR_NODISCARD auto has(std::string const &sym_name) const -> bool;
 
-    SPP_ATTR_NODISCARD auto all() const -> std::vector<AbstractSymbol*>;
+    SPP_ATTR_NODISCARD auto all() const -> std::vector<std::shared_ptr<AbstractSymbol>>;
 };
 
 

@@ -71,9 +71,9 @@ auto spp::analyse::scopes::IndividualSymbolTable::has(
 
 
 auto spp::analyse::scopes::IndividualSymbolTable::all() const
-    -> std::vector<AbstractSymbol*> {
+    -> std::vector<std::shared_ptr<AbstractSymbol>> {
     // Generate all symbols in the table.
-    return m_table | genex::views::vals | genex::views::ptr | genex::to<std::vector>();
+    return m_table | genex::views::vals | genex::to<std::vector>();
 }
 
 

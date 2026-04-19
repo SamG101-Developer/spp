@@ -3,6 +3,7 @@ module;
 
 export module spp.codegen.llvm_coros;
 import spp.codegen.llvm_ctx;
+import spp.asts;
 import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
 import llvm;

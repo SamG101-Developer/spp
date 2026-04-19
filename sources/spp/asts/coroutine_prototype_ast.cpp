@@ -27,7 +27,7 @@ auto spp::asts::CoroutinePrototypeAst::clone() const
         ast_clone(impl));
     ast->orig_name = ast_clone(orig_name);
     ast->m_annotation_info = m_annotation_info
-        ? std::make_unique<analyse::utils::annotation_utils::AnnotationInfo>(*m_annotation_info)
+        ? std::make_unique<utils::AnnotationInfo>(*m_annotation_info)
         : nullptr;
     ast->m_original_impl = ast_clone(m_original_impl);
     ast->m_ctx = m_ctx;

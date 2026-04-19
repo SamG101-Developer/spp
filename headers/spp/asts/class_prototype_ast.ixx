@@ -5,6 +5,7 @@ export module spp.asts:class_prototype_ast;
 import :ast;
 import :module_member_ast;
 import :sup_member_ast;
+import :visibility_ast;
 import spp.codegen.llvm_ctx;
 
 import llvm;
@@ -27,11 +28,11 @@ namespace spp::asts {
  * class, including its name and any generic parameters it may have. The attributes are defined in the implementation
  * ast for this class, allowing for scoping rules to be made easier.
  */
-SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : virtual Ast, SupMemberAst, ModuleMemberAst {
+SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : virtual Ast, SupMemberAst, ModuleMemberAst, mixins::VisibilityAst {
 private:
     std::vector<std::pair<analyse::scopes::Scope*, std::unique_ptr<ClassPrototypeAst>>> m_generic_substitutions;
 
-    std::shared_ptr<void> m_cls_sym;
+    std::shared_ptr<AbstractSymbol> m_cls_sym;
 
 public:
     /**

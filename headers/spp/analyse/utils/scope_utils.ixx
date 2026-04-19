@@ -54,19 +54,19 @@ namespace spp::analyse::utils::scope_utils {
         scopes::Scope const &scope,
         bool exclusive = false,
         bool sup_scope_search = false)
-        -> std::vector<scopes::VariableSymbol*>;
+        -> std::vector<std::shared_ptr<scopes::VariableSymbol>>;
 
     SPP_EXP_FUN SPP_ATTR_NODISCARD auto all_type_symbols(
         scopes::Scope const &scope,
         bool exclusive = false,
         bool sup_scope_search = false)
-        -> std::vector<scopes::TypeSymbol*>;
+        -> std::vector<std::shared_ptr<scopes::TypeSymbol>>;
 
     SPP_EXP_FUN SPP_ATTR_NODISCARD auto all_ns_symbols(
         scopes::Scope const &scope,
         bool exclusive = false,
         bool = false)
-        -> std::vector<scopes::NamespaceSymbol*>;
+        -> std::vector<std::shared_ptr<scopes::NamespaceSymbol>>;
 
     SPP_EXP_FUN SPP_ATTR_NODISCARD auto has_var_symbol(
         scopes::Scope const &scope,
@@ -172,5 +172,10 @@ namespace spp::analyse::utils::scope_utils {
     auto attach_llvm_type_info(
         asts::ModulePrototypeAst const &mod,
         codegen::LlvmCtx *ctx)
+        -> void;
+
+    auto check_conflicting_type_or_cmp_statements(
+        scopes::TypeSymbol const &cls_sym,
+        scopes::Scope const &sup_scope)
         -> void;
 }

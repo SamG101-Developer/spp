@@ -297,7 +297,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     // Infer the generic arguments from information given from object initialization.
     const auto owner = analyse::utils::type_utils::get_type_sym_or_error(
         *scope, *without_generics()->to<TypeIdentifierAst>(), *sm, meta)->fq_name();
-    const auto owner_sym = sm->current_scope->get_type_symbol(owner);
+    const auto owner_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, owner);
     // const auto owner_scope = owner_sym->alias_stmt ? owner_sym->alias_stmt->
     //     owner_sym != nullptr ? owner_sym->scope : type_sym->scope;
 
@@ -323,7 +323,8 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
 
     // If the generically filled type doesn't exist (Vec[Str]), but the base does (Vec[T]), create it.
     if (not scope->has_type_symbol(shared_from_this())) {
-        const auto external_generics = sm->current_scope->get_extended_generic_symbols(generic_arg_group->get_all_args(), meta->ignore_cmp_generic);
+        const auto external_generics = analyse::utils::scope_utils::get_scope_extended_generic_symbols(
+            *sm->current_scope, generic_arg_group->get_all_args(), meta->ignore_cmp_generic);
         analyse::utils::type_utils::create_generic_cls_scope(*this, *type_sym, external_generics, is_tuple, sm, meta);
     }
 

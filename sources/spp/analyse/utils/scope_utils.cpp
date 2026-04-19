@@ -1,4 +1,4 @@
-modoule;
+module;
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.scope_utils;
@@ -108,7 +108,7 @@ auto spp::analyse::utils::scope_utils::all_var_symbols(
     scopes::Scope const &scope,
     const bool exclusive,
     const bool sup_scope_search)
-    -> std::vector<VariableSymbol*> {
+    -> std::vector<std::shared_ptr<scopes::VariableSymbol>> {
     // Yield all symbols from the var symbol table.
     auto syms = scope.table.var_tbl.all();
 
@@ -132,7 +132,7 @@ auto spp::analyse::utils::scope_utils::all_type_symbols(
     scopes::Scope const &scope,
     const bool exclusive,
     const bool sup_scope_search)
-    -> std::vector<TypeSymbol*> {
+    -> std::vector<std::shared_ptr<scopes::TypeSymbol>> {
     // Yield all symbols from the type symbol table.
     auto syms = scope.table.type_tbl.all();
 
@@ -156,7 +156,7 @@ auto spp::analyse::utils::scope_utils::all_ns_symbols(
     scopes::Scope const &scope,
     const bool exclusive,
     bool)
-    -> std::vector<std::shared_ptr<NamespaceSymbol>> {
+    -> std::vector<std::shared_ptr<scopes::NamespaceSymbol>> {
     auto syms = scope.table.ns_tbl.all();
 
     // For non-exclusive searches where a parent is present, yield from the parent scope.
@@ -549,6 +549,52 @@ auto spp::analyse::utils::scope_utils::attach_llvm_type_info(
                 *associated_type_symbol(*generic_sub.second->get_ast_scope()), ctx);
             for (auto const &alias_sym : generic_sub.second->get_ast_scope()->ty_sym->aliased_by_symbols) {
                 alias_sym->llvm_info->llvm_type = llvm_type;
+            }
+        }
+    }
+}
+
+
+
+auto spp::analyse::utils::scope_utils::check_conflicting_type_or_cmp_statements(
+    scopes::TypeSymbol const &cls_sym,
+    scopes::Scope const &sup_scope)
+    -> void {
+    // Get the scopes to check for conflicts in.
+    auto dummy = utils::type_utils::GenericInferenceMap();
+    const auto existing_scopes = cls_sym.scope->direct_sup_scopes
+        | genex::views::filter([&](auto *scope) { return scope->ast->template to<asts::SupPrototypeExtensionAst>() or scope->ast->template to<asts::SupPrototypeFunctionsAst>(); })
+        | genex::views::filter([&](auto *scope) { return utils::type_utils::relaxed_symbolic_eq(*ast_name(sup_scope.ast), *ast_name(scope->ast), sup_scope, *scope->ast->get_ast_scope(), dummy); })
+        | genex::to<std::vector>();
+
+    // Check for conflicting "type" statements.
+    std::vector<std::shared_ptr<asts::TypeIdentifierAst>> new_types;
+    for (auto const *scope : existing_scopes) {
+        auto body = asts::ast_body(scope->ast);
+        for (auto const *member : body) {
+            if (auto const *type_stmt = member->to<asts::TypeStatementAst>(); type_stmt != nullptr) {
+                for (auto const &new_type : new_types) {
+                    raise_if<errors::SppIdentifierDuplicateError>(
+                        *new_type == *type_stmt->new_type, {scope, &sup_scope},
+                        ERR_ARGS(*new_type, *type_stmt->new_type, "associated type"));
+                }
+                new_types.emplace_back(type_stmt->new_type);
+            }
+        }
+    }
+
+    // Check for conflicting "cmp" statements.
+    std::vector<std::shared_ptr<asts::IdentifierAst>> new_cmps;
+    for (const auto *scope : existing_scopes) {
+        auto body = asts::ast_body(scope->ast);
+        for (auto const *member : body) {
+            if (auto const *cmp_stmt = member->to<asts::CmpStatementAst>(); cmp_stmt != nullptr and cmp_stmt->type->type_parts().back()->name[0] != '$') {
+                for (auto const &new_cmp : new_cmps) {
+                    raise_if<errors::SppIdentifierDuplicateError>(
+                        *new_cmp == *cmp_stmt->name, {scope, &sup_scope},
+                        ERR_ARGS(*new_cmp, *cmp_stmt->name, "comptime constant"));
+                }
+                new_cmps.emplace_back(cmp_stmt->name);
             }
         }
     }

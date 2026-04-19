@@ -3,6 +3,7 @@ module;
 
 module spp.asts;
 import spp.analyse.scopes;
+import spp.analyse.scopes.symbols;
 import spp.utils.uid;
 
 
