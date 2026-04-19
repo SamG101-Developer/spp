@@ -3,9 +3,12 @@ module;
 #include <spp/analyse/macros.hpp>
 
 module spp.asts;
+import :common_types;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
+import spp.codegen.llvm_type;
 import spp.lex;
 import spp.utils.strings;
 import llvm;
@@ -153,7 +156,7 @@ auto spp::asts::FloatLiteralAst::stage_11_code_gen_2(
     -> llvm::Value* {
     // Get the type of the float literal.
     const auto type_ast = infer_type(sm, meta);
-    const auto type_sym = sm->current_scope->get_type_symbol(type_ast);
+    const auto type_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, type_ast);
     const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
 
     // Create the LLVM constant float value.

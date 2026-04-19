@@ -14,7 +14,7 @@ auto spp::analyse::utils::scope_utils::add_var_symbol(
     std::shared_ptr<scopes::VariableSymbol> const &sym)
     -> void {
     // Add a type symbol to the corresponding symbol table.
-    scope.table.var_tbl.add(sym->name, sym);
+    scope.table.var_tbl.add(sym->name->val, sym);
 }
 
 
@@ -29,8 +29,7 @@ auto spp::analyse::utils::scope_utils::add_var_symbol_check_conflict(
         // const auto is_comptime = sym->memory_info->ast_comptime != nullptr;
         const auto is_functional = existing_sym->type && existing_sym->type->to_string()[0] == '$';
         raise_if<errors::SppIdentifierDuplicateError>(
-            not is_functional,
-            {this, this},
+            not is_functional, {&scope, &scope},
             ERR_ARGS(*existing_sym->name, *sym->name, "comptime variable identifier"));
     }
 

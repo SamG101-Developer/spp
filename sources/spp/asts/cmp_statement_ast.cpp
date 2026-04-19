@@ -6,10 +6,13 @@ module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.mem_info_utils;
 import spp.analyse.utils.scope_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.utils;
+import spp.codegen.llvm_mangle;
+import spp.codegen.llvm_type;
 import spp.lex;
 import llvm;
 import genex;
@@ -135,7 +138,8 @@ auto spp::asts::CmpStatementAst::stage_4_qualify_types(
     type->stage_7_analyse_semantics(sm, meta);
     if (not m_from_use_statement and type->type_parts().back()->to_string()[0] != '$') {
         type = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, type)->fq_name();
-        m_alias_sym->type = type;
+        const auto var_sym = std::dynamic_pointer_cast<analyse::scopes::VariableSymbol>(m_alias_sym);
+        var_sym->type = type;
     }
 }
 
@@ -185,7 +189,7 @@ auto spp::asts::CmpStatementAst::stage_8_check_memory(
 
     // Generate the value and assign it to the variable symbol's compile-time value.
     if (type->to_string()[0] != '$') {
-        const auto var_sym = sm->current_scope->get_var_symbol(name);
+        const auto var_sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, name);
         var_sym->comptime_value = ast_clone(value);
     }
 }
@@ -202,7 +206,7 @@ auto spp::asts::CmpStatementAst::stage_9_comptime_resolution(
 
     // Generate the value and assign it to the variable symbol's compile-time value.
     if (type->to_string()[0] != '$') {
-        const auto var_sym = sm->current_scope->get_var_symbol(name);
+        const auto var_sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, name);
         value->stage_9_comptime_resolution(sm, meta);
         var_sym->comptime_value = std::move(meta->cmp_result);
     }
@@ -219,12 +223,12 @@ auto spp::asts::CmpStatementAst::stage_10_code_gen_1(
 
     // Generate the value in a constant context.
     ctx->in_constant_context = true;
-    const auto var_sym = sm->current_scope->get_var_symbol(name);
-    const auto val = var_sym->comptime_value->stage_11_code_gen_2(sm, meta, ctx);
+    const auto var_sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, name);
+    const auto val = var_sym->comptime_value->to<ExpressionAst>()->stage_11_code_gen_2(sm, meta, ctx);
     ctx->in_constant_context = false;
 
     // Create the global variable for the constant.
-    const auto type_sym = sm->current_scope->get_type_symbol(type);
+    const auto type_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, type);
     const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
     const auto llvm_global_var = new llvm::GlobalVariable(
         *ctx->llvm_module, llvm_type, true, llvm::GlobalValue::ExternalLinkage, llvm::cast<llvm::Constant>(val),

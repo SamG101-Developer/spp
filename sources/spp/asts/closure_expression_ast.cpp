@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts;
+import :common_types;
 import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.utils.scope_utils;
@@ -92,12 +93,14 @@ auto spp::asts::ClosureExpressionAst::stage_7_analyse_semantics(
         analyse::utils::scope_utils::add_type_symbol(*sm->current_scope, type_generic_sym);
     }
     for (const auto &comp_generic_sym : inherited_comp_generics) {
-        analyse::utils::scope_utils::add_var_symbol(sm->current_scope, comp_generic_sym);
+        analyse::utils::scope_utils::add_var_symbol(*sm->current_scope, comp_generic_sym);
     }
 
     // Analyse the body of the closure.
     body->stage_7_analyse_semantics(sm, meta);
-    m_ret_type = not meta->enclosing_function_ret_type.empty() ? meta->enclosing_function_ret_type[0] : body->infer_type(sm, meta);
+    m_ret_type = not meta->enclosing_function_ret_type.empty()
+        ? meta->enclosing_function_ret_type[0]
+        : body->infer_type(sm, meta);
     meta->restore(true);
 
     // Set the scope back.

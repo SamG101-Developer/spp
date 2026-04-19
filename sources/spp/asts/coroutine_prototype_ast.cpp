@@ -73,7 +73,7 @@ auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
     temp.emplace_back(ret_type_sym->fq_name()->without_generics());
     auto superimposed_types = ret_type_sym->scope->sup_types()
         | genex::views::concat(std::move(temp))
-        | genex::views::transform([](auto &&x) { return x->without_generics(); })
+        | genex::views::transform([](auto &&x) { return x->template to<TypeAst>()->without_generics(); })
         | genex::to<std::vector>();
 
     raise_if<analyse::errors::SppCoroutineInvalidReturnTypeError>(

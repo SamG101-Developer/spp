@@ -7,7 +7,9 @@ import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
+import spp.codegen.llvm_type;
 import spp.lex;
 import genex;
 import llvm;
@@ -120,7 +122,7 @@ auto spp::asts::ClassPrototypeAst::m_fill_llvm_mem_layout(
     // Todo: move this into llvm modules (doesn't need the class at all -> done from symbol).
 
     // Non-struct types are compiler known special types, or $ types - no generation needed.
-    const auto type_sym = dynamic_cast<analyse::scopes::TypeSymbol*>(sym);
+    const auto type_sym = dynamic_cast<analyse::scopes::TypeSymbol const*>(sym);
     if (codegen::llvm_type(*type_sym, ctx) == nullptr or not llvm::isa<llvm::StructType>(codegen::llvm_type(*type_sym, ctx))) {
         return;
     }

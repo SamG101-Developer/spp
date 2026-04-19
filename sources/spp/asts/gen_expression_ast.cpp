@@ -3,9 +3,14 @@ module;
 #include <spp/analyse/macros.hpp>
 
 module spp.asts;
+import :common_types;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
+import spp.codegen.llvm_coros;
 import spp.lex;
 import spp.utils.uid;
 import llvm;
@@ -123,7 +128,7 @@ auto spp::asts::GenExpressionAst::stage_8_check_memory(
         *expr, *tok_gen, *sm, true, true, false, false, false, meta);
 
     // If the value is non-symbolic, then there is no borrow logic to implement, so return.
-    auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*expr);
+    auto [sym, _] = analyse::utils::scope_utils::get_var_symbol_outermost(*sm->current_scope, *expr);
     if (sym == nullptr) { return; }
 
     if (conv == nullptr) {
