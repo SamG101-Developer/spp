@@ -39,7 +39,7 @@ auto spp::asts::GenericParameterCompAst::stage_2_gen_top_level_scopes(
     sym->memory_info->ast_comptime = ast_clone(this);
     sym->memory_info->initialized_by(*this, sm->current_scope);
     sym->comptime_value = ast_clone(this); // TODO: this or name?
-    analyse::utils::scope_utils::add_var_symbol(sm->current_scope, std::move(sym));
+    analyse::utils::scope_utils::add_var_symbol(*sm->current_scope, std::move(sym));
 }
 
 
@@ -57,9 +57,8 @@ auto spp::asts::GenericParameterCompAst::stage_4_qualify_types(
 
     // Check the type exists and qualify.
     type->stage_7_analyse_semantics(sm, meta);
-    type = sm->current_scope->get_type_symbol(type)->fq_name();
-    const auto sym = sm->current_scope->get_var_symbol(
-        IdentifierAst::from_type(*name));
+    type = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, type)->fq_name();
+    const auto sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, IdentifierAst::from_type(*name));
     sym->type = type;
     meta->restore();
 }

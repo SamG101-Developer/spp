@@ -5,7 +5,10 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.type_utils;
+import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
+import spp.codegen.llvm_materialize;
 import spp.utils.uid;
 
 
@@ -76,7 +79,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_11_code_gen_2(
     const auto try_type = analyse::utils::type_utils::get_try_type(*lhs_type, *lhs, *sm);
 
     // Temp holder for non-symbolic condition.
-    if (sm->current_scope->get_var_symbol_outermost(*lhs).first == nullptr) {
+    if (analyse::utils::scope_utils::get_var_symbol_outermost(*sm->current_scope, *lhs).first == nullptr) {
         lhs = codegen::llvm_materialize(*lhs, sm, meta, ctx);
     }
 

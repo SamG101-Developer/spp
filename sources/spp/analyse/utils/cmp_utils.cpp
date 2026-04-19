@@ -215,8 +215,8 @@ auto spp::analyse::utils::cmp_utils::set_attribute_value(
 
     for (auto const &attr_name : attr_path) {
         const auto is_final = attr_name == attr_path.back();
-        current_obj_type = current_obj_sym->scope->get_var_symbol(attr_name)->type;
-        current_obj_sym = current_obj_sym->scope->get_type_symbol(current_obj_type);
+        current_obj_type = scope_utils::get_var_symbol(*current_obj_sym->scope, attr_name)->type;
+        current_obj_sym = scope_utils::get_type_symbol(*current_obj_sym->scope, current_obj_type);
 
         // Check if the attribute already exists in the current object initializer.
         const auto found = genex::contains(current_obj_init->arg_group->get_all_args(), *attr_name, [](auto const *x) -> decltype(auto) { return *x->name; });
@@ -244,8 +244,8 @@ auto spp::analyse::utils::cmp_utils::set_attribute_value(
             // initializer.
             if (not is_final) {
                 current_obj_init = obj;
-                current_obj_type = current_obj_sym->scope->get_var_symbol(attr_name)->type;
-                current_obj_sym = current_obj_sym->scope->get_type_symbol(current_obj_type);
+                current_obj_type = scope_utils::get_var_symbol(*current_obj_sym->scope, attr_name)->type;
+                current_obj_sym = scope_utils::get_type_symbol(*current_obj_sym->scope, current_obj_type);
                 continue;
             }
             current_obj_init->arg_group->args.emplace_back(

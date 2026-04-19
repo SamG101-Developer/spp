@@ -222,8 +222,8 @@ auto spp::analyse::scopes::Scope::print_scope_tree() const
     auto func = [](this auto &&self, Scope const *scope, std::string const &indent) -> std::string {
         auto result = indent + std::visit(
             spp::utils::functions::overload{
-                [](std::shared_ptr<asts::IdentifierAst> const &id) { return id->val; },
-                [](std::shared_ptr<asts::TypeIdentifierAst> const &id) { return id->name; },
+                [](ScopeIdentifierName const &id) { return id.name->to_string(); },
+                [](ScopeTypeIdentifierName const &id) { return id.name->to_string(); },
                 [](ScopeBlockName const &block) { return block.name; }
             }, scope->name) + "\n";
 
@@ -239,16 +239,21 @@ auto spp::analyse::scopes::Scope::print_scope_tree() const
 
 auto spp::analyse::scopes::Scope::name_as_string() const
     -> std::string {
-    if (auto const name_as_id = std::get_if<std::shared_ptr<asts::IdentifierAst>>(&name)) {
-        return name_as_id->to_string();
+    // IdentifierAst based scope name (modules).
+    if (std::holds_alternative<ScopeIdentifierName>(name)) {
+        const auto [inner_name] = std::get<ScopeIdentifierName>(name);
+        return inner_name->to_string();
     }
-    if (auto const name_as_type_id = std::get_if<std::shared_ptr<asts::TypeIdentifierAst>>(&name)) {
-        return name_as_type_id->to_string();
+
+    // TypeIdentifierAst based scope name (classes).
+    if (std::holds_alternative<ScopeTypeIdentifierName>(name)) {
+        const auto [inner_name] = std::get<ScopeTypeIdentifierName>(name);
+        return inner_name->to_string();
     }
-    if (auto const name_as_block = std::get_if<ScopeBlockName>(&name)) {
-        return name_as_block->name;
-    }
-    std::unreachable();
+
+    // Block names (case, loop, etc).
+    const auto [inner_name] = std::get<ScopeBlockName>(name);
+    return inner_name;
 }
 
 

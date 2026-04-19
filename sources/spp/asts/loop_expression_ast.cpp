@@ -3,8 +3,10 @@ module;
 #include <spp/analyse/macros.hpp>
 
 module spp.asts;
+import :common_types;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import spp.lex;
 import llvm;
@@ -32,8 +34,8 @@ auto spp::asts::LoopExpressionAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Get the loop's exit type (or Void if there are no exits from inside the loop).
     auto [exit_expr, loop_type, _] = m_loop_exit_type_info.has_value()
-                                         ? *m_loop_exit_type_info
-                                         : std::make_tuple(nullptr, common_types::void_type(pos_start()), nullptr);
+        ? *m_loop_exit_type_info
+        : std::make_tuple(nullptr, common_types::void_type(pos_start()), nullptr);
     exit_expr = exit_expr ? exit_expr : this;
 
     // Check the else block's type is the same as the loop exit type.

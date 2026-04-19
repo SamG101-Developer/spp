@@ -5,6 +5,7 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
 import spp.lex;
 import spp.utils.strings;
@@ -57,10 +58,10 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
     -> void {
     // Handle types on the left-hand-side of a static member access.
     if (const auto lhs_as_type = meta->postfix_expression_lhs->to<TypeAst>(); lhs_as_type != nullptr) {
-        const auto lhs_type_sym = sm->current_scope->get_type_symbol(ast_clone(lhs_as_type));
+        const auto lhs_type_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, ast_clone(lhs_as_type));
 
         // Check the target field exists on the type.
-        if (not lhs_type_sym->scope->has_var_symbol(name, true)) {
+        if (not analyse::utils::scope_utils::has_var_symbol(*lhs_type_sym->scope, name, true)) {
             const auto alternatives = sm->current_scope->all_type_symbols(true, true)
                 | genex::views::transform([](auto &&x) { return x->name->name; })
                 | genex::to<std::vector>();
@@ -79,7 +80,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
             | genex::views::concat(lhs_type_sym->scope->sup_scopes())
             | genex::views::transform([name=name.get()](auto &&x) { return std::make_pair(x, x->table.var_tbl.get(ast_clone(name))); })
             | genex::views::filter([](auto &&x) { return x.second != nullptr; })
-            | genex::views::transform([lhs_type_sym](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
+            | genex::views::transform([&](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
             | genex::to<std::vector>();
 
         auto min_depth = genex::min_element(scopes_and_syms

@@ -5,6 +5,8 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import spp.lex;
 import genex;
@@ -78,10 +80,10 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::stage_7_analyse_semantics(
 
     // Ensure the type superimposes the correct indexing variation.
     const auto index_type = tok_mut != nullptr
-                                ? common_types_precompiled::INDEX_MUT
-                                : common_types_precompiled::INDEX_REF;
+        ? common_types_precompiled::INDEX_MUT
+        : common_types_precompiled::INDEX_REF;
 
-    const auto type_sym = sm->current_scope->get_type_symbol(lhs_type);
+    const auto type_sym = analyse::utils::scope_utils(*sm->current_scope, lhs_type);
     auto sup_types = std::vector{lhs_type};
     sup_types.append_range(type_sym->scope->sup_types());
 

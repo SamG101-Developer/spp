@@ -110,7 +110,7 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
 
     // For each assignment, get the outermost symbol of the expression.
     auto lhs_syms = lhs
-        | genex::views::transform([sm](auto const &x) { return sm->current_scope->get_var_symbol_outermost(*x); });
+        | genex::views::transform([sm](auto const &x) { return analyse::utils::scope_utils::get_var_symbol_outermost(*sm->current_scope, *x); });
 
     // Create quick access derefs for the looping.
     for (auto &&[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(lhs | genex::views::ptr, rhs | genex::views::ptr, lhs_syms)) {

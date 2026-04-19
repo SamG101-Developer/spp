@@ -6,6 +6,7 @@ module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.utils.bin_utils;
+import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
 import spp.lex;
 import genex;
@@ -85,9 +86,9 @@ auto spp::asts::IsExpressionAst::stage_7_analyse_semantics(
     // Add the destructure symbols to the current scope.
     // This includes the lhs symbol if it's been flow typed.
     if (not sm->current_scope->name_as_string().starts_with("<inner-scope#")) {
-        const auto destructure_syms = sm->current_scope->children[n]->children[0]->all_var_symbols(true, true);
+        const auto destructure_syms = analyse::utils::scope_utils::all_var_symbols(*sm->current_scope->children[n]->children[0], true, true);
         for (auto &&x : destructure_syms) {
-            sm->current_scope->add_var_symbol(x);
+            analyse::utils::scope_utils::add_var_symbol(*sm->current_scope, x);
         }
     }
 }
@@ -110,9 +111,9 @@ auto spp::asts::IsExpressionAst::stage_11_code_gen_2(
     // If the lhs was an identifier, the "is" causes it to get flow types, so we need to promote the original "alloca"
     // into the flow typed symbol.
     if (m_lhs_as_id) {
-        const auto flow_typed_lhs_sym = sm->current_scope->get_var_symbol(m_lhs_as_id, true);
+        const auto flow_typed_lhs_sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, m_lhs_as_id, true);
         if (flow_typed_lhs_sym != nullptr) {
-            auto original_sym = sm->current_scope->parent->get_var_symbol(m_lhs_as_id);
+            auto original_sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope->parent, m_lhs_as_id);
             original_sym = original_sym ? original_sym : flow_typed_lhs_sym;
             flow_typed_lhs_sym->llvm_info->alloca = original_sym->llvm_info->alloca;
         }

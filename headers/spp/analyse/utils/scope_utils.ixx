@@ -35,52 +35,52 @@ namespace spp::analyse::utils::scope_utils {
         std::shared_ptr<scopes::NamespaceSymbol> const &sym)
         -> void;
 
-    auto rem_var_symbol(
+    SPP_EXP_FUN auto rem_var_symbol(
         scopes::Scope &scope,
         std::shared_ptr<asts::IdentifierAst> const &sym_name)
         -> void;
 
-    auto rem_type_symbol(
+    SPP_EXP_FUN auto rem_type_symbol(
         scopes::Scope &scope,
         std::shared_ptr<asts::TypeIdentifierAst> const &sym_name)
         -> void;
 
-    auto rem_ns_symbol(
+    SPP_EXP_FUN auto rem_ns_symbol(
         scopes::Scope &scope,
         std::shared_ptr<asts::IdentifierAst> const &sym_name)
         -> void;
 
-    SPP_ATTR_NODISCARD auto all_var_symbols(
+    SPP_EXP_FUN SPP_ATTR_NODISCARD auto all_var_symbols(
         scopes::Scope const &scope,
         bool exclusive = false,
         bool sup_scope_search = false)
         -> std::vector<scopes::VariableSymbol*>;
 
-    SPP_ATTR_NODISCARD auto all_type_symbols(
+    SPP_EXP_FUN SPP_ATTR_NODISCARD auto all_type_symbols(
         scopes::Scope const &scope,
         bool exclusive = false,
         bool sup_scope_search = false)
         -> std::vector<scopes::TypeSymbol*>;
 
-    SPP_ATTR_NODISCARD auto all_ns_symbols(
+    SPP_EXP_FUN SPP_ATTR_NODISCARD auto all_ns_symbols(
         scopes::Scope const &scope,
         bool exclusive = false,
         bool = false)
         -> std::vector<scopes::NamespaceSymbol*>;
 
-    SPP_ATTR_NODISCARD auto has_var_symbol(
+    SPP_EXP_FUN SPP_ATTR_NODISCARD auto has_var_symbol(
         scopes::Scope const &scope,
         std::shared_ptr<asts::IdentifierAst> const &sym_name,
         bool exclusive = false)
         -> bool;
 
-    SPP_ATTR_NODISCARD auto has_type_symbol(
+    SPP_EXP_FUN SPP_ATTR_NODISCARD auto has_type_symbol(
         scopes::Scope const &scope,
         std::shared_ptr<AbstractAst> const &sym_name,
         bool exclusive = false)
         -> bool;
 
-    SPP_ATTR_NODISCARD auto has_ns_symbol(
+    SPP_EXP_FUN SPP_ATTR_NODISCARD auto has_ns_symbol(
         scopes::Scope const &scope,
         std::shared_ptr<asts::IdentifierAst> const &sym_name,
         bool exclusive = false)

@@ -4,6 +4,8 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import genex;
 
@@ -25,7 +27,7 @@ auto spp::asts::SubroutinePrototypeAst::clone() const
         ast_clone(impl));
     ast->orig_name = ast_clone(orig_name);
     ast->m_annotation_info = m_annotation_info
-        ? std::make_unique<analyse::utils::annotation_utils::AnnotationInfo>(*m_annotation_info)
+        ? std::make_unique<utils::AnnotationInfo>(*m_annotation_info)
         : nullptr;
     ast->m_original_impl = ast_clone(m_original_impl);
     ast->m_ctx = m_ctx;
@@ -51,7 +53,7 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
     -> void {
     // Perform default function prototype semantic analysis
     FunctionPrototypeAst::stage_7_analyse_semantics(sm, meta);
-    const auto ret_type_sym = sm->current_scope->get_type_symbol(return_type);
+    const auto ret_type_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, return_type);
 
     // Update the meta information for enclosing function information.
     meta->save();

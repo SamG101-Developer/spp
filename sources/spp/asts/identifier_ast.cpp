@@ -5,6 +5,7 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
 import spp.utils.strings;
 import spp.utils.uid;
@@ -98,7 +99,7 @@ auto spp::asts::IdentifierAst::stage_7_analyse_semantics(
     -> void {
     // Check there is a symbol with the same name in the current scope.
     const auto shared = std::shared_ptr(ast_clone(this));
-    if (not sm->current_scope->has_var_symbol(shared) and not sm->current_scope->has_ns_symbol(shared)) {
+    if (not analyse::utils::scope_utils::has_var_symbol(*sm->current_scope, shared) and not analyse::utils::scope_utils::has_ns_symbol(*sm->current_scope, shared)) {
         const auto alternatives = sm->current_scope->all_var_symbols()
             | genex::views::transform([](auto &&x) { return x->name->val; })
             | genex::to<std::vector>();
