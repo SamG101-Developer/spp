@@ -7,6 +7,7 @@ import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
+import spp.codegen.llvm_materialize;
 import spp.utils.uid;
 
 
@@ -85,7 +86,7 @@ auto spp::asts::FunctionCallArgumentAst::stage_11_code_gen_2(
 
         // Materialize the lhs expression into a temporary.
         const auto materialized_val = codegen::llvm_materialize(*val, sm, meta, ctx);
-        const auto materialized_sym = analyse::utils::scope_utils::get_var_symbool(*sm->current_scope, ast_clone(materialized_val));
+        const auto materialized_sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, ast_clone(materialized_val));
 
         const auto llvm_alloca = materialized_sym->llvm_info->alloca;
         SPP_ASSERT(llvm_alloca->getType()->isPointerTy());

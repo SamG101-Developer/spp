@@ -6,6 +6,7 @@ module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_utils;
 import spp.asts.utils;
 import spp.lex;
 
@@ -75,7 +76,8 @@ auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
     AbstractSymbol const &sym)
     -> std::unique_ptr<GenericArgumentCompKeywordAst> {
     // Get the comptime value from the symbol's memory info.
-    const auto c = dynamic_cast<analyse::scopes::VariableSymbol const&>(sym).memory_info->ast_comptime.get();
+    const auto var_sym = dynamic_cast<analyse::scopes::VariableSymbol const&>(sym);
+    const auto c = var_sym.memory_info->ast_comptime.get();
     std::unique_ptr<ExpressionAst> value = nullptr;
 
     // Depending on that the comptime AST is, get the value.
@@ -91,7 +93,7 @@ auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
 
     // Create the GenericArgumentCompKeywordAst with the name and value.
     return std::make_unique<GenericArgumentCompKeywordAst>(
-        TypeIdentifierAst::from_identifier(*sym.name), nullptr, std::move(value));
+        TypeIdentifierAst::from_identifier(*var_sym.name), nullptr, std::move(value));
 }
 
 

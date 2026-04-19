@@ -63,7 +63,7 @@ auto spp::asts::GenericParameterTypeOptionalAst::stage_4_qualify_types(
 
     // Handle the default type.
     default_val->stage_7_analyse_semantics(sm, meta);
-    if (const auto sym = analyse::utils::scope_utils::get_type_symbol(sm->current_scope, default_val->without_generics()); sym != nullptr) {
+    if (const auto sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, default_val->without_generics()); sym != nullptr) {
         auto temp = sym->fq_name()->with_convention(ast_clone(default_val->get_convention()));
         temp = temp->with_generics(std::move(default_val->type_parts().back()->generic_arg_group));
         default_val = std::move(temp);

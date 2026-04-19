@@ -5,6 +5,9 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.order_utils;
+import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import spp.lex;
 import genex;
@@ -159,13 +162,13 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
             auto new_arg = std::make_unique<FunctionCallArgumentPositionalAst>(ast_clone(arg->conv), nullptr, std::move(new_ast));
             args.insert(args.begin() + static_cast<std::ptrdiff_t>(i), std::move(new_arg));
         }
-        genex::actions::erase(args, args.begin() + static_cast<std::ptrdiff_t>(i) + static_cast<std::ptrdiff_t>(max));
+        genex::actions::erase(args, args.begin() + static_cast<std::ptrdiff_t>(i) + max);
     }
 
     // Analyse the arguments
     for (auto const &arg : args) {
         arg->stage_7_analyse_semantics(sm, meta);
-        const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*arg->val);
+        const auto [sym, _] = analyse::utils::scope_utils::get_var_symbol_outermost(sm->current_scope, *arg->val);
         if (sym == nullptr) { continue; }
         if (arg->conv == nullptr or *arg->conv == ConventionTag::REF) { continue; }
 

@@ -5,6 +5,7 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
 
 
@@ -58,7 +59,7 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::stage_7_analyse_semantics(
 
     // Check the right-hand-side expression is a "Copy" type.
     raise_if<analyse::errors::SppInvalidExpressionNonCopyableTypeError>(
-        not sm->current_scope->get_type_symbol(lhs_type)->is_copyable() and not meta->allow_move_deref,
+        not analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, lhs_type)->is_copyable() and not meta->allow_move_deref,
         {sm->current_scope}, ERR_ARGS(*lhs, *lhs_type));
 }
 

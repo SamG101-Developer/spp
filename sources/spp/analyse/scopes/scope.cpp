@@ -1,9 +1,7 @@
-module;
-#include <spp/analyse/macros.hpp>
-
 module spp.analyse.scopes;
 import spp.analyse.errors;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.scope_utils;
 import spp.asts;
 import spp.asts.utils;
 import spp.compiler;
@@ -143,7 +141,7 @@ auto spp::analyse::scopes::Scope::parent_module() const
     -> Scope* {
     // Get the parent module scope, if it exists.
     for (auto *scope = this; scope != nullptr; scope = scope->parent) {
-        if (std::holds_alternative<std::shared_ptr<asts::IdentifierAst>>(scope->name)) {
+        if (std::holds_alternative<ScopeIdentifierName>(scope->name)) {
             return const_cast<Scope*>(scope); // TODO: REMOVE CONST CAST
         }
     }
@@ -169,7 +167,8 @@ auto spp::analyse::scopes::Scope::sup_types() const
     // Get all super types, recursively (filter and map the super scopes).
     return sup_scopes()
         | genex::views::filter([](auto *scope) { return scope->ast->template to<asts::ClassPrototypeAst>(); })
-        | genex::views::transform([](auto *scope) { return scope->ty_sym->fq_name(); })
+        | genex::views::transform([](auto *scope) { return utils::scope_utils::associated_type_symbol(*scope)->fq_name(); })
+        | genex::views::cast_smart<AbstractAst>()
         | genex::to<std::vector>();
 }
 
@@ -179,7 +178,8 @@ auto spp::analyse::scopes::Scope::direct_sup_types() const
     // Get all direct super types (filter and map the direct super scopes).
     return direct_sup_scopes
         | genex::views::filter([](auto *scope) { return scope->ast->template to<asts::ClassPrototypeAst>(); })
-        | genex::views::transform([](auto *scope) { return scope->ty_sym->fq_name(); })
+        | genex::views::transform([](auto *scope) { return utils::scope_utils::associated_type_symbol(*scope)->fq_name(); })
+        | genex::views::cast_smart<AbstractAst>()
         | genex::to<std::vector>();
 }
 
@@ -189,7 +189,7 @@ auto spp::analyse::scopes::Scope::convert_postfix_to_nested_scope(
     -> Scope const* {
     // Get the left-hand-side namespace's member's type.
     if (const auto lhs_as_ident = postfix_ast->to<asts::IdentifierAst>()) {
-        const auto ns_sym = get_ns_symbol(asts::ast_clone(lhs_as_ident));
+        const auto ns_sym = utils::scope_utils::get_ns_symbol(*this, asts::ast_clone(lhs_as_ident));
         return ns_sym ? ns_sym->scope : nullptr;
     }
 
@@ -208,7 +208,7 @@ auto spp::analyse::scopes::Scope::convert_postfix_to_nested_scope(
 
     auto scope = this;
     for (auto const *ns : namespaces | genex::views::reverse) {
-        const auto ns_sym = scope->get_ns_symbol(asts::ast_clone(ns));
+        const auto ns_sym = utils::scope_utils::get_ns_symbol(*scope, asts::ast_clone(ns));
         scope = ns_sym ? ns_sym->scope : nullptr;
         if (scope == nullptr) { break; }
     }

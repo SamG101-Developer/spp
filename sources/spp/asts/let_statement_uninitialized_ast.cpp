@@ -86,7 +86,8 @@ auto spp::asts::LetStatementUninitializedAst::stage_8_check_memory(
     meta->let_stmt_from_uninitialized = true;
     var->stage_8_check_memory(sm, meta);
     for (auto const &v : var->extract_names()) {
-        analyse::utils::scope_utils::get_var_symbol(sm->current_scope, v)->memory_info->moved_by(*this, sm->current_scope);
+        analyse::utils::scope_utils::get_var_symbol(
+            *sm->current_scope, v)->memory_info->moved_by(*this, sm->current_scope);
     }
     meta->restore();
 }

@@ -1,6 +1,7 @@
 module spp.analyse.utils.cmp_utils;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
 import spp.asts;
 import spp.asts.utils;
 import spp.lex;
@@ -210,7 +211,7 @@ auto spp::analyse::utils::cmp_utils::set_attribute_value(
     //  each inner initializer may exist, may not, so check and create if needed.
     auto current_obj_init = object;
     auto current_obj_type = object->type;
-    auto current_obj_sym = sm->current_scope->get_type_symbol(current_obj_type);
+    auto current_obj_sym = scope_utils::get_type_symbol(*sm->current_scope, current_obj_type);
 
     for (auto const &attr_name : attr_path) {
         const auto is_final = attr_name == attr_path.back();
