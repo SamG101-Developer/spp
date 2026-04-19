@@ -84,7 +84,7 @@ public:
     SPP_AST_KEY_FUNCTIONS;
 
 private:
-    auto m_generate_symbols(ScopeManager *sm) -> void*;
+    auto m_generate_symbols(ScopeManager *sm) -> AbstractSymbol*;
 
     auto m_fill_llvm_mem_layout(analyse::scopes::ScopeManager *sm, void const *type_sym, codegen::LlvmCtx *ctx) const -> void;
 

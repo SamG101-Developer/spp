@@ -3,8 +3,10 @@ module;
 
 module spp.asts;
 import spp.analyse.scopes;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
+import spp.codegen.llvm_type;
 import spp.lex;
 import spp.utils.uid;
 import genex;
@@ -71,7 +73,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_7_analyse_semantics(
         let->stage_7_analyse_semantics(sm, meta);
 
         // Apply the borrow to the symbol.
-        const auto sym = analyse::utils::scope_utils::get_var_symbol(sm->current_scope, ast_clone(cap->val->to<IdentifierAst>()));
+        const auto sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, ast_clone(cap->val->to<IdentifierAst>()));
         const auto conv = cap->conv.get();
         sym->memory_info->ast_borrowed = {conv, sm->current_scope};
         sym->type = sym->type->with_convention(ast_clone(cap->conv));
@@ -86,22 +88,23 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_8_check_memory(
     // Any borrowed captures need pinning and marking as extended borrows.
     auto ass_sym = std::shared_ptr<analyse::scopes::VariableSymbol>(nullptr);
     if (meta->assignment_target != nullptr) {
-        ass_sym = meta->current_lambda_outer_scope->get_var_symbol_outermost(*meta->assignment_target).first;
+        ass_sym = analyse::utils::scope_utils::get_var_symbol_outermost(
+            *meta->current_lambda_outer_scope, *meta->assignment_target).first;
     }
     for (auto const &cap : captures) {
         if (cap->conv != nullptr) {
             // Mark the pins on the capture and the target.
             const auto cap_val = cap->val->to<IdentifierAst>();
-            auto cap_sym = sm->current_scope->get_var_symbol(ast_clone(cap_val));
+            auto cap_sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, ast_clone(cap_val));
             cap_sym->memory_info->ast_borrowed = {cap->conv.get(), sm->current_scope};
             if (ass_sym != nullptr) { ass_sym->memory_info->ast_pins.emplace_back(cap->val.get()); }
 
-            cap_sym = meta->current_lambda_outer_scope->get_var_symbol(ast_clone(cap_val));
+            cap_sym = analyse::utils::scope_utils::get_var_symbol(*meta->current_lambda_outer_scope, ast_clone(cap_val));
             cap_sym->memory_info->ast_pins.emplace_back(cap->val.get());
         }
         else {
             // Mark the symbol from the outer context as moved.
-            auto cap_sym = meta->current_lambda_outer_scope->get_var_symbol(ast_clone(cap->val->to<IdentifierAst>()));
+            const auto cap_sym = analyse::utils::scope_utils::get_var_symbol(*meta->current_lambda_outer_scope, ast_clone(cap->val->to<IdentifierAst>()));
             cap_sym->memory_info->ast_moved = {this, sm->current_scope};
         }
     }
@@ -123,7 +126,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_11_code_gen_2(
         // For the capture x, mock "let x = env.x".
         const auto cap_val = capture->val->to<IdentifierAst>();
         const auto cap_ty = capture->infer_type(sm, meta);
-        const auto cap_ty_sym = sm->current_scope->get_type_symbol(cap_ty);
+        const auto cap_ty_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, cap_ty);
         const auto cap_llvm_type = codegen::llvm_type(
             *sm->current_scope->get_type_symbol(cap_ty), ctx);
 

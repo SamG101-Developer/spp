@@ -4,7 +4,10 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
+import spp.codegen.llvm_coros;
 import spp.utils.uid;
 import genex;
 import llvm;
@@ -56,7 +59,7 @@ auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
     -> void {
     // Perform default function prototype semantic analysis
     FunctionPrototypeAst::stage_7_analyse_semantics(sm, meta);
-    const auto ret_type_sym = sm->current_scope->get_type_symbol(return_type);
+    const auto ret_type_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, return_type);
 
     // Update the meta information for enclosing function information.
     meta->save();

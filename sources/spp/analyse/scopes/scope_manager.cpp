@@ -83,7 +83,8 @@ auto spp::analyse::scopes::ScopeManager::exhaust_scope()
 }
 
 
-auto spp::analyse::scopes::ScopeManager::cleanup() -> void {
+auto spp::analyse::scopes::ScopeManager::cleanup()
+    -> void {
     normal_sup_blocks.clear();
     generic_sup_blocks.clear();
 }

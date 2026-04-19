@@ -5,6 +5,8 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
 import spp.utils.strings;
 import genex;
@@ -97,14 +99,15 @@ auto spp::asts::UseStatementVariableAst::stage_3_gen_top_level_aliases(
     -> void {
     // Generate the top-level alias for the converted type statement.
     // const auto scope = sm->current_scope->convert_postfix_to_nested_scope(old_var->to<PostfixExpressionAst>()->lhs.get());
-    const auto [old_var_sym, scope] = sm->current_scope->get_var_symbol_outermost(*old_var);
+    const auto [old_var_sym, scope] = analyse::utils::scope_utils::get_var_symbol_outermost(*sm->current_scope, *old_var);
     if (old_var_sym != nullptr) {
         // Cmp statements
         m_conversion->type = scope->get_type_symbol(old_var_sym->type)->fq_name(false);
         old_var_sym->type = m_conversion->type;
 
-        m_conversion->m_alias_sym->alias_sym = old_var_sym;
-        m_conversion->m_alias_sym->type = m_conversion->type;
+        auto alias_sym = dynamic_cast<analyse::scopes::TypeSymbol*>(m_conversion->m_alias_sym.get());
+        alias_sym->alias_sym = old_var_sym;
+        alias_sym->type = m_conversion->type;
         m_conversion->stage_3_gen_top_level_aliases(sm, meta);
         return;
     }

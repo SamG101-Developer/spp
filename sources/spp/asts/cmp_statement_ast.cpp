@@ -6,6 +6,8 @@ module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_info_utils;
+import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
 import spp.lex;
 import llvm;
@@ -104,12 +106,13 @@ auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
     }
 
     // Create a symbol for this constant declaration, pin to prevent moving.
-    m_alias_sym = std::make_shared<analyse::scopes::VariableSymbol>(
+    alias_sym = std::make_shared<analyse::scopes::VariableSymbol>(
         name, type, sm->current_scope, false, false, visibility.first);
-    m_alias_sym->memory_info->ast_pins.emplace_back(name.get());
-    m_alias_sym->memory_info->ast_comptime = ast_clone(this);
-    m_alias_sym->memory_info->initialized_by(*this, sm->current_scope);
-    sm->current_scope->add_var_symbol_check_conflict(m_alias_sym);
+    alias_sym->memory_info->ast_pins.emplace_back(name.get());
+    alias_sym->memory_info->ast_comptime = ast_clone(this);
+    alias_sym->memory_info->initialized_by(*this, sm->current_scope);
+    analyse::utils::scope_utils::add_var_symbol_check_conflict(*sm->current_scope, alias_sym);
+    m_alias_sym = alias_sym;
 }
 
 
@@ -130,7 +133,7 @@ auto spp::asts::CmpStatementAst::stage_4_qualify_types(
     type->stage_4_qualify_types(sm, meta);
     type->stage_7_analyse_semantics(sm, meta);
     if (not m_from_use_statement and type->type_parts().back()->to_string()[0] != '$') {
-        type = sm->current_scope->get_type_symbol(type)->fq_name();
+        type = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, type)->fq_name();
         m_alias_sym->type = type;
     }
 }

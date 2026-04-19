@@ -4,6 +4,7 @@ module;
 module spp.asts;
 import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.scope_utils;
 import spp.utils.uid;
 
 
@@ -104,7 +105,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_7_analyse_semantics(
     }
 
     // Add the symbol to the current scope.
-    sm->current_scope->add_var_symbol(std::move(sym));
+    analyse::utils::scope_utils::add_var_symbol(*sm->current_scope, std::move(sym));
 }
 
 

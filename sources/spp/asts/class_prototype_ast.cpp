@@ -5,6 +5,7 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.scopes.symbols;
 import spp.asts.utils;
 import spp.lex;
 import genex;
@@ -76,7 +77,7 @@ spp::asts::ClassPrototypeAst::operator std::string() const {
 
 auto spp::asts::ClassPrototypeAst::m_generate_symbols(
     ScopeManager *sm)
-    -> analyse::scopes::TypeSymbol* {
+    -> AbstractSymbol* {
     auto is_dollar_type = name->to<TypeIdentifierAst>()->name[0] == '$';
     auto sym_name = ast_clone(name->type_parts()[0]);
     sym_name->generic_arg_group = GenericArgumentGroupAst::from_params(*generic_param_group);
