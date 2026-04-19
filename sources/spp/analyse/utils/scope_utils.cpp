@@ -81,7 +81,7 @@ auto spp::analyse::utils::scope_utils::rem_var_symbol(
     std::shared_ptr<asts::IdentifierAst> const &sym_name)
     -> void {
     // Remove a variable symbol from the corresponding symbol table.
-    scope.table.var_tbl.rem(sym_name);
+    scope.table.var_tbl.rem(sym_name->val);
 }
 
 
@@ -90,7 +90,7 @@ auto spp::analyse::utils::scope_utils::rem_type_symbol(
     std::shared_ptr<asts::TypeIdentifierAst> const &sym_name)
     -> void {
     // Remove a type symbol from the corresponding symbol table.
-    scope.table.type_tbl.rem(sym_name);
+    scope.table.type_tbl.rem(sym_name->to_string());
 }
 
 
@@ -99,7 +99,7 @@ auto spp::analyse::utils::scope_utils::rem_ns_symbol(
     std::shared_ptr<asts::IdentifierAst> const &sym_name)
     -> void {
     // Remove a namespace symbol from the corresponding symbol table.
-    scope.table.ns_tbl.rem(sym_name);
+    scope.table.ns_tbl.rem(sym_name->to_string());
 }
 
 

@@ -5,6 +5,7 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
 import spp.lex;
 import genex;
@@ -242,7 +243,7 @@ auto spp::asts::GenericParameterGroupAst::stage_4_qualify_types(
 
             // Attach the scopes of the cosntraint types as sup-scopes to the generic scope.
             for (auto const &constraint : x->constraints->constraints) {
-                auto constraint_scope = sm->current_scope->get_type_symbol(constraint)->scope;
+                auto constraint_scope = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, constraint)->scope;
                 for (auto const &dummy_scope : x->m_dummy_scopes) {
                     dummy_scope->direct_sup_scopes.emplace_back(constraint_scope);
                 }

@@ -5,6 +5,8 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import spp.utils.uid;
 import llvm;
@@ -65,7 +67,8 @@ auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
     // Check this type isn't a borrow violation.
     SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(this, type, *sm, "object initializer");
 
-    const auto base_cls_sym = sm->current_scope->get_type_symbol(type->without_generics());
+    const auto base_cls_sym = analyse::utils::scope_utils::get_type_symbol(
+        *sm->current_scope, type->without_generics());
 
     // Generic types cannot have any attributes set | TODO: future with constraints will allow some.
     raise_if<analyse::errors::SppObjectInitializerGenericWithArgsError>(
@@ -91,7 +94,7 @@ auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
     auto generic_infer_target = base_cls_sym->type->impl->members
         | genex::views::ptr
         | genex::views::cast_dynamic<ClassAttributeAst*>()
-        | genex::views::transform([base_cls_sym](auto &&x) { return std::make_pair(x->name, base_cls_sym->scope->get_type_symbol(x->type)->fq_name()); })
+        | genex::views::transform([base_cls_sym](auto &&x) { return std::make_pair(x->name, analyse::utils::scope_utils::get_type_symbol(*base_cls_sym->scope, x->type)->fq_name()); })
         | genex::to<std::vector>();
 
     // Analyse the type and object argument group. TODO: might still need this
