@@ -3,9 +3,11 @@ module;
 #include <spp/analyse/macros.hpp>
 
 module spp.asts;
+import :common_types;
 import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.scope_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import spp.lex;
@@ -92,7 +94,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
     SPP_ENFORCE_EXPRESSION_SUBTYPE(elem.get());
     elem->stage_7_analyse_semantics(sm, meta);
     const auto elem_type = elem->infer_type(sm, meta);
-    const auto elem_type_sym = sm->current_scope->get_type_symbol(elem_type);
+    const auto elem_type_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, elem_type);
 
     // Ensure the element type is copyable, so that is can be repeated in the array.
     raise_if<analyse::errors::SppInvalidExpressionNonCopyableTypeError>(
@@ -106,7 +108,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
 
     // Ensure the size is a constant expression (if symbolic).
     const auto symbolic_size = size->to<IdentifierAst>();
-    const auto size_sym = sm->current_scope->get_var_symbol(ast_clone(symbolic_size));
+    const auto size_sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, ast_clone(symbolic_size));
     raise_if<analyse::errors::SppCompileTimeConstantError>(
         size_sym != nullptr and size_sym->comptime_value == nullptr,
         {sm->current_scope}, ERR_ARGS(*size));

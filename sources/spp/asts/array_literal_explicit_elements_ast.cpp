@@ -3,6 +3,7 @@ module;
 #include <spp/analyse/macros.hpp>
 
 module spp.asts;
+import :common_types;
 import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.utils.mem_utils;
@@ -137,7 +138,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_9_comptime_resolution(
     auto cmp_elems = std::vector<std::unique_ptr<ExpressionAst>>();
     for (auto const &elem : elems) {
         elem->stage_9_comptime_resolution(sm, meta);
-        cmp_elems.emplace_back(ast_clone(static_cast<ExpressionAst*>(meta->cmp_result.get())));
+        cmp_elems.emplace_back(ast_clone(meta->cmp_result.get()));
     }
 
     // Wrap the compile-time array value.

@@ -4,6 +4,7 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
 import spp.lex;
 import spp.utils.uid;
@@ -65,11 +66,11 @@ auto spp::asts::ClosureExpressionAst::stage_7_analyse_semantics(
     const auto parent_scope = sm->current_scope;
     pc_group->stage_7_analyse_semantics(sm, meta);
 
-    const auto inherited_type_generics = sm->current_scope->all_type_symbols()
+    const auto inherited_type_generics = analyse::utils::scope_utils::all_type_symbols(sm->current_scope)
         | genex::views::filter([](auto const &sym) { return sym->is_generic; })
         | genex::to<std::vector>();
 
-    const auto inherited_comp_generics = sm->current_scope->all_var_symbols()
+    const auto inherited_comp_generics = analyse::utils::scope_utils::all_var_symbols(sm->current_scope)
         | genex::views::filter([](auto const &sym) { return sym->is_generic; })
         | genex::to<std::vector>();
 

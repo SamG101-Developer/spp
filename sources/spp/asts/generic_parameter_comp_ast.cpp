@@ -5,6 +5,9 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 
 
@@ -36,7 +39,7 @@ auto spp::asts::GenericParameterCompAst::stage_2_gen_top_level_scopes(
     sym->memory_info->ast_comptime = ast_clone(this);
     sym->memory_info->initialized_by(*this, sm->current_scope);
     sym->comptime_value = ast_clone(this); // TODO: this or name?
-    sm->current_scope->add_var_symbol(std::move(sym));
+    analyse::utils::scope_utils::add_var_symbol(sm->current_scope, std::move(sym));
 }
 
 

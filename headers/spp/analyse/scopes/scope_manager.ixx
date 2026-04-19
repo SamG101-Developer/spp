@@ -136,11 +136,6 @@ public:
      */
     auto exhaust_scope() -> void;
 
-    // auto attach_llvm_type_info(
-    //     asts::ModulePrototypeAst const &mod,
-    //     codegen::LlvmCtx *ctx) const
-    //     -> void;
-
 private:
     /**
      * Once a super scope has been registered against a scope, there are some checks to ensure that this new superscope

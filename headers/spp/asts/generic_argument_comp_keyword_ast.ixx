@@ -52,7 +52,7 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgum
 
     SPP_AST_KEY_FUNCTIONS;
 
-    // static auto from_symbol(analyse::scopes::VariableSymbol const &sym) -> std::unique_ptr<GenericArgumentCompKeywordAst>;
+    static auto from_symbol(AbstractSymbol const &sym) -> std::unique_ptr<GenericArgumentCompKeywordAst>;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

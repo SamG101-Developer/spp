@@ -6,7 +6,9 @@ module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import genex;
 
@@ -91,7 +93,7 @@ auto spp::asts::ClassAttributeAst::stage_2_gen_top_level_scopes(
     // Create a variable symbol for this attribute in the current scope (class scope).
     auto sym = std::make_unique<analyse::scopes::VariableSymbol>(
         name, type, sm->current_scope, false, false, visibility.first);
-    analyse::utils::scope_utils::add_var_symbol(sm->current_scope, std::move(sym));
+    analyse::utils::scope_utils::add_var_symbol(*sm->current_scope, std::move(sym));
 }
 
 
@@ -121,8 +123,8 @@ auto spp::asts::ClassAttributeAst::stage_5_load_super_scopes(
 
     // Check the type is valid before scopes are attached.
     type->stage_7_analyse_semantics(sm, meta);
-    type = sm->current_scope->get_type_symbol(type)->fq_name();
-    sm->current_scope->get_var_symbol(name)->type = type;
+    type = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, type)->fq_name();
+    analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, name)->type = type;
 }
 
 
@@ -141,8 +143,8 @@ auto spp::asts::ClassAttributeAst::stage_7_analyse_semantics(
     SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(type, type, *sm, "attribute type");
 
     type->stage_7_analyse_semantics(sm, meta);
-    type = sm->current_scope->get_type_symbol(type)->fq_name();
-    const auto var_sym = sm->current_scope->get_var_symbol(name);
+    type = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, type)->fq_name();
+    const auto var_sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, name);
     var_sym->type = type;
 
     if (meta->current_stage == 9 and default_val != nullptr) {

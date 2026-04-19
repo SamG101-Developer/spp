@@ -7,6 +7,8 @@ import std;
 
 namespace spp::analyse::scopes {
     SPP_EXP_CLS struct ScopeBlockName;
+    SPP_EXP_CLS struct ScopeIdentifierName;
+    SPP_EXP_CLS struct ScopeTypeIdentifierName;
 }
 
 
@@ -51,4 +53,14 @@ public:
      * Allow default move constructors for easy passing around of scope block names.
      */
     ScopeBlockName(ScopeBlockName &&) noexcept = default;
+};
+
+
+SPP_EXP_CLS struct spp::analyse::scopes::ScopeIdentifierName {
+    std::shared_ptr<AbstractAst> name;
+};
+
+
+SPP_EXP_CLS struct spp::analyse::scopes::ScopeTypeIdentifierName {
+    std::shared_ptr<AbstractAst> name;
 };

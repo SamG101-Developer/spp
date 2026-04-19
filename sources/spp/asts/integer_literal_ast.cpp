@@ -6,6 +6,7 @@ module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.asts.utils;
+import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_type;
 import spp.lex;
 import spp.utils.strings;

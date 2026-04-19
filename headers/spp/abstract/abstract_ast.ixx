@@ -11,6 +11,12 @@ namespace spp {
 
 
 SPP_EXP_CLS struct spp::AbstractAst {
+    /**
+     * The context of an AST is used in certain analysis steps. This might be the parent AST, such as a
+     * FunctionPrototypeAst etc.
+     */
+    AbstractAst *m_ctx = nullptr;
+
     AbstractAst();
 
     virtual ~AbstractAst();
@@ -45,5 +51,13 @@ SPP_EXP_CLS struct spp::AbstractAst {
     template <typename T>
     auto to() const -> T const* {
         return dynamic_cast<T const*>(this);
+    }
+
+    SPP_ATTR_NODISCARD auto get_ast_ctx() const -> AbstractAst* {
+        return m_ctx;
+    }
+
+    auto set_ast_ctx(AbstractAst *ctx) -> void {
+        m_ctx = ctx;
     }
 };

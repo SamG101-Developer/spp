@@ -7,6 +7,7 @@ import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
 import spp.lex;
 import genex;
@@ -67,7 +68,8 @@ auto spp::asts::AssignmentStatementAst::is_attr(
     Ast const *x,
     analyse::scopes::ScopeManager const *sm) -> bool {
     // Determine if the AST node is an attribute (ie not an identifier).
-    return not x->to<IdentifierAst>() and sm->current_scope->get_var_symbol_outermost(*x).first != nullptr;
+    return not x->to<IdentifierAst>() and analyse::utils::scope_utils::get_var_symbol_outermost(
+        *sm->current_scope, *x).first != nullptr;
 }
 
 

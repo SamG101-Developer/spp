@@ -35,11 +35,11 @@ auto spp::asts::GenericParameterTypeAst::stage_2_gen_top_level_scopes(
     // Create the type symbol for the generic parameter.
     const auto sym = std::make_shared<analyse::scopes::TypeSymbol>(
         ast_clone(name->type_parts().back().get()), nullptr, dummy_scope.get(), sm->current_scope, nullptr, true);
-    analyse::utils::scope_utils::add_type_symbol(sm->current_scope, sym);
+    analyse::utils::scope_utils::add_type_symbol(*sm->current_scope, sym);
     dummy_scope->ty_sym = sym;
 
     m_dummy_scopes.emplace_back(dummy_scope.get());
-    ScopeManager::temp_scopes.emplace_back(std::move(dummy_scope));
+    sm->current_scope->temp.emplace_back(std::move(dummy_scope));
 }
 
 

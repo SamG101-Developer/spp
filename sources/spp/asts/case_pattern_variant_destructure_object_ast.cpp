@@ -5,7 +5,9 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import spp.lex;
 import spp.utils.uid;
@@ -96,11 +98,11 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantic
 
     auto conv = ast_clone(type->get_convention());
     type->stage_7_analyse_semantics(sm, meta);
-    type = sm->current_scope->get_type_symbol(type)->fq_name();
+    type = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, type)->fq_name();
     type = type->with_convention(std::move(conv));
 
     // Get the condition symbol if it exists.
-    m_cond_sym = sm->current_scope->get_var_symbol(ast_clone(meta->case_condition->to<IdentifierAst>()));
+    m_cond_sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, ast_clone(meta->case_condition->to<IdentifierAst>()));
     auto cond = meta->case_condition;
     if (m_cond_sym == nullptr) {
         auto cond_type = meta->case_condition->infer_type(sm, meta);
@@ -124,13 +126,14 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantic
 
         // Set the memory information of the symbol based on the type of iteration.
         cond = var_name.get();
-        m_cond_sym = sm->current_scope->get_var_symbol(var_name);
+        m_cond_sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, var_name);
     }
 
     // Flow type the condition symbol if necessary.
     if (analyse::utils::type_utils::is_type_variant(*m_cond_sym->type, *sm->current_scope)) {
+        auto flow_sym = std::dynamic_pointer_cast<analyse::scopes::VariableSymbol>(m_cond_sym);
         raise_if<analyse::errors::SppTypeMismatchError>(
-            not analyse::utils::type_utils::symbolic_eq(*m_cond_sym->type, *type, *sm->current_scope, *sm->current_scope),
+            not analyse::utils::type_utils::symbolic_eq(*flow_sym->type, *type, *sm->current_scope, *sm->current_scope),
             {sm->current_scope}, ERR_ARGS(*meta->case_condition, *m_cond_sym->type, *type, *type));
 
         flow_sym = std::make_shared<analyse::scopes::VariableSymbol>(*m_cond_sym);

@@ -5,6 +5,7 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.scopes.symbols;
 import spp.asts.utils;
 import spp.lex;
 
@@ -71,10 +72,10 @@ spp::asts::GenericArgumentCompKeywordAst::operator std::string() const {
 
 
 auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
-    analyse::scopes::VariableSymbol const &sym)
+    AbstractSymbol const &sym)
     -> std::unique_ptr<GenericArgumentCompKeywordAst> {
     // Get the comptime value from the symbol's memory info.
-    const auto c = sym.memory_info->ast_comptime.get();
+    const auto c = dynamic_cast<analyse::scopes::VariableSymbol const&>(sym).memory_info->ast_comptime.get();
     std::unique_ptr<ExpressionAst> value = nullptr;
 
     // Depending on that the comptime AST is, get the value.

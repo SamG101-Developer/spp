@@ -2,20 +2,10 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.codegen.llvm_type;
+import spp.asts;
+import spp.analyse.scopes.symbols;
+import spp.codegen.llvm_ctx;
 import llvm;
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS struct TypeSymbol;
-}
-
-namespace spp::asts {
-    SPP_EXP_CLS struct ClassPrototypeAst;
-    SPP_EXP_CLS struct FunctionPrototypeAst;
-}
-
-namespace spp::codegen {
-    SPP_EXP_CLS struct LlvmCtx;
-}
 
 
 namespace spp::codegen {

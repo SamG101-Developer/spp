@@ -14,9 +14,9 @@ import sys;
 namespace spp::analyse::scopes {
     SPP_EXP_CLS class Scope;
     SPP_EXP_CLS using ScopeName = std::variant<
-        // std::shared_ptr<asts::IdentifierAst>,
-        // std::shared_ptr<asts::TypeIdentifierAst>,
-        ScopeBlockName>;
+        ScopeBlockName,
+        ScopeIdentifierName,
+        ScopeTypeIdentifierName>;
 }
 
 
@@ -40,6 +40,7 @@ public:
      * memory management. This allows for an easy traversal of the scope hierarchy.
      */
     std::vector<std::unique_ptr<Scope>> children;
+    std::vector<std::unique_ptr<Scope>> temp;
 
     /**
      * Top level scopes register their AST with the scope. This is useful for error reporting, as it allows for easy
@@ -95,37 +96,6 @@ public:
     static auto new_global(compiler::Module const &mod) -> std::unique_ptr<Scope>;
 
     /**
-     * Search all "sup" scopes of an existing scope (this will be a type scope), for a variable
-     * symbol with a name that matches "name". This is used when looking for the a constant defined
-     * with "cmp" within a sup-block of a type.
-     * @param scope The starting scope to search from.
-     * @param name The name of the variable symbol to search for.
-     * @return The found variable symbol, or nullptr if not found.
-     */
-    // static auto search_sup_scopes_for_var(Scope const &scope, std::shared_ptr<asts::IdentifierAst> const &name) -> std::shared_ptr<VariableSymbol>;
-
-    /**
-     * Search all "sup" scopes of an existing scope (this will be a type scope), for a type
-     * symbol with a name that matches "name". This is used when looking for a type defined with a
-     * "type" statement within a sup-block of a type.
-     * @param scope The starting scope to search from.
-     * @param name The name of the type symbol to search for.
-     * @return The found type symbol, or nullptr if not found.
-     */
-    // static auto search_sup_scopes_for_type(Scope const &scope, std::shared_ptr<const asts::TypeAst> const &name) -> std::shared_ptr<TypeSymbol>;
-
-    /**
-     * Given a scope and a fully qualified type, this function moves through the namespace parts of
-     * the type, moving into the next namespace scopes. Finally, it will arrive at the scope for the
-     * innermost (rightmost) namespace part, and the compeltely unqualified type name. For example,
-     * @c scope:random_scope and @c std::string::Str becomes @c scope:string and @c Str.
-     * @param scope The starting scope to search from.
-     * @param fq_type The fully qualified type to shift the scope for.
-     * @return A pair of the shifted scope and the unqualified type identifier.
-     */
-    // static auto shift_scope_for_namespaced_type(Scope const &scope, asts::TypeAst const &fq_type) -> std::pair<const Scope*, std::shared_ptr<const asts::TypeIdentifierAst>>;
-
-    /**
      * Get the error formatter associated with this scope. Lots of scopes don't have error
      * formatters, so if the formatter doesn't exist, the scope's parent's formatter is used,
      * recursively searching upwards until a module scope is found, which will have an errror
@@ -133,34 +103,6 @@ public:
      * @return The error formatter associated with this scope.
      */
     SPP_ATTR_NODISCARD auto get_error_formatter() const -> utils::errors::ErrorFormatter*;
-
-    // SPP_ATTR_NODISCARD auto get_generics() const -> std::vector<std::unique_ptr<asts::GenericArgumentAst>>;
-
-    // SPP_ATTR_NODISCARD auto get_extended_generic_symbols(std::vector<asts::GenericArgumentAst*> const &generics, std::shared_ptr<AbstractAst> const &ignore = nullptr) const -> std::vector<std::shared_ptr<Symbol>>;
-
-    // auto add_var_symbol(std::shared_ptr<VariableSymbol> const &sym) -> void;
-    // auto add_var_symbol_check_conflict(std::shared_ptr<VariableSymbol> const &sym) -> void;
-    // auto add_type_symbol(std::shared_ptr<TypeSymbol> const &sym) -> void;
-    // auto add_type_symbol_check_conflict(std::shared_ptr<TypeSymbol> const &sym) -> void;
-    // auto add_ns_symbol(std::shared_ptr<NamespaceSymbol> const &sym) -> void;
-
-    // auto rem_var_symbol(std::shared_ptr<asts::IdentifierAst> const &sym_name) -> void;
-    // auto rem_type_symbol(std::shared_ptr<asts::TypeIdentifierAst> const &sym_name) -> void;
-    // auto rem_ns_symbol(std::shared_ptr<asts::IdentifierAst> const &sym_name) -> void;
-    //
-    // SPP_ATTR_NODISCARD auto all_var_symbols(bool exclusive = false, bool sup_scope_search = false) const -> std::vector<std::shared_ptr<VariableSymbol>>;
-    // SPP_ATTR_NODISCARD auto all_type_symbols(bool exclusive = false, bool sup_scope_search = false) const -> std::vector<std::shared_ptr<TypeSymbol>>;
-    // SPP_ATTR_NODISCARD auto all_ns_symbols(bool exclusive = false, bool = false) const -> std::vector<std::shared_ptr<NamespaceSymbol>>;
-    //
-    // SPP_ATTR_NODISCARD auto has_var_symbol(std::shared_ptr<asts::IdentifierAst> const &sym_name, bool exclusive = false) const -> bool;
-    // SPP_ATTR_NODISCARD auto has_type_symbol(std::shared_ptr<AbstractAst> const &sym_name, bool exclusive = false) const -> bool;
-    // SPP_ATTR_NODISCARD auto has_ns_symbol(std::shared_ptr<asts::IdentifierAst> const &sym_name, bool exclusive = false) const -> bool;
-    //
-    // SPP_ATTR_NODISCARD SPP_ATTR_HOT auto get_var_symbol(std::shared_ptr<asts::IdentifierAst> const &sym_name, bool exclusive = false, bool sup_scope_search = true) const -> std::shared_ptr<VariableSymbol>;
-    // SPP_ATTR_NODISCARD SPP_ATTR_HOT auto get_type_symbol(std::shared_ptr<const AbstractAst> const &sym_name, bool exclusive = false, bool sup_scope_search = true) const -> std::shared_ptr<TypeSymbol>;
-    // SPP_ATTR_NODISCARD SPP_ATTR_HOT auto get_ns_symbol(std::shared_ptr<const asts::IdentifierAst> const &sym_name, bool exclusive = false) const -> std::shared_ptr<NamespaceSymbol>;
-
-    // SPP_ATTR_NODISCARD auto get_var_symbol_outermost(asts::Ast const &expr) const -> std::pair<std::shared_ptr<VariableSymbol>, Scope const*>;
 
     auto depth_difference(const Scope *scope) const -> sys::ssize_t;
 
@@ -176,7 +118,7 @@ public:
 
     SPP_ATTR_NODISCARD auto direct_sup_types() const -> std::vector<std::shared_ptr<AbstractAst>>;
 
-    // auto convert_postfix_to_nested_scope(asts::ExpressionAst const *postfix_ast) const -> Scope const*;
+    SPP_ATTR_NODISCARD auto convert_postfix_to_nested_scope(AbstractAst const *postfix_ast) const -> Scope const*;
 
     SPP_ATTR_NODISCARD auto print_scope_tree() const -> std::string;
 

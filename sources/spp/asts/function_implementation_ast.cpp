@@ -29,7 +29,7 @@ auto spp::asts::FunctionImplementationAst::stage_9_comptime_resolution(
     -> void {
     // Inject the argument values. Todo: && & std::move?
     for (auto const &[arg_name, arg_comp] : meta->cmp_args) {
-        const auto arg_sym = analyse::utils::scope_utils::get_var_symbol(sm->current_scope, arg_name);
+        const auto arg_sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, arg_name);
         arg_sym->comptime_value = ast_clone(arg_comp);
     }
 

@@ -7,6 +7,7 @@ module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
 import spp.asts.utils;
 import spp.parse;
@@ -96,7 +97,7 @@ auto spp::asts::AnnotationAst::stage_4_qualify_types(
     CompilerMetaData *)
     -> void {
     // Special annotation handling.
-    const auto sym = sm->current_scope->get_var_symbol_outermost(*name).first;
+    const auto sym = analyse::utils::scope_utils::get_var_symbol_outermost(*sm->current_scope, *name).first;
     if (sym == nullptr) { return; }
 
     const auto fq_name = sym->fq_name()->to_string();
@@ -132,7 +133,7 @@ auto spp::asts::AnnotationAst::stage_5_load_super_scopes(
     //  4. For compiler_builtin annotations, ensure they have handlers.
 
     // Handle builtin annotations.
-    const auto sym = sm->current_scope->get_var_symbol_outermost(*name).first;
+    const auto sym = analyse::utils::scope_utils::get_var_symbol_outermost(*sm->current_scope, *name).first;
     if (sym == nullptr) { return; }
     const auto fq_name = sym->fq_name()->to_string();
 
@@ -229,7 +230,7 @@ auto spp::asts::AnnotationAst::stage_9_comptime_resolution(
     const auto annotation_scope = const_cast<analyse::scopes::Scope*>(
         sm->current_scope->convert_postfix_to_nested_scope(annotation_scope_name.get()));
     auto tm = ScopeManager(sm->global_scope, annotation_scope);
-    annotation_info->definition->fn_arg_group->at("target")->val->stage_9_comptime_resolution(&tm, meta);
+    annotation_info->definition->to<AnnotationAst>()->fn_arg_group->at("target")->val->stage_9_comptime_resolution(&tm, meta);
     const auto result = std::move(meta->cmp_result);
     const auto allowed_ctx = result->to<IntegerLiteralAst>()->cpp_value<std::uint64_t>();
     meta->restore();

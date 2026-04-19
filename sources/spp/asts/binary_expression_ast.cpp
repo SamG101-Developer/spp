@@ -5,6 +5,8 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.bin_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import genex;
 
@@ -178,5 +180,5 @@ auto spp::asts::BinaryExpressionAst::infer_type(
         // Todo: Needed?
         stage_7_analyse_semantics(sm, meta);
     }
-    return m_mapped_func->infer_type(sm, meta);
+    return m_mapped_func->to<PostfixExpressionAst>()->infer_type(sm, meta);
 }

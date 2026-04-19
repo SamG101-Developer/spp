@@ -5,6 +5,7 @@ module;
 module spp.analyse.utils.mem_utils;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
 import spp.asts;
 import spp.asts.utils;
 import genex;
@@ -60,7 +61,7 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
     }
 
     // Get the symbol representing the outermost part of the expression being moved. Non-symbolic => temporary value.
-    auto [var_sym, var_scope] = sm.current_scope->get_var_symbol_outermost(value_ast);
+    auto [var_sym, var_scope] = scope_utils::get_var_symbol_outermost(*sm.current_scope, value_ast);
     if (var_sym == nullptr) { return; }
     const auto copies = var_scope->get_type_symbol(var_sym->type)->is_copyable();
     const auto partial_copies = var_scope->get_type_symbol(value_ast.infer_type(&sm, meta))->is_copyable();

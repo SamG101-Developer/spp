@@ -58,7 +58,7 @@ auto spp::asts::FunctionParameterSelfAst::stage_7_analyse_semantics(
     FunctionParameterAst::stage_7_analyse_semantics(sm, meta);
 
     // Special mutability rules for the "self" parameter.
-    const auto sym = analyse::utils::scope_utils::get_var_symbol(sm->current_scope, var->extract_name());
+    const auto sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, var->extract_name());
     sym->is_mutable = var->to<LocalVariableSingleIdentifierAst>()->tok_mut != nullptr
         or (conv and *conv == ConventionTag::MUT);
 

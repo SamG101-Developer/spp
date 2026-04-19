@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.utils:annotations;
+import spp.abstract;
 import std;
 
 namespace spp::asts::utils {
@@ -14,7 +15,7 @@ namespace spp::asts::utils {
         constexpr static auto CMP_CTX = 32;
 
         std::uint32_t ctx = 0;
-        void *definition = nullptr;
+        AbstractAst *definition = nullptr;
         bool is_builtin = false;
 
         AnnotationInfo() = default;

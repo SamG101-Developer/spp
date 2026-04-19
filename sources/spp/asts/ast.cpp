@@ -28,7 +28,7 @@ auto spp::asts::Ast::ankerl_hash() const
 auto spp::asts::Ast::stage_1_pre_process(
     AbstractAst *ctx)
     -> void {
-    m_ctx = static_cast<Ast*>(ctx);
+    m_ctx = ctx;
 }
 
 

@@ -3,6 +3,7 @@ module;
 
 module spp.asts;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
 import spp.lex;
 import spp.utils.uid;
@@ -47,7 +48,9 @@ auto spp::asts::FunctionParameterAst::stage_7_analyse_semantics(
     -> void {
     // Analyse the type.
     type->stage_7_analyse_semantics(sm, meta);
-    type = sm->current_scope->get_type_symbol(type)->fq_name()->with_convention(ast_clone(type->get_convention()));
+    type = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, type)
+           ->fq_name()
+           ->with_convention(ast_clone(type->get_convention()));
 
     // Create the variable for the parameter (use temp copies and put them back).
     const auto ast = std::make_unique<LetStatementUninitializedAst>(nullptr, std::move(var), nullptr, type);
@@ -57,7 +60,7 @@ auto spp::asts::FunctionParameterAst::stage_7_analyse_semantics(
     // Mark the symbol as initialized.
     const auto conv = type->get_convention();
     for (auto const &name : extract_names()) {
-        const auto sym = sm->current_scope->get_var_symbol(name);
+        const auto sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, name);
         sym->memory_info->initialized_by(*this, sm->current_scope);
         sym->memory_info->ast_borrowed = {conv, sm->current_scope};
     }
@@ -70,7 +73,7 @@ auto spp::asts::FunctionParameterAst::stage_8_check_memory(
     -> void {
     // Check the memory of each name.
     for (auto const &name : extract_names()) {
-        const auto sym = sm->current_scope->get_var_symbol(name);
+        const auto sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, name);
         sym->memory_info->initialized_by(*this, sm->current_scope);
     }
 }

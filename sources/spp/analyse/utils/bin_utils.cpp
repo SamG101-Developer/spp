@@ -63,7 +63,7 @@ auto spp::analyse::utils::bin_utils::combine_comp_ops(
     }
 
     // Non-symbolic value being re-used -> put it into a variable first.
-    if (scope_utils::get_var_symbol_outermost(sm->current_scope, *bin_lhs->rhs).first == nullptr) {
+    if (scope_utils::get_var_symbol_outermost(*sm->current_scope, *bin_lhs->rhs).first == nullptr) {
         const auto temp_var_name = ( {
             const auto uid = spp::utils::generate_uid(bin_lhs->rhs.get());
             std::make_shared<asts::IdentifierAst>(bin_lhs->rhs->pos_start(), uid);

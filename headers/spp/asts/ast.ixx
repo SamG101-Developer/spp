@@ -27,12 +27,6 @@ namespace spp::asts::meta {
 SPP_EXP_CLS struct spp::asts::Ast : AbstractAst {
 protected:
     /**
-     * The context of an AST is used in certain analysis steps. This might be the parent AST, such as a
-     * FunctionPrototypeAst etc.
-     */
-    AbstractAst *m_ctx = nullptr;
-
-    /**
      * The scope of an AST is used when generating top level scopes, to create a simple link between scope and AST.
      */
     analyse::scopes::Scope *m_scope = nullptr;
@@ -186,16 +180,8 @@ public:
         return m_scope;
     }
 
-    SPP_ATTR_NODISCARD auto get_ast_ctx() const -> AbstractAst* {
-        return m_ctx;
-    }
-
     auto set_ast_scope(analyse::scopes::Scope *scope) -> void {
         m_scope = scope;
-    }
-
-    auto set_ast_ctx(AbstractAst *ctx) -> void {
-        m_ctx = ctx;
     }
 };
 

@@ -73,7 +73,7 @@ auto spp::asts::FunctionCallArgumentAst::stage_11_code_gen_2(
     if (conv != nullptr) {
         // If the lhs is symbolic, get the address of the outermost part.
         const auto uid = spp::utils::generate_uid(this);
-        const auto [sym, _] = analyse::utils::scope_utils::get_var_symbol_outermost(sm->current_scope, *val);
+        const auto [sym, _] = analyse::utils::scope_utils::get_var_symbol_outermost(*sm->current_scope, *val);
 
         if (sym != nullptr) {
             // Get the alloca for the lhs symbol (the base pointer).
@@ -85,7 +85,7 @@ auto spp::asts::FunctionCallArgumentAst::stage_11_code_gen_2(
 
         // Materialize the lhs expression into a temporary.
         const auto materialized_val = codegen::llvm_materialize(*val, sm, meta, ctx);
-        const auto materialized_sym = sm->current_scope->get_var_symbol(ast_clone(materialized_val));
+        const auto materialized_sym = analyse::utils::scope_utils::get_var_symbool(*sm->current_scope, ast_clone(materialized_val));
 
         const auto llvm_alloca = materialized_sym->llvm_info->alloca;
         SPP_ASSERT(llvm_alloca->getType()->isPointerTy());

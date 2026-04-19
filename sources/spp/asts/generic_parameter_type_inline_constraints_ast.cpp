@@ -66,7 +66,7 @@ auto spp::asts::GenericParameterTypeInlineConstraintsAst::stage_7_analyse_semant
     // Analyse each constraint type.
     for (auto const &constraint : constraints) {
         constraint->stage_7_analyse_semantics(sm, meta);
-        auto const constraint_type_sym = analyse::utils::scope_utils::get_type_symbol(sm->current_scope, constraint->without_generics());
+        auto const constraint_type_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, constraint->without_generics());
         fq_constraints.emplace_back(constraint_type_sym->fq_name()->with_generics(std::move(constraint->type_parts().back()->generic_arg_group)));
     }
 
