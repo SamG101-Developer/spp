@@ -1,30 +1,13 @@
 module;
-#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.subroutine_prototype_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.annotation_utils;
-import spp.analyse.utils.type_utils;
-import spp.asts.annotation_ast;
-import spp.asts.identifier_ast;
-import spp.asts.function_implementation_ast;
-import spp.asts.function_parameter_group_ast;
-import spp.asts.generic_parameter_group_ast;
-import spp.asts.ret_statement_ast;
-import spp.asts.statement_ast;
-import spp.asts.token_ast;
-import spp.asts.generate.common_types_precompiled;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;
 
 
@@ -83,13 +66,13 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
     meta->save();
     meta->ignore_missing_else_branch_for_inference = true;
     const auto is_never = not impl->members.empty() and analyse::utils::type_utils::symbolic_eq(
-        *impl->final_member()->to<StatementAst>()->infer_type(&tm, meta), *generate::common_types_precompiled::NEVER,
+        *impl->final_member()->to<StatementAst>()->infer_type(&tm, meta), *common_types_precompiled::NEVER,
         *tm.current_scope, *sm->current_scope);
     meta->restore();
 
     // Check there is a return statement at the end (for non-void functions).
     const auto is_void = analyse::utils::type_utils::symbolic_eq(
-        *return_type, *generate::common_types_precompiled::VOID,
+        *return_type, *common_types_precompiled::VOID,
         *sm->current_scope, *sm->current_scope);
 
     const auto final_member = impl->final_member();
@@ -101,5 +84,3 @@ auto spp::asts::SubroutinePrototypeAst::stage_7_analyse_semantics(
     meta->restore(true);
     meta->loop_return_types->clear();
 }
-
-SPP_MOD_END

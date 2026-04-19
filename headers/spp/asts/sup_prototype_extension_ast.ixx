@@ -1,25 +1,20 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.sup_prototype_extension_ast;
-import spp.asts.ast;
-import spp.asts.module_member_ast;
-import spp.asts.sup_member_ast;
+export module spp.asts:sup_prototype_extension_ast;
+import :ast;
+import :module_member_ast;
+import :sup_member_ast;
 import spp.codegen.llvm_ctx;
+
 import llvm;
 import std;
 
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class ScopeManager;
-    SPP_EXP_CLS class Scope;
-    SPP_EXP_CLS struct TypeSymbol;
-}
-
 namespace spp::asts {
+    SPP_EXP_CLS struct SupPrototypeExtensionAst;
     SPP_EXP_CLS struct FunctionPrototypeAst;
     SPP_EXP_CLS struct GenericParameterGroupAst;
     SPP_EXP_CLS struct SupImplementationAst;
-    SPP_EXP_CLS struct SupPrototypeExtensionAst;
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
@@ -93,12 +88,12 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : virtual Ast, Modu
     SPP_AST_KEY_FUNCTIONS;
 
     auto check_cyclic_extension(
-        analyse::scopes::TypeSymbol const &sup_sym,
+        void const *raw_sup_sym,
         analyse::scopes::Scope &check_scope) const
         -> void;
 
     auto check_double_extension(
-        analyse::scopes::TypeSymbol const &cls_sym,
+        void const *raw_cls_sym,
         analyse::scopes::Scope &check_scope) const
         -> void;
 
@@ -106,7 +101,7 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : virtual Ast, Modu
         analyse::scopes::Scope &check_scope) const
         -> void;
 
-    auto stage_1_pre_process(Ast *ctx) -> void override;
+    auto stage_1_pre_process(AbstractAst *ctx) -> void override;
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *) -> void override;
 
@@ -124,7 +119,7 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : virtual Ast, Modu
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm , CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm , CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };

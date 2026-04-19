@@ -1,13 +1,10 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.generic_argument_type_keyword_ast;
-import spp.asts.generic_argument_type_ast;
+export module spp.asts:generic_argument_type_keyword_ast;
+import :generic_argument_type_ast;
+import spp.analyse.scopes;
 import std;
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS struct TypeSymbol;
-}
 
 namespace spp::asts {
     SPP_EXP_CLS struct GenericArgumentTypeKeywordAst;
@@ -32,8 +29,6 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgum
      */
     std::unique_ptr<TokenAst> tok_assign;
 
-    auto _spp_key_function() const -> void override;
-
     /**
      * Construct the GenericArgumentTypeKeywordAst with the arguments matching the members.
      * @param name The name of the keyword argument.
@@ -53,12 +48,7 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgum
 
     SPP_AST_KEY_FUNCTIONS;
 
-    static auto from_symbol(analyse::scopes::TypeSymbol const &sym) -> std::unique_ptr<GenericArgumentTypeKeywordAst>;
+    // static auto from_symbol(analyse::scopes::TypeSymbol const &sym) -> std::unique_ptr<GenericArgumentTypeKeywordAst>;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::GenericArgumentTypeKeywordAst::_spp_key_function() const -> void {}
-SPP_MOD_END

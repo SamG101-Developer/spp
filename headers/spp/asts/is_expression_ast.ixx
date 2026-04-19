@@ -1,9 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.is_expression_ast;
-import spp.asts.expression_ast;
-import spp.codegen.llvm_ctx;
+export module spp.asts:is_expression_ast;
+import :expression_ast;
 import llvm;
 import std;
 
@@ -60,7 +59,7 @@ public:
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

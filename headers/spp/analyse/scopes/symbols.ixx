@@ -2,26 +2,17 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.scopes.symbols;
-import spp.analyse.utils.mem_info_utils;
-import spp.asts.ast;
-import spp.asts.convention_ast;
-import spp.asts.type_statement_ast;
-import spp.asts.utils.visibility;
+import spp.abstract;
+import spp.asts;
+import spp.asts.utils;
+import spp.analyse.scopes;
 import spp.codegen.llvm_sym_info;
+import spp.codegen.llvm_ctx;
+import spp.analyse.utils.mem_info_utils;
 import std;
 
 
-namespace spp::asts {
-    SPP_EXP_CLS struct ClassPrototypeAst;
-    SPP_EXP_CLS struct ConventionAst;
-    SPP_EXP_CLS struct IdentifierAst;
-    SPP_EXP_CLS struct TypeAst;
-    SPP_EXP_CLS struct TypeIdentifierAst;
-    SPP_EXP_CLS struct TypeStatementAst;
-}
-
 namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
     SPP_EXP_CLS struct Symbol;
     SPP_EXP_CLS struct NamespaceSymbol;
     SPP_EXP_CLS struct TypeSymbol;
@@ -34,9 +25,7 @@ namespace spp::analyse::scopes {
  * some abstract methods that must be implemented by all derived classes. The `@c Symbol* type is used, creating the
  * need for a base class.
  */
-SPP_EXP_CLS struct spp::analyse::scopes::Symbol {
-    virtual auto _spp_key_function() const -> void;
-
+SPP_EXP_CLS struct spp::analyse::scopes::Symbol : AbstractSymbol {
     /**
      * Enforce a virtual destructor for the Symbol class. This is to ensure that derived classes can be properly
      * destructed when deleted through a base class pointer. This is important for polymorphism and memory management,
@@ -50,8 +39,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
     std::shared_ptr<asts::IdentifierAst> name;
 
     Scope *scope;
-
-    auto _spp_key_function() const -> void override;
 
     NamespaceSymbol(
         std::shared_ptr<asts::IdentifierAst> name,
@@ -85,11 +72,9 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
 
     std::unique_ptr<codegen::LlvmVarSymInfo> llvm_info;
 
-    std::unique_ptr<asts::Ast> comptime_value;
+    std::unique_ptr<void> comptime_value;
 
     std::shared_ptr<VariableSymbol> alias_sym;
-
-    auto _spp_key_function() const -> void override;
 
     VariableSymbol(
         std::shared_ptr<asts::IdentifierAst> name,
@@ -142,8 +127,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
     std::vector<std::shared_ptr<TypeSymbol>> aliased_by_symbols = {};
 
-    auto _spp_key_function() const -> void override;
-
     TypeSymbol(
         std::shared_ptr<asts::TypeIdentifierAst> name,
         asts::ClassPrototypeAst *type,
@@ -167,11 +150,3 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     SPP_ATTR_NODISCARD auto fq_name(bool ignore_dollar = true) const
         -> std::shared_ptr<asts::TypeAst>;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::analyse::scopes::Symbol::_spp_key_function() const -> void {}
-auto spp::analyse::scopes::VariableSymbol::_spp_key_function() const -> void {}
-auto spp::analyse::scopes::NamespaceSymbol::_spp_key_function() const -> void {}
-auto spp::analyse::scopes::TypeSymbol::_spp_key_function() const -> void {}
-SPP_MOD_END

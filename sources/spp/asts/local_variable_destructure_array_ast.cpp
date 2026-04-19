@@ -3,34 +3,14 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.local_variable_destructure_array_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.type_utils;
-import spp.asts.array_literal_explicit_elements_ast;
-import spp.asts.expression_ast;
-import spp.asts.integer_literal_ast;
-import spp.asts.generic_argument_comp_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.identifier_ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
-import spp.asts.local_variable_destructure_skip_single_argument_ast;
-import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_runtime_member_access_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.utils.ast_utils;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.type_identifier_ast;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.lex;
 import opex.cast;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::LocalVariableDestructureArrayAst::LocalVariableDestructureArrayAst(
     decltype(tok_l) &&tok_l,
     decltype(elems) &&elems,
@@ -202,7 +182,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_9_comptime_resolution(
 auto spp::asts::LocalVariableDestructureArrayAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Generate the "let" statements for each element.
     for (auto &&ast : m_new_asts) {
@@ -210,5 +190,3 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_11_code_gen_2(
     }
     return nullptr;
 }
-
-SPP_MOD_END

@@ -1,12 +1,10 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.type_unary_expression_operator_borrow_ast;
-import spp.asts.convention_ast;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::TypeUnaryExpressionOperatorBorrowAst::TypeUnaryExpressionOperatorBorrowAst(
     decltype(conv) &&conv) :
     conv(std::move(conv)) {
@@ -83,5 +81,3 @@ auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::type_parts()
     -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
     return {};
 }
-
-SPP_MOD_END

@@ -2,26 +2,18 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.array_literal_explicit_elements_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
-import spp.asts.integer_literal_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.generate.common_types;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+import spp.asts.utils;
+import spp.lex;
 import spp.utils.uid;
 import genex;
 import llvm;
 
 
-SPP_MOD_BEGIN
 spp::asts::ArrayLiteralExplicitElementsAst::ArrayLiteralExplicitElementsAst(
     decltype(tok_l) &&tok_l,
     decltype(elems) &&elements,
@@ -145,7 +137,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_9_comptime_resolution(
     auto cmp_elems = std::vector<std::unique_ptr<ExpressionAst>>();
     for (auto const &elem : elems) {
         elem->stage_9_comptime_resolution(sm, meta);
-        cmp_elems.emplace_back(std::move(meta->cmp_result));
+        cmp_elems.emplace_back(ast_clone(static_cast<ExpressionAst*>(meta->cmp_result.get())));
     }
 
     // Wrap the compile-time array value.
@@ -157,7 +149,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_9_comptime_resolution(
 auto spp::asts::ArrayLiteralExplicitElementsAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Runtime allocation. Todo: Can this be removed for comp only?
     if (not ctx->in_constant_context) {
@@ -213,9 +205,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::infer_type(
     auto elem_gen = elems[0]->infer_type(sm, meta);
 
     // Create an array type with the inferred element type and size.
-    auto array_type = generate::common_types::array_type(pos_start(), std::move(elem_gen), std::move(size_gen));
+    auto array_type = common_types::array_type(pos_start(), std::move(elem_gen), std::move(size_gen));
     array_type->stage_7_analyse_semantics(sm, meta);
     return array_type;
 }
-
-SPP_MOD_END

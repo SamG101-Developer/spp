@@ -1,14 +1,14 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.type_unary_expression_operator_ast;
-import spp.asts.ast;
+export module spp.asts:type_unary_expression_operator_ast;
+import :ast;
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct TypeUnaryExpressionOperatorAst;
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct TypeIdentifierAst;
-    SPP_EXP_CLS struct TypeUnaryExpressionOperatorAst;
     SPP_EXP_CLS struct TypeUnaryExpressionOperatorBorrowAst;
     SPP_EXP_CLS struct TypeUnaryExpressionOperatorNamespaceAst;
 }
@@ -21,7 +21,7 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorAst : virtual Ast {
 
     auto operator==(TypeUnaryExpressionOperatorAst const &) const -> bool;
 
-    ~TypeUnaryExpressionOperatorAst();
+    ~TypeUnaryExpressionOperatorAst() override;
 
     SPP_ATTR_NODISCARD virtual auto equals(TypeUnaryExpressionOperatorAst const &) const -> std::strong_ordering = 0;
 

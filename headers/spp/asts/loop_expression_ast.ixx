@@ -1,17 +1,13 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.loop_expression_ast;
-import spp.asts.primary_expression_ast;
+export module spp.asts:loop_expression_ast;
+import :primary_expression_ast;
 import std;
 
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
-}
-
 namespace spp::asts {
-    SPP_EXP_CLS struct LoopElseStatementAst;
     SPP_EXP_CLS struct LoopExpressionAst;
+    SPP_EXP_CLS struct LoopElseStatementAst;
     SPP_EXP_CLS template <typename T>
     struct InnerScopeExpressionAst;
     SPP_EXP_CLS struct TokenAst;

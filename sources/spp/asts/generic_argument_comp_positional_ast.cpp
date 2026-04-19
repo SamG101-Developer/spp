@@ -2,20 +2,12 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.generic_argument_comp_positional_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.mem_utils;
-import spp.asts.identifier_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.mixins.orderable_ast;
-import spp.asts.utils.ast_utils;
-import spp.asts.utils.orderable;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::GenericArgumentCompPositionalAst::GenericArgumentCompPositionalAst(
     decltype(val) &&val) :
     GenericArgumentCompAst(std::move(val), utils::OrderableTag::POSITIONAL_ARG) {
@@ -87,5 +79,3 @@ auto spp::asts::GenericArgumentCompPositionalAst::stage_8_check_memory(
     analyse::utils::mem_utils::validate_symbol_memory(
         *val, *val, *sm, true, true, true, true, true, meta);
 }
-
-SPP_MOD_END

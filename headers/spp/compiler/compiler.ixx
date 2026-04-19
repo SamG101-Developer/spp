@@ -1,17 +1,14 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.compiler.compiler;
+export module spp.compiler:compiler;
+import spp.compiler.module_tree;
+import spp.analyse.scopes;
 import std;
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class ScopeManager;
-}
 
 namespace spp::compiler {
     SPP_EXP_CLS class Compiler;
     SPP_EXP_CLS struct CompilerBoot;
-    SPP_EXP_CLS struct ModuleTree;
 }
 
 

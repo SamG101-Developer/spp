@@ -2,28 +2,17 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.array_literal_repeated_element_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.mem_info_utils;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
-import spp.asts.convention_ast;
-import spp.asts.identifier_ast;
-import spp.asts.integer_literal_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.generate.common_types;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+import spp.asts.utils;
+import spp.lex;
 import spp.utils.uid;
 import llvm;
 
 
-SPP_MOD_BEGIN
 spp::asts::ArrayLiteralRepeatedElementAst::ArrayLiteralRepeatedElementAst(
     decltype(tok_l) &&tok_l,
     decltype(elem) &&elem,
@@ -116,8 +105,8 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
         elem, elem_type, *sm, "repeated array element type");
 
     // Ensure the size is a constant expression (if symbolic).
-    auto symbolic_size = ast_clone(size->to<IdentifierAst>());
-    const auto size_sym = sm->current_scope->get_var_symbol(std::move(symbolic_size));
+    const auto symbolic_size = size->to<IdentifierAst>();
+    const auto size_sym = sm->current_scope->get_var_symbol(ast_clone(symbolic_size));
     raise_if<analyse::errors::SppCompileTimeConstantError>(
         size_sym != nullptr and size_sym->comptime_value == nullptr,
         {sm->current_scope}, ERR_ARGS(*size));
@@ -151,7 +140,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_9_comptime_resolution(
 auto spp::asts::ArrayLiteralRepeatedElementAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Get the size from the generic comp arg.
     const auto num_vals = std::stoull(size->to<IntegerLiteralAst>()->val->token_data);
@@ -203,9 +192,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Create the standard "std::array::Arr[T, n]" type, with generic arguments.
     auto elem_type = elem->infer_type(sm, meta);
-    auto array_type = generate::common_types::array_type(tok_l->pos_start(), std::move(elem_type), ast_clone(size));
+    auto array_type = common_types::array_type(tok_l->pos_start(), std::move(elem_type), ast_clone(size));
     array_type->stage_7_analyse_semantics(sm, meta);
     return array_type;
 }
-
-SPP_MOD_END

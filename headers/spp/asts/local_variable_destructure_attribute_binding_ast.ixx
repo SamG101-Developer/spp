@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.local_variable_destructure_attribute_binding_ast;
-import spp.asts.local_variable_ast;
+export module spp.asts:local_variable_destructure_attribute_binding_ast;
+import :local_variable_ast;
 import std;
 
 namespace spp::asts {

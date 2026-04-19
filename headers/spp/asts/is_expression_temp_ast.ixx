@@ -1,12 +1,12 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.is_expression_temp_ast;
+export module spp.asts:is_expression_temp_ast;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct CasePatternVariantAst;
     SPP_EXP_CLS struct IsExpressionTempAst;
+    SPP_EXP_CLS struct CasePatternVariantAst;
     SPP_EXP_CLS struct TokenAst;
 }
 

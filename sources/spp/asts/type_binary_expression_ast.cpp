@@ -1,15 +1,12 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.type_binary_expression_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.generate.common_types;
-import spp.lex.tokens;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.lex;
+import spp.asts.utils;
+import :common_types;
 
 
-SPP_MOD_BEGIN
 spp::asts::TypeBinaryExpressionAst::TypeBinaryExpressionAst(
     decltype(lhs) &&lhs,
     decltype(tok_op) &&tok_op,
@@ -63,7 +60,7 @@ auto spp::asts::TypeBinaryExpressionAst::convert()
         const auto pos = pos_start();
         inner_types[0] = std::move(lhs);
         inner_types[1] = std::move(rhs);
-        const auto type = generate::common_types::variant_type(pos, std::move(inner_types));
+        const auto type = common_types::variant_type(pos, std::move(inner_types));
         return ast_clone(type);
     }
 
@@ -71,5 +68,3 @@ auto spp::asts::TypeBinaryExpressionAst::convert()
 
     std::unreachable();
 }
-
-SPP_MOD_END

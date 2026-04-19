@@ -1,16 +1,16 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.generic_parameter_comp_ast;
-import spp.asts.generic_parameter_ast;
-import spp.asts.token_ast;
-import spp.asts.utils.orderable;
+export module spp.asts:generic_parameter_comp_ast;
+import :generic_parameter_ast;
+import spp.asts.utils;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct GenericParameterCompAst;
+    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
@@ -33,8 +33,6 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
      * @c F64 . This is a required field, as the type of the parameter must be known at compile time.
      */
     std::shared_ptr<TypeAst> type;
-
-    auto _spp_key_function() const -> void override;
 
     /**
      * Construct the GenericParameterCompAst with the arguments matching the members.
@@ -59,10 +57,5 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::GenericParameterCompAst::_spp_key_function() const -> void {}
-SPP_MOD_END

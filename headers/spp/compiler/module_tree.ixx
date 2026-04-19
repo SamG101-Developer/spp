@@ -2,14 +2,11 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.compiler.module_tree;
-import spp.lex.tokens;
+import spp.abstract;
+import spp.lex;
 import spp.utils.error_formatter;
-
 import std;
 
-namespace spp::asts {
-    SPP_EXP_CLS struct ModulePrototypeAst;
-}
 
 namespace spp::compiler {
     SPP_EXP_CLS struct Module;
@@ -21,14 +18,14 @@ SPP_EXP_CLS struct spp::compiler::Module {
     std::filesystem::path path = "";
     std::string code;
     std::vector<lex::RawToken> tokens = {};
-    std::unique_ptr<asts::ModulePrototypeAst> module_ast;
+    std::unique_ptr<AbstractAst> module_ast;
     std::shared_ptr<utils::errors::ErrorFormatter> error_formatter;
 
     Module(
         std::filesystem::path path,
         std::string code,
         std::vector<lex::RawToken> tokens,
-        std::unique_ptr<asts::ModulePrototypeAst> module_ast,
+        std::unique_ptr<AbstractAst> module_ast,
         std::shared_ptr<utils::errors::ErrorFormatter> error_formatter);
 
     static auto from_path(std::filesystem::path const &path);

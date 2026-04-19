@@ -1,15 +1,11 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.case_pattern_variant_destructure_attribute_binding_ast;
-import spp.asts.identifier_ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.local_variable_destructure_attribute_binding_ast;
-import spp.asts.token_ast;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.asts.utils;
+import :identifier_ast;
 
 
-SPP_MOD_BEGIN
 spp::asts::CasePatternVariantDestructureAttributeBindingAst::CasePatternVariantDestructureAttributeBindingAst(
     decltype(name) &&name,
     decltype(tok_assign) &&tok_assign,
@@ -62,5 +58,3 @@ auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::convert_to_var
     var->mark_from_case_pattern();
     return var;
 }
-
-SPP_MOD_END

@@ -2,16 +2,9 @@ module;
 #include <spp/macros.hpp>
 
 module spp.codegen.llvm_func_impls;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.asts.generate.common_types;
-import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_mangle;
-import spp.codegen.llvm_size;
-import spp.codegen.llvm_type;
+import spp.analyse.scopes;
 import spp.utils.uid;
-
 import llvm;
 
 
@@ -19,7 +12,7 @@ template <typename F>
 auto spp::codegen::func_impls::simple_intrinsic_binop(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty,
     F &&method)
     -> void {
@@ -42,7 +35,7 @@ template <typename F>
 auto spp::codegen::func_impls::simple_intrinsic_binop_assign(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty,
     F &&method)
     -> void {
@@ -71,7 +64,7 @@ auto spp::codegen::func_impls::simple_intrinsic_binop_assign(
 template <typename F>
 auto spp::codegen::func_impls::simple_intrinsic_unop(
     SPP_LLVM_FUNC_INFO,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty,
     F &&method)
     -> void {
@@ -93,7 +86,7 @@ auto spp::codegen::func_impls::simple_intrinsic_unop(
 template <typename F>
 auto spp::codegen::func_impls::simple_intrinsic_unop_assign(
     SPP_LLVM_FUNC_INFO,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty,
     F &&method)
     -> void {
@@ -119,7 +112,7 @@ auto spp::codegen::func_impls::simple_intrinsic_unop_assign(
 
 auto spp::codegen::func_impls::simple_binary_intrinsic_call(
     SPP_LLVM_FUNC_INFO,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty,
     const llvm::Intrinsic::IndependentIntrinsics intrinsic)
     -> void {
@@ -142,7 +135,7 @@ auto spp::codegen::func_impls::simple_binary_intrinsic_call(
 
 auto spp::codegen::func_impls::simple_unary_intrinsic_call(
     SPP_LLVM_FUNC_INFO,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty,
     const llvm::Intrinsic::IndependentIntrinsics intrinsic)
     -> void {
@@ -224,7 +217,7 @@ auto spp::codegen::func_impls::simple_unary_intrinsic_call(
     [&ctx, ty](llvm::Value *a) { return ctx->builder.Func(a, ty, "result" + spp::utils::generate_uid()); }
 
 
-auto spp::codegen::func_impls::std_abort_abort(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx) -> void {
+auto spp::codegen::func_impls::std_abort_abort(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx) -> void {
     // Define types that will be used for the function signature.
     const auto void_ty = llvm::Type::getVoidTy(*ctx->context);
     const auto i8_ptr_ty = llvm::PointerType::get(*ctx->context, 0);
@@ -250,7 +243,7 @@ auto spp::codegen::func_impls::std_abort_abort(analyse::scopes::ScopeManager con
 auto spp::codegen::func_impls::std_array_iter_mov(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty)
     -> void {
     // TODO
@@ -264,7 +257,7 @@ auto spp::codegen::func_impls::std_array_iter_mov(
 auto spp::codegen::func_impls::std_array_iter_mut(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty)
     -> void {
     // TODO
@@ -278,7 +271,7 @@ auto spp::codegen::func_impls::std_array_iter_mut(
 auto spp::codegen::func_impls::std_array_iter_ref(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty)
     -> void {
     // TODO
@@ -292,7 +285,7 @@ auto spp::codegen::func_impls::std_array_iter_ref(
 auto spp::codegen::func_impls::std_array_reverse_iter_mov(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty)
     -> void {
     // TODO
@@ -306,7 +299,7 @@ auto spp::codegen::func_impls::std_array_reverse_iter_mov(
 auto spp::codegen::func_impls::std_array_reverse_iter_mut(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty)
     -> void {
     // TODO
@@ -320,7 +313,7 @@ auto spp::codegen::func_impls::std_array_reverse_iter_mut(
 auto spp::codegen::func_impls::std_array_reverse_iter_ref(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty)
     -> void {
     // TODO
@@ -334,7 +327,7 @@ auto spp::codegen::func_impls::std_array_reverse_iter_ref(
 auto spp::codegen::func_impls::std_array_index_mut(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty)
     -> void {
     // TODO
@@ -348,7 +341,7 @@ auto spp::codegen::func_impls::std_array_index_mut(
 auto spp::codegen::func_impls::std_array_index_ref(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty)
     -> void {
     // TODO
@@ -359,49 +352,49 @@ auto spp::codegen::func_impls::std_array_index_ref(
 }
 
 
-auto spp::codegen::func_impls::std_boolean_bit_and(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx) -> void {
+auto spp::codegen::func_impls::std_boolean_bit_and(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateAnd);
     simple_intrinsic_binop(sm, proto, ctx, llvm::Type::getInt1Ty(*ctx->context), closure);
 }
 
 
-auto spp::codegen::func_impls::std_boolean_bit_ior(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx) -> void {
+auto spp::codegen::func_impls::std_boolean_bit_ior(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateOr);
     simple_intrinsic_binop(sm, proto, ctx, llvm::Type::getInt1Ty(*ctx->context), closure);
 }
 
 
-auto spp::codegen::func_impls::std_boolean_bit_xor(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx) -> void {
+auto spp::codegen::func_impls::std_boolean_bit_xor(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateXor);
     simple_intrinsic_binop(sm, proto, ctx, llvm::Type::getInt1Ty(*ctx->context), closure);
 }
 
 
-auto spp::codegen::func_impls::std_boolean_bit_not(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx) -> void {
+auto spp::codegen::func_impls::std_boolean_bit_not(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx) -> void {
     const auto closure = MAKE_UN_OP_CLOSURE(CreateNot);
     simple_intrinsic_unop(sm, proto, ctx, llvm::Type::getInt1Ty(*ctx->context), closure);
 }
 
 
-auto spp::codegen::func_impls::std_boolean_and(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx) -> void {
+auto spp::codegen::func_impls::std_boolean_and(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateLogicalAnd);
     simple_intrinsic_binop(sm, proto, ctx, llvm::Type::getInt1Ty(*ctx->context), closure);
 }
 
 
-auto spp::codegen::func_impls::std_boolean_ior(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx) -> void {
+auto spp::codegen::func_impls::std_boolean_ior(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateLogicalOr);
     simple_intrinsic_binop(sm, proto, ctx, llvm::Type::getInt1Ty(*ctx->context), closure);
 }
 
 
-auto spp::codegen::func_impls::std_boolean_eq(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx) -> void {
+auto spp::codegen::func_impls::std_boolean_eq(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateICmpEQ);
     simple_intrinsic_binop(sm, proto, ctx, llvm::Type::getInt1Ty(*ctx->context), closure);
 }
 
 
-auto spp::codegen::func_impls::std_boolean_ne(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx) -> void {
+auto spp::codegen::func_impls::std_boolean_ne(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateICmpNE);
     simple_intrinsic_binop(sm, proto, ctx, llvm::Type::getInt1Ty(*ctx->context), closure);
 }
@@ -410,7 +403,7 @@ auto spp::codegen::func_impls::std_boolean_ne(analyse::scopes::ScopeManager cons
 auto spp::codegen::func_impls::std_cast_upcast_mov(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty)
     -> void {
     // TODO
@@ -424,7 +417,7 @@ auto spp::codegen::func_impls::std_cast_upcast_mov(
 auto spp::codegen::func_impls::std_cast_upcast_mut(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty)
     -> void {
     // TODO
@@ -438,7 +431,7 @@ auto spp::codegen::func_impls::std_cast_upcast_mut(
 auto spp::codegen::func_impls::std_cast_upcast_ref(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty)
     -> void {
     // TODO
@@ -452,7 +445,7 @@ auto spp::codegen::func_impls::std_cast_upcast_ref(
 auto spp::codegen::func_impls::std_cast_downcast_mov(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty)
     -> void {
     // TODO
@@ -466,7 +459,7 @@ auto spp::codegen::func_impls::std_cast_downcast_mov(
 auto spp::codegen::func_impls::std_cast_downcast_mut(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty)
     -> void {
     // TODO
@@ -480,7 +473,7 @@ auto spp::codegen::func_impls::std_cast_downcast_mut(
 auto spp::codegen::func_impls::std_cast_downcast_ref(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty)
     -> void {
     // TODO
@@ -494,7 +487,7 @@ auto spp::codegen::func_impls::std_cast_downcast_ref(
 auto spp::codegen::func_impls::std_generator_send(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty)
     -> void {
     // TODO
@@ -508,7 +501,7 @@ auto spp::codegen::func_impls::std_generator_send(
 auto spp::codegen::func_impls::std_generator_once_send(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty)
     -> void {
     // TODO
@@ -522,13 +515,13 @@ auto spp::codegen::func_impls::std_generator_once_send(
 auto spp::codegen::func_impls::std_memory_clear(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     std::shared_ptr<asts::TypeAst> const &spp_ty)
     -> void {
     // Define the types that will be used in the function.
     const auto void_ty = llvm::Type::getVoidTy(*ctx->context);
-    const auto mem_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::generate::common_types::memory_type(0, spp_ty)), ctx);
-    const auto usize_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::generate::common_types::usize(0)), ctx);
+    const auto mem_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::common_types::memory_type(0, spp_ty)), ctx);
+    const auto usize_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::common_types::usize(0)), ctx);
 
     const auto fn_ty = llvm::FunctionType::get(void_ty, {llvm::PointerType::get(*ctx->context, 0)}, false);
     const auto fn = llvm::Function::Create(
@@ -563,15 +556,15 @@ auto spp::codegen::func_impls::std_memory_clear(
 auto spp::codegen::func_impls::std_memory_place_element(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     std::shared_ptr<asts::TypeAst> const &spp_ty)
     -> void {
     // Define the types that will be used in the function.
     const auto ty = llvm_type(*sm->current_scope->get_type_symbol(spp_ty), ctx);
     const auto void_ty = llvm::Type::getVoidTy(*ctx->context);
-    const auto mem_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::generate::common_types::memory_type(0, spp_ty)), ctx);
-    const auto ptr_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::generate::common_types::single_type(0, spp_ty)), ctx);
-    const auto size_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::generate::common_types::usize(0)), ctx);
+    const auto mem_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::common_types::memory_type(0, spp_ty)), ctx);
+    const auto ptr_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::common_types::single_type(0, spp_ty)), ctx);
+    const auto size_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::common_types::usize(0)), ctx);
 
     const auto fn_ty = llvm::FunctionType::get(void_ty, {llvm::PointerType::get(*ctx->context, 0), size_ty, ty}, false);
     const auto fn = llvm::Function::Create(
@@ -605,15 +598,15 @@ auto spp::codegen::func_impls::std_memory_place_element(
 auto spp::codegen::func_impls::std_memory_take_element(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     std::shared_ptr<asts::TypeAst> const &spp_ty)
     -> void {
     // Define the types that will be used in the function.
     const auto ty = llvm_type(*sm->current_scope->get_type_symbol(spp_ty), ctx);
-    const auto opt_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::generate::common_types::option_type(0, spp_ty)), ctx);
-    const auto mem_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::generate::common_types::memory_type(0, spp_ty)), ctx);
-    const auto ptr_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::generate::common_types::single_type(0, spp_ty)), ctx);
-    const auto size_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::generate::common_types::usize(0)), ctx);
+    const auto opt_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::common_types::option_type(0, spp_ty)), ctx);
+    const auto mem_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::common_types::memory_type(0, spp_ty)), ctx);
+    const auto ptr_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::common_types::single_type(0, spp_ty)), ctx);
+    const auto size_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::common_types::usize(0)), ctx);
 
     const auto fn_ty = llvm::FunctionType::get(opt_ty, {llvm::PointerType::get(*ctx->context, 0), size_ty}, false);
     const auto fn = llvm::Function::Create(
@@ -675,10 +668,10 @@ auto spp::codegen::func_impls::std_memory_take_element(
 auto spp::codegen::func_impls::std_memops_sizeof(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     std::shared_ptr<asts::TypeAst> const &spp_ty) -> void {
     // Calculate the size of the type of object, known at compile time.
-    const auto size_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::generate::common_types::usize(0)), ctx);
+    const auto size_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::common_types::usize(0)), ctx);
     const auto size_const = llvm::ConstantInt::get(size_ty, size_of(*sm, spp_ty));
 
     const auto fn_ty = llvm::FunctionType::get(size_ty, {}, false);
@@ -695,10 +688,10 @@ auto spp::codegen::func_impls::std_memops_sizeof(
 // auto spp::codegen::func_impls::std_memops_sizeof_value(
 //     analyse::scopes::ScopeManager const *sm,
 //     asts::FunctionPrototypeAst const *proto,
-//     LLvmCtx *ctx)
+//     LlvmCtx *ctx)
 //     -> void {
 //     // Calculate the size of the object, known at runtime, not at compile time.
-//     const auto size_ty = sm->current_scope->get_type_symbol(asts::generate::common_types::usize(0))->llvm_info->llvm_type;
+//     const auto size_ty = sm->current_scope->get_type_symbol(asts::common_types::usize(0))->llvm_info->llvm_type;
 //
 //     const auto fn_ty = llvm::FunctionType::get(size_ty, {llvm::PointerType::get(*ctx->context, 0)}, false);
 //     const auto fn = llvm::Function::Create(
@@ -719,145 +712,145 @@ auto spp::codegen::func_impls::std_memops_sizeof(
 // }
 
 
-auto spp::codegen::func_impls::std_intrinsics_add(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_add(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateAdd);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_add_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_add_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateAdd);
     simple_intrinsic_binop_assign(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_sub(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_sub(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateSub);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_sub_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_sub_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateSub);
     simple_intrinsic_binop_assign(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_mul(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_mul(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateMul);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_mul_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_mul_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateMul);
     simple_intrinsic_binop_assign(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_sdiv(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_sdiv(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateSDiv);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_sdiv_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_sdiv_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateSDiv);
     simple_intrinsic_binop_assign(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_udiv(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_udiv(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateUDiv);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_udiv_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_udiv_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateUDiv);
     simple_intrinsic_binop_assign(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_srem(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_srem(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateSRem);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_srem_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_srem_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateSRem);
     simple_intrinsic_binop_assign(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_urem(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_urem(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateURem);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_urem_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_urem_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateURem);
     simple_intrinsic_binop_assign(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_sneg(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_sneg(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_UN_OP_CLOSURE(CreateNeg);
     simple_intrinsic_unop(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_bit_shl(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_bit_shl(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateShl);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_bit_shl_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_bit_shl_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateShl);
     simple_intrinsic_binop_assign(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_bit_shr(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_bit_shr(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateLShr);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_bit_shr_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_bit_shr_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateLShr);
     simple_intrinsic_binop_assign(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_bit_ior(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_bit_ior(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateOr);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_bit_ior_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_bit_ior_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateOr);
     simple_intrinsic_binop_assign(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_bit_and(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_bit_and(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateAnd);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_bit_and_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_bit_and_assign(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateAnd);
     simple_intrinsic_binop_assign(sm, proto, ctx, ty, closure);
 }
 
 
-auto spp::codegen::func_impls::std_intrinsics_bit_xor(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LLvmCtx *ctx, llvm::Type *ty) -> void {
+auto spp::codegen::func_impls::std_intrinsics_bit_xor(analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto, LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateXor);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
 }
@@ -866,7 +859,7 @@ auto spp::codegen::func_impls::std_intrinsics_bit_xor(analyse::scopes::ScopeMana
 auto spp::codegen::func_impls::std_intrinsics_bit_xor_assign(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Bitwise XOR assignment intrinsic.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateXor);
     simple_intrinsic_binop_assign(sm, proto, ctx, ty, closure);
@@ -876,7 +869,7 @@ auto spp::codegen::func_impls::std_intrinsics_bit_xor_assign(
 auto spp::codegen::func_impls::std_intrinsics_bit_not(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Bitwise NOT intrinsic.
     const auto closure = MAKE_UN_OP_CLOSURE(CreateNot);
     simple_intrinsic_unop(sm, proto, ctx, ty, closure);
@@ -886,7 +879,7 @@ auto spp::codegen::func_impls::std_intrinsics_bit_not(
 auto spp::codegen::func_impls::std_intrinsics_bit_not_assign(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Bitwise NOT assignment intrinsic.
     const auto closure = MAKE_UN_OP_CLOSURE(CreateNot);
     simple_intrinsic_unop_assign(sm, proto, ctx, ty, closure);
@@ -896,7 +889,7 @@ auto spp::codegen::func_impls::std_intrinsics_bit_not_assign(
 auto spp::codegen::func_impls::std_intrinsics_abs(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Absolute value intrinsic.
     constexpr auto intrinsic = llvm::Intrinsic::abs;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -906,7 +899,7 @@ auto spp::codegen::func_impls::std_intrinsics_abs(
 auto spp::codegen::func_impls::std_intrinsics_eq(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Equal intrinsic.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateICmpEQ);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -916,7 +909,7 @@ auto spp::codegen::func_impls::std_intrinsics_eq(
 auto spp::codegen::func_impls::std_intrinsics_oeq(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Ordered equal intrinsic.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateFCmpOEQ);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -926,7 +919,7 @@ auto spp::codegen::func_impls::std_intrinsics_oeq(
 auto spp::codegen::func_impls::std_intrinsics_ne(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Not equal intrinsic.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateICmpNE);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -936,7 +929,7 @@ auto spp::codegen::func_impls::std_intrinsics_ne(
 auto spp::codegen::func_impls::std_intrinsics_one(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Ordered not equal intrinsic.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateFCmpONE);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -946,7 +939,7 @@ auto spp::codegen::func_impls::std_intrinsics_one(
 auto spp::codegen::func_impls::std_intrinsics_slt(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Signed less than intrinsic.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateICmpSLT);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -956,7 +949,7 @@ auto spp::codegen::func_impls::std_intrinsics_slt(
 auto spp::codegen::func_impls::std_intrinsics_ult(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Unsigned less than intrinsic.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateICmpULT);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -966,7 +959,7 @@ auto spp::codegen::func_impls::std_intrinsics_ult(
 auto spp::codegen::func_impls::std_intrinsics_olt(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Ordered less than intrinsic.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateFCmpOLT);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -976,7 +969,7 @@ auto spp::codegen::func_impls::std_intrinsics_olt(
 auto spp::codegen::func_impls::std_intrinsics_sle(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Signed less than or equal intrinsic.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateICmpSLE);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -986,7 +979,7 @@ auto spp::codegen::func_impls::std_intrinsics_sle(
 auto spp::codegen::func_impls::std_intrinsics_ule(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Unsigned less than or equal intrinsic.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateICmpULE);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -996,7 +989,7 @@ auto spp::codegen::func_impls::std_intrinsics_ule(
 auto spp::codegen::func_impls::std_intrinsics_ole(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Ordered less than or equal intrinsic.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateFCmpOLE);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -1006,7 +999,7 @@ auto spp::codegen::func_impls::std_intrinsics_ole(
 auto spp::codegen::func_impls::std_intrinsics_sgt(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Signed greater than intrinsic.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateICmpSGT);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -1016,7 +1009,7 @@ auto spp::codegen::func_impls::std_intrinsics_sgt(
 auto spp::codegen::func_impls::std_intrinsics_ugt(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Unsigned greater than intrinsic.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateICmpUGT);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -1026,7 +1019,7 @@ auto spp::codegen::func_impls::std_intrinsics_ugt(
 auto spp::codegen::func_impls::std_intrinsics_ogt(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateFCmpOGT);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
 }
@@ -1035,7 +1028,7 @@ auto spp::codegen::func_impls::std_intrinsics_ogt(
 auto spp::codegen::func_impls::std_intrinsics_sge(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Signed greater than or equal intrinsic.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateICmpSGE);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -1045,7 +1038,7 @@ auto spp::codegen::func_impls::std_intrinsics_sge(
 auto spp::codegen::func_impls::std_intrinsics_uge(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Unsigned greater than or equal intrinsic.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateICmpUGE);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -1055,7 +1048,7 @@ auto spp::codegen::func_impls::std_intrinsics_uge(
 auto spp::codegen::func_impls::std_intrinsics_oge(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Ordered greater than or equal intrinsic.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateFCmpOGE);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -1065,7 +1058,7 @@ auto spp::codegen::func_impls::std_intrinsics_oge(
 auto spp::codegen::func_impls::std_intrinsics_min_val(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Minimum value intrinsic.
     constexpr auto intrinsic = llvm::Intrinsic::minnum;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1075,7 +1068,7 @@ auto spp::codegen::func_impls::std_intrinsics_min_val(
 auto spp::codegen::func_impls::std_intrinsics_max_val(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Maximum value intrinsic.
     constexpr auto intrinsic = llvm::Intrinsic::maxnum;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1085,7 +1078,7 @@ auto spp::codegen::func_impls::std_intrinsics_max_val(
 auto spp::codegen::func_impls::std_intrinsics_smin(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Signed minimum intrinsic.
     constexpr auto intrinsic = llvm::Intrinsic::smin;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1095,7 +1088,7 @@ auto spp::codegen::func_impls::std_intrinsics_smin(
 auto spp::codegen::func_impls::std_intrinsics_smax(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Signed maximum intrinsic.
     constexpr auto intrinsic = llvm::Intrinsic::smax;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1105,7 +1098,7 @@ auto spp::codegen::func_impls::std_intrinsics_smax(
 auto spp::codegen::func_impls::std_intrinsics_umin(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Unsigned minimum intrinsic.
     constexpr auto intrinsic = llvm::Intrinsic::umin;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1115,7 +1108,7 @@ auto spp::codegen::func_impls::std_intrinsics_umin(
 auto spp::codegen::func_impls::std_intrinsics_umax(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Unsigned maximum intrinsic.
     constexpr auto intrinsic = llvm::Intrinsic::umax;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1125,7 +1118,7 @@ auto spp::codegen::func_impls::std_intrinsics_umax(
 auto spp::codegen::func_impls::std_intrinsics_fadd(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Floating-point addition.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateFAdd);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -1135,7 +1128,7 @@ auto spp::codegen::func_impls::std_intrinsics_fadd(
 auto spp::codegen::func_impls::std_intrinsics_fadd_assign(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Floating-point addition assignment.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateFAdd);
     simple_intrinsic_binop_assign(sm, proto, ctx, ty, closure);
@@ -1145,7 +1138,7 @@ auto spp::codegen::func_impls::std_intrinsics_fadd_assign(
 auto spp::codegen::func_impls::std_intrinsics_fsub(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Floating-point subtraction.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateFSub);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -1155,7 +1148,7 @@ auto spp::codegen::func_impls::std_intrinsics_fsub(
 auto spp::codegen::func_impls::std_intrinsics_fsub_assign(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Floating-point subtraction assignment.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateFSub);
     simple_intrinsic_binop_assign(sm, proto, ctx, ty, closure);
@@ -1165,7 +1158,7 @@ auto spp::codegen::func_impls::std_intrinsics_fsub_assign(
 auto spp::codegen::func_impls::std_intrinsics_fmul(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Floating-point multiplication operation.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateFMul);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -1175,7 +1168,7 @@ auto spp::codegen::func_impls::std_intrinsics_fmul(
 auto spp::codegen::func_impls::std_intrinsics_fmul_assign(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Floating-point multiplication assignment.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateFMul);
     simple_intrinsic_binop_assign(sm, proto, ctx, ty, closure);
@@ -1185,7 +1178,7 @@ auto spp::codegen::func_impls::std_intrinsics_fmul_assign(
 auto spp::codegen::func_impls::std_intrinsics_fdiv(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Floating-point division operation.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateFDiv);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -1195,7 +1188,7 @@ auto spp::codegen::func_impls::std_intrinsics_fdiv(
 auto spp::codegen::func_impls::std_intrinsics_fdiv_assign(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Floating-point division assignment.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateFDiv);
     simple_intrinsic_binop_assign(sm, proto, ctx, ty, closure);
@@ -1205,7 +1198,7 @@ auto spp::codegen::func_impls::std_intrinsics_fdiv_assign(
 auto spp::codegen::func_impls::std_intrinsics_frem(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Floating-point remainder operation.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateFRem);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -1215,7 +1208,7 @@ auto spp::codegen::func_impls::std_intrinsics_frem(
 auto spp::codegen::func_impls::std_intrinsics_frem_assign(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Floating-point remainder assignment.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateFRem);
     simple_intrinsic_binop_assign(sm, proto, ctx, ty, closure);
@@ -1225,7 +1218,7 @@ auto spp::codegen::func_impls::std_intrinsics_frem_assign(
 auto spp::codegen::func_impls::std_intrinsics_fneg(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // Negate a floating-point number.
     const auto closure = MAKE_UN_OP_CLOSURE(CreateFNeg);
     simple_intrinsic_unop(sm, proto, ctx, ty, closure);
@@ -1235,7 +1228,7 @@ auto spp::codegen::func_impls::std_intrinsics_fneg(
 auto spp::codegen::func_impls::std_intrinsics_fsqrt(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for square root function.
     constexpr auto intrinsic = llvm::Intrinsic::sqrt;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1245,7 +1238,7 @@ auto spp::codegen::func_impls::std_intrinsics_fsqrt(
 auto spp::codegen::func_impls::std_intrinsics_fpowi(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for integer power function.
     constexpr auto intrinsic = llvm::Intrinsic::powi;
     simple_binary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1255,7 +1248,7 @@ auto spp::codegen::func_impls::std_intrinsics_fpowi(
 auto spp::codegen::func_impls::std_intrinsics_fpowf(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for power function.
     constexpr auto intrinsic = llvm::Intrinsic::pow;
     simple_binary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1265,7 +1258,7 @@ auto spp::codegen::func_impls::std_intrinsics_fpowf(
 auto spp::codegen::func_impls::std_intrinsics_fsin(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for sine function.
     constexpr auto intrinsic = llvm::Intrinsic::sin;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1275,7 +1268,7 @@ auto spp::codegen::func_impls::std_intrinsics_fsin(
 auto spp::codegen::func_impls::std_intrinsics_fcos(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for cosine function.
     constexpr auto intrinsic = llvm::Intrinsic::cos;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1285,7 +1278,7 @@ auto spp::codegen::func_impls::std_intrinsics_fcos(
 auto spp::codegen::func_impls::std_intrinsics_ftan(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for tangent function.
     constexpr auto intrinsic = llvm::Intrinsic::tan;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1295,7 +1288,7 @@ auto spp::codegen::func_impls::std_intrinsics_ftan(
 auto spp::codegen::func_impls::std_intrinsics_fasin(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for arcsine function.
     constexpr auto intrinsic = llvm::Intrinsic::asin;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1305,7 +1298,7 @@ auto spp::codegen::func_impls::std_intrinsics_fasin(
 auto spp::codegen::func_impls::std_intrinsics_facos(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for arc cosine function.
     constexpr auto intrinsic = llvm::Intrinsic::acos;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1315,7 +1308,7 @@ auto spp::codegen::func_impls::std_intrinsics_facos(
 auto spp::codegen::func_impls::std_intrinsics_fatan(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for arctangent function.
     constexpr auto intrinsic = llvm::Intrinsic::atan;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1325,7 +1318,7 @@ auto spp::codegen::func_impls::std_intrinsics_fatan(
 auto spp::codegen::func_impls::std_intrinsics_fatan2(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for two-argument arctangent function.
     constexpr auto intrinsic = llvm::Intrinsic::atan2;
     simple_binary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1335,7 +1328,7 @@ auto spp::codegen::func_impls::std_intrinsics_fatan2(
 auto spp::codegen::func_impls::std_intrinsics_fsinh(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for hyperbolic sine function.
     constexpr auto intrinsic = llvm::Intrinsic::sinh;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1345,7 +1338,7 @@ auto spp::codegen::func_impls::std_intrinsics_fsinh(
 auto spp::codegen::func_impls::std_intrinsics_fcosh(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for hyperbolic cosine function.
     constexpr auto intrinsic = llvm::Intrinsic::cosh;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1355,7 +1348,7 @@ auto spp::codegen::func_impls::std_intrinsics_fcosh(
 auto spp::codegen::func_impls::std_intrinsics_ftanh(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for hyperbolic tangent function.
     constexpr auto intrinsic = llvm::Intrinsic::tanh;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1365,7 +1358,7 @@ auto spp::codegen::func_impls::std_intrinsics_ftanh(
 auto spp::codegen::func_impls::std_intrinsics_fexp(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for natural exponential function.
     constexpr auto intrinsic = llvm::Intrinsic::exp;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1375,7 +1368,7 @@ auto spp::codegen::func_impls::std_intrinsics_fexp(
 auto spp::codegen::func_impls::std_intrinsics_fexp2(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for base-2 exponential function.
     constexpr auto intrinsic = llvm::Intrinsic::exp2;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1385,7 +1378,7 @@ auto spp::codegen::func_impls::std_intrinsics_fexp2(
 auto spp::codegen::func_impls::std_intrinsics_fexp10(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for base-10 exponential function.
     constexpr auto intrinsic = llvm::Intrinsic::exp10;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1395,7 +1388,7 @@ auto spp::codegen::func_impls::std_intrinsics_fexp10(
 auto spp::codegen::func_impls::std_intrinsics_fln(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for natural logarithm.
     constexpr auto intrinsic = llvm::Intrinsic::log;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1405,7 +1398,7 @@ auto spp::codegen::func_impls::std_intrinsics_fln(
 auto spp::codegen::func_impls::std_intrinsics_flog2(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for base-2 logarithm.
     constexpr auto intrinsic = llvm::Intrinsic::log2;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1415,7 +1408,7 @@ auto spp::codegen::func_impls::std_intrinsics_flog2(
 auto spp::codegen::func_impls::std_intrinsics_flog10(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for base-10 logarithm.
     constexpr auto intrinsic = llvm::Intrinsic::log10;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1425,7 +1418,7 @@ auto spp::codegen::func_impls::std_intrinsics_flog10(
 auto spp::codegen::func_impls::std_intrinsics_fabs(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for absolute value.
     constexpr auto intrinsic = llvm::Intrinsic::fabs;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1435,7 +1428,7 @@ auto spp::codegen::func_impls::std_intrinsics_fabs(
 auto spp::codegen::func_impls::std_intrinsics_fmin_val(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for minimum value (float).
     constexpr auto intrinsic = llvm::Intrinsic::minnum;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1445,7 +1438,7 @@ auto spp::codegen::func_impls::std_intrinsics_fmin_val(
 auto spp::codegen::func_impls::std_intrinsics_fmax_val(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for maximum value (float).
     constexpr auto intrinsic = llvm::Intrinsic::maxnum;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1455,7 +1448,7 @@ auto spp::codegen::func_impls::std_intrinsics_fmax_val(
 auto spp::codegen::func_impls::std_intrinsics_fmax(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for maximum of two floats.
     constexpr auto intrinsic = llvm::Intrinsic::maxnum;
     simple_binary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1465,7 +1458,7 @@ auto spp::codegen::func_impls::std_intrinsics_fmax(
 auto spp::codegen::func_impls::std_intrinsics_fmin(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for minimum of two floats.
     constexpr auto intrinsic = llvm::Intrinsic::minnum;
     simple_binary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1475,7 +1468,7 @@ auto spp::codegen::func_impls::std_intrinsics_fmin(
 auto spp::codegen::func_impls::std_intrinsics_fcopysign(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for copying the sign from one float to another.
     constexpr auto intrinsic = llvm::Intrinsic::copysign;
     simple_binary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1485,7 +1478,7 @@ auto spp::codegen::func_impls::std_intrinsics_fcopysign(
 auto spp::codegen::func_impls::std_intrinsics_ffloor(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for floor function.
     constexpr auto intrinsic = llvm::Intrinsic::floor;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1495,7 +1488,7 @@ auto spp::codegen::func_impls::std_intrinsics_ffloor(
 auto spp::codegen::func_impls::std_intrinsics_fceil(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for ceiling function.
     constexpr auto intrinsic = llvm::Intrinsic::ceil;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1505,7 +1498,7 @@ auto spp::codegen::func_impls::std_intrinsics_fceil(
 auto spp::codegen::func_impls::std_intrinsics_ftrunc(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for truncation toward zero.
     constexpr auto intrinsic = llvm::Intrinsic::trunc;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1515,7 +1508,7 @@ auto spp::codegen::func_impls::std_intrinsics_ftrunc(
 auto spp::codegen::func_impls::std_intrinsics_fround(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for rounding to nearest integer.
     constexpr auto intrinsic = llvm::Intrinsic::round;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1525,7 +1518,7 @@ auto spp::codegen::func_impls::std_intrinsics_fround(
 auto spp::codegen::func_impls::std_intrinsics_bitreverse(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for bit reversal.
     constexpr auto intrinsic = llvm::Intrinsic::bitreverse;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1535,7 +1528,7 @@ auto spp::codegen::func_impls::std_intrinsics_bitreverse(
 auto spp::codegen::func_impls::std_intrinsics_ctlz(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for count leading zeros.
     constexpr auto intrinsic = llvm::Intrinsic::ctlz;
     simple_unary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1545,7 +1538,7 @@ auto spp::codegen::func_impls::std_intrinsics_ctlz(
 auto spp::codegen::func_impls::std_intrinsics_sadd_overflow(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for signed addition with overflow.
     constexpr auto intrinsic = llvm::Intrinsic::sadd_with_overflow;
     simple_binary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1555,7 +1548,7 @@ auto spp::codegen::func_impls::std_intrinsics_sadd_overflow(
 auto spp::codegen::func_impls::std_intrinsics_uadd_overflow(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for unsigned addition with overflow.
     constexpr auto intrinsic = llvm::Intrinsic::uadd_with_overflow;
     simple_binary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1565,7 +1558,7 @@ auto spp::codegen::func_impls::std_intrinsics_uadd_overflow(
 auto spp::codegen::func_impls::std_intrinsics_ssub_overflow(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for signed subtraction with overflow.
     constexpr auto intrinsic = llvm::Intrinsic::ssub_with_overflow;
     simple_binary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1575,7 +1568,7 @@ auto spp::codegen::func_impls::std_intrinsics_ssub_overflow(
 auto spp::codegen::func_impls::std_intrinsics_usub_overflow(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for unsigned subtraction with overflow.
     constexpr auto intrinsic = llvm::Intrinsic::usub_with_overflow;
     simple_binary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1585,7 +1578,7 @@ auto spp::codegen::func_impls::std_intrinsics_usub_overflow(
 auto spp::codegen::func_impls::std_intrinsics_smul_overflow(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for signed multiplication with overflow.
     constexpr auto intrinsic = llvm::Intrinsic::smul_with_overflow;
     simple_binary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1595,7 +1588,7 @@ auto spp::codegen::func_impls::std_intrinsics_smul_overflow(
 auto spp::codegen::func_impls::std_intrinsics_umul_overflow(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for unsigned multiplication with overflow.
     constexpr auto intrinsic = llvm::Intrinsic::umul_with_overflow;
     simple_binary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1605,7 +1598,7 @@ auto spp::codegen::func_impls::std_intrinsics_umul_overflow(
 auto spp::codegen::func_impls::std_intrinsics_sadd_saturating(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for signed addition with saturation.
     constexpr auto intrinsic = llvm::Intrinsic::sadd_sat;
     simple_binary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1615,7 +1608,7 @@ auto spp::codegen::func_impls::std_intrinsics_sadd_saturating(
 auto spp::codegen::func_impls::std_intrinsics_uadd_saturating(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for unsigned addition with saturation.
     constexpr auto intrinsic = llvm::Intrinsic::uadd_sat;
     simple_binary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1625,7 +1618,7 @@ auto spp::codegen::func_impls::std_intrinsics_uadd_saturating(
 auto spp::codegen::func_impls::std_intrinsics_ssub_saturating(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for signed subtraction with saturation.
     constexpr auto intrinsic = llvm::Intrinsic::ssub_sat;
     simple_binary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1635,7 +1628,7 @@ auto spp::codegen::func_impls::std_intrinsics_ssub_saturating(
 auto spp::codegen::func_impls::std_intrinsics_usub_saturating(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for unsigned subtraction with saturation.
     constexpr auto intrinsic = llvm::Intrinsic::usub_sat;
     simple_binary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1645,7 +1638,7 @@ auto spp::codegen::func_impls::std_intrinsics_usub_saturating(
 auto spp::codegen::func_impls::std_intrinsics_sshl_saturating(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for signed shift left with saturation.
     constexpr auto intrinsic = llvm::Intrinsic::sshl_sat;
     simple_binary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1655,7 +1648,7 @@ auto spp::codegen::func_impls::std_intrinsics_sshl_saturating(
 auto spp::codegen::func_impls::std_intrinsics_ushl_saturating(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic for unsigned shift left with saturation.
     constexpr auto intrinsic = llvm::Intrinsic::ushl_sat;
     simple_binary_intrinsic_call(sm, proto, ctx, ty, intrinsic);
@@ -1665,7 +1658,7 @@ auto spp::codegen::func_impls::std_intrinsics_ushl_saturating(
 auto spp::codegen::func_impls::std_intrinsics_sadd_wrapping(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM function to perform signed addition with wrapping.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateNSWAdd);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -1675,7 +1668,7 @@ auto spp::codegen::func_impls::std_intrinsics_sadd_wrapping(
 auto spp::codegen::func_impls::std_intrinsics_uadd_wrapping(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM function to perform unsigned addition with wrapping.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateNUWAdd);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -1685,7 +1678,7 @@ auto spp::codegen::func_impls::std_intrinsics_uadd_wrapping(
 auto spp::codegen::func_impls::std_intrinsics_ssub_wrapping(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM function to perform signed subtraction with wrapping.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateNSWSub);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -1695,7 +1688,7 @@ auto spp::codegen::func_impls::std_intrinsics_ssub_wrapping(
 auto spp::codegen::func_impls::std_intrinsics_usub_wrapping(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM function to perform unsigned subtraction with wrapping.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateNUWSub);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -1705,7 +1698,7 @@ auto spp::codegen::func_impls::std_intrinsics_usub_wrapping(
 auto spp::codegen::func_impls::std_intrinsics_smul_wrapping(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM function to perform signed multiplication with wrapping.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateNSWMul);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -1715,7 +1708,7 @@ auto spp::codegen::func_impls::std_intrinsics_smul_wrapping(
 auto spp::codegen::func_impls::std_intrinsics_umul_wrapping(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM function to perform unsigned multiplication with wrapping.
     const auto closure = MAKE_BIN_OP_CLOSURE(CreateNUWMul);
     simple_intrinsic_binop(sm, proto, ctx, ty, closure);
@@ -1725,7 +1718,7 @@ auto spp::codegen::func_impls::std_intrinsics_umul_wrapping(
 auto spp::codegen::func_impls::std_intrinsics_sitofp(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM function to convert signed integer to floating point.
     const auto closure = MAKE_CONV_CLOSURE(CreateSIToFP);
     simple_intrinsic_unop(sm, proto, ctx, ty, closure);
@@ -1735,7 +1728,7 @@ auto spp::codegen::func_impls::std_intrinsics_sitofp(
 auto spp::codegen::func_impls::std_intrinsics_uitofp(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM function to convert unsigned integer to floating point.
     const auto closure = MAKE_CONV_CLOSURE(CreateUIToFP);
     simple_intrinsic_unop(sm, proto, ctx, ty, closure);
@@ -1745,7 +1738,7 @@ auto spp::codegen::func_impls::std_intrinsics_uitofp(
 auto spp::codegen::func_impls::std_intrinsics_fptrunc(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM function to truncate floating point precision.
     const auto closure = MAKE_CONV_CLOSURE(CreateFPTrunc);
     simple_intrinsic_unop(sm, proto, ctx, ty, closure);
@@ -1755,7 +1748,7 @@ auto spp::codegen::func_impls::std_intrinsics_fptrunc(
 auto spp::codegen::func_impls::std_intrinsics_strunc(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM function to perform truncation.
     const auto closure = MAKE_CONV_CLOSURE(CreateTrunc);
     simple_intrinsic_unop(sm, proto, ctx, ty, closure);
@@ -1765,7 +1758,7 @@ auto spp::codegen::func_impls::std_intrinsics_strunc(
 auto spp::codegen::func_impls::std_intrinsics_utrunc(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     llvm::Type *ty) -> void {
     // LLVM function to perform truncation.
     const auto closure = MAKE_CONV_CLOSURE(CreateTrunc);
@@ -1776,7 +1769,7 @@ auto spp::codegen::func_impls::std_intrinsics_utrunc(
 auto spp::codegen::func_impls::std_intrinsics_szext(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM function to perform sign extension.
     const auto closure = MAKE_CONV_CLOSURE(CreateSExt);
     simple_intrinsic_unop(sm, proto, ctx, ty, closure);
@@ -1786,7 +1779,7 @@ auto spp::codegen::func_impls::std_intrinsics_szext(
 auto spp::codegen::func_impls::std_intrinsics_uzext(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM function to perform zero extension.
     const auto closure = MAKE_CONV_CLOSURE(CreateZExt);
     simple_intrinsic_unop(sm, proto, ctx, ty, closure);
@@ -1796,7 +1789,7 @@ auto spp::codegen::func_impls::std_intrinsics_uzext(
 auto spp::codegen::func_impls::std_intrinsics_fpext(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM function to extend floating point precision.
     const auto closure = MAKE_CONV_CLOSURE(CreateFPExt);
     simple_intrinsic_unop(sm, proto, ctx, ty, closure);
@@ -1806,7 +1799,7 @@ auto spp::codegen::func_impls::std_intrinsics_fpext(
 auto spp::codegen::func_impls::std_intrinsics_bit_cast(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM function to perform a bitcast between types.
     const auto closure = MAKE_CONV_CLOSURE(CreateBitCast);
     simple_intrinsic_unop(sm, proto, ctx, ty, closure);
@@ -1816,7 +1809,7 @@ auto spp::codegen::func_impls::std_intrinsics_bit_cast(
 auto spp::codegen::func_impls::std_intrinsics_fptosi(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM function to convert floating point to signed integer.
     const auto closure = MAKE_CONV_CLOSURE(CreateFPToSI);
     simple_intrinsic_unop(sm, proto, ctx, ty, closure);
@@ -1826,7 +1819,7 @@ auto spp::codegen::func_impls::std_intrinsics_fptosi(
 auto spp::codegen::func_impls::std_intrinsics_fptoui(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM function to convert floating point to unsigned integer.
     const auto closure = MAKE_CONV_CLOSURE(CreateFPToUI);
     simple_intrinsic_unop(sm, proto, ctx, ty, closure);
@@ -1836,7 +1829,7 @@ auto spp::codegen::func_impls::std_intrinsics_fptoui(
 auto spp::codegen::func_impls::std_intrinsics_fpclass(
     analyse::scopes::ScopeManager const *sm,
     asts::FunctionPrototypeAst const *proto,
-    LLvmCtx *ctx, llvm::Type *ty) -> void {
+    LlvmCtx *ctx, llvm::Type *ty) -> void {
     // LLVM intrinsic to classify floating point numbers.
     constexpr auto intrinsic = llvm::Intrinsic::is_fpclass;
     simple_binary_intrinsic_call(sm, proto, ctx, ty, intrinsic);

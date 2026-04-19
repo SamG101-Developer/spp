@@ -1,23 +1,18 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.use_statement_variable_ast;
-import spp.asts.statement_ast;
-import spp.asts.module_member_ast;
-import spp.codegen.llvm_ctx;
+export module spp.asts:use_statement_variable_ast;
+import :statement_ast;
+import :module_member_ast;
 import llvm;
 import std;
 
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS struct VariableSymbol;
-}
-
 namespace spp::asts {
+    SPP_EXP_CLS struct UseStatementVariableAst;
     SPP_EXP_CLS struct AnnotationAst;
     SPP_EXP_CLS struct CmpStatementAst;
     SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct TokenAst;
-    SPP_EXP_CLS struct UseStatementVariableAst;
 }
 
 
@@ -72,7 +67,7 @@ public:
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_1_pre_process(Ast *ctx) -> void override;
+    auto stage_1_pre_process(AbstractAst *ctx) -> void override;
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *) -> void override;
 
@@ -90,5 +85,5 @@ public:
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };

@@ -1,9 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.local_variable_single_identifier_alias_ast;
-import spp.asts.ast;
-
+export module spp.asts:local_variable_single_identifier_alias_ast;
+import :ast;
 import std;
 
 namespace spp::asts {

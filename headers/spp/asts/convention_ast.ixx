@@ -1,11 +1,11 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.convention_ast;
-import spp.asts.ast;
+export module spp.asts:convention_ast;
+import :ast;
 
 namespace spp::asts {
-    SPP_EXP_ENUM enum class ConventionTag { MOV, MUT, REF };
+    SPP_EXP_CLS enum class ConventionTag { MOV, MUT, REF };
     SPP_EXP_CLS struct ConventionAst;
 }
 

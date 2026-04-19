@@ -2,30 +2,13 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.case_pattern_variant_expression_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope_manager;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
 import spp.analyse.utils.case_utils;
-import spp.analyse.utils.mem_utils;
-import spp.asts.convention_ref_ast;
-import spp.asts.expression_ast;
-import spp.asts.fold_expression_ast;
-import spp.asts.function_call_argument_group_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.identifier_ast;
-import spp.asts.function_call_argument_positional_ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.postfix_expression_operator_runtime_member_access_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::CasePatternVariantExpressionAst::CasePatternVariantExpressionAst(
     decltype(expr) &&expr) :
     expr(std::move(expr)) {
@@ -100,11 +83,9 @@ auto spp::asts::CasePatternVariantExpressionAst::stage_9_comptime_resolution(
 auto spp::asts::CasePatternVariantExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     const auto llvm_master_transform = analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_llvm(
         {this}, sm, meta, ctx);
     return llvm_master_transform[0];
 }
-
-SPP_MOD_END

@@ -1,28 +1,8 @@
 module spp.analyse.utils.bin_utils;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.asts.ast;
-import spp.asts.binary_expression_ast;
-import spp.asts.case_expression_ast;
-import spp.asts.case_expression_branch_ast;
-import spp.asts.case_pattern_variant_ast;
-import spp.asts.convention_ref_ast;
-import spp.asts.function_call_argument_group_ast;
-import spp.asts.function_call_argument_positional_ast;
-import spp.asts.fold_expression_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.identifier_ast;
-import spp.asts.inner_scope_expression_ast;
-import spp.asts.is_expression_ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.local_variable_single_identifier_alias_ast;
-import spp.asts.pattern_guard_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.postfix_expression_operator_runtime_member_access_ast;
-import spp.asts.token_ast;
-import spp.asts.utils.ast_utils;
+import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
+import spp.asts;
+import spp.asts.utils;
 import spp.utils.uid;
 import genex;
 
@@ -83,7 +63,7 @@ auto spp::analyse::utils::bin_utils::combine_comp_ops(
     }
 
     // Non-symbolic value being re-used -> put it into a variable first.
-    if (sm->current_scope->get_var_symbol_outermost(*bin_lhs->rhs).first == nullptr) {
+    if (scope_utils::get_var_symbol_outermost(sm->current_scope, *bin_lhs->rhs).first == nullptr) {
         const auto temp_var_name = ( {
             const auto uid = spp::utils::generate_uid(bin_lhs->rhs.get());
             std::make_shared<asts::IdentifierAst>(bin_lhs->rhs->pos_start(), uid);

@@ -1,18 +1,14 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.generic_parameter_type_ast;
-import spp.asts.generic_parameter_ast;
-import spp.asts.generic_parameter_type_inline_constraints_ast;
-import spp.asts.utils.orderable;
+export module spp.asts:generic_parameter_type_ast;
+import :generic_parameter_ast;
+import spp.asts.utils;
 import std;
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
-}
 
 namespace spp::asts {
     SPP_EXP_CLS struct GenericParameterTypeAst;
+    SPP_EXP_CLS struct GenericParameterTypeInlineConstraintsAst;
 }
 
 
@@ -30,8 +26,6 @@ public:
      * generic type parameter and @c Copy is the constraint.
      */
     std::unique_ptr<GenericParameterTypeInlineConstraintsAst> constraints;
-
-    auto _spp_key_function() const -> void override;
 
     /**
      * Construct the GenericParameterTypeAst with the arguments matching the members.
@@ -52,8 +46,3 @@ public:
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::GenericParameterTypeAst::_spp_key_function() const -> void {}
-SPP_MOD_END

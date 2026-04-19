@@ -1,13 +1,6 @@
 module spp.codegen.llvm_mangle;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_block_name;
-import spp.analyse.scopes.symbols;
-import spp.asts.cmp_statement_ast;
-import spp.asts.function_parameter_ast;
-import spp.asts.function_parameter_group_ast;
-import spp.asts.function_prototype_ast;
-import spp.asts.identifier_ast;
-import spp.asts.type_ast;
+import spp.analyse.scopes;
+import spp.asts;
 import genex;
 
 
@@ -15,8 +8,8 @@ auto spp::codegen::mangle::mangle_type_name(
     analyse::scopes::TypeSymbol const &type_sym)
     -> std::string {
     // Get the fully qualified name of the type symbol.
-    auto fq_name = type_sym.fq_name();
-    return static_cast<std::string>(*std::move(fq_name));
+    const auto fq_name = type_sym.fq_name();
+    return fq_name->to_string();
 }
 
 

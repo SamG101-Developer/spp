@@ -1,15 +1,11 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.type_postfix_expression_operator_nested_type_ast;
-import spp.asts.ast;
-import spp.asts.token_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+module spp.asts;
+import spp.asts.utils;
+import spp.lex;
 
 
-SPP_MOD_BEGIN
 spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypePostfixExpressionOperatorNestedTypeAst(
     decltype(tok_sep) &&tok_sep,
     decltype(name) &&name) :
@@ -88,5 +84,3 @@ auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::type_parts()
     -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
     return {name};
 }
-
-SPP_MOD_END

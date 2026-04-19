@@ -1,18 +1,12 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.generic_parameter_type_inline_constraints_ast;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.asts.utils;
+import spp.analyse.utils.scope_utils;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::GenericParameterTypeInlineConstraintsAst::GenericParameterTypeInlineConstraintsAst(
     decltype(tok_colon) &&tok_colon,
     std::vector<std::unique_ptr<TypeAst>> &&constraints) :
@@ -72,12 +66,10 @@ auto spp::asts::GenericParameterTypeInlineConstraintsAst::stage_7_analyse_semant
     // Analyse each constraint type.
     for (auto const &constraint : constraints) {
         constraint->stage_7_analyse_semantics(sm, meta);
-        auto const constraint_type_sym = sm->current_scope->get_type_symbol(constraint->without_generics());
+        auto const constraint_type_sym = analyse::utils::scope_utils::get_type_symbol(sm->current_scope, constraint->without_generics());
         fq_constraints.emplace_back(constraint_type_sym->fq_name()->with_generics(std::move(constraint->type_parts().back()->generic_arg_group)));
     }
 
     // Replace the constraints with their fully qualified versions.
     constraints = std::move(fq_constraints);
 }
-
-SPP_MOD_END

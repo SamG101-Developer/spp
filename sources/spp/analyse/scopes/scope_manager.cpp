@@ -1,37 +1,17 @@
 module;
-#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.analyse.scopes.scope_manager;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.symbols;
+module spp.analyse.scopes;
+import spp.analyse.errors;
+import spp.analyse.utils.scope_utils;
 import spp.analyse.utils.type_utils;
-import spp.asts.ast;
-import spp.asts.class_prototype_ast;
-import spp.asts.cmp_statement_ast;
-import spp.asts.function_prototype_ast;
-import spp.asts.generic_argument_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.identifier_ast;
-import spp.asts.module_prototype_ast;
-import spp.asts.module_implementation_ast;
-import spp.asts.module_member_ast;
-import spp.asts.sup_implementation_ast;
-import spp.asts.sup_prototype_extension_ast;
-import spp.asts.sup_prototype_functions_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.type_statement_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_type;
+import spp.asts;
+import spp.asts.utils;
+import spp.codegen.llvm_ctx;
 import spp.utils.error_formatter;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::analyse::scopes::ScopeManager::ScopeManager(
     std::shared_ptr<Scope> const &global_scope,
     Scope *current_scope) :
@@ -58,7 +38,7 @@ auto spp::analyse::scopes::ScopeManager::reset(
 
 auto spp::analyse::scopes::ScopeManager::create_and_move_into_new_scope(
     ScopeName const &name,
-    asts::Ast *ast,
+    AbstractAst *ast,
     spp::utils::errors::ErrorFormatter *error_formatter)
     -> Scope* {
     // Create a new scope, using the current scope as the parent scope.
@@ -86,7 +66,7 @@ auto spp::analyse::scopes::ScopeManager::move_to_next_scope(
     // For debugging mode only, check if the iterator has reached the end of the generator.
     // Move to the next scope by advancing the iterator.
     current_scope = *++m_it;
-    while (ignore_alias_class_scopes and current_scope->ty_sym != nullptr and current_scope->ty_sym->alias_stmt != nullptr) {
+    while (ignore_alias_class_scopes and current_scope->ty_sym != nullptr and utils::scope_utils::associated_type_sumbol(current_scope)->alias_stmt != nullptr) {
         current_scope = *++m_it;
     }
     return current_scope;
@@ -105,7 +85,7 @@ auto spp::analyse::scopes::ScopeManager::exhaust_scope()
 
 auto spp::analyse::scopes::ScopeManager::attach_llvm_type_info(
     asts::ModulePrototypeAst const &mod,
-    codegen::LLvmCtx *ctx) const
+    codegen::LlvmCtx *ctx) const
     -> void {
     // Iterate the members of the module, filter to class prototypes, and call the register function.
 
@@ -154,110 +134,6 @@ auto spp::analyse::scopes::ScopeManager::attach_llvm_type_info(
             for (auto const &alias_sym : generic_sub.second->get_ast_scope()->ty_sym->aliased_by_symbols) {
                 alias_sym->llvm_info->llvm_type = llvm_type;
             }
-        }
-    }
-}
-
-
-auto spp::analyse::scopes::ScopeManager::attach_all_super_scopes(
-    asts::meta::CompilerMetaData *meta)
-    -> void {
-    // Ensure the scope manager is at the global scope.
-    reset();
-    for (auto *scope : iter()) {
-        if (scope->ty_sym != nullptr) {
-            attach_specific_super_scopes(*scope, meta);
-        }
-    }
-    reset();
-}
-
-
-auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes(
-    Scope &scope,
-    asts::meta::CompilerMetaData *meta) const
-    -> void {
-    // Handle type symbols.
-    if (scope.ty_sym != nullptr) {
-        const auto non_generic_sym = scope.get_type_symbol(scope.ty_sym->fq_name()->without_generics());
-        auto scopes = normal_sup_blocks[non_generic_sym.get()];
-        scopes.append_range(generic_sup_blocks);
-        attach_specific_super_scopes_impl(scope, std::move(scopes), meta);
-    }
-}
-
-
-auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
-    Scope &scope,
-    std::vector<Scope*> &&sup_scopes,
-    asts::meta::CompilerMetaData *meta) const
-    -> void {
-    // Skip "$" identifiers (functions don't have substitutable members and take up lots of time).
-    const auto scope_name = scope.ty_sym->fq_name();
-    if (scope_name->type_parts().back()->name[0] == '$') {
-        return;
-    }
-    if (utils::type_utils::is_type_function(*scope_name, scope)) {
-        return;
-    }
-    if (sup_scopes.empty()) {
-        return;
-    }
-
-    // Clear the sup scopes list.
-    scope.direct_sup_scopes.clear();
-    const auto fq_type = scope.ty_sym->fq_name();
-    const auto cls_sym = scope.ty_sym;
-
-    // Iterate through all the super scopes and check if the name matches.
-    for (auto *sup_scope : sup_scopes) {
-        // Perform a relaxed comparison between the two types (allows for specializations to match bases).
-        auto scope_generics_map = utils::type_utils::GenericInferenceMap();
-        if (not utils::type_utils::relaxed_symbolic_eq(*fq_type, *asts::ast_name(sup_scope->ast), *scope.ty_sym->scope_defined_in, *sup_scope, scope_generics_map)) {
-            // Todo: Is this eliminating too many cases?
-            // Todo: For example, superimposing a type will be omitted here because the type won't be the same.
-            continue;
-        }
-        auto scope_generics = asts::GenericArgumentGroupAst::from_map(std::move(scope_generics_map));
-
-        // Create a generic version of the super scope if needed.
-        auto new_sup_scope = static_cast<Scope*>(nullptr);
-        auto new_cls_scope = static_cast<Scope*>(nullptr);
-        auto sup_sym = static_cast<TypeSymbol*>(nullptr);
-
-        // Todo: Is this "if-else" quite correct? 2 conditions in the "if", then no "else if" block.
-        if (not scope_generics->args.empty() and not genex::contains(generic_sup_blocks, sup_scope)) {
-            const auto external_generics = scope.ty_sym->scope_defined_in->get_extended_generic_symbols(scope_generics->args | genex::views::ptr | genex::to<std::vector>());
-            std::tie(new_sup_scope, new_cls_scope) = utils::type_utils::create_generic_sup_scope(*sup_scope, scope, *scope_generics, external_generics, this, meta);
-            sup_sym = new_cls_scope ? new_cls_scope->ty_sym.get() : nullptr;
-        }
-        else {
-            const auto sup_proto = sup_scope->ast->to<asts::SupPrototypeExtensionAst>();
-            new_sup_scope = sup_scope;
-            new_cls_scope = sup_proto ? scope.get_type_symbol(sup_proto->super_class)->scope : nullptr;
-            sup_sym = new_cls_scope ? new_cls_scope->ty_sym.get() : nullptr;
-        }
-
-        // Prevent double inheritance, cyclic inheritance and self extension.
-        if (const auto ext_ast = sup_scope->ast->to<asts::SupPrototypeExtensionAst>(); ext_ast != nullptr) {
-            ext_ast->check_cyclic_extension(*sup_sym, *sup_scope);
-            ext_ast->check_double_extension(*cls_sym, *sup_scope);
-            ext_ast->check_self_extension(*sup_scope);
-        }
-
-        // Register the super scope against the current scope.
-        scope.direct_sup_scopes.emplace_back(new_sup_scope);
-
-        // Register the super scope's class scope against the current scope, if it is different. This "difference" check
-        // ensures that "sup [T] T ext A" doesn't create a "sup A ext A" link.
-        if (new_cls_scope and scope.ty_sym != new_cls_scope->ty_sym) {
-            // Todo: is this definitely the generically substituted "new_cls_scope"?
-            scope.direct_sup_scopes.emplace_back(new_cls_scope);
-        }
-
-        // Check for conflicting "cmp" or "type" statements in the super scopes.
-        if (sup_scope->ast->to<asts::SupPrototypeExtensionAst>() or sup_scope->ast->to<asts::SupPrototypeFunctionsAst>()) {
-            check_conflicting_type_or_cmp_statements(*cls_sym, *sup_scope);
         }
     }
 }
@@ -312,5 +188,3 @@ auto spp::analyse::scopes::ScopeManager::cleanup() -> void {
     normal_sup_blocks.clear();
     generic_sup_blocks.clear();
 }
-
-SPP_MOD_END

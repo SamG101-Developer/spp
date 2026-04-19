@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.function_implementation_ast;
-import spp.asts.inner_scope_ast;
+export module spp.asts:function_implementation_ast;
+import :inner_scope_ast;
 import std;
 
 namespace spp::asts {

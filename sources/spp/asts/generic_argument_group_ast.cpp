@@ -2,36 +2,16 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.generic_argument_group_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.order_utils;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
 import spp.analyse.utils.type_utils;
-import spp.asts.expression_ast;
-import spp.asts.generic_argument_ast;
-import spp.asts.generic_argument_comp_ast;
-import spp.asts.generic_argument_comp_keyword_ast;
-import spp.asts.generic_argument_comp_positional_ast;
-import spp.asts.generic_argument_type_ast;
-import spp.asts.generic_argument_type_keyword_ast;
-import spp.asts.generic_argument_type_positional_ast;
-import spp.asts.generic_parameter_comp_ast;
-import spp.asts.generic_parameter_group_ast;
-import spp.asts.generic_parameter_type_ast;
-import spp.asts.identifier_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.mixins.orderable_ast;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+import spp.asts.utils;
+import spp.lex;
 import ankerl;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::GenericArgumentGroupAst::GenericArgumentGroupAst(
     decltype(tok_l) &&tok_l,
     decltype(args) &&args,
@@ -384,5 +364,3 @@ auto spp::asts::GenericArgumentGroupAst::stage_8_check_memory(
         x->stage_8_check_memory(sm, meta);
     }
 }
-
-SPP_MOD_END

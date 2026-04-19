@@ -1,14 +1,11 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.local_variable_single_identifier_alias_ast;
-import spp.asts.identifier_ast;
-import spp.asts.token_ast;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+module spp.asts;
+import spp.asts.utils;
+import spp.lex;
 
 
-SPP_MOD_BEGIN
 spp::asts::LocalVariableSingleIdentifierAliasAst::LocalVariableSingleIdentifierAliasAst(
     decltype(tok_as) &&tok_as,
     decltype(name) &&name) :
@@ -47,5 +44,3 @@ spp::asts::LocalVariableSingleIdentifierAliasAst::operator std::string() const {
     SPP_STRING_APPEND(name);
     SPP_STRING_END;
 }
-
-SPP_MOD_END

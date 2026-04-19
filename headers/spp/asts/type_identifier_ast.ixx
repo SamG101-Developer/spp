@@ -1,17 +1,17 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.type_identifier_ast;
-import spp.asts.type_ast;
+export module spp.asts:type_identifier_ast;
+import :type_ast;
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct TypeIdentifierAst;
     SPP_EXP_CLS struct ConventionAst;
     SPP_EXP_CLS struct GenericArgumentAst;
     SPP_EXP_CLS struct GenericArgumentGroupAst;
     SPP_EXP_CLS struct GenericParameterAst;
     SPP_EXP_CLS struct IdentifierAst;
-    SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
 
@@ -46,13 +46,11 @@ public:
         decltype(name) &&name,
         decltype(generic_arg_group) generic_arg_group);
 
-    auto _spp_key_function() const -> void override;
-
     ~TypeIdentifierAst() override;
 
-    auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
-    auto equals_type_identifier(TypeIdentifierAst const &other) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals_type_identifier(TypeIdentifierAst const &other) const -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
@@ -108,8 +106,3 @@ public:
 
     auto ankerl_hash() const -> std::size_t override;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::TypeIdentifierAst::_spp_key_function() const -> void {}
-SPP_MOD_END

@@ -1,13 +1,13 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.function_call_argument_group_ast;
-import spp.asts.ast;
+export module spp.asts:function_call_argument_group_ast;
+import :ast;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct FunctionCallArgumentAst;
     SPP_EXP_CLS struct FunctionCallArgumentGroupAst;
+    SPP_EXP_CLS struct FunctionCallArgumentAst;
     SPP_EXP_CLS struct FunctionCallArgumentKeywordAst;
     SPP_EXP_CLS struct FunctionCallArgumentPositionalAst;
     SPP_EXP_CLS struct TokenAst;

@@ -1,8 +1,5 @@
-module;
-#include <spp/macros.hpp>
-
 module spp.compiler.module_tree;
-import spp.asts.module_prototype_ast;
+import spp.asts;
 import spp.utils.files;
 import genex;
 import glob;
@@ -10,12 +7,11 @@ import std;
 import sys;
 
 
-SPP_MOD_BEGIN
 spp::compiler::Module::Module(
     std::filesystem::path path,
     std::string code,
     std::vector<lex::RawToken> tokens,
-    std::unique_ptr<asts::ModulePrototypeAst> module_ast,
+    std::unique_ptr<AbstractAst> module_ast,
     std::shared_ptr<utils::errors::ErrorFormatter> error_formatter) :
     path(std::move(path)),
     code(std::move(code)),
@@ -128,5 +124,3 @@ auto spp::compiler::ModuleTree::root_path() const
     -> std::filesystem::path {
     return m_root;
 }
-
-SPP_MOD_END

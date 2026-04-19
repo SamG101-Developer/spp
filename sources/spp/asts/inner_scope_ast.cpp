@@ -2,29 +2,14 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.inner_scope_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_block_name;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.mem_utils;
-import spp.asts.class_member_ast;
-import spp.asts.expression_ast;
-import spp.asts.identifier_ast;
-import spp.asts.loop_control_flow_statement_ast;
-import spp.asts.ret_statement_ast;
-import spp.asts.statement_ast;
-import spp.asts.sup_member_ast;
-import spp.asts.token_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
+import spp.lex;
 import genex;
 
 
-SPP_MOD_BEGIN
 template <typename T>
 spp::asts::InnerScopeAst<T>::InnerScopeAst() :
     tok_l(nullptr),
@@ -156,7 +141,7 @@ template <typename T>
 auto spp::asts::InnerScopeAst<T>::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Add all the expressions/statements into the current scope.
     sm->move_to_next_scope();
@@ -180,4 +165,3 @@ auto spp::asts::InnerScopeAst<T>::stage_11_code_gen_2(
 template struct spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::ClassMemberAst>>;
 template struct spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::StatementAst>>;
 template struct spp::asts::InnerScopeAst<std::unique_ptr<spp::asts::SupMemberAst>>;
-SPP_MOD_END

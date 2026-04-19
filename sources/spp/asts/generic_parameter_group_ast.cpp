@@ -2,34 +2,14 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.generic_parameter_group_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.order_utils;
-import spp.analyse.utils.type_utils;
-import spp.asts.generic_parameter_ast;
-import spp.asts.generic_parameter_comp_ast;
-import spp.asts.generic_parameter_comp_optional_ast;
-import spp.asts.generic_parameter_comp_required_ast;
-import spp.asts.generic_parameter_comp_variadic_ast;
-import spp.asts.generic_parameter_type_ast;
-import spp.asts.generic_parameter_type_required_ast;
-import spp.asts.generic_parameter_type_optional_ast;
-import spp.asts.generic_parameter_type_variadic_ast;
-import spp.asts.generic_parameter_type_inline_constraints_ast;
-import spp.asts.token_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.generate.common_types_precompiled;
-import spp.asts.mixins.orderable_ast;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
+import spp.lex;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::GenericParameterGroupAst::GenericParameterGroupAst(
     decltype(tok_l) &&tok_l,
     decltype(params) &&params,
@@ -329,7 +309,7 @@ auto spp::asts::GenericParameterGroupAst::stage_8_check_memory(
 auto spp::asts::GenericParameterGroupAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Run the code generation steps on each parameter in the group.
     for (auto &&x : params) {
@@ -337,5 +317,3 @@ auto spp::asts::GenericParameterGroupAst::stage_11_code_gen_2(
     }
     return nullptr;
 }
-
-SPP_MOD_END

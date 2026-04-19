@@ -1,14 +1,10 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.closure_expression_capture_ast;
-import spp.asts.convention_ast;
-import spp.asts.expression_ast;
-import spp.asts.token_ast;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::ClosureExpressionCaptureAst::ClosureExpressionCaptureAst(
     decltype(conv) &&conv,
     decltype(val) &&val) :
@@ -45,5 +41,3 @@ spp::asts::ClosureExpressionCaptureAst::operator std::string() const {
     SPP_STRING_APPEND(val);
     SPP_STRING_END;
 }
-
-SPP_MOD_END

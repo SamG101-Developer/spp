@@ -1,10 +1,10 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.function_parameter_ast;
-import spp.asts.ast;
-import spp.asts.mixins.orderable_ast;
-import spp.asts.utils.orderable;
+export module spp.asts:function_parameter_ast;
+import :ast;
+import :orderable_ast;
+import spp.asts.utils;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
@@ -64,5 +64,5 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterAst : virtual Ast, mixins::Ordera
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };

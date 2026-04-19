@@ -2,26 +2,15 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.is_expression_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
 import spp.analyse.utils.bin_utils;
-import spp.asts.case_expression_ast;
-import spp.asts.case_pattern_variant_ast;
-import spp.asts.identifier_ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.generate.common_types;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+import spp.asts.utils;
+import spp.lex;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::IsExpressionAst::IsExpressionAst(
     decltype(lhs) &&lhs,
     decltype(tok_op) &&tok_op,
@@ -116,7 +105,7 @@ auto spp::asts::IsExpressionAst::stage_8_check_memory(
 auto spp::asts::IsExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // If the lhs was an identifier, the "is" causes it to get flow types, so we need to promote the original "alloca"
     // into the flow typed symbol.
@@ -139,7 +128,5 @@ auto spp::asts::IsExpressionAst::infer_type(
     CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Always return a boolean type (successful or failed match).
-    return generate::common_types::boolean_type(m_mapped_func->pos_start());
+    return common_types::boolean_type(m_mapped_func->pos_start());
 }
-
-SPP_MOD_END

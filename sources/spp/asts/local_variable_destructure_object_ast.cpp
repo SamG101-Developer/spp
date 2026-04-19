@@ -2,35 +2,14 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.local_variable_destructure_object_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
-import spp.asts.class_implementation_ast;
-import spp.asts.class_prototype_ast;
-import spp.asts.class_attribute_ast;
-import spp.asts.class_member_ast;
-import spp.asts.class_prototype_ast;
-import spp.asts.identifier_ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.local_variable_destructure_attribute_binding_ast;
-import spp.asts.local_variable_destructure_skip_single_argument_ast;
-import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_runtime_member_access_ast;
-import spp.asts.token_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.asts.type_ast;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
+import spp.lex;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::LocalVariableDestructureObjectAst::LocalVariableDestructureObjectAst(
     decltype(type) &&type,
     decltype(tok_l) &&tok_l,
@@ -206,7 +185,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_9_comptime_resolution(
 auto spp::asts::LocalVariableDestructureObjectAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Generate the "let" statements for each element.
     for (auto &&ast : m_new_asts) {
@@ -214,5 +193,3 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_11_code_gen_2(
     }
     return nullptr;
 }
-
-SPP_MOD_END

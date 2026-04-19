@@ -1,14 +1,11 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.module_implementation_ast;
-import spp.asts.module_member_ast;
-import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_ctx;
+module spp.asts;
+import spp.asts.utils;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::ModuleImplementationAst::ModuleImplementationAst(
     decltype(members) &&members) :
     members(std::move(members)) {
@@ -45,7 +42,7 @@ spp::asts::ModuleImplementationAst::operator std::string() const {
 
 
 auto spp::asts::ModuleImplementationAst::stage_1_pre_process(
-    Ast *ctx)
+    AbstractAst *ctx)
     -> void {
     // Shift to members.
     for (auto *member : members | genex::views::ptr | genex::to<std::vector>()) {
@@ -145,7 +142,7 @@ auto spp::asts::ModuleImplementationAst::stage_9_comptime_resolution(
 auto spp::asts::ModuleImplementationAst::stage_10_code_gen_1(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Shift to members.
     for (auto const &member : members) {
@@ -158,7 +155,7 @@ auto spp::asts::ModuleImplementationAst::stage_10_code_gen_1(
 auto spp::asts::ModuleImplementationAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Shift to members.
     for (auto const &member : members) {
@@ -166,5 +163,3 @@ auto spp::asts::ModuleImplementationAst::stage_11_code_gen_2(
     }
     return nullptr;
 }
-
-SPP_MOD_END

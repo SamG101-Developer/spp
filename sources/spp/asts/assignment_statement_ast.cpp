@@ -2,31 +2,16 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.assignment_statement_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.cmp_utils;
-import spp.analyse.utils.type_utils;
-import spp.asts.convention_ast;
-import spp.asts.expression_ast;
-import spp.asts.identifier_ast;
-import spp.asts.object_initializer_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_deref_ast;
-import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+import spp.asts.utils;
+import spp.lex;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::AssignmentStatementAst::AssignmentStatementAst(
     decltype(lhs) &&lhs,
     decltype(tok_assign) &&tok_assign,
@@ -241,7 +226,7 @@ auto spp::asts::AssignmentStatementAst::stage_9_comptime_resolution(
 auto spp::asts::AssignmentStatementAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Generate code for each assignment in sequence.
     for (auto i = 0uz; i < lhs.size(); ++i) {
@@ -262,5 +247,3 @@ auto spp::asts::AssignmentStatementAst::stage_11_code_gen_2(
     // Statements are always generated into a builder so no need to return anything.
     return nullptr;
 }
-
-SPP_MOD_END

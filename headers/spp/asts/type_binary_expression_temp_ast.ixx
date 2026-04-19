@@ -1,7 +1,7 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.type_binary_expression_temp_ast;
+export module spp.asts:type_binary_expression_temp_ast;
 import std;
 
 namespace spp::asts {

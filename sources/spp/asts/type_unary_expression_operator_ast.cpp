@@ -1,10 +1,6 @@
-module;
-#include <spp/macros.hpp>
-
-module spp.asts.type_unary_expression_operator_ast;
+module spp.asts;
 
 
-SPP_MOD_BEGIN
 auto spp::asts::TypeUnaryExpressionOperatorAst::operator<=>(
     TypeUnaryExpressionOperatorAst const &that) const
     -> std::strong_ordering {
@@ -34,5 +30,3 @@ auto spp::asts::TypeUnaryExpressionOperatorAst::equals_op_namespace(
     -> std::strong_ordering {
     return std::strong_ordering::less;
 }
-
-SPP_MOD_END

@@ -2,16 +2,9 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.order_utils;
-import spp.asts.utils.orderable;
+import spp.asts;
+import spp.asts.utils;
 import std;
-
-namespace spp::asts {
-    SPP_EXP_CLS struct Ast;
-}
-
-namespace spp::asts::mixins {
-    SPP_EXP_CLS struct OrderableAst;
-}
 
 
 namespace spp::analyse::utils::order_utils {
@@ -37,7 +30,7 @@ namespace spp::analyse::utils::order_utils {
      */
     SPP_EXP_FUN auto order(
         std::vector<asts::mixins::OrderableAst*> &&args,
-        std::vector<asts::utils::OrderableTag> order)
+        std::vector<asts::utils::OrderableTag> &&order)
         -> std::vector<std::pair<std::string, asts::Ast*>>;
 
     /**

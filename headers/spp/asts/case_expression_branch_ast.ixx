@@ -1,9 +1,9 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.case_expression_branch_ast;
-import spp.asts.ast;
-import spp.asts.mixins.type_inferrable_ast;
+export module spp.asts:case_expression_branch_ast;
+import :ast;
+import :type_inferrable_ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
@@ -72,7 +72,7 @@ private:
      * @param ctx The llvm code generation context.
      * @return The llvm value representing the combined pattern matches.
      */
-    auto m_codegen_combine_patterns(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) const -> llvm::Value*;
+    auto m_codegen_combine_patterns(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) const -> llvm::Value*;
 
 public:
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -81,7 +81,7 @@ public:
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

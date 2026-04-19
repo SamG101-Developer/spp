@@ -2,21 +2,12 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.postfix_expression_operator_keyword_not_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.type_utils;
-import spp.asts.boolean_literal_ast;
-import spp.asts.expression_ast;
-import spp.asts.token_ast;
-import spp.asts.generate.common_types;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorKeywordNotAst::PostfixExpressionOperatorKeywordNotAst(
     decltype(tok_dot) &&tok_dot,
     decltype(tok_not) &&tok_not) :
@@ -88,7 +79,5 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::infer_type(
     CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // The type of a "not" expression is always boolean.
-    return generate::common_types::boolean_type(pos_start());
+    return common_types::boolean_type(pos_start());
 }
-
-SPP_MOD_END

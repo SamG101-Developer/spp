@@ -1,15 +1,15 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.type_unary_expression_operator_namespace_ast;
-import spp.asts.type_unary_expression_operator_ast;
+export module spp.asts:type_unary_expression_operator_namespace_ast;
+import :type_unary_expression_operator_ast;
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct TypeUnaryExpressionOperatorNamespaceAst;
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeIdentifierAst;
-    SPP_EXP_CLS struct TypeUnaryExpressionOperatorNamespaceAst;
 }
 
 
@@ -23,8 +23,6 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : Ty
      * The @c :: operator token that represents the namespace operator.
      */
     std::unique_ptr<TokenAst> tok_sep;
-
-    auto _spp_key_function() const -> void override;
 
     /**
      * Construct the TypeUnaryExpressionOperatorNamespaceAst with the arguments matching the members.
@@ -51,8 +49,3 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : Ty
 
     SPP_ATTR_NODISCARD auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::_spp_key_function() const -> void {}
-SPP_MOD_END

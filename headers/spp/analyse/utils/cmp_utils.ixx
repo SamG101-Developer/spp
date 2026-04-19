@@ -3,22 +3,10 @@ module;
 #include <opex/macros.hpp>
 
 export module spp.analyse.utils.cmp_utils;
+import spp.analyse.scopes;
+import spp.asts;
 import opex.ops;
 import std;
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class ScopeManager;
-}
-
-namespace spp::asts {
-    SPP_EXP_CLS struct Ast;
-    SPP_EXP_CLS struct BooleanLiteralAst;
-    SPP_EXP_CLS struct ExpressionAst;
-    SPP_EXP_CLS struct FloatLiteralAst;
-    SPP_EXP_CLS struct IdentifierAst;
-    SPP_EXP_CLS struct IntegerLiteralAst;
-    SPP_EXP_CLS struct ObjectInitializerAst;
-}
 
 
 OPEX_MAKE_UNARY_OP(cmp_abs, std::int64_t) {

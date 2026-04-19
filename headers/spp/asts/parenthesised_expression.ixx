@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.parenthesised_expression_ast;
-import spp.asts.primary_expression_ast;
+export module spp.asts:parenthesised_expression_ast;
+import :primary_expression_ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
@@ -51,7 +51,7 @@ SPP_EXP_CLS struct spp::asts::ParenthesisedExpressionAst final : PrimaryExpressi
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

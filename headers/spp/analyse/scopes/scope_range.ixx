@@ -1,13 +1,13 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.analyse.scopes.scope_range;
-import spp.analyse.scopes.scope_iterator;
+export module spp.analyse.scopes:scope_range;
 
 
 namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
     SPP_EXP_CLS class ScopeRange;
+    SPP_EXP_CLS class Scope;
+    SPP_EXP_CLS class ScopeIterator;
 }
 
 

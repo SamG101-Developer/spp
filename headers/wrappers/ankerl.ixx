@@ -25,7 +25,7 @@ export namespace ankerl {
             if (lhs == nullptr && rhs == nullptr) { return false; }
             if (lhs == nullptr) { return true; }
             if (rhs == nullptr) { return false; }
-            return *lhs < *rhs;
+            return *lhs < *rhs; // todo: change to abstract cmp function.
         }
     };
 

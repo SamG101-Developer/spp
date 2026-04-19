@@ -1,10 +1,7 @@
-module;
-#include <spp/macros.hpp>
-
-module spp.asts.token_ast;
+module spp.asts;
+import spp.lex;
 
 
-SPP_MOD_BEGIN
 spp::asts::TokenAst::TokenAst(
     const std::size_t pos,
     const lex::SppTokenType token_type,
@@ -54,5 +51,3 @@ auto spp::asts::TokenAst::operator==(TokenAst const &that) const
     -> bool {
     return token_type == that.token_type;
 }
-
-SPP_MOD_END

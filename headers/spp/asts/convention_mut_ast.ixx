@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.convention_mut_ast;
-import spp.asts.convention_ast;
+export module spp.asts:convention_mut_ast;
+import :convention_ast;
 import std;
 
 namespace spp::asts {

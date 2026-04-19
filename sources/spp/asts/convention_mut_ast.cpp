@@ -1,14 +1,11 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.convention_mut_ast;
-import spp.asts.ast;
-import spp.asts.token_ast;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+module spp.asts;
+import spp.asts.utils;
+import spp.lex;
 
 
-SPP_MOD_BEGIN
 spp::asts::ConventionMutAst::ConventionMutAst(
     decltype(tok_borrow) &&tok_borrow,
     decltype(tok_mut) &&tok_mut) :
@@ -49,5 +46,3 @@ spp::asts::ConventionMutAst::operator std::string() const {
     SPP_STRING_APPEND(tok_mut).append(" ");
     SPP_STRING_END;
 }
-
-SPP_MOD_END

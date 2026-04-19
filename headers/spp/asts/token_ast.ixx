@@ -2,9 +2,9 @@ module;
 #include <magic_enum/magic_enum.hpp>
 #include <spp/macros.hpp>
 
-export module spp.asts.token_ast;
-import spp.asts.ast;
-import spp.lex.tokens;
+export module spp.asts:token_ast;
+import :ast;
+import spp.lex;
 import std;
 
 namespace spp::asts {

@@ -1,14 +1,10 @@
-module;
-#include <spp/macros.hpp>
-
-module spp.lex.lexer;
-import spp.compiler.prelude;
+module spp.lex;
+import spp.compiler;
 import spp.utils.strings;
 import genex;
 import magic_enum;
 
 
-SPP_MOD_BEGIN
 spp::lex::Lexer::Lexer(std::string code, const bool add_prelude)
     : m_code("\n" + std::move(code)) {
     // Add the prelude at the end so it doesn't offset line numbers from the actual code. Due to the order-agnostic
@@ -290,5 +286,3 @@ auto spp::lex::Lexer::lex() const
     tokens.emplace_back(RawTokenType::SP_EOF, "");
     return tokens;
 }
-
-SPP_MOD_END

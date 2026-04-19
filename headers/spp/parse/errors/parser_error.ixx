@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.parse.errors.parser_error;
-import spp.lex.tokens;
+export module spp.parse.errors:parser_error;
+import spp.lex;
 import spp.utils.errors;
 import std;
 

@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.closure_expression_parameter_and_capture_group_ast;
-import spp.asts.ast;
+export module spp.asts:closure_expression_parameter_and_capture_group_ast;
+import :ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
@@ -11,7 +11,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct ClosureExpressionParameterAndCaptureGroupAst;
     SPP_EXP_CLS struct FunctionParameterAst;
     SPP_EXP_CLS struct FunctionParameterGroupAst;
-    SPP_EXP_CLS using ClosureExpressionParameterGroupAst = FunctionParameterGroupAst;
     SPP_EXP_CLS struct ClosureExpressionCaptureGroupAst;
     SPP_EXP_CLS struct TokenAst;
 }
@@ -26,7 +25,7 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionParameterAndCaptureGroupAst final
     /**
      * The parameters of the closure. This is a list of parameters that will be passed to the closure when it is called.
      */
-    std::unique_ptr<ClosureExpressionParameterGroupAst> param_group;
+    std::unique_ptr<FunctionParameterGroupAst> param_group;
 
     /**
      * The captured variables from the outer scope. These are variables that are captured by the closure and can be used
@@ -60,5 +59,5 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionParameterAndCaptureGroupAst final
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };

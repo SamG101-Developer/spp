@@ -1,9 +1,4 @@
-module;
-#include <spp/macros.hpp>
-
-module spp.asts.mixins.temp_type_ast;
+module spp.asts;
 
 
-SPP_MOD_BEGIN
 spp::asts::mixins::TempTypeAst::~TempTypeAst() = default;
-SPP_MOD_END

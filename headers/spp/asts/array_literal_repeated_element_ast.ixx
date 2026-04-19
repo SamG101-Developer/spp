@@ -1,14 +1,15 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.array_literal_repeated_element_ast;
-import spp.asts.array_literal_ast;
+export module spp.asts:array_literal_repeated_element_ast;
+import :array_literal_ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct ArrayLiteralRepeatedElementAst;
+    SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
@@ -53,8 +54,6 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
      * literal.
      */
     std::unique_ptr<TokenAst> tok_r;
-
-    auto _spp_key_function() const -> void override;
 
     /**
      * Construct the ArrayLiteral0Elements with the arguments matching the members.
@@ -113,7 +112,7 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
      * @param ctx The LLVM context to use for code generation.
      * @return The LLVM value representing the array literal.
      */
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
     /**
      * The inferred type of an array literal is always @code std::array::Arr[T, n]@endcode, where @c T is the type of
@@ -124,8 +123,3 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
      */
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::ArrayLiteralRepeatedElementAst::_spp_key_function() const -> void {}
-SPP_MOD_END

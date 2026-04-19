@@ -2,34 +2,15 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.class_prototype_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_block_name;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
-import spp.asts.annotation_ast;
-import spp.asts.convention_ast;
-import spp.asts.class_attribute_ast;
-import spp.asts.class_implementation_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_parameter_group_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.type_statement_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_mangle;
-import spp.codegen.llvm_type;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
+import spp.lex;
 import genex;
 import llvm;
 
 
-SPP_MOD_BEGIN
 spp::asts::ClassPrototypeAst::ClassPrototypeAst(
     decltype(annotations) &&annotations,
     decltype(tok_cls) &&tok_cls,
@@ -131,7 +112,7 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
 auto spp::asts::ClassPrototypeAst::m_fill_llvm_mem_layout(
     analyse::scopes::ScopeManager *sm,
     analyse::scopes::TypeSymbol const *type_sym,
-    codegen::LLvmCtx *ctx) const
+    codegen::LlvmCtx *ctx) const
     -> void {
     // Todo: error if attribute's default value if a comp generic value?? Also TEST THIS
 
@@ -176,13 +157,13 @@ auto spp::asts::ClassPrototypeAst::registered_generic_substitutions() const
 
 
 auto spp::asts::ClassPrototypeAst::get_cls_sym() const
-    -> std::shared_ptr<analyse::scopes::TypeSymbol> {
+    -> std::shared_ptr<void> {
     return m_cls_sym;
 }
 
 
 auto spp::asts::ClassPrototypeAst::stage_1_pre_process(
-    Ast *ctx)
+    AbstractAst *ctx)
     -> void {
     // Pre-process the AST by calling the base class method and then processing annotations and the body.
     Ast::stage_1_pre_process(ctx);
@@ -324,7 +305,7 @@ auto spp::asts::ClassPrototypeAst::stage_9_comptime_resolution(
 auto spp::asts::ClassPrototypeAst::stage_10_code_gen_1(
     ScopeManager *sm,
     CompilerMetaData *,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Generate code for the class body.
     sm->move_to_next_scope();
@@ -355,7 +336,7 @@ auto spp::asts::ClassPrototypeAst::stage_10_code_gen_1(
 auto spp::asts::ClassPrototypeAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Get the class symbol.
     sm->move_to_next_scope();
@@ -364,5 +345,3 @@ auto spp::asts::ClassPrototypeAst::stage_11_code_gen_2(
     sm->move_out_of_current_scope();
     return nullptr;
 }
-
-SPP_MOD_END

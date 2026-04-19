@@ -1,23 +1,9 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.codegen.llvm_coros;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
-import spp.asts.coroutine_prototype_ast;
-import spp.asts.function_parameter_group_ast;
-import spp.asts.function_parameter_ast;
-import spp.asts.function_prototype_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_ast;
-import spp.asts.identifier_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.generate.common_types_precompiled;
-import spp.codegen.llvm_mangle;
-import spp.codegen.llvm_type;
+module spp.codegen;
+import spp.analyse.scopes;
+import spp.asts;
 import spp.utils.uid;
 import llvm;
 import opex.cast;
@@ -27,7 +13,7 @@ import std;
 
 auto spp::codegen::create_coro_env_type(
     asts::CoroutinePrototypeAst *coro,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     analyse::scopes::Scope const &scope)
     -> std::pair<llvm::StructType*, llvm::StructType*> {
     // Get the type being yielded.
@@ -59,7 +45,7 @@ auto spp::codegen::create_coro_env_type(
     const auto llvm_yield_type = llvm_type(*scope.get_type_symbol(yield_type), ctx);
 
     // For Send != Void, the send slot is also required (dummy otherwise for order).
-    const auto llvm_send_type = not analyse::utils::type_utils::symbolic_eq(*send_type, *asts::generate::common_types_precompiled::VOID, scope, scope)
+    const auto llvm_send_type = not analyse::utils::type_utils::symbolic_eq(*send_type, *asts::common_types_precompiled::VOID, scope, scope)
                                     ? llvm_type(*scope.get_type_symbol(send_type), ctx)
                                     : llvm::Type::getInt8Ty(*ctx->context); // Dummy
 
@@ -85,7 +71,7 @@ auto spp::codegen::create_coro_env_type(
 
 auto spp::codegen::create_coro_gen_ctor(
     asts::CoroutinePrototypeAst *coro,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     analyse::scopes::Scope const &scope)
     -> std::tuple<llvm::Function*, llvm::Value*, llvm::Type*> {
     const auto uid = spp::utils::generate_uid(coro);
@@ -152,7 +138,7 @@ auto spp::codegen::create_coro_gen_ctor(
 auto spp::codegen::create_coro_res_func(
     asts::CoroutinePrototypeAst const *coro,
     llvm::Type *llvm_arg_struct_type,
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     analyse::scopes::Scope const &scope)
     -> llvm::Function* {
     // Get the "send" type for the resume signature.
@@ -205,7 +191,7 @@ auto spp::codegen::create_coro_res_func(
 
 
 auto spp::codegen::create_async_spawn_func(
-    LLvmCtx *ctx,
+    LlvmCtx *ctx,
     analyse::scopes::TypeSymbol const &fut_type_sym) -> llvm::Function* {
     // Create the async spawn function.
     const auto llvm_closure_func_ptr_type = llvm::PointerType::get(*ctx->context, 0);

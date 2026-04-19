@@ -1,22 +1,20 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.string_literal_ast;
-import spp.asts.literal_ast;
-import spp.asts.token_ast;
+export module spp.asts:string_literal_ast;
+import :literal_ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct StringLiteralAst;
+    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
 
 SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
-    auto _spp_key_function() const -> void override;
-
     /**
      * The string value of the string literal. This is the actual string that is represented by the literal.
      */
@@ -39,12 +37,7 @@ SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::StringLiteralAst::_spp_key_function() const -> void {}
-SPP_MOD_END

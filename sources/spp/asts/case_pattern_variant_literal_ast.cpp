@@ -1,28 +1,12 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.case_pattern_variant_literal_ast;
+module spp.asts;
 import spp.analyse.utils.case_utils;
-import spp.asts.convention_ref_ast;
-import spp.asts.function_call_argument_group_ast;
-import spp.asts.function_call_argument_positional_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.identifier_ast;
-import spp.asts.fold_expression_ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.literal_ast;
-import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.local_variable_single_identifier_alias_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.postfix_expression_operator_runtime_member_access_ast;
-import spp.asts.token_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
+import spp.asts.utils;
 import spp.utils.uid;
 
 
-SPP_MOD_BEGIN
 spp::asts::CasePatternVariantLiteralAst::CasePatternVariantLiteralAst(
     decltype(literal) &&literal) :
     CasePatternVariantAst(),
@@ -105,11 +89,9 @@ auto spp::asts::CasePatternVariantLiteralAst::stage_9_comptime_resolution(
 auto spp::asts::CasePatternVariantLiteralAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     const auto llvm_master_transform = analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_llvm(
         {this}, sm, meta, ctx);
     return llvm_master_transform[0];
 }
-
-SPP_MOD_END

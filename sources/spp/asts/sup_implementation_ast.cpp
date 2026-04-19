@@ -1,13 +1,8 @@
-module;
-#include <spp/macros.hpp>
-
-module spp.asts.sup_implementation_ast;
-import spp.asts.sup_member_ast;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.asts.utils;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::SupImplementationAst::~SupImplementationAst() = default;
 
 
@@ -28,7 +23,7 @@ auto spp::asts::SupImplementationAst::clone() const
 
 
 auto spp::asts::SupImplementationAst::stage_1_pre_process(
-    Ast *ctx)
+    AbstractAst *ctx)
     -> void {
     // Shift to members.
     for (auto *m : members | genex::views::ptr | genex::to<std::vector>()) {
@@ -128,7 +123,7 @@ auto spp::asts::SupImplementationAst::stage_9_comptime_resolution(
 auto spp::asts::SupImplementationAst::stage_10_code_gen_1(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Forward to members.
     for (auto const &m : members) {
@@ -141,7 +136,7 @@ auto spp::asts::SupImplementationAst::stage_10_code_gen_1(
 auto spp::asts::SupImplementationAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Forward to members.
     for (auto const &m : members) {
@@ -149,5 +144,3 @@ auto spp::asts::SupImplementationAst::stage_11_code_gen_2(
     }
     return nullptr;
 }
-
-SPP_MOD_END

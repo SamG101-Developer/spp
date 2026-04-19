@@ -1,13 +1,13 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.object_initializer_argument_shorthand_ast;
-import spp.asts.object_initializer_argument_ast;
+export module spp.asts:object_initializer_argument_shorthand_ast;
+import :object_initializer_argument_ast;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct ObjectInitializerArgumentShorthandAst;
+    SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct TokenAst;
 }
 

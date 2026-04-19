@@ -1,21 +1,11 @@
-module;
-#include <spp/macros.hpp>
-
-module spp.compiler.compiler;
-
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.asts.module_prototype_ast;
-import spp.asts.type_statement_ast;
-import spp.asts.generate.common_types_precompiled;
-import spp.compiler.compiler_boot;
-import spp.compiler.module_tree;
-import spp.lex.tokens;
+module spp.compiler;
+import spp.analyse.scopes;
+import spp.asts;
+import spp.lex;
 import spp.utils.progress;
 import std;
 
 
-SPP_MOD_BEGIN
 spp::compiler::Compiler::Compiler(
     const Mode mode,
     const BuildType build_type) :
@@ -59,7 +49,7 @@ auto spp::compiler::Compiler::compile() -> void {
     m_boot->parse(**ps++, *m_modules);
     m_scope_manager = std::make_unique<analyse::scopes::ScopeManager>(
         analyse::scopes::Scope::new_global(*m_modules->get_modules()[0]), nullptr);
-    asts::generate::common_types_precompiled::initialize_types();
+    asts::common_types_precompiled::initialize_types();
 
     m_boot->stage_1_pre_process(**ps++, *m_modules, nullptr);
     m_boot->stage_2_gen_top_level_scopes(**ps++, *m_modules, m_scope_manager.get());
@@ -79,5 +69,3 @@ auto spp::compiler::Compiler::compile() -> void {
 auto spp::compiler::Compiler::cleanup() -> void {
     analyse::scopes::ScopeManager::cleanup();
 }
-
-SPP_MOD_END

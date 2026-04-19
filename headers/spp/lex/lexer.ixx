@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.lex.lexer;
-import spp.lex.tokens;
+export module spp.lex:lexer;
+import :tokens;
 import std;
 
 

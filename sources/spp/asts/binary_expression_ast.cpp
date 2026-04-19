@@ -2,27 +2,13 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.binary_expression_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.bin_utils;
-import spp.analyse.utils.type_utils;
-import spp.asts.fold_expression_ast;
-import spp.asts.function_prototype_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.identifier_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_runtime_member_access_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::BinaryExpressionAst::BinaryExpressionAst(
     decltype(lhs) &&lhs,
     decltype(tok_op) &&tok_op,
@@ -176,7 +162,7 @@ auto spp::asts::BinaryExpressionAst::stage_9_comptime_resolution(
 auto spp::asts::BinaryExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Forward the code generation to the mapped function.
     return m_mapped_func->stage_11_code_gen_2(sm, meta, ctx);
@@ -194,5 +180,3 @@ auto spp::asts::BinaryExpressionAst::infer_type(
     }
     return m_mapped_func->infer_type(sm, meta);
 }
-
-SPP_MOD_END

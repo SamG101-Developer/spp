@@ -2,31 +2,15 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.object_initializer_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
-import spp.asts.convention_ast;
-import spp.asts.class_attribute_ast;
-import spp.asts.class_implementation_ast;
-import spp.asts.class_prototype_ast;
-import spp.asts.identifier_ast;
-import spp.asts.object_initializer_argument_ast;
-import spp.asts.object_initializer_argument_group_ast;
-import spp.asts.object_initializer_argument_keyword_ast;
-import spp.asts.type_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_type;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
 import spp.utils.uid;
 import llvm;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::ObjectInitializerAst::ObjectInitializerAst(
     decltype(type) type,
     decltype(arg_group) &&arg_group) :
@@ -157,7 +141,7 @@ auto spp::asts::ObjectInitializerAst::stage_9_comptime_resolution(
 auto spp::asts::ObjectInitializerAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Create an empty struct based on the llvm type - will never be a borrow so always stack allocated, not a pointer.
     const auto uid = spp::utils::generate_uid(this);
@@ -223,5 +207,3 @@ auto spp::asts::ObjectInitializerAst::infer_type(
     // created into values during other ast's analysis. Types cannot be instantiated as borrows in user code.
     return sm->current_scope->get_type_symbol(type)->fq_name()->with_convention(ast_clone(type->get_convention()));
 }
-
-SPP_MOD_END

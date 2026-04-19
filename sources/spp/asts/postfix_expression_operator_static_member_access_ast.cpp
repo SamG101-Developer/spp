@@ -2,28 +2,15 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.postfix_expression_operator_static_member_access_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
-import spp.asts.expression_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_ast;
-import spp.asts.identifier_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
+import spp.lex;
 import spp.utils.strings;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOperatorStaticMemberAccessAst(
     decltype(tok_dbl_colon) &&tok_dbl_colon,
     decltype(name) &&name) :
@@ -128,7 +115,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
 
             // Todo: get the last part of postfix otherwise identifier value for string.
             const auto closest_match = spp::utils::strings::closest_match(
-                static_cast<std::string>(*meta->postfix_expression_lhs), alternatives);
+                meta->postfix_expression_lhs->to_string(), alternatives);
 
             raise<analyse::errors::SppIdentifierUnknownError>(
                 {sm->current_scope}, ERR_ARGS(*this, "namespace member", closest_match));
@@ -190,5 +177,3 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::expr_parts() con
     // Static member access does not have any expression parts.
     return {name.get()};
 }
-
-SPP_MOD_END

@@ -1,16 +1,11 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.parse.parser_base;
-import spp.lex.tokens;
+export module spp.parse:parser_base;
+import spp.lex;
+import spp.parse.errors;
 import spp.utils.error_formatter;
 import std;
-
-namespace spp::parse::errors {
-    SPP_EXP_CLS struct SppSyntaxError;
-    SPP_EXP_CLS template <typename T>
-    struct SyntacticErrorBuilder;
-}
 
 namespace spp::parse {
     SPP_EXP_CLS class ParserBase;

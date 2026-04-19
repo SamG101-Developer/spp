@@ -1,17 +1,11 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.use_statement_ast;
-import spp.asts.annotation_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.type_statement_ast;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.asts.utils;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::UseStatementAst::UseStatementAst(
     decltype(annotations) &&annotations,
     decltype(tok_use) &&tok_use,
@@ -63,7 +57,7 @@ spp::asts::UseStatementAst::operator std::string() const {
 
 
 auto spp::asts::UseStatementAst::stage_1_pre_process(
-    Ast *ctx)
+    AbstractAst *ctx)
     -> void {
     // Pre-process the annotations.
     Ast::stage_1_pre_process(ctx);
@@ -159,7 +153,7 @@ auto spp::asts::UseStatementAst::stage_9_comptime_resolution(
 auto spp::asts::UseStatementAst::stage_10_code_gen_1(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Code gen for the conversion AST.
     return m_conversion->stage_10_code_gen_1(sm, meta, ctx);
@@ -169,10 +163,8 @@ auto spp::asts::UseStatementAst::stage_10_code_gen_1(
 auto spp::asts::UseStatementAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Code gen for the conversion AST.
     return m_conversion->stage_11_code_gen_2(sm, meta, ctx);
 }
-
-SPP_MOD_END

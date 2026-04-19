@@ -2,25 +2,15 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.class_attribute_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
-import spp.asts.annotation_ast;
-import spp.asts.convention_ast;
-import spp.asts.identifier_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
+import spp.analyse.utils.scope_utils;
+import spp.asts.utils;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::ClassAttributeAst::ClassAttributeAst(
     decltype(annotations) &&annotations,
     decltype(name) &&name,
@@ -79,7 +69,7 @@ spp::asts::ClassAttributeAst::operator std::string() const {
 
 
 auto spp::asts::ClassAttributeAst::stage_1_pre_process(
-    Ast *ctx)
+    AbstractAst *ctx)
     -> void {
     // Pre-process the AST by calling the base class method and then processing annotations.
     Ast::stage_1_pre_process(ctx);
@@ -101,7 +91,7 @@ auto spp::asts::ClassAttributeAst::stage_2_gen_top_level_scopes(
     // Create a variable symbol for this attribute in the current scope (class scope).
     auto sym = std::make_unique<analyse::scopes::VariableSymbol>(
         name, type, sm->current_scope, false, false, visibility.first);
-    sm->current_scope->add_var_symbol(std::move(sym));
+    analyse::utils::scope_utils::add_var_symbol(sm->current_scope, std::move(sym));
 }
 
 
@@ -189,6 +179,3 @@ auto spp::asts::ClassAttributeAst::stage_9_comptime_resolution(
         a->stage_9_comptime_resolution(sm, meta);
     }
 }
-
-
-SPP_MOD_END

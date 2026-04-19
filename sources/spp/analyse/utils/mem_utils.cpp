@@ -3,23 +3,10 @@ module;
 #include <opex/macros.hpp>
 
 module spp.analyse.utils.mem_utils;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.mem_info_utils;
-import spp.asts.array_literal_explicit_elements_ast;
-import spp.asts.array_literal_repeated_element_ast;
-import spp.asts.ast;
-import spp.asts.case_expression_branch_ast;
-import spp.asts.case_pattern_variant_ast;
-import spp.asts.case_pattern_variant_else_ast;
-import spp.asts.expression_ast;
-import spp.asts.identifier_ast;
-import spp.asts.inner_scope_expression_ast;
-import spp.asts.tuple_literal_ast;
-import spp.asts.utils.ast_utils;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts;
+import spp.asts.utils;
 import genex;
 import opex.cast;
 
@@ -28,8 +15,8 @@ auto spp::analyse::utils::mem_utils::memory_region_overlap(
     asts::Ast const &ast_1,
     asts::Ast const &ast_2)
     -> bool {
-    const auto s1 = static_cast<std::string>(ast_1);
-    const auto s2 = static_cast<std::string>(ast_2);
+    const auto s1 = ast_1.to_string();
+    const auto s2 = ast_2.to_string();
     return s1.starts_with(s2) or s2.starts_with(s1);
 }
 
@@ -37,8 +24,8 @@ auto spp::analyse::utils::mem_utils::memory_region_overlap(
 auto spp::analyse::utils::mem_utils::memory_region_right_overlap(
     asts::Ast const &ast_1,
     asts::Ast const &ast_2) -> bool {
-    const auto s1 = static_cast<std::string>(ast_1);
-    const auto s2 = static_cast<std::string>(ast_2);
+    const auto s1 = ast_1.to_string();
+    const auto s2 = ast_2.to_string();
     return s2.starts_with(s1);
 }
 

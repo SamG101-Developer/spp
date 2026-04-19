@@ -2,26 +2,13 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.unary_expression_operator_async_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_ast;
-import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.generate.common_types;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_coros;
-import spp.codegen.llvm_type;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
 import spp.utils.uid;
 
 
-SPP_MOD_BEGIN
 spp::asts::UnaryExpressionOperatorAsyncAst::UnaryExpressionOperatorAsyncAst(
     decltype(tok_async) &&tok_async) :
     tok_async(std::move(tok_async)) {
@@ -75,7 +62,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_7_analyse_semantics(
 auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // We need a "Fut[T]" object to work with immediately.
     const auto uid = spp::utils::generate_uid(this);
@@ -143,9 +130,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Wrap the function call inside a "Future" type.
     auto inner_type = meta->unary_expression_rhs->infer_type(sm, meta);
-    auto future_type = generate::common_types::future_type(tok_async->pos_start(), std::move(inner_type));
+    auto future_type = common_types::future_type(tok_async->pos_start(), std::move(inner_type));
     future_type->stage_7_analyse_semantics(sm, meta);
     return future_type;
 }
-
-SPP_MOD_END

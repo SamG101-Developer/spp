@@ -1,35 +1,13 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.type_identifier_ast;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.func_utils;
-import spp.analyse.utils.type_utils;
-import spp.asts.class_prototype_ast;
-import spp.asts.generic_argument_comp_ast;
-import spp.asts.generic_argument_comp_keyword_ast;
-import spp.asts.generic_argument_comp_positional_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_ast;
-import spp.asts.generic_argument_type_keyword_ast;
-import spp.asts.generic_argument_type_positional_ast;
-import spp.asts.generic_parameter_ast;
-import spp.asts.generic_parameter_group_ast;
-import spp.asts.identifier_ast;
-import spp.asts.token_ast;
-import spp.asts.type_statement_ast;
-import spp.asts.type_unary_expression_ast;
-import spp.asts.type_unary_expression_operator_ast;
-import spp.asts.type_unary_expression_operator_borrow_ast;
-import spp.asts.generate.common_types_precompiled;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.analyse.scopes;
+import spp.asts.utils;
 import absl;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::TypeIdentifierAst::TypeIdentifierAst(
     const std::size_t pos,
     decltype(name) &&name,
@@ -296,7 +274,7 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     // Name all the generic arguments.
     const auto is_tuple = ( {
         const auto as_unary = std::dynamic_pointer_cast<TypeUnaryExpressionAst>(type_sym->fq_name()->without_generics());
-        as_unary != nullptr and *as_unary == *generate::common_types_precompiled::TUP->to<TypeUnaryExpressionAst>();
+        as_unary != nullptr and *as_unary == *common_types_precompiled::TUP->to<TypeUnaryExpressionAst>();
     });
 
     analyse::utils::func_utils::name_gn_args(
@@ -330,9 +308,9 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     generic_arg_group->stage_7_analyse_semantics(sm, meta);
 
     // For variant types, collapse any duplicate generic arguments.
-    // if (analyse::utils::type_utils::symbolic_eq(*without_generics(), *generate::common_types_precompiled::VAR, *scope, *sm->current_scope, false)) {
+    // if (analyse::utils::type_utils::symbolic_eq(*without_generics(), *common_types_precompiled::VAR, *scope, *sm->current_scope, false)) {
     //     auto inner_types = analyse::utils::type_utils::deduplicate_variant_inner_types(*this, *sm->current_scope);
-    //     auto inner_types_as_tup = generate::common_types::tuple_type(pos_start(), std::move(inner_types));
+    //     auto inner_types_as_tup = common_types::tuple_type(pos_start(), std::move(inner_types));
     //     meta->save();
     //     meta->type_analysis_type_scope = type_scope;
     //     inner_types_as_tup->stage_7_analyse_semantics(sm, meta);
@@ -366,5 +344,3 @@ auto spp::asts::TypeIdentifierAst::ankerl_hash() const
     // Hash based on the name only.
     return absl::Hash<std::string>()(name);
 }
-
-SPP_MOD_END

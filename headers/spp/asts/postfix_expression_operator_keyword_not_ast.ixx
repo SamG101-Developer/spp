@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.postfix_expression_operator_keyword_not_ast;
-import spp.asts.postfix_expression_operator_ast;
+export module spp.asts:postfix_expression_operator_keyword_not_ast;
+import :postfix_expression_operator_ast;
 import std;
 
 namespace spp::asts {

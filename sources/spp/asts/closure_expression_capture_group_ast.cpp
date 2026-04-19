@@ -1,32 +1,15 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.closure_expression_capture_group_ast;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.mem_utils;
-import spp.asts.closure_expression_ast;
-import spp.asts.closure_expression_capture_ast;
-import spp.asts.convention_ast;
-import spp.asts.expression_ast;
-import spp.asts.identifier_ast;
-import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.local_variable_single_identifier_alias_ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.object_initializer_ast;
-import spp.asts.object_initializer_argument_group_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_type;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
+import spp.asts.utils;
+import spp.lex;
 import spp.utils.uid;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::ClosureExpressionCaptureGroupAst::ClosureExpressionCaptureGroupAst(
     decltype(tok_caps) &&tok_caps,
     decltype(captures) &&captures) :
@@ -88,7 +71,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_7_analyse_semantics(
         let->stage_7_analyse_semantics(sm, meta);
 
         // Apply the borrow to the symbol.
-        const auto sym = sm->current_scope->get_var_symbol(ast_clone(cap->val->to<IdentifierAst>()));
+        const auto sym = analyse::utils::scope_utils::get_var_symbol(sm->current_scope, ast_clone(cap->val->to<IdentifierAst>()));
         const auto conv = cap->conv.get();
         sym->memory_info->ast_borrowed = {conv, sm->current_scope};
         sym->type = sym->type->with_convention(ast_clone(cap->conv));
@@ -128,7 +111,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_8_check_memory(
 auto spp::asts::ClosureExpressionCaptureGroupAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Build the variable bindings from the environment object. This allows the body to remain unchanged as the
     // variables get loaded from the environment struct.
@@ -166,5 +149,3 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_11_code_gen_2(
     }
     return nullptr;
 }
-
-SPP_MOD_END

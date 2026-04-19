@@ -2,20 +2,10 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.mem_utils;
-import spp.asts.meta.compiler_meta_data;
+import spp.analyse.scopes;
+import spp.analyse.scopes.symbols;
+import spp.asts;
 import std;
-
-namespace spp::asts {
-    SPP_EXP_CLS struct Ast;
-    SPP_EXP_CLS struct CaseExpressionBranchAst;
-    SPP_EXP_CLS struct ExpressionAst;
-}
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
-    SPP_EXP_CLS class ScopeManager;
-    SPP_EXP_CLS class VariableSymbol;
-}
 
 
 namespace spp::analyse::utils::mem_utils {

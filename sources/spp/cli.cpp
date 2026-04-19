@@ -8,12 +8,10 @@ module;
     bp::v1::std_out > bp::v1::null
 
 module spp.cli;
-import spp.analyse.scopes.scope_manager;
-import spp.asts.module_prototype_ast;
-import spp.compiler.compiler;
-import spp.compiler.compiler_boot;
-import spp.compiler.module_tree;
-import spp.lex.tokens;
+import spp.analyse.scopes;
+import spp.asts;
+import spp.compiler;
+import spp.lex;
 import spp.utils.files;
 
 import cli11;
@@ -99,10 +97,10 @@ auto spp::cli::handle_init()
     -> void {
     // Check if the current directory is empty or not.
     const auto cwd = std::filesystem::current_path();
-    if (not std::filesystem::is_empty(cwd)) {
-        std::cerr << "Error: The current directory is not empty. Please run this command in an empty directory.\n";
-        return;
-    }
+    // if (not std::filesystem::is_empty(cwd)) {
+    //     std::cerr << "Error: The current directory is not empty. Please run this command in an empty directory.\n";
+    //     return;
+    // }
 
     // Create the directory structure (folders).
     std::filesystem::create_directory(cwd / OUT_FOLDER);

@@ -1,18 +1,11 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.case_pattern_variant_destructure_skip_multiple_arguments_ast;
-import spp.asts.ast;
-import spp.asts.case_pattern_variant_ast;
-import spp.asts.case_pattern_variant_single_identifier_ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
-import spp.asts.token_ast;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+module spp.asts;
+import spp.asts.utils;
+import spp.lex;
 
 
-SPP_MOD_BEGIN
 spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::CasePatternVariantDestructureSkipMultipleArgumentsAst(
     decltype(tok_ellipsis) &&tok_ellipsis,
     std::unique_ptr<CasePatternVariantAst> &&binding) :
@@ -62,5 +55,3 @@ auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::convert_t
     var->mark_from_case_pattern();
     return var;
 }
-
-SPP_MOD_END

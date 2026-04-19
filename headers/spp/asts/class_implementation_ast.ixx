@@ -1,9 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.class_implementation_ast;
-import spp.asts.inner_scope_ast;
-import spp.codegen.llvm_ctx;
+export module spp.asts:class_implementation_ast;
+import :inner_scope_ast;
 import llvm;
 import std;
 
@@ -22,7 +21,7 @@ SPP_EXP_CLS struct spp::asts::ClassImplementationAst final : InnerScopeAst<std::
 
     static auto new_empty() -> std::unique_ptr<ClassImplementationAst>;
 
-    auto stage_1_pre_process(Ast *ctx) -> void override;
+    auto stage_1_pre_process(AbstractAst *ctx) -> void override;
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *) -> void override;
 
@@ -40,5 +39,5 @@ SPP_EXP_CLS struct spp::asts::ClassImplementationAst final : InnerScopeAst<std::
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };

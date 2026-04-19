@@ -3,40 +3,16 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.case_expression_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope_block_name;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
-import spp.asts.ast;
-import spp.asts.boolean_literal_ast;
-import spp.asts.case_expression_branch_ast;
-import spp.asts.case_pattern_variant_ast;
-import spp.asts.case_pattern_variant_else_ast;
-import spp.asts.case_pattern_variant_expression_ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.identifier_ast;
-import spp.asts.inner_scope_expression_ast;
-import spp.asts.pattern_guard_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_deref_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.generate.common_types;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_type;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
+import spp.lex;
 import spp.utils.uid;
 import genex;
 import opex.cast;
 
 
-SPP_MOD_BEGIN
 spp::asts::CaseExpressionAst::CaseExpressionAst(
     decltype(tok_case) &&tok_case,
     decltype(cond) &&cond,
@@ -205,7 +181,7 @@ auto spp::asts::CaseExpressionAst::stage_9_comptime_resolution(
 auto spp::asts::CaseExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Scope shift.
     sm->move_to_next_scope();
@@ -263,7 +239,7 @@ auto spp::asts::CaseExpressionAst::infer_type(
 
     // Return the branches' return type. If there are any branches, otherwise Void.
     return branches_type_info.empty()
-               ? generate::common_types::void_type(pos_start())
+               ? common_types::void_type(pos_start())
                : std::get<1>(master_branch_type_info);
 }
 
@@ -274,5 +250,3 @@ auto spp::asts::CaseExpressionAst::terminates() const
     return not genex::any_of(
         branches, [](auto const &branch) { return not branch->body->terminates(); });
 }
-
-SPP_MOD_END

@@ -1,16 +1,15 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.type_unary_expression_operator_borrow_ast;
-import spp.asts.type_unary_expression_operator_ast;
-
+export module spp.asts:type_unary_expression_operator_borrow_ast;
+import :type_unary_expression_operator_ast;
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct TypeUnaryExpressionOperatorBorrowAst;
     SPP_EXP_CLS struct ConventionAst;
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct TypeIdentifierAst;
-    SPP_EXP_CLS struct TypeUnaryExpressionOperatorBorrowAst;
 }
 
 
@@ -20,8 +19,6 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeU
      * mutably.
      */
     std::unique_ptr<ConventionAst> conv;
-
-    auto _spp_key_function() const -> void override;
 
     /**
     * Construct the TypeUnaryOperatorBorrowAst with the arguments matching the members.
@@ -46,8 +43,3 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeU
 
     SPP_ATTR_NODISCARD auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::_spp_key_function() const -> void {}
-SPP_MOD_END

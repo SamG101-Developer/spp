@@ -1,15 +1,14 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.tuple_literal_ast;
-import spp.asts.literal_ast;
-import spp.asts.token_ast;
-import spp.codegen.llvm_ctx;
+export module spp.asts:tuple_literal_ast;
+import :literal_ast;
 import llvm;
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct TupleLiteralAst;
+    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
@@ -29,8 +28,6 @@ SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
      * The right parenthesis token that represents the end of the tuple literal.
      */
     std::unique_ptr<TokenAst> tok_r;
-
-    auto _spp_key_function() const -> void override;
 
     /**
      * Construct the TupleLiteralAst with the arguments matching the members.
@@ -57,12 +54,7 @@ SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::TupleLiteralAst::_spp_key_function() const -> void {}
-SPP_MOD_END

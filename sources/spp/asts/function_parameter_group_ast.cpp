@@ -2,24 +2,14 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.function_parameter_group_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope_manager;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
 import spp.analyse.utils.order_utils;
-import spp.asts.function_parameter_ast;
-import spp.asts.function_parameter_optional_ast;
-import spp.asts.function_parameter_required_ast;
-import spp.asts.function_parameter_self_ast;
-import spp.asts.function_parameter_variadic_ast;
-import spp.asts.identifier_ast;
-import spp.asts.token_ast;
-import spp.asts.mixins.orderable_ast;
-import spp.asts.utils.ast_utils;
+import spp.asts.utils;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::FunctionParameterGroupAst::FunctionParameterGroupAst(
     decltype(tok_l) &&tok_l,
     decltype(params) &&params,
@@ -204,7 +194,7 @@ auto spp::asts::FunctionParameterGroupAst::stage_8_check_memory(
 auto spp::asts::FunctionParameterGroupAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Code generate each parameter.
     for (auto &&param : params) {
@@ -212,5 +202,3 @@ auto spp::asts::FunctionParameterGroupAst::stage_11_code_gen_2(
     }
     return nullptr;
 }
-
-SPP_MOD_END

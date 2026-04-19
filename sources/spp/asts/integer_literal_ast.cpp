@@ -2,25 +2,17 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.integer_literal_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.asts.token_ast;
-import spp.asts.generate.common_types;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_ctx;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
 import spp.codegen.llvm_type;
-import spp.lex.tokens;
+import spp.lex;
 import spp.utils.strings;
 import llvm;
 import mppp;
 
 
-SPP_MOD_BEGIN
 const auto INTEGER_TYPE_MIN_MAX = std::map<std::string, std::pair<mppp::BigInt, mppp::BigInt>>{
     {"s8", {mppp::BigInt("-128"), mppp::BigInt("127")}},
     {"s16", {mppp::BigInt("-32768"), mppp::BigInt("32767")}},
@@ -102,6 +94,15 @@ spp::asts::IntegerLiteralAst::operator std::string() const {
 }
 
 
+template <typename T> requires std::integral<T>
+auto spp::asts::IntegerLiteralAst::cpp_value() const -> T {
+    const auto raw_str = val->to_string();
+    const auto signed_str = tok_sign != nullptr ? "-" + raw_str : raw_str;
+    if constexpr (std::is_unsigned_v<T>) { return static_cast<T>(std::stoull(signed_str)); }
+    else { return static_cast<T>(std::stoll(signed_str)); }
+}
+
+
 auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *)
@@ -133,7 +134,7 @@ auto spp::asts::IntegerLiteralAst::stage_9_comptime_resolution(
 auto spp::asts::IntegerLiteralAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Get the type of the integer literal.
     const auto type_ast = infer_type(sm, meta);
@@ -154,49 +155,49 @@ auto spp::asts::IntegerLiteralAst::infer_type(
     // Map the type string literal to the correct SPP type.
     auto spp_type = std::shared_ptr<TypeAst>(nullptr);
     if (type.empty()) {
-        spp_type = generate::common_types::s32(pos_start());
+        spp_type = common_types::s32(pos_start());
     }
     else if (type == "s8") {
-        spp_type = generate::common_types::s8(pos_start());
+        spp_type = common_types::s8(pos_start());
     }
     else if (type == "s16") {
-        spp_type = generate::common_types::s16(pos_start());
+        spp_type = common_types::s16(pos_start());
     }
     else if (type == "s32") {
-        spp_type = generate::common_types::s32(pos_start());
+        spp_type = common_types::s32(pos_start());
     }
     else if (type == "s64") {
-        spp_type = generate::common_types::s64(pos_start());
+        spp_type = common_types::s64(pos_start());
     }
     else if (type == "s128") {
-        spp_type = generate::common_types::s128(pos_start());
+        spp_type = common_types::s128(pos_start());
     }
     else if (type == "s256") {
-        spp_type = generate::common_types::s256(pos_start());
+        spp_type = common_types::s256(pos_start());
     }
     else if (type == "sz") {
-        spp_type = generate::common_types::ssize(pos_start());
+        spp_type = common_types::ssize(pos_start());
     }
     else if (type == "u8") {
-        spp_type = generate::common_types::u8(pos_start());
+        spp_type = common_types::u8(pos_start());
     }
     else if (type == "u16") {
-        spp_type = generate::common_types::u16(pos_start());
+        spp_type = common_types::u16(pos_start());
     }
     else if (type == "u32") {
-        spp_type = generate::common_types::u32(pos_start());
+        spp_type = common_types::u32(pos_start());
     }
     else if (type == "u64") {
-        spp_type = generate::common_types::u64(pos_start());
+        spp_type = common_types::u64(pos_start());
     }
     else if (type == "u128") {
-        spp_type = generate::common_types::u128(pos_start());
+        spp_type = common_types::u128(pos_start());
     }
     else if (type == "u256") {
-        spp_type = generate::common_types::u256(pos_start());
+        spp_type = common_types::u256(pos_start());
     }
     else if (type == "uz") {
-        spp_type = generate::common_types::usize(pos_start());
+        spp_type = common_types::usize(pos_start());
     }
     else {
         raise<analyse::errors::SppInternalCompilerError>(
@@ -207,5 +208,3 @@ auto spp::asts::IntegerLiteralAst::infer_type(
     const auto sym = sm->current_scope->get_type_symbol(spp_type);
     return sym->fq_name();
 }
-
-SPP_MOD_END

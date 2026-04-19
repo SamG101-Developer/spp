@@ -1,16 +1,11 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.case_pattern_variant_else_ast;
-import spp.lex.tokens;
-import spp.asts.boolean_literal_ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.token_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.asts.utils;
+import spp.lex;
 
 
-SPP_MOD_BEGIN
 spp::asts::CasePatternVariantElseAst::CasePatternVariantElseAst(
     decltype(tok_else) &&tok_else) :
     tok_else(std::move(tok_else)) {
@@ -59,7 +54,7 @@ auto spp::asts::CasePatternVariantElseAst::stage_9_comptime_resolution(
 auto spp::asts::CasePatternVariantElseAst::stage_11_code_gen_2(
     ScopeManager *,
     CompilerMetaData *,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // The "else" pattern always matches, so return "true".
     return llvm::ConstantInt::getTrue(*ctx->context);
@@ -76,6 +71,3 @@ auto spp::asts::CasePatternVariantElseAst::marked_for_iter_loop_exit() const
     -> bool {
     return m_for_iter_loop_exit;
 }
-
-
-SPP_MOD_END

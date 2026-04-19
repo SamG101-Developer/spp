@@ -1,7 +1,7 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.mixins.temp_type_ast;
+export module spp.asts:temp_type_ast;
 
 import std;
 

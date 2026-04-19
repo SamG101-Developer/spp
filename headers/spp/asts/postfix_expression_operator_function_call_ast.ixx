@@ -1,17 +1,14 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.postfix_expression_operator_ast;
+export module spp.asts:postfix_expression_operator_function_call_ast;
+import :postfix_expression_operator_ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
-}
-
 namespace spp::asts {
+    SPP_EXP_CLS struct PostfixExpressionOperatorFunctionCallAst;
     SPP_EXP_CLS struct FunctionCallArgumentAst;
     SPP_EXP_CLS struct FunctionCallArgumentGroupAst;
     SPP_EXP_CLS struct FunctionCallArgumentPositionalAst;
@@ -22,7 +19,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct GenericArgumentGroupAst;
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct PostfixExpressionAst;
-    SPP_EXP_CLS struct PostfixExpressionOperatorFunctionCallAst;
     SPP_EXP_CLS struct TypeAst;
     SPP_EXP_CLS struct UnaryExpressionOperatorAsyncAst;
 }
@@ -88,7 +84,7 @@ public:
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 

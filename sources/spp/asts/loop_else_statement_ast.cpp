@@ -1,16 +1,11 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.loop_else_statement_ast;
-import spp.analyse.scopes.scope_block_name;
-import spp.analyse.scopes.scope_manager;
-import spp.asts.inner_scope_expression_ast;
-import spp.asts.statement_ast;
-import spp.asts.token_ast;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.analyse.scopes;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::LoopElseStatementAst::LoopElseStatementAst(
     decltype(tok_else) &&tok_else,
     decltype(body) &&body) :
@@ -77,7 +72,7 @@ auto spp::asts::LoopElseStatementAst::stage_8_check_memory(
 auto spp::asts::LoopElseStatementAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Generate code for the body.
     sm->move_to_next_scope();
@@ -94,5 +89,3 @@ auto spp::asts::LoopElseStatementAst::infer_type(
     // The type of an else statement is the type of its body.
     return body->infer_type(sm, meta);
 }
-
-SPP_MOD_END

@@ -1,15 +1,14 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.type_postfix_expression_operator_nested_type_ast;
-import spp.asts.type_postfix_expression_operator_ast;
-import spp.asts.token_ast;
-
+export module spp.asts:type_postfix_expression_operator_nested_type_ast;
+import :type_postfix_expression_operator_ast;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct TypePostfixExpressionOperatorNestedTypeAst;
+    SPP_EXP_CLS struct IdentifierAst;
+    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
@@ -24,8 +23,6 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final :
      * The nested type identifier. This is the type that is being accessed within the outer type.
      */
     std::shared_ptr<TypeIdentifierAst> name;
-
-    auto _spp_key_function() const -> void override;
 
     /**
      * Construct the TypePostfixExpressionOperatorNestedTypeAst with the arguments matching the members.
@@ -52,8 +49,3 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final :
 
     SPP_ATTR_NODISCARD auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::_spp_key_function() const -> void {}
-SPP_MOD_END

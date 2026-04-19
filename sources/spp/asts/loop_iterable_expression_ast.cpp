@@ -2,43 +2,14 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.loop_iterable_expression_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope_block_name;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.type_utils;
-import spp.asts.boolean_literal_ast;
-import spp.asts.case_expression_ast;
-import spp.asts.case_expression_branch_ast;
-import spp.asts.case_pattern_variant_ast;
-import spp.asts.case_pattern_variant_destructure_object_ast;
-import spp.asts.case_pattern_variant_destructure_skip_multiple_arguments_ast;
-import spp.asts.case_pattern_variant_else_ast;
-import spp.asts.fold_expression_ast;
-import spp.asts.function_call_argument_group_ast;
-import spp.asts.inner_scope_expression_ast;
-import spp.asts.identifier_ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.local_variable_ast;
-import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.local_variable_single_identifier_alias_ast;
-import spp.asts.loop_else_statement_ast;
-import spp.asts.loop_control_flow_statement_ast;
-import spp.asts.loop_conditional_expression_ast;
-import spp.asts.pattern_guard_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_keyword_res_ast;
-import spp.asts.token_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
+import spp.lex;
 import spp.utils.uid;
 
 
-SPP_MOD_BEGIN
 spp::asts::LoopIterableExpressionAst::LoopIterableExpressionAst(
     decltype(tok_loop) &&tok_loop,
     decltype(var) &&var,
@@ -212,11 +183,9 @@ auto spp::asts::LoopIterableExpressionAst::stage_8_check_memory(
 auto spp::asts::LoopIterableExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Generate the code for the transformed loop.
     m_transform_let->stage_11_code_gen_2(sm, meta, ctx);
     return m_transform_loop->stage_11_code_gen_2(sm, meta, ctx);
 }
-
-SPP_MOD_END

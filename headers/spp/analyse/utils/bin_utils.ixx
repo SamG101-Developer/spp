@@ -2,24 +2,10 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.bin_utils;
-import spp.lex.tokens;
+import spp.analyse.scopes;
+import spp.asts;
+import spp.lex;
 import std;
-
-namespace spp::asts {
-    SPP_EXP_CLS struct BinaryExpressionAst;
-    SPP_EXP_CLS struct CaseExpressionAst;
-    SPP_EXP_CLS struct IsExpressionAst;
-    SPP_EXP_CLS struct PostfixExpressionAst;
-}
-
-namespace spp::asts::meta {
-    SPP_EXP_CLS struct CompilerMetaData;
-}
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class ScopeManager;
-    SPP_EXP_CLS struct TypeSymbol;
-}
 
 
 namespace spp::analyse::utils::bin_utils {

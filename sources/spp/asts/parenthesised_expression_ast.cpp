@@ -2,17 +2,12 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.parenthesised_expression_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.mem_utils;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::ParenthesisedExpressionAst::ParenthesisedExpressionAst(
     decltype(tok_open_paren) &&tok_open_paren,
     decltype(expr) &&expr,
@@ -90,7 +85,7 @@ auto spp::asts::ParenthesisedExpressionAst::stage_9_comptime_resolution(
 auto spp::asts::ParenthesisedExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Generate the inner expression.
     return expr->stage_11_code_gen_2(sm, meta, ctx);
@@ -104,5 +99,3 @@ auto spp::asts::ParenthesisedExpressionAst::infer_type(
     // Get the inner expression's type.
     return expr->infer_type(sm, meta);
 }
-
-SPP_MOD_END

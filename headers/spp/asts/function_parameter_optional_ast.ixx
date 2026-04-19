@@ -1,13 +1,13 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.function_parameter_optional_ast;
-import spp.asts.function_parameter_ast;
+export module spp.asts:function_parameter_optional_ast;
+import :function_parameter_ast;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct FunctionParameterOptionalAst;
+    SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct TokenAst;
 }
 

@@ -2,12 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.utils.error_formatter;
-import spp.lex.tokens;
+import spp.lex;
 import std;
-
-namespace spp::asts {
-    SPP_EXP_CLS struct Ast;
-}
 
 namespace spp::utils::errors {
     SPP_EXP_CLS class ErrorFormatter;
@@ -27,7 +23,7 @@ public:
 
     auto error_raw_pow_minimal(std::size_t ast_start_pos, std::size_t ast_size, std::string &&tag_message) -> std::string;
 
-    auto error_ast(asts::Ast const *ast, std::string &&message, std::string &&tag_message) -> std::string;
+    auto error_ast(void const *ast, std::string &&message, std::string &&tag_message) -> std::string;
 
-    auto error_ast_minimal(asts::Ast const *ast, std::string &&tag_message) -> std::string;
+    auto error_ast_minimal(void const *ast, std::string &&tag_message) -> std::string;
 };

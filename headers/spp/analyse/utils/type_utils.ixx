@@ -2,33 +2,11 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.type_utils;
-import spp.asts.meta.compiler_meta_data;
+import spp.analyse.scopes;
+import spp.analyse.scopes.symbols;
+import spp.asts;
 import ankerl;
 import std;
-
-namespace spp::asts {
-    SPP_EXP_CLS struct Ast;
-    SPP_EXP_CLS struct CaseExpressionBranchAst;
-    SPP_EXP_CLS struct ClassAttributeAst;
-    SPP_EXP_CLS struct ClassPrototypeAst;
-    SPP_EXP_CLS struct ConventionAst;
-    SPP_EXP_CLS struct ExpressionAst;
-    SPP_EXP_CLS struct GenericArgumentAst;
-    SPP_EXP_CLS struct GenericArgumentGroupAst;
-    SPP_EXP_CLS struct GenericParameterAst;
-    SPP_EXP_CLS struct GenericParameterGroupAst;
-    SPP_EXP_CLS struct GenericParameterTypeAst;
-    SPP_EXP_CLS struct TypeAst;
-    SPP_EXP_CLS struct TypeIdentifierAst;
-    SPP_EXP_CLS struct TypeStatementAst;
-}
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
-    SPP_EXP_CLS class ScopeManager;
-    SPP_EXP_CLS struct Symbol;
-    SPP_EXP_CLS struct VariableSymbol;
-}
 
 
 namespace spp::analyse::utils::type_utils {

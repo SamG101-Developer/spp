@@ -1,31 +1,21 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.analyse.scopes.symbol_table;
+export module spp.analyse.scopes:symbol_table;
+import spp.abstract;
 import ankerl;
 import std;
 
 
 namespace spp::analyse::scopes {
-    SPP_EXP_CLS template <typename I, typename S>
-    class IndividualSymbolTable;
-
+    SPP_EXP_CLS class IndividualSymbolTable;
     SPP_EXP_CLS class SymbolTable;
-    SPP_EXP_CLS struct NamespaceSymbol;
-    SPP_EXP_CLS struct TypeSymbol;
-    SPP_EXP_CLS struct VariableSymbol;
-}
-
-namespace spp::asts {
-    SPP_EXP_CLS struct IdentifierAst;
-    SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
 
-SPP_EXP_CLS template <typename I, typename S>
-class spp::analyse::scopes::IndividualSymbolTable {
+SPP_EXP_CLS class spp::analyse::scopes::IndividualSymbolTable {
 private:
-    ankerl::unordered_dense::map<std::shared_ptr<I>, std::shared_ptr<S>, ankerl::ptr_hash<std::shared_ptr<I>>, ankerl::ptr_eq<std::shared_ptr<I>>> m_table;
+    ankerl::unordered_dense::map<std::string, std::shared_ptr<AbstractSymbol>> m_table;
 
 public:
     IndividualSymbolTable();
@@ -45,17 +35,15 @@ public:
      */
     auto operator=(IndividualSymbolTable const &that) -> IndividualSymbolTable&;
 
-    SPP_ATTR_HOT
-    auto add(std::shared_ptr<I> const &sym_name, std::shared_ptr<S> const &sym) -> void;
+    SPP_ATTR_HOT auto add(std::string const &sym_name, std::shared_ptr<AbstractSymbol> const &sym) -> void;
 
-    auto rem(std::shared_ptr<I> const &sym_name) -> void;
+    auto rem(std::string const &sym_name) -> void;
 
-    SPP_ATTR_HOT
-    auto get(std::shared_ptr<I> const &sym_name) const -> std::shared_ptr<S>;
+    SPP_ATTR_NODISCARD SPP_ATTR_HOT auto get(std::string const &sym_name) const -> AbstractSymbol*;
 
-    auto has(std::shared_ptr<I> const &sym_name) const -> bool;
+    SPP_ATTR_NODISCARD auto has(std::string const &sym_name) const -> bool;
 
-    auto all() const -> std::vector<std::shared_ptr<S>>;
+    SPP_ATTR_NODISCARD auto all() const -> std::vector<AbstractSymbol*>;
 };
 
 
@@ -64,7 +52,7 @@ public:
     SymbolTable();
 
     /**
-     * Light copy
+     * Shallow copy
      * @param that
      */
     SymbolTable(SymbolTable const &that);
@@ -78,9 +66,7 @@ public:
      */
     auto operator=(SymbolTable const &that) -> SymbolTable&;
 
-    IndividualSymbolTable<asts::IdentifierAst, NamespaceSymbol> ns_tbl;
-
-    IndividualSymbolTable<asts::TypeIdentifierAst, TypeSymbol> type_tbl;
-
-    IndividualSymbolTable<asts::IdentifierAst, VariableSymbol> var_tbl;
+    IndividualSymbolTable ns_tbl;
+    IndividualSymbolTable type_tbl;
+    IndividualSymbolTable var_tbl;
 };

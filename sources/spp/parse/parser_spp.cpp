@@ -1,23 +1,18 @@
 module;
-#include <spp/macros.hpp>
 #include <spp/parse/macros.hpp>
 
 #define NO_ANNOTATIONS std::vector<std::unique_ptr<spp::asts::AnnotationAst>>()
 
 #define NO_TOKENS std::vector<std::unique_ptr<spp::asts::TokenAst>>()
 
-module spp.parse.parser_spp;
-import spp.asts._all;
-import spp.asts.generate.common_types;
-import spp.asts.utils.ast_utils;
-import spp.parse.errors.parser_error;
-import spp.parse.errors.parser_error_builder;
+module spp.parse;
+import spp.asts.utils;
+import spp.parse.errors;
 import spp.utils.algorithms;
 import genex;
 import std;
 
 
-SPP_MOD_BEGIN
 const auto IDENTIFIER_TOKENS = std::vector{
     spp::lex::RawTokenType::LX_CHARACTER,
     spp::lex::RawTokenType::LX_DIGIT,
@@ -1888,7 +1883,7 @@ auto spp::parse::ParserSpp::parse_type_parenthesised_expression()
 auto spp::parse::ParserSpp::parse_type_never()
     -> std::unique_ptr<asts::TypeAst> {
     PARSE_ONCE(p1, parse_token_exclamation_mark);
-    return asts::ast_clone(asts::generate::common_types::never_type(p1->pos_start()));
+    return asts::ast_clone(asts::common_types::never_type(p1->pos_start()));
 }
 
 
@@ -3133,5 +3128,3 @@ auto spp::parse::ParserSpp::m_store_error(const std::size_t pos, std::string &&e
     }
     return false;
 }
-
-SPP_MOD_END

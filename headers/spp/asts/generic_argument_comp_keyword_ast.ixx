@@ -1,18 +1,13 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.generic_argument_comp_keyword_ast;
-import spp.asts.generic_argument_comp_ast;
-import spp.asts.token_ast;
-
+export module spp.asts:generic_argument_comp_keyword_ast;
+import :generic_argument_comp_ast;
 import std;
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS struct VariableSymbol;
-}
 
 namespace spp::asts {
     SPP_EXP_CLS struct GenericArgumentCompKeywordAst;
+    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
@@ -33,8 +28,6 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgum
      * argument from the expression that is being passed as the argument's value.
      */
     std::unique_ptr<TokenAst> tok_assign;
-
-    auto _spp_key_function() const -> void override;
 
     /**
      * Construct the GenericArgumentCompKeywordAst with the arguments matching the members.
@@ -59,14 +52,9 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgum
 
     SPP_AST_KEY_FUNCTIONS;
 
-    static auto from_symbol(analyse::scopes::VariableSymbol const &sym) -> std::unique_ptr<GenericArgumentCompKeywordAst>;
+    // static auto from_symbol(analyse::scopes::VariableSymbol const &sym) -> std::unique_ptr<GenericArgumentCompKeywordAst>;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::GenericArgumentCompKeywordAst::_spp_key_function() const -> void {}
-SPP_MOD_END

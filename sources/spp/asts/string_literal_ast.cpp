@@ -1,19 +1,13 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.string_literal_ast;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.asts.ast;
-import spp.asts.token_ast;
-import spp.asts.generate.common_types;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.analyse.scopes;
+import spp.asts.utils;
 import llvm;
+import :common_types;
 
 
-SPP_MOD_BEGIN
 spp::asts::StringLiteralAst::StringLiteralAst(
     decltype(val) &&val) :
     LiteralAst(),
@@ -79,7 +73,7 @@ auto spp::asts::StringLiteralAst::stage_9_comptime_resolution(
 auto spp::asts::StringLiteralAst::stage_11_code_gen_2(
     ScopeManager *,
     CompilerMetaData *,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Create a global string for the string literal.
     const auto bytes = val->token_data;
@@ -93,7 +87,5 @@ auto spp::asts::StringLiteralAst::infer_type(
     CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // The type of a string literal is always a string type.
-    return generate::common_types::string_view_type(val->pos_start());
+    return common_types::string_view_type(val->pos_start());
 }
-
-SPP_MOD_END

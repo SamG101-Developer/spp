@@ -1,10 +1,6 @@
-module;
-#include <spp/macros.hpp>
-
-module spp.asts.type_postfix_expression_operator_ast;
+module spp.asts;
 
 
-SPP_MOD_BEGIN
 auto spp::asts::TypePostfixExpressionOperatorAst::operator<=>(
     TypePostfixExpressionOperatorAst const &that) const
     -> std::strong_ordering {
@@ -27,5 +23,3 @@ auto spp::asts::TypePostfixExpressionOperatorAst::equals_nested_type(
     -> std::strong_ordering {
     return std::strong_ordering::less;
 }
-
-SPP_MOD_END

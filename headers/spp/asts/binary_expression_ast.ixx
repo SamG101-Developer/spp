@@ -1,15 +1,14 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.binary_expression_ast;
-import spp.asts.expression_ast;
+export module spp.asts:binary_expression_ast;
+import :expression_ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct BinaryExpressionAst;
-    SPP_EXP_CLS struct PostfixExpressionAst;
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
@@ -23,7 +22,7 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
 private:
-    std::shared_ptr<PostfixExpressionAst> m_mapped_func;
+    std::shared_ptr<Ast> m_mapped_func;
 
 public:
     /**
@@ -88,7 +87,7 @@ public:
      * @param ctx The LLVM context to use for code generation.
      * @return The LLVM value generated from this AST.
      */
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
     /**
      * Forward the type checking to the mapped function. This just applies standard type inference from a function call.

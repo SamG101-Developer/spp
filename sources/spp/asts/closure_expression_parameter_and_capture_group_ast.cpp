@@ -1,26 +1,12 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.closure_expression_parameter_and_capture_group_ast;
-import spp.analyse.scopes.scope_block_name;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.asts.convention_ast;
-import spp.asts.closure_expression_capture_ast;
-import spp.asts.closure_expression_capture_group_ast;
-import spp.asts.expression_ast;
-import spp.asts.function_parameter_group_ast;
-import spp.asts.function_call_argument_ast;
-import spp.asts.function_call_argument_group_ast;
-import spp.asts.identifier_ast;
-import spp.asts.token_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_type;
+module spp.asts;
+import spp.analyse.scopes;
+import spp.asts.utils;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::ClosureExpressionParameterAndCaptureGroupAst::ClosureExpressionParameterAndCaptureGroupAst(
     decltype(tok_l) &&tok_l,
     decltype(param_group) &&param_group,
@@ -125,7 +111,7 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_8_check_memo
 auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Generate the parameters into the current scope.
     sm->move_to_next_scope();
@@ -133,5 +119,3 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_11_code_gen_
     capture_group->stage_11_code_gen_2(sm, meta, ctx);
     return nullptr;
 }
-
-SPP_MOD_END

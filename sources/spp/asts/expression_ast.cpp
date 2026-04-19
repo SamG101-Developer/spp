@@ -1,10 +1,6 @@
-module;
-#include <spp/macros.hpp>
-
-module spp.asts.expression_ast;
+module spp.asts;
 
 
-SPP_MOD_BEGIN
 auto spp::asts::ExpressionAst::equals_array_literal_explicit_elements(
     ArrayLiteralExplicitElementsAst const &) const
     -> std::strong_ordering {
@@ -120,5 +116,3 @@ auto spp::asts::ExpressionAst::expr_parts() const
     -> std::vector<Ast*> {
     return {};
 }
-
-SPP_MOD_END

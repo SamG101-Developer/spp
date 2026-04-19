@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.case_pattern_variant_destructure_skip_multiple_arguments_ast;
-import spp.asts.case_pattern_variant_ast;
+export module spp.asts:case_pattern_variant_destructure_skip_multiple_arguments_ast;
+import :case_pattern_variant_ast;
 import std;
 
 namespace spp::asts {

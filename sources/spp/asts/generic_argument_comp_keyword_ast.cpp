@@ -2,25 +2,13 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.generic_argument_comp_keyword_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.mem_utils;
-import spp.asts.expression_ast;
-import spp.asts.token_ast;
-import spp.asts.generic_parameter_comp_ast;
-import spp.asts.identifier_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.mixins.orderable_ast;
-import spp.asts.utils.ast_utils;
-import spp.asts.utils.orderable;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
+import spp.lex;
 
 
-SPP_MOD_BEGIN
 spp::asts::GenericArgumentCompKeywordAst::GenericArgumentCompKeywordAst(
     decltype(name) name,
     decltype(tok_assign) &&tok_assign,
@@ -125,5 +113,3 @@ auto spp::asts::GenericArgumentCompKeywordAst::stage_8_check_memory(
     analyse::utils::mem_utils::validate_symbol_memory(
         *val, *val, *sm, true, true, true, true, true, meta);
 }
-
-SPP_MOD_END

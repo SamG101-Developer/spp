@@ -1,19 +1,12 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.generic_argument_type_positional_ast;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.asts.convention_ast;
-import spp.asts.type_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.mixins.orderable_ast;
-import spp.asts.utils.ast_utils;
-import spp.asts.utils.orderable;
+module spp.asts;
+import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::GenericArgumentTypePositionalAst::GenericArgumentTypePositionalAst(
     decltype(val) val) :
     GenericArgumentTypeAst(std::move(val), utils::OrderableTag::POSITIONAL_ARG) {
@@ -72,11 +65,9 @@ auto spp::asts::GenericArgumentTypePositionalAst::stage_7_analyse_semantics(
     -> void {
     // Analyse the name and value of the generic type argument.
     val->stage_7_analyse_semantics(sm, meta);
-    const auto tmp1 = sm->current_scope->get_type_symbol(val);
+    const auto tmp1 = analyse::utils::scope_utils::get_type_symbol(sm->current_scope, val);
     const auto tmp2 = tmp1->fq_name();
     auto tmp3 = ast_clone(val->get_convention());
     const auto tmp4 = tmp2->with_convention(std::move(tmp3));
     val = tmp4;
 }
-
-SPP_MOD_END

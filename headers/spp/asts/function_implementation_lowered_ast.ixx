@@ -1,9 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.function_implementation_lowered_ast;
-import spp.asts.function_implementation_ast;
-import spp.codegen.llvm_ctx;
+export module spp.asts:function_implementation_lowered_ast;
+import :function_implementation_ast;
 import llvm;
 import std;
 
@@ -12,8 +11,7 @@ namespace spp::asts {
 }
 
 
-SPP_EXP_CLS struct spp::asts::FunctionImplementationLoweredAst final :
-    FunctionImplementationAst {
+SPP_EXP_CLS struct spp::asts::FunctionImplementationLoweredAst final : FunctionImplementationAst {
 private:
     std::string m_scope_str;
 
@@ -28,7 +26,7 @@ public:
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
     auto set_scope_str(std::string const &scope_str) -> void;
 };

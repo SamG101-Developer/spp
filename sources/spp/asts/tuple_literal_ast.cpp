@@ -2,25 +2,15 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.tuple_literal_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.generate.common_types;
-import spp.lex.tokens;
-import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_type;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.lex;
+import spp.asts.utils;
 import spp.utils.uid;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::TupleLiteralAst::TupleLiteralAst(
     decltype(tok_l) &&tok_l,
     decltype(elems) &&elements,
@@ -140,7 +130,7 @@ auto spp::asts::TupleLiteralAst::stage_9_comptime_resolution(
 auto spp::asts::TupleLiteralAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Create a struct, to hold the tuple elements (runtime numeric access maps to field indices).
     const auto uid = spp::utils::generate_uid(this);
@@ -180,9 +170,7 @@ auto spp::asts::TupleLiteralAst::infer_type(
         | genex::to<std::vector>();
 
     // Create a tuple type with the inferred element types.
-    auto tuple_type = generate::common_types::tuple_type(pos_start(), std::move(types_gen));
+    auto tuple_type = common_types::tuple_type(pos_start(), std::move(types_gen));
     tuple_type->stage_7_analyse_semantics(sm, meta);
     return tuple_type;
 }
-
-SPP_MOD_END

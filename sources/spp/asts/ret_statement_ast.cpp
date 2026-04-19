@@ -2,32 +2,14 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.ret_statement_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
-import spp.asts.expression_ast;
-import spp.asts.identifier_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_ast;
-import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.local_variable_single_identifier_alias_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.generate.common_types;
-import spp.asts.utils.ast_utils;
-import spp.asts.meta.compiler_meta_data;
-import spp.codegen.llvm_materialize;
-import spp.codegen.llvm_type;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
+import spp.lex;
 import spp.utils.uid;
 
 
-SPP_MOD_BEGIN
 spp::asts::RetStatementAst::RetStatementAst(
     decltype(tok_ret) &&tok_ret,
     decltype(expr) &&val) :
@@ -82,7 +64,7 @@ auto spp::asts::RetStatementAst::stage_7_analyse_semantics(
         {sm->current_scope}, ERR_ARGS(*function_flavour, *tok_ret));
 
     // Analyse the expression if it exists, and determine the type of the expression.
-    auto expr_type = generate::common_types::void_type(pos_start());
+    auto expr_type = common_types::void_type(pos_start());
     if (expr != nullptr) {
         meta->save();
         SPP_RETURN_TYPE_OVERLOAD_HELPER(expr.get()) {
@@ -151,7 +133,7 @@ auto spp::asts::RetStatementAst::stage_9_comptime_resolution(
 auto spp::asts::RetStatementAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Generate the return value, if there is one.
     if (expr != nullptr) {
@@ -184,7 +166,7 @@ auto spp::asts::RetStatementAst::infer_type(
     ScopeManager *,
     CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
-    return generate::common_types::void_type(pos_start());
+    return common_types::void_type(pos_start());
 }
 
 
@@ -193,5 +175,3 @@ auto spp::asts::RetStatementAst::terminates() const
     // This is the only statement that always terminates.
     return true;
 }
-
-SPP_MOD_END

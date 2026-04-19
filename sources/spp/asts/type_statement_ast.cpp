@@ -2,26 +2,14 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.type_statement_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_block_name;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
-import spp.asts.annotation_ast;
-import spp.asts.convention_ast;
-import spp.asts.generic_parameter_group_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
+import spp.lex;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::TypeStatementAst::TypeStatementAst(
     decltype(annotations) &&annotations,
     decltype(tok_type) &&tok_type,
@@ -96,7 +84,7 @@ spp::asts::TypeStatementAst::operator std::string() const {
 
 
 auto spp::asts::TypeStatementAst::stage_1_pre_process(
-    Ast *ctx)
+    AbstractAst *ctx)
     -> void {
     // Pre-process the annotations.
     Ast::stage_1_pre_process(ctx);
@@ -284,7 +272,7 @@ auto spp::asts::TypeStatementAst::stage_9_comptime_resolution(
 auto spp::asts::TypeStatementAst::stage_10_code_gen_1(
     ScopeManager *sm,
     CompilerMetaData *,
-    codegen::LLvmCtx *)
+    codegen::LlvmCtx *)
     -> llvm::Value* {
     sm->move_to_next_scope();
     SPP_ASSERT(sm->current_scope == m_scope);
@@ -296,7 +284,7 @@ auto spp::asts::TypeStatementAst::stage_10_code_gen_1(
 auto spp::asts::TypeStatementAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *,
-    codegen::LLvmCtx *)
+    codegen::LlvmCtx *)
     -> llvm::Value* {
     sm->move_to_next_scope();
     // SPP_ASSERT(sm->current_scope == m_scope);
@@ -330,5 +318,3 @@ auto spp::asts::TypeStatementAst::cleanup()
 
     // Now this pointer has been released from the type symbol, we can safely destroy the type statement.
 }
-
-SPP_MOD_END

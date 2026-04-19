@@ -1,32 +1,16 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_iterator;
-import spp.analyse.scopes.scope_range;
-import spp.codegen.llvm_ctx;
+export module spp.analyse.scopes:scope_manager;
+import :scope;
+import :scope_iterator;
+import :scope_range;
+import spp.abstract;
 import ankerl;
 import std;
 
-namespace spp::asts {
-    SPP_EXP_CLS struct Ast;
-    SPP_EXP_CLS struct LoopExpressionAst;
-    SPP_EXP_CLS struct ModulePrototypeAst;
-    SPP_EXP_CLS struct TypeStatementAst;
-}
-
 namespace spp::analyse::scopes {
     SPP_EXP_CLS class ScopeManager;
-    SPP_EXP_CLS struct TypeSymbol;
-}
-
-namespace spp::asts::meta {
-    SPP_EXP_CLS struct CompilerMetaData;
-}
-
-namespace spp::utils::errors {
-    SPP_EXP_CLS class ErrorFormatter;
 }
 
 
@@ -49,7 +33,7 @@ public:
      * created @c ScopeManager instances will share it. This allows any @c ScopeManager to analyse types and inject the
      * sup block logic into the manager.
      */
-    inline static ankerl::unordered_dense::map<TypeSymbol*, std::vector<Scope*>> normal_sup_blocks = {};
+    // inline static ankerl::unordered_dense::map<TypeSymbol*, std::vector<Scope*>> normal_sup_blocks = {};
 
     /**
      * This list contains the pure generic sup blocks, such as
@@ -58,9 +42,9 @@ public:
      * @endcode
      * The list is separate as there is some special handling required.
      */
-    inline static std::vector<Scope*> generic_sup_blocks = {};
+    // inline static std::vector<Scope*> generic_sup_blocks = {};
 
-    inline static std::vector<std::unique_ptr<Scope>> temp_scopes = {};
+    // inline static std::vector<std::unique_ptr<Scope>> temp_scopes = {};
 
     /**
      * The global scope is the root scope fo the entire program. It is a @c std::shared_ptr as temp scope manager's need
@@ -123,7 +107,7 @@ public:
      */
     auto create_and_move_into_new_scope(
         ScopeName const &name,
-        asts::Ast *ast = nullptr,
+        AbstractAst *ast = nullptr,
         utils::errors::ErrorFormatter *error_formatter = nullptr)
         -> Scope*;
 
@@ -152,51 +136,12 @@ public:
      */
     auto exhaust_scope() -> void;
 
-    auto attach_llvm_type_info(
-        asts::ModulePrototypeAst const &mod,
-        codegen::LLvmCtx *ctx) const
-        -> void;
-
-    /**
-     * For every type discovered up until this point, attach the defined supertypes to them. At this point, all base
-     * classes, and @c sup blocks, will have been injected into the symbol table, but possibly not all generic
-     * substitutions of some of these type. This is fine because the @c TypeAst semantic analysis will call individual
-     * sup scope attachment functions if needed.
-     * @param meta The compiler metadata.
-     */
-    auto attach_all_super_scopes(
-        asts::meta::CompilerMetaData *meta)
-        -> void;
-
-    /**
-     * The public method to attach all the superscopes to an individual type, represented by its corresponding scope.
-     * This is the function called by the type analysis code if the generic substitution is new. For example, of
-     * @c Vec[Str] has been discovered after the "attach all" was performed, then this function will be called to attach
-     * the superscopes of @c Vec[Str].
-     * @param scope The scope representing the type to attach superscopes to.
-     * @param meta The compiler metadata.
-     */
-    auto attach_specific_super_scopes(
-        Scope &scope,
-        asts::meta::CompilerMetaData *meta) const
-        -> void;
+    // auto attach_llvm_type_info(
+    //     asts::ModulePrototypeAst const &mod,
+    //     codegen::LlvmCtx *ctx) const
+    //     -> void;
 
 private:
-    /**
-     * The implementation logic for attaching specific super scopes to a type scope. This is separated out so that the
-     * public method can alter scope lists based on @c TypeSymbol vs @c AliasSymbol, where-as this function strictly
-     * applies the scope changes.
-     * @param scope The scope representing the type to attach superscopes to.
-     * @param sup_scopes The list of super scopes to attach to the type scope. This is passed in as an rvalue reference
-     * because it will typically be created on-the-fly by the public method.
-     * @param meta The compiler metadata.
-     */
-    auto attach_specific_super_scopes_impl(
-        Scope &scope,
-        std::vector<Scope*> &&sup_scopes,
-        asts::meta::CompilerMetaData *meta) const
-        -> void;
-
     /**
      * Once a super scope has been registered against a scope, there are some checks to ensure that this new superscope
      * is semantically compatible with the type. There can be no conflicting @c use or @c cmp statements with existing
@@ -205,7 +150,7 @@ private:
      * @param sup_scope The new super scope that has been added to the class.
      */
     static auto check_conflicting_type_or_cmp_statements(
-        TypeSymbol const &cls_sym,
+        AbstractSymbol const &cls_sym,
         Scope const &sup_scope)
         -> void;
 

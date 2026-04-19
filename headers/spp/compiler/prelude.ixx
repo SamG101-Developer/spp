@@ -1,7 +1,7 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.compiler.prelude;
+export module spp.compiler:prelude;
 import std;
 
 namespace spp::compiler {

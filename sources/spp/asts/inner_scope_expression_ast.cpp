@@ -1,23 +1,11 @@
-module;
-#include <spp/analyse/macros.hpp>
-#include <spp/macros.hpp>
-
-module spp.asts.inner_scope_expression_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope_block_name;
-import spp.analyse.scopes.scope_manager;
-import spp.asts.loop_control_flow_statement_ast;
-import spp.asts.ret_statement_ast;
-import spp.asts.statement_ast;
-import spp.asts.token_ast;
-import spp.asts.generate.common_types;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
+import :common_types;
 import genex;
 
 
-SPP_MOD_BEGIN
 template <typename T>
 auto spp::asts::InnerScopeExpressionAst<T>::clone() const
     -> std::unique_ptr<Ast> {
@@ -59,7 +47,7 @@ template <typename T>
 auto spp::asts::InnerScopeExpressionAst<T>::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Add all the expressions/statements into the current scope.
     sm->move_to_next_scope();
@@ -93,7 +81,7 @@ auto spp::asts::InnerScopeExpressionAst<T>::infer_type(
     }
 
     // Otherwise, return the void type.
-    return generate::common_types::void_type(pos_start());
+    return common_types::void_type(pos_start());
 }
 
 
@@ -107,5 +95,3 @@ auto spp::asts::InnerScopeExpressionAst<T>::terminates() const
 
 
 template struct spp::asts::InnerScopeExpressionAst<std::unique_ptr<spp::asts::StatementAst>>;
-
-SPP_MOD_END

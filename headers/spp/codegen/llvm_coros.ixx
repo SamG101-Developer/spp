@@ -3,14 +3,10 @@ module;
 
 export module spp.codegen.llvm_coros;
 import spp.codegen.llvm_ctx;
+import spp.analyse.scopes.symbols;
 import llvm;
 import std;
 
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
-    SPP_EXP_CLS class ScopeManager;
-    SPP_EXP_CLS struct TypeSymbol;
-}
 
 namespace spp::asts {
     SPP_EXP_CLS struct CoroutinePrototypeAst;
@@ -18,7 +14,7 @@ namespace spp::asts {
 
 
 namespace spp::codegen {
-    SPP_EXP_ENUM enum class CoroutineState {
+    SPP_EXP_CLS enum class CoroutineState {
         READY, // Impossible in user code
         VARIABLE,
         EXHAUSTED,
@@ -26,7 +22,7 @@ namespace spp::codegen {
         EXCEPTION, // On GenRes
     };
 
-    SPP_EXP_ENUM enum class GenEnvField {
+    SPP_EXP_CLS enum class GenEnvField {
         RES_FN = 0,
         STATE = 1,
         LOCATION = 2,
@@ -38,7 +34,7 @@ namespace spp::codegen {
 
     SPP_EXP_FUN auto create_coro_env_type(
         asts::CoroutinePrototypeAst *coro,
-        LLvmCtx *ctx,
+        LlvmCtx *ctx,
         analyse::scopes::Scope const &scope)
         -> std::pair<llvm::StructType*, llvm::StructType*>;
 
@@ -54,7 +50,7 @@ namespace spp::codegen {
      */
     SPP_EXP_FUN auto create_coro_gen_ctor(
         asts::CoroutinePrototypeAst *coro,
-        LLvmCtx *ctx,
+        LlvmCtx *ctx,
         analyse::scopes::Scope const &scope)
         -> std::tuple<llvm::Function*, llvm::Value*, llvm::Type*>;
 
@@ -72,12 +68,12 @@ namespace spp::codegen {
     SPP_EXP_FUN auto create_coro_res_func(
         asts::CoroutinePrototypeAst const *coro,
         llvm::Type *llvm_arg_struct_type,
-        LLvmCtx *ctx,
+        LlvmCtx *ctx,
         analyse::scopes::Scope const &scope)
         -> llvm::Function*;
 
     SPP_EXP_FUN auto create_async_spawn_func(
-        LLvmCtx *ctx,
+        LlvmCtx *ctx,
         analyse::scopes::TypeSymbol const &fut_type_sym)
         -> llvm::Function*;
 }

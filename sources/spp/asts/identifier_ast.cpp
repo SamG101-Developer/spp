@@ -2,16 +2,10 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.identifier_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
 import spp.utils.strings;
 import spp.utils.uid;
 import absl;
@@ -19,7 +13,6 @@ import genex;
 import llvm;
 
 
-SPP_MOD_BEGIN
 spp::asts::IdentifierAst::IdentifierAst(
     const std::size_t pos,
     decltype(val) val) :
@@ -131,7 +124,7 @@ auto spp::asts::IdentifierAst::stage_9_comptime_resolution(
 auto spp::asts::IdentifierAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Get the allocation for the variable from the current scope.
     const auto uid = spp::utils::generate_uid(this);
@@ -177,5 +170,3 @@ auto spp::asts::IdentifierAst::expr_parts() const
     -> std::vector<Ast*> {
     return {const_cast<IdentifierAst*>(this)};
 }
-
-SPP_MOD_END

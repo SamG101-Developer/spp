@@ -2,22 +2,12 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.function_parameter_optional_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
-import spp.asts.identifier_ast;
-import spp.asts.local_variable_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.utils.ast_utils;
-import spp.asts.utils.orderable;
-import spp.asts.mixins.orderable_ast;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::FunctionParameterOptionalAst::FunctionParameterOptionalAst(
     decltype(var) &&var,
     decltype(tok_colon) &&tok_colon,
@@ -97,4 +87,3 @@ auto spp::asts::FunctionParameterOptionalAst::stage_8_check_memory(
     analyse::utils::mem_utils::validate_symbol_memory(
         *default_val, *default_val, *sm, true, true, true, true, true, meta);
 }
-SPP_MOD_END

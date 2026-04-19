@@ -1,18 +1,9 @@
-module;
-#include <spp/macros.hpp>
-
-module spp.asts.generic_argument_type_ast;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.asts.convention_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::GenericArgumentTypeAst::GenericArgumentTypeAst(
     decltype(val) val,
     const utils::OrderableTag order_tag) :
@@ -39,7 +30,7 @@ auto spp::asts::GenericArgumentTypeAst::stage_4_qualify_types(
 
     // The value could be a generic from another scope, so only modify if it exists.
     const auto raw = val->without_generics();
-    const auto sym = sm->current_scope->get_type_symbol(raw);
+    const auto sym = analyse::utils::scope_utils::get_type_symbol(sm->current_scope, raw);
     if (sym and sym->alias_stmt != nullptr) {
         auto temp = sym->fq_name()->with_convention(ast_clone(val->get_convention()));
         val = std::move(temp);
@@ -50,5 +41,3 @@ auto spp::asts::GenericArgumentTypeAst::stage_4_qualify_types(
         val = std::move(temp);
     }
 }
-
-SPP_MOD_END

@@ -1,13 +1,7 @@
 module spp.codegen.llvm_materialize;
-import spp.analyse.scopes.scope_manager;
-import spp.asts.expression_ast;
-import spp.asts.identifier_ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.local_variable_single_identifier_alias_ast;
-import spp.asts.token_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
+import spp.analyse.scopes;
+import spp.asts;
+import spp.asts.utils;
 import spp.utils.uid;
 import std;
 
@@ -16,10 +10,10 @@ auto spp::codegen::llvm_materialize(
     asts::ExpressionAst &ast,
     analyse::scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta,
-    LLvmCtx *ctx)
+    LlvmCtx *ctx)
     -> asts::IdentifierAst* {
     // Materialize an expression by assigning it to a temporary variable.
-    auto uid = spp::utils::generate_uid(&ast);
+    auto uid = utils::generate_uid(&ast);
     auto var_name = std::make_unique<asts::IdentifierAst>(ast.pos_start(), "$temp" + std::move(uid));
     const auto var = std::make_unique<asts::LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
 

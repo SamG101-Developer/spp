@@ -1,6 +1,5 @@
 module spp.analyse.utils.order_utils;
-import spp.asts.ast;
-import spp.asts.mixins.orderable_ast;
+import spp.asts;
 import genex;
 import magic_enum;
 import std;
@@ -22,7 +21,7 @@ inline constexpr std::array PARAM_ORDER_ARR{
 
 auto spp::analyse::utils::order_utils::order(
     std::vector<asts::mixins::OrderableAst*> &&args,
-    std::vector<asts::utils::OrderableTag> order)
+    std::vector<asts::utils::OrderableTag> &&order)
     -> std::vector<std::pair<std::string, asts::Ast*>> {
     // Tag each argument with its "order tag".
     auto tagged_args = args

@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.module_implementation_ast;
-import spp.asts.ast;
+export module spp.asts:module_implementation_ast;
+import :ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
@@ -35,7 +35,7 @@ SPP_EXP_CLS struct spp::asts::ModuleImplementationAst final : virtual Ast {
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_1_pre_process(Ast *ctx) -> void override;
+    auto stage_1_pre_process(AbstractAst *ctx) -> void override;
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *) -> void override;
 
@@ -53,7 +53,7 @@ SPP_EXP_CLS struct spp::asts::ModuleImplementationAst final : virtual Ast {
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-    auto stage_11_code_gen_2(ScopeManager *, CompilerMetaData *, codegen::LLvmCtx *) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *, CompilerMetaData *, codegen::LlvmCtx *) -> llvm::Value* override;
 };

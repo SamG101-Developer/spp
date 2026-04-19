@@ -1,22 +1,13 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.generic_parameter_type_ast;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_block_name;
-import spp.analyse.scopes.scope_manager;
+module spp.asts;
+import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
-import spp.asts.annotation_ast;
-import spp.asts.class_prototype_ast;
-import spp.asts.convention_ast;
-import spp.asts.generic_parameter_type_inline_constraints_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.type_statement_ast;
-import spp.asts.utils.ast_utils;
+import spp.analyse.utils.scope_utils;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::GenericParameterTypeAst::GenericParameterTypeAst(
     decltype(name) name,
     decltype(constraints) &&constraints,
@@ -44,7 +35,7 @@ auto spp::asts::GenericParameterTypeAst::stage_2_gen_top_level_scopes(
     // Create the type symbol for the generic parameter.
     const auto sym = std::make_shared<analyse::scopes::TypeSymbol>(
         ast_clone(name->type_parts().back().get()), nullptr, dummy_scope.get(), sm->current_scope, nullptr, true);
-    sm->current_scope->add_type_symbol(sym);
+    analyse::utils::scope_utils::add_type_symbol(sm->current_scope, sym);
     dummy_scope->ty_sym = sym;
 
     m_dummy_scopes.emplace_back(dummy_scope.get());
@@ -68,5 +59,3 @@ auto spp::asts::GenericParameterTypeAst::stage_7_analyse_semantics(
     // Analyse the name.
     name->stage_7_analyse_semantics(sm, meta);
 }
-
-SPP_MOD_END

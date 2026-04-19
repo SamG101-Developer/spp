@@ -2,21 +2,14 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.let_statement_initialized_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope_manager;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
 import spp.analyse.utils.type_utils;
-import spp.asts.local_variable_ast;
-import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+import spp.asts.utils;
+import spp.lex;
 
 
-SPP_MOD_BEGIN
 spp::asts::LetStatementInitializedAst::LetStatementInitializedAst(
     decltype(tok_let) &&tok_let,
     decltype(var) &&var,
@@ -145,7 +138,7 @@ auto spp::asts::LetStatementInitializedAst::stage_9_comptime_resolution(
 auto spp::asts::LetStatementInitializedAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Delegate the code generation to the variable, after setting up the meta.
     meta->save();
@@ -157,5 +150,3 @@ auto spp::asts::LetStatementInitializedAst::stage_11_code_gen_2(
     meta->restore();
     return alloca;
 }
-
-SPP_MOD_END

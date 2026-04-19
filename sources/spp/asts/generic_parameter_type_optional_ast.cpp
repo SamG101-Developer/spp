@@ -1,23 +1,13 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.generic_parameter_type_optional_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.asts.convention_ast;
-import spp.asts.generic_parameter_type_inline_constraints_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.mixins.orderable_ast;
-import spp.asts.utils.ast_utils;
-import spp.asts.utils.orderable;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::GenericParameterTypeOptionalAst::GenericParameterTypeOptionalAst(
     decltype(name) &&name,
     decltype(constraints) &&constraints,
@@ -73,7 +63,7 @@ auto spp::asts::GenericParameterTypeOptionalAst::stage_4_qualify_types(
 
     // Handle the default type.
     default_val->stage_7_analyse_semantics(sm, meta);
-    if (const auto sym = sm->current_scope->get_type_symbol(default_val->without_generics()); sym != nullptr) {
+    if (const auto sym = analyse::utils::scope_utils::get_type_symbol(sm->current_scope, default_val->without_generics()); sym != nullptr) {
         auto temp = sym->fq_name()->with_convention(ast_clone(default_val->get_convention()));
         temp = temp->with_generics(std::move(default_val->type_parts().back()->generic_arg_group));
         default_val = std::move(temp);
@@ -89,5 +79,3 @@ auto spp::asts::GenericParameterTypeOptionalAst::stage_7_analyse_semantics(
     GenericParameterTypeAst::stage_7_analyse_semantics(sm, meta);
     default_val->stage_7_analyse_semantics(sm, meta);
 }
-
-SPP_MOD_END

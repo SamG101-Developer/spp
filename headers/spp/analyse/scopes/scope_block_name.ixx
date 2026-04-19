@@ -1,15 +1,12 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.analyse.scopes.scope_block_name;
+export module spp.analyse.scopes:scope_block_name;
+import spp.abstract;
 import std;
 
 namespace spp::analyse::scopes {
     SPP_EXP_CLS struct ScopeBlockName;
-}
-
-namespace spp::asts {
-    SPP_EXP_CLS struct Ast;
 }
 
 
@@ -43,7 +40,7 @@ public:
      * @param pos The position of the AST in the source code, to make scope names unique.
      * @return The constructed ScopeBlockName.
      */
-    static auto from_parts(std::string &&header, std::vector<asts::Ast*> const &parts, std::size_t pos) -> ScopeBlockName;
+    static auto from_parts(std::string &&header, std::vector<AbstractAst*> const &parts, std::size_t pos) -> ScopeBlockName;
 
     /**
      * Allow default copy constructors for easy passing around of scope block names.

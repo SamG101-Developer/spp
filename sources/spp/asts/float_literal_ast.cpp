@@ -2,25 +2,16 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.float_literal_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.asts.token_ast;
-import spp.asts.generate.common_types;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_ctx;
-import spp.codegen.llvm_type;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
+import spp.lex;
 import spp.utils.strings;
 import llvm;
 import mppp;
 
 
-SPP_MOD_BEGIN
 const auto FLOAT_TYPE_MIN_MAX = std::map<std::string, std::pair<mppp::BigDec, mppp::BigDec>>{
     {"f8", {spp::utils::strings::expand_scientific_notation("-5.7344e+4"), spp::utils::strings::expand_scientific_notation("5.7344e+4")}},
     {"f16", {spp::utils::strings::expand_scientific_notation("-6.55e+4"), spp::utils::strings::expand_scientific_notation("6.55e+4")}},
@@ -158,7 +149,7 @@ auto spp::asts::FloatLiteralAst::stage_9_comptime_resolution(
 auto spp::asts::FloatLiteralAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Get the type of the float literal.
     const auto type_ast = infer_type(sm, meta);
@@ -180,22 +171,22 @@ auto spp::asts::FloatLiteralAst::infer_type(
     // Todo: Use the IntergerLiteralAst implementation (it's better).
     // Map the type string literal to the correct SPP type.
     if (type.empty()) {
-        return generate::common_types::f32(pos_start());
+        return common_types::f32(pos_start());
     }
     if (type == "f8") {
-        return generate::common_types::f8(pos_start());
+        return common_types::f8(pos_start());
     }
     if (type == "f16") {
-        return generate::common_types::f16(pos_start());
+        return common_types::f16(pos_start());
     }
     if (type == "f32") {
-        return generate::common_types::f32(pos_start());
+        return common_types::f32(pos_start());
     }
     if (type == "f64") {
-        return generate::common_types::f64(pos_start());
+        return common_types::f64(pos_start());
     }
     if (type == "f128") {
-        return generate::common_types::f128(pos_start());
+        return common_types::f128(pos_start());
     }
 
     // This should never happen, due to parsing rules.
@@ -208,4 +199,3 @@ auto spp::asts::FloatLiteralAst::infer_type(
 template auto spp::asts::FloatLiteralAst::cpp_value<std::float16_t>() const -> std::float16_t;
 template auto spp::asts::FloatLiteralAst::cpp_value<std::float32_t>() const -> std::float32_t;
 template auto spp::asts::FloatLiteralAst::cpp_value<std::float64_t>() const -> std::float64_t;
-SPP_MOD_END

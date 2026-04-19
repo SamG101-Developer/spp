@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.boolean_literal_ast;
-import spp.asts.literal_ast;
+export module spp.asts:boolean_literal_ast;
+import :literal_ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
@@ -23,8 +23,6 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
      * The token that represents the boolean literal, either @c true or @code false@endcode.
      */
     std::unique_ptr<TokenAst> tok_bool;
-
-    auto _spp_key_function() const -> void override;
 
     /**
      * Construct the BooleanLiteralAst with the arguments matching the members.
@@ -76,7 +74,7 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
      * @param ctx The LLVM context to generate code in.
      * @return The generated LLVM value representing the boolean literal.
      */
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
     /**
      * The boolean literal's type is always @c std::boolean::Bool, the compiler known type that represents a boolean
@@ -87,8 +85,3 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
      */
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::BooleanLiteralAst::_spp_key_function() const -> void {}
-SPP_MOD_END

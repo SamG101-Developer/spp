@@ -1,13 +1,9 @@
-module;
-#include <spp/macros.hpp>
-
 module spp.analyse.utils.mem_info_utils;
-import spp.asts.ast;
-import spp.asts.utils.ast_utils;
+import spp.asts;
+import spp.asts.utils;
 import genex;
 
 
-SPP_MOD_BEGIN
 auto spp::analyse::utils::mem_info_utils::MemoryInfo::initialized_by(
     asts::Ast const &ast,
     scopes::Scope *scope)
@@ -38,8 +34,8 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::remove_partial_move(
     -> void {
     // Use "string" comparison; same as overlap checking mechanism.
     genex::actions::remove(
-        ast_partial_moves, ast.operator std::string(),
-        [](auto const &x) { return x->operator std::string(); });
+        ast_partial_moves, ast.to_string(),
+        [](auto const &x) { return x->to_string(); });
     if (not ast_partial_moves.empty()) {
         initialized_by(ast, scope);
     }
@@ -86,5 +82,3 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::fill_from_snapshot(
     ast_escaping_borrows = snapshot.ast_escaping_borrows;
     initialization_counter = snapshot.initialization_counter;
 }
-
-SPP_MOD_END

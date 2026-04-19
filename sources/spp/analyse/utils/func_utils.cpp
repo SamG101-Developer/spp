@@ -3,70 +3,51 @@ module;
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.func_utils;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
-import spp.asts.annotation_ast;
-import spp.asts.ast;
-import spp.asts.class_prototype_ast;
-import spp.asts.convention_ast;
-import spp.asts.expression_ast;
-import spp.asts.identifier_ast;
-import spp.asts.fold_expression_ast;
-import spp.asts.function_call_argument_ast;
-import spp.asts.function_call_argument_group_ast;
-import spp.asts.function_call_argument_keyword_ast;
-import spp.asts.function_call_argument_positional_ast;
-import spp.asts.function_implementation_ast;
-import spp.asts.function_parameter_ast;
-import spp.asts.function_parameter_group_ast;
-import spp.asts.function_parameter_required_ast;
-import spp.asts.function_parameter_self_ast;
-import spp.asts.function_parameter_variadic_ast;
-import spp.asts.function_prototype_ast;
-import spp.asts.generic_argument_ast;
-import spp.asts.generic_argument_comp_ast;
-import spp.asts.generic_argument_comp_keyword_ast;
-import spp.asts.generic_argument_comp_positional_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_ast;
-import spp.asts.generic_argument_type_keyword_ast;
-import spp.asts.generic_argument_type_positional_ast;
-import spp.asts.generic_parameter_ast;
-import spp.asts.generic_parameter_comp_ast;
-import spp.asts.generic_parameter_comp_optional_ast;
-import spp.asts.generic_parameter_comp_variadic_ast;
-import spp.asts.generic_parameter_group_ast;
-import spp.asts.generic_parameter_type_ast;
-import spp.asts.generic_parameter_type_optional_ast;
-import spp.asts.generic_parameter_type_variadic_ast;
-import spp.asts.identifier_ast;
-import spp.asts.identifier_ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.local_variable_ast;
-import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.local_variable_single_identifier_alias_ast;
-import spp.asts.literal_ast;
-import spp.asts.object_initializer_ast;
-import spp.asts.object_initializer_argument_group_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.postfix_expression_operator_runtime_member_access_ast;
-import spp.asts.postfix_expression_operator_static_member_access_ast;
-import spp.asts.subroutine_prototype_ast;
-import spp.asts.sup_prototype_extension_ast;
-import spp.asts.token_ast;
-import spp.asts.tuple_literal_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.generate.common_types;
-import spp.asts.utils.ast_utils;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts;
+import spp.asts.utils;
 import spp.utils.uid;
 import ankerl;
 import genex;
+
+
+template <typename GenericArgType>
+struct make_keyword_arg {
+    using type = GenericArgType;
+};
+
+template <>
+struct make_keyword_arg<spp::asts::GenericArgumentCompAst> {
+    using type = spp::asts::GenericArgumentCompKeywordAst;
+};
+
+template <>
+struct make_keyword_arg<spp::asts::GenericArgumentTypeAst> {
+    using type = spp::asts::GenericArgumentTypeKeywordAst;
+};
+
+template <typename T>
+using make_keyword_arg_t = typename make_keyword_arg<T>::type;
+
+
+template <typename GenericArgType>
+struct make_positional_arg {
+    using type = GenericArgType;
+};
+
+template <>
+struct make_positional_arg<spp::asts::GenericArgumentCompAst> {
+    using type = spp::asts::GenericArgumentCompPositionalAst;
+};
+
+template <>
+struct make_positional_arg<spp::asts::GenericArgumentTypeAst> {
+    using type = spp::asts::GenericArgumentTypePositionalAst;
+};
+
+template <typename T>
+using make_positional_arg_t = typename make_positional_arg<T>::type;
 
 
 auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
@@ -687,7 +668,7 @@ auto spp::analyse::utils::func_utils::name_gn_args_impl(
                     | genex::to<std::vector>();
 
                 // Variadic check: map arguments "func[U32, U32]" for "func[..Ts]" to "func[Ts = (U32, U32)]".
-                auto tup_type = asts::generate::common_types::tuple_type(positional_arg->pos_start(), std::move(elems));
+                auto tup_type = asts::common_types::tuple_type(positional_arg->pos_start(), std::move(elems));
                 if (meta.current_stage > 5) { tup_type->stage_7_analyse_semantics(&sm, &meta); }
                 kw_arg->val = tup_type;
             }

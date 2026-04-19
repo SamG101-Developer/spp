@@ -12,10 +12,6 @@ namespace spp::utils::errors {
     struct AbstractErrorBuilder;
 }
 
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
-}
-
 
 SPP_EXP_CLS struct spp::utils::errors::AbstractError : std::runtime_error {
     std::vector<std::string> messages;

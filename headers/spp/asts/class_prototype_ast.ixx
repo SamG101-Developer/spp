@@ -1,28 +1,22 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.class_prototype_ast;
-import spp.asts.ast;
-import spp.asts.annotation_ast;
-import spp.asts.class_implementation_ast;
-import spp.asts.module_member_ast;
-import spp.asts.sup_member_ast;
-import spp.asts.token_ast;
-import spp.asts.mixins.visibility_enabled_ast;
+export module spp.asts:class_prototype_ast;
+import :ast;
+import :module_member_ast;
+import :sup_member_ast;
 import spp.codegen.llvm_ctx;
 
 import llvm;
 import std;
 
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
-    SPP_EXP_CLS class ScopeManager;
-    SPP_EXP_CLS struct TypeSymbol;
-}
 
 namespace spp::asts {
+    SPP_EXP_CLS struct AnnotationAst;
+    SPP_EXP_CLS struct ClassImplementationAst;
     SPP_EXP_CLS struct ClassPrototypeAst;
     SPP_EXP_CLS struct GenericParameterGroupAst;
+    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
     SPP_EXP_CLS struct TypeStatementAst;
 }
@@ -33,11 +27,11 @@ namespace spp::asts {
  * class, including its name and any generic parameters it may have. The attributes are defined in the implementation
  * ast for this class, allowing for scoping rules to be made easier.
  */
-SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : virtual Ast, mixins::VisibilityEnabledAst, SupMemberAst, ModuleMemberAst {
+SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : virtual Ast, SupMemberAst, ModuleMemberAst {
 private:
     std::vector<std::pair<analyse::scopes::Scope*, std::unique_ptr<ClassPrototypeAst>>> m_generic_substitutions;
 
-    std::shared_ptr<analyse::scopes::TypeSymbol> m_cls_sym;
+    std::shared_ptr<void> m_cls_sym;
 
 public:
     /**
@@ -84,25 +78,23 @@ public:
         decltype(generic_param_group) &&generic_param_group,
         decltype(impl) &&impl);
 
-    auto _spp_key_function() const -> void override;
-
     ~ClassPrototypeAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
 private:
-    auto m_generate_symbols(ScopeManager *sm) -> analyse::scopes::TypeSymbol*;
+    auto m_generate_symbols(ScopeManager *sm) -> void*;
 
-    auto m_fill_llvm_mem_layout(analyse::scopes::ScopeManager *sm, analyse::scopes::TypeSymbol const *type_sym, codegen::LLvmCtx *ctx) const -> void;
+    auto m_fill_llvm_mem_layout(analyse::scopes::ScopeManager *sm, void const *type_sym, codegen::LlvmCtx *ctx) const -> void;
 
 public:
     auto register_generic_substitution(analyse::scopes::Scope *scope, std::unique_ptr<ClassPrototypeAst> &&new_ast) -> void;
 
     SPP_ATTR_NODISCARD auto registered_generic_substitutions() const -> std::vector<std::pair<analyse::scopes::Scope*, ClassPrototypeAst*>>;
 
-    SPP_ATTR_NODISCARD auto get_cls_sym() const -> std::shared_ptr<analyse::scopes::TypeSymbol>;
+    SPP_ATTR_NODISCARD auto get_cls_sym() const -> std::shared_ptr<void>;
 
-    auto stage_1_pre_process(Ast *ctx) -> void override;
+    auto stage_1_pre_process(AbstractAst *ctx) -> void override;
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -120,12 +112,7 @@ public:
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::ClassPrototypeAst::_spp_key_function() const -> void {}
-SPP_MOD_END

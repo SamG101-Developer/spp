@@ -1,14 +1,11 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.local_variable_destructure_attribute_binding_ast;
-import spp.asts.identifier_ast;
-import spp.asts.token_ast;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+module spp.asts;
+import spp.asts.utils;
+import spp.lex;
 
 
-SPP_MOD_BEGIN
 spp::asts::LocalVariableDestructureAttributeBindingAst::LocalVariableDestructureAttributeBindingAst(
     decltype(name) &&name,
     decltype(tok_assign) &&tok_assign,
@@ -57,5 +54,3 @@ auto spp::asts::LocalVariableDestructureAttributeBindingAst::extract_name() cons
     -> std::shared_ptr<IdentifierAst> {
     return name;
 }
-
-SPP_MOD_END

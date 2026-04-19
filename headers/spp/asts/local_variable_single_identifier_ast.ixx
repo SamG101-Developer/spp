@@ -1,16 +1,16 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.local_variable_single_identifier_ast;
-import spp.asts.local_variable_ast;
+export module spp.asts:local_variable_single_identifier_ast;
+import :local_variable_ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct LocalVariableSingleIdentifierAst;
     SPP_EXP_CLS struct ConventionAst;
     SPP_EXP_CLS struct IdentifierAst;
-    SPP_EXP_CLS struct LocalVariableSingleIdentifierAst;
     SPP_EXP_CLS struct LocalVariableSingleIdentifierAliasAst;
     SPP_EXP_CLS struct TokenAst;
 }
@@ -79,5 +79,5 @@ SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVari
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };

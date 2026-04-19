@@ -2,33 +2,14 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.postfix_expression_operator_index_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
-import spp.asts.convention_ast;
-import spp.asts.expression_ast;
-import spp.asts.fold_expression_ast;
-import spp.asts.function_call_argument_ast;
-import spp.asts.function_call_argument_group_ast;
-import spp.asts.function_call_argument_positional_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.identifier_ast;
-import spp.asts.token_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.postfix_expression_operator_runtime_member_access_ast;
-import spp.asts.generate.common_types_precompiled;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
+import spp.lex;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorIndexAst::PostfixExpressionOperatorIndexAst(
     std::unique_ptr<TokenAst> tok_l,
     std::unique_ptr<TokenAst> tok_mut,
@@ -97,8 +78,8 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::stage_7_analyse_semantics(
 
     // Ensure the type superimposes the correct indexing variation.
     const auto index_type = tok_mut != nullptr
-                                ? generate::common_types_precompiled::INDEX_MUT
-                                : generate::common_types_precompiled::INDEX_REF;
+                                ? common_types_precompiled::INDEX_MUT
+                                : common_types_precompiled::INDEX_REF;
 
     const auto type_sym = sm->current_scope->get_type_symbol(lhs_type);
     auto sup_types = std::vector{lhs_type};
@@ -147,5 +128,3 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::infer_type(
     // Forward to the mapped function's return type.
     return m_mapped_func->infer_type(sm, meta);
 }
-
-SPP_MOD_END

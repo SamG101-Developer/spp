@@ -1,6 +1,6 @@
 export module spp.analyse.utils.builtins;
-import spp.utils.functions;
 import spp.analyse.utils.cmp_utils;
+import spp.utils.functions;
 import std;
 
 

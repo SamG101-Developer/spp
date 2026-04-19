@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.subroutine_prototype_ast;
-import spp.asts.function_prototype_ast;
+export module spp.asts:subroutine_prototype_ast;
+import :function_prototype_ast;
 import std;
 
 namespace spp::asts {

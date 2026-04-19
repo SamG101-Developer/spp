@@ -1,26 +1,14 @@
 module;
-#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 #include <spp/parse/macros.hpp>
 
-module spp.compiler.compiler_boot;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_block_name;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.asts.ast;
-import spp.asts.expression_ast;
-import spp.asts.identifier_ast;
-import spp.asts.module_prototype_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.codegen.llvm_ctx;
-import spp.compiler.module_tree;
-import spp.lex.lexer;
-import spp.parse.parser_spp;
-import spp.parse.errors.parser_error;
-import spp.parse.errors.parser_error_builder;
+module spp.compiler;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts;
+import spp.lex;
+import spp.parse;
+import spp.parse.errors;
 import spp.utils.error_formatter;
 import spp.utils.files;
 import llvm;
@@ -38,7 +26,6 @@ import genex;
     meta.current_stage = (s)
 
 
-SPP_MOD_BEGIN
 auto spp::compiler::CompilerBoot::lex(
     utils::ProgressBar &bar,
     ModuleTree &tree)
@@ -70,7 +57,7 @@ auto spp::compiler::CompilerBoot::parse(
 auto spp::compiler::CompilerBoot::stage_1_pre_process(
     utils::ProgressBar &bar,
     ModuleTree &tree,
-    asts::Ast *ctx)
+    AbstractAst *ctx)
     -> void {
     // Pre-processing stage.
     for (auto const &mod : m_modules) {
@@ -205,7 +192,7 @@ auto spp::compiler::CompilerBoot::stage_8_check_memory(
 
     // Attach all LLVM type info to all types now.
     for (auto const &mod : m_modules) {
-        auto ctx = codegen::LLvmCtx::new_ctx(mod->file_path);
+        auto ctx = codegen::LlvmCtx::new_ctx(mod->file_path);
         sm->attach_llvm_type_info(*mod, ctx.get());
         m_llvm_ctxs.emplace_back(std::move(ctx));
     }
@@ -364,5 +351,3 @@ auto spp::compiler::CompilerBoot::move_scope_manager_to_ns(
         }
     }
 }
-
-SPP_MOD_END

@@ -1,22 +1,11 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.case_pattern_variant_single_identifier_ast;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.asts.convention_ast;
-import spp.asts.identifier_ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.local_variable_single_identifier_alias_ast;
-import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.analyse.scopes;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::CasePatternVariantSingleIdentifierAst::CasePatternVariantSingleIdentifierAst(
     decltype(conv) &&conv,
     decltype(tok_mut) &&tok_mut,
@@ -99,5 +88,3 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::stage_8_check_memory(
     // Forward memory checks into the name and alias.
     m_mapped_let->stage_8_check_memory(sm, meta);
 }
-
-SPP_MOD_END

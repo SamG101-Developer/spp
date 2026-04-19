@@ -1,10 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.generic_argument_type_positional_ast;
-import spp.asts.generic_argument_ast;
-import spp.asts.generic_argument_type_ast;
-
+export module spp.asts:generic_argument_type_positional_ast;
+import :generic_argument_type_ast;
 import std;
 
 namespace spp::asts {
@@ -17,8 +15,6 @@ namespace spp::asts {
  * argument to be matched by an index rather than a keyword.
  */
 SPP_EXP_CLS struct spp::asts::GenericArgumentTypePositionalAst final : GenericArgumentTypeAst {
-    auto _spp_key_function() const -> void override;
-
     /**
      * Construct the GenericArgumentTypePositionalAst with the arguments matching the members.
      * @param val The value of the generic type argument.
@@ -36,8 +32,3 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypePositionalAst final : GenericAr
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::GenericArgumentTypePositionalAst::_spp_key_function() const -> void {}
-SPP_MOD_END

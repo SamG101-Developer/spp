@@ -2,29 +2,14 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.loop_conditional_expression_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope_block_name;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
-import spp.asts.boolean_literal_ast;
-import spp.asts.inner_scope_expression_ast;
-import spp.asts.loop_else_statement_ast;
-import spp.asts.token_ast;
-import spp.asts.generate.common_types;
-import spp.asts.generate.common_types_precompiled;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_type;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
+import spp.lex;
 import spp.utils.uid;
 
 
-SPP_MOD_BEGIN
 spp::asts::LoopConditionalExpressionAst::LoopConditionalExpressionAst(
     decltype(tok_loop) &&tok_loop,
     decltype(cond) &&cond,
@@ -86,7 +71,7 @@ auto spp::asts::LoopConditionalExpressionAst::stage_7_analyse_semantics(
 
     // Check the loop condition is boolean.
     const auto cond_type = cond->infer_type(sm, meta);
-    const auto target_type = generate::common_types_precompiled::BOOL;
+    const auto target_type = common_types_precompiled::BOOL;
     raise_if<analyse::errors::SppExpressionNotBooleanError>(
         not analyse::utils::type_utils::is_type_boolean(*cond_type, *sm->current_scope),
         {sm->current_scope}, ERR_ARGS(*cond, *cond_type, "loop"));
@@ -144,7 +129,7 @@ auto spp::asts::LoopConditionalExpressionAst::stage_8_check_memory(
 auto spp::asts::LoopConditionalExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Move into the loop scope.
     sm->move_to_next_scope();
@@ -217,7 +202,7 @@ auto spp::asts::LoopConditionalExpressionAst::infer_type(
     //         if (m_loop_exit_type_info.has_value()) {
     //             const auto [exit_expr, _, _] = *m_loop_exit_type_info;
     //             if (exit_expr == nullptr) {
-    //                 return generate::common_types::never_type(pos_start());
+    //                 return common_types::never_type(pos_start());
     //             }
     //         }
     //     }
@@ -228,7 +213,7 @@ auto spp::asts::LoopConditionalExpressionAst::infer_type(
     if (cond_lit != nullptr and cond_lit->tok_bool->token_type == lex::SppTokenType::KW_TRUE) {
         // Check the internal flow controls.
         if (not m_loop_exit_type_info.has_value()) {
-            return generate::common_types::never_type(pos_start());
+            return common_types::never_type(pos_start());
         }
     }
 
@@ -241,5 +226,3 @@ auto spp::asts::LoopConditionalExpressionAst::terminates() const
     // The loop conditional expression only terminates if the body terminates.
     return body->terminates();
 }
-
-SPP_MOD_END

@@ -1,17 +1,10 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.function_parameter_required_ast;
-import spp.asts.ast;
-import spp.asts.local_variable_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.mixins.orderable_ast;
-import spp.asts.utils.ast_utils;
-import spp.asts.utils.orderable;
+module spp.asts;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::FunctionParameterRequiredAst::FunctionParameterRequiredAst(
     decltype(var) &&var,
     decltype(tok_colon) &&tok_colon,
@@ -51,5 +44,3 @@ spp::asts::FunctionParameterRequiredAst::operator std::string() const {
     SPP_STRING_APPEND(type);
     SPP_STRING_END;
 }
-
-SPP_MOD_END

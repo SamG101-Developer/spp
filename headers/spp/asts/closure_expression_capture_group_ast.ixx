@@ -1,15 +1,15 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.closure_expression_capture_group_ast;
-import spp.asts.ast;
+export module spp.asts:closure_expression_capture_group_ast;
+import :ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct ClosureExpressionCaptureAst;
     SPP_EXP_CLS struct ClosureExpressionCaptureGroupAst;
+    SPP_EXP_CLS struct ClosureExpressionCaptureAst;
     SPP_EXP_CLS struct TokenAst;
 }
 
@@ -46,5 +46,5 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionCaptureGroupAst final : virtual A
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };

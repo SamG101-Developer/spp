@@ -1,32 +1,15 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.closure_expression_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_block_name;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.asts.convention_ast;
-import spp.asts.closure_expression_capture_ast;
-import spp.asts.closure_expression_capture_group_ast;
-import spp.asts.closure_expression_parameter_and_capture_group_ast;
-import spp.asts.function_parameter_ast;
-import spp.asts.function_parameter_group_ast;
-import spp.asts.identifier_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.generate.common_types;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_type;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
+import spp.lex;
 import spp.utils.uid;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::ClosureExpressionAst::ClosureExpressionAst(
     decltype(tok) &&tok,
     decltype(pc_group) &&pc_group,
@@ -142,7 +125,7 @@ auto spp::asts::ClosureExpressionAst::stage_8_check_memory(
 auto spp::asts::ClosureExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Strategy: build an "environment" struct for the closure. Attributes are captures. The safety is already
     // guaranteed by semantic analysis.
@@ -240,7 +223,7 @@ auto spp::asts::ClosureExpressionAst::infer_type(
         auto param_types = pc_group->param_group->params
             | genex::views::transform([](auto const &x) { return x->type; })
             | genex::to<std::vector>();
-        ty = generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
+        ty = common_types::fun_ref_type(pos_start(), common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 
     else if (genex::any_of(pc_group->capture_group->captures, [](auto const &x) { return x->conv == nullptr; })) {
@@ -248,7 +231,7 @@ auto spp::asts::ClosureExpressionAst::infer_type(
         auto param_types = pc_group->param_group->params
             | genex::views::transform([](auto const &x) { return x->type; })
             | genex::to<std::vector>();
-        ty = generate::common_types::fun_mov_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
+        ty = common_types::fun_mov_type(pos_start(), common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 
     else if (genex::any_of(pc_group->capture_group->captures, is_mut_cap)) {
@@ -256,7 +239,7 @@ auto spp::asts::ClosureExpressionAst::infer_type(
         auto param_types = pc_group->param_group->params
             | genex::views::transform([](auto const &x) { return x->type; })
             | genex::to<std::vector>();
-        ty = generate::common_types::fun_mut_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
+        ty = common_types::fun_mut_type(pos_start(), common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 
     else if (genex::any_of(pc_group->capture_group->captures, is_ref_cap)) {
@@ -264,7 +247,7 @@ auto spp::asts::ClosureExpressionAst::infer_type(
         auto param_types = pc_group->param_group->params
             | genex::views::transform([](auto const &x) { return x->type; })
             | genex::to<std::vector>();
-        ty = generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
+        ty = common_types::fun_ref_type(pos_start(), common_types::tuple_type(pos_start(), std::move(param_types)), m_ret_type);
     }
 
     // Analyse the type and return it.
@@ -277,5 +260,3 @@ auto spp::asts::ClosureExpressionAst::get_llvm_func() const
     -> std::shared_ptr<codegen::LlvmFuncWrapper> {
     return m_llvm_func;
 }
-
-SPP_MOD_END

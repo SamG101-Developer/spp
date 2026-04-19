@@ -2,23 +2,14 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.loop_control_flow_statement_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
-import spp.asts.expression_ast;
-import spp.asts.loop_expression_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.utils.ast_utils;
-import spp.asts.generate.common_types;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
+import spp.lex;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::LoopControlFlowStatementAst::LoopControlFlowStatementAst(
     decltype(tok_seq_exit) &&tok_seq_exit,
     decltype(tok_skip) &&tok_skip,
@@ -104,7 +95,7 @@ auto spp::asts::LoopControlFlowStatementAst::stage_7_analyse_semantics(
 
     // Save and compare the loop's "exiting" type against other nested loop's exit statement types.
     if (not has_skip) {
-        auto expr_type = generate::common_types::void_type(pos_start());
+        auto expr_type = common_types::void_type(pos_start());
         if (expr != nullptr) {
             expr->stage_7_analyse_semantics(sm, meta);
             expr_type = expr->infer_type(sm, meta);
@@ -144,7 +135,7 @@ auto spp::asts::LoopControlFlowStatementAst::stage_8_check_memory(
 auto spp::asts::LoopControlFlowStatementAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // For "exit" statements, we need to branch to the end bb of N loops, N being the number of exit tokens.
     // TODO
@@ -167,7 +158,5 @@ auto spp::asts::LoopControlFlowStatementAst::infer_type(
     }
 
     // Otherwise, return the void type.
-    return generate::common_types::void_type(pos_start());
+    return common_types::void_type(pos_start());
 }
-
-SPP_MOD_END

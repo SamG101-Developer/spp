@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.identifier_ast;
-import spp.asts.primary_expression_ast;
+export module spp.asts:identifier_ast;
+import :primary_expression_ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
@@ -13,9 +13,7 @@ namespace spp::asts {
 }
 
 
-SPP_EXP_CLS struct spp::asts::IdentifierAst final :
-    PrimaryExpressionAst,
-    std::enable_shared_from_this<IdentifierAst> {
+SPP_EXP_CLS struct spp::asts::IdentifierAst final : PrimaryExpressionAst, std::enable_shared_from_this<IdentifierAst> {
 private:
     std::size_t m_pos;
 
@@ -25,8 +23,6 @@ public:
     explicit IdentifierAst(
         std::size_t pos,
         decltype(val) val);
-
-    auto _spp_key_function() const -> void override;
 
     IdentifierAst(IdentifierAst const &) = default;
 
@@ -62,7 +58,7 @@ public:
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 
@@ -70,9 +66,3 @@ public:
 
     SPP_ATTR_NODISCARD auto expr_parts() const -> std::vector<Ast *> override;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::IdentifierAst::_spp_key_function() const -> void {}
-SPP_MOD_END
-

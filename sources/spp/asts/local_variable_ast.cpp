@@ -1,10 +1,6 @@
-module;
-#include <spp/macros.hpp>
+module spp.asts;
 
-module spp.asts.local_variable_ast;
-import spp.asts.let_statement_initialized_ast;
 
-SPP_MOD_BEGIN
 spp::asts::LocalVariableAst::LocalVariableAst() :
     m_from_case_pattern(false) {
 }
@@ -32,5 +28,3 @@ auto spp::asts::LocalVariableAst::mark_from_case_pattern()
     // Mark this local variable as being created from a case pattern.
     m_from_case_pattern = true;
 }
-
-SPP_MOD_END

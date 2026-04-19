@@ -1,18 +1,11 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.function_parameter_variadic_ast;
-import spp.asts.local_variable_ast;
-import spp.asts.ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.mixins.orderable_ast;
-import spp.asts.utils.ast_utils;
-import spp.asts.utils.orderable;
-import spp.lex.tokens;
+module spp.asts;
+import spp.asts.utils;
+import spp.lex;
 
 
-SPP_MOD_BEGIN
 spp::asts::FunctionParameterVariadicAst::FunctionParameterVariadicAst(
     decltype(tok_ellipsis) &&tok_ellipsis,
     decltype(var) &&var,
@@ -57,5 +50,3 @@ spp::asts::FunctionParameterVariadicAst::operator std::string() const {
     SPP_STRING_APPEND(type);
     SPP_STRING_END;
 }
-
-SPP_MOD_END

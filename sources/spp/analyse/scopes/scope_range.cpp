@@ -1,11 +1,7 @@
-module;
-#include <spp/macros.hpp>
-
-module spp.analyse.scopes.scope_range;
-import spp.analyse.scopes.scope;
+module spp.analyse.scopes;
+import :scope;
 
 
-SPP_MOD_BEGIN
 spp::analyse::scopes::ScopeRange::ScopeRange(
     Scope *root) :
     m_root(root) {
@@ -22,5 +18,3 @@ auto spp::analyse::scopes::ScopeRange::end() const // NOLINT(readability-convert
     -> ScopeIterator {
     return ScopeIterator();
 }
-
-SPP_MOD_END

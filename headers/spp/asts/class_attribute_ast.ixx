@@ -1,15 +1,15 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.class_attribute_ast;
-import spp.asts.ast;
-import spp.asts.mixins.visibility_enabled_ast;
-import spp.asts.class_member_ast;
-
+export module spp.asts:class_attribute_ast;
+import :ast;
+import :class_member_ast;
+import :visibility_ast;
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct ClassAttributeAst;
+    SPP_EXP_CLS struct AnnotationAst;
     SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct TokenAst;
@@ -21,7 +21,7 @@ namespace spp::asts {
  * The ClassAttributeAst represents an attribute of a class. It is defined on the class prototype ast, and is used to
  * add "state" to a type.
  */
-SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : virtual Ast, ClassMemberAst, mixins::VisibilityEnabledAst {
+SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : virtual Ast, ClassMemberAst, mixins::VisibilityAst {
     /**
      * The list of annotations that are applied to this class attribute. Typically, access modifiers in this context.
      */
@@ -50,8 +50,6 @@ SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : virtual Ast, ClassMember
      */
     std::unique_ptr<ExpressionAst> default_val;
 
-    auto _spp_key_function() const -> void override;
-
     /**
      * Construct the ClassAttributeAst with the arguments matching the members.
      * @param[in] annotations The list of annotations that are applied to this class attribute.
@@ -71,7 +69,7 @@ SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : virtual Ast, ClassMember
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_1_pre_process(Ast *ctx) -> void override;
+    auto stage_1_pre_process(AbstractAst *ctx) -> void override;
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -85,8 +83,3 @@ SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : virtual Ast, ClassMember
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::ClassAttributeAst::_spp_key_function() const -> void {}
-SPP_MOD_END

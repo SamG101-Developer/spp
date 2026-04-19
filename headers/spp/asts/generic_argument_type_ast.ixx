@@ -1,15 +1,13 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.generic_argument_type_ast;
-import spp.asts.generic_argument_ast;
-import spp.asts.utils.orderable;
+export module spp.asts:generic_argument_type_ast;
+import :generic_argument_ast;
+import spp.asts.utils;
 import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct GenericArgumentTypeAst;
-    SPP_EXP_CLS struct GenericArgumentTypeKeywordAst;
-    SPP_EXP_CLS struct GenericArgumentTypePositionalAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
@@ -24,8 +22,6 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeAst : GenericArgumentAst {
      */
     std::shared_ptr<TypeAst> val;
 
-    auto _spp_key_function() const -> void override;
-
     /**
      * Construct the GenericArgumentTypeAst with the arguments matching the members.
      * @param val The value of the generic type argument.
@@ -39,8 +35,3 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeAst : GenericArgumentAst {
 
     auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::GenericArgumentTypeAst::_spp_key_function() const -> void {}
-SPP_MOD_END

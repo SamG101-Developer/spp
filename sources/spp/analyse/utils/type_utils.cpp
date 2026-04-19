@@ -4,50 +4,13 @@ module;
 #include <spp/parse/macros.hpp>
 
 module spp.analyse.utils.type_utils;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.scope_block_name;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.func_utils;
-import spp.analyse.utils.mem_utils;
-import spp.asts.annotation_ast;
-import spp.asts.ast;
-import spp.asts.case_expression_branch_ast;
-import spp.asts.class_attribute_ast;
-import spp.asts.class_implementation_ast;
-import spp.asts.class_member_ast;
-import spp.asts.class_prototype_ast;
-import spp.asts.convention_ast;
-import spp.asts.function_parameter_variadic_ast;
-import spp.asts.function_prototype_ast;
-import spp.asts.generic_argument_ast;
-import spp.asts.generic_argument_comp_ast;
-import spp.asts.generic_argument_comp_keyword_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_ast;
-import spp.asts.generic_argument_type_keyword_ast;
-import spp.asts.generic_parameter_ast;
-import spp.asts.generic_parameter_comp_ast;
-import spp.asts.generic_parameter_type_ast;
-import spp.asts.generic_parameter_type_optional_ast;
-import spp.asts.generic_parameter_group_ast;
-import spp.asts.identifier_ast;
-import spp.asts.inner_scope_expression_ast;
-import spp.asts.integer_literal_ast;
-import spp.asts.sup_prototype_extension_ast;
-import spp.asts.statement_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.type_statement_ast;
-import spp.asts.generate.common_types_precompiled;
-import spp.asts.utils.ast_utils;
-import spp.asts.utils.visibility;
-import spp.lex.lexer;
-import spp.parse.parser_spp;
-import spp.parse.errors.parser_error;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts;
+import spp.asts.utils;
+import spp.lex;
+import spp.parse;
+import spp.parse.errors;
 import spp.utils.ptr;
 import spp.utils.strings;
 import genex;
@@ -97,7 +60,7 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
     const auto stripped_rhs_sym = rhs_scope.get_type_symbol(stripped_rhs, false);
 
     // If the left-hand-side is a "Variant" type, check the composite types first.
-    if (check_variant and symbolic_eq(*stripped_lhs_sym->fq_name()->without_generics(), *asts::generate::common_types_precompiled::VAR, lhs_scope, lhs_scope, false)) {
+    if (check_variant and symbolic_eq(*stripped_lhs_sym->fq_name()->without_generics(), *asts::common_types_precompiled::VAR, lhs_scope, lhs_scope, false)) {
         auto lhs_composite_types = deduplicate_variant_inner_types(*lhs_scope.get_type_symbol(lhs_type.shared_from_this())->fq_name(), lhs_scope);
         if (genex::any_of(lhs_composite_types, [&](auto &&lhs_composite_type) { return symbolic_eq(*lhs_composite_type, rhs_type, lhs_scope, rhs_scope); })) {
             return true;
@@ -183,7 +146,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
 
     // If the right-hand-side is a "Variant" type, check the composite types first.
     // Todo: on the failure of a variant match in "any_of", does the generic map need rolling back?
-    if (check_variant and symbolic_eq(*asts::generate::common_types_precompiled::VAR, *stripped_rhs_sym->fq_name()->without_generics(), rhs_scope, rhs_scope)) {
+    if (check_variant and symbolic_eq(*asts::common_types_precompiled::VAR, *stripped_rhs_sym->fq_name()->without_generics(), rhs_scope, rhs_scope)) {
         auto rhs_composite_types = deduplicate_variant_inner_types(*rhs_scope.get_type_symbol(rhs_type.shared_from_this())->fq_name(), rhs_scope);
         if (genex::any_of(rhs_composite_types, [&](auto &&rhs_composite_type) { return relaxed_symbolic_eq(lhs_type, *rhs_composite_type, lhs_scope, rhs_scope, generic_args); })) {
             return true;
@@ -268,7 +231,7 @@ auto spp::analyse::utils::type_utils::is_type_array(
     -> bool {
     // Check the type against "std::array::Arr[T, n]".
     return
-        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::ARR, scope, scope);
+        symbolic_eq(*type.without_generics(), *asts::common_types_precompiled::ARR, scope, scope);
 }
 
 
@@ -278,7 +241,7 @@ auto spp::analyse::utils::type_utils::is_type_tuple(
     -> bool {
     // Check the type against "std::tuple::Tup[Ts...]".
     return
-        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::TUP, scope, scope);
+        symbolic_eq(*type.without_generics(), *asts::common_types_precompiled::TUP, scope, scope);
 }
 
 
@@ -288,7 +251,7 @@ auto spp::analyse::utils::type_utils::is_type_variant(
     -> bool {
     // Check the type against "std::variant::Variant[Ts...]".
     return
-        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::VAR, scope, scope);
+        symbolic_eq(*type.without_generics(), *asts::common_types_precompiled::VAR, scope, scope);
 }
 
 
@@ -298,7 +261,7 @@ auto spp::analyse::utils::type_utils::is_type_boolean(
     -> bool {
     // Check the type against "std::bool::Bool".
     return
-        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::BOOL, scope, scope);
+        symbolic_eq(*type.without_generics(), *asts::common_types_precompiled::BOOL, scope, scope);
 }
 
 
@@ -308,7 +271,7 @@ auto spp::analyse::utils::type_utils::is_type_void(
     -> bool {
     // Check the type against "std::void::Void".
     return
-        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::VOID, scope, scope);
+        symbolic_eq(*type.without_generics(), *asts::common_types_precompiled::VOID, scope, scope);
 }
 
 
@@ -318,7 +281,7 @@ auto spp::analyse::utils::type_utils::is_type_never(
     -> bool {
     // Check the type against "std::void::Void".
     return
-        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::NEVER, scope, scope);
+        symbolic_eq(*type.without_generics(), *asts::common_types_precompiled::NEVER, scope, scope);
 }
 
 
@@ -328,8 +291,8 @@ auto spp::analyse::utils::type_utils::is_type_generator(
     -> bool {
     // Check the type against "std::generator::Gen[T]/GenOpt[T]/GenRes[T, E]".
     return
-        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::GEN, scope, scope) or
-        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::GEN_ONCE, scope, scope);
+        symbolic_eq(*type.without_generics(), *asts::common_types_precompiled::GEN, scope, scope) or
+        symbolic_eq(*type.without_generics(), *asts::common_types_precompiled::GEN_ONCE, scope, scope);
 }
 
 
@@ -339,8 +302,8 @@ auto spp::analyse::utils::type_utils::is_type_runtime_indexable(
     -> bool {
     // Test for the type against "std::iter::IndexRef[T]/IndexMut[T]".
     return
-        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::INDEX_REF, scope, scope) or
-        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::INDEX_MUT, scope, scope);
+        symbolic_eq(*type.without_generics(), *asts::common_types_precompiled::INDEX_REF, scope, scope) or
+        symbolic_eq(*type.without_generics(), *asts::common_types_precompiled::INDEX_MUT, scope, scope);
 }
 
 
@@ -350,7 +313,7 @@ auto spp::analyse::utils::type_utils::is_type_try(
     -> bool {
     // Check the type against "std::try::Try[Ok, Err]".
     return
-        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::TRY, scope, scope);
+        symbolic_eq(*type.without_generics(), *asts::common_types_precompiled::TRY, scope, scope);
 }
 
 
@@ -360,9 +323,9 @@ auto spp::analyse::utils::type_utils::is_type_function(
     -> bool {
     // Check the type against "std::function::FunMov[Ret, Args]/FunMut[Ret, Args]/FunRef[Ret, Args]".
     return
-        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::FUN_MOV, scope, scope) or
-        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::FUN_MUT, scope, scope) or
-        symbolic_eq(*type.without_generics(), *asts::generate::common_types_precompiled::FUN_REF, scope, scope);
+        symbolic_eq(*type.without_generics(), *asts::common_types_precompiled::FUN_MOV, scope, scope) or
+        symbolic_eq(*type.without_generics(), *asts::common_types_precompiled::FUN_MUT, scope, scope) or
+        symbolic_eq(*type.without_generics(), *asts::common_types_precompiled::FUN_REF, scope, scope);
 }
 
 
@@ -394,7 +357,7 @@ auto spp::analyse::utils::type_utils::is_type_borrowed(
     // if (type.type_parts().back()->name[0] == '$') { return false; }
 
     // Check the inner types for variant types.
-    const auto variant_type = asts::generate::common_types_precompiled::VAR;
+    const auto variant_type = asts::common_types_precompiled::VAR;
     if (deep and symbolic_eq(*type.without_generics(), *variant_type, *sm.current_scope, *sm.current_scope, false)) {
         for (auto const &inner_type_arg : type.type_parts().back()->generic_arg_group->get_type_args()) {
             if (is_type_borrowed(*inner_type_arg->val, sm)) { return true; }
@@ -417,7 +380,7 @@ auto spp::analyse::utils::type_utils::is_type_copyable(
     sup_types.append_range(type_sym->scope->sup_types());
 
     auto inner_copy_check = [&](auto &&t) {
-        return symbolic_eq(*t.without_generics(), *asts::generate::common_types_precompiled::COPY, *sm.current_scope, *sm.current_scope, false);
+        return symbolic_eq(*t.without_generics(), *asts::common_types_precompiled::COPY, *sm.current_scope, *sm.current_scope, false);
     };
 
     // Search through the supertypes for a direct Copy type.
@@ -523,7 +486,7 @@ auto spp::analyse::utils::type_utils::get_generator_and_yield_type(
 
     // Extract the multiplicity, optionality and fallibility from the generator type.
     auto is_once = symbolic_eq(
-        *asts::generate::common_types_precompiled::GEN_ONCE, *generator_type->without_generics(), scope, scope);
+        *asts::common_types_precompiled::GEN_ONCE, *generator_type->without_generics(), scope, scope);
 
     // Return all the information about the generator type.
     return std::make_tuple(generator_type, yield_type, is_once);
@@ -570,12 +533,12 @@ auto spp::analyse::utils::type_utils::get_fwd_types(
 
     // Search through the supertypes for a direct FwdRef type.
     const auto fwd_ref_type_candidates = sup_types
-        | genex::views::filter([&sm](auto &&sup_type) { return symbolic_eq(*sup_type, *asts::generate::common_types_precompiled::FWD_REF, *sm.current_scope, *sm.current_scope); })
+        | genex::views::filter([&sm](auto &&sup_type) { return symbolic_eq(*sup_type, *asts::common_types_precompiled::FWD_REF, *sm.current_scope, *sm.current_scope); })
         | genex::to<std::vector>();
 
     // Search through the supertypes for a direct FwdMut type.
     const auto fwd_mut_type_candidates = sup_types
-        | genex::views::filter([&sm](auto &&sup_type) { return symbolic_eq(*sup_type, *asts::generate::common_types_precompiled::FWD_MUT, *sm.current_scope, *sm.current_scope); })
+        | genex::views::filter([&sm](auto &&sup_type) { return symbolic_eq(*sup_type, *asts::common_types_precompiled::FWD_MUT, *sm.current_scope, *sm.current_scope); })
         | genex::to<std::vector>();
 
     // No error raised here; just return the pair of types (nullptr if not found).
@@ -625,7 +588,7 @@ auto spp::analyse::utils::type_utils::validate_inconsistent_types(
     // Remove the master branch pointer from the list of remaining branch types and check all types match.
     // Todo: Shouldn't need to auto-remove "!" type, because symbolic_eq handles it?
     auto mismatch_branches_type_info = branches_type_info
-        | genex::views::remove_if([&](auto const &x) { return symbolic_eq(*asts::generate::common_types_precompiled::NEVER, *x.second, *sm->current_scope, *sm->current_scope); })
+        | genex::views::remove_if([&](auto const &x) { return symbolic_eq(*asts::common_types_precompiled::NEVER, *x.second, *sm->current_scope, *sm->current_scope); })
         | genex::views::remove_if([&](auto const &x) { return x.first == master_branch_type_info.first; })
         | genex::views::remove_if([&](auto const &x) { return type_utils::symbolic_eq(*master_branch_type_info.second, *x.second, *sm->current_scope, *sm->current_scope); })
         | genex::to<std::vector>();
@@ -1070,12 +1033,12 @@ auto spp::analyse::utils::type_utils::substitute_sup_scope_name(
 
     if (not parts[1].contains(" ext ")) {
         const auto t = INJECT_CODE(parts[1], parse_type_expression)->substitute_generics(generic_args.get_all_args());
-        const auto o = parts[0] + "#" + static_cast<std::string>(*t) + "#" + parts[2];
+        const auto o = parts[0] + "#" + t->to_string() + "#" + parts[2];
         return o;
     }
     const auto t = INJECT_CODE(parts[1].substr(0, parts[1].find(" ext ")), parse_type_expression)->substitute_generics(generic_args.get_all_args());
     const auto u = INJECT_CODE(parts[1].substr(parts[1].find(" ext ") + 5), parse_type_expression)->substitute_generics(generic_args.get_all_args());
-    const auto o = parts[0] + "#" + static_cast<std::string>(*t) + " ext " + static_cast<std::string>(*u) + "#" + parts[2];
+    const auto o = parts[0] + "#" + t->to_string() + " ext " + u->to_string() + "#" + parts[2];
 
     return o;
 }

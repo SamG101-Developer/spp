@@ -2,26 +2,14 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.use_statement_variable_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.asts.annotation_ast;
-import spp.asts.cmp_statement_ast;
-import spp.asts.expression_ast;
-import spp.asts.identifier_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
 import spp.utils.strings;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::UseStatementVariableAst::UseStatementVariableAst(
     decltype(annotations) &&annotations,
     decltype(tok_use) &&tok_use,
@@ -72,7 +60,7 @@ spp::asts::UseStatementVariableAst::operator std::string() const {
 
 
 auto spp::asts::UseStatementVariableAst::stage_1_pre_process(
-    Ast *ctx)
+    AbstractAst *ctx)
     -> void {
     // Pre-process the annotations.
     Ast::stage_1_pre_process(ctx);
@@ -195,10 +183,8 @@ auto spp::asts::UseStatementVariableAst::stage_9_comptime_resolution(
 auto spp::asts::UseStatementVariableAst::stage_10_code_gen_1(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Code gen for the conversion AST.
     return m_conversion->stage_10_code_gen_1(sm, meta, ctx);
 }
-
-SPP_MOD_END

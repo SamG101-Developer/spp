@@ -1,37 +1,18 @@
 module;
-#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.analyse.scopes.scope;
+module spp.analyse.scopes;
+import spp.analyse.errors;
 import spp.analyse.scopes.symbols;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.asts.ast;
-import spp.asts.class_prototype_ast;
-import spp.asts.expression_ast;
-import spp.asts.generic_argument_ast;
-import spp.asts.generic_argument_comp_ast;
-import spp.asts.generic_argument_comp_keyword_ast;
-import spp.asts.generic_argument_type_ast;
-import spp.asts.generic_argument_type_keyword_ast;
-import spp.asts.identifier_ast;
-import spp.asts.module_prototype_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_ast;
-import spp.asts.postfix_expression_operator_runtime_member_access_ast;
-import spp.asts.postfix_expression_operator_static_member_access_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.utils.ast_utils;
+import spp.asts;
+import spp.asts.utils;
+import spp.compiler;
 import spp.utils.error_formatter;
 import spp.utils.functions;
-import spp.compiler.module_tree;
 import ankerl;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::analyse::scopes::ScopeBlockName::ScopeBlockName(
     std::string &&name) :
     name(std::move(name)) {
@@ -40,7 +21,7 @@ spp::analyse::scopes::ScopeBlockName::ScopeBlockName(
 
 auto spp::analyse::scopes::ScopeBlockName::from_parts(
     std::string &&header,
-    std::vector<asts::Ast*> const &parts,
+    std::vector<AbstractAst*> const &parts,
     const std::size_t pos)
     -> ScopeBlockName {
     // Build the name string.
@@ -58,7 +39,7 @@ auto spp::analyse::scopes::ScopeBlockName::from_parts(
 spp::analyse::scopes::Scope::Scope(
     ScopeName name,
     Scope *parent,
-    asts::Ast *ast,
+    AbstractAst *ast,
     spp::utils::errors::ErrorFormatter *error_formatter) :
     name(std::move(name)),
     parent(parent),
@@ -728,10 +709,10 @@ auto spp::analyse::scopes::Scope::print_scope_tree() const
 auto spp::analyse::scopes::Scope::name_as_string() const
     -> std::string {
     if (auto const name_as_id = std::get_if<std::shared_ptr<asts::IdentifierAst>>(&name)) {
-        return (*name_as_id)->operator std::string();
+        return name_as_id->to_string();
     }
     if (auto const name_as_type_id = std::get_if<std::shared_ptr<asts::TypeIdentifierAst>>(&name)) {
-        return (*name_as_type_id)->operator std::string();
+        return name_as_type_id->to_string();
     }
     if (auto const name_as_block = std::get_if<ScopeBlockName>(&name)) {
         return name_as_block->name;
@@ -748,5 +729,3 @@ auto spp::analyse::scopes::Scope::fix_children_parent_pointers()
         child->fix_children_parent_pointers();
     }
 }
-
-SPP_MOD_END

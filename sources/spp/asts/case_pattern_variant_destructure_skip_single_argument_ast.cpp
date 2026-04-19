@@ -1,15 +1,10 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.case_pattern_variant_destructure_skip_single_argument_ast;
-import spp.asts.ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.local_variable_destructure_skip_single_argument_ast;
-import spp.asts.token_ast;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::CasePatternVariantDestructureSkipSingleArgumentAst(
     decltype(tok_underscore) &&tok_underscore) :
     tok_underscore(std::move(tok_underscore)) {
@@ -53,5 +48,3 @@ auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::convert_to_v
     var->mark_from_case_pattern();
     return var;
 }
-
-SPP_MOD_END

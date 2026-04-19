@@ -2,26 +2,13 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.type_postfix_expression_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.token_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.type_postfix_expression_operator_ast;
-import spp.asts.type_postfix_expression_operator_nested_type_ast;
-import spp.asts.type_unary_expression_ast;
-import spp.asts.type_unary_expression_operator_borrow_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::TypePostfixExpressionAst::TypePostfixExpressionAst(
     decltype(lhs) &&lhs,
     decltype(tok_op) &&tok_op) :
@@ -261,5 +248,3 @@ auto spp::asts::TypePostfixExpressionAst::infer_type(
     const auto sym = lhs_type_scope->get_type_symbol(part);
     return sym->fq_name();
 }
-
-SPP_MOD_END

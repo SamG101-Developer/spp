@@ -2,18 +2,12 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.object_initializer_argument_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.mem_utils;
-import spp.asts.expression_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::ObjectInitializerArgumentAst::ObjectInitializerArgumentAst(
     decltype(name) name,
     decltype(val) &&val) :
@@ -62,5 +56,3 @@ auto spp::asts::ObjectInitializerArgumentAst::infer_type(
     // Infer the type of the value expression.
     return val->infer_type(sm, meta);
 }
-
-SPP_MOD_END

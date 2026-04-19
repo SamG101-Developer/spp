@@ -1,15 +1,10 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.case_pattern_variant_else_case_ast;
-import spp.asts.ast;
-import spp.asts.case_expression_ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.token_ast;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::CasePatternVariantElseCaseAst::CasePatternVariantElseCaseAst(
     decltype(tok_else) &&tok_else,
     decltype(case_expr) &&case_expr) :
@@ -79,9 +74,7 @@ auto spp::asts::CasePatternVariantElseCaseAst::stage_9_comptime_resolution(
 auto spp::asts::CasePatternVariantElseCaseAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx) -> llvm::Value* {
+    codegen::LlvmCtx *ctx) -> llvm::Value* {
     // Delegate code generation to the case expression.
     return case_expr->stage_11_code_gen_2(sm, meta, ctx);
 }
-
-SPP_MOD_END

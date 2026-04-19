@@ -2,53 +2,14 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.function_prototype_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_block_name;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.builtins;
-import spp.analyse.utils.annotation_utils;
-import spp.analyse.utils.func_utils;
-import spp.analyse.utils.type_utils;
-import spp.asts.annotation_ast;
-import spp.asts.convention_mut_ast;
-import spp.asts.convention_ref_ast;
-import spp.asts.class_prototype_ast;
-import spp.asts.class_implementation_ast;
-import spp.asts.cmp_statement_ast;
-import spp.asts.convention_ast;
-import spp.asts.function_implementation_ast;
-import spp.asts.function_implementation_lowered_ast;
-import spp.asts.function_parameter_group_ast;
-import spp.asts.function_parameter_self_ast;
-import spp.asts.generic_argument_ast;
-import spp.asts.generic_argument_type_keyword_ast;
-import spp.asts.generic_parameter_group_ast;
-import spp.asts.identifier_ast;
-import spp.asts.module_implementation_ast;
-import spp.asts.module_prototype_ast;
-import spp.asts.object_initializer_ast;
-import spp.asts.object_initializer_argument_group_ast;
-import spp.asts.sup_implementation_ast;
-import spp.asts.sup_prototype_functions_ast;
-import spp.asts.sup_prototype_extension_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.generate.common_types;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.mixins.compiler_stages;
-import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_mangle;
-import spp.codegen.llvm_type;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
+import spp.lex;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     decltype(annotations) &&annotations,
     decltype(tok_fun) &&tok_cmp,
@@ -133,22 +94,22 @@ auto spp::asts::FunctionPrototypeAst::m_deduce_mock_class_type() const
 
     // Module level functions, and static methods, are always FunRef.
     if (m_ctx->to<ModulePrototypeAst>() == nullptr or param_group->get_self_param() == nullptr) {
-        return generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
+        return common_types::fun_ref_type(pos_start(), common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
     }
 
     // Class methods with "self" are the FunMov type.
     if (param_group->get_self_param()->conv == nullptr) {
-        return generate::common_types::fun_mov_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
+        return common_types::fun_mov_type(pos_start(), common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
     }
 
     // Class methods with "&mut self" are the FunMut type.
     if (*param_group->get_self_param()->conv == ConventionTag::MUT) {
-        return generate::common_types::fun_mut_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
+        return common_types::fun_mut_type(pos_start(), common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
     }
 
     // Class methods with "&self" are the FunRef type.
     if (*param_group->get_self_param()->conv == ConventionTag::REF) {
-        return generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
+        return common_types::fun_ref_type(pos_start(), common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
     }
 
     std::unreachable();
@@ -161,7 +122,7 @@ auto spp::asts::FunctionPrototypeAst::m_deduce_mock_class_type() const
 
 auto spp::asts::FunctionPrototypeAst::m_is_pure_generic(
     analyse::scopes::ScopeManager *sm,
-    codegen::LLvmCtx *ctx) const
+    codegen::LlvmCtx *ctx) const
     -> std::tuple<bool, llvm::Type*, std::vector<llvm::Type*>> {
     // Convert the return and parameter types to LLVM types.
     const auto llvm_ret_type = codegen::llvm_type(*sm->current_scope->get_type_symbol(return_type), ctx);
@@ -178,7 +139,7 @@ auto spp::asts::FunctionPrototypeAst::m_is_pure_generic(
 auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
     analyse::scopes::ScopeManager *sm,
     CompilerMetaData *,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> std::shared_ptr<codegen::LlvmFuncWrapper> {
     // Generate the return and parameter types.
     auto [is_generic, llvm_ret_type, llvm_param_types] = m_is_pure_generic(sm, ctx);
@@ -287,7 +248,7 @@ auto spp::asts::FunctionPrototypeAst::annotation_info() const
 
 
 auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
-    Ast *ctx)
+    AbstractAst *ctx)
     -> void {
     // Get the name of either the module, sup, or sup-ext context name.
     Ast::stage_1_pre_process(ctx);
@@ -295,7 +256,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     // Substitute the "Self" parameter's type with the name of the method.
     if (ctx->to<ModulePrototypeAst>() == nullptr and param_group->get_self_param() != nullptr) {
         const auto self_gen_sub = std::make_unique<GenericArgumentTypeKeywordAst>(
-            generate::common_types::self_type(pos_start()), nullptr, ast_name(ctx));
+            common_types::self_type(pos_start()), nullptr, ast_name(ctx));
         auto gen_sub = std::vector<GenericArgumentAst*>(1);
         gen_sub[0] = self_gen_sub.get();
 
@@ -543,7 +504,7 @@ auto spp::asts::FunctionPrototypeAst::stage_9_comptime_resolution(
 auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_1(
     analyse::scopes::ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Create the declaration, but not the definition, of the function. This allows for order-agnostic behaviour.
     sm->move_to_next_scope();
@@ -571,7 +532,7 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_1(
 auto spp::asts::FunctionPrototypeAst::stage_11_code_gen_2(
     analyse::scopes::ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Build the function body.
     sm->move_to_next_scope();
@@ -650,5 +611,3 @@ auto spp::asts::FunctionPrototypeAst::get_llvm_func() const
     -> std::shared_ptr<codegen::LlvmFuncWrapper> {
     return *m_llvm_func;
 }
-
-SPP_MOD_END

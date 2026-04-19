@@ -1,20 +1,19 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.function_call_argument_ast;
-import spp.asts.ast;
-import spp.asts.mixins.orderable_ast;
-import spp.asts.mixins.type_inferrable_ast;
-import spp.asts.utils.orderable;
+export module spp.asts:function_call_argument_ast;
+import :ast;
+import :orderable_ast;
+import :type_inferrable_ast;
+import spp.asts.utils;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct FunctionCallArgumentAst;
     SPP_EXP_CLS struct ConventionAst;
     SPP_EXP_CLS struct ExpressionAst;
-    SPP_EXP_CLS struct FunctionCallArgumentAst;
-    SPP_EXP_CLS struct PostfixExpressionOperatorFunctionCallAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
@@ -23,10 +22,7 @@ namespace spp::asts {
  * The FunctionCallArgumentAst is the base class representing an argument in a function call. It is inherited into the
  * "positional" and "keyword" variants.
  */
-SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst :
-    virtual Ast,
-    mixins::OrderableAst,
-    mixins::TypeInferrableAst {
+SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst : virtual Ast, mixins::OrderableAst, mixins::TypeInferrableAst {
     /**
      * Use the base Ast's constructors.
      */
@@ -71,7 +67,7 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst :
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

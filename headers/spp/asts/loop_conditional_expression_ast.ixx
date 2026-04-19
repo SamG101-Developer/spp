@@ -1,15 +1,11 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.loop_conditional_expression_ast;
-import spp.asts.loop_expression_ast;
+export module spp.asts:loop_conditional_expression_ast;
+import :loop_expression_ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
-}
 
 namespace spp::asts {
     SPP_EXP_CLS struct LoopConditionalExpressionAst;
@@ -44,7 +40,7 @@ SPP_EXP_CLS struct spp::asts::LoopConditionalExpressionAst final : LoopExpressio
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 

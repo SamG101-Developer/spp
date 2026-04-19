@@ -1,14 +1,9 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.annotation_ast;
-import spp.asts.ast;
+export module spp.asts:annotation_ast;
+import :ast;
 import std;
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
-    SPP_EXP_CLS class ScopeManager;
-}
 
 namespace spp::asts {
     SPP_EXP_CLS struct AnnotationAst;
@@ -53,8 +48,6 @@ public:
      */
     std::unique_ptr<FunctionCallArgumentGroupAst> fn_arg_group;
 
-    auto _spp_key_function() const -> void override;
-
     /**
      * Construct the AnnotationAst with the arguments matching the members.
      * @param[in] tok_at_sign The token that represents the @c @ sign in the annotation.
@@ -85,7 +78,7 @@ public:
      * provide the correct error formatter to the semantic error being thrown.
      * @param[in] ctx The context that this annotation is being applied to.
      */
-    auto stage_1_pre_process(Ast *ctx) -> void override;
+    auto stage_1_pre_process(AbstractAst *ctx) -> void override;
 
     /**
      * There are three key checks that are performed in this stage:
@@ -98,18 +91,13 @@ public:
      * @param[in] sm The scope manager to check the context AST against.
      * @param[in,out] meta Associated metadata.
      */
-    auto stage_2_gen_top_level_scopes(analyse::scopes::ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_5_load_super_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_7_analyse_semantics(analyse::scopes::ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::AnnotationAst::_spp_key_function() const -> void {}
-SPP_MOD_END

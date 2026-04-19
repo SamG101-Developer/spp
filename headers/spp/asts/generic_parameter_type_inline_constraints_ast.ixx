@@ -1,9 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.generic_parameter_type_inline_constraints_ast;
-import spp.asts.ast;
-
+export module spp.asts:generic_parameter_type_inline_constraints_ast;
+import :ast;
 import std;
 
 namespace spp::asts {

@@ -1,20 +1,20 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.lex.tokens;
+export module spp.lex:tokens;
 import std;
 
 
 namespace spp::lex {
-    SPP_EXP_ENUM enum class RawTokenType : std::uint8_t;
-    SPP_EXP_ENUM enum class SppTokenType : std::uint8_t;
+    SPP_EXP_CLS enum class RawTokenType : std::uint8_t;
+    SPP_EXP_CLS enum class SppTokenType : std::uint8_t;
     SPP_EXP_CLS struct SppTokenSets;
     SPP_EXP_CLS class RawToken;
     SPP_EXP_FUN auto tok_to_string(SppTokenType token) noexcept -> std::string;
 }
 
 
-SPP_EXP_ENUM enum class spp::lex::RawTokenType : std::uint8_t {
+SPP_EXP_CLS enum class spp::lex::RawTokenType : std::uint8_t {
     LX_CHARACTER,
     LX_DIGIT,
 
@@ -87,7 +87,7 @@ SPP_EXP_ENUM enum class spp::lex::RawTokenType : std::uint8_t {
 };
 
 
-SPP_EXP_ENUM enum class spp::lex::SppTokenType : std::uint8_t {
+SPP_EXP_CLS enum class spp::lex::SppTokenType : std::uint8_t {
     LX_CHARACTER,
     LX_DIGIT,
     LX_CHAR,

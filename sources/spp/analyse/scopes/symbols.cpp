@@ -1,26 +1,9 @@
-module;
-#include <spp/macros.hpp>
-
 module spp.analyse.scopes.symbols;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_block_name;
-import spp.analyse.utils.mem_utils;
-import spp.asts.convention_ast;
-import spp.asts.identifier_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_static_member_access_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.type_unary_expression_ast;
-import spp.asts.type_unary_expression_operator_namespace_ast;
-import spp.asts.type_statement_ast;
-import spp.asts.utils.ast_utils;
+import spp.asts;
 import spp.codegen.llvm_sym_info;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::analyse::scopes::Symbol::~Symbol() = default;
 
 
@@ -208,5 +191,3 @@ auto spp::analyse::scopes::TypeSymbol::fq_name(
     // Re-add the convention of the type if it exists.
     return convention ? qualified_name->with_convention(ast_clone(convention)) : qualified_name;
 }
-
-SPP_MOD_END

@@ -1,17 +1,12 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.boolean_literal_ast;
-import spp.asts.ast;
-import spp.asts.expression_ast;
-import spp.asts.generate.common_types;
-import spp.asts.token_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+module spp.asts;
+import spp.asts.utils;
+import spp.lex;
+import :common_types;
 
 
-SPP_MOD_BEGIN
 spp::asts::BooleanLiteralAst::BooleanLiteralAst(
     decltype(tok_bool) &&tok_bool) :
     tok_bool(std::move(tok_bool)) {
@@ -108,7 +103,7 @@ auto spp::asts::BooleanLiteralAst::stage_9_comptime_resolution(
 auto spp::asts::BooleanLiteralAst::stage_11_code_gen_2(
     ScopeManager *,
     CompilerMetaData *,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Map the boolean literal to an LLVM constant integer.
     const auto value = tok_bool->token_type == lex::SppTokenType::KW_TRUE ? 1ul : 0ul;
@@ -121,7 +116,5 @@ auto spp::asts::BooleanLiteralAst::infer_type(
     CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // The boolean ast is always inferred as "std::boolean::Bool".
-    return generate::common_types::boolean_type(pos_start());
+    return common_types::boolean_type(pos_start());
 }
-
-SPP_MOD_END

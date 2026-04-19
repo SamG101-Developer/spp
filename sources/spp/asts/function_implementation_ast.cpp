@@ -1,19 +1,9 @@
-module;
-#include <spp/macros.hpp>
-
-module spp.asts.function_implementation_ast;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.asts.ast;
-import spp.asts.expression_ast;
-import spp.asts.ret_statement_ast;
-import spp.asts.statement_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::FunctionImplementationAst::~FunctionImplementationAst() = default;
 
 
@@ -39,7 +29,7 @@ auto spp::asts::FunctionImplementationAst::stage_9_comptime_resolution(
     -> void {
     // Inject the argument values. Todo: && & std::move?
     for (auto const &[arg_name, arg_comp] : meta->cmp_args) {
-        const auto arg_sym = sm->current_scope->get_var_symbol(arg_name);
+        const auto arg_sym = analyse::utils::scope_utils::get_var_symbol(sm->current_scope, arg_name);
         arg_sym->comptime_value = ast_clone(arg_comp);
     }
 
@@ -50,5 +40,3 @@ auto spp::asts::FunctionImplementationAst::stage_9_comptime_resolution(
         if (did_ret) { break; }
     }
 }
-
-SPP_MOD_END

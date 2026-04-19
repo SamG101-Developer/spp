@@ -1,22 +1,13 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.generic_argument_type_keyword_ast;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.asts.ast;
-import spp.asts.convention_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.mixins.orderable_ast;
-import spp.asts.utils.ast_utils;
-import spp.asts.utils.orderable;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
+import spp.asts.utils;
+import spp.lex;
 
 
-SPP_MOD_BEGIN
 spp::asts::GenericArgumentTypeKeywordAst::GenericArgumentTypeKeywordAst(
     decltype(name) name,
     decltype(tok_assign) &&tok_assign,
@@ -78,15 +69,15 @@ spp::asts::GenericArgumentTypeKeywordAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenericArgumentTypeKeywordAst::from_symbol(
-    analyse::scopes::TypeSymbol const &sym)
-    -> std::unique_ptr<GenericArgumentTypeKeywordAst> {
-    // Extract the value from the symbol's scope, if it exists.
-    auto value = sym.scope->ty_sym->fq_name()->with_convention(ast_clone(sym.convention.get()));
-
-    // Wrap the value into a type argument.
-    return std::make_unique<GenericArgumentTypeKeywordAst>(sym.name, nullptr, std::move(value));
-}
+// auto spp::asts::GenericArgumentTypeKeywordAst::from_symbol(
+//     analyse::scopes::TypeSymbol const &sym)
+//     -> std::unique_ptr<GenericArgumentTypeKeywordAst> {
+//     // Extract the value from the symbol's scope, if it exists.
+//     auto value = sym.scope->ty_sym->fq_name()->with_convention(ast_clone(sym.convention.get()));
+//
+//     // Wrap the value into a type argument.
+//     return std::make_unique<GenericArgumentTypeKeywordAst>(sym.name, nullptr, std::move(value));
+// }
 
 
 auto spp::asts::GenericArgumentTypeKeywordAst::stage_7_analyse_semantics(
@@ -95,11 +86,9 @@ auto spp::asts::GenericArgumentTypeKeywordAst::stage_7_analyse_semantics(
     -> void {
     // Analyse the name and value of the generic type argument.
     val->stage_7_analyse_semantics(sm, meta);
-    const auto tmp1 = sm->current_scope->get_type_symbol(val);
+    const auto tmp1 = analyse::utils::scope_utils::get_type_symbol(sm->current_scope, val);
     const auto tmp2 = tmp1->fq_name();
     auto tmp3 = ast_clone(val->get_convention());
     const auto tmp4 = tmp2->with_convention(std::move(tmp3));
     val = tmp4;
 }
-
-SPP_MOD_END

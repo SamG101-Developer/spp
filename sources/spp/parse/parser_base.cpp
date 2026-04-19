@@ -1,14 +1,9 @@
-module;
-#include <spp/macros.hpp>
-
-module spp.parse.parser_base;
-import spp.lex.tokens;
-import spp.parse.errors.parser_error;
-import spp.parse.errors.parser_error_builder;
+module spp.parse;
+import spp.lex;
+import spp.parse.errors;
 import spp.utils.error_formatter;
 
 
-SPP_MOD_BEGIN
 spp::parse::ParserBase::ParserBase(std::vector<lex::RawToken> tokens, std::shared_ptr<utils::errors::ErrorFormatter> const &error_formatter) :
     m_tokens(std::move(tokens)),
     m_tokens_len(m_tokens.size()),
@@ -19,4 +14,3 @@ spp::parse::ParserBase::ParserBase(std::vector<lex::RawToken> tokens, std::share
 
 
 spp::parse::ParserBase::~ParserBase() = default;
-SPP_MOD_END

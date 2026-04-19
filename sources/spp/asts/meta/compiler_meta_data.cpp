@@ -1,13 +1,7 @@
-module;
-#include <spp/macros.hpp>
-
-module spp.asts.meta.compiler_meta_data;
-import spp.asts.expression_ast;
-import spp.asts.identifier_ast;
+module spp.asts;
 import ankerl;
 
 
-SPP_MOD_BEGIN
 spp::asts::meta::CompilerMetaData::CompilerMetaData() {
     current_stage = 0;
     return_type_overload_resolver_type = nullptr;
@@ -64,7 +58,7 @@ auto spp::asts::meta::CompilerMetaData::save() -> void {
 
 
 auto spp::asts::meta::CompilerMetaData::restore(const bool heavy) -> void {
-    auto state = std::move(m_history.top()); // *DO NOT* click "convert to structured bindings" (CLion) -- LAG
+    auto state = std::move(m_history.top());
     m_history.pop();
     current_stage = state.current_stage;
     return_type_overload_resolver_type = state.return_type_overload_resolver_type;
@@ -112,5 +106,3 @@ auto spp::asts::meta::CompilerMetaData::depth() const
     -> std::size_t {
     return m_history.size();
 }
-
-SPP_MOD_END

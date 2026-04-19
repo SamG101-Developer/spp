@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.generic_parameter_group_ast;
-import spp.asts.ast;
+export module spp.asts:generic_parameter_group_ast;
+import :ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
@@ -81,5 +81,5 @@ SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : virtual Ast {
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };

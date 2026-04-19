@@ -1,10 +1,6 @@
-module;
-#include <spp/macros.hpp>
-
-module spp.asts.convention_ast;
+module spp.asts;
 
 
-SPP_MOD_BEGIN
 spp::asts::ConventionAst::ConventionAst(
     const ConventionTag tag) :
     tag(tag) {
@@ -26,5 +22,3 @@ auto spp::asts::ConventionAst::operator==(
     -> bool {
     return tag == that_tag;
 }
-
-SPP_MOD_END

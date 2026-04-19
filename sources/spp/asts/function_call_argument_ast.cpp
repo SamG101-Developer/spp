@@ -2,24 +2,13 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.function_call_argument_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.asts.convention_ast;
-import spp.asts.expression_ast;
-import spp.asts.identifier_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_materialize;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
+import spp.asts.utils;
 import spp.utils.uid;
 
-
-SPP_MOD_BEGIN
 
 spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(
     decltype(conv) &&conv,
@@ -78,13 +67,13 @@ auto spp::asts::FunctionCallArgumentAst::stage_9_comptime_resolution(
 auto spp::asts::FunctionCallArgumentAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Handle the convention (to pointer).
     if (conv != nullptr) {
         // If the lhs is symbolic, get the address of the outermost part.
         const auto uid = spp::utils::generate_uid(this);
-        const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*val);
+        const auto [sym, _] = analyse::utils::scope_utils::get_var_symbol_outermost(sm->current_scope, *val);
 
         if (sym != nullptr) {
             // Get the alloca for the lhs symbol (the base pointer).
@@ -116,6 +105,3 @@ auto spp::asts::FunctionCallArgumentAst::infer_type(
         ? injected_self_type
         : val->infer_type(sm, meta)->with_convention(ast_clone(conv));
 }
-
-
-SPP_MOD_END

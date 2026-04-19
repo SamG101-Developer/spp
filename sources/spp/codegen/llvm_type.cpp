@@ -1,22 +1,8 @@
-module spp.codegen.llvm_type;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.type_utils;
-import spp.analyse.scopes.symbols;
-import spp.asts.boolean_literal_ast;
-import spp.asts.class_prototype_ast;
-import spp.asts.function_parameter_ast;
-import spp.asts.function_parameter_group_ast;
-import spp.asts.function_prototype_ast;
-import spp.asts.generic_argument_comp_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.identifier_ast;
-import spp.asts.integer_literal_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.generate.common_types_precompiled;
-import spp.codegen.llvm_ctx;
-import spp.codegen.llvm_mangle;
-import spp.lex.tokens;
+module spp.codegen;
+import spp.analyse.scopes;
+import spp.asts;
+import spp.lex;
+
 import genex;
 import llvm;
 import std;
@@ -24,12 +10,12 @@ import std;
 
 auto spp::codegen::register_llvm_type_info(
     asts::ClassPrototypeAst const *cls_proto,
-    LLvmCtx const *ctx)
+    LlvmCtx const *ctx)
     -> void {
     // Note: because symbols have a convention attached to them, retrieval handles pointer logic for borrows.
 
     // $ types are 0-size types in LLVM.
-    if (cls_proto->name->operator std::string()[0] == '$') {
+    if (cls_proto->name->to_string()[0] == '$') {
         const auto zero_size_struct = llvm::StructType::create(*ctx->context, mangle::mangle_type_name(*cls_proto->get_cls_sym()));
         zero_size_struct->setBody({}, true);
         cls_proto->get_cls_sym()->llvm_info->llvm_type = zero_size_struct;
@@ -110,7 +96,7 @@ auto spp::codegen::register_llvm_type_info(
 
 auto spp::codegen::llvm_type(
     analyse::scopes::TypeSymbol const &type_sym,
-    LLvmCtx const *ctx)
+    LlvmCtx const *ctx)
     -> llvm::Type* {
     // Either return the llvm type bound to the symbol, or a pointer for borrows.
     return type_sym.convention != nullptr

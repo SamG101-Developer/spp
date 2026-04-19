@@ -2,30 +2,16 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.cmp_statement_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
-import spp.asts.annotation_ast;
-import spp.asts.convention_ast;
-import spp.asts.identifier_ast;
-import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_mangle;
-import spp.codegen.llvm_type;
-import spp.lex.tokens;
+import spp.asts.utils;
+import spp.lex;
 import llvm;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::CmpStatementAst::CmpStatementAst(
     decltype(annotations) &&annotations,
     decltype(tok_cmp) &&tok_cmp,
@@ -97,7 +83,7 @@ spp::asts::CmpStatementAst::operator std::string() const {
 
 
 auto spp::asts::CmpStatementAst::stage_1_pre_process(
-    Ast *ctx)
+    AbstractAst *ctx)
     -> void {
     // No pre-processing needed for cmp statements.
     Ast::stage_1_pre_process(ctx);
@@ -194,7 +180,7 @@ auto spp::asts::CmpStatementAst::stage_8_check_memory(
         *value, *value, *sm, true, true, true, true, true, meta);
 
     // Generate the value and assign it to the variable symbol's compile-time value.
-    if (type->operator std::string()[0] != '$') {
+    if (type->to_string()[0] != '$') {
         const auto var_sym = sm->current_scope->get_var_symbol(name);
         var_sym->comptime_value = ast_clone(value);
     }
@@ -211,7 +197,7 @@ auto spp::asts::CmpStatementAst::stage_9_comptime_resolution(
     }
 
     // Generate the value and assign it to the variable symbol's compile-time value.
-    if (type->operator std::string()[0] != '$') {
+    if (type->to_string()[0] != '$') {
         const auto var_sym = sm->current_scope->get_var_symbol(name);
         value->stage_9_comptime_resolution(sm, meta);
         var_sym->comptime_value = std::move(meta->cmp_result);
@@ -222,10 +208,10 @@ auto spp::asts::CmpStatementAst::stage_9_comptime_resolution(
 auto spp::asts::CmpStatementAst::stage_10_code_gen_1(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // No generation for $ types.
-    if (type->operator std::string()[0] == '$') { return nullptr; }
+    if (type->to_string()[0] == '$') { return nullptr; }
 
     // Generate the value in a constant context.
     ctx->in_constant_context = true;
@@ -256,5 +242,3 @@ auto spp::asts::CmpStatementAst::is_from_use_statement() const
     -> bool {
     return m_from_use_statement;
 }
-
-SPP_MOD_END

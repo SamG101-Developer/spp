@@ -1,13 +1,11 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.fold_expression_ast;
-import spp.asts.token_ast;
-import spp.asts.generate.common_types;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.asts.utils;
+import :common_types;
 
 
-SPP_MOD_BEGIN
 spp::asts::FoldExpressionAst::FoldExpressionAst(
     decltype(tok_ellipsis) &&tok_ellipsis) :
     tok_ellipsis(std::move(tok_ellipsis)) {
@@ -47,7 +45,5 @@ auto spp::asts::FoldExpressionAst::infer_type(
     ScopeManager *,
     CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
-    return generate::common_types::void_type(pos_start());
+    return common_types::void_type(pos_start());
 }
-
-SPP_MOD_END

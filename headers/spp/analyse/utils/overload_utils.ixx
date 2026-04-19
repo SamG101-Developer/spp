@@ -2,32 +2,12 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.overload_utils;
+import spp.analyse.scopes;
+import spp.asts;
 import std;
 
 namespace spp::analyse::errors {
     SPP_EXP_CLS struct SemanticError;
-}
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
-    SPP_EXP_CLS class ScopeManager;
-}
-
-namespace spp::asts {
-    SPP_EXP_CLS struct FunctionCallArgumentGroupAst;
-    SPP_EXP_CLS struct FunctionParameterGroupAst;
-    SPP_EXP_CLS struct FunctionPrototypeAst;
-    SPP_EXP_CLS struct GenericArgumentAst;
-    SPP_EXP_CLS struct GenericArgumentGroupAst;
-    SPP_EXP_CLS struct GenericParameterGroupAst;
-    SPP_EXP_CLS struct IdentifierAst;
-    SPP_EXP_CLS struct PostfixExpressionAst;
-    SPP_EXP_CLS struct PostfixExpressionOperatorFunctionCallAst;
-    SPP_EXP_CLS struct TypeAst;
-}
-
-namespace spp::asts::meta {
-    SPP_EXP_CLS struct CompilerMetaData;
 }
 
 

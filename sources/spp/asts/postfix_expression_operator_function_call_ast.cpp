@@ -1,60 +1,17 @@
 module;
-#include <opex/macros.hpp>
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.postfix_expression_operator_function_call_ast;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.func_utils;
-import spp.analyse.utils.overload_utils;
-import spp.analyse.utils.type_utils;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.asts.convention_mut_ast;
-import spp.asts.convention_ref_ast;
-import spp.asts.expression_ast;
-import spp.asts.function_call_argument_ast;
-import spp.asts.function_call_argument_group_ast;
-import spp.asts.function_call_argument_positional_ast;
-import spp.asts.function_call_argument_keyword_ast;
-import spp.asts.function_implementation_ast;
-import spp.asts.function_parameter_group_ast;
-import spp.asts.function_parameter_required_ast;
-import spp.asts.function_parameter_self_ast;
-import spp.asts.function_parameter_variadic_ast;
-import spp.asts.function_prototype_ast;
-import spp.asts.fold_expression_ast;
-import spp.asts.generic_argument_ast;
-import spp.asts.generic_argument_type_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_parameter_ast;
-import spp.asts.generic_parameter_group_ast;
-import spp.asts.identifier_ast;
-import spp.asts.inner_scope_expression_ast;
-import spp.asts.object_initializer_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_runtime_member_access_ast;
-import spp.asts.postfix_expression_operator_static_member_access_ast;
-import spp.asts.statement_ast;
-import spp.asts.sup_prototype_extension_ast;
-import spp.asts.sup_prototype_functions_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.generate.common_types;
-import spp.asts.generate.common_types_precompiled;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_type;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
+import spp.lex;
 import spp.utils.uid;
 import genex;
 import opex.cast;
 
 
-SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFunctionCallAst(
     decltype(generic_arg_group) &&generic_arg_group,
     decltype(arg_group) &&arg_group,
@@ -188,10 +145,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_7_analyse_semant
     if (is_closure) {
         const auto lhs_type = analyse::utils::func_utils::is_target_callable(*meta->postfix_expression_lhs, *sm, meta);
         auto dummy_self_arg = std::make_unique<FunctionCallArgumentPositionalAst>(nullptr, nullptr, ast_clone(meta->postfix_expression_lhs));
-        if (analyse::utils::type_utils::symbolic_eq(*lhs_type->without_generics(), *generate::common_types_precompiled::FUN_MUT, *sm->current_scope, *sm->current_scope)) {
+        if (analyse::utils::type_utils::symbolic_eq(*lhs_type->without_generics(), *common_types_precompiled::FUN_MUT, *sm->current_scope, *sm->current_scope)) {
             dummy_self_arg->conv = std::make_unique<ConventionMutAst>(nullptr, nullptr);
         }
-        else if (analyse::utils::type_utils::symbolic_eq(*lhs_type->without_generics(), *generate::common_types_precompiled::FUN_REF, *sm->current_scope, *sm->current_scope)) {
+        else if (analyse::utils::type_utils::symbolic_eq(*lhs_type->without_generics(), *common_types_precompiled::FUN_REF, *sm->current_scope, *sm->current_scope)) {
             dummy_self_arg->conv = std::make_unique<ConventionRefAst>(nullptr);
         }
         m_closure_dummy_arg = std::move(dummy_self_arg);
@@ -215,7 +172,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_7_analyse_semant
     // Special case for GenOnce called as a coroutine => auto move into the "Yield" type.
     if (std::get<1>(*m_overload_info)->tok_fun->token_type == lex::SppTokenType::KW_COR and not meta->prevent_auto_generator_resume) {
         m_is_coro_and_auto_resume = analyse::utils::type_utils::symbolic_eq(
-            *generate::common_types_precompiled::GEN_ONCE, *std::get<1>(*m_overload_info)->return_type->without_generics(),
+            *common_types_precompiled::GEN_ONCE, *std::get<1>(*m_overload_info)->return_type->without_generics(),
             *sm->current_scope, *std::get<0>(*m_overload_info));
     }
     meta->prevent_auto_generator_resume = false;
@@ -306,7 +263,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_9_comptime_resol
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx) -> llvm::Value* {
+    codegen::LlvmCtx *ctx) -> llvm::Value* {
     // For folding, generate the code for the folded transformations and combine into single block.
     if (fold != nullptr) {
         const auto merge = InnerScopeExpressionAst<std::unique_ptr<StatementAst>>::new_empty();
@@ -384,7 +341,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
         auto folded_return_types = m_folded_asts
             | genex::views::transform([sm, meta](auto &&ast) { return ast->infer_type(sm, meta); })
             | genex::to<std::vector>();
-        auto tuple_type = generate::common_types::tuple_type(0, std::move(folded_return_types));
+        auto tuple_type = common_types::tuple_type(0, std::move(folded_return_types));
         return tuple_type;
     }
 
@@ -418,6 +375,3 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::target() const
     -> FunctionPrototypeAst* {
     return m_overload_info.has_value() ? std::get<1>(*m_overload_info) : nullptr;
 }
-
-
-SPP_MOD_END

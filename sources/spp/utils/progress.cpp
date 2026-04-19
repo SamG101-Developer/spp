@@ -1,10 +1,6 @@
-module;
-#include <spp/macros.hpp>
-
 module spp.utils.progress;
 
 
-SPP_MOD_BEGIN
 spp::utils::ProgressBar::ProgressBar(
     std::string label,
     const std::uint32_t total_steps,
@@ -48,5 +44,3 @@ auto spp::utils::ProgressBar::finish() -> void {
     next();
     std::cout << std::endl;
 }
-
-SPP_MOD_END

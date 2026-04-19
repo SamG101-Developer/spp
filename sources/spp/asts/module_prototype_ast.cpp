@@ -1,15 +1,11 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.module_prototype_ast;
-import spp.asts.identifier_ast;
-import spp.asts.module_implementation_ast;
-import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_ctx;
+module spp.asts;
+import spp.asts.utils;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::ModulePrototypeAst::ModulePrototypeAst(
     decltype(impl) &&impl) :
     impl(std::move(impl)) {
@@ -84,7 +80,7 @@ auto spp::asts::ModulePrototypeAst::file_name() const
 
 
 auto spp::asts::ModulePrototypeAst::stage_1_pre_process(
-    Ast *ctx)
+    AbstractAst *ctx)
     -> void {
     // Shift to implementation.
     Ast::stage_1_pre_process(ctx);
@@ -167,7 +163,7 @@ auto spp::asts::ModulePrototypeAst::stage_9_comptime_resolution(
 auto spp::asts::ModulePrototypeAst::stage_10_code_gen_1(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Shift to implementation.
     return impl->stage_10_code_gen_1(sm, meta, ctx);
@@ -177,12 +173,10 @@ auto spp::asts::ModulePrototypeAst::stage_10_code_gen_1(
 auto spp::asts::ModulePrototypeAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Add the entry building block for module level code.
 
     // Shift to implementation.
     return impl->stage_11_code_gen_2(sm, meta, ctx);
 }
-
-SPP_MOD_END

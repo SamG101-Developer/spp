@@ -1,15 +1,15 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.type_postfix_expression_operator_ast;
-import spp.asts.ast;
+export module spp.asts:type_postfix_expression_operator_ast;
+import :ast;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS struct IdentifierAst;
-    SPP_EXP_CLS struct TypeIdentifierAst;
     SPP_EXP_CLS struct TypePostfixExpressionOperatorAst;
     SPP_EXP_CLS struct TypePostfixExpressionOperatorNestedTypeAst;
+    SPP_EXP_CLS struct IdentifierAst;
+    SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
 

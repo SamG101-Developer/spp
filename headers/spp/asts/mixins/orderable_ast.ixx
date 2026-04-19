@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.mixins.orderable_ast;
-import spp.asts.utils.orderable;
+export module spp.asts:orderable_ast;
+import spp.asts.utils;
 
 
 namespace spp::asts::mixins {

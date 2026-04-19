@@ -2,38 +2,17 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.sup_prototype_extension_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_block_name;
-import spp.analyse.scopes.scope_manager;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.type_utils;
-import spp.asts.annotation_ast;
-import spp.asts.class_prototype_ast;
-import spp.asts.cmp_statement_ast;
-import spp.asts.convention_ast;
-import spp.asts.function_prototype_ast;
-import spp.asts.generic_argument_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_keyword_ast;
-import spp.asts.generic_parameter_group_ast;
-import spp.asts.sup_implementation_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.type_statement_ast;
-import spp.asts.generate.common_types;
-import spp.asts.generate.common_types_precompiled;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+import spp.asts.utils;
+import spp.lex;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::SupPrototypeExtensionAst::SupPrototypeExtensionAst(
     decltype(tok_sup) &&tok_sup,
     decltype(generic_param_group) &&generic_param_group,
@@ -97,9 +76,10 @@ spp::asts::SupPrototypeExtensionAst::operator std::string() const {
 
 
 auto spp::asts::SupPrototypeExtensionAst::check_cyclic_extension(
-    analyse::scopes::TypeSymbol const &sup_sym,
+    void const *raw_sup_sym,
     analyse::scopes::Scope &check_scope) const
     -> void {
+    const auto cls_sym = *static_cast<analyse::scopes::TypeSymbol const*>(raw_sup_sym);
     auto check_cycle = [this, &check_scope](analyse::scopes::Scope const *sc) {
         auto dummy = analyse::utils::type_utils::GenericInferenceMap();
         const auto ext = sc->ast->to<SupPrototypeExtensionAst>();
@@ -121,10 +101,11 @@ auto spp::asts::SupPrototypeExtensionAst::check_cyclic_extension(
 
 
 auto spp::asts::SupPrototypeExtensionAst::check_double_extension(
-    analyse::scopes::TypeSymbol const &cls_sym,
+    void const *raw_cls_sym,
     analyse::scopes::Scope &check_scope) const
     -> void {
     // Early return for function-classes.
+    const auto cls_sym = *static_cast<analyse::scopes::TypeSymbol const*>(raw_cls_sym);
     if (cls_sym.name->name[0] == '$') {
         return;
     }
@@ -162,7 +143,7 @@ auto spp::asts::SupPrototypeExtensionAst::check_self_extension(
 
 
 auto spp::asts::SupPrototypeExtensionAst::stage_1_pre_process(
-    Ast *ctx)
+    AbstractAst *ctx)
     -> void {
     // Don't need to pre-process function-classes -- they are introduced from preprocessing functions.
     if (name->type_parts().back()->name[0] == '$') { return; }
@@ -170,7 +151,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_1_pre_process(
 
     // Substitute the "Self" parameter's type with the name of the type being superimposed over.
     const auto self_gen_sub = std::make_unique<GenericArgumentTypeKeywordAst>(
-        generate::common_types::self_type(pos_start()), nullptr, name);
+        common_types::self_type(pos_start()), nullptr, name);
     auto gen_sub = std::vector<GenericArgumentAst*>(1);
     gen_sub[0] = self_gen_sub.get();
     super_class = super_class->substitute_generics(gen_sub);
@@ -315,7 +296,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
     // Mark the class as copyable if the "Copy" type is the supertype.
     for (const auto sup_scope : sup_scopes) {
         const auto fq_name = sup_scope->ty_sym->fq_name();
-        if (analyse::utils::type_utils::symbolic_eq(*fq_name, *generate::common_types_precompiled::COPY, *sup_scope, *sm->current_scope)) {
+        if (analyse::utils::type_utils::symbolic_eq(*fq_name, *common_types_precompiled::COPY, *sup_scope, *sm->current_scope)) {
             sm->current_scope->get_type_symbol(name->without_generics())->is_directly_copyable = true;
             cls_sym->is_directly_copyable = true;
             break;
@@ -412,7 +393,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_9_comptime_resolution(
 auto spp::asts::SupPrototypeExtensionAst::stage_10_code_gen_1(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Move to the next scope.
     sm->move_to_next_scope();
@@ -426,7 +407,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_10_code_gen_1(
 auto spp::asts::SupPrototypeExtensionAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Move to the next scope.
     sm->move_to_next_scope();
@@ -455,5 +436,3 @@ auto spp::asts::SupPrototypeExtensionAst::stage_11_code_gen_2(
 
     return nullptr;
 }
-
-SPP_MOD_END

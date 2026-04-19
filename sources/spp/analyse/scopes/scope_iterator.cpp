@@ -1,11 +1,7 @@
-module;
-#include <spp/macros.hpp>
-
-module spp.analyse.scopes.scope_iterator;
-import spp.analyse.scopes.scope;
+module spp.analyse.scopes;
+import :scope;
 
 
-SPP_MOD_BEGIN
 spp::analyse::scopes::ScopeIterator::ScopeIterator(
     Scope *root) {
     if (root != nullptr) {
@@ -90,5 +86,3 @@ auto spp::analyse::scopes::ScopeIterator::operator!=(
     -> bool {
     return not(*this == other);
 }
-
-SPP_MOD_END

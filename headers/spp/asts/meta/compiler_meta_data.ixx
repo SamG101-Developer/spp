@@ -1,32 +1,26 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.meta.compiler_meta_data;
+export module spp.asts:meta;
+import spp.abstract;
+import spp.codegen.llvm_ctx;
+import spp.analyse.scopes;
 import ankerl;
 import llvm;
 import std;
-
-namespace spp::asts {
-    SPP_EXP_CLS struct ExpressionAst;
-    SPP_EXP_CLS struct IdentifierAst;
-    SPP_EXP_CLS struct LoopExpressionAst;
-    SPP_EXP_CLS struct FunctionPrototypeAst;
-    SPP_EXP_CLS struct TokenAst;
-    SPP_EXP_CLS struct TypeAst;
-}
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
-    SPP_EXP_CLS struct TypeSymbol;
-}
 
 namespace spp::asts::meta {
     SPP_EXP_CLS struct CompilerMetaDataState;
     SPP_EXP_CLS struct CompilerMetaData;
 }
 
-namespace spp::codegen {
-    SPP_EXP_CLS struct LLvmCtx;
+namespace spp::asts {
+    SPP_EXP_CLS struct ExpressionAst; //
+    SPP_EXP_CLS struct IdentifierAst; //
+    SPP_EXP_CLS struct FunctionPrototypeAst; //
+    SPP_EXP_CLS struct LoopExpressionAst; //
+    SPP_EXP_CLS struct TokenAst; //
+    SPP_EXP_CLS struct TypeAst; //
 }
 
 
@@ -37,7 +31,7 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     std::shared_ptr<TypeAst> assignment_target_type;
     bool ignore_missing_else_branch_for_inference;
     ExpressionAst *case_condition;
-    analyse::scopes::TypeSymbol *cls_sym;
+    AbstractSymbol *cls_sym;
     analyse::scopes::Scope *enclosing_function_scope;
     TokenAst *enclosing_function_flavour;
     std::vector<std::shared_ptr<TypeAst>> enclosing_function_ret_type;
@@ -63,7 +57,7 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     std::shared_ptr<TypeAst> ignore_cmp_generic;
     bool allow_move_deref;
     llvm::BasicBlock *end_bb;
-    codegen::LLvmCtx *llvm_ctx;
+    codegen::LlvmCtx *llvm_ctx;
     llvm::Value *llvm_assignment_target;
     llvm::Value *llvm_assignment_target_type;
     llvm::PHINode *llvm_phi;

@@ -2,20 +2,12 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.postfix_expression_operator_deref_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.asts.expression_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorDerefAst::PostfixExpressionOperatorDerefAst(
     decltype(tok_deref) &&tok_deref) :
     tok_deref(std::move(tok_deref)) {
@@ -83,7 +75,7 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::stage_9_comptime_resolution(
 auto spp::asts::PostfixExpressionOperatorDerefAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Get the value underlying the borrow.
     const auto borrow_val = meta->postfix_expression_lhs->stage_11_code_gen_2(sm, meta, ctx);
@@ -106,5 +98,3 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::infer_type(
     // Return the dereferenced type.
     return ast_clone(lhs_type->without_convention());
 }
-
-SPP_MOD_END

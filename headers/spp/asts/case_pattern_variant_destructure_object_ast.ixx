@@ -1,15 +1,12 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.case_pattern_variant_destructure_object_ast;
-import spp.asts.case_pattern_variant_ast;
+export module spp.asts:case_pattern_variant_destructure_object_ast;
+import :case_pattern_variant_ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS struct VariableSymbol;
-}
 
 namespace spp::asts {
     SPP_EXP_CLS struct CasePatternVariantDestructureObjectAst;
@@ -21,8 +18,8 @@ namespace spp::asts {
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureObjectAst final : CasePatternVariantAst {
 private:
-    std::shared_ptr<analyse::scopes::VariableSymbol> m_cond_sym;
-    std::shared_ptr<analyse::scopes::VariableSymbol> m_flow_sym;
+    std::shared_ptr<AbstractSymbol> m_cond_sym;
+    std::shared_ptr<AbstractSymbol> m_flow_sym;
 
 public:
     /**
@@ -75,5 +72,5 @@ public:
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };

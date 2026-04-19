@@ -2,9 +2,9 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-export module spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.errors.semantic_error;
+export module spp.analyse.errors:semantic_error_builder;
+import :semantic_error;
+import spp.analyse.scopes;
 import spp.utils.errors;
 import spp.utils.error_formatter;
 import colex;
@@ -16,9 +16,6 @@ namespace spp::analyse::errors {
     struct SemanticErrorBuilder;
 }
 
-namespace spp::asts {
-    SPP_EXP_CLS struct Ast;
-}
 
 namespace spp {
     SPP_EXP_FUN template <typename... Args>
@@ -78,7 +75,7 @@ struct spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::Ab
 private:
     static auto stringify_error_information(
         spp::utils::errors::ErrorFormatter *formatter,
-        std::tuple<asts::Ast const*, SemanticError::ErrorInformationType, std::string, std::string> const &info)
+        std::tuple<void const*, SemanticError::ErrorInformationType, std::string, std::string> const &info)
         -> std::string {
         using namespace std::string_literals;
         auto [ast, type, tag, msg] = info;

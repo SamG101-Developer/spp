@@ -1,19 +1,11 @@
-module;
-#include <spp/macros.hpp>
-
-module spp.asts.function_implementation_lowered_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
 import spp.analyse.utils.builtins;
-import spp.asts.expression_ast;
-import spp.asts.meta.compiler_meta_data;
 import spp.utils.traits;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::FunctionImplementationLoweredAst::~FunctionImplementationLoweredAst() = default;
 
 
@@ -59,7 +51,7 @@ auto spp::asts::FunctionImplementationLoweredAst::stage_9_comptime_resolution(
 auto spp::asts::FunctionImplementationLoweredAst::stage_11_code_gen_2(
     ScopeManager *,
     CompilerMetaData *,
-    codegen::LLvmCtx *)
+    codegen::LlvmCtx *)
     -> llvm::Value* {
     // Todo: inject raw llvm somehow.
     return nullptr;
@@ -72,5 +64,3 @@ auto spp::asts::FunctionImplementationLoweredAst::set_scope_str(
     // Set the scope string for this lowered function implementation.
     m_scope_str = scope_str;
 }
-
-SPP_MOD_END

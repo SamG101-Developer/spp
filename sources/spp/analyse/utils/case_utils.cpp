@@ -1,29 +1,7 @@
 module spp.analyse.utils.case_utils;
-import spp.analyse.scopes.scope_manager;
-import spp.asts.utils.ast_utils;
-import spp.asts.ast;
-import spp.asts.case_pattern_variant_ast;
-import spp.asts.case_pattern_variant_expression_ast;
-import spp.asts.case_pattern_variant_literal_ast;
-import spp.asts.case_pattern_variant_destructure_array_ast;
-import spp.asts.case_pattern_variant_destructure_object_ast;
-import spp.asts.case_pattern_variant_destructure_tuple_ast;
-import spp.asts.convention_ref_ast;
-import spp.asts.expression_ast;
-import spp.asts.fold_expression_ast;
-import spp.asts.function_call_argument_group_ast;
-import spp.asts.function_call_argument_positional_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.identifier_ast;
-import spp.asts.literal_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.postfix_expression_operator_runtime_member_access_ast;
-import spp.asts.object_initializer_ast;
-import spp.asts.object_initializer_argument_group_ast;
-import spp.asts.token_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.codegen.llvm_ctx;
+import spp.analyse.scopes;
+import spp.asts;
+import spp.asts.utils;
 import genex;
 import std;
 
@@ -108,7 +86,7 @@ auto spp::analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_llvm(
     std::vector<asts::CasePatternVariantAst*> const &elems,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> std::vector<llvm::Value*> {
     // Get the expression and map then to LLVM values.
     std::function<llvm::Value*(asts::Ast *)> map = [&](asts::Ast *x) {

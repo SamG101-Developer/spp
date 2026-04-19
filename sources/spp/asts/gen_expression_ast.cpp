@@ -2,37 +2,15 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.gen_expression_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
-import spp.asts.convention_ast;
-import spp.asts.coroutine_prototype_ast;
-import spp.asts.function_prototype_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_ast;
-import spp.asts.identifier_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_ast;
-import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.generate.common_types;
-import spp.asts.generate.common_types_precompiled;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_coros;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
+import spp.lex;
 import spp.utils.uid;
 import llvm;
 
 
-SPP_MOD_BEGIN
 spp::asts::GenExpressionAst::GenExpressionAst(
     decltype(tok_gen) &&tok_gen,
     decltype(conv) &&conv,
@@ -92,7 +70,7 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
         {sm->current_scope}, ERR_ARGS(*function_flavour, *tok_gen));
 
     // Analyse the expression if it exists, and determine the type of the expression.
-    auto expr_type = generate::common_types::void_type(pos_start());
+    auto expr_type = common_types::void_type(pos_start());
     if (expr != nullptr) {
         meta->save();
         SPP_RETURN_TYPE_OVERLOAD_HELPER(expr.get()) {
@@ -111,7 +89,7 @@ auto spp::asts::GenExpressionAst::stage_7_analyse_semantics(
 
     // Functions provide the return type, closures require inference; handle the inference.
     if (meta->enclosing_function_ret_type.empty()) {
-        m_gen_type = generate::common_types::gen_type(expr->pos_start(), expr_type);
+        m_gen_type = common_types::gen_type(expr->pos_start(), expr_type);
         m_gen_type->stage_7_analyse_semantics(sm, meta);
         meta->enclosing_function_ret_type.emplace_back(m_gen_type);
     }
@@ -164,7 +142,7 @@ auto spp::asts::GenExpressionAst::stage_8_check_memory(
 auto spp::asts::GenExpressionAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Get the generator environment.
     const auto coro = meta->enclosing_function_scope->ast->to<CoroutinePrototypeAst>();
@@ -234,5 +212,3 @@ auto spp::asts::GenExpressionAst::infer_type(
     auto send_type = m_gen_type->type_parts().back()->generic_arg_group->type_at("Send")->val;
     return send_type;
 }
-
-SPP_MOD_END

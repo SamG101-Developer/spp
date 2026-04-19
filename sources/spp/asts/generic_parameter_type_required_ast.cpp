@@ -1,15 +1,10 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.generic_parameter_type_required_ast;
-import spp.asts.generic_parameter_type_inline_constraints_ast;
-import spp.asts.type_ast;
-import spp.asts.mixins.orderable_ast;
-import spp.asts.utils.ast_utils;
-import spp.asts.utils.orderable;
+module spp.asts;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::GenericParameterTypeRequiredAst::GenericParameterTypeRequiredAst(
     decltype(name) &&name,
     decltype(constraints) &&constraints) :
@@ -46,5 +41,3 @@ spp::asts::GenericParameterTypeRequiredAst::operator std::string() const {
     SPP_STRING_APPEND(constraints);
     SPP_STRING_END;
 }
-
-SPP_MOD_END

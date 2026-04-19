@@ -1,21 +1,17 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
-import spp.asts.identifier_ast;
-import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.token_ast;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+module spp.asts;
+import spp.asts.utils;
+import spp.lex;
 import spp.utils.ptr;
 
 
-SPP_MOD_BEGIN
 spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::LocalVariableDestructureSkipMultipleArgumentsAst(
     decltype(tok_ellipsis) &&tok_ellipsis,
     std::unique_ptr<LocalVariableAst> &&binding) :
     tok_ellipsis(std::move(tok_ellipsis)),
-    binding(utils::ptr::unique_cast<LocalVariableSingleIdentifierAst>(std::move(binding))) {
+    binding(spp::utils::ptr::unique_cast<LocalVariableSingleIdentifierAst>(std::move(binding))) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_ellipsis, lex::SppTokenType::TK_DOUBLE_DOT, "..");
 }
 
@@ -61,5 +57,3 @@ auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::extract_names(
     -> std::vector<std::shared_ptr<IdentifierAst>> {
     return binding != nullptr ? binding->extract_names() : std::vector<std::shared_ptr<IdentifierAst>>();
 }
-
-SPP_MOD_END

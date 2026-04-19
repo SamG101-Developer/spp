@@ -3,39 +3,16 @@ module;
 #include <spp/analyse/macros.hpp>
 #include <spp/parse/macros.hpp>
 
-module spp.asts.annotation_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.annotation_utils;
-import spp.asts.class_prototype_ast;
-import spp.asts.cmp_statement_ast;
-import spp.asts.fold_expression_ast;
-import spp.asts.function_call_argument_ast;
-import spp.asts.function_call_argument_group_ast;
-import spp.asts.function_prototype_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.identifier_ast;
-import spp.asts.integer_literal_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_ast;
-import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.module_prototype_ast;
-import spp.asts.sup_prototype_extension_ast;
-import spp.asts.sup_prototype_functions_ast;
-import spp.asts.token_ast;
-import spp.asts.type_statement_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.mixins.visibility_enabled_ast;
-import spp.asts.utils.ast_utils;
-import spp.asts.utils.visibility;
-import spp.parse.parser_spp;
-import spp.lex.lexer;
+import spp.asts.utils;
+import spp.asts.utils;
+import spp.parse;
+import spp.lex;
 
 
-SPP_MOD_BEGIN
 spp::asts::AnnotationAst::AnnotationAst(
     decltype(tok_exclamation_mark) &&tok_at_sign,
     decltype(name) &&name,
@@ -98,7 +75,7 @@ auto spp::asts::AnnotationAst::operator==(
 
 
 auto spp::asts::AnnotationAst::stage_1_pre_process(
-    Ast *ctx)
+    AbstractAst *ctx)
     -> void {
     // Default AST processing (sets context).
     Ast::stage_1_pre_process(ctx);
@@ -164,15 +141,15 @@ auto spp::asts::AnnotationAst::stage_5_load_super_scopes(
         if (func_ctx) { func_ctx->builtin_annotation = this; }
     }
     else if (fq_name == "std::annotations::public") {
-        const auto vis_ctx = m_ctx->to<mixins::VisibilityEnabledAst>();
+        const auto vis_ctx = m_ctx->to<mixins::VisibilityAst>();
         if (vis_ctx) { vis_ctx->visibility = std::make_pair(utils::Visibility::PUBLIC, this); }
     }
     else if (fq_name == "std::annotations::protected") {
-        const auto vis_ctx = m_ctx->to<mixins::VisibilityEnabledAst>();
+        const auto vis_ctx = m_ctx->to<mixins::VisibilityAst>();
         if (vis_ctx) { vis_ctx->visibility = std::make_pair(utils::Visibility::PROTECTED, this); }
     }
     else if (fq_name == "std::annotations::private") {
-        const auto vis_ctx = m_ctx->to<mixins::VisibilityEnabledAst>();
+        const auto vis_ctx = m_ctx->to<mixins::VisibilityAst>();
         if (vis_ctx) { vis_ctx->visibility = std::make_pair(utils::Visibility::PRIVATE, this); }
     }
     else if (fq_name == "std::annotations::virtual_method") {
@@ -258,31 +235,28 @@ auto spp::asts::AnnotationAst::stage_9_comptime_resolution(
     meta->restore();
 
     raise_if<analyse::errors::SppCalledAnnotationAppliedToInvalidAstError>(
-        m_ctx->to<ClassPrototypeAst>() and not(allowed_ctx & analyse::utils::annotation_utils::AnnotationInfo::CLASS_CTX),
+        m_ctx->to<ClassPrototypeAst>() and not(allowed_ctx & utils::AnnotationInfo::CLASS_CTX),
         {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 
     raise_if<analyse::errors::SppCalledAnnotationAppliedToInvalidAstError>(
-        m_ctx->to<FunctionPrototypeAst>() and outer_mod_ctx and not(allowed_ctx & analyse::utils::annotation_utils::AnnotationInfo::FUNCTION_CTX),
+        m_ctx->to<FunctionPrototypeAst>() and outer_mod_ctx and not(allowed_ctx & utils::AnnotationInfo::AnnotationInfo::FUNCTION_CTX),
         {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 
     raise_if<analyse::errors::SppCalledAnnotationAppliedToInvalidAstError>(
-        m_ctx->to<FunctionPrototypeAst>() and outer_sup_ctx and not(allowed_ctx & analyse::utils::annotation_utils::AnnotationInfo::METHOD_CTX),
+        m_ctx->to<FunctionPrototypeAst>() and outer_sup_ctx and not(allowed_ctx & utils::AnnotationInfo::AnnotationInfo::METHOD_CTX),
         {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 
     raise_if<analyse::errors::SppCalledAnnotationAppliedToInvalidAstError>(
-        m_ctx->to<FunctionPrototypeAst>() and outer_ext_ctx and not(allowed_ctx & analyse::utils::annotation_utils::AnnotationInfo::EXT_METHOD_CTX),
+        m_ctx->to<FunctionPrototypeAst>() and outer_ext_ctx and not(allowed_ctx & utils::AnnotationInfo::AnnotationInfo::EXT_METHOD_CTX),
         {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 
     raise_if<analyse::errors::SppCalledAnnotationAppliedToInvalidAstError>(
-        m_ctx->to<TypeStatementAst>() and not(allowed_ctx & analyse::utils::annotation_utils::AnnotationInfo::TYPE_CTX),
+        m_ctx->to<TypeStatementAst>() and not(allowed_ctx & utils::AnnotationInfo::AnnotationInfo::TYPE_CTX),
         {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 
     raise_if<analyse::errors::SppCalledAnnotationAppliedToInvalidAstError>(
-        m_ctx->to<CmpStatementAst>() and not(allowed_ctx & analyse::utils::annotation_utils::AnnotationInfo::CMP_CTX),
+        m_ctx->to<CmpStatementAst>() and not(allowed_ctx & utils::AnnotationInfo::AnnotationInfo::CMP_CTX),
         {sm->current_scope}, ERR_ARGS(*m_ctx, *this, *annotation_info->definition));
 
     // (void)allowed_ctx;
 }
-
-
-SPP_MOD_END

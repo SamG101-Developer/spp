@@ -1,8 +1,8 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.function_call_argument_positional_ast;
-import spp.asts.function_call_argument_ast;
+export module spp.asts:function_call_argument_positional_ast;
+import :function_call_argument_ast;
 import std;
 
 namespace spp::asts {

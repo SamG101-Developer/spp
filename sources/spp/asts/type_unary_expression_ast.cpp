@@ -1,23 +1,12 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.type_unary_expression_ast;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
-import spp.asts.convention_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.type_unary_expression_operator_ast;
-import spp.asts.type_unary_expression_operator_borrow_ast;
-import spp.asts.type_unary_expression_operator_namespace_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.analyse.scopes;
+import spp.asts.utils;
 import genex;
 
 
-SPP_MOD_BEGIN
 spp::asts::TypeUnaryExpressionAst::TypeUnaryExpressionAst(
     decltype(op) op,
     decltype(rhs) rhs) :
@@ -233,5 +222,3 @@ auto spp::asts::TypeUnaryExpressionAst::infer_type(
     const auto type_sym = type_scope->get_type_symbol(shared_from_this());
     return type_sym->fq_name()->with_convention(ast_clone(get_convention()));
 }
-
-SPP_MOD_END

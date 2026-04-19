@@ -1,19 +1,19 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.type_postfix_expression_ast;
-import spp.asts.type_postfix_expression_operator_ast;
-import spp.asts.type_ast;
+export module spp.asts:type_postfix_expression_ast;
+import :type_ast;
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct TypePostfixExpressionAst;
     SPP_EXP_CLS struct ConventionAst;
     SPP_EXP_CLS struct GenericArgumentAst;
     SPP_EXP_CLS struct GenericArgumentGroupAst;
     SPP_EXP_CLS struct GenericParameterAst;
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct TypeIdentifierAst;
-    SPP_EXP_CLS struct TypePostfixExpressionAst;
+    SPP_EXP_CLS struct TypePostfixExpressionOperatorAst;
 }
 
 
@@ -28,8 +28,6 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
      * The operator token that represents the postfix operation. This indicates the type of operation being performed.
      */
     std::unique_ptr<TypePostfixExpressionOperatorAst> tok_op;
-
-    auto _spp_key_function() const -> void override;
 
     /**
      * Construct the PostfixExpressionAst with the arguments matching the members.
@@ -88,8 +86,3 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::TypePostfixExpressionAst::_spp_key_function() const -> void {}
-SPP_MOD_END

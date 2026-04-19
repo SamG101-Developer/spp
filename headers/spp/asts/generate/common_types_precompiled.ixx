@@ -1,13 +1,15 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.generate.common_types_precompiled;
-import spp.asts.type_ast;
-
+export module spp.asts:common_types_precompiled;
 import std;
 
+namespace spp::asts {
+    SPP_EXP_CLS struct TypeAst;
+}
 
-namespace spp::asts::generate::common_types_precompiled {
+
+namespace spp::asts::common_types_precompiled {
     /**
      * The fixed @code std::generator::Gen@endcode type, with no generic arguments.
      */

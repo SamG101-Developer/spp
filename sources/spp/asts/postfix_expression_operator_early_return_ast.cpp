@@ -2,42 +2,13 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.postfix_expression_operator_early_return_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.type_utils;
-import spp.asts.case_expression_ast;
-import spp.asts.case_expression_branch_ast;
-import spp.asts.case_pattern_variant_ast;
-import spp.asts.case_pattern_variant_destructure_object_ast;
-import spp.asts.case_pattern_variant_destructure_skip_multiple_arguments_ast;
-import spp.asts.expression_ast;
-import spp.asts.identifier_ast;
-import spp.asts.inner_scope_expression_ast;
-import spp.asts.is_expression_ast;
-import spp.asts.fold_expression_ast;
-import spp.asts.function_call_argument_group_ast;
-import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_argument_type_ast;
-import spp.asts.let_statement_initialized_ast;
-import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.local_variable_single_identifier_alias_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.postfix_expression_operator_runtime_member_access_ast;
-import spp.asts.ret_statement_ast;
-import spp.asts.statement_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_materialize;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
 import spp.utils.uid;
 
 
-SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorEarlyReturnAst::PostfixExpressionOperatorEarlyReturnAst(
     decltype(tok_qst) &&tok_qst) :
     PostfixExpressionOperatorAst(),
@@ -97,7 +68,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_7_analyse_semanti
 auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Extract the "try" information for the type.
     auto lhs = meta->postfix_expression_lhs;
@@ -170,5 +141,3 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::infer_type(
     const auto try_type = analyse::utils::type_utils::get_try_type(*lhs_type, *lhs, *sm);
     return try_type->type_parts().back()->generic_arg_group->type_at("Value")->val;
 }
-
-SPP_MOD_END

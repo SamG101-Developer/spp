@@ -1,18 +1,17 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.type_unary_expression_ast;
-import spp.asts.type_ast;
+export module spp.asts:type_unary_expression_ast;
+import :type_ast;
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct TypeUnaryExpressionAst;
     SPP_EXP_CLS struct ConventionAst;
     SPP_EXP_CLS struct GenericArgumentAst;
     SPP_EXP_CLS struct GenericArgumentGroupAst;
     SPP_EXP_CLS struct GenericParameterAst;
     SPP_EXP_CLS struct IdentifierAst;
-    SPP_EXP_CLS struct TypeAst;
-    SPP_EXP_CLS struct TypeUnaryExpressionAst;
     SPP_EXP_CLS struct TypeUnaryExpressionOperatorAst;
     SPP_EXP_CLS struct TypeIdentifierAst;
 }
@@ -28,8 +27,6 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
      * The type that is being operated on by the unary operator.
      */
     std::shared_ptr<TypeAst> rhs;
-
-    auto _spp_key_function() const -> void override;
 
     /**
      * Construct the UnaryExpressionAst with the arguments matching the members.
@@ -88,8 +85,3 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::TypeUnaryExpressionAst::_spp_key_function() const -> void {}
-SPP_MOD_END

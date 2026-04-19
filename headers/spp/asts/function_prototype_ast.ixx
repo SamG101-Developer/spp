@@ -1,33 +1,27 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.function_prototype_ast;
-import spp.analyse.utils.annotation_utils;
-import spp.asts.ast;
-import spp.asts.mixins.visibility_enabled_ast;
-import spp.asts.module_member_ast;
-import spp.asts.sup_member_ast;
+export module spp.asts:function_prototype_ast;
+import :ast;
+import :module_member_ast;
+import :sup_member_ast;
+import :visibility_ast;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_func;
+import spp.asts.utils;
+
 import llvm;
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct FunctionPrototypeAst;
     SPP_EXP_CLS struct AnnotationAst;
     SPP_EXP_CLS struct FunctionImplementationAst;
     SPP_EXP_CLS struct FunctionParameterGroupAst;
-    SPP_EXP_CLS struct FunctionPrototypeAst;
-    SPP_EXP_CLS struct GenExpressionAst;
     SPP_EXP_CLS struct GenericParameterGroupAst;
     SPP_EXP_CLS struct IdentifierAst;
-    SPP_EXP_CLS struct PostfixExpressionOperatorFunctionCallAst;
-    SPP_EXP_CLS struct SupPrototypeExtensionAst;
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
-}
-
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
 }
 
 
@@ -39,11 +33,7 @@ namespace spp::analyse::scopes {
  * This ASt is further inherited into the SubroutinePrototypeAst and CoroutinePrototypeAst, which add additional
  * analysis checks.
  */
-SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst :
-    virtual Ast,
-    SupMemberAst,
-    ModuleMemberAst,
-    mixins::VisibilityEnabledAst {
+SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : virtual Ast, SupMemberAst, ModuleMemberAst, mixins::VisibilityAst {
 protected:
     /**
      * Using a list because there are times that the collection is iterated whilst being appended to.
@@ -61,7 +51,7 @@ protected:
      */
     std::shared_ptr<std::shared_ptr<codegen::LlvmFuncWrapper>> m_llvm_func;
 
-    std::unique_ptr<analyse::utils::annotation_utils::AnnotationInfo> m_annotation_info;
+    std::unique_ptr<utils::AnnotationInfo> m_annotation_info;
 
 public:
     /**
@@ -162,8 +152,6 @@ public:
      */
     std::unique_ptr<IdentifierAst> orig_name;
 
-    auto _spp_key_function() const -> void override;
-
     /**
      * Construct the FunctionPrototypeAst with the arguments matching the members.
      * @param annotations The list of annotations that are applied to this function prototype.
@@ -194,10 +182,10 @@ public:
 private:
     SPP_ATTR_NODISCARD auto m_deduce_mock_class_type() const -> std::shared_ptr<TypeAst>;
 
-    SPP_ATTR_NODISCARD auto m_is_pure_generic(ScopeManager *sm, codegen::LLvmCtx *ctx) const -> std::tuple<bool, llvm::Type*, std::vector<llvm::Type*>>;
+    SPP_ATTR_NODISCARD auto m_is_pure_generic(ScopeManager *sm, codegen::LlvmCtx *ctx) const -> std::tuple<bool, llvm::Type*, std::vector<llvm::Type*>>;
 
 public:
-    virtual auto m_generate_llvm_declaration(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> std::shared_ptr<codegen::LlvmFuncWrapper>;
+    virtual auto m_generate_llvm_declaration(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> std::shared_ptr<codegen::LlvmFuncWrapper>;
 
 public:
     SPP_ATTR_NODISCARD auto print_signature(std::string const &owner) const -> std::string;
@@ -214,9 +202,9 @@ public:
 
     auto mark_as_annotation() -> void;
 
-    SPP_ATTR_NODISCARD auto annotation_info() const -> analyse::utils::annotation_utils::AnnotationInfo*;
+    SPP_ATTR_NODISCARD auto annotation_info() const -> utils::AnnotationInfo*;
 
-    auto stage_1_pre_process(Ast *ctx) -> void override;
+    auto stage_1_pre_process(AbstractAst *ctx) -> void override;
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -234,14 +222,9 @@ public:
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
     SPP_ATTR_NODISCARD auto get_llvm_func() const -> std::shared_ptr<codegen::LlvmFuncWrapper>;
 };
-
-
-SPP_MOD_BEGIN
-auto spp::asts::FunctionPrototypeAst::_spp_key_function() const -> void {}
-SPP_MOD_END

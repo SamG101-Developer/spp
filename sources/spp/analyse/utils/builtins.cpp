@@ -1,9 +1,5 @@
 module spp.analyse.utils.builtins;
-import spp.analyse.utils.cmp_utils;
-import spp.asts.boolean_literal_ast;
-import spp.asts.float_literal_ast;
-import spp.asts.integer_literal_ast;
-import spp.codegen.llvm_func_impls;
+import spp.asts;
 
 
 // .llvm_fn=spp::utils::functions::make_callable(codegen::func_impls::func_name)

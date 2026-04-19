@@ -1,8 +1,7 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.generate.common_types;
-
+export module spp.asts:common_types;
 import std;
 
 namespace spp::asts {
@@ -10,7 +9,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-namespace spp::asts::generate::common_types {
+namespace spp::asts::common_types {
     /**
      * Generate a TypeAst for the std:number::F8 type.
      * @param pos The position of the type in the source code.

@@ -1,20 +1,12 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.asts.let_statement_uninitialized_ast;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.scope;
-import spp.analyse.scopes.symbols;
-import spp.asts.local_variable_ast;
-import spp.asts.object_initializer_ast;
-import spp.asts.object_initializer_argument_group_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.asts.utils.ast_utils;
+module spp.asts;
+import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
+import spp.asts.utils;
 
 
-SPP_MOD_BEGIN
 spp::asts::LetStatementUninitializedAst::LetStatementUninitializedAst(
     decltype(tok_let) &&tok_let,
     decltype(var) &&var,
@@ -94,7 +86,7 @@ auto spp::asts::LetStatementUninitializedAst::stage_8_check_memory(
     meta->let_stmt_from_uninitialized = true;
     var->stage_8_check_memory(sm, meta);
     for (auto const &v : var->extract_names()) {
-        sm->current_scope->get_var_symbol(v)->memory_info->moved_by(*this, sm->current_scope);
+        analyse::utils::scope_utils::get_var_symbol(sm->current_scope, v)->memory_info->moved_by(*this, sm->current_scope);
     }
     meta->restore();
 }
@@ -103,7 +95,7 @@ auto spp::asts::LetStatementUninitializedAst::stage_8_check_memory(
 auto spp::asts::LetStatementUninitializedAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Delegate the code generation to the variable, after setting up the meta.
     meta->save();
@@ -114,5 +106,3 @@ auto spp::asts::LetStatementUninitializedAst::stage_11_code_gen_2(
     meta->restore();
     return alloca;
 }
-
-SPP_MOD_END

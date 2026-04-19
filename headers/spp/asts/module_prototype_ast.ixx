@@ -1,20 +1,16 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.module_prototype_ast;
-import spp.asts.ast;
+export module spp.asts:module_prototype_ast;
+import :ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
-namespace spp::compiler {
-    SPP_EXP_CLS struct CompilerBoot;
-}
-
 namespace spp::asts {
+    SPP_EXP_CLS struct ModulePrototypeAst;
     SPP_EXP_CLS struct IdentifierAst;
     SPP_EXP_CLS struct FunctionPrototypeAst;
-    SPP_EXP_CLS struct ModulePrototypeAst;
     SPP_EXP_CLS struct ModuleImplementationAst;
 }
 
@@ -50,7 +46,7 @@ SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : virtual Ast {
 
     SPP_ATTR_NODISCARD auto file_name() const -> std::unique_ptr<IdentifierAst>;
 
-    auto stage_1_pre_process(Ast *ctx) -> void override;
+    auto stage_1_pre_process(AbstractAst *ctx) -> void override;
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *) -> void override;
 
@@ -68,7 +64,7 @@ SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : virtual Ast {
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 };

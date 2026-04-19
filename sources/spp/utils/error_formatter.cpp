@@ -1,17 +1,16 @@
 module;
 #include <opex/macros.hpp>
-#include <spp/macros.hpp>
 
 module spp.utils.error_formatter;
-import spp.asts.ast;
-import spp.lex.tokens;
+import spp.asts;
+import spp.lex;
+
 import colex;
 import opex.cast;
 import genex;
 import std;
 
 
-SPP_MOD_BEGIN
 spp::utils::errors::ErrorFormatter::ErrorFormatter(std::vector<lex::RawToken> tokens, std::string file_path) :
     m_tokens(std::move(tokens)),
     m_file_path(std::move(file_path)) {
@@ -119,21 +118,21 @@ auto spp::utils::errors::ErrorFormatter::error_raw_pow_minimal(
 
 
 auto spp::utils::errors::ErrorFormatter::error_ast(
-    asts::Ast const *ast,
+    void const *ast,
     std::string &&message,
     std::string &&tag_message)
     -> std::string {
+    const auto cast = static_cast<asts::Ast const*>(ast);
     return error_raw_pos(
-        ast->pos_start(), ast->pos_end() - ast->pos_start(), std::move(message), std::move(tag_message));
+        cast->pos_start(), cast->pos_end() - cast->pos_start(), std::move(message), std::move(tag_message));
 }
 
 
 auto spp::utils::errors::ErrorFormatter::error_ast_minimal(
-    asts::Ast const *ast,
+    void const *ast,
     std::string &&tag_message)
     -> std::string {
+    const auto cast = static_cast<asts::Ast const*>(ast);
     return error_raw_pow_minimal(
-        ast->pos_start(), ast->pos_end() - ast->pos_start(), std::move(tag_message));
+        cast->pos_start(), cast->pos_end() - cast->pos_start(), std::move(tag_message));
 }
-
-SPP_MOD_END

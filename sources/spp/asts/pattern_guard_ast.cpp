@@ -2,20 +2,13 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.pattern_guard_ast;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
-import spp.asts.expression_ast;
-import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.utils.ast_utils;
-import spp.lex.tokens;
+module spp.asts;
+import spp.analyse.errors;
+import spp.analyse.scopes;
+import spp.asts.utils;
+import spp.lex;
 
 
-SPP_MOD_BEGIN
 spp::asts::PatternGuardAst::PatternGuardAst(
     decltype(tok_and) &&tok_and,
     decltype(expr) &&expression) :
@@ -96,10 +89,8 @@ auto spp::asts::PatternGuardAst::stage_9_comptime_resolution(
 auto spp::asts::PatternGuardAst::stage_11_code_gen_2(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
+    codegen::LlvmCtx *ctx)
     -> llvm::Value* {
     // Generate the expression.
     return expr->stage_11_code_gen_2(sm, meta, ctx);
 }
-
-SPP_MOD_END

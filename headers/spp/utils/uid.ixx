@@ -9,7 +9,7 @@ namespace spp::asts {
 }
 
 namespace spp::utils {
-    SPP_EXP_FUN auto generate_uid(asts::Ast const *)
+    SPP_EXP_FUN auto generate_uid(void const *)
         -> std::string;
 
     SPP_EXP_FUN auto generate_uid()
