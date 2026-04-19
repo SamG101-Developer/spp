@@ -208,6 +208,6 @@ auto spp::asts::IntegerLiteralAst::infer_type(
             ERR_ARGS(*this, "invalid integer literal type"));
     }
 
-    const auto sym = sm->current_scope->get_type_symbol(spp_type);
+    const auto sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, spp_type);
     return sym->fq_name();
 }

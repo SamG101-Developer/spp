@@ -10,7 +10,7 @@ import genex;
 
 
 auto spp::analyse::utils::scope_utils::add_var_symbol(
-    scopes::Scope const &scope,
+    scopes::Scope &scope,
     std::shared_ptr<scopes::VariableSymbol> const &sym)
     -> void {
     // Add a type symbol to the corresponding symbol table.
@@ -19,7 +19,7 @@ auto spp::analyse::utils::scope_utils::add_var_symbol(
 
 
 auto spp::analyse::utils::scope_utils::add_var_symbol_check_conflict(
-    scopes::Scope const &scope,
+    scopes::Scope &scope,
     std::shared_ptr<scopes::VariableSymbol> const &sym)
     -> void {
     // Cannot allow for duplicate comptime definitions.
@@ -34,23 +34,23 @@ auto spp::analyse::utils::scope_utils::add_var_symbol_check_conflict(
     }
 
     // Add a type symbol to the corresponding symbol table.
-    scope.table.var_tbl.add(sym->name, sym);
+    scope.table.var_tbl.add(sym->name->val, sym);
 }
 
 
 auto spp::analyse::utils::scope_utils::add_type_symbol(
-    scopes::Scope const &scope,
+    scopes::Scope &scope,
     std::shared_ptr<scopes::TypeSymbol> const &sym)
     -> void {
     // Add a type symbol to the corresponding symbol table.
-    scope.table.type_tbl.add(sym->name.to_string(), sym);
+    scope.table.type_tbl.add(sym->name->to_string(), sym);
 }
 
 
 
 auto spp::analyse::utils::scope_utils::add_type_symbol_check_conflict(
-    scopes::Scope const &scope,
-    std::shared_ptr<TypeSymbol> const &sym)
+    scopes::Scope &scope,
+    std::shared_ptr<scopes::TypeSymbol> const &sym)
     -> void {
     // Cannot allow for duplicate definitions.
     const auto existing_sym = get_type_symbol(scope, sym->name, false);
@@ -63,21 +63,21 @@ auto spp::analyse::utils::scope_utils::add_type_symbol_check_conflict(
     }
 
     // Add a type symbol to the corresponding symbol table.
-    scope.table.type_tbl.add(sym->name, sym);
+    scope.table.type_tbl.add(sym->name->to_string(), sym);
 }
 
 
 auto spp::analyse::utils::scope_utils::add_ns_symbol(
-    scopes::Scope const &scope,
-    std::shared_ptr<NamespaceSymbol> const &sym)
+    scopes::Scope &scope,
+    std::shared_ptr<scopes::NamespaceSymbol> const &sym)
     -> void {
     // Add a namespace symbol to the corresponding symbol table.
-    scope.table.ns_tbl.add(sym->name, sym);
+    scope.table.ns_tbl.add(sym->name->val, sym);
 }
 
 
 auto spp::analyse::utils::scope_utils::rem_var_symbol(
-    scopes::Scope const &scope,
+    scopes::Scope &scope,
     std::shared_ptr<asts::IdentifierAst> const &sym_name)
     -> void {
     // Remove a variable symbol from the corresponding symbol table.
@@ -86,7 +86,7 @@ auto spp::analyse::utils::scope_utils::rem_var_symbol(
 
 
 auto spp::analyse::utils::scope_utils::rem_type_symbol(
-    scopes::Scope const &scope,
+    scopes::Scope &scope,
     std::shared_ptr<asts::TypeIdentifierAst> const &sym_name)
     -> void {
     // Remove a type symbol from the corresponding symbol table.
@@ -95,7 +95,7 @@ auto spp::analyse::utils::scope_utils::rem_type_symbol(
 
 
 auto spp::analyse::utils::scope_utils::rem_ns_symbol(
-    scopes::Scope const &scope,
+    scopes::Scope &scope,
     std::shared_ptr<asts::IdentifierAst> const &sym_name)
     -> void {
     // Remove a namespace symbol from the corresponding symbol table.

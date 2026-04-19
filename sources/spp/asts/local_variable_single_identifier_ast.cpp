@@ -4,7 +4,9 @@ module;
 module spp.asts;
 import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.scope_utils;
+import spp.codegen.llvm_type;
 import spp.utils.uid;
 
 
@@ -122,7 +124,8 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_8_check_memory(
         *meta->let_stmt_value, *this, *sm, true, true, true, true, true, meta);
 
     // Get the name or alias symbol to mark it as initialized.
-    const auto sym = sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name);
+    const auto sym = analyse::utils::scope_utils::get_var_symbol(
+        *sm->current_scope, alias != nullptr ? alias->name : name);
     sym->memory_info->initialized_by(*name, sm->current_scope);
     if (conv != nullptr) {
         sym->memory_info->ast_borrowed = {conv.get(), sm->current_scope};
@@ -139,7 +142,8 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_9_comptime_resolution(
     meta->assignment_target = alias != nullptr ? alias->name : name;
     meta->let_stmt_value->stage_9_comptime_resolution(sm, meta);
 
-    const auto var_sym =sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name);
+    const auto var_sym = analyse::utils::scope_utils::get_var_symbol(
+        *sm->current_scope, alias != nullptr ? alias->name : name);
     var_sym->comptime_value = std::move(meta->cmp_result);
     meta->restore();
 }
@@ -152,7 +156,8 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_11_code_gen_2(
     -> llvm::Value* {
     // Create the alloca for the variable.
     const auto uid = spp::utils::generate_uid(this);
-    const auto type_sym = sm->current_scope->get_type_symbol(meta->let_stmt_explicit_type);
+    const auto type_sym = analyse::utils::scope_utils::get_type_symbol(
+        *sm->current_scope, meta->let_stmt_explicit_type);
     const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
     SPP_ASSERT(llvm_type != nullptr);
 
@@ -162,7 +167,8 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_11_code_gen_2(
     auto temp_builder = llvm::IRBuilder(entry, entry->begin());
 
     const auto alloca = temp_builder.CreateAlloca(llvm_type, nullptr, "local.alloca" + uid);
-    const auto var_sym = sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name);
+    const auto var_sym = analyse::utils::scope_utils::get_var_symbol(
+        *sm->current_scope, alias != nullptr ? alias->name : name);
     var_sym->llvm_info->alloca = alloca;
 
     // Generate the initializer expression.

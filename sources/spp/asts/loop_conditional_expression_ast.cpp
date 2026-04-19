@@ -3,9 +3,13 @@ module;
 #include <spp/analyse/macros.hpp>
 
 module spp.asts;
+import :common_types;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
+import spp.codegen.llvm_type;
 import spp.lex;
 import spp.utils.uid;
 
@@ -149,7 +153,8 @@ auto spp::asts::LoopConditionalExpressionAst::stage_11_code_gen_2(
     auto phi = static_cast<llvm::PHINode*>(nullptr);
     if (is_expr) {
         ctx->builder.SetInsertPoint(loop_cond_bb);
-        const auto ret_type_sym = sm->current_scope->get_type_symbol(infer_type(sm, meta));
+        const auto ret_type_sym = analyse::utils::scope_utils::get_type_symbol(
+            *sm->current_scope, infer_type(sm, meta));
         phi = ctx->builder.CreatePHI(codegen::llvm_type(*ret_type_sym, ctx), 2, "loop.phi" + uid);
     }
 
