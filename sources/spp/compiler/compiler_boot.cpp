@@ -15,8 +15,9 @@ import llvm;
 import genex;
 
 
-#define PREP_SCOPE_MANAGER \
-    auto const &mod_in_tree = *genex::find_if(tree, [&](auto &m) { return m->module_ast.get() == mod; })
+#define PREP_SCOPE_MANAGER                                                                               \
+    auto const &mod_in_tree = *genex::find_if(tree, [&](auto &m) { return m->module_ast.get() == mod; }) \
+    const auto cast_mod = mod->to<asts::ModulePrototypeAst>();
 
 
 #define PREP_SCOPE_MANAGER_AND_META(s)                                       \
@@ -62,7 +63,6 @@ auto spp::compiler::CompilerBoot::stage_1_pre_process(
     // Pre-processing stage.
     for (auto const &mod : m_modules) {
         PREP_SCOPE_MANAGER;
-        const auto cast_mod = mod->to<asts::ModulePrototypeAst>()
         cast_mod->file_path = mod_in_tree->path;
         cast_mod->stage_1_pre_process(ctx);
         bar.next();
@@ -79,7 +79,7 @@ auto spp::compiler::CompilerBoot::stage_2_gen_top_level_scopes(
     // Generate top-level scopes stage.
     for (auto const &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(4.0);
-        mod->stage_2_gen_top_level_scopes(sm, &meta);
+        cast_mod->stage_2_gen_top_level_scopes(sm, &meta);
         sm->reset();
         bar.next();
     }
@@ -95,7 +95,7 @@ auto spp::compiler::CompilerBoot::stage_3_gen_top_level_aliases(
     // Generate top-level aliases stage.
     for (auto const &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(5.0);
-        mod->stage_3_gen_top_level_aliases(sm, &meta);
+        cast_mod->stage_3_gen_top_level_aliases(sm, &meta);
         sm->reset();
         bar.next();
     }
@@ -111,7 +111,7 @@ auto spp::compiler::CompilerBoot::stage_4_qualify_types(
     // Qualify types stage.
     for (auto const &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(6.0);
-        mod->stage_4_qualify_types(sm, &meta);
+        cast_mod->stage_4_qualify_types(sm, &meta);
         sm->reset();
         bar.next();
     }
@@ -127,7 +127,7 @@ auto spp::compiler::CompilerBoot::stage_5_load_super_scopes(
     // Load super scopes stage.
     for (auto const &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(7.0);
-        mod->stage_5_load_super_scopes(sm, &meta);
+        cast_mod->stage_5_load_super_scopes(sm, &meta);
         sm->reset();
         bar.next();
     }
@@ -149,7 +149,7 @@ auto spp::compiler::CompilerBoot::stage_6_pre_analyse_semantics(
     // Pre-analyse semantics stage.
     for (auto const &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(8.0);
-        mod->stage_6_pre_analyse_semantics(sm, &meta);
+        cast_mod->stage_6_pre_analyse_semantics(sm, &meta);
         sm->reset();
         bar.next();
     }
@@ -166,7 +166,7 @@ auto spp::compiler::CompilerBoot::stage_7_analyse_semantics(
     // Analyse semantics stage.
     for (auto const &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(9.0);
-        mod->stage_7_analyse_semantics(sm, &meta);
+        cast_mod->stage_7_analyse_semantics(sm, &meta);
         sm->reset();
         bar.next();
     }
@@ -185,7 +185,7 @@ auto spp::compiler::CompilerBoot::stage_8_check_memory(
     // Check memory stage.
     for (auto const &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(10.0);
-        mod->stage_8_check_memory(sm, &meta);
+        cast_mod->stage_8_check_memory(sm, &meta);
         sm->reset();
         bar.next();
     }
@@ -208,7 +208,7 @@ auto spp::compiler::CompilerBoot::stage_9_comptime_resolution(
     // Comptime resolution stage.
     for (auto const &mod : m_modules) {
         PREP_SCOPE_MANAGER_AND_META(11.0);
-        mod->stage_9_comptime_resolution(sm, &meta);
+        cast_mod->stage_9_comptime_resolution(sm, &meta);
         sm->reset();
         bar.next();
     }
@@ -224,7 +224,7 @@ auto spp::compiler::CompilerBoot::stage_10_code_gen_1(
     // Code generation stage.
     for (auto const &[mod, ctx] : genex::views::zip(m_modules, m_llvm_ctxs | genex::views::ptr)) {
         PREP_SCOPE_MANAGER_AND_META(11.0);
-        mod->stage_10_code_gen_1(sm, &meta, ctx);
+        cast_mod->stage_10_code_gen_1(sm, &meta, ctx);
         sm->reset();
         bar.next();
     }
@@ -241,7 +241,7 @@ auto spp::compiler::CompilerBoot::stage_11_code_gen_2(
     for (auto const &[mod, ctx] : genex::views::zip(m_modules, m_llvm_ctxs | genex::views::ptr)) {
         PREP_SCOPE_MANAGER_AND_META(12.0);
         meta.llvm_ctx = ctx;
-        mod->stage_11_code_gen_2(sm, &meta, ctx);
+        cast_mod->stage_11_code_gen_2(sm, &meta, ctx);
         sm->reset();
         bar.next();
     }

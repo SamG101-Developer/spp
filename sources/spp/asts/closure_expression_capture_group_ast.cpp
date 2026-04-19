@@ -128,7 +128,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_11_code_gen_2(
         const auto cap_ty = capture->infer_type(sm, meta);
         const auto cap_ty_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, cap_ty);
         const auto cap_llvm_type = codegen::llvm_type(
-            *sm->current_scope->get_type_symbol(cap_ty), ctx);
+            *analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, cap_ty), ctx);
 
         // Create the alloca for the variable.
         const auto alloca = ctx->builder.CreateAlloca(
@@ -146,9 +146,9 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_11_code_gen_2(
         // Add the alloca to the current scope as a variable symbol.
         // Todo: Handle mutability properly.
         auto var_sym = std::make_unique<analyse::scopes::VariableSymbol>(
-            asts::ast_clone(cap_val), cap_ty, sm->current_scope, false, false);
+            ast_clone(cap_val), cap_ty, sm->current_scope, false, false);
         var_sym->llvm_info->alloca = alloca;
-        sm->current_scope->add_var_symbol(std::move(var_sym));
+        analyse::utils::scope_utils::add_var_symbol(*sm->current_scope, std::move(var_sym));
     }
     return nullptr;
 }

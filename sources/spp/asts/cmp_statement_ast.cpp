@@ -8,6 +8,7 @@ import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_info_utils;
 import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import spp.lex;
 import llvm;
@@ -106,7 +107,7 @@ auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
     }
 
     // Create a symbol for this constant declaration, pin to prevent moving.
-    alias_sym = std::make_shared<analyse::scopes::VariableSymbol>(
+    const auto alias_sym = std::make_shared<analyse::scopes::VariableSymbol>(
         name, type, sm->current_scope, false, false, visibility.first);
     alias_sym->memory_info->ast_pins.emplace_back(name.get());
     alias_sym->memory_info->ast_comptime = ast_clone(this);

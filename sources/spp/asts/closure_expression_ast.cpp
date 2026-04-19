@@ -6,6 +6,7 @@ import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
+import spp.codegen.llvm_type;
 import spp.lex;
 import spp.utils.uid;
 import genex;
@@ -66,11 +67,11 @@ auto spp::asts::ClosureExpressionAst::stage_7_analyse_semantics(
     const auto parent_scope = sm->current_scope;
     pc_group->stage_7_analyse_semantics(sm, meta);
 
-    const auto inherited_type_generics = analyse::utils::scope_utils::all_type_symbols(sm->current_scope)
+    const auto inherited_type_generics = analyse::utils::scope_utils::all_type_symbols(*sm->current_scope)
         | genex::views::filter([](auto const &sym) { return sym->is_generic; })
         | genex::to<std::vector>();
 
-    const auto inherited_comp_generics = analyse::utils::scope_utils::all_var_symbols(sm->current_scope)
+    const auto inherited_comp_generics = analyse::utils::scope_utils::all_var_symbols(*sm->current_scope)
         | genex::views::filter([](auto const &sym) { return sym->is_generic; })
         | genex::to<std::vector>();
 
@@ -88,10 +89,10 @@ auto spp::asts::ClosureExpressionAst::stage_7_analyse_semantics(
 
     // Add the inherited generics into the closure-inner scope.
     for (const auto &type_generic_sym : inherited_type_generics) {
-        sm->current_scope->add_type_symbol(type_generic_sym);
+        analyse::utils::scope_utils::add_type_symbol(*sm->current_scope, type_generic_sym);
     }
     for (const auto &comp_generic_sym : inherited_comp_generics) {
-        sm->current_scope->add_var_symbol(comp_generic_sym);
+        analyse::utils::scope_utils::add_var_symbol(sm->current_scope, comp_generic_sym);
     }
 
     // Analyse the body of the closure.
@@ -136,7 +137,7 @@ auto spp::asts::ClosureExpressionAst::stage_11_code_gen_2(
     auto env_field_types = std::vector<llvm::Type*>{};
     for (const auto &capture : pc_group->capture_group->captures) {
         const auto cap_ty = capture->infer_type(sm, meta);
-        const auto cap_ty_sym = sm->current_scope->get_type_symbol(cap_ty);
+        const auto cap_ty_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, cap_ty);
         env_field_types.emplace_back(codegen::llvm_type(*cap_ty_sym, ctx));
     }
     env_ty->setBody(env_field_types, false);
@@ -144,10 +145,10 @@ auto spp::asts::ClosureExpressionAst::stage_11_code_gen_2(
     // Build a new function that the body of the closure is built into. Needs a variable binding at the top (ie allow
     // "let a = env.a" as the function signature will be "(env: $ClosureX, ...params: Params) -> RetType").
     auto llvm_param_types = pc_group->param_group->get_all_params()
-        | genex::views::transform([&](auto const &param) { return codegen::llvm_type(*sm->current_scope->get_type_symbol(param->type), ctx); })
+        | genex::views::transform([&](auto const &param) { return codegen::llvm_type(*analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, param->type), ctx); })
         | genex::to<std::vector>();
     llvm_param_types.insert(llvm_param_types.begin(), llvm::PointerType::get(*ctx->context, 0));
-    const auto llvm_ret_ty = codegen::llvm_type(*sm->current_scope->get_type_symbol(m_ret_type), ctx);
+    const auto llvm_ret_ty = codegen::llvm_type(*analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, m_ret_type), ctx);
     const auto llvm_fn_ty = llvm::FunctionType::get(llvm_ret_ty, llvm_param_types, pc_group->param_group->get_variadic_param() != nullptr);
     const auto llvm_fn = llvm::Function::Create(llvm_fn_ty, llvm::Function::InternalLinkage, "$closure_fn_" + uid, ctx->llvm_module.get());
     const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry", llvm_fn);

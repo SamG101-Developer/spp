@@ -6,6 +6,7 @@ module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
 import spp.lex;
 import genex;
@@ -91,7 +92,7 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
         std::move(sym_name), this, sm->current_scope, sm->current_scope, sm->current_scope->parent_module(), false,
         is_dollar_type);
     sm->current_scope->ty_sym = symbol_1;
-    sm->current_scope->parent->add_type_symbol_check_conflict(symbol_1);
+    analyse::utils::scope_utils::add_type_symbol_check_conflict(*sm->current_scope->parent, symbol_1);
     m_cls_sym = sm->current_scope->ty_sym;
 
     // If the type was generic, like Vec[T], also create a base Vec symbol.
@@ -102,7 +103,7 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
         symbol_2->generic_impl = symbol_1.get();
         sm->current_scope->ty_sym = symbol_2;
         const auto ret_sym = symbol_2.get();
-        sm->current_scope->parent->add_type_symbol_check_conflict(symbol_2);
+        analyse::utils::scope_utils::add_type_symbol_check_conflict(*sm->current_scope->parent, symbol_2);
         return ret_sym;
     }
 
@@ -112,12 +113,14 @@ auto spp::asts::ClassPrototypeAst::m_generate_symbols(
 
 auto spp::asts::ClassPrototypeAst::m_fill_llvm_mem_layout(
     analyse::scopes::ScopeManager *sm,
-    analyse::scopes::TypeSymbol const *type_sym,
+    AbstractSymbol const *sym,
     codegen::LlvmCtx *ctx) const
     -> void {
-    // Todo: error if attribute's default value if a comp generic value?? Also TEST THIS
+    // Todo: error if attribute's default value if a comp generic value?? Also TEST THIS.
+    // Todo: move this into llvm modules (doesn't need the class at all -> done from symbol).
 
     // Non-struct types are compiler known special types, or $ types - no generation needed.
+    const auto type_sym = dynamic_cast<analyse::scopes::TypeSymbol*>(sym);
     if (codegen::llvm_type(*type_sym, ctx) == nullptr or not llvm::isa<llvm::StructType>(codegen::llvm_type(*type_sym, ctx))) {
         return;
     }

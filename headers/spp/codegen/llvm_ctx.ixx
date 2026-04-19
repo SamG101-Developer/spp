@@ -2,7 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.codegen.llvm_ctx;
-// import spp.analyse.scopes;
+import spp.analyse.scopes;
 import llvm;
 import std;
 
@@ -25,7 +25,7 @@ SPP_EXP_CLS struct spp::codegen::LlvmCtx {
 
     // Closure tracking information.
     llvm::Type *current_closure_type = nullptr;
-    // analyse::scopes::Scope *current_closure_scope = nullptr;
+    analyse::scopes::Scope *current_closure_scope = nullptr;
 
     // Loop black tracking information (for loop control flow).
     std::stack<llvm::BasicBlock*> loop_end_bb_stack; // Allows breaking out of N loops.
