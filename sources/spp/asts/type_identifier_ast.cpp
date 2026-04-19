@@ -3,6 +3,9 @@ module;
 
 module spp.asts;
 import spp.analyse.scopes;
+import spp.analyse.utils.func_utils;
+import spp.analyse.utils.type_utils;
+import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
 import absl;
 import genex;
@@ -334,7 +337,7 @@ auto spp::asts::TypeIdentifierAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Fully qualify this type name from the scope.
     const auto type_scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
-    const auto type_sym = type_scope->get_type_symbol(shared_from_this());
+    const auto type_sym = analyse::utils::scope_utils::get_type_symbol(*type_scope, shared_from_this());
     return type_sym->fq_name();
 }
 

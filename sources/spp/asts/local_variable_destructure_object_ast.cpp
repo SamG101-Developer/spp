@@ -5,6 +5,8 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import spp.lex;
 import genex;
@@ -83,7 +85,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_7_analyse_semantics(
     const auto val_type = val->infer_type(sm, meta);
     type->stage_7_analyse_semantics(sm, meta);
 
-    const auto cls_proto = sm->current_scope->get_type_symbol(type)->type;
+    const auto cls_proto = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, type)->type;
     const auto cls_attrs = cls_proto != nullptr ? cls_proto->impl->members | genex::views::ptr | genex::to<std::vector>() : std::vector<ClassMemberAst*>{};
 
     const auto attributes = cls_attrs

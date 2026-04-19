@@ -83,9 +83,9 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::stage_7_analyse_semantics(
         ? common_types_precompiled::INDEX_MUT
         : common_types_precompiled::INDEX_REF;
 
-    const auto type_sym = analyse::utils::scope_utils(*sm->current_scope, lhs_type);
+    const auto type_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, lhs_type);
     auto sup_types = std::vector{lhs_type};
-    sup_types.append_range(type_sym->scope->sup_types());
+    sup_types.append_range(type_sym->scope->sup_types() | genex::views::cast_smart<TypeAst>());
 
     const auto index_type_candidates = sup_types
         | genex::views::filter([&sm, &index_type](auto const &sup_type) { return analyse::utils::type_utils::symbolic_eq(*sup_type->without_generics(), *index_type, *sm->current_scope, *sm->current_scope); })

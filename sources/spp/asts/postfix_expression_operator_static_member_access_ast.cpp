@@ -62,7 +62,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
 
         // Check the target field exists on the type.
         if (not analyse::utils::scope_utils::has_var_symbol(*lhs_type_sym->scope, name, true)) {
-            const auto alternatives = sm->current_scope->all_type_symbols(true, true)
+            const auto alternatives = analyse::utils::scope_utils::all_type_symbols(*sm->current_scope, true, true)
                 | genex::views::transform([](auto &&x) { return x->name->name; })
                 | genex::to<std::vector>();
 
@@ -72,13 +72,13 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
         }
 
         // Check there is only 1 target field on the type at the highest level.
-        if (lhs_type_sym->scope->get_var_symbol(name)->type->type_parts().back()->name[0] == '$') {
+        if (analyse::utils::scope_utils::get_var_symbol(*lhs_type_sym->scope, name)->type->type_parts().back()->name[0] == '$') {
             return;
         }
 
         auto scopes_and_syms = std::vector{lhs_type_sym->scope}
             | genex::views::concat(lhs_type_sym->scope->sup_scopes())
-            | genex::views::transform([name=name.get()](auto &&x) { return std::make_pair(x, x->table.var_tbl.get(ast_clone(name))); })
+            | genex::views::transform([name=name.get()](auto &&x) { return std::make_pair(x, x->table.var_tbl.get(name->val)); }) // todo: what on earth?
             | genex::views::filter([](auto &&x) { return x.second != nullptr; })
             | genex::views::transform([&](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
             | genex::to<std::vector>();

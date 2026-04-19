@@ -3,6 +3,7 @@ module;
 #include <spp/analyse/macros.hpp>
 
 module spp.asts;
+import :common_types;
 import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.utils.bin_utils;
@@ -87,7 +88,7 @@ auto spp::asts::IsExpressionAst::stage_7_analyse_semantics(
     // This includes the lhs symbol if it's been flow typed.
     if (not sm->current_scope->name_as_string().starts_with("<inner-scope#")) {
         const auto destructure_syms = analyse::utils::scope_utils::all_var_symbols(*sm->current_scope->children[n]->children[0], true, true);
-        for (auto &&x : destructure_syms) {
+        for (auto *x : destructure_syms) {
             analyse::utils::scope_utils::add_var_symbol(*sm->current_scope, x);
         }
     }

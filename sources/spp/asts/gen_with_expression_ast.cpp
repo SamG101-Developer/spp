@@ -3,7 +3,9 @@ module;
 #include <spp/analyse/macros.hpp>
 
 module spp.asts;
+import :common_types;
 import spp.analyse.errors;
+import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import spp.lex;

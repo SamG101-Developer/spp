@@ -100,8 +100,8 @@ auto spp::asts::IdentifierAst::stage_7_analyse_semantics(
     // Check there is a symbol with the same name in the current scope.
     const auto shared = std::shared_ptr(ast_clone(this));
     if (not analyse::utils::scope_utils::has_var_symbol(*sm->current_scope, shared) and not analyse::utils::scope_utils::has_ns_symbol(*sm->current_scope, shared)) {
-        const auto alternatives = sm->current_scope->all_var_symbols()
-            | genex::views::transform([](auto &&x) { return x->name->val; })
+        const auto alternatives = analyse::utils::scope_utils::all_var_symbols(*sm->current_scope)
+            | genex::views::transform([](auto x) { return x->name->val; })
             | genex::to<std::vector>();
 
         const auto closest_match = spp::utils::strings::closest_match(val, alternatives);
@@ -116,9 +116,9 @@ auto spp::asts::IdentifierAst::stage_9_comptime_resolution(
     CompilerMetaData *meta)
     -> void {
     // Extract the value from the symbol table and return it.
-    const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));
+    const auto var_sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, ast_clone(this));
     auto tm = analyse::scopes::ScopeManager(sm->global_scope, var_sym->scope_defined_in ?: sm->current_scope);
-    var_sym->comptime_value->stage_9_comptime_resolution(&tm, meta);
+    var_sym->comptime_value->to<ExpressionAst>()->stage_9_comptime_resolution(&tm, meta);
 }
 
 
@@ -129,7 +129,7 @@ auto spp::asts::IdentifierAst::stage_11_code_gen_2(
     -> llvm::Value* {
     // Get the allocation for the variable from the current scope.
     const auto uid = spp::utils::generate_uid(this);
-    const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));
+    const auto var_sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, ast_clone(this));
     SPP_ASSERT(var_sym->llvm_info->alloca != nullptr);
 
     // Handle local variable allocation extraction + load.
@@ -156,7 +156,7 @@ auto spp::asts::IdentifierAst::infer_type(
     CompilerMetaData *)
     -> std::shared_ptr<TypeAst> {
     // Extract the symbol from the current scope, as a variable symbol.
-    const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));
+    const auto var_sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, ast_clone(this));
     return var_sym ? var_sym->type : nullptr;
 }
 

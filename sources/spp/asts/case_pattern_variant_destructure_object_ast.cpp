@@ -138,7 +138,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantic
 
         flow_sym = std::make_shared<analyse::scopes::VariableSymbol>(*m_cond_sym);
         flow_sym->type = type;
-        analyse::utils::scope_utils::add_var_symbol(flow_sym);
+        analyse::utils::scope_utils::add_var_symbol(*sm->current_scope, flow_sym);
         m_flow_sym = std::move(flow_sym);
     }
 

@@ -5,6 +5,9 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import spp.lex;
 import genex;
@@ -137,10 +140,10 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_5_load_super_scopes(
     // Analyse the type being superimposed over.
     name->stage_7_analyse_semantics(sm, meta);
     SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(name, name, *sm, "superimposition type");
-    name = sm->current_scope->get_type_symbol(name)->fq_name();
+    name = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, name)->fq_name();
 
     // Register the superimposition against the base symbol.
-    const auto base_cls_sym = sm->current_scope->get_type_symbol(name->without_generics());
+    const auto base_cls_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, name->without_generics());
     if (sm->current_scope->parent == sm->current_scope->parent_module()) {
         if (not base_cls_sym->is_generic) {
             ScopeManager::normal_sup_blocks[base_cls_sym.get()].emplace_back(sm->current_scope);
@@ -152,15 +155,15 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_5_load_super_scopes(
 
     // Add the "Self" symbol into the scope.
     if (name->type_parts().back()->name[0] != '$') {
-        const auto cls_sym = sm->current_scope->get_type_symbol(name);
+        const auto cls_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, name);
         const auto self_sym = std::make_shared<analyse::scopes::TypeSymbol>(
             std::make_unique<TypeIdentifierAst>(name->pos_start(), "Self", nullptr),
             cls_sym->type, cls_sym->scope, sm->current_scope);
         self_sym->alias_stmt = std::make_unique<TypeStatementAst>(
             SPP_NO_ANNOTATIONS, nullptr,
             TypeIdentifierAst::from_string("Self"), nullptr, nullptr, name);
-        sm->current_scope->add_type_symbol(self_sym);
-        sm->current_scope->get_type_symbol(name)->aliased_by_symbols.emplace_back(self_sym);
+        analyse::utils::scope_utils::add_type_symbol(*sm->current_scope, self_sym);
+        analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, aliased_by_symbols.emplace_back(self_sym);
     }
 
     // Load the implementation and move out of the scope.
@@ -245,8 +248,8 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_11_code_gen_2(
 
     // Check if this block is purely generic.
     const auto is_generic_scope =
-        genex::any_of(sm->current_scope->all_type_symbols(true), [](auto &&x) { return x->is_generic; }) or
-        genex::any_of(sm->current_scope->all_var_symbols(true), [](auto &&x) { return x->memory_info->ast_comptime == nullptr; });
+        genex::any_of(analyse::utils::scope_utils::all_type_symbols(*sm->current_scope, true), [](auto &&x) { return x->is_generic; }) or
+        genex::any_of(analyse::utils::scope_utils::all_var_symbols(*sm->current_scope, true), [](auto &&x) { return x->memory_info->ast_comptime == nullptr; });
 
     // Generate the implementation if not a generic scope.
     if (not is_generic_scope) {

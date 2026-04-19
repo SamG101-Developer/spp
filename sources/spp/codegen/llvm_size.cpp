@@ -1,5 +1,6 @@
-module spp.codegen;
+module spp.codegen.llvm_size;
 import spp.analyse.scopes;
+import spp.analyse.utils.type_utils;
 import spp.asts;
 import spp.asts.utils;
 import genex;
