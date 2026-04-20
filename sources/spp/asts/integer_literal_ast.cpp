@@ -210,3 +210,14 @@ auto spp::asts::IntegerLiteralAst::infer_type(
     const auto sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, spp_type);
     return sym->fq_name();
 }
+
+
+// Manual instantiation of cpp_value function
+template auto spp::asts::IntegerLiteralAst::cpp_value<std::int8_t>() const -> std::int8_t;
+template auto spp::asts::IntegerLiteralAst::cpp_value<std::int16_t>() const -> std::int16_t;
+template auto spp::asts::IntegerLiteralAst::cpp_value<std::int32_t>() const -> std::int32_t;
+template auto spp::asts::IntegerLiteralAst::cpp_value<std::int64_t>() const -> std::int64_t;
+template auto spp::asts::IntegerLiteralAst::cpp_value<std::uint8_t>() const -> std::uint8_t;
+template auto spp::asts::IntegerLiteralAst::cpp_value<std::uint16_t>() const -> std::uint16_t;
+template auto spp::asts::IntegerLiteralAst::cpp_value<std::uint32_t>() const -> std::uint32_t;
+template auto spp::asts::IntegerLiteralAst::cpp_value<std::uint64_t>() const -> std::uint64_t;

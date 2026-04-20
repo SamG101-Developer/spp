@@ -40,6 +40,42 @@ auto spp::asts::Ast::stage_2_gen_top_level_scopes(
 }
 
 
+auto spp::asts::Ast::stage_3_gen_top_level_aliases(
+    ScopeManager *,
+    CompilerMetaData *)
+    -> void {}
+
+
+auto spp::asts::Ast::stage_4_qualify_types(
+    ScopeManager *,
+    CompilerMetaData *)
+    -> void {}
+
+
+auto spp::asts::Ast::stage_5_load_super_scopes(
+    ScopeManager *,
+    CompilerMetaData *)
+    -> void {}
+
+
+auto spp::asts::Ast::stage_6_pre_analyse_semantics(
+    ScopeManager *,
+    CompilerMetaData *)
+    -> void {}
+
+
+auto spp::asts::Ast::stage_7_analyse_semantics(
+    ScopeManager *,
+    CompilerMetaData *)
+    -> void {}
+
+
+auto spp::asts::Ast::stage_8_check_memory(
+    ScopeManager *,
+    CompilerMetaData *)
+    -> void {}
+
+
 auto spp::asts::Ast::stage_9_comptime_resolution(
     ScopeManager *sm,
     CompilerMetaData *)
