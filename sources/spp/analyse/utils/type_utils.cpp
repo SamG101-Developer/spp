@@ -654,7 +654,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     // Create a new scope and symbol for the generic substituted type.
     const auto old_cls_scope = old_cls_sym.scope ? : old_cls_sym.scope_defined_in;
     auto new_cls_scope = std::make_unique<scopes::Scope>(
-        std::dynamic_pointer_cast<asts::TypeIdentifierAst>(type_part.shared_from_this()),
+        scopes::ScopeTypeIdentifierName(type_part.shared_from_this()),
         old_cls_scope->parent, old_cls_scope->ast);
 
     // Note there is no LLVM type propagation: handled separately before stage 10.

@@ -191,7 +191,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
         for (auto *sup_scope : sup_scopes) {
             for (auto *sup_ast : asts::ast_body(sup_scope->ast) | genex::views::cast_dynamic<asts::SupPrototypeExtensionAst*>()) {
                 if (sup_ast->name->to<asts::TypeIdentifierAst>()->name == mapped_name->val) {
-                    auto generics = std::make_unique<asts::GenericArgumentGroupAst>(nullptr, sup_scope->get_generics(), nullptr);
+                    auto generics = std::make_unique<asts::GenericArgumentGroupAst>(nullptr, scope_utils::get_scope_generics(*sup_scope), nullptr);
                     auto scope = sup_scope;
                     auto proto = asts::ast_body(sup_ast)[0]->to<asts::FunctionPrototypeAst>();
                     overload_scopes.emplace_back(scope, proto, std::move(generics), nullptr);
@@ -203,12 +203,12 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
         for (auto &&[scope_1, fn_1, _, _] : overload_scopes) {
             for (auto &&[scope_2, fn_2, _, _] : overload_scopes) {
                 if (fn_1 != fn_2 and target_scope->depth_difference(scope_1) < target_scope->depth_difference(scope_2)) {
-                    auto temp = fn_1->get_ast_scope()->parent->parent;
+                    const auto temp = fn_1->get_ast_scope()->parent->parent;
                     fn_1->get_ast_scope()->parent->parent = const_cast<scopes::Scope*>(scope_1);
 
-                    auto conflict = check_for_conflicting_override(*fn_1->get_ast_scope()->parent, scope_2, *fn_1, sm, meta);
+                    const auto conflict = check_for_conflicting_override(*fn_1->get_ast_scope()->parent, scope_2, *fn_1, sm, meta);
                     if (conflict != nullptr) {
-                        overload_scopes |= genex::actions::remove_if([conflict](auto &&info) { return std::get<1>(info) == conflict; });
+                        overload_scopes |= genex::actions::remove_if([&](auto &&info) { return std::get<1>(info) == conflict; });
                     }
                     fn_1->get_ast_scope()->parent->parent = temp;
                 }
@@ -225,10 +225,10 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
 
     // Next, get scopes from "forwarding types" (ie FwdRef and FwdMut return types).
     if (target_scope->ty_sym != nullptr and meta->current_stage >= 9.0) {
-        auto [fwd_ref_type, fwd_mut_type] = type_utils::get_fwd_types(*target_scope->ty_sym->fq_name(), sm);
+        auto [fwd_ref_type, fwd_mut_type] = type_utils::get_fwd_types(*scope_utils::associated_type_symbol(*target_scope)->fq_name(), sm);
         if (fwd_ref_type != nullptr) {
             const auto inner_type = fwd_ref_type->type_parts().back()->generic_arg_group->type_at("T")->val;
-            auto inner_scopes = get_all_function_scopes(target_fn_name, sm.current_scope->get_type_symbol(inner_type)->scope, sm, meta);
+            auto inner_scopes = get_all_function_scopes(target_fn_name, scope_utils::get_type_symbol(*sm.current_scope, inner_type)->scope, sm, meta);
             for (auto &&i : inner_scopes) {
                 std::get<3>(i) = asts::ast_clone(inner_type);
             }
@@ -414,7 +414,7 @@ auto spp::analyse::utils::func_utils::enforce_no_invalid_gn_args(
 
     // Get the argument names using the attribute.
     const auto a_names = named_args
-        | genex::views::cast_dynamic<asts::detail::make_keyword_arg_t<GenericArgType>*>()
+        | genex::views::cast_dynamic<make_keyword_arg_t<GenericArgType>*>()
         | genex::views::transform([](auto *x) { return x->name; })
         | genex::to<std::vector>();
 
