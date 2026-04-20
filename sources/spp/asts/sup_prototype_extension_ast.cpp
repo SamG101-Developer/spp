@@ -296,7 +296,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
 
     // Mark the class as copyable if the "Copy" type is the supertype.
     for (const auto sup_scope : sup_scopes) {
-        const auto fq_name = sup_scope->ty_sym->fq_name();
+        const auto fq_name = analyse::utils::scope_utils::associated_type_symbol(*sup_scope)->fq_name();
         if (analyse::utils::type_utils::symbolic_eq(*fq_name, *common_types_precompiled::COPY, *sup_scope, *sm->current_scope)) {
             analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, name->without_generics())->is_directly_copyable = true;
             cls_sym->is_directly_copyable = true;
@@ -416,8 +416,8 @@ auto spp::asts::SupPrototypeExtensionAst::stage_11_code_gen_2(
 
     // Check if this block is purely generic.
     const auto is_generic_scope =
-        genex::any_of(sm->current_scope->all_type_symbols(true), [](auto &&x) { return x->is_generic; }) or
-        genex::any_of(sm->current_scope->all_var_symbols(true), [](auto &&x) { return x->memory_info->ast_comptime == nullptr; });
+        genex::any_of(analyse::utils::scope_utils::all_type_symbols(*sm->current_scope, true), [](auto &&x) { return x->is_generic; }) or
+        genex::any_of(analyse::utils::scope_utils::all_var_symbols(*sm->current_scope, true), [](auto &&x) { return x->memory_info->ast_comptime == nullptr; });
 
     // Generate the implementation if not a generic scope.
     if (not is_generic_scope) {

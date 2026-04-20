@@ -6,6 +6,7 @@ module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import spp.lex;
 import spp.utils.strings;
@@ -155,23 +156,23 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Get the left-hand-side type's member's type.
     if (const auto lhs_as_type = meta->postfix_expression_lhs->to<TypeAst>(); lhs_as_type != nullptr) {
-        const auto lhs_type_sym = sm->current_scope->get_type_symbol(ast_clone(lhs_as_type));
-        const auto sym = lhs_type_sym->scope->get_var_symbol(name, true);
+        const auto lhs_type_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, ast_clone(lhs_as_type));
+        const auto sym = analyse::utils::scope_utils::get_var_symbol(*lhs_type_sym->scope, name, true);
         if (sym != nullptr) { return sym->type; }
 
         // This is where we need to handle the FwdRef/FwdMut logic.
-        auto lhs_as_type_clone = std::shared_ptr(ast_clone(lhs_as_type));
-        auto [fwd_ref_type, _] = analyse::utils::type_utils::get_fwd_types(*lhs_as_type_clone, *sm);
+        const auto lhs_as_type_clone = std::shared_ptr(ast_clone(lhs_as_type));
+        const auto [fwd_ref_type, _] = analyse::utils::type_utils::get_fwd_types(*lhs_as_type_clone, *sm);
         const auto inner_type = fwd_ref_type->type_parts().back()->generic_arg_group->type_at("T")->val;
-        const auto inner_type_sym = sm->current_scope->get_type_symbol(inner_type);
-        const auto fwd_sym = inner_type_sym->scope->get_var_symbol(name, true);
+        const auto inner_type_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, inner_type);
+        const auto fwd_sym = analyse::utils::scope_utils::get_var_symbol(*inner_type_sym->scope, name, true);
         return fwd_sym->type;
     }
 
     // Get the left-hand-side namespace's member's type.
     const auto lhs_ns_scope = sm->current_scope->convert_postfix_to_nested_scope(meta->postfix_expression_lhs);
-    const auto type = lhs_ns_scope->get_var_symbol(name, true)->type;
-    return lhs_ns_scope->get_type_symbol(type)->fq_name();
+    const auto type = analyse::utils::scope_utils::get_var_symbol(*lhs_ns_scope, name, true)->type;
+    return analyse::utils::scope_utils::get_type_symbol(*lhs_ns_scope, type)->fq_name();
 }
 
 

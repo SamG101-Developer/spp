@@ -582,7 +582,7 @@ auto spp::analyse::utils::scope_utils::check_conflicting_type_or_cmp_statements(
     auto dummy = utils::type_utils::GenericInferenceMap();
     const auto existing_scopes = cls_sym.scope->direct_sup_scopes
         | genex::views::filter([&](auto *scope) { return scope->ast->template to<asts::SupPrototypeExtensionAst>() or scope->ast->template to<asts::SupPrototypeFunctionsAst>(); })
-        | genex::views::filter([&](auto *scope) { return type_utils::relaxed_symbolic_eq(*asts::ast_name(sup_scope.ast), *asts::ast_name(scope->ast), sup_scope, *scope->ast->get_ast_scope(), dummy); })
+        | genex::views::filter([&](auto *scope) { return type_utils::relaxed_symbolic_eq(*asts::ast_name(sup_scope.ast), *asts::ast_name(scope->ast), sup_scope, *scope->ast->template to<asts::Ast>()->get_ast_scope(), dummy); })
         | genex::to<std::vector>();
 
     // Check for conflicting "type" statements.

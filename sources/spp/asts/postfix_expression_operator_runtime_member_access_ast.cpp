@@ -5,9 +5,11 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.cmp_utils;
 import spp.analyse.utils.scope_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.utils;
+import spp.codegen.llvm_type;
 import spp.lex;
 import spp.utils.strings;
 import spp.utils.uid;
@@ -186,12 +188,12 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_11_code_g
     // Get the type of the left-hand-side expression.
     const auto uid = spp::utils::generate_uid(this);
     const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
-    const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_type);
+    const auto lhs_type_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, lhs_type);
     const auto llvm_type = codegen::llvm_type(*lhs_type_sym, ctx);
     SPP_ASSERT(llvm_type != nullptr);
 
     // If the lhs is symbolic, get the address of the outermost part.
-    const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*meta->postfix_expression_lhs);
+    const auto [sym, _] = analyse::utils::scope_utils::get_var_symbol_outermost(*sm->current_scope, *meta->postfix_expression_lhs);
     auto base_ptr = static_cast<llvm::Value*>(nullptr);
     if (sym != nullptr) {
         // Get the alloca for the lhs symbol (the base pointer).
@@ -230,9 +232,9 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::infer_type(
     }
 
     // Get the field symbol and return its type.
-    const auto lhs_sym = sm->current_scope->get_type_symbol(lhs_type);
-    const auto field_type = lhs_sym->scope->get_var_symbol(name)->type;
-    return lhs_sym->scope->get_type_symbol(field_type)->fq_name();
+    const auto lhs_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, lhs_type);
+    const auto field_type = analyse::utils::scope_utils::get_var_symbol(*lhs_sym->scope, name)->type;
+    return analyse::utils::scope_utils::get_type_symbol(*lhs_sym->scope, field_type)->fq_name();
 }
 
 
