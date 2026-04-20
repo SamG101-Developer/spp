@@ -102,10 +102,10 @@ auto spp::asts::UseStatementVariableAst::stage_3_gen_top_level_aliases(
     const auto [old_var_sym, scope] = analyse::utils::scope_utils::get_var_symbol_outermost(*sm->current_scope, *old_var);
     if (old_var_sym != nullptr) {
         // Cmp statements
-        m_conversion->type = scope->get_type_symbol(old_var_sym->type)->fq_name(false);
+        m_conversion->type = analyse::utils::scope_utils::get_type_symbol(*scope, old_var_sym->type)->fq_name(false);
         old_var_sym->type = m_conversion->type;
 
-        auto alias_sym = dynamic_cast<analyse::scopes::TypeSymbol*>(m_conversion->m_alias_sym.get());
+        const auto alias_sym = dynamic_cast<analyse::scopes::VariableSymbol*>(m_conversion->m_alias_sym.get());
         alias_sym->alias_sym = old_var_sym;
         alias_sym->type = m_conversion->type;
         m_conversion->stage_3_gen_top_level_aliases(sm, meta);

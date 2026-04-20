@@ -292,7 +292,7 @@ auto spp::compiler::CompilerBoot::validate_entry_point(
     -> void {
     // Get the "main.spp" main module (entry point).
     const auto main_mod = *genex::find_if(m_modules, [](auto const *mod) {
-        const auto cast_mod = mod->to<asts::ModulePrototypeAst>();
+        const auto cast_mod = mod->template to<asts::ModulePrototypeAst>();
         return cast_mod->file_name()->val.ends_with("main.spp");
     });
 
