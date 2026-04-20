@@ -172,15 +172,16 @@ auto spp::codegen::create_coro_res_func(
          | genex::views::join
          | genex::views::enumerate) {
         // Get the alloca from the parameter variable.
-        const auto param_sym = scope.get_var_symbol(param_name);
-        const auto param_type = scope.get_type_symbol(param_sym->type);
+        const auto param_sym = analyse::utils::scope_utils::get_var_symbol(scope, param_name);
+        const auto param_type = analyse::utils::scope_utils::get_type_symbol(scope, param_sym->type);
         param_sym->llvm_info->alloca = ctx->builder.CreateAlloca(
             llvm_type(*param_type, ctx), nullptr, "coro.arg.alloca" + uid);
 
         // Load the argument value from the gen env args struct.
         const auto gep_args = ctx->builder.CreateStructGEP(llvm_arg_struct_type, load_coro_env, 2, "coro.args.gep" + uid);
         const auto gep_arg = ctx->builder.CreateStructGEP(llvm_arg_struct_type, gep_args, static_cast<std::uint32_t>(i), "coro.arg.gep" + uid);
-        const auto arg_val = ctx->builder.CreateLoad(llvm_type(*scope.get_type_symbol(param_sym->type), ctx), gep_arg, "coro.arg.load" + uid);
+        const auto arg_val = ctx->builder.CreateLoad(
+            llvm_type(*analyse::utils::scope_utils::get_type_symbol(scope, param_sym->type), ctx), gep_arg, "coro.arg.load" + uid);
 
         // Store into the local alloca.
         ctx->builder.CreateStore(arg_val, param_sym->llvm_info->alloca);

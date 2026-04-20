@@ -302,8 +302,8 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_11_code_gen_2(
         SPP_ASSERT(llvm_type != nullptr);
 
         // If the lhs is non-symbolic, we need to materialize it, and use as the self argument.
-        const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(
-            *meta->postfix_expression_lhs->to<PostfixExpressionAst>()->lhs);
+        const auto [sym, _] = analyse::utils::scope_utils::get_var_symbol_outermost(
+            *sm->current_scope, *meta->postfix_expression_lhs->to<PostfixExpressionAst>()->lhs);
         auto base_ptr = static_cast<llvm::Value*>(nullptr);
         if (sym != nullptr) {
             // Get the alloca for the lhs symbol (the base pointer).
@@ -355,7 +355,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
 
     // If there is a scope present (non-closure), then fully qualify the return type.
     if (std::get<0>(*m_overload_info) != nullptr) {
-        ret_type = std::get<0>(*m_overload_info)->get_type_symbol(ret_type)->fq_name();
+        ret_type = analyse::utils::scope_utils::get_type_symbol(*std::get<0>(*m_overload_info), ret_type)->fq_name();
     }
 
     // For GenOnce coroutines, automatically resume the coroutine and return the "Yield" type.
