@@ -4,7 +4,6 @@ module;
 module spp.asts;
 import spp.asts.utils;
 import spp.lex;
-import :common_types;
 
 
 spp::asts::BooleanLiteralAst::BooleanLiteralAst(

@@ -2,7 +2,6 @@ module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.asts.utils;
-import :common_types;
 import genex;
 
 

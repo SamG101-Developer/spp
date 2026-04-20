@@ -157,5 +157,5 @@ export import :visibility_ast;
 
 export import :meta;
 
-// export import :common_types;
+export import :common_types;
 export import :common_types_precompiled;

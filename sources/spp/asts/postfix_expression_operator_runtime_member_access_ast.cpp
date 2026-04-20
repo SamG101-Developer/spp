@@ -109,7 +109,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
             }
 
             // Tpye field was not found on this type, or the forwaring type (includes nested forwarding checks).
-            const auto alternatives = sm->current_scope->all_var_symbols(true, true)
+            const auto alternatives = analyse::utils::scope_utils::all_var_symbols(*sm->current_scope, true, true)
                 | genex::views::transform([](auto const &x) { return x->name->val; })
                 | genex::to<std::vector>();
 
@@ -125,7 +125,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
 
         auto scopes_and_syms = std::vector{lhs_type_sym->scope}
             | genex::views::concat(lhs_type_sym->scope->sup_scopes())
-            | genex::views::transform([name=name.get()](auto const &x) { return std::make_pair(x, x->table.var_tbl.get(name->val)); }) // todo: what on earth?
+            | genex::views::transform([name=name.get()](auto const &x) { return std::make_pair(x, analyse::utils::scope_utils::get_var_symbol(*x, name->val)); })
             | genex::views::filter([](auto const &x) { return x.second != nullptr; })
             | genex::views::transform([lhs_type_sym](auto const &x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
             | genex::to<std::vector>();

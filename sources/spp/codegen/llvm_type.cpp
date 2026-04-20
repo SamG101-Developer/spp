@@ -21,7 +21,6 @@ auto spp::codegen::register_llvm_type_info(
         const auto type_sym = dynamic_cast<analyse::scopes::TypeSymbol*>(cls_proto->get_cls_sym().get());
         const auto zero_size_struct = llvm::StructType::create(*ctx->context, mangle::mangle_type_name(*type_sym));
         zero_size_struct->setBody({}, true);
-        const auto type_sym = dynamic_cast<analyse::scopes::TypeSymbol*>(cls_proto->get_cls_sym().get());
         type_sym->llvm_info->llvm_type = zero_size_struct;
     }
 

@@ -5,7 +5,6 @@ module spp.asts;
 import spp.analyse.scopes;
 import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
-import :common_types;
 
 
 spp::asts::FunctionParameterSelfAst::FunctionParameterSelfAst(

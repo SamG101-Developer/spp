@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts;
-import :common_types;
 import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.utils.scope_utils;

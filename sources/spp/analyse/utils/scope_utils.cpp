@@ -265,7 +265,7 @@ auto spp::analyse::utils::scope_utils::get_type_symbol(
 
     // Get the symbol from the symbol table if it exists.
     auto sym = std::dynamic_pointer_cast<scopes::TypeSymbol>(scope_ptr->table.type_tbl.get(
-        sym_name_extracted.to_string());
+        sym_name_extracted->to_string()));
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym == nullptr and not exclusive and scope_ptr->parent != nullptr) {
@@ -293,11 +293,11 @@ auto spp::analyse::utils::scope_utils::get_ns_symbol(
     // Get the symbol from the symbol table if it exists.
     if (sym_name == nullptr) { return nullptr; }
     auto sym = std::dynamic_pointer_cast<scopes::NamespaceSymbol>(scope.table.ns_tbl.get(
-        std::const_pointer_cast<asts::IdentifierAst>(sym_name)));
+        sym_name->to_string()));
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym == nullptr and not exclusive and scope.parent != nullptr) {
-        sym = scope.parent->get_ns_symbol(sym_name, exclusive);
+        sym = get_ns_symbol(*scope.parent, sym_name, exclusive);
     }
 
     // Return the found symbol, or nullptr.
@@ -307,7 +307,7 @@ auto spp::analyse::utils::scope_utils::get_ns_symbol(
 
 auto spp::analyse::utils::scope_utils::get_var_symbol_outermost(
     scopes::Scope const &scope,
-    asts::Ast const &expr) const
+    asts::Ast const &expr)
     -> std::pair<std::shared_ptr<scopes::VariableSymbol>, scopes::Scope const*> {
     // Define helper methods to check expression types.
     auto is_valid_postfix_expression = []<typename OpType>(auto *ast) -> bool {
@@ -348,7 +348,7 @@ auto spp::analyse::utils::scope_utils::get_var_symbol_outermost(
         // Type based left-hand-side, such as "some_namespace::Type::static_member()"
         if (const auto type_lhs = postfix_expr->lhs->to<asts::TypeAst>()) {
             const auto type_sym = get_type_symbol(scope, asts::ast_clone(type_lhs));
-            const auto var_sym = type_sym->scope->get_var_symbol(postfix_op->name);
+            const auto var_sym = get_var_symbol(*type_sym->scope, postfix_op->name);
             return std::make_pair(var_sym, type_sym->scope);
         }
 
@@ -370,7 +370,7 @@ auto spp::analyse::utils::scope_utils::get_var_symbol_outermost(
 
 
 auto spp::analyse::utils::scope_utils::get_scope_generics(
-    scopes::Scope const &scope) const
+    scopes::Scope const &scope)
     -> std::vector<std::unique_ptr<asts::GenericArgumentAst>> {
     // Create the symbols list.
     auto syms = std::vector<std::unique_ptr<asts::GenericArgumentAst>>();
@@ -380,7 +380,7 @@ auto spp::analyse::utils::scope_utils::get_scope_generics(
 
     // Check each ancestor scope, accumulating generic symbols.
     for (auto const *scope : scopes) {
-        auto all_type_syms = scope->all_type_symbols(true)
+        auto all_type_syms = all_type_symbols(scope, true)
             | genex::views::filter([](auto const &sym) { return sym->is_generic; })
             | genex::to<std::vector>();
 
@@ -390,7 +390,7 @@ auto spp::analyse::utils::scope_utils::get_scope_generics(
             type_names.emplace_back(t->name);
         }
 
-        auto all_var_syms = scope->all_var_symbols(true)
+        auto all_var_syms = all_var_symbols(*scope, true)
             | genex::views::filter([](auto const &sym) { return sym->is_generic; })
             | genex::to<std::vector>();
 
@@ -409,14 +409,14 @@ auto spp::analyse::utils::scope_utils::get_scope_generics(
 auto spp::analyse::utils::scope_utils::get_scope_extended_generic_symbols(
     scopes::Scope const &scope,
     std::vector<asts::GenericArgumentAst*> const &generics,
-    std::shared_ptr<asts::TypeAst> const &ignore) const
+    std::shared_ptr<asts::TypeAst> const &ignore)
     -> std::vector<std::shared_ptr<scopes::Symbol>> {
     // Convert the provided generic arguments into symbols. Todo: filter to "is_generic"?
     const auto type_syms = generics
         | genex::views::cast_dynamic<asts::GenericArgumentTypeAst*>()
         | genex::views::transform([&](auto &&gen_arg) { return get_type_symbol(scope, gen_arg->val); })
         | genex::views::filter([](auto &&sym) { return sym != nullptr and sym->is_generic; })
-        | genex::views::cast_smart<Symbol>()
+        | genex::views::cast_smart<scopes::Symbol>()
         | genex::to<std::vector>();
 
     const auto comp_syms = generics
@@ -424,7 +424,7 @@ auto spp::analyse::utils::scope_utils::get_scope_extended_generic_symbols(
         | genex::views::filter([&ignore](auto &&gen_arg) { return ignore == nullptr or *gen_arg->val != *ignore; })
         | genex::views::transform([this](auto &&gen_arg) { return get_var_symbol(asts::ast_clone(gen_arg->val->template to<asts::IdentifierAst>())); })
         | genex::views::filter([](auto &&sym) { return sym != nullptr and sym->is_generic; })
-        | genex::views::cast_smart<Symbol>()
+        | genex::views::cast_smart<scopes::Symbol>()
         | genex::to<std::vector>();
 
     auto syms = type_syms;

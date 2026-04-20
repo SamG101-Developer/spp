@@ -6,6 +6,7 @@ import spp.analyse.scopes;
 import spp.analyse.utils.scope_utils;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
+import spp.codegen.llvm_size;
 import spp.utils.uid;
 import llvm;
 
@@ -562,7 +563,7 @@ auto spp::codegen::func_impls::std_memory_place_element(
     std::shared_ptr<asts::TypeAst> const &spp_ty)
     -> void {
     // Define the types that will be used in the function.
-    const auto ty = llvm_type(*sm->current_scope->get_type_symbol(spp_ty), ctx);
+    const auto ty = llvm_type(*analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, spp_ty), ctx);
     const auto void_ty = llvm::Type::getVoidTy(*ctx->context);
     const auto mem_ty = llvm_type(*analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, asts::common_types::memory_type(0, spp_ty)), ctx);
     const auto ptr_ty = llvm_type(*analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, asts::common_types::single_type(0, spp_ty)), ctx);
@@ -604,11 +605,11 @@ auto spp::codegen::func_impls::std_memory_take_element(
     std::shared_ptr<asts::TypeAst> const &spp_ty)
     -> void {
     // Define the types that will be used in the function.
-    const auto ty = llvm_type(*sm->current_scope->get_type_symbol(spp_ty), ctx);
-    const auto opt_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::common_types::option_type(0, spp_ty)), ctx);
-    const auto mem_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::common_types::memory_type(0, spp_ty)), ctx);
-    const auto ptr_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::common_types::single_type(0, spp_ty)), ctx);
-    const auto size_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::common_types::usize(0)), ctx);
+    const auto ty = llvm_type(*analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, spp_ty), ctx);
+    const auto opt_ty = llvm_type(*analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, asts::common_types::option_type(0, spp_ty)), ctx);
+    const auto mem_ty = llvm_type(*analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, asts::common_types::memory_type(0, spp_ty)), ctx);
+    const auto ptr_ty = llvm_type(*analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, asts::common_types::single_type(0, spp_ty)), ctx);
+    const auto size_ty = llvm_type(*analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, asts::common_types::usize(0)), ctx);
 
     const auto fn_ty = llvm::FunctionType::get(opt_ty, {llvm::PointerType::get(*ctx->context, 0), size_ty}, false);
     const auto fn = llvm::Function::Create(
@@ -673,7 +674,7 @@ auto spp::codegen::func_impls::std_memops_sizeof(
     LlvmCtx *ctx,
     std::shared_ptr<asts::TypeAst> const &spp_ty) -> void {
     // Calculate the size of the type of object, known at compile time.
-    const auto size_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::common_types::usize(0)), ctx);
+    const auto size_ty = llvm_type(*analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, asts::common_types::usize(0)), ctx);
     const auto size_const = llvm::ConstantInt::get(size_ty, size_of(*sm, spp_ty));
 
     const auto fn_ty = llvm::FunctionType::get(size_ty, {}, false);

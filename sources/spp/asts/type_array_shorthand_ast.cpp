@@ -3,7 +3,6 @@ module;
 
 module spp.asts;
 import spp.asts.utils;
-import :common_types;
 
 
 spp::asts::TypeArrayShorthandAst::TypeArrayShorthandAst(

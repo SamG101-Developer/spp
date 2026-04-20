@@ -6,6 +6,7 @@ module spp.analyse.utils.mem_utils;
 import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.mem_info_utils;
 import spp.asts;
 import spp.asts.utils;
 import genex;

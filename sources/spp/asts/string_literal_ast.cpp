@@ -5,7 +5,6 @@ module spp.asts;
 import spp.analyse.scopes;
 import spp.asts.utils;
 import llvm;
-import :common_types;
 
 
 spp::asts::StringLiteralAst::StringLiteralAst(

@@ -1,5 +1,4 @@
 module spp.asts;
-import :common_types;
 import genex;
 
 

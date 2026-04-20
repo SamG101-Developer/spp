@@ -75,9 +75,9 @@ auto spp::asts::utils::monomorphization::attach_specific_super_scopes_impl(
         auto sup_sym = static_cast<analyse::scopes::TypeSymbol*>(nullptr);
 
         // Todo: Is this "if-else" quite correct? 2 conditions in the "if", then no "else if" block.
-        if (not scope_generics->args.empty() and not genex::contains(generic_sup_blocks, sup_scope)) {
-            const auto external_generics = scope.ty_sym->scope_defined_in->get_extended_generic_symbols(scope_generics->args | genex::views::ptr | genex::to<std::vector>());
-            std::tie(new_sup_scope, new_cls_scope) = analyse::utils::type_utils::create_generic_sup_scope(*sup_scope, scope, *scope_generics, external_generics, this, meta);
+        if (not scope_generics->args.empty() and not genex::contains(analyse::utils::scope_utils::generic_sup_blocks, sup_scope)) {
+            const auto external_generics = analyse::utils::scope_utils::get_scope_extended_generic_symbols(*cls_sym->scope_defined_in, scope_generics->args | genex::views::ptr | genex::to<std::vector>());
+            std::tie(new_sup_scope, new_cls_scope) = analyse::utils::type_utils::create_generic_sup_scope(*sup_scope, scope, *scope_generics, external_generics, *scope, meta);
             sup_sym = new_cls_scope ? new_cls_scope->ty_sym.get() : nullptr;
         }
         else {

@@ -5,6 +5,7 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.order_utils;
 import spp.analyse.utils.scope_utils;
 import spp.analyse.utils.type_utils;
@@ -168,7 +169,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
     // Analyse the arguments
     for (auto const &arg : args) {
         arg->stage_7_analyse_semantics(sm, meta);
-        const auto [sym, _] = analyse::utils::scope_utils::get_var_symbol_outermost(sm->current_scope, *arg->val);
+        const auto [sym, _] = analyse::utils::scope_utils::get_var_symbol_outermost(*sm->current_scope, *arg->val);
         if (sym == nullptr) { continue; }
         if (arg->conv == nullptr or *arg->conv == ConventionTag::REF) { continue; }
 
@@ -199,7 +200,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
     auto borrows_mut = std::vector<Ast const*>();
 
     // Load pre-existing escaping borrows into the vectors.
-    const auto all_syms = sm->current_scope->all_var_symbols();
+    const auto all_syms = analyse::utils::scope_utils::all_var_symbols(*sm->current_scope);
     for (auto const &sym : all_syms) {
         for (auto const &[borrow, is_mut, _] : sym->memory_info->ast_escaping_borrows) {
             (is_mut ? borrows_mut : borrows_ref).emplace_back(borrow);
@@ -208,13 +209,13 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
 
     // Get potential handle to bind escpaing borrows to.
     const auto handle = meta->assignment_target;
-    const auto handle_sym = handle ? sm->current_scope->get_var_symbol_outermost(*handle).first : nullptr;
+    const auto handle_sym = handle ? analyse::utils::scope_utils::get_var_symbol_outermost(*sm->current_scope, *handle).first : nullptr;
 
     for (auto const &arg : args) {
         // Get the outermost part of the argument as a symbol. If the argument is non-symbolic then there is no need to
         // track borrows to it, as it is a temporary value.
         arg->stage_8_check_memory(sm, meta);
-        auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*arg->val);
+        auto [sym, _] = analyse::utils::scope_utils::get_var_symbol_outermost(*sm->current_scope, *arg->val);
         if (sym == nullptr) { continue; }
 
         // Ensure the argument isn't moved or partially moved (applies to all conventions). For non-symbolic arguments,
@@ -233,7 +234,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
             // Check the move doesn't overlap with any borrows. This is to ensure that "f(&x, x)" can never happen,
             // because the first argument requires the owned object to outlive the function call, and moving it as the
             // second argument breaks this. Doesn't apply to copyable types.
-            if (not sm->current_scope->get_type_symbol(arg->val->infer_type(sm, meta))->is_copyable()) {
+            if (not analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, arg->val->infer_type(sm, meta))->is_copyable()) {
                 auto overlaps = genex::views::concat(borrows_ref, borrows_mut)
                     | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
                     | genex::to<std::vector>();
