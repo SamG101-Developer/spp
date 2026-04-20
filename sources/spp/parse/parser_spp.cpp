@@ -13,14 +13,14 @@ import genex;
 import std;
 
 
-const auto IDENTIFIER_TOKENS = std::vector{
+constexpr auto IDENTIFIER_TOKENS = std::array{
     spp::lex::RawTokenType::LX_CHARACTER,
     spp::lex::RawTokenType::LX_DIGIT,
     spp::lex::RawTokenType::TK_UNDERSCORE
 };
 
 
-const auto UPPER_IDENTIFIER_TOKENS = std::vector{
+constexpr auto UPPER_IDENTIFIER_TOKENS = std::array{
     spp::lex::RawTokenType::LX_CHARACTER,
     spp::lex::RawTokenType::LX_DIGIT
 };
@@ -1725,16 +1725,16 @@ auto spp::parse::ParserSpp::parse_closure_expression_parameter_and_capture_group
 
 
 auto spp::parse::ParserSpp::parse_closure_expression_parameter_group()
-    -> std::unique_ptr<asts::ClosureExpressionParameterGroupAst> {
+    -> std::unique_ptr<asts::FunctionParameterGroupAst> {
     PARSE_ZERO_OR_MORE(p1, parse_closure_expression_parameter, parse_token_comma);
-    return CREATE_AST(asts::ClosureExpressionParameterGroupAst, nullptr, p1, nullptr);
+    return CREATE_AST(asts::FunctionParameterGroupAst, nullptr, p1, nullptr);
 }
 
 
 auto spp::parse::ParserSpp::parse_closure_expression_parameter()
-    -> std::unique_ptr<asts::ClosureExpressionParameterAst> {
+    -> std::unique_ptr<asts::FunctionParameterAst> {
     PARSE_ALTERNATE(
-        p1, asts::ClosureExpressionParameterAst, parse_function_parameter_variadic, parse_function_parameter_optional,
+        p1, asts::FunctionParameterAst, parse_function_parameter_variadic, parse_function_parameter_optional,
         parse_function_parameter_required);
     return FORWARD_AST(p1);
 }

@@ -484,7 +484,7 @@ auto spp::analyse::utils::func_utils::enforce_no_generic_constraint_violations(
         auto con_group_cloned = std::vector<std::shared_ptr<asts::TypeAst>>();
         for (auto p_con : p_con_group) {
             auto def_type_raw = p_con->without_generics();
-            if (auto def_val_type_sym = owner_scope.get_type_symbol(def_type_raw); def_val_type_sym != nullptr and meta.current_stage > 4) {
+            if (auto def_val_type_sym = scope_utils::get_type_symbol(owner_scope, def_type_raw); def_val_type_sym != nullptr and meta.current_stage > 4) {
                 auto temp = def_val_type_sym->fq_name();
                 temp = temp->with_generics(asts::ast_clone(p_con->type_parts().back()->generic_arg_group));
                 p_con = std::move(temp);
@@ -626,7 +626,7 @@ auto spp::analyse::utils::func_utils::name_gn_args_impl(
 
     // Get the names of the keyword arguments.
     auto a_names = a_group.get_keyword_args()
-        | genex::views::cast_dynamic<asts::detail::make_keyword_arg_t<GenericArgType>*>()
+        | genex::views::cast_dynamic<make_keyword_arg_t<GenericArgType>*>()
         | genex::views::transform([](auto *x) { return x->name; })
         | genex::to<std::vector>();
 
