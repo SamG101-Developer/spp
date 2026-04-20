@@ -128,7 +128,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
 
             // Todo: get the last part of postfix otherwise identifier value for string.
             const auto closest_match = spp::utils::strings::closest_match(
-                static_cast<std::string>(*meta->postfix_expression_lhs), alternatives);
+                meta->postfix_expression_lhs->to_string(), alternatives);
 
             raise<analyse::errors::SppIdentifierUnknownError>(
                 {sm->current_scope}, ERR_ARGS(*this, "namespace member", closest_match));

@@ -348,7 +348,7 @@ auto spp::analyse::utils::overload_utils::manage_matched_overloads(
             | genex::to<std::string>());
 
         auto arg_usage_signature = arg_group.args
-            | genex::views::transform([sm, meta](auto const &x) { return x->injected_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
+            | genex::views::transform([sm, meta](auto const &x) { return x->injected_self_type == nullptr ? x->infer_type(sm, meta)->to_string() : "Self"; })
             | genex::views::intersperse(", "s)
             | genex::views::join
             | genex::to<std::string>();
@@ -367,7 +367,7 @@ auto spp::analyse::utils::overload_utils::manage_matched_overloads(
             | genex::to<std::string>());
 
         auto arg_usage_signature = arg_group.args
-            | genex::views::transform([sm, meta](auto const &x) { return x->injected_self_type == nullptr ? static_cast<std::string>(*x->infer_type(sm, meta)) : "Self"; })
+            | genex::views::transform([sm, meta](auto const &x) { return x->injected_self_type == nullptr ? x->infer_type(sm, meta)->to_string() : "Self"; })
             | genex::views::intersperse(", "s)
             | genex::views::join
             | genex::to<std::string>();

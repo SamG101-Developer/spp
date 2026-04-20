@@ -15,8 +15,8 @@ auto spp::codegen::mangle::mangle_type_name(
     analyse::scopes::TypeSymbol const &type_sym)
     -> std::string {
     // Get the fully qualified name of the type symbol.
-    auto fq_name = type_sym.fq_name();
-    return static_cast<std::string>(*std::move(fq_name));
+    const auto fq_name = type_sym.fq_name();
+    return fq_name->to_string();
 }
 
 

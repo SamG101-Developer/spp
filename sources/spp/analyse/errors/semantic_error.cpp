@@ -137,10 +137,10 @@ spp::analyse::errors::SppTypeMismatchError::SppTypeMismatchError(
         4, "SPP Type Mismatch Error");
     add_context_for_error(
         &lhs,
-        "Left-hand side type: " + static_cast<std::string>(lhs_ty));
+        "Left-hand side type: " + lhs_ty.to_string());
     add_error(
         &rhs,
-        "Right-hand side type: " + static_cast<std::string>(rhs_ty));
+        "Right-hand side type: " + rhs_ty.to_string());
     add_footer(
         "The types of the left-hand side and right-hand side do not match.",
         "Ensure both sides have compatible types");
@@ -194,7 +194,7 @@ spp::analyse::errors::SppInvalidMutationError::SppInvalidMutationError(
         &mutator,
         "Invalid mutation attempted here");
     add_footer(
-        "The symbol " + static_cast<std::string>(sym) + " cannot be mutated because it was not declared as mutable.",
+        "The symbol " + sym.to_string() + " cannot be mutated because it was not declared as mutable.",
         "Declare the symbol as mutable or remove the mutation");
 }
 
@@ -335,7 +335,7 @@ spp::analyse::errors::SppMemberAccessNonIndexableError::SppMemberAccessNonIndexa
         16, "SPP Member Access Non-Indexable Error");
     add_context_for_error(
         &lhs,
-        "Left-hand side expression defined here with type: " + static_cast<std::string>(lhs_type));
+        "Left-hand side expression defined here with type: " + lhs_type.to_string());
     add_error(
         &access_op,
         "Member access operator defined here");
@@ -353,7 +353,7 @@ spp::analyse::errors::SppMemberAccessOutOfBoundsError::SppMemberAccessOutOfBound
         17, "SPP Member Access Out Of Bounds Error");
     add_context_for_error(
         &lhs,
-        "Left-hand side expression defined here with type: " + static_cast<std::string>(lhs_type));
+        "Left-hand side expression defined here with type: " + lhs_type.to_string());
     add_error(
         &access_op,
         "Member access operator defined here");
@@ -526,7 +526,7 @@ spp::analyse::errors::SppExpansionOfNonTupleError::SppExpansionOfNonTupleError(
         40, "SPP Expansion Of Non-Tuple Error");
     add_error(
         &ast,
-        "Expression defined here with type: " + static_cast<std::string>(type));
+        "Expression defined here with type: " + type.to_string());
     add_footer(
         "This expression is being expanded, but it is not of tuple type.",
         "Ensure the expression is of tuple type before expanding");
@@ -644,10 +644,10 @@ spp::analyse::errors::SppYieldedTypeMismatchError::SppYieldedTypeMismatchError(
         46, "SPP Yielded Type Mismatch Error");
     add_context_for_error(
         &lhs,
-        "Yielded type: " + static_cast<std::string>(lhs_ty));
+        "Yielded type: " + lhs_ty.to_string());
     add_error(
         &rhs,
-        "Expected type: " + static_cast<std::string>(rhs_ty));
+        "Expected type: " + rhs_ty.to_string());
     add_footer(
         "The type of the yielded value does not match the expected type.",
         "Ensure the yielded value matches the expected type");
@@ -662,9 +662,9 @@ spp::analyse::errors::SppIdentifierUnknownError::SppIdentifierUnknownError(
         34, "SPP Identifier Unknown Error");
     add_error(
         &name,
-        "Unknown " + std::string(what) + " '" + static_cast<std::string>(name) + "' defined here" + (closest ? " (did you mean '" + *closest + "'?)" : ""));
+        "Unknown " + std::string(what) + " '" + name.to_string() + "' defined here" + (closest ? " (did you mean '" + *closest + "'?)" : ""));
     add_footer(
-        "The " + std::string(what) + " '" + static_cast<std::string>(name) + "' is not defined in the current scope.",
+        "The " + std::string(what) + " '" + name.to_string() + "' is not defined in the current scope.",
         "Define the identifier or correct its name");
 }
 
@@ -735,7 +735,7 @@ spp::analyse::errors::SppVariableArrayDestructureArrayTypeMismatchError::SppVari
         "Array destructure variable defined here");
     add_error(
         &val,
-        "Value being destructured defined here with type: " + static_cast<std::string>(val_type));
+        "Value being destructured defined here with type: " + val_type.to_string());
     add_footer(
         "The type of the value being destructured does not match the expected array type.",
         "Ensure the value is of an array type compatible with the destructure");
@@ -772,7 +772,7 @@ spp::analyse::errors::SppVariableTupleDestructureTupleTypeMismatchError::SppVari
         "Tuple destructure variable defined here");
     add_error(
         &val,
-        "Value being destructured defined here with type: " + static_cast<std::string>(val_type));
+        "Value being destructured defined here with type: " + val_type.to_string());
     add_footer(
         "The type of the value being destructured does not match the expected tuple type.",
         "Ensure the value is of a tuple type compatible with the destructure");
@@ -823,7 +823,7 @@ spp::analyse::errors::SppExpressionNotBooleanError::SppExpressionNotBooleanError
         28, "SPP Expression Not Boolean Error");
     add_error(
         &expr,
-        "Expression defined here with type: " + static_cast<std::string>(expr_type));
+        "Expression defined here with type: " + expr_type.to_string());
     add_footer(
         "This expression must be of boolean type to be used in a " + std::string(what) + " context.",
         "Ensure the expression evaluates to a boolean value");
@@ -838,7 +838,7 @@ spp::analyse::errors::SppExpressionNotGeneratorError::SppExpressionNotGeneratorE
         29, "SPP Expression Not Generator Error");
     add_error(
         &expr,
-        "Expression defined here with type: " + static_cast<std::string>(expr_type));
+        "Expression defined here with type: " + expr_type.to_string());
     add_footer(
         "This expression must be of generator type to be used in a " + std::string(what) + " context.",
         "Ensure the expression evaluates to a generator type");
@@ -853,7 +853,7 @@ spp::analyse::errors::SppExpressionAmbiguousGeneratorError::SppExpressionAmbiguo
         30, "SPP Expression Ambiguous Generator Error");
     add_error(
         &expr,
-        "Expression defined here with type: " + static_cast<std::string>(expr_type));
+        "Expression defined here with type: " + expr_type.to_string());
     add_footer(
         "This expression has an ambiguous generator type in a " + std::string(what) + " context.",
         "Ensure the expression has a clear and unambiguous generator type");
@@ -868,7 +868,7 @@ spp::analyse::errors::SppExpressionNotIndexableError::SppExpressionNotIndexableE
         38, "SPP Expression Not Indexable Error");
     add_error(
         &expr,
-        "Expression defined here with type: " + static_cast<std::string>(expr_type));
+        "Expression defined here with type: " + expr_type.to_string());
     add_footer(
         "This expression must be of an indexable type to be used in a " + std::string(what) + " context.",
         "Ensure the expression evaluates to an indexable type (e.g., superimposes IndexRef/IndexMut)");
@@ -883,7 +883,7 @@ spp::analyse::errors::SppExpressionAmbiguousIndexableError::SppExpressionAmbiguo
         39, "SPP Expression Ambiguous Indexable Error");
     add_error(
         &expr,
-        "Expression defined here with type: " + static_cast<std::string>(expr_type));
+        "Expression defined here with type: " + expr_type.to_string());
     add_footer(
         "This expression has an ambiguous indexable type in a " + std::string(what) + " context.",
         "Ensure the expression has a clear and unambiguous indexable type");
@@ -1001,7 +1001,7 @@ spp::analyse::errors::SppEarlyReturnRequiresTryTypeError::SppEarlyReturnRequires
         52, "SPP Early Return Requires Try Type Error");
     add_error(
         &expr,
-        "Expression defined here with type: " + static_cast<std::string>(type));
+        "Expression defined here with type: " + type.to_string());
     add_footer(
         "This expression is used in an early return context, but its type is not a try type.",
         "Change the expression to have a try type or adjust the context");
@@ -1066,7 +1066,7 @@ spp::analyse::errors::SppFunctionFoldTupleElementTypeMismatchError::SppFunctionF
         56, "SPP Function Fold Tuple Element Type Mismatch Error");
     add_context_for_error(
         &type,
-        "Expected type: " + static_cast<std::string>(type));
+        "Expected type: " + type.to_string());
     add_error(
         &expr,
         "Tuple element with mismatched type defined here");
@@ -1224,7 +1224,7 @@ spp::analyse::errors::SppFunctionSubroutineMissingReturnStatementError::SppFunct
         &final_member,
         "Final member defined here");
     add_footer(
-        "This subroutine is missing a return statement for return type: " + static_cast<std::string>(return_type),
+        "This subroutine is missing a return statement for return type: " + return_type.to_string(),
         "Add a return statement at the end of the subroutine");
 }
 
@@ -1406,7 +1406,7 @@ spp::analyse::errors::SppDereferenceInvalidExpressionNonBorrowedTypeError::SppDe
         "Dereference operator defined here");
     add_error(
         &expr,
-        "Expression with non-borrowed type: " + static_cast<std::string>(type) + " defined here");
+        "Expression with non-borrowed type: " + type.to_string() + " defined here");
     add_footer(
         "Cannot dereference an expression of a non-borrowed type.",
         "Ensure the expression has a borrowable type (e.g., a reference)");
@@ -1420,7 +1420,7 @@ spp::analyse::errors::SppInvalidExpressionNonCopyableTypeError::SppInvalidExpres
         76, "SPP Dereference Invalid Expression Non-Copyable Type Error");
     add_error(
         &expr,
-        "Expression with non-copyable type: " + static_cast<std::string>(type) + " defined here");
+        "Expression with non-copyable type: " + type.to_string() + " defined here");
     add_footer(
         "Cannot dereference an expression of a non-copyable type.",
         "Ensure the expression has a copyable type");
@@ -1438,10 +1438,10 @@ spp::analyse::errors::SppGenericParameterInferredConflictInferredError::SppGener
         "Generic parameter defined here");
     add_context_for_error(
         &first_infer,
-        "First inference defined here: " + static_cast<std::string>(first_infer));
+        "First inference defined here: " + first_infer.to_string());
     add_error(
         &second_infer,
-        "Conflicting inference defined here: " + static_cast<std::string>(second_infer));
+        "Conflicting inference defined here: " + second_infer.to_string());
     add_footer(
         "There is a conflict between inferred types for this generic parameter.",
         "Resolve the inference conflict");
@@ -1568,10 +1568,10 @@ spp::analyse::errors::SppGenericConstraintError::SppGenericConstraintError(
         85, "SPP Generic Constraint Error");
     add_context_for_error(
         &constraint,
-        "Generic constraint required here: " + static_cast<std::string>(constraint));
+        "Generic constraint required here: " + constraint.to_string());
     add_error(
         &concrete_type,
-        "Concrete type defined here: " + static_cast<std::string>(concrete_type));
+        "Concrete type defined here: " + concrete_type.to_string());
     add_footer(
         "The concrete type does not satisfy the generic constraint.",
         "Ensure the concrete type meets all requirements of the generic constraint");

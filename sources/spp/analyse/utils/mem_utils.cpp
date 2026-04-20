@@ -28,8 +28,8 @@ auto spp::analyse::utils::mem_utils::memory_region_overlap(
     asts::Ast const &ast_1,
     asts::Ast const &ast_2)
     -> bool {
-    const auto s1 = static_cast<std::string>(ast_1);
-    const auto s2 = static_cast<std::string>(ast_2);
+    const auto s1 = ast_1.to_string();
+    const auto s2 = ast_2.to_string();
     return s1.starts_with(s2) or s2.starts_with(s1);
 }
 
@@ -37,8 +37,8 @@ auto spp::analyse::utils::mem_utils::memory_region_overlap(
 auto spp::analyse::utils::mem_utils::memory_region_right_overlap(
     asts::Ast const &ast_1,
     asts::Ast const &ast_2) -> bool {
-    const auto s1 = static_cast<std::string>(ast_1);
-    const auto s2 = static_cast<std::string>(ast_2);
+    const auto s1 = ast_1.to_string();
+    const auto s2 = ast_2.to_string();
     return s2.starts_with(s1);
 }
 

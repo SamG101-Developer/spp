@@ -1070,12 +1070,12 @@ auto spp::analyse::utils::type_utils::substitute_sup_scope_name(
 
     if (not parts[1].contains(" ext ")) {
         const auto t = INJECT_CODE(parts[1], parse_type_expression)->substitute_generics(generic_args.get_all_args());
-        const auto o = parts[0] + "#" + static_cast<std::string>(*t) + "#" + parts[2];
+        const auto o = parts[0] + "#" + t->to_string() + "#" + parts[2];
         return o;
     }
     const auto t = INJECT_CODE(parts[1].substr(0, parts[1].find(" ext ")), parse_type_expression)->substitute_generics(generic_args.get_all_args());
     const auto u = INJECT_CODE(parts[1].substr(parts[1].find(" ext ") + 5), parse_type_expression)->substitute_generics(generic_args.get_all_args());
-    const auto o = parts[0] + "#" + static_cast<std::string>(*t) + " ext " + static_cast<std::string>(*u) + "#" + parts[2];
+    const auto o = parts[0] + "#" + t->to_string() + " ext " + u->to_string() + "#" + parts[2];
 
     return o;
 }
