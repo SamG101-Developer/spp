@@ -644,7 +644,7 @@ auto spp::analyse::utils::func_utils::name_gn_args_impl(
             ERR_ARGS(p_group.params.empty() ? owner : *p_group.params[0], owner, *positional_arg));
 
         // Create the keyword argument from the positional argument.
-        auto kw_arg = std::make_unique<asts::detail::make_keyword_arg_t<GenericArgType>>(
+        auto kw_arg = std::make_unique<make_keyword_arg_t<GenericArgType>>(
             p_names.front(), nullptr, nullptr);
         p_names |= genex::actions::pop_front();
 
@@ -881,7 +881,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
         // if (comp_arg == nullptr) { continue; }
 
         // Not convinces owner_scope mapping is correct here (see scopes for equality below)
-        auto a_type = owner_scope.get_type_symbol(arg->val->infer_type(&sm, &meta))->fq_name();
+        auto a_type = scope_utils::get_type_symbol(owner_scope, arg->val->infer_type(&sm, &meta))->fq_name();
         auto p_type = param->type->substitute_generics(a_group.get_all_args());
         // p_type->stage_7_analyse_semantics(&sm, meta); // TODO: Needed?
 
@@ -989,7 +989,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
 
         auto def_type = opt_param->default_val;
         auto def_type_raw = def_type->without_generics();
-        if (auto def_val_type_sym = owner_scope.get_type_symbol(def_type_raw); def_val_type_sym != nullptr and meta.current_stage > 4) {
+        if (auto def_val_type_sym = scope_utils::get_type_symbol(owner_scope, def_type_raw); def_val_type_sym != nullptr and meta.current_stage > 4) {
             auto temp = def_val_type_sym->fq_name()->with_convention(asts::ast_clone(def_type->get_convention()));
             temp = temp->with_generics(asts::ast_clone(def_type->type_parts().back()->generic_arg_group));
             def_type = std::move(temp);
@@ -1093,7 +1093,8 @@ auto spp::analyse::utils::func_utils::get_overload_types(
     scopes::Scope const &scope)
     -> std::vector<std::shared_ptr<asts::TypeAst>> {
     // Extract the overload types from the overload set type and are functional.
-    return scope.get_type_symbol(overload_set_type.shared_from_this())->scope->sup_types()
+    return scope_utils::get_type_symbol(scope, overload_set_type.shared_from_this())->scope->sup_types()
+        | genex::views::cast_smart<asts::TypeAst>()
         | genex::views::filter([&](auto &&t) { return type_utils::is_type_function(*t, scope); })
         | genex::to<std::vector>();
 }
