@@ -7,6 +7,7 @@ import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
+import spp.analyse.utils.scope_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import spp.lex;
@@ -232,39 +233,39 @@ auto spp::asts::SupPrototypeExtensionAst::stage_5_load_super_scopes(
     // Analyse the type being superimposed over.
     name->stage_7_analyse_semantics(sm, meta);
     SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(name, name, *sm, "superimposition type");
-    name = sm->current_scope->get_type_symbol(name)->fq_name();
+    name = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, name)->fq_name();
 
     // Register the superimposition against the base symbol.
-    const auto base_cls_sym = sm->current_scope->get_type_symbol(name->without_generics());
+    const auto base_cls_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, name->without_generics());
     if (sm->current_scope->parent == sm->current_scope->parent_module()) {
         if (not base_cls_sym->is_generic) {
-            analyse::scopes::ScopeManager::normal_sup_blocks[base_cls_sym.get()].emplace_back(sm->current_scope);
+            analyse::utils::scope_utils::normal_sup_blocks[base_cls_sym.get()].emplace_back(sm->current_scope);
         }
         else {
-            analyse::scopes::ScopeManager::generic_sup_blocks.emplace_back(sm->current_scope);
+            analyse::utils::scope_utils::generic_sup_blocks.emplace_back(sm->current_scope);
         }
     }
 
     // Add the "Self" symbol into the scope.
     if (name->type_parts().back()->name[0] != '$') {
-        const auto cls_sym = sm->current_scope->get_type_symbol(name);
+        const auto cls_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, name);
         const auto self_sym = std::make_shared<analyse::scopes::TypeSymbol>(
             std::make_unique<TypeIdentifierAst>(name->pos_start(), "Self", nullptr),
             cls_sym->type, cls_sym->scope, sm->current_scope);
         self_sym->alias_stmt = std::make_unique<TypeStatementAst>(
             SPP_NO_ANNOTATIONS, nullptr,
             TypeIdentifierAst::from_string("Self"), nullptr, nullptr, name);
-        sm->current_scope->add_type_symbol(self_sym);
-        sm->current_scope->get_type_symbol(name)->aliased_by_symbols.emplace_back(self_sym);
+        analyse::utils::scope_utils::add_type_symbol(*sm->current_scope, self_sym);
+        analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, name)->aliased_by_symbols.emplace_back(self_sym);
     }
 
     // Analyse the supertype after Self has been added (allows use in generic arguments to the superclass).
     super_class->stage_7_analyse_semantics(sm, meta);
     SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(super_class, super_class, *sm, "superimposition supertype");
-    super_class = sm->current_scope->get_type_symbol(super_class)->fq_name();
+    super_class = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, super_class)->fq_name();
 
     // Check the supertype is not generic.
-    const auto sup_sym = sm->current_scope->get_type_symbol(super_class);
+    const auto sup_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, super_class);
     raise_if<analyse::errors::SppGenericTypeInvalidUsageError>(
         sup_sym->is_generic, {sm->current_scope},
         ERR_ARGS(*super_class, *super_class, "superimposition supertype"));
@@ -286,10 +287,10 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
     // super_class->stage_7_analyse_semantics(sm, meta);
 
     // Get the symbols.
-    const auto cls_sym = sm->current_scope->get_type_symbol(name);
-    const auto sup_sym = sm->current_scope->get_type_symbol(super_class);
+    const auto cls_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, name);
+    const auto sup_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, super_class);
 
-    auto sup_scopes = sm->current_scope->get_type_symbol(super_class)->scope->sup_scopes();
+    auto sup_scopes = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, super_class)->scope->sup_scopes();
     sup_scopes.insert(sup_scopes.begin(), sup_sym->scope);
     genex::actions::remove_if(sup_scopes, [](auto &&x) { return x->ast->template to<ClassPrototypeAst>() == nullptr; });
 
@@ -297,7 +298,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
     for (const auto sup_scope : sup_scopes) {
         const auto fq_name = sup_scope->ty_sym->fq_name();
         if (analyse::utils::type_utils::symbolic_eq(*fq_name, *common_types_precompiled::COPY, *sup_scope, *sm->current_scope)) {
-            sm->current_scope->get_type_symbol(name->without_generics())->is_directly_copyable = true;
+            analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, name->without_generics())->is_directly_copyable = true;
             cls_sym->is_directly_copyable = true;
             break;
         }
@@ -325,7 +326,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
         else if (const auto type_member = member->to<TypeStatementAst>()) {
             // Get the associated type from the supertype directly.
             const auto this_type = type_member->new_type;
-            const auto base_type = sup_sym->scope->get_type_symbol(this_type, true);
+            const auto base_type = analyse::utils::scope_utils::get_type_symbol(*sup_sym->scope, this_type, true);
 
             // Check to see if the base type exists.
             raise_if<analyse::errors::SppSuperimpositionExtensionTypeStatementInvalidError>(
@@ -336,7 +337,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
         else if (const auto cmp_member = member->to<CmpStatementAst>()) {
             // Get the associated type from the supertype directly.
             const auto this_const = cmp_member->name;
-            const auto base_const = sup_sym->scope->get_var_symbol(this_const, true);
+            const auto base_const = analyse::utils::scope_utils::get_var_symbol(*sup_sym->scope, this_const, true);
 
             // Check to see if the base type exists.
             raise_if<analyse::errors::SppSuperimpositionExtensionCmpStatementInvalidError>(

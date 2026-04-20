@@ -108,7 +108,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_
             ERR_ARGS(*meta->postfix_expression_lhs, *tok_dbl_colon));
 
         // Check the constant exists inside the namespace.
-        const auto lhs_ns_sym = sm->current_scope->convert_postfix_to_nested_scope(meta->postfix_expression_lhs)->ns_sym;
+        const auto lhs_ns_sym = analyse::utils::scope_utils::associated_ns_symbol(
+            *sm->current_scope->convert_postfix_to_nested_scope(meta->postfix_expression_lhs));
         if (not analyse::utils::scope_utils::has_var_symbol(*lhs_ns_sym->scope, name, true) and not analyse::utils::scope_utils::has_var_symbol(*lhs_ns_sym->scope, name, true)) {
             const auto alternatives = analyse::utils::scope_utils::all_var_symbols(*sm->current_scope, false, true)
                 | genex::views::transform([](auto &&x) { return x->name->val; })
@@ -132,16 +133,17 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_9_comptime
     // Handle accessing a symbol on a type.
     if (const auto lhs_as_type = meta->postfix_expression_lhs->to<TypeAst>(); lhs_as_type != nullptr) {
         const auto lhs_type_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, ast_clone(lhs_as_type));
-        const auto sym = lhs_type_sym->scope->get_var_symbol(name, true);
+        const auto sym = analyse::utils::scope_utils::get_var_symbol(*lhs_type_sym->scope, name, true);
         auto tm = ScopeManager(sm->global_scope, lhs_type_sym->scope);
-        sym->comptime_value->stage_9_comptime_resolution(&tm, meta);
+        sym->comptime_value->to<ExpressionAst>()->stage_9_comptime_resolution(&tm, meta);
         meta->cmp_result = ast_clone(meta->cmp_result);
         return;
     }
 
     // Handle accessing a variable on a namespace.
     const auto lhs = meta->postfix_expression_lhs;
-    const auto lhs_ns_sym = sm->current_scope->convert_postfix_to_nested_scope(lhs)->ns_sym;
+    const auto lhs_ns_sym = analyse::utils::scope_utils::associated_ns_symbol(
+        *sm->current_scope->convert_postfix_to_nested_scope(lhs));
     const auto sym = analyse::utils::scope_utils::get_var_symbol(*lhs_ns_sym->scope, name, true);
     meta->cmp_result = ast_clone(sym->comptime_value->to<ExpressionAst>());
 }

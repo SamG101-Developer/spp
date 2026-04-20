@@ -349,8 +349,9 @@ auto spp::compiler::CompilerBoot::move_scope_manager_to_ns(
         // Otherwise, create a new scope and move into it.
         else {
             const auto ns_sym = std::make_shared<analyse::scopes::NamespaceSymbol>(identifier_part, nullptr);
-            analyse::utils::scope_utils::get_ns_symbol(*sm->current_scope, ns_sym);
-            const auto ns_scope = sm->create_and_move_into_new_scope(identifier_part, nullptr, mod.error_formatter.get());
+            analyse::utils::scope_utils::add_ns_symbol(*sm->current_scope, ns_sym);
+            const auto ns_scope_name = analyse::scopes::ScopeIdentifierName(identifier_part);
+            const auto ns_scope = sm->create_and_move_into_new_scope(ns_scope_name, nullptr, mod.error_formatter.get());
             ns_sym->scope = ns_scope;
             ns_sym->scope->ns_sym = ns_sym;
             ns_sym->scope->ast = mod.module_ast.get();
