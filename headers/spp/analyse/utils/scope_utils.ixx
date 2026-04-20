@@ -141,7 +141,7 @@ namespace spp::analyse::utils::scope_utils {
      * @param name The name of the variable symbol to search for.
      * @return The found variable symbol, or nullptr if not found.
      */
-    auto search_sup_scopes_for_var(
+    SPP_EXP_FUN auto search_sup_scopes_for_var(
         scopes::Scope const &scope,
         std::shared_ptr<asts::IdentifierAst> const &name)
         -> std::shared_ptr<scopes::VariableSymbol>;
@@ -154,7 +154,7 @@ namespace spp::analyse::utils::scope_utils {
      * @param name The name of the type symbol to search for.
      * @return The found type symbol, or nullptr if not found.
      */
-    auto search_sup_scopes_for_type(
+    SPP_EXP_FUN auto search_sup_scopes_for_type(
         scopes::Scope const &scope,
         std::shared_ptr<const asts::TypeAst> const &name)
         -> std::shared_ptr<scopes::TypeSymbol>;
@@ -168,17 +168,17 @@ namespace spp::analyse::utils::scope_utils {
      * @param fq_type The fully qualified type to shift the scope for.
      * @return A pair of the shifted scope and the unqualified type identifier.
      */
-    auto shift_scope_for_namespaced_type(
+    SPP_EXP_FUN auto shift_scope_for_namespaced_type(
         scopes::Scope const &scope,
         asts::TypeAst const &fq_type)
         -> std::pair<const scopes::Scope*, std::shared_ptr<const asts::TypeIdentifierAst>>;
 
-    auto attach_llvm_type_info(
+    SPP_EXP_FUN auto attach_llvm_type_info(
         asts::ModulePrototypeAst const &mod,
         codegen::LlvmCtx *ctx)
         -> void;
 
-    auto check_conflicting_type_or_cmp_statements(
+    SPP_EXP_FUN auto check_conflicting_type_or_cmp_statements(
         scopes::TypeSymbol const &cls_sym,
         scopes::Scope const &sup_scope)
         -> void;

@@ -6,6 +6,7 @@ module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.scope_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import spp.lex;
@@ -110,10 +111,11 @@ auto spp::asts::TypeStatementAst::stage_2_gen_top_level_scopes(
         new_type, new_type, *sm, "use statement's new type", false);
 
     // Create the type symbol for this type, that will point to the old type.
-    m_alias_sym = std::make_shared<analyse::scopes::TypeSymbol>(
+    auto alias_sym = std::make_shared<analyse::scopes::TypeSymbol>(
         new_type, nullptr, nullptr, sm->current_scope, sm->current_scope->parent_module());
-    m_alias_sym->alias_stmt = std::unique_ptr<TypeStatementAst>(this); // This is BAD but "cleanup" handles mem error.
-    sm->current_scope->add_type_symbol_check_conflict(m_alias_sym);
+    alias_sym->alias_stmt = std::unique_ptr<TypeStatementAst>(this); // This is BAD but "cleanup" handles mem error.
+    analyse::utils::scope_utils::add_type_symbol_check_conflict(*sm->current_scope, alias_sym);
+    m_alias_sym = alias_sym;
 
     // Create a new scope for the type statement.
     auto scope_name = analyse::scopes::ScopeBlockName::from_parts(
@@ -146,7 +148,8 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
     auto [mapped_old_type, attach_generics, tracking_scope] = analyse::utils::type_utils::recursive_alias_search(
         *this, m_from_use_statement, sm->current_scope->parent, sm, meta);
 
-    const auto final_sym = sm->current_scope->get_type_symbol(mapped_old_type->without_generics());
+    const auto final_sym = analyse::utils::scope_utils::get_type_symbol(
+        *sm->current_scope, mapped_old_type->without_generics());
     m_alias_sym->type = final_sym->type;
     m_alias_sym->scope = final_sym->scope;
     m_alias_sym->is_copyable = [final_sym] { return final_sym->is_copyable(); };

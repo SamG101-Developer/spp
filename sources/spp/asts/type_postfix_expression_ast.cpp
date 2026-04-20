@@ -205,7 +205,7 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
     auto sup_scopes = lhs_type_sym->scope->sup_scopes();
     sup_scopes.insert(sup_scopes.begin(), lhs_type_sym->scope);
     auto scopes_and_syms = sup_scopes
-        | genex::views::transform([name=op_nested->name](auto &&x) { return std::make_pair(x, analyse::utils::scope_utils::get_var_symbol(*x, name, true)); })
+        | genex::views::transform([name=op_nested->name](auto &&x) { return std::make_pair(x, analyse::utils::scope_utils::get_type_symbol(*x, name, true)); })
         | genex::views::filter([](auto &&x) { return x.second != nullptr; })
         | genex::views::transform([&](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
         | genex::to<std::vector>();

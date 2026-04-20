@@ -5,7 +5,9 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.func_utils;
 import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import spp.codegen.llvm_type;
 import spp.codegen.llvm_mangle;
@@ -410,7 +412,7 @@ auto spp::asts::FunctionPrototypeAst::stage_6_pre_analyse_semantics(
     const auto mod_ctx = m_ctx->to<ModulePrototypeAst>();
     const auto type_scope = mod_ctx
         ? sm->current_scope->parent_module()
-        : m_ctx->get_ast_scope()->get_type_symbol(ast_name(m_ctx))->scope;
+        : analyse::utils::scope_utils::get_type_symbol(*m_ctx->to<Ast>()->get_ast_scope(), ast_name(m_ctx))->scope;
 
     // Error if there are conflicts.
     const auto conflict = analyse::utils::func_utils::check_for_conflicting_overload(*sm->current_scope, type_scope, *this, *sm, meta);
@@ -551,7 +553,7 @@ auto spp::asts::FunctionPrototypeAst::stage_11_code_gen_2(
         generic_param_group->stage_11_code_gen_2(sm, meta, ctx);
     }
 
-    const auto ret_type_sym = sm->current_scope->get_type_symbol(return_type);
+    const auto ret_type_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, return_type);
     meta->save();
     meta->enclosing_function_flavour = this->tok_fun.get();
     meta->enclosing_function_ret_type.emplace_back(ret_type_sym->fq_name());

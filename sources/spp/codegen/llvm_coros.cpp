@@ -7,6 +7,7 @@ import spp.analyse.utils.scope_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts;
 import spp.utils.uid;
+import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
 import genex;
 import llvm;

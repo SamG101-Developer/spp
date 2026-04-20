@@ -139,7 +139,7 @@ auto spp::compiler::CompilerBoot::stage_5_load_super_scopes(
     // Todo: New progress bar here
     auto meta = asts::meta::CompilerMetaData();
     meta.current_stage = 7.5;
-    asts::utils::monomorphization::attach_all_super_scopes(&meta);
+    asts::utils::monomorphization::attach_all_super_scopes(*sm, &meta);
 }
 
 
@@ -195,8 +195,9 @@ auto spp::compiler::CompilerBoot::stage_8_check_memory(
 
     // Attach all LLVM type info to all types now.
     for (auto const &mod : m_modules) {
-        auto ctx = codegen::LlvmCtx::new_ctx(mod->file_path);
-        analyse::utils::scope_utils::attach_llvm_type_info(*mod, ctx.get());
+        const auto cast_mod = mod->to<asts::ModulePrototypeAst>();
+        auto ctx = codegen::LlvmCtx::new_ctx(cast_mod->file_path);
+        analyse::utils::scope_utils::attach_llvm_type_info(*cast_mod, ctx.get());
         m_llvm_ctxs.emplace_back(std::move(ctx));
     }
 }
@@ -291,7 +292,8 @@ auto spp::compiler::CompilerBoot::validate_entry_point(
     -> void {
     // Get the "main.spp" main module (entry point).
     const auto main_mod = *genex::find_if(m_modules, [](auto const *mod) {
-        return mod->file_name()->val.ends_with("main.spp");
+        const auto cast_mod = mod->to<asts::ModulePrototypeAst>();
+        return cast_mod->file_name()->val.ends_with("main.spp");
     });
 
     // Check whether the "main" function exists with the correct signature.
