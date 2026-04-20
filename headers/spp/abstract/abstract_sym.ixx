@@ -11,5 +11,5 @@ namespace spp {
 SPP_EXP_CLS struct spp::AbstractSymbol {
     AbstractSymbol();
 
-    virtual ~AbstractSymbol() = default;
+    virtual ~AbstractSymbol();
 };

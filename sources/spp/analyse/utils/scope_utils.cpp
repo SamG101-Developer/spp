@@ -48,7 +48,6 @@ auto spp::analyse::utils::scope_utils::add_type_symbol(
 }
 
 
-
 auto spp::analyse::utils::scope_utils::add_type_symbol_check_conflict(
     scopes::Scope &scope,
     std::shared_ptr<scopes::TypeSymbol> const &sym)
@@ -111,7 +110,7 @@ auto spp::analyse::utils::scope_utils::all_var_symbols(
     -> std::vector<std::shared_ptr<scopes::VariableSymbol>> {
     // Yield all symbols from the var symbol table.
     auto syms = std::vector<std::shared_ptr<scopes::VariableSymbol>>();
-    for (auto const &x: scope.table.var_tbl.all()) {
+    for (auto const &x : scope.table.var_tbl.all()) {
         syms.emplace_back(std::dynamic_pointer_cast<scopes::VariableSymbol>(x));
     }
 
@@ -138,7 +137,7 @@ auto spp::analyse::utils::scope_utils::all_type_symbols(
     -> std::vector<std::shared_ptr<scopes::TypeSymbol>> {
     // Yield all symbols from the type symbol table.
     auto syms = std::vector<std::shared_ptr<scopes::TypeSymbol>>();
-    for (auto const &x: scope.table.type_tbl.all()) {
+    for (auto const &x : scope.table.type_tbl.all()) {
         syms.emplace_back(std::dynamic_pointer_cast<scopes::TypeSymbol>(x));
     }
 
@@ -165,7 +164,7 @@ auto spp::analyse::utils::scope_utils::all_ns_symbols(
     -> std::vector<std::shared_ptr<scopes::NamespaceSymbol>> {
     // Yield all symbols from the namespace symbol table.
     auto syms = std::vector<std::shared_ptr<scopes::NamespaceSymbol>>();
-    for (auto const &x: scope.table.ns_tbl.all()) {
+    for (auto const &x : scope.table.ns_tbl.all()) {
         syms.emplace_back(std::dynamic_pointer_cast<scopes::NamespaceSymbol>(x));
     }
 
@@ -175,7 +174,6 @@ auto spp::analyse::utils::scope_utils::all_ns_symbols(
     }
     return syms;
 }
-
 
 
 auto spp::analyse::utils::scope_utils::has_var_symbol(
@@ -369,6 +367,21 @@ auto spp::analyse::utils::scope_utils::get_var_symbol_outermost(
 }
 
 
+auto spp::analyse::utils::scope_utils::associated_type_symbol(
+    scopes::Scope const &scope)
+    -> std::shared_ptr<scopes::TypeSymbol> {
+    // Get the associated type symbol for a scope, if it exists.
+    return std::dynamic_pointer_cast<scopes::TypeSymbol>(scope.ty_sym);
+}
+
+
+auto spp::analyse::utils::scope_utils::associated_ns_symbol(
+    scopes::Scope const &scope)
+    -> std::shared_ptr<scopes::NamespaceSymbol> {
+    // Get the associated namespace symbol for a scope, if it exists.
+    return std::dynamic_pointer_cast<scopes::NamespaceSymbol>(scope.ns_sym);
+}
+
 
 auto spp::analyse::utils::scope_utils::get_scope_generics(
     scopes::Scope const &scope)
@@ -511,8 +524,6 @@ auto spp::analyse::utils::scope_utils::shift_scope_for_namespaced_type(
 }
 
 
-
-
 auto spp::analyse::utils::scope_utils::attach_llvm_type_info(
     asts::ModulePrototypeAst const &mod,
     codegen::LlvmCtx *ctx)
@@ -573,7 +584,6 @@ auto spp::analyse::utils::scope_utils::attach_llvm_type_info(
 }
 
 
-
 auto spp::analyse::utils::scope_utils::check_conflicting_type_or_cmp_statements(
     scopes::TypeSymbol const &cls_sym,
     scopes::Scope const &sup_scope)
@@ -617,4 +627,3 @@ auto spp::analyse::utils::scope_utils::check_conflicting_type_or_cmp_statements(
         }
     }
 }
-
