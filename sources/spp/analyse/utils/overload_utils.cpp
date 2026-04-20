@@ -6,6 +6,8 @@ module;
 module spp.analyse.utils.overload_utils;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts;
 import spp.asts.utils;
 import genex;
@@ -31,7 +33,7 @@ auto spp::analyse::utils::overload_utils::determine_overload(
     //  to scope lookup.
     auto temp = std::shared_ptr<asts::ExpressionAst>(nullptr);
     if (const auto id = lhs->to<asts::IdentifierAst>()) {
-        const auto x = sm->current_scope->get_var_symbol(asts::ast_clone(id));
+        const auto x = scope_utils::get_var_symbol(*sm->current_scope, asts::ast_clone(id));
         if (x->memory_info->ast_comptime) {
             temp = x->fq_name();
             lhs = temp.get();

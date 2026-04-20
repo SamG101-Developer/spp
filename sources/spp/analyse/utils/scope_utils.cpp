@@ -248,32 +248,32 @@ auto spp::analyse::utils::scope_utils::get_type_symbol(
     if (sym_name == nullptr) { return nullptr; }
 
     // Check cache.
-    if (sym_name->cached_type_symbols.contains(this)) {
-        return sym_name->cached_type_symbols.get(this);
-    }
+    // if (sym_name->cached_type_symbols.contains(this)) {
+    //     return sym_name->cached_type_symbols.get(this);
+    // }
 
     std::shared_ptr<const asts::TypeIdentifierAst> sym_name_extracted;
     if (const auto sym_name_as_identifier = std::dynamic_pointer_cast<const asts::TypeIdentifierAst>(sym_name)) {
         sym_name_extracted = std::const_pointer_cast<asts::TypeIdentifierAst>(sym_name_as_identifier);
     }
     else {
-        auto [scope_, sym_name_extracted_] = shift_scope_for_namespaced_type(*this, *sym_name);
-        scope = scope_;
+        auto [scope_, sym_name_extracted_] = shift_scope_for_namespaced_type(*scope, *sym_name);
+        scope = *scope_;
         sym_name_extracted = sym_name_extracted_;
     }
 
     // Get the symbol from the symbol table if it exists.
-    auto sym = std::dynamic_pointer_cast<scopes::TypeSymbol>(scope->table.type_tbl.get(
+    auto sym = std::dynamic_pointer_cast<scopes::TypeSymbol>(scope.table.type_tbl.get(
         std::const_pointer_cast<asts::TypeIdentifierAst>(sym_name_extracted)));
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
-    if (sym == nullptr and not exclusive and scope->parent != nullptr) {
-        sym = scope->parent->get_type_symbol(sym_name_extracted, exclusive);
+    if (sym == nullptr and not exclusive and scope.parent != nullptr) {
+        sym = scope.parent->get_type_symbol(sym_name_extracted, exclusive);
     }
 
     // If the symbol still hasn't been found, check the super scopes for it.
     if (sym == nullptr and sup_scope_search) {
-        sym = search_sup_scopes_for_type(*scope, sym_name_extracted);
+        sym = search_sup_scopes_for_type(scope, sym_name_extracted);
     }
 
     // Update cache and return the found symbol, or nullptr.

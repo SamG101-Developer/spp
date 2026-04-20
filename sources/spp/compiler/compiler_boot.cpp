@@ -5,7 +5,9 @@ module;
 module spp.compiler;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
 import spp.asts;
+import spp.asts.utils.monomorphization;
 import spp.lex;
 import spp.parse;
 import spp.parse.errors;
@@ -137,7 +139,7 @@ auto spp::compiler::CompilerBoot::stage_5_load_super_scopes(
     // Todo: New progress bar here
     auto meta = asts::meta::CompilerMetaData();
     meta.current_stage = 7.5;
-    sm->attach_all_super_scopes(&meta);
+    asts::utils::monomorphization::attach_all_super_scopes(&meta);
 }
 
 
@@ -194,7 +196,7 @@ auto spp::compiler::CompilerBoot::stage_8_check_memory(
     // Attach all LLVM type info to all types now.
     for (auto const &mod : m_modules) {
         auto ctx = codegen::LlvmCtx::new_ctx(mod->file_path);
-        sm->attach_llvm_type_info(*mod, ctx.get());
+        analyse::utils::scope_utils::attach_llvm_type_info(*mod, ctx.get());
         m_llvm_ctxs.emplace_back(std::move(ctx));
     }
 }

@@ -26,6 +26,7 @@ SPP_EXP_CLS struct spp::asts::TypeAst : PrimaryExpressionAst, std::enable_shared
 
     ~TypeAst() override;
 
+    // mutable utils::Cache<analyse::scopes::Scope const*, std::shared_ptr<analyse::scopes::TypeSymbol>> cached_type_symbols;
 
     SPP_ATTR_NODISCARD virtual auto iterator() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> = 0;
 

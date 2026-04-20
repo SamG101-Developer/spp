@@ -138,7 +138,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantic
             not analyse::utils::type_utils::symbolic_eq(*flow_sym->type, *type, *sm->current_scope, *sm->current_scope),
             {sm->current_scope}, ERR_ARGS(*meta->case_condition, *flow_sym->type, *type, *type));
 
-        flow_sym = std::make_shared<analyse::scopes::VariableSymbol>(*m_cond_sym);
+        flow_sym = std::make_shared<analyse::scopes::VariableSymbol>(*flow_sym);
         flow_sym->type = type;
         analyse::utils::scope_utils::add_var_symbol(*sm->current_scope, flow_sym);
         m_flow_sym = std::move(flow_sym);
