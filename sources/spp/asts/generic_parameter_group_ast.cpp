@@ -5,7 +5,9 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.order_utils;
 import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import spp.lex;
 import genex;
@@ -273,7 +275,7 @@ auto spp::asts::GenericParameterGroupAst::stage_7_analyse_semantics(
         if (param->constraints == nullptr) { continue; }
         for (auto &&constraint: param->constraints->constraints) {
             if (analyse::utils::type_utils::is_type_copyable(*constraint, *sm)) {
-                const auto generic_sym = sm->current_scope->get_type_symbol(param->name);
+                const auto generic_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, param->name);
                 generic_sym->is_directly_copyable = true;
             }
         }

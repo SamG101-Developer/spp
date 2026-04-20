@@ -257,7 +257,7 @@ auto spp::analyse::utils::scope_utils::get_type_symbol(
         sym_name_extracted = std::const_pointer_cast<asts::TypeIdentifierAst>(sym_name_as_identifier);
     }
     else {
-        auto [scope_, sym_name_extracted_] = shift_scope_for_namespaced_type(*scope, *sym_name);
+        auto [scope_, sym_name_extracted_] = shift_scope_for_namespaced_type(scope, *sym_name);
         scope = *scope_;
         sym_name_extracted = sym_name_extracted_;
     }
@@ -268,7 +268,7 @@ auto spp::analyse::utils::scope_utils::get_type_symbol(
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym == nullptr and not exclusive and scope.parent != nullptr) {
-        sym = scope.parent->get_type_symbol(sym_name_extracted, exclusive);
+        sym = get_type_symbol(*scope.parent, sym_name_extracted, exclusive);
     }
 
     // If the symbol still hasn't been found, check the super scopes for it.

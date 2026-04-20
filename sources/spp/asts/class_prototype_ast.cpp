@@ -185,7 +185,7 @@ auto spp::asts::ClassPrototypeAst::stage_2_gen_top_level_scopes(
     CompilerMetaData *meta)
     -> void {
     // Create the class scope, which is the scope for the class prototype.
-    auto scope_name = analyse::scopes::ScopeName(std::dynamic_pointer_cast<TypeIdentifierAst>(name));
+    auto scope_name = analyse::scopes::ScopeName(analyse::scopes::ScopeTypeIdentifierName(name));
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
     Ast::stage_2_gen_top_level_scopes(sm, meta);
 
@@ -326,14 +326,13 @@ auto spp::asts::ClassPrototypeAst::stage_10_code_gen_1(
     }
 
     // If this is a raw generic class like Vec[T], then generate the generic implementations.
-    if (genex::any_of(sm->current_scope->all_type_symbols(), [](auto const &sym) { return sym->is_generic; })) {
+    if (genex::any_of(analyse::utils::scope_utils::all_type_symbols(sm->current_scope), [](auto const &sym) { return sym->is_generic; })) {
         for (auto &&[generic_scope, generic_ast] : m_generic_substitutions) {
             generic_ast->m_fill_llvm_mem_layout(sm, generic_scope->ty_sym.get(), ctx);
         }
     }
 
     m_fill_llvm_mem_layout(sm, cls_sym.get(), ctx);
-
     sm->move_out_of_current_scope();
     return nullptr;
 }
