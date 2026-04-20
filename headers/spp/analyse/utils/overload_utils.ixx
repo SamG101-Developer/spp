@@ -2,13 +2,10 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.overload_utils;
+import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.asts;
 import std;
-
-namespace spp::analyse::errors {
-    SPP_EXP_CLS struct SemanticError;
-}
 
 
 namespace spp::analyse::utils::overload_utils {

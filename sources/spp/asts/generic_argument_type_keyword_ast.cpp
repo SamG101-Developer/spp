@@ -3,6 +3,7 @@ module;
 
 module spp.asts;
 import spp.analyse.scopes;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
 import spp.lex;
@@ -69,15 +70,16 @@ spp::asts::GenericArgumentTypeKeywordAst::operator std::string() const {
 }
 
 
-// auto spp::asts::GenericArgumentTypeKeywordAst::from_symbol(
-//     analyse::scopes::TypeSymbol const &sym)
-//     -> std::unique_ptr<GenericArgumentTypeKeywordAst> {
-//     // Extract the value from the symbol's scope, if it exists.
-//     auto value = sym.scope->ty_sym->fq_name()->with_convention(ast_clone(sym.convention.get()));
-//
-//     // Wrap the value into a type argument.
-//     return std::make_unique<GenericArgumentTypeKeywordAst>(sym.name, nullptr, std::move(value));
-// }
+auto spp::asts::GenericArgumentTypeKeywordAst::from_symbol(
+    AbstractSymbol const &sym)
+    -> std::unique_ptr<GenericArgumentTypeKeywordAst> {
+    // Extract the value from the symbol's scope, if it exists.
+    const auto type_sym = dynamic_cast<analyse::scopes::TypeSymbol const&>(sym);
+    auto value = type_sym.scope->ty_sym->fq_name()->with_convention(ast_clone(type_sym.convention.get()));
+
+    // Wrap the value into a type argument.
+    return std::make_unique<GenericArgumentTypeKeywordAst>(type_sym.name, nullptr, std::move(value));
+}
 
 
 auto spp::asts::GenericArgumentTypeKeywordAst::stage_7_analyse_semantics(

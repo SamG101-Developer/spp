@@ -402,7 +402,7 @@ auto spp::analyse::utils::overload_utils::validate_args_match_params(
         {}, [&func_param_names](asts::FunctionCallArgumentKeywordAst *arg) { return genex::position(func_param_names, [&arg](auto const &param) { return *arg->name == *param; }); });
 
     for (auto [arg, param] : genex::views::zip(sorted_func_arguments, func_params->get_all_params())) {
-        auto p_type = fn_scope->get_type_symbol(param->type)->fq_name()->with_convention(ast_clone(param->type->get_convention()));
+        auto p_type = scope_utils::get_type_symbol(*fn_scope, param->type)->fq_name()->with_convention(ast_clone(param->type->get_convention()));
         auto a_type = arg->infer_type(sm, meta);
         auto temp = type_utils::GenericInferenceMap();
 

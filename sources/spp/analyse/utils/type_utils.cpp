@@ -462,7 +462,7 @@ auto spp::analyse::utils::type_utils::get_generator_and_yield_type(
     std::string_view what)
     -> std::tuple<std::shared_ptr<const asts::TypeAst>, std::shared_ptr<asts::TypeAst>, bool> {
     // Generic types are not generators, so raise an error.
-    const auto type_sym = scope_utils::get_type_symbol(*scope, type.shared_from_this());
+    const auto type_sym = scope_utils::get_type_symbol(scope, type.shared_from_this());
     raise_if<errors::SppExpressionNotGeneratorError>(
         type_sym->is_generic, {&scope}, ERR_ARGS(expr, type, what));
 
@@ -505,7 +505,7 @@ auto spp::analyse::utils::type_utils::get_try_type(
 
     // Discover the supertypes and add the current type to it.
     auto sup_types = std::vector{type.shared_from_this()};
-    sup_types.append_range(type_sym->scope->sup_types());
+    sup_types.append_range(type_sym->scope->sup_types() | genex::views::cast_smart<asts::TypeAst>());
 
     // Search through the supertypes for a direct Try type.
     const auto try_type_candidates = sup_types
