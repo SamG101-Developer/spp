@@ -104,6 +104,6 @@ auto spp::codegen::llvm_type(
     -> llvm::Type* {
     // Either return the llvm type bound to the symbol, or a pointer for borrows.
     return type_sym.convention != nullptr
-               ? llvm::PointerType::get(*ctx->context, 0)
-               : type_sym.llvm_info->llvm_type;
+        ? llvm::PointerType::get(*ctx->context, 0)
+        : type_sym.llvm_info->llvm_type;
 }

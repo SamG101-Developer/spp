@@ -113,13 +113,13 @@ auto spp::analyse::utils::scope_utils::all_var_symbols(
 
     // For non-exclusive searches where a parent is present, yield from the parent scope.
     if (not exclusive and scope.parent != nullptr) {
-        syms.append_range(all_var_symbols(scope.parent, exclusive, sup_scope_search));
+        syms.append_range(all_var_symbols(*scope.parent, exclusive, sup_scope_search));
     }
 
     // For super scope searches, yield from all direct super scopes.
     if (sup_scope_search) {
         for (auto const *sup_scope : scope.direct_sup_scopes) {
-            syms.append_range(sup_scope->all_var_symbols(true, false));
+            syms.append_range(all_var_symbols(*sup_scope, true, false));
         }
     }
 
@@ -137,13 +137,13 @@ auto spp::analyse::utils::scope_utils::all_type_symbols(
 
     // For non-exclusive searches where a parent is present, yield from the parent scope.
     if (not exclusive and scope.parent != nullptr) {
-        syms.append_range(all_type_symbols(scope.parent, exclusive, sup_scope_search));
+        syms.append_range(all_type_symbols(*scope.parent, exclusive, sup_scope_search));
     }
 
     // For super scope searches, yield from all direct super scopes.
     if (sup_scope_search) {
         for (auto const *sup_scope : scope.direct_sup_scopes) {
-            syms.append_range(sup_scope->all_type_symbols(true, false));
+            syms.append_range(all_type_symbols(*sup_scope, true, false));
         }
     }
 
@@ -160,7 +160,7 @@ auto spp::analyse::utils::scope_utils::all_ns_symbols(
 
     // For non-exclusive searches where a parent is present, yield from the parent scope.
     if (not exclusive and scope.parent != nullptr) {
-        syms.append_range(all_ns_symbols(scope.parent, exclusive));
+        syms.append_range(all_ns_symbols(*scope.parent, exclusive));
     }
     return syms;
 }

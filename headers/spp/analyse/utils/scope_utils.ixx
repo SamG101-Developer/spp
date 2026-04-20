@@ -80,7 +80,7 @@ namespace spp::analyse::utils::scope_utils {
 
     SPP_EXP_FUN SPP_ATTR_NODISCARD auto has_type_symbol(
         scopes::Scope const &scope,
-        std::shared_ptr<AbstractAst> const &sym_name,
+        std::shared_ptr<asts::TypeAst> const &sym_name,
         bool exclusive = false)
         -> bool;
 

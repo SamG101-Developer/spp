@@ -3,11 +3,14 @@ module;
 
 module spp.codegen.llvm_coros;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts;
 import spp.utils.uid;
+import spp.codegen.llvm_type;
+import genex;
 import llvm;
 import opex.cast;
-import genex;
 import std;
 
 
@@ -34,20 +37,20 @@ auto spp::codegen::create_coro_env_type(
          | genex::views::transform([](auto &&x) { return x->extract_names(); })
          | genex::views::join
          | genex::to<std::vector>()) {
-        const auto param_sym = scope.get_var_symbol(param_name);
-        const auto param_type_sym = scope.get_type_symbol(param_sym->type);
+        const auto param_sym = analyse::utils::scope_utils::get_var_symbol(scope, param_name);
+        const auto param_type_sym = analyse::utils::scope_utils::get_type_symbol(*scope, param_sym->type);
         arg_struct_fields.emplace_back(llvm_type(*param_type_sym, ctx));
     }
     const auto llvm_arg_struct_type = llvm::StructType::create(
         *ctx->context, arg_struct_fields, "gen.args");
 
     // Yield slot.
-    const auto llvm_yield_type = llvm_type(*scope.get_type_symbol(yield_type), ctx);
+    const auto llvm_yield_type = llvm_type(*analyse::utils::scope_utils::get_type_symbol(*scope, yield_type), ctx);
 
     // For Send != Void, the send slot is also required (dummy otherwise for order).
     const auto llvm_send_type = not analyse::utils::type_utils::symbolic_eq(*send_type, *asts::common_types_precompiled::VOID, scope, scope)
-                                    ? llvm_type(*scope.get_type_symbol(send_type), ctx)
-                                    : llvm::Type::getInt8Ty(*ctx->context); // Dummy
+        ? llvm_type(*scope.get_type_symbol(send_type), ctx)
+        : llvm::Type::getInt8Ty(*ctx->context); // Dummy
 
     // Create the struct type and return it.
     const auto fields = std::vector<llvm::Type*>{

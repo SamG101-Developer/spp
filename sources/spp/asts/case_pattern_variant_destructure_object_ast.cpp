@@ -195,7 +195,8 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_11_code_gen_2(
     -> llvm::Value* {
     // Attach the alloca to the potential flow symbol from the outer version of it.
     if (m_flow_sym and m_cond_sym) {
-        m_flow_sym->llvm_info->alloca = m_cond_sym->llvm_info->alloca;
+        const auto flow_sym = dynamic_cast<analyse::scopes::VariableSymbol>(m_flow_sym.get());
+        flow_sym->llvm_info->alloca = m_cond_sym->llvm_info->alloca;
     }
 
     // Generate the "let" statement to introduce all the symbols.
