@@ -3,6 +3,7 @@ import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.scope_utils;
 import spp.analyse.utils.type_utils;
+import genex;
 
 
 auto spp::asts::utils::monomorphization::attach_all_super_scopes(

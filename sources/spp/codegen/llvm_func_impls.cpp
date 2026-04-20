@@ -564,9 +564,9 @@ auto spp::codegen::func_impls::std_memory_place_element(
     // Define the types that will be used in the function.
     const auto ty = llvm_type(*sm->current_scope->get_type_symbol(spp_ty), ctx);
     const auto void_ty = llvm::Type::getVoidTy(*ctx->context);
-    const auto mem_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::common_types::memory_type(0, spp_ty)), ctx);
-    const auto ptr_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::common_types::single_type(0, spp_ty)), ctx);
-    const auto size_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::common_types::usize(0)), ctx);
+    const auto mem_ty = llvm_type(*analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, asts::common_types::memory_type(0, spp_ty)), ctx);
+    const auto ptr_ty = llvm_type(*analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, asts::common_types::single_type(0, spp_ty)), ctx);
+    const auto size_ty = llvm_type(*analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, asts::common_types::usize(0)), ctx);
 
     const auto fn_ty = llvm::FunctionType::get(void_ty, {llvm::PointerType::get(*ctx->context, 0), size_ty, ty}, false);
     const auto fn = llvm::Function::Create(
