@@ -10,6 +10,7 @@ import spp.analyse.utils.func_utils;
 import spp.analyse.utils.scope_utils;
 import spp.asts;
 import spp.asts.utils;
+import spp.asts.utils.monomorphization;
 import spp.lex;
 import spp.parse;
 import spp.parse.errors;
@@ -531,7 +532,7 @@ auto spp::analyse::utils::type_utils::get_fwd_types(
 
     // Discover the supertypes and add the current type to it.
     auto sup_types = std::vector{type.shared_from_this()};
-    sup_types.append_range(type_sym->scope->sup_types());
+    sup_types.append_range(type_sym->scope->sup_types() | genex::views::cast_smart<asts::TypeAst>());
 
     // Search through the supertypes for a direct FwdRef type.
     const auto fwd_ref_type_candidates = sup_types
@@ -689,7 +690,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     new_cls_scope_ptr->non_generic_scope = old_cls_scope;
 
     if (meta->current_stage > 7) {
-        sm->attach_specific_super_scopes(*new_cls_scope_ptr, meta);
+        asts::utils::monomorphization::attach_specific_super_scopes(*new_cls_scope_ptr, meta);
     }
 
     // No more checks for tuples.
@@ -712,7 +713,7 @@ auto spp::analyse::utils::type_utils::create_generic_cls_scope(
     substitution_generics.append_range(type_part.generic_arg_group->args | genex::views::ptr | genex::to<std::vector>());
 
     auto tm = scopes::ScopeManager(sm->global_scope, new_alias_stmt ? scope_utils::get_type_symbol(*sm->current_scope, new_alias_stmt->old_type)->scope : new_cls_scope_ptr);
-    for (auto const &scoped_sym : scope_utils::all_type_symbols(*new_cls_scope_ptr, true)) {
+    for (auto const &scoped_sym : scope_utils::all_var_symbols(*new_cls_scope_ptr, true)) {
         scoped_sym->type = scoped_sym->type->substitute_generics(substitution_generics);
         if (meta->current_stage > 5) {
             scoped_sym->type->stage_7_analyse_semantics(&tm, meta);
