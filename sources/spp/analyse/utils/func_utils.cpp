@@ -480,7 +480,7 @@ auto spp::analyse::utils::func_utils::enforce_no_generic_constraint_violations(
     p_con_groups_cloned.reserve(p_names.size());
 
     // Cross apply inferred into constraints firstly.
-    for (auto const& p_con_group : p_con_groups) {
+    for (auto const &p_con_group : p_con_groups) {
         auto con_group_cloned = std::vector<std::shared_ptr<asts::TypeAst>>();
         for (auto p_con : p_con_group) {
             auto def_type_raw = p_con->without_generics();
@@ -619,7 +619,6 @@ auto spp::analyse::utils::func_utils::name_gn_args_impl(
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData &meta)
     -> void {
-
     // Validate the named arguments against the paramters.
     enforce_no_invalid_gn_args<GenericArgType, GenericParamType>(
         p_group.get_all_params(), a_group.get_all_args(), sm);
@@ -765,7 +764,6 @@ auto spp::analyse::utils::func_utils::infer_gn_args(
         return a_index < b_index;
     });
 }
-
 
 
 auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
@@ -1092,7 +1090,7 @@ auto spp::analyse::utils::func_utils::create_callable_prototype(
 
 auto spp::analyse::utils::func_utils::get_overload_types(
     asts::TypeAst const &overload_set_type,
-    scopes::Scope const& scope)
+    scopes::Scope const &scope)
     -> std::vector<std::shared_ptr<asts::TypeAst>> {
     // Extract the overload types from the overload set type and are functional.
     return scope.get_type_symbol(overload_set_type.shared_from_this())->scope->sup_types()
