@@ -3,9 +3,12 @@ module;
 #include <spp/analyse/macros.hpp>
 
 module spp.asts;
+import :common_types;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
+import spp.codegen.llvm_type;
 import spp.lex;
 import genex;
 
@@ -125,9 +128,9 @@ auto spp::asts::FunctionPrototypeAst::m_is_pure_generic(
     codegen::LlvmCtx *ctx) const
     -> std::tuple<bool, llvm::Type*, std::vector<llvm::Type*>> {
     // Convert the return and parameter types to LLVM types.
-    const auto llvm_ret_type = codegen::llvm_type(*sm->current_scope->get_type_symbol(return_type), ctx);
+    const auto llvm_ret_type = codegen::llvm_type(*analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, return_type), ctx);
     const auto llvm_param_types = param_group->get_non_self_params()
-        | genex::views::transform([&](auto const &x) { return codegen::llvm_type(*sm->current_scope->get_type_symbol(x->type), ctx); })
+        | genex::views::transform([&](auto const &x) { return codegen::llvm_type(*analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, x->type), ctx); })
         | genex::to<std::vector>();
 
     // Check if any of the types failed to convert.

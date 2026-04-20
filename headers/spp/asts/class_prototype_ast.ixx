@@ -93,7 +93,7 @@ public:
 
     SPP_ATTR_NODISCARD auto registered_generic_substitutions() const -> std::vector<std::pair<analyse::scopes::Scope*, ClassPrototypeAst*>>;
 
-    SPP_ATTR_NODISCARD auto get_cls_sym() const -> std::shared_ptr<void>;
+    SPP_ATTR_NODISCARD auto get_cls_sym() const -> std::shared_ptr<AbstractSymbol>;
 
     auto stage_1_pre_process(AbstractAst *ctx) -> void override;
 

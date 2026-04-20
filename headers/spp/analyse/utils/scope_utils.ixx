@@ -11,8 +11,8 @@ import ankerl;
 import std;
 
 namespace spp::analyse::utils::scope_utils {
-    inline static auto normal_sup_blocks = ankerl::unordered_dense::map<scopes::TypeSymbol*, std::vector<scopes::Scope*>>{};
-    inline static auto generic_sup_blocks = std::vector<scopes::Scope*>{};
+    SPP_EXP_CMP auto normal_sup_blocks = ankerl::unordered_dense::map<scopes::TypeSymbol*, std::vector<scopes::Scope*>>{};
+    SPP_EXP_CMP auto generic_sup_blocks = std::vector<scopes::Scope*>{};
 
     SPP_EXP_FUN auto add_var_symbol(
         scopes::Scope &scope,

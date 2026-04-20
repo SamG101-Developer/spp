@@ -15,8 +15,8 @@ import llvm;
 import genex;
 
 
-#define PREP_SCOPE_MANAGER                                                                               \
-    auto const &mod_in_tree = *genex::find_if(tree, [&](auto &m) { return m->module_ast.get() == mod; }) \
+#define PREP_SCOPE_MANAGER                                                                                \
+    auto const &mod_in_tree = *genex::find_if(tree, [&](auto &m) { return m->module_ast.get() == mod; }); \
     const auto cast_mod = mod->to<asts::ModulePrototypeAst>();
 
 

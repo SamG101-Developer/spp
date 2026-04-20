@@ -6,6 +6,7 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.type_utils;
 import spp.lex;
 import opex.cast;
 import genex;

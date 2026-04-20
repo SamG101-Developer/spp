@@ -1,6 +1,3 @@
-module;
-#include <spp/analyse/macros.hpp>
-
 module spp.analyse.scopes;
 import spp.analyse.errors;
 import spp.analyse.utils.scope_utils;
@@ -85,6 +82,6 @@ auto spp::analyse::scopes::ScopeManager::exhaust_scope()
 
 auto spp::analyse::scopes::ScopeManager::cleanup()
     -> void {
-    normal_sup_blocks.clear();
-    generic_sup_blocks.clear();
+    utils::scope_utils::normal_sup_blocks.clear();
+    utils::scope_utils::generic_sup_blocks.clear();
 }

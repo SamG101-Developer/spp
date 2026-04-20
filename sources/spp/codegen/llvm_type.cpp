@@ -1,6 +1,8 @@
 module spp.codegen.llvm_type;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
 import spp.asts;
+import spp.codegen.llvm_mangle;
 import spp.lex;
 
 import genex;
@@ -16,14 +18,16 @@ auto spp::codegen::register_llvm_type_info(
 
     // $ types are 0-size types in LLVM.
     if (cls_proto->name->to_string()[0] == '$') {
-        const auto zero_size_struct = llvm::StructType::create(*ctx->context, mangle::mangle_type_name(*cls_proto->get_cls_sym()));
+        const auto type_sym = dynamic_cast<analyse::scopes::TypeSymbol*>(cls_proto->get_cls_sym().get());
+        const auto zero_size_struct = llvm::StructType::create(*ctx->context, mangle::mangle_type_name(*type_sym));
         zero_size_struct->setBody({}, true);
-        cls_proto->get_cls_sym()->llvm_info->llvm_type = zero_size_struct;
+        const auto type_sym = dynamic_cast<analyse::scopes::TypeSymbol*>(cls_proto->get_cls_sym().get());
+        type_sym->llvm_info->llvm_type = zero_size_struct;
     }
 
     // Get the class symbol from the current scope.
     const auto scope = cls_proto->get_ast_scope();
-    const auto cls_sym = scope->ty_sym;
+    const auto cls_sym = analyse::utils::scope_utils::associated_type_symbol(*scope);
 
     // For compiler known types, specialize the llvm type symbols.
     const auto ancestor_names = scope->ancestors()
@@ -53,10 +57,10 @@ auto spp::codegen::register_llvm_type_info(
 
     if (ancestor_names[0] == "std" and ancestor_names[1] == "num" and ancestor_names[2].starts_with("sized") and ancestor_names[3].starts_with("Sized")) {
         const auto type_part = ancestor_names[2];
-        const auto bit_width_ast = scope->ty_sym->fq_name()->type_parts().back()->generic_arg_group->comp_at("w")->val->to<asts::IntegerLiteralAst>();
+        const auto bit_width_ast = cls_sym->fq_name()->type_parts().back()->generic_arg_group->comp_at("w")->val->to<asts::IntegerLiteralAst>();
         if (bit_width_ast == nullptr) { return; }
 
-        const auto bit_width = std::stoul(scope->ty_sym->fq_name()->type_parts().back()->generic_arg_group->comp_at("w")->val->to<asts::IntegerLiteralAst>()->val->token_data);
+        const auto bit_width = std::stoul(cls_sym->fq_name()->type_parts().back()->generic_arg_group->comp_at("w")->val->to<asts::IntegerLiteralAst>()->val->token_data);
         if (type_part == "sized_integer") {
             cls_sym->llvm_info->llvm_type = llvm::Type::getIntNTy(*ctx->context, static_cast<unsigned int>(bit_width));
             return;

@@ -163,7 +163,7 @@ auto spp::asts::ClassPrototypeAst::registered_generic_substitutions() const
 
 
 auto spp::asts::ClassPrototypeAst::get_cls_sym() const
-    -> std::shared_ptr<void> {
+    -> std::shared_ptr<AbstractSymbol> {
     return m_cls_sym;
 }
 

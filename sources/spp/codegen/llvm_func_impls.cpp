@@ -4,6 +4,7 @@ module;
 module spp.codegen.llvm_func_impls;
 import spp.codegen.llvm_mangle;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
 import spp.utils.uid;
 import llvm;
 
@@ -520,8 +521,8 @@ auto spp::codegen::func_impls::std_memory_clear(
     -> void {
     // Define the types that will be used in the function.
     const auto void_ty = llvm::Type::getVoidTy(*ctx->context);
-    const auto mem_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::common_types::memory_type(0, spp_ty)), ctx);
-    const auto usize_ty = llvm_type(*sm->current_scope->get_type_symbol(asts::common_types::usize(0)), ctx);
+    const auto mem_ty = llvm_type(*analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, asts::common_types::memory_type(0, spp_ty)), ctx);
+    const auto usize_ty = llvm_type(*analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, asts::common_types::usize(0)), ctx);
 
     const auto fn_ty = llvm::FunctionType::get(void_ty, {llvm::PointerType::get(*ctx->context, 0)}, false);
     const auto fn = llvm::Function::Create(
