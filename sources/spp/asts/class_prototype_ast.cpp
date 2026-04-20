@@ -326,7 +326,7 @@ auto spp::asts::ClassPrototypeAst::stage_10_code_gen_1(
     }
 
     // If this is a raw generic class like Vec[T], then generate the generic implementations.
-    if (genex::any_of(analyse::utils::scope_utils::all_type_symbols(sm->current_scope), [](auto const &sym) { return sym->is_generic; })) {
+    if (genex::any_of(analyse::utils::scope_utils::all_type_symbols(*sm->current_scope), [](auto const &sym) { return sym->is_generic; })) {
         for (auto &&[generic_scope, generic_ast] : m_generic_substitutions) {
             generic_ast->m_fill_llvm_mem_layout(sm, generic_scope->ty_sym.get(), ctx);
         }

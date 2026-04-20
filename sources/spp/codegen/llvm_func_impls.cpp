@@ -2,9 +2,10 @@ module;
 #include <spp/macros.hpp>
 
 module spp.codegen.llvm_func_impls;
-import spp.codegen.llvm_mangle;
 import spp.analyse.scopes;
 import spp.analyse.utils.scope_utils;
+import spp.codegen.llvm_mangle;
+import spp.codegen.llvm_type;
 import spp.utils.uid;
 import llvm;
 

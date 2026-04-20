@@ -209,5 +209,6 @@ auto spp::asts::ObjectInitializerAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // The type of the object initializer is the type being initialized. The conventions are added for dummy types being
     // created into values during other ast's analysis. Types cannot be instantiated as borrows in user code.
-    return sm->current_scope->get_type_symbol(type)->fq_name()->with_convention(ast_clone(type->get_convention()));
+    return analyse::utils::scope_utils::get_type_symbol(
+        *sm->current_scope, type)->fq_name()->with_convention(ast_clone(type->get_convention()));
 }

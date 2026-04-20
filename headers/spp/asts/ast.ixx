@@ -277,7 +277,7 @@ namespace spp::asts {
         return cloned_asts;
     }
 
-    SPP_EXP_FUN auto ast_name(Ast *ast) -> std::shared_ptr<TypeAst>;
+    SPP_EXP_FUN auto ast_name(AbstractAst *ast) -> std::shared_ptr<TypeAst>;
 
-    SPP_EXP_FUN auto ast_body(Ast *ast) -> std::vector<Ast*>;
+    SPP_EXP_FUN auto ast_body(AbstractAst *ast) -> std::vector<Ast*>;
 }

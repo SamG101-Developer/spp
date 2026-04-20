@@ -68,7 +68,7 @@ auto spp::asts::Ast::stage_11_code_gen_2(
 }
 
 
-auto spp::asts::ast_name(Ast *ast) -> std::shared_ptr<TypeAst> {
+auto spp::asts::ast_name(AbstractAst *ast) -> std::shared_ptr<TypeAst> {
     if (const auto cls = ast->to<ClassPrototypeAst>(); cls != nullptr) {
         return cls->name;
     }
@@ -83,7 +83,7 @@ auto spp::asts::ast_name(Ast *ast) -> std::shared_ptr<TypeAst> {
 }
 
 
-auto spp::asts::ast_body(Ast *ast) -> std::vector<Ast*> {
+auto spp::asts::ast_body(AbstractAst *ast) -> std::vector<Ast*> {
     if (const auto cls = ast->to<ClassPrototypeAst>(); cls != nullptr) {
         return cls->impl->members
             | genex::views::ptr

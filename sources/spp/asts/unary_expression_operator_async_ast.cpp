@@ -3,9 +3,13 @@ module;
 #include <spp/analyse/macros.hpp>
 
 module spp.asts;
+import :common_types;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
+import spp.codegen.llvm_type;
+import spp.codegen.llvm_coros;
 import spp.utils.uid;
 
 
@@ -67,7 +71,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::stage_11_code_gen_2(
     // We need a "Fut[T]" object to work with immediately.
     const auto uid = spp::utils::generate_uid(this);
     const auto fut_type = infer_type(sm, meta);
-    const auto fut_type_sym = sm->current_scope->get_type_symbol(fut_type);
+    const auto fut_type_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, fut_type);
     const auto llvm_fut_type = codegen::llvm_type(*fut_type_sym, ctx);
 
     // Allocate the future onto the stack and set the initial state.
