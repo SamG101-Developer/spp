@@ -76,10 +76,10 @@ spp::asts::SupPrototypeExtensionAst::operator std::string() const {
 
 
 auto spp::asts::SupPrototypeExtensionAst::check_cyclic_extension(
-    void const *raw_sup_sym,
+    AbstractSymbol const *raw_sup_sym,
     analyse::scopes::Scope &check_scope) const
     -> void {
-    const auto cls_sym = *static_cast<analyse::scopes::TypeSymbol const*>(raw_sup_sym);
+    const auto sup_sym = *dynamic_cast<analyse::scopes::TypeSymbol const*>(raw_sup_sym);
     auto check_cycle = [this, &check_scope](analyse::scopes::Scope const *sc) {
         auto dummy = analyse::utils::type_utils::GenericInferenceMap();
         const auto ext = sc->ast->to<SupPrototypeExtensionAst>();
@@ -101,11 +101,11 @@ auto spp::asts::SupPrototypeExtensionAst::check_cyclic_extension(
 
 
 auto spp::asts::SupPrototypeExtensionAst::check_double_extension(
-    void const *raw_cls_sym,
+    AbstractSymbol const *raw_cls_sym,
     analyse::scopes::Scope &check_scope) const
     -> void {
     // Early return for function-classes.
-    const auto cls_sym = *static_cast<analyse::scopes::TypeSymbol const*>(raw_cls_sym);
+    const auto cls_sym = *dynamic_cast<analyse::scopes::TypeSymbol const*>(raw_cls_sym);
     if (cls_sym.name->name[0] == '$') {
         return;
     }

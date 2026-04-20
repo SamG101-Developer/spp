@@ -14,7 +14,7 @@ auto spp::asts::utils::monomorphization::attach_all_super_scopes(
     sm.reset();
     for (auto *scope : sm.iter()) {
         if (scope->ty_sym != nullptr) {
-            attach_specific_super_scopes(*scope, meta);
+            attach_specific_super_scopes(sm, *scope, meta);
         }
     }
     sm.reset();
@@ -22,6 +22,7 @@ auto spp::asts::utils::monomorphization::attach_all_super_scopes(
 
 
 auto spp::asts::utils::monomorphization::attach_specific_super_scopes(
+    analyse::scopes::ScopeManager &sm,
     analyse::scopes::Scope &scope,
     meta::CompilerMetaData *meta)
     -> void {
@@ -31,18 +32,19 @@ auto spp::asts::utils::monomorphization::attach_specific_super_scopes(
         const auto non_generic_sym = analyse::utils::scope_utils::get_type_symbol(scope, type_sym->fq_name()->without_generics());
         auto scopes = analyse::utils::scope_utils::normal_sup_blocks[non_generic_sym.get()];
         scopes.append_range(analyse::utils::scope_utils::generic_sup_blocks);
-        attach_specific_super_scopes_impl(scope, std::move(scopes), meta);
+        attach_specific_super_scopes_impl(sm, scope, std::move(scopes), meta);
     }
 }
 
 
 auto spp::asts::utils::monomorphization::attach_specific_super_scopes_impl(
+    analyse::scopes::ScopeManager &sm,
     analyse::scopes::Scope &scope,
     std::vector<analyse::scopes::Scope*> &&sup_scopes,
     meta::CompilerMetaData *meta)
     -> void {
     // Skip "$" identifiers (functions don't have substitutable members and take up lots of time).
-    const auto cls_sym = analyse::utils::scope_utils::associated_type_symbol(scope);
+    const auto cls_sym = analyse::utils::scope_utils::associated_type_symbol(scope).get();
     const auto scope_name = cls_sym->fq_name();
     if (scope_name->type_parts().back()->name[0] == '$') {
         return;
@@ -77,20 +79,20 @@ auto spp::asts::utils::monomorphization::attach_specific_super_scopes_impl(
         // Todo: Is this "if-else" quite correct? 2 conditions in the "if", then no "else if" block.
         if (not scope_generics->args.empty() and not genex::contains(analyse::utils::scope_utils::generic_sup_blocks, sup_scope)) {
             const auto external_generics = analyse::utils::scope_utils::get_scope_extended_generic_symbols(*cls_sym->scope_defined_in, scope_generics->args | genex::views::ptr | genex::to<std::vector>());
-            std::tie(new_sup_scope, new_cls_scope) = analyse::utils::type_utils::create_generic_sup_scope(*sup_scope, scope, *scope_generics, external_generics, *scope, meta);
-            sup_sym = new_cls_scope ? new_cls_scope->ty_sym.get() : nullptr;
+            std::tie(new_sup_scope, new_cls_scope) = analyse::utils::type_utils::create_generic_sup_scope(*sup_scope, scope, *scope_generics, external_generics, &sm, meta);
+            sup_sym = new_cls_scope ? analyse::utils::scope_utils::associated_type_symbol(*new_cls_scope).get() : nullptr;
         }
         else {
             const auto sup_proto = sup_scope->ast->to<SupPrototypeExtensionAst>();
             new_sup_scope = sup_scope;
-            new_cls_scope = sup_proto ? scope.get_type_symbol(sup_proto->super_class)->scope : nullptr;
-            sup_sym = new_cls_scope ? new_cls_scope->ty_sym.get() : nullptr;
+            new_cls_scope = sup_proto ? analyse::utils::scope_utils::get_type_symbol(scope, sup_proto->super_class)->scope : nullptr;
+            sup_sym = new_cls_scope ? analyse::utils::scope_utils::associated_type_symbol(*new_cls_scope).get() : nullptr;
         }
 
         // Prevent double inheritance, cyclic inheritance and self extension.
         if (const auto ext_ast = sup_scope->ast->to<SupPrototypeExtensionAst>(); ext_ast != nullptr) {
-            ext_ast->check_cyclic_extension(*sup_sym, *sup_scope);
-            ext_ast->check_double_extension(*cls_sym, *sup_scope);
+            ext_ast->check_cyclic_extension(sup_sym, *sup_scope);
+            ext_ast->check_double_extension(cls_sym, *sup_scope);
             ext_ast->check_self_extension(*sup_scope);
         }
 
@@ -106,7 +108,7 @@ auto spp::asts::utils::monomorphization::attach_specific_super_scopes_impl(
 
         // Check for conflicting "cmp" or "type" statements in the super scopes.
         if (sup_scope->ast->to<SupPrototypeExtensionAst>() or sup_scope->ast->to<SupPrototypeFunctionsAst>()) {
-            check_conflicting_type_or_cmp_statements(*cls_sym, *sup_scope);
+            analyse::utils::scope_utils::check_conflicting_type_or_cmp_statements(*cls_sym, *sup_scope);
         }
     }
 }

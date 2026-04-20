@@ -28,6 +28,7 @@ namespace spp::asts::utils::monomorphization {
      * @param meta The compiler metadata.
      */
     SPP_EXP_FUN auto attach_specific_super_scopes(
+        analyse::scopes::ScopeManager &sm,
         analyse::scopes::Scope &scope,
         meta::CompilerMetaData *meta)
         -> void;
@@ -42,9 +43,9 @@ namespace spp::asts::utils::monomorphization {
      * @param meta The compiler metadata.
      */
     SPP_EXP_FUN auto attach_specific_super_scopes_impl(
+        analyse::scopes::ScopeManager &sm,
         analyse::scopes::Scope &scope,
         std::vector<analyse::scopes::Scope*> &&sup_scopes,
         meta::CompilerMetaData *meta)
         -> void;
-
 }

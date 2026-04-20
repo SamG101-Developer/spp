@@ -167,7 +167,7 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
 
     // Create a map of the symbols' memory  information before any branches are analysed.
     auto sym_mem_info = std::map<scopes::VariableSymbol*, SymbolMemoryList>();
-    auto vs = sm->current_scope->all_var_symbols();
+    auto vs = scope_utils::all_var_symbols(*sm->current_scope);
     auto pre_analysis_mem_info = vs
         | genex::views::transform([](auto const &x) { return std::make_pair(x.get(), x->memory_info->snapshot()); })
         | genex::to<std::vector>();
@@ -296,7 +296,7 @@ auto spp::analyse::utils::mem_utils::prevent_borrow_lifetime_extension(
         const auto escaping_borrows = rhs_outermost->memory_info->ast_escaping_borrows;
         const auto lhs_init_scope = lhs_outermost->scope_defined_in;
         for (auto const &[e, _, _] : escaping_borrows) {
-            const auto escaping_borrow_scope = sm.current_scope->get_var_symbol_outermost(*e).first->scope_defined_in;
+            const auto escaping_borrow_scope = scope_utils::get_var_symbol_outermost(*sm.current_scope, *e).first->scope_defined_in;
             if (not escaping_borrow_scope) { continue; }
             const auto scope_depth_difference = genex::position(lhs_init_scope->ancestors(), genex::operations::eq_fixed{escaping_borrow_scope});
             raise_if<errors::SppBorrowLifetimeIncreaseError>(

@@ -88,12 +88,12 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : virtual Ast, Modu
     SPP_AST_KEY_FUNCTIONS;
 
     auto check_cyclic_extension(
-        void const *raw_sup_sym,
+        AbstractSymbol const *raw_sup_sym,
         analyse::scopes::Scope &check_scope) const
         -> void;
 
     auto check_double_extension(
-        void const *raw_cls_sym,
+        AbstractSymbol const *raw_cls_sym,
         analyse::scopes::Scope &check_scope) const
         -> void;
 

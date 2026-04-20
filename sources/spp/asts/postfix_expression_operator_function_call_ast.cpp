@@ -5,7 +5,12 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.func_utils;
+import spp.analyse.utils.overload_utils;
+import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
+import spp.codegen.llvm_type;
 import spp.lex;
 import spp.utils.uid;
 import genex;
@@ -292,7 +297,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_11_code_gen_2(
     if (not arg_group->get_keyword_args().empty() and arg_group->get_keyword_args()[0]->name->val == "self") {
         // Get the type of the left-hand-side expression.
         const auto lhs_type = meta->postfix_expression_lhs->to<PostfixExpressionAst>()->lhs->infer_type(sm, meta);
-        const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_type);
+        const auto lhs_type_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, lhs_type);
         const auto llvm_type = codegen::llvm_type(*lhs_type_sym, ctx);
         SPP_ASSERT(llvm_type != nullptr);
 

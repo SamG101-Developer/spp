@@ -8,6 +8,7 @@ import spp.analyse.scopes;
 import spp.analyse.utils.scope_utils;
 import spp.asts.utils;
 import spp.codegen.llvm_type;
+import spp.codegen.llvm_mangle;
 import spp.lex;
 import genex;
 
@@ -239,12 +240,12 @@ auto spp::asts::FunctionPrototypeAst::non_generic_impl() const
 auto spp::asts::FunctionPrototypeAst::mark_as_annotation()
     -> void {
     // Mark this function prototype as an annotation, by adding the appropriate annotation to it.
-    m_annotation_info = std::make_unique<analyse::utils::annotation_utils::AnnotationInfo>();
+    m_annotation_info = std::make_unique<utils::AnnotationInfo>();
 }
 
 
 auto spp::asts::FunctionPrototypeAst::annotation_info() const
-    -> analyse::utils::annotation_utils::AnnotationInfo* {
+    -> utils::AnnotationInfo* {
     return m_annotation_info.get();
 }
 

@@ -38,18 +38,18 @@ auto spp::codegen::create_coro_env_type(
          | genex::views::join
          | genex::to<std::vector>()) {
         const auto param_sym = analyse::utils::scope_utils::get_var_symbol(scope, param_name);
-        const auto param_type_sym = analyse::utils::scope_utils::get_type_symbol(*scope, param_sym->type);
+        const auto param_type_sym = analyse::utils::scope_utils::get_type_symbol(scope, param_sym->type);
         arg_struct_fields.emplace_back(llvm_type(*param_type_sym, ctx));
     }
     const auto llvm_arg_struct_type = llvm::StructType::create(
         *ctx->context, arg_struct_fields, "gen.args");
 
     // Yield slot.
-    const auto llvm_yield_type = llvm_type(*analyse::utils::scope_utils::get_type_symbol(*scope, yield_type), ctx);
+    const auto llvm_yield_type = llvm_type(*analyse::utils::scope_utils::get_type_symbol(scope, yield_type), ctx);
 
     // For Send != Void, the send slot is also required (dummy otherwise for order).
     const auto llvm_send_type = not analyse::utils::type_utils::symbolic_eq(*send_type, *asts::common_types_precompiled::VOID, scope, scope)
-        ? llvm_type(*scope.get_type_symbol(send_type), ctx)
+        ? llvm_type(*analyse::utils::scope_utils::get_type_symbol(scope, send_type), ctx)
         : llvm::Type::getInt8Ty(*ctx->context); // Dummy
 
     // Create the struct type and return it.
@@ -118,11 +118,11 @@ auto spp::codegen::create_coro_gen_ctor(
          | genex::to<std::vector>()) {
         // Get the alloca from the parameter variable.
         const auto puid = spp::utils::generate_uid(param_name.get());
-        const auto param_sym = scope.get_var_symbol(param_name);
+        const auto param_sym = analyse::utils::scope_utils::get_var_symbol(scope, param_name);
         const auto param_alloca = param_sym->llvm_info->alloca;
 
         // Load the argument value.
-        const auto param_type_sym = scope.get_type_symbol(param_sym->type);
+        const auto param_type_sym = analyse::utils::scope_utils::get_type_symbol(scope, param_sym->type);
         const auto param_llvm_type = llvm_type(*param_type_sym, ctx);
         const auto param_val = ctx->builder.CreateLoad(param_llvm_type, param_alloca, "coro.arg.load" + uid + puid);
 
@@ -149,7 +149,7 @@ auto spp::codegen::create_coro_res_func(
     const auto [generator_type, _, _] = analyse::utils::type_utils::get_generator_and_yield_type(
         *coro->return_type, scope, *coro->return_type, "coroutine prototype");
     const auto send_type = generator_type->type_parts().back()->generic_arg_group->type_at("Send")->val;
-    const auto llvm_send_type = llvm_type(*scope.get_type_symbol(send_type), ctx);
+    const auto llvm_send_type = llvm_type(*analyse::utils::scope_utils::get_type_symbol(scope, send_type), ctx);
 
     // Create the resume function.
     const auto llvm_func_name = coro->get_llvm_func()->target->getName().str() + ".coro.resume" + uid;

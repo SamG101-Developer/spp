@@ -3,6 +3,7 @@ module;
 
 module spp.analyse.utils.scope_utils;
 import spp.analyse.errors;
+import spp.analyse.utils.type_utils;
 import spp.asts;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_type;
@@ -336,7 +337,7 @@ auto spp::analyse::utils::scope_utils::get_var_symbol_outermost(
         }
 
         // Get the symbol (will be in this scope), and return it with the scope.
-        auto sym = get_var_symbol(asts::ast_clone(adjusted_name->to<asts::IdentifierAst>()));
+        auto sym = get_var_symbol(scope, asts::ast_clone(adjusted_name->to<asts::IdentifierAst>()));
         return std::make_pair(sym, &scope);
     }
 
@@ -379,8 +380,8 @@ auto spp::analyse::utils::scope_utils::get_scope_generics(
     auto comp_names = std::vector<std::shared_ptr<asts::IdentifierAst>>();
 
     // Check each ancestor scope, accumulating generic symbols.
-    for (auto const *scope : scopes) {
-        auto all_type_syms = all_type_symbols(scope, true)
+    for (auto const *ancestor_scope : scopes) {
+        auto all_type_syms = all_type_symbols(*ancestor_scope, true)
             | genex::views::filter([](auto const &sym) { return sym->is_generic; })
             | genex::to<std::vector>();
 
@@ -390,7 +391,7 @@ auto spp::analyse::utils::scope_utils::get_scope_generics(
             type_names.emplace_back(t->name);
         }
 
-        auto all_var_syms = all_var_symbols(*scope, true)
+        auto all_var_syms = all_var_symbols(*ancestor_scope, true)
             | genex::views::filter([](auto const &sym) { return sym->is_generic; })
             | genex::to<std::vector>();
 
@@ -421,8 +422,8 @@ auto spp::analyse::utils::scope_utils::get_scope_extended_generic_symbols(
 
     const auto comp_syms = generics
         | genex::views::cast_dynamic<asts::GenericArgumentCompAst*>()
-        | genex::views::filter([&ignore](auto &&gen_arg) { return ignore == nullptr or *gen_arg->val != *ignore; })
-        | genex::views::transform([this](auto &&gen_arg) { return get_var_symbol(asts::ast_clone(gen_arg->val->template to<asts::IdentifierAst>())); })
+        | genex::views::filter([&](auto &&gen_arg) { return ignore == nullptr or *gen_arg->val != *ignore; })
+        | genex::views::transform([&](auto &&gen_arg) { return get_var_symbol(scope, asts::ast_clone(gen_arg->val->template to<asts::IdentifierAst>())); })
         | genex::views::filter([](auto &&sym) { return sym != nullptr and sym->is_generic; })
         | genex::views::cast_smart<scopes::Symbol>()
         | genex::to<std::vector>();
@@ -431,7 +432,7 @@ auto spp::analyse::utils::scope_utils::get_scope_extended_generic_symbols(
     syms.append_range(comp_syms);
 
     // Re-use above logic to collect generic symbols from the ancestor scopes.
-    const auto scopes = ancestors()
+    const auto scopes = scope.ancestors()
         | genex::views::take_while([](auto *scope) { return not std::holds_alternative<std::shared_ptr<asts::IdentifierAst>>(scope->name); })
         | genex::to<std::vector>();
 
@@ -549,7 +550,8 @@ auto spp::analyse::utils::scope_utils::attach_llvm_type_info(
             // All aliases need llvm type info propagated from their aliased types.
             const auto llvm_type = codegen::llvm_type(
                 *associated_type_symbol(*cls_proto->get_ast_scope()), ctx);
-            for (auto const &alias_sym : cls_proto->get_ast_scope()->ty_sym->aliased_by_symbols) {
+            const auto type_sym = associated_type_symbol(cls_proto->get_ast_scope());
+            for (auto const &alias_sym : type_sym->aliased_by_symbols) {
                 alias_sym->llvm_info->llvm_type = llvm_type;
             }
         }
@@ -562,7 +564,8 @@ auto spp::analyse::utils::scope_utils::attach_llvm_type_info(
             // All generic aliases need llvm type info propagated from their aliased types.
             const auto llvm_type = codegen::llvm_type(
                 *associated_type_symbol(*generic_sub.second->get_ast_scope()), ctx);
-            for (auto const &alias_sym : generic_sub.second->get_ast_scope()->ty_sym->aliased_by_symbols) {
+            const auto type_sym = associated_type_symbol(generic_sub.second->get_ast_scope());
+            for (auto const &alias_sym : type_sym->aliased_by_symbols) {
                 alias_sym->llvm_info->llvm_type = llvm_type;
             }
         }
@@ -579,7 +582,7 @@ auto spp::analyse::utils::scope_utils::check_conflicting_type_or_cmp_statements(
     auto dummy = utils::type_utils::GenericInferenceMap();
     const auto existing_scopes = cls_sym.scope->direct_sup_scopes
         | genex::views::filter([&](auto *scope) { return scope->ast->template to<asts::SupPrototypeExtensionAst>() or scope->ast->template to<asts::SupPrototypeFunctionsAst>(); })
-        | genex::views::filter([&](auto *scope) { return utils::type_utils::relaxed_symbolic_eq(*ast_name(sup_scope.ast), *ast_name(scope->ast), sup_scope, *scope->ast->get_ast_scope(), dummy); })
+        | genex::views::filter([&](auto *scope) { return type_utils::relaxed_symbolic_eq(*ast_name(sup_scope.ast), *ast_name(scope->ast), sup_scope, *scope->ast->get_ast_scope(), dummy); })
         | genex::to<std::vector>();
 
     // Check for conflicting "type" statements.

@@ -136,20 +136,6 @@ public:
      */
     auto exhaust_scope() -> void;
 
-private:
-    /**
-     * Once a super scope has been registered against a scope, there are some checks to ensure that this new superscope
-     * is semantically compatible with the type. There can be no conflicting @c use or @c cmp statements with existing
-     * definitions on existing supertypes of the type.
-     * @param cls_sym The type symbol representing the class to check.
-     * @param sup_scope The new super scope that has been added to the class.
-     */
-    static auto check_conflicting_type_or_cmp_statements(
-        AbstractSymbol const &cls_sym,
-        Scope const &sup_scope)
-        -> void;
-
-public:
     /**
      * Reset the static state of the @c ScopeManager. This clears the static lists of sup blocks, so that a new
      * compilation can be started from a clean state. This should be called at the end of a full compilation. This is
