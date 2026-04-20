@@ -5,6 +5,8 @@ module;
 module spp.analyse.utils.func_utils;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts;
 import spp.asts.utils;
 import spp.utils.uid;
@@ -77,21 +79,21 @@ auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
     if (postfix_lhs != nullptr and runtime_field != nullptr) {
         fn_owner_type = postfix_lhs->lhs->infer_type(&sm, meta);
         fn_name = runtime_field->name;
-        fn_owner_scope = sm.current_scope->get_type_symbol(fn_owner_type)->scope;
+        fn_owner_scope = scope_utils::get_type_symbol(*sm.current_scope, fn_owner_type)->scope;
     }
 
     // Static access into a type: "Type::method()" or "ns::Type::method()".
     else if (static_field != nullptr and postfix_lhs_as_type != nullptr) {
         fn_owner_type = asts::ast_clone(postfix_lhs_as_type);
         fn_name = static_field->name;
-        fn_owner_scope = sm.current_scope->get_type_symbol(fn_owner_type)->scope;
+        fn_owner_scope = scope_utils::get_type_symbol(*sm.current_scope, fn_owner_type)->scope;
     }
 
     // Direct access into a namespaced free function: "std::io::print(variable)".
     else if (postfix_lhs != nullptr and static_field != nullptr) {
         fn_owner_scope = sm.current_scope->convert_postfix_to_nested_scope(postfix_lhs->lhs.get());
         fn_name = static_field->name;
-        fn_owner_type = fn_owner_scope->get_var_symbol(fn_name)->type;
+        fn_owner_type = scope_utils::get_var_symbol(*fn_owner_scope, fn_name)->type;
     }
 
     // Direct access into a non-namespaced function: "function()":

@@ -921,9 +921,9 @@ auto spp::analyse::utils::type_utils::get_type_sym_or_error(
     asts::meta::CompilerMetaData *)
     -> scopes::TypeSymbol* {
     // Get the type part's symbol, and raise an error if it doesn't exist.
-    const auto type_sym = scope_utils::get_type_symbol(*scope, type_part.shared_from_this(), false);
+    const auto type_sym = scope_utils::get_type_symbol(scope, type_part.shared_from_this(), false);
     if (type_sym == nullptr) {
-        const auto alternatives = sm.current_scope->all_type_symbols()
+        const auto alternatives = scope_utils::all_type_symbols(*sm.current_scope)
             | genex::views::transform([](auto const &x) { return x->name->name; })
             | genex::views::remove_if([](auto const &x) { return x[0] == '$'; })
             | genex::to<std::vector>();
@@ -944,7 +944,7 @@ auto spp::analyse::utils::type_utils::get_ns_scope_or_error(
     scopes::ScopeManager const &sm)
     -> scopes::Scope* {
     // If the namespace does not exist, raise an error.
-    const auto ns_sym = scope.get_ns_symbol(ns.shared_from_this());
+    const auto ns_sym = scope_utils::get_ns_symbol(scope, ns.shared_from_this());
     if (ns_sym == nullptr) {
         const auto alternatives = scope_utils::all_var_symbols(*sm.current_scope)
             | genex::views::transform([](auto const &x) { return x->name->val; })
@@ -967,7 +967,7 @@ auto spp::analyse::utils::type_utils::enforce_generic_constraints(
     scopes::Scope const &concrete_scope)
     -> void {
     // Determine the concrete symbol, and if non-generic, add its scope.
-    const auto concrete_sym = scope_utils::get_type_symbol(*concrete_scope, concrete_type.shared_from_this());
+    const auto concrete_sym = scope_utils::get_type_symbol(concrete_scope, concrete_type.shared_from_this());
     auto sup_info = std::vector<std::pair<std::shared_ptr<asts::TypeAst>, scopes::Scope const*>>{};
     if (not concrete_sym->is_generic) {
         sup_info.emplace_back(concrete_sym->fq_name(), concrete_sym->scope);
@@ -977,7 +977,7 @@ auto spp::analyse::utils::type_utils::enforce_generic_constraints(
     const auto sup_scopes = concrete_sym->scope ? concrete_sym->scope->sup_scopes() : std::vector<scopes::Scope*>{};
     for (auto const *sup_scope : sup_scopes) {
         if (sup_scope->ast->to<asts::ClassPrototypeAst>() == nullptr) { continue; }
-        const auto sup_sym = sup_scope->ty_sym;
+        const auto sup_sym = scope_utils::associated_type_symbol(*sup_scope);
         sup_info.emplace_back(sup_sym->fq_name(), sup_scope);
     }
 
@@ -1124,7 +1124,7 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
         if (old_sym->alias_stmt == nullptr) { break; }
 
         old_type = old_sym->alias_stmt->old_type;
-        old_sym = tracking_scope->get_type_symbol(old_type->without_generics());
+        old_sym = scope_utils::get_type_symbol(*tracking_scope, old_type->without_generics());
         if (old_sym->alias_stmt == nullptr and (use_stmt_propagating_generics == nullptr or use_stmt_propagating_generics->args.empty())) { break; }
     }
 
