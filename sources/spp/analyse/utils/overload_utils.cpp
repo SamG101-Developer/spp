@@ -6,6 +6,7 @@ module;
 module spp.analyse.utils.overload_utils;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.func_utils;
 import spp.analyse.utils.scope_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts;
@@ -267,7 +268,7 @@ auto spp::analyse::utils::overload_utils::generate_generic_substituted_prototype
         new_fn_proto->mark_non_generic_impl(fn_proto);
 
         // Create the new function scope for the generic implementation.
-        const auto generic_syms = sm->current_scope->get_extended_generic_symbols(combined_generics->get_all_args());
+        const auto generic_syms = scope_utils::get_scope_extended_generic_symbols(*sm->current_scope, combined_generics->get_all_args());
         const auto new_fn_scope = type_utils::create_generic_fun_scope(
             *fn_scope, asts::GenericArgumentGroupAst(nullptr, ast_clone_vec(combined_generics->args), nullptr),
             generic_syms, sm, meta);

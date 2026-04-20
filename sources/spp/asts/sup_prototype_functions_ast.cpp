@@ -163,7 +163,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_5_load_super_scopes(
             SPP_NO_ANNOTATIONS, nullptr,
             TypeIdentifierAst::from_string("Self"), nullptr, nullptr, name);
         analyse::utils::scope_utils::add_type_symbol(*sm->current_scope, self_sym);
-        analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, aliased_by_symbols.emplace_back(self_sym);
+        analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, name)->aliased_by_symbols.emplace_back(self_sym);
     }
 
     // Load the implementation and move out of the scope.

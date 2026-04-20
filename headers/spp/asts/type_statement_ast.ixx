@@ -34,7 +34,7 @@ private:
 
     bool m_from_use_statement;
 
-    std::shared_ptr<void> m_alias_sym;
+    std::shared_ptr<AbstractSymbol> m_alias_sym;
 
 public:
     analyse::scopes::Scope *m_tracking_scope;

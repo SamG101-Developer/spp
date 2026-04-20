@@ -5,6 +5,7 @@ module;
 module spp.compiler;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.scope_utils;
 import spp.asts;
 import spp.asts.utils.monomorphization;
@@ -340,7 +341,7 @@ auto spp::compiler::CompilerBoot::move_scope_manager_to_ns(
         auto identifier_part = std::make_shared<asts::IdentifierAst>(0, std::string(part));
 
         // If the part exists in the current scope (starting from the global scope), then move into it.
-        if (const auto quick_ns_sym = sm->current_scope->get_ns_symbol(identifier_part, true); quick_ns_sym != nullptr) {
+        if (const auto quick_ns_sym = analyse::utils::scope_utils::get_ns_symbol(*sm->current_scope, identifier_part, true); quick_ns_sym != nullptr) {
             const auto ns_scope = quick_ns_sym->scope;
             sm->reset(ns_scope);
         }

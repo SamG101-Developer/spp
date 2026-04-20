@@ -437,12 +437,12 @@ auto spp::analyse::utils::scope_utils::get_scope_extended_generic_symbols(
         | genex::to<std::vector>();
 
     for (auto const *scope : scopes) {
-        for (auto const &sym : scope->all_type_symbols(true)
+        for (auto const &sym : all_type_symbols(*scope, true)
              | genex::views::filter([](auto const &s) { return s->is_generic; })) {
             syms.emplace_back(sym);
         }
 
-        for (auto const &sym : scope->all_var_symbols(true)
+        for (auto const &sym : all_type_symbols(*scope, true)
              | genex::views::filter([](auto const &s) { return s->is_generic; })
              | genex::views::filter([&ignore](auto const &s) { return ignore == nullptr or *s->name == *ignore; })) {
             syms.emplace_back(sym);
@@ -550,7 +550,7 @@ auto spp::analyse::utils::scope_utils::attach_llvm_type_info(
             // All aliases need llvm type info propagated from their aliased types.
             const auto llvm_type = codegen::llvm_type(
                 *associated_type_symbol(*cls_proto->get_ast_scope()), ctx);
-            const auto type_sym = associated_type_symbol(cls_proto->get_ast_scope());
+            const auto type_sym = associated_type_symbol(*cls_proto->get_ast_scope());
             for (auto const &alias_sym : type_sym->aliased_by_symbols) {
                 alias_sym->llvm_info->llvm_type = llvm_type;
             }
@@ -564,7 +564,7 @@ auto spp::analyse::utils::scope_utils::attach_llvm_type_info(
             // All generic aliases need llvm type info propagated from their aliased types.
             const auto llvm_type = codegen::llvm_type(
                 *associated_type_symbol(*generic_sub.second->get_ast_scope()), ctx);
-            const auto type_sym = associated_type_symbol(generic_sub.second->get_ast_scope());
+            const auto type_sym = associated_type_symbol(*generic_sub.second->get_ast_scope());
             for (auto const &alias_sym : type_sym->aliased_by_symbols) {
                 alias_sym->llvm_info->llvm_type = llvm_type;
             }
@@ -582,7 +582,7 @@ auto spp::analyse::utils::scope_utils::check_conflicting_type_or_cmp_statements(
     auto dummy = utils::type_utils::GenericInferenceMap();
     const auto existing_scopes = cls_sym.scope->direct_sup_scopes
         | genex::views::filter([&](auto *scope) { return scope->ast->template to<asts::SupPrototypeExtensionAst>() or scope->ast->template to<asts::SupPrototypeFunctionsAst>(); })
-        | genex::views::filter([&](auto *scope) { return type_utils::relaxed_symbolic_eq(*ast_name(sup_scope.ast), *ast_name(scope->ast), sup_scope, *scope->ast->get_ast_scope(), dummy); })
+        | genex::views::filter([&](auto *scope) { return type_utils::relaxed_symbolic_eq(*asts::ast_name(sup_scope.ast), *asts::ast_name(scope->ast), sup_scope, *scope->ast->get_ast_scope(), dummy); })
         | genex::to<std::vector>();
 
     // Check for conflicting "type" statements.

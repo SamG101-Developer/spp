@@ -125,7 +125,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
 
         auto scopes_and_syms = std::vector{lhs_type_sym->scope}
             | genex::views::concat(lhs_type_sym->scope->sup_scopes())
-            | genex::views::transform([name=name.get()](auto const &x) { return std::make_pair(x, analyse::utils::scope_utils::get_var_symbol(*x, name)); })
+            | genex::views::transform([&](auto const &x) { return std::make_pair(x, analyse::utils::scope_utils::get_var_symbol(*x, name)); })
             | genex::views::filter([](auto const &x) { return x.second != nullptr; })
             | genex::views::transform([lhs_type_sym](auto const &x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
             | genex::to<std::vector>();

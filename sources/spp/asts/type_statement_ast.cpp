@@ -150,9 +150,10 @@ auto spp::asts::TypeStatementAst::stage_3_gen_top_level_aliases(
 
     const auto final_sym = analyse::utils::scope_utils::get_type_symbol(
         *sm->current_scope, mapped_old_type->without_generics());
-    m_alias_sym->type = final_sym->type;
-    m_alias_sym->scope = final_sym->scope;
-    m_alias_sym->is_copyable = [final_sym] { return final_sym->is_copyable(); };
+    const auto alias_sym = std::dynamic_pointer_cast<analyse::scopes::TypeSymbol>(m_alias_sym);
+    alias_sym->type = final_sym->type;
+    alias_sym->scope = final_sym->scope;
+    alias_sym->is_copyable = [final_sym] { return final_sym->is_copyable(); };
     m_tracking_scope = tracking_scope;
     m_mapped_old_type = mapped_old_type;
 
@@ -177,17 +178,18 @@ auto spp::asts::TypeStatementAst::stage_4_qualify_types(
     old_type = m_mapped_old_type;
 
     // Get the old type's symbol, without generics.
-    const auto stripped_old_sym = sm->current_scope->get_type_symbol(old_type->without_generics(), false);
+    const auto stripped_old_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, old_type->without_generics(), false);
     if (not stripped_old_sym->is_generic) {
         auto tm = analyse::scopes::ScopeManager(sm->global_scope, m_tracking_scope ? m_tracking_scope : sm->current_scope);
         generic_param_group->stage_4_qualify_types(&tm, meta);
         old_type->stage_4_qualify_types(&tm, meta);
         old_type->stage_7_analyse_semantics(sm, meta);
 
-        const auto old_sym = sm->current_scope->get_type_symbol(old_type);
-        m_alias_sym->type = old_sym->type;
-        m_alias_sym->scope = old_sym->scope;
-        old_sym->aliased_by_symbols.push_back(m_alias_sym);
+        const auto old_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, old_type);
+        const auto alias_sym = std::dynamic_pointer_cast<analyse::scopes::TypeSymbol>(m_alias_sym);
+        alias_sym->type = old_sym->type;
+        alias_sym->scope = old_sym->scope;
+        old_sym->aliased_by_symbols.push_back(alias_sym);
     }
     m_mapped_old_type = old_type;
     sm->move_out_of_current_scope();
@@ -317,7 +319,8 @@ auto spp::asts::TypeStatementAst::cleanup()
     // pointer destroying the type statement, then the type statement destroying itself (via the destructor). Releasing
     // it here prevents the type symbol from destroying it.
     if (m_alias_sym != nullptr) {
-        (void)m_alias_sym->alias_stmt.release();
+        const auto alias_sym = std::dynamic_pointer_cast<analyse::scopes::TypeSymbol>(m_alias_sym);
+        (void)alias_sym->alias_stmt.release();
         m_alias_sym = nullptr;
     }
 
