@@ -29,24 +29,6 @@ SPP_EXP_CLS class spp::analyse::scopes::ScopeManager {
 
 public:
     /**
-     * The static list of sup blocks that have been processed. This attribute is defined as static so because all
-     * created @c ScopeManager instances will share it. This allows any @c ScopeManager to analyse types and inject the
-     * sup block logic into the manager.
-     */
-    // inline static ankerl::unordered_dense::map<TypeSymbol*, std::vector<Scope*>> normal_sup_blocks = {};
-
-    /**
-     * This list contains the pure generic sup blocks, such as
-     * @code
-     * sup [T] T { ... }
-     * @endcode
-     * The list is separate as there is some special handling required.
-     */
-    // inline static std::vector<Scope*> generic_sup_blocks = {};
-
-    // inline static std::vector<std::unique_ptr<Scope>> temp_scopes = {};
-
-    /**
      * The global scope is the root scope fo the entire program. It is a @c std::shared_ptr as temp scope manager's need
      * to be created sometimes, where the global scope will be shared. Not a raw pointer as the scope managers do own
      * the global scope.

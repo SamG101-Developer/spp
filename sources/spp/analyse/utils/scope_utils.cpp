@@ -524,64 +524,64 @@ auto spp::analyse::utils::scope_utils::shift_scope_for_namespaced_type(
 }
 
 
-auto spp::analyse::utils::scope_utils::attach_llvm_type_info(
-    asts::ModulePrototypeAst const &mod,
-    codegen::LlvmCtx *ctx)
-    -> void {
-    // Iterate the members of the module, filter to class prototypes, and call the register function.
-
-    auto cls_members = std::vector<asts::ClassPrototypeAst*>{};
-    for (auto const &member : mod.impl->members) {
-        if (const auto cls_member = member->to<asts::ClassPrototypeAst>(); cls_member != nullptr) {
-            cls_members.emplace_back(cls_member);
-        }
-
-        if (const auto sup_member = member->to<asts::SupPrototypeFunctionsAst>(); sup_member != nullptr) {
-            for (auto const &sup_member_inner : sup_member->impl->members) {
-                if (const auto cls_sup_member = sup_member_inner->to<asts::ClassPrototypeAst>(); cls_sup_member != nullptr) {
-                    cls_members.emplace_back(cls_sup_member);
-                }
-            }
-        }
-
-        if (const auto ext_member = member->to<asts::SupPrototypeExtensionAst>(); ext_member != nullptr) {
-            for (auto const &ext_member_inner : ext_member->impl->members) {
-                if (const auto cls_ext_member = ext_member_inner->to<asts::ClassPrototypeAst>(); cls_ext_member != nullptr) {
-                    cls_members.emplace_back(cls_ext_member);
-                }
-            }
-        }
-    }
-
-    for (auto const &cls_proto : cls_members) {
-        // If this is not a base generic (std::vector::Vec)
-        if (cls_proto->registered_generic_substitutions().empty()) {
-            codegen::register_llvm_type_info(cls_proto, ctx);
-
-            // All aliases need llvm type info propagated from their aliased types.
-            const auto llvm_type = codegen::llvm_type(
-                *associated_type_symbol(*cls_proto->get_ast_scope()), ctx);
-            const auto type_sym = associated_type_symbol(*cls_proto->get_ast_scope());
-            for (auto const &alias_sym : type_sym->aliased_by_symbols) {
-                alias_sym->llvm_info->llvm_type = llvm_type;
-            }
-        }
-
-        // All concrete generic implementations (not std::vector::Vec[T]).
-        // Todo: don't generate when one of the generics is "comp->identifier" or "type->generic"
-        for (auto const &generic_sub : cls_proto->registered_generic_substitutions()) {
-            codegen::register_llvm_type_info(generic_sub.second, ctx);
-
-            // All generic aliases need llvm type info propagated from their aliased types.
-            const auto llvm_type = codegen::llvm_type(
-                *associated_type_symbol(*generic_sub.second->get_ast_scope()), ctx);
-            const auto type_sym = associated_type_symbol(*generic_sub.second->get_ast_scope());
-            for (auto const &alias_sym : type_sym->aliased_by_symbols) {
-                alias_sym->llvm_info->llvm_type = llvm_type;
-            }
-        }
-    }
-}
+// auto spp::analyse::utils::scope_utils::attach_llvm_type_info(
+//     asts::ModulePrototypeAst const &mod,
+//     codegen::LlvmCtx *ctx)
+//     -> void {
+//     // Iterate the members of the module, filter to class prototypes, and call the register function.
+//
+//     auto cls_members = std::vector<asts::ClassPrototypeAst*>{};
+//     for (auto const &member : mod.impl->members) {
+//         if (const auto cls_member = member->to<asts::ClassPrototypeAst>(); cls_member != nullptr) {
+//             cls_members.emplace_back(cls_member);
+//         }
+//
+//         if (const auto sup_member = member->to<asts::SupPrototypeFunctionsAst>(); sup_member != nullptr) {
+//             for (auto const &sup_member_inner : sup_member->impl->members) {
+//                 if (const auto cls_sup_member = sup_member_inner->to<asts::ClassPrototypeAst>(); cls_sup_member != nullptr) {
+//                     cls_members.emplace_back(cls_sup_member);
+//                 }
+//             }
+//         }
+//
+//         if (const auto ext_member = member->to<asts::SupPrototypeExtensionAst>(); ext_member != nullptr) {
+//             for (auto const &ext_member_inner : ext_member->impl->members) {
+//                 if (const auto cls_ext_member = ext_member_inner->to<asts::ClassPrototypeAst>(); cls_ext_member != nullptr) {
+//                     cls_members.emplace_back(cls_ext_member);
+//                 }
+//             }
+//         }
+//     }
+//
+//     for (auto const &cls_proto : cls_members) {
+//         // If this is not a base generic (std::vector::Vec)
+//         if (cls_proto->registered_generic_substitutions().empty()) {
+//             codegen::register_llvm_type_info(cls_proto, ctx);
+//
+//             // All aliases need llvm type info propagated from their aliased types.
+//             const auto llvm_type = codegen::llvm_type(
+//                 *associated_type_symbol(*cls_proto->get_ast_scope()), ctx);
+//             const auto type_sym = associated_type_symbol(*cls_proto->get_ast_scope());
+//             for (auto const &alias_sym : type_sym->aliased_by_symbols) {
+//                 alias_sym->llvm_info->llvm_type = llvm_type;
+//             }
+//         }
+//
+//         // All concrete generic implementations (not std::vector::Vec[T]).
+//         // Todo: don't generate when one of the generics is "comp->identifier" or "type->generic"
+//         for (auto const &generic_sub : cls_proto->registered_generic_substitutions()) {
+//             codegen::register_llvm_type_info(generic_sub.second, ctx);
+//
+//             // All generic aliases need llvm type info propagated from their aliased types.
+//             const auto llvm_type = codegen::llvm_type(
+//                 *associated_type_symbol(*generic_sub.second->get_ast_scope()), ctx);
+//             const auto type_sym = associated_type_symbol(*generic_sub.second->get_ast_scope());
+//             for (auto const &alias_sym : type_sym->aliased_by_symbols) {
+//                 alias_sym->llvm_info->llvm_type = llvm_type;
+//             }
+//         }
+//     }
+// }
 
 
 auto spp::analyse::utils::scope_utils::check_conflicting_type_or_cmp_statements(

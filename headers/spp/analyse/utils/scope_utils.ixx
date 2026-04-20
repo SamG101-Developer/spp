@@ -6,7 +6,7 @@ import spp.abstract;
 import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
 import spp.asts;
-import spp.codegen.llvm_ctx;
+// import spp.codegen.llvm_ctx;
 import ankerl;
 import std;
 
@@ -173,10 +173,10 @@ namespace spp::analyse::utils::scope_utils {
         asts::TypeAst const &fq_type)
         -> std::pair<const scopes::Scope*, std::shared_ptr<const asts::TypeIdentifierAst>>;
 
-    SPP_EXP_FUN auto attach_llvm_type_info(
-        asts::ModulePrototypeAst const &mod,
-        codegen::LlvmCtx *ctx)
-        -> void;
+    // SPP_EXP_FUN auto attach_llvm_type_info(
+    //     asts::ModulePrototypeAst const &mod,
+    //     codegen::LlvmCtx *ctx)
+    //     -> void;
 
     SPP_EXP_FUN auto check_conflicting_type_or_cmp_statements(
         scopes::TypeSymbol const &cls_sym,

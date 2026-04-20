@@ -7,7 +7,6 @@ import spp.asts;
 import spp.asts.utils;
 import spp.analyse.scopes;
 import spp.codegen.llvm_sym_info;
-import spp.codegen.llvm_ctx;
 import spp.analyse.utils.mem_info_utils;
 import std;
 
@@ -31,7 +30,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::Symbol : AbstractSymbol {
      * destructed when deleted through a base class pointer. This is important for polymorphism and memory management,
      * as it allows for proper cleanup of resources when a derived class is deleted.
      */
-    virtual ~Symbol();
+    ~Symbol() override;
 };
 
 

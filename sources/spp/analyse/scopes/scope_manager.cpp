@@ -4,7 +4,6 @@ import spp.analyse.utils.scope_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts;
 import spp.asts.utils;
-import spp.codegen.llvm_ctx;
 import spp.utils.error_formatter;
 import genex;
 

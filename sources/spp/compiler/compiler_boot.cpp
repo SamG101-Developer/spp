@@ -198,7 +198,7 @@ auto spp::compiler::CompilerBoot::stage_8_check_memory(
     for (auto const &mod : m_modules) {
         const auto cast_mod = mod->to<asts::ModulePrototypeAst>();
         auto ctx = codegen::LlvmCtx::new_ctx(cast_mod->file_path);
-        analyse::utils::scope_utils::attach_llvm_type_info(*cast_mod, ctx.get());
+        // analyse::utils::scope_utils::attach_llvm_type_info(*cast_mod, ctx.get());
         m_llvm_ctxs.emplace_back(std::move(ctx));
     }
 }

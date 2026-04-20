@@ -38,12 +38,12 @@ target_compile_options(spp_lib PRIVATE
         -Wnull-dereference -Wformat=2 -Wduplicated-cond -Wduplicated-branches -Wredundant-decls -Wlogical-op
         -Wuseless-cast -Wdouble-promotion -Wstrict-null-sentinel -Wswitch-default -Wswitch-enum -Wno-null-dereference
         -Wno-maybe-uninitialized -Wno-error=array-bounds -Wno-error=overloaded-virtual -Wodr)
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_options(spp_lib PRIVATE
-            -O0 -pg -g -fno-omit-frame-pointer -fno-inline -fno-inline-functions -fno-inline-functions-called-once
-            -fno-optimize-sibling-calls)
-    target_link_options(spp_lib PRIVATE -pg)
-endif ()
+#if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+#    target_compile_options(spp_lib PRIVATE
+#            -O0 -pg -g -fno-omit-frame-pointer -fno-inline -fno-inline-functions -fno-inline-functions-called-once
+#            -fno-optimize-sibling-calls)
+#    target_link_options(spp_lib PRIVATE -pg)
+#endif ()
 
 target_compile_features(spp_lib
         PRIVATE cxx_std_26)
