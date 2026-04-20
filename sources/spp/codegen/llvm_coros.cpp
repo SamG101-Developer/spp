@@ -1,7 +1,7 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.codegen;
+module spp.codegen.llvm_coros;
 import spp.analyse.scopes;
 import spp.asts;
 import spp.utils.uid;

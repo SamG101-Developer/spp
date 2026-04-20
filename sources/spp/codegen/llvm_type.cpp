@@ -1,4 +1,4 @@
-module spp.codegen;
+module spp.codegen.llvm_type;
 import spp.analyse.scopes;
 import spp.asts;
 import spp.lex;

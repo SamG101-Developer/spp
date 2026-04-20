@@ -7,9 +7,13 @@ import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
 import spp.asts;
 import spp.codegen.llvm_ctx;
+import ankerl;
 import std;
 
 namespace spp::analyse::utils::scope_utils {
+    inline static auto normal_sup_blocks = ankerl::unordered_dense::map<scopes::TypeSymbol*, std::vector<scopes::Scope*>>{};
+    inline static auto generic_sup_blocks = std::vector<scopes::Scope*>{};
+
     SPP_EXP_FUN auto add_var_symbol(
         scopes::Scope &scope,
         std::shared_ptr<scopes::VariableSymbol> const &sym)

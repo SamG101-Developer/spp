@@ -5,6 +5,8 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import spp.lex;
 import genex;
@@ -162,7 +164,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
     CompilerMetaData *meta)
     -> void {
     // Get the attributes on the type and supertypes.
-    const auto cls_sym = sm->current_scope->get_type_symbol(meta->object_init_type);
+    const auto cls_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, meta->object_init_type);
     const auto all_attrs = analyse::utils::type_utils::get_all_attrs(*meta->object_init_type, sm);
     const auto all_attr_names = all_attrs
         | genex::views::transform([](auto &&x) { return x.first; })

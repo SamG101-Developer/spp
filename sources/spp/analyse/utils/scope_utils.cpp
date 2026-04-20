@@ -112,13 +112,13 @@ auto spp::analyse::utils::scope_utils::all_var_symbols(
     auto syms = scope.table.var_tbl.all();
 
     // For non-exclusive searches where a parent is present, yield from the parent scope.
-    if (not exclusive and parent != nullptr) {
-        syms.append_range(parent->all_var_symbols(exclusive, sup_scope_search));
+    if (not exclusive and scope.parent != nullptr) {
+        syms.append_range(scope.parent->all_var_symbols(exclusive, sup_scope_search));
     }
 
     // For super scope searches, yield from all direct super scopes.
     if (sup_scope_search) {
-        for (auto const *sup_scope : direct_sup_scopes) {
+        for (auto const *sup_scope : scope.direct_sup_scopes) {
             syms.append_range(sup_scope->all_var_symbols(true, false));
         }
     }
@@ -136,13 +136,13 @@ auto spp::analyse::utils::scope_utils::all_type_symbols(
     auto syms = scope.table.type_tbl.all();
 
     // For non-exclusive searches where a parent is present, yield from the parent scope.
-    if (not exclusive and parent != nullptr) {
-        syms.append_range(parent->all_type_symbols(exclusive, sup_scope_search));
+    if (not exclusive and scope.parent != nullptr) {
+        syms.append_range(scope.parent->all_type_symbols(exclusive, sup_scope_search));
     }
 
     // For super scope searches, yield from all direct super scopes.
     if (sup_scope_search) {
-        for (auto const *sup_scope : direct_sup_scopes) {
+        for (auto const *sup_scope : scope.direct_sup_scopes) {
             syms.append_range(sup_scope->all_type_symbols(true, false));
         }
     }
@@ -159,8 +159,8 @@ auto spp::analyse::utils::scope_utils::all_ns_symbols(
     auto syms = scope.table.ns_tbl.all();
 
     // For non-exclusive searches where a parent is present, yield from the parent scope.
-    if (not exclusive and parent != nullptr) {
-        syms.append_range(parent->all_ns_symbols(exclusive));
+    if (not exclusive and scope.parent != nullptr) {
+        syms.append_range(scope.parent->all_ns_symbols(exclusive));
     }
     return syms;
 }
@@ -168,40 +168,43 @@ auto spp::analyse::utils::scope_utils::all_ns_symbols(
 
 
 auto spp::analyse::utils::scope_utils::has_var_symbol(
+    scopes::Scope const &scope,
     std::shared_ptr<asts::IdentifierAst> const &sym_name,
-    const bool exclusive) const
+    const bool exclusive)
     -> bool {
     // Check if getting the symbol returns nullptr or not.
-    return get_var_symbol(sym_name, exclusive) != nullptr;
+    return get_var_symbol(scope, sym_name, exclusive) != nullptr;
 }
 
 
 auto spp::analyse::utils::scope_utils::has_type_symbol(
+    scopes::Scope const &scope,
     std::shared_ptr<asts::TypeAst> const &sym_name,
-    const bool exclusive) const
+    const bool exclusive)
     -> bool {
     // Check if getting the symbol returns nullptr or not.
-    return get_type_symbol(sym_name, exclusive) != nullptr;
+    return get_type_symbol(scope, sym_name, exclusive) != nullptr;
 }
 
 
 auto spp::analyse::utils::scope_utils::has_ns_symbol(
+    scopes::Scope const &scope,
     std::shared_ptr<asts::IdentifierAst> const &sym_name,
-    const bool exclusive) const
+    const bool exclusive)
     -> bool {
     // Check if getting the symbol returns nullptr or not.
-    return get_ns_symbol(sym_name, exclusive) != nullptr;
+    return get_ns_symbol(scope, sym_name, exclusive) != nullptr;
 }
 
 
 auto spp::analyse::utils::scope_utils::get_var_symbol(
+    scopes::Scope const &scope,
     std::shared_ptr<asts::IdentifierAst> const &sym_name,
     const bool exclusive,
-    const bool sup_scope_search) const
+    const bool sup_scope_search)
     -> std::shared_ptr<VariableSymbol> {
     // Get the symbol from the symbol table if it exists.
     if (sym_name == nullptr) { return nullptr; }
-    const auto scope = this;
     auto sym = table.var_tbl.get(sym_name);
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
@@ -225,9 +228,10 @@ auto spp::analyse::utils::scope_utils::get_var_symbol(
 
 
 auto spp::analyse::utils::scope_utils::get_type_symbol(
+    scopes::Scope const &scope,
     std::shared_ptr<const asts::TypeAst> const &sym_name,
     const bool exclusive,
-    const bool sup_scope_search) const
+    const bool sup_scope_search)
     -> std::shared_ptr<TypeSymbol> {
     // Adjust the scope for the namespace of the type identifier if there is one.
     if (sym_name == nullptr) { return nullptr; }
@@ -237,7 +241,6 @@ auto spp::analyse::utils::scope_utils::get_type_symbol(
         return sym_name->cached_type_symbols.get(this);
     }
 
-    auto scope = this;
     std::shared_ptr<const asts::TypeIdentifierAst> sym_name_extracted;
     if (const auto sym_name_as_identifier = std::dynamic_pointer_cast<const asts::TypeIdentifierAst>(sym_name)) {
         sym_name_extracted = std::const_pointer_cast<asts::TypeIdentifierAst>(sym_name_as_identifier);
@@ -271,12 +274,12 @@ auto spp::analyse::utils::scope_utils::get_type_symbol(
 
 
 auto spp::analyse::utils::scope_utils::get_ns_symbol(
+    scopes::Scope const &scope,
     std::shared_ptr<const asts::IdentifierAst> const &sym_name,
-    const bool exclusive) const
+    const bool exclusive)
     -> std::shared_ptr<NamespaceSymbol> {
     // Get the symbol from the symbol table if it exists.
     if (sym_name == nullptr) { return nullptr; }
-    const auto scope = this;
     auto sym = table.ns_tbl.get(
         std::const_pointer_cast<asts::IdentifierAst>(sym_name));
 
@@ -292,7 +295,7 @@ auto spp::analyse::utils::scope_utils::get_ns_symbol(
 
 auto spp::analyse::utils::scope_utils::get_var_symbol_outermost(
     asts::Ast const &expr) const
-    -> std::pair<std::shared_ptr<VariableSymbol>, Scope const*> {
+    -> std::pair<std::shared_ptr<scopes::VariableSymbol>, scopes::Scope const*> {
     // Define helper methods to check expression types.
     auto is_valid_postfix_expression = []<typename OpType>(auto *ast) -> bool {
         auto postfix_expr = ast->template to<asts::PostfixExpressionAst>();

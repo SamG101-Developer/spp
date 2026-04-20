@@ -3,15 +3,10 @@ module;
 
 export module spp.codegen.llvm_func_impls;
 import spp.analyse.scopes;
+import spp.asts;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
-
-namespace spp::asts {
-    SPP_EXP_CLS struct FunctionPrototypeAst;
-    SPP_EXP_CLS struct TypeAst;
-}
-
 
 
 /**
