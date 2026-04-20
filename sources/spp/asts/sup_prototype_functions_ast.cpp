@@ -146,10 +146,10 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_5_load_super_scopes(
     const auto base_cls_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, name->without_generics());
     if (sm->current_scope->parent == sm->current_scope->parent_module()) {
         if (not base_cls_sym->is_generic) {
-            ScopeManager::normal_sup_blocks[base_cls_sym.get()].emplace_back(sm->current_scope);
+            analyse::utils::scope_utils::normal_sup_blocks[base_cls_sym.get()].emplace_back(sm->current_scope);
         }
         else {
-            ScopeManager::generic_sup_blocks.emplace_back(sm->current_scope);
+            analyse::utils::scope_utils::generic_sup_blocks.emplace_back(sm->current_scope);
         }
     }
 

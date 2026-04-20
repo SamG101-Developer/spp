@@ -109,7 +109,10 @@ auto spp::analyse::utils::scope_utils::all_var_symbols(
     const bool sup_scope_search)
     -> std::vector<std::shared_ptr<scopes::VariableSymbol>> {
     // Yield all symbols from the var symbol table.
-    auto syms = scope.table.var_tbl.all();
+    auto syms = std::vector<std::shared_ptr<scopes::VariableSymbol>>();
+    for (auto const &x: scope.table.var_tbl.all()) {
+        syms.emplace_back(std::dynamic_pointer_cast<scopes::VariableSymbol>(x));
+    }
 
     // For non-exclusive searches where a parent is present, yield from the parent scope.
     if (not exclusive and scope.parent != nullptr) {
@@ -133,7 +136,10 @@ auto spp::analyse::utils::scope_utils::all_type_symbols(
     const bool sup_scope_search)
     -> std::vector<std::shared_ptr<scopes::TypeSymbol>> {
     // Yield all symbols from the type symbol table.
-    auto syms = scope.table.type_tbl.all();
+    auto syms = std::vector<std::shared_ptr<scopes::TypeSymbol>>();
+    for (auto const &x: scope.table.type_tbl.all()) {
+        syms.emplace_back(std::dynamic_pointer_cast<scopes::TypeSymbol>(x));
+    }
 
     // For non-exclusive searches where a parent is present, yield from the parent scope.
     if (not exclusive and scope.parent != nullptr) {
@@ -156,7 +162,11 @@ auto spp::analyse::utils::scope_utils::all_ns_symbols(
     const bool exclusive,
     bool)
     -> std::vector<std::shared_ptr<scopes::NamespaceSymbol>> {
-    auto syms = scope.table.ns_tbl.all();
+    // Yield all symbols from the namespace symbol table.
+    auto syms = std::vector<std::shared_ptr<scopes::NamespaceSymbol>>();
+    for (auto const &x: scope.table.ns_tbl.all()) {
+        syms.emplace_back(std::dynamic_pointer_cast<scopes::NamespaceSymbol>(x));
+    }
 
     // For non-exclusive searches where a parent is present, yield from the parent scope.
     if (not exclusive and scope.parent != nullptr) {
@@ -205,16 +215,16 @@ auto spp::analyse::utils::scope_utils::get_var_symbol(
     -> std::shared_ptr<scopes::VariableSymbol> {
     // Get the symbol from the symbol table if it exists.
     if (sym_name == nullptr) { return nullptr; }
-    auto sym = scope.table.var_tbl.get(sym_name);
+    auto sym = scope.table.var_tbl.get(sym_name->to_string());
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
-    if (sym == nullptr and not exclusive and scope->parent != nullptr) {
-        sym = get_var_symbol(*scope->parent, sym_name, exclusive);
+    if (sym == nullptr and not exclusive and scope.parent != nullptr) {
+        sym = get_var_symbol(*scope.parent, sym_name, exclusive);
     }
 
     // If the symbol still hasn't been found, check the super scopes for it.
     if (sym == nullptr and sup_scope_search) {
-        sym = search_sup_scopes_for_var(*scope, sym_name);
+        sym = search_sup_scopes_for_var(scope, sym_name);
     }
 
     // Check for a linked aliased variable symbol.
@@ -232,7 +242,7 @@ auto spp::analyse::utils::scope_utils::get_type_symbol(
     std::shared_ptr<const asts::TypeAst> const &sym_name,
     const bool exclusive,
     const bool sup_scope_search)
-    -> std::shared_ptr<TypeSymbol> {
+    -> std::shared_ptr<scopes::TypeSymbol> {
     // Adjust the scope for the namespace of the type identifier if there is one.
     if (sym_name == nullptr) { return nullptr; }
 
@@ -277,7 +287,7 @@ auto spp::analyse::utils::scope_utils::get_ns_symbol(
     scopes::Scope const &scope,
     std::shared_ptr<const asts::IdentifierAst> const &sym_name,
     const bool exclusive)
-    -> std::shared_ptr<NamespaceSymbol> {
+    -> std::shared_ptr<scopes::NamespaceSymbol> {
     // Get the symbol from the symbol table if it exists.
     if (sym_name == nullptr) { return nullptr; }
     auto sym = table.ns_tbl.get(

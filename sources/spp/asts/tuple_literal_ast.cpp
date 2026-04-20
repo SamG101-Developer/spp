@@ -3,10 +3,15 @@ module;
 #include <spp/analyse/macros.hpp>
 
 module spp.asts;
+import :common_types;
 import spp.analyse.errors;
 import spp.analyse.scopes;
-import spp.lex;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
+import spp.codegen.llvm_type;
+import spp.lex;
 import spp.utils.uid;
 import genex;
 
@@ -135,7 +140,7 @@ auto spp::asts::TupleLiteralAst::stage_11_code_gen_2(
     // Create a struct, to hold the tuple elements (runtime numeric access maps to field indices).
     const auto uid = spp::utils::generate_uid(this);
     const auto tuple_type = infer_type(sm, meta);
-    const auto tuple_type_sym = sm->current_scope->get_type_symbol(tuple_type);
+    const auto tuple_type_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, tuple_type);
     const auto llvm_type = codegen::llvm_type(*tuple_type_sym, ctx);
     SPP_ASSERT(llvm_type != nullptr);
 

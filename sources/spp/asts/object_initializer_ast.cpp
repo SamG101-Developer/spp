@@ -9,6 +9,7 @@ import spp.analyse.utils.scope_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import spp.utils.uid;
+import spp.codegen.llvm_type;
 import llvm;
 import genex;
 
@@ -148,12 +149,12 @@ auto spp::asts::ObjectInitializerAst::stage_11_code_gen_2(
     -> llvm::Value* {
     // Create an empty struct based on the llvm type - will never be a borrow so always stack allocated, not a pointer.
     const auto uid = spp::utils::generate_uid(this);
-    const auto type_sym = sm->current_scope->get_type_symbol(type);
+    const auto type_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, type);
     const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
 
     // Re-order the arguments to match the fields on the type.
     // Todo: use the type_utils::get_attrs() function here?
-    const auto cls_sym = sm->current_scope->get_type_symbol(type);
+    const auto cls_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, type);
     const auto attr_names = analyse::utils::type_utils::get_all_attrs(*cls_sym->fq_name(), sm)
         | genex::views::transform([](auto const &attr) { return attr.first; })
         | genex::to<std::vector>();
