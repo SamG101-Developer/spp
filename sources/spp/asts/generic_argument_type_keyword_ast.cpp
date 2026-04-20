@@ -75,7 +75,8 @@ auto spp::asts::GenericArgumentTypeKeywordAst::from_symbol(
     -> std::unique_ptr<GenericArgumentTypeKeywordAst> {
     // Extract the value from the symbol's scope, if it exists.
     const auto type_sym = dynamic_cast<analyse::scopes::TypeSymbol const&>(sym);
-    auto value = type_sym.scope->ty_sym->fq_name()->with_convention(ast_clone(type_sym.convention.get()));
+    const auto scope_type_sym = analyse::utlis::scope_utils::associated_type_symbol(scope);
+    auto value = scope_type_sym->fq_name()->with_convention(ast_clone(type_sym.convention.get()));
 
     // Wrap the value into a type argument.
     return std::make_unique<GenericArgumentTypeKeywordAst>(type_sym.name, nullptr, std::move(value));
