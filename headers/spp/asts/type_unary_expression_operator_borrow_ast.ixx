@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.type_unary_expression_operator_borrow_ast;
 import spp.asts.type_unary_expression_operator_ast;
-
 import std;
 
 namespace spp::asts {

@@ -3,8 +3,8 @@ module;
 
 export module spp.asts.class_attribute_ast;
 import spp.asts.ast;
-import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.class_member_ast;
+import spp.asts.mixins.visibility_enabled_ast;
 
 import std;
 

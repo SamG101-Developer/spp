@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.case_pattern_variant_single_identifier_ast;
 import spp.asts.case_pattern_variant_ast;
-
 import llvm;
 import std;
 

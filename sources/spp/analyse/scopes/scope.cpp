@@ -32,29 +32,6 @@ import genex;
 
 
 SPP_MOD_BEGIN
-spp::analyse::scopes::ScopeBlockName::ScopeBlockName(
-    std::string &&name) :
-    name(std::move(name)) {
-}
-
-
-auto spp::analyse::scopes::ScopeBlockName::from_parts(
-    std::string &&header,
-    std::vector<asts::Ast*> const &parts,
-    const std::size_t pos)
-    -> ScopeBlockName {
-    // Build the name string.
-    auto builder = std::string();
-    builder.append("<").append(header);
-    for (auto const &part : parts) {
-        builder.append("#").append(part->to_string());
-    }
-    builder.append("#").append(std::to_string(pos));
-    builder.append(">");
-    return ScopeBlockName(std::move(builder));
-}
-
-
 spp::analyse::scopes::Scope::Scope(
     ScopeName name,
     Scope *parent,
@@ -237,7 +214,7 @@ auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
 
     // Re-use above logic to collect generic symbols from the ancestor scopes.
     const auto scopes = ancestors()
-        | genex::views::take_while([](auto *scope) { return not std::holds_alternative<std::shared_ptr<asts::IdentifierAst>>(scope->name); })
+        | genex::views::take_while([](auto *scope) { return not std::holds_alternative<ScopeIdentifierName>(scope->name); })
         | genex::to<std::vector>();
 
     for (auto const *scope : scopes) {
@@ -631,7 +608,7 @@ auto spp::analyse::scopes::Scope::parent_module() const
     -> Scope* {
     // Get the parent module scope, if it exists.
     for (auto *scope = this; scope != nullptr; scope = scope->parent) {
-        if (std::holds_alternative<std::shared_ptr<asts::IdentifierAst>>(scope->name)) {
+        if (std::holds_alternative<ScopeIdentifierName>(scope->name)) {
             return const_cast<Scope*>(scope); // TODO: REMOVE CONST CAST
         }
     }
@@ -710,8 +687,8 @@ auto spp::analyse::scopes::Scope::print_scope_tree() const
     auto func = [](this auto &&self, Scope const *scope, std::string const &indent) -> std::string {
         auto result = indent + std::visit(
             spp::utils::functions::overload{
-                [](std::shared_ptr<asts::IdentifierAst> const &id) { return id->val; },
-                [](std::shared_ptr<asts::TypeIdentifierAst> const &id) { return id->name; },
+                [](ScopeIdentifierName const &id) { return id.name->val; },
+                [](ScopeTypeIdentifierName const &id) { return id.name->name; },
                 [](ScopeBlockName const &block) { return block.name; }
             }, scope->name) + "\n";
 
@@ -727,16 +704,21 @@ auto spp::analyse::scopes::Scope::print_scope_tree() const
 
 auto spp::analyse::scopes::Scope::name_as_string() const
     -> std::string {
-    if (auto const name_as_id = std::get_if<std::shared_ptr<asts::IdentifierAst>>(&name)) {
-        return (*name_as_id)->operator std::string();
+    // Identifier based scope name.
+    if (std::holds_alternative<ScopeIdentifierName>(name)) {
+        auto const name_as_id = std::get<ScopeIdentifierName>(name).name;
+        return name_as_id->to_string();
     }
-    if (auto const name_as_type_id = std::get_if<std::shared_ptr<asts::TypeIdentifierAst>>(&name)) {
-        return (*name_as_type_id)->operator std::string();
+
+    // TypeIdentifier based scope name.
+    if (std::holds_alternative<ScopeTypeIdentifierName>(name)) {
+        auto const name_as_type = std::get<ScopeTypeIdentifierName>(name).name;
+        return name_as_type->to_string();
     }
-    if (auto const name_as_block = std::get_if<ScopeBlockName>(&name)) {
-        return name_as_block->name;
-    }
-    std::unreachable();
+
+    // Block name.
+    auto const name_as_block_name = std::get<ScopeBlockName>(name).name;
+    return name_as_block_name;
 }
 
 

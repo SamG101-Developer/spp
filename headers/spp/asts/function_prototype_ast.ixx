@@ -4,9 +4,9 @@ module;
 export module spp.asts.function_prototype_ast;
 import spp.analyse.utils.annotation_utils;
 import spp.asts.ast;
-import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.module_member_ast;
 import spp.asts.sup_member_ast;
+import spp.asts.mixins.visibility_enabled_ast;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_func;
 import llvm;
@@ -39,11 +39,7 @@ namespace spp::analyse::scopes {
  * This ASt is further inherited into the SubroutinePrototypeAst and CoroutinePrototypeAst, which add additional
  * analysis checks.
  */
-SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst :
-    virtual Ast,
-    SupMemberAst,
-    ModuleMemberAst,
-    mixins::VisibilityEnabledAst {
+SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : virtual Ast, SupMemberAst, ModuleMemberAst, mixins::VisibilityEnabledAst {
 protected:
     /**
      * Using a list because there are times that the collection is iterated whilst being appended to.

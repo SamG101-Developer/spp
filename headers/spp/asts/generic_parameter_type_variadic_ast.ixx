@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.generic_parameter_type_variadic_ast;
 import spp.asts.generic_parameter_type_ast;
-
 import std;
 
 namespace spp::asts {

@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.char_literal_ast;
 import spp.asts.literal_ast;
-import spp.asts.token_ast;
 import spp.codegen.llvm_ctx;
 import llvm;
 import std;
@@ -11,7 +10,7 @@ import std;
 namespace spp::asts {
     SPP_EXP_CLS struct CharLiteralAst;
     SPP_EXP_CLS struct TypeAst;
-}
+    SPP_EXP_CLS struct TokenAst;}
 
 
 SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {

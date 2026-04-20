@@ -3,11 +3,8 @@ module;
 
 export module spp.asts.class_prototype_ast;
 import spp.asts.ast;
-import spp.asts.annotation_ast;
-import spp.asts.class_implementation_ast;
 import spp.asts.module_member_ast;
 import spp.asts.sup_member_ast;
-import spp.asts.token_ast;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.codegen.llvm_ctx;
 
@@ -22,7 +19,9 @@ namespace spp::analyse::scopes {
 
 namespace spp::asts {
     SPP_EXP_CLS struct ClassPrototypeAst;
+    SPP_EXP_CLS struct ClassImplementationAst;
     SPP_EXP_CLS struct GenericParameterGroupAst;
+    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
     SPP_EXP_CLS struct TypeStatementAst;
 }

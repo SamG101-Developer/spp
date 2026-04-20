@@ -4,7 +4,6 @@ module;
 export module spp.asts.type_array_shorthand_ast;
 import spp.asts.ast;
 import spp.asts.mixins.temp_type_ast;
-
 import std;
 
 namespace spp::asts {

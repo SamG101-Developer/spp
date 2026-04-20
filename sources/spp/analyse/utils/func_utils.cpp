@@ -41,6 +41,7 @@ import spp.asts.generic_parameter_comp_optional_ast;
 import spp.asts.generic_parameter_comp_variadic_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.generic_parameter_type_ast;
+import spp.asts.generic_parameter_type_inline_constraints_ast;
 import spp.asts.generic_parameter_type_optional_ast;
 import spp.asts.generic_parameter_type_variadic_ast;
 import spp.asts.identifier_ast;

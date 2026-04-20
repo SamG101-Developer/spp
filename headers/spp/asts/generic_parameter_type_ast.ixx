@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.generic_parameter_type_ast;
 import spp.asts.generic_parameter_ast;
-import spp.asts.generic_parameter_type_inline_constraints_ast;
 import spp.asts.utils.orderable;
 import std;
 
@@ -13,6 +12,7 @@ namespace spp::analyse::scopes {
 
 namespace spp::asts {
     SPP_EXP_CLS struct GenericParameterTypeAst;
+    SPP_EXP_CLS struct GenericParameterTypeInlineConstraintsAst;
 }
 
 

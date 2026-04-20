@@ -11,6 +11,7 @@ import spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.integer_literal_ast;
+import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types_precompiled;

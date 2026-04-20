@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.generic_parameter_comp_ast;
 import spp.asts.generic_parameter_ast;
-import spp.asts.token_ast;
 import spp.asts.utils.orderable;
 import spp.codegen.llvm_ctx;
 import llvm;
@@ -11,6 +10,7 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct GenericParameterCompAst;
+    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
 

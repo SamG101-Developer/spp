@@ -12,8 +12,7 @@ namespace spp::asts {
 }
 
 
-SPP_EXP_CLS struct spp::asts::FunctionImplementationLoweredAst final :
-    FunctionImplementationAst {
+SPP_EXP_CLS struct spp::asts::FunctionImplementationLoweredAst final : FunctionImplementationAst {
 private:
     std::string m_scope_str;
 

@@ -2,12 +2,12 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_argument_comp_ast;
-import spp.asts.expression_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.utils.orderable;
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct ExpressionAst;
     SPP_EXP_CLS struct GenericArgumentAst;
     SPP_EXP_CLS struct GenericArgumentCompAst;
     SPP_EXP_CLS struct GenericArgumentCompKeywordAst;

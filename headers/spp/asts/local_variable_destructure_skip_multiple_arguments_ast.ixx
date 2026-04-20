@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
 import spp.asts.local_variable_ast;
-
 import std;
 
 namespace spp::asts {

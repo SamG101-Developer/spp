@@ -64,7 +64,7 @@ public:
     SymbolTable();
 
     /**
-     * Light copy
+     * Shallow copy
      * @param that
      */
     SymbolTable(SymbolTable const &that);
@@ -79,8 +79,6 @@ public:
     auto operator=(SymbolTable const &that) -> SymbolTable&;
 
     IndividualSymbolTable<asts::IdentifierAst, NamespaceSymbol> ns_tbl;
-
     IndividualSymbolTable<asts::TypeIdentifierAst, TypeSymbol> type_tbl;
-
     IndividualSymbolTable<asts::IdentifierAst, VariableSymbol> var_tbl;
 };

@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.integer_literal_ast;
 import spp.asts.literal_ast;
-import spp.asts.token_ast;
 import spp.codegen.llvm_ctx;
 import spp.lex.tokens;
 import llvm;
@@ -11,6 +10,7 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct IntegerLiteralAst;
+    SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
@@ -54,13 +54,7 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
     SPP_AST_KEY_FUNCTIONS;
 
     template <typename T> requires std::integral<T>
-    auto cpp_value() const -> T {
-        const auto raw_str = static_cast<std::string>(*val);
-        const auto signed_str = tok_sign != nullptr ? "-" + raw_str : raw_str;
-
-        if constexpr (std::is_unsigned_v<T>) { return static_cast<T>(std::stoull(signed_str)); }
-        else { return static_cast<T>(std::stoll(signed_str)); }
-    }
+    auto cpp_value() const -> T;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

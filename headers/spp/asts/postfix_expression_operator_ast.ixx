@@ -8,7 +8,7 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct PostfixExpressionOperatorAst;
-    SPP_EXP_CLS struct TypeAst; // [KEEP]
+    SPP_EXP_CLS struct TypeAst; // TODO: GCC BUG REQUIRES THIS
 }
 
 

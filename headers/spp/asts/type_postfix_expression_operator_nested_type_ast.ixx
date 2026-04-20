@@ -4,7 +4,6 @@ module;
 export module spp.asts.type_postfix_expression_operator_nested_type_ast;
 import spp.asts.type_postfix_expression_operator_ast;
 import spp.asts.token_ast;
-
 import std;
 
 namespace spp::asts {

@@ -102,6 +102,15 @@ spp::asts::IntegerLiteralAst::operator std::string() const {
 }
 
 
+template <typename T> requires std::integral<T>
+auto spp::asts::IntegerLiteralAst::cpp_value() const -> T {
+    const auto raw_str = val->to_string();
+    const auto signed_str = tok_sign != nullptr ? "-" + raw_str : raw_str;
+    if constexpr (std::is_unsigned_v<T>) { return static_cast<T>(std::stoull(signed_str)); }
+    else { return static_cast<T>(std::stoll(signed_str)); }
+}
+
+
 auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *)
@@ -207,5 +216,16 @@ auto spp::asts::IntegerLiteralAst::infer_type(
     const auto sym = sm->current_scope->get_type_symbol(spp_type);
     return sym->fq_name();
 }
+
+
+// Manual instantiation of cpp_value function
+template auto spp::asts::IntegerLiteralAst::cpp_value<std::int8_t>() const -> std::int8_t;
+template auto spp::asts::IntegerLiteralAst::cpp_value<std::int16_t>() const -> std::int16_t;
+template auto spp::asts::IntegerLiteralAst::cpp_value<std::int32_t>() const -> std::int32_t;
+template auto spp::asts::IntegerLiteralAst::cpp_value<std::int64_t>() const -> std::int64_t;
+template auto spp::asts::IntegerLiteralAst::cpp_value<std::uint8_t>() const -> std::uint8_t;
+template auto spp::asts::IntegerLiteralAst::cpp_value<std::uint16_t>() const -> std::uint16_t;
+template auto spp::asts::IntegerLiteralAst::cpp_value<std::uint32_t>() const -> std::uint32_t;
+template auto spp::asts::IntegerLiteralAst::cpp_value<std::uint64_t>() const -> std::uint64_t;
 
 SPP_MOD_END

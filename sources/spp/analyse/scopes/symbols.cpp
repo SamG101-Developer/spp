@@ -109,9 +109,9 @@ auto spp::analyse::scopes::VariableSymbol::fq_name() const
     }
 
     auto qualified_name = std::unique_ptr<asts::ExpressionAst>(nullptr);
-    qualified_name = asts::ast_clone(std::get<std::shared_ptr<asts::IdentifierAst>>(scopes.back()->name));
+    qualified_name = asts::ast_clone(std::get<ScopeIdentifierName>(scopes.back()->name).name);
     for (auto qualifier_scope : scopes | genex::views::reverse | genex::views::drop(1)) {
-        const auto raw_ns_name = std::get<std::shared_ptr<asts::IdentifierAst>>(qualifier_scope->name);
+        const auto raw_ns_name = std::get<ScopeIdentifierName>(qualifier_scope->name).name.get();
         auto ns_name = std::make_shared<asts::IdentifierAst>(raw_ns_name->pos_start(), raw_ns_name->val);
         auto ns_op = std::make_unique<asts::PostfixExpressionOperatorStaticMemberAccessAst>(nullptr, std::move(ns_name));
         qualified_name = std::make_unique<asts::PostfixExpressionAst>(std::move(qualified_name), std::move(ns_op));
@@ -198,7 +198,7 @@ auto spp::analyse::scopes::TypeSymbol::fq_name(
         while (std::holds_alternative<ScopeBlockName>(qualifier_scope->name)) {
             qualifier_scope = qualifier_scope->parent;
         }
-        const auto raw_ns_name = std::get<std::shared_ptr<asts::IdentifierAst>>(qualifier_scope->name);
+        const auto raw_ns_name = std::get<ScopeIdentifierName>(qualifier_scope->name).name.get();
         auto ns_name = std::make_shared<asts::IdentifierAst>(raw_ns_name->pos_start(), raw_ns_name->val);
         auto ns_op = std::make_unique<asts::TypeUnaryExpressionOperatorNamespaceAst>(std::move(ns_name), nullptr);
         qualified_name = std::make_shared<asts::TypeUnaryExpressionAst>(std::move(ns_op), std::move(qualified_name));

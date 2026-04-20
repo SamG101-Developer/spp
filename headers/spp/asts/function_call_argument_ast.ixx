@@ -23,10 +23,7 @@ namespace spp::asts {
  * The FunctionCallArgumentAst is the base class representing an argument in a function call. It is inherited into the
  * "positional" and "keyword" variants.
  */
-SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst :
-    virtual Ast,
-    mixins::OrderableAst,
-    mixins::TypeInferrableAst {
+SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst : virtual Ast, mixins::OrderableAst, mixins::TypeInferrableAst {
     /**
      * Use the base Ast's constructors.
      */

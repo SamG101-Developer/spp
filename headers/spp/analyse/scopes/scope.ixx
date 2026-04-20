@@ -29,8 +29,8 @@ namespace spp::analyse::scopes {
     SPP_EXP_CLS struct NamespaceSymbol;
     SPP_EXP_CLS struct VariableSymbol;
     SPP_EXP_CLS using ScopeName = std::variant<
-        std::shared_ptr<asts::IdentifierAst>,
-        std::shared_ptr<asts::TypeIdentifierAst>,
+        ScopeIdentifierName,
+        ScopeTypeIdentifierName,
         ScopeBlockName>;
 }
 

@@ -198,7 +198,7 @@ auto spp::asts::ClassPrototypeAst::stage_2_gen_top_level_scopes(
     CompilerMetaData *meta)
     -> void {
     // Create the class scope, which is the scope for the class prototype.
-    auto scope_name = analyse::scopes::ScopeName(std::dynamic_pointer_cast<TypeIdentifierAst>(name));
+    auto scope_name = analyse::scopes::ScopeTypeIdentifierName(name);
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
     Ast::stage_2_gen_top_level_scopes(sm, meta);
 

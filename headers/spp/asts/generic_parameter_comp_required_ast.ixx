@@ -3,7 +3,6 @@ module;
 
 export module spp.asts.generic_parameter_comp_required_ast;
 import spp.asts.generic_parameter_comp_ast;
-
 import std;
 
 namespace spp::asts {
