@@ -6,6 +6,7 @@ module;
 module spp.analyse.utils.type_utils;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.func_utils;
 import spp.analyse.utils.scope_utils;
 import spp.asts;
 import spp.asts.utils;
@@ -62,7 +63,7 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
 
     // If the left-hand-side is a "Variant" type, check the composite types first.
     if (check_variant and symbolic_eq(*stripped_lhs_sym->fq_name()->without_generics(), *asts::common_types_precompiled::VAR, lhs_scope, lhs_scope, false)) {
-        auto lhs_composite_types = deduplicate_variant_inner_types(*scope_utils::get_type_symbol(*lhs_scope, lhs_type.shared_from_this())->fq_name(), lhs_scope);
+        auto lhs_composite_types = deduplicate_variant_inner_types(*scope_utils::get_type_symbol(lhs_scope, lhs_type.shared_from_this())->fq_name(), lhs_scope);
         if (genex::any_of(lhs_composite_types, [&](auto &&lhs_composite_type) { return symbolic_eq(*lhs_composite_type, rhs_type, lhs_scope, rhs_scope); })) {
             return true;
         }
@@ -127,7 +128,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     const auto stripped_rhs = std::const_pointer_cast<asts::TypeAst>(rhs_type.without_generics()->without_convention());
 
     // If the right-hand-side is generic, then return a match: "sup[T] T { ... }" matches all types.
-    const auto stripped_rhs_sym = scope_utils::get_type_symbol(*rhs_scope, stripped_rhs);
+    const auto stripped_rhs_sym = scope_utils::get_type_symbol(rhs_scope, stripped_rhs);
     if (stripped_rhs_sym->is_generic) {
         const auto t = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(stripped_rhs);
         generic_args.insert({t, &lhs_type});
@@ -138,7 +139,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     // properly.
     if (not convention_eq(rhs_type, lhs_type)) { return false; }
 
-    const auto stripped_lhs_sym = scope_utils::get_type_symbol(*lhs_scope, stripped_lhs);
+    const auto stripped_lhs_sym = scope_utils::get_type_symbol(lhs_scope, stripped_lhs);
     if (stripped_lhs_sym->is_generic) {
         const auto t = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(stripped_lhs);
         generic_args.insert({t, &rhs_type});
@@ -148,7 +149,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     // If the right-hand-side is a "Variant" type, check the composite types first.
     // Todo: on the failure of a variant match in "any_of", does the generic map need rolling back?
     if (check_variant and symbolic_eq(*asts::common_types_precompiled::VAR, *stripped_rhs_sym->fq_name()->without_generics(), rhs_scope, rhs_scope)) {
-        auto rhs_composite_types = deduplicate_variant_inner_types(*scope_utils::get_type_symbol(*rhs_scope, rhs_type.shared_from_this())->fq_name(), rhs_scope);
+        auto rhs_composite_types = deduplicate_variant_inner_types(*scope_utils::get_type_symbol(rhs_scope, rhs_type.shared_from_this())->fq_name(), rhs_scope);
         if (genex::any_of(rhs_composite_types, [&](auto &&rhs_composite_type) { return relaxed_symbolic_eq(lhs_type, *rhs_composite_type, lhs_scope, rhs_scope, generic_args); })) {
             return true;
         }
@@ -168,7 +169,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     auto &rhs_generics = rhs_type.type_parts().back()->generic_arg_group->args;
 
     // Special case for variadic parameter types.
-    const auto temp_type_proto = scope_utils::get_type_symbol(*lhs_scope, lhs_type.shared_from_this())->type;
+    const auto temp_type_proto = scope_utils::get_type_symbol(lhs_scope, lhs_type.shared_from_this())->type;
     if (temp_type_proto and not temp_type_proto->generic_param_group->params.empty()) {
         if (temp_type_proto->generic_param_group->params.back()->to<asts::FunctionParameterVariadicAst>() != nullptr) {
             if (lhs_generics.size() != rhs_generics.size()) {
@@ -378,7 +379,7 @@ auto spp::analyse::utils::type_utils::is_type_copyable(
 
     // Discover the supertypes and add the current type to it.
     auto sup_types = std::vector{type.shared_from_this()};
-    sup_types.append_range(type_sym->scope->sup_types());
+    sup_types.append_range(type_sym->scope->sup_types() | genex::views::cast_smart<asts::TypeAst>());
 
     auto inner_copy_check = [&](auto &&t) {
         return symbolic_eq(*t.without_generics(), *asts::common_types_precompiled::COPY, *sm.current_scope, *sm.current_scope, false);
@@ -468,7 +469,7 @@ auto spp::analyse::utils::type_utils::get_generator_and_yield_type(
 
     // Discover the supertypes and add the current type to it.=.
     auto sup_types = std::vector{type.shared_from_this()};
-    sup_types.append_range(type_sym->scope->sup_types());
+    sup_types.append_range(type_sym->scope->sup_types() | genex::views::cast_smart<asts::TypeAst>());
 
     // Search through the supertypes for a direct generator type.
     const auto generator_type_candidates = sup_types
