@@ -1,7 +1,6 @@
 module spp.asts;
 
 
-/*
 auto spp::asts::common_types_precompiled::initialize_types() -> void {
     GEN = common_types::gen_type(0, common_types::void_type(0), common_types::void_type(0))->without_generics();
     GEN_ONCE = common_types::gen_once_type(0, common_types::void_type(0))->without_generics();
@@ -28,4 +27,3 @@ auto spp::asts::common_types_precompiled::initialize_types() -> void {
     FWD_MUT = common_types::forward_mut_type(0, common_types::void_type(0))->without_generics();
     FWD_REF = common_types::forward_ref_type(0, common_types::void_type(0))->without_generics();
 }
-*/
