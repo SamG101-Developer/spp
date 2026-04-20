@@ -3,9 +3,14 @@ module;
 #include <spp/analyse/macros.hpp>
 
 module spp.asts;
+import :common_types;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
+import spp.codegen.llvm_materialize;
 import spp.lex;
 import spp.utils.uid;
 
@@ -138,7 +143,7 @@ auto spp::asts::RetStatementAst::stage_11_code_gen_2(
     // Generate the return value, if there is one.
     if (expr != nullptr) {
         // Temp holder for non-symbolic condition.
-        if (sm->current_scope->get_var_symbol_outermost(*expr).first == nullptr) {
+        if (analyse::utils::scope_utils::get_var_symbol_outermost(*sm->current_scope, *expr).first == nullptr) {
             meta->save();
             meta->assignment_target_type = m_ret_type;
             const auto ret_val = codegen::llvm_materialize(*expr, sm, meta, ctx);

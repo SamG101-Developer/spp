@@ -5,6 +5,8 @@ module;
 module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
+import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import spp.lex;
 import spp.utils.strings;
@@ -64,7 +66,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
     // Numeric index access (for tuples).
     if (std::isdigit(name->val[0])) {
         const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
-        const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_type);
+        const auto lhs_type_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, lhs_type);
 
         // Check the lhs is a tuple/array (the only indexable types).
         raise_if<analyse::errors::SppMemberAccessNonIndexableError>(
@@ -83,9 +85,9 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
         const auto lhs_as_ident = lhs_as_ident_raw ? std::make_shared<IdentifierAst>(lhs_as_ident_raw->pos_start(), lhs_as_ident_raw->val) : nullptr;
         const auto lhs_type = meta->postfix_expression_lhs->infer_type(sm, meta);
 
-        const auto lhs_ns_sym = sm->current_scope->get_ns_symbol(lhs_as_ident);
-        const auto lhs_var_sym = sm->current_scope->get_var_symbol(lhs_as_ident);
-        const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_type);
+        const auto lhs_ns_sym = analyse::utils::scope_utils::get_ns_symbol(*sm->current_scope, lhs_as_ident);
+        const auto lhs_var_sym = analyse::utils::scope_utils::get_var_symbol(*sm->current_scope, lhs_as_ident);
+        const auto lhs_type_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, lhs_type);
 
         // Check the lhs is a variable and not a namespace.
         raise_if<analyse::errors::SppMemberAccessStaticOperatorExpectedError>(
@@ -93,7 +95,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
             ERR_ARGS(*meta->postfix_expression_lhs, *tok_dot));
 
         // Check the target field exists on the type.
-        if (not lhs_type_sym->scope->has_var_symbol(name, true)) {
+        if (not analyse::utils::scope_utils::has_var_symbol(*lhs_type_sym->scope, name, true)) {
             // At this point, we need to check for the presence of "FwdMut" or "FwdRef" superimpositions, allowing
             // access to their members.
             auto [fwd_ref_type, _] = analyse::utils::type_utils::get_fwd_types(*lhs_type, *sm);
@@ -117,13 +119,13 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
         }
 
         // Check there is only 1 target field on the type at the highest level.
-        if (lhs_type_sym->scope->get_var_symbol(name)->type->type_parts().back()->name[0] == '$') {
+        if (analyse::utils::scope_utils::get_var_symbol(*lhs_type_sym->scope, name)->type->type_parts().back()->name[0] == '$') {
             return;
         }
 
         auto scopes_and_syms = std::vector{lhs_type_sym->scope}
             | genex::views::concat(lhs_type_sym->scope->sup_scopes())
-            | genex::views::transform([name=name.get()](auto const &x) { return std::make_pair(x, x->table.var_tbl.get(ast_clone(name))); })
+            | genex::views::transform([name=name.get()](auto const &x) { return std::make_pair(x, x->table.var_tbl.get(name->val)); }) // todo: what on earth?
             | genex::views::filter([](auto const &x) { return x.second != nullptr; })
             | genex::views::transform([lhs_type_sym](auto const &x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
             | genex::to<std::vector>();

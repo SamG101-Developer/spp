@@ -153,7 +153,7 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
     -> void {
     // For each assignment, check the memory status and resolve any (partial-)moves.
     auto lhs_syms = lhs
-        | genex::views::transform([sm](auto &&x) { return sm->current_scope->get_var_symbol_outermost(*x); })
+        | genex::views::transform([sm](auto &&x) { return analyse::utils::scope_utils::get_var_symbol_outermost(*sm->current_scope, *x); })
         | genex::to<std::vector>();
 
     for (auto &&[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(lhs | genex::views::ptr, rhs | genex::views::ptr, lhs_syms)) {
@@ -189,8 +189,8 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
         }
 
         // Ensure a borrow is not increasing its lifetime.
-        const auto lhs_outermost = sm->current_scope->get_var_symbol_outermost(*lhs_expr).first;
-        const auto rhs_outermost = sm->current_scope->get_var_symbol_outermost(*rhs_expr).first;
+        const auto lhs_outermost = analyse::utils::scope_utils::get_var_symbol_outermost(*sm->current_scope, *lhs_expr).first;
+        const auto rhs_outermost = analyse::utils::scope_utils::get_var_symbol_outermost(*sm->current_scope, *rhs_expr).first;
         analyse::utils::mem_utils::prevent_borrow_lifetime_extension(
             lhs_outermost.get(), rhs_outermost.get(), this, *sm);
     }
