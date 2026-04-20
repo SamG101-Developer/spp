@@ -446,16 +446,16 @@ auto spp::analyse::utils::scope_utils::get_scope_extended_generic_symbols(
 
     // Re-use above logic to collect generic symbols from the ancestor scopes.
     const auto scopes = scope.ancestors()
-        | genex::views::take_while([](auto *scope) { return not std::holds_alternative<scopes::ScopeIdentifierName>(scope->name); })
+        | genex::views::take_while([](auto *s) { return not std::holds_alternative<scopes::ScopeIdentifierName>(s->name); })
         | genex::to<std::vector>();
 
-    for (auto const *scope : scopes) {
-        for (auto const &sym : all_type_symbols(*scope, true)
+    for (auto const *ancestor_scope : scopes) {
+        for (auto const &sym : all_type_symbols(*ancestor_scope, true)
              | genex::views::filter([](auto const &s) { return s->is_generic; })) {
             syms.emplace_back(sym);
         }
 
-        for (auto const &sym : all_type_symbols(*scope, true)
+        for (auto const &sym : all_type_symbols(*ancestor_scope, true)
              | genex::views::filter([](auto const &s) { return s->is_generic; })
              | genex::views::filter([&ignore](auto const &s) { return ignore == nullptr or *s->name == *ignore; })) {
             syms.emplace_back(sym);

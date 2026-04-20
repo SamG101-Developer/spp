@@ -25,6 +25,12 @@ spp::analyse::scopes::NamespaceSymbol::NamespaceSymbol(
 spp::analyse::scopes::NamespaceSymbol::~NamespaceSymbol() = default;
 
 
+auto spp::analyse::scopes::NamespaceSymbol::clone() const
+    -> std::shared_ptr<AbstractSymbol> {
+    return std::make_shared<NamespaceSymbol>(*this);
+}
+
+
 auto spp::analyse::scopes::NamespaceSymbol::operator==(
     NamespaceSymbol const &that) const
     -> bool {
@@ -66,6 +72,12 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
 
 
 spp::analyse::scopes::VariableSymbol::~VariableSymbol() = default;
+
+
+auto spp::analyse::scopes::VariableSymbol::clone() const
+    -> std::shared_ptr<AbstractSymbol> {
+    return std::make_shared<VariableSymbol>(*this);
+}
 
 
 auto spp::analyse::scopes::VariableSymbol::operator==(
@@ -152,6 +164,12 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
 
 
 spp::analyse::scopes::TypeSymbol::~TypeSymbol() = default;
+
+
+auto spp::analyse::scopes::TypeSymbol::clone() const
+    -> std::shared_ptr<AbstractSymbol> {
+    return std::make_shared<TypeSymbol>(*this);
+}
 
 
 auto spp::analyse::scopes::TypeSymbol::operator==(

@@ -17,12 +17,11 @@ spp::analyse::scopes::IndividualSymbolTable::~IndividualSymbolTable() = default;
 
 
 auto spp::analyse::scopes::IndividualSymbolTable::operator=(
-    IndividualSymbolTable const &)
+    IndividualSymbolTable const &that)
     -> IndividualSymbolTable& {
-    // TODO: Re-Add
-    // for (auto const &[k, v] : that.m_table) {
-    //     m_table[k] = std::make_shared<S>(*v);
-    // }
+    for (auto const &[k, v] : that.m_table) {
+        m_table[k] = v->clone();
+    }
     return *this;
 }
 

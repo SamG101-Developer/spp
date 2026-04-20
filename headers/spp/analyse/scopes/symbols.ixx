@@ -48,6 +48,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
 
     ~NamespaceSymbol() override;
 
+    auto clone() const -> std::shared_ptr<AbstractSymbol> override;
+
     auto operator==(
         NamespaceSymbol const &that) const
         -> bool;
@@ -87,6 +89,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
         VariableSymbol const &that);
 
     ~VariableSymbol() override;
+
+    auto clone() const -> std::shared_ptr<AbstractSymbol> override;
 
     auto operator==(
         VariableSymbol const &that) const
@@ -141,6 +145,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
         TypeSymbol const &that);
 
     ~TypeSymbol() override;
+
+    auto clone() const -> std::shared_ptr<AbstractSymbol> override;
 
     auto operator==(
         TypeSymbol const &that) const
