@@ -39,7 +39,7 @@ public:
 
     auto rem(std::string const &sym_name) -> void;
 
-    SPP_ATTR_NODISCARD SPP_ATTR_HOT auto get(std::string const &sym_name) const -> AbstractSymbol*;
+    SPP_ATTR_NODISCARD SPP_ATTR_HOT auto get(std::string const &sym_name) const -> std::shared_ptr<AbstractSymbol>;
 
     SPP_ATTR_NODISCARD auto has(std::string const &sym_name) const -> bool;
 

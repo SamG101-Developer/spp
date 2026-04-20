@@ -6,6 +6,7 @@ module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.utils.scope_utils;
+import spp.analyse.utils.type_utils;
 import spp.asts.utils;
 import genex;
 
@@ -240,12 +241,12 @@ auto spp::asts::TypePostfixExpressionAst::infer_type(
     // Infer the type of the left-hand-side.
     lhs->stage_7_analyse_semantics(sm, meta);
     const auto lhs_type = lhs->infer_type(sm, meta);
-    const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_type);
+    const auto lhs_type_sym = analyse::utils::scope_utils::get_type_symbol(*sm->current_scope, lhs_type);
     const auto lhs_type_scope = lhs_type_sym->scope;
 
     // Infer the type of the postfix operation.
     const auto op_nested = tok_op->to<TypePostfixExpressionOperatorNestedTypeAst>();
     const auto part = analyse::utils::type_utils::get_type_sym_or_error(*lhs_type_scope, *op_nested->name, *sm, meta)->fq_name();
-    const auto sym = lhs_type_scope->get_type_symbol(part);
+    const auto sym = analyse::utils::scope_utils::get_type_symbol(*lhs_type_scope, part);
     return sym->fq_name();
 }

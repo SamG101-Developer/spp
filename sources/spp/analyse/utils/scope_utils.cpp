@@ -215,7 +215,8 @@ auto spp::analyse::utils::scope_utils::get_var_symbol(
     -> std::shared_ptr<scopes::VariableSymbol> {
     // Get the symbol from the symbol table if it exists.
     if (sym_name == nullptr) { return nullptr; }
-    auto sym = scope.table.var_tbl.get(sym_name->to_string());
+    auto sym = std::dynamic_pointer_cast<scopes::VariableSymbol>(
+        scope.table.var_tbl.get(sym_name->to_string()));
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym == nullptr and not exclusive and scope.parent != nullptr) {
@@ -262,8 +263,8 @@ auto spp::analyse::utils::scope_utils::get_type_symbol(
     }
 
     // Get the symbol from the symbol table if it exists.
-    auto sym = scope->table.type_tbl.get(
-        std::const_pointer_cast<asts::TypeIdentifierAst>(sym_name_extracted));
+    auto sym = std::dynamic_pointer_cast<scopes::TypeSymbol>(scope->table.type_tbl.get(
+        std::const_pointer_cast<asts::TypeIdentifierAst>(sym_name_extracted)));
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym == nullptr and not exclusive and scope->parent != nullptr) {
@@ -290,8 +291,8 @@ auto spp::analyse::utils::scope_utils::get_ns_symbol(
     -> std::shared_ptr<scopes::NamespaceSymbol> {
     // Get the symbol from the symbol table if it exists.
     if (sym_name == nullptr) { return nullptr; }
-    auto sym = table.ns_tbl.get(
-        std::const_pointer_cast<asts::IdentifierAst>(sym_name));
+    auto sym = std::dynamic_pointer_cast<scopes::NamespaceSymbol>(table.ns_tbl.get(
+        std::const_pointer_cast<asts::IdentifierAst>(sym_name)));
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym == nullptr and not exclusive and scope->parent != nullptr) {

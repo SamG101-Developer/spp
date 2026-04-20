@@ -54,10 +54,10 @@ auto spp::analyse::scopes::IndividualSymbolTable::rem(
 
 auto spp::analyse::scopes::IndividualSymbolTable::get(
     std::string const &sym_name) const
-    -> AbstractSymbol* {
+    -> std::shared_ptr<AbstractSymbol> {
     // Get a symbol from the table.
     const auto ptr = m_table.find(sym_name);
-    return ptr != m_table.end() ? ptr->second.get() : nullptr;
+    return ptr != m_table.end() ? ptr->second : nullptr;
 }
 
 
