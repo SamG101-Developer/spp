@@ -277,9 +277,9 @@ auto spp::analyse::utils::scope_utils::get_type_symbol(
     }
 
     // Update cache and return the found symbol, or nullptr.
-    if (sym != nullptr) {
-        sym_name->cached_type_symbols.set(this, sym);
-    }
+    // if (sym != nullptr) {
+    //     sym_name->cached_type_symbols.set(this, sym);
+    // }
     return sym;
 }
 
@@ -291,12 +291,12 @@ auto spp::analyse::utils::scope_utils::get_ns_symbol(
     -> std::shared_ptr<scopes::NamespaceSymbol> {
     // Get the symbol from the symbol table if it exists.
     if (sym_name == nullptr) { return nullptr; }
-    auto sym = std::dynamic_pointer_cast<scopes::NamespaceSymbol>(table.ns_tbl.get(
+    auto sym = std::dynamic_pointer_cast<scopes::NamespaceSymbol>(scope.table.ns_tbl.get(
         std::const_pointer_cast<asts::IdentifierAst>(sym_name)));
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
-    if (sym == nullptr and not exclusive and scope->parent != nullptr) {
-        sym = scope->parent->get_ns_symbol(sym_name, exclusive);
+    if (sym == nullptr and not exclusive and scope.parent != nullptr) {
+        sym = scope.parent->get_ns_symbol(sym_name, exclusive);
     }
 
     // Return the found symbol, or nullptr.
@@ -336,7 +336,7 @@ auto spp::analyse::utils::scope_utils::get_var_symbol_outermost(
 
         // Get the symbol (will be in this scope), and return it with the scope.
         auto sym = get_var_symbol(asts::ast_clone(adjusted_name->to<asts::IdentifierAst>()));
-        return std::make_pair(sym, this);
+        return std::make_pair(sym, &scope);
     }
 
     if (is_valid_postfix_expression_static(&expr)) {
@@ -352,7 +352,7 @@ auto spp::analyse::utils::scope_utils::get_var_symbol_outermost(
         }
 
         // Namespace based left-hand-side, such as "a::b::c::my_function()"
-        auto namespace_scope = this;
+        auto namespace_scope = &scope;
         if (is_valid_postfix_expression_static(adjusted_name)) {
             adjusted_name = adjusted_name->to<asts::PostfixExpressionAst>()->lhs.get();
             namespace_scope = namespace_scope->convert_postfix_to_nested_scope(adjusted_name->to<asts::ExpressionAst>());
@@ -363,7 +363,7 @@ auto spp::analyse::utils::scope_utils::get_var_symbol_outermost(
 
     // Identifiers or non-symbolic expressions can use the normal lookup.
     auto sym = get_var_symbol(asts::ast_clone(adjusted_name->to<asts::IdentifierAst>()));
-    return std::make_pair(sym, this);
+    return std::make_pair(sym, &scope);
 }
 
 

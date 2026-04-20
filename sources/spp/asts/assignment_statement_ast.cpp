@@ -6,6 +6,7 @@ module spp.asts;
 import spp.analyse.errors;
 import spp.analyse.scopes;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.cmp_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.scope_utils;
 import spp.analyse.utils.type_utils;
@@ -204,7 +205,7 @@ auto spp::asts::AssignmentStatementAst::stage_9_comptime_resolution(
     // Wrap the rhs value and move it into the value of the variable symbol.
     for (auto i = 0uz; i < lhs.size(); ++i) {
         rhs[i]->stage_9_comptime_resolution(sm, meta);
-        const auto lhs_sym = sm->current_scope->get_var_symbol_outermost(*lhs[i]).first;
+        const auto lhs_sym = analyse::utils::scope_utils::get_var_symbol_outermost(*sm->current_scope, *lhs[i]).first;
 
         // Assign to a full identifier.
         if (is_identifier(lhs[i].get())) {
