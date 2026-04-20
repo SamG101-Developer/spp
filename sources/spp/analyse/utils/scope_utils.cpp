@@ -202,14 +202,14 @@ auto spp::analyse::utils::scope_utils::get_var_symbol(
     std::shared_ptr<asts::IdentifierAst> const &sym_name,
     const bool exclusive,
     const bool sup_scope_search)
-    -> std::shared_ptr<VariableSymbol> {
+    -> std::shared_ptr<scopes::VariableSymbol> {
     // Get the symbol from the symbol table if it exists.
     if (sym_name == nullptr) { return nullptr; }
-    auto sym = table.var_tbl.get(sym_name);
+    auto sym = scope.table.var_tbl.get(sym_name);
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym == nullptr and not exclusive and scope->parent != nullptr) {
-        sym = scope->parent->get_var_symbol(sym_name, exclusive);
+        sym = get_var_symbol(*scope->parent, sym_name, exclusive);
     }
 
     // If the symbol still hasn't been found, check the super scopes for it.
@@ -294,6 +294,7 @@ auto spp::analyse::utils::scope_utils::get_ns_symbol(
 
 
 auto spp::analyse::utils::scope_utils::get_var_symbol_outermost(
+    scopes::Scope const &scope,
     asts::Ast const &expr) const
     -> std::pair<std::shared_ptr<scopes::VariableSymbol>, scopes::Scope const*> {
     // Define helper methods to check expression types.
