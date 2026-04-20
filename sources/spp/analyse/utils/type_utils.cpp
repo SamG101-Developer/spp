@@ -903,13 +903,13 @@ auto spp::analyse::utils::type_utils::register_generic_syms(
     // Register the created generic symbols to the scope.
     for (auto const &e : generic_syms | genex::views::cast_smart<scopes::TypeSymbol>()) {
         scope_utils::rem_type_symbol(*scope, e->name);
-        scope_utils::add_type_symbol(*scopem e);
+        scope_utils::add_type_symbol(*scope, e);
     }
 
     // Register the created generic symbols to the scope.
     for (auto const &e : generic_syms | genex::views::cast_smart<scopes::VariableSymbol>()) {
-        scope_utils::rem_type_symbol(*scope, e->name);
-        scope_utils::add_type_symbol(*scope, e);
+        scope_utils::rem_var_symbol(*scope, e->name);
+        scope_utils::add_var_symbol(*scope, e);
     }
 }
 
