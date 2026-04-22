@@ -27,9 +27,10 @@ auto spp::lex::Lexer::lex() const
     auto in_string = false;
     auto in_single_line_comment = false;
     auto in_multi_line_comment = false;
+    tokens.reserve(m_code.length() / 2);
 
     // Save keywords.
-    auto keywords = std::map<RawTokenType, std::string>();
+    auto keywords = std::unordered_map<RawTokenType, std::string>();
     for (auto [kw, kw_string] : magic_enum::enum_entries<RawTokenType>()) {
         if (kw_string.starts_with("KW_")) {
             keywords[kw] = kw_string.substr(3)
@@ -253,11 +254,12 @@ auto spp::lex::Lexer::lex() const
 
         // No symbolic tokens match, so try to match a keyword.
         auto found_kw = false;
-        for (auto [kw_enum, kw_string] : keywords) {
-            const auto is_prev_alnum = i > 0 and utils::strings::is_alphanumeric(m_code[i - 1]);
+        const auto is_prev_alnum = i > 0 and utils::strings::is_alphanumeric(m_code[i - 1]);
+        for (auto const &[kw_enum, kw_string] : keywords) {
             const auto is_next_alnum = i + kw_string.length() < m_code.length() and utils::strings::is_alphanumeric(m_code[i + kw_string.length()]);
+            const auto remaining = std::string_view(m_code).substr(i);
 
-            if (m_code.substr(i).starts_with(kw_string) and not is_prev_alnum and not is_next_alnum) {
+            if (remaining.starts_with(kw_string) and not is_prev_alnum and not is_next_alnum) {
                 tokens.emplace_back(kw_enum, kw_string);
                 i += kw_string.length();
                 found_kw = true;
@@ -288,6 +290,7 @@ auto spp::lex::Lexer::lex() const
 
     // Add a final EOF token.
     tokens.emplace_back(RawTokenType::SP_EOF, "");
+    tokens.shrink_to_fit();
     return tokens;
 }
 
