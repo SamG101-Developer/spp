@@ -2074,19 +2074,21 @@ auto spp::parse::ParserSpp::parse_literal_boolean()
 }
 
 
-auto spp::parse::ParserSpp::parse_literal_tuple(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser)
+auto spp::parse::ParserSpp::parse_literal_tuple(
+    std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser)
     -> std::unique_ptr<asts::TupleLiteralAst> {
-    auto parser_1 = [= BOOST_PP_COMMA() this] mutable { return parse_literal_tuple_1_element(std::move(elem_parser)); };
-    auto parser_n = [= BOOST_PP_COMMA() this] mutable { return parse_literal_tuple_n_elements(std::move(elem_parser)); };
+    auto parser_1 = [elem_parser, this] mutable { return parse_literal_tuple_1_element(std::move(elem_parser)); };
+    auto parser_n = [elem_parser, this] mutable { return parse_literal_tuple_n_elements(std::move(elem_parser)); };
     PARSE_ALTERNATE(p1, asts::TupleLiteralAst, parser_1, parser_n);
     return FORWARD_AST(p1);
 }
 
 
-auto spp::parse::ParserSpp::parse_literal_array(std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser)
+auto spp::parse::ParserSpp::parse_literal_array(
+    std::function<std::unique_ptr<asts::ExpressionAst>()> &&elem_parser)
     -> std::unique_ptr<asts::ArrayLiteralAst> {
-    auto parser_e = [= BOOST_PP_COMMA() this] mutable { return parse_literal_array_explicit_elements(std::move(elem_parser)); };
-    auto parser_r = [= BOOST_PP_COMMA() this] mutable { return parse_literal_array_repeated_element(std::move(elem_parser)); };
+    auto parser_e = [elem_parser, this] mutable { return parse_literal_array_explicit_elements(std::move(elem_parser)); };
+    auto parser_r = [elem_parser, this] mutable { return parse_literal_array_repeated_element(std::move(elem_parser)); };
     PARSE_ALTERNATE(p1, asts::ArrayLiteralAst, parser_e, parser_r);
     return FORWARD_AST(p1);
 }
