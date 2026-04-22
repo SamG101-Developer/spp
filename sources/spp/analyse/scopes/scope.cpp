@@ -27,7 +27,7 @@ import spp.asts.utils.ast_utils;
 import spp.utils.error_formatter;
 import spp.utils.functions;
 import spp.compiler.module_tree;
-import ankerl;
+import ankerl.unordered_dense;
 import genex;
 
 
@@ -126,14 +126,14 @@ auto spp::analyse::scopes::Scope::shift_scope_for_namespaced_type(
     auto shifted_scope = &scope;
 
     // Iterate to move through the namespace parts first.
-    for (auto &&ns_part : ns_parts) {
+    for (auto const &ns_part : ns_parts) {
         const auto sym = shifted_scope->get_ns_symbol(ns_part);
         if (sym == nullptr) { break; }
         shifted_scope = sym->scope;
     }
 
     // Iterate through the type parts (except the final one) next.
-    for (auto &&type_part : type_parts | genex::views::drop_last(1)) {
+    for (auto const &type_part : type_parts | genex::views::drop_last(1)) {
         const auto sym = shifted_scope->get_type_symbol(type_part);
         if (sym == nullptr or sym->is_generic) { break; }
         shifted_scope = sym->scope;
@@ -167,7 +167,7 @@ auto spp::analyse::scopes::Scope::get_generics() const
             | genex::views::filter([](auto const &sym) { return sym->is_generic; })
             | genex::to<std::vector>();
 
-        for (auto &&t : all_type_syms) {
+        for (auto const &t : all_type_syms) {
             if (genex::contains(type_names, *t->name, genex::meta::deref)) { continue; }
             syms.emplace_back(asts::GenericArgumentTypeKeywordAst::from_symbol(*t));
             type_names.emplace_back(t->name);
@@ -177,7 +177,7 @@ auto spp::analyse::scopes::Scope::get_generics() const
             | genex::views::filter([](auto const &sym) { return sym->is_generic; })
             | genex::to<std::vector>();
 
-        for (auto &&v : all_var_syms) {
+        for (auto const &v : all_var_syms) {
             if (genex::contains(comp_names, *v->name, genex::meta::deref)) { continue; }
             syms.emplace_back(asts::GenericArgumentCompKeywordAst::from_symbol(*v));
             comp_names.emplace_back(v->name);
@@ -196,16 +196,16 @@ auto spp::analyse::scopes::Scope::get_extended_generic_symbols(
     // Convert the provided generic arguments into symbols. Todo: filter to "is_generic"?
     const auto type_syms = generics
         | genex::views::cast_dynamic<asts::GenericArgumentTypeAst*>()
-        | genex::views::transform([this](auto &&gen_arg) { return get_type_symbol(gen_arg->val); })
-        | genex::views::filter([](auto &&sym) { return sym != nullptr and sym->is_generic; })
+        | genex::views::transform([this](auto const &gen_arg) { return get_type_symbol(gen_arg->val); })
+        | genex::views::filter([](auto const &sym) { return sym != nullptr and sym->is_generic; })
         | genex::views::cast_smart<Symbol>()
         | genex::to<std::vector>();
 
     const auto comp_syms = generics
         | genex::views::cast_dynamic<asts::GenericArgumentCompAst*>()
-        | genex::views::filter([&ignore](auto &&gen_arg) { return ignore == nullptr or *gen_arg->val != *ignore; })
-        | genex::views::transform([this](auto &&gen_arg) { return get_var_symbol(asts::ast_clone(gen_arg->val->template to<asts::IdentifierAst>())); })
-        | genex::views::filter([](auto &&sym) { return sym != nullptr and sym->is_generic; })
+        | genex::views::filter([&ignore](auto const &gen_arg) { return ignore == nullptr or *gen_arg->val != *ignore; })
+        | genex::views::transform([this](auto const &gen_arg) { return get_var_symbol(asts::ast_clone(gen_arg->val->template to<asts::IdentifierAst>())); })
+        | genex::views::filter([](auto const &sym) { return sym != nullptr and sym->is_generic; })
         | genex::views::cast_smart<Symbol>()
         | genex::to<std::vector>();
 

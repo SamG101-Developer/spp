@@ -39,7 +39,7 @@ namespace spp::analyse::scopes {
  * This ASt is further inherited into the SubroutinePrototypeAst and CoroutinePrototypeAst, which add additional
  * analysis checks.
  */
-SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : virtual Ast, SupMemberAst, ModuleMemberAst, mixins::VisibilityEnabledAst {
+SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : virtual Ast, SupMemberAst, ModuleMemberAst, mixins::VisibilityAst {
 protected:
     /**
      * Using a list because there are times that the collection is iterated whilst being appended to.

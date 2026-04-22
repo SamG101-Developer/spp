@@ -4,7 +4,7 @@ module;
 module spp.asts.meta.compiler_meta_data;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
-import ankerl;
+import ankerl.unordered_dense;
 
 
 SPP_MOD_BEGIN

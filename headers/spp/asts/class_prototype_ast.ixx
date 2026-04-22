@@ -32,7 +32,7 @@ namespace spp::asts {
  * class, including its name and any generic parameters it may have. The attributes are defined in the implementation
  * ast for this class, allowing for scoping rules to be made easier.
  */
-SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : virtual Ast, mixins::VisibilityEnabledAst, SupMemberAst, ModuleMemberAst {
+SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : virtual Ast, mixins::VisibilityAst, SupMemberAst, ModuleMemberAst {
 private:
     std::vector<std::pair<analyse::scopes::Scope*, std::unique_ptr<ClassPrototypeAst>>> m_generic_substitutions;
 

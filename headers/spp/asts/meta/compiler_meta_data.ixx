@@ -2,7 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.meta.compiler_meta_data;
-import ankerl;
+import spp.utils.ptr;
+import ankerl.unordered_dense;
 import llvm;
 import std;
 
@@ -54,8 +55,8 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     LoopExpressionAst *current_loop_ast;
     std::shared_ptr<std::map<std::size_t, std::tuple<ExpressionAst*, std::shared_ptr<TypeAst>, analyse::scopes::Scope*>>> loop_return_types;
     std::shared_ptr<TypeAst> object_init_type;
-    std::map<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>, ankerl::ptr_cmp<std::shared_ptr<IdentifierAst>>> infer_source;
-    std::map<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>, ankerl::ptr_cmp<std::shared_ptr<IdentifierAst>>> infer_target;
+    std::map<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>, utils::ptr::ptr_cmp<std::shared_ptr<IdentifierAst>>> infer_source;
+    std::map<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>, utils::ptr::ptr_cmp<std::shared_ptr<IdentifierAst>>> infer_target;
     ExpressionAst *postfix_expression_lhs;
     ExpressionAst *unary_expression_rhs;
     bool skip_type_analysis_generic_checks;

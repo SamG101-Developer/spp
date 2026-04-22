@@ -6,7 +6,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_iterator;
 import spp.analyse.scopes.scope_range;
 import spp.codegen.llvm_ctx;
-import ankerl;
+import ankerl.unordered_dense;
 import std;
 
 namespace spp::asts {

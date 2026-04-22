@@ -3,7 +3,8 @@ module;
 
 export module spp.analyse.utils.type_utils;
 import spp.asts.meta.compiler_meta_data;
-import ankerl;
+import spp.utils.ptr;
+import ankerl.unordered_dense;
 import std;
 
 namespace spp::asts {
@@ -34,8 +35,8 @@ namespace spp::analyse::scopes {
 namespace spp::analyse::utils::type_utils {
     SPP_EXP_CLS using GenericInferenceMap = ankerl::unordered_dense::map<
         std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*,
-        ankerl::ptr_hash<std::shared_ptr<asts::TypeIdentifierAst>>,
-        ankerl::ptr_eq<std::shared_ptr<asts::TypeIdentifierAst>>>;
+        spp::utils::ptr::ptr_hash<std::shared_ptr<asts::TypeIdentifierAst>>,
+        spp::utils::ptr::ptr_eq<std::shared_ptr<asts::TypeIdentifierAst>>>;
 
     SPP_EXP_FUN auto convention_eq(
         asts::TypeAst const &lhs_type,

@@ -25,6 +25,7 @@ import spp.asts.type_unary_expression_operator_ast;
 import spp.asts.type_unary_expression_operator_borrow_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
+import ankerl.unordered_dense;
 import absl;
 import genex;
 

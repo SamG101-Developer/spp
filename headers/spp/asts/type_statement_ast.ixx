@@ -31,7 +31,7 @@ namespace spp::asts {
  * complex types, such as aliasing vectors, or partially specialized hash maps etc. For example,
  * @code type SecureByteMap[T] = std::collections::HashMap[K=Byte, V=T, A=SecureAlloc[(K, V)]]@endcode
  */
-SPP_EXP_CLS struct spp::asts::TypeStatementAst final : StatementAst, ModuleMemberAst, SupMemberAst, mixins::VisibilityEnabledAst {
+SPP_EXP_CLS struct spp::asts::TypeStatementAst final : StatementAst, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
 private:
     bool m_generated;
 

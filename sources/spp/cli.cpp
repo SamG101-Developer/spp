@@ -15,10 +15,9 @@ import spp.compiler.compiler_boot;
 import spp.compiler.module_tree;
 import spp.lex.tokens;
 import spp.utils.files;
-
 import cli11;
 import genex;
-import toml;
+import tomlplusplus;
 
 
 inline constexpr std::string OUT_FOLDER = "out";
@@ -37,7 +36,7 @@ inline const std::string MAIN_FILE_CONTENTS = R"(
         std::io::println("Hello world!")
     })";
 
-const auto CONFIG_FILE_CONTENTS = R"(
+inline const auto CONFIG_FILE_CONTENTS = R"(
     [project]
     name = "$"
     version = "0.1.0"
@@ -52,7 +51,7 @@ auto spp::cli::run_cli(
     char **argv)
     -> std::int32_t {
     // Create the CLI object and require that a subcommand is provided.
-    auto app = cli11::App("SPP build tool", "spp");
+    auto app = CLI::App("SPP build tool", "spp");
     app.require_subcommand(1);
     auto mode = std::string();
 
@@ -65,19 +64,19 @@ auto spp::cli::run_cli(
     app.add_subcommand("build", "Build the project")
        ->callback([&mode] { handle_build(mode); })
        ->add_option("-m,--mode", mode, "Build mode (dev or rel)")
-       ->check(cli11::IsMember({"dev", "rel"}))
+       ->check(CLI::IsMember({"dev", "rel"}))
        ->default_val("dev");
 
     app.add_subcommand("run", "Run the project")
        ->callback([&mode] { handle_run(mode); })
        ->add_option("-m,--mode", mode, "Run mode (dev or rel)")
-       ->check(cli11::IsMember({"dev", "rel"}))
+       ->check(CLI::IsMember({"dev", "rel"}))
        ->default_val("dev");
 
     app.add_subcommand("clean", "Clean the project")
        ->callback([&mode] { handle_clean(mode); })
        ->add_option("-m,--mode", mode, "Clean mode (dev, rel or all)")
-       ->check(cli11::IsMember({"dev", "rel", "all"}))
+       ->check(CLI::IsMember({"dev", "rel", "all"}))
        ->default_val("all");
 
     app.add_subcommand("test", "Test the project")
@@ -114,7 +113,7 @@ auto spp::cli::handle_init()
     std::filesystem::create_directory(cwd / SRC_FOLDER / cwd.filename());
 
     // Fill in "main.spp" and "spp.toml" with template content.
-    utils::files::write_file(cwd / SRC_FOLDER / MAIN_FILE, MAIN_FILE_CONTENTS);
+    utils::files::write_file(cwd / SRC_FOLDER / MAIN_FILE, format_default_file_contents(MAIN_FILE_CONTENTS));
     utils::files::write_file(cwd / CONFIG_FILE, create_default_config_for(cwd.filename().string()));
 }
 
@@ -353,10 +352,10 @@ auto spp::cli::create_default_config_for(
     std::string const &project_name)
     -> std::string {
     // Inject the project name into the config template.
-    auto content = std::string(CONFIG_FILE_CONTENTS);
-    const auto pos = content.find('$');
-    content.replace(pos, 1, project_name);
-    return content;
+    auto contents = format_default_file_contents(CONFIG_FILE_CONTENTS);
+    const auto pos = contents.find('$');
+    contents.replace(pos, 1, project_name);
+    return contents;
 }
 
 
@@ -389,4 +388,18 @@ auto spp::cli::unit_test(
     const auto m = mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL;
     const auto c = compiler::Compiler::for_unit_tests(m, std::move(main_code));
     c->compile();
+}
+
+
+auto spp::cli::format_default_file_contents(
+    const std::string_view contents)
+    -> std::string {
+    // Remove the first newline, and replace "    " with "".
+    auto out = std::string();
+    for (const auto&line: contents | genex::views::split('\n')) {
+        if (line.size() <= 0) { continue; }
+        auto formatted = line | genex::to<std::string>();
+        formatted.replace(formatted.find("    "), 4, "");
+    }
+    return out;
 }

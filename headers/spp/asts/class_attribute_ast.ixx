@@ -21,7 +21,7 @@ namespace spp::asts {
  * The ClassAttributeAst represents an attribute of a class. It is defined on the class prototype ast, and is used to
  * add "state" to a type.
  */
-SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : virtual Ast, ClassMemberAst, mixins::VisibilityEnabledAst {
+SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : virtual Ast, ClassMemberAst, mixins::VisibilityAst {
     /**
      * The list of annotations that are applied to this class attribute. Typically, access modifiers in this context.
      */

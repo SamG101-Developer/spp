@@ -176,7 +176,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_7_analyse_semant
     // If we are function folding, create transformed asts.
     if (fold != nullptr) {
         m_folded_asts = handle_function_folding(sm, meta);
-        for (auto &&ast : m_folded_asts) { ast->stage_7_analyse_semantics(sm, meta); }
+        for (auto const &ast : m_folded_asts) { ast->stage_7_analyse_semantics(sm, meta); }
         return;
     }
 
@@ -238,7 +238,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_8_check_memory(
     -> void {
     // If a fold is taking place, analyse the folded transformations.
     if (fold != nullptr) {
-        for (auto &&ast : m_folded_asts) { ast->stage_8_check_memory(sm, meta); }
+        for (auto const &ast : m_folded_asts) { ast->stage_8_check_memory(sm, meta); }
         return;
     }
 
@@ -382,7 +382,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::infer_type(
     // For function folding, collect a tuple of all return types.
     if (not m_folded_asts.empty()) {
         auto folded_return_types = m_folded_asts
-            | genex::views::transform([sm, meta](auto &&ast) { return ast->infer_type(sm, meta); })
+            | genex::views::transform([sm, meta](auto const &ast) { return ast->infer_type(sm, meta); })
             | genex::to<std::vector>();
         auto tuple_type = generate::common_types::tuple_type(0, std::move(folded_return_types));
         return tuple_type;

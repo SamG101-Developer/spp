@@ -164,15 +164,15 @@ auto spp::asts::AnnotationAst::stage_5_load_super_scopes(
         if (func_ctx) { func_ctx->builtin_annotation = this; }
     }
     else if (fq_name == "std::annotations::public") {
-        const auto vis_ctx = m_ctx->to<mixins::VisibilityEnabledAst>();
+        const auto vis_ctx = m_ctx->to<mixins::VisibilityAst>();
         if (vis_ctx) { vis_ctx->visibility = std::make_pair(utils::Visibility::PUBLIC, this); }
     }
     else if (fq_name == "std::annotations::protected") {
-        const auto vis_ctx = m_ctx->to<mixins::VisibilityEnabledAst>();
+        const auto vis_ctx = m_ctx->to<mixins::VisibilityAst>();
         if (vis_ctx) { vis_ctx->visibility = std::make_pair(utils::Visibility::PROTECTED, this); }
     }
     else if (fq_name == "std::annotations::private") {
-        const auto vis_ctx = m_ctx->to<mixins::VisibilityEnabledAst>();
+        const auto vis_ctx = m_ctx->to<mixins::VisibilityAst>();
         if (vis_ctx) { vis_ctx->visibility = std::make_pair(utils::Visibility::PRIVATE, this); }
     }
     else if (fq_name == "std::annotations::virtual_method") {

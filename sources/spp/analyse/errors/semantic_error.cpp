@@ -36,22 +36,38 @@ import spp.asts.type_statement_ast;
 
 
 SPP_MOD_BEGIN
-auto spp::analyse::errors::SemanticError::add_header(const std::size_t err_code, std::string &&msg) -> void {
+auto spp::analyse::errors::SemanticError::add_header(
+    const std::size_t err_code,
+    std::string &&msg)
+    -> void {
+    // Add a header to the error.
     m_error_info.emplace_back(nullptr, ErrorInformationType::HEADER, std::move(msg), "E" + std::to_string(err_code));
 }
 
 
-auto spp::analyse::errors::SemanticError::add_error(asts::Ast const *ast, std::string &&tag) -> void {
+auto spp::analyse::errors::SemanticError::add_error(
+    asts::Ast const *ast,
+    std::string &&tag)
+    -> void {
+    // Add an error information entry for the given AST and tag.
     m_error_info.emplace_back(ast, ErrorInformationType::ERROR, std::move(tag), "");
 }
 
 
-auto spp::analyse::errors::SemanticError::add_context_for_error(asts::Ast const *ast, std::string &&tag) -> void {
+auto spp::analyse::errors::SemanticError::add_context_for_error(
+    asts::Ast const *ast,
+    std::string &&tag)
+    -> void {
+    // Add a context information entry for the given AST and tag.
     m_error_info.emplace_back(ast, ErrorInformationType::CONTEXT, std::move(tag), "");
 }
 
 
-auto spp::analyse::errors::SemanticError::add_footer(std::string &&note, std::string &&help) -> void {
+auto spp::analyse::errors::SemanticError::add_footer(
+    std::string &&note,
+    std::string &&help)
+    -> void {
+    // Add a footer to the error with the given note and help message.
     m_error_info.emplace_back(nullptr, ErrorInformationType::FOOTER, std::move(note), std::move(help));
 }
 
@@ -61,58 +77,6 @@ auto spp::analyse::errors::SemanticError::clone() const
     // Use the copy constructor to clone the error.
     return std::make_unique<SemanticError>(*this);
 }
-
-
-// spp::analyse::errors::SppAnnotationInvalidApplicationError::SppAnnotationInvalidApplicationError(
-//     asts::AnnotationAst const &annotation,
-//     asts::Ast const &ctx,
-//     const std::string_view block_list) {
-//     add_header(
-//         0, "SPP Annotation Invalid Application Error");
-//     add_context_for_error(
-//         &annotation,
-//         "Annotation defined here");
-//     add_error(
-//         &ctx,
-//         "Invalid " + std::string(block_list) + " context defined here");
-//     add_footer(
-//         "This annotation is not compatible with the current context.",
-//         "Remove the annotation from here");
-// }
-//
-//
-// spp::analyse::errors::SppAnnotationConflictError::SppAnnotationConflictError(
-//     asts::AnnotationAst const &first_annotation,
-//     asts::AnnotationAst const &conflicting_annotation,
-//     asts::Ast const &ctx) {
-//     add_header(
-//         1, "SPP Annotation Conflict Error");
-//     add_context_for_error(
-//         &first_annotation,
-//         "First annotation defined here");
-//     add_context_for_error(
-//         &conflicting_annotation,
-//         "Conflicting annotation defined here");
-//     add_error(
-//         &ctx,
-//         "In this context");
-//     add_footer(
-//         "These two annotations cannot be applied in the same context.",
-//         "Remove one of the annotations");
-// }
-//
-//
-// spp::analyse::errors::SppAnnotationInvalidError::SppAnnotationInvalidError(
-//     asts::AnnotationAst const &annotation) {
-//     add_header(
-//         2, "SPP Annotation Invalid Error");
-//     add_error(
-//         &annotation,
-//         "Invalid annotation defined here");
-//     add_footer(
-//         "This annotation is not recognized.",
-//         "Remove or correct the annotation");
-// }
 
 
 spp::analyse::errors::SppExpressionTypeInvalidError::SppExpressionTypeInvalidError(

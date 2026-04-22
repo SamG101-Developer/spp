@@ -29,7 +29,7 @@ namespace spp::asts {
  * The CmpStatementAst represents a compile time definition statement at either the module or superimposition level. It
  * is analogous to Rust's "const" statement.
  */
-SPP_EXP_CLS struct spp::asts::CmpStatementAst final : StatementAst, ModuleMemberAst, SupMemberAst, mixins::VisibilityEnabledAst {
+SPP_EXP_CLS struct spp::asts::CmpStatementAst final : StatementAst, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
 private:
     std::shared_ptr<analyse::scopes::VariableSymbol> m_alias_sym;
 

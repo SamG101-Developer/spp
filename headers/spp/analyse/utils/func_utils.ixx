@@ -3,7 +3,8 @@ module;
 
 export module spp.analyse.utils.func_utils;
 import spp.asts.meta.compiler_meta_data;
-import ankerl;
+import spp.utils.ptr;
+import ankerl.unordered_dense;
 import llvm;
 import std;
 
@@ -44,24 +45,24 @@ namespace spp::analyse::utils::func_utils {
     using InferenceSourceMap = std::map<
         std::shared_ptr<asts::IdentifierAst>,
         std::shared_ptr<asts::TypeAst>,
-        ankerl::ptr_cmp<std::shared_ptr<asts::IdentifierAst>>>;
+        spp::utils::ptr::ptr_cmp<std::shared_ptr<asts::IdentifierAst>>>;
 
     using InferenceTargetMap = std::map<
         std::shared_ptr<asts::IdentifierAst>,
         std::shared_ptr<asts::TypeAst>,
-        ankerl::ptr_cmp<std::shared_ptr<asts::IdentifierAst>>>;
+        spp::utils::ptr::ptr_cmp<std::shared_ptr<asts::IdentifierAst>>>;
 
     using InferenceResultCompMap = ankerl::unordered_dense::map<
         std::shared_ptr<asts::TypeIdentifierAst>,
         std::vector<asts::ExpressionAst const*>,
-        ankerl::ptr_hash<std::shared_ptr<asts::TypeIdentifierAst>>,
-        ankerl::ptr_eq<std::shared_ptr<asts::TypeIdentifierAst>>>;
+        spp::utils::ptr::ptr_hash<std::shared_ptr<asts::TypeIdentifierAst>>,
+        spp::utils::ptr::ptr_eq<std::shared_ptr<asts::TypeIdentifierAst>>>;
 
     using InferenceResultTypeMap = ankerl::unordered_dense::map<
         std::shared_ptr<asts::TypeIdentifierAst>,
         std::vector<std::shared_ptr<const asts::TypeAst>>,
-        ankerl::ptr_hash<std::shared_ptr<asts::TypeIdentifierAst>>,
-        ankerl::ptr_eq<std::shared_ptr<asts::TypeIdentifierAst>>>;
+        spp::utils::ptr::ptr_hash<std::shared_ptr<asts::TypeIdentifierAst>>,
+        spp::utils::ptr::ptr_eq<std::shared_ptr<asts::TypeIdentifierAst>>>;
 
     /**
      * Get the function owner type, scope and name from an expression AST. This is used to determine information related

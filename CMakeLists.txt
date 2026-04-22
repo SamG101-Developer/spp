@@ -7,20 +7,24 @@ set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_MODULE_STD ON)
 set(CMAKE_INSTALL_RPATH "/usr/local/gcc-dev/lib64")
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+set(ANKERL_ENABLE_MODULES ON CACHE BOOL "Enable unordered_dense C++ modules" FORCE)
+set(TOMLPLUSPLUS_BUILD_MODULES ON CACHE BOOL "Enable tomlplusplus C++ modules" FORCE)
 
 # Find dependencies.
 find_package(ColEx REQUIRED) # colored console output
 find_package(OpEx REQUIRED) # custom operators
 find_package(GenEx REQUIRED) # iterator utilities
 
+add_subdirectory(/home/sam/unordered_dense unordered_dense_build) # high-performance hash maps and sets
+add_subdirectory(/home/sam/tomlplusplus tomlplusplus_build) # toml parsing
+add_subdirectory(/home/sam/json json_build) # json parsing
+
 find_package(absl REQUIRED) # hashing and string utilities
-find_package(nlohmann_json REQUIRED) # json parsing
-find_package(tomlplusplus REQUIRED) # toml parsing
 find_package(magic_enum REQUIRED) # enum reflection
 find_package(Boost 1.89.0 REQUIRED) # preprocessor metaprogramming utilities
 find_package(mp++ REQUIRED) # multi-precision numbers and floating point
 find_package(Glob) # file globbing
-find_package(CLI11 REQUIRED) # command line parsing
+find_package(CLI11 1.9.4 REQUIRED) # command line parsing
 find_package(LLVM 22.0.0 REQUIRED CONFIG) # LLVM libraries
 
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
@@ -45,12 +49,17 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_link_options(spp_lib PRIVATE -pg)
 endif ()
 
+target_compile_features(CLI11::CLI11_Module INTERFACE cxx_std_26)
 target_compile_features(spp_lib
         PRIVATE cxx_std_26)
 target_link_libraries(spp_lib PUBLIC
-        absl::hash absl::strings nlohmann_json::nlohmann_json magic_enum::magic_enum Boost::boost mp++::mp++ Glob
-        CLI11::CLI11 ColEx::ColEx OpEx::OpEx GenEx::GenEx
-        LLVMCore LLVMSupport LLVMCodeGen LLVMScalarOpts LLVMTransformUtils)
+        nlohmann_json::nlohmann_json
+        tomlplusplus::tomlplusplus tomlplusplus_modules
+        unordered_dense::unordered_dense unordered_dense::unordered_dense_module
+        magic_enum::magic_enum mp++::mp++ absl::hash absl::strings
+        Boost::boost CLI11::CLI11_Module
+        ColEx::ColEx OpEx::OpEx GenEx::GenEx
+        Glob LLVMCore LLVMSupport LLVMCodeGen LLVMScalarOpts LLVMTransformUtils)
 target_sources(spp_lib
         PUBLIC FILE_SET CXX_MODULES FILES ${MODULE_FILES}
         PRIVATE ${SOURCE_FILES})

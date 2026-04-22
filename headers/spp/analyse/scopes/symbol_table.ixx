@@ -2,7 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.scopes.symbol_table;
-import ankerl;
+import spp.utils.ptr;
+import ankerl.unordered_dense;
 import std;
 
 
@@ -25,7 +26,7 @@ namespace spp::asts {
 SPP_EXP_CLS template <typename I, typename S>
 class spp::analyse::scopes::IndividualSymbolTable {
 private:
-    ankerl::unordered_dense::map<std::shared_ptr<I>, std::shared_ptr<S>, ankerl::ptr_hash<std::shared_ptr<I>>, ankerl::ptr_eq<std::shared_ptr<I>>> m_table;
+    ankerl::unordered_dense::map<std::shared_ptr<I>, std::shared_ptr<S>, utils::ptr::ptr_hash<std::shared_ptr<I>>, utils::ptr::ptr_eq<std::shared_ptr<I>>> m_table;
 
 public:
     IndividualSymbolTable();

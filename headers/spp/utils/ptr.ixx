@@ -17,4 +17,31 @@ namespace spp::utils::ptr {
         if (ptr == nullptr) { return nullptr; }
         return std::dynamic_pointer_cast<Out>(ptr);
     }
+
+    SPP_EXP_CLS template <typename T>
+    struct ptr_eq {
+        auto operator()(T const &lhs, T const &rhs) const -> bool {
+            if (lhs == nullptr && rhs == nullptr) { return true; }
+            if (lhs == nullptr || rhs == nullptr) { return false; }
+            return *lhs == *rhs;
+        }
+    };
+
+    SPP_EXP_CLS template <typename T>
+    struct ptr_cmp {
+        auto operator()(T const &lhs, T const &rhs) const -> bool {
+            if (lhs == nullptr && rhs == nullptr) { return false; }
+            if (lhs == nullptr) { return true; }
+            if (rhs == nullptr) { return false; }
+            return *lhs < *rhs;
+        }
+    };
+
+    SPP_EXP_CLS template <typename T>
+    struct ptr_hash {
+        auto operator()(T const &ptr) const -> std::size_t {
+            if (ptr == nullptr) { return 0; }
+            return ptr->ankerl_hash();
+        }
+    };
 }

@@ -53,4 +53,8 @@ namespace spp::cli {
         std::string const &mode,
         std::string &&main_code)
         -> void;
+
+    auto format_default_file_contents(
+        std::string_view contents)
+        -> std::string;
 }
