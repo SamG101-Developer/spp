@@ -30,6 +30,10 @@ const auto UPPER_IDENTIFIER_TOKENS = std::vector{
     spp::lex::RawTokenType::LX_DIGIT
 };
 
+constexpr auto kBinChars = std::string_view("01");
+constexpr auto kOctChars = std::string_view("01234567");
+constexpr auto kHexChars = std::string_view("0123456789abcdefABCDEF");
+
 
 auto spp::parse::ParserSpp::parse()
     -> std::unique_ptr<asts::ModulePrototypeAst> {
@@ -2284,19 +2288,19 @@ auto spp::parse::ParserSpp::parse_lexeme_bin_integer()
     auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_NUMBER, std::string());
 
     PARSE_ONCE(p1, [this] { return parse_specific_character('0'); });
-    out->token_data += std::move(p1->token_data);
+    out->token_data += p1->token_data;
 
     PARSE_ONCE(p2, [this] { return parse_specific_character('b'); });
-    out->token_data += std::move(p2->token_data);
+    out->token_data += p2->token_data;
 
     PARSE_ONCE(p3, parse_lexeme_digit);
     if (p3->token_data[0] != '0' and p3->token_data[0] != '1') { return nullptr; }
-    out->token_data += std::move(p3->token_data);
+    out->token_data += p3->token_data;
 
     while (m_tokens[m_pos].type == lex::RawTokenType::LX_DIGIT) {
         PARSE_ONCE(p4, parse_lexeme_digit);
         if (p4->token_data[0] != '0' and p4->token_data[0] != '1') { return nullptr; }
-        out->token_data += std::move(p4->token_data);
+        out->token_data += p4->token_data;
     }
 
     return out;
@@ -2309,19 +2313,19 @@ auto spp::parse::ParserSpp::parse_lexeme_oct_integer()
     auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_NUMBER, std::string());
 
     PARSE_ONCE(p1, [this] { return parse_specific_character('0'); });
-    out->token_data += std::move(p1->token_data);
+    out->token_data += p1->token_data;
 
     PARSE_ONCE(p2, [this] { return parse_specific_character('o'); });
-    out->token_data += std::move(p2->token_data);
+    out->token_data += p2->token_data;
 
     PARSE_ONCE(p3, parse_lexeme_digit);
     if (p3->token_data[0] < '0' or p3->token_data[0] > '7') { return nullptr; }
-    out->token_data += std::move(p3->token_data);
+    out->token_data += p3->token_data;
 
     while (m_tokens[m_pos].type == lex::RawTokenType::LX_DIGIT) {
         PARSE_ONCE(p4, parse_lexeme_digit);
         if (p4->token_data[0] < '0' or p4->token_data[0] > '7') { return nullptr; }
-        out->token_data += std::move(p4->token_data);
+        out->token_data += p4->token_data;
     }
 
     return out;
@@ -2334,11 +2338,11 @@ auto spp::parse::ParserSpp::parse_lexeme_dec_integer()
     auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_NUMBER, std::string());
 
     PARSE_ONCE(p1, parse_lexeme_digit);
-    out->token_data += std::move(p1->token_data);
+    out->token_data += p1->token_data;
 
     while (m_tokens[m_pos].type == lex::RawTokenType::LX_DIGIT) {
         PARSE_ONCE(p2, parse_lexeme_digit);
-        out->token_data += std::move(p2->token_data);
+        out->token_data += p2->token_data;
     }
 
     return out;
@@ -2351,19 +2355,19 @@ auto spp::parse::ParserSpp::parse_lexeme_hex_integer()
     auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_NUMBER, std::string());
 
     PARSE_ONCE(p1, [this] { return parse_specific_character('0'); });
-    out->token_data += std::move(p1->token_data);
+    out->token_data += p1->token_data;
 
     PARSE_ONCE(p2, [this] { return parse_specific_character('x'); });
-    out->token_data += std::move(p2->token_data);
+    out->token_data += p2->token_data;
 
     PARSE_ONCE(p3, parse_lexeme_character_or_digit);
-    if (std::string("0123456789abcdefABCDEF").find(p3->token_data[0]) == std::string::npos) { return nullptr; }
-    out->token_data += std::move(p3->token_data);
+    if (kHexChars.find(p3->token_data[0]) == std::string::npos) { return nullptr; }
+    out->token_data += p3->token_data;
 
     while (m_tokens[m_pos].type == lex::RawTokenType::LX_CHARACTER) {
         PARSE_ONCE(p4, parse_lexeme_character_or_digit);
-        if (std::string("0123456789abcdefABCDEF").find(p4->token_data[0]) == std::string::npos) { return nullptr; }
-        out->token_data += std::move(p4->token_data);
+        if (kHexChars.find(p4->token_data[0]) == std::string::npos) { return nullptr; }
+        out->token_data += p4->token_data;
     }
 
     return out;
@@ -2376,13 +2380,13 @@ auto spp::parse::ParserSpp::parse_lexeme_single_quote_char()
     auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_CHAR, std::string());
 
     PARSE_ONCE(p1, parse_token_single_quote);
-    out->token_data += std::move(p1->token_data);
+    out->token_data += p1->token_data;
 
     PARSE_ONCE(p2, parse_lexeme_character);
-    out->token_data += std::move(p2->token_data);
+    out->token_data += p2->token_data;
 
     PARSE_ONCE(p3, parse_token_single_quote);
-    out->token_data += std::move(p3->token_data);
+    out->token_data += p3->token_data;
 
     return out;
 }
@@ -2394,15 +2398,15 @@ auto spp::parse::ParserSpp::parse_lexeme_double_quote_string()
     auto out = CREATE_AST(asts::TokenAst, m_pos, lex::SppTokenType::LX_STRING, std::string());
 
     PARSE_ONCE(p1, parse_token_double_quote);
-    out->token_data += std::move(p1->token_data);
+    out->token_data += p1->token_data;
 
     while (m_tokens[m_pos].type == lex::RawTokenType::LX_CHARACTER) {
         PARSE_ONCE(p2, parse_lexeme_character);
-        out->token_data += std::move(p2->token_data);
+        out->token_data += p2->token_data;
     }
 
     PARSE_ONCE(p3, parse_token_double_quote);
-    out->token_data += std::move(p3->token_data);
+    out->token_data += p3->token_data;
 
     return out;
 }

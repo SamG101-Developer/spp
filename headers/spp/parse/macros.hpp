@@ -71,30 +71,28 @@
     }
 
 
-#define MAKE_METHOD_VECTOR(...) std::vector{                                                    \
-    BOOST_PP_SEQ_FOR_EACH(WRAP_METHOD, BOOST_PP_EMPTY(), BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)) \
-}
-
-
-#define WRAP_METHOD(_1, _2, m) parser_method_t<alt_t>([=, this] mutable { \
-    return std::unique_ptr<alt_t>(m().release());                         \
-}),
+#define PARSE_ALTERNATE_TRY(_1, base_type, method)                \
+    {                                                             \
+        const auto _alt_pos = m_pos;                              \
+        auto _alt_tmp = method();                                 \
+        if (_alt_tmp != nullptr) {                                \
+            _pa = std::unique_ptr<base_type>(_alt_tmp.release()); \
+            break;                                                \
+        }                                                         \
+        m_pos = _alt_pos;                                         \
+    }
 
 
 #define PARSE_ALTERNATE(out, base_type, ...)        \
-    using alt_t = base_type;                        \
-    auto out = std::unique_ptr<base_type>(nullptr); \
-    auto wrapped = MAKE_METHOD_VECTOR(__VA_ARGS__); \
-    for (auto &&f : wrapped) {                      \
-        PARSE_OPTIONAL(temp_out, f);                \
-        if (temp_out != nullptr) {                  \
-            out = std::move(temp_out);              \
-            break;                                  \
-        }                                           \
-    }                                               \
-    if (out == nullptr) {                           \
+    auto _pa = std::unique_ptr<base_type>(nullptr); \
+    do {                                            \
+        BOOST_PP_SEQ_FOR_EACH(                      \
+            PARSE_ALTERNATE_TRY, base_type,         \
+            BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))  \
         return nullptr;                             \
-    }
+    } while (false);                                \
+    auto out = std::move(_pa);
+
 
 #define FORWARD_AST(ast) \
     ast
