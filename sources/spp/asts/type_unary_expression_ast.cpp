@@ -158,6 +158,7 @@ auto spp::asts::TypeUnaryExpressionAst::with_convention(
 
 auto spp::asts::TypeUnaryExpressionAst::without_generics() const
     -> std::shared_ptr<TypeAst> {
+    // Todo: using the cache breaks.
     return std::make_shared<TypeUnaryExpressionAst>(op, rhs->without_generics());
 }
 

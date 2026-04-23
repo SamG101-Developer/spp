@@ -95,10 +95,11 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
     // Get the non-generic symbols.
     const auto stripped_lhs_sym = lhs_scope.get_type_symbol(stripped_lhs, false);
     const auto stripped_rhs_sym = rhs_scope.get_type_symbol(stripped_rhs, false);
+    const auto lhs_sym = lhs_scope.get_type_symbol(lhs_type.shared_from_this());
 
     // If the left-hand-side is a "Variant" type, check the composite types first.
-    if (check_variant and symbolic_eq(*stripped_lhs_sym->fq_name()->without_generics(), *asts::generate::common_types_precompiled::VAR, lhs_scope, lhs_scope, false)) {
-        auto lhs_composite_types = deduplicate_variant_inner_types(*lhs_scope.get_type_symbol(lhs_type.shared_from_this())->fq_name(), lhs_scope);
+    if (check_variant and symbolic_eq(*stripped_lhs_sym->fq_name(), *asts::generate::common_types_precompiled::VAR, lhs_scope, lhs_scope, false)) {
+        auto lhs_composite_types = deduplicate_variant_inner_types(*lhs_sym->fq_name(), lhs_scope);
         if (genex::any_of(lhs_composite_types, [&](auto &&lhs_composite_type) { return symbolic_eq(*lhs_composite_type, rhs_type, lhs_scope, rhs_scope); })) {
             return true;
         }
@@ -112,7 +113,7 @@ auto spp::analyse::utils::type_utils::symbolic_eq(
     auto &rhs_generics = rhs_type.type_parts().back()->generic_arg_group->args;
 
     // Special case for variadic parameter types.
-    const auto temp_type_proto = lhs_scope.get_type_symbol(lhs_type.shared_from_this())->type;
+    const auto temp_type_proto = lhs_sym->type;
     if (temp_type_proto and not temp_type_proto->generic_param_group->params.empty()) {
         if (temp_type_proto->generic_param_group->params.back()->to<asts::FunctionParameterVariadicAst>() != nullptr) {
             if (lhs_generics.size() != rhs_generics.size()) {

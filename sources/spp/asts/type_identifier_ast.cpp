@@ -203,7 +203,11 @@ auto spp::asts::TypeIdentifierAst::with_convention(
 
 auto spp::asts::TypeIdentifierAst::without_generics() const
     -> std::shared_ptr<TypeAst> {
-    return std::make_shared<TypeIdentifierAst>(m_pos, std::string(name), nullptr);
+    // Use cache if available.
+    if (not m_without_generics_cache) {
+        m_without_generics_cache = std::make_shared<TypeIdentifierAst>(m_pos, std::string(name), nullptr);
+    }
+    return m_without_generics_cache;
 }
 
 

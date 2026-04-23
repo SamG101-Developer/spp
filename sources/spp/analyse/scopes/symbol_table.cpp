@@ -48,15 +48,13 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::add(
     std::shared_ptr<S> const &sym)
     -> void {
     // Add a symbol to the table.
-    if (has(sym_name)) {
-        for (auto it = m_table.begin(); it != m_table.end(); ++it) {
-            if (*it->first == *sym_name) {
-                m_table.erase(it);
-                break;
-            }
-        }
+    auto it = m_table.find(sym_name);
+    if (it != m_table.end()) {
+        it->second = sym;
     }
-    m_table[asts::ast_clone(sym_name)] = sym;
+    else {
+        m_table[asts::ast_clone(sym_name)] = sym;
+    }
 }
 
 

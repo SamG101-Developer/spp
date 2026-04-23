@@ -158,6 +158,7 @@ auto spp::asts::TypePostfixExpressionAst::without_generics() const
     auto new_lhs = ast_clone(lhs); // Todo: clone needed?
     auto new_rhs = std::make_unique<TypePostfixExpressionOperatorNestedTypeAst>(nullptr, std::dynamic_pointer_cast<TypeIdentifierAst>(rhs->name->without_generics()));
     return std::make_shared<TypePostfixExpressionAst>(std::move(new_lhs), std::move(new_rhs));
+
 }
 
 
@@ -167,7 +168,7 @@ auto spp::asts::TypePostfixExpressionAst::substitute_generics(
     const auto rhs = tok_op->to<TypePostfixExpressionOperatorNestedTypeAst>();
     auto new_lhs = lhs->substitute_generics(args);
     auto new_rhs = std::make_unique<TypePostfixExpressionOperatorNestedTypeAst>(
-        nullptr, std::dynamic_pointer_cast<TypeIdentifierAst>(rhs->name->substitute_generics(std::move(args))));
+        nullptr, std::dynamic_pointer_cast<TypeIdentifierAst>(rhs->name->substitute_generics(args)));
     return std::make_shared<TypePostfixExpressionAst>(std::move(new_lhs), std::move(new_rhs));
 }
 
