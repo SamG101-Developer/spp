@@ -40,6 +40,12 @@ auto spp::asts::GenericArgumentAst::equals(
 }
 
 
+auto spp::asts::GenericArgumentAst::view_name() const
+    -> std::string_view {
+    return "";
+}
+
+
 spp::asts::GenericArgumentAst::GenericArgumentAst(
     const utils::OrderableTag order_tag) :
     OrderableAst(order_tag) {

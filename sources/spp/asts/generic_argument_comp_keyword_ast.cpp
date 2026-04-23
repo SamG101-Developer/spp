@@ -52,6 +52,12 @@ auto spp::asts::GenericArgumentCompKeywordAst::equals_generic_argument_comp_keyw
 }
 
 
+auto spp::asts::GenericArgumentCompKeywordAst::view_name() const
+    -> std::string_view {
+    return name->to<TypeIdentifierAst>()->name;
+}
+
+
 auto spp::asts::GenericArgumentCompKeywordAst::pos_start() const
     -> std::size_t {
     return name->pos_start();

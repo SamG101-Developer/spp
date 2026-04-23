@@ -42,15 +42,17 @@ namespace spp::analyse::scopes {
 
 
 namespace spp::analyse::utils::func_utils {
-    using InferenceSourceMap = std::map<
+    using InferenceSourceMap = ankerl::unordered_dense::map<
         std::shared_ptr<asts::IdentifierAst>,
         std::shared_ptr<asts::TypeAst>,
-        spp::utils::ptr::ptr_cmp<std::shared_ptr<asts::IdentifierAst>>>;
+        spp::utils::ptr::ptr_hash<std::shared_ptr<asts::IdentifierAst>>,
+        spp::utils::ptr::ptr_eq<std::shared_ptr<asts::IdentifierAst>>>;
 
-    using InferenceTargetMap = std::map<
+    using InferenceTargetMap = ankerl::unordered_dense::map<
         std::shared_ptr<asts::IdentifierAst>,
         std::shared_ptr<asts::TypeAst>,
-        spp::utils::ptr::ptr_cmp<std::shared_ptr<asts::IdentifierAst>>>;
+        spp::utils::ptr::ptr_hash<std::shared_ptr<asts::IdentifierAst>>,
+        spp::utils::ptr::ptr_eq<std::shared_ptr<asts::IdentifierAst>>>;
 
     using InferenceResultCompMap = ankerl::unordered_dense::map<
         std::shared_ptr<asts::TypeIdentifierAst>,

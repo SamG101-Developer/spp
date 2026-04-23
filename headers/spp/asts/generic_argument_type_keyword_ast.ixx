@@ -51,6 +51,8 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgum
 
     SPP_ATTR_NODISCARD auto equals_generic_argument_type_keyword(GenericArgumentTypeKeywordAst const &other) const -> std::strong_ordering override;
 
+    SPP_ATTR_NODISCARD auto view_name() const -> std::string_view;
+
     SPP_AST_KEY_FUNCTIONS;
 
     static auto from_symbol(analyse::scopes::TypeSymbol const &sym) -> std::unique_ptr<GenericArgumentTypeKeywordAst>;

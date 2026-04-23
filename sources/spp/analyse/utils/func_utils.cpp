@@ -585,6 +585,7 @@ auto spp::analyse::utils::func_utils::name_gn_args(
     -> void {
     // Special case for tuples to prevent an infinite recursion.
     if (is_tuple_owner) { return; }
+    if (a_group.get_positional_args().empty()) { return; } // sort?
 
     // Create temporary argument and parameter groups for the two kinds of generics.
     const auto comp_args = asts::GenericArgumentGroupAst::new_empty();
@@ -607,24 +608,14 @@ auto spp::analyse::utils::func_utils::name_gn_args(
     std::ranges::move(comp_args->args, std::back_inserter(a_group.args));
     std::ranges::move(type_args->args, std::back_inserter(a_group.args));
 
-    // Finally, sort the arguments back into the original parameter order.
+    // Build index map once for O(n).
+    auto param_index = ankerl::unordered_dense::map<std::string_view, std::size_t>();
+    for (auto [i, p]: p_group.get_all_params() | genex::views::enumerate) {
+        param_index[p->name->to<asts::TypeIdentifierAst>()->name] = i;
+    }
+
     a_group.args |= genex::actions::sort([&](auto const &a, auto const &b) {
-        // Find the index of the first argument's parameter.
-        const auto a_index = genex::position(p_group.get_all_params(), [&](auto *p) {
-            return *p->name == *(a->template to<asts::GenericArgumentTypeKeywordAst>()
-                ? a->template to<asts::GenericArgumentTypeKeywordAst>()->name
-                : a->template to<asts::GenericArgumentCompKeywordAst>()->name);
-        });
-
-        // Find the index of the second argument's parameter.
-        const auto b_index = genex::position(p_group.get_all_params(), [&](auto *p) {
-            return *p->name == *(b->template to<asts::GenericArgumentTypeKeywordAst>()
-                ? b->template to<asts::GenericArgumentTypeKeywordAst>()->name
-                : b->template to<asts::GenericArgumentCompKeywordAst>()->name);
-        });
-
-        // Compare the two indices.
-        return a_index < b_index;
+        return param_index[a->view_name()] < param_index[b->view_name()];
     });
 }
 
