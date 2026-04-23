@@ -19,5 +19,5 @@ SPP_EXP_CLS class spp::utils::ProgressBar {
 public:
     explicit ProgressBar(std::string label, std::uint32_t total_steps, bool enabled = true);
     auto next() -> void;
-    auto finish() -> void;
+    auto finish() const -> void;
 };
