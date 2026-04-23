@@ -174,10 +174,10 @@ namespace spp::analyse::utils::func_utils {
         bool is_tuple_owner = false)
         -> void;
 
-    SPP_EXP_FUN template <typename GenericArgType, typename GenericParamType>
+    SPP_EXP_FUN template <typename GenericArgType, typename GenericParamType, typename GenericParamVariadicType>
     auto name_gn_args_impl(
         asts::GenericArgumentGroupAst &a_group,
-        asts::GenericParameterGroupAst const &p_group,
+        std::vector<asts::GenericParameterAst*> const &params,
         asts::Ast const &owner,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData &meta)
@@ -199,7 +199,7 @@ namespace spp::analyse::utils::func_utils {
 
     SPP_EXP_FUN auto infer_gn_args_impl_comp(
         asts::GenericArgumentGroupAst &a_group,
-        asts::GenericParameterGroupAst const &p_group,
+        std::vector<asts::GenericParameterCompAst*> const &comp_params,
         std::vector<asts::GenericArgumentCompKeywordAst*> explicit_args,
         InferenceSourceMap const &infer_source,
         InferenceTargetMap const &infer_target,
@@ -212,7 +212,7 @@ namespace spp::analyse::utils::func_utils {
 
     SPP_EXP_FUN auto infer_gn_args_impl_type(
         asts::GenericArgumentGroupAst &a_group,
-        asts::GenericParameterGroupAst const &p_group,
+        std::vector<asts::GenericParameterTypeAst*> const &type_params,
         std::vector<asts::GenericArgumentTypeKeywordAst*> explicit_args,
         InferenceSourceMap const &infer_source,
         InferenceTargetMap const &infer_target,
