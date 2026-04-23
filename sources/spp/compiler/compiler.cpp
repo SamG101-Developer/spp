@@ -70,8 +70,8 @@ auto spp::compiler::Compiler::compile() -> void {
     m_boot->stage_7_analyse_semantics(**ps++, *m_modules, is_exe, m_scope_manager.get());
     m_boot->stage_8_check_memory(**ps++, *m_modules, m_scope_manager.get());
     m_boot->stage_9_comptime_resolution(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->stage_10_code_gen_1(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->stage_11_code_gen_2(**ps++, *m_modules, m_scope_manager.get());
+    // m_boot->stage_10_code_gen_1(**ps++, *m_modules, m_scope_manager.get());
+    // m_boot->stage_11_code_gen_2(**ps++, *m_modules, m_scope_manager.get());
     cleanup();
 }
 

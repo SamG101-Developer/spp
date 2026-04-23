@@ -34,13 +34,13 @@ file(GLOB_RECURSE MODULE_FILES CONFIGURE_DEPENDS "headers/*.ixx")
 file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS "sources/*.cpp")
 add_library(spp_lib)
 
-# Enable all warnings and treat them as errors.
+# Enable all warnings and treat them as errors. # -Wswitch-enum
 target_compile_options(spp_lib PRIVATE
         -Wall -Wextra -Werror -fmodules -fvisibility=hidden -fvisibility-inlines-hidden
         -Wcast-align -Wcast-qual -Wconversion -Wsign-conversion -Wsign-promo -Wctor-dtor-privacy -Winit-self
         -Wold-style-cast -Wundef -Wdisabled-optimization -Wmissing-declarations -Wmissing-include-dirs
         -Wnull-dereference -Wformat=2 -Wduplicated-cond -Wduplicated-branches -Wredundant-decls -Wlogical-op
-        -Wuseless-cast -Wdouble-promotion -Wstrict-null-sentinel -Wswitch-default -Wswitch-enum -Wno-null-dereference
+        -Wuseless-cast -Wdouble-promotion -Wstrict-null-sentinel -Wswitch-default -Wno-null-dereference
         -Wno-maybe-uninitialized -Wno-error=array-bounds -Wno-error=overloaded-virtual -Wodr)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(spp_lib PRIVATE

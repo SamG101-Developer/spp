@@ -24,43 +24,6 @@ namespace spp::analyse::scopes {
 
 namespace spp::analyse::utils::bin_utils {
     /**
-     * Define the precedence of binary operators. Higher numbers indicate higher precedence. This is used when
-     * re-balancing binary expressions to ensure that the correct order of operations is maintained.
-     */
-    SPP_EXP_CLS const auto BIN_OP_PRECEDENCE = std::map<lex::SppTokenType, std::uint8_t>{
-        {lex::SppTokenType::TK_ADD_ASSIGN, 0},
-        {lex::SppTokenType::TK_SUB_ASSIGN, 0},
-        {lex::SppTokenType::TK_MUL_ASSIGN, 0},
-        {lex::SppTokenType::TK_DIV_ASSIGN, 0},
-        {lex::SppTokenType::TK_REM_ASSIGN, 0},
-        {lex::SppTokenType::TK_POW_ASSIGN, 0},
-        {lex::SppTokenType::TK_BIT_AND_ASSIGN, 0},
-        {lex::SppTokenType::TK_BIT_IOR_ASSIGN, 0},
-        {lex::SppTokenType::TK_BIT_XOR_ASSIGN, 0},
-        {lex::SppTokenType::TK_BIT_SHL_ASSIGN, 0},
-        {lex::SppTokenType::TK_BIT_SHR_ASSIGN, 0},
-        {lex::SppTokenType::KW_OR, 1},
-        {lex::SppTokenType::KW_AND, 2},
-        {lex::SppTokenType::TK_EQ, 3},
-        {lex::SppTokenType::TK_NE, 3},
-        {lex::SppTokenType::TK_LT, 3},
-        {lex::SppTokenType::TK_LE, 3},
-        {lex::SppTokenType::TK_GT, 3},
-        {lex::SppTokenType::TK_GE, 3},
-        {lex::SppTokenType::TK_BIT_IOR, 4},
-        {lex::SppTokenType::TK_BIT_XOR, 5},
-        {lex::SppTokenType::TK_BIT_AND, 6},
-        {lex::SppTokenType::TK_BIT_SHL, 7},
-        {lex::SppTokenType::TK_BIT_SHR, 7},
-        {lex::SppTokenType::TK_ADD, 8},
-        {lex::SppTokenType::TK_SUB, 8},
-        {lex::SppTokenType::TK_MUL, 9},
-        {lex::SppTokenType::TK_DIV, 9},
-        {lex::SppTokenType::TK_REM, 9},
-        {lex::SppTokenType::TK_POW, 9}
-    };
-
-    /**
      * The map of binary operators to their corresponding method names. This is used when converting binary expressions
      * to function calls.
      */
@@ -124,20 +87,6 @@ namespace spp::analyse::utils::bin_utils {
         lex::SppTokenType::TK_LE,
         lex::SppTokenType::TK_GE
     };
-
-    /**
-     * Rebalance the binary expression AST to ensure correct order of operations based on operator precedence. The
-     * parser parses expressions in reverse precedence to avoid left hand recursion, so needs rebalancing.
-     * @param bin_expr The binary expression AST to rebalance.
-     * @param sm The scope manager for the current analysis context.
-     * @param meta Metadata to pass between ASTs.
-     * @return A new binary expression AST with correct order of operations.
-     */
-    SPP_EXP_FUN auto fix_associativity(
-        asts::BinaryExpressionAst &bin_expr,
-        scopes::ScopeManager *sm,
-        asts::meta::CompilerMetaData *meta)
-        -> std::unique_ptr<asts::BinaryExpressionAst>;
 
     SPP_EXP_FUN auto combine_comp_ops(
         asts::BinaryExpressionAst &bin_expr,

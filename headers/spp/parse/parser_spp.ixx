@@ -93,9 +93,7 @@ namespace spp::asts {
     SPP_EXP_CLS struct StringLiteralAst;
     SPP_EXP_CLS struct TupleLiteralAst;
     SPP_EXP_CLS struct BinaryExpressionAst;
-    SPP_EXP_CLS struct BinaryExpressionTempAst;
     SPP_EXP_CLS struct IsExpressionAst;
-    SPP_EXP_CLS struct IsExpressionTempAst;
     SPP_EXP_CLS struct ClosureExpressionAst;
     SPP_EXP_CLS struct ClosureExpressionCaptureAst;
     SPP_EXP_CLS struct ClosureExpressionCaptureGroupAst;
@@ -141,7 +139,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TokenAst;
     SPP_EXP_CLS struct TypeAst;
     SPP_EXP_CLS struct TypeBinaryExpressionAst;
-    SPP_EXP_CLS struct TypeBinaryExpressionTempAst;
     SPP_EXP_CLS struct TypePostfixExpressionAst;
     SPP_EXP_CLS struct TypeUnaryExpressionAst;
     SPP_EXP_CLS struct TypeIdentifierAst;
@@ -240,32 +237,7 @@ public:
 
     auto parse_expression() -> std::unique_ptr<asts::ExpressionAst>;
 
-    auto parse_binary_expression_precedence_level_n_rhs(std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser, std::function<std::unique_ptr<asts::ExpressionAst>()> &&rhs_parser) -> std::unique_ptr<asts::BinaryExpressionTempAst>;
-    auto parse_binary_expression_precedence_level_n_rhs_for_is(std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser, std::function<std::unique_ptr<asts::CasePatternVariantAst>()> &&rhs_parser) -> std::unique_ptr<asts::IsExpressionTempAst>;
-    auto parse_binary_expression_precedence_level_n(std::function<std::unique_ptr<asts::ExpressionAst>()> &&lhs_parser, std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser, std::function<std::unique_ptr<asts::ExpressionAst>()> &&rhs_parser) -> std::unique_ptr<asts::ExpressionAst>;
-    auto parse_binary_expression_precedence_level_n_for_is(std::function<std::unique_ptr<asts::ExpressionAst>()> &&lhs_parser, std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser, std::function<std::unique_ptr<asts::CasePatternVariantAst>()> &&rhs_parser) -> std::unique_ptr<asts::ExpressionAst>;
-    auto parse_binary_expression_precedence_level_0() -> std::unique_ptr<asts::ExpressionAst>;
-    auto parse_binary_expression_precedence_level_1() -> std::unique_ptr<asts::ExpressionAst>;
-    auto parse_binary_expression_precedence_level_2() -> std::unique_ptr<asts::ExpressionAst>;
-    auto parse_binary_expression_precedence_level_3() -> std::unique_ptr<asts::ExpressionAst>;
-    auto parse_binary_expression_precedence_level_4() -> std::unique_ptr<asts::ExpressionAst>;
-    auto parse_binary_expression_precedence_level_5() -> std::unique_ptr<asts::ExpressionAst>;
-    auto parse_binary_expression_precedence_level_6() -> std::unique_ptr<asts::ExpressionAst>;
-    auto parse_binary_expression_precedence_level_7() -> std::unique_ptr<asts::ExpressionAst>;
-    auto parse_binary_expression_precedence_level_8() -> std::unique_ptr<asts::ExpressionAst>;
-    auto parse_binary_expression_precedence_level_9() -> std::unique_ptr<asts::ExpressionAst>;
-    auto parse_binary_expression_precedence_level_10() -> std::unique_ptr<asts::ExpressionAst>;
-    auto parse_binary_expression_op_precedence_level_0() -> std::unique_ptr<asts::TokenAst>;
-    auto parse_binary_expression_op_precedence_level_1() -> std::unique_ptr<asts::TokenAst>;
-    auto parse_binary_expression_op_precedence_level_2() -> std::unique_ptr<asts::TokenAst>;
-    auto parse_binary_expression_op_precedence_level_3() -> std::unique_ptr<asts::TokenAst>;
-    auto parse_binary_expression_op_precedence_level_4() -> std::unique_ptr<asts::TokenAst>;
-    auto parse_binary_expression_op_precedence_level_5() -> std::unique_ptr<asts::TokenAst>;
-    auto parse_binary_expression_op_precedence_level_6() -> std::unique_ptr<asts::TokenAst>;
-    auto parse_binary_expression_op_precedence_level_7() -> std::unique_ptr<asts::TokenAst>;
-    auto parse_binary_expression_op_precedence_level_8() -> std::unique_ptr<asts::TokenAst>;
-    auto parse_binary_expression_op_precedence_level_9() -> std::unique_ptr<asts::TokenAst>;
-    auto parse_binary_expression_op_precedence_level_10() -> std::unique_ptr<asts::TokenAst>;
+    auto parse_binary_expression(std::uint8_t min_prec = 0) -> std::unique_ptr<asts::ExpressionAst>;
 
     auto parse_unary_expression() -> std::unique_ptr<asts::ExpressionAst>;
     auto parse_unary_expression_op() -> std::unique_ptr<asts::UnaryExpressionOperatorAst>;
@@ -393,12 +365,7 @@ public:
 
     auto parse_type_expression() -> std::unique_ptr<asts::TypeAst>;
 
-    auto parse_binary_type_expression_precedence_level_n_rhs(std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser, std::function<std::unique_ptr<asts::TypeAst>()> &&rhs_parser) -> std::unique_ptr<asts::TypeBinaryExpressionTempAst>;
-    auto parse_binary_type_expression_precedence_level_n(std::function<std::unique_ptr<asts::TypeAst>()> &&lhs_parser, std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser, std::function<std::unique_ptr<asts::TypeAst>()> &&rhs_parser) -> std::unique_ptr<asts::TypeAst>;
-    auto parse_binary_type_expression_precedence_level_1() -> std::unique_ptr<asts::TypeAst>;
-    auto parse_binary_type_expression_precedence_level_2() -> std::unique_ptr<asts::TypeAst>;
-    auto parse_binary_type_expression_op_precedence_level_1() -> std::unique_ptr<asts::TokenAst>;
-    auto parse_binary_type_expression_op_precedence_level_2() -> std::unique_ptr<asts::TokenAst>;
+    auto parse_binary_type_expression(std::uint8_t min_prec = 0) -> std::unique_ptr<asts::TypeAst>;
 
     auto parse_unary_type_expression() -> std::unique_ptr<asts::TypeAst>;
     auto parse_unary_type_expression_op() -> std::unique_ptr<asts::TypeUnaryExpressionOperatorAst>;

@@ -27,44 +27,6 @@ import spp.utils.uid;
 import genex;
 
 
-auto spp::analyse::utils::bin_utils::fix_associativity(
-    asts::BinaryExpressionAst &bin_expr,
-    scopes::ScopeManager *sm,
-    asts::meta::CompilerMetaData *meta)
-    -> std::unique_ptr<asts::BinaryExpressionAst> {
-    // If the right-hand-side isn't a binary expression, then no handling is required; return it.
-    if (bin_expr.rhs->to<asts::BinaryExpressionAst>() == nullptr) {
-        return std::make_unique<asts::BinaryExpressionAst>(
-            std::move(bin_expr.lhs),
-            std::move(bin_expr.tok_op),
-            std::move(bin_expr.rhs));
-    }
-
-    // If the ast precedence > the right-hand-side binary expression's operator's precedence, re-arrange the AST.
-    auto bin_rhs = std::unique_ptr<asts::BinaryExpressionAst>(
-        bin_expr.rhs.release()->to<asts::BinaryExpressionAst>());
-
-    if (BIN_OP_PRECEDENCE.at(bin_expr.tok_op->token_type) >= BIN_OP_PRECEDENCE.at(bin_rhs->tok_op->token_type)) {
-        bin_expr.rhs = std::move(bin_rhs->rhs);
-        bin_rhs->rhs = std::move(bin_rhs->lhs);
-        bin_rhs->lhs = std::move(bin_expr.lhs);
-
-        auto temp = std::move(bin_rhs->tok_op);
-        bin_rhs->tok_op = std::move(bin_expr.tok_op);
-        bin_expr.tok_op = std::move(temp);
-        bin_expr.lhs = std::move(bin_rhs);
-
-        return fix_associativity(bin_expr, sm, meta);
-    }
-
-    // Otherwise, the AST is in the correct order; return it.
-    return std::make_unique<asts::BinaryExpressionAst>(
-        std::move(bin_expr.lhs),
-        std::move(bin_expr.tok_op),
-        std::move(bin_rhs));
-}
-
-
 auto spp::analyse::utils::bin_utils::combine_comp_ops(
     asts::BinaryExpressionAst &bin_expr,
     scopes::ScopeManager *sm,
@@ -115,8 +77,7 @@ auto spp::analyse::utils::bin_utils::convert_bin_expr_to_function_call(
     asts::meta::CompilerMetaData *meta)
     -> std::unique_ptr<asts::PostfixExpressionAst> {
     // Call other utility methods that may modify the binary expression AST.
-    auto new_bin_expr = fix_associativity(bin_expr, sm, meta);
-    new_bin_expr = combine_comp_ops(*new_bin_expr, sm, meta);
+    auto new_bin_expr = combine_comp_ops(bin_expr, sm, meta);
 
     // Get the method names based on the operator token.
     auto method_name = BIN_METHODS.at(new_bin_expr->tok_op->token_type);

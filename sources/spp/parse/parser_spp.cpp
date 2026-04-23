@@ -18,18 +18,6 @@ import std;
 
 
 SPP_MOD_BEGIN
-const auto IDENTIFIER_TOKENS = std::vector{
-    spp::lex::RawTokenType::LX_CHARACTER,
-    spp::lex::RawTokenType::LX_DIGIT,
-    spp::lex::RawTokenType::TK_UNDERSCORE
-};
-
-
-const auto UPPER_IDENTIFIER_TOKENS = std::vector{
-    spp::lex::RawTokenType::LX_CHARACTER,
-    spp::lex::RawTokenType::LX_DIGIT
-};
-
 constexpr auto kBinChars = std::string_view("01");
 constexpr auto kOctChars = std::string_view("01234567");
 constexpr auto kHexChars = std::string_view("0123456789abcdefABCDEF");
@@ -545,241 +533,123 @@ auto spp::parse::ParserSpp::parse_annotation_no_call()
 
 auto spp::parse::ParserSpp::parse_expression()
     -> std::unique_ptr<asts::ExpressionAst> {
-    PARSE_ONCE(p1, parse_binary_expression_precedence_level_0);
+    PARSE_ONCE(p1, parse_binary_expression);
     return FORWARD_AST(p1);
 }
 
 
-auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_n_rhs(
-    std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser,
-    std::function<std::unique_ptr<asts::ExpressionAst>()> &&rhs_parser)
-    -> std::unique_ptr<asts::BinaryExpressionTempAst> {
-    PARSE_ONCE(p1, op_parser);
-    PARSE_ONCE(p2, rhs_parser);
-    return CREATE_AST(asts::BinaryExpressionTempAst, p1, p2);
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_n_rhs_for_is(
-    std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser,
-    std::function<std::unique_ptr<asts::CasePatternVariantAst>()> &&rhs_parser)
-    -> std::unique_ptr<asts::IsExpressionTempAst> {
-    PARSE_ONCE(p1, op_parser);
-    PARSE_ONCE(p2, rhs_parser);
-    return CREATE_AST(asts::IsExpressionTempAst, p1, p2);
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_n(
-    std::function<std::unique_ptr<asts::ExpressionAst>()> &&lhs_parser,
-    std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser,
-    std::function<std::unique_ptr<asts::ExpressionAst>()> &&rhs_parser)
+auto spp::parse::ParserSpp::parse_binary_expression(const std::uint8_t min_prec)
     -> std::unique_ptr<asts::ExpressionAst> {
-    auto op_rhs_parser = [this, op_parser, rhs_parser] mutable { return parse_binary_expression_precedence_level_n_rhs(std::move(op_parser), std::move(rhs_parser)); };
-    PARSE_ONCE(p1, lhs_parser);
-    PARSE_OPTIONAL(p2, op_rhs_parser);
-    if (p2 == nullptr) { return p1; }
-    return CREATE_AST(asts::BinaryExpressionAst, p1, p2->tok_op, p2->rhs);
-}
+    using RT = lex::RawTokenType;
 
+    struct BinOpInfo {
+        std::unique_ptr<asts::TokenAst> tok;
+        std::uint8_t prec;
+        bool is_is;
+    };
 
-auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_n_for_is(
-    std::function<std::unique_ptr<asts::ExpressionAst>()> &&lhs_parser,
-    std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser,
-    std::function<std::unique_ptr<asts::CasePatternVariantAst>()> &&rhs_parser)
-    -> std::unique_ptr<asts::ExpressionAst> {
-    auto op_rhs_parser = [this, op_parser, rhs_parser] mutable { return parse_binary_expression_precedence_level_n_rhs_for_is(std::move(op_parser), std::move(rhs_parser)); };
-    PARSE_ONCE(p1, lhs_parser);
-    PARSE_OPTIONAL(p2, op_rhs_parser);
-    if (p2 == nullptr) { return p1; }
-    return CREATE_AST(asts::IsExpressionAst, p1, p2->tok_op, p2->rhs);
-}
+    auto try_tok = [this](auto fn, const std::uint8_t prec, const bool is_is = false) -> std::optional<BinOpInfo> {
+        const auto pos = m_pos;
+        if (auto tok = fn()) return BinOpInfo{std::move(tok), prec, is_is};
+        m_pos = pos;
+        return std::nullopt;
+    };
 
+    auto try_bin_op = [&]() -> BinOpInfo {
+        auto peek = m_pos;
+        while (peek < m_tokens_len && (m_tokens[peek].type == RT::TK_LINE_FEED || m_tokens[peek].type == RT::TK_SPACE))
+            peek++;
+        if (peek >= m_tokens_len) return {};
 
-auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_0()
-    -> std::unique_ptr<asts::ExpressionAst> {
-    return parse_binary_expression_precedence_level_n(
-        [this] { return parse_binary_expression_precedence_level_1(); },
-        [this] { return parse_binary_expression_op_precedence_level_0(); },
-        [this] { return parse_binary_expression_precedence_level_0(); });
-}
+        switch (m_tokens[peek].type) {
+        case RT::TK_ASTERISK:
+            if (auto r = try_tok([this] { return parse_token_pow_assign(); }, 1)) return std::move(*r);
+            if (auto r = try_tok([this] { return parse_token_pow(); }, 11)) return std::move(*r);
+            if (auto r = try_tok([this] { return parse_token_mul_assign(); }, 1)) return std::move(*r);
+            if (auto r = try_tok([this] { return parse_token_mul(); }, 11)) return std::move(*r);
+            break;
+        case RT::TK_PLUS_SIGN:
+            if (auto r = try_tok([this] { return parse_token_add_assign(); }, 1)) return std::move(*r);
+            if (auto r = try_tok([this] { return parse_token_add(); }, 10)) return std::move(*r);
+            break;
+        case RT::TK_HYPHEN:
+            if (auto r = try_tok([this] { return parse_token_sub_assign(); }, 1)) return std::move(*r);
+            if (auto r = try_tok([this] { return parse_token_sub(); }, 10)) return std::move(*r);
+            break;
+        case RT::TK_SLASH:
+            if (auto r = try_tok([this] { return parse_token_div_assign(); }, 1)) return std::move(*r);
+            if (auto r = try_tok([this] { return parse_token_div(); }, 11)) return std::move(*r);
+            break;
+        case RT::TK_PERCENT_SIGN:
+            if (auto r = try_tok([this] { return parse_token_rem_assign(); }, 1)) return std::move(*r);
+            if (auto r = try_tok([this] { return parse_token_rem(); }, 11)) return std::move(*r);
+            break;
+        case RT::TK_VERTICAL_BAR:
+            if (auto r = try_tok([this] { return parse_token_bit_ior_assign(); }, 1)) return std::move(*r);
+            if (auto r = try_tok([this] { return parse_token_bit_ior(); }, 6)) return std::move(*r);
+            break;
+        case RT::TK_CARET:
+            if (auto r = try_tok([this] { return parse_token_bit_xor_assign(); }, 1)) return std::move(*r);
+            if (auto r = try_tok([this] { return parse_token_bit_xor(); }, 7)) return std::move(*r);
+            break;
+        case RT::TK_AMPERSAND:
+            if (auto r = try_tok([this] { return parse_token_bit_and_assign(); }, 1)) return std::move(*r);
+            if (auto r = try_tok([this] { return parse_token_bit_and(); }, 8)) return std::move(*r);
+            break;
+        case RT::TK_LESS_THAN:
+            if (auto r = try_tok([this] { return parse_token_bit_shl_assign(); }, 1)) return std::move(*r);
+            if (auto r = try_tok([this] { return parse_token_bit_shl(); }, 9)) return std::move(*r);
+            if (auto r = try_tok([this] { return parse_token_less_than_equals(); }, 5)) return std::move(*r);
+            if (auto r = try_tok([this] { return parse_token_less_than(); }, 5)) return std::move(*r);
+            break;
+        case RT::TK_GREATER_THAN:
+            if (auto r = try_tok([this] { return parse_token_bit_shr_assign(); }, 1)) return std::move(*r);
+            if (auto r = try_tok([this] { return parse_token_bit_shr(); }, 9)) return std::move(*r);
+            if (auto r = try_tok([this] { return parse_token_greater_than_equals(); }, 5)) return std::move(*r);
+            if (auto r = try_tok([this] { return parse_token_greater_than(); }, 5)) return std::move(*r);
+            break;
+        case RT::TK_EQUALS_TO:
+            if (auto r = try_tok([this] { return parse_token_equals(); }, 5)) return std::move(*r);
+            break;
+        case RT::TK_EXCLAMATION_MARK:
+            if (auto r = try_tok([this] { return parse_token_not_equals(); }, 5)) return std::move(*r);
+            break;
+        case RT::KW_OR:
+            if (auto r = try_tok([this] { return parse_keyword_or(); }, 2)) return std::move(*r);
+            break;
+        case RT::KW_AND:
+            if (auto r = try_tok([this] { return parse_keyword_and(); }, 3)) return std::move(*r);
+            break;
+        case RT::KW_IS:
+            if (auto r = try_tok([this] { return parse_keyword_is(); }, 4, true)) return std::move(*r);
+            break;
+        default: break;
+        }
+        return {};
+    };
 
+    PARSE_ONCE(lhs, parse_unary_expression);
 
-auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_1()
-    -> std::unique_ptr<asts::ExpressionAst> {
-    return parse_binary_expression_precedence_level_n(
-        [this] { return parse_binary_expression_precedence_level_2(); },
-        [this] { return parse_binary_expression_op_precedence_level_1(); },
-        [this] { return parse_binary_expression_precedence_level_1(); });
-}
+    while (true) {
+        const auto saved = m_pos;
+        auto bin_op = try_bin_op();
+        if (!bin_op.tok || bin_op.prec < min_prec) {
+            m_pos = saved;
+            break;
+        }
 
+        if (bin_op.is_is) {
+            PARSE_ONCE(rhs, parse_case_expression_pattern_variant_destructure);
+            lhs = CREATE_AST(asts::IsExpressionAst, lhs, bin_op.tok, rhs);
+        }
+        else {
+            auto rhs = parse_binary_expression(static_cast<std::uint8_t>(bin_op.prec + 1));
+            if (!rhs) { m_pos = saved; break; }
+            lhs = CREATE_AST(asts::BinaryExpressionAst, lhs, bin_op.tok, rhs);
+        }
+    }
 
-auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_2()
-    -> std::unique_ptr<asts::ExpressionAst> {
-    return parse_binary_expression_precedence_level_n(
-        [this] { return parse_binary_expression_precedence_level_3(); },
-        [this] { return parse_binary_expression_op_precedence_level_2(); },
-        [this] { return parse_binary_expression_precedence_level_2(); });
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_3()
-    -> std::unique_ptr<asts::ExpressionAst> {
-    return parse_binary_expression_precedence_level_n_for_is(
-        [this] { return parse_binary_expression_precedence_level_4(); },
-        [this] { return parse_binary_expression_op_precedence_level_3(); },
-        [this] { return parse_case_expression_pattern_variant_destructure(); });
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_4()
-    -> std::unique_ptr<asts::ExpressionAst> {
-    return parse_binary_expression_precedence_level_n(
-        [this] { return parse_binary_expression_precedence_level_5(); },
-        [this] { return parse_binary_expression_op_precedence_level_4(); },
-        [this] { return parse_binary_expression_precedence_level_4(); });
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_5()
-    -> std::unique_ptr<asts::ExpressionAst> {
-    return parse_binary_expression_precedence_level_n(
-        [this] { return parse_binary_expression_precedence_level_6(); },
-        [this] { return parse_binary_expression_op_precedence_level_5(); },
-        [this] { return parse_binary_expression_precedence_level_5(); });
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_6()
-    -> std::unique_ptr<asts::ExpressionAst> {
-    return parse_binary_expression_precedence_level_n(
-        [this] { return parse_binary_expression_precedence_level_7(); },
-        [this] { return parse_binary_expression_op_precedence_level_6(); },
-        [this] { return parse_binary_expression_precedence_level_6(); });
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_7()
-    -> std::unique_ptr<asts::ExpressionAst> {
-    return parse_binary_expression_precedence_level_n(
-        [this] { return parse_binary_expression_precedence_level_8(); },
-        [this] { return parse_binary_expression_op_precedence_level_7(); },
-        [this] { return parse_binary_expression_precedence_level_7(); });
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_8()
-    -> std::unique_ptr<asts::ExpressionAst> {
-    return parse_binary_expression_precedence_level_n(
-        [this] { return parse_binary_expression_precedence_level_9(); },
-        [this] { return parse_binary_expression_op_precedence_level_8(); },
-        [this] { return parse_binary_expression_precedence_level_8(); });
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_9()
-    -> std::unique_ptr<asts::ExpressionAst> {
-    return parse_binary_expression_precedence_level_n(
-        [this] { return parse_binary_expression_precedence_level_10(); },
-        [this] { return parse_binary_expression_op_precedence_level_9(); },
-        [this] { return parse_binary_expression_precedence_level_9(); });
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_precedence_level_10()
-    -> std::unique_ptr<asts::ExpressionAst> {
-    return parse_binary_expression_precedence_level_n(
-        [this] { return parse_unary_expression(); },
-        [this] { return parse_binary_expression_op_precedence_level_10(); },
-        [this] { return parse_binary_expression_precedence_level_10(); });
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_op_precedence_level_0()
-    -> std::unique_ptr<asts::TokenAst> {
-    PARSE_ALTERNATE(
-        p1, asts::TokenAst, parse_token_bit_ior_assign, parse_token_bit_xor_assign, parse_token_bit_and_assign,
-        parse_token_bit_shl_assign, parse_token_bit_shr_assign, parse_token_add_assign, parse_token_sub_assign,
-        parse_token_mul_assign, parse_token_div_assign, parse_token_rem_assign, parse_token_pow_assign)
-    return FORWARD_AST(p1);
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_op_precedence_level_1()
-    -> std::unique_ptr<asts::TokenAst> {
-    PARSE_ONCE(p1, parse_keyword_or);
-    return FORWARD_AST(p1);
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_op_precedence_level_2()
-    -> std::unique_ptr<asts::TokenAst> {
-    PARSE_ONCE(p1, parse_keyword_and);
-    return FORWARD_AST(p1);
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_op_precedence_level_3()
-    -> std::unique_ptr<asts::TokenAst> {
-    PARSE_ONCE(p1, parse_keyword_is);
-    return FORWARD_AST(p1);
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_op_precedence_level_4()
-    -> std::unique_ptr<asts::TokenAst> {
-    PARSE_ALTERNATE(
-        p1, asts::TokenAst, parse_token_equals, parse_token_not_equals, parse_token_less_than_equals,
-        parse_token_greater_than_equals, parse_token_less_than, parse_token_greater_than);
-    return FORWARD_AST(p1);
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_op_precedence_level_5()
-    -> std::unique_ptr<asts::TokenAst> {
-    PARSE_ALTERNATE(
-        p1, asts::TokenAst, parse_token_bit_ior);
-    return FORWARD_AST(p1);
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_op_precedence_level_6()
-    -> std::unique_ptr<asts::TokenAst> {
-    PARSE_ALTERNATE(
-        p1, asts::TokenAst, parse_token_bit_xor);
-    return FORWARD_AST(p1);
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_op_precedence_level_7()
-    -> std::unique_ptr<asts::TokenAst> {
-    PARSE_ALTERNATE(
-        p1, asts::TokenAst, parse_token_bit_and);
-    return FORWARD_AST(p1);
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_op_precedence_level_8()
-    -> std::unique_ptr<asts::TokenAst> {
-    PARSE_ALTERNATE(
-        p1, asts::TokenAst, parse_token_bit_shl, parse_token_bit_shr);
-    return FORWARD_AST(p1);
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_op_precedence_level_9()
-    -> std::unique_ptr<asts::TokenAst> {
-    PARSE_ALTERNATE(
-        p1, asts::TokenAst, parse_token_add, parse_token_sub);
-    return FORWARD_AST(p1);
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_expression_op_precedence_level_10()
-    -> std::unique_ptr<asts::TokenAst> {
-    PARSE_ALTERNATE(
-        p1, asts::TokenAst, parse_token_pow, parse_token_mul, parse_token_div, parse_token_rem);
-    return FORWARD_AST(p1);
+    return lhs;
 }
 
 
@@ -1753,63 +1623,57 @@ auto spp::parse::ParserSpp::parse_type_expression()
     -> std::unique_ptr<asts::TypeAst> {
     PARSE_ALTERNATE(
         p1, asts::TypeAst, parse_type_never, parse_type_parenthesised_expression, parse_type_array, parse_type_tuple,
-        parse_binary_type_expression_precedence_level_1);
+        parse_binary_type_expression);
     return FORWARD_AST(p1);
 }
 
 
-auto spp::parse::ParserSpp::parse_binary_type_expression_precedence_level_n_rhs(
-    std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser,
-    std::function<std::unique_ptr<asts::TypeAst>()> &&rhs_parser)
-    -> std::unique_ptr<asts::TypeBinaryExpressionTempAst> {
-    PARSE_ONCE(p1, op_parser);
-    PARSE_ONCE(p2, rhs_parser);
-    return CREATE_AST(asts::TypeBinaryExpressionTempAst, p1, p2);
-}
-
-
-auto spp::parse::ParserSpp::parse_binary_type_expression_precedence_level_n(
-    std::function<std::unique_ptr<asts::TypeAst>()> &&lhs_parser,
-    std::function<std::unique_ptr<asts::TokenAst>()> &&op_parser,
-    std::function<std::unique_ptr<asts::TypeAst>()> &&rhs_parser)
+auto spp::parse::ParserSpp::parse_binary_type_expression(const std::uint8_t min_prec)
     -> std::unique_ptr<asts::TypeAst> {
-    auto op_rhs_parser = [this, op_parser, rhs_parser] mutable { return parse_binary_type_expression_precedence_level_n_rhs(std::move(op_parser), std::move(rhs_parser)); };
-    PARSE_ONCE(p1, lhs_parser);
-    PARSE_OPTIONAL(p2, op_rhs_parser);
-    if (p2 == nullptr) { return p1; }
-    return CREATE_AST(asts::TypeBinaryExpressionAst, p1, p2->tok_op, p2->rhs)->convert();
-}
+    using RT = lex::RawTokenType;
 
+    auto try_tok = [this](auto fn, const std::uint8_t prec) -> std::optional<std::pair<std::unique_ptr<asts::TokenAst>, std::uint8_t>> {
+        const auto pos = m_pos;
+        if (auto tok = fn()) return std::pair{std::move(tok), prec};
+        m_pos = pos;
+        return std::nullopt;
+    };
 
-auto spp::parse::ParserSpp::parse_binary_type_expression_precedence_level_1()
-    -> std::unique_ptr<asts::TypeAst> {
-    return parse_binary_type_expression_precedence_level_n(
-        [this] { return parse_binary_type_expression_precedence_level_2(); },
-        [this] { return parse_binary_type_expression_op_precedence_level_1(); },
-        [this] { return parse_binary_type_expression_precedence_level_1(); });
-}
+    auto try_bin_op = [&]() -> std::pair<std::unique_ptr<asts::TokenAst>, std::uint8_t> {
+        auto peek = m_pos;
+        while (peek < m_tokens_len && (m_tokens[peek].type == RT::TK_LINE_FEED || m_tokens[peek].type == RT::TK_SPACE))
+            peek++;
+        if (peek >= m_tokens_len) return {};
 
+        switch (m_tokens[peek].type) {
+        case RT::KW_OR:
+            if (auto r = try_tok([this] { return parse_keyword_or(); },  2)) return std::move(*r);
+            break;
+        case RT::KW_AND:
+            if (auto r = try_tok([this] { return parse_keyword_and(); }, 1)) return std::move(*r);
+            break;
+        default: break;
+        }
+        return {};
+    };
 
-auto spp::parse::ParserSpp::parse_binary_type_expression_precedence_level_2()
-    -> std::unique_ptr<asts::TypeAst> {
-    return parse_binary_type_expression_precedence_level_n(
-        [this] { return parse_postfix_type_expression(); },
-        [this] { return parse_binary_type_expression_op_precedence_level_2(); },
-        [this] { return parse_binary_type_expression_precedence_level_2(); });
-}
+    PARSE_ONCE(lhs, parse_postfix_type_expression);
 
+    while (true) {
+        const auto saved = m_pos;
+        auto [op, prec] = try_bin_op();
 
-auto spp::parse::ParserSpp::parse_binary_type_expression_op_precedence_level_1()
-    -> std::unique_ptr<asts::TokenAst> {
-    PARSE_ONCE(p1, parse_keyword_and);
-    return FORWARD_AST(p1);
-}
+        if (!op || prec < min_prec) {
+            m_pos = saved;
+            break;
+        }
 
+        auto rhs = parse_binary_type_expression(static_cast<std::uint8_t>(prec + 1));
+        if (!rhs) { m_pos = saved; break; }
+        lhs = CREATE_AST(asts::TypeBinaryExpressionAst, lhs, op, rhs)->convert();
+    }
 
-auto spp::parse::ParserSpp::parse_binary_type_expression_op_precedence_level_2()
-    -> std::unique_ptr<asts::TokenAst> {
-    PARSE_ONCE(p1, parse_keyword_or);
-    return FORWARD_AST(p1);
+    return lhs;
 }
 
 
@@ -2426,9 +2290,11 @@ auto spp::parse::ParserSpp::parse_lexeme_identifier()
     if (std::isupper(p2->token_data[0])) { return nullptr; }
     out->token_data += p2->token_data;
 
-    while (genex::contains(IDENTIFIER_TOKENS, m_tokens[m_pos].type)) {
+    auto t = m_tokens[m_pos].type;
+    while (t == lex::RawTokenType::LX_CHARACTER or t == lex::RawTokenType::LX_DIGIT or t == lex::RawTokenType::TK_UNDERSCORE) {
         PARSE_ONCE(p3, parse_lexeme_character_or_digit_or_underscore);
         out->token_data += p3->token_data;
+        t = m_tokens[m_pos].type;
     }
 
     return out;
@@ -2447,9 +2313,11 @@ auto spp::parse::ParserSpp::parse_lexeme_upper_identifier()
     if (std::islower(p2->token_data[0])) { return nullptr; }
     out->token_data += p2->token_data;
 
-    while (genex::contains(UPPER_IDENTIFIER_TOKENS, m_tokens[m_pos].type)) {
+    auto t = m_tokens[m_pos].type;
+    while (t == lex::RawTokenType::LX_CHARACTER or t == lex::RawTokenType::LX_DIGIT) {
         PARSE_ONCE(p3, parse_lexeme_character_or_digit);
         out->token_data += p3->token_data;
+        t = m_tokens[m_pos].type;
     }
 
     return out;
