@@ -87,10 +87,13 @@ auto spp::asts::TypeIdentifierAst::clone() const
 
 
 spp::asts::TypeIdentifierAst::operator std::string() const {
-    SPP_STRING_START;
-    raw_string.append(name);
-    SPP_STRING_APPEND(generic_arg_group);
-    SPP_STRING_END;
+    if (m_stringification_cache.empty()) {
+        auto raw_string = std::string();
+        raw_string.append(name);
+        raw_string.append(generic_arg_group != nullptr ? static_cast<std::string>(*generic_arg_group) : "");
+        m_stringification_cache = raw_string;
+    }
+    return m_stringification_cache;
 }
 
 
