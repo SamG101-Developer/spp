@@ -375,4 +375,16 @@ auto spp::asts::TypeIdentifierAst::ankerl_hash() const
     return absl::Hash<std::string>()(name);
 }
 
+
+auto spp::asts::TypeIdentifierAst::to_string_view() const
+    -> std::string_view {
+    if (m_stringification_cache.empty()) {
+        m_stringification_cache = name;
+        if (generic_arg_group != nullptr) {
+            m_stringification_cache.append(static_cast<std::string>(*generic_arg_group));
+        }
+    }
+    return m_stringification_cache;
+}
+
 SPP_MOD_END

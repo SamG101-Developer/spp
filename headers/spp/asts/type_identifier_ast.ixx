@@ -107,6 +107,10 @@ public:
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 
     auto ankerl_hash() const -> std::size_t override;
+
+    SPP_ATTR_NODISCARD auto is_type_identifier() const noexcept -> bool override { return true; }
+
+    SPP_ATTR_NODISCARD auto to_string_view() const -> std::string_view;
 };
 
 

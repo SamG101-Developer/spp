@@ -72,6 +72,12 @@ spp::asts::IdentifierAst::operator std::string() const {
 }
 
 
+auto spp::asts::IdentifierAst::to_string_view() const noexcept
+    -> std::string_view {
+    return val;
+}
+
+
 auto spp::asts::IdentifierAst::operator+(
     IdentifierAst const &that) const
     -> IdentifierAst {
