@@ -615,8 +615,8 @@ auto spp::analyse::utils::func_utils::name_gn_args(
     // Copy the raw pointer vectors from the splits.
     auto comp_params_raw = p_group.get_comp_params();
     auto type_params_raw = p_group.get_type_params();
-    auto comp_params = std::vector<asts::GenericParameterAst*>(comp_params_raw.begin(), comp_params_raw.end());
-    auto type_params = std::vector<asts::GenericParameterAst*>(type_params_raw.begin(), type_params_raw.end());
+    const auto comp_params = std::vector<asts::GenericParameterAst*>(comp_params_raw.begin(), comp_params_raw.end());
+    const auto type_params = std::vector<asts::GenericParameterAst*>(type_params_raw.begin(), type_params_raw.end());
 
     // Name the two kinds of arguments separately.
     name_gn_args_impl<asts::GenericArgumentCompAst, asts::GenericParameterCompAst, asts::GenericParameterCompVariadicAst>(*comp_args, comp_params, owner, sm, meta);
@@ -744,8 +744,8 @@ auto spp::analyse::utils::func_utils::infer_gn_args(
     a_group.args.clear();
 
     // Get raw param pointer vectors — params are read-only in impl, no clone needed.
-    auto comp_params = p_group.get_comp_params();
-    auto type_params = p_group.get_type_params();
+    const auto comp_params = p_group.get_comp_params();
+    const auto type_params = p_group.get_type_params();
 
     const auto comp_explicit_args = explicit_args
         | genex::views::cast_dynamic<asts::GenericArgumentCompKeywordAst*>()
@@ -950,7 +950,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
     // Infer the generic arguments from the source/target maps.
     for (auto const &p_name : p_names) {
         for (auto const &[infer_target_name, infer_target_type] : infer_target) {
-            auto inferred_arg = std::shared_ptr<const asts::TypeAst>(nullptr);
+            auto inferred_arg = std::shared_ptr<asts::TypeAst>(nullptr);
 
             // Check for a direct match ("a: T" & "a: Str") or an inner match ("a: Vec[T]" & "a: Vec[Str]").
             if (infer_source.contains(infer_target_name)) {
@@ -973,16 +973,14 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
                     auto it = genex::find_if(explicit_args, [&](auto *arg) {
                         return *std::dynamic_pointer_cast<asts::TypeIdentifierAst>(arg->name) == *p_name;
                     });
-                    if (it != explicit_args.end()) {
-                        explicit_args.erase(it);
-                    }
+                    if (it != explicit_args.end()) { explicit_args.erase(it); }
                 }
             }
 
             // Handle the variadic parameter if it exists.
             if (variadic_fn_param_name != nullptr and *infer_target_name == *variadic_fn_param_name) {
-                auto temp1 = ast_clone(inferred_args[p_name].back()->type_parts().back()->generic_arg_group->args[0]);
-                auto temp2 = std::move(temp1)->to<asts::GenericArgumentTypeAst>()->val;
+                auto &temp1 = inferred_args[p_name].back()->type_parts().back()->generic_arg_group->args[0];
+                auto temp2 = temp1->to<asts::GenericArgumentTypeAst>()->val;
                 inferred_args[p_name].pop_back();
                 inferred_args[p_name].emplace_back(temp2);
             }
@@ -1018,7 +1016,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
     enforce_no_uninferred_gn_args(p_names, i_names, owner_scope, owner, sm);
 
     // At this point, all conflicts have been checked, so it is safe to only use the first inferred value.
-    auto formatted_args = std::map<std::shared_ptr<asts::TypeAst>, std::shared_ptr<const asts::TypeAst>>();
+    auto formatted_args = std::map<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::TypeAst>>();
     for (auto [arg_name, inferred_vals] : inferred_args) {
         formatted_args[arg_name] = inferred_vals[0];
     }
@@ -1032,7 +1030,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
             | genex::views::filter([&](auto const &p) { return *p.first != *arg_name; })
             | genex::views::transform([](auto const &p) { return std::make_pair(std::dynamic_pointer_cast<asts::TypeIdentifierAst>(p.first), p.second); })
             | genex::to<std::vector>();
-        auto other_args_map = ankerl::unordered_dense::map<std::shared_ptr<asts::TypeIdentifierAst>, std::shared_ptr<const asts::TypeAst>>(other_args.begin(), other_args.end());
+        auto other_args_map = ankerl::unordered_dense::map<std::shared_ptr<asts::TypeIdentifierAst>, std::shared_ptr<asts::TypeAst>>(other_args.begin(), other_args.end());
         auto other_args_group = asts::GenericArgumentGroupAst::from_map(std::move(other_args_map));
         auto other_args_vec = other_args_group->args | genex::views::ptr | genex::to<std::vector>();
 
@@ -1043,10 +1041,10 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
 
     // Convert the inferred types into new generic arguments.
     auto i = a_group.args.size();
-    for (auto const &[key, val] : formatted_args) {
+    for (auto &&[key, val] : formatted_args) {
         const auto matching_param = genex::find(p_names, *key->to<asts::TypeIdentifierAst>(), genex::meta::deref);
         if (matching_param == p_names.end()) { continue; }
-        auto temp_arg = std::make_unique<asts::GenericArgumentTypeKeywordAst>(ast_clone(key), nullptr, ast_clone(val));
+        auto temp_arg = std::make_unique<asts::GenericArgumentTypeKeywordAst>(key, nullptr, val);
         a_group.args.emplace_back(std::move(temp_arg));
     }
 

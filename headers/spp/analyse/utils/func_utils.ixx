@@ -62,7 +62,7 @@ namespace spp::analyse::utils::func_utils {
 
     using InferenceResultTypeMap = ankerl::unordered_dense::map<
         std::shared_ptr<asts::TypeIdentifierAst>,
-        std::vector<std::shared_ptr<const asts::TypeAst>>,
+        std::vector<std::shared_ptr<asts::TypeAst>>,
         spp::utils::ptr::ptr_hash<std::shared_ptr<asts::TypeIdentifierAst>>,
         spp::utils::ptr::ptr_eq<std::shared_ptr<asts::TypeIdentifierAst>>>;
 
