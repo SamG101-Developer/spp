@@ -30,7 +30,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
-import genex;
+// import genex;
 
 
 SPP_MOD_BEGIN
@@ -110,9 +110,9 @@ auto spp::asts::SupPrototypeExtensionAst::check_cyclic_extension(
 
     // Prevent double inheritance by checking if the scopes are already registered the other way around.
     const auto existing_sup_scopes = sup_sym.scope->sup_scopes()
-        | genex::views::filter(check_cycle)
-        | genex::views::transform([](auto *x) { return std::make_pair(x, x->ast->template to<SupPrototypeExtensionAst>()); })
-        | genex::to<std::vector>();
+        | std::ranges::views::filter(check_cycle)
+        | std::ranges::views::transform([](auto *x) { return std::make_pair(x, x->ast->template to<SupPrototypeExtensionAst>()); })
+        | std::ranges::to<std::vector>();
 
     raise_if<analyse::errors::SppSuperimpositionCyclicExtensionError>(
         not existing_sup_scopes.empty(), {&check_scope},
@@ -141,9 +141,9 @@ auto spp::asts::SupPrototypeExtensionAst::check_double_extension(
     auto dummy = analyse::utils::type_utils::GenericInferenceMap();
     auto all_sup_scopes = cls_sym.scope->sup_scopes();
     const auto existing_sup_scopes = all_sup_scopes
-        | genex::views::filter(check_double)
-        | genex::views::transform([](auto *x) { return std::make_pair(x, x->ast->template to<SupPrototypeExtensionAst>()); })
-        | genex::to<std::vector>();
+        | std::ranges::views::filter(check_double)
+        | std::ranges::views::transform([](auto *x) { return std::make_pair(x, x->ast->template to<SupPrototypeExtensionAst>()); })
+        | std::ranges::to<std::vector>();
 
     raise_if<analyse::errors::SppSuperimpositionDoubleExtensionError>(
         not existing_sup_scopes.empty(), {&check_scope},
@@ -201,8 +201,8 @@ auto spp::asts::SupPrototypeExtensionAst::stage_2_gen_top_level_scopes(
     // Check every generic parameter is constrained by the type.
     if (name->type_parts().back()->name[0] != '$') {
         const auto unconstrained = generic_param_group->get_all_params()
-            | genex::views::filter([this](auto &&x) { return not(name->contains_generic(*x) or super_class->contains_generic(*x)); })
-            | genex::to<std::vector>();
+            | std::ranges::views::filter([this](auto &&x) { return not(name->contains_generic(*x) or super_class->contains_generic(*x)); })
+            | std::ranges::to<std::vector>();
         raise_if<analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError>(
             not unconstrained.empty(), {sm->current_scope},
             ERR_ARGS(*unconstrained[0]));
@@ -310,7 +310,9 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
 
     auto sup_scopes = sm->current_scope->get_type_symbol(super_class)->scope->sup_scopes();
     sup_scopes.insert(sup_scopes.begin(), sup_sym->scope);
-    genex::actions::remove_if(sup_scopes, [](auto &&x) { return x->ast->template to<ClassPrototypeAst>() == nullptr; });
+    sup_scopes.erase(
+        std::ranges::remove_if(sup_scopes, [](auto &&x) { return x->ast->template to<ClassPrototypeAst>() == nullptr; }).begin(),
+        sup_scopes.end());
 
     // Mark the class as copyable if the "Copy" type is the supertype.
     for (const auto sup_scope : sup_scopes) {
@@ -434,8 +436,8 @@ auto spp::asts::SupPrototypeExtensionAst::stage_11_code_gen_2(
 
     // Check if this block is purely generic.
     const auto is_generic_scope =
-        genex::any_of(sm->current_scope->all_type_symbols(true), [](auto &&x) { return x->is_generic; }) or
-        genex::any_of(sm->current_scope->all_var_symbols(true), [](auto &&x) { return x->memory_info->ast_comptime == nullptr; });
+        std::ranges::any_of(sm->current_scope->all_type_symbols(true), [](auto &&x) { return x->is_generic; }) or
+        std::ranges::any_of(sm->current_scope->all_var_symbols(true), [](auto &&x) { return x->memory_info->ast_comptime == nullptr; });
 
     // Generate the implementation if not a generic scope.
     if (not is_generic_scope) {

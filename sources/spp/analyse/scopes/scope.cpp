@@ -452,8 +452,8 @@ auto spp::analyse::scopes::Scope::get_type_symbol(
 
     auto scope = this;
     std::shared_ptr<const asts::TypeIdentifierAst> sym_name_extracted;
-    if (const auto sym_name_as_identifier = std::dynamic_pointer_cast<const asts::TypeIdentifierAst>(sym_name)) {
-        sym_name_extracted = std::const_pointer_cast<asts::TypeIdentifierAst>(sym_name_as_identifier);
+    if (sym_name->is_type_identifier()) {
+        sym_name_extracted = std::static_pointer_cast<const asts::TypeIdentifierAst>(sym_name);
     }
     else {
         auto [scope_, sym_name_extracted_] = shift_scope_for_namespaced_type(*this, *sym_name);

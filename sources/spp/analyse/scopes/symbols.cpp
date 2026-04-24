@@ -152,7 +152,7 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
 
 
 spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
-    name(ast_clone(that.name)),
+    name(that.name),
     type(that.type),
     scope(that.scope),
     scope_defined_in(that.scope_defined_in),
@@ -183,12 +183,12 @@ auto spp::analyse::scopes::TypeSymbol::fq_name(
     -> std::shared_ptr<asts::TypeAst> {
     // For aliases, return the fully qualified name of the aliased type.
     if (alias_stmt != nullptr) {
-        return asts::ast_clone(alias_stmt->m_mapped_old_type);
+        return alias_stmt->m_mapped_old_type;
     }
 
     // If the type is generic, or the name starts with a '$', return the name as-is.
     if (is_generic or scope == nullptr or (ignore_dollar and name->name[0] == '$')) {
-        return ast_clone(name);
+        return name;
     }
 
     // Fully qualify the name from the root scope.

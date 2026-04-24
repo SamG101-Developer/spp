@@ -40,6 +40,8 @@ SPP_EXP_CLS struct spp::asts::TypeAst : PrimaryExpressionAst, mixins::AbstractTy
     mutable std::shared_ptr<TypeAst> m_without_generics_cache;
 
     mutable std::string m_stringification_cache;
+
+    SPP_ATTR_NODISCARD virtual auto is_type_identifier() const noexcept -> bool { return false; }
 };
 
 

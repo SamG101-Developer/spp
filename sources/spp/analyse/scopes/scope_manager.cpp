@@ -207,7 +207,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
     // Clear the sup scopes list.
     scope.direct_sup_scopes.clear();
     const auto fq_type = scope.ty_sym->fq_name();
-    const auto cls_sym = scope.ty_sym;
+    const auto &cls_sym = scope.ty_sym;
 
     // Iterate through all the super scopes and check if the name matches.
     for (auto *sup_scope : sup_scopes) {

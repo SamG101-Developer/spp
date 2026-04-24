@@ -220,20 +220,19 @@ auto spp::asts::TypeIdentifierAst::without_generics() const
 auto spp::asts::TypeIdentifierAst::substitute_generics(
     std::vector<GenericArgumentAst*> const &args) const
     -> std::shared_ptr<TypeAst> {
-    auto name_clone = ast_clone(this);
-    if (args.empty() or generic_arg_group == nullptr) { return name_clone; }
+    if (args.empty() or generic_arg_group == nullptr) { return ast_clone(this); }
 
-    // Get the generic type arguments.
-    auto gen_type_args = args
-        | genex::views::cast_dynamic<GenericArgumentTypeKeywordAst*>()
-        | genex::views::transform([](auto &&g) { return std::make_pair(g->name, g->val->template to<ExpressionAst>()); })
-        | genex::to<std::vector>();
-
-    // Get the generic comp arguments.
-    auto gen_comp_args = args
-        | genex::views::cast_dynamic<GenericArgumentCompKeywordAst*>()
-        | genex::views::transform([](auto &&g) { return std::make_pair(g->name, g->val.get()); })
-        | genex::to<std::vector>();
+    // Get the generic type and comp arguments, split and transformed.
+    auto gen_type_args = std::vector<std::pair<TypeIdentifierAst*, ExpressionAst*>>{};
+    auto gen_comp_args = std::vector<std::pair<TypeIdentifierAst*, ExpressionAst*>>{};
+    for (auto const &arg : args) {
+        if (auto const *type_kw_arg = arg->to<GenericArgumentTypeKeywordAst>()) {
+            gen_type_args.emplace_back(type_kw_arg->name->to<TypeIdentifierAst>(), type_kw_arg->val.get());
+        }
+        else if (auto const *comp_kw_arg = arg->to<GenericArgumentCompKeywordAst>()) {
+            gen_comp_args.emplace_back(comp_kw_arg->name->to<TypeIdentifierAst>(), comp_kw_arg->val.get());
+        }
+    }
 
     // Check if this type directly matches any generic type argument name.
     for (auto const &[gen_arg_name, gen_arg_val] : gen_type_args) {
@@ -243,10 +242,12 @@ auto spp::asts::TypeIdentifierAst::substitute_generics(
     }
 
     // Substitute generics in the comp arguments' types.
-    gen_type_args.append_range(gen_comp_args);
+    auto name_clone = ast_clone(this);
+    const auto comp_args_in_clone = name_clone->generic_arg_group->get_comp_args();
     for (auto const &[gen_arg_name, gen_arg_val] : gen_comp_args) {
-        for (auto const &g : name_clone->generic_arg_group->get_comp_args()) {
-            if (auto const *ident_val = g->val->to<IdentifierAst>(); ident_val != nullptr and *ident_val == *IdentifierAst::from_type(*gen_arg_name)) {
+        const auto expected = IdentifierAst::from_type(*gen_arg_name);
+        for (auto const &g : comp_args_in_clone) {
+            if (auto const *ident_val = g->val->to<IdentifierAst>(); ident_val != nullptr and *ident_val == *expected) {
                 g->val = ast_clone(gen_arg_val);
             }
         }

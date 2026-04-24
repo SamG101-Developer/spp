@@ -69,7 +69,7 @@ constexpr auto SPP_VERSION = "0.1.0";
 
 #define SPP_STRING_APPEND(x) raw_string.append(x != nullptr ? static_cast<std::string>(*x) : "")
 
-#define SPP_STRING_EXTEND(x, j) raw_string.append(x | genex::views::transform([&](auto &&x) { return x ? static_cast<std::string>(*x) : ""; }) | genex::views::intersperse(std::string(j)) | genex::views::join | genex::to<std::string>())
+#define SPP_STRING_EXTEND(x, j) raw_string.append(std::ranges::to<std::string>(std::ranges::views::join_with(std::ranges::views::transform(x, [&](auto &&x) { return x ? static_cast<std::string>(*x) : ""; }), std::string(j))))
 
 #define SPP_STRING_END return raw_string
 

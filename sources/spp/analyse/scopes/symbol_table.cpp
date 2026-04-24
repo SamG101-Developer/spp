@@ -47,14 +47,14 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::add(
     std::shared_ptr<I> const &sym_name,
     std::shared_ptr<S> const &sym)
     -> void {
-    // Add a symbol to the table.
-    auto str = sym_name->to_string();
-    auto it = m_table.find(str);
+    // Add a symbol to the table. Use string_view for the find to avoid a copy.
+    const auto sv = sym_name->to_string_view();
+    auto it = m_table.find(sv);
     if (it != m_table.end()) {
         it->second = sym;
     }
     else {
-        m_table[str] = sym;
+        m_table.emplace(sv, sym);
     }
 }
 
@@ -63,7 +63,7 @@ template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::rem(
     std::shared_ptr<I> const &sym_name) -> void {
     // Remove a symbol from the table.
-    auto it = m_table.find(sym_name->to_string());
+    auto it = m_table.find(sym_name->to_string_view());
     if (it != m_table.end()) {
         m_table.erase(it);
     }
@@ -74,9 +74,9 @@ template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::get(
     std::shared_ptr<I> const &sym_name) const
     -> std::shared_ptr<S> {
-    // Get a symbol from the table.
+    // Get a symbol from the table. Use string_view to avoid a string copy per lookup.
     if (sym_name == nullptr) { return nullptr; }
-    auto ptr = m_table.find(sym_name->to_string());
+    auto ptr = m_table.find(sym_name->to_string_view());
     return ptr != m_table.end() ? ptr->second : nullptr;
 }
 
@@ -87,7 +87,7 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::has(
     -> bool {
     // Check if a symbol exists in the table.
     if (sym_name == nullptr) { return false; }
-    auto ptr = m_table.find(sym_name->to_string());
+    auto ptr = m_table.find(sym_name->to_string_view());
     return ptr != m_table.end();
 }
 
