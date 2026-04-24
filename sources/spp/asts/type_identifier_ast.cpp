@@ -79,10 +79,13 @@ auto spp::asts::TypeIdentifierAst::pos_end() const
 
 auto spp::asts::TypeIdentifierAst::clone() const
     -> std::unique_ptr<Ast> {
-    return std::make_unique<TypeIdentifierAst>(
+    auto t = std::make_unique<TypeIdentifierAst>(
         m_pos,
         std::string(name),
         ast_clone(generic_arg_group));
+    t->m_without_generics_cache = m_without_generics_cache;
+    t->m_is_never_type = m_is_never_type;
+    return t;
 }
 
 
