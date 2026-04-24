@@ -34,7 +34,7 @@ namespace spp::analyse::scopes {
 
 namespace spp::analyse::utils::type_utils {
     SPP_EXP_CLS using GenericInferenceMap = ankerl::unordered_dense::map<
-        std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst const*,
+        std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst*,
         spp::utils::ptr::ptr_hash<std::shared_ptr<asts::TypeIdentifierAst>>,
         spp::utils::ptr::ptr_eq<std::shared_ptr<asts::TypeIdentifierAst>>>;
 

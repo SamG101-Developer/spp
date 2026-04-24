@@ -66,10 +66,10 @@ auto spp::asts::TypeStatementAst::clone() const
     auto ast = std::make_unique<TypeStatementAst>(
         ast_clone_vec(annotations),
         ast_clone(tok_type),
-        ast_clone(new_type),
+        new_type,
         ast_clone(generic_param_group),
         ast_clone(tok_assign),
-        ast_clone(old_type));
+        old_type);
     ast->m_ctx = m_ctx;
     ast->m_scope = m_scope;
     ast->m_tracking_scope = m_tracking_scope;

@@ -167,7 +167,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     const auto stripped_rhs_sym = rhs_scope.get_type_symbol(stripped_rhs);
     if (stripped_rhs_sym->is_generic) {
         const auto t = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(stripped_rhs);
-        generic_args.insert({t, &lhs_type});
+        generic_args.insert({t, const_cast<asts::TypeAst*>(&lhs_type)});
         return true;
     }
 
@@ -178,7 +178,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     const auto stripped_lhs_sym = lhs_scope.get_type_symbol(stripped_lhs);
     if (stripped_lhs_sym->is_generic) {
         const auto t = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(stripped_lhs);
-        generic_args.insert({t, &rhs_type});
+        generic_args.insert({t, const_cast<asts::TypeAst*>(&rhs_type)});
         return true;
     }
 
@@ -246,7 +246,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     -> bool {
     // Simple equality between the expressions, with generic matching.
     if (const auto rhs_expr_as_identifier = rhs_expr.to<asts::IdentifierAst>()) {
-        generic_args[asts::TypeIdentifierAst::from_identifier(*rhs_expr_as_identifier)] = &lhs_expr;
+        generic_args[asts::TypeIdentifierAst::from_identifier(*rhs_expr_as_identifier)] = const_cast<asts::ExpressionAst*>(&lhs_expr);
         return true;
     }
     return lhs_expr == rhs_expr;
