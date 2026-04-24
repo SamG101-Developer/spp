@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.utils.cache;
+import ankerl.unordered_dense;
 import std;
 
 
@@ -16,7 +17,7 @@ namespace spp::utils {
     SPP_EXP_CLS template <typename K, typename V>
     requires std::is_pointer_v<K>
     class Cache {
-        std::unordered_map<K, V> m_cache;
+        ankerl::unordered_dense::map<K, V> m_cache;
 
     public:
         /**
