@@ -63,11 +63,11 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
         -> std::unique_ptr<GenericArgumentGroupAst>;
 
     static auto from_map(
-        ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst const*, utils::ptr::ptr_hash<std::shared_ptr<TypeIdentifierAst>>, utils::ptr::ptr_eq<std::shared_ptr<TypeIdentifierAst>>> &&map)
+        ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst*, utils::ptr::ptr_hash<std::shared_ptr<TypeIdentifierAst>>, utils::ptr::ptr_eq<std::shared_ptr<TypeIdentifierAst>>> &&map)
         -> std::unique_ptr<GenericArgumentGroupAst>;
 
     static auto from_map(
-        ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, std::shared_ptr<const TypeAst>> &&map)
+        ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, std::shared_ptr<TypeAst>> &&map)
         -> std::unique_ptr<GenericArgumentGroupAst>;
 
     auto operator+=(

@@ -95,14 +95,16 @@ auto spp::asts::GenericArgumentGroupAst::from_params(
     for (auto const &param : generic_params.params) {
         // Map type generic parameters to keyword type arguments.
         if (const auto type_param = param->to<GenericParameterTypeAst>()) {
-            mapped_args.emplace_back(std::make_unique<GenericArgumentTypeKeywordAst>(
-                ast_clone(type_param->name), nullptr, ast_clone(type_param->name)));
+            auto val = ast_clone(type_param->name);
+            auto arg = std::make_unique<GenericArgumentTypeKeywordAst>(type_param->name, nullptr, std::move(val));
+            mapped_args.emplace_back(std::move(arg));
         }
 
         // Map comptime generic parameters to keyword comptime arguments.
         else if (const auto comp_param = param->to<GenericParameterCompAst>()) {
-            mapped_args.emplace_back(std::make_unique<GenericArgumentCompKeywordAst>(
-                ast_clone(comp_param->name), nullptr, IdentifierAst::from_type(*comp_param->name)));
+            auto val = IdentifierAst::from_type(*comp_param->name);
+            auto arg = std::make_unique<GenericArgumentCompKeywordAst>(comp_param->name, nullptr, std::move(val));
+            mapped_args.emplace_back(std::move(arg));
         }
     }
 
@@ -119,17 +121,19 @@ auto spp::asts::GenericArgumentGroupAst::from_map(
     // Create the list of arguments, initially empty.
     auto mapped_args = std::vector<std::unique_ptr<GenericArgumentAst>>();
 
-    for (auto const &[arg_name, arg_val] : map) {
+    for (auto &&[arg_name, arg_val] : map) {
         // Map type ASTs to keyword type arguments.
         if (auto *arg_val_for_type = arg_val->to<TypeAst>()) {
-            mapped_args.emplace_back(std::make_unique<GenericArgumentTypeKeywordAst>(
-                ast_clone(arg_name), nullptr, ast_clone(arg_val_for_type)));
+            auto val = ast_clone(arg_val_for_type);
+            auto arg = std::make_unique<GenericArgumentTypeKeywordAst>(std::move(arg_name), nullptr, std::move(val));
+            mapped_args.emplace_back(std::move(arg));
         }
 
         // Map expression ASTs to keyword comptime arguments.
         else if (auto *arg_val_for_comp = arg_val->to<ExpressionAst>()) {
-            mapped_args.emplace_back(std::make_unique<GenericArgumentCompKeywordAst>(
-                ast_clone(arg_name), nullptr, ast_clone(arg_val_for_comp)));
+            auto val = ast_clone(arg_val_for_comp);
+            auto arg = std::make_unique<GenericArgumentCompKeywordAst>(std::move(arg_name), nullptr, std::move(val));
+            mapped_args.emplace_back(std::move(arg));
         }
     }
 
@@ -139,13 +143,11 @@ auto spp::asts::GenericArgumentGroupAst::from_map(
 
 
 auto spp::asts::GenericArgumentGroupAst::from_map(
-    ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, std::shared_ptr<const TypeAst>> &&map)
+    ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, std::shared_ptr<TypeAst>> &&map)
     -> std::unique_ptr<GenericArgumentGroupAst> {
     // Cast the values to "ExpressionAst const*".
     auto mapped_args = analyse::utils::type_utils::GenericInferenceMap();
-    for (auto const &[k, v] : map) {
-        mapped_args[k] = v.get();
-    }
+    for (auto const &[k, v] : map) { mapped_args[k] = v.get(); }
     return from_map(std::move(mapped_args));
 }
 
@@ -215,11 +217,11 @@ auto spp::asts::GenericArgumentGroupAst::merge_generics(
     for (auto &&other_arg : other_args) {
         if (const auto kw_comp = other_arg->to<GenericArgumentCompKeywordAst>(); kw_comp != nullptr) {
             if (comp_at(kw_comp->name->to<TypeIdentifierAst>()->name.c_str()) != nullptr) { continue; }
-            args.emplace_back(ast_clone(other_arg));
+            args.emplace_back(std::move(other_arg));
         }
         else if (const auto kw_type = other_arg->to<GenericArgumentTypeKeywordAst>(); kw_type != nullptr) {
             if (type_at(kw_type->name->to<TypeIdentifierAst>()->name.c_str()) != nullptr) { continue; }
-            args.emplace_back(ast_clone(other_arg));
+            args.emplace_back(std::move(other_arg));
         }
     }
 }
