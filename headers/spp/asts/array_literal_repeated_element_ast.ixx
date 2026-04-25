@@ -24,6 +24,8 @@ namespace spp::asts {
  * information is required on declaration, the element type and size must be specified.
  */
 SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLiteralAst {
+    SPP_GCC_VTABLE_FIX
+
     /**
      * The token that represents the left square bracket @code [@endcode in the array literal. This introduces the array
      * literal.
@@ -54,8 +56,6 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
      */
     std::unique_ptr<TokenAst> tok_r;
 
-    auto _spp_key_function() const -> void override;
-
     /**
      * Construct the ArrayLiteral0Elements with the arguments matching the members.
      * @param[in] tok_l The token that represents the left square bracket @code [@endcode in the array literal.
@@ -73,11 +73,30 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
 
     ~ArrayLiteralRepeatedElementAst() override;
 
-    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-
-    SPP_ATTR_NODISCARD auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> std::strong_ordering override;
-
     SPP_AST_KEY_FUNCTIONS;
+
+    /**
+     * Check the repeated element for equality with the repeated element in the other array literal, and check the size
+     * for equality with the size in the other array literal. The array literals are only equal if both the repeated
+     * elements and the sizes are equal. Given this is only used in compile-time contexts, the repeated element and size
+     * will be evaluatable to the AST.
+     * @param other The other array literal to compare with.
+     * @return @code std::strong_ordering::equal@endcode if the array literals are equal, and
+     * @code std::strong_ordering::less@endcode otherwise.
+     */
+    SPP_ATTR_NODISCARD auto equals_array_literal_repeated_elements(
+        ArrayLiteralRepeatedElementAst const &other) const
+        -> std::strong_ordering override;
+
+    /**
+     * Reverse hook to equate against the other arguments. This will call the @c equals_array_literal_repeated_elements
+     * method on the other expression, if it is an array literal with repeated elements, to check for equality.
+     * @param other
+     * @return
+     */
+    SPP_ATTR_NODISCARD auto equals(
+        ExpressionAst const &other) const
+        -> std::strong_ordering override;
 
     /**
      * Ensure that the element given is both copyable and not a borrow type, allowing it to be stored as multiple
@@ -126,6 +145,4 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::ArrayLiteralRepeatedElementAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(ArrayLiteralRepeatedElementAst)

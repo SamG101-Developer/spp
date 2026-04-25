@@ -29,6 +29,7 @@ spp::asts::ArrayLiteralExplicitElementsAst::ArrayLiteralExplicitElementsAst(
     tok_l(std::move(tok_l)),
     elems(std::move(elements)),
     tok_r(std::move(tok_r)) {
+    // Default the two tokens.
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_l, lex::SppTokenType::TK_LEFT_SQUARE_BRACKET, "[");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_r, lex::SppTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
 }
@@ -40,11 +41,13 @@ spp::asts::ArrayLiteralExplicitElementsAst::~ArrayLiteralExplicitElementsAst() =
 auto spp::asts::ArrayLiteralExplicitElementsAst::equals_array_literal_explicit_elements(
     ArrayLiteralExplicitElementsAst const &other) const
     -> std::strong_ordering {
-    // Two array literals with explicit elements are equal if all their elements are equal.
-    // Todo: what about different sized arrays?
+    // If two explicit array asts don't have the same size, they cannot be equal.
+    if (elems.size() != other.elems.size()) { return std::strong_ordering::less; }
+
+    // Ensure each element of the two array literals are equal.
     if (genex::all_of(
         genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::to<std::vector>(),
-        [](auto &&pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
+        [](auto const &pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
         return std::strong_ordering::equal;
     }
     return std::strong_ordering::less;
@@ -54,18 +57,21 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::equals_array_literal_explicit_e
 auto spp::asts::ArrayLiteralExplicitElementsAst::equals(
     ExpressionAst const &other) const
     -> std::strong_ordering {
+    // Reverse hook to compare against the other expression.
     return other.equals_array_literal_explicit_elements(*this);
 }
 
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::pos_start() const
     -> std::size_t {
+    // The position of the array literal is the position of the left square bracket token.
     return tok_l->pos_start();
 }
 
 
 auto spp::asts::ArrayLiteralExplicitElementsAst::pos_end() const
     -> std::size_t {
+    // Span to the right square bracket token.
     return tok_r->pos_end();
 }
 
@@ -93,7 +99,7 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_7_analyse_semantics(
     CompilerMetaData *meta)
     -> void {
     // Analyse the element inside the array.
-    for (auto &&elem : elems) {
+    for (auto const &elem : elems) {
         SPP_ENFORCE_EXPRESSION_SUBTYPE(elem.get());
         elem->stage_7_analyse_semantics(sm, meta);
     }
@@ -104,10 +110,10 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::stage_7_analyse_semantics(
 
     // Check all elements have the same type as the 0th element.
     const auto elem_types = elems
-        | genex::views::transform([sm, meta](auto &&elem) { return elem->infer_type(sm, meta); })
+        | genex::views::transform([sm, meta](auto const &elem) { return elem->infer_type(sm, meta); })
         | genex::to<std::vector>();
 
-    for (auto &&[elem, elem_type] : genex::views::zip(elems | genex::views::ptr, elem_types)) {
+    for (auto const &[elem, elem_type] : genex::views::zip(elems | genex::views::ptr, elem_types)) {
         raise_if<analyse::errors::SppTypeMismatchError>(
             not analyse::utils::type_utils::symbolic_eq(*zeroth_type, *elem_type, *sm->current_scope, *sm->current_scope),
             {sm->current_scope}, ERR_ARGS(*zeroth_elem, *zeroth_type, *elem, *elem_type));

@@ -35,6 +35,7 @@ spp::asts::ArrayLiteralRepeatedElementAst::ArrayLiteralRepeatedElementAst(
     tok_semicolon(std::move(tok_semicolon)),
     size(std::move(size)),
     tok_r(std::move(tok_r)) {
+    // Default the three tokens.
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_l, lex::SppTokenType::TK_LEFT_SQUARE_BRACKET, "[");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_semicolon, lex::SppTokenType::TK_SEMICOLON, ";");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_r, lex::SppTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
@@ -44,16 +45,11 @@ spp::asts::ArrayLiteralRepeatedElementAst::ArrayLiteralRepeatedElementAst(
 spp::asts::ArrayLiteralRepeatedElementAst::~ArrayLiteralRepeatedElementAst() = default;
 
 
-auto spp::asts::ArrayLiteralRepeatedElementAst::equals(
-    ExpressionAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_array_literal_repeated_elements(*this);
-}
-
-
 auto spp::asts::ArrayLiteralRepeatedElementAst::equals_array_literal_repeated_elements(
     ArrayLiteralRepeatedElementAst const &other) const
     -> std::strong_ordering {
+    // Check the repeated element and size for equality with the other array literal. Both must be equal for the array
+    // literals to be equal.
     if (*elem == *other.elem and *size == *other.size) {
         return std::strong_ordering::equal;
     }
@@ -61,14 +57,24 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::equals_array_literal_repeated_el
 }
 
 
+auto spp::asts::ArrayLiteralRepeatedElementAst::equals(
+    ExpressionAst const &other) const
+    -> std::strong_ordering {
+    // Reverse hook to compare against the other expression.
+    return other.equals_array_literal_repeated_elements(*this);
+}
+
+
 auto spp::asts::ArrayLiteralRepeatedElementAst::pos_start() const
     -> std::size_t {
+    // The position of the array literal is the position of the left square bracket token.
     return tok_l->pos_start();
 }
 
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::pos_end() const
     -> std::size_t {
+    // Span to the right square bracket token.
     return tok_r->pos_end();
 }
 
@@ -159,9 +165,9 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_11_code_gen_2(
     // Runtime allocation. Todo: Can this be removed for comp only?
     if (not ctx->in_constant_context) {
         // Collect the generated versions of the elements.
-        auto vals = std::vector<llvm::Value*>{};
+        auto vals = std::vector<llvm::Value*>();
         vals.reserve(num_vals);
-        for (auto i = 0uz; i < vals.capacity(); ++i) {
+        for (auto i = 0uz; i < num_vals; ++i) {
             vals.emplace_back(elem->stage_11_code_gen_2(sm, meta, ctx));
         }
 

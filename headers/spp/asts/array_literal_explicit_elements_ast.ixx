@@ -24,6 +24,8 @@ namespace spp::asts {
  * respective analysis functions will be called by inheritance/vtable logic.
  */
 SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiteralAst {
+    SPP_GCC_VTABLE_FIX
+
     /**
      * The token that represents the left square bracket @code [@endcode in the array literal. This introduces the array
      * literal.
@@ -42,8 +44,6 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiter
      */
     std::unique_ptr<TokenAst> tok_r;
 
-    auto _spp_key_function() const -> void override;
-
     /**
      * Construct the ArrayLiteralNElements with the arguments matching the members.
      * @param[in] tok_l The token that represents the left square bracket @c [ in the array literal.
@@ -57,12 +57,30 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiter
 
     ~ArrayLiteralExplicitElementsAst() override;
 
-    SPP_ATTR_NODISCARD auto equals_array_literal_explicit_elements(ArrayLiteralExplicitElementsAst const &) const -> std::strong_ordering override;
-
-    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-
-public:
     SPP_AST_KEY_FUNCTIONS;
+
+    /**
+     * Check each element for equality with the corresponding element in the other array literal. The array literals are
+     * only equal if all the elements are equal. Given this is only used in compile-time contexts, each element will be
+     * evaluatable to the AST.
+     * @param other The other array literal to compare with.
+     * @return @code std::strong_ordering::equal@endcode if the array literals are equal, and
+     * @code std::strong_ordering::less@endcode otherwise.
+     */
+    SPP_ATTR_NODISCARD auto equals_array_literal_explicit_elements(
+        ArrayLiteralExplicitElementsAst const &other) const
+        -> std::strong_ordering override;
+
+    /**
+     * Reverse hook to equate against the other arguments. This will call the @c equals_array_literal_explicit_elements
+     * method on the other expression, if it is an array literal with explicit elements, to check for equality.
+     * @param other The other expression to compare with.
+     * @return @code std::strong_ordering::equal@endcode if the expressions are equal, and
+     * @code std::strong_ordering::less@endcode otherwise.
+     */
+    SPP_ATTR_NODISCARD auto equals(
+        ExpressionAst const &other) const
+        -> std::strong_ordering override;
 
     /**
      * Semantic analysis for an array with explicit elements ensures that all elements are of the same type, and that
@@ -112,6 +130,4 @@ public:
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::ArrayLiteralExplicitElementsAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(ArrayLiteralExplicitElementsAst)
