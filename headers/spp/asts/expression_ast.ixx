@@ -37,6 +37,10 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::ExpressionAst : StatementAst {
     using StatementAst::StatementAst;
+    ~ExpressionAst() override;
+
+    auto operator<=>(const ExpressionAst &) const -> std::strong_ordering;
+    auto operator==(const ExpressionAst &) const -> bool;
 
     SPP_ATTR_NODISCARD virtual auto equals_array_literal_explicit_elements(ArrayLiteralExplicitElementsAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> std::strong_ordering;
@@ -51,11 +55,6 @@ SPP_EXP_CLS struct spp::asts::ExpressionAst : StatementAst {
     SPP_ATTR_NODISCARD virtual auto equals_type_unary_expression(TypeUnaryExpressionAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals_type_postfix_expression(TypePostfixExpressionAst const &) const -> std::strong_ordering;
     SPP_ATTR_NODISCARD virtual auto equals(ExpressionAst const &other) const -> std::strong_ordering; // Not "= 0" on purpose (postfix, unary etc)
-
-    ExpressionAst(ExpressionAst const &other);
-    ~ExpressionAst() override;
-    auto operator<=>(const ExpressionAst &) const -> std::strong_ordering;
-    auto operator==(const ExpressionAst &) const -> bool;
 
     SPP_ATTR_NODISCARD virtual auto expr_parts() const -> std::vector<Ast*>;
 };
