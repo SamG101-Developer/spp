@@ -14,12 +14,12 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {
+    SPP_GCC_VTABLE_FIX
+
     /**
      * The char value of the char literal. This is the actual char that is represented by the literal.
      */
     std::unique_ptr<TokenAst> val;
-
-    auto _spp_key_function() const -> void override;
 
     /**
      * Construct the CharLiteralAst with the arguments matching the members.
@@ -30,9 +30,13 @@ SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {
 
     ~CharLiteralAst() override;
 
-    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals_char_literal(
+        CharLiteralAst const &) const
+        -> std::strong_ordering override;
 
-    SPP_ATTR_NODISCARD auto equals_char_literal(CharLiteralAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals(
+        ExpressionAst const &other) const
+        -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
@@ -44,6 +48,4 @@ SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::CharLiteralAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(CharLiteralAst)
