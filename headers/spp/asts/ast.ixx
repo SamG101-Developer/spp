@@ -32,28 +32,8 @@ namespace spp::asts::meta {
  * and end position identification.
  */
 SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
-public:
     virtual auto _spp_key_function() const -> void;
 
-protected:
-    /**
-     * The context of an AST is used in certain analysis steps. This might be the parent AST, such as a
-     * FunctionPrototypeAst etc.
-     */
-    Ast *m_ctx = nullptr;
-
-    /**
-     * The scope of an AST is used when generating top level scopes, to create a simple link between scope and AST.
-     */
-    analyse::scopes::Scope *m_scope = nullptr;
-
-    /**
-     * Create a new AST (base class for all derived ASTs). This constructor is protected to prevent direct instantiation
-     * as an AST should always be a specific type of AST, such as a TokenAst, IdentifierAst, etc.
-     */
-    explicit Ast();
-
-public:
     ~Ast() override;
 
     /**
@@ -121,32 +101,47 @@ public:
         return dynamic_cast<T const*>(this);
     }
 
+    /**
+     * Default behaviour: bind the context to this AST, for future analysis stages.
+     * @param ctx The context AST.
+     */
     auto stage_1_pre_process(Ast *ctx) -> void override;
 
+    /**
+     * Default behaviour: bind the scope to this AST, for future analysis stages.
+     * @param sm The scope manager to use for setting the scope of this AST (current scope).
+     * @param meta Associated metadata (unused in default implementation).
+     */
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    SPP_ATTR_NODISCARD auto to_string() const -> std::string {
-        return static_cast<std::string>(*this);
-    }
+    SPP_ATTR_NODISCARD auto to_string() const -> std::string;
 
-    SPP_ATTR_NODISCARD auto get_ast_scope() const -> analyse::scopes::Scope* {
-        return m_scope;
-    }
+    SPP_ATTR_NODISCARD auto get_ast_scope() const -> analyse::scopes::Scope*;
 
-    SPP_ATTR_NODISCARD auto get_ast_ctx() const -> Ast* {
-        return m_ctx;
-    }
+    SPP_ATTR_NODISCARD auto get_ast_ctx() const -> Ast*;
 
-    auto set_ast_scope(analyse::scopes::Scope *scope) -> void {
-        m_scope = scope;
-    }
+    auto set_ast_scope(analyse::scopes::Scope *scope) -> void;
 
-    auto set_ast_ctx(Ast *ctx) -> void {
-        m_ctx = ctx;
-    }
+    auto set_ast_ctx(Ast *ctx) -> void;
+
+protected:
+    /**
+     * The context of an AST is used in certain analysis steps. This might be the parent AST, such as a
+     * FunctionPrototypeAst etc.
+     */
+    Ast *m_ctx = nullptr;
+
+    /**
+     * The scope of an AST is used when generating top level scopes, to create a simple link between scope and AST.
+     */
+    analyse::scopes::Scope *m_scope = nullptr;
+
+    /**
+     * Create a new AST (base class for all derived ASTs). This constructor is protected to prevent direct instantiation
+     * as an AST should always be a specific type of AST, such as a TokenAst, IdentifierAst, etc.
+     */
+    explicit Ast();
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::Ast::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(Ast)

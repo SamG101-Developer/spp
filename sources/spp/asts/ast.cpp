@@ -40,4 +40,36 @@ auto spp::asts::Ast::stage_2_gen_top_level_scopes(
     m_scope = sm->current_scope;
 }
 
+
+auto spp::asts::Ast::to_string() const
+    -> std::string {
+    return static_cast<std::string>(*this);
+}
+
+
+auto spp::asts::Ast::get_ast_scope() const
+    -> analyse::scopes::Scope* {
+    return m_scope;
+}
+
+
+auto spp::asts::Ast::get_ast_ctx() const
+    -> Ast* {
+    return m_ctx;
+}
+
+
+auto spp::asts::Ast::set_ast_scope(
+    analyse::scopes::Scope *scope)
+    -> void {
+    m_scope = scope;
+}
+
+
+auto spp::asts::Ast::set_ast_ctx(
+    Ast *ctx)
+    -> void {
+    m_ctx = ctx;
+}
+
 SPP_MOD_END
