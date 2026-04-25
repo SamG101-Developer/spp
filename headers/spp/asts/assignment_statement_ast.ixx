@@ -45,12 +45,6 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
      */
     std::vector<std::unique_ptr<ExpressionAst>> rhs;
 
-private:
-    static auto is_identifier(Ast const *x) -> bool;
-
-    static auto is_attr(Ast const *x, analyse::scopes::ScopeManager const *sm) -> bool;
-
-public:
     /**
      * Construct the AssignmentStatementAst with the arguments matching the members.
      * @param[in] lhs The list of left-hand side expressions in the assignment statement.
@@ -135,4 +129,9 @@ public:
      * @return The LLVM value representing the assignment operation.
      */
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+
+private:
+    static auto is_identifier(Ast const *x) -> bool;
+
+    static auto is_attr(Ast const *x, analyse::scopes::ScopeManager const *sm) -> bool;
 };

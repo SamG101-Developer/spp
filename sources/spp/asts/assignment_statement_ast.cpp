@@ -34,6 +34,7 @@ spp::asts::AssignmentStatementAst::AssignmentStatementAst(
     lhs(std::move(lhs)),
     tok_assign(std::move(tok_assign)),
     rhs(std::move(rhs)) {
+    // Default the assignment token.
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
 }
 
@@ -43,12 +44,14 @@ spp::asts::AssignmentStatementAst::~AssignmentStatementAst() = default;
 
 auto spp::asts::AssignmentStatementAst::pos_start() const
     -> std::size_t {
+    // The position of this statement starts at the first lhs target.
     return lhs.front()->pos_start();
 }
 
 
 auto spp::asts::AssignmentStatementAst::pos_end() const
     -> std::size_t {
+    // Span to the final rhs target's end position.
     return rhs.back()->pos_end();
 }
 
@@ -71,27 +74,12 @@ spp::asts::AssignmentStatementAst::operator std::string() const {
 }
 
 
-auto spp::asts::AssignmentStatementAst::is_identifier(
-    Ast const *x) -> bool {
-    // Determine if the AST node is an identifier.
-    return x->to<IdentifierAst>() != nullptr;
-}
-
-
-auto spp::asts::AssignmentStatementAst::is_attr(
-    Ast const *x,
-    analyse::scopes::ScopeManager const *sm) -> bool {
-    // Determine if the AST node is an attribute (ie not an identifier).
-    return not x->to<IdentifierAst>() and sm->current_scope->get_var_symbol_outermost(*x).first != nullptr;
-}
-
-
 auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Ensure the LHS is semantically valid.
-    for (auto &&lhs_expr : lhs) {
+    for (auto const &lhs_expr : lhs) {
         SPP_DEREF_ALLOW_MOVE_HELPER(lhs_expr) {
             meta->save();
             meta->allow_move_deref = true;
@@ -126,8 +114,8 @@ auto spp::asts::AssignmentStatementAst::stage_7_analyse_semantics(
         | genex::views::transform([sm](auto const &x) { return sm->current_scope->get_var_symbol_outermost(*x); });
 
     // Create quick access derefs for the looping.
-    for (auto &&[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(lhs | genex::views::ptr, rhs | genex::views::ptr, lhs_syms)) {
-        auto &&[lhs_sym, _] = lhs_sym_and_scope;
+    for (auto const &[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(lhs | genex::views::ptr, rhs | genex::views::ptr, lhs_syms)) {
+        auto const &[lhs_sym, _] = lhs_sym_and_scope;
 
         // Full assignment (ie "x" = "y") requires the "x" symbol to be marked as "mut" or never initialized.
         raise_if<analyse::errors::SppInvalidMutationError>(
@@ -165,11 +153,11 @@ auto spp::asts::AssignmentStatementAst::stage_8_check_memory(
     -> void {
     // For each assignment, check the memory status and resolve any (partial-)moves.
     auto lhs_syms = lhs
-        | genex::views::transform([sm](auto &&x) { return sm->current_scope->get_var_symbol_outermost(*x); })
+        | genex::views::transform([sm](auto const &x) { return sm->current_scope->get_var_symbol_outermost(*x); })
         | genex::to<std::vector>();
 
-    for (auto &&[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(lhs | genex::views::ptr, rhs | genex::views::ptr, lhs_syms)) {
-        auto &&[lhs_sym, _] = lhs_sym_and_scope;
+    for (auto const &[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(lhs | genex::views::ptr, rhs | genex::views::ptr, lhs_syms)) {
+        auto const &[lhs_sym, _] = lhs_sym_and_scope;
 
         // Partially validate the memory of the right-hand-side expression, if it is an attribute being set. Don't mark
         // the move, but do some checks before calling the internal memory checker on the postfix expression.
@@ -261,6 +249,21 @@ auto spp::asts::AssignmentStatementAst::stage_11_code_gen_2(
 
     // Statements are always generated into a builder so no need to return anything.
     return nullptr;
+}
+
+
+auto spp::asts::AssignmentStatementAst::is_identifier(
+    Ast const *x) -> bool {
+    // Determine if the AST node is an identifier.
+    return x->to<IdentifierAst>() != nullptr;
+}
+
+
+auto spp::asts::AssignmentStatementAst::is_attr(
+    Ast const *x,
+    analyse::scopes::ScopeManager const *sm) -> bool {
+    // Determine if the AST node is an attribute (ie not an identifier).
+    return not x->to<IdentifierAst>() and sm->current_scope->get_var_symbol_outermost(*x).first != nullptr;
 }
 
 SPP_MOD_END
