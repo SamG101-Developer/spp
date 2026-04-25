@@ -41,11 +41,11 @@ spp::asts::AnnotationAst::AnnotationAst(
     decltype(name) &&name,
     decltype(gn_arg_group) &&gn_arg_group,
     decltype(fn_arg_group) &&fn_arg_group) :
-    m_target(nullptr),
     tok_exclamation_mark(std::move(tok_exclamation_mark)),
     name(std::move(name)),
     gn_arg_group(std::move(gn_arg_group)),
-    fn_arg_group(std::move(fn_arg_group)) {
+    fn_arg_group(std::move(fn_arg_group)),
+    m_target(nullptr) {
     // Default the two optional argument groups.
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->gn_arg_group);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->fn_arg_group);

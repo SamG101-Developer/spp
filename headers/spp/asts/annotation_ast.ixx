@@ -26,10 +26,8 @@ namespace spp::asts {
  * additional behaviour in the compiler.
  */
 SPP_EXP_CLS struct spp::asts::AnnotationAst final : virtual Ast {
-private:
-    FunctionPrototypeAst *m_target;
+    SPP_GCC_VTABLE_FIX
 
-public:
     /**
      * The token that represents the @c ! sign in the annotation. This introduces the annotation.
      */
@@ -52,8 +50,6 @@ public:
      * arguments. Function arguments are optional, but if generic arguments are present, @c () must be too.
      */
     std::unique_ptr<FunctionCallArgumentGroupAst> fn_arg_group;
-
-    auto _spp_key_function() const -> void override;
 
     /**
      * Construct the AnnotationAst with the arguments matching the members.
@@ -128,9 +124,10 @@ public:
      * @param meta Associated metadata.
      */
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+private:
+    FunctionPrototypeAst *m_target;
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::AnnotationAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(AnnotationAst)
