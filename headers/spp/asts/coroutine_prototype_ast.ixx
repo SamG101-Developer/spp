@@ -17,10 +17,6 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst {
-private:
-    llvm::Function *m_llvm_resume_fn;
-
-public:
     /**
      * The generator environment that this coroutine yields into, using the GenExpressionAst nodes. This is only set for
      * coroutine prototypes.
@@ -35,9 +31,12 @@ public:
 
     ~CoroutinePrototypeAst() override;
 
-    auto clone() const -> std::unique_ptr<Ast> override;
+    SPP_ATTR_NODISCARD auto clone() const -> std::unique_ptr<Ast> override;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+
+private:
+    llvm::Function *m_llvm_resume_fn;
 };

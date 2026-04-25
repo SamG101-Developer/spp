@@ -90,11 +90,11 @@ auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
     temp.emplace_back(ret_type_sym->fq_name()->without_generics());
     auto superimposed_types = ret_type_sym->scope->sup_types()
         | genex::views::concat(std::move(temp))
-        | genex::views::transform([](auto &&x) { return x->without_generics(); })
+        | genex::views::transform([](auto const &x) { return x->without_generics(); })
         | genex::to<std::vector>();
 
     raise_if<analyse::errors::SppCoroutineInvalidReturnTypeError>(
-        genex::none_of(superimposed_types, [sm](auto &&x) { return analyse::utils::type_utils::is_type_generator(*x->without_generics(), *sm->current_scope); }),
+        genex::none_of(superimposed_types, [sm](auto const &x) { return analyse::utils::type_utils::is_type_generator(*x->without_generics(), *sm->current_scope); }),
         {sm->current_scope}, ERR_ARGS(*this, *return_type));
 
     // Analyse the semantics of the function body, and move out the scope.
@@ -177,7 +177,7 @@ auto spp::asts::CoroutinePrototypeAst::stage_11_code_gen_2(
     // Can't use "llvm_func == nullptr" because of coroutine ctor function.
     if (llvm_gen_env == nullptr) {
         // Analyse to make a new scope in the correct place.
-        for (auto &&[_, generic_impl] : m_generic_substitutions) {
+        for (auto const &[_, generic_impl] : m_generic_substitutions) {
             auto tm = ScopeManager(sm->global_scope, m_scope->parent);
             tm.reset(tm.current_scope);
             generic_impl->stage_11_code_gen_2(&tm, meta, ctx);
