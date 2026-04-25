@@ -78,29 +78,14 @@ spp::asts::CasePatternVariantDestructureTupleAst::operator std::string() const {
 }
 
 
-auto spp::asts::CasePatternVariantDestructureTupleAst::convert_to_variable(
-    CompilerMetaData *meta)
-    ->
-    std::unique_ptr<LocalVariableAst> {
-    // Recursively map the elements to their local variable counterparts.
-    auto mapped_elems = elems
-        | genex::views::transform([meta](auto &&x) { return x->convert_to_variable(meta); })
-        | genex::to<std::vector>();
-
-    // Create the final local variable wrapping, tag it and return it.
-    auto var = std::make_unique<LocalVariableDestructureTupleAst>(nullptr, std::move(mapped_elems), nullptr);
-    var->mark_from_case_pattern();
-    return var;
-}
-
-
 auto spp::asts::CasePatternVariantDestructureTupleAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Create the new variable from the pattern in the patterns scope.
     auto var = convert_to_variable(meta);
-    m_mapped_let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
+    m_mapped_let = std::make_unique<LetStatementInitializedAst>(
+        nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
     m_mapped_let->stage_7_analyse_semantics(sm, meta);
 
     // Note there is no nested analysis of "elems", because the "let" statement handles it.
@@ -164,6 +149,21 @@ auto spp::asts::CasePatternVariantDestructureTupleAst::stage_11_code_gen_2(
 
     // Return the combined statement.
     return llvm_master_transform;
+}
+
+
+auto spp::asts::CasePatternVariantDestructureTupleAst::convert_to_variable(
+    CompilerMetaData *meta)
+    -> std::unique_ptr<LocalVariableAst> {
+    // Recursively map the elements to their local variable counterparts.
+    auto mapped_elems = elems
+        | genex::views::transform([meta](auto const &x) { return x->convert_to_variable(meta); })
+        | genex::to<std::vector>();
+
+    // Create the final local variable wrapping, tag it and return it.
+    auto var = std::make_unique<LocalVariableDestructureTupleAst>(nullptr, std::move(mapped_elems), nullptr);
+    var->mark_from_case_pattern();
+    return var;
 }
 
 SPP_MOD_END

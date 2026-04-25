@@ -65,19 +65,6 @@ spp::asts::CasePatternVariantSingleIdentifierAst::operator std::string() const {
 }
 
 
-auto spp::asts::CasePatternVariantSingleIdentifierAst::convert_to_variable(
-    CompilerMetaData *)
-    -> std::unique_ptr<LocalVariableAst> {
-    // Create the local variable single identifier binding AST. (Note no convention is propagated into the variable,
-    // as conventions are only relevant at the pattern matching site, not the variable declaration site).
-    auto var = std::make_unique<LocalVariableSingleIdentifierAst>(
-        ast_clone(tok_mut), ast_clone(name), ast_clone(alias));
-    var->conv = ast_clone(conv);
-    var->mark_from_case_pattern();
-    return var;
-}
-
-
 auto spp::asts::CasePatternVariantSingleIdentifierAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
@@ -98,6 +85,19 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::stage_8_check_memory(
     -> void {
     // Forward memory checks into the name and alias.
     m_mapped_let->stage_8_check_memory(sm, meta);
+}
+
+
+auto spp::asts::CasePatternVariantSingleIdentifierAst::convert_to_variable(
+    CompilerMetaData *)
+    -> std::unique_ptr<LocalVariableAst> {
+    // Create the local variable single identifier binding AST. (Note no convention is propagated into the variable,
+    // as conventions are only relevant at the pattern matching site, not the variable declaration site).
+    auto var = std::make_unique<LocalVariableSingleIdentifierAst>(
+        ast_clone(tok_mut), ast_clone(name), ast_clone(alias));
+    var->conv = ast_clone(conv);
+    var->mark_from_case_pattern();
+    return var;
 }
 
 SPP_MOD_END

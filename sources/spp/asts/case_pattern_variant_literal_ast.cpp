@@ -59,18 +59,6 @@ spp::asts::CasePatternVariantLiteralAst::operator std::string() const {
 }
 
 
-auto spp::asts::CasePatternVariantLiteralAst::convert_to_variable(
-    CompilerMetaData *)
-    -> std::unique_ptr<LocalVariableAst> {
-    // Create the local variable literal binding AST.
-    const auto uid = spp::utils::generate_uid(this);
-    auto var_name = std::make_unique<IdentifierAst>(pos_start(), uid);
-    auto var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
-    var->mark_from_case_pattern();
-    return var;
-}
-
-
 auto spp::asts::CasePatternVariantLiteralAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
@@ -110,6 +98,18 @@ auto spp::asts::CasePatternVariantLiteralAst::stage_11_code_gen_2(
     const auto llvm_master_transform = analyse::utils::case_utils::create_and_analyse_pattern_eq_funcs_llvm(
         {this}, sm, meta, ctx);
     return llvm_master_transform[0];
+}
+
+
+auto spp::asts::CasePatternVariantLiteralAst::convert_to_variable(
+    CompilerMetaData *)
+    -> std::unique_ptr<LocalVariableAst> {
+    // Create the local variable literal binding AST.
+    const auto uid = spp::utils::generate_uid(this);
+    auto var_name = std::make_unique<IdentifierAst>(pos_start(), uid);
+    auto var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
+    var->mark_from_case_pattern();
+    return var;
 }
 
 SPP_MOD_END

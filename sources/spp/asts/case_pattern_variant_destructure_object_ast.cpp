@@ -100,21 +100,6 @@ spp::asts::CasePatternVariantDestructureObjectAst::operator std::string() const 
 }
 
 
-auto spp::asts::CasePatternVariantDestructureObjectAst::convert_to_variable(
-    CompilerMetaData *meta)
-    -> std::unique_ptr<LocalVariableAst> {
-    // Recursively map the elements to their local variable counterparts.
-    auto mapped_elems = elems
-        | genex::views::transform([meta](auto const &x) { return x->convert_to_variable(meta); })
-        | genex::to<std::vector>();
-
-    // Create the final local variable wrapping, tag it and return it.
-    auto var = std::make_unique<LocalVariableDestructureObjectAst>(ast_clone(type), nullptr, std::move(mapped_elems), nullptr);
-    var->mark_from_case_pattern();
-    return var;
-}
-
-
 auto spp::asts::CasePatternVariantDestructureObjectAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
@@ -240,6 +225,21 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::stage_11_code_gen_2(
 
     // Return the combined statement.
     return llvm_master_transform;
+}
+
+
+auto spp::asts::CasePatternVariantDestructureObjectAst::convert_to_variable(
+    CompilerMetaData *meta)
+    -> std::unique_ptr<LocalVariableAst> {
+    // Recursively map the elements to their local variable counterparts.
+    auto mapped_elems = elems
+        | genex::views::transform([meta](auto const &x) { return x->convert_to_variable(meta); })
+        | genex::to<std::vector>();
+
+    // Create the final local variable wrapping, tag it and return it.
+    auto var = std::make_unique<LocalVariableDestructureObjectAst>(ast_clone(type), nullptr, std::move(mapped_elems), nullptr);
+    var->mark_from_case_pattern();
+    return var;
 }
 
 SPP_MOD_END

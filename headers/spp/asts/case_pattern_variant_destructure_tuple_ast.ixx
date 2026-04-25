@@ -45,8 +45,6 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureTupleAst final : Case
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto convert_to_variable(CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
-
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -54,4 +52,6 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureTupleAst final : Case
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+
+    auto convert_to_variable(CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
 };

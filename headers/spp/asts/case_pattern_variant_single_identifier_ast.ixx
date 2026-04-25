@@ -59,9 +59,9 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantSingleIdentifierAst final : Case
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto convert_to_variable(CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
-
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto convert_to_variable(CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
 };

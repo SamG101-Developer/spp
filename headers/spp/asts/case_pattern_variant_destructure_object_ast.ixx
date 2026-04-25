@@ -63,11 +63,10 @@ public:
     ~CasePatternVariantDestructureObjectAst() override;
 
     static auto from_type(
-        std::shared_ptr<TypeAst> const &type) -> std::unique_ptr<CasePatternVariantDestructureObjectAst>;
+        std::shared_ptr<TypeAst> const &type)
+        -> std::unique_ptr<CasePatternVariantDestructureObjectAst>;
 
     SPP_AST_KEY_FUNCTIONS;
-
-    auto convert_to_variable(CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -76,4 +75,6 @@ public:
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+
+    auto convert_to_variable(CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
 };

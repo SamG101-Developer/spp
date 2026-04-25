@@ -14,10 +14,6 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantElseAst final : CasePatternVariantAst {
-private:
-    bool m_for_iter_loop_exit = false;
-
-public:
     /**
      * The @c else keyword that indicates this is an else branch of the case pattern variant.
      */
@@ -41,4 +37,7 @@ public:
     auto mark_for_iter_loop_exit() -> void;
 
     SPP_ATTR_NODISCARD auto marked_for_iter_loop_exit() const -> bool;
+
+private:
+    bool m_for_iter_loop_exit = false;
 };

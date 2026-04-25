@@ -78,28 +78,14 @@ spp::asts::CasePatternVariantDestructureArrayAst::operator std::string() const {
 }
 
 
-auto spp::asts::CasePatternVariantDestructureArrayAst::convert_to_variable(
-    CompilerMetaData *meta)
-    -> std::unique_ptr<LocalVariableAst> {
-    // Recursively map the elements to their local variable counterparts.
-    auto mapped_elems = elems
-        | genex::views::transform([meta](auto const &x) { return x->convert_to_variable(meta); })
-        | genex::to<std::vector>();
-
-    // Create the final local variable wrapping, tag it and return it.
-    auto var = std::make_unique<LocalVariableDestructureArrayAst>(nullptr, std::move(mapped_elems), nullptr);
-    var->mark_from_case_pattern();
-    return var;
-}
-
-
 auto spp::asts::CasePatternVariantDestructureArrayAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Create the new variable from the pattern in the patterns scope.
     auto var = convert_to_variable(meta);
-    m_mapped_let = std::make_unique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
+    m_mapped_let = std::make_unique<LetStatementInitializedAst>(
+        nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
     m_mapped_let->stage_7_analyse_semantics(sm, meta);
 
     // Note there is no nested analysis of "elems", because the "let" statement handles it.
@@ -146,7 +132,6 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::stage_11_code_gen_2(
     -> llvm::Value* {
     // Generate the "let" statement to introduce all the symbols.
     if (m_mapped_let == nullptr) {
-        // Todo: Needed?
         auto var = convert_to_variable(meta);
         m_mapped_let = std::make_unique<LetStatementInitializedAst>(
             nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
@@ -159,11 +144,26 @@ auto spp::asts::CasePatternVariantDestructureArrayAst::stage_11_code_gen_2(
         elems | genex::views::ptr | genex::to<std::vector>(), sm, meta, ctx);
     const auto combine_func = [&ctx](auto *a, auto *b) { return ctx->builder.CreateAnd(a, b); };
     const auto llvm_master_transform = llvm_transforms.empty()
-                                           ? dynamic_cast<llvm::Value*>(llvm::ConstantInt::getTrue(*ctx->context))
-                                           : genex::fold_left_first(llvm_transforms, std::move(combine_func));
+        ? dynamic_cast<llvm::Value*>(llvm::ConstantInt::getTrue(*ctx->context))
+        : genex::fold_left_first(llvm_transforms, std::move(combine_func));
 
     // Return the combined statement.
     return llvm_master_transform;
+}
+
+
+auto spp::asts::CasePatternVariantDestructureArrayAst::convert_to_variable(
+    CompilerMetaData *meta)
+    -> std::unique_ptr<LocalVariableAst> {
+    // Recursively map the elements to their local variable counterparts.
+    auto mapped_elems = elems
+        | genex::views::transform([meta](auto const &x) { return x->convert_to_variable(meta); })
+        | genex::to<std::vector>();
+
+    // Create the final local variable wrapping, tag it and return it.
+    auto var = std::make_unique<LocalVariableDestructureArrayAst>(nullptr, std::move(mapped_elems), nullptr);
+    var->mark_from_case_pattern();
+    return var;
 }
 
 SPP_MOD_END
