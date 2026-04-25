@@ -190,5 +190,4 @@ auto spp::asts::ClassAttributeAst::stage_9_comptime_resolution(
     }
 }
 
-
 SPP_MOD_END

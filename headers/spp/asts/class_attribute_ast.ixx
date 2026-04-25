@@ -22,6 +22,8 @@ namespace spp::asts {
  * add "state" to a type.
  */
 SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : virtual Ast, ClassMemberAst, mixins::VisibilityAst {
+    SPP_GCC_VTABLE_FIX
+
     /**
      * The list of annotations that are applied to this class attribute. Typically, access modifiers in this context.
      */
@@ -49,8 +51,6 @@ SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : virtual Ast, ClassMember
      * used, which is the default value of the type.
      */
     std::unique_ptr<ExpressionAst> default_val;
-
-    auto _spp_key_function() const -> void override;
 
     /**
      * Construct the ClassAttributeAst with the arguments matching the members.
@@ -87,6 +87,4 @@ SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : virtual Ast, ClassMember
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::ClassAttributeAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(ClassAttributeAst)

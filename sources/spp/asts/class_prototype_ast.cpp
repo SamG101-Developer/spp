@@ -36,12 +36,12 @@ spp::asts::ClassPrototypeAst::ClassPrototypeAst(
     decltype(name) name,
     decltype(generic_param_group) &&generic_param_group,
     decltype(impl) &&impl) :
-    m_cls_sym(nullptr),
     annotations(std::move(annotations)),
     tok_cls(std::move(tok_cls)),
     name(std::move(name)),
     generic_param_group(std::move(generic_param_group)),
-    impl(std::move(impl)) {
+    impl(std::move(impl)),
+    m_cls_sym(nullptr) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_cls, lex::SppTokenType::KW_CLS, "cls");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_param_group);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->impl);
@@ -90,94 +90,6 @@ spp::asts::ClassPrototypeAst::operator std::string() const {
     SPP_STRING_APPEND(generic_param_group).append(" ");
     SPP_STRING_APPEND(impl);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::ClassPrototypeAst::m_generate_symbols(
-    ScopeManager *sm)
-    -> analyse::scopes::TypeSymbol* {
-    auto is_dollar_type = name->to<TypeIdentifierAst>()->name[0] == '$';
-    auto sym_name = ast_clone(name->type_parts()[0]);
-    sym_name->generic_arg_group = GenericArgumentGroupAst::from_params(*generic_param_group);
-
-    // Create the symbols as TypeSymbol pointers, so AliasSymbols can also be used.
-    std::shared_ptr<analyse::scopes::TypeSymbol> symbol_1 = nullptr;
-    std::shared_ptr<analyse::scopes::TypeSymbol> symbol_2 = nullptr;
-
-    // Create the symbol for the type, include generics if applicable, like Vec[T].
-    symbol_1 = std::make_unique<analyse::scopes::TypeSymbol>(
-        std::move(sym_name), this, sm->current_scope, sm->current_scope, sm->current_scope->parent_module(), false,
-        is_dollar_type);
-    sm->current_scope->ty_sym = symbol_1;
-    sm->current_scope->parent->add_type_symbol_check_conflict(symbol_1);
-    m_cls_sym = sm->current_scope->ty_sym;
-
-    // If the type was generic, like Vec[T], also create a base Vec symbol.
-    if (not generic_param_group->params.empty()) {
-        symbol_2 = std::make_unique<analyse::scopes::TypeSymbol>(
-            ast_clone(name->type_parts()[0]), this, sm->current_scope, sm->current_scope,
-            sm->current_scope->parent_module(), false, is_dollar_type);
-        symbol_2->generic_impl = symbol_1.get();
-        sm->current_scope->ty_sym = symbol_2;
-        const auto ret_sym = symbol_2.get();
-        sm->current_scope->parent->add_type_symbol_check_conflict(symbol_2);
-        return ret_sym;
-    }
-
-    return m_cls_sym.get();
-}
-
-
-auto spp::asts::ClassPrototypeAst::m_fill_llvm_mem_layout(
-    analyse::scopes::ScopeManager *sm,
-    analyse::scopes::TypeSymbol const *type_sym,
-    codegen::LLvmCtx *ctx) const
-    -> void {
-    // Todo: error if attribute's default value if a comp generic value?? Also TEST THIS
-
-    // Non-struct types are compiler known special types, or $ types - no generation needed.
-    if (codegen::llvm_type(*type_sym, ctx) == nullptr or not llvm::isa<llvm::StructType>(codegen::llvm_type(*type_sym, ctx))) {
-        return;
-    }
-
-    auto types = analyse::utils::type_utils::get_all_attrs(*type_sym->fq_name(), sm)
-        | genex::views::transform([&](auto const &pair) { return codegen::llvm_type(*pair.second, ctx); })
-        | genex::to<std::vector>();
-
-    // If there are any generic types present (llvm_type is nullptr), skip the layout generation.
-    if (genex::all_of(types, [](auto const &x) { return x != nullptr; })) {
-        const auto struct_type = llvm::dyn_cast<llvm::StructType>(codegen::llvm_type(*type_sym, ctx));
-        struct_type->setBody(std::move(types));
-    }
-
-    // Pass this layout to aliases too.
-    for (auto const &alias : type_sym->aliased_by_symbols) {
-        alias->llvm_info->llvm_type = codegen::llvm_type(*type_sym, ctx);
-    }
-}
-
-
-auto spp::asts::ClassPrototypeAst::register_generic_substitution(
-    analyse::scopes::Scope *scope,
-    std::unique_ptr<ClassPrototypeAst> &&new_ast)
-    -> void {
-    // Just somewhere to store the new_ast as a unique_ptr.
-    m_generic_substitutions.emplace_back(scope, std::move(new_ast));
-}
-
-
-auto spp::asts::ClassPrototypeAst::registered_generic_substitutions() const
-    -> std::vector<std::pair<analyse::scopes::Scope*, ClassPrototypeAst*>> {
-    // Return the generic substituted scopes as raw pointers.
-    return m_generic_substitutions
-        | genex::views::transform([](auto &&x) { return std::make_pair(x.first, x.second.get()); })
-        | genex::to<std::vector>();
-}
-
-
-auto spp::asts::ClassPrototypeAst::get_cls_sym() const
-    -> std::shared_ptr<analyse::scopes::TypeSymbol> {
-    return m_cls_sym;
 }
 
 
@@ -340,7 +252,7 @@ auto spp::asts::ClassPrototypeAst::stage_10_code_gen_1(
 
     // If this is a raw generic class like Vec[T], then generate the generic implementations.
     if (genex::any_of(sm->current_scope->all_type_symbols(), [](auto const &sym) { return sym->is_generic; })) {
-        for (auto &&[generic_scope, generic_ast] : m_generic_substitutions) {
+        for (auto const &[generic_scope, generic_ast] : m_generic_substitutions) {
             generic_ast->m_fill_llvm_mem_layout(sm, generic_scope->ty_sym.get(), ctx);
         }
     }
@@ -364,5 +276,94 @@ auto spp::asts::ClassPrototypeAst::stage_11_code_gen_2(
     sm->move_out_of_current_scope();
     return nullptr;
 }
+
+
+auto spp::asts::ClassPrototypeAst::register_generic_substitution(
+    analyse::scopes::Scope *scope,
+    std::unique_ptr<ClassPrototypeAst> &&new_ast)
+    -> void {
+    // Just somewhere to store the new_ast as a unique_ptr.
+    m_generic_substitutions.emplace_back(scope, std::move(new_ast));
+}
+
+
+auto spp::asts::ClassPrototypeAst::registered_generic_substitutions() const
+    -> std::vector<std::pair<analyse::scopes::Scope*, ClassPrototypeAst*>> {
+    // Return the generic substituted scopes as raw pointers.
+    return m_generic_substitutions
+        | genex::views::transform([](auto const &x) { return std::make_pair(x.first, x.second.get()); })
+        | genex::to<std::vector>();
+}
+
+
+auto spp::asts::ClassPrototypeAst::get_cls_sym() const
+    -> std::shared_ptr<analyse::scopes::TypeSymbol> {
+    return m_cls_sym;
+}
+
+
+auto spp::asts::ClassPrototypeAst::m_generate_symbols(
+    ScopeManager *sm)
+    -> analyse::scopes::TypeSymbol* {
+    auto is_dollar_type = name->to<TypeIdentifierAst>()->name[0] == '$';
+    auto sym_name = ast_clone(name->type_parts()[0]);
+    sym_name->generic_arg_group = GenericArgumentGroupAst::from_params(*generic_param_group);
+
+    // Create the symbols as TypeSymbol pointers, so AliasSymbols can also be used.
+    std::shared_ptr<analyse::scopes::TypeSymbol> symbol_1 = nullptr;
+    std::shared_ptr<analyse::scopes::TypeSymbol> symbol_2 = nullptr;
+
+    // Create the symbol for the type, include generics if applicable, like Vec[T].
+    symbol_1 = std::make_unique<analyse::scopes::TypeSymbol>(
+        std::move(sym_name), this, sm->current_scope, sm->current_scope, sm->current_scope->parent_module(), false,
+        is_dollar_type);
+    sm->current_scope->ty_sym = symbol_1;
+    sm->current_scope->parent->add_type_symbol_check_conflict(symbol_1);
+    m_cls_sym = sm->current_scope->ty_sym;
+
+    // If the type was generic, like Vec[T], also create a base Vec symbol.
+    if (not generic_param_group->params.empty()) {
+        symbol_2 = std::make_unique<analyse::scopes::TypeSymbol>(
+            ast_clone(name->type_parts()[0]), this, sm->current_scope, sm->current_scope,
+            sm->current_scope->parent_module(), false, is_dollar_type);
+        symbol_2->generic_impl = symbol_1.get();
+        sm->current_scope->ty_sym = symbol_2;
+        const auto ret_sym = symbol_2.get();
+        sm->current_scope->parent->add_type_symbol_check_conflict(symbol_2);
+        return ret_sym;
+    }
+
+    return m_cls_sym.get();
+}
+
+
+auto spp::asts::ClassPrototypeAst::m_fill_llvm_mem_layout(
+    ScopeManager *sm,
+    analyse::scopes::TypeSymbol const *type_sym,
+    codegen::LLvmCtx *ctx) const
+    -> void {
+    // Todo: error if attribute's default value if a comp generic value?? Also TEST THIS
+
+    // Non-struct types are compiler known special types, or $ types - no generation needed.
+    if (codegen::llvm_type(*type_sym, ctx) == nullptr or not llvm::isa<llvm::StructType>(codegen::llvm_type(*type_sym, ctx))) {
+        return;
+    }
+
+    auto types = analyse::utils::type_utils::get_all_attrs(*type_sym->fq_name(), sm)
+        | genex::views::transform([&](auto const &pair) { return codegen::llvm_type(*pair.second, ctx); })
+        | genex::to<std::vector>();
+
+    // If there are any generic types present (llvm_type is nullptr), skip the layout generation.
+    if (genex::all_of(types, [](auto const &x) { return x != nullptr; })) {
+        const auto struct_type = llvm::dyn_cast<llvm::StructType>(codegen::llvm_type(*type_sym, ctx));
+        struct_type->setBody(std::move(types));
+    }
+
+    // Pass this layout to aliases too.
+    for (auto const &alias : type_sym->aliased_by_symbols) {
+        alias->llvm_info->llvm_type = codegen::llvm_type(*type_sym, ctx);
+    }
+}
+
 
 SPP_MOD_END
