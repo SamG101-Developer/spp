@@ -44,7 +44,7 @@ auto spp::codegen::create_coro_env_type(
 
     // Next, a tuple of the arguments being bound to this generator.
     auto arg_struct_fields = std::vector<llvm::Type*>();
-    for (const auto &param_name : coro->param_group->params
+    for (auto const &param_name : coro->param_group->params
          | genex::views::transform([](auto &&x) { return x->extract_names(); })
          | genex::views::join
          | genex::to<std::vector>()) {
@@ -122,7 +122,7 @@ auto spp::codegen::create_coro_gen_ctor(
 
     // Load all the arguments into the args struct.
     const auto load_coro_env = ctx->builder.CreateLoad(coro_env_type, coro_env_ptr, "coro.env.load" + uid);
-    for (const auto &[i, param_name] : coro->param_group->params
+    for (auto const &[i, param_name] : coro->param_group->params
          | genex::views::transform([](auto &&x) { return x->extract_names(); })
          | genex::views::join
          | genex::views::enumerate
@@ -178,7 +178,7 @@ auto spp::codegen::create_coro_res_func(
     const auto llvm_coro_env_ptr = llvm_func->getArg(0);
     const auto llvm_coro_env_type = llvm::PointerType::get(*ctx->context, 0);
     const auto load_coro_env = ctx->builder.CreateLoad(llvm_coro_env_type, llvm_coro_env_ptr, "coro.env.load" + uid);
-    for (const auto &[i, param_name] : coro->param_group->params
+    for (auto const &[i, param_name] : coro->param_group->params
          | genex::views::transform([](auto &&x) { return x->extract_names(); })
          | genex::views::join
          | genex::views::enumerate) {

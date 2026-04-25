@@ -67,7 +67,7 @@ auto spp::asts::UseStatementAst::stage_1_pre_process(
     -> void {
     // Pre-process the annotations.
     Ast::stage_1_pre_process(ctx);
-    for (const auto &annotation : annotations) {
+    for (auto const &annotation : annotations) {
         annotation->set_ast_ctx(this);
     }
 }

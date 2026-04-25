@@ -190,7 +190,7 @@ auto spp::asts::ObjectInitializerAst::stage_11_code_gen_2(
 
         const auto aggregate = ctx->builder.CreateAlloca(llvm_type, nullptr, "obj_init.aggregate" + uid);
         for (auto i = 0uz; i < sorted_args.size(); ++i) {
-            const auto &arg = sorted_args[i];
+            auto const &arg = sorted_args[i];
             const auto attr_ptr = ctx->builder.CreateStructGEP(llvm_type, aggregate, static_cast<std::uint32_t>(i), arg->name->val);
             const auto val = arg->val->stage_11_code_gen_2(sm, meta, ctx);
 

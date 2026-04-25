@@ -157,7 +157,7 @@ auto spp::cli::handle_vcs()
         // Copy all DLLs from the VCS's FFI folder into this project's FFI folder.
         auto ffi_repo_folder = repo_folder / FFI_FOLDER;
         if (std::filesystem::exists(ffi_repo_folder)) {
-            for (const auto &entry : std::filesystem::directory_iterator(ffi_repo_folder)) {
+            for (auto const &entry : std::filesystem::directory_iterator(ffi_repo_folder)) {
                 std::filesystem::copy(
                     entry.path(), cwd / FFI_FOLDER / entry.path().filename(),
                     std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing);

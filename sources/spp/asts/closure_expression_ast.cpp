@@ -103,10 +103,10 @@ auto spp::asts::ClosureExpressionAst::stage_7_analyse_semantics(
     meta->enclosing_function_ret_type = {};
 
     // Add the inherited generics into the closure-inner scope.
-    for (const auto &type_generic_sym : inherited_type_generics) {
+    for (auto const &type_generic_sym : inherited_type_generics) {
         sm->current_scope->add_type_symbol(type_generic_sym);
     }
-    for (const auto &comp_generic_sym : inherited_comp_generics) {
+    for (auto const &comp_generic_sym : inherited_comp_generics) {
         sm->current_scope->add_var_symbol(comp_generic_sym);
     }
 
@@ -150,7 +150,7 @@ auto spp::asts::ClosureExpressionAst::stage_11_code_gen_2(
     const auto uid = spp::utils::generate_uid(this);
     const auto env_ty = llvm::StructType::create(*ctx->context, "$ClosureEnv" + uid);
     auto env_field_types = std::vector<llvm::Type*>{};
-    for (const auto &capture : pc_group->capture_group->captures) {
+    for (auto const &capture : pc_group->capture_group->captures) {
         const auto cap_ty = capture->infer_type(sm, meta);
         const auto cap_ty_sym = sm->current_scope->get_type_symbol(cap_ty);
         env_field_types.emplace_back(codegen::llvm_type(*cap_ty_sym, ctx));
@@ -199,7 +199,7 @@ auto spp::asts::ClosureExpressionAst::stage_11_code_gen_2(
 
     // Allocate the closure environment.
     const auto env_alloca = ctx->builder.CreateAlloca(env_ty, nullptr, "closure.env.alloca." + uid);
-    for (const auto &[i, capture] : pc_group->capture_group->captures | genex::views::ptr | genex::views::enumerate) {
+    for (auto const &[i, capture] : pc_group->capture_group->captures | genex::views::ptr | genex::views::enumerate) {
         const auto zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), 0);
         const auto capture_index = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), i);
 

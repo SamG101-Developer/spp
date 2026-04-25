@@ -39,7 +39,7 @@ auto spp::utils::strings::closest_match(
     auto best_score = 0.0;
     auto best_match = std::string();
 
-    for (const auto &choice : choices) {
+    for (auto const &choice : choices) {
         const auto score = similarity_ratio(query, choice);
         if (score > best_score) {
             best_score = score;

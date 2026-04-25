@@ -166,7 +166,7 @@ auto spp::asts::FloatLiteralAst::stage_11_code_gen_2(
     const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
 
     // Create the LLVM constant float value.
-    const auto &semantics = llvm_type->getFltSemantics();
+    auto const &semantics = llvm_type->getFltSemantics();
     const auto val = int_val->token_data + "." + frac_val->token_data;
     const auto ap_float = llvm::APFloat(semantics, val);
     return llvm::ConstantFP::get(*ctx->context, ap_float);
