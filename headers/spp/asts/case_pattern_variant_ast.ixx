@@ -18,15 +18,26 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::CasePatternVariantAst : virtual Ast {
     using Ast::Ast;
+    /**
+     * Handle pattern matching for case expressions (this will be reimplemnted in all the other patterns, but due to a
+     * GCC modules bug, it must be defined here too).
+     * @param sm The scope manager to use for comptime generation.
+     * @param meta Associated metadata.
+     */
+    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    /**
+     * Case patterns can introduce varialbes via the bindings. To neatly introduce all required bindings into scope,
+     * there is a conversion mechainsm, which can also handle the nested bindings. This is overridden on the different
+     * destructuring patterns.
+     * @param meta Associated metadata.
+     * @return The converted variable AST.
+     */
+    virtual auto convert_to_variable(CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst>;
 
 protected:
     /**
      * The @c let statement that case-of-patterns are converted to, to introduce the variables created by the pattern.
      */
     std::unique_ptr<LetStatementInitializedAst> m_mapped_let;
-
-public:
-    virtual auto convert_to_variable(CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst>;
-
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
