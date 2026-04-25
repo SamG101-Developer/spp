@@ -30,12 +30,6 @@ namespace spp::asts {
  * is analogous to Rust's "const" statement.
  */
 SPP_EXP_CLS struct spp::asts::CmpStatementAst final : StatementAst, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
-private:
-    std::shared_ptr<analyse::scopes::VariableSymbol> m_alias_sym;
-
-    bool m_from_use_statement;
-
-public:
     friend struct UseStatementVariableAst;
 
     /**
@@ -122,4 +116,9 @@ public:
     auto mark_from_use_statement() -> void;
 
     SPP_ATTR_NODISCARD auto is_from_use_statement() const -> bool;
+
+private:
+    std::shared_ptr<analyse::scopes::VariableSymbol> m_alias_sym;
+
+    bool m_from_use_statement;
 };

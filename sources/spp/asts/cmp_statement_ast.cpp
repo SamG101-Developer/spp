@@ -34,14 +34,14 @@ spp::asts::CmpStatementAst::CmpStatementAst(
     decltype(type) type,
     decltype(tok_assign) &&tok_assign,
     decltype(value) &&value) :
-    m_from_use_statement(false),
     annotations(std::move(annotations)),
     tok_cmp(std::move(tok_cmp)),
     name(std::move(name)),
     tok_colon(std::move(tok_colon)),
     type(std::move(type)),
     tok_assign(std::move(tok_assign)),
-    value(std::move(value)) {
+    value(std::move(value)),
+    m_from_use_statement(false) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_cmp, lex::SppTokenType::KW_CMP, "cmp");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_colon, lex::SppTokenType::TK_COLON, ":");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
@@ -179,7 +179,8 @@ auto spp::asts::CmpStatementAst::stage_7_analyse_semantics(
     const auto inferred_type = value->infer_type(sm, meta);
 
     raise_if<analyse::errors::SppTypeMismatchError>(
-        not is_from_use_statement() and not analyse::utils::type_utils::symbolic_eq(*given_type, *inferred_type, *sm->current_scope, *sm->current_scope),
+        not is_from_use_statement()
+        and not analyse::utils::type_utils::symbolic_eq(*given_type, *inferred_type, *sm->current_scope, *sm->current_scope),
         {sm->current_scope}, ERR_ARGS(*type, *given_type, *value, *inferred_type));
 }
 
