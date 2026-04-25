@@ -1597,4 +1597,21 @@ spp::analyse::errors::SppCalledAnnotationAppliedToInvalidAstError::SppCalledAnno
 }
 
 
+spp::analyse::errors::SppInvalidBinaryFoldExpressionError::SppInvalidBinaryFoldExpressionError(
+    asts::Ast const &expr,
+    asts::Ast const &tup_type,
+    const std::size_t tup_num_elems) {
+    add_header(
+        89, "SPP Invalid Binary Fold Expression Error");
+    add_context_for_error(
+        &expr,
+        "Fold expression defined here as type: " + tup_type.to_string());
+    add_error(
+        &expr,
+        "Fold expression has " + std::to_string(tup_num_elems) + " elements");
+    add_footer(
+        "Binary fold expressions must operate on tuples of 2+ elements.",
+        "Ensure the fold expression is applied to a tuple with 2 or more elements");
+}
+
 SPP_MOD_END

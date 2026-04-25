@@ -130,6 +130,7 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppAnnotationTargetNotAnAnnotationError;
     SPP_EXP_CLS struct SppAnnotationTargetNotACmpFunctionError;
     SPP_EXP_CLS struct SppCalledAnnotationAppliedToInvalidAstError;
+    SPP_EXP_CLS struct SppInvalidBinaryFoldExpressionError;
 }
 
 
@@ -578,12 +579,13 @@ SPP_EXP_CLS struct spp::analyse::errors::SppInvalidVoidValueError final : Semant
 
 
 SPP_EXP_CLS struct spp::analyse::errors::SppBorrowLifetimeIncreaseError final : SemanticError {
-    explicit SppBorrowLifetimeIncreaseError(asts::Ast const& extension_ast, asts::Ast const& lhs_init_definition, asts::Ast const& rhs_borrow_definition);
+    explicit SppBorrowLifetimeIncreaseError(asts::Ast const &extension_ast, asts::Ast const &lhs_init_definition, asts::Ast const &rhs_borrow_definition);
 };
 
 
-SPP_EXP_CLS struct spp::analyse::errors::SppInvalidComptimeOperationError final : SemanticError { // Todo: Check other comptime error: merge?
-    explicit SppInvalidComptimeOperationError(asts::Ast const& ast);
+SPP_EXP_CLS struct spp::analyse::errors::SppInvalidComptimeOperationError final : SemanticError {
+    // Todo: Check other comptime error: merge?
+    explicit SppInvalidComptimeOperationError(asts::Ast const &ast);
 };
 
 
@@ -609,4 +611,9 @@ SPP_EXP_CLS struct spp::analyse::errors::SppAnnotationTargetNotACmpFunctionError
 
 SPP_EXP_CLS struct spp::analyse::errors::SppCalledAnnotationAppliedToInvalidAstError final : SemanticError {
     explicit SppCalledAnnotationAppliedToInvalidAstError(asts::Ast const &invalid_ast, asts::Ast const &annotation_call, asts::AnnotationAst const &annotation_definition);
+};
+
+
+SPP_EXP_CLS struct spp::analyse::errors::SppInvalidBinaryFoldExpressionError final : SemanticError {
+    explicit SppInvalidBinaryFoldExpressionError(asts::Ast const &expr, asts::Ast const &tup_type, std::size_t tup_num_elems);
 };

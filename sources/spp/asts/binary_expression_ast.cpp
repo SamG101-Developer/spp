@@ -27,10 +27,10 @@ spp::asts::BinaryExpressionAst::BinaryExpressionAst(
     decltype(lhs) &&lhs,
     decltype(tok_op) &&tok_op,
     decltype(rhs) &&rhs) :
-    m_mapped_func(nullptr),
     lhs(std::move(lhs)),
     tok_op(std::move(tok_op)),
-    rhs(std::move(rhs)) {
+    rhs(std::move(rhs)),
+    m_mapped_func(nullptr) {
 }
 
 
@@ -95,6 +95,10 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
 
         // Get the parts of the tuple.
         const auto rhs_num_elems = rhs_tuple_type->type_parts()[0]->generic_arg_group->args.size();
+        raise_if<analyse::errors::SppInvalidBinaryFoldExpressionError>(
+            rhs_num_elems < 2,
+            {sm->current_scope}, ERR_ARGS(*rhs, *rhs_tuple_type, rhs_num_elems));
+
         auto new_asts = std::vector<std::unique_ptr<PostfixExpressionAst>>();
         for (auto i = 0u; i < rhs_num_elems; ++i) {
             auto field = std::make_unique<IdentifierAst>(rhs->pos_start(), std::to_string(i));
@@ -126,6 +130,10 @@ auto spp::asts::BinaryExpressionAst::stage_7_analyse_semantics(
 
         // Get the parts of the tuple.
         const auto lhs_num_elems = lhs_tuple_type->type_parts()[0]->generic_arg_group->args.size();
+        raise_if<analyse::errors::SppInvalidBinaryFoldExpressionError>(
+            lhs_num_elems < 2,
+            {sm->current_scope}, ERR_ARGS(*lhs, *lhs_tuple_type, lhs_num_elems));
+
         auto new_asts = std::vector<std::unique_ptr<PostfixExpressionAst>>();
         for (auto i = 0u; i < lhs_num_elems; ++i) {
             auto field = std::make_unique<IdentifierAst>(lhs->pos_start(), std::to_string(i));
@@ -188,10 +196,10 @@ auto spp::asts::BinaryExpressionAst::infer_type(
     CompilerMetaData *meta)
     -> std::shared_ptr<TypeAst> {
     // Infer the type from the function mapping of the binary expression.
-    if (m_mapped_func == nullptr) {
-        // Todo: Needed?
-        stage_7_analyse_semantics(sm, meta);
-    }
+    // if (m_mapped_func == nullptr) {
+    //     // Todo: Needed?
+    //     stage_7_analyse_semantics(sm, meta);
+    // }
     return m_mapped_func->infer_type(sm, meta);
 }
 

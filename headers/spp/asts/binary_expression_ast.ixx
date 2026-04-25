@@ -22,10 +22,6 @@ namespace spp::asts {
  * @code 1.add(2)@endcode.
  */
 SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
-private:
-    std::shared_ptr<PostfixExpressionAst> m_mapped_func;
-
-public:
     /**
      * The left-hand side expression of the binary expression. This is the first operand.
      */
@@ -97,4 +93,7 @@ public:
      * @return The inferred type of the binary expression, which is the return type of the mapped function.
      */
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+
+private:
+    std::shared_ptr<PostfixExpressionAst> m_mapped_func;
 };
