@@ -57,13 +57,13 @@ public:
 
     /**
      * Construct the AnnotationAst with the arguments matching the members.
-     * @param[in] tok_at_sign The token that represents the @c @ sign in the annotation.
+     * @param[in] tok_exclamation_mark The token that represents the @c @ sign in the annotation.
      * @param[in] name The name of the annotation.
      * @param[in] gn_arg_group The generic arguments being passed into the annotation call.
      * @param[in] fn_arg_group The function arguments being passed into the annotation call.
      */
     AnnotationAst(
-        decltype(tok_exclamation_mark) &&tok_at_sign,
+        decltype(tok_exclamation_mark) &&tok_exclamation_mark,
         decltype(name) &&name,
         decltype(gn_arg_group) &&gn_arg_group,
         decltype(fn_arg_group) &&fn_arg_group);
