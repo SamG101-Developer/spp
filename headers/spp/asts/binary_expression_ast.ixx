@@ -95,5 +95,10 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 
 private:
+    /**
+     * The AST that represents the functional version of this binary expression. For example, @code 1 + 2@endcode
+     * becomes @c 1.add(2). The mapped function itelf has its own internal mapping, in this case that would be
+     * @c std::number::S32::add(1, 2).
+     */
     std::shared_ptr<PostfixExpressionAst> m_mapped_func;
 };
