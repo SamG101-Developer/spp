@@ -17,20 +17,6 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst {
-private:
-    /**
-     * The inferred return type of the closure. This is determined during semantic analysis and type inference. Must be
-     * consistent with each returning value of the closure body.
-     */
-    std::shared_ptr<TypeAst> m_ret_type;
-
-    /**
-     * The LLVM function representing the closure. This is generated during code generation stage 11, and is used to
-     * call the closure when it is invoked.
-     */
-    std::shared_ptr<codegen::LlvmFuncWrapper> m_llvm_func;
-
-public:
     /**
      * The optional @c cor keyword. Providing this will turn the closure into a coroutine closure. Otherwise, it will
      * default to @code fun@endcode.
@@ -73,4 +59,17 @@ public:
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 
     SPP_ATTR_NODISCARD auto get_llvm_func() const -> std::shared_ptr<codegen::LlvmFuncWrapper>;
+
+private:
+    /**
+     * The inferred return type of the closure. This is determined during semantic analysis and type inference. Must be
+     * consistent with each returning value of the closure body.
+     */
+    std::shared_ptr<TypeAst> m_ret_type;
+
+    /**
+     * The LLVM function representing the closure. This is generated during code generation stage 11, and is used to
+     * call the closure when it is invoked.
+     */
+    std::shared_ptr<codegen::LlvmFuncWrapper> m_llvm_func;
 };

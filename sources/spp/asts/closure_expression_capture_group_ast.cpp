@@ -27,6 +27,13 @@ import genex;
 
 
 SPP_MOD_BEGIN
+auto spp::asts::ClosureExpressionCaptureGroupAst::new_empty()
+    -> std::unique_ptr<ClosureExpressionCaptureGroupAst> {
+    return std::make_unique<ClosureExpressionCaptureGroupAst>(
+        nullptr, decltype(captures)());
+}
+
+
 spp::asts::ClosureExpressionCaptureGroupAst::ClosureExpressionCaptureGroupAst(
     decltype(tok_caps) &&tok_caps,
     decltype(captures) &&captures) :
@@ -67,20 +74,13 @@ spp::asts::ClosureExpressionCaptureGroupAst::operator std::string() const {
 }
 
 
-auto spp::asts::ClosureExpressionCaptureGroupAst::new_empty()
-    -> std::unique_ptr<ClosureExpressionCaptureGroupAst> {
-    return std::make_unique<ClosureExpressionCaptureGroupAst>(
-        nullptr, decltype(captures)());
-}
-
-
 auto spp::asts::ClosureExpressionCaptureGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Add the capture variables after analysis, otherwise their symbol checks refer to the new captures, not the
     // original asts from the argument group analysis.
-    for (auto &&cap : captures) {
+    for (auto const &cap : captures) {
         // Create a "let" statement to insert the symbol into the current scope.
         auto cap_val = ast_clone(cap->val->to<IdentifierAst>());
         auto var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, ast_clone(cap_val), nullptr);
@@ -160,7 +160,7 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::stage_11_code_gen_2(
         // Add the alloca to the current scope as a variable symbol.
         // Todo: Handle mutability properly.
         auto var_sym = std::make_unique<analyse::scopes::VariableSymbol>(
-            asts::ast_clone(cap_val), cap_ty, sm->current_scope, false, false);
+            ast_clone(cap_val), cap_ty, sm->current_scope, false, false);
         var_sym->llvm_info->alloca = alloca;
         sm->current_scope->add_var_symbol(std::move(var_sym));
     }

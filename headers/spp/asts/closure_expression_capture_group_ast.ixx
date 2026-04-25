@@ -27,6 +27,8 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionCaptureGroupAst final : virtual A
      */
     std::vector<std::unique_ptr<ClosureExpressionCaptureAst>> captures;
 
+    static auto new_empty() -> std::unique_ptr<ClosureExpressionCaptureGroupAst>;
+
     /**
      * Construct the ClosureExpressionCaptureGroupAst with the arguments matching the members.
      * @param[in] tok_caps The @c caps token that indicates the start of the closure capture group.
@@ -39,8 +41,6 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionCaptureGroupAst final : virtual A
     ~ClosureExpressionCaptureGroupAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
-
-    static auto new_empty() -> std::unique_ptr<ClosureExpressionCaptureGroupAst>;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
