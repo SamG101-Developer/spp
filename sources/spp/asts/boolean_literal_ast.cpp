@@ -21,16 +21,10 @@ spp::asts::BooleanLiteralAst::BooleanLiteralAst(
 spp::asts::BooleanLiteralAst::~BooleanLiteralAst() = default;
 
 
-auto spp::asts::BooleanLiteralAst::equals(
-    ExpressionAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_boolean_literal(*this);
-}
-
-
 auto spp::asts::BooleanLiteralAst::equals_boolean_literal(
     BooleanLiteralAst const &other) const
     -> std::strong_ordering {
+    // Both boolean literals must have the same True/False value for them to be equal.
     if (*tok_bool == *other.tok_bool) {
         return std::strong_ordering::equal;
     }
@@ -38,14 +32,24 @@ auto spp::asts::BooleanLiteralAst::equals_boolean_literal(
 }
 
 
+auto spp::asts::BooleanLiteralAst::equals(
+    ExpressionAst const &other) const
+    -> std::strong_ordering {
+    // Reverse hook to compare against the other expression.
+    return other.equals_boolean_literal(*this);
+}
+
+
 auto spp::asts::BooleanLiteralAst::pos_start() const
     -> std::size_t {
+    // The position of the boolean literal is the position of the boolean token.
     return tok_bool->pos_start();
 }
 
 
 auto spp::asts::BooleanLiteralAst::pos_end() const
     -> std::size_t {
+    // Span to the end of the boolean token.
     return tok_bool->pos_end();
 }
 
@@ -111,6 +115,7 @@ auto spp::asts::BooleanLiteralAst::stage_11_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Map the boolean literal to an LLVM constant integer.
+    SPP_ASSERT(tok_bool->token_type == lex::SppTokenType::KW_TRUE or tok_bool->token_type == lex::SppTokenType::KW_FALSE);
     const auto value = tok_bool->token_type == lex::SppTokenType::KW_TRUE ? 1ul : 0ul;
     return llvm::ConstantInt::get(ctx->builder.getIntNTy(1), value);
 }

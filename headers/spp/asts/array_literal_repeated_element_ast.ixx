@@ -92,7 +92,8 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
      * Reverse hook to equate against the other arguments. This will call the @c equals_array_literal_repeated_elements
      * method on the other expression, if it is an array literal with repeated elements, to check for equality.
      * @param other
-     * @return
+     * @return @code std::strong_ordering::equal@endcode if the array literals are equal, and
+     * @code std::strong_ordering::less@endcode otherwise.
      */
     SPP_ATTR_NODISCARD auto equals(
         ExpressionAst const &other) const

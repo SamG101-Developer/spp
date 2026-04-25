@@ -19,12 +19,12 @@ namespace spp::asts {
  * This AST is used to represent boolean values in expressions and statements.
  */
 SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
+    SPP_GCC_VTABLE_FIX
+
     /**
      * The token that represents the boolean literal, either @c true or @code false@endcode.
      */
     std::unique_ptr<TokenAst> tok_bool;
-
-    auto _spp_key_function() const -> void override;
 
     /**
      * Construct the BooleanLiteralAst with the arguments matching the members.
@@ -35,9 +35,27 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
 
     ~BooleanLiteralAst() override;
 
-    SPP_ATTR_NODISCARD auto equals_boolean_literal(BooleanLiteralAst const &) const -> std::strong_ordering override;
+    /**
+     * Check for equality with another boolean literal. This will check if the other boolean literal has the same value
+     * as this one, meaning they both represent either @c true or @c false.
+     * @param other The other boolean literal to compare against.
+     * @return @code std::strong_ordering::equal@endcode if the boolean literals are equal, and
+     * @code std::strong_ordering::less@endcode otherwise.
+     */
+    SPP_ATTR_NODISCARD auto equals_boolean_literal(
+        BooleanLiteralAst const &other) const
+        -> std::strong_ordering override;
 
-    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+    /**
+     * A reverse hook to equate against the other arguments. This will call the @c equals_boolean_literal method on the
+     * other expression, if it is a boolean literal, to check for equality.
+     * @param other The other expression to compare against.
+     * @return @code std::strong_ordering::equal@endcode if the boolean literals are equal, and
+     * @code std::strong_ordering::less@endcode otherwise.
+     */
+    SPP_ATTR_NODISCARD auto equals(
+        ExpressionAst const &other) const
+        -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
@@ -55,8 +73,19 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
      */
     static auto False(std::size_t pos) -> std::unique_ptr<BooleanLiteralAst>;
 
+    /**
+     * Check if this boolean literal represents the @c true value. This will return @c true if the internally stored
+     * token represents the @c true literal, and @c false if it represents the @c false literal.
+     * @return @c true if this boolean literal represents the @c true value, and @c false if it represents the @c false
+     * value.
+     */
     SPP_ATTR_NODISCARD auto is_true() const -> bool;
 
+    /**
+     * Extract the internally stored token into a boolean value. This will return @c true if the token represents the
+     * @c true literal, and @c false if it represents the @c false literal.
+     * @return The c++ boolean value represented by this boolean literal AST.
+     */
     SPP_ATTR_NODISCARD auto cpp_value() const -> bool;
 
     /**
@@ -89,6 +118,4 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::BooleanLiteralAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(BooleanLiteralAst)
