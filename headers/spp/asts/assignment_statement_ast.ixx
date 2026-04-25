@@ -108,7 +108,7 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
      * @param[in,out] meta Associated metadata.
      */
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-#
+
     /**
      * Resolve the assignment statement at compile time. This is only possible if all the right-hand-side expressions
      * are compile time resolvable themselves. The symbol table is updated with the new compile time values for the
@@ -129,9 +129,4 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
      * @return The LLVM value representing the assignment operation.
      */
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
-
-private:
-    static auto is_identifier(Ast const *x) -> bool;
-
-    static auto is_attr(Ast const *x, analyse::scopes::ScopeManager const *sm) -> bool;
 };
