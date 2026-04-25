@@ -1,6 +1,5 @@
 module;
 #include <spp/macros.hpp>
-#include <spp/analyse/macros.hpp>
 
 module spp.asts.case_expression_branch_ast;
 import spp.analyse.errors.semantic_error;
@@ -35,6 +34,7 @@ spp::asts::CaseExpressionBranchAst::CaseExpressionBranchAst(
     patterns(std::move(patterns)),
     guard(std::move(guard)),
     body(std::move(body)) {
+    // Default the body to empty.
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->body);
 }
 
@@ -44,13 +44,15 @@ spp::asts::CaseExpressionBranchAst::~CaseExpressionBranchAst() = default;
 
 auto spp::asts::CaseExpressionBranchAst::pos_start() const
     -> std::size_t {
+    // Either the operation for pattern matching, or the first pattern for seamless.
     return op ? op->pos_start() : patterns.front()->pos_start();
 }
 
 
 auto spp::asts::CaseExpressionBranchAst::pos_end() const
     -> std::size_t {
-    return body->pos_end();
+    // Span to the end of the patterns.
+    return patterns.back()->pos_end();
 }
 
 
@@ -74,30 +76,11 @@ spp::asts::CaseExpressionBranchAst::operator std::string() const {
 }
 
 
-auto spp::asts::CaseExpressionBranchAst::m_codegen_combine_patterns(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx) const
-    -> llvm::Value* {
-    // If there is only one pattern, generate its condition directly.
-    // Otherwise, collect all the pattern conditions and combine them with OR.
-    auto llvm_combined_pattern = patterns.front()->stage_11_code_gen_2(sm, meta, ctx);
-    for (auto const &pattern : patterns | genex::views::ptr | genex::views::drop(1)) {
-        const auto llvm_pattern = pattern->stage_11_code_gen_2(sm, meta, ctx);
-        llvm_combined_pattern = ctx->builder.CreateOr(llvm_combined_pattern, llvm_pattern);
-    }
-    if (guard) {
-        const auto llvm_guard = guard->stage_11_code_gen_2(sm, meta, ctx);
-        llvm_combined_pattern = ctx->builder.CreateAnd(llvm_combined_pattern, llvm_guard, "case.pattern.guard.match");
-    }
-    return llvm_combined_pattern;
-}
-
-
 auto spp::asts::CaseExpressionBranchAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // Create a scope for the branch - this is where destructures of patterns will reside.
     auto scope_name = analyse::scopes::ScopeBlockName::from_parts(
         "case-branch", {}, pos_start());
     sm->create_and_move_into_new_scope(std::move(scope_name), this);
@@ -107,9 +90,9 @@ auto spp::asts::CaseExpressionBranchAst::stage_7_analyse_semantics(
         p->stage_7_analyse_semantics(sm, meta);
     }
 
+    // Ensure the functions exist for the comparisons (whichever op is used except "is").
     if (op.get() and op->token_type != lex::SppTokenType::KW_IS) {
-        for (auto &&p : patterns) {
-            // Create a dummy function to check the comparison operator exists.
+        for (auto const &p : patterns) {
             const auto pe = p->to<CasePatternVariantExpressionAst>();
             const auto bin_ast = std::make_unique<BinaryExpressionAst>(
                 std::make_unique<ObjectInitializerAst>(meta->case_condition->infer_type(sm, meta), nullptr),
@@ -120,9 +103,7 @@ auto spp::asts::CaseExpressionBranchAst::stage_7_analyse_semantics(
     }
 
     // Analyse the guard and body.
-    if (guard) {
-        guard->stage_7_analyse_semantics(sm, meta);
-    }
+    if (guard) { guard->stage_7_analyse_semantics(sm, meta); }
     body->stage_7_analyse_semantics(sm, meta);
 
     // Exit the scope.
@@ -138,12 +119,8 @@ auto spp::asts::CaseExpressionBranchAst::stage_8_check_memory(
     sm->move_to_next_scope();
 
     // Check the patterns, guard and body.
-    for (auto &&p : patterns) {
-        p->stage_8_check_memory(sm, meta);
-    }
-    if (guard) {
-        guard->stage_8_check_memory(sm, meta);
-    }
+    for (auto const &p : patterns) { p->stage_8_check_memory(sm, meta); }
+    if (guard) { guard->stage_8_check_memory(sm, meta); }
     body->stage_8_check_memory(sm, meta);
 
     // Move out of the branch's scope.
@@ -161,7 +138,7 @@ auto spp::asts::CaseExpressionBranchAst::stage_9_comptime_resolution(
         pattern->stage_9_comptime_resolution(sm, meta);
 
         // Determine if this branch is not a match (false).
-        const auto cmp_pat_bool = meta->cmp_result->to<BooleanLiteralAst>();
+        const auto cmp_pat_bool = meta->cmp_result ? meta->cmp_result->to<BooleanLiteralAst>() : nullptr;
         if (cmp_pat_bool == nullptr or not cmp_pat_bool->is_true()) {
             sm->exhaust_scope();
             continue;
@@ -170,8 +147,8 @@ auto spp::asts::CaseExpressionBranchAst::stage_9_comptime_resolution(
         // Check with the branch guard if it exists.
         if (guard != nullptr) {
             guard->stage_9_comptime_resolution(sm, meta);
-            const auto cmp_guard_bool = meta->cmp_result->to<BooleanLiteralAst>();
-            if (not cmp_guard_bool->is_true()) {
+            const auto cmp_guard_bool = meta->cmp_result ? meta->cmp_result->to<BooleanLiteralAst>() : nullptr;
+            if (cmp_pat_bool == nullptr or not cmp_guard_bool->is_true()) {
                 sm->exhaust_scope();
                 continue;
             }
@@ -237,6 +214,26 @@ auto spp::asts::CaseExpressionBranchAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Forward type inference to the body.
     return body->infer_type(sm, meta);
+}
+
+
+auto spp::asts::CaseExpressionBranchAst::m_codegen_combine_patterns(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx) const
+    -> llvm::Value* {
+    // If there is only one pattern, generate its condition directly.
+    // Otherwise, collect all the pattern conditions and combine them with OR.
+    auto llvm_combined_pattern = patterns.front()->stage_11_code_gen_2(sm, meta, ctx);
+    for (auto const &pattern : patterns | genex::views::ptr | genex::views::drop(1)) {
+        const auto llvm_pattern = pattern->stage_11_code_gen_2(sm, meta, ctx);
+        llvm_combined_pattern = ctx->builder.CreateOr(llvm_combined_pattern, llvm_pattern);
+    }
+    if (guard) {
+        const auto llvm_guard = guard->stage_11_code_gen_2(sm, meta, ctx);
+        llvm_combined_pattern = ctx->builder.CreateAnd(llvm_combined_pattern, llvm_guard, "case.pattern.guard.match");
+    }
+    return llvm_combined_pattern;
 }
 
 SPP_MOD_END

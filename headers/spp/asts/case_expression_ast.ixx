@@ -98,5 +98,10 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 
+    /**
+     * A @c case block only terminates (is terminatable) if one or more of its branches can terminate. This is because
+     * it has to be assumed that the terminating branch will execute, in order to cover all bases.
+     * @return If one of the branches can terminate.
+     */
     SPP_ATTR_NODISCARD auto terminates() const -> bool override;
 };

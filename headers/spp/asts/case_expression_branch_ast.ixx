@@ -20,6 +20,10 @@ namespace spp::asts {
 }
 
 
+/**
+ * The @c CaseExpressionBranchAst represents a branch on a @c case block. It contains the patterns to match the @c case
+ * expression against, can be "guarded", and contains the body of the block.
+ */
 SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : virtual Ast, mixins::TypeInferrableAst {
     /**
      * The optional comparison operator. This is for cases pattern matching cases that look something like
@@ -62,6 +66,16 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : virtual Ast, mixin
 
     SPP_AST_KEY_FUNCTIONS;
 
+    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+
+    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+
 private:
     /**
      * If there are multiple patterns, then the llvm output value is a logical OR of all the pattern matches. This is
@@ -73,15 +87,4 @@ private:
      * @return The llvm value representing the combined pattern matches.
      */
     auto m_codegen_combine_patterns(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) const -> llvm::Value*;
-
-public:
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
-
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 };

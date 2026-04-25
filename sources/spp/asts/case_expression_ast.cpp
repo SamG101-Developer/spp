@@ -265,8 +265,8 @@ auto spp::asts::CaseExpressionAst::infer_type(
 
     // Return the branches' return type. If there are any branches, otherwise Void.
     return branches_type_info.empty()
-               ? generate::common_types::void_type(pos_start())
-               : std::get<1>(master_branch_type_info);
+        ? generate::common_types::void_type(pos_start())
+        : std::get<1>(master_branch_type_info);
 }
 
 
