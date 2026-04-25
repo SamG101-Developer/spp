@@ -70,10 +70,28 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
 
     SPP_AST_KEY_FUNCTIONS;
 
+    /**
+     * Analyse the components of the "case" block, including the branches (nested analysis). Also checks that the "else"
+     * is the final branch, and that "is" destructures only match 1 pattern.
+     * @param sm The scope manager to use for analysis.
+     * @param meta Associated metadata.
+     */
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
+    /**
+     * Validate the condition's memory status, and then validate the consistency of the memory state within the
+     * branches. This only triggers if an inconsistently initialized/pinned symbol is used later in the function.
+     * @param sm The scope manager to use for memory checking.
+     * @param meta Associated metadata.
+     */
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
+    /**
+     * Compute the branches at compile-time, by evaluating the condition and then evaluating the branches in order until
+     * a match is found. Will inspect the matched branch for the final comptime value.
+     * @param sm
+     * @param meta
+     */
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;

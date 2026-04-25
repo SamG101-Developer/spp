@@ -76,12 +76,14 @@ auto spp::asts::CaseExpressionAst::new_non_pattern_match(
 
 auto spp::asts::CaseExpressionAst::pos_start() const
     -> std::size_t {
+    // The position of the case expression is the position of the "case" token.
     return tok_case->pos_start();
 }
 
 
 auto spp::asts::CaseExpressionAst::pos_end() const
     -> std::size_t {
+    // Span to the end of the condition (cleaner error messages).
     return cond->pos_end();
 }
 
@@ -130,7 +132,7 @@ auto spp::asts::CaseExpressionAst::stage_7_analyse_semantics(
     }
 
     // Analyse eac branch of the case expression.
-    for (auto &&branch : branches) {
+    for (auto const &branch : branches) {
         // Destructures can only use 1 pattern.
         raise_if<analyse::errors::SppCaseBranchMultipleDestructuresError>(
             branch->op != nullptr and branch->op->token_type == lex::SppTokenType::KW_IS and branch->patterns.size() > 1,
@@ -197,8 +199,8 @@ auto spp::asts::CaseExpressionAst::stage_9_comptime_resolution(
     }
 
     // Otherwise, if no branches matched, this is non-returning, so nullptr is fine.
-    sm->move_out_of_current_scope();
     meta->restore();
+    sm->move_out_of_current_scope();
 }
 
 
