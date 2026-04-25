@@ -88,7 +88,7 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : virtual Ast {
      * @param sm The scope manager to use for setting the scope of this annotation.
      * @param meta Associated metadata.
      */
-    auto stage_2_gen_top_level_scopes(analyse::scopes::ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
      * Ensure the target annotation definition (as a function), is infact a function, and is a "cmp" function. Also, it
@@ -114,7 +114,7 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : virtual Ast {
      * @param sm The scope manager to use for analysing ASTs and performing overload resolution.
      * @param meta Associated metadata.
      */
-    auto stage_7_analyse_semantics(analyse::scopes::ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
      * Resolve the annotation at compile time. This involves evaluating the function and generic arguments at compile
