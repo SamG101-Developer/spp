@@ -20,11 +20,6 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureObjectAst final : CasePatternVariantAst {
-private:
-    std::shared_ptr<analyse::scopes::VariableSymbol> m_cond_sym;
-    std::shared_ptr<analyse::scopes::VariableSymbol> m_flow_sym;
-
-public:
     /**
      * The type of the object being destructured. This is used to determine the type of the destructured elements (by
      * attribute type inference)
@@ -77,4 +72,8 @@ public:
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto convert_to_variable(CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
+
+private:
+    std::shared_ptr<analyse::scopes::VariableSymbol> m_cond_sym = nullptr;
+    std::shared_ptr<analyse::scopes::VariableSymbol> m_flow_sym = nullptr;
 };
