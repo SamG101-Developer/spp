@@ -15,7 +15,7 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
-    auto _spp_key_function() const -> void override;
+    SPP_GCC_VTABLE_FIX
 
     /**
      * The string value of the string literal. This is the actual string that is represented by the literal.
@@ -31,9 +31,9 @@ SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
 
     ~StringLiteralAst() override;
 
-    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-
     SPP_ATTR_NODISCARD auto equals_string_literal(StringLiteralAst const &) const -> std::strong_ordering override;
+
+    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
@@ -45,6 +45,4 @@ SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::StringLiteralAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(StringLiteralAst)

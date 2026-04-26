@@ -24,20 +24,21 @@ spp::asts::StringLiteralAst::StringLiteralAst(
 spp::asts::StringLiteralAst::~StringLiteralAst() = default;
 
 
-auto spp::asts::StringLiteralAst::equals(
-    ExpressionAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_string_literal(*this);
-}
-
-
 auto spp::asts::StringLiteralAst::equals_string_literal(
     StringLiteralAst const &other) const
     -> std::strong_ordering {
-    if (val->token_data == other.val->token_data) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
+    // Equality is based on the internal string value.
+    return val->token_data == other.val->token_data
+        ? std::strong_ordering::equal
+        : std::strong_ordering::less;
+}
+
+
+auto spp::asts::StringLiteralAst::equals(
+    ExpressionAst const &other) const
+    -> std::strong_ordering {
+    // Reverse hook.
+    return other.equals_string_literal(*this);
 }
 
 
@@ -83,7 +84,8 @@ auto spp::asts::StringLiteralAst::stage_11_code_gen_2(
     -> llvm::Value* {
     // Create a global string for the string literal.
     const auto bytes = val->token_data;
-    const auto str_alloc = ctx->builder.CreateGlobalString(bytes, "string_literal", 0, ctx->llvm_module.get(), false);
+    const auto str_alloc = ctx->builder.CreateGlobalString(
+        bytes, "string_literal", 0, ctx->llvm_module.get(), false);
     return str_alloc;
 }
 
