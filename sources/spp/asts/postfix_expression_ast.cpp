@@ -93,8 +93,9 @@ auto spp::asts::PostfixExpressionAst::stage_8_check_memory(
     CompilerMetaData *meta)
     -> void {
     // Memory analysis used the transformed AST to not repeat lhs as self.
-    if (const auto func = op->to<PostfixExpressionOperatorFunctionCallAst>(); func != nullptr and func->transformed_ast != nullptr) {
-        func->transformed_ast->stage_8_check_memory(sm, meta);
+    const auto func = op->to<PostfixExpressionOperatorFunctionCallAst>();
+    if (func != nullptr and func->transformed_ast() != nullptr) {
+        func->transformed_ast()->stage_8_check_memory(sm, meta);
         return;
     }
 

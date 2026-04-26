@@ -77,7 +77,7 @@ auto spp::analyse::utils::overload_utils::determine_overload(
     if (is_runtime != nullptr) {
         auto [overload_info, is_closure, pf] = propagate_method_to_function(
             fn_call, *fn_owner_type, *fn_name, *is_postfix, sm, meta);
-        fn_call.transformed_ast = std::move(pf);
+        fn_call.set_transformed_ast(std::move(pf));
         return std::make_pair(std::move(overload_info), is_closure);
     }
 
@@ -149,7 +149,7 @@ auto spp::analyse::utils::overload_utils::determine_overload(
 
     manage_matched_overloads(fn_call, pass_overloads, fail_overloads, *fn_call.arg_group, sm, meta);
     if (closure_proto) {
-        fn_call.closure_dummy_proto = std::move(closure_proto);
+        fn_call.set_closure_dummy_proto(std::move(closure_proto));
     }
     return std::make_pair(std::move(pass_overloads[0]), is_closure);
 }
