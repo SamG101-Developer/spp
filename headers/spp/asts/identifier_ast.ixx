@@ -14,47 +14,45 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::IdentifierAst final : PrimaryExpressionAst, std::enable_shared_from_this<IdentifierAst> {
-private:
-    std::size_t m_pos;
+    SPP_GCC_VTABLE_FIX
 
-public:
     std::string val;
+
+    static auto from_type(
+        TypeAst const &val)
+        -> std::unique_ptr<IdentifierAst>;
 
     explicit IdentifierAst(
         std::size_t pos,
         decltype(val) val);
 
-    auto _spp_key_function() const -> void override;
-
-    IdentifierAst(IdentifierAst const &) = default;
-
     ~IdentifierAst() override;
+
+    auto operator<=>(
+        IdentifierAst const &that) const
+        -> std::strong_ordering;
+
+    auto operator==(
+        IdentifierAst const &that) const
+        -> bool;
+
+    auto operator==(
+        ExpressionAst const &that) const
+        -> bool;
+
+    auto operator+(
+        IdentifierAst const &that) const
+        -> IdentifierAst;
+
+    auto operator+(
+        std::string const &that) const
+        -> IdentifierAst;
 
     SPP_ATTR_NODISCARD auto equals_identifier(IdentifierAst const &) const -> std::strong_ordering override;
 
     SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
-
-    SPP_ATTR_ALWAYS_INLINE auto operator<=>(IdentifierAst const &that) const -> std::strong_ordering {
-        return val <=> that.val;
-    }
-
-    SPP_ATTR_ALWAYS_INLINE auto operator==(IdentifierAst const &that) const -> bool {
-        return equals(that) == std::strong_ordering::equal;
-    }
-
-    SPP_ATTR_ALWAYS_INLINE auto operator==(ExpressionAst const &that) const -> bool {
-        return equals(that) == std::strong_ordering::equal;
-    }
-
-    auto operator+(IdentifierAst const &that) const -> IdentifierAst;
-
-    auto operator+(std::string const &that) const -> IdentifierAst;
-
-    static auto from_type(TypeAst const &val) -> std::unique_ptr<IdentifierAst>;
-
-    auto to_function_identifier() const -> std::unique_ptr<IdentifierAst>;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -64,15 +62,17 @@ public:
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
 
+    auto to_function_identifier() const -> std::unique_ptr<IdentifierAst>;
+
     auto ankerl_hash() const -> std::size_t override;
 
-    SPP_ATTR_NODISCARD auto expr_parts() const -> std::vector<Ast *> override;
+    SPP_ATTR_NODISCARD auto expr_parts() const -> std::vector<Ast*> override;
 
     SPP_ATTR_NODISCARD auto to_string_view() const noexcept -> std::string_view;
+
+private:
+    std::size_t m_pos;
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::IdentifierAst::_spp_key_function() const -> void {}
-SPP_MOD_END
-
+SPP_GCC_VTABLE_FIX_IMPL(IdentifierAst)

@@ -20,22 +20,43 @@ import llvm;
 
 
 SPP_MOD_BEGIN
+auto spp::asts::IdentifierAst::from_type(
+    TypeAst const &val)
+    -> std::unique_ptr<IdentifierAst> {
+    return std::make_unique<IdentifierAst>(val.pos_start(), std::string(val.type_parts().back()->name));
+}
+
+
 spp::asts::IdentifierAst::IdentifierAst(
     const std::size_t pos,
     decltype(val) val) :
     std::enable_shared_from_this<IdentifierAst>(),
-    m_pos(pos),
-    val(std::move(val)) {
+    val(std::move(val)),
+    m_pos(pos) {
 }
 
 
 spp::asts::IdentifierAst::~IdentifierAst() = default;
 
 
-auto spp::asts::IdentifierAst::equals(
-    ExpressionAst const &other) const
+auto spp::asts::IdentifierAst::operator<=>(
+    IdentifierAst const &that) const
     -> std::strong_ordering {
-    return other.equals_identifier(*this);
+    return val <=> that.val;
+}
+
+
+auto spp::asts::IdentifierAst::operator==(
+    IdentifierAst const &that) const
+    -> bool {
+    return equals(that) == std::strong_ordering::equal;
+}
+
+
+auto spp::asts::IdentifierAst::operator==(
+    ExpressionAst const &that) const
+    -> bool {
+    return equals(that) == std::strong_ordering::equal;
 }
 
 
@@ -46,6 +67,13 @@ auto spp::asts::IdentifierAst::equals_identifier(
         return std::strong_ordering::equal;
     }
     return std::strong_ordering::less;
+}
+
+
+auto spp::asts::IdentifierAst::equals(
+    ExpressionAst const &other) const
+    -> std::strong_ordering {
+    return other.equals_identifier(*this);
 }
 
 
@@ -72,12 +100,6 @@ spp::asts::IdentifierAst::operator std::string() const {
 }
 
 
-auto spp::asts::IdentifierAst::to_string_view() const noexcept
-    -> std::string_view {
-    return val;
-}
-
-
 auto spp::asts::IdentifierAst::operator+(
     IdentifierAst const &that) const
     -> IdentifierAst {
@@ -89,19 +111,6 @@ auto spp::asts::IdentifierAst::operator+(
     std::string const &that) const
     -> IdentifierAst {
     return IdentifierAst(m_pos, val + that);
-}
-
-
-auto spp::asts::IdentifierAst::from_type(
-    TypeAst const &val)
-    -> std::unique_ptr<IdentifierAst> {
-    return std::make_unique<IdentifierAst>(val.pos_start(), std::string(val.type_parts().back()->name));
-}
-
-
-auto spp::asts::IdentifierAst::to_function_identifier() const
-    -> std::unique_ptr<IdentifierAst> {
-    return std::make_unique<IdentifierAst>(m_pos, "$" + spp::utils::strings::snake_to_pascal(val));
 }
 
 
@@ -129,7 +138,7 @@ auto spp::asts::IdentifierAst::stage_9_comptime_resolution(
     -> void {
     // Extract the value from the symbol table and return it.
     const auto var_sym = sm->current_scope->get_var_symbol(ast_clone(this));
-    auto tm = analyse::scopes::ScopeManager(sm->global_scope, var_sym->scope_defined_in ?: sm->current_scope);
+    auto tm = analyse::scopes::ScopeManager(sm->global_scope, var_sym->scope_defined_in ? : sm->current_scope);
     var_sym->comptime_value->stage_9_comptime_resolution(&tm, meta);
 }
 
@@ -173,6 +182,12 @@ auto spp::asts::IdentifierAst::infer_type(
 }
 
 
+auto spp::asts::IdentifierAst::to_function_identifier() const
+    -> std::unique_ptr<IdentifierAst> {
+    return std::make_unique<IdentifierAst>(m_pos, "$" + spp::utils::strings::snake_to_pascal(val));
+}
+
+
 auto spp::asts::IdentifierAst::ankerl_hash() const
     -> std::size_t {
     return absl::Hash<std::string>()(val);
@@ -183,5 +198,12 @@ auto spp::asts::IdentifierAst::expr_parts() const
     -> std::vector<Ast*> {
     return {const_cast<IdentifierAst*>(this)};
 }
+
+
+auto spp::asts::IdentifierAst::to_string_view() const noexcept
+    -> std::string_view {
+    return val;
+}
+
 
 SPP_MOD_END
