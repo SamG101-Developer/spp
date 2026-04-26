@@ -29,8 +29,6 @@ spp::asts::TypeStatementAst::TypeStatementAst(
     decltype(generic_param_group) &&generic_param_group,
     decltype(tok_assign) &&tok_assign,
     decltype(old_type) old_type) :
-    m_generated(false),
-    m_from_use_statement(false),
     m_mapped_old_type(old_type),
     annotations(std::move(annotations)),
     tok_type(std::move(tok_type)),

@@ -32,19 +32,12 @@ namespace spp::asts {
  * @code type SecureByteMap[T] = std::collections::HashMap[K=Byte, V=T, A=SecureAlloc[(K, V)]]@endcode
  */
 SPP_EXP_CLS struct spp::asts::TypeStatementAst final : StatementAst, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
-private:
-    bool m_generated;
+    SPP_GCC_VTABLE_FIX
 
-    bool m_from_use_statement;
+    analyse::scopes::Scope *m_tracking_scope = nullptr;
 
-    std::shared_ptr<analyse::scopes::TypeSymbol> m_alias_sym;
+    std::shared_ptr<TypeAst> m_mapped_old_type = nullptr; // TODO: Hide with accessors?
 
-public:
-    analyse::scopes::Scope *m_tracking_scope;
-
-    std::shared_ptr<TypeAst> m_mapped_old_type;
-
-public:
     /**
      * The list of annotations that are applied to this type statement. Typically, access modifiers in this context.
      */
@@ -96,8 +89,6 @@ public:
         decltype(tok_assign) &&tok_assign,
         decltype(old_type) old_type);
 
-    auto _spp_key_function() const -> void override;
-
     ~TypeStatementAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
@@ -129,9 +120,14 @@ public:
     SPP_ATTR_NODISCARD auto is_from_use_statement() const -> bool;
 
     auto cleanup() -> void;
+
+private:
+    bool m_generated = false;
+
+    bool m_from_use_statement = false;
+
+    std::shared_ptr<analyse::scopes::TypeSymbol> m_alias_sym = nullptr;
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::TypeStatementAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(TypeStatementAst)

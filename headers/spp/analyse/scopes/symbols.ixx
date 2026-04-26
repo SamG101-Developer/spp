@@ -5,7 +5,6 @@ export module spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_info_utils;
 import spp.asts.ast;
 import spp.asts.convention_ast;
-import spp.asts.type_statement_ast;
 import spp.asts.utils.visibility;
 import spp.codegen.llvm_sym_info;
 import std;
