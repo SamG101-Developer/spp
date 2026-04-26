@@ -158,21 +158,6 @@ SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::Abs
 };
 
 
-// SPP_EXP_CLS struct spp::analyse::errors::SppAnnotationInvalidApplicationError final : SemanticError {
-//     explicit SppAnnotationInvalidApplicationError(asts::AnnotationAst const &annotation, asts::Ast const &ctx, std::string_view block_list);
-// };
-//
-//
-// SPP_EXP_CLS struct spp::analyse::errors::SppAnnotationConflictError final : SemanticError {
-//     explicit SppAnnotationConflictError(asts::AnnotationAst const &first_annotation, asts::AnnotationAst const &conflicting_annotation, asts::Ast const &ctx);
-// };
-//
-//
-// SPP_EXP_CLS struct spp::analyse::errors::SppAnnotationInvalidError final : SemanticError {
-//     explicit SppAnnotationInvalidError(asts::AnnotationAst const &annotation);
-// };
-
-
 SPP_EXP_CLS struct spp::analyse::errors::SppExpressionTypeInvalidError final : SemanticError {
     explicit SppExpressionTypeInvalidError(asts::Ast const &expr);
 };

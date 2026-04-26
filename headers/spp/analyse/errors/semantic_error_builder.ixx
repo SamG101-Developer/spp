@@ -27,7 +27,7 @@ namespace spp {
     }
 
     SPP_EXP_FUN template <typename E, typename A>
-    requires std::derived_from<E, analyse::errors::SemanticError> // and std::constructible_from<analyse::errors::SemanticErrorBuilder<E>, Args...>
+    requires std::derived_from<E, analyse::errors::SemanticError>
     SPP_ATTR_NORETURN auto raise(std::vector<analyse::scopes::Scope const*> const &scopes, A &&arg_binder) -> void {
         std::apply(
             [&]<typename... Args2>(Args2 &&... unpacked_args) {
@@ -38,13 +38,13 @@ namespace spp {
     }
 
     SPP_EXP_FUN template <typename E, typename A>
-    requires std::derived_from<E, analyse::errors::SemanticError> // and std::constructible_from<analyse::errors::SemanticErrorBuilder<E>, Args...>
+    requires std::derived_from<E, analyse::errors::SemanticError>
     auto raise_if(const bool condition, std::vector<analyse::scopes::Scope const*> const &scopes, A &&arg_binder) -> void {
         if (condition) { raise<E>(std::move(scopes), std::forward<A>(arg_binder)); }
     }
 
     SPP_EXP_FUN template <typename E, typename A>
-    requires std::derived_from<E, analyse::errors::SemanticError> // and std::constructible_from<analyse::errors::SemanticErrorBuilder<E>, Args...>
+    requires std::derived_from<E, analyse::errors::SemanticError>
     auto raise_unless(const bool condition, std::vector<analyse::scopes::Scope const*> const &scopes, A &&arg_binder) -> void {
         if (not condition) { raise<E>(std::move(scopes), std::forward<A>(arg_binder)); }
     }
