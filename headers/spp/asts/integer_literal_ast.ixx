@@ -16,6 +16,8 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
+    SPP_GCC_VTABLE_FIX
+
     /**
      * The optionally provided sign token. This can be either a @c + or @c - sign, indicating the sign of the integer
      * literal. No sign means the integer is positive by default.
@@ -32,8 +34,6 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
      */
     std::string type;
 
-    auto _spp_key_function() const -> void override;
-
     /**
      * Construct the IntegerLiteralAst with the arguments matching the members.
      * @param[in] tok_sign The optionally provided sign token.
@@ -47,14 +47,15 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
 
     ~IntegerLiteralAst() override;
 
-    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals_integer_literal(
+        IntegerLiteralAst const &) const
+        -> std::strong_ordering override;
 
-    SPP_ATTR_NODISCARD auto equals_integer_literal(IntegerLiteralAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals(
+        ExpressionAst const &other) const
+        -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
-
-    template <typename T> requires std::integral<T>
-    auto cpp_value() const -> T;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -63,9 +64,10 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+
+    template <typename T> requires std::integral<T>
+    auto cpp_value() const -> T;
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::IntegerLiteralAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(IntegerLiteralAst)
