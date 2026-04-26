@@ -37,22 +37,27 @@ spp::asts::TupleLiteralAst::TupleLiteralAst(
 spp::asts::TupleLiteralAst::~TupleLiteralAst() = default;
 
 
-auto spp::asts::TupleLiteralAst::equals(
-    ExpressionAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_tuple_literal(*this);
-}
-
-
 auto spp::asts::TupleLiteralAst::equals_tuple_literal(
     TupleLiteralAst const &other) const
     -> std::strong_ordering {
-    if (elems.size() == other.elems.size() and genex::all_of(
+    // If two tuple asts don't have the same size, they cannot be equal.
+    if (elems.size() != other.elems.size()) { return std::strong_ordering::less; }
+
+    // Ensure each element of the two array literals are equal.
+    if (genex::all_of(
         genex::views::zip(elems | genex::views::ptr, other.elems | genex::views::ptr) | genex::to<std::vector>(),
         [](auto const &pair) { return *std::get<0>(pair) == *std::get<1>(pair); })) {
         return std::strong_ordering::equal;
     }
     return std::strong_ordering::less;
+}
+
+
+auto spp::asts::TupleLiteralAst::equals(
+    ExpressionAst const &other) const
+    -> std::strong_ordering {
+    // Reverse hook.
+    return other.equals_tuple_literal(*this);
 }
 
 
@@ -112,7 +117,7 @@ auto spp::asts::TupleLiteralAst::stage_8_check_memory(
     CompilerMetaData *meta)
     -> void {
     // Check the memory of each element in the tuple literal.
-    for (auto &&elem : elems) {
+    for (auto const &elem : elems) {
         elem->stage_8_check_memory(sm, meta);
         analyse::utils::mem_utils::validate_symbol_memory(
             *elem, *elem, *sm, true, true, true, true, false, meta);
@@ -176,7 +181,7 @@ auto spp::asts::TupleLiteralAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Create a "..Ts" type, for the tuple type.
     auto types_gen = elems
-        | genex::views::transform([sm, meta](auto &&elem) { return elem->infer_type(sm, meta); })
+        | genex::views::transform([sm, meta](auto const &elem) { return elem->infer_type(sm, meta); })
         | genex::to<std::vector>();
 
     // Create a tuple type with the inferred element types.

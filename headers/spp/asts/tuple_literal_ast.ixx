@@ -15,6 +15,8 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
+    SPP_GCC_VTABLE_FIX
+
     /**
      * The left parenthesis token that represents the start of the tuple literal.
      */
@@ -30,8 +32,6 @@ SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
      */
     std::unique_ptr<TokenAst> tok_r;
 
-    auto _spp_key_function() const -> void override;
-
     /**
      * Construct the TupleLiteralAst with the arguments matching the members.
      * @param tok_l The left parenthesis token.
@@ -45,9 +45,13 @@ SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
 
     ~TupleLiteralAst() override;
 
-    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals_tuple_literal(
+        TupleLiteralAst const &) const
+        -> std::strong_ordering override;
 
-    SPP_ATTR_NODISCARD auto equals_tuple_literal(TupleLiteralAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals(
+        ExpressionAst const &other) const
+        -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
@@ -63,6 +67,4 @@ SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::TupleLiteralAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(TupleLiteralAst)
