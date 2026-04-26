@@ -80,6 +80,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 import spp.utils.uid;
+import spp.utils.ptr;
 import ankerl.unordered_dense;
 import genex;
 
@@ -195,7 +196,7 @@ auto spp::analyse::utils::func_utils::get_all_function_scopes(
     auto is_valid_ext_scope = [mapped_name=mapped_name.get()](auto const *scope) {
         const auto ext = scope->ast->template to<asts::SupPrototypeExtensionAst>();
         if (ext == nullptr) { return false; }
-        const auto ext_name = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(ext->name);
+        const auto ext_name = spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(ext->name);
         return ext_name != nullptr and ext_name->name == mapped_name->val;
     };
 
@@ -792,16 +793,16 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
     asts::meta::CompilerMetaData &meta) -> void {
     // Get the names for ease of use.
     auto p_names = comp_params
-        | genex::views::transform([](auto &&x) { return std::dynamic_pointer_cast<asts::TypeIdentifierAst>(x->name); })
+        | genex::views::transform([](auto &&x) { return spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(x->name); })
         | genex::to<std::vector>();
     auto ea_names = explicit_args
-        | genex::views::transform([](auto &&x) { return std::dynamic_pointer_cast<asts::TypeIdentifierAst>(x->name); })
+        | genex::views::transform([](auto &&x) { return spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(x->name); })
         | genex::to<std::vector>();
     auto inferred_args = InferenceResultCompMap();
 
     // Preload the explicit generic arguments into the inference map.
     for (auto *arg : explicit_args) {
-        inferred_args[std::dynamic_pointer_cast<asts::TypeIdentifierAst>(arg->name)].emplace_back(arg->val.get());
+        inferred_args[spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(arg->name)].emplace_back(arg->val.get());
     }
 
     // Infer the generic arguments from the source/target maps.
@@ -829,7 +830,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
     // Fully qualify and type arguments (replaced within the inference map).
     auto i_names = inferred_args | genex::views::keys | genex::to<std::vector>();
     for (auto *opt_param : comp_params | genex::views::cast_dynamic<asts::GenericParameterCompOptionalAst*>()) {
-        const auto cast_name = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(opt_param->name);
+        const auto cast_name = spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(opt_param->name);
         if (genex::contains(i_names, *cast_name, genex::meta::deref)) { continue; }
         inferred_args[cast_name].emplace_back(opt_param->default_val.get());
         i_names = inferred_args | genex::views::keys | genex::to<std::vector>();
@@ -937,13 +938,13 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
     asts::meta::CompilerMetaData &meta) -> void {
     // Get the names for ease of use.
     auto p_names = type_params
-        | genex::views::transform([](auto &&x) { return std::dynamic_pointer_cast<asts::TypeIdentifierAst>(x->name); })
+        | genex::views::transform([](auto &&x) { return spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(x->name); })
         | genex::to<std::vector>();
     auto p_con_groups = type_params
         | genex::views::transform([](auto &&x) { return x->constraints ? x->constraints->constraints : std::vector<std::shared_ptr<asts::TypeAst>>{}; })
         | genex::to<std::vector>();
     auto ea_names = explicit_args
-        | genex::views::transform([](auto &&x) { return std::dynamic_pointer_cast<asts::TypeIdentifierAst>(x->name); })
+        | genex::views::transform([](auto &&x) { return spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(x->name); })
         | genex::to<std::vector>();
     auto inferred_args = InferenceResultTypeMap();
 
@@ -971,7 +972,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
                 // Todo: Same needed for "cmp" generic args.
                 if (genex::contains(ea_names, *p_name, genex::meta::deref)) {
                     auto it = genex::find_if(explicit_args, [&](auto *arg) {
-                        return *std::dynamic_pointer_cast<asts::TypeIdentifierAst>(arg->name) == *p_name;
+                        return *spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(arg->name) == *p_name;
                     });
                     if (it != explicit_args.end()) { explicit_args.erase(it); }
                 }
@@ -990,14 +991,14 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
     // Load the explicit generic arguments into the inference map, as the consistency of these arguments needs checking
     // too.
     for (auto *arg : explicit_args) {
-        auto cast_name = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(arg->name);
+        auto cast_name = spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(arg->name);
         inferred_args[cast_name].emplace_back(arg->val);
     }
 
     // Fully qualify and type arguments (replaced within the inference map).
     auto i_names = inferred_args | genex::views::keys | genex::to<std::vector>();
     for (auto *opt_param : type_params | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
-        const auto cast_name = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(opt_param->name);
+        const auto cast_name = spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(opt_param->name);
         if (genex::contains(i_names, *cast_name, genex::meta::deref)) { continue; }
 
         auto def_type = opt_param->default_val;

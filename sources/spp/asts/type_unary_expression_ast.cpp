@@ -154,7 +154,7 @@ auto spp::asts::TypeUnaryExpressionAst::is_never_type() const
 
 auto spp::asts::TypeUnaryExpressionAst::ns_parts() const
     -> std::vector<std::shared_ptr<const IdentifierAst>> {
-    auto parts = std::const_pointer_cast<const TypeUnaryExpressionOperatorAst>(op)->ns_parts();
+    auto parts = spp::utils::ptr::shared_const_cast<const TypeUnaryExpressionOperatorAst>(op)->ns_parts();
     parts.append_range(rhs->ns_parts());
     return parts;
 }
@@ -170,7 +170,7 @@ auto spp::asts::TypeUnaryExpressionAst::ns_parts()
 
 auto spp::asts::TypeUnaryExpressionAst::type_parts() const
     -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
-    auto parts = std::const_pointer_cast<const TypeUnaryExpressionOperatorAst>(op)->type_parts();
+    auto parts = spp::utils::ptr::shared_const_cast<const TypeUnaryExpressionOperatorAst>(op)->type_parts();
     parts.append_range(rhs->type_parts());
     return parts;
 }

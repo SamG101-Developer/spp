@@ -111,7 +111,7 @@ auto spp::asts::TypePostfixExpressionAst::is_never_type() const
 auto spp::asts::TypePostfixExpressionAst::ns_parts() const
     -> std::vector<std::shared_ptr<const IdentifierAst>> {
     // Concatenate the lhs and rhs namespace parts.
-    auto parts = std::const_pointer_cast<const TypeAst>(lhs)->ns_parts();
+    auto parts = spp::utils::ptr::shared_const_cast<const TypeAst>(lhs)->ns_parts();
     parts.append_range(tok_op->ns_parts());
     return parts;
 }
@@ -129,7 +129,7 @@ auto spp::asts::TypePostfixExpressionAst::ns_parts()
 auto spp::asts::TypePostfixExpressionAst::type_parts() const
     -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
     // Concatenate the lhs and rhs type parts.
-    auto parts = std::const_pointer_cast<const TypeAst>(lhs)->type_parts();
+    auto parts = spp::utils::ptr::shared_const_cast<const TypeAst>(lhs)->type_parts();
     parts.append_range(tok_op->type_parts());
     return parts;
 }

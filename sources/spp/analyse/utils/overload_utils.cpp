@@ -38,6 +38,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.utils.ptr;
 import genex;
 import opex.cast;
 
@@ -249,7 +250,7 @@ auto spp::analyse::utils::overload_utils::infer_all_generics(
     -> void {
     // Name the positional function and generic arguments.
     func_utils::name_fn_args(fn_args, fn_params, *sm);
-    func_utils::name_gn_args(gn_args, gn_params, *std::dynamic_pointer_cast<asts::Ast>(fn_proto.name), *sm, *meta);
+    func_utils::name_gn_args(gn_args, gn_params, *spp::utils::ptr::shared_cast<asts::Ast>(fn_proto.name), *sm, *meta);
 
     // The inference source is all of the function arguments (except for "self")
     auto generic_infer_source = fn_args.get_keyword_args()

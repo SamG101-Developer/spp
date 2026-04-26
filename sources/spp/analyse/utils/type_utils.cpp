@@ -160,13 +160,13 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     GenericInferenceMap &generic_args,
     const bool check_variant) -> bool {
     // Strip the generics from the right-hand-side type (possible generic).
-    const auto stripped_lhs = std::const_pointer_cast<asts::TypeAst>(lhs_type.without_generics()->without_convention());
-    const auto stripped_rhs = std::const_pointer_cast<asts::TypeAst>(rhs_type.without_generics()->without_convention());
+    const auto stripped_lhs = spp::utils::ptr::shared_const_cast<asts::TypeAst>(lhs_type.without_generics()->without_convention());
+    const auto stripped_rhs = spp::utils::ptr::shared_const_cast<asts::TypeAst>(rhs_type.without_generics()->without_convention());
 
     // If the right-hand-side is generic, then return a match: "sup[T] T { ... }" matches all types.
     const auto stripped_rhs_sym = rhs_scope.get_type_symbol(stripped_rhs);
     if (stripped_rhs_sym->is_generic) {
-        const auto t = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(stripped_rhs);
+        const auto t = spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(stripped_rhs);
         generic_args.insert({t, const_cast<asts::TypeAst*>(&lhs_type)});
         return true;
     }
@@ -177,7 +177,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
 
     const auto stripped_lhs_sym = lhs_scope.get_type_symbol(stripped_lhs);
     if (stripped_lhs_sym->is_generic) {
-        const auto t = std::dynamic_pointer_cast<asts::TypeIdentifierAst>(stripped_lhs);
+        const auto t = spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(stripped_lhs);
         generic_args.insert({t, const_cast<asts::TypeAst*>(&rhs_type)});
         return true;
     }
