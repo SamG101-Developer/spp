@@ -25,6 +25,7 @@ import spp.asts.type_unary_expression_operator_ast;
 import spp.asts.type_unary_expression_operator_borrow_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
+import spp.utils.ptr;
 import ankerl.unordered_dense;
 import absl;
 import genex;
@@ -147,13 +148,13 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     // Determine the scope and get the type symbol.
     const auto scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
     const auto type_sym = analyse::utils::type_utils::get_type_sym_or_error(
-        *scope, *std::dynamic_pointer_cast<TypeIdentifierAst>(without_generics()), *sm, meta);
+        *scope, *spp::utils::ptr::shared_cast<TypeIdentifierAst>(without_generics()), *sm, meta);
     // const auto type_scope = type_sym->scope;
     if (type_sym->is_generic or name == "Self") { return; }
 
     // Name all the generic arguments.
     const auto is_tuple = ( {
-        const auto as_unary = std::dynamic_pointer_cast<TypeUnaryExpressionAst>(type_sym->fq_name()->without_generics());
+        const auto as_unary = spp::utils::ptr::shared_cast<TypeUnaryExpressionAst>(type_sym->fq_name()->without_generics());
         as_unary != nullptr and *as_unary == *generate::common_types_precompiled::TUP->to<TypeUnaryExpressionAst>();
     });
 
@@ -212,7 +213,8 @@ auto spp::asts::TypeIdentifierAst::iterator() const
     -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
     // First yield is the original type being iterated over.
     auto parts = std::vector<std::shared_ptr<const TypeIdentifierAst>>{};
-    parts.emplace_back(std::dynamic_pointer_cast<const TypeIdentifierAst>(shared_from_this()));
+    parts.emplace_back(spp::utils::ptr::shared_cast<const TypeIdentifierAst>(
+        shared_from_this()));
 
     for (auto &&g : generic_arg_group->args) {
         // Positional generic comp argument with identifier value.
@@ -268,13 +270,13 @@ auto spp::asts::TypeIdentifierAst::ns_parts()
 
 auto spp::asts::TypeIdentifierAst::type_parts() const
     -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
-    return std::vector{std::dynamic_pointer_cast<const TypeIdentifierAst>(shared_from_this())};
+    return std::vector{spp::utils::ptr::shared_cast<const TypeIdentifierAst>(shared_from_this())};
 }
 
 
 auto spp::asts::TypeIdentifierAst::type_parts()
     -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
-    return std::vector{std::dynamic_pointer_cast<TypeIdentifierAst>(shared_from_this())};
+    return std::vector{spp::utils::ptr::shared_cast<TypeIdentifierAst>(shared_from_this())};
 }
 
 

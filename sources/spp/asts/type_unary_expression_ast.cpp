@@ -14,6 +14,7 @@ import spp.asts.type_unary_expression_operator_borrow_ast;
 import spp.asts.type_unary_expression_operator_namespace_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.utils.ptr;
 import genex;
 
 
@@ -188,7 +189,7 @@ auto spp::asts::TypeUnaryExpressionAst::without_convention() const
     if (op->to<TypeUnaryExpressionOperatorBorrowAst>() != nullptr) {
         return rhs;
     }
-    return std::dynamic_pointer_cast<const TypeAst>(shared_from_this());
+    return spp::utils::ptr::shared_cast<const TypeAst>(shared_from_this());
 }
 
 

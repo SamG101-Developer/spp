@@ -8,6 +8,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.utils.ast_utils;
+import spp.utils.ptr;
 import genex;
 
 
@@ -84,7 +85,7 @@ auto spp::asts::UseStatementAst::stage_2_gen_top_level_scopes(
     }
 
     // Create the type statement AST conversion.
-    const auto new_type = std::dynamic_pointer_cast<TypeIdentifierAst>(
+    const auto new_type = spp::utils::ptr::shared_cast<TypeIdentifierAst>(
         old_type->type_parts().back()->without_generics());
 
     m_conversion = std::make_unique<TypeStatementAst>(
