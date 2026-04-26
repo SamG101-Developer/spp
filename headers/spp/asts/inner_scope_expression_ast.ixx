@@ -17,11 +17,11 @@ namespace spp::asts {
 
 SPP_EXP_CLS template <typename T>
 struct spp::asts::InnerScopeExpressionAst final : InnerScopeAst<T>, PrimaryExpressionAst {
+    static auto new_empty() -> std::unique_ptr<InnerScopeExpressionAst>;
+
     using InnerScopeAst<T>::InnerScopeAst;
 
-    auto clone() const -> std::unique_ptr<Ast> override;
-
-    static auto new_empty() -> std::unique_ptr<InnerScopeExpressionAst>;
+    SPP_ATTR_NODISCARD auto clone() const -> std::unique_ptr<Ast> override;
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

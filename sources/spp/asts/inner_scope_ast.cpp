@@ -26,6 +26,14 @@ import genex;
 
 SPP_MOD_BEGIN
 template <typename T>
+auto spp::asts::InnerScopeAst<T>::new_empty()
+    -> std::unique_ptr<InnerScopeAst> {
+    return std::make_unique<InnerScopeAst>(
+        nullptr, decltype(members)(), nullptr);
+}
+
+
+template <typename T>
 spp::asts::InnerScopeAst<T>::InnerScopeAst() :
     tok_l(nullptr),
     members(),
@@ -87,21 +95,6 @@ spp::asts::InnerScopeAst<T>::operator std::string() const {
 
 
 template <typename T>
-auto spp::asts::InnerScopeAst<T>::new_empty()
-    -> std::unique_ptr<InnerScopeAst> {
-    return std::make_unique<InnerScopeAst>(
-        nullptr, decltype(members)(), nullptr);
-}
-
-
-template <typename T>
-auto spp::asts::InnerScopeAst<T>::final_member() const
-    -> Ast* {
-    return members.empty() ? tok_r->to<Ast>() : members.back()->template to<Ast>();
-}
-
-
-template <typename T>
 auto spp::asts::InnerScopeAst<T>::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
@@ -113,7 +106,7 @@ auto spp::asts::InnerScopeAst<T>::stage_7_analyse_semantics(
     m_scope = sm->current_scope;
 
     // Check for unreachable code.
-    for (auto &&[i, member] : this->members | genex::views::ptr | genex::views::enumerate) {
+    for (auto const &[i, member] : this->members | genex::views::ptr | genex::views::enumerate) {
         auto ret_stmt = member->template to<RetStatementAst>();
         auto loop_flow_stmt = member->template to<LoopControlFlowStatementAst>();
         raise_if<analyse::errors::SppUnreachableCodeError>(
@@ -125,7 +118,6 @@ auto spp::asts::InnerScopeAst<T>::stage_7_analyse_semantics(
     for (auto const &x : this->members) { x->stage_7_analyse_semantics(sm, meta); }
     sm->move_out_of_current_scope();
 }
-
 
 
 template <typename T>
@@ -174,6 +166,13 @@ auto spp::asts::InnerScopeAst<T>::stage_11_code_gen_2(
     // Exit the scope.
     sm->move_out_of_current_scope();
     return nullptr;
+}
+
+
+template <typename T>
+auto spp::asts::InnerScopeAst<T>::final_member() const
+    -> Ast* {
+    return members.empty() ? tok_r->to<Ast>() : members.back()->template to<Ast>();
 }
 
 

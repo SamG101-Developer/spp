@@ -42,10 +42,9 @@ struct spp::asts::InnerScopeAst : virtual Ast {
      */
     std::unique_ptr<TokenAst> tok_r;
 
-protected:
-    InnerScopeAst();
+    static auto new_empty()
+        -> std::unique_ptr<InnerScopeAst>;
 
-public:
     /**
      * Construct the InnerScopeAst with the arguments matching the members.
      * @param[in] tok_l The @c { token that represents the start of the inner scope.
@@ -61,13 +60,14 @@ public:
 
     SPP_AST_KEY_FUNCTIONS;
 
-    static auto new_empty() -> std::unique_ptr<InnerScopeAst>;
-
-    SPP_ATTR_NODISCARD auto final_member() const -> Ast*;
-
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+
+    SPP_ATTR_NODISCARD auto final_member() const -> Ast*;
+
+protected:
+    InnerScopeAst();
 };
