@@ -62,7 +62,9 @@ spp::asts::TypeArrayShorthandAst::operator std::string() const {
 
 auto spp::asts::TypeArrayShorthandAst::convert()
     -> std::unique_ptr<TypeAst> {
-    const auto type = generate::common_types::array_type(pos_start(), std::move(element_type), std::move(size));
+    // Convert to the compiler-known array type.
+    const auto type = generate::common_types::array_type(
+        pos_start(), std::move(element_type), std::move(size));
     return ast_clone(type);
 }
 
