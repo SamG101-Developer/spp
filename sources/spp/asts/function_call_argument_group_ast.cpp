@@ -34,6 +34,13 @@ import sys;
 
 
 SPP_MOD_BEGIN
+auto spp::asts::FunctionCallArgumentGroupAst::new_empty()
+    -> std::unique_ptr<FunctionCallArgumentGroupAst> {
+    return std::make_unique<FunctionCallArgumentGroupAst>(
+        nullptr, decltype(args)(), nullptr);
+}
+
+
 spp::asts::FunctionCallArgumentGroupAst::FunctionCallArgumentGroupAst(
     decltype(tok_l) &&tok_l,
     decltype(args) &&args,
@@ -47,13 +54,6 @@ spp::asts::FunctionCallArgumentGroupAst::FunctionCallArgumentGroupAst(
 
 
 spp::asts::FunctionCallArgumentGroupAst::~FunctionCallArgumentGroupAst() = default;
-
-
-auto spp::asts::FunctionCallArgumentGroupAst::new_empty()
-    -> std::unique_ptr<FunctionCallArgumentGroupAst> {
-    return std::make_unique<FunctionCallArgumentGroupAst>(
-        nullptr, decltype(args)(), nullptr);
-}
 
 
 auto spp::asts::FunctionCallArgumentGroupAst::pos_start() const
@@ -123,24 +123,13 @@ auto spp::asts::FunctionCallArgumentGroupAst::get_positional_args() const
 }
 
 
-auto spp::asts::FunctionCallArgumentGroupAst::at(
-    const char *key) const
-    -> FunctionCallArgumentAst const* {
-    // Iterate the comptime arguments to find the matching key.
-    for (const auto *arg : get_keyword_args()) {
-        if (arg->name->val == key) { return arg; }
-    }
-    return nullptr;
-}
-
-
 auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Check there are no duplicate argument names.
     const auto arg_names = get_keyword_args()
-        | genex::views::transform([](auto &&x) { return x->name.get(); })
+        | genex::views::transform([](auto const &x) { return x->name.get(); })
         | genex::to<std::vector>()
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
@@ -161,7 +150,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
 
     // Expand tuple-expansion arguments ("..tuple" => "tuple.0, tuple.1, ...")
     // Must use "materialize" because the list gets updates from within the loop.
-    for (auto &&[i, arg] : args | genex::views::ptr | genex::views::enumerate | genex::to<std::vector>()) {
+    for (auto const &[i, arg] : args | genex::views::ptr | genex::views::enumerate | genex::to<std::vector>()) {
         // Only check position arguments that have ".." tokens.
         const auto pos_arg = arg->to<FunctionCallArgumentPositionalAst>();
         if (pos_arg == nullptr or pos_arg->tok_unpack == nullptr) { continue; }
@@ -182,7 +171,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_7_analyse_semantics(
             auto new_arg = std::make_unique<FunctionCallArgumentPositionalAst>(ast_clone(arg->conv), nullptr, std::move(new_ast));
             args.insert(args.begin() + static_cast<std::ptrdiff_t>(i), std::move(new_arg));
         }
-        genex::actions::erase(args, args.begin() + static_cast<std::ptrdiff_t>(i) + static_cast<std::ptrdiff_t>(max));
+        genex::actions::erase(args, args.begin() + static_cast<std::ptrdiff_t>(i) + max);
     }
 
     // Analyse the arguments
@@ -255,7 +244,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
             // second argument breaks this. Doesn't apply to copyable types.
             if (not sm->current_scope->get_type_symbol(arg->val->infer_type(sm, meta))->is_copyable()) {
                 auto overlaps = genex::views::concat(borrows_ref, borrows_mut)
-                    | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
+                    | genex::views::filter([&arg](auto const &x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
                     | genex::to<std::vector>();
 
                 raise_if<analyse::errors::SppMemoryOverlapUsageError>(
@@ -267,7 +256,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
         else if (arg->conv and *arg->conv == ConventionTag::REF) {
             // Generate the list of overlapping borrows for immutable borrows.
             auto overlaps = borrows_mut
-                | genex::views::filter([&arg](auto &&x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
+                | genex::views::filter([&arg](auto const &x) { return analyse::utils::mem_utils::memory_region_overlap(*x, *arg->val); })
                 | genex::to<std::vector>();
 
             // Check the immutable borrow doesn't overlap with any other mutable borrows in the same scope.
@@ -306,6 +295,17 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
             borrows_mut.emplace_back(arg->val.get());
         }
     }
+}
+
+
+auto spp::asts::FunctionCallArgumentGroupAst::at(
+    const char *key) const
+    -> FunctionCallArgumentAst const* {
+    // Iterate the comptime arguments to find the matching key.
+    for (const auto *arg : get_keyword_args()) {
+        if (arg->name->val == key) { return arg; }
+    }
+    return nullptr;
 }
 
 SPP_MOD_END

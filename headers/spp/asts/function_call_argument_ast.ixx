@@ -58,10 +58,6 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst : virtual Ast, mixins::Ord
         decltype(val) &&val,
         utils::OrderableTag order_tag);
 
-    auto set_self_type(std::shared_ptr<TypeAst> self_type) -> void;
-
-    auto get_self_type() -> std::shared_ptr<TypeAst>;
-
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -71,4 +67,8 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst : virtual Ast, mixins::Ord
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+
+    auto set_self_type(std::shared_ptr<TypeAst> self_type) -> void;
+
+    auto get_self_type() -> std::shared_ptr<TypeAst>;
 };

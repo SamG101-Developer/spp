@@ -39,6 +39,8 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentGroupAst final : virtual Ast {
      */
     std::unique_ptr<TokenAst> tok_r;
 
+    static auto new_empty() -> std::unique_ptr<FunctionCallArgumentGroupAst>;
+
     /**
      * Construct the FunctionCallArgumentGroupAst with the arguments matching the members.
      * @param tok_l The token that represents the left parenthesis @code (@endcode in the function call argument group.
@@ -52,17 +54,15 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentGroupAst final : virtual Ast {
 
     ~FunctionCallArgumentGroupAst() override;
 
-    static auto new_empty() -> std::unique_ptr<FunctionCallArgumentGroupAst>;
-
     SPP_ATTR_NODISCARD auto get_all_args() const -> std::vector<FunctionCallArgumentAst*>;
 
     SPP_ATTR_NODISCARD auto get_keyword_args() const -> std::vector<FunctionCallArgumentKeywordAst*>;
 
     SPP_ATTR_NODISCARD auto get_positional_args() const -> std::vector<FunctionCallArgumentPositionalAst*>;
 
-    auto at(const char *key) const -> FunctionCallArgumentAst const*;
-
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto at(const char *key) const -> FunctionCallArgumentAst const*;
 };

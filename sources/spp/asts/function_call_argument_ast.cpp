@@ -20,7 +20,6 @@ import spp.utils.uid;
 
 
 SPP_MOD_BEGIN
-
 spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(
     decltype(conv) &&conv,
     decltype(val) &&val,
@@ -29,21 +28,6 @@ spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(
     injected_self_type(nullptr),
     conv(std::move(conv)),
     val(std::move(val)) {
-}
-
-
-auto spp::asts::FunctionCallArgumentAst::set_self_type(
-    std::shared_ptr<TypeAst> self_type)
-    -> void {
-    // Set the self type to the given type.
-    injected_self_type = std::move(self_type);
-}
-
-
-auto spp::asts::FunctionCallArgumentAst::get_self_type()
-    -> std::shared_ptr<TypeAst> {
-    // Get the self type.
-    return injected_self_type;
 }
 
 
@@ -80,30 +64,28 @@ auto spp::asts::FunctionCallArgumentAst::stage_11_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
+    if (conv == nullptr) { return val->stage_11_code_gen_2(sm, meta, ctx); }
+
     // Handle the convention (to pointer).
-    if (conv != nullptr) {
-        // If the lhs is symbolic, get the address of the outermost part.
-        const auto uid = spp::utils::generate_uid(this);
-        const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*val);
+    // If the lhs is symbolic, get the address of the outermost part.
+    const auto uid = spp::utils::generate_uid(this);
+    const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(*val);
 
-        if (sym != nullptr) {
-            // Get the alloca for the lhs symbol (the base pointer).
-            const auto llvm_alloca = sym->llvm_info->alloca;
-            SPP_ASSERT(llvm_alloca != nullptr);
-            SPP_ASSERT(llvm_alloca->getType()->isPointerTy());
-            return llvm_alloca;
-        }
-
-        // Materialize the lhs expression into a temporary.
-        const auto materialized_val = codegen::llvm_materialize(*val, sm, meta, ctx);
-        const auto materialized_sym = sm->current_scope->get_var_symbol(ast_clone(materialized_val));
-
-        const auto llvm_alloca = materialized_sym->llvm_info->alloca;
+    if (sym != nullptr) {
+        // Get the alloca for the lhs symbol (the base pointer).
+        const auto llvm_alloca = sym->llvm_info->alloca;
+        SPP_ASSERT(llvm_alloca != nullptr);
         SPP_ASSERT(llvm_alloca->getType()->isPointerTy());
         return llvm_alloca;
     }
 
-    return val->stage_11_code_gen_2(sm, meta, ctx);
+    // Materialize the lhs expression into a temporary.
+    const auto materialized_val = codegen::llvm_materialize(*val, sm, meta, ctx);
+    const auto materialized_sym = sm->current_scope->get_var_symbol(ast_clone(materialized_val));
+
+    const auto llvm_alloca = materialized_sym->llvm_info->alloca;
+    SPP_ASSERT(llvm_alloca->getType()->isPointerTy());
+    return llvm_alloca;
 }
 
 
@@ -115,6 +97,21 @@ auto spp::asts::FunctionCallArgumentAst::infer_type(
     return injected_self_type != nullptr
         ? injected_self_type
         : val->infer_type(sm, meta)->with_convention(ast_clone(conv));
+}
+
+
+auto spp::asts::FunctionCallArgumentAst::set_self_type(
+    std::shared_ptr<TypeAst> self_type)
+    -> void {
+    // Set the self type to the given type.
+    injected_self_type = std::move(self_type);
+}
+
+
+auto spp::asts::FunctionCallArgumentAst::get_self_type()
+    -> std::shared_ptr<TypeAst> {
+    // Get the self type.
+    return injected_self_type;
 }
 
 
