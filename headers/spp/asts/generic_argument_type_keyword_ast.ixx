@@ -21,6 +21,8 @@ namespace spp::asts {
  * argument to be matched by a keyword rather than an index.
  */
 SPP_EXP_CLS struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgumentTypeAst {
+    SPP_GCC_VTABLE_FIX
+
     /**
      * The name of the keyword argument. This is the type that is used to refer to the argument in the generic call.
      */
@@ -32,7 +34,9 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgum
      */
     std::unique_ptr<TokenAst> tok_assign;
 
-    auto _spp_key_function() const -> void override;
+    static auto from_symbol(
+        analyse::scopes::TypeSymbol const &sym)
+        -> std::unique_ptr<GenericArgumentTypeKeywordAst>;
 
     /**
      * Construct the GenericArgumentTypeKeywordAst with the arguments matching the members.
@@ -47,20 +51,20 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgum
 
     ~GenericArgumentTypeKeywordAst() override;
 
-    SPP_ATTR_NODISCARD auto equals(GenericArgumentAst const &other) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals_generic_argument_type_keyword(
+        GenericArgumentTypeKeywordAst const &other) const
+        -> std::strong_ordering override;
 
-    SPP_ATTR_NODISCARD auto equals_generic_argument_type_keyword(GenericArgumentTypeKeywordAst const &other) const -> std::strong_ordering override;
-
-    SPP_ATTR_NODISCARD auto view_name() const -> std::string_view;
+    SPP_ATTR_NODISCARD auto equals(
+        GenericArgumentAst const &other) const
+        -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    static auto from_symbol(analyse::scopes::TypeSymbol const &sym) -> std::unique_ptr<GenericArgumentTypeKeywordAst>;
-
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    SPP_ATTR_NODISCARD auto view_name() const -> std::string_view override;
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::GenericArgumentTypeKeywordAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(GenericArgumentTypeKeywordAst)

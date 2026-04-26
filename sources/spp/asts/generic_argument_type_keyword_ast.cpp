@@ -17,6 +17,18 @@ import spp.lex.tokens;
 
 
 SPP_MOD_BEGIN
+auto spp::asts::GenericArgumentTypeKeywordAst::from_symbol(
+    analyse::scopes::TypeSymbol const &sym)
+    -> std::unique_ptr<GenericArgumentTypeKeywordAst> {
+    // Extract the value from the symbol's scope, if it exists.
+    auto value = sym.scope->ty_sym->fq_name()->with_convention(ast_clone(sym.convention.get()));
+
+    // Wrap the value into a type argument.
+    return std::make_unique<GenericArgumentTypeKeywordAst>(
+        sym.name, nullptr, std::move(value));
+}
+
+
 spp::asts::GenericArgumentTypeKeywordAst::GenericArgumentTypeKeywordAst(
     decltype(name) name,
     decltype(tok_assign) &&tok_assign,
@@ -31,26 +43,21 @@ spp::asts::GenericArgumentTypeKeywordAst::GenericArgumentTypeKeywordAst(
 spp::asts::GenericArgumentTypeKeywordAst::~GenericArgumentTypeKeywordAst() = default;
 
 
-auto spp::asts::GenericArgumentTypeKeywordAst::equals(
-    GenericArgumentAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_generic_argument_type_keyword(*this);
-}
-
-
 auto spp::asts::GenericArgumentTypeKeywordAst::equals_generic_argument_type_keyword(
     GenericArgumentTypeKeywordAst const &other) const
     -> std::strong_ordering {
-    if (*name == *other.name and *val == *other.val) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
+    // Equality is based on the name and value of the argument.
+    return *name == *other.name and *val == *other.val
+        ? std::strong_ordering::equal
+        : std::strong_ordering::less;
 }
 
 
-auto spp::asts::GenericArgumentTypeKeywordAst::view_name() const
-    -> std::string_view {
-    return name->to<TypeIdentifierAst>()->name;
+auto spp::asts::GenericArgumentTypeKeywordAst::equals(
+    GenericArgumentAst const &other) const
+    -> std::strong_ordering {
+    // Reverse hook.
+    return other.equals_generic_argument_type_keyword(*this);
 }
 
 
@@ -84,17 +91,6 @@ spp::asts::GenericArgumentTypeKeywordAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenericArgumentTypeKeywordAst::from_symbol(
-    analyse::scopes::TypeSymbol const &sym)
-    -> std::unique_ptr<GenericArgumentTypeKeywordAst> {
-    // Extract the value from the symbol's scope, if it exists.
-    auto value = sym.scope->ty_sym->fq_name()->with_convention(ast_clone(sym.convention.get()));
-
-    // Wrap the value into a type argument.
-    return std::make_unique<GenericArgumentTypeKeywordAst>(sym.name, nullptr, std::move(value));
-}
-
-
 auto spp::asts::GenericArgumentTypeKeywordAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
@@ -107,5 +103,13 @@ auto spp::asts::GenericArgumentTypeKeywordAst::stage_7_analyse_semantics(
     const auto tmp4 = tmp2->with_convention(std::move(tmp3));
     val = tmp4;
 }
+
+
+auto spp::asts::GenericArgumentTypeKeywordAst::view_name() const
+    -> std::string_view {
+    // Get the name from the keyword part.
+    return name->to<TypeIdentifierAst>()->name;
+}
+
 
 SPP_MOD_END

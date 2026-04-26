@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_argument_group_ast;
+import spp.analyse.utils.type_utils; // Todo: refactor typedefs
 import spp.asts.ast;
 import spp.utils.ptr;
 import ankerl.unordered_dense;
@@ -23,6 +24,8 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
+    SPP_GCC_VTABLE_FIX
+
     /**
      * The token that represents the left bracket @code [@endcode in the generic argument group. This introduces the
      * generic argument group.
@@ -40,6 +43,22 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
      */
     std::unique_ptr<TokenAst> tok_r;
 
+    static auto new_empty()
+        -> std::unique_ptr<GenericArgumentGroupAst>;
+
+    static auto from_params(
+        GenericParameterGroupAst const &generic_params)
+        -> std::unique_ptr<GenericArgumentGroupAst>;
+
+    static auto from_map(
+        analyse::utils::type_utils::GenericInferenceMap &&map)
+        -> std::unique_ptr<GenericArgumentGroupAst>;
+
+    static auto from_map(
+        ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, std::shared_ptr<TypeAst>> &&map)
+        -> std::unique_ptr<GenericArgumentGroupAst>;
+
+
     /**
      * Construct the GenericArgumentGroupAst with the arguments matching the members.
      * @param tok_l The token that represents the left bracket @code [@endcode in the generic argument group.
@@ -55,20 +74,9 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
 
     SPP_AST_KEY_FUNCTIONS;
 
-    static auto new_empty()
-        -> std::unique_ptr<GenericArgumentGroupAst>;
-
-    static auto from_params(
-        GenericParameterGroupAst const &generic_params)
-        -> std::unique_ptr<GenericArgumentGroupAst>;
-
-    static auto from_map(
-        ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst*, utils::ptr::ptr_hash<std::shared_ptr<TypeIdentifierAst>>, utils::ptr::ptr_eq<std::shared_ptr<TypeIdentifierAst>>> &&map)
-        -> std::unique_ptr<GenericArgumentGroupAst>;
-
-    static auto from_map(
-        ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, std::shared_ptr<TypeAst>> &&map)
-        -> std::unique_ptr<GenericArgumentGroupAst>;
+    auto operator==(
+        GenericArgumentGroupAst const &other) const
+        -> bool;
 
     auto operator+=(
         const GenericArgumentGroupAst &other)
@@ -78,7 +86,11 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
         const GenericArgumentGroupAst &other) const
         -> std::unique_ptr<GenericArgumentGroupAst>;
 
-    auto operator==(GenericArgumentGroupAst const &other) const -> bool;
+    auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto type_at(const char *key) const -> GenericArgumentTypeAst const*;
 
@@ -99,10 +111,7 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
     SPP_ATTR_NODISCARD auto get_comp_keyword_args() const -> std::vector<GenericArgumentCompKeywordAst*>;
 
     SPP_ATTR_NODISCARD auto get_all_args() const -> std::vector<GenericArgumentAst*>;
-
-    auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
+
+
+SPP_GCC_VTABLE_FIX_IMPL(GenericArgumentGroupAst)

@@ -4,7 +4,6 @@ module;
 export module spp.asts.generic_argument_type_positional_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_type_ast;
-
 import std;
 
 namespace spp::asts {
@@ -17,7 +16,7 @@ namespace spp::asts {
  * argument to be matched by an index rather than a keyword.
  */
 SPP_EXP_CLS struct spp::asts::GenericArgumentTypePositionalAst final : GenericArgumentTypeAst {
-    auto _spp_key_function() const -> void override;
+    SPP_GCC_VTABLE_FIX
 
     /**
      * Construct the GenericArgumentTypePositionalAst with the arguments matching the members.
@@ -28,9 +27,13 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypePositionalAst final : GenericAr
 
     ~GenericArgumentTypePositionalAst() override;
 
-    SPP_ATTR_NODISCARD auto equals(GenericArgumentAst const &other) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals_generic_argument_type_positional(
+        GenericArgumentTypePositionalAst const &other) const
+        -> std::strong_ordering override;
 
-    SPP_ATTR_NODISCARD auto equals_generic_argument_type_positional(GenericArgumentTypePositionalAst const &other) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals(
+        GenericArgumentAst const &other) const
+        -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
@@ -38,6 +41,4 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypePositionalAst final : GenericAr
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::GenericArgumentTypePositionalAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(GenericArgumentTypePositionalAst)

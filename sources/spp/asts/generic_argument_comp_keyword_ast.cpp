@@ -21,6 +21,30 @@ import spp.lex.tokens;
 
 
 SPP_MOD_BEGIN
+auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
+    analyse::scopes::VariableSymbol const &sym)
+    -> std::unique_ptr<GenericArgumentCompKeywordAst> {
+    // Get the comptime value from the symbol's memory info.
+    const auto c = sym.memory_info->ast_comptime.get();
+    std::unique_ptr<ExpressionAst> value = nullptr;
+
+    // Depending on that the comptime AST is, get the value.
+    if (const auto comptime_param = c->to<GenericParameterCompAst>(); comptime_param != nullptr) {
+        value = ast_clone(comptime_param->name->to<ExpressionAst>());
+    }
+    else if (const auto comptime_arg = c->to<GenericArgumentCompAst>(); comptime_arg != nullptr) {
+        value = ast_clone(comptime_arg->val);
+    }
+    if (auto const *value_as_type = value->to<TypeIdentifierAst>(); value_as_type != nullptr) {
+        value = IdentifierAst::from_type(*std::shared_ptr(ast_clone(value_as_type))); // Don't remove "shared_ptr"
+    }
+
+    // Create the GenericArgumentCompKeywordAst with the name and value.
+    return std::make_unique<GenericArgumentCompKeywordAst>(
+        TypeIdentifierAst::from_identifier(*sym.name), nullptr, std::move(value));
+}
+
+
 spp::asts::GenericArgumentCompKeywordAst::GenericArgumentCompKeywordAst(
     decltype(name) name,
     decltype(tok_assign) &&tok_assign,
@@ -35,26 +59,21 @@ spp::asts::GenericArgumentCompKeywordAst::GenericArgumentCompKeywordAst(
 spp::asts::GenericArgumentCompKeywordAst::~GenericArgumentCompKeywordAst() = default;
 
 
-auto spp::asts::GenericArgumentCompKeywordAst::equals(
-    GenericArgumentAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_generic_argument_comp_keyword(*this);
-}
-
-
 auto spp::asts::GenericArgumentCompKeywordAst::equals_generic_argument_comp_keyword(
     GenericArgumentCompKeywordAst const &other) const
     -> std::strong_ordering {
-    if (*name == *other.name and *val == *other.val) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
+    // Equality is based on the name and value of the argument.
+    return *name == *other.name and *val == *other.val
+        ? std::strong_ordering::equal
+        : std::strong_ordering::less;
 }
 
 
-auto spp::asts::GenericArgumentCompKeywordAst::view_name() const
-    -> std::string_view {
-    return name->to<TypeIdentifierAst>()->name;
+auto spp::asts::GenericArgumentCompKeywordAst::equals(
+    GenericArgumentAst const &other) const
+    -> std::strong_ordering {
+    // Reverse hook.
+    return other.equals_generic_argument_comp_keyword(*this);
 }
 
 
@@ -88,30 +107,6 @@ spp::asts::GenericArgumentCompKeywordAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenericArgumentCompKeywordAst::from_symbol(
-    analyse::scopes::VariableSymbol const &sym)
-    -> std::unique_ptr<GenericArgumentCompKeywordAst> {
-    // Get the comptime value from the symbol's memory info.
-    const auto c = sym.memory_info->ast_comptime.get();
-    std::unique_ptr<ExpressionAst> value = nullptr;
-
-    // Depending on that the comptime AST is, get the value.
-    if (const auto comptime_param = c->to<GenericParameterCompAst>(); comptime_param != nullptr) {
-        value = ast_clone(comptime_param->name->to<ExpressionAst>());
-    }
-    else if (const auto comptime_arg = c->to<GenericArgumentCompAst>(); comptime_arg != nullptr) {
-        value = ast_clone(comptime_arg->val);
-    }
-    if (auto const *value_as_type = value->to<TypeIdentifierAst>(); value_as_type != nullptr) {
-        value = IdentifierAst::from_type(*std::shared_ptr(ast_clone(value_as_type))); // Don't remove "shared_ptr"
-    }
-
-    // Create the GenericArgumentCompKeywordAst with the name and value.
-    return std::make_unique<GenericArgumentCompKeywordAst>(
-        TypeIdentifierAst::from_identifier(*sym.name), nullptr, std::move(value));
-}
-
-
 auto spp::asts::GenericArgumentCompKeywordAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
@@ -130,6 +125,13 @@ auto spp::asts::GenericArgumentCompKeywordAst::stage_8_check_memory(
     val->stage_8_check_memory(sm, meta);
     analyse::utils::mem_utils::validate_symbol_memory(
         *val, *val, *sm, true, true, true, true, true, meta);
+}
+
+
+auto spp::asts::GenericArgumentCompKeywordAst::view_name() const
+    -> std::string_view {
+    // Get the name from the keyword part.
+    return name->to<TypeIdentifierAst>()->name;
 }
 
 SPP_MOD_END

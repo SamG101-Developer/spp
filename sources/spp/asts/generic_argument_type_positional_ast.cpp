@@ -23,20 +23,21 @@ spp::asts::GenericArgumentTypePositionalAst::GenericArgumentTypePositionalAst(
 spp::asts::GenericArgumentTypePositionalAst::~GenericArgumentTypePositionalAst() = default;
 
 
-auto spp::asts::GenericArgumentTypePositionalAst::equals(
-    GenericArgumentAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_generic_argument_type_positional(*this);
-}
-
-
 auto spp::asts::GenericArgumentTypePositionalAst::equals_generic_argument_type_positional(
     GenericArgumentTypePositionalAst const &other) const
     -> std::strong_ordering {
-    if (*val == *other.val) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
+    // Equality is based on the value of the argument.
+    return *val == *other.val
+        ? std::strong_ordering::equal
+        : std::strong_ordering::less;
+}
+
+
+auto spp::asts::GenericArgumentTypePositionalAst::equals(
+    GenericArgumentAst const &other) const
+    -> std::strong_ordering {
+    // Reverse hook.
+    return other.equals_generic_argument_type_positional(*this);
 }
 
 

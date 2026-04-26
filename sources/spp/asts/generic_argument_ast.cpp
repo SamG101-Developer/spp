@@ -5,6 +5,29 @@ module spp.asts.generic_argument_ast;
 
 
 SPP_MOD_BEGIN
+spp::asts::GenericArgumentAst::GenericArgumentAst(
+    const utils::OrderableTag order_tag) :
+    OrderableAst(order_tag) {
+}
+
+
+spp::asts::GenericArgumentAst::~GenericArgumentAst() = default;
+
+
+auto spp::asts::GenericArgumentAst::operator<=>(
+    GenericArgumentAst const &other) const
+    -> std::strong_ordering {
+    return equals(other);
+}
+
+
+auto spp::asts::GenericArgumentAst::operator==(
+    GenericArgumentAst const &other) const
+    -> bool {
+    return equals(other) == std::strong_ordering::equal;
+}
+
+
 auto spp::asts::GenericArgumentAst::equals_generic_argument_comp_keyword(
     GenericArgumentCompKeywordAst const &) const
     -> std::strong_ordering {
@@ -42,30 +65,9 @@ auto spp::asts::GenericArgumentAst::equals(
 
 auto spp::asts::GenericArgumentAst::view_name() const
     -> std::string_view {
+    // Overridden by the keyword argument ASTs to view the keyword name.
     return "";
 }
 
-
-spp::asts::GenericArgumentAst::GenericArgumentAst(
-    const utils::OrderableTag order_tag) :
-    OrderableAst(order_tag) {
-}
-
-
-spp::asts::GenericArgumentAst::~GenericArgumentAst() = default;
-
-
-auto spp::asts::GenericArgumentAst::operator<=>(
-    GenericArgumentAst const &other) const
-    -> std::strong_ordering {
-    return equals(other);
-}
-
-
-auto spp::asts::GenericArgumentAst::operator==(
-    GenericArgumentAst const &other) const
-    -> bool {
-    return equals(other) == std::strong_ordering::equal;
-}
 
 SPP_MOD_END
