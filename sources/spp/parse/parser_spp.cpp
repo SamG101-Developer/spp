@@ -1632,14 +1632,19 @@ auto spp::parse::ParserSpp::parse_binary_type_expression(const std::uint8_t min_
     -> std::unique_ptr<asts::TypeAst> {
     using RT = lex::RawTokenType;
 
-    auto try_tok = [this](auto fn, const std::uint8_t prec) -> std::optional<std::pair<std::unique_ptr<asts::TokenAst>, std::uint8_t>> {
+    struct BinOpInfo {
+        std::unique_ptr<asts::TokenAst> tok;
+        std::uint8_t prec;
+    };
+
+    auto try_tok = [this](auto fn, const std::uint8_t prec) -> std::optional<BinOpInfo> {
         const auto pos = m_pos;
-        if (auto tok = fn()) return std::pair{std::move(tok), prec};
+        if (auto tok = fn()) return BinOpInfo{std::move(tok), prec};
         m_pos = pos;
         return std::nullopt;
     };
 
-    auto try_bin_op = [&]() -> std::pair<std::unique_ptr<asts::TokenAst>, std::uint8_t> {
+    auto try_bin_op = [&]() -> BinOpInfo {
         auto peek = m_pos;
         while (peek < m_tokens_len && (m_tokens[peek].type == RT::TK_LINE_FEED || m_tokens[peek].type == RT::TK_SPACE))
             peek++;
