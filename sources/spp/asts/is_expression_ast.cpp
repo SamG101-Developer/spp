@@ -26,10 +26,10 @@ spp::asts::IsExpressionAst::IsExpressionAst(
     decltype(lhs) &&lhs,
     decltype(tok_op) &&tok_op,
     decltype(rhs) &&rhs) :
-    m_mapped_func(nullptr),
     lhs(std::move(lhs)),
     tok_op(std::move(tok_op)),
-    rhs(std::move(rhs)) {
+    rhs(std::move(rhs)),
+    m_mapped_func(nullptr) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_op, lex::SppTokenType::KW_IS, "is");
 }
 
@@ -73,12 +73,6 @@ spp::asts::IsExpressionAst::operator std::string() const {
 }
 
 
-auto spp::asts::IsExpressionAst::mapped_func() const
-    -> std::shared_ptr<CaseExpressionAst> {
-    return m_mapped_func;
-}
-
-
 auto spp::asts::IsExpressionAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
@@ -97,7 +91,7 @@ auto spp::asts::IsExpressionAst::stage_7_analyse_semantics(
     // This includes the lhs symbol if it's been flow typed.
     if (not sm->current_scope->name_as_string().starts_with("<inner-scope#")) {
         const auto destructure_syms = sm->current_scope->children[n]->children[0]->all_var_symbols(true, true);
-        for (auto &&x : destructure_syms) {
+        for (auto const &x : destructure_syms) {
             sm->current_scope->add_var_symbol(x);
         }
     }
@@ -140,6 +134,12 @@ auto spp::asts::IsExpressionAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Always return a boolean type (successful or failed match).
     return generate::common_types::boolean_type(m_mapped_func->pos_start());
+}
+
+
+auto spp::asts::IsExpressionAst::mapped_func() const
+    -> std::shared_ptr<CaseExpressionAst> {
+    return m_mapped_func;
 }
 
 SPP_MOD_END

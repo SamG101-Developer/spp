@@ -18,12 +18,6 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::IsExpressionAst final : ExpressionAst {
-private:
-    std::shared_ptr<CaseExpressionAst> m_mapped_func;
-
-    std::shared_ptr<IdentifierAst> m_lhs_as_id;
-
-public:
     /**
      * The left-hand side expression of the is expression. This is the first operand.
      */
@@ -54,8 +48,6 @@ public:
 
     SPP_AST_KEY_FUNCTIONS;
 
-    SPP_ATTR_NODISCARD auto mapped_func() const -> std::shared_ptr<CaseExpressionAst>;
-
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -63,4 +55,11 @@ public:
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+
+    SPP_ATTR_NODISCARD auto mapped_func() const -> std::shared_ptr<CaseExpressionAst>;
+
+private:
+    std::shared_ptr<CaseExpressionAst> m_mapped_func;
+
+    std::shared_ptr<IdentifierAst> m_lhs_as_id;
 };
