@@ -20,22 +20,19 @@ spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypeUnaryExpressionOperatorN
 spp::asts::TypeUnaryExpressionOperatorNamespaceAst::~TypeUnaryExpressionOperatorNamespaceAst() = default;
 
 
-auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::equals(
-    TypeUnaryExpressionOperatorAst const &other) const
-    -> std::strong_ordering {
-    // Double dispatch to the appropriate equals method.
-    return other.equals_op_namespace(*this);
-}
-
-
 auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::equals_op_namespace(
     TypeUnaryExpressionOperatorNamespaceAst const &other) const
     -> std::strong_ordering {
-    // Check if the namespace identifiers are the same.
-    if (*ns == *other.ns) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
+    // Equality based on the namespace.
+    return *ns == *other.ns ? std::strong_ordering::equal : std::strong_ordering::less;
+}
+
+
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::equals(
+    TypeUnaryExpressionOperatorAst const &other) const
+    -> std::strong_ordering {
+    // Reverse hook (double dispatch).
+    return other.equals_op_namespace(*this);
 }
 
 

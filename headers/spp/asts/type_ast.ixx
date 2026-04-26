@@ -29,22 +29,21 @@ namespace spp::asts {
  * The TypeAst is a base class for all type-related AST nodes in the SPP language.
  */
 SPP_EXP_CLS struct spp::asts::TypeAst : PrimaryExpressionAst, mixins::AbstractTypeAst, std::enable_shared_from_this<TypeAst> {
-    using PrimaryExpressionAst::PrimaryExpressionAst;
-
-    auto _spp_key_function() const -> void override;
-
-    ~TypeAst() override;
+    SPP_GCC_VTABLE_FIX
 
     mutable utils::Cache<analyse::scopes::Scope const*, std::shared_ptr<analyse::scopes::TypeSymbol>> cached_type_symbols;
 
+    using PrimaryExpressionAst::PrimaryExpressionAst;
+
+    ~TypeAst() override;
+
+    SPP_ATTR_NODISCARD virtual auto is_type_identifier() const noexcept -> bool { return false; }
+
+protected:
     mutable std::shared_ptr<TypeAst> m_without_generics_cache;
 
     mutable std::string m_stringification_cache;
-
-    SPP_ATTR_NODISCARD virtual auto is_type_identifier() const noexcept -> bool { return false; }
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::TypeAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(TypeAst)

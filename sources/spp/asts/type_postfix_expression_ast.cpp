@@ -33,11 +33,17 @@ spp::asts::TypePostfixExpressionAst::TypePostfixExpressionAst(
 spp::asts::TypePostfixExpressionAst::~TypePostfixExpressionAst() = default;
 
 
-auto spp::asts::TypePostfixExpressionAst::equals(
-    const ExpressionAst &other) const
+auto spp::asts::TypePostfixExpressionAst::operator<=>(
+    TypePostfixExpressionAst const &other) const
     -> std::strong_ordering {
-    // Double dispatch to the appropriate equals method.
-    return other.equals_type_postfix_expression(*this);
+    return equals_type_postfix_expression(other);
+}
+
+
+auto spp::asts::TypePostfixExpressionAst::operator==(
+    TypePostfixExpressionAst const &other) const
+    -> bool {
+    return equals_type_postfix_expression(other) == std::strong_ordering::equal;
 }
 
 
@@ -49,6 +55,14 @@ auto spp::asts::TypePostfixExpressionAst::equals_type_postfix_expression(
         return std::strong_ordering::equal;
     }
     return std::strong_ordering::less;
+}
+
+
+auto spp::asts::TypePostfixExpressionAst::equals(
+    const ExpressionAst &other) const
+    -> std::strong_ordering {
+    // Double dispatch to the appropriate equals method.
+    return other.equals_type_postfix_expression(*this);
 }
 
 
@@ -158,7 +172,6 @@ auto spp::asts::TypePostfixExpressionAst::without_generics() const
     auto new_lhs = ast_clone(lhs); // Todo: clone needed?
     auto new_rhs = std::make_unique<TypePostfixExpressionOperatorNestedTypeAst>(nullptr, std::dynamic_pointer_cast<TypeIdentifierAst>(rhs->name->without_generics()));
     return std::make_shared<TypePostfixExpressionAst>(std::move(new_lhs), std::move(new_rhs));
-
 }
 
 
@@ -223,8 +236,8 @@ auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
         | genex::to<std::vector>();
 
     auto min_depth = scopes_and_syms.empty()
-         ? 0
-         : genex::min_element(scopes_and_syms | genex::views::transform([](auto &&x) { return std::get<0>(x); }) | genex::to<std::vector>());
+        ? 0
+        : genex::min_element(scopes_and_syms | genex::views::transform([](auto &&x) { return std::get<0>(x); }) | genex::to<std::vector>());
 
     auto closest = scopes_and_syms
         | genex::views::filter([min_depth](auto &&x) { return std::get<0>(x) == min_depth; })

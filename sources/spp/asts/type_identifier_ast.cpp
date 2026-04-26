@@ -31,6 +31,20 @@ import genex;
 
 
 SPP_MOD_BEGIN
+auto spp::asts::TypeIdentifierAst::from_identifier(
+    IdentifierAst const &identifier)
+    -> std::shared_ptr<TypeIdentifierAst> {
+    return std::make_shared<TypeIdentifierAst>(identifier.pos_start(), std::string(identifier.val), nullptr);
+}
+
+
+auto spp::asts::TypeIdentifierAst::from_string(
+    std::string const &identifier)
+    -> std::shared_ptr<TypeIdentifierAst> {
+    return std::make_shared<TypeIdentifierAst>(0, std::string(identifier), nullptr);
+}
+
+
 spp::asts::TypeIdentifierAst::TypeIdentifierAst(
     const std::size_t pos,
     decltype(name) &&name,
@@ -46,22 +60,35 @@ spp::asts::TypeIdentifierAst::TypeIdentifierAst(
 spp::asts::TypeIdentifierAst::~TypeIdentifierAst() = default;
 
 
-auto spp::asts::TypeIdentifierAst::equals(
-    ExpressionAst const &other) const
+auto spp::asts::TypeIdentifierAst::operator<=>(
+    const TypeIdentifierAst &that) const
     -> std::strong_ordering {
-    // Double dispatch to the appropriate equals method.
-    return other.equals_type_identifier(*this);
+    return equals_type_identifier(that);
+}
+
+
+auto spp::asts::TypeIdentifierAst::operator==(
+    const TypeIdentifierAst &that) const
+    -> bool {
+    return equals_type_identifier(that) == std::strong_ordering::equal;
 }
 
 
 auto spp::asts::TypeIdentifierAst::equals_type_identifier(
     TypeIdentifierAst const &other) const
     -> std::strong_ordering {
-    // Check the name and args are equal.
-    if (name == other.name and *generic_arg_group == *other.generic_arg_group) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
+    // Equality is based on the name and generics.
+    return name == other.name and *generic_arg_group == *other.generic_arg_group
+        ? std::strong_ordering::equal
+        : std::strong_ordering::less;
+}
+
+
+auto spp::asts::TypeIdentifierAst::equals(
+    ExpressionAst const &other) const
+    -> std::strong_ordering {
+    // Reverse hook (double dispatch).
+    return other.equals_type_identifier(*this);
 }
 
 
@@ -100,17 +127,84 @@ spp::asts::TypeIdentifierAst::operator std::string() const {
 }
 
 
-auto spp::asts::TypeIdentifierAst::from_identifier(
-    IdentifierAst const &identifier)
-    -> std::shared_ptr<TypeIdentifierAst> {
-    return std::make_shared<TypeIdentifierAst>(identifier.pos_start(), std::string(identifier.val), nullptr);
+auto spp::asts::TypeIdentifierAst::stage_4_qualify_types(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Qualify the generic argument types.
+    for (auto &&g : generic_arg_group->get_type_args()) {
+        g->stage_4_qualify_types(sm, meta);
+    }
 }
 
 
-auto spp::asts::TypeIdentifierAst::from_string(
-    std::string const &identifier)
-    -> std::shared_ptr<TypeIdentifierAst> {
-    return std::make_shared<TypeIdentifierAst>(0, std::string(identifier), nullptr);
+auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    if (m_has_analysed) { return; }
+
+    // Determine the scope and get the type symbol.
+    const auto scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
+    const auto type_sym = analyse::utils::type_utils::get_type_sym_or_error(
+        *scope, *std::dynamic_pointer_cast<TypeIdentifierAst>(without_generics()), *sm, meta);
+    // const auto type_scope = type_sym->scope;
+    if (type_sym->is_generic or name == "Self") { return; }
+
+    // Name all the generic arguments.
+    const auto is_tuple = ( {
+        const auto as_unary = std::dynamic_pointer_cast<TypeUnaryExpressionAst>(type_sym->fq_name()->without_generics());
+        as_unary != nullptr and *as_unary == *generate::common_types_precompiled::TUP->to<TypeUnaryExpressionAst>();
+    });
+
+    analyse::utils::func_utils::name_gn_args(
+        *generic_arg_group,
+        *(type_sym->alias_stmt ? type_sym->alias_stmt->generic_param_group : type_sym->type->generic_param_group),
+        *this, *sm, *meta, is_tuple);
+
+    // Stop here is there is a flag to not check generics.
+    if (meta->skip_type_analysis_generic_checks) {
+        return;
+    }
+
+    // Analyse the generic arguments.
+    meta->type_analysis_type_scope = nullptr;
+    generic_arg_group->stage_7_analyse_semantics(sm, meta);
+
+    // Infer the generic arguments from information given from object initialization.
+    const auto owner = analyse::utils::type_utils::get_type_sym_or_error(
+        *scope, *without_generics()->to<TypeIdentifierAst>(), *sm, meta)->fq_name();
+    const auto owner_sym = sm->current_scope->get_type_symbol(owner);
+    // const auto owner_scope = owner_sym->alias_stmt ? owner_sym->alias_stmt->
+    //     owner_sym != nullptr ? owner_sym->scope : type_sym->scope;
+
+    analyse::utils::func_utils::infer_gn_args(
+        *generic_arg_group,
+        *(type_sym->alias_stmt ? type_sym->alias_stmt->generic_param_group : type_sym->type->generic_param_group),
+        generic_arg_group->get_all_args(),
+        meta->infer_source, meta->infer_target,
+        owner, *(owner_sym != nullptr ? owner_sym->scope : type_sym->scope),
+        nullptr, is_tuple, *sm, *meta);
+    generic_arg_group->stage_7_analyse_semantics(sm, meta);
+
+    // For variant types, collapse any duplicate generic arguments.
+    // if (analyse::utils::type_utils::symbolic_eq(*without_generics(), *generate::common_types_precompiled::VAR, *scope, *sm->current_scope, false)) {
+    //     auto inner_types = analyse::utils::type_utils::deduplicate_variant_inner_types(*this, *sm->current_scope);
+    //     auto inner_types_as_tup = generate::common_types::tuple_type(pos_start(), std::move(inner_types));
+    //     meta->save();
+    //     meta->type_analysis_type_scope = type_scope;
+    //     inner_types_as_tup->stage_7_analyse_semantics(sm, meta);
+    //     meta->restore();
+    //     ast_cast<GenericArgumentTypeAst>(generic_arg_group->args[0].get())->val = std::move(inner_types_as_tup);
+    // }
+
+    // If the generically filled type doesn't exist (Vec[Str]), but the base does (Vec[T]), create it.
+    if (not scope->has_type_symbol(shared_from_this())) {
+        const auto external_generics = sm->current_scope->get_extended_generic_symbols(generic_arg_group->get_all_args(), meta->ignore_cmp_generic);
+        analyse::utils::type_utils::create_generic_cls_scope(*this, *type_sym, external_generics, is_tuple, sm, meta);
+    }
+
+    m_has_analysed = true;
 }
 
 
@@ -281,84 +375,9 @@ auto spp::asts::TypeIdentifierAst::with_generics(
 }
 
 
-auto spp::asts::TypeIdentifierAst::stage_4_qualify_types(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> void {
-    // Qualify the generic argument types.
-    for (auto &&g : generic_arg_group->get_type_args()) {
-        g->stage_4_qualify_types(sm, meta);
-    }
-}
-
-
-auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> void {
-    if (m_has_analysed) { return; }
-
-    // Determine the scope and get the type symbol.
-    const auto scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
-    const auto type_sym = analyse::utils::type_utils::get_type_sym_or_error(
-        *scope, *std::dynamic_pointer_cast<TypeIdentifierAst>(without_generics()), *sm, meta);
-    // const auto type_scope = type_sym->scope;
-    if (type_sym->is_generic or name == "Self") { return; }
-
-    // Name all the generic arguments.
-    const auto is_tuple = ( {
-        const auto as_unary = std::dynamic_pointer_cast<TypeUnaryExpressionAst>(type_sym->fq_name()->without_generics());
-        as_unary != nullptr and *as_unary == *generate::common_types_precompiled::TUP->to<TypeUnaryExpressionAst>();
-    });
-
-    analyse::utils::func_utils::name_gn_args(
-        *generic_arg_group,
-        *(type_sym->alias_stmt ? type_sym->alias_stmt->generic_param_group : type_sym->type->generic_param_group),
-        *this, *sm, *meta, is_tuple);
-
-    // Stop here is there is a flag to not check generics.
-    if (meta->skip_type_analysis_generic_checks) {
-        return;
-    }
-
-    // Analyse the generic arguments.
-    meta->type_analysis_type_scope = nullptr;
-    generic_arg_group->stage_7_analyse_semantics(sm, meta);
-
-    // Infer the generic arguments from information given from object initialization.
-    const auto owner = analyse::utils::type_utils::get_type_sym_or_error(
-        *scope, *without_generics()->to<TypeIdentifierAst>(), *sm, meta)->fq_name();
-    const auto owner_sym = sm->current_scope->get_type_symbol(owner);
-    // const auto owner_scope = owner_sym->alias_stmt ? owner_sym->alias_stmt->
-    //     owner_sym != nullptr ? owner_sym->scope : type_sym->scope;
-
-    analyse::utils::func_utils::infer_gn_args(
-        *generic_arg_group,
-        *(type_sym->alias_stmt ? type_sym->alias_stmt->generic_param_group : type_sym->type->generic_param_group),
-        generic_arg_group->get_all_args(),
-        meta->infer_source, meta->infer_target,
-        owner, *(owner_sym != nullptr ? owner_sym->scope : type_sym->scope),
-        nullptr, is_tuple, *sm, *meta);
-    generic_arg_group->stage_7_analyse_semantics(sm, meta);
-
-    // For variant types, collapse any duplicate generic arguments.
-    // if (analyse::utils::type_utils::symbolic_eq(*without_generics(), *generate::common_types_precompiled::VAR, *scope, *sm->current_scope, false)) {
-    //     auto inner_types = analyse::utils::type_utils::deduplicate_variant_inner_types(*this, *sm->current_scope);
-    //     auto inner_types_as_tup = generate::common_types::tuple_type(pos_start(), std::move(inner_types));
-    //     meta->save();
-    //     meta->type_analysis_type_scope = type_scope;
-    //     inner_types_as_tup->stage_7_analyse_semantics(sm, meta);
-    //     meta->restore();
-    //     ast_cast<GenericArgumentTypeAst>(generic_arg_group->args[0].get())->val = std::move(inner_types_as_tup);
-    // }
-
-    // If the generically filled type doesn't exist (Vec[Str]), but the base does (Vec[T]), create it.
-    if (not scope->has_type_symbol(shared_from_this())) {
-        const auto external_generics = sm->current_scope->get_extended_generic_symbols(generic_arg_group->get_all_args(), meta->ignore_cmp_generic);
-        analyse::utils::type_utils::create_generic_cls_scope(*this, *type_sym, external_generics, is_tuple, sm, meta);
-    }
-
-    m_has_analysed = true;
+auto spp::asts::TypeIdentifierAst::is_type_identifier() const noexcept
+    -> bool {
+    return true;
 }
 
 

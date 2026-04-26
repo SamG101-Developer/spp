@@ -29,22 +29,35 @@ spp::asts::TypeUnaryExpressionAst::TypeUnaryExpressionAst(
 spp::asts::TypeUnaryExpressionAst::~TypeUnaryExpressionAst() = default;
 
 
-auto spp::asts::TypeUnaryExpressionAst::equals(
-    ExpressionAst const &other) const
+auto spp::asts::TypeUnaryExpressionAst::operator<=>(
+    TypeUnaryExpressionAst const &other) const
     -> std::strong_ordering {
-    // Double dispatch to the appropriate equals method.
-    return other.equals_type_unary_expression(*this);
+    return equals_type_unary_expression(other);
+}
+
+
+auto spp::asts::TypeUnaryExpressionAst::operator==(
+    TypeUnaryExpressionAst const &other) const
+    -> bool {
+    return equals_type_unary_expression(other) == std::strong_ordering::equal;
 }
 
 
 auto spp::asts::TypeUnaryExpressionAst::equals_type_unary_expression(
     TypeUnaryExpressionAst const &other) const
     -> std::strong_ordering {
-    // Check if the operators and right-hand-sides are the same.
-    if (*op == *other.op && *rhs == *other.rhs) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
+    // Equality is based on the operator and rhs.
+    return *op == *other.op && *rhs == *other.rhs
+        ? std::strong_ordering::equal
+        : std::strong_ordering::less;
+}
+
+
+auto spp::asts::TypeUnaryExpressionAst::equals(
+    ExpressionAst const &other) const
+    -> std::strong_ordering {
+    // Reverse hook (doyble disptach).
+    return other.equals_type_unary_expression(*this);
 }
 
 
@@ -73,6 +86,55 @@ spp::asts::TypeUnaryExpressionAst::operator std::string() const {
     SPP_STRING_APPEND(op);
     SPP_STRING_APPEND(rhs);
     SPP_STRING_END;
+}
+
+
+auto spp::asts::TypeUnaryExpressionAst::stage_4_qualify_types(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Qualify the RHS type.
+    if (const auto op_ns = op->to<TypeUnaryExpressionOperatorNamespaceAst>()) {
+        const auto tm = ScopeManager(sm->global_scope, meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope);
+        const auto type_scope = analyse::utils::type_utils::get_ns_scope_or_error(*tm.current_scope, *op_ns->ns, tm);
+        meta->save();
+        meta->type_analysis_type_scope = type_scope;
+        rhs->stage_4_qualify_types(sm, meta);
+        meta->restore();
+    }
+    else {
+        rhs->stage_4_qualify_types(sm, meta);
+    }
+}
+
+
+auto spp::asts::TypeUnaryExpressionAst::stage_7_analyse_semantics(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Analyse the RHS type.
+    if (const auto op_ns = op->to<TypeUnaryExpressionOperatorNamespaceAst>()) {
+        const auto tm = ScopeManager(sm->global_scope, meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope);
+        const auto type_scope = analyse::utils::type_utils::get_ns_scope_or_error(*tm.current_scope, *op_ns->ns, tm);
+        meta->save();
+        meta->type_analysis_type_scope = type_scope;
+        rhs->stage_7_analyse_semantics(sm, meta);
+        meta->restore();
+    }
+    else {
+        rhs->stage_7_analyse_semantics(sm, meta);
+    }
+}
+
+
+auto spp::asts::TypeUnaryExpressionAst::infer_type(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> std::shared_ptr<TypeAst> {
+    // Infer the RHS type.
+    const auto type_scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
+    const auto type_sym = type_scope->get_type_symbol(shared_from_this());
+    return type_sym->fq_name()->with_convention(ast_clone(get_convention()));
 }
 
 
@@ -186,53 +248,5 @@ auto spp::asts::TypeUnaryExpressionAst::with_generics(
     return type_clone;
 }
 
-
-auto spp::asts::TypeUnaryExpressionAst::stage_4_qualify_types(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> void {
-    // Qualify the RHS type.
-    if (const auto op_ns = op->to<TypeUnaryExpressionOperatorNamespaceAst>()) {
-        const auto tm = ScopeManager(sm->global_scope, meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope);
-        const auto type_scope = analyse::utils::type_utils::get_ns_scope_or_error(*tm.current_scope, *op_ns->ns, tm);
-        meta->save();
-        meta->type_analysis_type_scope = type_scope;
-        rhs->stage_4_qualify_types(sm, meta);
-        meta->restore();
-    }
-    else {
-        rhs->stage_4_qualify_types(sm, meta);
-    }
-}
-
-
-auto spp::asts::TypeUnaryExpressionAst::stage_7_analyse_semantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> void {
-    // Analyse the RHS type.
-    if (const auto op_ns = op->to<TypeUnaryExpressionOperatorNamespaceAst>()) {
-        const auto tm = ScopeManager(sm->global_scope, meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope);
-        const auto type_scope = analyse::utils::type_utils::get_ns_scope_or_error(*tm.current_scope, *op_ns->ns, tm);
-        meta->save();
-        meta->type_analysis_type_scope = type_scope;
-        rhs->stage_7_analyse_semantics(sm, meta);
-        meta->restore();
-    }
-    else {
-        rhs->stage_7_analyse_semantics(sm, meta);
-    }
-}
-
-
-auto spp::asts::TypeUnaryExpressionAst::infer_type(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> std::shared_ptr<TypeAst> {
-    // Infer the RHS type.
-    const auto type_scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
-    const auto type_sym = type_scope->get_type_symbol(shared_from_this());
-    return type_sym->fq_name()->with_convention(ast_clone(get_convention()));
-}
 
 SPP_MOD_END

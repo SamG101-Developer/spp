@@ -16,22 +16,18 @@ spp::asts::TypeUnaryExpressionOperatorBorrowAst::TypeUnaryExpressionOperatorBorr
 spp::asts::TypeUnaryExpressionOperatorBorrowAst::~TypeUnaryExpressionOperatorBorrowAst() = default;
 
 
+auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::equals_op_borrow(
+    TypeUnaryExpressionOperatorBorrowAst const &other) const
+    -> std::strong_ordering {
+    // Equality is based on the convention.
+    return *conv == other.conv.get() ? std::strong_ordering::equal : std::strong_ordering::less;
+}
+
 auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::equals(
     TypeUnaryExpressionOperatorAst const &other) const
     -> std::strong_ordering {
     // Double dispatch to the appropriate equals method.
     return other.equals_op_borrow(*this);
-}
-
-
-auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::equals_op_borrow(
-    TypeUnaryExpressionOperatorBorrowAst const &other) const
-    -> std::strong_ordering {
-    // Check if the conventions are the same.
-    if (*conv == other.conv.get()) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
 }
 
 

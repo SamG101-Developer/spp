@@ -18,6 +18,8 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
+    SPP_GCC_VTABLE_FIX
+
     /**
      * The left-hand side type of the postfix expression. This is the base type on which the postfix operation is
      * applied.
@@ -28,8 +30,6 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
      * The operator token that represents the postfix operation. This indicates the type of operation being performed.
      */
     std::unique_ptr<TypePostfixExpressionOperatorAst> tok_op;
-
-    auto _spp_key_function() const -> void override;
 
     /**
      * Construct the PostfixExpressionAst with the arguments matching the members.
@@ -42,54 +42,73 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
 
     ~TypePostfixExpressionAst() override;
 
-    auto equals_type_postfix_expression(TypePostfixExpressionAst const &) const -> std::strong_ordering override;
+    auto operator<=>(
+        TypePostfixExpressionAst const &other) const
+        -> std::strong_ordering;
 
-    auto equals(const ExpressionAst &) const -> std::strong_ordering override;
+    auto operator==(
+        TypePostfixExpressionAst const &other) const
+        -> bool;
+
+    auto equals_type_postfix_expression(
+        TypePostfixExpressionAst const &) const
+        -> std::strong_ordering override;
+
+    auto equals(
+        const ExpressionAst &) const
+        -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
-
-    SPP_ATTR_ALWAYS_INLINE auto operator<=>(TypePostfixExpressionAst const &other) const -> std::strong_ordering {
-        return equals(other);
-    }
-
-    SPP_ATTR_ALWAYS_INLINE auto operator==(TypePostfixExpressionAst const &other) const -> bool {
-        return equals(other) == std::strong_ordering::equal;
-    }
-
-    auto iterator() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
-
-    SPP_ATTR_NODISCARD auto is_never_type() const -> bool override;
-
-    SPP_ATTR_NODISCARD auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
-
-    SPP_ATTR_NODISCARD auto ns_parts() -> std::vector<std::shared_ptr<IdentifierAst>> override;
-
-    SPP_ATTR_NODISCARD auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
-
-    SPP_ATTR_NODISCARD auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
-
-    SPP_ATTR_NODISCARD auto without_convention() const -> std::shared_ptr<const TypeAst> override;
-
-    SPP_ATTR_NODISCARD auto get_convention() const -> ConventionAst* override;
-
-    SPP_ATTR_NODISCARD auto with_convention(std::unique_ptr<ConventionAst> &&conv) const -> std::shared_ptr<TypeAst> override;
-
-    SPP_ATTR_NODISCARD auto without_generics() const -> std::shared_ptr<TypeAst> override;
-
-    SPP_ATTR_NODISCARD auto substitute_generics(std::vector<GenericArgumentAst*> const &args) const -> std::shared_ptr<TypeAst> override;
-
-    SPP_ATTR_NODISCARD auto contains_generic(GenericParameterAst const &generic) const -> bool override;
-
-    SPP_ATTR_NODISCARD auto with_generics(std::unique_ptr<GenericArgumentGroupAst> &&arg_group) const -> std::shared_ptr<TypeAst> override;
 
     auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+
+    auto iterator() const
+        -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
+
+    SPP_ATTR_NODISCARD auto is_never_type() const
+        -> bool override;
+
+    SPP_ATTR_NODISCARD auto ns_parts() const
+        -> std::vector<std::shared_ptr<const IdentifierAst>> override;
+
+    SPP_ATTR_NODISCARD auto ns_parts()
+        -> std::vector<std::shared_ptr<IdentifierAst>> override;
+
+    SPP_ATTR_NODISCARD auto type_parts() const
+        -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
+
+    SPP_ATTR_NODISCARD auto type_parts()
+        -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
+
+    SPP_ATTR_NODISCARD auto without_convention() const
+        -> std::shared_ptr<const TypeAst> override;
+
+    SPP_ATTR_NODISCARD auto get_convention() const
+        -> ConventionAst* override;
+
+    SPP_ATTR_NODISCARD auto with_convention(
+        std::unique_ptr<ConventionAst> &&conv) const
+        -> std::shared_ptr<TypeAst> override;
+
+    SPP_ATTR_NODISCARD auto without_generics() const
+        -> std::shared_ptr<TypeAst> override;
+
+    SPP_ATTR_NODISCARD auto substitute_generics(
+        std::vector<GenericArgumentAst*> const &args) const
+        -> std::shared_ptr<TypeAst> override;
+
+    SPP_ATTR_NODISCARD auto contains_generic(
+        GenericParameterAst const &generic) const
+        -> bool override;
+
+    SPP_ATTR_NODISCARD auto with_generics(
+        std::unique_ptr<GenericArgumentGroupAst> &&arg_group) const
+        -> std::shared_ptr<TypeAst> override;
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::TypePostfixExpressionAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(TypePostfixExpressionAst)

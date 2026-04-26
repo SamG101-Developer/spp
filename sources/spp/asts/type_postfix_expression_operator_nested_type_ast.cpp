@@ -23,18 +23,18 @@ spp::asts::TypePostfixExpressionOperatorNestedTypeAst::TypePostfixExpressionOper
 spp::asts::TypePostfixExpressionOperatorNestedTypeAst::~TypePostfixExpressionOperatorNestedTypeAst() = default;
 
 
-auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::equals(
-    const TypePostfixExpressionOperatorAst &other) const
-    -> std::strong_ordering {
-    return other.equals_nested_type(*this);
-}
-
-
 auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::equals_nested_type(
     TypePostfixExpressionOperatorNestedTypeAst const &other) const
     -> std::strong_ordering {
     // Compare the members for equality.
     return *name <=> *other.name;
+}
+
+
+auto spp::asts::TypePostfixExpressionOperatorNestedTypeAst::equals(
+    const TypePostfixExpressionOperatorAst &other) const
+    -> std::strong_ordering {
+    return other.equals_nested_type(*this);
 }
 
 

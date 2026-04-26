@@ -14,13 +14,13 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeUnaryExpressionOperatorAst {
+    SPP_GCC_VTABLE_FIX
+
     /**
      * The convention token representing the borrowing convention. This indicates how the type is borrowed, immutably or
      * mutably.
      */
     std::unique_ptr<ConventionAst> conv;
-
-    auto _spp_key_function() const -> void override;
 
     /**
     * Construct the TypeUnaryOperatorBorrowAst with the arguments matching the members.
@@ -31,22 +31,28 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeU
 
     ~TypeUnaryExpressionOperatorBorrowAst() override;
 
-    SPP_ATTR_NODISCARD auto equals(TypeUnaryExpressionOperatorAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals_op_borrow(
+        TypeUnaryExpressionOperatorBorrowAst const &) const
+        -> std::strong_ordering override;
 
-    SPP_ATTR_NODISCARD auto equals_op_borrow(TypeUnaryExpressionOperatorBorrowAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals(
+        TypeUnaryExpressionOperatorAst const &) const
+        -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    SPP_ATTR_NODISCARD auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto ns_parts() const
+        -> std::vector<std::shared_ptr<const IdentifierAst>> override;
 
-    SPP_ATTR_NODISCARD auto ns_parts() -> std::vector<std::shared_ptr<IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto ns_parts()
+        -> std::vector<std::shared_ptr<IdentifierAst>> override;
 
-    SPP_ATTR_NODISCARD auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto type_parts() const
+        -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
 
-    SPP_ATTR_NODISCARD auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto type_parts()
+        -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::TypeUnaryExpressionOperatorBorrowAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(TypeUnaryExpressionOperatorBorrowAst)

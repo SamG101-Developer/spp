@@ -14,6 +14,8 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : TypeUnaryExpressionOperatorAst {
+    SPP_GCC_VTABLE_FIX
+
     /**
      * The namespace token that represents the namespace in which the type is defined.
      */
@@ -23,8 +25,6 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : Ty
      * The @c :: operator token that represents the namespace operator.
      */
     std::unique_ptr<TokenAst> tok_sep;
-
-    auto _spp_key_function() const -> void override;
 
     /**
      * Construct the TypeUnaryExpressionOperatorNamespaceAst with the arguments matching the members.
@@ -37,22 +37,28 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : Ty
 
     ~TypeUnaryExpressionOperatorNamespaceAst() override;
 
-    SPP_ATTR_NODISCARD auto equals(TypeUnaryExpressionOperatorAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals_op_namespace(
+        TypeUnaryExpressionOperatorNamespaceAst const &) const
+        -> std::strong_ordering override;
 
-    SPP_ATTR_NODISCARD auto equals_op_namespace(TypeUnaryExpressionOperatorNamespaceAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto equals(
+        TypeUnaryExpressionOperatorAst const &) const
+        -> std::strong_ordering override;
 
-    SPP_AST_KEY_FUNCTIONS;
+    SPP_AST_KEY_FUNCTIONS
 
-    SPP_ATTR_NODISCARD auto ns_parts() const -> std::vector<std::shared_ptr<const IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto ns_parts() const
+        -> std::vector<std::shared_ptr<const IdentifierAst>> override;
 
-    SPP_ATTR_NODISCARD auto ns_parts() -> std::vector<std::shared_ptr<IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto ns_parts()
+        -> std::vector<std::shared_ptr<IdentifierAst>> override;
 
-    SPP_ATTR_NODISCARD auto type_parts() const -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto type_parts() const
+        -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
 
-    SPP_ATTR_NODISCARD auto type_parts() -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto type_parts()
+        -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(TypeUnaryExpressionOperatorNamespaceAst)

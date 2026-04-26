@@ -5,6 +5,9 @@ module spp.asts.type_unary_expression_operator_ast;
 
 
 SPP_MOD_BEGIN
+spp::asts::TypeUnaryExpressionOperatorAst::~TypeUnaryExpressionOperatorAst() = default;
+
+
 auto spp::asts::TypeUnaryExpressionOperatorAst::operator<=>(
     TypeUnaryExpressionOperatorAst const &that) const
     -> std::strong_ordering {
@@ -17,9 +20,6 @@ auto spp::asts::TypeUnaryExpressionOperatorAst::operator==(
     -> bool {
     return equals(that) == std::strong_ordering::equal;
 }
-
-
-spp::asts::TypeUnaryExpressionOperatorAst::~TypeUnaryExpressionOperatorAst() = default;
 
 
 auto spp::asts::TypeUnaryExpressionOperatorAst::equals_op_borrow(
