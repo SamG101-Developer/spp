@@ -39,27 +39,8 @@ namespace spp::analyse::scopes {
  * This ASt is further inherited into the SubroutinePrototypeAst and CoroutinePrototypeAst, which add additional
  * analysis checks.
  */
-SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : virtual Ast, SupMemberAst, ModuleMemberAst, mixins::VisibilityAst {
-protected:
-    /**
-     * Using a list because there are times that the collection is iterated whilst being appended to.
-     */
-    std::list<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>> m_generic_substitutions;
-
-    std::unique_ptr<FunctionImplementationAst> m_original_impl;
-
-    FunctionPrototypeAst *m_non_generic_impl;
-
-    /**
-     * The LLVM generated function for this prototype. This is set during the first pass of code generation, and used
-     * for further codegen in the second pass (for function calls, etc). Double shared pointer for altering the value,
-     * and updating in cloned ASTs that share this target.
-     */
-    std::shared_ptr<std::shared_ptr<codegen::LlvmFuncWrapper>> m_llvm_func;
-
-    std::unique_ptr<analyse::utils::annotation_utils::AnnotationInfo> m_annotation_info;
-
-public:
+SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : virtual Ast, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
+    SPP_GCC_VTABLE_FIX
     /**
      * Optional @c \@abstractmethod annotation. This is used to indicate that the function is abstract and must be
      * implemented in subclasses.
@@ -158,8 +139,6 @@ public:
      */
     std::unique_ptr<IdentifierAst> orig_name;
 
-    auto _spp_key_function() const -> void override;
-
     /**
      * Construct the FunctionPrototypeAst with the arguments matching the members.
      * @param annotations The list of annotations that are applied to this function prototype.
@@ -187,31 +166,6 @@ public:
 
     SPP_AST_KEY_FUNCTIONS;
 
-private:
-    SPP_ATTR_NODISCARD auto m_deduce_mock_class_type() const -> std::shared_ptr<TypeAst>;
-
-    SPP_ATTR_NODISCARD auto m_is_pure_generic(ScopeManager *sm, codegen::LLvmCtx *ctx) const -> std::tuple<bool, llvm::Type*, std::vector<llvm::Type*>>;
-
-public:
-    virtual auto m_generate_llvm_declaration(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> std::shared_ptr<codegen::LlvmFuncWrapper>;
-
-public:
-    SPP_ATTR_NODISCARD auto print_signature(std::string const &owner) const -> std::string;
-
-    auto register_generic_substitution(std::unique_ptr<analyse::scopes::Scope> &&scope, std::unique_ptr<FunctionPrototypeAst> &&new_ast) -> void;
-
-    SPP_ATTR_NODISCARD auto registered_generic_substitutions() const -> std::list<std::pair<analyse::scopes::Scope*, FunctionPrototypeAst*>>;
-
-    SPP_ATTR_NODISCARD auto registered_generic_substitutions() -> std::list<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>>&;
-
-    auto mark_non_generic_impl(FunctionPrototypeAst *impl) -> void;
-
-    SPP_ATTR_NODISCARD auto non_generic_impl() const -> FunctionPrototypeAst*;
-
-    auto mark_as_annotation() -> void;
-
-    SPP_ATTR_NODISCARD auto annotation_info() const -> analyse::utils::annotation_utils::AnnotationInfo*;
-
     auto stage_1_pre_process(Ast *ctx) -> void override;
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -235,9 +189,48 @@ public:
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     SPP_ATTR_NODISCARD auto get_llvm_func() const -> std::shared_ptr<codegen::LlvmFuncWrapper>;
+
+    SPP_ATTR_NODISCARD auto print_signature(std::string const &owner) const -> std::string;
+
+    auto register_generic_substitution(std::unique_ptr<analyse::scopes::Scope> &&scope, std::unique_ptr<FunctionPrototypeAst> &&new_ast) -> void;
+
+    SPP_ATTR_NODISCARD auto registered_generic_substitutions() const -> std::list<std::pair<analyse::scopes::Scope*, FunctionPrototypeAst*>>;
+
+    SPP_ATTR_NODISCARD auto registered_generic_substitutions() -> std::list<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>>&;
+
+    auto mark_non_generic_impl(FunctionPrototypeAst *impl) -> void;
+
+    SPP_ATTR_NODISCARD auto non_generic_impl() const -> FunctionPrototypeAst*;
+
+    auto mark_as_annotation() -> void;
+
+    SPP_ATTR_NODISCARD auto annotation_info() const -> analyse::utils::annotation_utils::AnnotationInfo*;
+
+    virtual auto m_generate_llvm_declaration(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> std::shared_ptr<codegen::LlvmFuncWrapper>;
+
+protected:
+    /**
+     * Using a list because there are times that the collection is iterated whilst being appended to.
+     */
+    std::list<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>> m_generic_substitutions;
+
+    std::unique_ptr<FunctionImplementationAst> m_original_impl;
+
+    FunctionPrototypeAst *m_non_generic_impl;
+
+    /**
+     * The LLVM generated function for this prototype. This is set during the first pass of code generation, and used
+     * for further codegen in the second pass (for function calls, etc). Double shared pointer for altering the value,
+     * and updating in cloned ASTs that share this target.
+     */
+    std::shared_ptr<std::shared_ptr<codegen::LlvmFuncWrapper>> m_llvm_func;
+
+    std::unique_ptr<analyse::utils::annotation_utils::AnnotationInfo> m_annotation_info;
+
+    SPP_ATTR_NODISCARD auto m_deduce_mock_class_type() const -> std::shared_ptr<TypeAst>;
+
+    SPP_ATTR_NODISCARD auto m_is_pure_generic(ScopeManager *sm, codegen::LLvmCtx *ctx) const -> std::tuple<bool, llvm::Type*, std::vector<llvm::Type*>>;
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::FunctionPrototypeAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(FunctionPrototypeAst)

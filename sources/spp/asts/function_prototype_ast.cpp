@@ -59,8 +59,6 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     decltype(tok_arrow) &&tok_arrow,
     decltype(return_type) &&return_type,
     decltype(impl) &&impl) :
-    m_llvm_func(nullptr),
-    m_annotation_info(nullptr),
     abstract_annotation(nullptr),
     virtual_annotation(nullptr),
     temperature_annotation(nullptr),
@@ -75,7 +73,9 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     param_group(std::move(param_group)),
     tok_arrow(std::move(tok_arrow)),
     return_type(std::move(return_type)),
-    impl(std::move(impl)) {
+    impl(std::move(impl)),
+    m_llvm_func(nullptr),
+    m_annotation_info(nullptr) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_fun, lex::SppTokenType::KW_FUN, "fun");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->generic_param_group);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_arrow, lex::SppTokenType::TK_ARROW_RIGHT, "->");
@@ -121,57 +121,6 @@ spp::asts::FunctionPrototypeAst::operator std::string() const {
     SPP_STRING_APPEND(return_type).append(" ");
     SPP_STRING_APPEND(impl);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::FunctionPrototypeAst::m_deduce_mock_class_type() const
-    -> std::shared_ptr<TypeAst> {
-    // Extract the parameter types.
-    auto param_types = param_group->params
-        | genex::views::transform([](auto &&x) { return x->type; })
-        | genex::to<std::vector>();
-
-    // Module level functions, and static methods, are always FunRef.
-    if (m_ctx->to<ModulePrototypeAst>() == nullptr or param_group->get_self_param() == nullptr) {
-        return generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
-    }
-
-    // Class methods with "self" are the FunMov type.
-    if (param_group->get_self_param()->conv == nullptr) {
-        return generate::common_types::fun_mov_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
-    }
-
-    // Class methods with "&mut self" are the FunMut type.
-    if (*param_group->get_self_param()->conv == ConventionTag::MUT) {
-        return generate::common_types::fun_mut_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
-    }
-
-    // Class methods with "&self" are the FunRef type.
-    if (*param_group->get_self_param()->conv == ConventionTag::REF) {
-        return generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
-    }
-
-    std::unreachable();
-
-    // raise<analyse::errors::SppInternalCompilerError>(
-    //     {sm->current_scope},
-    //     ERR_ARGS(*this, "Self convention escaped possible enum values"));
-}
-
-
-auto spp::asts::FunctionPrototypeAst::m_is_pure_generic(
-    analyse::scopes::ScopeManager *sm,
-    codegen::LLvmCtx *ctx) const
-    -> std::tuple<bool, llvm::Type*, std::vector<llvm::Type*>> {
-    // Convert the return and parameter types to LLVM types.
-    const auto llvm_ret_type = codegen::llvm_type(*sm->current_scope->get_type_symbol(return_type), ctx);
-    const auto llvm_param_types = param_group->get_non_self_params()
-        | genex::views::transform([&](auto const &x) { return codegen::llvm_type(*sm->current_scope->get_type_symbol(x->type), ctx); })
-        | genex::to<std::vector>();
-
-    // Check if any of the types failed to convert.
-    const auto is_generic = llvm_ret_type != nullptr and genex::all_of(llvm_param_types, [](auto const &x) { return x != nullptr; });
-    return {not is_generic, llvm_ret_type, llvm_param_types};
 }
 
 
@@ -225,67 +174,6 @@ auto spp::asts::FunctionPrototypeAst::m_generate_llvm_declaration(
 }
 
 
-auto spp::asts::FunctionPrototypeAst::print_signature(
-    std::string const &) const
-    -> std::string {
-    SPP_STRING_START.append(name->val);
-    SPP_STRING_APPEND(generic_param_group);
-    SPP_STRING_APPEND(param_group).append(" ");
-    SPP_STRING_APPEND(tok_arrow).append(" ");
-    SPP_STRING_APPEND(return_type);
-    SPP_STRING_END;
-}
-
-
-auto spp::asts::FunctionPrototypeAst::register_generic_substitution(
-    std::unique_ptr<analyse::scopes::Scope> &&scope,
-    std::unique_ptr<FunctionPrototypeAst> &&new_ast)
-    -> void {
-    // Store the scope for object persistence (and codegen).
-    m_generic_substitutions.emplace_back(std::move(scope), std::move(new_ast));
-}
-
-
-auto spp::asts::FunctionPrototypeAst::registered_generic_substitutions() const
-    -> std::list<std::pair<analyse::scopes::Scope*, FunctionPrototypeAst*>> {
-    return m_generic_substitutions
-        | genex::views::transform([](auto const &x) { return std::make_pair(x.first.get(), x.second.get()); })
-        | genex::to<std::list>();
-}
-
-
-auto spp::asts::FunctionPrototypeAst::registered_generic_substitutions()
-    -> std::list<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>>& {
-    return m_generic_substitutions;
-}
-
-
-auto spp::asts::FunctionPrototypeAst::mark_non_generic_impl(
-    FunctionPrototypeAst *impl)
-    -> void {
-    m_non_generic_impl = impl;
-}
-
-
-auto spp::asts::FunctionPrototypeAst::non_generic_impl() const
-    -> FunctionPrototypeAst* {
-    return m_non_generic_impl;
-}
-
-
-auto spp::asts::FunctionPrototypeAst::mark_as_annotation()
-    -> void {
-    // Mark this function prototype as an annotation, by adding the appropriate annotation to it.
-    m_annotation_info = std::make_unique<analyse::utils::annotation_utils::AnnotationInfo>();
-}
-
-
-auto spp::asts::FunctionPrototypeAst::annotation_info() const
-    -> analyse::utils::annotation_utils::AnnotationInfo* {
-    return m_annotation_info.get();
-}
-
-
 auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     Ast *ctx)
     -> void {
@@ -311,7 +199,7 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     // If this is the first overload being converted, then the class needs to be made for the mock type.
     const auto needs_generation = genex::operations::empty(ast_body(ctx)
         | genex::views::cast_dynamic<ClassPrototypeAst*>()
-        | genex::views::filter([&mock_class_name](auto &&x) { return x->name->without_generics() == mock_class_name->without_generics(); })
+        | genex::views::filter([&mock_class_name](auto const &x) { return x->name->without_generics() == mock_class_name->without_generics(); })
         | genex::to<std::vector>());
 
     if (needs_generation) {
@@ -348,15 +236,15 @@ auto spp::asts::FunctionPrototypeAst::stage_1_pre_process(
     // Manipulate the context body with the new mock superimposition extension.
     if (const auto mod_ctx = ctx->to<ModulePrototypeAst>()) {
         mod_ctx->impl->members.insert(mod_ctx->impl->members.begin(), std::move(mock_sup_ext));
-        mod_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return x.get() == this; });
+        mod_ctx->impl->members |= genex::actions::remove_if([this](auto const &x) { return x.get() == this; });
     }
     else if (const auto sup_ctx = ctx->to<SupPrototypeFunctionsAst>()) {
         sup_ctx->impl->members.insert(sup_ctx->impl->members.begin(), std::move(mock_sup_ext));
-        sup_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return x.get() == this; });
+        sup_ctx->impl->members |= genex::actions::remove_if([this](auto const &x) { return x.get() == this; });
     }
     else if (const auto ext_ctx = ctx->to<SupPrototypeExtensionAst>()) {
         ext_ctx->impl->members.insert(ext_ctx->impl->members.begin(), std::move(mock_sup_ext));
-        ext_ctx->impl->members |= genex::actions::remove_if([this](auto &&x) { return x.get() == this; });
+        ext_ctx->impl->members |= genex::actions::remove_if([this](auto const &x) { return x.get() == this; });
     }
 }
 
@@ -553,7 +441,7 @@ auto spp::asts::FunctionPrototypeAst::stage_10_code_gen_1(
     m_generate_llvm_declaration(sm, meta, ctx);
 
     // Handle generic substitutions of a function.
-    for (auto &&[generic_scope, generic_ast] : m_generic_substitutions) {
+    for (auto const &[generic_scope, generic_ast] : m_generic_substitutions) {
         auto tm = ScopeManager(sm->global_scope, generic_scope.get());
         generic_ast->m_generate_llvm_declaration(&tm, meta, ctx);
     }
@@ -622,7 +510,7 @@ auto spp::asts::FunctionPrototypeAst::stage_11_code_gen_2(
     // Analyse to make a new scope in the correct place.
     // TODO: Remove this? func_call() generates generic target when needed,
     //  Do same with generic classes & object instantiation?
-    for (auto &&[generic_scope, generic_proto] : m_generic_substitutions) {
+    for (auto const &[generic_scope, generic_proto] : m_generic_substitutions) {
         auto tm = ScopeManager(sm->global_scope, generic_scope.get());
         if (std::get<0>(generic_proto->m_is_pure_generic(&tm, ctx))) { continue; }
 
@@ -649,6 +537,118 @@ auto spp::asts::FunctionPrototypeAst::stage_11_code_gen_2(
 auto spp::asts::FunctionPrototypeAst::get_llvm_func() const
     -> std::shared_ptr<codegen::LlvmFuncWrapper> {
     return *m_llvm_func;
+}
+
+
+auto spp::asts::FunctionPrototypeAst::print_signature(
+    std::string const &) const
+    -> std::string {
+    SPP_STRING_START.append(name->val);
+    SPP_STRING_APPEND(generic_param_group);
+    SPP_STRING_APPEND(param_group).append(" ");
+    SPP_STRING_APPEND(tok_arrow).append(" ");
+    SPP_STRING_APPEND(return_type);
+    SPP_STRING_END;
+}
+
+
+auto spp::asts::FunctionPrototypeAst::register_generic_substitution(
+    std::unique_ptr<analyse::scopes::Scope> &&scope,
+    std::unique_ptr<FunctionPrototypeAst> &&new_ast)
+    -> void {
+    // Store the scope for object persistence (and codegen).
+    m_generic_substitutions.emplace_back(std::move(scope), std::move(new_ast));
+}
+
+
+auto spp::asts::FunctionPrototypeAst::registered_generic_substitutions() const
+    -> std::list<std::pair<analyse::scopes::Scope*, FunctionPrototypeAst*>> {
+    return m_generic_substitutions
+        | genex::views::transform([](auto const &x) { return std::make_pair(x.first.get(), x.second.get()); })
+        | genex::to<std::list>();
+}
+
+
+auto spp::asts::FunctionPrototypeAst::registered_generic_substitutions()
+    -> std::list<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>>& {
+    return m_generic_substitutions;
+}
+
+
+auto spp::asts::FunctionPrototypeAst::mark_non_generic_impl(
+    FunctionPrototypeAst *impl)
+    -> void {
+    m_non_generic_impl = impl;
+}
+
+
+auto spp::asts::FunctionPrototypeAst::non_generic_impl() const
+    -> FunctionPrototypeAst* {
+    return m_non_generic_impl;
+}
+
+
+auto spp::asts::FunctionPrototypeAst::mark_as_annotation()
+    -> void {
+    // Mark this function prototype as an annotation, by adding the appropriate annotation to it.
+    m_annotation_info = std::make_unique<analyse::utils::annotation_utils::AnnotationInfo>();
+}
+
+
+auto spp::asts::FunctionPrototypeAst::annotation_info() const
+    -> analyse::utils::annotation_utils::AnnotationInfo* {
+    return m_annotation_info.get();
+}
+
+
+auto spp::asts::FunctionPrototypeAst::m_deduce_mock_class_type() const
+    -> std::shared_ptr<TypeAst> {
+    // Extract the parameter types.
+    auto param_types = param_group->params
+        | genex::views::transform([](auto &&x) { return x->type; })
+        | genex::to<std::vector>();
+
+    // Module level functions, and static methods, are always FunRef.
+    if (m_ctx->to<ModulePrototypeAst>() == nullptr or param_group->get_self_param() == nullptr) {
+        return generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
+    }
+
+    // Class methods with "self" are the FunMov type.
+    if (param_group->get_self_param()->conv == nullptr) {
+        return generate::common_types::fun_mov_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
+    }
+
+    // Class methods with "&mut self" are the FunMut type.
+    if (*param_group->get_self_param()->conv == ConventionTag::MUT) {
+        return generate::common_types::fun_mut_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
+    }
+
+    // Class methods with "&self" are the FunRef type.
+    if (*param_group->get_self_param()->conv == ConventionTag::REF) {
+        return generate::common_types::fun_ref_type(pos_start(), generate::common_types::tuple_type(pos_start(), std::move(param_types)), return_type);
+    }
+
+    std::unreachable();
+
+    // raise<analyse::errors::SppInternalCompilerError>(
+    //     {sm->current_scope},
+    //     ERR_ARGS(*this, "Self convention escaped possible enum values"));
+}
+
+
+auto spp::asts::FunctionPrototypeAst::m_is_pure_generic(
+    analyse::scopes::ScopeManager *sm,
+    codegen::LLvmCtx *ctx) const
+    -> std::tuple<bool, llvm::Type*, std::vector<llvm::Type*>> {
+    // Convert the return and parameter types to LLVM types.
+    const auto llvm_ret_type = codegen::llvm_type(*sm->current_scope->get_type_symbol(return_type), ctx);
+    const auto llvm_param_types = param_group->get_non_self_params()
+        | genex::views::transform([&](auto const &x) { return codegen::llvm_type(*sm->current_scope->get_type_symbol(x->type), ctx); })
+        | genex::to<std::vector>();
+
+    // Check if any of the types failed to convert.
+    const auto is_generic = llvm_ret_type != nullptr and genex::all_of(llvm_param_types, [](auto const &x) { return x != nullptr; });
+    return {not is_generic, llvm_ret_type, llvm_param_types};
 }
 
 SPP_MOD_END
