@@ -5,6 +5,15 @@ module spp.asts.token_ast;
 
 
 SPP_MOD_BEGIN
+auto spp::asts::TokenAst::new_empty(
+    lex::SppTokenType token_type,
+    std::string &&token_data,
+    const std::size_t pos)
+    -> std::unique_ptr<TokenAst> {
+    return std::make_unique<TokenAst>(pos, token_type, std::move(token_data));
+}
+
+
 spp::asts::TokenAst::TokenAst(
     const std::size_t pos,
     const lex::SppTokenType token_type,
@@ -38,15 +47,6 @@ auto spp::asts::TokenAst::clone() const
 
 spp::asts::TokenAst::operator std::string() const {
     return token_data;
-}
-
-
-auto spp::asts::TokenAst::new_empty(
-    lex::SppTokenType token_type,
-    std::string &&token_data,
-    const std::size_t pos)
-    -> std::unique_ptr<TokenAst> {
-    return std::make_unique<TokenAst>(pos, token_type, std::move(token_data));
 }
 
 

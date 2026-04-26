@@ -21,6 +21,20 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::TokenAst final : virtual Ast {
     /**
+     * Very similar to the constructor, but requires for the macro'd unified "new_empty" caller for defaulting
+     * attributes. The pos isn't wlawys given so is optional.
+     * @param token_type The token type from the enumeration.
+     * @param token_data The associated token data (stringified token, usually)
+     * @param pos The optional position of this token.
+     * @return The created token as a unique pointer.
+     */
+    static auto new_empty(
+        lex::SppTokenType token_type,
+        std::string &&token_data,
+        std::size_t pos = 0)
+        -> std::unique_ptr<TokenAst>;
+
+    /**
      * The token type (part of the enum) that this AST is wrapping.
      */
     lex::SppTokenType token_type;
@@ -39,35 +53,13 @@ SPP_EXP_CLS struct spp::asts::TokenAst final : virtual Ast {
 
     SPP_AST_KEY_FUNCTIONS;
 
-    static auto new_empty(
-        lex::SppTokenType token_type,
-        std::string &&token_data,
-        std::size_t pos = 0)
-        -> std::unique_ptr<TokenAst>;
-
     /**
      * Two tokens are equal if their token types are equal.
      * @param[in] that The other TokenAst to compare with.
      * @return Whether the two ASTs are equal or not.
      */
-    auto operator==(TokenAst const &that) const -> bool; // todo: do as friend
+    auto operator==(TokenAst const &that) const -> bool;
 
 private:
     std::size_t m_pos;
-};
-
-
-template <>
-struct std::hash<spp::asts::TokenAst> {
-    /**
-     * To make a TokenAst hashable, the token type's string-converted name is used as the key, which is then used by
-     * @c std::hash<std::string> or a primitive equivalent.
-     * @param[in] t The TokenAst to hash.
-     * @return The numeric mapped hash value.
-     */
-    auto operator()(spp::asts::TokenAst const &t) const noexcept
-        -> std::size_t {
-        using UT = std::underlying_type_t<spp::lex::SppTokenType>;
-        return std::hash<UT>()(std::bit_cast<UT>(t.token_type));
-    }
 };
