@@ -36,7 +36,7 @@ auto spp::asts::LoopControlFlowStatementAst::Exit(
     // One exit statement, no skip statements.
     auto skip = nullptr;
     auto exits = std::vector<std::unique_ptr<TokenAst>>();
-    for (auto i = 0; i < depth; ++i) {
+    for (auto i = 0uz; i < depth; ++i) {
         exits.emplace_back(std::make_unique<TokenAst>(pos, lex::SppTokenType::KW_EXIT, "exit"));
     }
     return std::make_unique<LoopControlFlowStatementAst>(std::move(exits), skip, nullptr);
