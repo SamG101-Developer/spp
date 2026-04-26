@@ -54,21 +54,21 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterGroupAst final : virtual Ast {
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto get_all_params() const -> std::vector<FunctionParameterAst*>;
-
-    auto get_self_param() const -> FunctionParameterSelfAst*;
-
-    auto get_required_params() const -> std::vector<FunctionParameterRequiredAst*>;
-
-    auto get_optional_params() const -> std::vector<FunctionParameterOptionalAst*>;
-
-    auto get_variadic_param() const -> FunctionParameterVariadicAst*;
-
-    auto get_non_self_params() const -> std::vector<FunctionParameterAst*>;
-
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+
+    SPP_ATTR_NODISCARD auto get_all_params() const -> std::vector<FunctionParameterAst*>;
+
+    SPP_ATTR_NODISCARD auto get_self_param() const -> FunctionParameterSelfAst*;
+
+    SPP_ATTR_NODISCARD auto get_required_params() const -> std::vector<FunctionParameterRequiredAst*>;
+
+    SPP_ATTR_NODISCARD auto get_optional_params() const -> std::vector<FunctionParameterOptionalAst*>;
+
+    SPP_ATTR_NODISCARD auto get_variadic_param() const -> FunctionParameterVariadicAst*;
+
+    SPP_ATTR_NODISCARD auto get_non_self_params() const -> std::vector<FunctionParameterAst*>;
 };

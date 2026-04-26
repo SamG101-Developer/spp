@@ -63,6 +63,81 @@ spp::asts::FunctionParameterGroupAst::operator std::string() const {
 }
 
 
+auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Create sets of parameters based on conditions.
+    const auto self_params = params
+        | genex::views::ptr
+        | genex::views::cast_dynamic<FunctionParameterSelfAst*>()
+        | genex::to<std::vector>();
+
+    const auto variadic_params = params
+        | genex::views::ptr
+        | genex::views::cast_dynamic<FunctionParameterVariadicAst*>()
+        | genex::to<std::vector>();
+
+    const auto param_names = params
+        | genex::views::transform([](auto const &x) { return x->extract_names(); })
+        | genex::views::join
+        | genex::to<std::vector>()
+        | genex::views::duplicates({}, genex::meta::deref)
+        | genex::to<std::vector>();
+
+    const auto unordered_params = analyse::utils::order_utils::order_params(params
+        | genex::views::ptr
+        | genex::views::cast_dynamic<mixins::OrderableAst*>()
+        | genex::to<std::vector>());
+
+    // Check there is only 1 "self" parameter.
+    raise_if<analyse::errors::SppMultipleSelfParametersError>(
+        self_params.size() > 1, {sm->current_scope}, ERR_ARGS(*self_params[0], *self_params[1]));
+
+    // Check there is only 1 variadic parameter, and it is last.
+    raise_if<analyse::errors::SppMultipleVariadicParametersError>(
+        variadic_params.size() > 1, {sm->current_scope}, ERR_ARGS(*variadic_params[0], *variadic_params[1]));
+
+    // Check there are no duplicate parameter names.
+    raise_if<analyse::errors::SppIdentifierDuplicateError>(
+        not param_names.empty(), {sm->current_scope}, ERR_ARGS(*param_names[0], *param_names[1], "keyword function-argument"));
+
+    // Check the parameters are in the correct order.
+    raise_if<analyse::errors::SppOrderInvalidError>(
+        not unordered_params.empty(), {sm->current_scope},
+        ERR_ARGS(unordered_params[0].first, *unordered_params[0].second, unordered_params[1].first, *unordered_params[1].second));
+
+    // Analyse the parameters.
+    for (auto const &param : params) {
+        param->stage_7_analyse_semantics(sm, meta);
+    }
+}
+
+
+auto spp::asts::FunctionParameterGroupAst::stage_8_check_memory(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    // Check each parameter's memory.
+    for (auto const &param : params) {
+        param->stage_8_check_memory(sm, meta);
+    }
+}
+
+
+auto spp::asts::FunctionParameterGroupAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    // Code generate each parameter.
+    for (auto const &param : params) {
+        param->stage_11_code_gen_2(sm, meta, ctx);
+    }
+    return nullptr;
+}
+
+
 auto spp::asts::FunctionParameterGroupAst::get_all_params() const
     -> std::vector<FunctionParameterAst*> {
     // Filter by casting.
@@ -136,81 +211,6 @@ auto spp::asts::FunctionParameterGroupAst::get_non_self_params() const
         }
     }
     return out;
-}
-
-
-auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> void {
-    // Create sets of parameters based on conditions.
-    const auto self_params = params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<FunctionParameterSelfAst*>()
-        | genex::to<std::vector>();
-
-    const auto variadic_params = params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<FunctionParameterVariadicAst*>()
-        | genex::to<std::vector>();
-
-    const auto param_names = params
-        | genex::views::transform([](auto &&x) { return x->extract_names(); })
-        | genex::views::join
-        | genex::to<std::vector>()
-        | genex::views::duplicates({}, genex::meta::deref)
-        | genex::to<std::vector>();
-
-    const auto unordered_params = analyse::utils::order_utils::order_params(params
-        | genex::views::ptr
-        | genex::views::cast_dynamic<mixins::OrderableAst*>()
-        | genex::to<std::vector>());
-
-    // Check there is only 1 "self" parameter.
-    raise_if<analyse::errors::SppMultipleSelfParametersError>(
-        self_params.size() > 1, {sm->current_scope}, ERR_ARGS(*self_params[0], *self_params[1]));
-
-    // Check there is only 1 variadic parameter, and it is last.
-    raise_if<analyse::errors::SppMultipleVariadicParametersError>(
-        variadic_params.size() > 1, {sm->current_scope}, ERR_ARGS(*variadic_params[0], *variadic_params[1]));
-
-    // Check there are no duplicate parameter names.
-    raise_if<analyse::errors::SppIdentifierDuplicateError>(
-        not param_names.empty(), {sm->current_scope}, ERR_ARGS(*param_names[0], *param_names[1], "keyword function-argument"));
-
-    // Check the parameters are in the correct order.
-    raise_if<analyse::errors::SppOrderInvalidError>(
-        not unordered_params.empty(), {sm->current_scope},
-        ERR_ARGS(unordered_params[0].first, *unordered_params[0].second, unordered_params[1].first, *unordered_params[1].second));
-
-    // Analyse the parameters.
-    for (auto const &param : params) {
-        param->stage_7_analyse_semantics(sm, meta);
-    }
-}
-
-
-auto spp::asts::FunctionParameterGroupAst::stage_8_check_memory(
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> void {
-    // Check each parameter's memory.
-    for (auto &&param : params) {
-        param->stage_8_check_memory(sm, meta);
-    }
-}
-
-
-auto spp::asts::FunctionParameterGroupAst::stage_11_code_gen_2(
-    ScopeManager *sm,
-    CompilerMetaData *meta,
-    codegen::LLvmCtx *ctx)
-    -> llvm::Value* {
-    // Code generate each parameter.
-    for (auto &&param : params) {
-        param->stage_11_code_gen_2(sm, meta, ctx);
-    }
-    return nullptr;
 }
 
 SPP_MOD_END

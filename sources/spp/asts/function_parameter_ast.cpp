@@ -41,18 +41,6 @@ spp::asts::FunctionParameterAst::FunctionParameterAst(
 spp::asts::FunctionParameterAst::~FunctionParameterAst() = default;
 
 
-auto spp::asts::FunctionParameterAst::extract_names() const
-    -> std::vector<std::shared_ptr<IdentifierAst>> {
-    return var->extract_names();
-}
-
-
-auto spp::asts::FunctionParameterAst::extract_name() const
-    -> std::shared_ptr<IdentifierAst> {
-    return var->extract_name();
-}
-
-
 auto spp::asts::FunctionParameterAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
@@ -100,6 +88,20 @@ auto spp::asts::FunctionParameterAst::stage_11_code_gen_2(
     var->stage_11_code_gen_2(sm, meta, ctx);
     meta->restore();
     return nullptr;
+}
+
+
+auto spp::asts::FunctionParameterAst::extract_names() const
+    -> std::vector<std::shared_ptr<IdentifierAst>> {
+    // Forward to the variable declaration.
+    return var->extract_names();
+}
+
+
+auto spp::asts::FunctionParameterAst::extract_name() const
+    -> std::shared_ptr<IdentifierAst> {
+    // Forward to the variable declaration.
+    return var->extract_name();
 }
 
 SPP_MOD_END
