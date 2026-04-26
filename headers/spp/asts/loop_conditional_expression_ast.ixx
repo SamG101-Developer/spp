@@ -7,10 +7,6 @@ import spp.codegen.llvm_ctx;
 import llvm;
 import std;
 
-namespace spp::analyse::scopes {
-    SPP_EXP_CLS class Scope;
-}
-
 namespace spp::asts {
     SPP_EXP_CLS struct LoopConditionalExpressionAst;
     SPP_EXP_CLS struct TypeAst;

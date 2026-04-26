@@ -19,6 +19,30 @@ import genex;
 
 
 SPP_MOD_BEGIN
+auto spp::asts::LoopControlFlowStatementAst::Skip(
+    const std::size_t pos)
+    -> std::unique_ptr<LoopControlFlowStatementAst> {
+    // No exit statements, one skip statement.
+    auto exits = std::vector<std::unique_ptr<TokenAst>>();
+    auto skip = std::make_unique<TokenAst>(pos, lex::SppTokenType::KW_SKIP, "skip");
+    return std::make_unique<LoopControlFlowStatementAst>(std::move(exits), std::move(skip), nullptr);
+}
+
+
+auto spp::asts::LoopControlFlowStatementAst::Exit(
+    const std::size_t pos,
+    const std::size_t depth)
+    -> std::unique_ptr<LoopControlFlowStatementAst> {
+    // One exit statement, no skip statements.
+    auto skip = nullptr;
+    auto exits = std::vector<std::unique_ptr<TokenAst>>();
+    for (auto i = 0; i < depth; ++i) {
+        exits.emplace_back(std::make_unique<TokenAst>(pos, lex::SppTokenType::KW_EXIT, "exit"));
+    }
+    return std::make_unique<LoopControlFlowStatementAst>(std::move(exits), skip, nullptr);
+}
+
+
 spp::asts::LoopControlFlowStatementAst::LoopControlFlowStatementAst(
     decltype(tok_seq_exit) &&tok_seq_exit,
     decltype(tok_skip) &&tok_skip,
@@ -31,26 +55,6 @@ spp::asts::LoopControlFlowStatementAst::LoopControlFlowStatementAst(
 
 
 spp::asts::LoopControlFlowStatementAst::~LoopControlFlowStatementAst() = default;
-
-
-auto spp::asts::LoopControlFlowStatementAst::Skip(
-    std::size_t pos)
-    -> std::unique_ptr<LoopControlFlowStatementAst> {
-    // No exit statements, one skip statement.
-    auto exits = std::vector<std::unique_ptr<TokenAst>>();
-    auto skip = std::make_unique<TokenAst>(pos, lex::SppTokenType::KW_SKIP, "skip");
-    return std::make_unique<LoopControlFlowStatementAst>(std::move(exits), std::move(skip), nullptr);
-}
-
-
-auto spp::asts::LoopControlFlowStatementAst::Exit(
-    std::size_t pos)
-    -> std::unique_ptr<LoopControlFlowStatementAst> {
-    // One exit statement, no skip statements.
-    auto exits = std::vector<std::unique_ptr<TokenAst>>();
-    exits.emplace_back(std::make_unique<TokenAst>(pos, lex::SppTokenType::KW_EXIT, "exit"));
-    return std::make_unique<LoopControlFlowStatementAst>(std::move(exits), nullptr, nullptr);
-}
 
 
 auto spp::asts::LoopControlFlowStatementAst::pos_start() const

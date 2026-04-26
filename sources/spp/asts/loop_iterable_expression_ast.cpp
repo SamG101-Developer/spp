@@ -103,7 +103,7 @@ auto spp::asts::LoopIterableExpressionAst::stage_7_analyse_semantics(
     // Simple statements to move from.
     const auto uid = spp::utils::generate_uid(this);
     auto skip_stmt = LoopControlFlowStatementAst::Skip(pos_start());
-    auto exit_stmt = LoopControlFlowStatementAst::Exit(pos_start());
+    auto exit_stmt = LoopControlFlowStatementAst::Exit(pos_start(), 1);
     auto iterable_name = std::make_shared<IdentifierAst>(pos_start(), "$_iter_" + uid);
     auto resume_name = std::make_shared<IdentifierAst>(pos_start(), "$_res_" + uid);
 
