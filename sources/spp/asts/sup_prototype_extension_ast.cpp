@@ -96,71 +96,6 @@ spp::asts::SupPrototypeExtensionAst::operator std::string() const {
 }
 
 
-auto spp::asts::SupPrototypeExtensionAst::check_cyclic_extension(
-    analyse::scopes::TypeSymbol const &sup_sym,
-    analyse::scopes::Scope &check_scope) const
-    -> void {
-    auto check_cycle = [this, &check_scope](analyse::scopes::Scope const *sc) {
-        auto dummy = analyse::utils::type_utils::GenericInferenceMap();
-        const auto ext = sc->ast->to<SupPrototypeExtensionAst>();
-        return ext and
-            analyse::utils::type_utils::relaxed_symbolic_eq(*ext->name, *super_class, *sc, check_scope, dummy, false) and
-            analyse::utils::type_utils::symbolic_eq(*ext->super_class, *name, *sc, check_scope, false);
-    };
-
-    // Prevent double inheritance by checking if the scopes are already registered the other way around.
-    const auto existing_sup_scopes = sup_sym.scope->sup_scopes()
-        | std::ranges::views::filter(check_cycle)
-        | std::ranges::views::transform([](auto *x) { return std::make_pair(x, x->ast->template to<SupPrototypeExtensionAst>()); })
-        | std::ranges::to<std::vector>();
-
-    raise_if<analyse::errors::SppSuperimpositionCyclicExtensionError>(
-        not existing_sup_scopes.empty(), {&check_scope},
-        ERR_ARGS(*existing_sup_scopes[0].second->super_class, *name));
-}
-
-
-auto spp::asts::SupPrototypeExtensionAst::check_double_extension(
-    analyse::scopes::TypeSymbol const &cls_sym,
-    analyse::scopes::Scope &check_scope) const
-    -> void {
-    // Early return for function-classes.
-    if (cls_sym.name->name[0] == '$') {
-        return;
-    }
-
-    auto check_double = [this, &check_scope](analyse::scopes::Scope const *sc) {
-        auto dummy = analyse::utils::type_utils::GenericInferenceMap();
-        const auto ext = sc->ast->to<SupPrototypeExtensionAst>();
-        return ext and
-            analyse::utils::type_utils::relaxed_symbolic_eq(*ext->name, *name, *sc, check_scope, dummy, false) and
-            analyse::utils::type_utils::symbolic_eq(*ext->super_class, *super_class, *sc, check_scope, false);
-    };
-
-    // Prevent double inheritance by checking if the scopes are already registered the other way around.
-    auto dummy = analyse::utils::type_utils::GenericInferenceMap();
-    auto all_sup_scopes = cls_sym.scope->sup_scopes();
-    const auto existing_sup_scopes = all_sup_scopes
-        | std::ranges::views::filter(check_double)
-        | std::ranges::views::transform([](auto *x) { return std::make_pair(x, x->ast->template to<SupPrototypeExtensionAst>()); })
-        | std::ranges::to<std::vector>();
-
-    raise_if<analyse::errors::SppSuperimpositionDoubleExtensionError>(
-        not existing_sup_scopes.empty(), {&check_scope},
-        ERR_ARGS(*existing_sup_scopes[0].second->super_class, *name));
-}
-
-
-auto spp::asts::SupPrototypeExtensionAst::check_self_extension(
-    analyse::scopes::Scope &check_scope) const
-    -> void {
-    // Check if the superimposition is extending itself.
-    raise_if<analyse::errors::SppSuperimpositionSelfExtensionError>(
-        analyse::utils::type_utils::symbolic_eq(*name, *super_class, check_scope, check_scope), {&check_scope},
-        ERR_ARGS(*name, *super_class));
-}
-
-
 auto spp::asts::SupPrototypeExtensionAst::stage_1_pre_process(
     Ast *ctx)
     -> void {
@@ -201,7 +136,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_2_gen_top_level_scopes(
     // Check every generic parameter is constrained by the type.
     if (name->type_parts().back()->name[0] != '$') {
         const auto unconstrained = generic_param_group->get_all_params()
-            | std::ranges::views::filter([this](auto &&x) { return not(name->contains_generic(*x) or super_class->contains_generic(*x)); })
+            | std::ranges::views::filter([this](auto const &x) { return not(name->contains_generic(*x) or super_class->contains_generic(*x)); })
             | std::ranges::to<std::vector>();
         raise_if<analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError>(
             not unconstrained.empty(), {sm->current_scope},
@@ -311,7 +246,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
     auto sup_scopes = sm->current_scope->get_type_symbol(super_class)->scope->sup_scopes();
     sup_scopes.insert(sup_scopes.begin(), sup_sym->scope);
     sup_scopes.erase(
-        std::ranges::remove_if(sup_scopes, [](auto &&x) { return x->ast->template to<ClassPrototypeAst>() == nullptr; }).begin(),
+        std::ranges::remove_if(sup_scopes, [](auto const &x) { return x->ast->template to<ClassPrototypeAst>() == nullptr; }).begin(),
         sup_scopes.end());
 
     // Mark the class as copyable if the "Copy" type is the supertype.
@@ -325,7 +260,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_6_pre_analyse_semantics(
     }
 
     // Check every member on the superimposition exists on the supertype.
-    for (auto &&member : impl->members) {
+    for (auto const &member : impl->members) {
         if (const auto ext_member = member->to<SupPrototypeExtensionAst>()) {
             // Get the method and identify the base method it is overriding.
             const auto this_method = ext_member->impl->final_member()->to<FunctionPrototypeAst>();
@@ -436,8 +371,8 @@ auto spp::asts::SupPrototypeExtensionAst::stage_11_code_gen_2(
 
     // Check if this block is purely generic.
     const auto is_generic_scope =
-        std::ranges::any_of(sm->current_scope->all_type_symbols(true), [](auto &&x) { return x->is_generic; }) or
-        std::ranges::any_of(sm->current_scope->all_var_symbols(true), [](auto &&x) { return x->memory_info->ast_comptime == nullptr; });
+        std::ranges::any_of(sm->current_scope->all_type_symbols(true), [](auto const &x) { return x->is_generic; }) or
+        std::ranges::any_of(sm->current_scope->all_var_symbols(true), [](auto const &x) { return x->memory_info->ast_comptime == nullptr; });
 
     // Generate the implementation if not a generic scope.
     if (not is_generic_scope) {
@@ -457,5 +392,71 @@ auto spp::asts::SupPrototypeExtensionAst::stage_11_code_gen_2(
 
     return nullptr;
 }
+
+
+auto spp::asts::SupPrototypeExtensionAst::check_cyclic_extension(
+    analyse::scopes::TypeSymbol const &sup_sym,
+    analyse::scopes::Scope &check_scope) const
+    -> void {
+    auto check_cycle = [this, &check_scope](analyse::scopes::Scope const *sc) {
+        auto dummy = analyse::utils::type_utils::GenericInferenceMap();
+        const auto ext = sc->ast->to<SupPrototypeExtensionAst>();
+        return ext and
+            analyse::utils::type_utils::relaxed_symbolic_eq(*ext->name, *super_class, *sc, check_scope, dummy, false) and
+            analyse::utils::type_utils::symbolic_eq(*ext->super_class, *name, *sc, check_scope, false);
+    };
+
+    // Prevent double inheritance by checking if the scopes are already registered the other way around.
+    const auto existing_sup_scopes = sup_sym.scope->sup_scopes()
+        | std::ranges::views::filter(check_cycle)
+        | std::ranges::views::transform([](auto *x) { return std::make_pair(x, x->ast->template to<SupPrototypeExtensionAst>()); })
+        | std::ranges::to<std::vector>();
+
+    raise_if<analyse::errors::SppSuperimpositionCyclicExtensionError>(
+        not existing_sup_scopes.empty(), {&check_scope},
+        ERR_ARGS(*existing_sup_scopes[0].second->super_class, *name));
+}
+
+
+auto spp::asts::SupPrototypeExtensionAst::check_double_extension(
+    analyse::scopes::TypeSymbol const &cls_sym,
+    analyse::scopes::Scope &check_scope) const
+    -> void {
+    // Early return for function-classes.
+    if (cls_sym.name->name[0] == '$') {
+        return;
+    }
+
+    auto check_double = [this, &check_scope](analyse::scopes::Scope const *sc) {
+        auto dummy = analyse::utils::type_utils::GenericInferenceMap();
+        const auto ext = sc->ast->to<SupPrototypeExtensionAst>();
+        return ext and
+            analyse::utils::type_utils::relaxed_symbolic_eq(*ext->name, *name, *sc, check_scope, dummy, false) and
+            analyse::utils::type_utils::symbolic_eq(*ext->super_class, *super_class, *sc, check_scope, false);
+    };
+
+    // Prevent double inheritance by checking if the scopes are already registered the other way around.
+    auto dummy = analyse::utils::type_utils::GenericInferenceMap();
+    auto all_sup_scopes = cls_sym.scope->sup_scopes();
+    const auto existing_sup_scopes = all_sup_scopes
+        | std::ranges::views::filter(check_double)
+        | std::ranges::views::transform([](auto *x) { return std::make_pair(x, x->ast->template to<SupPrototypeExtensionAst>()); })
+        | std::ranges::to<std::vector>();
+
+    raise_if<analyse::errors::SppSuperimpositionDoubleExtensionError>(
+        not existing_sup_scopes.empty(), {&check_scope},
+        ERR_ARGS(*existing_sup_scopes[0].second->super_class, *name));
+}
+
+
+auto spp::asts::SupPrototypeExtensionAst::check_self_extension(
+    analyse::scopes::Scope &check_scope) const
+    -> void {
+    // Check if the superimposition is extending itself.
+    raise_if<analyse::errors::SppSuperimpositionSelfExtensionError>(
+        analyse::utils::type_utils::symbolic_eq(*name, *super_class, check_scope, check_scope), {&check_scope},
+        ERR_ARGS(*name, *super_class));
+}
+
 
 SPP_MOD_END

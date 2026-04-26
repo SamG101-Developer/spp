@@ -1,6 +1,7 @@
 module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
+#include <utility>
 
 module spp.asts.sup_prototype_functions_ast;
 import spp.analyse.errors.semantic_error;
@@ -29,7 +30,7 @@ SPP_MOD_BEGIN
 spp::asts::SupPrototypeFunctionsAst::SupPrototypeFunctionsAst(
     decltype(tok_sup) &&tok_sup,
     decltype(generic_param_group) &&generic_param_group,
-    decltype(name) &&name,
+    decltype(name) name,
     decltype(impl) &&impl) :
     tok_sup(std::move(tok_sup)),
     generic_param_group(std::move(generic_param_group)),
@@ -105,7 +106,7 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_2_gen_top_level_scopes(
 
     // Check every generic parameter is constrained by the type.
     const auto unconstrained = generic_param_group->get_all_params()
-        | genex::views::filter([this](auto &&x) { return not name->contains_generic(*x); })
+        | genex::views::filter([this](auto const &x) { return not name->contains_generic(*x); })
         | genex::to<std::vector>();
     raise_if<analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError>(
         not unconstrained.empty(), {sm->current_scope}, ERR_ARGS(*unconstrained[0]));
@@ -261,8 +262,8 @@ auto spp::asts::SupPrototypeFunctionsAst::stage_11_code_gen_2(
 
     // Check if this block is purely generic.
     const auto is_generic_scope =
-        genex::any_of(sm->current_scope->all_type_symbols(true), [](auto &&x) { return x->is_generic; }) or
-        genex::any_of(sm->current_scope->all_var_symbols(true), [](auto &&x) { return x->memory_info->ast_comptime == nullptr; });
+        genex::any_of(sm->current_scope->all_type_symbols(true), [](auto const &x) { return x->is_generic; }) or
+        genex::any_of(sm->current_scope->all_var_symbols(true), [](auto const &x) { return x->memory_info->ast_comptime == nullptr; });
 
     // Generate the implementation if not a generic scope.
     if (not is_generic_scope) {

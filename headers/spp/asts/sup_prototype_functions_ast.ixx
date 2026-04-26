@@ -61,7 +61,7 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeFunctionsAst final : virtual Ast, Modu
     SupPrototypeFunctionsAst(
         decltype(tok_sup) &&tok_sup,
         decltype(generic_param_group) &&generic_param_group,
-        decltype(name) &&name,
+        decltype(name) name,
         decltype(impl) &&impl);
 
     ~SupPrototypeFunctionsAst() override;

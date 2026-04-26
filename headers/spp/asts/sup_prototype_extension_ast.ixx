@@ -92,20 +92,6 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : virtual Ast, Modu
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto check_cyclic_extension(
-        analyse::scopes::TypeSymbol const &sup_sym,
-        analyse::scopes::Scope &check_scope) const
-        -> void;
-
-    auto check_double_extension(
-        analyse::scopes::TypeSymbol const &cls_sym,
-        analyse::scopes::Scope &check_scope) const
-        -> void;
-
-    auto check_self_extension(
-        analyse::scopes::Scope &check_scope) const
-        -> void;
-
     auto stage_1_pre_process(Ast *ctx) -> void override;
 
     auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *) -> void override;
@@ -126,5 +112,19 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : virtual Ast, Modu
 
     auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm , CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+
+    auto check_cyclic_extension(
+        analyse::scopes::TypeSymbol const &sup_sym,
+        analyse::scopes::Scope &check_scope) const
+        -> void;
+
+    auto check_double_extension(
+        analyse::scopes::TypeSymbol const &cls_sym,
+        analyse::scopes::Scope &check_scope) const
+        -> void;
+
+    auto check_self_extension(
+        analyse::scopes::Scope &check_scope) const
+        -> void;
 };
