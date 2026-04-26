@@ -153,38 +153,29 @@ auto spp::asts::RetStatementAst::stage_11_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    // Generate the return value, if there is one.
-    if (expr != nullptr) {
-        // Temp holder for non-symbolic condition.
-        if (sm->current_scope->get_var_symbol_outermost(*expr).first == nullptr) {
-            meta->save();
-            meta->assignment_target_type = m_ret_type;
-            const auto ret_val = codegen::llvm_materialize(*expr, sm, meta, ctx);
-            const auto llvm_ret_val = ret_val->stage_11_code_gen_2(sm, meta, ctx);
-            ctx->builder.CreateRet(llvm_ret_val);
-            meta->restore();
-        }
-
-        // Otherwise, generate normally.
-        else {
-            const auto llvm_ret_val = expr->stage_11_code_gen_2(sm, meta, ctx);
-            ctx->builder.CreateRet(llvm_ret_val);
-        }
-
+    // Use the return void instruction if there is no return value.
+    if (expr == nullptr) {
+        ctx->builder.CreateRetVoid();
         return nullptr;
     }
 
-    // Otherwise, use the return "void" instruction.
-    ctx->builder.CreateRetVoid();
+    // Temp holder for non-symbolic condition.
+    if (sm->current_scope->get_var_symbol_outermost(*expr).first == nullptr) {
+        meta->save();
+        meta->assignment_target_type = m_ret_type;
+        const auto ret_val = codegen::llvm_materialize(*expr, sm, meta, ctx);
+        const auto llvm_ret_val = ret_val->stage_11_code_gen_2(sm, meta, ctx);
+        ctx->builder.CreateRet(llvm_ret_val);
+        meta->restore();
+    }
+
+    // Otherwise, generate normally.
+    else {
+        const auto llvm_ret_val = expr->stage_11_code_gen_2(sm, meta, ctx);
+        ctx->builder.CreateRet(llvm_ret_val);
+    }
+
     return nullptr;
-}
-
-
-auto spp::asts::RetStatementAst::infer_type(
-    ScopeManager *,
-    CompilerMetaData *)
-    -> std::shared_ptr<TypeAst> {
-    return generate::common_types::void_type(pos_start());
 }
 
 

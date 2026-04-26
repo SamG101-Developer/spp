@@ -16,10 +16,6 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::RetStatementAst final : StatementAst {
-private:
-    std::shared_ptr<TypeAst> m_ret_type;
-
-public:
     /**
      * The @c ret token that starts this statement.
      */
@@ -52,7 +48,8 @@ public:
 
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
-
     SPP_ATTR_NODISCARD auto terminates() const -> bool override;
+
+private:
+    std::shared_ptr<TypeAst> m_ret_type;
 };
