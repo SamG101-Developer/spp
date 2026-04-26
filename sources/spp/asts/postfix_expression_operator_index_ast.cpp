@@ -30,15 +30,15 @@ import genex;
 
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorIndexAst::PostfixExpressionOperatorIndexAst(
-    std::unique_ptr<TokenAst> tok_l,
-    std::unique_ptr<TokenAst> tok_mut,
-    std::unique_ptr<ExpressionAst> expr,
-    std::unique_ptr<TokenAst> tok_r) :
-    m_mapped_func(nullptr),
+    std::unique_ptr<TokenAst> &&tok_l,
+    std::unique_ptr<TokenAst> &&tok_mut,
+    std::unique_ptr<ExpressionAst> &&expr,
+    std::unique_ptr<TokenAst> &&tok_r) :
     tok_l(std::move(tok_l)),
     tok_mut(std::move(tok_mut)),
     expr(std::move(expr)),
-    tok_r(std::move(tok_r)) {
+    tok_r(std::move(tok_r)),
+    m_mapped_func(nullptr) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_l, lex::SppTokenType::TK_LEFT_SQUARE_BRACKET, "[");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_r, lex::SppTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
 }
@@ -97,8 +97,8 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::stage_7_analyse_semantics(
 
     // Ensure the type superimposes the correct indexing variation.
     const auto index_type = tok_mut != nullptr
-                                ? generate::common_types_precompiled::INDEX_MUT
-                                : generate::common_types_precompiled::INDEX_REF;
+        ? generate::common_types_precompiled::INDEX_MUT
+        : generate::common_types_precompiled::INDEX_REF;
 
     const auto type_sym = sm->current_scope->get_type_symbol(lhs_type);
     auto sup_types = std::vector{lhs_type};

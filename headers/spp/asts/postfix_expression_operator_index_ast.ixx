@@ -15,10 +15,6 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorIndexAst final : PostfixExpressionOperatorAst {
-private:
-    std::shared_ptr<PostfixExpressionAst> m_mapped_func;
-
-public:
     /**
      * The @code [@endcode token that indicates the start of the index expression.
      */
@@ -47,10 +43,10 @@ public:
      * @param[in] tok_r The @code ]@endcode token that indicates the end of the index expression.
      */
     PostfixExpressionOperatorIndexAst(
-        std::unique_ptr<TokenAst> tok_l,
-        std::unique_ptr<TokenAst> tok_mut,
-        std::unique_ptr<ExpressionAst> expr,
-        std::unique_ptr<TokenAst> tok_r);
+        std::unique_ptr<TokenAst> &&tok_l,
+        std::unique_ptr<TokenAst> &&tok_mut,
+        std::unique_ptr<ExpressionAst> &&expr,
+        std::unique_ptr<TokenAst> &&tok_r);
 
     /**
      * Default destructor.
@@ -79,4 +75,7 @@ public:
      * @return
      */
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+
+private:
+    std::shared_ptr<PostfixExpressionAst> m_mapped_func;
 };

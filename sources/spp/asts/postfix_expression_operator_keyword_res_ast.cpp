@@ -126,8 +126,8 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::stage_11_code_gen_2(
 
     // Convert the send value, if it exists, to the correct LLVM type.
     const auto llvm_send_value = arg_group != nullptr and not arg_group->args.empty()
-                                     ? arg_group->args[0]->stage_11_code_gen_2(sm, meta, ctx)
-                                     : llvm::UndefValue::get(llvm::Type::getVoidTy(*ctx->context));
+        ? arg_group->args[0]->stage_11_code_gen_2(sm, meta, ctx)
+        : llvm::UndefValue::get(llvm::Type::getVoidTy(*ctx->context));
 
     // Call the resume function with the generator environment and send value.
     ctx->builder.CreateCall(

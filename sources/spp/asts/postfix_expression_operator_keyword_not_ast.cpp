@@ -79,7 +79,9 @@ auto spp::asts::PostfixExpressionOperatorKeywordNotAst::stage_9_comptime_resolut
 
     // Extract the value inside the boolean and invert it.
     const auto p = pos_start();
-    meta->cmp_result = cmp_lhs_bool->is_true() ? BooleanLiteralAst::False(p) : BooleanLiteralAst::True(p);
+    meta->cmp_result = cmp_lhs_bool->is_true()
+        ? BooleanLiteralAst::False(p)
+        : BooleanLiteralAst::True(p);
 }
 
 
