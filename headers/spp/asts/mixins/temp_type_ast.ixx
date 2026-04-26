@@ -15,7 +15,7 @@ namespace spp::asts::mixins {
 
 
 SPP_EXP_CLS struct spp::asts::mixins::TempTypeAst {
-    TempTypeAst() = default;
+    TempTypeAst();
 
     virtual ~TempTypeAst();
 

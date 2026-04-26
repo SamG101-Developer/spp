@@ -11,9 +11,16 @@ import spp.codegen.llvm_ctx;
 
 
 SPP_MOD_BEGIN
+spp::asts::mixins::CompilerStages::CompilerStages() = default;
+
+
+spp::asts::mixins::CompilerStages::~CompilerStages() = default;
+
+
 auto spp::asts::mixins::CompilerStages::stage_1_pre_process(
     Ast *)
     -> void {
+    // Default behaviour: no actions.
 }
 
 
@@ -21,6 +28,7 @@ auto spp::asts::mixins::CompilerStages::stage_2_gen_top_level_scopes(
     ScopeManager *,
     CompilerMetaData *)
     -> void {
+    // Default behaviour: no actions.
 }
 
 
@@ -28,6 +36,7 @@ auto spp::asts::mixins::CompilerStages::stage_3_gen_top_level_aliases(
     ScopeManager *,
     CompilerMetaData *)
     -> void {
+    // Default behaviour: no actions.
 }
 
 
@@ -35,6 +44,7 @@ auto spp::asts::mixins::CompilerStages::stage_4_qualify_types(
     ScopeManager *,
     CompilerMetaData *)
     -> void {
+    // Default behaviour: no actions.
 }
 
 
@@ -42,6 +52,7 @@ auto spp::asts::mixins::CompilerStages::stage_5_load_super_scopes(
     ScopeManager *,
     CompilerMetaData *)
     -> void {
+    // Default behaviour: no actions.
 }
 
 
@@ -49,6 +60,7 @@ auto spp::asts::mixins::CompilerStages::stage_6_pre_analyse_semantics(
     ScopeManager *,
     CompilerMetaData *)
     -> void {
+    // Default behaviour: no actions.
 }
 
 
@@ -56,6 +68,7 @@ auto spp::asts::mixins::CompilerStages::stage_7_analyse_semantics(
     ScopeManager *,
     CompilerMetaData *)
     -> void {
+    // Default behaviour: no actions.
 }
 
 
@@ -63,6 +76,7 @@ auto spp::asts::mixins::CompilerStages::stage_8_check_memory(
     ScopeManager *,
     CompilerMetaData *)
     -> void {
+    // Default behaviour: no actions.
 }
 
 
@@ -70,9 +84,9 @@ auto spp::asts::mixins::CompilerStages::stage_9_comptime_resolution(
     ScopeManager *sm,
     CompilerMetaData *)
     -> void {
+    // Default behaviour: this AST does not support comptime resolution, so throw an error.
     raise<analyse::errors::SppInvalidComptimeOperationError>(
         {sm->current_scope}, ERR_ARGS(dynamic_cast<Ast&>(*this)));
-    std::unreachable();
 }
 
 
@@ -81,6 +95,7 @@ auto spp::asts::mixins::CompilerStages::stage_10_code_gen_1(
     CompilerMetaData *,
     codegen::LLvmCtx *)
     -> llvm::Value* {
+    // Default behaviour: no llvm generation => nullptr value returned,
     return nullptr;
 }
 
@@ -90,6 +105,7 @@ auto spp::asts::mixins::CompilerStages::stage_11_code_gen_2(
     CompilerMetaData *,
     codegen::LLvmCtx *)
     -> llvm::Value* {
+    // Default behaviour: no llvm generation => nullptr value returned,
     return nullptr;
 }
 

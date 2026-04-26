@@ -17,7 +17,7 @@ namespace spp::asts::mixins {
 
 
 SPP_EXP_CLS struct spp::asts::mixins::VisibilityAst {
-    VisibilityPair visibility;
+    VisibilityPair visibility = {utils::Visibility::PRIVATE, nullptr};
 
     VisibilityAst();
 

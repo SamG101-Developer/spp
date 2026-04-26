@@ -37,9 +37,9 @@ SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
     using CompilerMetaData = spp::asts::meta::CompilerMetaData;
 
 public:
-    CompilerStages() = default;
+    CompilerStages();
 
-    virtual ~CompilerStages() = default;
+    virtual ~CompilerStages();
 
     /**
      * The preprocessor stage performs AST mutation and transformation before any analysis or scope generate is done.
