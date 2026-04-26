@@ -17,13 +17,13 @@ private:
     std::string m_scope_str;
 
 public:
+    static auto new_empty() -> std::unique_ptr<FunctionImplementationLoweredAst>;
+
     using FunctionImplementationAst::FunctionImplementationAst;
 
     ~FunctionImplementationLoweredAst() override;
 
-    static auto new_empty() -> std::unique_ptr<FunctionImplementationLoweredAst>;
-
-    auto clone() const -> std::unique_ptr<Ast> override;
+    SPP_ATTR_NODISCARD auto clone() const -> std::unique_ptr<Ast> override;
 
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 

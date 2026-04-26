@@ -14,13 +14,13 @@ import genex;
 
 
 SPP_MOD_BEGIN
-spp::asts::FunctionImplementationLoweredAst::~FunctionImplementationLoweredAst() = default;
-
-
 auto spp::asts::FunctionImplementationLoweredAst::new_empty()
     -> std::unique_ptr<FunctionImplementationLoweredAst> {
     return std::make_unique<FunctionImplementationLoweredAst>();
 }
+
+
+spp::asts::FunctionImplementationLoweredAst::~FunctionImplementationLoweredAst() = default;
 
 
 auto spp::asts::FunctionImplementationLoweredAst::clone() const
@@ -61,7 +61,7 @@ auto spp::asts::FunctionImplementationLoweredAst::stage_11_code_gen_2(
     CompilerMetaData *,
     codegen::LLvmCtx *)
     -> llvm::Value* {
-    // Todo: inject raw llvm somehow.
+    // Todo: inject raw llvm somehow. Maybe read from annotation args.
     return nullptr;
 }
 
