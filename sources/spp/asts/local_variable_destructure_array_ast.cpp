@@ -7,6 +7,7 @@ module spp.asts.local_variable_destructure_array_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.destructure_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.expression_ast;
@@ -76,21 +77,6 @@ spp::asts::LocalVariableDestructureArrayAst::operator std::string() const {
 }
 
 
-auto spp::asts::LocalVariableDestructureArrayAst::extract_name() const
-    -> std::shared_ptr<IdentifierAst> {
-    return std::make_shared<IdentifierAst>(pos_start(), "_UNMATCHABLE");
-}
-
-
-auto spp::asts::LocalVariableDestructureArrayAst::extract_names() const
-    -> std::vector<std::shared_ptr<IdentifierAst>> {
-    return elems
-        | genex::views::transform(&LocalVariableAst::extract_names)
-        | genex::views::join
-        | genex::to<std::vector>();
-}
-
-
 auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
@@ -113,8 +99,10 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
         {sm->current_scope}, ERR_ARGS(*this, *val, *val_type));
 
     // Determine number of elements in the left-hand-side and right-hand-side arrays.
+    // Todo: Test destructuring generic array - how would that work? like Arr[Str, n] => don't allow.
     const auto num_lhs_arr_elems = elems.size();
-    const auto num_rhs_arr_elems = std::stoul(val_type->type_parts().back()->generic_arg_group->args[1]->to<GenericArgumentCompAst>()->val->to<IntegerLiteralAst>()->val->token_data);
+    const auto num_rhs_arr_elems = std::stoul(
+        val_type->type_parts().back()->generic_arg_group->args[1]->to<GenericArgumentCompAst>()->val->to<IntegerLiteralAst>()->val->token_data);
     raise_if<analyse::errors::SppVariableArrayDestructureArraySizeMismatchError>(
         (num_lhs_arr_elems < num_rhs_arr_elems and multi_arg_skips.empty()) or (num_lhs_arr_elems > num_rhs_arr_elems),
         {sm->current_scope}, ERR_ARGS(*this, num_lhs_arr_elems, *val, num_rhs_arr_elems));
@@ -122,13 +110,13 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
     // For a bound ".." destructure, ie "let [a, ..b, c] = t", create an intermediary type.
     auto bound_multi_skip = std::unique_ptr<ArrayLiteralExplicitElementsAst>(nullptr);
     if (not multi_arg_skips.empty() and multi_arg_skips[0]->binding != nullptr) {
-        const auto m = genex::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize;
+        const auto m = genex::position(elems | genex::views::ptr, [&multi_arg_skips](auto const &x) { return x == multi_arg_skips[0]; }) as USize;
         auto new_elems = genex::views::iota(m, m + num_rhs_arr_elems - num_lhs_arr_elems + 1)
             | genex::views::transform([val](const auto i) {
-                auto identifier = std::make_unique<IdentifierAst>(0uz, std::to_string(i));
-                auto field = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(identifier));
-                auto postfix = std::make_unique<PostfixExpressionAst>(ast_clone(val), std::move(field));
-                return postfix;
+                auto id = std::make_unique<IdentifierAst>(0uz, std::to_string(i));
+                auto rm = std::make_unique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(id));
+                auto pf = std::make_unique<PostfixExpressionAst>(ast_clone(val), std::move(rm));
+                return pf;
             })
             | genex::views::cast_smart<ExpressionAst>()
             | genex::to<std::vector>();
@@ -138,13 +126,13 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_7_analyse_semantics(
 
     // Create new indexes.
     const auto skip_index = not multi_arg_skips.empty()
-        ? genex::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize
+        ? genex::position(elems | genex::views::ptr, [&multi_arg_skips](auto const &x) { return x == multi_arg_skips[0]; }) as USize
         : elems.size() - 1;
     auto indexes = genex::views::iota(0uz, skip_index + 1uz) | genex::to<std::vector>();
     indexes.append_range(genex::views::iota(num_lhs_arr_elems, num_rhs_arr_elems) | genex::to<std::vector>());
 
     // Create expanded "let" statements for each part of the destructure.
-    for (auto &&[i, elem] : genex::views::zip(indexes, elems | genex::views::ptr)) {
+    for (auto const &[i, elem] : genex::views::zip(indexes, elems | genex::views::ptr)) {
         const auto cast_elem = elem->to<LocalVariableDestructureSkipMultipleArgumentsAst>();
 
         // Handle bound multi argument skipping, by assigning the skipped elements into a variable.
@@ -182,9 +170,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_8_check_memory(
     CompilerMetaData *meta)
     -> void {
     // Check the memory state of the elements.
-    for (auto &&x : m_new_asts) {
-        x->stage_8_check_memory(sm, meta);
-    }
+    for (auto const &x : m_new_asts) { x->stage_8_check_memory(sm, meta); }
 }
 
 
@@ -193,9 +179,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_9_comptime_resolution(
     CompilerMetaData *meta)
     -> void {
     // Comptime resolve each element.
-    for (auto &&x : m_new_asts) {
-        x->stage_9_comptime_resolution(sm, meta);
-    }
+    for (auto const &x : m_new_asts) { x->stage_9_comptime_resolution(sm, meta); }
 }
 
 
@@ -205,10 +189,22 @@ auto spp::asts::LocalVariableDestructureArrayAst::stage_11_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the "let" statements for each element.
-    for (auto &&ast : m_new_asts) {
-        ast->stage_11_code_gen_2(sm, meta, ctx);
-    }
+    for (auto const &ast : m_new_asts) { ast->stage_11_code_gen_2(sm, meta, ctx); }
     return nullptr;
+}
+
+
+auto spp::asts::LocalVariableDestructureArrayAst::extract_names() const
+    -> std::vector<std::shared_ptr<IdentifierAst>> {
+    // Walk the nested bindings for variable names.
+    return analyse::utils::destructure_utils::get_nested_binding_identifiers(elems);
+}
+
+
+auto spp::asts::LocalVariableDestructureArrayAst::extract_name() const
+    -> std::shared_ptr<IdentifierAst> {
+    // No single identifier for destructured bindings.
+    return analyse::utils::destructure_utils::unmatchable_single_identifier(pos_start());
 }
 
 SPP_MOD_END

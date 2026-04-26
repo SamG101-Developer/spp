@@ -17,10 +17,6 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureArrayAst final : LocalVariableAst {
-private:
-    std::vector<std::unique_ptr<LetStatementInitializedAst>> m_new_asts;
-
-public:
     /**
      * The @code [@endcode token that indicates the start of an array destructuring pattern.
      */
@@ -52,10 +48,6 @@ public:
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto extract_name() const -> std::shared_ptr<IdentifierAst> override;
-
-    auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>> override;
-
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -63,4 +55,11 @@ public:
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+
+    SPP_ATTR_NODISCARD auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>> override;
+
+    SPP_ATTR_NODISCARD auto extract_name() const -> std::shared_ptr<IdentifierAst> override;
+
+private:
+    std::vector<std::unique_ptr<LetStatementInitializedAst>> m_new_asts;
 };

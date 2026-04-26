@@ -7,6 +7,7 @@ module spp.asts.local_variable_destructure_tuple_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.destructure_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.expression_ast;
 import spp.asts.generic_argument_group_ast;
@@ -74,21 +75,6 @@ spp::asts::LocalVariableDestructureTupleAst::operator std::string() const {
 }
 
 
-auto spp::asts::LocalVariableDestructureTupleAst::extract_name() const
-    -> std::shared_ptr<IdentifierAst> {
-    return std::make_shared<IdentifierAst>(pos_start(), "_UNMATCHABLE");
-}
-
-
-auto spp::asts::LocalVariableDestructureTupleAst::extract_names() const
-    -> std::vector<std::shared_ptr<IdentifierAst>> {
-    return elems
-        | genex::views::transform(&LocalVariableAst::extract_names)
-        | genex::views::join
-        | genex::to<std::vector>();
-}
-
-
 auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
@@ -111,6 +97,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
         {sm->current_scope}, ERR_ARGS(*this, *val, *val_type));
 
     // Determine number of elements in the left-hand-side and right-hand-side tuples.
+    // Todo: Test destructuring generic array - how would that work? like Arr[Str, n] => don't allow.
     const auto num_lhs_arr_elems = elems.size();
     const auto num_rhs_arr_elems = val->infer_type(sm, meta)->type_parts().back()->generic_arg_group->args.size();
     raise_if<analyse::errors::SppVariableTupleDestructureTupleSizeMismatchError>(
@@ -136,8 +123,8 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_7_analyse_semantics(
 
     // Create new indexes.
     const auto skip_index = not multi_arg_skips.empty()
-                                ? genex::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize
-                                : elems.size() - 1;
+        ? genex::position(elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize
+        : elems.size() - 1;
     auto indexes = genex::views::iota(0uz, skip_index + 1uz) | genex::to<std::vector>();
     indexes.append_range(genex::views::iota(num_lhs_arr_elems, num_rhs_arr_elems) | genex::to<std::vector>());
 
@@ -180,9 +167,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_8_check_memory(
     CompilerMetaData *meta)
     -> void {
     // Check the memory state of the elements.
-    for (auto &&ast : m_new_asts) {
-        ast->stage_8_check_memory(sm, meta);
-    }
+    for (auto &&ast : m_new_asts) { ast->stage_8_check_memory(sm, meta); }
 }
 
 
@@ -191,9 +176,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_9_comptime_resolution(
     CompilerMetaData *meta)
     -> void {
     // Comptime resolve each element.
-    for (auto &&x : m_new_asts) {
-        x->stage_9_comptime_resolution(sm, meta);
-    }
+    for (auto &&x : m_new_asts) { x->stage_9_comptime_resolution(sm, meta); }
 }
 
 
@@ -203,10 +186,22 @@ auto spp::asts::LocalVariableDestructureTupleAst::stage_11_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the "let" statements for each element.
-    for (auto &&ast : m_new_asts) {
-        ast->stage_11_code_gen_2(sm, meta, ctx);
-    }
+    for (auto &&ast : m_new_asts) { ast->stage_11_code_gen_2(sm, meta, ctx); }
     return nullptr;
+}
+
+
+auto spp::asts::LocalVariableDestructureTupleAst::extract_names() const
+    -> std::vector<std::shared_ptr<IdentifierAst>> {
+    // Walk the nested bindings for variable names.
+    return analyse::utils::destructure_utils::get_nested_binding_identifiers(elems);
+}
+
+
+auto spp::asts::LocalVariableDestructureTupleAst::extract_name() const
+    -> std::shared_ptr<IdentifierAst> {
+    // No single identifier for destructured bindings.
+    return analyse::utils::destructure_utils::unmatchable_single_identifier(pos_start());
 }
 
 SPP_MOD_END

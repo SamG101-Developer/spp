@@ -4,6 +4,7 @@ module;
 module spp.asts.local_variable_ast;
 import spp.asts.let_statement_initialized_ast;
 
+
 SPP_MOD_BEGIN
 spp::asts::LocalVariableAst::LocalVariableAst() :
     m_from_case_pattern(false) {

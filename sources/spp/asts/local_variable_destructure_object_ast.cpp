@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.destructure_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.class_implementation_ast;
 import spp.asts.class_prototype_ast;
@@ -77,21 +78,6 @@ spp::asts::LocalVariableDestructureObjectAst::operator std::string() const {
     SPP_STRING_EXTEND(elems, ", ");
     SPP_STRING_APPEND(tok_r);
     SPP_STRING_END;
-}
-
-
-auto spp::asts::LocalVariableDestructureObjectAst::extract_name() const
-    -> std::shared_ptr<IdentifierAst> {
-    return std::make_shared<IdentifierAst>(pos_start(), "_UNMATCHABLE");
-}
-
-
-auto spp::asts::LocalVariableDestructureObjectAst::extract_names() const
-    -> std::vector<std::shared_ptr<IdentifierAst>> {
-    return elems
-        | genex::views::transform(&LocalVariableAst::extract_names)
-        | genex::views::join
-        | genex::to<std::vector>();
 }
 
 
@@ -186,9 +172,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_8_check_memory(
     CompilerMetaData *meta)
     -> void {
     // Check the memory state of the elements.
-    for (auto &&x : m_new_asts) {
-        x->stage_8_check_memory(sm, meta);
-    }
+    for (auto const &x : m_new_asts) { x->stage_8_check_memory(sm, meta); }
 }
 
 
@@ -197,9 +181,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_9_comptime_resolution(
     CompilerMetaData *meta)
     -> void {
     // Comptime resolve each element.
-    for (auto &&x : m_new_asts) {
-        x->stage_9_comptime_resolution(sm, meta);
-    }
+    for (auto const &x : m_new_asts) { x->stage_9_comptime_resolution(sm, meta); }
 }
 
 
@@ -209,10 +191,23 @@ auto spp::asts::LocalVariableDestructureObjectAst::stage_11_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the "let" statements for each element.
-    for (auto &&ast : m_new_asts) {
-        ast->stage_11_code_gen_2(sm, meta, ctx);
-    }
+    for (auto const &ast : m_new_asts) { ast->stage_11_code_gen_2(sm, meta, ctx); }
     return nullptr;
 }
+
+
+auto spp::asts::LocalVariableDestructureObjectAst::extract_names() const
+    -> std::vector<std::shared_ptr<IdentifierAst>> {
+    // Walk the nested bindings for variable names.
+    return analyse::utils::destructure_utils::get_nested_binding_identifiers(elems);
+}
+
+
+auto spp::asts::LocalVariableDestructureObjectAst::extract_name() const
+    -> std::shared_ptr<IdentifierAst> {
+    // No single identifier for destructured bindings.
+    return analyse::utils::destructure_utils::unmatchable_single_identifier(pos_start());
+}
+
 
 SPP_MOD_END

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
+import spp.analyse.utils.destructure_utils;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.token_ast;
@@ -51,15 +52,19 @@ spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::operator std::strin
 }
 
 
-auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::extract_name() const
-    -> std::shared_ptr<IdentifierAst> {
-    return std::make_shared<IdentifierAst>(pos_start(), "_UNMATCHABLE");
+auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::extract_names() const
+    -> std::vector<std::shared_ptr<IdentifierAst>> {
+    // If there is a bidning, use it, otherwise there are no names for this.
+    return binding != nullptr ? binding->extract_names() : std::vector<std::shared_ptr<IdentifierAst>>();
 }
 
 
-auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::extract_names() const
-    -> std::vector<std::shared_ptr<IdentifierAst>> {
-    return binding != nullptr ? binding->extract_names() : std::vector<std::shared_ptr<IdentifierAst>>();
+auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::extract_name() const
+    -> std::shared_ptr<IdentifierAst> {
+    // If there is a binding, use it, otherwise this is unmatchable.
+    return binding != nullptr
+        ? binding->extract_name()
+        : analyse::utils::destructure_utils::unmatchable_single_identifier(pos_start());
 }
 
 SPP_MOD_END

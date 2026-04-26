@@ -42,7 +42,7 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst f
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto extract_name() const -> std::shared_ptr<IdentifierAst> override;
+    SPP_ATTR_NODISCARD auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>> override;
 
-    auto extract_names() const -> std::vector<std::shared_ptr<IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto extract_name() const -> std::shared_ptr<IdentifierAst> override;
 };

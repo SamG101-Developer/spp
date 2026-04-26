@@ -55,6 +55,7 @@ spp::asts::LocalVariableDestructureAttributeBindingAst::operator std::string() c
 
 auto spp::asts::LocalVariableDestructureAttributeBindingAst::extract_name() const
     -> std::shared_ptr<IdentifierAst> {
+    // Returnt the direct name of this attribute binding => this is the attribute being bound.
     return name;
 }
 

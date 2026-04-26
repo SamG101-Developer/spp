@@ -12,10 +12,6 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::LocalVariableAst : virtual Ast {
-protected:
-    bool m_from_case_pattern;
-
-public:
     LocalVariableAst();
 
     ~LocalVariableAst() override;
@@ -26,5 +22,9 @@ public:
     SPP_ATTR_NODISCARD virtual auto extract_name() const
         -> std::shared_ptr<IdentifierAst>;
 
-    auto mark_from_case_pattern() -> void;
+    auto mark_from_case_pattern()
+        -> void;
+
+protected:
+    bool m_from_case_pattern;
 };

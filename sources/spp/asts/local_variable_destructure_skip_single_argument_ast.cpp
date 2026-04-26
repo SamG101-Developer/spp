@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.local_variable_destructure_skip_single_argument_ast;
+import spp.analyse.utils.destructure_utils;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
@@ -42,15 +43,17 @@ spp::asts::LocalVariableDestructureSkipSingleArgumentAst::operator std::string()
 }
 
 
-auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::extract_name() const
-    -> std::shared_ptr<IdentifierAst> {
-    return std::make_shared<IdentifierAst>(pos_start(), "_UNMATCHABLE");
+auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::extract_names() const
+    -> std::vector<std::shared_ptr<IdentifierAst>> {
+    // There are no names for this "_" single skip.
+    return {};
 }
 
 
-auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::extract_names() const
-    -> std::vector<std::shared_ptr<IdentifierAst>> {
-    return {};
+auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::extract_name() const
+    -> std::shared_ptr<IdentifierAst> {
+    // There is no single name for this "_" single skip.
+    return analyse::utils::destructure_utils::unmatchable_single_identifier(pos_start());
 }
 
 SPP_MOD_END

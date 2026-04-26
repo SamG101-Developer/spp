@@ -64,18 +64,6 @@ spp::asts::LocalVariableSingleIdentifierAst::operator std::string() const {
 }
 
 
-auto spp::asts::LocalVariableSingleIdentifierAst::extract_name() const
-    -> std::shared_ptr<IdentifierAst> {
-    return name;
-}
-
-
-auto spp::asts::LocalVariableSingleIdentifierAst::extract_names() const
-    -> std::vector<std::shared_ptr<IdentifierAst>> {
-    return {name};
-}
-
-
 auto spp::asts::LocalVariableSingleIdentifierAst::stage_7_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
@@ -149,7 +137,7 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_9_comptime_resolution(
     meta->assignment_target = alias != nullptr ? alias->name : name;
     meta->let_stmt_value->stage_9_comptime_resolution(sm, meta);
 
-    const auto var_sym =sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name);
+    const auto var_sym = sm->current_scope->get_var_symbol(alias != nullptr ? alias->name : name);
     var_sym->comptime_value = std::move(meta->cmp_result);
     meta->restore();
 }
@@ -186,6 +174,20 @@ auto spp::asts::LocalVariableSingleIdentifierAst::stage_11_code_gen_2(
 
     // Alloca already added; return nullptr.
     return nullptr;
+}
+
+
+auto spp::asts::LocalVariableSingleIdentifierAst::extract_names() const
+    -> std::vector<std::shared_ptr<IdentifierAst>> {
+    // Return the single name as a vector that can get appended to from nesting.
+    return {name};
+}
+
+
+auto spp::asts::LocalVariableSingleIdentifierAst::extract_name() const
+    -> std::shared_ptr<IdentifierAst> {
+    // Return the single name (identifier) for matching capability.
+    return name;
 }
 
 SPP_MOD_END
