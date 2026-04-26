@@ -56,7 +56,8 @@ spp::asts::TypeTupleShorthandAst::operator std::string() const {
 
 auto spp::asts::TypeTupleShorthandAst::convert()
     -> std::unique_ptr<TypeAst> {
-    const auto type = generate::common_types::tuple_type(pos_start(), std::move(element_types));
+    const auto type = generate::common_types::tuple_type(
+        pos_start(), std::move(element_types));
     return ast_clone(type);
 }
 
