@@ -28,7 +28,8 @@ spp::asts::UseStatementVariableAst::UseStatementVariableAst(
     decltype(old_var) old_var) :
     annotations(std::move(annotations)),
     tok_use(std::move(tok_use)),
-    old_var(std::move(old_var)) {
+    old_var(std::move(old_var)),
+    m_conversion(nullptr) {
 }
 
 
@@ -131,10 +132,6 @@ auto spp::asts::UseStatementVariableAst::stage_3_gen_top_level_aliases(
         raise<analyse::errors::SppIdentifierUnknownError>(
             {sm->current_scope}, ERR_ARGS(*this, "constant variable", closest_match));
     }
-
-    // if (old_ns_sym != nullptr) {
-    //     throw std::runtime_error("TEST");
-    // }
 }
 
 

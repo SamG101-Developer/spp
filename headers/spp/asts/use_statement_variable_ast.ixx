@@ -26,21 +26,6 @@ namespace spp::asts {
  * without the associated namespace. Internal symbol mapping for variables or namespaces are used.
  */
 SPP_EXP_CLS struct spp::asts::UseStatementVariableAst final : StatementAst, ModuleMemberAst {
-private:
-    /**
-     * The @c m_generated flag indicates whether this use statement has been generated yet. This is required, because
-     * @c use statements can be defined at the top level (module/sup) or inside function bodies. If defined inside a
-     * function body, all steps of the analysis must be run together, otherwise they are ran in their correct layer.
-     */
-    bool m_generated = false;
-
-    /**
-     * The @c m_conversion is the type statement that is generated from this use statement. It is used to analyse new
-     * types in a uniform way with @code type Str = std::Str@endcode.
-     */
-    std::unique_ptr<CmpStatementAst> m_conversion;
-
-public:
     /**
      * The list of annotations that are applied to this use statement. Typically, access modifiers in this context.
      */
@@ -91,4 +76,18 @@ public:
     auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+
+private:
+    /**
+     * The @c m_generated flag indicates whether this use statement has been generated yet. This is required, because
+     * @c use statements can be defined at the top level (module/sup) or inside function bodies. If defined inside a
+     * function body, all steps of the analysis must be run together, otherwise they are ran in their correct layer.
+     */
+    bool m_generated = false;
+
+    /**
+     * The @c m_conversion is the type statement that is generated from this use statement. It is used to analyse new
+     * types in a uniform way with @code type Str = std::Str@endcode.
+     */
+    std::unique_ptr<CmpStatementAst> m_conversion;
 };

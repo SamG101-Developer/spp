@@ -16,10 +16,10 @@ spp::asts::UseStatementAst::UseStatementAst(
     decltype(annotations) &&annotations,
     decltype(tok_use) &&tok_use,
     decltype(old_type) old_type) :
-    m_conversion(nullptr),
     annotations(std::move(annotations)),
     tok_use(std::move(tok_use)),
-    old_type(std::move(old_type)) {
+    old_type(std::move(old_type)),
+    m_conversion(nullptr) {
 }
 
 
@@ -84,7 +84,9 @@ auto spp::asts::UseStatementAst::stage_2_gen_top_level_scopes(
     }
 
     // Create the type statement AST conversion.
-    const auto new_type = std::dynamic_pointer_cast<TypeIdentifierAst>(old_type->type_parts().back()->without_generics());
+    const auto new_type = std::dynamic_pointer_cast<TypeIdentifierAst>(
+        old_type->type_parts().back()->without_generics());
+
     m_conversion = std::make_unique<TypeStatementAst>(
         std::move(annotations), nullptr, new_type, nullptr, nullptr, ast_clone(old_type));
     m_conversion->mark_from_use_statement();
