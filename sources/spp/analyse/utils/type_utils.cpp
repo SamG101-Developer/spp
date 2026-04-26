@@ -582,7 +582,7 @@ auto spp::analyse::utils::type_utils::get_fwd_types(
     // No error raised here; just return the pair of types (nullptr if not found).
     auto fwd_ref_type = fwd_ref_type_candidates.empty() ? nullptr : fwd_ref_type_candidates[0];
     auto fwd_mut_type = fwd_mut_type_candidates.empty() ? nullptr : fwd_mut_type_candidates[0];
-    return std::pair{fwd_ref_type, fwd_mut_type};
+    return std::make_pair(fwd_ref_type, fwd_mut_type);
 }
 
 
@@ -1093,10 +1093,10 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
     const auto NO_PARAMS = asts::GenericParameterGroupAst::new_empty();
     const auto extract_params = [&NO_PARAMS](scopes::TypeSymbol const &ts) {
         return ts.alias_stmt
-                   ? ts.alias_stmt->generic_param_group.get()
-                   : ts.type
-                   ? ts.type->generic_param_group.get()
-                   : NO_PARAMS.get();
+            ? ts.alias_stmt->generic_param_group.get()
+            : ts.type
+            ? ts.type->generic_param_group.get()
+            : NO_PARAMS.get();
     };
 
     const auto filter_params = [](asts::GenericParameterGroupAst const &pg, asts::GenericArgumentGroupAst const &ag) {
@@ -1166,7 +1166,7 @@ auto spp::analyse::utils::type_utils::recursive_alias_search(
     func_utils::name_gn_args(
         *old_type->type_parts().back()->generic_arg_group, *extract_params(*old_sym), *old_type, *sm, *meta, false);
     old_type = old_type->substitute_generics(generic_args->get_all_args());
-    return {old_type, final_generic_params, tracking_scope};
+    return std::make_tuple(old_type, final_generic_params, tracking_scope);
 }
 
 

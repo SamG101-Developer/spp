@@ -93,11 +93,11 @@ auto spp::analyse::utils::func_utils::get_function_owner_type_and_function_name(
     // Define some expression casts that are used commonly.
     const auto postfix_lhs = lhs.to<asts::PostfixExpressionAst>();
     const auto runtime_field = postfix_lhs
-                                   ? postfix_lhs->op->to<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>()
-                                   : nullptr;
+        ? postfix_lhs->op->to<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>()
+        : nullptr;
     const auto static_field = postfix_lhs
-                                  ? postfix_lhs->op->to<asts::PostfixExpressionOperatorStaticMemberAccessAst>()
-                                  : nullptr;
+        ? postfix_lhs->op->to<asts::PostfixExpressionOperatorStaticMemberAccessAst>()
+        : nullptr;
 
     // Specific casts.
     const auto postfix_lhs_as_type = postfix_lhs ? postfix_lhs->lhs->to<asts::TypeAst>() : nullptr;

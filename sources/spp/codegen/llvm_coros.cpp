@@ -79,7 +79,7 @@ auto spp::codegen::create_coro_env_type(
 
     const auto coro_env_type = llvm::StructType::create(*ctx->context, std::move(fields), "gen.env");
     coro->llvm_coro_env_type = coro_env_type;
-    return {coro_env_type, llvm_arg_struct_type};
+    return std::make_pair(coro_env_type, llvm_arg_struct_type);
 }
 
 
@@ -145,7 +145,7 @@ auto spp::codegen::create_coro_gen_ctor(
 
     // Return the created coroutine environment.
     ctx->builder.CreateRet(load_coro_env);
-    return {llvm_func, coro_env_ptr, coro_env_args_type};
+    return std::make_tuple(llvm_func, coro_env_ptr, coro_env_args_type);
 }
 
 

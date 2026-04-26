@@ -648,7 +648,7 @@ auto spp::asts::FunctionPrototypeAst::m_is_pure_generic(
 
     // Check if any of the types failed to convert.
     const auto is_generic = llvm_ret_type != nullptr and genex::all_of(llvm_param_types, [](auto const &x) { return x != nullptr; });
-    return {not is_generic, llvm_ret_type, llvm_param_types};
+    return std::make_tuple(not is_generic, llvm_ret_type, llvm_param_types);
 }
 
 SPP_MOD_END
