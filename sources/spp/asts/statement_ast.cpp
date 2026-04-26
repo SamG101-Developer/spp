@@ -7,8 +7,6 @@ import spp.asts.generate.common_types;
 
 SPP_MOD_BEGIN
 spp::asts::StatementAst::StatementAst() = default;
-
-
 spp::asts::StatementAst::~StatementAst() = default;
 
 
