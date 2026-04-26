@@ -102,13 +102,13 @@ auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
 
     // Determine the generic inference source and target values.
     auto generic_infer_source = arg_group->args
-        | genex::views::transform([sm, meta](auto &&x) { return std::make_pair(x->name, x->val->infer_type(sm, meta)); })
+        | genex::views::transform([sm, meta](auto const &x) { return std::make_pair(x->name, x->val->infer_type(sm, meta)); })
         | genex::to<std::vector>();
 
     auto generic_infer_target = base_cls_sym->type->impl->members
         | genex::views::ptr
         | genex::views::cast_dynamic<ClassAttributeAst*>()
-        | genex::views::transform([base_cls_sym](auto &&x) { return std::make_pair(x->name, base_cls_sym->scope->get_type_symbol(x->type)->fq_name()); })
+        | genex::views::transform([base_cls_sym](auto const &x) { return std::make_pair(x->name, base_cls_sym->scope->get_type_symbol(x->type)->fq_name()); })
         | genex::to<std::vector>();
 
     // Analyse the type and object argument group. TODO: might still need this

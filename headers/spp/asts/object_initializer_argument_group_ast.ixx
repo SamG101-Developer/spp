@@ -37,6 +37,8 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentGroupAst final : virtual 
      */
     std::unique_ptr<TokenAst> tok_r;
 
+    static auto new_empty() -> std::unique_ptr<ObjectInitializerArgumentGroupAst>;
+
     /**
      * Construct the ObjectInitializerArgumentGroupAst with the arguments matching the members.
      * @param tok_l The token that represents the left parenthesis @code (@endcode in the object initializer argument
@@ -54,7 +56,11 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentGroupAst final : virtual 
 
     SPP_AST_KEY_FUNCTIONS;
 
-    static auto new_empty() -> std::unique_ptr<ObjectInitializerArgumentGroupAst>;
+    auto stage_6_pre_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     auto get_all_args() -> std::vector<ObjectInitializerArgumentAst*>;
 
@@ -65,10 +71,4 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentGroupAst final : virtual 
     auto get_shorthand_args() -> std::vector<ObjectInitializerArgumentShorthandAst*>;
 
     auto get_keyword_args() -> std::vector<ObjectInitializerArgumentKeywordAst*>;
-
-    auto stage_6_pre_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };

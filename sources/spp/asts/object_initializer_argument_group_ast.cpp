@@ -25,6 +25,14 @@ import genex;
 
 
 SPP_MOD_BEGIN
+auto spp::asts::ObjectInitializerArgumentGroupAst::new_empty()
+    -> std::unique_ptr<ObjectInitializerArgumentGroupAst> {
+    // Factory for an empty object initializer group.
+    return std::make_unique<ObjectInitializerArgumentGroupAst>(
+        nullptr, decltype(args)(), nullptr);
+}
+
+
 spp::asts::ObjectInitializerArgumentGroupAst::ObjectInitializerArgumentGroupAst(
     decltype(tok_l) &&tok_l,
     decltype(args) &&args,
@@ -70,64 +78,6 @@ spp::asts::ObjectInitializerArgumentGroupAst::operator std::string() const {
 }
 
 
-auto spp::asts::ObjectInitializerArgumentGroupAst::new_empty()
-    -> std::unique_ptr<ObjectInitializerArgumentGroupAst> {
-    return std::make_unique<ObjectInitializerArgumentGroupAst>(
-        nullptr, decltype(args)(), nullptr);
-}
-
-
-auto spp::asts::ObjectInitializerArgumentGroupAst::get_all_args()
-    -> std::vector<ObjectInitializerArgumentAst*> {
-    // Get all arguments in the group.
-    return args
-        | genex::views::ptr
-        | genex::to<std::vector>();
-}
-
-
-auto spp::asts::ObjectInitializerArgumentGroupAst::get_autofill_arg()
-    -> ObjectInitializerArgumentShorthandAst* {
-    // Get the first shorthand argument tagged with the ".." token.
-    const auto filtered = args
-        | genex::views::ptr
-        | genex::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>()
-        | genex::views::filter([](auto &&x) { return x != nullptr and x->tok_ellipsis != nullptr; })
-        | genex::to<std::vector>();
-    return filtered.empty() ? nullptr : filtered[0];
-}
-
-
-auto spp::asts::ObjectInitializerArgumentGroupAst::get_non_autofill_args()
-    -> std::vector<ObjectInitializerArgumentAst*> {
-    // Get the first shorthand argument tagged with the ".." token.
-    return args
-        | genex::views::ptr
-        | genex::views::remove(get_autofill_arg())
-        | genex::to<std::vector>();
-}
-
-
-auto spp::asts::ObjectInitializerArgumentGroupAst::get_shorthand_args()
-    -> std::vector<ObjectInitializerArgumentShorthandAst*> {
-    // Get all shorthand arguments tagged with the ".." token.
-    return args
-        | genex::views::ptr
-        | genex::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>()
-        | genex::to<std::vector>();
-}
-
-
-auto spp::asts::ObjectInitializerArgumentGroupAst::get_keyword_args()
-    -> std::vector<ObjectInitializerArgumentKeywordAst*> {
-    // Get all keyword arguments.
-    return args
-        | genex::views::ptr
-        | genex::views::cast_dynamic<ObjectInitializerArgumentKeywordAst*>()
-        | genex::to<std::vector>();
-}
-
-
 auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
@@ -135,7 +85,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics
     // Ensure there are no duplicate member names. This needs to be done before semantic analysis as other ASTs might
     // try reading a duplicate attribute before an error is raised.
     const auto duplicates = get_keyword_args()
-        | genex::views::transform([](auto &&x) { return x->name; })
+        | genex::views::transform([](auto const &x) { return x->name; })
         | genex::to<std::vector>()
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
@@ -148,14 +98,14 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_6_pre_analyse_semantics
     const auto all_attrs = analyse::utils::type_utils::get_all_attrs(*meta->object_init_type, sm);
 
     // Analyse the arguments in the group.
-    for (auto &&arg : args) {
+    for (auto const &arg : args) {
         // Return type overload helper.
         meta->save();
         if (const auto kw_arg = arg->to<ObjectInitializerArgumentKeywordAst>(); kw_arg != nullptr) {
             SPP_RETURN_TYPE_OVERLOAD_HELPER(arg->val.get()) {
                 // Multiple attributes with same name (via base classes) -> can't infer the one to use.
                 auto attrs = all_attrs
-                    | genex::views::filter([kw_arg](auto &&x) { return *x.first == *kw_arg->name; })
+                    | genex::views::filter([kw_arg](auto const &x) { return *x.first == *kw_arg->name; })
                     | genex::to<std::vector>();
                 if (attrs.size() > 1) { continue; }
 
@@ -180,12 +130,12 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
     const auto cls_sym = sm->current_scope->get_type_symbol(meta->object_init_type);
     const auto all_attrs = analyse::utils::type_utils::get_all_attrs(*meta->object_init_type, sm);
     const auto all_attr_names = all_attrs
-        | genex::views::transform([](auto &&x) { return x.first; })
+        | genex::views::transform([](auto const &x) { return x.first; })
         | genex::to<std::vector>();
 
     // Check there is at most 1 autofill argument.
     const auto af_args = get_shorthand_args()
-        | genex::views::filter([](auto &&x) { return x->tok_ellipsis != nullptr; })
+        | genex::views::filter([](auto const &x) { return x->tok_ellipsis != nullptr; })
         | genex::to<std::vector>();
 
     raise_if<analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError>(
@@ -194,7 +144,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
 
     // Check there are no invalidly named arguments.
     auto arg_names = get_non_autofill_args()
-        | genex::views::transform([](auto &&x) { return x->name.get(); })
+        | genex::views::transform([](auto const &x) { return x->name.get(); })
         | genex::to<std::vector>();
 
     const auto invalid_args = arg_names
@@ -206,7 +156,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_7_analyse_semantics(
         ERR_ARGS(*meta->object_init_type, "attribute", *invalid_args[0], "object initializer argument"));
 
     // Type check the non-autofill arguments against the class attributes.
-    for (auto &&arg : get_non_autofill_args()) {
+    for (auto const &arg : get_non_autofill_args()) {
         auto matching_attrs = all_attrs
             | genex::views::filter([&arg](auto const &x) { return *x.first == *arg->name; })
             | genex::to<std::vector>();
@@ -243,9 +193,58 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::stage_8_check_memory(
     CompilerMetaData *meta)
     -> void {
     // Check the memory of the arguments.
-    for (auto &&arg : args) {
-        arg->stage_8_check_memory(sm, meta);
-    }
+    for (auto const &arg : args) { arg->stage_8_check_memory(sm, meta); }
+}
+
+
+auto spp::asts::ObjectInitializerArgumentGroupAst::get_all_args()
+    -> std::vector<ObjectInitializerArgumentAst*> {
+    // Get all arguments in the group.
+    return args
+        | genex::views::ptr
+        | genex::to<std::vector>();
+}
+
+
+auto spp::asts::ObjectInitializerArgumentGroupAst::get_autofill_arg()
+    -> ObjectInitializerArgumentShorthandAst* {
+    // Get the first shorthand argument tagged with the ".." token.
+    const auto filtered = args
+        | genex::views::ptr
+        | genex::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>()
+        | genex::views::filter([](auto const &x) { return x != nullptr and x->tok_ellipsis != nullptr; })
+        | genex::to<std::vector>();
+    return filtered.empty() ? nullptr : filtered[0];
+}
+
+
+auto spp::asts::ObjectInitializerArgumentGroupAst::get_non_autofill_args()
+    -> std::vector<ObjectInitializerArgumentAst*> {
+    // Get the first shorthand argument tagged with the ".." token.
+    return args
+        | genex::views::ptr
+        | genex::views::remove(get_autofill_arg())
+        | genex::to<std::vector>();
+}
+
+
+auto spp::asts::ObjectInitializerArgumentGroupAst::get_shorthand_args()
+    -> std::vector<ObjectInitializerArgumentShorthandAst*> {
+    // Get all shorthand arguments tagged with the ".." token.
+    return args
+        | genex::views::ptr
+        | genex::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>()
+        | genex::to<std::vector>();
+}
+
+
+auto spp::asts::ObjectInitializerArgumentGroupAst::get_keyword_args()
+    -> std::vector<ObjectInitializerArgumentKeywordAst*> {
+    // Get all keyword arguments.
+    return args
+        | genex::views::ptr
+        | genex::views::cast_dynamic<ObjectInitializerArgumentKeywordAst*>()
+        | genex::to<std::vector>();
 }
 
 SPP_MOD_END

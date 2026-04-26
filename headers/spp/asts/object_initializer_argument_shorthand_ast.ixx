@@ -24,6 +24,16 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentShorthandAst final : Obje
     std::unique_ptr<TokenAst> tok_ellipsis;
 
     /**
+     * Factory function to create a shorthand argument, with the provided expression, that is used for "autofill", ie
+     * the "..arg" argument => fill all missing field from this object into the new initializer.
+     * @param val The expression to move fields off of.
+     * @return The "..arg" form.
+     */
+    static auto create_autofill(
+        std::unique_ptr<ExpressionAst> &&val)
+        -> std::unique_ptr<ObjectInitializerArgumentShorthandAst>;
+
+    /**
      * Construct the ObjectInitializerArgumentShorthandAst with the arguments matching the members.
      * @param tok_ellipsis The optional @c .. token that indicates an "else" argument.
      * @param val The expression that is being passed as the argument to the object initializer.
@@ -34,10 +44,6 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentShorthandAst final : Obje
     explicit ObjectInitializerArgumentShorthandAst(
         std::unique_ptr<TokenAst> tok_ellipsis,
         std::unique_ptr<ExpressionAst> &&val);
-
-    static auto create_autofill(
-        std::unique_ptr<ExpressionAst> &&val)
-        -> std::unique_ptr<ObjectInitializerArgumentShorthandAst>;
 
     ~ObjectInitializerArgumentShorthandAst() override;
 

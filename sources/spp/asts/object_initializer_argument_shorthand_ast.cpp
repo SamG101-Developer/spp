@@ -14,20 +14,21 @@ import spp.lex.tokens;
 
 
 SPP_MOD_BEGIN
+auto spp::asts::ObjectInitializerArgumentShorthandAst::create_autofill(
+    std::unique_ptr<ExpressionAst> &&val)
+    -> std::unique_ptr<ObjectInitializerArgumentShorthandAst> {
+    // Wrap the constructor with some fixed arguments.
+    return std::make_unique<ObjectInitializerArgumentShorthandAst>(
+        TokenAst::new_empty(lex::SppTokenType::TK_DOUBLE_DOT, ".."),
+        std::move(val));
+}
+
+
 spp::asts::ObjectInitializerArgumentShorthandAst::ObjectInitializerArgumentShorthandAst(
     std::unique_ptr<TokenAst> tok_ellipsis,
     std::unique_ptr<ExpressionAst> &&val) :
     ObjectInitializerArgumentAst(ast_clone(val->to<IdentifierAst>()), std::move(val)),
     tok_ellipsis(std::move(tok_ellipsis)) {
-}
-
-
-auto spp::asts::ObjectInitializerArgumentShorthandAst::create_autofill(
-    std::unique_ptr<ExpressionAst> &&val)
-    -> std::unique_ptr<ObjectInitializerArgumentShorthandAst> {
-    return std::make_unique<ObjectInitializerArgumentShorthandAst>(
-        TokenAst::new_empty(lex::SppTokenType::TK_DOUBLE_DOT, ".."),
-        std::move(val));
 }
 
 
