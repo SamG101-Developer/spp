@@ -150,7 +150,8 @@ auto spp::asts::GenWithExpressionAst::stage_11_code_gen_2(
     // Build the "gen" expression for the individual yielding.
     auto gen_value = std::make_unique<IdentifierAst>(0, "_coro_temp");
     auto gen_expression = std::make_unique<GenExpressionAst>(nullptr, nullptr, std::move(gen_value));
-    auto loop_body = std::make_unique<decltype(LoopIterableExpressionAst::body)::element_type>(nullptr, std::vector<std::unique_ptr<StatementAst>>(), nullptr);
+    auto loop_body = std::make_unique<decltype(LoopIterableExpressionAst::body)::element_type>(
+        nullptr, std::vector<std::unique_ptr<StatementAst>>(), nullptr);
     loop_body->members.emplace_back(std::unique_ptr<StatementAst>(gen_expression.release()));
 
     // Build the loop expression with the iterable condition.

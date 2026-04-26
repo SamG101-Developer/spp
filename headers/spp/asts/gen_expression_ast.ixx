@@ -20,10 +20,6 @@ namespace spp::asts {
  * to create foundational structures like iterators.
  */
 SPP_EXP_CLS struct spp::asts::GenExpressionAst final : PrimaryExpressionAst {
-private:
-    std::shared_ptr<TypeAst> m_gen_type;
-
-public:
     /**
      * The token that represents a generation point. This is the @c gen keyword in the source code, which indicates that
      * the coroutine is suspending its execution and yielding a value.
@@ -64,4 +60,7 @@ public:
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+
+private:
+    std::shared_ptr<TypeAst> m_gen_type;
 };
