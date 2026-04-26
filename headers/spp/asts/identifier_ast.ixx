@@ -75,4 +75,4 @@ private:
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(IdentifierAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::IdentifierAst)

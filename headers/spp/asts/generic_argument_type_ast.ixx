@@ -41,4 +41,4 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeAst : GenericArgumentAst {
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(GenericArgumentTypeAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentTypeAst)

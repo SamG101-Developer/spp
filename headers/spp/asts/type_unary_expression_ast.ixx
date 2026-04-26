@@ -111,4 +111,4 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(TypeUnaryExpressionAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeUnaryExpressionAst)

@@ -114,4 +114,4 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(GenericArgumentGroupAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentGroupAst)

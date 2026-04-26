@@ -17,6 +17,7 @@ import spp.asts.type_unary_expression_operator_namespace_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_sym_info;
+import spp.utils.ptr;
 import genex;
 
 
@@ -193,7 +194,7 @@ auto spp::analyse::scopes::TypeSymbol::fq_name(
 
     // Fully qualify the name from the root scope.
     auto qualifier_scope = scope->parent;
-    auto qualified_name = std::dynamic_pointer_cast<asts::TypeAst>(name);
+    auto qualified_name = spp::utils::ptr::shared_cast<asts::TypeAst>(name);
     while (qualifier_scope->parent != nullptr) {
         while (std::holds_alternative<ScopeBlockName>(qualifier_scope->name)) {
             qualifier_scope = qualifier_scope->parent;

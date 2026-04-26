@@ -151,4 +151,4 @@ private:
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(TypeIdentifierAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeIdentifierAst)

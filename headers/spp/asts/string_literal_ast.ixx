@@ -45,4 +45,4 @@ SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(StringLiteralAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::StringLiteralAst)

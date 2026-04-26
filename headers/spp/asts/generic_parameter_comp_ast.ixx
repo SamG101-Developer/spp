@@ -63,4 +63,4 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(GenericParameterCompAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterCompAst)

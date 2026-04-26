@@ -111,4 +111,4 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(TypePostfixExpressionAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypePostfixExpressionAst)

@@ -70,4 +70,4 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(IntegerLiteralAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::IntegerLiteralAst)

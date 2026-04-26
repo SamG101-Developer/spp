@@ -130,4 +130,4 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiter
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(ArrayLiteralExplicitElementsAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ArrayLiteralExplicitElementsAst)

@@ -130,4 +130,4 @@ private:
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(TypeStatementAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeStatementAst)

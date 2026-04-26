@@ -130,4 +130,4 @@ private:
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(AnnotationAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::AnnotationAst)

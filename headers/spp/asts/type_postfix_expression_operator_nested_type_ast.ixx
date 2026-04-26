@@ -61,4 +61,4 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final :
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(TypePostfixExpressionOperatorNestedTypeAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypePostfixExpressionOperatorNestedTypeAst)

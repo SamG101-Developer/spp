@@ -52,4 +52,4 @@ private:
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(GenericParameterTypeAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterTypeAst)

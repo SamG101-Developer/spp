@@ -34,7 +34,7 @@ namespace spp::analyse::scopes {
  * need for a base class.
  */
 SPP_EXP_CLS struct spp::analyse::scopes::Symbol {
-    virtual auto _spp_key_function() const -> void;
+    SPP_GCC_VTABLE_FIX_BASE
 
     /**
      * Enforce a virtual destructor for the Symbol class. This is to ensure that derived classes can be properly
@@ -46,11 +46,11 @@ SPP_EXP_CLS struct spp::analyse::scopes::Symbol {
 
 
 SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
+    SPP_GCC_VTABLE_FIX
+
     std::shared_ptr<asts::IdentifierAst> name;
 
     Scope *scope;
-
-    auto _spp_key_function() const -> void override;
 
     NamespaceSymbol(
         std::shared_ptr<asts::IdentifierAst> name,
@@ -68,6 +68,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
 
 
 SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
+    SPP_GCC_VTABLE_FIX
+
     std::shared_ptr<asts::IdentifierAst> name;
 
     std::shared_ptr<asts::TypeAst> type;
@@ -87,8 +89,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
     std::unique_ptr<asts::Ast> comptime_value;
 
     std::shared_ptr<VariableSymbol> alias_sym;
-
-    auto _spp_key_function() const -> void override;
 
     VariableSymbol(
         std::shared_ptr<asts::IdentifierAst> name,
@@ -113,6 +113,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
 
 
 SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
+    SPP_GCC_VTABLE_FIX
+
     std::shared_ptr<asts::TypeIdentifierAst> name;
 
     asts::ClassPrototypeAst *type;
@@ -141,8 +143,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
     std::vector<std::shared_ptr<TypeSymbol>> aliased_by_symbols = {};
 
-    auto _spp_key_function() const -> void override;
-
     TypeSymbol(
         std::shared_ptr<asts::TypeIdentifierAst> name,
         asts::ClassPrototypeAst *type,
@@ -168,9 +168,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 };
 
 
-SPP_MOD_BEGIN
-auto spp::analyse::scopes::Symbol::_spp_key_function() const -> void {}
-auto spp::analyse::scopes::VariableSymbol::_spp_key_function() const -> void {}
-auto spp::analyse::scopes::NamespaceSymbol::_spp_key_function() const -> void {}
-auto spp::analyse::scopes::TypeSymbol::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::Symbol)
+SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::NamespaceSymbol)
+SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::VariableSymbol)
+SPP_GCC_VTABLE_FIX_IMPL(spp::analyse::scopes::TypeSymbol)

@@ -55,4 +55,4 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeU
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(TypeUnaryExpressionOperatorBorrowAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeUnaryExpressionOperatorBorrowAst)

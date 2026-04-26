@@ -6,6 +6,7 @@ import spp.asts.ast;
 import spp.asts.identifier_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.utils.ptr;
 
 
 SPP_MOD_BEGIN
@@ -40,7 +41,7 @@ spp::analyse::scopes::ScopeIdentifierName::ScopeIdentifierName(
 
 spp::analyse::scopes::ScopeTypeIdentifierName::ScopeTypeIdentifierName(
     std::shared_ptr<asts::TypeAst> const &name) :
-    name(std::dynamic_pointer_cast<asts::TypeIdentifierAst>(name)) {
+    name(spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(name)) {
 }
 
 

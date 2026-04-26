@@ -121,4 +121,4 @@ private:
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(ClassPrototypeAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ClassPrototypeAst)

@@ -24,9 +24,10 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
+import spp.compiler.module_tree;
 import spp.utils.error_formatter;
 import spp.utils.functions;
-import spp.compiler.module_tree;
+import spp.utils.ptr;
 import ankerl.unordered_dense;
 import genex;
 
@@ -251,7 +252,7 @@ auto spp::analyse::scopes::Scope::add_var_symbol_check_conflict(
     if (existing_sym != nullptr) {
         // const auto is_generic = sym->is_generic;
         // const auto is_comptime = sym->memory_info->ast_comptime != nullptr;
-        const auto is_functional = existing_sym->type && existing_sym->type->to_string()[0] == '$';
+        const auto is_functional = existing_sym->type and existing_sym->type->to_string()[0] == '$';
         raise_if<errors::SppIdentifierDuplicateError>(
             not is_functional,
             {this, this},
@@ -453,7 +454,7 @@ auto spp::analyse::scopes::Scope::get_type_symbol(
     auto scope = this;
     std::shared_ptr<const asts::TypeIdentifierAst> sym_name_extracted;
     if (sym_name->is_type_identifier()) {
-        sym_name_extracted = std::static_pointer_cast<const asts::TypeIdentifierAst>(sym_name);
+        sym_name_extracted = spp::utils::ptr::shared_cast<const asts::TypeIdentifierAst>(sym_name);
     }
     else {
         auto [scope_, sym_name_extracted_] = shift_scope_for_namespaced_type(*this, *sym_name);
@@ -463,7 +464,7 @@ auto spp::analyse::scopes::Scope::get_type_symbol(
 
     // Get the symbol from the symbol table if it exists.
     auto sym = scope->table.type_tbl.get(
-        std::const_pointer_cast<asts::TypeIdentifierAst>(sym_name_extracted));
+        spp::utils::ptr::shared_const_cast<asts::TypeIdentifierAst>(sym_name_extracted));
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym == nullptr and not exclusive and scope->parent != nullptr) {
@@ -491,7 +492,7 @@ auto spp::analyse::scopes::Scope::get_ns_symbol(
     if (sym_name == nullptr) { return nullptr; }
     const auto scope = this;
     auto sym = table.ns_tbl.get(
-        std::const_pointer_cast<asts::IdentifierAst>(sym_name));
+        spp::utils::ptr::shared_const_cast<asts::IdentifierAst>(sym_name));
 
     // If the symbol doesn't exist, and this is a non-exclusive search, check the parent scope.
     if (sym == nullptr and not exclusive and scope->parent != nullptr) {

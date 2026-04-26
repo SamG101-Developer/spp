@@ -41,4 +41,4 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypePositionalAst final : GenericAr
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(GenericArgumentTypePositionalAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentTypePositionalAst)

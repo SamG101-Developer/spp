@@ -32,7 +32,7 @@ namespace spp::asts::meta {
  * and end position identification.
  */
 SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
-    virtual auto _spp_key_function() const -> void;
+    SPP_GCC_VTABLE_FIX_BASE
 
     ~Ast() override;
 
@@ -144,4 +144,4 @@ protected:
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(Ast)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::Ast)

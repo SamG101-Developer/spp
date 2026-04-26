@@ -46,4 +46,4 @@ protected:
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(TypeAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeAst)

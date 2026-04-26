@@ -67,4 +67,4 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeKeywordAst final : GenericArgum
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(GenericArgumentTypeKeywordAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentTypeKeywordAst)

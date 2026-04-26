@@ -118,4 +118,4 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(BooleanLiteralAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::BooleanLiteralAst)

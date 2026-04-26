@@ -1028,7 +1028,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
 
         auto other_args = formatted_args
             | genex::views::filter([&](auto const &p) { return *p.first != *arg_name; })
-            | genex::views::transform([](auto const &p) { return std::make_pair(std::dynamic_pointer_cast<asts::TypeIdentifierAst>(p.first), p.second); })
+            | genex::views::transform([](auto const &p) { return std::make_pair(spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(p.first), p.second); })
             | genex::to<std::vector>();
         auto other_args_map = ankerl::unordered_dense::map<std::shared_ptr<asts::TypeIdentifierAst>, std::shared_ptr<asts::TypeAst>>(other_args.begin(), other_args.end());
         auto other_args_group = asts::GenericArgumentGroupAst::from_map(std::move(other_args_map));

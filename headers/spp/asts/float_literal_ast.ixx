@@ -93,4 +93,4 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(FloatLiteralAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FloatLiteralAst)

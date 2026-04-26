@@ -79,12 +79,15 @@ constexpr auto SPP_VERSION = "0.1.0";
     SPP_ATTR_NODISCARD auto clone() const -> std::unique_ptr<Ast> override; \
     SPP_ATTR_NODISCARD explicit operator std::string() const override;
 
+#define SPP_GCC_VTABLE_FIX_BASE \
+    virtual auto _spp_key_function() const -> void;
+
 #define SPP_GCC_VTABLE_FIX \
     auto _spp_key_function() const -> void override;
 
-#define SPP_GCC_VTABLE_FIX_IMPL(Type)                           \
-    SPP_MOD_BEGIN                                               \
-    auto spp::asts::Type::_spp_key_function() const -> void {}  \
+#define SPP_GCC_VTABLE_FIX_IMPL(Type)                \
+    SPP_MOD_BEGIN                                    \
+    auto Type::_spp_key_function() const -> void {}  \
     SPP_MOD_END
 
 // Macro to take the 0th element of a list if the list is not empty, else return a default value.

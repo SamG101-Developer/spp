@@ -61,4 +61,4 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : Ty
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(TypeUnaryExpressionOperatorNamespaceAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeUnaryExpressionOperatorNamespaceAst)

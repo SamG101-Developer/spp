@@ -87,4 +87,4 @@ SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : virtual Ast, ClassMember
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(ClassAttributeAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ClassAttributeAst)

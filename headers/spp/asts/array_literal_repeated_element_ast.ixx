@@ -146,4 +146,4 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
 };
 
 
-SPP_GCC_VTABLE_FIX_IMPL(ArrayLiteralRepeatedElementAst)
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ArrayLiteralRepeatedElementAst)
