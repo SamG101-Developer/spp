@@ -24,6 +24,8 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeInlineConstraintsAst final : v
      */
     std::vector<std::shared_ptr<TypeAst>> constraints;
 
+    static auto new_empty() -> std::unique_ptr<GenericParameterTypeInlineConstraintsAst>;
+
     /**
      * Construct the GenericParameterTypeInlineConstraintsAst with the arguments matching the members.
      * @param tok_colon The @c : token that introduces the inline constraints.
@@ -34,8 +36,6 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeInlineConstraintsAst final : v
         std::vector<std::unique_ptr<TypeAst>> &&constraints);
 
     ~GenericParameterTypeInlineConstraintsAst() override;
-
-    static auto new_empty() -> std::unique_ptr<GenericParameterTypeInlineConstraintsAst>;
 
     SPP_AST_KEY_FUNCTIONS;
 

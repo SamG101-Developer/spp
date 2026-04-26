@@ -17,21 +17,16 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::GenericParameterTypeAst : GenericParameterAst {
-public:
-    std::vector<analyse::scopes::Scope *> m_dummy_scopes;
+    SPP_GCC_VTABLE_FIX
 
-private:
-    std::unique_ptr<Ast> m_dummy_ast;
+    std::vector<analyse::scopes::Scope*> m_dummy_scopes;
 
-public:
     /**
      * The optional inline constraints for the generic type parameter. This is used to specify constraints on the type
      * parameter, such as @c I32 or @c F64 . An example is @code fun func[T: Copy]()@endcode, where @c T is the
      * generic type parameter and @c Copy is the constraint.
      */
     std::unique_ptr<GenericParameterTypeInlineConstraintsAst> constraints;
-
-    auto _spp_key_function() const -> void override;
 
     /**
      * Construct the GenericParameterTypeAst with the arguments matching the members.
@@ -51,9 +46,10 @@ public:
     auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *) -> void override;
 
     auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+private:
+    std::unique_ptr<Ast> m_dummy_ast;
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::GenericParameterTypeAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(GenericParameterTypeAst)

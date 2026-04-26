@@ -16,6 +16,8 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
+    SPP_GCC_VTABLE_FIX
+
     /**
      * The @c cmp token that represents the generic comp parameter. This is used to indicate that the parameter is a
      * comp generic and not a type generic.
@@ -33,8 +35,6 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
      * @c F64 . This is a required field, as the type of the parameter must be known at compile time.
      */
     std::shared_ptr<TypeAst> type;
-
-    auto _spp_key_function() const -> void override;
 
     /**
      * Construct the GenericParameterCompAst with the arguments matching the members.
@@ -63,6 +63,4 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::GenericParameterCompAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(GenericParameterCompAst)

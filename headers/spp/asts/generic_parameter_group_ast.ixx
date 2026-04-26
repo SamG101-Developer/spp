@@ -34,6 +34,12 @@ SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : virtual Ast {
      */
     std::unique_ptr<TokenAst> tok_r;
 
+    static auto new_empty()
+        -> std::unique_ptr<GenericParameterGroupAst>;
+
+    static auto new_empty_shared()
+        -> std::shared_ptr<GenericParameterGroupAst>;
+
     /**
      * Construct the GenericParameterGroupAst with the arguments matching the members.
      * @param tok_l The token that represents the left bracket @code [@endcode in the generic parameter group.
@@ -47,17 +53,27 @@ SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : virtual Ast {
 
     ~GenericParameterGroupAst() override;
 
-    auto merge_generics(decltype(params) &&other_params) -> void;
+    auto operator+(
+        GenericParameterGroupAst const &other) const
+        -> std::unique_ptr<GenericParameterGroupAst>;
 
-    auto operator+(GenericParameterGroupAst const &other) const -> std::unique_ptr<GenericParameterGroupAst>;
-
-    auto operator +=(GenericParameterGroupAst const &other) -> GenericParameterGroupAst&;
+    auto operator +=(
+        GenericParameterGroupAst const &other)
+        -> GenericParameterGroupAst&;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    static auto new_empty() -> std::unique_ptr<GenericParameterGroupAst>;
+    auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    static auto new_empty_shared() -> std::shared_ptr<GenericParameterGroupAst>;
+    auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+
+    auto merge_generics(decltype(params) &&other_params) -> void;
 
     SPP_ATTR_NODISCARD auto get_required_params() const -> std::vector<GenericParameterAst*>;
 
@@ -72,14 +88,4 @@ SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : virtual Ast {
     SPP_ATTR_NODISCARD auto get_all_params() const -> std::vector<GenericParameterAst*>;
 
     SPP_ATTR_NODISCARD auto opt_to_req() const -> std::unique_ptr<GenericParameterGroupAst>;
-
-    auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

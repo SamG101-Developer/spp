@@ -13,24 +13,24 @@ import genex;
 
 
 SPP_MOD_BEGIN
+auto spp::asts::GenericParameterTypeInlineConstraintsAst::new_empty()
+    -> std::unique_ptr<GenericParameterTypeInlineConstraintsAst> {
+    return std::make_unique<GenericParameterTypeInlineConstraintsAst>(
+        nullptr, std::vector<std::unique_ptr<TypeAst>>{});
+}
+
+
 spp::asts::GenericParameterTypeInlineConstraintsAst::GenericParameterTypeInlineConstraintsAst(
     decltype(tok_colon) &&tok_colon,
     std::vector<std::unique_ptr<TypeAst>> &&constraints) :
     tok_colon(std::move(tok_colon)) {
-    for (auto &&constraint : constraints) {
+    for (auto &&constraint : std::move(constraints)) {
         this->constraints.emplace_back(std::move(constraint));
     }
 }
 
 
 spp::asts::GenericParameterTypeInlineConstraintsAst::~GenericParameterTypeInlineConstraintsAst() = default;
-
-
-auto spp::asts::GenericParameterTypeInlineConstraintsAst::new_empty()
-    -> std::unique_ptr<GenericParameterTypeInlineConstraintsAst> {
-    return std::make_unique<GenericParameterTypeInlineConstraintsAst>(
-        nullptr, std::vector<std::unique_ptr<TypeAst>>{});
-}
 
 
 auto spp::asts::GenericParameterTypeInlineConstraintsAst::pos_start() const
@@ -73,7 +73,8 @@ auto spp::asts::GenericParameterTypeInlineConstraintsAst::stage_7_analyse_semant
     for (auto const &constraint : constraints) {
         constraint->stage_7_analyse_semantics(sm, meta);
         auto const constraint_type_sym = sm->current_scope->get_type_symbol(constraint->without_generics());
-        fq_constraints.emplace_back(constraint_type_sym->fq_name()->with_generics(std::move(constraint->type_parts().back()->generic_arg_group)));
+        fq_constraints.emplace_back(
+            constraint_type_sym->fq_name()->with_generics(std::move(constraint->type_parts().back()->generic_arg_group)));
     }
 
     // Replace the constraints with their fully qualified versions.

@@ -30,6 +30,20 @@ import genex;
 
 
 SPP_MOD_BEGIN
+auto spp::asts::GenericParameterGroupAst::new_empty()
+    -> std::unique_ptr<GenericParameterGroupAst> {
+    return std::make_unique<GenericParameterGroupAst>(
+        nullptr, decltype(params)(), nullptr);
+}
+
+
+auto spp::asts::GenericParameterGroupAst::new_empty_shared()
+    -> std::shared_ptr<GenericParameterGroupAst> {
+    return std::make_shared<GenericParameterGroupAst>(
+        nullptr, decltype(params)(), nullptr);
+}
+
+
 spp::asts::GenericParameterGroupAst::GenericParameterGroupAst(
     decltype(tok_l) &&tok_l,
     decltype(params) &&params,
@@ -43,23 +57,6 @@ spp::asts::GenericParameterGroupAst::GenericParameterGroupAst(
 
 
 spp::asts::GenericParameterGroupAst::~GenericParameterGroupAst() = default;
-
-
-auto spp::asts::GenericParameterGroupAst::merge_generics(
-    decltype(params) &&other_params) -> void {
-    // Merge the given parameters into this generic parameter group, ensuring no duplicates by name.
-    auto existing_names = std::vector<std::string>();
-    for (auto &&p : params) {
-        existing_names.push_back(p->name->to_string());
-    }
-    for (auto &&p : other_params) {
-        // Don't add duplicate named parameters.
-        auto new_name = p->name->to_string();
-        if (genex::contains(existing_names, new_name)) { continue; }
-        params.push_back(ast_clone(p));
-        existing_names.push_back(new_name);
-    }
-}
 
 
 auto spp::asts::GenericParameterGroupAst::operator+(
@@ -111,17 +108,20 @@ spp::asts::GenericParameterGroupAst::operator std::string() const {
 }
 
 
-auto spp::asts::GenericParameterGroupAst::new_empty()
-    -> std::unique_ptr<GenericParameterGroupAst> {
-    return std::make_unique<GenericParameterGroupAst>(
-        nullptr, decltype(params)(), nullptr);
-}
-
-
-auto spp::asts::GenericParameterGroupAst::new_empty_shared()
-    -> std::shared_ptr<GenericParameterGroupAst> {
-    return std::make_shared<GenericParameterGroupAst>(
-        nullptr, decltype(params)(), nullptr);
+auto spp::asts::GenericParameterGroupAst::merge_generics(
+    decltype(params) &&other_params) -> void {
+    // Merge the given parameters into this generic parameter group, ensuring no duplicates by name.
+    auto existing_names = std::vector<std::string>();
+    for (auto const &p : params) {
+        existing_names.push_back(p->name->to_string());
+    }
+    for (auto &&p : std::move(other_params)) {
+        // Don't add duplicate named parameters.
+        auto new_name = p->name->to_string();
+        if (genex::contains(existing_names, new_name)) { continue; }
+        params.push_back(std::move(p));
+        existing_names.push_back(new_name);
+    }
 }
 
 
@@ -129,7 +129,7 @@ auto spp::asts::GenericParameterGroupAst::get_required_params() const
     -> std::vector<GenericParameterAst*> {
     // Filter by casting.
     auto out = std::vector<GenericParameterAst*>();
-    for (auto &&p : params) {
+    for (auto const &p : params) {
         if (const auto req_type = p->to<GenericParameterTypeRequiredAst>()) {
             out.push_back(req_type->to<GenericParameterAst>());
         }
@@ -145,7 +145,7 @@ auto spp::asts::GenericParameterGroupAst::get_optional_params() const
     -> std::vector<GenericParameterAst*> {
     // Filter by casting.
     auto out = std::vector<GenericParameterAst*>();
-    for (auto &&p : params) {
+    for (auto const &p : params) {
         if (const auto opt_type = p->to<GenericParameterTypeOptionalAst>()) {
             out.push_back(opt_type->to<GenericParameterAst>());
         }
@@ -160,7 +160,7 @@ auto spp::asts::GenericParameterGroupAst::get_optional_params() const
 auto spp::asts::GenericParameterGroupAst::get_variadic_param() const
     -> GenericParameterAst* {
     auto variadics = std::vector<GenericParameterAst*>();
-    for (auto &&p : params) {
+    for (auto const &p : params) {
         if (const auto var_type = p->to<GenericParameterTypeVariadicAst>()) {
             variadics.push_back(var_type->to<GenericParameterAst>());
         }
@@ -177,7 +177,7 @@ auto spp::asts::GenericParameterGroupAst::get_comp_params() const
     -> std::vector<GenericParameterCompAst*> {
     // Filter by casting.
     auto out = std::vector<GenericParameterCompAst*>();
-    for (auto &&p : params) {
+    for (auto const &p : params) {
         if (const auto comp_param = p->to<GenericParameterCompAst>()) {
             out.push_back(comp_param);
         }
@@ -190,7 +190,7 @@ auto spp::asts::GenericParameterGroupAst::get_type_params() const
     -> std::vector<GenericParameterTypeAst*> {
     // Filter by casting.
     auto out = std::vector<GenericParameterTypeAst*>();
-    for (auto &&p : params) {
+    for (auto const &p : params) {
         if (const auto type_param = p->to<GenericParameterTypeAst>()) {
             out.push_back(type_param);
         }
@@ -203,7 +203,7 @@ auto spp::asts::GenericParameterGroupAst::get_all_params() const
     -> std::vector<GenericParameterAst*> {
     // Return all parameters.
     auto out = std::vector<GenericParameterAst*>();
-    for (auto &&p : params) {
+    for (auto const &p : params) {
         out.push_back(p.get());
     }
     return out;
@@ -214,7 +214,7 @@ auto spp::asts::GenericParameterGroupAst::opt_to_req() const
     -> std::unique_ptr<GenericParameterGroupAst> {
     // Convert all optional parameters to required parameters.
     auto new_params = std::vector<std::unique_ptr<GenericParameterAst>>();
-    for (auto &&p : params) {
+    for (auto const &p : params) {
         if (const auto opt_type = p->to<GenericParameterTypeOptionalAst>(); opt_type != nullptr) {
             auto param = std::make_unique<GenericParameterTypeRequiredAst>(ast_clone(opt_type->name), ast_clone(opt_type->constraints));
             auto cast_param = std::unique_ptr<GenericParameterAst>(param.release()->to<GenericParameterAst>());
@@ -239,7 +239,7 @@ auto spp::asts::GenericParameterGroupAst::stage_2_gen_top_level_scopes(
     CompilerMetaData *meta)
     -> void {
     // Run the generation steps on the parameters in the group.
-    for (auto &&x : params) {
+    for (auto const &x : params) {
         x->stage_2_gen_top_level_scopes(sm, meta);
     }
 }
@@ -250,13 +250,13 @@ auto spp::asts::GenericParameterGroupAst::stage_4_qualify_types(
     CompilerMetaData *meta)
     -> void {
     // Run the type qualifier steps on each parameter in the group.
-    for (auto &&x : params) {
+    for (auto const &x : params) {
         x->stage_4_qualify_types(sm, meta);
     }
 
     // Do the constraints after all the parameters are qualified. This is because of external generic symbols using
     // non-qualified types when analysing generically subsitututed contraint types.
-    for (auto &&x : get_type_params()) {
+    for (auto const &x : get_type_params()) {
         if (x->constraints != nullptr) {
             x->constraints->stage_7_analyse_semantics(sm, meta);
 
@@ -277,7 +277,7 @@ auto spp::asts::GenericParameterGroupAst::stage_7_analyse_semantics(
     CompilerMetaData *meta)
     -> void {
     const auto param_names = params
-        | genex::views::transform([](auto &&x) { return x->name.get(); })
+        | genex::views::transform([](auto const &x) { return x->name.get(); })
         | genex::to<std::vector>()
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<std::vector>();
@@ -288,9 +288,9 @@ auto spp::asts::GenericParameterGroupAst::stage_7_analyse_semantics(
         | genex::to<std::vector>());
 
     // Mark copyable generics.
-    for (auto &&param : get_type_params()) {
+    for (auto const &param : get_type_params()) {
         if (param->constraints == nullptr) { continue; }
-        for (auto &&constraint: param->constraints->constraints) {
+        for (auto const &constraint : param->constraints->constraints) {
             if (analyse::utils::type_utils::is_type_copyable(*constraint, *sm)) {
                 const auto generic_sym = sm->current_scope->get_type_symbol(param->name);
                 generic_sym->is_directly_copyable = true;
@@ -309,7 +309,7 @@ auto spp::asts::GenericParameterGroupAst::stage_7_analyse_semantics(
         ERR_ARGS(unordered_params[0].first, *unordered_params[0].second, unordered_params[1].first, *unordered_params[1].second));
 
     // Run the semantic analysis steps on each parameter in the group.
-    for (auto &&x : params) {
+    for (auto const &x : params) {
         x->stage_7_analyse_semantics(sm, meta);
     }
 }
@@ -320,7 +320,7 @@ auto spp::asts::GenericParameterGroupAst::stage_8_check_memory(
     CompilerMetaData *meta)
     -> void {
     // Run the memory checks on each parameter in the group.
-    for (auto &&x : params) {
+    for (auto const &x : params) {
         x->stage_8_check_memory(sm, meta);
     }
 }
@@ -332,7 +332,7 @@ auto spp::asts::GenericParameterGroupAst::stage_11_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Run the code generation steps on each parameter in the group.
-    for (auto &&x : params) {
+    for (auto const &x : params) {
         x->stage_11_code_gen_2(sm, meta, ctx);
     }
     return nullptr;
