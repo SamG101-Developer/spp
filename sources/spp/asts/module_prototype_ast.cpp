@@ -59,7 +59,7 @@ auto spp::asts::ModulePrototypeAst::name() const
     auto name = std::string();
     if (genex::contains(parts, "src"s)) {
         name = parts
-            | genex::views::drop(genex::position(parts, [](auto &&x) { return x == "src"; }))
+            | genex::views::drop(genex::position(parts, [](auto const &x) { return x == "src"; }))
             | genex::views::intersperse("::"s)
             | genex::views::join
             | genex::to<std::string>();

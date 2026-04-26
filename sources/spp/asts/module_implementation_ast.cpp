@@ -47,10 +47,9 @@ spp::asts::ModuleImplementationAst::operator std::string() const {
 auto spp::asts::ModuleImplementationAst::stage_1_pre_process(
     Ast *ctx)
     -> void {
-    // Shift to members.
-    for (auto *member : members | genex::views::ptr | genex::to<std::vector>()) {
-        member->stage_1_pre_process(ctx);
-    }
+    // Shift to members (copy because function pre-processing edits this module's member).
+    const auto members_ptrs = members | genex::views::ptr | genex::to<std::vector>();
+    for (auto *member : members_ptrs) { member->stage_1_pre_process(ctx); }
 }
 
 
@@ -59,9 +58,7 @@ auto spp::asts::ModuleImplementationAst::stage_2_gen_top_level_scopes(
     CompilerMetaData *meta)
     -> void {
     // Shift to members.
-    for (auto const &member : members) {
-        member->stage_2_gen_top_level_scopes(sm, meta);
-    }
+    for (auto const &member : members) { member->stage_2_gen_top_level_scopes(sm, meta); }
 }
 
 
@@ -70,9 +67,7 @@ auto spp::asts::ModuleImplementationAst::stage_3_gen_top_level_aliases(
     CompilerMetaData *meta)
     -> void {
     // Shift to members.
-    for (auto const &member : members) {
-        member->stage_3_gen_top_level_aliases(sm, meta);
-    }
+    for (auto const &member : members) { member->stage_3_gen_top_level_aliases(sm, meta); }
 }
 
 
@@ -81,9 +76,7 @@ auto spp::asts::ModuleImplementationAst::stage_4_qualify_types(
     CompilerMetaData *meta)
     -> void {
     // Shift to members.
-    for (auto const &member : members) {
-        member->stage_4_qualify_types(sm, meta);
-    }
+    for (auto const &member : members) { member->stage_4_qualify_types(sm, meta); }
 }
 
 
@@ -92,9 +85,7 @@ auto spp::asts::ModuleImplementationAst::stage_5_load_super_scopes(
     CompilerMetaData *meta)
     -> void {
     // Shift to members.
-    for (auto const &member : members) {
-        member->stage_5_load_super_scopes(sm, meta);
-    }
+    for (auto const &member : members) { member->stage_5_load_super_scopes(sm, meta); }
 }
 
 
@@ -103,9 +94,7 @@ auto spp::asts::ModuleImplementationAst::stage_6_pre_analyse_semantics(
     CompilerMetaData *meta)
     -> void {
     // Shift to members.
-    for (auto const &member : members) {
-        member->stage_6_pre_analyse_semantics(sm, meta);
-    }
+    for (auto const &member : members) { member->stage_6_pre_analyse_semantics(sm, meta); }
 }
 
 
@@ -114,9 +103,7 @@ auto spp::asts::ModuleImplementationAst::stage_7_analyse_semantics(
     CompilerMetaData *meta)
     -> void {
     // Shift to members.
-    for (auto const &member : members) {
-        member->stage_7_analyse_semantics(sm, meta);
-    }
+    for (auto const &member : members) { member->stage_7_analyse_semantics(sm, meta); }
 }
 
 
@@ -125,9 +112,7 @@ auto spp::asts::ModuleImplementationAst::stage_8_check_memory(
     CompilerMetaData *meta)
     -> void {
     // Shift to members.
-    for (auto const &member : members) {
-        member->stage_8_check_memory(sm, meta);
-    }
+    for (auto const &member : members) { member->stage_8_check_memory(sm, meta); }
 }
 
 
@@ -136,9 +121,7 @@ auto spp::asts::ModuleImplementationAst::stage_9_comptime_resolution(
     CompilerMetaData *meta)
     -> void {
     // Shift to members, and return nullptr as this value is never used.
-    for (auto const &member : members) {
-        member->stage_9_comptime_resolution(sm, meta);
-    }
+    for (auto const &member : members) { member->stage_9_comptime_resolution(sm, meta); }
 }
 
 
@@ -148,9 +131,7 @@ auto spp::asts::ModuleImplementationAst::stage_10_code_gen_1(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Shift to members.
-    for (auto const &member : members) {
-        member->stage_10_code_gen_1(sm, meta, ctx);
-    }
+    for (auto const &member : members) { member->stage_10_code_gen_1(sm, meta, ctx); }
     return nullptr;
 }
 
@@ -161,9 +142,7 @@ auto spp::asts::ModuleImplementationAst::stage_11_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Shift to members.
-    for (auto const &member : members) {
-        member->stage_11_code_gen_2(sm, meta, ctx);
-    }
+    for (auto const &member : members) { member->stage_11_code_gen_2(sm, meta, ctx); }
     return nullptr;
 }
 
