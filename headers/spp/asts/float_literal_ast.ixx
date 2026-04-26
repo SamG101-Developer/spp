@@ -20,6 +20,8 @@ namespace spp::asts {
  * @c _f64. No postfix defaults the type to @c std::BigDec.
  */
 SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
+    SPP_GCC_VTABLE_FIX
+
     /**
      * The optional sign of the float literal. This can be either a plus or minus sign.
      */
@@ -49,7 +51,11 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
      */
     std::string type;
 
-    auto _spp_key_function() const -> void override;
+    static auto from_single_token(
+        decltype(tok_sign) &&tok_sign,
+        std::unique_ptr<TokenAst> &&token,
+        std::string &&type)
+        -> std::unique_ptr<FloatLiteralAst>;
 
     /**
      * Construct the FloatLiteralAst with the arguments matching the members.
@@ -68,18 +74,9 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
 
     ~FloatLiteralAst() override;
 
-    static auto from_single_token(
-        decltype(tok_sign) &&tok_sign,
-        std::unique_ptr<TokenAst> &&token,
-        std::string &&type)
-        -> std::unique_ptr<FloatLiteralAst>;
-
-    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
-
     SPP_ATTR_NODISCARD auto equals_float_literal(FloatLiteralAst const &) const -> std::strong_ordering override;
 
-    template <typename T> requires std::floating_point<T>
-    auto cpp_value() const -> T;
+    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
@@ -90,9 +87,10 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
     auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+
+    template <typename T> requires std::floating_point<T>
+    auto cpp_value() const -> T;
 };
 
 
-SPP_MOD_BEGIN
-auto spp::asts::FloatLiteralAst::_spp_key_function() const -> void {}
-SPP_MOD_END
+SPP_GCC_VTABLE_FIX_IMPL(FloatLiteralAst)

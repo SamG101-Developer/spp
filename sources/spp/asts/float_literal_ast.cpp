@@ -22,29 +22,22 @@ import mppp;
 
 SPP_MOD_BEGIN
 const auto FLOAT_TYPE_MIN_MAX = std::map<std::string, std::pair<mppp::BigDec, mppp::BigDec>>{
-    {"f8", {spp::utils::strings::expand_scientific_notation("-5.7344e+4"), spp::utils::strings::expand_scientific_notation("5.7344e+4")}},
-    {"f16", {spp::utils::strings::expand_scientific_notation("-6.55e+4"), spp::utils::strings::expand_scientific_notation("6.55e+4")}},
-    {"f32", {spp::utils::strings::expand_scientific_notation("-3.4028235e+38"), spp::utils::strings::expand_scientific_notation("3.4028235e+38")}},
-    {"f64", {spp::utils::strings::expand_scientific_notation("-1.7976931348623157e+308"), spp::utils::strings::expand_scientific_notation("1.7976931348623157e+308")}},
-    {"f128", {spp::utils::strings::expand_scientific_notation("-1.189731495357231765e+4932"), spp::utils::strings::expand_scientific_notation("1.189731495357231765e+4932")}}, // check this
+    {"f8", {
+        spp::utils::strings::expand_scientific_notation("-5.7344e+4"),
+        spp::utils::strings::expand_scientific_notation("5.7344e+4")}},
+    {"f16", {
+        spp::utils::strings::expand_scientific_notation("-6.55e+4"),
+        spp::utils::strings::expand_scientific_notation("6.55e+4")}},
+    {"f32", {
+        spp::utils::strings::expand_scientific_notation("-3.4028235e+38"),
+        spp::utils::strings::expand_scientific_notation("3.4028235e+38")}},
+    {"f64", {
+        spp::utils::strings::expand_scientific_notation("-1.7976931348623157e+308"),
+        spp::utils::strings::expand_scientific_notation("1.7976931348623157e+308")}},
+    {"f128", {
+        spp::utils::strings::expand_scientific_notation("-1.189731495357231765e+4932"),
+        spp::utils::strings::expand_scientific_notation("1.189731495357231765e+4932")}}, // TODO: Check this
 };
-
-
-spp::asts::FloatLiteralAst::FloatLiteralAst(
-    decltype(tok_sign) &&tok_sign,
-    decltype(int_val) &&int_val,
-    decltype(tok_dot) &&tok_dot,
-    decltype(frac_val) &&frac_val,
-    std::string &&type) :
-    tok_sign(std::move(tok_sign)),
-    int_val(std::move(int_val)),
-    tok_dot(std::move(tok_dot)),
-    frac_val(std::move(frac_val)),
-    type(std::move(type)) {
-}
-
-
-spp::asts::FloatLiteralAst::~FloatLiteralAst() = default;
 
 
 auto spp::asts::FloatLiteralAst::from_single_token(
@@ -64,11 +57,21 @@ auto spp::asts::FloatLiteralAst::from_single_token(
 }
 
 
-auto spp::asts::FloatLiteralAst::equals(
-    ExpressionAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_float_literal(*this);
+spp::asts::FloatLiteralAst::FloatLiteralAst(
+    decltype(tok_sign) &&tok_sign,
+    decltype(int_val) &&int_val,
+    decltype(tok_dot) &&tok_dot,
+    decltype(frac_val) &&frac_val,
+    std::string &&type) :
+    tok_sign(std::move(tok_sign)),
+    int_val(std::move(int_val)),
+    tok_dot(std::move(tok_dot)),
+    frac_val(std::move(frac_val)),
+    type(std::move(type)) {
 }
+
+
+spp::asts::FloatLiteralAst::~FloatLiteralAst() = default;
 
 
 auto spp::asts::FloatLiteralAst::equals_float_literal(
@@ -85,11 +88,10 @@ auto spp::asts::FloatLiteralAst::equals_float_literal(
 }
 
 
-template <typename T> requires std::floating_point<T>
-auto spp::asts::FloatLiteralAst::cpp_value() const -> T {
-    const auto raw_str = int_val->to_string() + "." + frac_val->to_string();
-    const auto signed_str = tok_sign != nullptr ? "-" + raw_str : raw_str;
-    return static_cast<T>(std::stold(signed_str));
+auto spp::asts::FloatLiteralAst::equals(
+    ExpressionAst const &other) const
+    -> std::strong_ordering {
+    return other.equals_float_literal(*this);
 }
 
 
@@ -202,6 +204,14 @@ auto spp::asts::FloatLiteralAst::infer_type(
     raise<analyse::errors::SppInternalCompilerError>(
         {sm->current_scope},
         ERR_ARGS(*this, "invalid float literal type"));
+}
+
+
+template <typename T> requires std::floating_point<T>
+auto spp::asts::FloatLiteralAst::cpp_value() const -> T {
+    const auto raw_str = int_val->to_string() + "." + frac_val->to_string();
+    const auto signed_str = tok_sign != nullptr ? "-" + raw_str : raw_str;
+    return static_cast<T>(std::stold(signed_str));
 }
 
 
