@@ -265,7 +265,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 ERR_ARGS(*overlaps[0], *arg->val));
 
             // Save any escaping borrows into the handle's memory info.
-            if (handle and pins_required) {
+            if (handle and pins_required) { // TODO: Test suite needs to take handle/lack of handle into account
                 handle_sym->memory_info->ast_escaping_borrows.emplace_back(arg->val.get(), false, sm->current_scope);
                 sym->memory_info->ast_pins.emplace_back(arg->val.get());
             }
@@ -286,7 +286,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::stage_8_check_memory(
                 ERR_ARGS(*overlaps[0], *arg->val));
 
             // Save any escaping borrows into the handle's memory info.
-            if (handle and pins_required) {
+            if (handle and pins_required) { // TODO: Test suite needs to take handle/lack of handle into account
                 handle_sym->memory_info->ast_escaping_borrows.emplace_back(arg->val.get(), true, sm->current_scope);
                 sym->memory_info->ast_pins.emplace_back(arg->val.get());
             }
