@@ -192,7 +192,7 @@ auto spp::analyse::utils::type_utils::relaxed_symbolic_eq(
     }
 
     // If the left-hand-side is a "$" (function overload) type, check the composite overload types.
-    if (lhs_type.type_parts().back()->name[0] == '$') {
+    if (lhs_type.is_compiler_generated_type()) {
         auto lhs_composite_types = func_utils::get_overload_types(lhs_type, lhs_scope);
         if (genex::any_of(lhs_composite_types, [&](auto &&lhs_composite_type) { return relaxed_symbolic_eq(*lhs_composite_type, rhs_type, lhs_scope, rhs_scope, generic_args); })) {
             return true;
@@ -392,7 +392,7 @@ auto spp::analyse::utils::type_utils::is_type_borrowed(
     -> bool {
     // Check that either this type, or any inner types for variants, are "&" or "&mut".
     if (type.get_convention() != nullptr) { return true; }
-    // if (type.type_parts().back()->name[0] == '$') { return false; }
+    // if (type.is_compiler_generated_type()) { return false; }
 
     // Check the inner types for variant types.
     const auto variant_type = asts::generate::common_types_precompiled::VAR;
@@ -959,8 +959,8 @@ auto spp::analyse::utils::type_utils::get_type_sym_or_error(
     const auto type_sym = scope.get_type_symbol(type_part.shared_from_this(), false);
     if (type_sym == nullptr) {
         const auto alternatives = sm.current_scope->all_type_symbols()
+            | genex::views::remove_if([](auto const &x) { return x->name->is_compiler_generated_type(); })
             | genex::views::transform([](auto const &x) { return x->name->name; })
-            | genex::views::remove_if([](auto const &x) { return x[0] == '$'; })
             | genex::to<std::vector>();
 
         const auto closest_match = spp::utils::strings::closest_match(type_part.name, alternatives);

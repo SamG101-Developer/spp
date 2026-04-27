@@ -188,7 +188,7 @@ auto spp::analyse::scopes::TypeSymbol::fq_name(
     }
 
     // If the type is generic, or the name starts with a '$', return the name as-is.
-    if (is_generic or scope == nullptr or (ignore_dollar and name->name[0] == '$')) {
+    if (is_generic or scope == nullptr or (ignore_dollar and name->is_compiler_generated_type())) {
         return name;
     }
 

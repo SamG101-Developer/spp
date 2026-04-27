@@ -250,4 +250,11 @@ auto spp::asts::TypeUnaryExpressionAst::with_generics(
 }
 
 
+auto spp::asts::TypeUnaryExpressionAst::is_compiler_generated_type() const
+    -> bool {
+    // Move into the rhs, ie for "std::annotations::$Public".
+    return rhs->is_compiler_generated_type();
+}
+
+
 SPP_MOD_END

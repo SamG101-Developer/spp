@@ -376,6 +376,13 @@ auto spp::asts::TypeIdentifierAst::with_generics(
 }
 
 
+auto spp::asts::TypeIdentifierAst::is_compiler_generated_type() const
+    -> bool {
+    // Types starting with "$" are compiler generated (not parsable).
+    return name[0] == '$';
+}
+
+
 auto spp::asts::TypeIdentifierAst::is_type_identifier() const noexcept
     -> bool {
     return true;

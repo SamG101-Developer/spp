@@ -108,6 +108,9 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
     SPP_ATTR_NODISCARD auto with_generics(
         std::unique_ptr<GenericArgumentGroupAst> &&arg_group) const
         -> std::shared_ptr<TypeAst> override;
+
+    SPP_ATTR_NODISCARD auto is_compiler_generated_type() const
+        -> bool override;
 };
 
 

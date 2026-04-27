@@ -30,7 +30,7 @@ auto spp::codegen::register_llvm_type_info(
     // Note: because symbols have a convention attached to them, retrieval handles pointer logic for borrows.
 
     // $ types are 0-size types in LLVM.
-    if (cls_proto->name->operator std::string()[0] == '$') {
+    if (cls_proto->name->is_compiler_generated_type()) {
         const auto zero_size_struct = llvm::StructType::create(*ctx->context, mangle::mangle_type_name(*cls_proto->get_cls_sym()));
         zero_size_struct->setBody({}, true);
         cls_proto->get_cls_sym()->llvm_info->llvm_type = zero_size_struct;

@@ -252,7 +252,7 @@ auto spp::analyse::scopes::Scope::add_var_symbol_check_conflict(
     if (existing_sym != nullptr) {
         // const auto is_generic = sym->is_generic;
         // const auto is_comptime = sym->memory_info->ast_comptime != nullptr;
-        const auto is_functional = existing_sym->type and existing_sym->type->to_string()[0] == '$';
+        const auto is_functional = existing_sym->type and existing_sym->type->is_compiler_generated_type();
         raise_if<errors::SppIdentifierDuplicateError>(
             not is_functional,
             {this, this},
@@ -278,7 +278,7 @@ auto spp::analyse::scopes::Scope::add_type_symbol_check_conflict(
     // Cannot allow for duplicate definitions.
     const auto existing_sym = get_type_symbol(sym->name, false);
     if (existing_sym != nullptr) {
-        const auto is_functional = sym->name->name[0] == '$';
+        const auto is_functional = sym->name->is_compiler_generated_type();
         raise_if<errors::SppIdentifierDuplicateError>(
             not is_functional,
             {existing_sym->scope_defined_in, sym->scope_defined_in},

@@ -67,4 +67,7 @@ SPP_EXP_CLS struct spp::asts::mixins::AbstractTypeAst {
     SPP_ATTR_NODISCARD virtual auto with_generics(
         std::unique_ptr<GenericArgumentGroupAst> &&arg_group) const
         -> std::shared_ptr<TypeAst> = 0;
+
+    SPP_ATTR_NODISCARD virtual auto is_compiler_generated_type() const
+        -> bool = 0;
 };

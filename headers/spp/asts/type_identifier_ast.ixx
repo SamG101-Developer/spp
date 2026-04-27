@@ -133,6 +133,9 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
         std::unique_ptr<GenericArgumentGroupAst> &&arg_group) const
         -> std::shared_ptr<TypeAst> override;
 
+    SPP_ATTR_NODISCARD auto is_compiler_generated_type() const
+        -> bool override;
+
     SPP_ATTR_NODISCARD auto is_type_identifier() const noexcept
         -> bool override;
 

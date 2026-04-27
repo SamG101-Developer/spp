@@ -139,7 +139,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::stage_7_analyse
         }
 
         // Check there is only 1 target field on the type at the highest level.
-        if (lhs_type_sym->scope->get_var_symbol(name)->type->type_parts().back()->name[0] == '$') {
+        if (lhs_type_sym->scope->get_var_symbol(name)->type->is_compiler_generated_type()) {
             return;
         }
 

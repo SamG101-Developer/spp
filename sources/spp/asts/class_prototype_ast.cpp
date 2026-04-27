@@ -245,7 +245,7 @@ auto spp::asts::ClassPrototypeAst::stage_10_code_gen_1(
     const auto cls_sym = sm->current_scope->ty_sym;
 
     // $ types are pre-set with a packed empty body.
-    if (name->type_parts().back()->name[0] == '$') {
+    if (name->is_compiler_generated_type()) {
         sm->move_out_of_current_scope();
         return nullptr;
     }
@@ -305,7 +305,7 @@ auto spp::asts::ClassPrototypeAst::get_cls_sym() const
 auto spp::asts::ClassPrototypeAst::m_generate_symbols(
     ScopeManager *sm)
     -> analyse::scopes::TypeSymbol* {
-    auto is_dollar_type = name->to<TypeIdentifierAst>()->name[0] == '$';
+    auto is_dollar_type = name->is_compiler_generated_type();
     auto sym_name = ast_clone(name->type_parts()[0]);
     sym_name->generic_arg_group = GenericArgumentGroupAst::from_params(*generic_param_group);
 

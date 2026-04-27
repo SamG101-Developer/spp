@@ -194,7 +194,7 @@ auto spp::analyse::scopes::ScopeManager::attach_specific_super_scopes_impl(
     -> void {
     // Skip "$" identifiers (functions don't have substitutable members and take up lots of time).
     const auto scope_name = scope.ty_sym->fq_name();
-    if (scope_name->type_parts().back()->name[0] == '$') {
+    if (scope_name->is_compiler_generated_type()) {
         return;
     }
     if (utils::type_utils::is_type_function(*scope_name, scope)) {
@@ -295,7 +295,7 @@ auto spp::analyse::scopes::ScopeManager::check_conflicting_type_or_cmp_statement
     for (const auto *scope : existing_scopes) {
         auto body = asts::ast_body(scope->ast);
         for (auto const *member : body) {
-            if (auto const *cmp_stmt = member->to<asts::CmpStatementAst>(); cmp_stmt != nullptr and cmp_stmt->type->type_parts().back()->name[0] != '$') {
+            if (auto const *cmp_stmt = member->to<asts::CmpStatementAst>(); cmp_stmt != nullptr and not cmp_stmt->type->is_compiler_generated_type()) {
                 for (auto const &new_cmp : new_cmps) {
                     raise_if<errors::SppIdentifierDuplicateError>(
                         *new_cmp == *cmp_stmt->name, {scope, &sup_scope},

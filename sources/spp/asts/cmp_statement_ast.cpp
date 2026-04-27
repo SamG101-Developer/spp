@@ -143,7 +143,7 @@ auto spp::asts::CmpStatementAst::stage_4_qualify_types(
     // Qualify the type.
     type->stage_4_qualify_types(sm, meta);
     type->stage_7_analyse_semantics(sm, meta);
-    if (not m_from_use_statement and type->type_parts().back()->to_string()[0] != '$') {
+    if (not m_from_use_statement and not type->is_compiler_generated_type()) {
         type = sm->current_scope->get_type_symbol(type)->fq_name();
         m_alias_sym->type = type;
     }
@@ -195,7 +195,7 @@ auto spp::asts::CmpStatementAst::stage_8_check_memory(
         *value, *value, *sm, true, true, true, true, true, meta);
 
     // Generate the value and assign it to the variable symbol's compile-time value.
-    if (type->operator std::string()[0] != '$') {
+    if (not type->is_compiler_generated_type()) {
         const auto var_sym = sm->current_scope->get_var_symbol(name);
         var_sym->comptime_value = ast_clone(value);
     }
@@ -212,7 +212,7 @@ auto spp::asts::CmpStatementAst::stage_9_comptime_resolution(
     }
 
     // Generate the value and assign it to the variable symbol's compile-time value.
-    if (type->operator std::string()[0] != '$') {
+    if (type->is_compiler_generated_type()) {
         const auto var_sym = sm->current_scope->get_var_symbol(name);
         value->stage_9_comptime_resolution(sm, meta);
         var_sym->comptime_value = std::move(meta->cmp_result);
@@ -226,7 +226,7 @@ auto spp::asts::CmpStatementAst::stage_10_code_gen_1(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // No generation for $ types.
-    if (type->operator std::string()[0] == '$') { return nullptr; }
+    if (type->is_compiler_generated_type()) { return nullptr; }
 
     // Generate the value in a constant context.
     ctx->in_constant_context = true;

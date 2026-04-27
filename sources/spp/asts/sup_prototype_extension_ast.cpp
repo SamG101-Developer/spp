@@ -100,7 +100,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_1_pre_process(
     Ast *ctx)
     -> void {
     // Don't need to pre-process function-classes -- they are introduced from preprocessing functions.
-    if (name->type_parts().back()->name[0] == '$') { return; }
+    if (name->is_compiler_generated_type()) { return; }
     Ast::stage_1_pre_process(ctx);
 
     // Substitute the "Self" parameter's type with the name of the type being superimposed over.
@@ -134,7 +134,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_2_gen_top_level_scopes(
         ERR_ARGS(*optional[0]));
 
     // Check every generic parameter is constrained by the type.
-    if (name->type_parts().back()->name[0] != '$') {
+    if (not name->is_compiler_generated_type()) {
         const auto unconstrained = generic_param_group->get_all_params()
             | std::ranges::views::filter([this](auto const &x) { return not(name->contains_generic(*x) or super_class->contains_generic(*x)); })
             | std::ranges::to<std::vector>();
@@ -200,7 +200,7 @@ auto spp::asts::SupPrototypeExtensionAst::stage_5_load_super_scopes(
     }
 
     // Add the "Self" symbol into the scope.
-    if (name->type_parts().back()->name[0] != '$') {
+    if (not name->is_compiler_generated_type()) {
         const auto cls_sym = sm->current_scope->get_type_symbol(name);
         const auto self_sym = std::make_shared<analyse::scopes::TypeSymbol>(
             std::make_unique<TypeIdentifierAst>(name->pos_start(), "Self", nullptr),
@@ -423,7 +423,7 @@ auto spp::asts::SupPrototypeExtensionAst::check_double_extension(
     analyse::scopes::Scope &check_scope) const
     -> void {
     // Early return for function-classes.
-    if (cls_sym.name->name[0] == '$') {
+    if (cls_sym.name->is_compiler_generated_type()) {
         return;
     }
 
