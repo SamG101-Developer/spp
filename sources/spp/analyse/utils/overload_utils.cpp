@@ -241,8 +241,8 @@ auto spp::analyse::utils::overload_utils::infer_all_generics(
     asts::FunctionParameterGroupAst const &fn_params,
     asts::GenericParameterGroupAst const &gn_params,
     asts::FunctionCallArgumentGroupAst &fn_args,
-    asts::GenericArgumentGroupAst &gn_args,
-    asts::GenericArgumentGroupAst const &implicit_generic_args,
+    asts::GenericArgumentGroupAst &explicit_gn_args,
+    asts::GenericArgumentGroupAst const &implicit_gn_args,
     const bool is_variadic_fn,
     scopes::Scope const *fn_scope,
     scopes::ScopeManager *sm,
@@ -250,7 +250,7 @@ auto spp::analyse::utils::overload_utils::infer_all_generics(
     -> void {
     // Name the positional function and generic arguments.
     func_utils::name_fn_args(fn_args, fn_params, *sm);
-    func_utils::name_gn_args(gn_args, gn_params, *spp::utils::ptr::shared_cast<asts::Ast>(fn_proto.name), *sm, *meta);
+    func_utils::name_gn_args(explicit_gn_args, gn_params, *spp::utils::ptr::shared_cast<asts::Ast>(fn_proto.name), *sm, *meta);
 
     // The inference source is all of the function arguments (except for "self")
     auto generic_infer_source = fn_args.get_keyword_args()
@@ -264,16 +264,20 @@ auto spp::analyse::utils::overload_utils::infer_all_generics(
         | genex::to<std::vector>();
 
     // Infer all of the generics from the function arguments and parameters.
+    const auto temp_arg_group = asts::GenericArgumentGroupAst::new_empty();
+    *temp_arg_group += explicit_gn_args;
+    *temp_arg_group += implicit_gn_args;
+
     func_utils::infer_gn_args(
-        gn_args,
         *fn_proto.generic_param_group,
-        genex::views::concat(gn_args.get_all_args(), implicit_generic_args.get_all_args()) | genex::to<std::vector>(),
+        *temp_arg_group,
         {generic_infer_source.begin(), generic_infer_source.end()},
         {generic_infer_target.begin(), generic_infer_target.end()},
         meta->postfix_expression_lhs->infer_type(sm, meta),
         *fn_scope,
         is_variadic_fn ? fn_proto.param_group->get_variadic_param()->extract_name() : nullptr,
         false, *sm, *meta);
+    explicit_gn_args.args = std::move(temp_arg_group->args);
 }
 
 

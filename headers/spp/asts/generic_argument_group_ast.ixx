@@ -58,6 +58,10 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : virtual Ast {
         ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, std::shared_ptr<TypeAst>> &&map)
         -> std::unique_ptr<GenericArgumentGroupAst>;
 
+    static auto from_map(
+        ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst*> &&map)
+        -> std::unique_ptr<GenericArgumentGroupAst>;
+
 
     /**
      * Construct the GenericArgumentGroupAst with the arguments matching the members.

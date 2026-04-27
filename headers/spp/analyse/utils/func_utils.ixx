@@ -56,7 +56,7 @@ namespace spp::analyse::utils::func_utils {
 
     using InferenceResultCompMap = ankerl::unordered_dense::map<
         std::shared_ptr<asts::TypeIdentifierAst>,
-        std::vector<asts::ExpressionAst const*>,
+        std::vector<asts::ExpressionAst*>,
         spp::utils::ptr::ptr_hash<std::shared_ptr<asts::TypeIdentifierAst>>,
         spp::utils::ptr::ptr_eq<std::shared_ptr<asts::TypeIdentifierAst>>>;
 
@@ -153,10 +153,11 @@ namespace spp::analyse::utils::func_utils {
     SPP_EXP_FUN auto enforce_no_generic_constraint_violations(
         std::vector<std::shared_ptr<asts::TypeIdentifierAst>> const &p_names,
         std::vector<std::vector<std::shared_ptr<asts::TypeAst>>> const &p_con_groups,
-        asts::GenericArgumentGroupAst const &a_group,
+        std::vector<asts::GenericArgumentTypeKeywordAst*> const& type_args,
+        std::vector<asts::GenericArgumentAst*> const &all_args,
         scopes::Scope const &owner_scope,
-        scopes::ScopeManager &sm,
-        asts::meta::CompilerMetaData &meta)
+        scopes::ScopeManager const &sm,
+        asts::meta::CompilerMetaData const &meta)
         -> void;
 
     SPP_EXP_FUN auto name_fn_args(
@@ -184,9 +185,8 @@ namespace spp::analyse::utils::func_utils {
         -> void;
 
     SPP_EXP_FUN auto infer_gn_args(
-        asts::GenericArgumentGroupAst &a_group,
         asts::GenericParameterGroupAst const &p_group,
-        std::vector<asts::GenericArgumentAst*> const &explicit_args,
+        asts::GenericArgumentGroupAst &args,
         InferenceSourceMap infer_source,
         InferenceTargetMap infer_target,
         std::shared_ptr<asts::Ast> const &owner,
@@ -198,9 +198,9 @@ namespace spp::analyse::utils::func_utils {
         -> void;
 
     SPP_EXP_FUN auto infer_gn_args_impl_comp(
-        asts::GenericArgumentGroupAst &a_group,
         std::vector<asts::GenericParameterCompAst*> const &comp_params,
-        std::vector<asts::GenericArgumentCompKeywordAst*> explicit_args,
+        std::vector<std::unique_ptr<asts::GenericArgumentCompKeywordAst>> const &comp_args,
+        std::vector<asts::GenericArgumentAst*> &all_args,
         InferenceSourceMap const &infer_source,
         InferenceTargetMap const &infer_target,
         std::shared_ptr<asts::Ast> const &owner,
@@ -208,12 +208,12 @@ namespace spp::analyse::utils::func_utils {
         std::shared_ptr<asts::IdentifierAst> const &variadic_fn_param_name,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData &meta)
-        -> void;
+        -> std::vector<std::unique_ptr<asts::GenericArgumentCompKeywordAst>>;
 
     SPP_EXP_FUN auto infer_gn_args_impl_type(
-        asts::GenericArgumentGroupAst &a_group,
         std::vector<asts::GenericParameterTypeAst*> const &type_params,
-        std::vector<asts::GenericArgumentTypeKeywordAst*> explicit_args,
+        std::vector<std::unique_ptr<asts::GenericArgumentTypeKeywordAst>> const &type_args,
+        std::vector<asts::GenericArgumentAst*> &all_args,
         InferenceSourceMap const &infer_source,
         InferenceTargetMap const &infer_target,
         std::shared_ptr<asts::Ast> const &owner,
@@ -221,7 +221,7 @@ namespace spp::analyse::utils::func_utils {
         std::shared_ptr<asts::IdentifierAst> const &variadic_fn_param_name,
         scopes::ScopeManager &sm,
         asts::meta::CompilerMetaData &meta)
-        -> void;
+        -> std::vector<std::unique_ptr<asts::GenericArgumentTypeKeywordAst>>;
 
     SPP_EXP_FUN auto is_target_callable(
         asts::ExpressionAst &expr,

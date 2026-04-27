@@ -439,6 +439,9 @@ auto spp::analyse::utils::func_utils::enforce_no_invalid_gn_args(
     std::vector<asts::GenericArgumentAst*> const &named_args,
     scopes::ScopeManager &sm)
     -> void {
+    // Shortcut.
+    if (named_args.empty()) { return; }
+
     // Get the parameter names using the attribute.
     const auto p_names = params
         | genex::views::cast_dynamic<GenericParamType*>()
@@ -503,10 +506,11 @@ auto spp::analyse::utils::func_utils::enforce_no_uninferred_gn_args(
 auto spp::analyse::utils::func_utils::enforce_no_generic_constraint_violations(
     std::vector<std::shared_ptr<asts::TypeIdentifierAst>> const &p_names,
     std::vector<std::vector<std::shared_ptr<asts::TypeAst>>> const &p_con_groups,
-    asts::GenericArgumentGroupAst const &a_group,
+    std::vector<asts::GenericArgumentTypeKeywordAst*> const &type_args,
+    std::vector<asts::GenericArgumentAst*> const &all_args,
     scopes::Scope const &owner_scope,
-    scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData &meta)
+    scopes::ScopeManager const &sm,
+    asts::meta::CompilerMetaData const &meta)
     -> void {
     // Define the cloned constraint groups.
     auto p_con_groups_cloned = std::vector<std::vector<std::shared_ptr<asts::TypeAst>>>();
@@ -523,7 +527,7 @@ auto spp::analyse::utils::func_utils::enforce_no_generic_constraint_violations(
                 p_con = std::move(temp);
             }
 
-            const auto sub = p_con->substitute_generics(a_group.get_all_args());
+            const auto sub = p_con->substitute_generics(all_args);
             // sub->stage_7_analyse_semantics(&sm, &meta);
             con_group_cloned.push_back(sub);
         }
@@ -531,7 +535,7 @@ auto spp::analyse::utils::func_utils::enforce_no_generic_constraint_violations(
     }
 
     // Now check that each argument satisfied its constraints.
-    const auto args = a_group.get_type_args();
+    const auto args = type_args;
     for (auto [i, p_name] : p_names | genex::views::enumerate) {
         const auto p_cons = p_con_groups_cloned[i];
         const auto a = args[i];
@@ -600,7 +604,6 @@ auto spp::analyse::utils::func_utils::name_gn_args(
     -> void {
     // Special case for tuples to prevent an infinite recursion.
     if (is_tuple_owner) { return; }
-    if (a_group.get_positional_args().empty()) { return; } // sort?
 
     // Split the arguments by moving off the group (will re-add back after).
     const auto comp_args = asts::GenericArgumentGroupAst::new_empty();
@@ -679,7 +682,6 @@ auto spp::analyse::utils::func_utils::name_gn_args_impl(
 
         // The variadic parameter requires a tuple of the remaining arguments.
         if (p_names.empty() and is_variadic) {
-
             // Variadic check: map arguments "func[1_u32, 1_u32]" for "func[..s]" to "func[ts = (1_u32, 1_u32)]".
             if constexpr (std::same_as<GenericParamType, asts::GenericParameterCompAst>) {
                 auto elems = MAKE_VARIADIC_COMP_ARGS(a_group.args);
@@ -708,9 +710,8 @@ auto spp::analyse::utils::func_utils::name_gn_args_impl(
 
 
 auto spp::analyse::utils::func_utils::infer_gn_args(
-    asts::GenericArgumentGroupAst &a_group,
     asts::GenericParameterGroupAst const &p_group,
-    std::vector<asts::GenericArgumentAst*> const &explicit_args,
+    asts::GenericArgumentGroupAst &args,
     InferenceSourceMap infer_source, // Note: must be copied, ignore hints.
     InferenceTargetMap infer_target, // Note: must be copied, ignore hints.
     std::shared_ptr<asts::Ast> const &owner,
@@ -726,46 +727,29 @@ auto spp::analyse::utils::func_utils::infer_gn_args(
 
     // Special case for tuples to prevent an infinite recursion, or there is nothing to infer.
     if (is_tuple_owner or p_group.params.empty()) {
-        const auto i = a_group.args.size();
-        auto clone = asts::ast_clone_vec(explicit_args);
-        std::ranges::move(clone, std::back_inserter(a_group.args));
-        if (i > 0) { a_group.args |= genex::actions::drop(i); }
         return;
     }
-
-    // Partition args by moving — no deep clone needed.
-    const auto comp_args = asts::GenericArgumentGroupAst::new_empty();
-    const auto type_args = asts::GenericArgumentGroupAst::new_empty();
-    for (auto &arg : a_group.args) {
-        if (arg->to<asts::GenericArgumentCompAst>())
-            comp_args->args.push_back(std::move(arg));
-        else
-            type_args->args.push_back(std::move(arg));
-    }
-    a_group.args.clear();
 
     // Get raw param pointer vectors — params are read-only in impl, no clone needed.
     const auto comp_params = p_group.get_comp_params();
     const auto type_params = p_group.get_type_params();
 
-    const auto comp_explicit_args = explicit_args
-        | genex::views::cast_dynamic<asts::GenericArgumentCompKeywordAst*>()
-        | genex::to<std::vector>();
-
-    const auto type_explicit_args = explicit_args
-        | genex::views::cast_dynamic<asts::GenericArgumentTypeKeywordAst*>()
-        | genex::to<std::vector>();
+    auto comp_args = std::vector<std::unique_ptr<asts::GenericArgumentCompKeywordAst>>();
+    auto type_args = std::vector<std::unique_ptr<asts::GenericArgumentTypeKeywordAst>>();
+    auto all_args = args.get_all_args();
+    for (auto &&a : std::move(args.args)) {
+        if (a->to<asts::GenericArgumentCompAst>())
+            comp_args.push_back(spp::utils::ptr::unique_cast<asts::GenericArgumentCompKeywordAst>(std::move(a)));
+        else
+            type_args.push_back(spp::utils::ptr::unique_cast<asts::GenericArgumentTypeKeywordAst>(std::move(a)));
+    }
 
     // Call the two individual inference functions.
     // Todo: These need to move left-to-right no matter type vs comp
     // Todo: Because of cross substitution left to right between type and comp
     // Todo: Or do type, comp, type-cross-substitution again
-    infer_gn_args_impl_type(*type_args, type_params, type_explicit_args, infer_source, infer_target, owner, owner_scope, variadic_fn_param_name, sm, meta);
-    infer_gn_args_impl_comp(*comp_args, comp_params, comp_explicit_args, infer_source, infer_target, owner, owner_scope, variadic_fn_param_name, sm, meta);
-
-    // Recombine the named arguments back into the original argument group.
-    std::ranges::move(comp_args->args, std::back_inserter(a_group.args));
-    std::ranges::move(type_args->args, std::back_inserter(a_group.args));
+    auto new_type_args = infer_gn_args_impl_type(type_params, type_args, all_args, infer_source, infer_target, owner, owner_scope, variadic_fn_param_name, sm, meta);
+    auto new_comp_args = infer_gn_args_impl_comp(comp_params, comp_args, all_args, infer_source, infer_target, owner, owner_scope, variadic_fn_param_name, sm, meta);
 
     // Build index map once for O(n) lookup during sort.
     auto param_index = ankerl::unordered_dense::map<std::string_view, std::size_t>();
@@ -774,41 +758,41 @@ auto spp::analyse::utils::func_utils::infer_gn_args(
     }
 
     // Finally, sort the arguments back into the original parameter order.
-    a_group.args |= genex::actions::sort([&](auto const &a, auto const &b) {
+    auto final_args = std::vector<std::unique_ptr<asts::GenericArgumentAst>>();
+    for (auto &&type_arg : new_type_args) { final_args.push_back(std::move(type_arg)); }
+    for (auto &&comp_arg : new_comp_args) { final_args.push_back(std::move(comp_arg)); }
+    final_args |= genex::actions::sort([&](auto const &a, auto const &b) {
         return param_index[a->view_name()] < param_index[b->view_name()];
     });
+    args.args = std::move(final_args);
 }
 
 
 auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
-    asts::GenericArgumentGroupAst &a_group,
     std::vector<asts::GenericParameterCompAst*> const &comp_params,
-    std::vector<asts::GenericArgumentCompKeywordAst*> explicit_args,
+    std::vector<std::unique_ptr<asts::GenericArgumentCompKeywordAst>> const &comp_args,
+    std::vector<asts::GenericArgumentAst*> &all_args,
     InferenceSourceMap const &infer_source,
     InferenceTargetMap const &infer_target,
     std::shared_ptr<asts::Ast> const &owner,
     scopes::Scope const &owner_scope,
     std::shared_ptr<asts::IdentifierAst> const &,
     scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData &meta) -> void {
+    asts::meta::CompilerMetaData &meta)
+    -> std::vector<std::unique_ptr<asts::GenericArgumentCompKeywordAst>> {
     // Get the names for ease of use.
     auto p_names = comp_params
         | genex::views::transform([](auto &&x) { return spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(x->name); })
         | genex::to<std::vector>();
-    auto ea_names = explicit_args
+    auto a_names = comp_args
         | genex::views::transform([](auto &&x) { return spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(x->name); })
         | genex::to<std::vector>();
     auto inferred_args = InferenceResultCompMap();
 
-    // Preload the explicit generic arguments into the inference map.
-    for (auto *arg : explicit_args) {
-        inferred_args[spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(arg->name)].emplace_back(arg->val.get());
-    }
-
     // Infer the generic arguments from the source/target maps.
-    for (auto const &param_name : p_names) {
+    for (auto const &p_name : p_names) {
         for (auto const &[infer_target_name, infer_target_type] : infer_target) {
-            auto inferred_arg = static_cast<asts::ExpressionAst const*>(nullptr);
+            auto inferred_arg = static_cast<asts::ExpressionAst*>(nullptr);
 
             // Check for a direct match ("a: T" & "a: Str") or an inner match ("a: Vec[T]" & "a: Vec[Str]").
             if (infer_source.contains(infer_target_name)) {
@@ -817,17 +801,24 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
                     *infer_source.at(infer_target_name)->without_convention(),
                     *infer_target_type->without_convention(),
                     *sm.current_scope, owner_scope, temp_gs, true);
-                inferred_arg = temp_gs[param_name];
+
+                inferred_arg = temp_gs.contains(p_name) ? temp_gs[p_name] : nullptr;
             }
 
             // Handle the match if it exists.
             if (inferred_arg != nullptr) {
-                inferred_args[param_name].emplace_back(inferred_arg);
+                inferred_args[p_name].emplace_back(inferred_arg);
             }
         }
     }
 
-    // Fully qualify and type arguments (replaced within the inference map).
+    // Load the pre-existing generic arguments into the inference map.
+    for (auto const &arg : comp_args) {
+        auto cast_name = spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(arg->name);
+        inferred_args[cast_name].emplace_back(arg->val.get());
+    }
+
+    // Add the missing arguments that have optional values.
     auto i_names = inferred_args | genex::views::keys | genex::to<std::vector>();
     for (auto *opt_param : comp_params | genex::views::cast_dynamic<asts::GenericParameterCompOptionalAst*>()) {
         const auto cast_name = spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(opt_param->name);
@@ -841,64 +832,49 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
     enforce_no_uninferred_gn_args(p_names, i_names, owner_scope, owner, sm);
 
     // At this point, all conflicts have been checked, so it is safe to only use the first inferred value.
-    auto formatted_args = std::map<std::shared_ptr<asts::TypeAst>, asts::ExpressionAst const*>();
+    auto formatted_args = ankerl::unordered_dense::map<std::shared_ptr<asts::TypeIdentifierAst>, asts::ExpressionAst*>();
     for (auto [arg_name, inferred_vals] : inferred_args) {
         formatted_args[arg_name] = inferred_vals[0];
     }
 
-    // todo: something is needed here, ie "[T, cmp x: Vec[T]]" needs to substitute the value for "T" into "Vec[T]".
     // Cross-apply generic arguments. This allows "Vec[T, A=Alloc[T]]" to substitute the new value of "T" into "Alloc".
-    // for (auto const &arg_name : inferred_args | genex::views::keys | genex::to<std::vector>()) {
-    //     if (genex::contains(explicit_arg_names, *arg_name, genex::meta::deref)) {
-    //         continue;
-    //     }
-    //
-    //     auto other_args = formatted_generic_arguments
-    //         | genex::views::filter([&](auto &&p) { return *p.first != *arg_name; })
-    //         | genex::to<std::vector>();
-    //
-    //     auto other_args_group = asts::GenericArgumentGroupAst::from_map(std::map(other_args.begin(), other_args.end()));
-    //     auto other_args_vec = other_args_group->args | genex::views::ptr | genex::to<std::vector>();
-    // }
+    for (auto const &arg_name : inferred_args | genex::views::keys | genex::to<std::vector>()) {
+        auto filtered_formatted_args = formatted_args;
+        filtered_formatted_args.erase(arg_name);
+        auto other_args_group = asts::GenericArgumentGroupAst::from_map(std::move(filtered_formatted_args));
+        auto other_args_vec = other_args_group->args | genex::views::ptr | genex::to<std::vector>();
+    }
 
     // Convert the inferred types into new generic arguments.
-    auto i = a_group.args.size();
+    auto final_args = std::remove_cvref_t<decltype(comp_args)>();
     for (auto const &[key, val] : formatted_args) {
-        const auto matching_param = genex::find(p_names, *key->to<asts::TypeIdentifierAst>(), genex::meta::deref);
-        if (matching_param == p_names.end()) { continue; }
-
         if (const auto val_as_type = val->to<asts::TypeAst>(); val_as_type != nullptr) {
             auto temp_val = asts::IdentifierAst::from_type(*val_as_type);
             auto temp_arg = std::make_unique<asts::GenericArgumentCompKeywordAst>(ast_clone(key), nullptr, std::move(temp_val));
-            a_group.args.emplace_back(std::move(temp_arg));
+            final_args.emplace_back(std::move(temp_arg));
         }
         else {
             auto temp_val = ast_clone(val);
             auto temp_arg = std::make_unique<asts::GenericArgumentCompKeywordAst>(ast_clone(key), nullptr, std::move(temp_val));
-            a_group.args.emplace_back(std::move(temp_arg));
+            final_args.emplace_back(std::move(temp_arg));
         }
     }
-    if (i > 0) { a_group.args |= genex::actions::drop(i); }
 
     // Type-check the "comp" args. Only do this at the semantic analysis stage.
-    if (meta.current_stage <= 7) { return; }
+    if (meta.current_stage <= 7) { return final_args; }
 
     auto p_name_index_comp = ankerl::unordered_dense::map<std::string_view, std::size_t>();
     for (auto [i, p] : p_names | genex::views::enumerate) {
         p_name_index_comp[p->name] = i;
     }
-    a_group.args |= genex::actions::sort([&](auto const &a, auto const &b) {
+    final_args |= genex::actions::sort([&](auto const &a, auto const &b) {
         return p_name_index_comp[a->view_name()] < p_name_index_comp[b->view_name()];
     });
 
-    for (auto &&[param, arg] : genex::views::zip(comp_params, a_group.get_comp_args())) {
-        // auto comp_arg = arg->to<asts::GenericArgumentCompKeywordAst>();
-        // auto comp_param = param->to<asts::GenericParameterCompAst>();
-        // if (comp_arg == nullptr) { continue; }
-
-        // Not convinces owner_scope mapping is correct here (see scopes for equality below)
+    for (auto &&[param, arg] : std::ranges::views::zip(comp_params, final_args)) {
+        // Not convinced owner_scope mapping is correct here (see scopes for equality below)
         auto a_type = owner_scope.get_type_symbol(arg->val->infer_type(&sm, &meta))->fq_name();
-        auto p_type = param->type->substitute_generics(a_group.get_all_args());
+        auto p_type = param->type->substitute_generics(all_args);
         // p_type->stage_7_analyse_semantics(&sm, meta); // TODO: Needed?
 
         // For a variadic comp argument, check every element of the args tuple.
@@ -922,20 +898,23 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
             not type_utils::symbolic_eq(*p_type, *a_type, owner_scope, *sm.current_scope),
             {&owner_scope, sm.current_scope}, ERR_ARGS(*param, *p_type, *arg, *a_type));
     }
+
+    return final_args;
 }
 
 
 auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
-    asts::GenericArgumentGroupAst &a_group,
     std::vector<asts::GenericParameterTypeAst*> const &type_params,
-    std::vector<asts::GenericArgumentTypeKeywordAst*> explicit_args,
+    std::vector<std::unique_ptr<asts::GenericArgumentTypeKeywordAst>> const &type_args,
+    std::vector<asts::GenericArgumentAst*> &all_args,
     InferenceSourceMap const &infer_source,
     InferenceTargetMap const &infer_target,
     std::shared_ptr<asts::Ast> const &owner,
     scopes::Scope const &owner_scope,
     std::shared_ptr<asts::IdentifierAst> const &variadic_fn_param_name,
     scopes::ScopeManager &sm,
-    asts::meta::CompilerMetaData &meta) -> void {
+    asts::meta::CompilerMetaData &meta)
+    -> std::vector<std::unique_ptr<asts::GenericArgumentTypeKeywordAst>> {
     // Get the names for ease of use.
     auto p_names = type_params
         | genex::views::transform([](auto &&x) { return spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(x->name); })
@@ -943,7 +922,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
     auto p_con_groups = type_params
         | genex::views::transform([](auto &&x) { return x->constraints ? x->constraints->constraints : std::vector<std::shared_ptr<asts::TypeAst>>{}; })
         | genex::to<std::vector>();
-    auto ea_names = explicit_args
+    auto a_names = type_args
         | genex::views::transform([](auto &&x) { return spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(x->name); })
         | genex::to<std::vector>();
     auto inferred_args = InferenceResultTypeMap();
@@ -967,15 +946,6 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
             // Handle the match if it exists.
             if (inferred_arg != nullptr) {
                 inferred_args[p_name].emplace_back(inferred_arg);
-
-                // If we are inferring, remove the argument from the explicit args list.
-                // Todo: Same needed for "cmp" generic args.
-                if (genex::contains(ea_names, *p_name, genex::meta::deref)) {
-                    auto it = genex::find_if(explicit_args, [&](auto *arg) {
-                        return *spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(arg->name) == *p_name;
-                    });
-                    if (it != explicit_args.end()) { explicit_args.erase(it); }
-                }
             }
 
             // Handle the variadic parameter if it exists.
@@ -988,14 +958,13 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
         }
     }
 
-    // Load the explicit generic arguments into the inference map, as the consistency of these arguments needs checking
-    // too.
-    for (auto *arg : explicit_args) {
+    // Load the pre-existing generic arguments into the inference map.
+    for (auto const &arg : type_args) {
         auto cast_name = spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(arg->name);
         inferred_args[cast_name].emplace_back(arg->val);
     }
 
-    // Fully qualify and type arguments (replaced within the inference map).
+    // Add the missing arguments that have optional values.
     auto i_names = inferred_args | genex::views::keys | genex::to<std::vector>();
     for (auto *opt_param : type_params | genex::views::cast_dynamic<asts::GenericParameterTypeOptionalAst*>()) {
         const auto cast_name = spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(opt_param->name);
@@ -1017,7 +986,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
     enforce_no_uninferred_gn_args(p_names, i_names, owner_scope, owner, sm);
 
     // At this point, all conflicts have been checked, so it is safe to only use the first inferred value.
-    auto formatted_args = std::map<std::shared_ptr<asts::TypeAst>, std::shared_ptr<asts::TypeAst>>();
+    auto formatted_args = ankerl::unordered_dense::map<std::shared_ptr<asts::TypeIdentifierAst>, std::shared_ptr<asts::TypeAst>>();
     for (auto [arg_name, inferred_vals] : inferred_args) {
         formatted_args[arg_name] = inferred_vals[0];
     }
@@ -1025,14 +994,11 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
     // Cross-apply generic arguments. This allows "Vec[T, A=Alloc[T]]" to substitute the new value of "T" into "Alloc".
     // Todo: This needs to be left to right explicitly?
     for (auto const &arg_name : i_names) {
-        if (genex::contains(ea_names, *arg_name, genex::meta::deref)) { continue; }
+        if (genex::contains(a_names, *arg_name, genex::meta::deref)) { continue; }
 
-        auto other_args = formatted_args
-            | genex::views::filter([&](auto const &p) { return *p.first != *arg_name; })
-            | genex::views::transform([](auto const &p) { return std::make_pair(spp::utils::ptr::shared_cast<asts::TypeIdentifierAst>(p.first), p.second); })
-            | genex::to<std::vector>();
-        auto other_args_map = ankerl::unordered_dense::map<std::shared_ptr<asts::TypeIdentifierAst>, std::shared_ptr<asts::TypeAst>>(other_args.begin(), other_args.end());
-        auto other_args_group = asts::GenericArgumentGroupAst::from_map(std::move(other_args_map));
+        auto filtered_formatted_args = formatted_args;
+        filtered_formatted_args.erase(arg_name);
+        auto other_args_group = asts::GenericArgumentGroupAst::from_map(std::move(filtered_formatted_args));
         auto other_args_vec = other_args_group->args | genex::views::ptr | genex::to<std::vector>();
 
         auto t = formatted_args[arg_name]->substitute_generics(other_args_vec);
@@ -1041,29 +1007,25 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
     }
 
     // Convert the inferred types into new generic arguments.
-    auto i = a_group.args.size();
+    auto final_args = std::remove_cvref_t<decltype(type_args)>();
     for (auto &&[key, val] : formatted_args) {
-        const auto matching_param = genex::find(p_names, *key->to<asts::TypeIdentifierAst>(), genex::meta::deref);
-        if (matching_param == p_names.end()) { continue; }
         auto temp_arg = std::make_unique<asts::GenericArgumentTypeKeywordAst>(key, nullptr, val);
-        a_group.args.emplace_back(std::move(temp_arg));
-    }
-
-    if (i > 0) {
-        a_group.args |= genex::actions::drop(i);
+        final_args.emplace_back(std::move(temp_arg));
     }
 
     auto p_name_index_type = ankerl::unordered_dense::map<std::string_view, std::size_t>();
     for (auto [i, p] : p_names | genex::views::enumerate) {
         p_name_index_type[p->name] = i;
     }
-    a_group.args |= genex::actions::sort([&](auto const &a, auto const &b) {
+    final_args |= genex::actions::sort([&](auto const &a, auto const &b) {
         return p_name_index_type[a->view_name()] < p_name_index_type[b->view_name()];
     });
 
     // Finally, enforce the constraints on the inferred generic arguments.
-    if (meta.current_stage < 9) { return; }
-    enforce_no_generic_constraint_violations(p_names, p_con_groups, a_group, owner_scope, sm, meta);
+    if (meta.current_stage < 9) { return final_args; }
+    const auto type_args_raw = final_args | genex::views::ptr | genex::to<std::vector>();
+    enforce_no_generic_constraint_violations(p_names, p_con_groups, type_args_raw, all_args, owner_scope, sm, meta);
+    return final_args;
 }
 
 

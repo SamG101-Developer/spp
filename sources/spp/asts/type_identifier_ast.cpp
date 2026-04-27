@@ -80,8 +80,8 @@ auto spp::asts::TypeIdentifierAst::equals_type_identifier(
     -> std::strong_ordering {
     // Equality is based on the name and generics.
     return name == other.name and *generic_arg_group == *other.generic_arg_group
-        ? std::strong_ordering::equal
-        : std::strong_ordering::less;
+               ? std::strong_ordering::equal
+               : std::strong_ordering::less;
 }
 
 
@@ -179,10 +179,13 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     // const auto owner_scope = owner_sym->alias_stmt ? owner_sym->alias_stmt->
     //     owner_sym != nullptr ? owner_sym->scope : type_sym->scope;
 
+    if (this == reinterpret_cast<TypeIdentifierAst*>(0x9eb9950)) {
+        auto _ = 123;
+    }
+
     analyse::utils::func_utils::infer_gn_args(
-        *generic_arg_group,
         *(type_sym->alias_stmt ? type_sym->alias_stmt->generic_param_group : type_sym->type->generic_param_group),
-        generic_arg_group->get_all_args(),
+        *generic_arg_group,
         meta->infer_source, meta->infer_target,
         owner, *(owner_sym != nullptr ? owner_sym->scope : type_sym->scope),
         nullptr, is_tuple, *sm, *meta);

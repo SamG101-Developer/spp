@@ -106,6 +106,15 @@ auto spp::asts::GenericArgumentGroupAst::from_map(
 }
 
 
+auto spp::asts::GenericArgumentGroupAst::from_map(
+    ankerl::unordered_dense::map<std::shared_ptr<TypeIdentifierAst>, ExpressionAst*> &&map)
+    -> std::unique_ptr<GenericArgumentGroupAst> {
+    auto mapped_args = analyse::utils::type_utils::GenericInferenceMap();
+    for (auto const &[k, v] : std::move(map)) { mapped_args[k] = v; }
+    return from_map(std::move(mapped_args));
+}
+
+
 spp::asts::GenericArgumentGroupAst::GenericArgumentGroupAst(
     decltype(tok_l) &&tok_l,
     decltype(args) &&args,
