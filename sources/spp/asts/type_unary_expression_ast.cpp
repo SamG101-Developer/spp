@@ -134,7 +134,7 @@ auto spp::asts::TypeUnaryExpressionAst::infer_type(
     -> std::shared_ptr<TypeAst> {
     // Infer the RHS type.
     const auto type_scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
-    const auto type_sym = type_scope->get_type_symbol(shared_from_this());
+    const auto type_sym = type_scope->get_type_symbol(ast_clone(this)); // Temp
     return type_sym->fq_name()->with_convention(ast_clone(get_convention()));
 }
 
