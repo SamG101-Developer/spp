@@ -230,7 +230,7 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
 
     // Check for consistency among the branches' symbols' memory states.
     auto current_branch = branches.begin();
-    for (auto &&[sym, branches_memory_info_lists] : sym_mem_info) {
+    for (auto const &[sym, branches_memory_info_lists] : sym_mem_info) {
         auto first_branch_mem_info = first_branch_mem_info_getter(branches_memory_info_lists);
         if (current_branch == branches.end() - 1 and skip_else) { break; }
 
@@ -266,6 +266,7 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
 
             // Check for consistent pins.
             if (first_branch_mem_info.ast_pins != branch_memory_info_list.ast_pins) {
+                std::cout << "INCONSISTENT PIN: " << sym->name->to_string() << std::endl;
                 sym->memory_info->is_inconsistently_pinned = std::make_pair(first_branch, branch);
             }
 
