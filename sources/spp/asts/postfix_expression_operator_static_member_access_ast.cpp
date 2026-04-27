@@ -152,6 +152,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_9_comptime
     }
 
     // Handle accessing a variable on a namespace.
+    // Todo: Do we need to call stage_9 on the value?
     const auto lhs = meta->postfix_expression_lhs;
     const auto lhs_ns_sym = sm->current_scope->convert_postfix_to_nested_scope(lhs)->ns_sym;
     const auto sym = lhs_ns_sym->scope->get_var_symbol(name, true);

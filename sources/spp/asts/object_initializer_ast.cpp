@@ -119,6 +119,7 @@ auto spp::asts::ObjectInitializerAst::stage_7_analyse_semantics(
     meta->infer_source = {generic_infer_source.begin(), generic_infer_source.end()};
     meta->infer_target = {generic_infer_target.begin(), generic_infer_target.end()};
     type->stage_7_analyse_semantics(sm, meta);
+    type = sm->current_scope->get_type_symbol(type)->fq_name();
     meta->restore();
 
     meta->save();

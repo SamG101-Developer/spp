@@ -212,7 +212,7 @@ auto spp::asts::CmpStatementAst::stage_9_comptime_resolution(
     }
 
     // Generate the value and assign it to the variable symbol's compile-time value.
-    if (type->is_compiler_generated_type()) {
+    if (not type->is_compiler_generated_type()) {
         const auto var_sym = sm->current_scope->get_var_symbol(name);
         value->stage_9_comptime_resolution(sm, meta);
         var_sym->comptime_value = std::move(meta->cmp_result);
