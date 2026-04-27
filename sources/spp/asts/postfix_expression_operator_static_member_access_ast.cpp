@@ -20,6 +20,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.strings;
+import spp.utils.uid;
 import genex;
 
 
@@ -157,6 +158,33 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_9_comptime
     const auto lhs_ns_sym = sm->current_scope->convert_postfix_to_nested_scope(lhs)->ns_sym;
     const auto sym = lhs_ns_sym->scope->get_var_symbol(name, true);
     meta->cmp_result = ast_clone(sym->comptime_value->to<ExpressionAst>());
+}
+
+
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_11_code_gen_2(
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    codegen::LLvmCtx *ctx)
+    -> llvm::Value* {
+    const auto uid = spp::utils::generate_uid(this);
+
+    // Type case: LHS is a TypeAst — access a cmp constant on the type's scope.
+    if (const auto lhs_as_type = meta->postfix_expression_lhs->to<TypeAst>(); lhs_as_type != nullptr) {
+        const auto lhs_type_sym = sm->current_scope->get_type_symbol(ast_clone(lhs_as_type));
+        const auto var_sym = lhs_type_sym->scope->get_var_symbol(name, true);
+        if (var_sym->type->is_compiler_generated_type()) { return nullptr; }
+        SPP_ASSERT(var_sym->llvm_info->alloca != nullptr);
+        const auto global_var = llvm::cast<llvm::GlobalVariable>(var_sym->llvm_info->alloca);
+        return ctx->builder.CreateLoad(global_var->getValueType(), global_var, "load.static_type_member" + uid);
+    }
+
+    // Namespace case: LHS is a namespace identifier — access a cmp constant in the namespace's scope.
+    const auto lhs_ns_scope = sm->current_scope->convert_postfix_to_nested_scope(meta->postfix_expression_lhs);
+    const auto var_sym = lhs_ns_scope->get_var_symbol(name, true);
+    if (var_sym->type->is_compiler_generated_type()) { return nullptr; }
+    SPP_ASSERT(var_sym->llvm_info->alloca != nullptr);
+    const auto global_var = llvm::cast<llvm::GlobalVariable>(var_sym->llvm_info->alloca);
+    return ctx->builder.CreateLoad(global_var->getValueType(), global_var, "load.static_ns_member" + uid);
 }
 
 
