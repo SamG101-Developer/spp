@@ -394,12 +394,13 @@ auto spp::cli::unit_test(
 auto spp::cli::format_default_file_contents(
     const std::string_view contents)
     -> std::string {
-    // Remove the first newline, and replace "    " with "".
-    auto out = std::string();
-    for (const auto&line: contents | genex::views::split('\n')) {
-        if (line.size() <= 0) { continue; }
-        auto formatted = line | genex::to<std::string>();
-        formatted.replace(formatted.find("    "), 4, "");
-    }
-    return out;
+    return std::string(contents);
+    // // Remove the first newline, and replace "    " with "".
+    // auto out = std::string();
+    // for (const auto&line: contents | genex::views::split('\n')) {
+    //     if (line.size() <= 0) { continue; }
+    //     auto formatted = line | genex::to<std::string>();
+    //     formatted.replace(formatted.find("    "), 4, "");
+    // }
+    // return out;
 }
