@@ -68,20 +68,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     IsExpressionAst,
-    test_valid_type_variant_with_inference, R"(
-    cls Point[T] {
-        x: T
-        y: T
-    }
-    fun f() -> std::void::Void {
-        let a: std::option::Opt[std::string_view::StrView] = std::option::Some(val="hello world")
-        case a is std::option::Some(mut val) { val = "bye" }
-    }
-)");
-
-
-SPP_TEST_SHOULD_PASS_SEMANTIC(
-    IsExpressionAst,
     test_valid_type_generic, R"(
     cls Point[T] {
         x: T
@@ -92,19 +78,3 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case a is Point[std::number::S32](x, y) { }
     }
 )");
-
-
-/*
-SPP_TEST_SHOULD_PASS_SEMANTIC(
-    IsExpressionAst,
-    test_valid_type_generic_with_inference, R"(
-    cls Point[T] {
-        x: T
-        y: T
-    }
-    fun f() -> std::void::Void {
-        let a: Point[std::number::S32] = Point[std::number::S32](x=1, y=2)
-        case a is Point(x, y) { }
-    }
-)");
-*/

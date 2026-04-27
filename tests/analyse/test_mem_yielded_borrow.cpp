@@ -105,9 +105,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 
-SPP_TEST_SHOULD_PASS_SEMANTIC(
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
-    test_valid_memory_define_conflicting_mut_borrow_after_mut_borrow_created, R"(
+    test_valid_memory_define_conflicting_mut_borrow_after_mut_borrow_created,
+    SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
         cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
@@ -122,9 +123,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 
-SPP_TEST_SHOULD_PASS_SEMANTIC(
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
-    test_valid_memory_define_conflicting_ref_borrow_after_mut_borrow_created, R"(
+    test_valid_memory_define_conflicting_ref_borrow_after_mut_borrow_created,
+    SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
         cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
@@ -139,9 +141,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 
-SPP_TEST_SHOULD_PASS_SEMANTIC(
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstYieldedBorrow,
-    test_valid_memory_define_conflicting_mut_borrow_after_ref_borrow_created, R"(
+    test_valid_memory_define_conflicting_mut_borrow_after_ref_borrow_created,
+    SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
         cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }

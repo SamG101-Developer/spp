@@ -21,7 +21,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_indexing_vector_of_callables, R"(
     fun g() -> Void {
         let v = Vec[FunMov[(), StrView]]()
-        let mut x = (v[1_u64])()
+        let mut x = (v[1_uz])()
         x = "hello"
     }
 )");
