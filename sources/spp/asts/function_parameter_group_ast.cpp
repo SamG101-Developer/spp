@@ -92,15 +92,18 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
 
     // Check there is only 1 "self" parameter.
     raise_if<analyse::errors::SppMultipleSelfParametersError>(
-        self_params.size() > 1, {sm->current_scope}, ERR_ARGS(*self_params[0], *self_params[1]));
+        self_params.size() > 1, {sm->current_scope},
+        ERR_ARGS(*self_params[0], *self_params[1]));
 
     // Check there is only 1 variadic parameter, and it is last.
     raise_if<analyse::errors::SppMultipleVariadicParametersError>(
-        variadic_params.size() > 1, {sm->current_scope}, ERR_ARGS(*variadic_params[0], *variadic_params[1]));
+        variadic_params.size() > 1, {sm->current_scope},
+        ERR_ARGS(*variadic_params[0], *variadic_params[1]));
 
     // Check there are no duplicate parameter names.
     raise_if<analyse::errors::SppIdentifierDuplicateError>(
-        not param_names.empty(), {sm->current_scope}, ERR_ARGS(*param_names[0], *param_names[1], "keyword function-argument"));
+        not param_names.empty(), {sm->current_scope},
+        ERR_ARGS(*param_names[0], *param_names[1], "keyword function-argument"));
 
     // Check the parameters are in the correct order.
     raise_if<analyse::errors::SppOrderInvalidError>(
@@ -108,9 +111,7 @@ auto spp::asts::FunctionParameterGroupAst::stage_7_analyse_semantics(
         ERR_ARGS(unordered_params[0].first, *unordered_params[0].second, unordered_params[1].first, *unordered_params[1].second));
 
     // Analyse the parameters.
-    for (auto const &param : params) {
-        param->stage_7_analyse_semantics(sm, meta);
-    }
+    for (auto const &param : params) { param->stage_7_analyse_semantics(sm, meta); }
 }
 
 
@@ -119,9 +120,7 @@ auto spp::asts::FunctionParameterGroupAst::stage_8_check_memory(
     CompilerMetaData *meta)
     -> void {
     // Check each parameter's memory.
-    for (auto const &param : params) {
-        param->stage_8_check_memory(sm, meta);
-    }
+    for (auto const &param : params) { param->stage_8_check_memory(sm, meta); }
 }
 
 
@@ -131,9 +130,7 @@ auto spp::asts::FunctionParameterGroupAst::stage_11_code_gen_2(
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Code generate each parameter.
-    for (auto const &param : params) {
-        param->stage_11_code_gen_2(sm, meta, ctx);
-    }
+    for (auto const &param : params) { param->stage_11_code_gen_2(sm, meta, ctx); }
     return nullptr;
 }
 
@@ -142,9 +139,7 @@ auto spp::asts::FunctionParameterGroupAst::get_all_params() const
     -> std::vector<FunctionParameterAst*> {
     // Filter by casting.
     auto out = std::vector<FunctionParameterAst*>();
-    for (auto const &param : params) {
-        out.push_back(param.get());
-    }
+    for (auto const &param : params) { out.push_back(param.get()); }
     return out;
 }
 
@@ -154,9 +149,7 @@ auto spp::asts::FunctionParameterGroupAst::get_self_param() const
     // Filter by casting.
     auto out = std::vector<FunctionParameterSelfAst*>();
     for (auto const &param : params) {
-        if (auto *self_param = dynamic_cast<FunctionParameterSelfAst*>(param.get())) {
-            out.push_back(self_param);
-        }
+        if (auto *self_param = dynamic_cast<FunctionParameterSelfAst*>(param.get())) { out.push_back(self_param); }
     }
     return out.empty() ? nullptr : out[0];
 }
@@ -167,9 +160,7 @@ auto spp::asts::FunctionParameterGroupAst::get_required_params() const
     // Filter by casting.
     auto out = std::vector<FunctionParameterRequiredAst*>();
     for (auto const &param : params) {
-        if (auto *req_param = dynamic_cast<FunctionParameterRequiredAst*>(param.get())) {
-            out.push_back(req_param);
-        }
+        if (auto *req_param = dynamic_cast<FunctionParameterRequiredAst*>(param.get())) { out.push_back(req_param); }
     }
     return out;
 }
@@ -180,9 +171,7 @@ auto spp::asts::FunctionParameterGroupAst::get_optional_params() const
     // Filter by casting.
     auto out = std::vector<FunctionParameterOptionalAst*>();
     for (auto const &param : params) {
-        if (auto *opt_param = dynamic_cast<FunctionParameterOptionalAst*>(param.get())) {
-            out.push_back(opt_param);
-        }
+        if (auto *opt_param = dynamic_cast<FunctionParameterOptionalAst*>(param.get())) { out.push_back(opt_param); }
     }
     return out;
 }
@@ -193,9 +182,7 @@ auto spp::asts::FunctionParameterGroupAst::get_variadic_param() const
     // Filter by casting.
     auto out = std::vector<FunctionParameterVariadicAst*>();
     for (auto const &param : params) {
-        if (auto *var_param = dynamic_cast<FunctionParameterVariadicAst*>(param.get())) {
-            out.push_back(var_param);
-        }
+        if (auto *var_param = dynamic_cast<FunctionParameterVariadicAst*>(param.get())) { out.push_back(var_param); }
     }
     return out.empty() ? nullptr : out[0];
 }
@@ -206,9 +193,7 @@ auto spp::asts::FunctionParameterGroupAst::get_non_self_params() const
     // Filter by casting.
     auto out = std::vector<FunctionParameterAst*>();
     for (auto const &param : params) {
-        if (dynamic_cast<FunctionParameterSelfAst*>(param.get()) == nullptr) {
-            out.push_back(param.get());
-        }
+        if (dynamic_cast<FunctionParameterSelfAst*>(param.get()) == nullptr) { out.push_back(param.get()); }
     }
     return out;
 }

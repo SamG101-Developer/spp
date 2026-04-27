@@ -159,7 +159,8 @@ auto spp::analyse::utils::func_utils::convert_method_to_function_form(
 
     // Create the static method access (without the function call and args).
     auto field = std::make_unique<asts::PostfixExpressionOperatorStaticMemberAccessAst>(nullptr, ast_clone(&function_name));
-    auto field_access = std::make_unique<asts::PostfixExpressionAst>(ast_clone(&function_owner_type), std::move(field));
+    auto field_access = std::make_unique<asts::PostfixExpressionAst>(
+        ast_clone(&function_owner_type), std::move(field));
 
     // Create an argument for "self" and inject it into the current arguments.
     auto self_arg = std::make_unique<asts::FunctionCallArgumentPositionalAst>(
