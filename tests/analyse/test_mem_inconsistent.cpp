@@ -147,7 +147,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let p = Point(x=std::string::Str::from("5"), y=std::string::Str::from("5"))
         case 1 of {
-            == 1 { c(&p) }
+            == 1 { let x = c(&p) }
             == 2 { }
         }
 
@@ -170,7 +170,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let p = Point(x=std::string::Str::from("5"), y=std::string::Str::from("5"))
         case 1 of {
-            == 1 { c(&p.x) }
+            == 1 { let x = c(&p.x) }
             == 2 { }
         }
 
@@ -193,8 +193,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::void::Void {
         let p = Point(x=std::string::Str::from("5"), y=std::string::Str::from("5"))
         case 1 of {
-            == 1 { c(&p.x) }
-            == 2 { c(&p.y) }
+            == 1 { let x = c(&p.x) }
+            == 2 { let x = c(&p.y) }
         }
 
         let r = p

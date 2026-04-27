@@ -179,10 +179,6 @@ auto spp::asts::TypeIdentifierAst::stage_7_analyse_semantics(
     // const auto owner_scope = owner_sym->alias_stmt ? owner_sym->alias_stmt->
     //     owner_sym != nullptr ? owner_sym->scope : type_sym->scope;
 
-    if (this == reinterpret_cast<TypeIdentifierAst*>(0x9eb9950)) {
-        auto _ = 123;
-    }
-
     analyse::utils::func_utils::infer_gn_args(
         *(type_sym->alias_stmt ? type_sym->alias_stmt->generic_param_group : type_sym->type->generic_param_group),
         *generic_arg_group,
