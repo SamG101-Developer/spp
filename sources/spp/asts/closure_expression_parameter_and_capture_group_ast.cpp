@@ -128,6 +128,7 @@ auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::stage_11_code_gen_
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Generate the parameters into the current scope.
+    meta->current_lambda_outer_scope = sm->current_scope;
     sm->move_to_next_scope();
     param_group->stage_11_code_gen_2(sm, meta, ctx);
     capture_group->stage_11_code_gen_2(sm, meta, ctx);

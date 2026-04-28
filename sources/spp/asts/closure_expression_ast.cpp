@@ -185,9 +185,11 @@ auto spp::asts::ClosureExpressionAst::stage_11_code_gen_2(
 
     // For now, just skip scopes and return a nullptr.
     const auto parent_scope = sm->current_scope;
+    meta->save();
     pc_group->stage_11_code_gen_2(sm, meta, ctx);
     sm->move_to_next_scope();
     body->stage_11_code_gen_2(sm, meta, ctx);
+    meta->restore();
     sm->current_scope = parent_scope;
 
     // Restore the previous context.

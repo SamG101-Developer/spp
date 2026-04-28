@@ -129,6 +129,13 @@ auto spp::asts::PostfixExpressionAst::stage_11_code_gen_2(
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
+    // Memory analysis used the transformed AST to not repeat lhs as self.
+    const auto func = op->to<PostfixExpressionOperatorFunctionCallAst>();
+    if (func != nullptr and func->transformed_ast() != nullptr) {
+        const auto ret_val = func->transformed_ast()->stage_11_code_gen_2(sm, meta, ctx);
+        return ret_val;
+    }
+
     // Forward into the operator AST.
     meta->save();
     meta->postfix_expression_lhs = lhs.get();

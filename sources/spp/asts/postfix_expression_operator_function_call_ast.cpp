@@ -300,16 +300,18 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::stage_11_code_gen_2(
         SPP_ASSERT(llvm_type != nullptr);
 
         // If the lhs is non-symbolic, we need to materialize it, and use as the self argument.
-        const auto [sym, _] = sm->current_scope->get_var_symbol_outermost(
-            *meta->postfix_expression_lhs->to<PostfixExpressionAst>()->lhs);
+        const auto temp_lhs = meta->postfix_expression_lhs->to<PostfixExpressionAst>()->lhs.get();
+        const auto [var_sym, _] = sm->current_scope->get_var_symbol_outermost(*temp_lhs);
         auto base_ptr = static_cast<llvm::Value*>(nullptr);
-        if (sym != nullptr) {
+        if (var_sym != nullptr) {
             // Get the alloca for the lhs symbol (the base pointer).
-            const auto lhs_alloca = sym->llvm_info->alloca;
+            const auto lhs_alloca = var_sym->llvm_info->alloca;
             SPP_ASSERT(lhs_alloca != nullptr);
             base_ptr = ctx->builder.CreateLoad(llvm_type, lhs_alloca, "load.member_access.base_ptr" + uid);
         }
-        else {
+
+        // This check prevents materializing static access, like "std::vector::Vec::push" as it makes no sense to do so.
+        else if (sm->current_scope->get_type_symbol(ast_clone(temp_lhs->to<TypeAst>())) == nullptr) {
             // Materialize the lhs expression into a temporary.
             const auto lhs_val = meta->postfix_expression_lhs->stage_11_code_gen_2(sm, meta, ctx);
             const auto temp = ctx->builder.CreateAlloca(llvm_type, nullptr, "temp.member_access.lhs" + uid);
