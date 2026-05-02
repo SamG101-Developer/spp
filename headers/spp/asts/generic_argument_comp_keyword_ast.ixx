@@ -4,7 +4,7 @@ module;
 export module spp.asts.generic_argument_comp_keyword_ast;
 import spp.asts.generic_argument_comp_ast;
 import spp.asts.token_ast;
-
+import spp.utils.types;
 import std;
 
 namespace spp::analyse::scopes {
@@ -28,17 +28,15 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgum
      * The name of the keyword argument. This is the identifier that is used to refer to the argument in the generic
      * call.
      */
-    std::shared_ptr<TypeAst> name;
+    Shared<TypeAst> Name;
 
     /**
      * The token that represents the assignment operator @c = in the keyword argument. This separates the name of the
      * argument from the expression that is being passed as the argument's value.
      */
-    std::unique_ptr<TokenAst> tok_assign;
+    Unique<TokenAst> TokAssign;
 
-    static auto from_symbol(
-        analyse::scopes::VariableSymbol const &sym)
-        -> std::unique_ptr<GenericArgumentCompKeywordAst>;
+    static auto FromSym(analyse::scopes::VariableSymbol const &sym) -> Unique<GenericArgumentCompKeywordAst>;
 
     /**
      * Construct the GenericArgumentCompKeywordAst with the arguments matching the members.
@@ -47,27 +45,23 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompKeywordAst final : GenericArgum
      * @param val The value of the generic comp argument.
      */
     GenericArgumentCompKeywordAst(
-        decltype(name) name,
-        decltype(tok_assign) &&tok_assign,
-        decltype(val) &&val);
+        decltype(Name) name,
+        decltype(TokAssign) &&tok_assign,
+        decltype(Val) &&val);
 
     ~GenericArgumentCompKeywordAst() override;
 
-    SPP_ATTR_NODISCARD auto equals_generic_argument_comp_keyword(
-        GenericArgumentCompKeywordAst const &other) const
-        -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto EqualsGenericArgumentCompKeyword(GenericArgumentCompKeywordAst const &other) const -> Ordering override;
 
-    SPP_ATTR_NODISCARD auto equals(
-        GenericArgumentAst const &other) const
-        -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto Equals(GenericArgumentAst const &other) const -> Ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    SPP_ATTR_NODISCARD auto view_name() const -> std::string_view override;
+    SPP_ATTR_NODISCARD auto ViewName() const -> StrView override;
 };
 
 

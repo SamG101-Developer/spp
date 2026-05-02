@@ -20,23 +20,19 @@ import genex;
 import tomlplusplus;
 
 
-inline constexpr std::string OUT_FOLDER = "out";
-inline constexpr std::string SRC_FOLDER = "src";
-inline constexpr std::string VCS_FOLDER = "vcs";
-inline constexpr std::string FFI_FOLDER = "ffi";
-inline constexpr std::string MAIN_FILE = "main.spp";
-inline constexpr std::string CONFIG_FILE = "spp.toml";
+inline constexpr spp::Str OUT_FOLDER = "out";
+inline constexpr spp::Str SRC_FOLDER = "src";
+inline constexpr spp::Str VCS_FOLDER = "vcs";
+inline constexpr spp::Str FFI_FOLDER = "ffi";
+inline constexpr spp::Str MAIN_FILE = "main.spp";
+inline constexpr spp::Str CONFIG_FILE = "spp.toml";
 
-inline const std::string MAIN_FILE_CONTENTS = R"(
-    use std::string::Str
-    use std::vector::Vec
-    use std::void::Void
-
+inline const spp::Str MAIN_FILE_CONTENTS = R"(
     fun main(args: Vec[Str]) -> Void {
         std::io::println("Hello world!")
     })";
 
-inline const auto CONFIG_FILE_CONTENTS = R"(
+inline const spp::Str CONFIG_FILE_CONTENTS = R"(
     [project]
     name = "$"
     version = "0.1.0"
@@ -53,7 +49,7 @@ auto spp::cli::run_cli(
     // Create the CLI object and require that a subcommand is provided.
     auto app = CLI::App("SPP build tool", "spp");
     app.require_subcommand(1);
-    auto mode = std::string();
+    auto mode = Str();
 
     app.add_subcommand("init", "Initialize the new project")
        ->callback(handle_init);
@@ -138,9 +134,9 @@ auto spp::cli::handle_vcs()
     // Iterate over the vcs section and clone/update the repositories.
     auto vcs = toml["vcs"].as_table();
     for (auto [key, info] : *vcs) {
-        auto repo_name = std::string(key);
-        auto repo_url = (*info.as_table())["git"].value<std::string>().value();
-        auto repo_branch = (*info.as_table())["branch"].value<std::string>().value_or("master");
+        auto repo_name = Str(key);
+        auto repo_url = (*info.as_table())["git"].value<Str>().value();
+        auto repo_branch = (*info.as_table())["branch"].value<Str>().value_or("master");
         auto repo_folder = cwd / VCS_FOLDER / repo_name;
 
         // Repo doesn't exist locally => clone it.
@@ -171,7 +167,7 @@ auto spp::cli::handle_vcs()
 
 
 auto spp::cli::handle_build(
-    std::string const &mode,
+    Str const &mode,
     const bool skip_vcs)
     -> void {
     // Validate the project structure first.
@@ -187,7 +183,7 @@ auto spp::cli::handle_build(
     // Revalidate (after including the VCS folders).
     SPP_VALIDATE_STRUCTURE(false);
     const auto build_type =
-        toml::parse_file(CONFIG_FILE)["project"].as_table()->at("build").value<std::string>();
+        toml::parse_file(CONFIG_FILE)["project"].as_table()->at("build").value<Str>();
 
     // Validate the mode is "dev" or "rel".
     if (mode != "dev" and mode != "rel") {
@@ -204,7 +200,7 @@ auto spp::cli::handle_build(
 
 
 auto spp::cli::handle_run(
-    std::string const &mode)
+    Str const &mode)
     -> void {
     // Build the project first (skip VCS).
     handle_build(mode, true);
@@ -215,7 +211,7 @@ auto spp::cli::handle_run(
 
 
 auto spp::cli::handle_clean(
-    std::string const &mode)
+    Str const &mode)
     -> void {
     // Validate the project structure first.
     SPP_VALIDATE_STRUCTURE(false);
@@ -294,15 +290,15 @@ auto spp::cli::handle_validate(
     }
 
     // Check the version follows "major.minor.patch" format.
-    const auto version = project->at("version").value<std::string>().value_or("");
-    const auto version_parts = version | genex::views::split('.') | genex::to<std::vector>();
-    if (version_parts.size() != 3) {
+    const auto version = project->at("version").value<Str>().value_or("");
+    const auto version_parts = version | genex::views::split('.') | genex::to<Vec>();
+    if (version_parts.Len() != 3) {
         std::cerr << "Error: Invalid version format in spp.toml. Version must follow 'major.minor.patch' format.\n";
         return false;
     }
 
     // Check the build type is either "exe" or "lib".
-    const auto build_type = project->at("build").value<std::string>().value_or("");
+    const auto build_type = project->at("build").value<Str>().value_or("");
     if (build_type != "exe" and build_type != "lib") {
         std::cerr << "Error: Invalid build type in spp.toml. Build type must be 'exe' or 'lib'.\n";
         return false;
@@ -349,8 +345,8 @@ auto spp::cli::handle_version()
 
 
 auto spp::cli::create_default_config_for(
-    std::string const &project_name)
-    -> std::string {
+    Str const &project_name)
+    -> Str {
     // Inject the project name into the config template.
     auto contents = format_default_file_contents(CONFIG_FILE_CONTENTS);
     const auto pos = contents.find('$');
@@ -360,7 +356,7 @@ auto spp::cli::create_default_config_for(
 
 
 auto spp::cli::get_system_shared_library_extension()
-    -> std::string {
+    -> Str {
     // Return the appropriate shared library extension for the current OS.
 #if defined(_WIN32) || defined(_WIN64)
     return "dll";
@@ -373,8 +369,8 @@ auto spp::cli::get_system_shared_library_extension()
 
 
 auto spp::cli::unit_test(
-    std::string const &mode,
-    std::string &&main_code)
+    Str const &mode,
+    Str &&main_code)
     -> void {
     // Validate the project structure first.
     SPP_VALIDATE_STRUCTURE(false);
@@ -392,14 +388,14 @@ auto spp::cli::unit_test(
 
 
 auto spp::cli::format_default_file_contents(
-    const std::string_view contents)
-    -> std::string {
-    return std::string(contents);
+    const StrView contents)
+    -> Str {
+    return Str(contents);
     // // Remove the first newline, and replace "    " with "".
-    // auto out = std::string();
+    // auto out = Str();
     // for (const auto&line: contents | genex::views::split('\n')) {
-    //     if (line.size() <= 0) { continue; }
-    //     auto formatted = line | genex::to<std::string>();
+    //     if (line.Len() <= 0) { continue; }
+    //     auto formatted = line | genex::to<Str>();
     //     formatted.replace(formatted.find("    "), 4, "");
     // }
     // return out;

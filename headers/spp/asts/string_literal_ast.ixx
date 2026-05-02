@@ -4,6 +4,7 @@ module;
 export module spp.asts.string_literal_ast;
 import spp.asts.literal_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -20,28 +21,28 @@ SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
     /**
      * The string value of the string literal. This is the actual string that is represented by the literal.
      */
-    std::unique_ptr<TokenAst> val;
+    Unique<TokenAst> Val;
 
     /**
      * Construct the StringLiteralAst with the arguments matching the members.
      * @param[in] val The string value of the string literal.
      */
     explicit StringLiteralAst(
-        decltype(val) &&val);
+        decltype(Val) &&val);
 
     ~StringLiteralAst() override;
 
-    SPP_ATTR_NODISCARD auto equals_string_literal(StringLiteralAst const &) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto EqualsStringLiteral(StringLiteralAst const &) const -> Ordering override;
 
-    SPP_ATTR_NODISCARD auto equals(ExpressionAst const &other) const -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };
 
 

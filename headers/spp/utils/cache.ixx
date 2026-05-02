@@ -5,7 +5,6 @@ export module spp.utils.cache;
 import ankerl.unordered_dense;
 import std;
 
-
 namespace spp::utils {
     /**
      * The Cache type is a simple key-value store that allows for caching of values based on keys. It provides methods
@@ -15,7 +14,7 @@ namespace spp::utils {
      * @tparam V The type of the values in the cache.
      */
     SPP_EXP_CLS template <typename K, typename V>
-    requires std::is_pointer_v<K>
+        requires std::is_pointer_v<K>
     class Cache {
         ankerl::unordered_dense::map<K, V> m_cache;
 

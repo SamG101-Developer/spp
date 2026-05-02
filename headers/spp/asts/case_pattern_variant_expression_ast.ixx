@@ -4,6 +4,7 @@ module;
 export module spp.asts.case_pattern_variant_expression_ast;
 import spp.asts.case_pattern_variant_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -18,24 +19,24 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantExpressionAst final : CasePatter
      * The expression that is used in the case pattern variant. This is the expression that will be matched against the
      * condition from the @c case statement.
      */
-    std::unique_ptr<ExpressionAst> expr;
+    Unique<ExpressionAst> Expr;
 
     /**
      * Construct the CasePatternVariantExpressionAst with the arguments matching the members.
      * @param expr The expression that is used in the case pattern variant.
      */
     explicit CasePatternVariantExpressionAst(
-        decltype(expr) &&expr);
+        decltype(Expr) &&expr);
 
     ~CasePatternVariantExpressionAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

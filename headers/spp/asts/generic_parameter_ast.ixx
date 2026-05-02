@@ -2,9 +2,10 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_parameter_ast;
+import spp.asts.ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.orderable;
-import spp.asts.ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -88,7 +89,7 @@ namespace spp::asts::detail {
 
     template <>
     struct generic_param_value_type<GenericParameterTypeAst> {
-        using type = std::shared_ptr<TypeAst>;
+        using type = Shared<TypeAst>;
     };
 
     SPP_EXP_CLS template <typename GenericParameterType>
@@ -100,15 +101,15 @@ namespace spp::asts::detail {
  * The GenericParameterAst is the base class for all generic parameters. It is inherited by the GenericParameterCompAst
  * and GenericParameterTypeAst, which represent the two types of generic parameters in the language.
  */
-SPP_EXP_CLS struct spp::asts::GenericParameterAst : virtual Ast, mixins::OrderableAst {
+SPP_EXP_CLS struct spp::asts::GenericParameterAst : Ast, mixins::OrderableAst {
     /**
      * The name of the generic type parameter. This is the name that will be used to refer to the type parameter in the
      * generic type.
      */
-    std::shared_ptr<TypeAst> name;
+    Shared<TypeAst> Name;
 
     explicit GenericParameterAst(
-        std::shared_ptr<TypeAst> name,
+        Shared<TypeAst> name,
         utils::OrderableTag order_tag);
 
     ~GenericParameterAst() override;

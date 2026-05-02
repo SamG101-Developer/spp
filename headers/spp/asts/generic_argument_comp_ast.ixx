@@ -4,6 +4,7 @@ module;
 export module spp.asts.generic_argument_comp_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.utils.orderable;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -24,9 +25,9 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompAst : GenericArgumentAst {
 
     /**
      * The value of the generic comp argument. This is passed into the generic like @code func[123]()@endcode or
-     * @code std::Arr[std::String, 100_uz]@endcode.
+     * @code std::Arr[Str, 100_uz]@endcode.
      */
-    std::unique_ptr<ExpressionAst> val;
+    Unique<ExpressionAst> Val;
 
     /**
      * Construct the GenericArgumentCompAst with the arguments matching the members.
@@ -34,7 +35,7 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompAst : GenericArgumentAst {
      * @param order_tag The order tag for this argument, used to enforce ordering rules.
      */
     explicit GenericArgumentCompAst(
-        decltype(val) &&val,
+        decltype(Val) &&val,
         utils::OrderableTag order_tag);
 
     ~GenericArgumentCompAst() override;

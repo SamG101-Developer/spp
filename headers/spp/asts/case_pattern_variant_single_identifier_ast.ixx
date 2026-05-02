@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.case_pattern_variant_single_identifier_ast;
 import spp.asts.case_pattern_variant_ast;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -22,25 +23,25 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantSingleIdentifierAst final : Case
      * introduced by the pattern should be treated, such as by reference or by mutable reference. Mutually exclusive
      * with the @c mut token (but both can be absent).
      */
-    std::unique_ptr<ConventionAst> conv;
+    Unique<ConventionAst> Conv;
 
     /**
      * The optional @c mut token that indicates the pattern is mutable. If no @c mut token is present, the introduced
      * variable is not mutable.
      */
-    std::unique_ptr<TokenAst> tok_mut;
+    Unique<TokenAst> TokMut;
 
     /**
      * The name of the single identifier pattern. This is the identifier that is used to refer to the variable being
      * introduced by the pattern.
      */
-    std::shared_ptr<IdentifierAst> name;
+    Shared<IdentifierAst> Name;
 
     /**
      * The optional alias for the single identifier pattern. This will cause the matching to happen against @c name, but
      * introduce a variable whose name is the alias.
      */
-    std::unique_ptr<LocalVariableSingleIdentifierAliasAst> alias;
+    Unique<LocalVariableSingleIdentifierAliasAst> Alias;
 
     /**
      * Construct the CasePatternVariantSingleIdentifierAst with the arguments matching the members.
@@ -50,18 +51,18 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantSingleIdentifierAst final : Case
      * @param alias The optional alias for the single identifier pattern.
      */
     CasePatternVariantSingleIdentifierAst(
-        decltype(conv) &&conv,
-        decltype(tok_mut) &&tok_mut,
-        decltype(name) &&name,
-        decltype(alias) &&alias);
+        decltype(Conv) &&conv,
+        decltype(TokMut) &&tok_mut,
+        decltype(Name) &&name,
+        decltype(Alias) &&alias);
 
     ~CasePatternVariantSingleIdentifierAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto convert_to_variable(CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
+    auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };

@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.meta.compiler_meta_data;
 import spp.utils.ptr;
+import spp.utils.types;
 import ankerl.unordered_dense;
 import llvm;
 import std;
@@ -32,44 +33,44 @@ namespace spp::codegen {
 
 
 SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
-    double current_stage;
-    std::shared_ptr<TypeAst> return_type_overload_resolver_type;
-    std::shared_ptr<IdentifierAst> assignment_target;
-    std::shared_ptr<TypeAst> assignment_target_type;
-    bool ignore_missing_else_branch_for_inference;
-    ExpressionAst *case_condition;
-    analyse::scopes::TypeSymbol *cls_sym;
-    analyse::scopes::Scope *enclosing_function_scope;
-    TokenAst *enclosing_function_flavour;
-    std::vector<std::shared_ptr<TypeAst>> enclosing_function_ret_type;
-    TokenAst *enclosing_function_cmp;
-    analyse::scopes::Scope *current_lambda_outer_scope;
-    FunctionPrototypeAst *target_call_function_prototype;
-    bool target_call_was_function_async;
-    bool prevent_auto_generator_resume;
-    std::shared_ptr<TypeAst> let_stmt_explicit_type;
-    ExpressionAst *let_stmt_value;
-    bool let_stmt_from_uninitialized;
-    bool loop_double_check_active;
-    std::size_t current_loop_depth;
-    LoopExpressionAst *current_loop_ast;
-    std::shared_ptr<std::map<std::size_t, std::tuple<ExpressionAst*, std::shared_ptr<TypeAst>, analyse::scopes::Scope*>>> loop_return_types;
-    std::shared_ptr<TypeAst> object_init_type;
-    ankerl::unordered_dense::map<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>, utils::ptr::ptr_hash<std::shared_ptr<IdentifierAst>>, utils::ptr::ptr_eq<std::shared_ptr<IdentifierAst>>> infer_source;
-    ankerl::unordered_dense::map<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>, utils::ptr::ptr_hash<std::shared_ptr<IdentifierAst>>, utils::ptr::ptr_eq<std::shared_ptr<IdentifierAst>>> infer_target;
-    ExpressionAst *postfix_expression_lhs;
-    ExpressionAst *unary_expression_rhs;
-    bool skip_type_analysis_generic_checks;
-    analyse::scopes::Scope *type_analysis_type_scope;
-    std::shared_ptr<TypeAst> ignore_cmp_generic;
-    bool allow_move_deref;
-    llvm::BasicBlock *end_bb;
-    codegen::LLvmCtx *llvm_ctx;
-    llvm::Value *llvm_assignment_target;
-    llvm::Value *llvm_assignment_target_type;
-    llvm::PHINode *llvm_phi;
-    std::map<std::shared_ptr<IdentifierAst>, std::unique_ptr<ExpressionAst>> cmp_args;
-    std::unique_ptr<ExpressionAst> cmp_result;
+    double CurrentStage;
+    Shared<TypeAst> ReturnTypeOverloadResolverType;
+    Shared<IdentifierAst> AssignmentTarget;
+    Shared<TypeAst> AssignmentTargetType;
+    bool IgnoreMissingElseBranchForInference;
+    ExpressionAst *CaseCondition;
+    analyse::scopes::TypeSymbol *ClsSym;
+    analyse::scopes::Scope *EnclosingFunctionScope;
+    TokenAst *EnclosingFunctionFlavour;
+    SharedVec<TypeAst> EnclosingFunctionRetType;
+    TokenAst *EnclosingFunctionCmp;
+    analyse::scopes::Scope *CurrentLambdaOuterScope;
+    FunctionPrototypeAst *TargetCallFunctionPrototype;
+    bool TargetCallWasFunctionAsync;
+    bool PreventAutoGeneratorResume;
+    Shared<TypeAst> LetStatementExplicitType;
+    ExpressionAst *LetStatementValue;
+    bool LetStatementFromUninitialized;
+    bool LoopDoubleCheckActive;
+    std::size_t LoopCurrentDepth;
+    LoopExpressionAst *LoopCurrentAst;
+    Shared<ankerl::unordered_dense::map<std::size_t, std::tuple<ExpressionAst*, Shared<TypeAst>, analyse::scopes::Scope*>>> LoopReturnTypes;
+    Shared<TypeAst> ObjectInitType;
+    ankerl::unordered_dense::map<Shared<IdentifierAst>, Shared<TypeAst>, utils::ptr::ptr_hash<Shared<IdentifierAst>>, utils::ptr::ptr_eq<Shared<IdentifierAst>>> InferSource;
+    ankerl::unordered_dense::map<Shared<IdentifierAst>, Shared<TypeAst>, utils::ptr::ptr_hash<Shared<IdentifierAst>>, utils::ptr::ptr_eq<Shared<IdentifierAst>>> InferTarget;
+    ExpressionAst *PostfixExpressionLhs;
+    ExpressionAst *UnaryExpressionRhs;
+    bool SkipTypeAnalysisGenericChecks;
+    analyse::scopes::Scope *TypeAnalysisTypeScope;
+    Shared<TypeAst> IgnoreCmpGeneric;
+    bool AllowMoveDeref;
+    llvm::BasicBlock *LlvmEndBB;
+    codegen::LLvmCtx *LlvmCtx;
+    llvm::Value *LlvmAssignmentTarget;
+    llvm::Value *LlvmAssignmentTargetType;
+    llvm::PHINode *LlvmPhi;
+    ankerl::unordered_dense::map<Shared<IdentifierAst>, Unique<ExpressionAst>, utils::ptr::ptr_hash<Shared<IdentifierAst>>, utils::ptr::ptr_eq<Shared<IdentifierAst>>> CmpArgs;
+    Unique<ExpressionAst> CmpResult;
 };
 
 
@@ -79,14 +80,14 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
  */
 SPP_EXP_CLS struct spp::asts::meta::CompilerMetaData : CompilerMetaDataState {
 private:
-    std::stack<CompilerMetaDataState> m_history;
+    std::stack<CompilerMetaDataState> _History;
 
 public:
     CompilerMetaData();
 
-    auto save() -> void;
+    auto Save() -> void;
 
-    auto restore(bool heavy = false) -> void;
+    auto Restore(bool heavy = false) -> void;
 
-    SPP_ATTR_NODISCARD auto depth() const -> std::size_t;
+    SPP_ATTR_NODISCARD auto Depth() const -> std::size_t;
 };

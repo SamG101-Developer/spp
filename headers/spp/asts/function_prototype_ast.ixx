@@ -9,6 +9,7 @@ import spp.asts.sup_member_ast;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_func;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -39,105 +40,99 @@ namespace spp::analyse::scopes {
  * This ASt is further inherited into the SubroutinePrototypeAst and CoroutinePrototypeAst, which add additional
  * analysis checks.
  */
-SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : virtual Ast, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
+SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
     SPP_GCC_VTABLE_FIX
     /**
      * Optional @c \@abstractmethod annotation. This is used to indicate that the function is abstract and must be
      * implemented in subclasses.
      */
-    AnnotationAst *abstract_annotation;
+    AnnotationAst *AbstractAnnotation;
 
     /**
      * Optional @c \@virtualmethod annotation. This is used to indicate that the function is virtual and can be
      * overridden in subclasses.
      */
-    AnnotationAst *virtual_annotation;
+    AnnotationAst *VirtualAnnotation;
 
     /**
      * Optional @c \@hot or @c \@cold annotation. This is used to indicate that the function is a hot/cold function,
      * which means it is called frequently/infrequently and should be optimized for performance.
      */
-    AnnotationAst *temperature_annotation;
+    AnnotationAst *TemperatureAnnotation;
 
     /**
      * Optional @c \@ffi annotation. This is used to indicate that the function is not implemented, because it is being
      * used for ffi, and therefore the usual type checking rules can be suspended.
      */
-    AnnotationAst *ffi_annotation;
+    AnnotationAst *FfiAnnotation;
 
     /**
      * Optional @c \@compiler_builtin annotation. This is used to indicate that the function is specially implemented
      * with llvm, and therefore the usual type checking rules can be suspended.
      */
-    AnnotationAst *builtin_annotation;
+    AnnotationAst *BuiltinAnnotation;
 
     /**
      * Optional @c \@always_inline, @c \@inline, or @c \@no_inline annotation. This is used to indicate that the
      * function should be inlined, or not inlined, or always inlined.
      */
-    AnnotationAst *inline_annotation;
+    AnnotationAst *InlineAnnotation;
 
     /**
      * The list of annotations that are applied to this function prototype. There are quite a lot of annotations that
      * can be applied here, including the typical access modifiers, but also @c \@virtualmethod, @c \@abstractmethod,
      * and @c \@hot/\@cold.
      */
-    std::vector<std::unique_ptr<AnnotationAst>> annotations;
+    Vec<Unique<AnnotationAst>> Annotations;
 
     /**
      * The optional @c cmp token indicates that this function prototype is a compile-time function. This means that the
      * function can be evaluated at compile time, and can be used in compile-time contexts.
      * @note only supported with subroutines, not coroutines, at present.
      */
-    std::unique_ptr<TokenAst> tok_cmp;
+    Unique<TokenAst> TokCmp;
 
     /**
      * The @c fun or @c cor keyword that represents the start of the function prototype. This is used to indicate that a
      * function is being defined.
      */
-    std::unique_ptr<TokenAst> tok_fun;
+    Unique<TokenAst> TokFun;
 
     /**
      * The name of the function prototype. This is the identifier that is used to refer to the function. Uniqueness is
      * not strictly required, as overloading is supported.
      */
-    std::shared_ptr<IdentifierAst> name;
+    Shared<IdentifierAst> Name;
 
     /**
      * The optional generic parameter group for the function prototype. This is used to define generic types that the
      * function can use. This is not required, and can be omitted if the function does not use generics.
      */
-    std::unique_ptr<GenericParameterGroupAst> generic_param_group;
+    Unique<GenericParameterGroupAst> GnParamGroup;
 
     /**
      * The parameter group for the function prototype. This is used to define the parameters that the function takes.
      * This is required, and must be present in the function prototype.
      */
-    std::unique_ptr<FunctionParameterGroupAst> param_group;
+    Unique<FunctionParameterGroupAst> FnParamGroup;
 
     /**
      * The token that represents the arrow @c -> in the function prototype. This separates the parameters from the
      * return type.
      */
-    std::unique_ptr<TokenAst> tok_arrow;
+    Unique<TokenAst> TokArrow;
 
     /**
      * The return type of the function prototype. This is the type that the function will return. This is required, and
      * is never "inferrable" from the expressions inside the function.
      */
-    std::shared_ptr<TypeAst> return_type;
+    Shared<TypeAst> ReturnType;
 
     /**
      * The implementation of the function prototype. This is the body of the function, and contains the actual code that
      * will be executed when the function is called.
      */
-    std::unique_ptr<FunctionImplementationAst> impl;
-
-    /**
-     * Save the original function name prior to AST transformations.
-     * @todo: REMOVE THIS, JUST USE "name"
-     */
-    std::unique_ptr<IdentifierAst> orig_name;
+    Unique<FunctionImplementationAst> Impl;
 
     /**
      * Construct the FunctionPrototypeAst with the arguments matching the members.
@@ -152,84 +147,84 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : virtual Ast, ModuleMemberAs
      * @param impl The implementation of the function prototype.
      */
     FunctionPrototypeAst(
-        decltype(annotations) &&annotations,
-        decltype(tok_fun) &&tok_cmp,
-        decltype(tok_fun) &&tok_fun,
-        decltype(name) &&name,
-        decltype(generic_param_group) &&generic_param_group,
-        decltype(param_group) &&param_group,
-        decltype(tok_arrow) &&tok_arrow,
-        decltype(return_type) &&return_type,
-        decltype(impl) &&impl);
+        decltype(Annotations) &&annotations,
+        decltype(TokFun) &&tok_cmp,
+        decltype(TokFun) &&tok_fun,
+        decltype(Name) &&name,
+        decltype(GnParamGroup) &&generic_param_group,
+        decltype(FnParamGroup) &&param_group,
+        decltype(TokArrow) &&tok_arrow,
+        decltype(ReturnType) &&return_type,
+        decltype(Impl) &&impl);
 
     ~FunctionPrototypeAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_1_pre_process(Ast *ctx) -> void override;
+    auto Stage1_PreProcess(Ast *ctx) -> void override;
 
-    auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_3_gen_top_level_aliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage3_GenTopLvlAliases(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_5_load_super_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_6_pre_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage6_PreAnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_10_code_gen_1(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    SPP_ATTR_NODISCARD auto get_llvm_func() const -> std::shared_ptr<codegen::LlvmFuncWrapper>;
+    SPP_ATTR_NODISCARD auto GetLlvmFunc() const -> Shared<codegen::LlvmFuncWrapper>;
 
-    SPP_ATTR_NODISCARD auto print_signature(std::string const &owner) const -> std::string;
+    SPP_ATTR_NODISCARD auto PrintSignature(Str const &owner) const -> Str;
 
-    auto register_generic_substitution(std::unique_ptr<analyse::scopes::Scope> &&scope, std::unique_ptr<FunctionPrototypeAst> &&new_ast) -> void;
+    auto RegisterGenericSubstitution(Unique<analyse::scopes::Scope> &&scope, Unique<FunctionPrototypeAst> &&new_ast) -> void;
 
-    SPP_ATTR_NODISCARD auto registered_generic_substitutions() const -> std::list<std::pair<analyse::scopes::Scope*, FunctionPrototypeAst*>>;
+    SPP_ATTR_NODISCARD auto RegisteredGenericSubstitutions() const -> std::list<Pair<analyse::scopes::Scope*, FunctionPrototypeAst*>>;
 
-    SPP_ATTR_NODISCARD auto registered_generic_substitutions() -> std::list<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>>&;
+    SPP_ATTR_NODISCARD auto RegisteredGenericSubstitutions() -> std::list<Pair<Unique<analyse::scopes::Scope>, Unique<FunctionPrototypeAst>>>&;
 
-    auto mark_non_generic_impl(FunctionPrototypeAst *impl) -> void;
+    auto SetNonGenericImpl(FunctionPrototypeAst *impl) -> void;
 
-    SPP_ATTR_NODISCARD auto non_generic_impl() const -> FunctionPrototypeAst*;
+    SPP_ATTR_NODISCARD auto GetNonGenericImpl() const -> FunctionPrototypeAst*;
 
-    auto mark_as_annotation() -> void;
+    auto MarkAsAnnotation() -> void;
 
-    SPP_ATTR_NODISCARD auto annotation_info() const -> analyse::utils::annotation_utils::AnnotationInfo*;
+    SPP_ATTR_NODISCARD auto GetAnnotationInfo() const -> analyse::utils::annotation_utils::AnnotationInfo*;
 
-    virtual auto m_generate_llvm_declaration(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> std::shared_ptr<codegen::LlvmFuncWrapper>;
+    virtual auto GenerateLlvmDeclaration(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> Shared<codegen::LlvmFuncWrapper>;
 
 protected:
     /**
      * Using a list because there are times that the collection is iterated whilst being appended to.
      */
-    std::list<std::pair<std::unique_ptr<analyse::scopes::Scope>, std::unique_ptr<FunctionPrototypeAst>>> m_generic_substitutions;
+    std::list<Pair<Unique<analyse::scopes::Scope>, Unique<FunctionPrototypeAst>>> _GenericSubstitutions;
 
-    std::unique_ptr<FunctionImplementationAst> m_original_impl;
+    Unique<FunctionImplementationAst> _OriginalImpl;
 
-    FunctionPrototypeAst *m_non_generic_impl;
+    FunctionPrototypeAst *_NonGenericImpl;
 
     /**
      * The LLVM generated function for this prototype. This is set during the first pass of code generation, and used
      * for further codegen in the second pass (for function calls, etc). Double shared pointer for altering the value,
      * and updating in cloned ASTs that share this target.
      */
-    std::shared_ptr<std::shared_ptr<codegen::LlvmFuncWrapper>> m_llvm_func;
+    Shared<Shared<codegen::LlvmFuncWrapper>> _LlvmFunc;
 
-    std::unique_ptr<analyse::utils::annotation_utils::AnnotationInfo> m_annotation_info;
+    Unique<analyse::utils::annotation_utils::AnnotationInfo> _AnnotationInfo;
 
-    SPP_ATTR_NODISCARD auto m_deduce_mock_class_type() const -> std::shared_ptr<TypeAst>;
+    SPP_ATTR_NODISCARD auto _DeduceMockClassType() const -> Shared<TypeAst>;
 
-    SPP_ATTR_NODISCARD auto m_is_pure_generic(ScopeManager *sm, codegen::LLvmCtx *ctx) const -> std::tuple<bool, llvm::Type*, std::vector<llvm::Type*>>;
+    SPP_ATTR_NODISCARD auto _IsPureGeneric(ScopeManager *sm, codegen::LLvmCtx *ctx) const -> std::tuple<bool, llvm::Type*, Vec<llvm::Type*>>;
 };
 
 

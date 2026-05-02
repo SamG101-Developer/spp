@@ -7,11 +7,11 @@ import llvm;
 
 namespace spp::codegen {
     SPP_EXP_CLS struct LlvmTypeSymInfo {
-        llvm::Type *llvm_type = nullptr;
-        llvm::Module *llvm_mod = nullptr;
+        llvm::Type *LlvmType = nullptr;
+        llvm::Module *LlvmMod = nullptr;
     };
 
     SPP_EXP_CLS struct LlvmVarSymInfo {
-        llvm::Value *alloca = nullptr;
+        llvm::Value *Alloca = nullptr;
     };
 }

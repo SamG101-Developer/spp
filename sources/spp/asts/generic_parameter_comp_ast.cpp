@@ -21,88 +21,87 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
 
-
 SPP_MOD_BEGIN
 spp::asts::GenericParameterCompAst::GenericParameterCompAst(
-    decltype(tok_cmp) &&tok_cmp,
-    decltype(name) name,
-    decltype(tok_colon) &&tok_colon,
-    decltype(type) type,
+    decltype(TokCmp) &&tok_cmp,
+    decltype(Name) name,
+    decltype(TokColon) &&tok_colon,
+    decltype(Type) type,
     const utils::OrderableTag order_tag) :
     GenericParameterAst(std::move(name), order_tag),
-    tok_cmp(std::move(tok_cmp)),
-    tok_colon(std::move(tok_colon)),
-    type(std::move(type)) {
+    TokCmp(std::move(tok_cmp)),
+    TokColon(std::move(tok_colon)),
+    Type(std::move(type)) {
 }
-
 
 spp::asts::GenericParameterCompAst::~GenericParameterCompAst() = default;
 
-
-auto spp::asts::GenericParameterCompAst::stage_2_gen_top_level_scopes(
+auto spp::asts::GenericParameterCompAst::Stage2_GenTopLvlScopes(
     ScopeManager *sm,
     CompilerMetaData *)
     -> void {
     // Create a variable symbol for this constant in the current scope (class / function).
-    auto sym = std::make_unique<analyse::scopes::VariableSymbol>(
-        IdentifierAst::from_type(*name), type, sm->current_scope,
-        false, true, utils::Visibility::PUBLIC);
-    sym->memory_info->ast_pins.emplace_back(name.get());
-    sym->memory_info->ast_comptime = ast_clone(this);
-    sym->memory_info->initialized_by(*this, sm->current_scope);
-    sym->comptime_value = ast_clone(this); // TODO: this or name?
-    sm->current_scope->add_var_symbol(std::move(sym));
+    auto sym = MakeUnique<analyse::scopes::VariableSymbol>(
+        IdentifierAst::FromType(*Name), Type, sm->CurrentScope,
+        false, true, utils::Visibility::kPublic);
+    sym->MemInfo->AstPins.EmplaceBack(Name.get());
+    sym->MemInfo->AstCompTime = AstClone(this);
+    sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
+    sym->CompTimeValue = AstClone(this); // TODO: this or name?
+    sm->CurrentScope->AddVarSymbol(std::move(sym));
 }
 
-
-auto spp::asts::GenericParameterCompAst::stage_4_qualify_types(
+auto spp::asts::GenericParameterCompAst::Stage4_QualifyTypes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::errors::SppSecondClassBorrowViolationError;
+    using analyse::utils::type_utils::IsTypeBorrowed;
+
     // Qualify the type on the generic parameter.
-    meta->save();
-    meta->ignore_cmp_generic = name;
+    meta->Save();
+    meta->IgnoreCmpGeneric = Name;
 
     // Ensure that the convention type doesn't have a convention.
-    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(
-        type, type, *sm, "function return type");
+    RaiseIf<SppSecondClassBorrowViolationError>(
+        IsTypeBorrowed(*Type, *sm),
+        {sm->CurrentScope}, ERR_ARGS(*Type, *Type, "function return type"));
 
     // Check the type exists and qualify.
-    type->stage_7_analyse_semantics(sm, meta);
-    type = sm->current_scope->get_type_symbol(type)->fq_name();
-    const auto sym = sm->current_scope->get_var_symbol(
-        IdentifierAst::from_type(*name));
-    sym->type = type;
-    meta->restore();
+    Type->Stage7_AnalyseSemantics(sm, meta);
+    Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName();
+    const auto sym = sm->CurrentScope->GetVarSymbol(
+        IdentifierAst::FromType(*Name));
+    sym->Type = Type;
+    meta->Restore();
 }
 
-
-auto spp::asts::GenericParameterCompAst::stage_7_analyse_semantics(
+auto spp::asts::GenericParameterCompAst::Stage7_AnalyseSemantics(
     ScopeManager *,
     CompilerMetaData *)
     -> void {
     // Analyse the type.
-    // type->stage_7_analyse_semantics(sm, meta);
+    // type->Stage7_AnalyseSemantics(sm, meta);
 }
 
-
-auto spp::asts::GenericParameterCompAst::stage_11_code_gen_2(
+auto spp::asts::GenericParameterCompAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // The compile time constants' symbols need to be allocated into the function.
     // Todo: need to be done as a "constant" (see GlobalConstantAst)
-    auto cast_name = IdentifierAst::from_type(*name);
-    const auto is_opt = to<GenericParameterCompOptionalAst>();
+    auto cast_name = IdentifierAst::FromType(*Name);
+    const auto is_opt = To<GenericParameterCompOptionalAst>();
 
-    meta->save();
-    meta->let_stmt_explicit_type = type;
-    meta->let_stmt_from_uninitialized = not is_opt;
-    meta->let_stmt_value = is_opt ? is_opt->default_val.get() : nullptr;
-    const auto var = std::make_unique<LocalVariableSingleIdentifierAst>(nullptr, std::move(cast_name), nullptr);
-    const auto alloca = var->stage_11_code_gen_2(sm, meta, ctx);
-    meta->restore();
+    meta->Save();
+    meta->LetStatementExplicitType = Type;
+    meta->LetStatementFromUninitialized = not is_opt;
+    meta->LetStatementValue = is_opt ? is_opt->DefaultVal.get() : nullptr;
+    const auto var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, std::move(cast_name), nullptr);
+    const auto alloca = var->Stage11_CodeGen(sm, meta, ctx);
+    meta->Restore();
 
     return alloca;
 }

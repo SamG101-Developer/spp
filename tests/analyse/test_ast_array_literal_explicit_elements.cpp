@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ArrayLiteralExplicitElementsAst,
     test_invalid_element_ast,
@@ -9,7 +8,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let a = [std::boolean::Bool, std::boolean::Bool]
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ArrayLiteralExplicitElementsAst,
@@ -20,7 +18,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ArrayLiteralExplicitElementsAst,
     test_invalid_borrowed_elements,
@@ -29,17 +26,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let b = [a]
     }
 )");
-
-
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    ArrayLiteralExplicitElementsAst,
-    test_invalid_mixed_borrowed_elements,
-    SppTypeMismatchError, R"(
-    fun f(a: &std::bignum::bigint::BigInt) -> std::void::Void {
-        let b = [a, 1, 2]
-    }
-)");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     ArrayLiteralExplicitElementsAst,

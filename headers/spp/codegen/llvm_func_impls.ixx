@@ -2,7 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.codegen.llvm_func_impls;
-
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -97,13 +97,13 @@ export namespace spp::codegen::func_impls {
 
     auto std_generator_once_send(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, llvm::Type *ty) -> void;
 
-    auto std_memory_clear(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, std::shared_ptr<asts::TypeAst> const &spp_ty) -> void;
+    auto std_memory_clear(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, Shared<asts::TypeAst> const &spp_ty) -> void;
 
-    auto std_memory_place_element(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, std::shared_ptr<asts::TypeAst> const &spp_ty) -> void;
+    auto std_memory_place_element(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, Shared<asts::TypeAst> const &spp_ty) -> void;
 
-    auto std_memory_take_element(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, std::shared_ptr<asts::TypeAst> const &spp_ty) -> void;
+    auto std_memory_take_element(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, Shared<asts::TypeAst> const &spp_ty) -> void;
 
-    auto std_memops_sizeof(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, std::shared_ptr<asts::TypeAst> const &spp_ty) -> void;
+    auto std_memops_sizeof(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx, Shared<asts::TypeAst> const &spp_ty) -> void;
 
     // auto std_memops_sizeof_value(SPP_LLVM_FUNC_INFO, LLvmCtx *ctx) -> void;
 

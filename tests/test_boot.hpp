@@ -39,20 +39,20 @@ inline auto build_temp_project(std::string code, const bool add_main = true) -> 
     }
     catch (const spp::analyse::errors::SemanticError &e) {
         std::cout << e.what() << std::endl;
-        spp::analyse::scopes::ScopeManager::cleanup();
+        spp::analyse::scopes::ScopeManager::Cleanup();
         throw;
     }
     catch (const spp::parse::errors::SppSyntaxError &e) {
         std::cout << e.what() << std::endl;
-        spp::analyse::scopes::ScopeManager::cleanup();
+        spp::analyse::scopes::ScopeManager::Cleanup();
         throw;
     }
     catch (const std::exception &e) {
         std::cout << e.what() << std::endl;
-        spp::analyse::scopes::ScopeManager::cleanup();
+        spp::analyse::scopes::ScopeManager::Cleanup();
         throw;
     }
 
-    spp::analyse::scopes::ScopeManager::cleanup();
+    spp::analyse::scopes::ScopeManager::Cleanup();
     std::filesystem::current_path(cwd);
 }

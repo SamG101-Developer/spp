@@ -4,6 +4,7 @@ module;
 export module spp.asts.boolean_literal_ast;
 import spp.asts.literal_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -20,18 +21,19 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
     SPP_GCC_VTABLE_FIX
+    SPP_AST_KEY_FUNCTIONS;
 
     /**
      * The token that represents the boolean literal, either @c true or @code false@endcode.
      */
-    std::unique_ptr<TokenAst> tok_bool;
+    Unique<TokenAst> TokBool;
 
     /**
      * Construct the BooleanLiteralAst with the arguments matching the members.
      * @param[in] tok_bool The token that represents the boolean literal.
      */
     explicit BooleanLiteralAst(
-        decltype(tok_bool) &&tok_bool);
+        decltype(TokBool) &&tok_bool);
 
     ~BooleanLiteralAst() override;
 
@@ -39,39 +41,33 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
      * Check for equality with another boolean literal. This will check if the other boolean literal has the same value
      * as this one, meaning they both represent either @c true or @c false.
      * @param other The other boolean literal to compare against.
-     * @return @code std::strong_ordering::equal@endcode if the boolean literals are equal, and
-     * @code std::strong_ordering::less@endcode otherwise.
+     * @return @code Ordering::equal@endcode if the boolean literals are equal, and
+     * @code Ordering::less@endcode otherwise.
      */
-    SPP_ATTR_NODISCARD auto equals_boolean_literal(
-        BooleanLiteralAst const &other) const
-        -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto EqualsBooleanLiteral(BooleanLiteralAst const &other) const -> Ordering override;
 
     /**
      * A reverse hook to equate against the other arguments. This will call the @c equals_boolean_literal method on the
      * other expression, if it is a boolean literal, to check for equality.
      * @param other The other expression to compare against.
-     * @return @code std::strong_ordering::equal@endcode if the boolean literals are equal, and
-     * @code std::strong_ordering::less@endcode otherwise.
+     * @return @code Ordering::equal@endcode if the boolean literals are equal, and
+     * @code Ordering::less@endcode otherwise.
      */
-    SPP_ATTR_NODISCARD auto equals(
-        ExpressionAst const &other) const
-        -> std::strong_ordering override;
-
-    SPP_AST_KEY_FUNCTIONS;
+    SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
 
     /**
      * A static constructor to create a @c BooleanLiteralAst with a @c true value.
      * @param pos The position to create this AST at.
      * @return The created @c BooleanLiteralAst as a unique pointer.
      */
-    static auto True(std::size_t pos) -> std::unique_ptr<BooleanLiteralAst>;
+    static auto True(std::size_t pos) -> Unique<BooleanLiteralAst>;
 
     /**
      * A static constructor to create a @c BooleanLiteralAst with a @c false value.
      * @param pos The position to create this AST at.
      * @return The created @c BooleanLiteralAst as a unique pointer.
      */
-    static auto False(std::size_t pos) -> std::unique_ptr<BooleanLiteralAst>;
+    static auto False(std::size_t pos) -> Unique<BooleanLiteralAst>;
 
     /**
      * Check if this boolean literal represents the @c true value. This will return @c true if the internally stored
@@ -79,14 +75,14 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
      * @return @c true if this boolean literal represents the @c true value, and @c false if it represents the @c false
      * value.
      */
-    SPP_ATTR_NODISCARD auto is_true() const -> bool;
+    SPP_ATTR_NODISCARD auto IsTrue() const -> bool;
 
     /**
      * Extract the internally stored token into a boolean value. This will return @c true if the token represents the
      * @c true literal, and @c false if it represents the @c false literal.
      * @return The c++ boolean value represented by this boolean literal AST.
      */
-    SPP_ATTR_NODISCARD auto cpp_value() const -> bool;
+    SPP_ATTR_NODISCARD auto CppVal() const -> bool;
 
     /**
      * Resolve the boolean literal at compile time. This will produce a compile time value representing either @c true
@@ -95,7 +91,7 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
      * @param meta Associated metadata.
      * @return The compile time resolved boolean literal.
      */
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
      * Generate the LLVM IR code for the boolean literal. This will produce an LLVM constant integer value of 1 for
@@ -105,7 +101,7 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
      * @param ctx The LLVM context to generate code in.
      * @return The generated LLVM value representing the boolean literal.
      */
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     /**
      * The boolean literal's type is always @c std::boolean::Bool, the compiler known type that represents a boolean
@@ -114,7 +110,7 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
      * @param meta Associated metadata.
      * @return The standard boolean type @code std::boolean::Bool@endcode.
      */
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };
 
 

@@ -9,46 +9,42 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
-
 SPP_MOD_BEGIN
 spp::asts::GenericParameterTypeVariadicAst::GenericParameterTypeVariadicAst(
-    decltype(tok_ellipsis) &&tok_ellipsis,
-    decltype(name) &&name,
-    decltype(constraints) &&constraints) :
+    decltype(TokEllipsis) &&tok_ellipsis,
+    decltype(Name) &&name,
+    decltype(Constraints) &&constraints) :
     GenericParameterTypeAst(std::move(name), std::move(constraints), utils::OrderableTag::VARIADIC_PARAM),
-    tok_ellipsis(std::move(tok_ellipsis)) {
+    TokEllipsis(std::move(tok_ellipsis)) {
 }
-
 
 spp::asts::GenericParameterTypeVariadicAst::~GenericParameterTypeVariadicAst() = default;
 
-
-auto spp::asts::GenericParameterTypeVariadicAst::pos_start() const
+auto spp::asts::GenericParameterTypeVariadicAst::PosStart() const
     -> std::size_t {
-    return tok_ellipsis->pos_start();
+    // Use the ".." token.
+    return TokEllipsis->PosStart();
 }
 
-
-auto spp::asts::GenericParameterTypeVariadicAst::pos_end() const
+auto spp::asts::GenericParameterTypeVariadicAst::PosEnd() const
     -> std::size_t {
-    return tok_ellipsis->pos_end();
+    // Use the ".." token.
+    return TokEllipsis->PosEnd();
 }
 
-
-auto spp::asts::GenericParameterTypeVariadicAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<GenericParameterTypeVariadicAst>(
-        ast_clone(tok_ellipsis),
-        ast_clone(name),
-        ast_clone(constraints));
+auto spp::asts::GenericParameterTypeVariadicAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<GenericParameterTypeVariadicAst>(
+        AstClone(TokEllipsis), AstCloneShared(Name), AstClone(Constraints));
 }
 
-
-spp::asts::GenericParameterTypeVariadicAst::operator std::string() const {
+auto spp::asts::GenericParameterTypeVariadicAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_ellipsis);
-    SPP_STRING_APPEND(name);
-    SPP_STRING_APPEND(constraints);
+    SPP_STRING_APPEND(TokEllipsis);
+    SPP_STRING_APPEND(Name);
+    SPP_STRING_APPEND(Constraints);
     SPP_STRING_END;
 }
 

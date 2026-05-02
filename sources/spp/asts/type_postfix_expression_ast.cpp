@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
 import spp.asts.generic_argument_group_ast;
+import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.type_postfix_expression_operator_ast;
@@ -21,81 +22,73 @@ import spp.asts.utils.ast_utils;
 import spp.utils.ptr;
 import genex;
 
-
 SPP_MOD_BEGIN
 spp::asts::TypePostfixExpressionAst::TypePostfixExpressionAst(
-    decltype(lhs) &&lhs,
-    decltype(tok_op) &&tok_op) :
-    lhs(std::move(lhs)),
-    tok_op(std::move(tok_op)) {
+    decltype(Lhs) lhs,
+    decltype(TokOp) tok_op) :
+    Lhs(std::move(lhs)),
+    TokOp(std::move(tok_op)) {
 }
-
 
 spp::asts::TypePostfixExpressionAst::~TypePostfixExpressionAst() = default;
 
-
 auto spp::asts::TypePostfixExpressionAst::operator<=>(
     TypePostfixExpressionAst const &other) const
-    -> std::strong_ordering {
-    return equals_type_postfix_expression(other);
+    -> Ordering {
+    return EqualsTypePostfixExpression(other);
 }
-
 
 auto spp::asts::TypePostfixExpressionAst::operator==(
     TypePostfixExpressionAst const &other) const
     -> bool {
-    return equals_type_postfix_expression(other) == std::strong_ordering::equal;
+    return EqualsTypePostfixExpression(other) == Ordering::equal;
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::equals_type_postfix_expression(
+auto spp::asts::TypePostfixExpressionAst::EqualsTypePostfixExpression(
     TypePostfixExpressionAst const &other) const
-    -> std::strong_ordering {
+    -> Ordering {
     // Check the lhs and operator are the same.
-    if (*lhs == *other.lhs && *tok_op == *other.tok_op) {
-        return std::strong_ordering::equal;
+    if (*Lhs == *other.Lhs && *TokOp == *other.TokOp) {
+        return Ordering::equal;
     }
-    return std::strong_ordering::less;
+    return Ordering::less;
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::equals(
+auto spp::asts::TypePostfixExpressionAst::Equals(
     const ExpressionAst &other) const
-    -> std::strong_ordering {
+    -> Ordering {
     // Double dispatch to the appropriate equals method.
-    return other.equals_type_postfix_expression(*this);
+    return other.EqualsTypePostfixExpression(*this);
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::pos_start() const
+auto spp::asts::TypePostfixExpressionAst::PosStart() const
     -> std::size_t {
-    return lhs->pos_start();
+    // Use the lhs.
+    return Lhs->PosStart();
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::pos_end() const
+auto spp::asts::TypePostfixExpressionAst::PosEnd() const
     -> std::size_t {
-    return tok_op->pos_end();
+    // Use the operator.
+    return TokOp->PosEnd();
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<TypePostfixExpressionAst>(
-        ast_clone(lhs),
-        ast_clone(tok_op));
+auto spp::asts::TypePostfixExpressionAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<TypePostfixExpressionAst>(
+        AstClone(Lhs), AstClone(TokOp));
 }
 
-
-spp::asts::TypePostfixExpressionAst::operator std::string() const {
+auto spp::asts::TypePostfixExpressionAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(lhs);
-    SPP_STRING_APPEND(tok_op);
+    SPP_STRING_APPEND(Lhs);
+    SPP_STRING_APPEND(TokOp);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::stage_4_qualify_types(
+auto spp::asts::TypePostfixExpressionAst::Stage4_QualifyTypes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
@@ -104,182 +97,169 @@ auto spp::asts::TypePostfixExpressionAst::stage_4_qualify_types(
     // TODO ?
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::stage_7_analyse_semantics(
+auto spp::asts::TypePostfixExpressionAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::errors::SppAmbiguousMemberAccessError;
+
     // Move through the left-hand-side type.
-    lhs->stage_7_analyse_semantics(sm, meta);
-    const auto scope = meta->type_analysis_type_scope ? meta->type_analysis_type_scope : sm->current_scope;
-    const auto lhs_type = lhs->infer_type(sm, meta);
-    const auto lhs_type_sym = scope->get_type_symbol(lhs_type);
-    const auto lhs_type_scope = lhs_type_sym->scope;
+    Lhs->Stage7_AnalyseSemantics(sm, meta);
+    const auto scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
+    const auto lhs_type = Lhs->InferType(sm, meta);
+    const auto lhs_type_sym = scope->GetTypeSymbol(lhs_type);
+    const auto lhs_type_scope = lhs_type_sym->LinkedScope;
 
     // Check there is only 1 target field on the lhs at the highest level.
-    const auto op_nested = tok_op->to<TypePostfixExpressionOperatorNestedTypeAst>();
-    auto sup_scopes = lhs_type_sym->scope->sup_scopes();
-    sup_scopes.insert(sup_scopes.begin(), lhs_type_sym->scope);
+    const auto op_nested = TokOp->To<TypePostfixExpressionOperatorNestedTypeAst>();
+    auto sup_scopes = lhs_type_sym->LinkedScope->SupScopes();
+    sup_scopes.Insert(sup_scopes.begin(), lhs_type_sym->LinkedScope);
     auto scopes_and_syms = sup_scopes
-        | genex::views::transform([name=op_nested->name.get()](auto &&x) { return std::make_pair(x, x->table.type_tbl.get(ast_clone(name))); })
-        | genex::views::filter([](auto &&x) { return x.second != nullptr; })
-        | genex::views::transform([lhs_type_sym](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
-        | genex::to<std::vector>();
+        | genex::views::transform([name=op_nested->Name.get()](auto &&x) { return MakePair(x, x->GetTypeSymbol(AstClone(name), true)); })
+        | genex::views::filter([](auto &&x) { return x.Second != nullptr; })
+        | genex::views::transform([&](auto &&x) { return std::make_tuple(lhs_type_sym->LinkedScope->DepthDiff(x.First), x.First, x.Second); })
+        | genex::to<Vec>();
 
-    auto min_depth = scopes_and_syms.empty()
+    auto min_depth = scopes_and_syms.IsEmpty()
         ? 0
-        : genex::min_element(scopes_and_syms | genex::views::transform([](auto &&x) { return std::get<0>(x); }) | genex::to<std::vector>());
+        : genex::min_element(scopes_and_syms | genex::views::transform([](auto &&x) { return std::get<0>(x); }) | genex::to<Vec>());
 
     auto closest = scopes_and_syms
         | genex::views::filter([min_depth](auto &&x) { return std::get<0>(x) == min_depth; })
-        | genex::views::transform([](auto &&x) { return std::make_pair(std::get<1>(x), std::get<2>(x)); })
-        | genex::to<std::vector>();
+        | genex::views::transform([](auto &&x) { return MakePair(std::get<1>(x), std::get<2>(x)); })
+        | genex::to<Vec>();
 
     // Can't use raise_if because closest[1] may be out of bounds.
-    if (closest.size() > 1) {
-        raise<analyse::errors::SppAmbiguousMemberAccessError>(
-            {closest[0].first, closest[1].first, sm->current_scope},
-            ERR_ARGS(*closest[0].second->name, *closest[1].second->name, *op_nested->name));
+    if (closest.Len() > 1) {
+        Raise<SppAmbiguousMemberAccessError>(
+            {closest[0].First, closest[1].First, sm->CurrentScope},
+            ERR_ARGS(*closest[0].Second->Name, *closest[1].Second->Name, *op_nested->Name));
     }
 
     // Ensure the type exists on the "lhs" part.
-    meta->save();
-    meta->type_analysis_type_scope = lhs_type_scope;
-    op_nested->name->stage_7_analyse_semantics(sm, meta);
-    meta->restore();
+    meta->Save();
+    meta->TypeAnalysisTypeScope = lhs_type_scope;
+    op_nested->Name->Stage7_AnalyseSemantics(sm, meta);
+    meta->Restore();
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::infer_type(
+auto spp::asts::TypePostfixExpressionAst::InferType(
     ScopeManager *sm,
     CompilerMetaData *meta)
-    -> std::shared_ptr<TypeAst> {
+    -> Shared<TypeAst> {
     // Infer the type of the left-hand-side.
-    lhs->stage_7_analyse_semantics(sm, meta);
-    const auto lhs_type = lhs->infer_type(sm, meta);
-    const auto lhs_type_sym = sm->current_scope->get_type_symbol(lhs_type);
-    const auto lhs_type_scope = lhs_type_sym->scope;
+    Lhs->Stage7_AnalyseSemantics(sm, meta);
+    const auto lhs_type = Lhs->InferType(sm, meta);
+    const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
+    const auto lhs_type_scope = lhs_type_sym->LinkedScope;
 
     // Infer the type of the postfix operation.
-    const auto op_nested = tok_op->to<TypePostfixExpressionOperatorNestedTypeAst>();
-    const auto part = analyse::utils::type_utils::get_type_sym_or_error(*lhs_type_scope, *op_nested->name, *sm, meta)->fq_name();
-    const auto sym = lhs_type_scope->get_type_symbol(part);
-    return sym->fq_name();
+    const auto op_nested = TokOp->To<TypePostfixExpressionOperatorNestedTypeAst>();
+    const auto part = analyse::utils::type_utils::GetTypeSymOrError(*lhs_type_scope, *op_nested->Name, *sm, meta)->FqName();
+    const auto sym = lhs_type_scope->GetTypeSymbol(part);
+    return sym->FqName();
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::iterator() const
-    -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
+auto spp::asts::TypePostfixExpressionAst::Iterator() const
+    -> Vec<Shared<const TypeIdentifierAst>> {
     // Iterate from the left-hand-side.
-    return lhs->iterator();
+    return Lhs->Iterator();
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::is_never_type() const
+auto spp::asts::TypePostfixExpressionAst::IsNeverType() const
     -> bool {
     return false;
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::ns_parts() const
-    -> std::vector<std::shared_ptr<const IdentifierAst>> {
+auto spp::asts::TypePostfixExpressionAst::NsParts() const
+    -> Vec<Shared<const IdentifierAst>> {
     // Concatenate the lhs and rhs namespace parts.
-    auto parts = spp::utils::ptr::shared_const_cast<const TypeAst>(lhs)->ns_parts();
-    parts.append_range(tok_op->ns_parts());
+    auto parts = const_shared_cast(Lhs)->NsParts();
+    parts.AppendRange(const_shared_cast(TokOp)->NsParts());
     return parts;
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::ns_parts()
-    -> std::vector<std::shared_ptr<IdentifierAst>> {
+auto spp::asts::TypePostfixExpressionAst::NsParts()
+    -> Vec<Shared<IdentifierAst>> {
     // Concatenate the lhs and rhs namespace parts.
-    auto parts = lhs->ns_parts();
-    parts.append_range(tok_op->ns_parts());
+    auto parts = Lhs->NsParts();
+    parts.AppendRange(TokOp->NsParts());
     return parts;
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::type_parts() const
-    -> std::vector<std::shared_ptr<const TypeIdentifierAst>> {
+auto spp::asts::TypePostfixExpressionAst::TypeParts() const
+    -> Vec<Shared<const TypeIdentifierAst>> {
     // Concatenate the lhs and rhs type parts.
-    auto parts = spp::utils::ptr::shared_const_cast<const TypeAst>(lhs)->type_parts();
-    parts.append_range(tok_op->type_parts());
+    auto parts = const_shared_cast(Lhs)->TypeParts();
+    parts.AppendRange(const_shared_cast(TokOp)->TypeParts());
     return parts;
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::type_parts()
-    -> std::vector<std::shared_ptr<TypeIdentifierAst>> {
+auto spp::asts::TypePostfixExpressionAst::TypeParts()
+    -> Vec<Shared<TypeIdentifierAst>> {
     // Concatenate the lhs and rhs type parts.
-    auto parts = lhs->type_parts();
-    parts.append_range(tok_op->type_parts());
+    auto parts = Lhs->TypeParts();
+    parts.AppendRange(TokOp->TypeParts());
     return parts;
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::without_convention() const
-    -> std::shared_ptr<const TypeAst> {
+auto spp::asts::TypePostfixExpressionAst::WithoutConvention() const
+    -> Shared<const TypeAst> {
     return shared_from_this();
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::get_convention() const
+auto spp::asts::TypePostfixExpressionAst::GetConvention() const
     -> ConventionAst* {
     // This type AST will never have a convention directly applied to it.
     return nullptr;
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::with_convention(
-    std::unique_ptr<ConventionAst> &&conv) const
-    -> std::shared_ptr<TypeAst> {
+auto spp::asts::TypePostfixExpressionAst::WithConvention(
+    Unique<ConventionAst> &&conv) const
+    -> Shared<TypeAst> {
     if (conv == nullptr) { return const_cast<TypePostfixExpressionAst*>(this)->shared_from_this(); }
-    auto borrow_op = std::make_unique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv));
-    auto wrapped = std::make_shared<TypeUnaryExpressionAst>(std::move(borrow_op), ast_clone(this));
+    auto borrow_op = MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv));
+    auto wrapped = MakeShared<TypeUnaryExpressionAst>(std::move(borrow_op), AstClone(this));
     return wrapped;
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::without_generics() const
-    -> std::shared_ptr<TypeAst> {
-    const auto rhs = tok_op->to<TypePostfixExpressionOperatorNestedTypeAst>();
-    auto new_lhs = ast_clone(lhs); // Todo: clone needed?
-    auto new_rhs = std::make_unique<TypePostfixExpressionOperatorNestedTypeAst>(
-        nullptr, spp::utils::ptr::shared_cast<TypeIdentifierAst>(rhs->name->without_generics()));
-    return std::make_shared<TypePostfixExpressionAst>(std::move(new_lhs), std::move(new_rhs));
+auto spp::asts::TypePostfixExpressionAst::WithoutGenerics() const
+    -> Shared<TypeAst> {
+    const auto rhs = TokOp->To<TypePostfixExpressionOperatorNestedTypeAst>();
+    auto new_lhs = AstClone(Lhs); // Todo: clone needed?
+    auto new_rhs = MakeUnique<TypePostfixExpressionOperatorNestedTypeAst>(
+        nullptr, dynamic_shared_cast<TypeIdentifierAst>(rhs->Name->WithoutGenerics()));
+    return MakeShared<TypePostfixExpressionAst>(std::move(new_lhs), std::move(new_rhs));
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::substitute_generics(
-    std::vector<GenericArgumentAst*> const &args) const
-    -> std::shared_ptr<TypeAst> {
-    const auto rhs = tok_op->to<TypePostfixExpressionOperatorNestedTypeAst>();
-    auto new_lhs = lhs->substitute_generics(args);
-    auto new_rhs = std::make_unique<TypePostfixExpressionOperatorNestedTypeAst>(
-        nullptr, spp::utils::ptr::shared_cast<TypeIdentifierAst>(rhs->name->substitute_generics(args)));
-    return std::make_shared<TypePostfixExpressionAst>(std::move(new_lhs), std::move(new_rhs));
+auto spp::asts::TypePostfixExpressionAst::SubstituteGenerics(
+    Vec<GenericArgumentAst*> const &args) const
+    -> Shared<TypeAst> {
+    const auto rhs = TokOp->To<TypePostfixExpressionOperatorNestedTypeAst>();
+    auto new_lhs = Lhs->SubstituteGenerics(args);
+    auto new_rhs = MakeUnique<TypePostfixExpressionOperatorNestedTypeAst>(
+        nullptr, dynamic_shared_cast<TypeIdentifierAst>(rhs->Name->SubstituteGenerics(args)));
+    return MakeShared<TypePostfixExpressionAst>(std::move(new_lhs), std::move(new_rhs));
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::contains_generic(
+auto spp::asts::TypePostfixExpressionAst::ContainsGenerics(
     GenericParameterAst const &generic) const
     -> bool {
-    const auto rhs = tok_op->to<TypePostfixExpressionOperatorNestedTypeAst>();
-    return rhs->name->contains_generic(generic);
+    const auto rhs = TokOp->To<TypePostfixExpressionOperatorNestedTypeAst>();
+    return rhs->Name->ContainsGenerics(generic);
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::with_generics(
-    std::unique_ptr<GenericArgumentGroupAst> &&arg_group) const
-    -> std::shared_ptr<TypeAst> {
+auto spp::asts::TypePostfixExpressionAst::WithGenerics(
+    Unique<GenericArgumentGroupAst> &&arg_group) const
+    -> Shared<TypeAst> {
     // Clone this type and add the generics to the right most part.
-    auto type_clone = ast_clone(this);
-    type_clone->type_parts().back()->generic_arg_group = std::move(arg_group);
+    auto type_clone = AstClone(this);
+    type_clone->TypeParts().Back()->GnArgGroup = std::move(arg_group);
     return type_clone;
 }
 
-
-auto spp::asts::TypePostfixExpressionAst::is_compiler_generated_type() const
+auto spp::asts::TypePostfixExpressionAst::IsCompilerGeneratedType() const
     -> bool {
     // Won't ever be true.
     return false;

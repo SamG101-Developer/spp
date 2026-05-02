@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.subroutine_prototype_ast;
 import spp.asts.function_prototype_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -15,7 +16,7 @@ SPP_EXP_CLS struct spp::asts::SubroutinePrototypeAst final : FunctionPrototypeAs
 
     ~SubroutinePrototypeAst() override;
 
-    SPP_ATTR_NODISCARD auto clone() const -> std::unique_ptr<Ast> override;
+    SPP_ATTR_NODISCARD auto Clone() const -> Unique<Ast> override;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };

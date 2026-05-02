@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ClosureExpressionAst,
     test_invalid_closure_mutate_capture,
@@ -12,7 +11,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ClosureExpressionAst,
     test_invalid_closure_accessing_out_of_scope,
@@ -23,7 +21,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ClosureExpressionAst,
     test_invalid_closure_different_return_types,
@@ -33,7 +30,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = (caps a) case a < 5_u32 { ret true } else { ret 123 }
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ClosureExpressionAst,
@@ -48,7 +44,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ClosureExpressionAst,
     test_invalid_closure_move_pinned_by_mut,
@@ -62,7 +57,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ClosureExpressionAst,
     test_invalid_closure_type_mut,
@@ -73,7 +67,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ClosureExpressionAst,
     test_invalid_closure_unknown_capture_variable,
@@ -83,7 +76,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = (b: U32 caps a, c) { b = a }
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ClosureExpressionAst,
@@ -96,7 +88,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     ClosureExpressionAst,
     test_valid_closure_simple,
@@ -106,7 +97,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     ClosureExpressionAst,
     test_valid_closure_with_parameters,
@@ -115,7 +105,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = (a: U32, b: U32) a + b
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     ClosureExpressionAst,
@@ -127,7 +116,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     ClosureExpressionAst,
     test_valid_closure_with_capture_ref,
@@ -137,7 +125,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = (mut b: &U32 caps &a) { b = a }
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     ClosureExpressionAst,
@@ -149,7 +136,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     ClosureExpressionAst,
     test_valid_closure_type_mov,
@@ -159,7 +145,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x: FunMov[(), U32] = (caps a) 123_u32
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     ClosureExpressionAst,
@@ -171,7 +156,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     ClosureExpressionAst,
     test_valid_closure_type_ref,
@@ -181,8 +165,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x: FunRef[(), U32] = (caps &a) 123_u32
     }
 )");
-
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     ClosureExpressionAst,
@@ -196,7 +178,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     ClosureExpressionAst,
     test_valid_closure_with_capture_mov_use_capture,
@@ -206,7 +187,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = (caps a) a
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ClosureExpressionAst,
@@ -220,7 +200,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ClosureExpressionAst,
     test_invalid_closure_call_fun_mut_immutable,
@@ -232,7 +211,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ClosureExpressionAst,
     test_invalid_closure_move_borrowed_capture,
@@ -243,7 +221,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let b = some_variable
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ClosureExpressionAst,
@@ -258,7 +235,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     ClosureExpressionAst,
     test_valid_closure_containing_ret_statement,
@@ -268,7 +244,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = (caps a) { ret a }
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ClosureExpressionAst,
@@ -280,7 +255,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     ClosureExpressionAst,
     test_valid_closure_containing_gen_expression,
@@ -290,7 +264,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = cor (caps a) { gen a }
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ClosureExpressionAst,

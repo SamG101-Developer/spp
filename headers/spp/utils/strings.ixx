@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.utils.strings;
+import spp.utils.types;
 import std;
 import mppp;
 
@@ -11,7 +12,7 @@ namespace spp::utils::strings {
      * @param c The character to check.
      * @return If the character is alphanumeric or an underscore.
      */
-    SPP_EXP_FUN auto is_alphanumeric(
+    SPP_EXP_FUN auto IsAlNum(
         char c)
         -> bool;
 
@@ -20,9 +21,9 @@ namespace spp::utils::strings {
      * @param str The snake_case string.
      * @return The PascalCase string.
      */
-    SPP_EXP_FUN auto snake_to_pascal(
-        std::string const &)
-        -> std::string;
+    SPP_EXP_FUN auto SnakeToPascal(
+        Str const &)
+        -> Str;
 
     /**
      * Find the closest matching string from a list of choices to a given query string.
@@ -30,19 +31,19 @@ namespace spp::utils::strings {
      * @param choices The list of choice strings to compare against.
      * @return The closest matching string, or @c std::nullopt if no match is found.
      */
-    SPP_EXP_FUN auto closest_match(
-        std::string_view query,
-        std::vector<std::string> const &choices)
-        -> std::optional<std::string>;
+    SPP_EXP_FUN auto ClosestMatch(
+        StrView query,
+        Vec<Str> const &choices)
+        -> std::optional<Str>;
 
-    auto levenshtein(
-        std::string_view s1,
-        std::string_view s2)
+    auto Levenshtein(
+        StrView s1,
+        StrView s2)
         -> std::size_t;
 
-    auto similarity_ratio(
-        std::string_view s1,
-        std::string_view s2)
+    auto SimilarityRatio(
+        StrView s1,
+        StrView s2)
         -> double;
 
     /**
@@ -52,8 +53,8 @@ namespace spp::utils::strings {
      * or type suffix.
      * @return The normalized string, which is the decimal representation of the integer literal with no underscores.
      */
-    SPP_EXP_FUN auto normalize_integer_string(
-        std::string_view s1)
+    SPP_EXP_FUN auto NormaliseIntegerString(
+        StrView s1)
         -> mppp::BigInt;
 
     /**
@@ -66,9 +67,9 @@ namespace spp::utils::strings {
      * @return The normalized string, which is the decimal representation of the float literal with no underscores, in
      * the form "integer_part.fractional_part".
      */
-    SPP_EXP_FUN auto normalize_float_string(
-        std::string_view s1,
-        std::string_view s2)
+    SPP_EXP_FUN auto NormalizeFloatString(
+        StrView s1,
+        StrView s2)
         -> mppp::BigDec;
 
     /**
@@ -78,7 +79,7 @@ namespace spp::utils::strings {
      * @return The normalized string, which is the decimal representation of the float literal with no underscores, in
      * the form "integer_part".
      */
-    SPP_EXP_FUN auto expand_scientific_notation(
-        std::string_view s1)
+    SPP_EXP_FUN auto ExpandScientificNotation(
+        StrView s1)
         -> mppp::BigDec;
 }

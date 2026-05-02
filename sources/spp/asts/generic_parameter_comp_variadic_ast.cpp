@@ -8,52 +8,46 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
-
 SPP_MOD_BEGIN
 spp::asts::GenericParameterCompVariadicAst::GenericParameterCompVariadicAst(
-    decltype(tok_cmp) &&tok_cmp,
-    decltype(tok_ellipsis) &&tok_ellipsis,
-    decltype(name) &&name,
-    decltype(tok_colon) &&tok_colon,
-    decltype(type) &&type) :
+    decltype(TokCmp) &&tok_cmp,
+    decltype(TokEllipsis) &&tok_ellipsis,
+    decltype(Name) name,
+    decltype(TokColon) &&tok_colon,
+    decltype(Type) &&type) :
     GenericParameterCompAst(std::move(tok_cmp), std::move(name), std::move(tok_colon), std::move(type), utils::OrderableTag::VARIADIC_PARAM),
-    tok_ellipsis(std::move(tok_ellipsis)) {
+    TokEllipsis(std::move(tok_ellipsis)) {
 }
-
 
 spp::asts::GenericParameterCompVariadicAst::~GenericParameterCompVariadicAst() = default;
 
-
-auto spp::asts::GenericParameterCompVariadicAst::pos_start() const
+auto spp::asts::GenericParameterCompVariadicAst::PosStart() const
     -> std::size_t {
-    return tok_cmp->pos_start();
+    // Use the "cmp" token.
+    return TokCmp->PosStart();
 }
 
-
-auto spp::asts::GenericParameterCompVariadicAst::pos_end() const
+auto spp::asts::GenericParameterCompVariadicAst::PosEnd() const
     -> std::size_t {
-    return tok_ellipsis->pos_end();
+    // Use the type.
+    return Type->PosEnd();
 }
 
-
-auto spp::asts::GenericParameterCompVariadicAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<GenericParameterCompVariadicAst>(
-        ast_clone(tok_cmp),
-        ast_clone(tok_ellipsis),
-        ast_clone(name),
-        ast_clone(tok_colon),
-        ast_clone(type));
+auto spp::asts::GenericParameterCompVariadicAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<GenericParameterCompVariadicAst>(
+        AstClone(TokCmp), AstClone(TokEllipsis), AstCloneShared(Name), AstClone(TokColon), AstCloneShared(Type));
 }
 
-
-spp::asts::GenericParameterCompVariadicAst::operator std::string() const {
+auto spp::asts::GenericParameterCompVariadicAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_cmp).append(" ");
-    SPP_STRING_APPEND(tok_ellipsis);
-    SPP_STRING_APPEND(name);
-    SPP_STRING_APPEND(tok_colon).append(" ");
-    SPP_STRING_APPEND(type);
+    SPP_STRING_APPEND(TokCmp).append(" ");
+    SPP_STRING_APPEND(TokEllipsis);
+    SPP_STRING_APPEND(Name);
+    SPP_STRING_APPEND(TokColon).append(" ");
+    SPP_STRING_APPEND(Type);
     SPP_STRING_END;
 }
 

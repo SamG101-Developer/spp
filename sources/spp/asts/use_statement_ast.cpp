@@ -3,6 +3,7 @@ module;
 
 module spp.asts.use_statement_ast;
 import spp.asts.annotation_ast;
+import spp.asts.generic_parameter_group_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -11,171 +12,150 @@ import spp.asts.utils.ast_utils;
 import spp.utils.ptr;
 import genex;
 
-
 SPP_MOD_BEGIN
 spp::asts::UseStatementAst::UseStatementAst(
-    decltype(annotations) &&annotations,
-    decltype(tok_use) &&tok_use,
-    decltype(old_type) old_type) :
-    annotations(std::move(annotations)),
-    tok_use(std::move(tok_use)),
-    old_type(std::move(old_type)),
-    m_conversion(nullptr) {
+    decltype(Annotations) &&annotations,
+    decltype(TokUse) &&tok_use,
+    decltype(OldType) old_type) :
+    Annotations(std::move(annotations)),
+    TokUse(std::move(tok_use)),
+    OldType(std::move(old_type)),
+    _Conversion(nullptr) {
 }
-
 
 spp::asts::UseStatementAst::~UseStatementAst() = default;
 
-
-auto spp::asts::UseStatementAst::pos_start() const
+auto spp::asts::UseStatementAst::PosStart() const
     -> std::size_t {
-    return tok_use->pos_start();
+    // Use the "use" token.
+    return TokUse->PosStart();
 }
 
-
-auto spp::asts::UseStatementAst::pos_end() const
+auto spp::asts::UseStatementAst::PosEnd() const
     -> std::size_t {
-    return old_type->pos_end();
+    // Use the old type.
+    return OldType->PosEnd();
 }
 
-
-auto spp::asts::UseStatementAst::clone() const
-    -> std::unique_ptr<Ast> {
-    auto ast = std::make_unique<UseStatementAst>(
-        ast_clone_vec(annotations),
-        ast_clone(tok_use),
-        ast_clone(old_type));
-    ast->set_ast_ctx(get_ast_ctx());
-    ast->set_ast_scope(get_ast_scope());
-    for (auto const &a : ast->annotations) {
-        a->set_ast_ctx(ast.get());
-    }
+auto spp::asts::UseStatementAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    auto ast = MakeUnique<UseStatementAst>(
+        AstCloneVec(Annotations), AstClone(TokUse), AstCloneShared(OldType));
+    ast->_Ctx = _Ctx;
+    ast->_Scope = _Scope;
+    for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.get()); }
     return ast;
 }
 
-
-spp::asts::UseStatementAst::operator std::string() const {
+auto spp::asts::UseStatementAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(annotations, "\n").append(not annotations.empty() ? "\n" : "");
-    SPP_STRING_APPEND(tok_use).append(" ");
-    SPP_STRING_APPEND(old_type);
+    SPP_STRING_EXTEND(Annotations, "\n").append(not Annotations.IsEmpty() ? "\n" : "");
+    SPP_STRING_APPEND(TokUse).append(" ");
+    SPP_STRING_APPEND(OldType);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::UseStatementAst::stage_1_pre_process(
+auto spp::asts::UseStatementAst::Stage1_PreProcess(
     Ast *ctx)
     -> void {
     // Pre-process the annotations.
-    Ast::stage_1_pre_process(ctx);
-    for (auto const &annotation : annotations) {
-        annotation->set_ast_ctx(this);
-    }
+    Ast::Stage1_PreProcess(ctx);
+    for (auto const &a : Annotations) { a->SetAstCtx(this); }
 }
 
-
-auto spp::asts::UseStatementAst::stage_2_gen_top_level_scopes(
+auto spp::asts::UseStatementAst::Stage2_GenTopLvlScopes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Run the steps for the annotations.
-    Ast::stage_2_gen_top_level_scopes(sm, meta);
-    for (auto const &a : annotations) {
-        a->stage_2_gen_top_level_scopes(sm, meta);
-    }
+    Ast::Stage2_GenTopLvlScopes(sm, meta);
+    for (auto const &a : Annotations) { a->Stage2_GenTopLvlScopes(sm, meta); }
 
     // Create the type statement AST conversion.
-    const auto new_type = spp::utils::ptr::shared_cast<TypeIdentifierAst>(
-        old_type->type_parts().back()->without_generics());
+    const auto new_type = dynamic_shared_cast<TypeIdentifierAst>(
+        OldType->TypeParts().Back()->WithoutGenerics());
 
-    m_conversion = std::make_unique<TypeStatementAst>(
-        std::move(annotations), nullptr, new_type, nullptr, nullptr, ast_clone(old_type));
-    m_conversion->mark_from_use_statement();
-    m_conversion->stage_2_gen_top_level_scopes(sm, meta);
-    m_generated = true;
+    _Conversion = MakeUnique<TypeStatementAst>(
+        std::move(Annotations), nullptr, new_type, nullptr, nullptr, AstCloneShared(OldType));
+    _Conversion->MarkFromUseStatement();
+    _Conversion->Stage2_GenTopLvlScopes(sm, meta);
+    _Generated = true;
 }
 
-
-auto spp::asts::UseStatementAst::stage_3_gen_top_level_aliases(
+auto spp::asts::UseStatementAst::Stage3_GenTopLvlAliases(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Generate the top-level alias for the converted type statement.
-    m_conversion->stage_3_gen_top_level_aliases(sm, meta);
+    _Conversion->Stage3_GenTopLvlAliases(sm, meta);
 }
 
-
-auto spp::asts::UseStatementAst::stage_4_qualify_types(
+auto spp::asts::UseStatementAst::Stage4_QualifyTypes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Qualify the types in the conversion AST.
-    m_conversion->stage_4_qualify_types(sm, meta);
+    _Conversion->Stage4_QualifyTypes(sm, meta);
 }
 
-
-auto spp::asts::UseStatementAst::stage_5_load_super_scopes(
+auto spp::asts::UseStatementAst::Stage5_LoadSupScopes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Load the super scopes for the conversion AST.
-    m_conversion->stage_5_load_super_scopes(sm, meta);
+    _Conversion->Stage5_LoadSupScopes(sm, meta);
 }
 
-
-auto spp::asts::UseStatementAst::stage_6_pre_analyse_semantics(
+auto spp::asts::UseStatementAst::Stage6_PreAnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Skip all scopes, as this is a pre-generated AST.
-    m_conversion->stage_6_pre_analyse_semantics(sm, meta);
+    _Conversion->Stage6_PreAnalyseSemantics(sm, meta);
 }
 
-
-auto spp::asts::UseStatementAst::stage_7_analyse_semantics(
+auto spp::asts::UseStatementAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Analyse the conversion AST.
-    m_conversion->stage_7_analyse_semantics(sm, meta);
+    _Conversion->Stage7_AnalyseSemantics(sm, meta);
 }
 
-
-auto spp::asts::UseStatementAst::stage_8_check_memory(
+auto spp::asts::UseStatementAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Check memory for the conversion AST.
-    m_conversion->stage_8_check_memory(sm, meta);
+    _Conversion->Stage8_CheckMemory(sm, meta);
 }
 
-
-auto spp::asts::UseStatementAst::stage_9_comptime_resolution(
+auto spp::asts::UseStatementAst::Stage9_CompTimeResolve(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Comptime resolve the conversion AST.
-    return m_conversion->stage_9_comptime_resolution(sm, meta);
+    return _Conversion->Stage9_CompTimeResolve(sm, meta);
 }
 
-
-auto spp::asts::UseStatementAst::stage_10_code_gen_1(
+auto spp::asts::UseStatementAst::Stage10_PreCodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Code gen for the conversion AST.
-    return m_conversion->stage_10_code_gen_1(sm, meta, ctx);
+    return _Conversion->Stage10_PreCodeGen(sm, meta, ctx);
 }
 
-
-auto spp::asts::UseStatementAst::stage_11_code_gen_2(
+auto spp::asts::UseStatementAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Code gen for the conversion AST.
-    return m_conversion->stage_11_code_gen_2(sm, meta, ctx);
+    return _Conversion->Stage11_CodeGen(sm, meta, ctx);
 }
 
 SPP_MOD_END

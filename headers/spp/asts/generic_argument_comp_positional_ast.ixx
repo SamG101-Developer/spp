@@ -4,6 +4,7 @@ module;
 export module spp.asts.generic_argument_comp_positional_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_comp_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -23,23 +24,19 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentCompPositionalAst final : GenericAr
      * @param val The value of the generic comp argument.
      */
     explicit GenericArgumentCompPositionalAst(
-        decltype(val) &&val);
+        decltype(Val) &&val);
 
     ~GenericArgumentCompPositionalAst() override;
 
-    SPP_ATTR_NODISCARD auto equals_generic_argument_comp_positional(
-        GenericArgumentCompPositionalAst const &other) const
-        -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto EqualsGenericArgumentCompPositional(GenericArgumentCompPositionalAst const &other) const -> Ordering override;
 
-    SPP_ATTR_NODISCARD auto equals(
-        GenericArgumentAst const &other) const
-        -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto Equals(GenericArgumentAst const &other) const -> Ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
 
 

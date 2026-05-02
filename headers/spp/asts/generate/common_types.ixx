@@ -2,7 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generate.common_types;
-
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -16,59 +16,59 @@ namespace spp::asts::generate::common_types {
      * @param pos The position of the type in the source code.
      * @return The generated TypeAst.
      */
-    SPP_EXP_FUN auto f8(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto f16(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto f32(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto f64(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto f128(std::size_t pos) -> std::shared_ptr<TypeAst>;
+    SPP_EXP_FUN auto F8(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto F16(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto F32(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto F64(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto F128(std::size_t pos) -> Shared<TypeAst>;
 
-    SPP_EXP_FUN auto s8(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto s16(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto s32(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto s64(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto s128(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto s256(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto ssize(std::size_t pos) -> std::shared_ptr<TypeAst>;
+    SPP_EXP_FUN auto S8(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto S16(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto S32(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto S64(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto S128(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto S256(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto SSize(std::size_t pos) -> Shared<TypeAst>;
 
-    SPP_EXP_FUN auto u8(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto u16(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto u32(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto u64(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto u128(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto u256(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto usize(std::size_t pos) -> std::shared_ptr<TypeAst>;
+    SPP_EXP_FUN auto U8(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto U16(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto U32(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto U64(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto U128(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto U256(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto USize(std::size_t pos) -> Shared<TypeAst>;
 
-    SPP_EXP_FUN auto void_type(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto boolean_type(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto string_type(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto string_view_type(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto never_type(std::size_t pos) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto copy_type(std::size_t pos) -> std::shared_ptr<TypeAst>;
+    SPP_EXP_FUN auto VoidType(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto BooleanType(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto StringType(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto StringViewType(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto NeverType(std::size_t pos) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto CopyType(std::size_t pos) -> Shared<TypeAst>;
 
-    SPP_EXP_FUN auto array_type(std::size_t pos, std::shared_ptr<TypeAst> elem_type, std::unique_ptr<ExpressionAst> &&size) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto variant_type(std::size_t pos, std::vector<std::shared_ptr<TypeAst>> &&inner_types) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto tuple_type(std::size_t pos, std::vector<std::shared_ptr<TypeAst>> &&inner_types) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto try_type(std::size_t pos, std::shared_ptr<TypeAst> output_type, std::shared_ptr<TypeAst> residual_type) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto future_type(std::size_t pos, std::shared_ptr<TypeAst> inner_type) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto option_type(std::size_t pos, std::shared_ptr<TypeAst> inner_type) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto memory_type(std::size_t pos, std::shared_ptr<TypeAst> inner_type) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto single_type(std::size_t pos, std::shared_ptr<TypeAst> inner_type) -> std::shared_ptr<TypeAst>;
+    SPP_EXP_FUN auto ArrayType(std::size_t pos, Shared<TypeAst> elem_type, Unique<ExpressionAst> &&size) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto VariantType(std::size_t pos, SharedVec<TypeAst> &&inner_types) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto TupleType(std::size_t pos, SharedVec<TypeAst> &&inner_types) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto TryType(std::size_t pos, Shared<TypeAst> output_type, Shared<TypeAst> residual_type) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto FutureType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto OptionType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto MemoryType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto SingleType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst>;
 
-    SPP_EXP_FUN auto some_type(std::size_t pos, std::shared_ptr<TypeAst> inner_type) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto none_type(std::size_t pos) -> std::shared_ptr<TypeAst>;
+    SPP_EXP_FUN auto SomeType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto None(std::size_t pos) -> Shared<TypeAst>;
 
-    SPP_EXP_FUN auto gen_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type, std::shared_ptr<TypeAst> send_type = nullptr) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto gen_once_type(std::size_t pos, std::shared_ptr<TypeAst> yield_type) -> std::shared_ptr<TypeAst>;
+    SPP_EXP_FUN auto GenType(std::size_t pos, Shared<TypeAst> yield_type, Shared<TypeAst> send_type = nullptr) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto GenOnceType(std::size_t pos, Shared<TypeAst> yield_type) -> Shared<TypeAst>;
 
-    SPP_EXP_FUN auto index_mut_type(std::size_t pos, std::shared_ptr<TypeAst> elem_type) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto index_ref_type(std::size_t pos, std::shared_ptr<TypeAst> elem_type) -> std::shared_ptr<TypeAst>;
+    SPP_EXP_FUN auto IndexMutType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto IndexRefType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst>;
 
-    SPP_EXP_FUN auto fun_ref_type(std::size_t pos, std::shared_ptr<TypeAst> param_types, std::shared_ptr<TypeAst> ret_type) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto fun_mut_type(std::size_t pos, std::shared_ptr<TypeAst> param_types, std::shared_ptr<TypeAst> ret_type) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto fun_mov_type(std::size_t pos, std::shared_ptr<TypeAst> param_types, std::shared_ptr<TypeAst> ret_type) -> std::shared_ptr<TypeAst>;
+    SPP_EXP_FUN auto FunRefType(std::size_t pos, Shared<TypeAst> param_types, Shared<TypeAst> ret_type) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto FunMutType(std::size_t pos, Shared<TypeAst> param_types, Shared<TypeAst> ret_type) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto FunMovType(std::size_t pos, Shared<TypeAst> param_types, Shared<TypeAst> ret_type) -> Shared<TypeAst>;
 
-    SPP_EXP_FUN auto forward_ref_type(std::size_t pos, std::shared_ptr<TypeAst> inner_type) -> std::shared_ptr<TypeAst>;
-    SPP_EXP_FUN auto forward_mut_type(std::size_t pos, std::shared_ptr<TypeAst> inner_type) -> std::shared_ptr<TypeAst>;
+    SPP_EXP_FUN auto ForwardRefType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst>;
+    SPP_EXP_FUN auto ForwardMutType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst>;
 
-    SPP_EXP_FUN auto self_type(std::size_t pos) -> std::shared_ptr<TypeAst>;
+    SPP_EXP_FUN auto SelfType(std::size_t pos) -> Shared<TypeAst>;
 }

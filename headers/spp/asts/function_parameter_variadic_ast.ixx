@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.function_parameter_variadic_ast;
 import spp.asts.function_parameter_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -20,7 +21,7 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterVariadicAst final : FunctionParam
      * The token that represents the @c .. ellipsis in the function parameter. This indicates that the parameter is
      * variadic, meaning it can accept a variable number of arguments.
      */
-    std::unique_ptr<TokenAst> tok_ellipsis;
+    Unique<TokenAst> TokEllipsis;
 
     /**
      * Construct the FunctionParameterVariadicAst with the arguments matching the members.
@@ -30,10 +31,10 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterVariadicAst final : FunctionParam
      * @param tok_ellipsis The token that represents the @c .. ellipsis in the function parameter.
      */
     FunctionParameterVariadicAst(
-        decltype(tok_ellipsis) &&tok_ellipsis,
-        decltype(var) &&var,
-        decltype(tok_colon) &&tok_colon,
-        decltype(type) type);
+        decltype(TokEllipsis) &&tok_ellipsis,
+        decltype(Var) &&var,
+        decltype(TokColon) &&tok_colon,
+        decltype(Type) type);
 
     ~FunctionParameterVariadicAst() override;
 

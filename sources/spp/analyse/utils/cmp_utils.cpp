@@ -18,6 +18,7 @@ import spp.asts.object_initializer_argument_group_ast;
 import spp.asts.object_initializer_argument_keyword_ast;
 import spp.asts.object_initializer_argument_shorthand_ast;
 import spp.asts.token_ast;
+import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.strings;
@@ -38,65 +39,61 @@ import opex.ops;
 #define cmp_fround 0 <_cmp_fround_>
 #define cmp_frem <_cmp_frem_>
 
-
 #define SPP_STANDARD_BINARY_BOOL_OP(Op)                                                            \
-    const auto cpp_result = lhs.cpp_value() Op rhs.cpp_value();                                    \
+    const auto cpp_result = lhs.CppVal() Op rhs.CppVal();                                    \
     const auto lex_tok = cpp_result ? lex::SppTokenType::KW_TRUE : lex::SppTokenType::KW_FALSE;    \
-    auto tok_ast = std::make_unique<asts::TokenAst>(0, lex_tok, spp::lex::tok_to_string(lex_tok)); \
-    return std::make_unique<asts::BooleanLiteralAst>(std::move(tok_ast))
-
+    auto tok_ast = MakeUnique<asts::TokenAst>(0uz, lex_tok, spp::lex::tok_to_string(lex_tok)); \
+    return MakeUnique<asts::BooleanLiteralAst>(std::move(tok_ast))
 
 #define SPP_STANDARD_UNARY_BOOL_OP(Op)                                                             \
-    const auto cpp_result = Op val.cpp_value();                                                    \
+    const auto cpp_result = Op val.CppVal();                                                    \
     const auto lex_tok = cpp_result ? lex::SppTokenType::KW_TRUE : lex::SppTokenType::KW_FALSE;    \
-    auto tok_ast = std::make_unique<asts::TokenAst>(0, lex_tok, spp::lex::tok_to_string(lex_tok)); \
-    return std::make_unique<asts::BooleanLiteralAst>(std::move(tok_ast));
-
+    auto tok_ast = MakeUnique<asts::TokenAst>(0uz, lex_tok, spp::lex::tok_to_string(lex_tok)); \
+    return MakeUnique<asts::BooleanLiteralAst>(std::move(tok_ast));
 
 #define SPP_STANDARD_BINARY_INT_OP_RETURN_INT_HANDLER(Op, Ty, CppTy)                                                 \
-    if (lhs.type == Ty) {                                                                                            \
-        const auto result = lhs.cpp_value<CppTy>() Op rhs.cpp_value<CppTy>();                                        \
-        auto val_tok = std::make_unique<asts::TokenAst>(0, lex::SppTokenType::LX_NUMBER, std::format("{}", result)); \
-        return std::make_unique<asts::IntegerLiteralAst>(nullptr,  std::move(val_tok), std::string(lhs.type));       \
+    if (lhs.Type == Ty) {                                                                                            \
+        const auto result = lhs.CppVal<CppTy>() Op rhs.CppVal<CppTy>();                                        \
+        auto val_tok = MakeUnique<asts::TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::format("{}", result)); \
+        return MakeUnique<asts::IntegerLiteralAst>(nullptr,  std::move(val_tok), Str(lhs.Type));       \
     }
 
 #define SPP_STANDARD_BINARY_INT_OP_RETURN_BOOL_HANDLER(Op, Ty, CppTy)                                  \
-    if (lhs.type == Ty) {                                                                              \
-        const auto result = lhs.cpp_value<CppTy>() Op rhs.cpp_value<CppTy>();                          \
+    if (lhs.Type == Ty) {                                                                              \
+        const auto result = lhs.CppVal<CppTy>() Op rhs.CppVal<CppTy>();                          \
         const auto lex_tok = result ? lex::SppTokenType::KW_TRUE : lex::SppTokenType::KW_FALSE;        \
-        auto tok_ast = std::make_unique<asts::TokenAst>(0, lex_tok, spp::lex::tok_to_string(lex_tok)); \
-        return std::make_unique<asts::BooleanLiteralAst>(std::move(tok_ast));                          \
+        auto tok_ast = MakeUnique<asts::TokenAst>(0uz, lex_tok, spp::lex::tok_to_string(lex_tok)); \
+        return MakeUnique<asts::BooleanLiteralAst>(std::move(tok_ast));                          \
     }
 
 #define SPP_STANDARD_UNARY_INT_OP_RETURN_INT_HANDLER(Op, Ty, CppTy)                                               \
-    if (val.type == Ty) {                                                                                         \
-        const auto result = Op val.cpp_value<CppTy>();                                                            \
-        auto val_tok = std::make_unique<asts::TokenAst>(0, lex::SppTokenType::LX_NUMBER, std::to_string(result)); \
-        return std::make_unique<asts::IntegerLiteralAst>(nullptr, std::move(val_tok), std::string(val.type));     \
+    if (val.Type == Ty) {                                                                                         \
+        const auto result = Op val.CppVal<CppTy>();                                                            \
+        auto val_tok = MakeUnique<asts::TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::to_string(result)); \
+        return MakeUnique<asts::IntegerLiteralAst>(nullptr, std::move(val_tok), Str(val.Type));     \
     }
 
 #define SPP_STANDARD_BINARY_FLOAT_OP_RETURN_FLOAT_HANDLER(Op, Ty, CppTy)                                             \
-    if (lhs.type == Ty) {                                                                                            \
-        const auto result = lhs.cpp_value<CppTy>() Op rhs.cpp_value<CppTy>();                                        \
-        auto val_tok = std::make_unique<asts::TokenAst>(0, lex::SppTokenType::LX_NUMBER, std::format("{}", result)); \
-        return asts::FloatLiteralAst::from_single_token(nullptr, std::move(val_tok), std::string(lhs.type));         \
+    if (lhs.Type == Ty) {                                                                                            \
+        const auto result = lhs.CppVal<CppTy>() Op rhs.CppVal<CppTy>();                                        \
+        auto val_tok = MakeUnique<asts::TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::format("{}", result)); \
+        return asts::FloatLiteralAst::FromSingleTok(nullptr, std::move(val_tok), Str(lhs.Type));         \
     }
 
 #define SPP_STANDARD_BINARY_FLOAT_OP_RETURN_BOOL_HANDLER(Op, Ty, CppTy)                                \
-    if (lhs.type == Ty) {                                                                              \
-        const auto result = lhs.cpp_value<CppTy>() Op rhs.cpp_value<CppTy>();                          \
+    if (lhs.Type == Ty) {                                                                              \
+        const auto result = lhs.CppVal<CppTy>() Op rhs.CppVal<CppTy>();                          \
         const auto lex_tok = result ? lex::SppTokenType::KW_TRUE : lex::SppTokenType::KW_FALSE;        \
-        auto tok_ast = std::make_unique<asts::TokenAst>(0, lex_tok, spp::lex::tok_to_string(lex_tok)); \
-        return std::make_unique<asts::BooleanLiteralAst>(std::move(tok_ast));                          \
+        auto tok_ast = MakeUnique<asts::TokenAst>(0uz, lex_tok, spp::lex::tok_to_string(lex_tok)); \
+        return MakeUnique<asts::BooleanLiteralAst>(std::move(tok_ast));                          \
     }
 
 #define SPP_STANDARD_UNARY_FLOAT_OP_RETURN_FLOAT_HANDLER(Op, Ty, CppTy)                                             \
-    if (val.type == Ty) {                                                                                            \
-        const auto result = Op val.cpp_value<CppTy>();                                                              \
-        auto val_tok = std::make_unique<asts::TokenAst>(0, lex::SppTokenType::LX_NUMBER, std::format("{}", result)); \
-        return asts::FloatLiteralAst::from_single_token(nullptr, std::move(val_tok), std::string(val.type));         \
+    if (val.Type == Ty) {                                                                                            \
+        const auto result = Op val.CppVal<CppTy>();                                                              \
+        auto val_tok = MakeUnique<asts::TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::format("{}", result)); \
+        return asts::FloatLiteralAst::FromSingleTok(nullptr, std::move(val_tok), Str(val.Type));         \
     }
-
 
 /*
  * COLLECTION OF "(INT, INT) -> INT" OPERATIONS FOR STANDARD CMP INTRINSICS
@@ -119,7 +116,6 @@ import opex.ops;
     SPP_STANDARD_BINARY_SIGNED_INT_OP_RET_INT(Op)   \
     SPP_STANDARD_BINARY_UNSIGNED_INT_OP_RET_INT(Op)
 
-
 /*
  * COLLECTION OF "(INT, INT) -> BOOL" OPERATIONS FOR STANDARD CMP INTRINSICS
  */
@@ -140,7 +136,6 @@ import opex.ops;
 #define SPP_STANDARD_BINARY_INT_OP_RET_BOOL(Op)      \
     SPP_STANDARD_BINARY_SIGNED_INT_OP_RET_BOOL(Op)   \
     SPP_STANDARD_BINARY_UNSIGNED_INT_OP_RET_BOOL(Op)
-
 
 /*
  * COLLECTION OF "INT -> INT" OPERATIONS FOR STANDARD CMP INTRINSICS
@@ -163,7 +158,6 @@ import opex.ops;
     SPP_STANDARD_UNARY_SIGNED_INT_OP_RET_INT(Op) \
     SPP_STANDARD_UNARY_UNSIGNED_INT_OP_RET_INT(Op)
 
-
 /*
  * COLLECTION OF "(FLOAT, FLOAT) -> FLOAT" OPERATIONS FOR STANDARD CMP INTRINSICS
  */
@@ -171,7 +165,6 @@ import opex.ops;
     SPP_STANDARD_BINARY_FLOAT_OP_RETURN_FLOAT_HANDLER(Op, "f16", std::float16_t) \
     SPP_STANDARD_BINARY_FLOAT_OP_RETURN_FLOAT_HANDLER(Op, "f32", std::float32_t) \
     SPP_STANDARD_BINARY_FLOAT_OP_RETURN_FLOAT_HANDLER(Op, "f64", std::float64_t)
-
 
 /*
  * COLLECTION OF "(FLOAT, FLOAT) -> BOOL" OPERATIONS FOR STANDARD CMP INTRINSICS
@@ -189,31 +182,29 @@ import opex.ops;
     SPP_STANDARD_UNARY_FLOAT_OP_RETURN_FLOAT_HANDLER(Op, "f32", std::float32_t) \
     SPP_STANDARD_UNARY_FLOAT_OP_RETURN_FLOAT_HANDLER(Op, "f64", std::float64_t)
 
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdangling-pointer"
 
-
-auto spp::analyse::utils::cmp_utils::set_attribute_value(
-    asts::ObjectInitializerAst *object,
+auto spp::analyse::utils::cmp_utils::SetCompTimeAttrValue(
+    asts::ObjectInitializerAst const *object,
     asts::Ast *attribute,
-    std::unique_ptr<asts::ExpressionAst> &&value,
+    Unique<asts::ExpressionAst> &&value,
     scopes::ScopeManager const *sm)
     -> void {
     // Firstly, we need to split the "attribute" as it may be a dotted path.
-    auto attr_path = std::vector<std::shared_ptr<asts::IdentifierAst>>();
+    auto attr_path = Vec<Shared<asts::IdentifierAst>>();
     while (true) {
         // Ensure we are looking at a postfix expression.
-        const auto postfix = attribute->to<asts::PostfixExpressionAst>();
+        const auto postfix = attribute->To<asts::PostfixExpressionAst>();
         if (postfix == nullptr) { break; }
 
         // Ensure the operator is a runtime member access.
-        const auto member_access = postfix->op->to<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>();
+        const auto member_access = postfix->Op->To<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>();
         if (member_access == nullptr) { break; }
 
         // Push the member name to the path and continue down the lhs.
-        attr_path.push_back(member_access->name);
-        attribute = postfix->lhs.get();
+        attr_path.push_back(member_access->Name);
+        attribute = postfix->Lhs.get();
     }
 
     // Reverse the attribute path to get the correct order.
@@ -225,19 +216,19 @@ auto spp::analyse::utils::cmp_utils::set_attribute_value(
     //  we need to ensure that X has a Y initializer, which has a Z initializer.
     //  each inner initializer may exist, may not, so check and create if needed.
     auto current_obj_init = object;
-    auto current_obj_type = object->type;
-    auto current_obj_sym = sm->current_scope->get_type_symbol(current_obj_type);
+    auto current_obj_type = object->Type;
+    auto current_obj_sym = sm->CurrentScope->GetTypeSymbol(current_obj_type);
 
     for (auto const &attr_name : attr_path) {
-        const auto is_final = attr_name == attr_path.back();
-        current_obj_type = current_obj_sym->scope->get_var_symbol(attr_name)->type;
-        current_obj_sym = current_obj_sym->scope->get_type_symbol(current_obj_type);
+        const auto is_final = attr_name == attr_path.Back();
+        current_obj_type = current_obj_sym->LinkedScope->GetVarSymbol(attr_name)->Type;
+        current_obj_sym = current_obj_sym->LinkedScope->GetTypeSymbol(current_obj_type);
 
         // Check if the attribute already exists in the current object initializer.
-        const auto found = genex::contains(current_obj_init->arg_group->get_all_args(), *attr_name, [](auto const *x) -> decltype(auto) { return *x->name; });
+        const auto found = genex::contains(current_obj_init->ArgGroup->GetAllArgs(), *attr_name, [](auto const *x) -> decltype(auto) { return *x->Name; });
         if (found) {
-            auto const &arg = **genex::find_if(current_obj_init->arg_group->get_all_args(), [&](auto const *x) { return *x->name == *attr_name; });
-            const auto obj = arg.val->to<asts::ObjectInitializerAst>();
+            auto const &arg = **genex::find_if(current_obj_init->ArgGroup->GetAllArgs(), [&](auto const *x) { return *x->Name == *attr_name; });
+            const auto obj = arg.Val->To<asts::ObjectInitializerAst>();
 
             // Case: attribute exists, but not as an object initializer. Replace it, but keep old object as the "else"
             // in the initializer, to use all of its other attributes.
@@ -245,13 +236,13 @@ auto spp::analyse::utils::cmp_utils::set_attribute_value(
                 const auto old_obj_init = current_obj_init;
                 auto new_init = is_final
                     ? std::move(value)
-                    : std::make_unique<asts::ObjectInitializerAst>(current_obj_sym->fq_name(), nullptr);
-                current_obj_init = new_init->to<asts::ObjectInitializerAst>();
+                    : MakeUnique<asts::ObjectInitializerAst>(current_obj_sym->FqName(), nullptr);
+                current_obj_init = new_init->To<asts::ObjectInitializerAst>();
 
-                old_obj_init->arg_group->args.emplace_back(
-                    std::make_unique<asts::ObjectInitializerArgumentKeywordAst>(attr_name, nullptr, std::move(new_init)));
-                old_obj_init->arg_group->args.emplace_back(
-                    asts::ObjectInitializerArgumentShorthandAst::create_autofill(asts::ast_clone(arg.val)));
+                old_obj_init->ArgGroup->Args.EmplaceBack(
+                    MakeUnique<asts::ObjectInitializerArgumentKeywordAst>(attr_name, nullptr, std::move(new_init)));
+                old_obj_init->ArgGroup->Args.EmplaceBack(
+                    asts::ObjectInitializerArgumentShorthandAst::CreateAutoFillArg(asts::AstClone(arg.Val)));
                 continue;
             }
 
@@ -259,122 +250,110 @@ auto spp::analyse::utils::cmp_utils::set_attribute_value(
             // initializer.
             if (not is_final) {
                 current_obj_init = obj;
-                current_obj_type = current_obj_sym->scope->get_var_symbol(attr_name)->type;
-                current_obj_sym = current_obj_sym->scope->get_type_symbol(current_obj_type);
+                current_obj_type = current_obj_sym->LinkedScope->GetVarSymbol(attr_name)->Type;
+                current_obj_sym = current_obj_sym->LinkedScope->GetTypeSymbol(current_obj_type);
                 continue;
             }
-            current_obj_init->arg_group->args.emplace_back(
-                std::make_unique<asts::ObjectInitializerArgumentKeywordAst>(attr_name, nullptr, std::move(value)));
+            current_obj_init->ArgGroup->Args.EmplaceBack(
+                MakeUnique<asts::ObjectInitializerArgumentKeywordAst>(attr_name, nullptr, std::move(value)));
         }
 
         // Case: attribute does not exist, so create a new object initializer for it.
         else {
             const auto old_obj_init = current_obj_init;
             auto new_init = is_final
-                ? std::move(value)
-                : std::make_unique<asts::ObjectInitializerAst>(current_obj_sym->fq_name(), nullptr);
-            current_obj_init = new_init->to<asts::ObjectInitializerAst>();
+                                ? std::move(value)
+                                : MakeUnique<asts::ObjectInitializerAst>(current_obj_sym->FqName(), nullptr);
+            current_obj_init = new_init->To<asts::ObjectInitializerAst>();
 
-            old_obj_init->arg_group->args.emplace_back(
-                std::make_unique<asts::ObjectInitializerArgumentKeywordAst>(ast_clone(attr_name), nullptr, std::move(new_init)));
+            old_obj_init->ArgGroup->Args.EmplaceBack(
+                MakeUnique<asts::ObjectInitializerArgumentKeywordAst>(AstCloneShared(attr_name), nullptr, std::move(new_init)));
         }
     }
 }
 
-
-auto spp::analyse::utils::cmp_utils::get_attribute_value(
+auto spp::analyse::utils::cmp_utils::GetCompTimeAttrValue(
     asts::ObjectInitializerAst const *object,
     asts::IdentifierAst const *attribute)
-    -> std::unique_ptr<asts::ExpressionAst> {
+    -> Unique<asts::ExpressionAst> {
     // Check each argument in the object initializer for the target attribute.
-    for (auto const &arg : object->arg_group->get_all_args()) {
-        if (*arg->name == *attribute) { return asts::ast_clone(arg->val); }
+    for (auto const &arg : object->ArgGroup->GetAllArgs()) {
+        if (*arg->Name == *attribute) { return asts::AstClone(arg->Val); }
     }
     return nullptr;
 }
 
-
-
 auto spp::analyse::utils::cmp_utils::std_boolean_bit_and(
     asts::BooleanLiteralAst const &lhs,
     asts::BooleanLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform bitwise AND operation on two boolean literals.
     SPP_STANDARD_BINARY_BOOL_OP(&);
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_boolean_bit_ior(
     asts::BooleanLiteralAst const &lhs,
     asts::BooleanLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform bitwise OR operation on two boolean literals.
     SPP_STANDARD_BINARY_BOOL_OP(|);
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_boolean_bit_xor(
     asts::BooleanLiteralAst const &lhs,
     asts::BooleanLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform bitwise XOR operation on two boolean literals.
     SPP_STANDARD_BINARY_BOOL_OP(^);
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_boolean_bit_not(
     asts::BooleanLiteralAst const &val)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform bitwise NOT operation on a boolean literal.
     SPP_STANDARD_UNARY_BOOL_OP(!);
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_boolean_and(
     asts::BooleanLiteralAst const &lhs,
     asts::BooleanLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform logical AND operation on two boolean literals.
     SPP_STANDARD_BINARY_BOOL_OP(&&);
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_boolean_ior(
     asts::BooleanLiteralAst const &lhs,
     asts::BooleanLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform logical OR operation on two boolean literals.
     SPP_STANDARD_BINARY_BOOL_OP(||);
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_boolean_eq(
     asts::BooleanLiteralAst const &lhs,
     asts::BooleanLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform equality comparison on two boolean literals.
     SPP_STANDARD_BINARY_BOOL_OP(==);
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_boolean_ne(
     asts::BooleanLiteralAst const &lhs,
     asts::BooleanLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform inequality comparison on two boolean literals.
     SPP_STANDARD_BINARY_BOOL_OP(!=);
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_add(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::IntegerLiteralAst> {
+    -> Unique<asts::IntegerLiteralAst> {
     // Perform addition on two integer literals.
     SPP_STANDARD_BINARY_INT_OP_RET_INT(+);
     return nullptr;
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_add_assign(
     asts::IntegerLiteralAst &lhs,
@@ -382,21 +361,19 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_add_assign(
     -> void {
     // Perform addition assignment on an integer literal.
     const auto result_literal = std_intrinsics_add(lhs, rhs);
-    lhs.tok_sign = std::move(result_literal->tok_sign);
-    lhs.val = std::move(result_literal->val);
-    lhs.type = std::move(result_literal->type);
+    lhs.TokSign = std::move(result_literal->TokSign);
+    lhs.Val = std::move(result_literal->Val);
+    lhs.Type = std::move(result_literal->Type);
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_sub(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::IntegerLiteralAst> {
+    -> Unique<asts::IntegerLiteralAst> {
     // Perform subtraction on two integer literals.
     SPP_STANDARD_BINARY_INT_OP_RET_INT(-);
     return nullptr;
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_sub_assign(
     asts::IntegerLiteralAst &lhs,
@@ -404,21 +381,19 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_sub_assign(
     -> void {
     // Perform subtraction assignment on an integer literal.
     const auto result_literal = std_intrinsics_sub(lhs, rhs);
-    lhs.tok_sign = std::move(result_literal->tok_sign);
-    lhs.val = std::move(result_literal->val);
-    lhs.type = std::move(result_literal->type);
+    lhs.TokSign = std::move(result_literal->TokSign);
+    lhs.Val = std::move(result_literal->Val);
+    lhs.Type = std::move(result_literal->Type);
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_mul(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::IntegerLiteralAst> {
+    -> Unique<asts::IntegerLiteralAst> {
     // Perform multiplication on two integer literals.
     SPP_STANDARD_BINARY_INT_OP_RET_INT(*);
     return nullptr;
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_mul_assign(
     asts::IntegerLiteralAst &lhs,
@@ -426,21 +401,19 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_mul_assign(
     -> void {
     // Perform multiplication assignment on an integer literal.
     const auto result_literal = std_intrinsics_mul(lhs, rhs);
-    lhs.tok_sign = std::move(result_literal->tok_sign);
-    lhs.val = std::move(result_literal->val);
-    lhs.type = std::move(result_literal->type);
+    lhs.TokSign = std::move(result_literal->TokSign);
+    lhs.Val = std::move(result_literal->Val);
+    lhs.Type = std::move(result_literal->Type);
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_sdiv(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::IntegerLiteralAst> {
+    -> Unique<asts::IntegerLiteralAst> {
     // Perform signed division on two integer literals.
     SPP_STANDARD_BINARY_INT_OP_RET_INT(/);
     return nullptr;
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_sdiv_assign(
     asts::IntegerLiteralAst &lhs,
@@ -448,21 +421,19 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_sdiv_assign(
     -> void {
     // Perform signed division assignment on an integer literal.
     const auto result_literal = std_intrinsics_sdiv(lhs, rhs);
-    lhs.tok_sign = std::move(result_literal->tok_sign);
-    lhs.val = std::move(result_literal->val);
-    lhs.type = std::move(result_literal->type);
+    lhs.TokSign = std::move(result_literal->TokSign);
+    lhs.Val = std::move(result_literal->Val);
+    lhs.Type = std::move(result_literal->Type);
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_udiv(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::IntegerLiteralAst> {
+    -> Unique<asts::IntegerLiteralAst> {
     // Perform unsigned division on two integer literals.
     SPP_STANDARD_BINARY_INT_OP_RET_INT(/);
     return nullptr;
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_udiv_assign(
     asts::IntegerLiteralAst &lhs,
@@ -470,21 +441,19 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_udiv_assign(
     -> void {
     // Perform unsigned division assignment on an integer literal.
     const auto result_literal = std_intrinsics_udiv(lhs, rhs);
-    lhs.tok_sign = std::move(result_literal->tok_sign);
-    lhs.val = std::move(result_literal->val);
-    lhs.type = std::move(result_literal->type);
+    lhs.TokSign = std::move(result_literal->TokSign);
+    lhs.Val = std::move(result_literal->Val);
+    lhs.Type = std::move(result_literal->Type);
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_srem(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::IntegerLiteralAst> {
+    -> Unique<asts::IntegerLiteralAst> {
     // Perform signed remainder on two integer literals.
     SPP_STANDARD_BINARY_INT_OP_RET_INT(%);
     return nullptr;
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_srem_assign(
     asts::IntegerLiteralAst &lhs,
@@ -492,21 +461,19 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_srem_assign(
     -> void {
     // Perform signed remainder assignment on an integer literal.
     const auto result_literal = std_intrinsics_srem(lhs, rhs);
-    lhs.tok_sign = std::move(result_literal->tok_sign);
-    lhs.val = std::move(result_literal->val);
-    lhs.type = std::move(result_literal->type);
+    lhs.TokSign = std::move(result_literal->TokSign);
+    lhs.Val = std::move(result_literal->Val);
+    lhs.Type = std::move(result_literal->Type);
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_urem(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::IntegerLiteralAst> {
+    -> Unique<asts::IntegerLiteralAst> {
     // Perform unsigned remainder on two integer literals.
     SPP_STANDARD_BINARY_INT_OP_RET_INT(%);
     return nullptr;
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_urem_assign(
     asts::IntegerLiteralAst &lhs,
@@ -514,30 +481,27 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_urem_assign(
     -> void {
     // Perform unsigned remainder assignment on an integer literal.
     const auto result_literal = std_intrinsics_urem(lhs, rhs);
-    lhs.tok_sign = std::move(result_literal->tok_sign);
-    lhs.val = std::move(result_literal->val);
-    lhs.type = std::move(result_literal->type);
+    lhs.TokSign = std::move(result_literal->TokSign);
+    lhs.Val = std::move(result_literal->Val);
+    lhs.Type = std::move(result_literal->Type);
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_sneg(
     asts::IntegerLiteralAst const &val)
-    -> std::unique_ptr<asts::IntegerLiteralAst> {
+    -> Unique<asts::IntegerLiteralAst> {
     // Perform signed negation on an integer literal.
     SPP_STANDARD_UNARY_SIGNED_INT_OP_RET_INT(-);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shl(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::IntegerLiteralAst> {
+    -> Unique<asts::IntegerLiteralAst> {
     // Perform bitwise left shift on two integer literals.
     SPP_STANDARD_BINARY_INT_OP_RET_INT(<<);
     return nullptr;
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shl_assign(
     asts::IntegerLiteralAst &lhs,
@@ -545,21 +509,19 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shl_assign(
     -> void {
     // Perform bitwise left shift assignment on an integer literal.
     const auto result_literal = std_intrinsics_bit_shl(lhs, rhs);
-    lhs.tok_sign = std::move(result_literal->tok_sign);
-    lhs.val = std::move(result_literal->val);
-    lhs.type = std::move(result_literal->type);
+    lhs.TokSign = std::move(result_literal->TokSign);
+    lhs.Val = std::move(result_literal->Val);
+    lhs.Type = std::move(result_literal->Type);
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shr(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::IntegerLiteralAst> {
+    -> Unique<asts::IntegerLiteralAst> {
     // Perform bitwise right shift on two integer literals.
     SPP_STANDARD_BINARY_INT_OP_RET_INT(>>);
     return nullptr;
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shr_assign(
     asts::IntegerLiteralAst &lhs,
@@ -567,21 +529,19 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shr_assign(
     -> void {
     // Perform bitwise right shift assignment on an integer literal.
     const auto result_literal = std_intrinsics_bit_shr(lhs, rhs);
-    lhs.tok_sign = std::move(result_literal->tok_sign);
-    lhs.val = std::move(result_literal->val);
-    lhs.type = std::move(result_literal->type);
+    lhs.TokSign = std::move(result_literal->TokSign);
+    lhs.Val = std::move(result_literal->Val);
+    lhs.Type = std::move(result_literal->Type);
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_ior(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::IntegerLiteralAst> {
+    -> Unique<asts::IntegerLiteralAst> {
     // Perform bitwise OR on two integer literals.
     SPP_STANDARD_BINARY_INT_OP_RET_INT(|);
     return nullptr;
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_ior_assign(
     asts::IntegerLiteralAst &lhs,
@@ -589,21 +549,19 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_ior_assign(
     -> void {
     // Perform bitwise OR assignment on an integer literal.
     const auto result_literal = std_intrinsics_bit_ior(lhs, rhs);
-    lhs.tok_sign = std::move(result_literal->tok_sign);
-    lhs.val = std::move(result_literal->val);
-    lhs.type = std::move(result_literal->type);
+    lhs.TokSign = std::move(result_literal->TokSign);
+    lhs.Val = std::move(result_literal->Val);
+    lhs.Type = std::move(result_literal->Type);
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_and(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::IntegerLiteralAst> {
+    -> Unique<asts::IntegerLiteralAst> {
     // Perform bitwise AND on two integer literals.
     SPP_STANDARD_BINARY_INT_OP_RET_INT(&);
     return nullptr;
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_and_assign(
     asts::IntegerLiteralAst &lhs,
@@ -611,21 +569,19 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_and_assign(
     -> void {
     // Perform bitwise AND assignment on an integer literal.
     const auto result_literal = std_intrinsics_bit_and(lhs, rhs);
-    lhs.tok_sign = std::move(result_literal->tok_sign);
-    lhs.val = std::move(result_literal->val);
-    lhs.type = std::move(result_literal->type);
+    lhs.TokSign = std::move(result_literal->TokSign);
+    lhs.Val = std::move(result_literal->Val);
+    lhs.Type = std::move(result_literal->Type);
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_xor(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::IntegerLiteralAst> {
+    -> Unique<asts::IntegerLiteralAst> {
     // Perform bitwise XOR on two integer literals.
     SPP_STANDARD_BINARY_INT_OP_RET_INT(^);
     return nullptr;
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_xor_assign(
     asts::IntegerLiteralAst &lhs,
@@ -633,250 +589,225 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_xor_assign(
     -> void {
     // Perform bitwise XOR assignment on an integer literal.
     const auto result_literal = std_intrinsics_bit_xor(lhs, rhs);
-    lhs.tok_sign = std::move(result_literal->tok_sign);
-    lhs.val = std::move(result_literal->val);
-    lhs.type = std::move(result_literal->type);
+    lhs.TokSign = std::move(result_literal->TokSign);
+    lhs.Val = std::move(result_literal->Val);
+    lhs.Type = std::move(result_literal->Type);
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_not(
     asts::IntegerLiteralAst const &val)
-    -> std::unique_ptr<asts::IntegerLiteralAst> {
+    -> Unique<asts::IntegerLiteralAst> {
     // Perform bitwise NOT on an integer literal.
     SPP_STANDARD_UNARY_INT_OP_RET_INT(~);
     return nullptr;
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_not_assign(
     asts::IntegerLiteralAst &lhs)
     -> void {
     // Perform bitwise NOT assignment on an integer literal.
     const auto result_literal = std_intrinsics_bit_not(lhs);
-    lhs.tok_sign = std::move(result_literal->tok_sign);
-    lhs.val = std::move(result_literal->val);
-    lhs.type = std::move(result_literal->type);
+    lhs.TokSign = std::move(result_literal->TokSign);
+    lhs.Val = std::move(result_literal->Val);
+    lhs.Type = std::move(result_literal->Type);
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_abs(
     asts::IntegerLiteralAst const &val)
-    -> std::unique_ptr<asts::IntegerLiteralAst> {
+    -> Unique<asts::IntegerLiteralAst> {
     // Perform absolute value on an integer literal.
     SPP_STANDARD_UNARY_SIGNED_INT_OP_RET_INT(cmp_abs);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_eq(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform equality comparison on two integer literals.
     SPP_STANDARD_BINARY_INT_OP_RET_BOOL(==);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_oeq(
     asts::FloatLiteralAst const &lhs,
     asts::FloatLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform ordered equality comparison on two float literals.
     SPP_STANDARD_BINARY_FLOAT_OP_RET_BOOL(==);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_ne(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform inequality comparison on two integer literals.
     SPP_STANDARD_BINARY_INT_OP_RET_BOOL(!=);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_one(
     asts::FloatLiteralAst const &lhs,
     asts::FloatLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform ordered inequality comparison on two float literals.
     SPP_STANDARD_BINARY_FLOAT_OP_RET_BOOL(!=);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_slt(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform signed less-than comparison on two integer literals.
     SPP_STANDARD_BINARY_SIGNED_INT_OP_RET_BOOL(<);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_ult(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform unsigned less-than comparison on two integer literals.
     SPP_STANDARD_BINARY_UNSIGNED_INT_OP_RET_BOOL(<);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_olt(
     asts::FloatLiteralAst const &lhs,
     asts::FloatLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform ordered less-than comparison on two float literals.
     SPP_STANDARD_BINARY_FLOAT_OP_RET_BOOL(<);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_sle(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform signed less-than-or-equal comparison on two integer literals.
     SPP_STANDARD_BINARY_SIGNED_INT_OP_RET_BOOL(<=);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_ule(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform unsigned less-than-or-equal comparison on two integer literals.
     SPP_STANDARD_BINARY_UNSIGNED_INT_OP_RET_BOOL(<=);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_ole(
     asts::FloatLiteralAst const &lhs,
     asts::FloatLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform ordered less-than-or-equal comparison on two float literals.
     SPP_STANDARD_BINARY_FLOAT_OP_RET_BOOL(<=);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_sgt(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform signed greater-than comparison on two integer literals.
     SPP_STANDARD_BINARY_SIGNED_INT_OP_RET_BOOL(>);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_ugt(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform unsigned greater-than comparison on two integer literals.
     SPP_STANDARD_BINARY_UNSIGNED_INT_OP_RET_BOOL(>);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_ogt(
     asts::FloatLiteralAst const &lhs,
     asts::FloatLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform ordered greater-than comparison on two float literals.
     SPP_STANDARD_BINARY_FLOAT_OP_RET_BOOL(>);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_sge(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform signed greater-than-or-equal comparison on two integer literals.
     SPP_STANDARD_BINARY_SIGNED_INT_OP_RET_BOOL(>=);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_uge(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform unsigned greater-than-or-equal comparison on two integer literals.
     SPP_STANDARD_BINARY_UNSIGNED_INT_OP_RET_BOOL(>=);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_oge(
     asts::FloatLiteralAst const &lhs,
     asts::FloatLiteralAst const &rhs)
-    -> std::unique_ptr<asts::BooleanLiteralAst> {
+    -> Unique<asts::BooleanLiteralAst> {
     // Perform ordered greater-than-or-equal comparison on two float literals.
     SPP_STANDARD_BINARY_FLOAT_OP_RET_BOOL(>=);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_smax(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::IntegerLiteralAst> {
+    -> Unique<asts::IntegerLiteralAst> {
     // Perform signed maximum on two integer literals.
     SPP_STANDARD_BINARY_SIGNED_INT_OP_RET_INT(cmp_smax);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_umax(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::IntegerLiteralAst> {
+    -> Unique<asts::IntegerLiteralAst> {
     // Perform unsigned maximum on two integer literals.
     SPP_STANDARD_BINARY_UNSIGNED_INT_OP_RET_INT(cmp_umax);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_smin(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::IntegerLiteralAst> {
+    -> Unique<asts::IntegerLiteralAst> {
     // Perform signed minimum on two integer literals.
     SPP_STANDARD_BINARY_SIGNED_INT_OP_RET_INT(cmp_smin);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_umin(
     asts::IntegerLiteralAst const &lhs,
     asts::IntegerLiteralAst const &rhs)
-    -> std::unique_ptr<asts::IntegerLiteralAst> {
+    -> Unique<asts::IntegerLiteralAst> {
     // Perform unsigned minimum on two integer literals.
     SPP_STANDARD_BINARY_UNSIGNED_INT_OP_RET_INT(cmp_umin);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fadd(
     asts::FloatLiteralAst const &lhs,
     asts::FloatLiteralAst const &rhs)
-    -> std::unique_ptr<asts::FloatLiteralAst> {
+    -> Unique<asts::FloatLiteralAst> {
     // Perform addition on two float literals.
     SPP_STANDARD_BINARY_FLOAT_OP_RET_FLOAT(+);
     return nullptr;
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fadd_assign(
     asts::FloatLiteralAst &lhs,
@@ -884,22 +815,20 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fadd_assign(
     -> void {
     // Perform addition assignment on a float literal.
     const auto result_literal = std_intrinsics_fadd(lhs, rhs);
-    lhs.tok_sign = std::move(result_literal->tok_sign);
-    lhs.int_val = std::move(result_literal->int_val);
-    lhs.frac_val = std::move(result_literal->frac_val);
-    lhs.type = std::move(result_literal->type);
+    lhs.TokSign = std::move(result_literal->TokSign);
+    lhs.IntVal = std::move(result_literal->IntVal);
+    lhs.FracVal = std::move(result_literal->FracVal);
+    lhs.Type = std::move(result_literal->Type);
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fsub(
     asts::FloatLiteralAst const &lhs,
     asts::FloatLiteralAst const &rhs)
-    -> std::unique_ptr<asts::FloatLiteralAst> {
+    -> Unique<asts::FloatLiteralAst> {
     // Perform subtraction on two float literals.
     SPP_STANDARD_BINARY_FLOAT_OP_RET_FLOAT(-);
     return nullptr;
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fsub_assign(
     asts::FloatLiteralAst &lhs,
@@ -907,22 +836,20 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fsub_assign(
     -> void {
     // Perform subtraction assignment on a float literal.
     const auto result_literal = std_intrinsics_fsub(lhs, rhs);
-    lhs.tok_sign = std::move(result_literal->tok_sign);
-    lhs.int_val = std::move(result_literal->int_val);
-    lhs.frac_val = std::move(result_literal->frac_val);
-    lhs.type = std::move(result_literal->type);
+    lhs.TokSign = std::move(result_literal->TokSign);
+    lhs.IntVal = std::move(result_literal->IntVal);
+    lhs.FracVal = std::move(result_literal->FracVal);
+    lhs.Type = std::move(result_literal->Type);
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fmul(
     asts::FloatLiteralAst const &lhs,
     asts::FloatLiteralAst const &rhs)
-    -> std::unique_ptr<asts::FloatLiteralAst> {
+    -> Unique<asts::FloatLiteralAst> {
     // Perform multiplication on two float literals.
     SPP_STANDARD_BINARY_FLOAT_OP_RET_FLOAT(*);
     return nullptr;
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fmul_assign(
     asts::FloatLiteralAst &lhs,
@@ -930,22 +857,20 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fmul_assign(
     -> void {
     // Perform multiplication assignment on a float literal.
     const auto result_literal = std_intrinsics_fmul(lhs, rhs);
-    lhs.tok_sign = std::move(result_literal->tok_sign);
-    lhs.int_val = std::move(result_literal->int_val);
-    lhs.frac_val = std::move(result_literal->frac_val);
-    lhs.type = std::move(result_literal->type);
+    lhs.TokSign = std::move(result_literal->TokSign);
+    lhs.IntVal = std::move(result_literal->IntVal);
+    lhs.FracVal = std::move(result_literal->FracVal);
+    lhs.Type = std::move(result_literal->Type);
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fdiv(
     asts::FloatLiteralAst const &lhs,
     asts::FloatLiteralAst const &rhs)
-    -> std::unique_ptr<asts::FloatLiteralAst> {
+    -> Unique<asts::FloatLiteralAst> {
     // Perform division on two float literals.
     SPP_STANDARD_BINARY_FLOAT_OP_RET_FLOAT(/);
     return nullptr;
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fdiv_assign(
     asts::FloatLiteralAst &lhs,
@@ -953,22 +878,20 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fdiv_assign(
     -> void {
     // Perform division assignment on a float literal.
     const auto result_literal = std_intrinsics_fdiv(lhs, rhs);
-    lhs.tok_sign = std::move(result_literal->tok_sign);
-    lhs.int_val = std::move(result_literal->int_val);
-    lhs.frac_val = std::move(result_literal->frac_val);
-    lhs.type = std::move(result_literal->type);
+    lhs.TokSign = std::move(result_literal->TokSign);
+    lhs.IntVal = std::move(result_literal->IntVal);
+    lhs.FracVal = std::move(result_literal->FracVal);
+    lhs.Type = std::move(result_literal->Type);
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_frem(
     asts::FloatLiteralAst const &lhs,
     asts::FloatLiteralAst const &rhs)
-    -> std::unique_ptr<asts::FloatLiteralAst> {
+    -> Unique<asts::FloatLiteralAst> {
     // Perform remainder on two float literals.
     SPP_STANDARD_BINARY_FLOAT_OP_RET_FLOAT(cmp_frem);
     return nullptr;
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_frem_assign(
     asts::FloatLiteralAst &lhs,
@@ -976,81 +899,73 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_frem_assign(
     -> void {
     // Perform remainder assignment on a float literal.
     const auto result_literal = std_intrinsics_frem(lhs, rhs);
-    lhs.tok_sign = std::move(result_literal->tok_sign);
-    lhs.int_val = std::move(result_literal->int_val);
-    lhs.frac_val = std::move(result_literal->frac_val);
-    lhs.type = std::move(result_literal->type);
+    lhs.TokSign = std::move(result_literal->TokSign);
+    lhs.IntVal = std::move(result_literal->IntVal);
+    lhs.FracVal = std::move(result_literal->FracVal);
+    lhs.Type = std::move(result_literal->Type);
 }
-
 
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fneg(
     asts::FloatLiteralAst const &val)
-    -> std::unique_ptr<asts::FloatLiteralAst> {
+    -> Unique<asts::FloatLiteralAst> {
     // Perform negation on a float literal.
     SPP_STANDARD_UNARY_FLOAT_OP(-);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fabs(
     asts::FloatLiteralAst const &val)
-    -> std::unique_ptr<asts::FloatLiteralAst> {
+    -> Unique<asts::FloatLiteralAst> {
     // Perform absolute value on a float literal.
     SPP_STANDARD_UNARY_FLOAT_OP(cmp_fabs);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fmax(
     asts::FloatLiteralAst const &lhs,
     asts::FloatLiteralAst const &rhs)
-    -> std::unique_ptr<asts::FloatLiteralAst> {
+    -> Unique<asts::FloatLiteralAst> {
     // Perform maximum on two float literals.
     SPP_STANDARD_BINARY_FLOAT_OP_RET_FLOAT(cmp_fmax);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fmin(
     asts::FloatLiteralAst const &lhs,
     asts::FloatLiteralAst const &rhs)
-    -> std::unique_ptr<asts::FloatLiteralAst> {
+    -> Unique<asts::FloatLiteralAst> {
     // Perform minimum on two float literals.
     SPP_STANDARD_BINARY_FLOAT_OP_RET_FLOAT(cmp_fmin);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_ffloor(
     asts::FloatLiteralAst const &val)
-    -> std::unique_ptr<asts::FloatLiteralAst> {
+    -> Unique<asts::FloatLiteralAst> {
     // Perform floor operation on a float literal.
     SPP_STANDARD_UNARY_FLOAT_OP(cmp_ffloor);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fceil(
     asts::FloatLiteralAst const &val)
-    -> std::unique_ptr<asts::FloatLiteralAst> {
+    -> Unique<asts::FloatLiteralAst> {
     // Perform ceiling operation on a float literal.
     SPP_STANDARD_UNARY_FLOAT_OP(cmp_fceil);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_ftrunc(
     asts::FloatLiteralAst const &val)
-    -> std::unique_ptr<asts::FloatLiteralAst> {
+    -> Unique<asts::FloatLiteralAst> {
     // Perform truncation operation on a float literal.
     SPP_STANDARD_UNARY_FLOAT_OP(cmp_ftrunc);
     return nullptr;
 }
 
-
 auto spp::analyse::utils::cmp_utils::std_intrinsics_fround(
     asts::FloatLiteralAst const &val)
-    -> std::unique_ptr<asts::FloatLiteralAst> {
+    -> Unique<asts::FloatLiteralAst> {
     // Perform round operation on a float literal.
     SPP_STANDARD_UNARY_FLOAT_OP(cmp_fround);
     return nullptr;

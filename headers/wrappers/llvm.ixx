@@ -25,6 +25,7 @@ export namespace llvm {
     using ::llvm::APInt;
     using ::llvm::APFloat;
     using ::llvm::APFloatBase;
+    using ::llvm::ArrayRef;
     using ::llvm::ArrayType;
     using ::llvm::Attribute;
     using ::llvm::BasicBlock;

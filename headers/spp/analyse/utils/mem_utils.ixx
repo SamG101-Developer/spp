@@ -3,6 +3,7 @@ module;
 
 export module spp.analyse.utils.mem_utils;
 import spp.asts.meta.compiler_meta_data;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -31,7 +32,7 @@ namespace spp::analyse::utils::mem_utils {
      * @param ast_2 The rhs AST to check for overlap.
      * @return Whether the two memory regions overlap.
      */
-    SPP_EXP_FUN auto memory_region_overlap(
+    SPP_EXP_FUN auto MemRegionOverlap(
         asts::Ast const &ast_1,
         asts::Ast const &ast_2)
         -> bool;
@@ -44,7 +45,7 @@ namespace spp::analyse::utils::mem_utils {
      * @param ast_2 The rhs AST to check for overlap.
      * @return Whether the two memory regions overlap in the right direction.
      */
-    SPP_EXP_FUN auto memory_region_right_overlap(
+    SPP_EXP_FUN auto MemRegionRightOverlap(
         asts::Ast const &ast_1,
         asts::Ast const &ast_2)
         -> bool;
@@ -74,7 +75,7 @@ namespace spp::analyse::utils::mem_utils {
      * is used.
      * @throw spp::analyse::errors::SppInconsistentlyPinnedMemoryUseError If an inconsistently pinned symbol is used.
      */
-    SPP_EXP_FUN auto validate_symbol_memory(
+    SPP_EXP_FUN auto ValidateSymbolMemory(
         asts::ExpressionAst &value_ast,
         asts::Ast const &move_ast,
         scopes::ScopeManager &sm,
@@ -86,14 +87,14 @@ namespace spp::analyse::utils::mem_utils {
         asts::meta::CompilerMetaData *meta)
         -> void;
 
-    SPP_EXP_FUN auto validate_inconsistent_memory(
+    SPP_EXP_FUN auto ValidateInconsistentMemory(
         asts::Ast *parent,
-        std::vector<asts::CaseExpressionBranchAst*> const &branches,
+        Vec<asts::CaseExpressionBranchAst*> const &branches,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
         -> void;
 
-    SPP_EXP_FUN auto prevent_borrow_lifetime_extension(
+    SPP_EXP_FUN auto PreventBorrowLifetimeExtension(
         scopes::VariableSymbol const *lhs_outermost,
         scopes::VariableSymbol const *rhs_outermost,
         asts::Ast *owner,

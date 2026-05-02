@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.type_unary_expression_operator_borrow_ast;
 import spp.asts.type_unary_expression_operator_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -20,38 +21,34 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorBorrowAst final : TypeU
      * The convention token representing the borrowing convention. This indicates how the type is borrowed, immutably or
      * mutably.
      */
-    std::unique_ptr<ConventionAst> conv;
+    Unique<ConventionAst> Conv;
 
     /**
     * Construct the TypeUnaryOperatorBorrowAst with the arguments matching the members.
     * @param conv The convention token representing the borrowing convention.
     */
     explicit TypeUnaryExpressionOperatorBorrowAst(
-        decltype(conv) &&conv);
+        decltype(Conv) &&conv);
 
     ~TypeUnaryExpressionOperatorBorrowAst() override;
 
-    SPP_ATTR_NODISCARD auto equals_op_borrow(
-        TypeUnaryExpressionOperatorBorrowAst const &) const
-        -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto EqualsOpBorrow(TypeUnaryExpressionOperatorBorrowAst const &) const -> Ordering override;
 
-    SPP_ATTR_NODISCARD auto equals(
-        TypeUnaryExpressionOperatorAst const &) const
-        -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto Equals(TypeUnaryExpressionOperatorAst const &) const -> Ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    SPP_ATTR_NODISCARD auto ns_parts() const
-        -> std::vector<std::shared_ptr<const IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto NsParts() const
+        -> Vec<Shared<const IdentifierAst>> override;
 
-    SPP_ATTR_NODISCARD auto ns_parts()
-        -> std::vector<std::shared_ptr<IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto NsParts()
+        -> Vec<Shared<IdentifierAst>> override;
 
-    SPP_ATTR_NODISCARD auto type_parts() const
-        -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto TypeParts() const
+        -> Vec<Shared<const TypeIdentifierAst>> override;
 
-    SPP_ATTR_NODISCARD auto type_parts()
-        -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto TypeParts()
+        -> Vec<Shared<TypeIdentifierAst>> override;
 };
 
 

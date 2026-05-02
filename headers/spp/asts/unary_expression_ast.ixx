@@ -4,6 +4,7 @@ module;
 export module spp.asts.unary_expression_ast;
 import spp.asts.expression_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -18,12 +19,12 @@ SPP_EXP_CLS struct spp::asts::UnaryExpressionAst final : ExpressionAst {
     /**
      * The operator token that represents the unary operation. This indicates the type of operation being performed.
      */
-    std::unique_ptr<UnaryExpressionOperatorAst> op;
+    Unique<UnaryExpressionOperatorAst> Op;
 
     /**
      * The expression that is being operated on by the unary operator.
      */
-    std::unique_ptr<ExpressionAst> expr;
+    Unique<ExpressionAst> Expr;
 
     /**
      * Construct the UnaryExpressionAst with the arguments matching the members.
@@ -31,18 +32,18 @@ SPP_EXP_CLS struct spp::asts::UnaryExpressionAst final : ExpressionAst {
      * @param[in] expr The expression that is being operated on by the unary operator.
      */
     UnaryExpressionAst(
-        decltype(op) &&tok_op,
-        decltype(expr) &&expr);
+        decltype(Op) &&tok_op,
+        decltype(Expr) &&expr);
 
     ~UnaryExpressionAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };

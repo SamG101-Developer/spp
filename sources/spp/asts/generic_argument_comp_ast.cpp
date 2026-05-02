@@ -4,13 +4,12 @@ module;
 module spp.asts.generic_argument_comp_ast;
 import spp.asts.expression_ast;
 
-
 SPP_MOD_BEGIN
 spp::asts::GenericArgumentCompAst::GenericArgumentCompAst(
-    decltype(val) &&val,
+    decltype(Val) &&val,
     const utils::OrderableTag order_tag) :
     GenericArgumentAst(order_tag),
-    val(std::move(val)) {
+    Val(std::move(val)) {
 }
 
 spp::asts::GenericArgumentCompAst::~GenericArgumentCompAst() = default;

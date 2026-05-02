@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -16,22 +17,22 @@ namespace spp::codegen {
 
 
 SPP_EXP_CLS struct spp::codegen::LLvmCtx {
-    llvm::LLVMContext *context;
-    std::unique_ptr<llvm::Module> llvm_module;
-    llvm::IRBuilder<> builder;
-    std::map<std::string, llvm::Constant*> global_constants;
-    bool in_constant_context = false;
+    llvm::LLVMContext *Context;
+    Unique<llvm::Module> Module;
+    llvm::IRBuilder<> Builder;
+    std::map<Str, llvm::Constant*> GlobalConstants;
+    bool InConstantContext = false;
 
     // Coroutine information.
-    std::vector<llvm::BasicBlock*> yield_continuations;
+    Vec<llvm::BasicBlock*> YieldContinuations;
 
     // Closure tracking information.
-    llvm::Type *current_closure_type = nullptr;
-    analyse::scopes::Scope *current_closure_scope = nullptr;
+    llvm::Type *CurrentClosureType = nullptr;
+    analyse::scopes::Scope *CurrentClosureScope = nullptr;
 
     // Loop black tracking information (for loop control flow).
-    std::stack<llvm::BasicBlock*> loop_end_bb_stack; // Allows breaking out of N loops.
-    llvm::BasicBlock *loop_innermost_cond_bb = nullptr; // For "skip" statements.
+    std::stack<llvm::BasicBlock*> LoopEndBBStack; // Allows breaking out of N loops.
+    llvm::BasicBlock *LoopInnermostCondBB = nullptr; // For "skip" statements.
 
     LLvmCtx(LLvmCtx const &) = delete;
     LLvmCtx(LLvmCtx &&) noexcept = delete;
@@ -39,15 +40,15 @@ SPP_EXP_CLS struct spp::codegen::LLvmCtx {
     auto operator=(LLvmCtx &&) noexcept -> LLvmCtx& = delete;
 
     LLvmCtx() :
-        context(global_context),
-        llvm_module(nullptr),
-        builder(*context) {
+        Context(global_context),
+        Module(nullptr),
+        Builder(*Context) {
     }
 
-    static auto new_ctx(std::string const &module_name) -> std::unique_ptr<LLvmCtx> {
-        auto ctx = std::make_unique<LLvmCtx>();
-        ctx->llvm_module = std::make_unique<llvm::Module>(module_name, *ctx->context);
-        ctx->llvm_module->setTargetTriple(llvm::Triple("x86_64-pc-linux-gnu"));
+    static auto NewCtx(Str const &module_name) -> Unique<LLvmCtx> {
+        auto ctx = MakeUnique<LLvmCtx>();
+        ctx->Module = MakeUnique<llvm::Module>(module_name, *ctx->Context);
+        ctx->Module->setTargetTriple(llvm::Triple("x86_64-pc-linux-gnu"));
         return ctx;
     }
 };

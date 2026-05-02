@@ -4,6 +4,7 @@ module;
 export module spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -32,19 +33,19 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
     /**
      * The generic argument group that contains the generic arguments for the function call.
      */
-    std::unique_ptr<GenericArgumentGroupAst> generic_arg_group;
+    Unique<GenericArgumentGroupAst> GnArgGroup;
 
     /**
      * The function call argument group that contains the arguments for the function call.
      */
-    std::unique_ptr<FunctionCallArgumentGroupAst> arg_group;
+    Unique<FunctionCallArgumentGroupAst> FnArgGroup;
 
     /**
      * The optional @c .. fold token that indicates a fold operation in a function call. This will fold all tuples in
      * the argument group into a single argument and call the function multiples times with each element of the tuple as
      * the argument for the non-tuple parameters it has mapped to.
      */
-    std::unique_ptr<FoldExpressionAst> fold;
+    Unique<FoldExpressionAst> Fold;
 
     /**
      * Construct the PostfixExpressionOperatorFunctionCallAst with the arguments matching the members.
@@ -54,61 +55,57 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
      * @param[in] fold The optional @c .. fold token that indicates a fold operation in a function call.
      */
     explicit PostfixExpressionOperatorFunctionCallAst(
-        decltype(generic_arg_group) &&generic_arg_group,
-        decltype(arg_group) &&arg_group,
-        decltype(fold) &&fold);
+        decltype(GnArgGroup) &&generic_arg_group,
+        decltype(FnArgGroup) &&arg_group,
+        decltype(Fold) &&fold);
 
     ~PostfixExpressionOperatorFunctionCallAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
     auto mark_as_async(Ast *async_token) -> void;
 
-    SPP_ATTR_NODISCARD auto target() const -> FunctionPrototypeAst*;
+    SPP_ATTR_NODISCARD auto Target() const -> FunctionPrototypeAst*;
 
-    auto set_closure_dummy_proto(std::unique_ptr<FunctionPrototypeAst> &&proto) -> void;
+    auto SetClosureDummyProto(Unique<FunctionPrototypeAst> &&proto) -> void;
 
-    auto set_transformed_ast(std::unique_ptr<PostfixExpressionAst> &&ast) -> void;
+    auto SetTransformedAst(Unique<PostfixExpressionAst> &&ast) -> void;
 
-    SPP_ATTR_NODISCARD auto transformed_ast() const -> PostfixExpressionAst*;
+    SPP_ATTR_NODISCARD auto GetTransformedAst() const -> PostfixExpressionAst*;
 
 private:
-    struct OverloadInfo {
-        analyse::scopes::Scope const *scope;
-        FunctionPrototypeAst *proto;
-        std::vector<GenericArgumentAst*> generic_args;
+    struct _OInfo {
+        analyse::scopes::Scope const *OverloadScope;
+        FunctionPrototypeAst *Proto;
+        Vec<GenericArgumentAst*> GnArgs;
     };
 
-    std::optional<OverloadInfo> m_overload_info;
+    std::optional<_OInfo> _OverloadInfo;
 
-    std::unique_ptr<PostfixExpressionAst> m_transformed_ast;
+    Unique<PostfixExpressionAst> _TransformedAst;
 
-    std::unique_ptr<FunctionCallArgumentGroupAst> m_closure_dummy_arg_group;
+    Unique<FunctionCallArgumentGroupAst> _ClosureDummyArgGroup;
+    Unique<FunctionCallArgumentPositionalAst> _ClosureDummyArg;
+    Unique<FunctionPrototypeAst> _ClosureDummyProto;
 
-    std::unique_ptr<FunctionCallArgumentPositionalAst> m_closure_dummy_arg;
+    Vec<Unique<PostfixExpressionOperatorFunctionCallAst>> _FoldedAsts;
 
-    std::unique_ptr<FunctionPrototypeAst> m_closure_dummy_proto;
+    Ast *_IsAsync;
+    bool _IsCoroAndAutoResume;
+    Shared<IdentifierAst> _SelfCompTime;
 
-    std::vector<std::unique_ptr<PostfixExpressionOperatorFunctionCallAst>> m_folded_asts;
-
-    Ast *m_is_async;
-
-    bool m_is_coro_and_auto_resume;
-
-    std::shared_ptr<IdentifierAst> m_self_comptime;
-
-    auto m_handle_function_folding(
+    auto _HandleFunctionFolding(
         ScopeManager *sm,
         CompilerMetaData *meta)
-        -> std::vector<std::unique_ptr<PostfixExpressionOperatorFunctionCallAst>>;
+        -> Vec<Unique<PostfixExpressionOperatorFunctionCallAst>>;
 };

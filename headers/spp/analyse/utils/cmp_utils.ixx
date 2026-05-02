@@ -3,6 +3,7 @@ module;
 #include <opex/macros.hpp>
 
 export module spp.analyse.utils.cmp_utils;
+import spp.utils.types;
 import opex.ops;
 import std;
 
@@ -91,8 +92,8 @@ namespace spp::analyse::utils::cmp_utils {
     SPP_EXP_CLS struct CmpFn {
         virtual ~CmpFn() = default;
         virtual auto invoke(
-            std::vector<std::unique_ptr<asts::ExpressionAst>> const &args)
-            -> std::unique_ptr<asts::ExpressionAst> = 0;
+            Vec<Unique<asts::ExpressionAst>> const &args)
+            -> Unique<asts::ExpressionAst> = 0;
     };
 
     SPP_EXP_CLS template <typename Ret, typename... Args>
@@ -104,17 +105,17 @@ namespace spp::analyse::utils::cmp_utils {
         }
 
         auto invoke(
-            std::vector<std::unique_ptr<asts::ExpressionAst>> const &args)
-            -> std::unique_ptr<asts::ExpressionAst> override {
+            Vec<Unique<asts::ExpressionAst>> const &args)
+            -> Unique<asts::ExpressionAst> override {
             return invoke_impl(args, std::index_sequence_for<Args...>{});
         }
 
     private:
         template <std::size_t... I>
         auto invoke_impl(
-            std::vector<std::unique_ptr<asts::ExpressionAst>> const &args,
+            Vec<Unique<asts::ExpressionAst>> const &args,
             std::index_sequence<I...>)
-            -> std::unique_ptr<asts::ExpressionAst> {
+            -> Unique<asts::ExpressionAst> {
             if constexpr (std::is_same_v<Ret, void>) {
                 fn(dynamic_cast<std::remove_reference_t<Args>&>(*args[I])...);
                 return nullptr;
@@ -125,66 +126,66 @@ namespace spp::analyse::utils::cmp_utils {
         }
     };
 
-    SPP_EXP_FUN auto set_attribute_value(
-        asts::ObjectInitializerAst *object,
+    SPP_EXP_FUN auto SetCompTimeAttrValue(
+        asts::ObjectInitializerAst const *object,
         asts::Ast *attribute,
-        std::unique_ptr<asts::ExpressionAst> &&value,
+        Unique<asts::ExpressionAst> &&value,
         scopes::ScopeManager const *sm)
         -> void;
 
-    SPP_EXP_FUN auto get_attribute_value(
+    SPP_EXP_FUN auto GetCompTimeAttrValue(
         asts::ObjectInitializerAst const *object,
         asts::IdentifierAst const *attribute)
-        -> std::unique_ptr<asts::ExpressionAst>;
+        -> Unique<asts::ExpressionAst>;
 
     SPP_EXP_FUN template <typename Ret, typename... Args>
-    auto make_cmp_fn(Ret (*fn)(Args...)) -> std::unique_ptr<CmpFn> {
-        return std::make_unique<CmpFnImpl<Ret, Args...>>(fn);
+    auto make_cmp_fn(Ret (*fn)(Args...)) -> Unique<CmpFn> {
+        return MakeUnique<CmpFnImpl<Ret, Args...>>(fn);
     }
 
     SPP_EXP_FUN auto std_boolean_bit_and(
         asts::BooleanLiteralAst const &lhs,
         asts::BooleanLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_boolean_bit_ior(
         asts::BooleanLiteralAst const &lhs,
         asts::BooleanLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_boolean_bit_xor(
         asts::BooleanLiteralAst const &lhs,
         asts::BooleanLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_boolean_bit_not(
         asts::BooleanLiteralAst const &val)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_boolean_and(
         asts::BooleanLiteralAst const &lhs,
         asts::BooleanLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_boolean_ior(
         asts::BooleanLiteralAst const &lhs,
         asts::BooleanLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_boolean_eq(
         asts::BooleanLiteralAst const &lhs,
         asts::BooleanLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_boolean_ne(
         asts::BooleanLiteralAst const &lhs,
         asts::BooleanLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_add(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::IntegerLiteralAst>;
+        -> Unique<asts::IntegerLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_add_assign(
         asts::IntegerLiteralAst &lhs,
@@ -194,7 +195,7 @@ namespace spp::analyse::utils::cmp_utils {
     SPP_EXP_FUN auto std_intrinsics_sub(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::IntegerLiteralAst>;
+        -> Unique<asts::IntegerLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_sub_assign(
         asts::IntegerLiteralAst &lhs,
@@ -204,7 +205,7 @@ namespace spp::analyse::utils::cmp_utils {
     SPP_EXP_FUN auto std_intrinsics_mul(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::IntegerLiteralAst>;
+        -> Unique<asts::IntegerLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_mul_assign(
         asts::IntegerLiteralAst &lhs,
@@ -214,7 +215,7 @@ namespace spp::analyse::utils::cmp_utils {
     SPP_EXP_FUN auto std_intrinsics_sdiv(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::IntegerLiteralAst>;
+        -> Unique<asts::IntegerLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_sdiv_assign(
         asts::IntegerLiteralAst &lhs,
@@ -224,7 +225,7 @@ namespace spp::analyse::utils::cmp_utils {
     SPP_EXP_FUN auto std_intrinsics_udiv(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::IntegerLiteralAst>;
+        -> Unique<asts::IntegerLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_udiv_assign(
         asts::IntegerLiteralAst &lhs,
@@ -234,7 +235,7 @@ namespace spp::analyse::utils::cmp_utils {
     SPP_EXP_FUN auto std_intrinsics_srem(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::IntegerLiteralAst>;
+        -> Unique<asts::IntegerLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_srem_assign(
         asts::IntegerLiteralAst &lhs,
@@ -244,7 +245,7 @@ namespace spp::analyse::utils::cmp_utils {
     SPP_EXP_FUN auto std_intrinsics_urem(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::IntegerLiteralAst>;
+        -> Unique<asts::IntegerLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_urem_assign(
         asts::IntegerLiteralAst &lhs,
@@ -253,12 +254,12 @@ namespace spp::analyse::utils::cmp_utils {
 
     SPP_EXP_FUN auto std_intrinsics_sneg(
         asts::IntegerLiteralAst const &val)
-        -> std::unique_ptr<asts::IntegerLiteralAst>;
+        -> Unique<asts::IntegerLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_bit_shl(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::IntegerLiteralAst>;
+        -> Unique<asts::IntegerLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_bit_shl_assign(
         asts::IntegerLiteralAst &lhs,
@@ -268,7 +269,7 @@ namespace spp::analyse::utils::cmp_utils {
     SPP_EXP_FUN auto std_intrinsics_bit_shr(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::IntegerLiteralAst>;
+        -> Unique<asts::IntegerLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_bit_shr_assign(
         asts::IntegerLiteralAst &lhs,
@@ -278,7 +279,7 @@ namespace spp::analyse::utils::cmp_utils {
     SPP_EXP_FUN auto std_intrinsics_bit_ior(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::IntegerLiteralAst>;
+        -> Unique<asts::IntegerLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_bit_ior_assign(
         asts::IntegerLiteralAst &lhs,
@@ -288,7 +289,7 @@ namespace spp::analyse::utils::cmp_utils {
     SPP_EXP_FUN auto std_intrinsics_bit_and(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::IntegerLiteralAst>;
+        -> Unique<asts::IntegerLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_bit_and_assign(
         asts::IntegerLiteralAst &lhs,
@@ -298,7 +299,7 @@ namespace spp::analyse::utils::cmp_utils {
     SPP_EXP_FUN auto std_intrinsics_bit_xor(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::IntegerLiteralAst>;
+        -> Unique<asts::IntegerLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_bit_xor_assign(
         asts::IntegerLiteralAst &lhs,
@@ -307,7 +308,7 @@ namespace spp::analyse::utils::cmp_utils {
 
     SPP_EXP_FUN auto std_intrinsics_bit_not(
         asts::IntegerLiteralAst const &val)
-        -> std::unique_ptr<asts::IntegerLiteralAst>;
+        -> Unique<asts::IntegerLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_bit_not_assign(
         asts::IntegerLiteralAst &lhs)
@@ -315,112 +316,112 @@ namespace spp::analyse::utils::cmp_utils {
 
     SPP_EXP_FUN auto std_intrinsics_abs(
         asts::IntegerLiteralAst const &val)
-        -> std::unique_ptr<asts::IntegerLiteralAst>;
+        -> Unique<asts::IntegerLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_eq(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_oeq(
         asts::FloatLiteralAst const &lhs,
         asts::FloatLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_ne(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_one(
         asts::FloatLiteralAst const &lhs,
         asts::FloatLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_slt(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_ult(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_olt(
         asts::FloatLiteralAst const &lhs,
         asts::FloatLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_sle(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_ule(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_ole(
         asts::FloatLiteralAst const &lhs,
         asts::FloatLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_sgt(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_ugt(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_ogt(
         asts::FloatLiteralAst const &lhs,
         asts::FloatLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_sge(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_uge(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_oge(
         asts::FloatLiteralAst const &lhs,
         asts::FloatLiteralAst const &rhs)
-        -> std::unique_ptr<asts::BooleanLiteralAst>;
+        -> Unique<asts::BooleanLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_smax(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::IntegerLiteralAst>;
+        -> Unique<asts::IntegerLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_umax(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::IntegerLiteralAst>;
+        -> Unique<asts::IntegerLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_smin(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::IntegerLiteralAst>;
+        -> Unique<asts::IntegerLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_umin(
         asts::IntegerLiteralAst const &lhs,
         asts::IntegerLiteralAst const &rhs)
-        -> std::unique_ptr<asts::IntegerLiteralAst>;
+        -> Unique<asts::IntegerLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_fadd(
         asts::FloatLiteralAst const &lhs,
         asts::FloatLiteralAst const &rhs)
-        -> std::unique_ptr<asts::FloatLiteralAst>;
+        -> Unique<asts::FloatLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_fadd_assign(
         asts::FloatLiteralAst &lhs,
@@ -430,7 +431,7 @@ namespace spp::analyse::utils::cmp_utils {
     SPP_EXP_FUN auto std_intrinsics_fsub(
         asts::FloatLiteralAst const &lhs,
         asts::FloatLiteralAst const &rhs)
-        -> std::unique_ptr<asts::FloatLiteralAst>;
+        -> Unique<asts::FloatLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_fsub_assign(
         asts::FloatLiteralAst &lhs,
@@ -440,7 +441,7 @@ namespace spp::analyse::utils::cmp_utils {
     SPP_EXP_FUN auto std_intrinsics_fmul(
         asts::FloatLiteralAst const &lhs,
         asts::FloatLiteralAst const &rhs)
-        -> std::unique_ptr<asts::FloatLiteralAst>;
+        -> Unique<asts::FloatLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_fmul_assign(
         asts::FloatLiteralAst &lhs,
@@ -450,7 +451,7 @@ namespace spp::analyse::utils::cmp_utils {
     SPP_EXP_FUN auto std_intrinsics_fdiv(
         asts::FloatLiteralAst const &lhs,
         asts::FloatLiteralAst const &rhs)
-        -> std::unique_ptr<asts::FloatLiteralAst>;
+        -> Unique<asts::FloatLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_fdiv_assign(
         asts::FloatLiteralAst &lhs,
@@ -460,7 +461,7 @@ namespace spp::analyse::utils::cmp_utils {
     SPP_EXP_FUN auto std_intrinsics_frem(
         asts::FloatLiteralAst const &lhs,
         asts::FloatLiteralAst const &rhs)
-        -> std::unique_ptr<asts::FloatLiteralAst>;
+        -> Unique<asts::FloatLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_frem_assign(
         asts::FloatLiteralAst &lhs,
@@ -469,35 +470,35 @@ namespace spp::analyse::utils::cmp_utils {
 
     SPP_EXP_FUN auto std_intrinsics_fneg(
         asts::FloatLiteralAst const &val)
-        -> std::unique_ptr<asts::FloatLiteralAst>;
+        -> Unique<asts::FloatLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_fabs(
         asts::FloatLiteralAst const &val)
-        -> std::unique_ptr<asts::FloatLiteralAst>;
+        -> Unique<asts::FloatLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_fmax(
         asts::FloatLiteralAst const &lhs,
         asts::FloatLiteralAst const &rhs)
-        -> std::unique_ptr<asts::FloatLiteralAst>;
+        -> Unique<asts::FloatLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_fmin(
         asts::FloatLiteralAst const &lhs,
         asts::FloatLiteralAst const &rhs)
-        -> std::unique_ptr<asts::FloatLiteralAst>;
+        -> Unique<asts::FloatLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_ffloor(
         asts::FloatLiteralAst const &val)
-        -> std::unique_ptr<asts::FloatLiteralAst>;
+        -> Unique<asts::FloatLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_fceil(
         asts::FloatLiteralAst const &val)
-        -> std::unique_ptr<asts::FloatLiteralAst>;
+        -> Unique<asts::FloatLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_ftrunc(
         asts::FloatLiteralAst const &val)
-        -> std::unique_ptr<asts::FloatLiteralAst>;
+        -> Unique<asts::FloatLiteralAst>;
 
     SPP_EXP_FUN auto std_intrinsics_fround(
         asts::FloatLiteralAst const &val)
-        -> std::unique_ptr<asts::FloatLiteralAst>;
+        -> Unique<asts::FloatLiteralAst>;
 }

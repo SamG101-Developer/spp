@@ -2,30 +2,28 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_implementation_ast;
-import spp.asts.inner_scope_ast;
+import spp.asts.inner_scope_expression_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct Ast;
     SPP_EXP_CLS struct FunctionImplementationAst;
-    SPP_EXP_CLS struct StatementAst;
-    SPP_EXP_CLS using FunctionMemberAst = StatementAst;
 }
-
 
 /**
  * The FunctionImplementationAst represents the implementation of a function. It is used to define the body of a
  * function and contains the statements that make up the function's implementation. Semantically equivalent to a basic
  * InnerScopeAst.
  */
-SPP_EXP_CLS struct spp::asts::FunctionImplementationAst :
-    InnerScopeAst<std::unique_ptr<FunctionMemberAst>> {
-    static auto new_empty() -> std::unique_ptr<FunctionImplementationAst>;
+SPP_EXP_CLS struct spp::asts::FunctionImplementationAst : InnerScopeExpressionAst {
+    static auto NewEmpty() -> Unique<FunctionImplementationAst>;
 
-    using InnerScopeAst::InnerScopeAst;
+    using InnerScopeExpressionAst::InnerScopeExpressionAst;
+
+    SPP_ATTR_NODISCARD auto Clone() const -> Unique<Ast> override;
 
     ~FunctionImplementationAst() override;
 
-    SPP_ATTR_NODISCARD auto clone() const -> std::unique_ptr<Ast> override;
-
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };

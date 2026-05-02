@@ -6,55 +6,49 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 
-
 SPP_MOD_BEGIN
 spp::asts::TypeParenthesisedExpressionAst::TypeParenthesisedExpressionAst(
-    decltype(tok_l) &&tok_l,
-    decltype(expr) &&expr,
-    decltype(tok_r) &&tok_r) :
-    TempTypeAst(),
-    tok_l(std::move(tok_l)),
-    expr(std::move(expr)),
-    tok_r(std::move(tok_r)) {
+    decltype(TokL) &&tok_l,
+    decltype(Expr) expr,
+    decltype(TokR) &&tok_r) :
+    TokL(std::move(tok_l)),
+    Expr(std::move(expr)),
+    TokR(std::move(tok_r)) {
 }
-
 
 spp::asts::TypeParenthesisedExpressionAst::~TypeParenthesisedExpressionAst() = default;
 
-
-auto spp::asts::TypeParenthesisedExpressionAst::pos_start() const
+auto spp::asts::TypeParenthesisedExpressionAst::PosStart() const
     -> std::size_t {
-    return tok_l->pos_start();
+    // Use the "(" token.
+    return TokL->PosStart();
 }
 
-
-auto spp::asts::TypeParenthesisedExpressionAst::pos_end() const
+auto spp::asts::TypeParenthesisedExpressionAst::PosEnd() const
     -> std::size_t {
-    return tok_r->pos_end();
+    // Use the ")" token.
+    return TokR->PosEnd();
 }
 
-
-auto spp::asts::TypeParenthesisedExpressionAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<TypeParenthesisedExpressionAst>(
-        ast_clone(tok_l),
-        ast_clone(expr),
-        ast_clone(tok_r));
+auto spp::asts::TypeParenthesisedExpressionAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<TypeParenthesisedExpressionAst>(
+        AstClone(TokL), AstCloneShared(Expr), AstClone(TokR));
 }
 
-
-spp::asts::TypeParenthesisedExpressionAst::operator std::string() const {
+auto spp::asts::TypeParenthesisedExpressionAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_l);
-    SPP_STRING_APPEND(expr);
-    SPP_STRING_APPEND(tok_r);
+    SPP_STRING_APPEND(TokL);
+    SPP_STRING_APPEND(Expr);
+    SPP_STRING_APPEND(TokR);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::TypeParenthesisedExpressionAst::convert()
-    -> std::unique_ptr<TypeAst> {
-    return std::unique_ptr<TypeAst>(expr.get()); // TODO: Release?
+auto spp::asts::TypeParenthesisedExpressionAst::Convert()
+    -> Unique<TypeAst> {
+    return Unique<TypeAst>(Expr.get()); // TODO: Release?
 }
 
 SPP_MOD_END

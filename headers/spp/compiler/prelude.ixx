@@ -2,10 +2,11 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.compiler.prelude;
+import spp.utils.types;
 import std;
 
 namespace spp::compiler {
-    SPP_EXP_CMP const std::string PRELUDE = R"(
+    SPP_EXP_CMP const Str kPrelude = R"(
 use std::annotations::public
 use std::annotations::protected
 use std::annotations::private
@@ -14,7 +15,7 @@ use std::annotations::abstract_method
 use std::annotations::ffi
 use std::annotations::Annotation
 use std::string::Str
-use std::string_view::StrView
+use std::string::StrView
 use std::boolean::Bool
 use std::number::U8
 use std::number::U16

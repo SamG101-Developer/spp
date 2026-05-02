@@ -18,6 +18,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_mangle;
 import spp.lex.tokens;
+import spp.utils.types;
 import genex;
 import llvm;
 import std;
@@ -30,68 +31,68 @@ auto spp::codegen::register_llvm_type_info(
     // Note: because symbols have a convention attached to them, retrieval handles pointer logic for borrows.
 
     // $ types are 0-size types in LLVM.
-    if (cls_proto->name->is_compiler_generated_type()) {
-        const auto zero_size_struct = llvm::StructType::create(*ctx->context, mangle::mangle_type_name(*cls_proto->get_cls_sym()));
+    if (cls_proto->Name->IsCompilerGeneratedType()) {
+        const auto zero_size_struct = llvm::StructType::create(*ctx->Context, mangle::mangle_type_name(*cls_proto->GetClsSym()));
         zero_size_struct->setBody({}, true);
-        cls_proto->get_cls_sym()->llvm_info->llvm_type = zero_size_struct;
+        cls_proto->GetClsSym()->LlvmInfo->LlvmType = zero_size_struct;
     }
 
     // Get the class symbol from the current scope.
-    const auto scope = cls_proto->get_ast_scope();
-    const auto cls_sym = scope->ty_sym;
+    const auto scope = cls_proto->GetAstScope();
+    const auto cls_sym = scope->TySym;
 
     // For compiler known types, specialize the llvm type symbols.
-    const auto ancestor_names = scope->ancestors()
+    const auto ancestor_names = scope->Ancestors()
         | genex::views::drop_last(1)
-        | genex::views::transform([](auto *x) { return x->name_as_string(); })
-        | genex::to<std::vector>()
+        | genex::views::transform([](auto *x) { return x->NameAsString(); })
+        | genex::to<Vec>()
         | genex::views::reverse
-        | genex::to<std::vector>();
+        | genex::to<Vec>();
 
-    if (ancestor_names == std::vector<std::string>{"std", "void", "Void"}) {
+    if (ancestor_names == Vec<Str>{"std", "void", "Void"}) {
         // Lower S++ "Void" to the llvm "void" type.
-        cls_sym->llvm_info->llvm_type = llvm::Type::getVoidTy(*ctx->context);
+        cls_sym->LlvmInfo->LlvmType = llvm::Type::getVoidTy(*ctx->Context);
         return;
     }
 
-    if (ancestor_names == std::vector<std::string>{"std", "boolean", "Bool"}) {
+    if (ancestor_names == Vec<Str>{"std", "boolean", "Bool"}) {
         // Lower S++ "Bool" to the llvm "i1" type.
-        cls_sym->llvm_info->llvm_type = llvm::Type::getInt1Ty(*ctx->context);
+        cls_sym->LlvmInfo->LlvmType = llvm::Type::getInt1Ty(*ctx->Context);
         return;
     }
 
-    if (ancestor_names == std::vector<std::string>{"std", "string_view", "StrView"}) {
+    if (ancestor_names == Vec<Str>{"std", "string_view", "StrView"}) {
         // Lower S++ "StrView" to the llvm "i8*" type.
-        cls_sym->llvm_info->llvm_type = llvm::PointerType::get(*ctx->context, 0);
+        cls_sym->LlvmInfo->LlvmType = llvm::PointerType::get(*ctx->Context, 0);
         return;
     }
 
     if (ancestor_names[0] == "std" and ancestor_names[1] == "num" and ancestor_names[2].starts_with("sized") and ancestor_names[3].starts_with("Sized")) {
         const auto type_part = ancestor_names[2];
-        const auto bit_width_ast = scope->ty_sym->fq_name()->type_parts().back()->generic_arg_group->comp_at("w")->val->to<asts::IntegerLiteralAst>();
+        const auto bit_width_ast = scope->TySym->FqName()->TypeParts().Back()->GnArgGroup->CompAt("w")->Val->To<asts::IntegerLiteralAst>();
         if (bit_width_ast == nullptr) { return; }
 
-        const auto bit_width = std::stoul(scope->ty_sym->fq_name()->type_parts().back()->generic_arg_group->comp_at("w")->val->to<asts::IntegerLiteralAst>()->val->token_data);
+        const auto bit_width = std::stoul(scope->TySym->FqName()->TypeParts().Back()->GnArgGroup->CompAt("w")->Val->To<asts::IntegerLiteralAst>()->Val->TokenData);
         if (type_part == "sized_integer") {
-            cls_sym->llvm_info->llvm_type = llvm::Type::getIntNTy(*ctx->context, static_cast<unsigned int>(bit_width));
+            cls_sym->LlvmInfo->LlvmType = llvm::Type::getIntNTy(*ctx->Context, static_cast<unsigned int>(bit_width));
             return;
         }
 
         if (type_part.starts_with("sized_floating_point")) {
             if (bit_width == 8) {
-                cls_sym->llvm_info->llvm_type = llvm::Type::getFloatingPointTy(*ctx->context, llvm::APFloatBase::Float8E4M3());
+                cls_sym->LlvmInfo->LlvmType = llvm::Type::getFloatingPointTy(*ctx->Context, llvm::APFloatBase::Float8E4M3());
             }
             else if (bit_width == 16) {
-                cls_sym->llvm_info->llvm_type = llvm::Type::getFloatingPointTy(*ctx->context, llvm::APFloatBase::IEEEhalf());
+                cls_sym->LlvmInfo->LlvmType = llvm::Type::getFloatingPointTy(*ctx->Context, llvm::APFloatBase::IEEEhalf());
             }
             else if (bit_width == 32) {
-                cls_sym->llvm_info->llvm_type = llvm::Type::getFloatingPointTy(*ctx->context, llvm::APFloatBase::IEEEsingle());
+                cls_sym->LlvmInfo->LlvmType = llvm::Type::getFloatingPointTy(*ctx->Context, llvm::APFloatBase::IEEEsingle());
             }
             else if (bit_width == 64) {
-                cls_sym->llvm_info->llvm_type = llvm::Type::getFloatingPointTy(*ctx->context, llvm::APFloatBase::IEEEdouble());
+                cls_sym->LlvmInfo->LlvmType = llvm::Type::getFloatingPointTy(*ctx->Context, llvm::APFloatBase::IEEEdouble());
             }
             else if (bit_width == 128) {
-                cls_sym->llvm_info->llvm_type = llvm::Type::getFloatingPointTy(*ctx->context, llvm::APFloatBase::IEEEquad());
+                cls_sym->LlvmInfo->LlvmType = llvm::Type::getFloatingPointTy(*ctx->Context, llvm::APFloatBase::IEEEquad());
             }
             return;
         }
@@ -99,13 +100,13 @@ auto spp::codegen::register_llvm_type_info(
 
 
     // If the type already exists in LLVM, skip.
-    if (const auto llvm_type = llvm::StructType::getTypeByName(*ctx->context, mangle::mangle_type_name(*cls_sym)); llvm_type != nullptr) {
-        cls_sym->llvm_info->llvm_type = llvm_type;
+    if (const auto llvm_type = llvm::StructType::getTypeByName(*ctx->Context, mangle::mangle_type_name(*cls_sym)); llvm_type != nullptr) {
+        cls_sym->LlvmInfo->LlvmType = llvm_type;
         return;
     }
 
     // Empty struct, will fill in stage_10 when all attributes' types have been generated.
-    cls_sym->llvm_info->llvm_type = llvm::StructType::create(*ctx->context, mangle::mangle_type_name(*cls_sym));
+    cls_sym->LlvmInfo->LlvmType = llvm::StructType::create(*ctx->Context, mangle::mangle_type_name(*cls_sym));
 }
 
 
@@ -114,7 +115,5 @@ auto spp::codegen::llvm_type(
     LLvmCtx const *ctx)
     -> llvm::Type* {
     // Either return the llvm type bound to the symbol, or a pointer for borrows.
-    return type_sym.convention != nullptr
-               ? llvm::PointerType::get(*ctx->context, 0)
-               : type_sym.llvm_info->llvm_type;
+    return type_sym.Convention != nullptr ? llvm::PointerType::get(*ctx->Context, 0) : type_sym.LlvmInfo->LlvmType;
 }

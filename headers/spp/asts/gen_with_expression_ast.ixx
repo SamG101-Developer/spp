@@ -4,6 +4,7 @@ module;
 export module spp.asts.gen_with_expression_ast;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -15,26 +16,22 @@ namespace spp::asts {
 
 
 SPP_EXP_CLS struct spp::asts::GenWithExpressionAst final : PrimaryExpressionAst {
-private:
-    std::shared_ptr<TypeAst> m_generator_type;
-
-public:
     /**
      * The token that represents a generation point. This is the @c gen keyword in the source code, which indicates that
      * the coroutine is suspending its execution and yielding a value.
      */
-    std::unique_ptr<TokenAst> tok_gen;
+    Unique<TokenAst> TokGen;
 
     /**
      * The token that represents the @c with keyword in the source code. This indicates that the expression is being
      * generated with a specific context.
      */
-    std::unique_ptr<TokenAst> tok_with;
+    Unique<TokenAst> TokWith;
 
     /**
      * The expression that is being generated with the context. This is the value that will be used in the generation.
      */
-    std::unique_ptr<ExpressionAst> expr;
+    Unique<ExpressionAst> Expr;
 
     /**
      * Construct the GenWithExpressionAst with the arguments matching the members.
@@ -43,19 +40,22 @@ public:
      * @param expr The expression that is being generated with the context.
      */
     GenWithExpressionAst(
-        decltype(tok_gen) &&tok_gen,
-        decltype(tok_with) &&tok_with,
-        decltype(expr) &&expr);
+        decltype(TokGen) &&tok_gen,
+        decltype(TokWith) &&tok_with,
+        decltype(Expr) &&expr);
 
     ~GenWithExpressionAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+private:
+    Shared<TypeAst> _GenType;
 };

@@ -18,6 +18,7 @@ find_package(GenEx REQUIRED) # iterator utilities
 add_subdirectory(/home/sam/unordered_dense unordered_dense_build) # high-performance hash maps and sets
 add_subdirectory(/home/sam/tomlplusplus tomlplusplus_build) # toml parsing
 add_subdirectory(/home/sam/json json_build) # json parsing
+add_subdirectory(/home/sam/StringZilla stringzilla_build) # string utilities
 
 find_package(absl REQUIRED) # hashing and string utilities
 find_package(magic_enum REQUIRED) # enum reflection
@@ -56,7 +57,7 @@ target_link_libraries(spp_lib PUBLIC
         nlohmann_json::nlohmann_json
         tomlplusplus::tomlplusplus tomlplusplus_modules
         unordered_dense::unordered_dense unordered_dense::unordered_dense_module
-        magic_enum::magic_enum mp++::mp++ absl::hash absl::strings
+        magic_enum::magic_enum mp++::mp++ absl::hash absl::strings absl::inlined_vector
         Boost::boost CLI11::CLI11_Module
         ColEx::ColEx OpEx::OpEx GenEx::GenEx
         Glob LLVMCore LLVMSupport LLVMCodeGen LLVMScalarOpts LLVMTransformUtils)

@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.annotation_ast;
 import spp.asts.ast;
+import spp.utils.types;
 import std;
 
 namespace spp::analyse::scopes {
@@ -25,31 +26,31 @@ namespace spp::asts {
  * marking a method as @c \@virtualmethod won't generate any code, but will tag the method as virtual, unlocking
  * additional behaviour in the compiler.
  */
-SPP_EXP_CLS struct spp::asts::AnnotationAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::AnnotationAst final : Ast {
     SPP_GCC_VTABLE_FIX
 
     /**
      * The token that represents the @c ! sign in the annotation. This introduces the annotation.
      */
-    std::unique_ptr<TokenAst> tok_exclamation_mark;
+    Unique<TokenAst> TokExclamationMark;
 
     /**
      * The expression of the annotation. This is the identifier that follows the @c @ sign. It is an ExpressionAst,
      * because it can be postfix, ie @c std::annotations::public etc.
      */
-    std::unique_ptr<ExpressionAst> name;
+    Unique<ExpressionAst> Name;
 
     /**
      * Generic arguments being passed into the annotation call. For example, @c !extends[Copy]() uses generic arguments.
      * Generics are optional.
      */
-    std::unique_ptr<GenericArgumentGroupAst> gn_arg_group;
+    Unique<GenericArgumentGroupAst> GnArgGroup;
 
     /**
      * Function arguments being passed into the annotation call. For example, @c !cfg(platform="Windows") uses function
      * arguments. Function arguments are optional, but if generic arguments are present, @c () must be too.
      */
-    std::unique_ptr<FunctionCallArgumentGroupAst> fn_arg_group;
+    Unique<FunctionCallArgumentGroupAst> FnArgGroup;
 
     /**
      * Construct the AnnotationAst with the arguments matching the members.
@@ -59,10 +60,10 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : virtual Ast {
      * @param[in] fn_arg_group The function arguments being passed into the annotation call.
      */
     AnnotationAst(
-        decltype(tok_exclamation_mark) &&tok_exclamation_mark,
-        decltype(name) &&name,
-        decltype(gn_arg_group) &&gn_arg_group,
-        decltype(fn_arg_group) &&fn_arg_group);
+        decltype(TokExclamationMark) &&tok_exclamation_mark,
+        decltype(Name) &&name,
+        decltype(GnArgGroup) &&gn_arg_group,
+        decltype(FnArgGroup) &&fn_arg_group);
 
     ~AnnotationAst() override;
 
@@ -80,7 +81,7 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : virtual Ast {
      * This is used for further analysis in later stages.
      * @param ctx The AST context of this annotation, which is the annotated AST.
      */
-    auto stage_1_pre_process(Ast *ctx) -> void override;
+    auto Stage1_PreProcess(Ast *ctx) -> void override;
 
     /**
      * Standard scope setting for the annotation. Attaches the annotated AST's scope into the scope attribute on this
@@ -88,7 +89,7 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : virtual Ast {
      * @param sm The scope manager to use for setting the scope of this annotation.
      * @param meta Associated metadata.
      */
-    auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
      * Ensure the target annotation definition (as a function), is infact a function, and is a "cmp" function. Also, it
@@ -96,7 +97,7 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : virtual Ast {
      * @param sm The scope manager to use for searching the annotation name.
      * @param meta Associated metadata.
      */
-    auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
      * For builtin annotations, set fields on context ASTs (given the annotated AST is of the correct type). For invalid
@@ -105,7 +106,7 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : virtual Ast {
      * @param sm The scope manager to use for searching the annotation name.
      * @param meta Associated metadata.
      */
-    auto stage_5_load_super_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage5_LoadSupScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
      * Analyse the function argument and generic arguments if they exist, and then do overload resolution for the
@@ -114,7 +115,7 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : virtual Ast {
      * @param sm The scope manager to use for analysing ASTs and performing overload resolution.
      * @param meta Associated metadata.
      */
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
      * Resolve the annotation at compile time. This involves evaluating the function and generic arguments at compile
@@ -123,10 +124,10 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : virtual Ast {
      * @param sm The scope manager to use for analysing ASTs and performing compile time resolution.
      * @param meta Associated metadata.
      */
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
 private:
-    FunctionPrototypeAst *m_target;
+    FunctionPrototypeAst *_Target;
 };
 
 

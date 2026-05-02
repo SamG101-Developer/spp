@@ -4,6 +4,7 @@ module;
 export module spp.asts.type_binary_expression_ast;
 import spp.asts.ast;
 import spp.asts.mixins.temp_type_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -13,22 +14,22 @@ namespace spp::asts {
 }
 
 
-SPP_EXP_CLS struct spp::asts::TypeBinaryExpressionAst final : virtual Ast, mixins::TempTypeAst {
+SPP_EXP_CLS struct spp::asts::TypeBinaryExpressionAst final : Ast, mixins::TempTypeAst {
     /**
      * The left-hand side expression of the type binary expression. This is the first operand.
      */
-    std::shared_ptr<TypeAst> lhs;
+    Shared<TypeAst> Lhs;
 
     /**
      * The operator token that represents the type binary operation. This indicates the type of operation being
      * performed. Either an "or" (union) or "and" (intersection) operation.
      */
-    std::unique_ptr<TokenAst> tok_op;
+    Unique<TokenAst> TokOp;
 
     /**
      * The right-hand side expression of the type binary expression. This is the second operand.
      */
-    std::shared_ptr<TypeAst> rhs;
+    Shared<TypeAst> Rhs;
 
     /**
      * Construct the TypeBinaryExpressionAst with the arguments matching the members.
@@ -37,13 +38,13 @@ SPP_EXP_CLS struct spp::asts::TypeBinaryExpressionAst final : virtual Ast, mixin
      * @param rhs The right-hand side expression of the type binary expression.
      */
     TypeBinaryExpressionAst(
-        decltype(lhs) &&lhs,
-        decltype(tok_op) &&tok_op,
-        decltype(rhs) &&rhs);
+        decltype(Lhs) &&lhs,
+        decltype(TokOp) &&tok_op,
+        decltype(Rhs) &&rhs);
 
     ~TypeBinaryExpressionAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto convert() -> std::unique_ptr<TypeAst> override;
+    auto Convert() -> Unique<TypeAst> override;
 };

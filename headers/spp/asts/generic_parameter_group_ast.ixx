@@ -4,6 +4,7 @@ module;
 export module spp.asts.generic_parameter_group_ast;
 import spp.asts.ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -16,29 +17,27 @@ namespace spp::asts {
 }
 
 
-SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : virtual Ast {
+SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : Ast {
     /**
      * The token that represents the left bracket @code [@endcode in the generic parameter group. This introduces the
      * generic parameter group.
      */
-    std::unique_ptr<TokenAst> tok_l;
+    Unique<TokenAst> TokL;
 
     /**
      * The list of parameters in the generic parameter group. This can contain both required and optional parameters.
      */
-    std::vector<std::unique_ptr<GenericParameterAst>> params;
+    Vec<Unique<GenericParameterAst>> Params;
 
     /**
      * The token that represents the right bracket @code ]@endcode in the generic parameter group. This closes the
      * generic parameter group.
      */
-    std::unique_ptr<TokenAst> tok_r;
+    Unique<TokenAst> TokR;
 
-    static auto new_empty()
-        -> std::unique_ptr<GenericParameterGroupAst>;
+    static auto NewEmpty() -> Unique<GenericParameterGroupAst>;
 
-    static auto new_empty_shared()
-        -> std::shared_ptr<GenericParameterGroupAst>;
+    static auto NewEmptyShared() -> Shared<GenericParameterGroupAst>;
 
     /**
      * Construct the GenericParameterGroupAst with the arguments matching the members.
@@ -47,45 +46,41 @@ SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : virtual Ast {
      * @param tok_r The token that represents the right bracket @code ]@endcode in the generic parameter group.
      */
     GenericParameterGroupAst(
-        decltype(tok_l) &&tok_l,
-        decltype(params) &&params,
-        decltype(tok_r) &&tok_r);
+        decltype(TokL) &&tok_l,
+        decltype(Params) &&params,
+        decltype(TokR) &&tok_r);
 
     ~GenericParameterGroupAst() override;
 
-    auto operator+(
-        GenericParameterGroupAst const &other) const
-        -> std::unique_ptr<GenericParameterGroupAst>;
+    auto operator+(GenericParameterGroupAst const &other) const -> Unique<GenericParameterGroupAst>;
 
-    auto operator +=(
-        GenericParameterGroupAst const &other)
-        -> GenericParameterGroupAst&;
+    auto operator+=(GenericParameterGroupAst const &other) -> GenericParameterGroupAst&;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_2_gen_top_level_scopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto merge_generics(decltype(params) &&other_params) -> void;
+    auto MergeGenerics(decltype(Params) &&other_params) -> void;
 
-    SPP_ATTR_NODISCARD auto get_required_params() const -> std::vector<GenericParameterAst*>;
+    SPP_ATTR_NODISCARD auto GetRequiredParams() const -> Vec<GenericParameterAst*>;
 
-    SPP_ATTR_NODISCARD auto get_optional_params() const -> std::vector<GenericParameterAst*>;
+    SPP_ATTR_NODISCARD auto GetOptionalParams() const -> Vec<GenericParameterAst*>;
 
-    SPP_ATTR_NODISCARD auto get_variadic_param() const -> GenericParameterAst*;
+    SPP_ATTR_NODISCARD auto GetVariadicParams() const -> GenericParameterAst*;
 
-    SPP_ATTR_NODISCARD auto get_comp_params() const -> std::vector<GenericParameterCompAst*>;
+    SPP_ATTR_NODISCARD auto GetCompParams() const -> Vec<GenericParameterCompAst*>;
 
-    SPP_ATTR_NODISCARD auto get_type_params() const -> std::vector<GenericParameterTypeAst*>;
+    SPP_ATTR_NODISCARD auto GetTypeParams() const -> Vec<GenericParameterTypeAst*>;
 
-    SPP_ATTR_NODISCARD auto get_all_params() const -> std::vector<GenericParameterAst*>;
+    SPP_ATTR_NODISCARD auto GetAllParams() const -> Vec<GenericParameterAst*>;
 
-    SPP_ATTR_NODISCARD auto opt_to_req() const -> std::unique_ptr<GenericParameterGroupAst>;
+    SPP_ATTR_NODISCARD auto OptToReq() const -> Unique<GenericParameterGroupAst>;
 };

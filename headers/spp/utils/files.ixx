@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.utils.files;
+import spp.utils.types;
 import std;
 
 
@@ -11,14 +12,14 @@ namespace spp::utils::files {
      * @param path The path to the file to read.
      * @return The contents of the file as a string.
      */
-    SPP_EXP_FUN auto read_file(std::filesystem::path const &path) -> std::string;
+    SPP_EXP_FUN auto read_file(std::filesystem::path const &path) -> Str;
 
     /**
      * Simple function to write a string to a file.
      * @param path The path to the file to write to.
      * @param content The content to write to the file.
      */
-    SPP_EXP_FUN auto write_file(std::filesystem::path const &path, std::string const &content) -> void;
+    SPP_EXP_FUN auto write_file(std::filesystem::path const &path, Str const &content) -> void;
 
     SPP_EXP_ENUM enum class LockType { Shared, Exclusive };
 

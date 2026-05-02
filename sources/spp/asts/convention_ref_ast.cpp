@@ -6,41 +6,39 @@ import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
-
 SPP_MOD_BEGIN
 spp::asts::ConventionRefAst::ConventionRefAst(
-    decltype(tok_borrow) &&tok_borrow) :
+    decltype(TokBorrow) &&tok_borrow) :
     ConventionAst(ConventionTag::REF),
-    tok_borrow(std::move(tok_borrow)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_borrow, lex::SppTokenType::TK_BORROW, "&");
+    TokBorrow(std::move(tok_borrow)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokBorrow, lex::SppTokenType::TK_BORROW, "&");
 }
-
 
 spp::asts::ConventionRefAst::~ConventionRefAst() = default;
 
-
-auto spp::asts::ConventionRefAst::pos_start() const
+auto spp::asts::ConventionRefAst::PosStart() const
     -> std::size_t {
-    return tok_borrow->pos_start();
+    // Use the "&" token.
+    return TokBorrow->PosStart();
 }
 
-
-auto spp::asts::ConventionRefAst::pos_end() const
+auto spp::asts::ConventionRefAst::PosEnd() const
     -> std::size_t {
-    return tok_borrow->pos_end();
+    // Use the "&" token.
+    return TokBorrow->PosEnd();
 }
 
-
-auto spp::asts::ConventionRefAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<ConventionRefAst>(
-        ast_clone(tok_borrow));
+auto spp::asts::ConventionRefAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<ConventionRefAst>(
+        AstClone(TokBorrow));
 }
 
-
-spp::asts::ConventionRefAst::operator std::string() const {
+auto spp::asts::ConventionRefAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_borrow);
+    SPP_STRING_APPEND(TokBorrow);
     SPP_STRING_END;
 }
 

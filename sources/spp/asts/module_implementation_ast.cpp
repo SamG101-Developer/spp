@@ -7,142 +7,129 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
 import genex;
 
-
 SPP_MOD_BEGIN
 spp::asts::ModuleImplementationAst::ModuleImplementationAst(
-    decltype(members) &&members) :
-    members(std::move(members)) {
+    decltype(Members) &&members) :
+    Members(std::move(members)) {
 }
-
 
 spp::asts::ModuleImplementationAst::~ModuleImplementationAst() = default;
 
-
-auto spp::asts::ModuleImplementationAst::pos_start() const
+auto spp::asts::ModuleImplementationAst::PosStart() const
     -> std::size_t {
-    return members.empty() ? 0 : members.front()->pos_start();
+    // Use the first member.
+    return Members.IsEmpty() ? 0 : Members.Front()->PosStart();
 }
 
-
-auto spp::asts::ModuleImplementationAst::pos_end() const
+auto spp::asts::ModuleImplementationAst::PosEnd() const
     -> std::size_t {
-    return members.empty() ? 0 : members.back()->pos_end();
+    // Use the last member.
+    return Members.IsEmpty() ? 0 : Members.Back()->PosEnd();
 }
 
-
-auto spp::asts::ModuleImplementationAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<ModuleImplementationAst>(
-        ast_clone_vec(members));
+auto spp::asts::ModuleImplementationAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<ModuleImplementationAst>(
+        AstCloneVec(Members));
 }
 
-
-spp::asts::ModuleImplementationAst::operator std::string() const {
+auto spp::asts::ModuleImplementationAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(members, "\n");
+    SPP_STRING_EXTEND(Members, "\n");
     SPP_STRING_END;
 }
 
-
-auto spp::asts::ModuleImplementationAst::stage_1_pre_process(
+auto spp::asts::ModuleImplementationAst::Stage1_PreProcess(
     Ast *ctx)
     -> void {
     // Shift to members (copy because function pre-processing edits this module's member).
-    const auto members_ptrs = members | genex::views::ptr | genex::to<std::vector>();
-    for (auto *member : members_ptrs) { member->stage_1_pre_process(ctx); }
+    const auto members_ptrs = Members | genex::views::ptr | genex::to<Vec>();
+    for (auto *member : members_ptrs) { member->Stage1_PreProcess(ctx); }
 }
 
-
-auto spp::asts::ModuleImplementationAst::stage_2_gen_top_level_scopes(
+auto spp::asts::ModuleImplementationAst::Stage2_GenTopLvlScopes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Shift to members.
-    for (auto const &member : members) { member->stage_2_gen_top_level_scopes(sm, meta); }
+    for (auto const &member : Members) { member->Stage2_GenTopLvlScopes(sm, meta); }
 }
 
-
-auto spp::asts::ModuleImplementationAst::stage_3_gen_top_level_aliases(
+auto spp::asts::ModuleImplementationAst::Stage3_GenTopLvlAliases(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Shift to members.
-    for (auto const &member : members) { member->stage_3_gen_top_level_aliases(sm, meta); }
+    for (auto const &member : Members) { member->Stage3_GenTopLvlAliases(sm, meta); }
 }
 
-
-auto spp::asts::ModuleImplementationAst::stage_4_qualify_types(
+auto spp::asts::ModuleImplementationAst::Stage4_QualifyTypes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Shift to members.
-    for (auto const &member : members) { member->stage_4_qualify_types(sm, meta); }
+    for (auto const &member : Members) { member->Stage4_QualifyTypes(sm, meta); }
 }
 
-
-auto spp::asts::ModuleImplementationAst::stage_5_load_super_scopes(
+auto spp::asts::ModuleImplementationAst::Stage5_LoadSupScopes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Shift to members.
-    for (auto const &member : members) { member->stage_5_load_super_scopes(sm, meta); }
+    for (auto const &member : Members) { member->Stage5_LoadSupScopes(sm, meta); }
 }
 
-
-auto spp::asts::ModuleImplementationAst::stage_6_pre_analyse_semantics(
+auto spp::asts::ModuleImplementationAst::Stage6_PreAnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Shift to members.
-    for (auto const &member : members) { member->stage_6_pre_analyse_semantics(sm, meta); }
+    for (auto const &member : Members) { member->Stage6_PreAnalyseSemantics(sm, meta); }
 }
 
-
-auto spp::asts::ModuleImplementationAst::stage_7_analyse_semantics(
+auto spp::asts::ModuleImplementationAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Shift to members.
-    for (auto const &member : members) { member->stage_7_analyse_semantics(sm, meta); }
+    for (auto const &member : Members) { member->Stage7_AnalyseSemantics(sm, meta); }
 }
 
-
-auto spp::asts::ModuleImplementationAst::stage_8_check_memory(
+auto spp::asts::ModuleImplementationAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Shift to members.
-    for (auto const &member : members) { member->stage_8_check_memory(sm, meta); }
+    for (auto const &member : Members) { member->Stage8_CheckMemory(sm, meta); }
 }
 
-
-auto spp::asts::ModuleImplementationAst::stage_9_comptime_resolution(
+auto spp::asts::ModuleImplementationAst::Stage9_CompTimeResolve(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Shift to members, and return nullptr as this value is never used.
-    for (auto const &member : members) { member->stage_9_comptime_resolution(sm, meta); }
+    for (auto const &member : Members) { member->Stage9_CompTimeResolve(sm, meta); }
 }
 
-
-auto spp::asts::ModuleImplementationAst::stage_10_code_gen_1(
+auto spp::asts::ModuleImplementationAst::Stage10_PreCodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Shift to members.
-    for (auto const &member : members) { member->stage_10_code_gen_1(sm, meta, ctx); }
+    for (auto const &member : Members) { member->Stage10_PreCodeGen(sm, meta, ctx); }
     return nullptr;
 }
 
-
-auto spp::asts::ModuleImplementationAst::stage_11_code_gen_2(
+auto spp::asts::ModuleImplementationAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Shift to members.
-    for (auto const &member : members) { member->stage_11_code_gen_2(sm, meta, ctx); }
+    for (auto const &member : Members) { member->Stage11_CodeGen(sm, meta, ctx); }
     return nullptr;
 }
 

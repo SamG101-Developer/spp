@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.order_utils;
+import spp.utils.types;
 import spp.asts.utils.orderable;
 import std;
 
@@ -36,9 +37,9 @@ namespace spp::analyse::utils::order_utils {
      * @return The list of arguments that are out of order, paired with a string representation of their tag.
      */
     SPP_EXP_FUN auto order(
-        std::vector<asts::mixins::OrderableAst*> &&args,
-        std::vector<asts::utils::OrderableTag> order)
-        -> std::vector<std::pair<std::string, asts::Ast*>>;
+        Vec<asts::mixins::OrderableAst*> &&args,
+        Vec<asts::utils::OrderableTag> order)
+        -> Vec<Pair<Str, asts::Ast*>>;
 
     /**
      * The entry point into ordering arguments. This uses the internal order defined for function call arguments:
@@ -47,8 +48,8 @@ namespace spp::analyse::utils::order_utils {
      * @return The list of arguments that are out of order, paired with a string representation of their tag.
      */
     SPP_EXP_FUN auto order_args(
-        std::vector<asts::mixins::OrderableAst*> &&args)
-        -> std::vector<std::pair<std::string, asts::Ast*>>;
+        Vec<asts::mixins::OrderableAst*> &&args)
+        -> Vec<Pair<Str, asts::Ast*>>;
 
     /**
      * The entry point into ordering parameters. This uses the internal order defined for function parameters:
@@ -57,6 +58,6 @@ namespace spp::analyse::utils::order_utils {
      * @return The list of parameters that are out of order, paired with a string representation of their tag.
      */
     SPP_EXP_FUN auto order_params(
-        std::vector<asts::mixins::OrderableAst*> &&params)
-        -> std::vector<std::pair<std::string, asts::Ast*>>;
+        Vec<asts::mixins::OrderableAst*> &&params)
+        -> Vec<Pair<Str, asts::Ast*>>;
 }

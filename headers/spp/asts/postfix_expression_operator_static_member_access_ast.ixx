@@ -4,6 +4,7 @@ module;
 export module spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -19,12 +20,12 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorStaticMemberAccessAst fin
     /**
      * The @c :: token that indicates a static member access operation in a postfix expression.
      */
-    std::unique_ptr<TokenAst> tok_dbl_colon;
+    Unique<TokenAst> TokDblColon;
 
     /**
      * The identifier that represents the member being accessed. This is the name of the member in the class or struct.
      */
-    std::shared_ptr<IdentifierAst> name;
+    Shared<IdentifierAst> Name;
 
     /**
      * Construct the PostfixExpressionOperatorMemberAccessAst with the arguments matching the members.
@@ -32,20 +33,20 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorStaticMemberAccessAst fin
      * @param[in] name The identifier that represents the member being accessed.
      */
     explicit PostfixExpressionOperatorStaticMemberAccessAst(
-        decltype(tok_dbl_colon) &&tok_dbl_colon,
-        decltype(name) &&name);
+        decltype(TokDblColon) &&tok_dbl_colon,
+        decltype(Name) &&name);
 
     ~PostfixExpressionOperatorStaticMemberAccessAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-    SPP_ATTR_NODISCARD auto expr_parts() const -> std::vector<Ast*> override;
+    SPP_ATTR_NODISCARD auto ExprParts() const -> Vec<Ast*> override;
 };

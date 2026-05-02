@@ -8,83 +8,78 @@ import genex;
 
 
 SPP_MOD_BEGIN
-auto spp::analyse::utils::mem_info_utils::MemoryInfo::initialized_by(
+auto spp::analyse::utils::mem_info_utils::MemoryInfo::InitializedBy(
     asts::Ast const &ast,
     scopes::Scope *scope)
     -> void {
-    ast_initialization = {&ast, scope};
-    ast_initialization_origin = {&ast, scope};
-    ast_moved = {nullptr, nullptr};
-    initialization_counter += 1;
+    AstInitialization = {&ast, scope};
+    AstInitializationOrigin = {&ast, scope};
+    AstMoved = {nullptr, nullptr};
+    InitializationCounter += 1;
 
-    is_inconsistently_initialized = std::nullopt;
-    is_inconsistently_moved = std::nullopt;
-    is_inconsistently_partially_moved = std::nullopt;
-    is_inconsistently_pinned = std::nullopt;
+    IsInconsistentlyInitialized = std::nullopt;
+    IsInconsistentlyMoved = std::nullopt;
+    IsInconsistentlyPartiallyMoved = std::nullopt;
+    IsInconsistentlyPinned = std::nullopt;
 }
 
-
-auto spp::analyse::utils::mem_info_utils::MemoryInfo::moved_by(
+auto spp::analyse::utils::mem_info_utils::MemoryInfo::MovedBy(
     asts::Ast const &ast, scopes::Scope *scope)
     -> void {
-    ast_moved = {&ast, scope};
-    ast_initialization = {nullptr, nullptr};
+    AstMoved = {&ast, scope};
+    AstInitialization = {nullptr, nullptr};
 }
 
-
-auto spp::analyse::utils::mem_info_utils::MemoryInfo::remove_partial_move(
+auto spp::analyse::utils::mem_info_utils::MemoryInfo::RemovePartialMoves(
     asts::Ast const &ast,
     scopes::Scope *scope)
     -> void {
     // Use "string" comparison; same as overlap checking mechanism.
     genex::actions::remove(
-        ast_partial_moves, ast.operator std::string(),
-        [](auto const &x) { return x->operator std::string(); });
-    if (not ast_partial_moves.empty()) {
-        initialized_by(ast, scope);
+        AstPartialMoves, ast.ToString(),
+        [](auto const &x) { return x->ToString(); });
+    if (not AstPartialMoves.IsEmpty()) {
+        InitializedBy(ast, scope);
     }
 }
 
-
-auto spp::analyse::utils::mem_info_utils::MemoryInfo::snapshot() const
+auto spp::analyse::utils::mem_info_utils::MemoryInfo::Snapshot() const
     -> MemoryInfoSnapshot {
     // Create and return the snapshot.
     return MemoryInfoSnapshot(
-        std::get<0>(ast_initialization), std::get<1>(ast_initialization),
-        std::get<0>(ast_moved), std::get<1>(ast_moved),
-        ast_partial_moves, ast_pins, ast_escaping_borrows, initialization_counter);
+        std::get<0>(AstInitialization), std::get<1>(AstInitialization),
+        std::get<0>(AstMoved), std::get<1>(AstMoved),
+        AstPartialMoves, AstPins, AstEscapingBorrows, InitializationCounter);
 }
 
-
-auto spp::analyse::utils::mem_info_utils::MemoryInfo::clone() const
-    -> std::unique_ptr<MemoryInfo> {
-    auto out = std::make_unique<MemoryInfo>();
-    out->ast_initialization = ast_initialization;
-    out->ast_moved = ast_moved;
-    out->ast_initialization_origin = ast_initialization_origin;
-    out->ast_borrowed = ast_borrowed;
-    out->ast_partial_moves = ast_partial_moves;
-    out->ast_pins = ast_pins;
-    out->ast_escaping_borrows = ast_escaping_borrows;
-    out->ast_comptime = asts::ast_clone(ast_comptime);
-    out->initialization_counter = initialization_counter;
-    out->is_inconsistently_initialized = is_inconsistently_initialized;
-    out->is_inconsistently_moved = is_inconsistently_moved;
-    out->is_inconsistently_partially_moved = is_inconsistently_partially_moved;
-    out->is_inconsistently_pinned = is_inconsistently_pinned;
+auto spp::analyse::utils::mem_info_utils::MemoryInfo::Clone() const
+    -> Unique<MemoryInfo> {
+    auto out = MakeUnique<MemoryInfo>();
+    out->AstInitialization = AstInitialization;
+    out->AstMoved = AstMoved;
+    out->AstInitializationOrigin = AstInitializationOrigin;
+    out->AstBorrowed = AstBorrowed;
+    out->AstPartialMoves = AstPartialMoves;
+    out->AstPins = AstPins;
+    out->AstEscapingBorrows = AstEscapingBorrows;
+    out->AstCompTime = asts::AstClone(AstCompTime);
+    out->InitializationCounter = InitializationCounter;
+    out->IsInconsistentlyInitialized = IsInconsistentlyInitialized;
+    out->IsInconsistentlyMoved = IsInconsistentlyMoved;
+    out->IsInconsistentlyPartiallyMoved = IsInconsistentlyPartiallyMoved;
+    out->IsInconsistentlyPinned = IsInconsistentlyPinned;
     return out;
 }
 
-
-auto spp::analyse::utils::mem_info_utils::MemoryInfo::fill_from_snapshot(
+auto spp::analyse::utils::mem_info_utils::MemoryInfo::FillFromSnapshot(
     MemoryInfoSnapshot const &snapshot)
     -> void {
-    ast_initialization = {snapshot.ast_initialization, snapshot.scope_initialization};
-    ast_moved = {snapshot.ast_moved, snapshot.scope_moved};
-    ast_partial_moves = snapshot.ast_partial_moves;
-    ast_pins = snapshot.ast_pins;
-    ast_escaping_borrows = snapshot.ast_escaping_borrows;
-    initialization_counter = snapshot.initialization_counter;
+    AstInitialization = {snapshot.AstInitialization, snapshot.ScopeInitialization};
+    AstMoved = {snapshot.AstMoved, snapshot.ScopeMoved};
+    AstPartialMoves = snapshot.AstPartialMoves;
+    AstPins = snapshot.AstPins;
+    AstEscapingBorrows = snapshot.AstEscapingBorrows;
+    InitializationCounter = snapshot.InitializationCounter;
 }
 
 SPP_MOD_END

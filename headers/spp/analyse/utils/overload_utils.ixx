@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.overload_utils;
+import spp.utils.types;
 import std;
 
 namespace spp::analyse::errors {
@@ -35,50 +36,50 @@ namespace spp::analyse::utils::overload_utils {
     using OverloadInfo = std::tuple<
         scopes::Scope const*,
         asts::FunctionPrototypeAst*,
-        std::unique_ptr<asts::GenericArgumentGroupAst>,
-        std::shared_ptr<asts::TypeAst>>;
+        Unique<asts::GenericArgumentGroupAst>,
+        Shared<asts::TypeAst>>;
 
     using PassOverloadInfo = std::tuple<
         scopes::Scope const*,
         asts::FunctionPrototypeAst*,
-        std::unique_ptr<asts::FunctionCallArgumentGroupAst>,
-        std::vector<asts::GenericArgumentAst*>>;
+        Unique<asts::FunctionCallArgumentGroupAst>,
+        Vec<asts::GenericArgumentAst*>>;
 
     using FailOverloadInfo = std::tuple<
         scopes::Scope const*,
         asts::FunctionPrototypeAst*,
-        std::unique_ptr<errors::SemanticError>,
-        std::string>;
+        Unique<errors::SemanticError>,
+        Str>;
 
-    SPP_EXP_FUN auto determine_overload(
+    SPP_EXP_FUN auto DetermineOverload(
         asts::PostfixExpressionOperatorFunctionCallAst &fn_call,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
-        -> std::pair<PassOverloadInfo, bool>;
+        -> Pair<PassOverloadInfo, bool>;
 
-    SPP_EXP_FUN auto propagate_method_to_function(
+    SPP_EXP_FUN auto PropagateMethodToFunction(
         asts::PostfixExpressionOperatorFunctionCallAst &fn_call,
         asts::TypeAst const &fn_owner_type,
         asts::IdentifierAst const &fn_name,
         asts::PostfixExpressionAst const &cast_lhs,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
-        -> std::tuple<PassOverloadInfo, bool, std::unique_ptr<asts::PostfixExpressionAst>>;
+        -> std::tuple<PassOverloadInfo, bool, Unique<asts::PostfixExpressionAst>>;
 
-    SPP_EXP_FUN auto retrieve_all_overloads(
+    SPP_EXP_FUN auto RetrieveAllOverloads(
         asts::IdentifierAst const *fn_name,
         scopes::Scope const &fn_owner_scope,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
-        -> std::tuple<bool, std::unique_ptr<asts::FunctionPrototypeAst>, std::vector<OverloadInfo>>;
+        -> std::tuple<bool, Unique<asts::FunctionPrototypeAst>, Vec<OverloadInfo>>;
 
-    SPP_EXP_FUN auto retrieve_implicit_generic_args_for_call(
-        std::shared_ptr<asts::TypeAst> const &fwd_type,
-        std::vector<std::unique_ptr<asts::GenericArgumentAst>> &&sup_gn_args,
+    SPP_EXP_FUN auto RetrieveImplicitGenericArgsForCall(
+        Shared<asts::TypeAst> const &fwd_type,
+        Vec<Unique<asts::GenericArgumentAst>> &&sup_gn_args,
         asts::meta::CompilerMetaData const *meta)
-        -> std::unique_ptr<asts::GenericArgumentGroupAst>;
+        -> Unique<asts::GenericArgumentGroupAst>;
 
-    SPP_EXP_FUN auto infer_all_generics(
+    SPP_EXP_FUN auto InferAllGenerics(
         asts::FunctionPrototypeAst const &fn_proto,
         asts::FunctionParameterGroupAst const &fn_params,
         asts::GenericParameterGroupAst const &gn_params,
@@ -91,16 +92,16 @@ namespace spp::analyse::utils::overload_utils {
         asts::meta::CompilerMetaData *meta)
         -> void;
 
-    SPP_EXP_FUN auto generate_generic_substituted_prototype(
+    SPP_EXP_FUN auto GenerateGenericSubstitutedPrototype(
         asts::FunctionPrototypeAst *fn_proto,
         scopes::Scope const *fn_scope,
         asts::GenericArgumentGroupAst &implicit_generic_args,
         asts::GenericArgumentGroupAst &explicit_generic_args,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
-        -> std::pair<asts::FunctionPrototypeAst*, scopes::Scope const*>;
+        -> std::tuple<asts::FunctionPrototypeAst*, scopes::Scope const*>;
 
-    SPP_EXP_FUN auto validate_args_match_params(
+    SPP_EXP_FUN auto ValidateArgsMatchParams(
         asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
         asts::FunctionPrototypeAst const &fn_proto,
         scopes::Scope const *fn_scope,
@@ -109,10 +110,10 @@ namespace spp::analyse::utils::overload_utils {
         asts::meta::CompilerMetaData *meta)
         -> void;
 
-    SPP_EXP_FUN auto manage_matched_overloads(
+    SPP_EXP_FUN auto ManageMatchedOverloads(
         asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
-        std::vector<PassOverloadInfo> const &pass_overloads,
-        std::vector<FailOverloadInfo> const &fail_overloads,
+        Vec<PassOverloadInfo> const &pass_overloads,
+        Vec<FailOverloadInfo> const &fail_overloads,
         asts::FunctionCallArgumentGroupAst const &arg_group,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)

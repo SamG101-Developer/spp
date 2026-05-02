@@ -4,6 +4,7 @@ module;
 export module spp.asts.parenthesised_expression_ast;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -18,17 +19,17 @@ SPP_EXP_CLS struct spp::asts::ParenthesisedExpressionAst final : PrimaryExpressi
     /**
      * The @c ( token that indicates the start of a parenthesised expression.
      */
-    std::unique_ptr<TokenAst> tok_open_paren;
+    Unique<TokenAst> TokL;
 
     /**
      * The expression that is enclosed in parentheses.
      */
-    std::unique_ptr<ExpressionAst> expr;
+    Unique<ExpressionAst> Expr;
 
     /**
      * The @c ) token that indicates the end of a parenthesised expression.
      */
-    std::unique_ptr<TokenAst> tok_close_paren;
+    Unique<TokenAst> TokR;
 
     /**
      * Construct the ParenthesisedExpressionAst with the arguments matching the members.
@@ -37,21 +38,21 @@ SPP_EXP_CLS struct spp::asts::ParenthesisedExpressionAst final : PrimaryExpressi
      * @param[in] tok_close_paren The @c ) token that indicates the end of a parenthesised expression.
      */
     explicit ParenthesisedExpressionAst(
-        decltype(tok_open_paren) &&tok_open_paren,
-        decltype(expr) &&expr,
-        decltype(tok_close_paren) &&tok_close_paren);
+        decltype(TokL) &&tok_open_paren,
+        decltype(Expr) &&expr,
+        decltype(TokR) &&tok_close_paren);
 
     ~ParenthesisedExpressionAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };

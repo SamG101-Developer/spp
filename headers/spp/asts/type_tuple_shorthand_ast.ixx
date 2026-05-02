@@ -4,6 +4,7 @@ module;
 export module spp.asts.type_tuple_shorthand_ast;
 import spp.asts.ast;
 import spp.asts.mixins.temp_type_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -13,21 +14,21 @@ namespace spp::asts {
 }
 
 
-SPP_EXP_CLS struct spp::asts::TypeTupleShorthandAst final : virtual Ast, mixins::TempTypeAst {
+SPP_EXP_CLS struct spp::asts::TypeTupleShorthandAst final : Ast, mixins::TempTypeAst {
     /**
      * The left parenthesis token that represents the start of the tuple type.
      */
-    std::unique_ptr<TokenAst> tok_l;
+    Unique<TokenAst> TokL;
 
     /**
      * The types of the elements in the tuple.
      */
-    std::vector<std::shared_ptr<TypeAst>> element_types;
+    Vec<Shared<TypeAst>> ElemTypes;
 
     /**
      * The right parenthesis token that represents the end of the tuple type.
      */
-    std::unique_ptr<TokenAst> tok_r;
+    Unique<TokenAst> TokR;
 
     /**
      * Construct the TypeTupleShorthandAst with the arguments matching the members.
@@ -36,13 +37,13 @@ SPP_EXP_CLS struct spp::asts::TypeTupleShorthandAst final : virtual Ast, mixins:
      * @param tok_r The right parenthesis token.
      */
     TypeTupleShorthandAst(
-        decltype(tok_l) &&tok_l,
-        decltype(element_types) &&element_types,
-        decltype(tok_r) &&tok_r);
+        decltype(TokL) &&tok_l,
+        decltype(ElemTypes) &&element_types,
+        decltype(TokR) &&tok_r);
 
     ~TypeTupleShorthandAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto convert() -> std::unique_ptr<TypeAst> override;
+    auto Convert() -> Unique<TypeAst> override;
 };

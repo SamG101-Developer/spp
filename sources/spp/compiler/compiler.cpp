@@ -19,23 +19,23 @@ SPP_MOD_BEGIN
 spp::compiler::Compiler::Compiler(
     const Mode mode,
     const BuildType build_type) :
-    m_modules(std::make_unique<ModuleTree>(std::filesystem::current_path())),
+    m_modules(MakeUnique<ModuleTree>(std::filesystem::current_path())),
     m_mode(mode),
     m_build_type(build_type) {
     m_path = std::filesystem::current_path() / "src";
-    m_boot = std::make_unique<CompilerBoot>();
+    m_boot = MakeUnique<CompilerBoot>();
 }
 
 
 auto spp::compiler::Compiler::for_unit_tests(
     const Mode mode,
-    std::string &&main_code) -> std::unique_ptr<Compiler> {
-    auto c = std::make_unique<Compiler>();
+    Str &&main_code) -> Unique<Compiler> {
+    auto c = MakeUnique<Compiler>();
     c->m_modules = ModuleTree::for_unit_tests(std::filesystem::current_path(), std::move(main_code));
     c->m_mode = mode;
     c->m_build_type = BuildType::EXE; // Tests for "main" in the test suite.
     c->m_path = std::filesystem::current_path() / "src";
-    c->m_boot = std::make_unique<CompilerBoot>();
+    c->m_boot = MakeUnique<CompilerBoot>();
     c->m_for_unit_tests = true;
     return c;
 }
@@ -46,38 +46,38 @@ spp::compiler::Compiler::~Compiler() = default;
 
 auto spp::compiler::Compiler::compile() -> void {
     const auto is_exe = m_build_type == BuildType::EXE;
-    auto progress_bars = std::vector<std::unique_ptr<utils::ProgressBar>>();
-    auto num_modules = m_modules->get_modules().size();
-    for (auto stage : COMPILER_STAGE_NAMES) {
-        auto p = std::make_unique<utils::ProgressBar>(stage, num_modules, not m_for_unit_tests);
-        progress_bars.emplace_back(std::move(p));
+    auto progress_bars = Vec<Unique<utils::ProgressBar>>();
+    auto num_modules = static_cast<std::uint32_t>(m_modules->GetModules().Len());
+    for (auto stage : kCompilerStageNames) {
+        auto p = MakeUnique<utils::ProgressBar>(stage, num_modules, not m_for_unit_tests);
+        progress_bars.EmplaceBack(std::move(p));
     }
 
     // Save the modules into the CompilerBoot instance, and lex/parse.
     auto ps = progress_bars.begin();
-    m_boot->lex(**ps++, *m_modules);
-    m_boot->parse(**ps++, *m_modules);
-    m_scope_manager = std::make_unique<analyse::scopes::ScopeManager>(
-        analyse::scopes::Scope::new_global(*m_modules->get_modules()[0]), nullptr);
-    asts::generate::common_types_precompiled::initialize_types();
+    m_boot->Lex(**ps++, *m_modules);
+    m_boot->Parse(**ps++, *m_modules);
+    m_scope_manager = MakeUnique<analyse::scopes::ScopeManager>(
+        analyse::scopes::Scope::NewGlobal(*m_modules->GetModules()[0]), nullptr);
+    asts::generate::common_types_precompiled::InitTypes();
 
-    m_boot->stage_1_pre_process(**ps++, *m_modules, nullptr);
-    m_boot->stage_2_gen_top_level_scopes(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->stage_3_gen_top_level_aliases(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->stage_4_qualify_types(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->stage_5_load_super_scopes(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->stage_6_pre_analyse_semantics(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->stage_7_analyse_semantics(**ps++, *m_modules, is_exe, m_scope_manager.get());
-    m_boot->stage_8_check_memory(**ps++, *m_modules, m_scope_manager.get());
-    m_boot->stage_9_comptime_resolution(**ps++, *m_modules, m_scope_manager.get());
-    // m_boot->stage_10_code_gen_1(**ps++, *m_modules, m_scope_manager.get());
-    // m_boot->stage_11_code_gen_2(**ps++, *m_modules, m_scope_manager.get());
+    m_boot->Stage1_PreProcess(**ps++, *m_modules, nullptr);
+    m_boot->Stage2_GenTopLvlScopes(**ps++, *m_modules, m_scope_manager.get());
+    m_boot->Stage3_GenTopLvlAliases(**ps++, *m_modules, m_scope_manager.get());
+    m_boot->Stage4_QualifyTypes(**ps++, *m_modules, m_scope_manager.get());
+    m_boot->Stage5_LoadSupScopes(**ps++, *m_modules, m_scope_manager.get());
+    m_boot->Stage6_PreAnalyseSemantics(**ps++, *m_modules, m_scope_manager.get());
+    m_boot->Stage7_AnalyseSemantics(**ps++, *m_modules, is_exe, m_scope_manager.get());
+    m_boot->Stage8_CheckMemory(**ps++, *m_modules, m_scope_manager.get());
+    m_boot->Stage9_CompTimeResolve(**ps++, *m_modules, m_scope_manager.get());
+    // m_boot->Stage10_PreCodeGen(**ps++, *m_modules, m_scope_manager.get());
+    // m_boot->Stage11_CodeGen(**ps++, *m_modules, m_scope_manager.get());
     cleanup();
 }
 
 
 auto spp::compiler::Compiler::cleanup() -> void {
-    analyse::scopes::ScopeManager::cleanup();
+    analyse::scopes::ScopeManager::Cleanup();
 }
 
 SPP_MOD_END

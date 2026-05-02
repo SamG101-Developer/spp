@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.closure_expression_capture_ast;
 import spp.asts.function_call_argument_positional_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -12,8 +13,8 @@ namespace spp::asts {
 
 SPP_EXP_CLS struct spp::asts::ClosureExpressionCaptureAst final : FunctionCallArgumentPositionalAst {
     ClosureExpressionCaptureAst(
-        decltype(conv) &&conv,
-        decltype(val) &&val);
+        decltype(Conv) &&conv,
+        decltype(Val) &&val);
 
     ~ClosureExpressionCaptureAst() override;
 

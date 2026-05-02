@@ -10,65 +10,61 @@ import spp.asts.identifier_ast;
 import spp.asts.type_ast;
 import genex;
 
-
 auto spp::codegen::mangle::mangle_type_name(
     analyse::scopes::TypeSymbol const &type_sym)
-    -> std::string {
+    -> Str {
     // Get the fully qualified name of the type symbol.
-    const auto fq_name = type_sym.fq_name();
-    return fq_name->to_string();
+    const auto fq_name = type_sym.FqName();
+    return fq_name->ToString();
 }
-
 
 auto spp::codegen::mangle::mangle_mod_name(
     analyse::scopes::Scope const &mod_scope)
-    -> std::string {
+    -> Str {
     // Generate the module name by joining the ancestor scope names with '#'.
-    return mod_scope.ancestors()
+    return mod_scope.Ancestors()
         | genex::views::reverse
-        | genex::views::filter([](auto *scope) { return not scope->name_as_string().contains("<"); })
-        | genex::views::transform([](auto *scope) { return scope->name_as_string(); })
-        | genex::to<std::vector>()
+        | genex::views::filter([](auto *scope) { return not scope->NameAsString().contains("<"); })
+        | genex::views::transform([](auto *scope) { return scope->NameAsString(); })
+        | genex::to<Vec>()
         | genex::views::join_with('#')
-        | genex::to<std::string>();
+        | genex::to<Str>();
 }
-
 
 auto spp::codegen::mangle::mangle_cmp_name(
     analyse::scopes::Scope const &owner_scope,
     asts::CmpStatementAst const &cmp_stmt)
-    -> std::string {
+    -> Str {
     // Qualify the "cmp" name and return the whole thing.
     const auto mod_name = mangle_mod_name(owner_scope);
-    const auto cmp_name = cmp_stmt.name->val;
+    const auto cmp_name = cmp_stmt.Name->Val;
     return mod_name + "#" + cmp_name;
 }
-
 
 auto spp::codegen::mangle::mangle_fun_name(
     analyse::scopes::Scope const &owner_scope,
     asts::FunctionPrototypeAst const &fun_proto)
-    -> std::string {
+    -> Str {
     // The module/context name that the function belongs to.
     const auto mod_name = mangle_mod_name(owner_scope);
 
     // Get the return and parameter types of the function.
-    const auto return_type_sym = owner_scope.get_type_symbol(fun_proto.return_type);
-    const auto param_type_syms = fun_proto.param_group->params
-        | genex::views::transform([&owner_scope](auto const &param) { return owner_scope.get_type_symbol(param->type); })
-        | genex::to<std::vector>();
+    const auto return_type_sym = owner_scope.GetTypeSymbol(fun_proto.ReturnType);
+    const auto param_type_syms = fun_proto.FnParamGroup->Params
+        | genex::views::transform([&owner_scope](auto const &param) { return owner_scope.GetTypeSymbol(param->Type); })
+        | genex::to<Vec>();
 
     // Save the type symbols into a vector.
-    auto types = std::vector{return_type_sym};
-    types.append_range(param_type_syms);
+    auto types = Vec{return_type_sym};
+    types.AppendRange(param_type_syms);
 
     // Convert the mangled type names into a single function name.
     const auto fun_sig = types
         | genex::views::transform([](auto const &type_sym) { return mangle_type_name(*type_sym); })
-        | genex::to<std::vector>()
+        | genex::to<Vec>()
         | genex::views::join_with('#')
-        | genex::to<std::string>();
+        | genex::to<Str>();
 
     // Append the module name and function name.
-    return mod_name + "#" + fun_proto.name->val + "#" + fun_sig;
+    return mod_name + "#" + fun_proto.Name->Val + "#" + fun_sig;
 }

@@ -10,45 +10,41 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
-
 SPP_MOD_BEGIN
 spp::asts::FunctionParameterRequiredAst::FunctionParameterRequiredAst(
-    decltype(var) &&var,
-    decltype(tok_colon) &&tok_colon,
-    decltype(type) type) :
+    decltype(Var) &&var,
+    decltype(TokColon) &&tok_colon,
+    decltype(Type) type) :
     FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type), utils::OrderableTag::REQUIRED_PARAM) {
 }
 
-
 spp::asts::FunctionParameterRequiredAst::~FunctionParameterRequiredAst() = default;
 
-
-auto spp::asts::FunctionParameterRequiredAst::pos_start() const
+auto spp::asts::FunctionParameterRequiredAst::PosStart() const
     -> std::size_t {
-    return var->pos_start();
+    // Use the variable.
+    return Var->PosStart();
 }
 
-
-auto spp::asts::FunctionParameterRequiredAst::pos_end() const
+auto spp::asts::FunctionParameterRequiredAst::PosEnd() const
     -> std::size_t {
-    return type->pos_end();
+    // Use the type.
+    return Type->PosEnd();
 }
 
-
-auto spp::asts::FunctionParameterRequiredAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<FunctionParameterRequiredAst>(
-        ast_clone(var),
-        ast_clone(tok_colon),
-        ast_clone(type));
+auto spp::asts::FunctionParameterRequiredAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<FunctionParameterRequiredAst>(
+        AstClone(Var), AstClone(TokColon), AstCloneShared(Type));
 }
 
-
-spp::asts::FunctionParameterRequiredAst::operator std::string() const {
+auto spp::asts::FunctionParameterRequiredAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(var);
-    SPP_STRING_APPEND(tok_colon).append(" ");
-    SPP_STRING_APPEND(type);
+    SPP_STRING_APPEND(Var);
+    SPP_STRING_APPEND(TokColon).append(" ");
+    SPP_STRING_APPEND(Type);
     SPP_STRING_END;
 }
 

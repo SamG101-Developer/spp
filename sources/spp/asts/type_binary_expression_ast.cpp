@@ -11,60 +11,56 @@ import spp.asts.utils.ast_utils;
 
 SPP_MOD_BEGIN
 spp::asts::TypeBinaryExpressionAst::TypeBinaryExpressionAst(
-    decltype(lhs) &&lhs,
-    decltype(tok_op) &&tok_op,
-    decltype(rhs) &&rhs) :
-    TempTypeAst(),
-    lhs(std::move(lhs)),
-    tok_op(std::move(tok_op)),
-    rhs(std::move(rhs)) {
+    decltype(Lhs) &&lhs,
+    decltype(TokOp) &&tok_op,
+    decltype(Rhs) &&rhs) :
+    Lhs(std::move(lhs)),
+    TokOp(std::move(tok_op)),
+    Rhs(std::move(rhs)) {
 }
-
 
 spp::asts::TypeBinaryExpressionAst::~TypeBinaryExpressionAst() = default;
 
-
-auto spp::asts::TypeBinaryExpressionAst::pos_start() const
+auto spp::asts::TypeBinaryExpressionAst::PosStart() const
     -> std::size_t {
-    return lhs->pos_start();
+    // Use the lhs.
+    return Lhs->PosStart();
 }
 
-
-auto spp::asts::TypeBinaryExpressionAst::pos_end() const
+auto spp::asts::TypeBinaryExpressionAst::PosEnd() const
     -> std::size_t {
-    return rhs->pos_end();
+    // Use the rhs.
+    return Rhs->PosEnd();
 }
 
-
-auto spp::asts::TypeBinaryExpressionAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<TypeBinaryExpressionAst>(
-        ast_clone(lhs),
-        ast_clone(tok_op),
-        ast_clone(rhs));
+auto spp::asts::TypeBinaryExpressionAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<TypeBinaryExpressionAst>(
+        AstCloneShared(Lhs), AstClone(TokOp), AstCloneShared(Rhs));
 }
 
-
-spp::asts::TypeBinaryExpressionAst::operator std::string() const {
+auto spp::asts::TypeBinaryExpressionAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(lhs);
-    SPP_STRING_APPEND(tok_op);
-    SPP_STRING_APPEND(rhs);
+    SPP_STRING_APPEND(Lhs);
+    SPP_STRING_APPEND(TokOp);
+    SPP_STRING_APPEND(Rhs);
     SPP_STRING_END;
 }
 
+auto spp::asts::TypeBinaryExpressionAst::Convert()
+    -> Unique<TypeAst> {
+    //
+    using generate::common_types::VariantType;
 
-auto spp::asts::TypeBinaryExpressionAst::convert()
-    -> std::unique_ptr<TypeAst> {
-    using namespace std::string_literals;
-
-    if (tok_op->token_type == lex::SppTokenType::KW_OR) {
-        auto inner_types = std::vector<std::shared_ptr<TypeAst>>(2);
-        const auto pos = pos_start();
-        inner_types[0] = std::move(lhs);
-        inner_types[1] = std::move(rhs);
-        const auto type = generate::common_types::variant_type(pos, std::move(inner_types));
-        return ast_clone(type);
+    if (TokOp->TokenType == lex::SppTokenType::KW_OR) {
+        auto inner_types = Vec<Shared<TypeAst>>(2);
+        const auto pos = PosStart();
+        inner_types[0] = std::move(Lhs);
+        inner_types[1] = std::move(Rhs);
+        const auto type = VariantType(pos, std::move(inner_types));
+        return AstClone(type);
     }
 
     // todo: unsupported feature error for intersection ("and") types.

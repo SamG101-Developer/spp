@@ -3,29 +3,29 @@ import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 
 
-auto spp::asts::generate::common_types_precompiled::initialize_types() -> void {
-    GEN = common_types::gen_type(0, common_types::void_type(0), common_types::void_type(0))->without_generics();
-    GEN_ONCE = common_types::gen_once_type(0, common_types::void_type(0))->without_generics();
+auto spp::asts::generate::common_types_precompiled::InitTypes() -> void {
+    GEN = common_types::GenType(0, common_types::VoidType(0), common_types::VoidType(0))->WithoutGenerics();
+    GEN_ONCE = common_types::GenOnceType(0, common_types::VoidType(0))->WithoutGenerics();
 
-    INDEX_MUT = common_types::index_mut_type(0, common_types::void_type(0))->without_generics();
-    INDEX_REF = common_types::index_ref_type(0, common_types::void_type(0))->without_generics();
+    INDEX_MUT = common_types::IndexMutType(0, common_types::VoidType(0))->WithoutGenerics();
+    INDEX_REF = common_types::IndexRefType(0, common_types::VoidType(0))->WithoutGenerics();
 
-    FUN_MOV = common_types::fun_mov_type(0, common_types::tuple_type(0, {}), common_types::void_type(0))->without_generics();
-    FUN_MUT = common_types::fun_mut_type(0, common_types::tuple_type(0, {}), common_types::void_type(0))->without_generics();
-    FUN_REF = common_types::fun_ref_type(0, common_types::tuple_type(0, {}), common_types::void_type(0))->without_generics();
+    FUN_MOV = common_types::FunMovType(0, common_types::TupleType(0, {}), common_types::VoidType(0))->WithoutGenerics();
+    FUN_MUT = common_types::FunMutType(0, common_types::TupleType(0, {}), common_types::VoidType(0))->WithoutGenerics();
+    FUN_REF = common_types::FunRefType(0, common_types::TupleType(0, {}), common_types::VoidType(0))->WithoutGenerics();
 
-    ARR = common_types::array_type(0, common_types::void_type(0), ast_clone(common_types::usize(0)))->without_generics();
-    TUP = common_types::tuple_type(0, {})->without_generics();
-    VAR = common_types::variant_type(0, {})->without_generics();
-    TRY = common_types::try_type(0, common_types::void_type(0), common_types::void_type(0))->without_generics();
-    FUT = common_types::future_type(0, common_types::void_type(0))->without_generics();
+    ARR = common_types::ArrayType(0, common_types::VoidType(0), AstClone(common_types::USize(0)))->WithoutGenerics();
+    TUP = common_types::TupleType(0, {})->WithoutGenerics();
+    VAR = common_types::VariantType(0, {})->WithoutGenerics();
+    TRY = common_types::TryType(0, common_types::VoidType(0), common_types::VoidType(0))->WithoutGenerics();
+    FUT = common_types::FutureType(0, common_types::VoidType(0))->WithoutGenerics();
 
-    BOOL = common_types::boolean_type(0)->without_generics();
-    VOID = common_types::void_type(0)->without_generics();
+    BOOL = common_types::BooleanType(0)->WithoutGenerics();
+    VOID = common_types::VoidType(0)->WithoutGenerics();
 
-    NEVER = common_types::never_type(0)->without_generics();
-    COPY = common_types::copy_type(0)->without_generics();
+    NEVER = common_types::NeverType(0)->WithoutGenerics();
+    COPY = common_types::CopyType(0)->WithoutGenerics();
 
-    FWD_MUT = common_types::forward_mut_type(0, common_types::void_type(0))->without_generics();
-    FWD_REF = common_types::forward_ref_type(0, common_types::void_type(0))->without_generics();
+    FWD_MUT = common_types::ForwardMutType(0, common_types::VoidType(0))->WithoutGenerics();
+    FWD_REF = common_types::ForwardRefType(0, common_types::VoidType(0))->WithoutGenerics();
 }

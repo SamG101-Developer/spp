@@ -5,6 +5,7 @@ export module spp.asts.type_ast;
 import spp.asts.primary_expression_ast;
 import spp.asts.mixins.abstract_type_ast;
 import spp.utils.cache;
+import spp.utils.types;
 import std;
 
 namespace spp::analyse::scopes {
@@ -24,26 +25,24 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeUnaryExpressionAst;
 }
 
-
 /**
  * The TypeAst is a base class for all type-related AST nodes in the SPP language.
  */
-SPP_EXP_CLS struct spp::asts::TypeAst : PrimaryExpressionAst, mixins::AbstractTypeAst, std::enable_shared_from_this<TypeAst> {
+SPP_EXP_CLS struct spp::asts::TypeAst : PrimaryExpressionAst, mixins::AbstractTypeAst, EnableLocalSharedFromThis<TypeAst> {
     SPP_GCC_VTABLE_FIX
 
-    mutable utils::Cache<analyse::scopes::Scope const*, std::shared_ptr<analyse::scopes::TypeSymbol>> cached_type_symbols;
+    mutable utils::Cache<analyse::scopes::Scope const*, Shared<analyse::scopes::TypeSymbol>> CachedTypeSymbols;
 
     using PrimaryExpressionAst::PrimaryExpressionAst;
 
     ~TypeAst() override;
 
-    SPP_ATTR_NODISCARD virtual auto is_type_identifier() const noexcept -> bool { return false; }
+    SPP_ATTR_NODISCARD virtual auto IsTypeIdentifier() const noexcept -> bool { return false; }
 
 protected:
-    mutable std::shared_ptr<TypeAst> m_without_generics_cache;
+    mutable Shared<TypeAst> _CachedWithoutGenerics;
 
-    mutable std::string m_stringification_cache;
+    mutable Str _CachedStringification;
 };
-
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeAst)

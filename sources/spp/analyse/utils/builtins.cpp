@@ -4,7 +4,7 @@ import spp.asts.boolean_literal_ast;
 import spp.asts.float_literal_ast;
 import spp.asts.integer_literal_ast;
 import spp.codegen.llvm_func_impls;
-
+import ankerl.unordered_dense;
 
 // .llvm_fn=spp::utils::functions::make_callable(codegen::func_impls::func_name)
 #define SPP_DEFINE_BUILTIN_FUNC(scoped_name, func_name) \
@@ -16,10 +16,9 @@ import spp.codegen.llvm_func_impls;
     map.emplace(scoped_name, LoweredFuncImpl{               \
         .cmp_fn=cmp_utils::make_cmp_fn(cmp_utils::func_name)})
 
-
-auto spp::analyse::utils::builtins::make_builtin_functions_map()
-    -> std::unordered_map<std::string, LoweredFuncImpl> {
-    auto map = std::unordered_map<std::string, LoweredFuncImpl>{};
+auto spp::analyse::utils::builtins::MakeBuiltinFuncMap()
+    -> ankerl::unordered_dense::map<Str, LoweredFuncImpl> {
+    auto map = ankerl::unordered_dense::map<Str, LoweredFuncImpl>{};
     SPP_DEFINE_BUILTIN_FUNC("std::abort::abort", std_abort_abort);
 
     SPP_DEFINE_BUILTIN_FUNC("std::array::Arr::iter_mov", std_array_iter_mov);

@@ -11,55 +11,51 @@ import spp.asts.utils.ast_utils;
 
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantDestructureAttributeBindingAst::CasePatternVariantDestructureAttributeBindingAst(
-    decltype(name) &&name,
-    decltype(tok_assign) &&tok_assign,
-    decltype(val) &&val) :
-    name(std::move(name)),
-    tok_assign(std::move(tok_assign)),
-    val(std::move(val)) {
+    decltype(Name) &&name,
+    decltype(TokAssign) &&tok_assign,
+    decltype(Val) &&val) :
+    Name(std::move(name)),
+    TokAssign(std::move(tok_assign)),
+    Val(std::move(val)) {
 }
-
 
 spp::asts::CasePatternVariantDestructureAttributeBindingAst::~CasePatternVariantDestructureAttributeBindingAst() = default;
 
-
-auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::pos_start() const
+auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::PosStart() const
     -> std::size_t {
-    return name->pos_start();
+    // Use the "name".
+    return Name->PosStart();
 }
 
-
-auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::pos_end() const
+auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::PosEnd() const
     -> std::size_t {
-    return val->pos_end();
+    // Use the "val".
+    return Val->PosEnd();
 }
 
-
-auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<CasePatternVariantDestructureAttributeBindingAst>(
-        ast_clone(name),
-        ast_clone(tok_assign),
-        ast_clone(val));
+auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<CasePatternVariantDestructureAttributeBindingAst>(
+        AstCloneShared(Name), AstClone(TokAssign), AstClone(Val));
 }
 
-
-spp::asts::CasePatternVariantDestructureAttributeBindingAst::operator std::string() const {
+auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(name);
-    SPP_STRING_APPEND(tok_assign);
-    SPP_STRING_APPEND(val);
+    SPP_STRING_APPEND(Name);
+    SPP_STRING_APPEND(TokAssign);
+    SPP_STRING_APPEND(Val);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::convert_to_variable(
+auto spp::asts::CasePatternVariantDestructureAttributeBindingAst::ConvToVar(
     CompilerMetaData *meta)
-    -> std::unique_ptr<LocalVariableAst> {
+    -> Unique<LocalVariableAst> {
     // Create the local variable destructure attribute binding AST.
-    auto var = std::make_unique<LocalVariableDestructureAttributeBindingAst>(
-        ast_clone(name), nullptr, val->convert_to_variable(meta));
-    var->mark_from_case_pattern();
+    auto var = MakeUnique<LocalVariableDestructureAttributeBindingAst>(
+        AstCloneShared(Name), nullptr, Val->ConvToVar(meta));
+    var->MarkFromCasePattern();
     return var;
 }
 

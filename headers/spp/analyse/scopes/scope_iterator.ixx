@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.scopes.scope_iterator;
+import spp.utils.types;
 import std;
 
 
@@ -27,19 +28,19 @@ SPP_EXP_CLS class spp::analyse::scopes::ScopeIterator {
          * The root scope to start the traversal from in this frame. This is given in the constructor. If the @c root is @c nullptr, then
          * this is an <i>end</i> iterator or <i>sentinel</i>.
          */
-        Scope *node;
+        Scope *Node;
         /**
          * The number of child scopes that have been seen so far. This is used to determine when to pop the stack and move
          * back up the tree.
          */
-        std::size_t seen;
+        std::size_t Seen;
     };
 
     /**
      * The stack that the iterator maintains to keep track of the current scope and its ancestors. The top of the stack
      * is the current scope.
      */
-    std::vector<Frame> m_stack;
+    Vec<Frame> _Stack;
 
 public:
     using iterator_category = std::forward_iterator_tag;

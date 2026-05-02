@@ -4,6 +4,7 @@ module;
 export module spp.asts.case_pattern_variant_else_case_ast;
 import spp.asts.case_pattern_variant_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -18,12 +19,12 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantElseCaseAst final : CasePatternV
     /**
      * The @c else keyword that indicates this is an else branch of the case pattern variant.
      */
-    std::unique_ptr<TokenAst> tok_else;
+    Unique<TokenAst> TokElse;
 
     /**
      * The case expression that is used for the else branch.
      */
-    std::unique_ptr<CaseExpressionAst> case_expr;
+    Unique<CaseExpressionAst> CaseExpr;
 
     /**
      * Construct the CasePatternVariantElseCaseAst with the arguments matching the members.
@@ -31,18 +32,18 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantElseCaseAst final : CasePatternV
      * @param case_expr The case expression that is used for the else branch.
      */
     explicit CasePatternVariantElseCaseAst(
-        decltype(tok_else) &&tok_else,
-        decltype(case_expr) &&case_expr);
+        decltype(TokElse) &&tok_else,
+        decltype(CaseExpr) &&case_expr);
 
     ~CasePatternVariantElseCaseAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

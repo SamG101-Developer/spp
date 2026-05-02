@@ -7,6 +7,7 @@ import spp.asts.ast;
 import spp.asts.convention_ast;
 import spp.asts.utils.visibility;
 import spp.codegen.llvm_sym_info;
+import spp.utils.types;
 import std;
 
 
@@ -48,12 +49,12 @@ SPP_EXP_CLS struct spp::analyse::scopes::Symbol {
 SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
     SPP_GCC_VTABLE_FIX
 
-    std::shared_ptr<asts::IdentifierAst> name;
+    Shared<asts::IdentifierAst> Name;
 
-    Scope *scope;
+    Scope *LinkedScope;
 
     NamespaceSymbol(
-        std::shared_ptr<asts::IdentifierAst> name,
+        Shared<asts::IdentifierAst> name,
         Scope *scope);
 
     NamespaceSymbol(
@@ -70,33 +71,33 @@ SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
 SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
     SPP_GCC_VTABLE_FIX
 
-    std::shared_ptr<asts::IdentifierAst> name;
+    Shared<asts::IdentifierAst> Name;
 
-    std::shared_ptr<asts::TypeAst> type;
+    Shared<asts::TypeAst> Type;
 
-    Scope *scope_defined_in;
+    Scope *ScopeDefinedIn;
 
-    bool is_mutable = false;
+    bool IsMutable = false;
 
-    bool is_generic = false;
+    bool IsGeneric = false;
 
-    asts::utils::Visibility visibility;
+    asts::utils::Visibility Visibility;
 
-    std::unique_ptr<utils::mem_info_utils::MemoryInfo> memory_info;
+    Unique<utils::mem_info_utils::MemoryInfo> MemInfo;
 
-    std::unique_ptr<codegen::LlvmVarSymInfo> llvm_info;
+    Unique<codegen::LlvmVarSymInfo> LlvmInfo;
 
-    std::unique_ptr<asts::Ast> comptime_value;
+    Unique<asts::Ast> CompTimeValue;
 
-    std::shared_ptr<VariableSymbol> alias_sym;
+    Shared<VariableSymbol> AliasSym;
 
     VariableSymbol(
-        std::shared_ptr<asts::IdentifierAst> name,
-        std::shared_ptr<asts::TypeAst> type,
-        Scope *scope_defined_in,
+        Shared<asts::IdentifierAst> name,
+        Shared<asts::TypeAst> type,
+        Scope *ScopeDefinedIn,
         bool is_mutable = false,
         bool is_generic = false,
-        asts::utils::Visibility visibility = asts::utils::Visibility::PUBLIC);
+        asts::utils::Visibility visibility = asts::utils::Visibility::kPublic);
 
     VariableSymbol(
         VariableSymbol const &that);
@@ -107,52 +108,52 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
         VariableSymbol const &that) const
         -> bool;
 
-    SPP_ATTR_NODISCARD auto fq_name() const
-        -> std::shared_ptr<asts::ExpressionAst>;
+    SPP_ATTR_NODISCARD auto FqName() const
+        -> Shared<asts::ExpressionAst>;
 };
 
 
 SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     SPP_GCC_VTABLE_FIX
 
-    std::shared_ptr<asts::TypeIdentifierAst> name;
+    Shared<asts::TypeIdentifierAst> Name;
 
-    asts::ClassPrototypeAst *type;
+    asts::ClassPrototypeAst *Type;
 
-    Scope *scope;
+    Scope *LinkedScope;
 
-    Scope *scope_defined_in;
+    Scope *ScopeDefinedIn;
 
-    Scope *scope_module;
+    Scope *ScopeModule;
 
-    bool is_generic = false;
+    bool IsGeneric = false;
 
-    bool is_directly_copyable = false;
+    bool IsDirectlyCopyable = false;
 
-    std::function<bool()> is_copyable;
+    Function<bool()> IsCopyable;
 
-    asts::utils::Visibility visibility;
+    asts::utils::Visibility Visibility;
 
-    std::unique_ptr<asts::ConventionAst> convention;
+    Unique<asts::ConventionAst> Convention;
 
-    TypeSymbol *generic_impl;
+    TypeSymbol *GenericImpl;
 
-    std::shared_ptr<codegen::LlvmTypeSymInfo> llvm_info;
+    Shared<codegen::LlvmTypeSymInfo> LlvmInfo;
 
-    std::unique_ptr<asts::TypeStatementAst> alias_stmt;
+    Unique<asts::TypeStatementAst> AliasStmt;
 
-    std::vector<std::shared_ptr<TypeSymbol>> aliased_by_symbols = {};
+    Vec<Shared<TypeSymbol>> AliasedBySyms;
 
     TypeSymbol(
-        std::shared_ptr<asts::TypeIdentifierAst> name,
+        Shared<asts::TypeIdentifierAst> name,
         asts::ClassPrototypeAst *type,
         Scope *scope,
-        Scope *scope_defined_in,
+        Scope *ScopeDefinedIn,
         Scope *scope_module = nullptr,
         bool is_generic = false,
         bool is_directly_copyable = false,
-        asts::utils::Visibility visibility = asts::utils::Visibility::PUBLIC,
-        std::unique_ptr<asts::ConventionAst> &&convention = nullptr);
+        asts::utils::Visibility visibility = asts::utils::Visibility::kPublic,
+        Unique<asts::ConventionAst> &&convention = nullptr);
 
     TypeSymbol(
         TypeSymbol const &that);
@@ -163,8 +164,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
         TypeSymbol const &that) const
         -> bool;
 
-    SPP_ATTR_NODISCARD auto fq_name(bool ignore_dollar = true) const
-        -> std::shared_ptr<asts::TypeAst>;
+    SPP_ATTR_NODISCARD auto FqName(bool ignore_dollar = true) const
+        -> Shared<asts::TypeAst>;
 };
 
 

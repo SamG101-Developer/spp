@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.convention_mut_ast;
 import spp.asts.convention_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -20,13 +21,13 @@ SPP_EXP_CLS struct spp::asts::ConventionMutAst final : ConventionAst {
      * The token that represents the @c & borrow marker. This is used to indicate that a borrow of some convention is
      * being made.
      */
-    std::unique_ptr<TokenAst> tok_borrow;
+    Unique<TokenAst> TokBorrow;
 
     /**
      * The token that represents the @c mut keyword. This is used to indicate that the borrow is mutable, and that the
      * value can be modified.
      */
-    std::unique_ptr<TokenAst> tok_mut;
+    Unique<TokenAst> TokMut;
 
     /**
      * Construct the ConventionMutAst with the arguments matching the members.
@@ -34,8 +35,8 @@ SPP_EXP_CLS struct spp::asts::ConventionMutAst final : ConventionAst {
      * @param tok_mut The token that represents the @c mut keyword.
      */
     ConventionMutAst(
-        decltype(tok_borrow) &&tok_borrow,
-        decltype(tok_mut) &&tok_mut);
+        decltype(TokBorrow) &&tok_borrow,
+        decltype(TokMut) &&tok_mut);
 
     ~ConventionMutAst() override;
 

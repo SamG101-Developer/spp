@@ -4,6 +4,7 @@ module;
 export module spp.asts.is_expression_ast;
 import spp.asts.expression_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -21,17 +22,17 @@ SPP_EXP_CLS struct spp::asts::IsExpressionAst final : ExpressionAst {
     /**
      * The left-hand side expression of the is expression. This is the first operand.
      */
-    std::unique_ptr<ExpressionAst> lhs;
+    Unique<ExpressionAst> Lhs;
 
     /**
      * The operator token that represents the is operation. This indicates the type of operation being performed.
      */
-    std::unique_ptr<TokenAst> tok_op;
+    Unique<TokenAst> TokOp;
 
     /**
      * The right-hand side expression of the is expression. This is the second operand.
      */
-    std::unique_ptr<CasePatternVariantAst> rhs;
+    Unique<CasePatternVariantAst> Rhs;
 
     /**
      * Construct the IsExpressionAst with the arguments matching the members.
@@ -40,26 +41,26 @@ SPP_EXP_CLS struct spp::asts::IsExpressionAst final : ExpressionAst {
      * @param[in] rhs The right-hand side expression of the is expression.
      */
     IsExpressionAst(
-        decltype(lhs) &&lhs,
-        decltype(tok_op) &&tok_op,
-        decltype(rhs) &&rhs);
+        decltype(Lhs) &&lhs,
+        decltype(TokOp) &&tok_op,
+        decltype(Rhs) &&rhs);
 
     ~IsExpressionAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-    SPP_ATTR_NODISCARD auto mapped_func() const -> std::shared_ptr<CaseExpressionAst>;
+    SPP_ATTR_NODISCARD auto GetMappedFunc() const -> Shared<CaseExpressionAst>;
 
 private:
-    std::shared_ptr<CaseExpressionAst> m_mapped_func;
+    Shared<CaseExpressionAst> _MappedFunc;
 
-    std::shared_ptr<IdentifierAst> m_lhs_as_id;
+    Shared<IdentifierAst> _LhsAsId;
 };

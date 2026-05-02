@@ -3,118 +3,101 @@ module;
 
 module spp.asts.expression_ast;
 
-
 SPP_MOD_BEGIN
 spp::asts::ExpressionAst::~ExpressionAst() = default;
 
-
 auto spp::asts::ExpressionAst::operator<=>(
     const ExpressionAst &rhs_expr) const
-    -> std::strong_ordering {
-    return equals(rhs_expr);
+    -> Ordering {
+    return Equals(rhs_expr);
 }
-
 
 auto spp::asts::ExpressionAst::operator==(
     const ExpressionAst &rhs_expr) const
     -> bool {
-    return equals(rhs_expr) == std::strong_ordering::equal;
+    return Equals(rhs_expr) == Ordering::equal;
 }
 
-
-auto spp::asts::ExpressionAst::equals_array_literal_explicit_elements(
+auto spp::asts::ExpressionAst::EqualsArrayLiteralExplicitElements(
     ArrayLiteralExplicitElementsAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
+    -> Ordering {
+    return Ordering::less;
 }
 
-
-auto spp::asts::ExpressionAst::equals_array_literal_repeated_elements(
+auto spp::asts::ExpressionAst::EqualsArrayLiteralRepeatedElement(
     ArrayLiteralRepeatedElementAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
+    -> Ordering {
+    return Ordering::less;
 }
 
-
-auto spp::asts::ExpressionAst::equals_boolean_literal(
+auto spp::asts::ExpressionAst::EqualsBooleanLiteral(
     BooleanLiteralAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
+    -> Ordering {
+    return Ordering::less;
 }
 
-
-auto spp::asts::ExpressionAst::equals_char_literal(
+auto spp::asts::ExpressionAst::EqualsCharLiteral(
     CharLiteralAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
+    -> Ordering {
+    return Ordering::less;
 }
 
-
-auto spp::asts::ExpressionAst::equals_float_literal(
+auto spp::asts::ExpressionAst::EqualsFloatLiteral(
     FloatLiteralAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
+    -> Ordering {
+    return Ordering::less;
 }
 
-
-auto spp::asts::ExpressionAst::equals_identifier(
+auto spp::asts::ExpressionAst::EqualsIdentifier(
     IdentifierAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
+    -> Ordering {
+    return Ordering::less;
 }
 
-
-auto spp::asts::ExpressionAst::equals_integer_literal(
+auto spp::asts::ExpressionAst::EqualsIntegerLiteral(
     IntegerLiteralAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
+    -> Ordering {
+    return Ordering::less;
 }
 
-
-auto spp::asts::ExpressionAst::equals_string_literal(
+auto spp::asts::ExpressionAst::EqualsStringLiteral(
     StringLiteralAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
+    -> Ordering {
+    return Ordering::less;
 }
 
-
-auto spp::asts::ExpressionAst::equals_tuple_literal(
+auto spp::asts::ExpressionAst::EqualsTupleLiteral(
     TupleLiteralAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
+    -> Ordering {
+    return Ordering::less;
 }
 
-
-auto spp::asts::ExpressionAst::equals_type_identifier(
+auto spp::asts::ExpressionAst::EqualsTypeIdentifier(
     TypeIdentifierAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
+    -> Ordering {
+    return Ordering::less;
 }
 
-
-auto spp::asts::ExpressionAst::equals_type_unary_expression(
+auto spp::asts::ExpressionAst::EqualsTypeUnaryExpression(
     TypeUnaryExpressionAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
+    -> Ordering {
+    return Ordering::less;
 }
 
-
-auto spp::asts::ExpressionAst::equals_type_postfix_expression(
+auto spp::asts::ExpressionAst::EqualsTypePostfixExpression(
     TypePostfixExpressionAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
+    -> Ordering {
+    return Ordering::less;
 }
 
-
-auto spp::asts::ExpressionAst::equals(
+auto spp::asts::ExpressionAst::Equals(
     ExpressionAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
+    -> Ordering {
+    return Ordering::less;
 }
 
-
-auto spp::asts::ExpressionAst::expr_parts() const
-    -> std::vector<Ast*> {
+auto spp::asts::ExpressionAst::ExprParts() const
+    -> Vec<Ast*> {
     return {};
 }
 

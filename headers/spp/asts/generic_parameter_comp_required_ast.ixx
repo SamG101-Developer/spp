@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.generic_parameter_comp_required_ast;
 import spp.asts.generic_parameter_comp_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -26,10 +27,10 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompRequiredAst final : GenericPar
      * for uniformity with the other parameter variants.
      */
     GenericParameterCompRequiredAst(
-        decltype(tok_cmp) &&tok_cmp,
-        decltype(name) &&name,
-        decltype(tok_colon) &&tok_colon,
-        decltype(type) &&type);
+        decltype(TokCmp) &&tok_cmp,
+        decltype(Name) name,
+        decltype(TokColon) &&tok_colon,
+        decltype(Type) type);
 
     ~GenericParameterCompRequiredAst() override;
 

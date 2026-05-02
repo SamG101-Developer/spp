@@ -8,7 +8,7 @@ import sys;
 
 auto spp::utils::files::read_file(
     std::filesystem::path const &path)
-    -> std::string {
+    -> Str {
     // Create an input file stream.
     auto in = std::ifstream(path, std::ios::in);
     auto buf = std::ostringstream();
@@ -19,7 +19,7 @@ auto spp::utils::files::read_file(
 
 auto spp::utils::files::write_file(
     std::filesystem::path const &path,
-    std::string const &content)
+    Str const &content)
     -> void {
     // Create an output file stream.
     auto out = std::ofstream(path);

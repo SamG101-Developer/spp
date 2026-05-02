@@ -4,6 +4,7 @@ module;
 export module spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.array_literal_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -25,24 +26,25 @@ namespace spp::asts {
  */
 SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiteralAst {
     SPP_GCC_VTABLE_FIX
+    SPP_AST_KEY_FUNCTIONS
 
     /**
      * The token that represents the left square bracket @code [@endcode in the array literal. This introduces the array
      * literal.
      */
-    std::unique_ptr<TokenAst> tok_l;
+    Unique<TokenAst> TokL;
 
     /**
      * The list of expressions that are the elements of the array. Each element is an AST that represents an expression.
      * They will all infer to the same type.
      */
-    std::vector<std::unique_ptr<ExpressionAst>> elems;
+    UniqueVec<ExpressionAst> Elems;
 
     /**
      * The token that represents the right square bracket @code ]@endcode in the array literal. This closes the array
      * literal.
      */
-    std::unique_ptr<TokenAst> tok_r;
+    Unique<TokenAst> TokR;
 
     /**
      * Construct the ArrayLiteralNElements with the arguments matching the members.
@@ -51,36 +53,30 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiter
      * @param[in] tok_r The token that represents the right square bracket @c ] in the array literal.
      */
     ArrayLiteralExplicitElementsAst(
-        decltype(tok_l) &&tok_l,
-        decltype(elems) &&elements,
-        decltype(tok_r) &&tok_r);
+        decltype(TokL) &&tok_l,
+        decltype(Elems) &&elements,
+        decltype(TokR) &&tok_r);
 
     ~ArrayLiteralExplicitElementsAst() override;
-
-    SPP_AST_KEY_FUNCTIONS;
 
     /**
      * Check each element for equality with the corresponding element in the other array literal. The array literals are
      * only equal if all the elements are equal. Given this is only used in compile-time contexts, each element will be
      * evaluatable to the AST.
      * @param other The other array literal to compare with.
-     * @return @code std::strong_ordering::equal@endcode if the array literals are equal, and
-     * @code std::strong_ordering::less@endcode otherwise.
+     * @return @code Ordering::equal@endcode if the array literals are equal, and
+     * @code Ordering::less@endcode otherwise.
      */
-    SPP_ATTR_NODISCARD auto equals_array_literal_explicit_elements(
-        ArrayLiteralExplicitElementsAst const &other) const
-        -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto EqualsArrayLiteralExplicitElements(ArrayLiteralExplicitElementsAst const &other) const -> Ordering override;
 
     /**
      * Reverse hook to equate against the other arguments. This will call the @c equals_array_literal_explicit_elements
      * method on the other expression, if it is an array literal with explicit elements, to check for equality.
      * @param other The other expression to compare with.
-     * @return @code std::strong_ordering::equal@endcode if the expressions are equal, and
-     * @code std::strong_ordering::less@endcode otherwise.
+     * @return @code Ordering::equal@endcode if the expressions are equal, and
+     * @code Ordering::less@endcode otherwise.
      */
-    SPP_ATTR_NODISCARD auto equals(
-        ExpressionAst const &other) const
-        -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
 
     /**
      * Semantic analysis for an array with explicit elements ensures that all elements are of the same type, and that
@@ -91,7 +87,7 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiter
      * @throw spp::analyse::errors::SppTypeMismatchError if the elements are not of the same type.
      * @throw spp::analyse::errors::SppSecondClassBorrowViolationError if any of the elements are borrowed.
      */
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
      * Check the memory state of the element being repeated (mostly to ensure that it is initialised and not just a
@@ -99,7 +95,7 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiter
      * @param sm The scope manager to use for memory checking.
      * @param meta Associated metadata.
      */
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
      * Resolve the array literal at compile time. This is only possible if all the elements are compile time resolvable
@@ -108,7 +104,7 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiter
      * @param meta Associated metadata.
      * @return The result of the compile time resolution.
      */
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
     /**
      * Create an array type based on the internal element type and the number of elements.
@@ -117,7 +113,7 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiter
      * @param ctx The LLVM context to use for code generation.
      * @return The LLVM value representing the array literal.
      */
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     /**
      * The inferred type of an array literal is always @code std::array::Arr[T, n]@endcode, where @c T is the type of
@@ -126,7 +122,7 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiter
      * @param [in,out] meta Associated metadata.
      * @return The @code std::array::Arr[T, n]@endcode type of the array literal.
      */
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };
 
 

@@ -3,29 +3,27 @@ module;
 
 module spp.asts.type_postfix_expression_operator_ast;
 
-
 SPP_MOD_BEGIN
-spp::asts::TypePostfixExpressionOperatorAst::~TypePostfixExpressionOperatorAst() = default;
+spp::asts::TypePostfixExpressionOperatorAst::TypePostfixExpressionOperatorAst() = default;
 
+spp::asts::TypePostfixExpressionOperatorAst::~TypePostfixExpressionOperatorAst() = default;
 
 auto spp::asts::TypePostfixExpressionOperatorAst::operator<=>(
     TypePostfixExpressionOperatorAst const &that) const
-    -> std::strong_ordering {
-    return equals(that);
+    -> Ordering {
+    return Equals(that);
 }
-
 
 auto spp::asts::TypePostfixExpressionOperatorAst::operator==(
     TypePostfixExpressionOperatorAst const &that) const
     -> bool {
-    return equals(that) == std::strong_ordering::equal;
+    return Equals(that) == Ordering::equal;
 }
 
-
-auto spp::asts::TypePostfixExpressionOperatorAst::equals_nested_type(
+auto spp::asts::TypePostfixExpressionOperatorAst::EqualsNestedType(
     TypePostfixExpressionOperatorNestedTypeAst const &) const
-    -> std::strong_ordering {
-    return std::strong_ordering::less;
+    -> Ordering {
+    return Ordering::less;
 }
 
 SPP_MOD_END

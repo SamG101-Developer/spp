@@ -1,17 +1,15 @@
 module spp.utils.strings;
 
-
-auto spp::utils::strings::is_alphanumeric(
+auto spp::utils::strings::IsAlNum(
     const char c)
     -> bool {
     return (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or (c >= '0' and c <= '9') or (c == '_');
 }
 
-
-auto spp::utils::strings::snake_to_pascal(
-    std::string const &str)
-    -> std::string {
-    auto out = std::string();
+auto spp::utils::strings::SnakeToPascal(
+    Str const &str)
+    -> Str {
+    auto out = Str();
     auto caps = true;
     for (auto i = 0uz; i < str.length(); ++i) {
         const auto c = str[i];
@@ -30,17 +28,16 @@ auto spp::utils::strings::snake_to_pascal(
     return out;
 }
 
-
-auto spp::utils::strings::closest_match(
-    const std::string_view query,
-    std::vector<std::string> const &choices)
-    -> std::optional<std::string> {
+auto spp::utils::strings::ClosestMatch(
+    const StrView query,
+    Vec<Str> const &choices)
+    -> std::optional<Str> {
     auto match_found = false;
     auto best_score = 0.0;
-    auto best_match = std::string();
+    auto best_match = Str();
 
     for (auto const &choice : choices) {
-        const auto score = similarity_ratio(query, choice);
+        const auto score = SimilarityRatio(query, choice);
         if (score > best_score) {
             best_score = score;
             best_match = choice;
@@ -51,16 +48,15 @@ auto spp::utils::strings::closest_match(
     return match_found ? std::make_optional(best_match) : std::nullopt;
 }
 
-
-auto spp::utils::strings::levenshtein(
-    const std::string_view s1,
-    const std::string_view s2)
+auto spp::utils::strings::Levenshtein(
+    const StrView s1,
+    const StrView s2)
     -> std::size_t {
-    const auto m = s1.size();
-    const auto n = s2.size();
+    const auto m = s1.length();
+    const auto n = s2.length();
 
-    auto prev = std::vector<std::size_t>(n + 1);
-    auto curr = std::vector<std::size_t>(n + 1);
+    auto prev = Vec<std::size_t>(n + 1);
+    auto curr = Vec<std::size_t>(n + 1);
     for (auto j = 0uz; j <= n; ++j) {
         prev[j] = j;
     }
@@ -77,27 +73,25 @@ auto spp::utils::strings::levenshtein(
     return prev[n];
 }
 
-
-auto spp::utils::strings::similarity_ratio(
-    const std::string_view s1,
-    const std::string_view s2)
+auto spp::utils::strings::SimilarityRatio(
+    const StrView s1,
+    const StrView s2)
     -> double {
-    const auto max_len = std::max(s1.size(), s2.size());
+    const auto max_len = std::max(s1.length(), s2.length());
     if (max_len == 0) { return 1.0; }
 
-    const auto distance = levenshtein(s1, s2);
+    const auto distance = Levenshtein(s1, s2);
     return 1.0 - static_cast<double>(distance) / static_cast<double>(max_len);
 }
 
-
-auto spp::utils::strings::normalize_integer_string(
-    const std::string_view s1)
+auto spp::utils::strings::NormaliseIntegerString(
+    const StrView s1)
     -> mppp::BigInt {
-    auto out = std::string();
+    auto out = Str();
     auto base = 10;
 
     auto i = 0uz;
-    if (s1.size() > 2 and s1[0] == '0') {
+    if (s1.length() > 2 and s1[0] == '0') {
         if (s1[1] == 'b') {
             base = 2;
             i = 2;
@@ -112,7 +106,7 @@ auto spp::utils::strings::normalize_integer_string(
         }
     }
 
-    for (; i < s1.size(); ++i) {
+    for (; i < s1.length(); ++i) {
         const auto c = s1[i];
         if (c == '_') { continue; }
         out.push_back(c);
@@ -121,38 +115,36 @@ auto spp::utils::strings::normalize_integer_string(
     return mppp::BigInt(out, base);
 }
 
-
-auto spp::utils::strings::normalize_float_string(
-    const std::string_view s1,
-    const std::string_view s2)
+auto spp::utils::strings::NormalizeFloatString(
+    const StrView s1,
+    const StrView s2)
     -> mppp::BigDec {
-    auto out1 = std::string();
+    auto out1 = Str();
     for (const auto c : s1) {
         if (c == '_') { continue; }
         out1.push_back(c);
     }
 
-    auto out2 = std::string();
+    auto out2 = Str();
     for (const auto c : s2) {
         if (c == '_') { continue; }
         out2.push_back(c);
     }
 
     const auto numerator = out1 + out2;
-    const auto denometer = std::string("1") + std::string(out2.size(), '0');
-    return mppp::BigDec(numerator + "/" + denometer);
+    const auto denominator = Str("1") + Str(out2.length(), '0');
+    return mppp::BigDec(numerator + "/" + denominator);
 }
 
-
-auto spp::utils::strings::expand_scientific_notation(
-    const std::string_view s1)
+auto spp::utils::strings::ExpandScientificNotation(
+    const StrView s1)
     -> mppp::BigDec {
     // Handle empty case (should never throw).
     if (s1.empty()) { return mppp::BigDec("0"); }
 
     // Extract and strip the sign.
-    auto s = std::string(s1);
-    auto sign = std::string();
+    auto s = Str(s1);
+    auto sign = Str();
     if (s.front() == '-' or s.front() == '+') {
         sign = s.front();
         s.erase(0, 1);
@@ -161,10 +153,10 @@ auto spp::utils::strings::expand_scientific_notation(
     // Find the exponent marker ('e').
     const auto e_pos = s.find_first_of('e');
 
-    auto mantissa = std::string();
+    auto mantissa = Str();
     auto exponent = 0uz;
 
-    if (e_pos == std::string::npos) {
+    if (e_pos == Str::npos) {
         // No exponent — treat as plain decimal.
         mantissa = s;
     }
@@ -175,21 +167,21 @@ auto spp::utils::strings::expand_scientific_notation(
 
     // Split mantissa into integer and fractional parts.
     const auto dot_pos = mantissa.find('.');
-    auto int_part = std::string();
-    auto frac_part = std::string();
-    if (dot_pos == std::string::npos) {
-        int_part  = mantissa;
+    auto int_part = Str();
+    auto frac_part = Str();
+    if (dot_pos == Str::npos) {
+        int_part = mantissa;
         frac_part = "";
     }
     else {
-        int_part  = mantissa.substr(0, dot_pos);
+        int_part = mantissa.substr(0, dot_pos);
         frac_part = mantissa.substr(dot_pos + 1);
     }
 
     auto digits = int_part + frac_part;
-    auto dot_after = int_part.size();
+    auto dot_after = int_part.length();
     dot_after += exponent;
-    auto result = std::string();
+    auto result = Str();
 
     if (dot_after <= 0) {
         // All digits are to the right of the decimal point; need leading zeros.
@@ -197,14 +189,14 @@ auto spp::utils::strings::expand_scientific_notation(
         result.append(-dot_after, '0');
         result += digits;
     }
-    else if (dot_after >= digits.size()) {
+    else if (dot_after >= digits.length()) {
         // Decimal point is beyond all digits; pad with trailing zeros.
         result = digits;
-        result.append(dot_after - digits.size(), '0');
+        result.append(dot_after - digits.length(), '0');
     }
     else {
         // Decimal point sits within the digit string.
-        result  = digits.substr(0, dot_after);
+        result = digits.substr(0, dot_after);
         result += '.';
         result += digits.substr(dot_after);
     }
@@ -212,7 +204,7 @@ auto spp::utils::strings::expand_scientific_notation(
     // Strip redundant leading zeros (but keep at least one digit before the dot).
     {
         const auto first_nonzero = result.find_first_not_of('0');
-        if (first_nonzero == std::string::npos) {
+        if (first_nonzero == Str::npos) {
             result = "0";
         }
         else if (result[first_nonzero] == '.') {
@@ -224,7 +216,7 @@ auto spp::utils::strings::expand_scientific_notation(
     }
 
     // Strip redundant trailing zeros after a decimal point.
-    if (result.find('.') != std::string::npos) {
+    if (result.find('.') != Str::npos) {
         const auto last_nonzero = result.find_last_not_of('0');
         if (result[last_nonzero] == '.') {
             result = result.substr(0, last_nonzero);

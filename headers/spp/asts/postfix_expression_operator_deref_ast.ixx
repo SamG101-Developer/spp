@@ -4,6 +4,7 @@ module;
 export module spp.asts.postfix_expression_operator_deref_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -18,24 +19,24 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorDerefAst final : PostfixE
     /**
      * The @c * token that indicates a dereference operation. This is used to extract a copyable value from a borrow.
      */
-    std::unique_ptr<TokenAst> tok_deref;
+    Unique<TokenAst> TokDeref;
 
     /**
      * Construct the PostfixExpressionOperatorDerefAst with the arguments matching the members.
      * @param tok_deref The @c * token that indicates a dereference operation.
      */
     explicit PostfixExpressionOperatorDerefAst(
-        decltype(tok_deref) &&tok_deref);
+        decltype(TokDeref) &&tok_deref);
 
     ~PostfixExpressionOperatorDerefAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };

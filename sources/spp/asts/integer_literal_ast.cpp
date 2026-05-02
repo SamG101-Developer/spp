@@ -16,12 +16,12 @@ import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.strings;
+import ankerl.unordered_dense;
 import llvm;
 import mppp;
 
-
 SPP_MOD_BEGIN
-const auto INTEGER_TYPE_MIN_MAX = std::map<std::string, std::pair<mppp::BigInt, mppp::BigInt>>{
+const auto INTEGER_TYPE_MIN_MAX = ankerl::unordered_dense::map<spp::Str, spp::Pair<mppp::BigInt, mppp::BigInt>>{
     {"s8", {
         mppp::BigInt("-128"),
         mppp::BigInt("127")}},
@@ -66,194 +66,159 @@ const auto INTEGER_TYPE_MIN_MAX = std::map<std::string, std::pair<mppp::BigInt, 
         mppp::BigInt("115792089237316195423570985008687907853269984665640564039457584007913129639935")}}
 };
 
-
 spp::asts::IntegerLiteralAst::IntegerLiteralAst(
-    decltype(tok_sign) &&tok_sign,
-    decltype(val) &&val,
-    std::string &&type) :
-    LiteralAst(),
-    tok_sign(std::move(tok_sign)),
-    val(std::move(val)),
-    type(std::move(type)) {}
-
+    decltype(TokSign) &&tok_sign,
+    decltype(Val) &&val,
+    Str &&type) :
+    TokSign(std::move(tok_sign)),
+    Val(std::move(val)),
+    Type(std::move(type)) {}
 
 spp::asts::IntegerLiteralAst::~IntegerLiteralAst() = default;
 
-
-auto spp::asts::IntegerLiteralAst::equals_integer_literal(
+auto spp::asts::IntegerLiteralAst::EqualsIntegerLiteral(
     IntegerLiteralAst const &other) const
-    -> std::strong_ordering {
+    -> Ordering {
     if (
-        ((not tok_sign and not other.tok_sign) or (tok_sign and other.tok_sign and *tok_sign == *other.tok_sign))
-        and val->token_data == other.val->token_data
-        and type == other.type) {
-        return std::strong_ordering::equal;
+        ((not TokSign and not other.TokSign) or (TokSign and other.TokSign and *TokSign == *other.TokSign))
+        and Val->TokenData == other.Val->TokenData
+        and Type == other.Type) {
+        return Ordering::equal;
     }
-    return std::strong_ordering::less;
+    return Ordering::less;
 }
 
-
-auto spp::asts::IntegerLiteralAst::equals(
+auto spp::asts::IntegerLiteralAst::Equals(
     ExpressionAst const &other) const
-    -> std::strong_ordering {
-    return other.equals_integer_literal(*this);
+    -> Ordering {
+    return other.EqualsIntegerLiteral(*this);
 }
 
-
-auto spp::asts::IntegerLiteralAst::pos_start() const
+auto spp::asts::IntegerLiteralAst::PosStart() const
     -> std::size_t {
-    return tok_sign ? tok_sign->pos_start() : val->pos_start();
+    return TokSign ? TokSign->PosStart() : Val->PosStart();
 }
 
-
-auto spp::asts::IntegerLiteralAst::pos_end() const
+auto spp::asts::IntegerLiteralAst::PosEnd() const
     -> std::size_t {
-    return val->pos_end();
+    return Val->PosEnd();
 }
 
-
-auto spp::asts::IntegerLiteralAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<IntegerLiteralAst>(
-        ast_clone(tok_sign),
-        ast_clone(val),
-        type.c_str());
+auto spp::asts::IntegerLiteralAst::Clone() const
+    -> Unique<Ast> {
+    return MakeUnique<IntegerLiteralAst>(
+        AstClone(TokSign),
+        AstClone(Val),
+        Type.c_str());
 }
 
-
-spp::asts::IntegerLiteralAst::operator std::string() const {
+auto spp::asts::IntegerLiteralAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_sign);
-    SPP_STRING_APPEND(val);
-    raw_string.append("_").append(type);
+    SPP_STRING_APPEND(TokSign);
+    SPP_STRING_APPEND(Val);
+    raw_string.append("_").append(Type);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::IntegerLiteralAst::stage_7_analyse_semantics(
+auto spp::asts::IntegerLiteralAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *)
     -> void {
+    //
+    using spp::utils::strings::NormaliseIntegerString;
+    using analyse::errors::SppIntegerOutOfBoundsError;
+
     // Get the lower and upper bounds as big ints.
-    type = type.empty() ? "s32" : type;
-    auto const &[lower, upper] = INTEGER_TYPE_MIN_MAX.at(type);
-    auto mapped_val = spp::utils::strings::normalize_integer_string(val->token_data);
-    if (tok_sign != nullptr and tok_sign->token_type == lex::SppTokenType::TK_SUB) {
+    Type = Type.empty() ? "s32" : Type;
+    auto const &[lower, upper] = INTEGER_TYPE_MIN_MAX.at(Type);
+    auto mapped_val = NormaliseIntegerString(Val->TokenData);
+    if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
         mapped_val = mapped_val.neg();
     }
 
     // Check if the value is within the bounds.
-    raise_if<analyse::errors::SppIntegerOutOfBoundsError>(
+    RaiseIf<SppIntegerOutOfBoundsError>(
         mapped_val < lower or mapped_val > upper,
-        {sm->current_scope}, ERR_ARGS(*this, mapped_val, lower, upper, "int"));
+        {sm->CurrentScope}, ERR_ARGS(*this, mapped_val, lower, upper, "int"));
 }
 
-
-auto spp::asts::IntegerLiteralAst::stage_9_comptime_resolution(
+auto spp::asts::IntegerLiteralAst::Stage9_CompTimeResolve(
     ScopeManager *,
     CompilerMetaData *meta)
     -> void {
     // Clone and return the float literal as is for compile-time resolution.
-    meta->cmp_result = ast_clone(this);
+    meta->CmpResult = AstClone(this);
 }
 
-
-auto spp::asts::IntegerLiteralAst::stage_11_code_gen_2(
+auto spp::asts::IntegerLiteralAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Get the type of the integer literal.
-    const auto type_ast = infer_type(sm, meta);
-    const auto type_sym = sm->current_scope->get_type_symbol(type_ast);
+    const auto type_ast = InferType(sm, meta);
+    const auto type_sym = sm->CurrentScope->GetTypeSymbol(type_ast);
     const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
 
     // Create the LLVM constant integer value.
     const auto bit_width = llvm_type->getIntegerBitWidth();
-    const auto ap_int = llvm::APInt(bit_width, val->token_data, 10);
-    return llvm::ConstantInt::get(*ctx->context, ap_int);
+    const auto ap_int = llvm::APInt(bit_width, Val->TokenData, 10);
+    return llvm::ConstantInt::get(*ctx->Context, ap_int);
 }
 
-
-auto spp::asts::IntegerLiteralAst::infer_type(
+auto spp::asts::IntegerLiteralAst::InferType(
     ScopeManager *sm,
     CompilerMetaData *)
-    -> std::shared_ptr<TypeAst> {
+    -> Shared<TypeAst> {
+    //
+    using namespace generate::common_types;
+    using analyse::errors::SppInternalCompilerError;
+
     // Map the type string literal to the correct SPP type.
-    auto spp_type = std::shared_ptr<TypeAst>(nullptr);
-    if (type.empty()) {
-        spp_type = generate::common_types::s32(pos_start());
-    }
-    else if (type == "s8") {
-        spp_type = generate::common_types::s8(pos_start());
-    }
-    else if (type == "s16") {
-        spp_type = generate::common_types::s16(pos_start());
-    }
-    else if (type == "s32") {
-        spp_type = generate::common_types::s32(pos_start());
-    }
-    else if (type == "s64") {
-        spp_type = generate::common_types::s64(pos_start());
-    }
-    else if (type == "s128") {
-        spp_type = generate::common_types::s128(pos_start());
-    }
-    else if (type == "s256") {
-        spp_type = generate::common_types::s256(pos_start());
-    }
-    else if (type == "sz") {
-        spp_type = generate::common_types::ssize(pos_start());
-    }
-    else if (type == "u8") {
-        spp_type = generate::common_types::u8(pos_start());
-    }
-    else if (type == "u16") {
-        spp_type = generate::common_types::u16(pos_start());
-    }
-    else if (type == "u32") {
-        spp_type = generate::common_types::u32(pos_start());
-    }
-    else if (type == "u64") {
-        spp_type = generate::common_types::u64(pos_start());
-    }
-    else if (type == "u128") {
-        spp_type = generate::common_types::u128(pos_start());
-    }
-    else if (type == "u256") {
-        spp_type = generate::common_types::u256(pos_start());
-    }
-    else if (type == "uz") {
-        spp_type = generate::common_types::usize(pos_start());
-    }
+    auto spp_type = Shared<TypeAst>(nullptr);
+    const auto p = PosStart();
+    if (Type.empty()) { spp_type = S32(p); }
+    else if (Type == "s8") { spp_type = S8(p); }
+    else if (Type == "s16") { spp_type = S16(p); }
+    else if (Type == "s32") { spp_type = S32(p); }
+    else if (Type == "s64") { spp_type = S64(p); }
+    else if (Type == "s128") { spp_type = S128(p); }
+    else if (Type == "s256") { spp_type = S256(p); }
+    else if (Type == "sz") { spp_type = SSize(p); }
+    else if (Type == "u8") { spp_type = U8(p); }
+    else if (Type == "u16") { spp_type = U16(p); }
+    else if (Type == "u32") { spp_type = U32(p); }
+    else if (Type == "u64") { spp_type = U64(p); }
+    else if (Type == "u128") { spp_type = U128(p); }
+    else if (Type == "u256") { spp_type = U256(p); }
+    else if (Type == "uz") { spp_type = USize(p); }
     else {
-        raise<analyse::errors::SppInternalCompilerError>(
-            {sm->current_scope},
+        Raise<SppInternalCompilerError>(
+            {sm->CurrentScope},
             ERR_ARGS(*this, "invalid integer literal type"));
     }
 
-    const auto sym = sm->current_scope->get_type_symbol(spp_type);
-    return sym->fq_name();
+    const auto sym = sm->CurrentScope->GetTypeSymbol(spp_type);
+    return sym->FqName();
 }
 
-
 template <typename T> requires std::integral<T>
-auto spp::asts::IntegerLiteralAst::cpp_value() const -> T {
-    const auto raw_str = val->to_string();
-    const auto signed_str = tok_sign != nullptr ? "-" + raw_str : raw_str;
+auto spp::asts::IntegerLiteralAst::CppVal() const -> T {
+    const auto raw_str = Val->ToString();
+    const auto signed_str = TokSign != nullptr ? "-" + raw_str : raw_str;
     if constexpr (std::is_unsigned_v<T>) { return static_cast<T>(std::stoull(signed_str)); }
     else { return static_cast<T>(std::stoll(signed_str)); }
 }
 
-
-// Manual instantiation of cpp_value function
-template auto spp::asts::IntegerLiteralAst::cpp_value<std::int8_t>() const -> std::int8_t;
-template auto spp::asts::IntegerLiteralAst::cpp_value<std::int16_t>() const -> std::int16_t;
-template auto spp::asts::IntegerLiteralAst::cpp_value<std::int32_t>() const -> std::int32_t;
-template auto spp::asts::IntegerLiteralAst::cpp_value<std::int64_t>() const -> std::int64_t;
-template auto spp::asts::IntegerLiteralAst::cpp_value<std::uint8_t>() const -> std::uint8_t;
-template auto spp::asts::IntegerLiteralAst::cpp_value<std::uint16_t>() const -> std::uint16_t;
-template auto spp::asts::IntegerLiteralAst::cpp_value<std::uint32_t>() const -> std::uint32_t;
-template auto spp::asts::IntegerLiteralAst::cpp_value<std::uint64_t>() const -> std::uint64_t;
+// Manual instantiation of.CppVal function
+template auto spp::asts::IntegerLiteralAst::CppVal<std::int8_t>() const -> std::int8_t;
+template auto spp::asts::IntegerLiteralAst::CppVal<std::int16_t>() const -> std::int16_t;
+template auto spp::asts::IntegerLiteralAst::CppVal<std::int32_t>() const -> std::int32_t;
+template auto spp::asts::IntegerLiteralAst::CppVal<std::int64_t>() const -> std::int64_t;
+template auto spp::asts::IntegerLiteralAst::CppVal<std::uint8_t>() const -> std::uint8_t;
+template auto spp::asts::IntegerLiteralAst::CppVal<std::uint16_t>() const -> std::uint16_t;
+template auto spp::asts::IntegerLiteralAst::CppVal<std::uint32_t>() const -> std::uint32_t;
+template auto spp::asts::IntegerLiteralAst::CppVal<std::uint64_t>() const -> std::uint64_t;
 
 SPP_MOD_END

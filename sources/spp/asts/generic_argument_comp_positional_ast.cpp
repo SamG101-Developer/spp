@@ -6,6 +6,7 @@ module spp.asts.generic_argument_comp_positional_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
@@ -14,79 +15,80 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
-
 SPP_MOD_BEGIN
 spp::asts::GenericArgumentCompPositionalAst::GenericArgumentCompPositionalAst(
-    decltype(val) &&val) :
+    decltype(Val) &&val) :
     GenericArgumentCompAst(std::move(val), utils::OrderableTag::POSITIONAL_ARG) {
 }
 
-
 spp::asts::GenericArgumentCompPositionalAst::~GenericArgumentCompPositionalAst() = default;
 
-
-auto spp::asts::GenericArgumentCompPositionalAst::equals_generic_argument_comp_positional(
+auto spp::asts::GenericArgumentCompPositionalAst::EqualsGenericArgumentCompPositional(
     GenericArgumentCompPositionalAst const &other) const
-    -> std::strong_ordering {
+    -> Ordering {
     // Equality is based on the value of the argument.
-    return *val == *other.val
-        ? std::strong_ordering::equal
-        : std::strong_ordering::less;
+    return *Val == *other.Val ? Ordering::equal : Ordering::less;
 }
 
-
-auto spp::asts::GenericArgumentCompPositionalAst::equals(
+auto spp::asts::GenericArgumentCompPositionalAst::Equals(
     GenericArgumentAst const &other) const
-    -> std::strong_ordering {
-    // Reverse hook.
-    return other.equals_generic_argument_comp_positional(*this);
+    -> Ordering {
+    // Reverse hook (double dispatch).
+    return other.EqualsGenericArgumentCompPositional(*this);
 }
 
-
-auto spp::asts::GenericArgumentCompPositionalAst::pos_start() const
+auto spp::asts::GenericArgumentCompPositionalAst::PosStart() const
     -> std::size_t {
-    return val->pos_start();
+    // Use the value.
+    return Val->PosStart();
 }
 
-
-auto spp::asts::GenericArgumentCompPositionalAst::pos_end() const
+auto spp::asts::GenericArgumentCompPositionalAst::PosEnd() const
     -> std::size_t {
-    return val->pos_end();
+    // Use the value.
+    return Val->PosEnd();
 }
 
-
-auto spp::asts::GenericArgumentCompPositionalAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<GenericArgumentCompPositionalAst>(
-        ast_clone(val));
+auto spp::asts::GenericArgumentCompPositionalAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<GenericArgumentCompPositionalAst>(
+        AstClone(Val));
 }
 
-
-spp::asts::GenericArgumentCompPositionalAst::operator std::string() const {
+auto spp::asts::GenericArgumentCompPositionalAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(val);
+    SPP_STRING_APPEND(Val);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::GenericArgumentCompPositionalAst::stage_7_analyse_semantics(
+auto spp::asts::GenericArgumentCompPositionalAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+
     // Analyse the value.
-    SPP_ENFORCE_EXPRESSION_SUBTYPE(val.get());
-    val->stage_7_analyse_semantics(sm, meta);
+    RaiseIf<SppExpressionTypeInvalidError>(
+        not IsPrimaryExprTypeValid(*Val),
+        {sm->CurrentScope}, ERR_ARGS(*Val.get()));
+    Val->Stage7_AnalyseSemantics(sm, meta);
 }
 
-
-auto spp::asts::GenericArgumentCompPositionalAst::stage_8_check_memory(
+auto spp::asts::GenericArgumentCompPositionalAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::utils::mem_utils::ValidateSymbolMemory;
+
     // Ensure the argument isn't moved or partially moved (for all conventions)
-    val->stage_8_check_memory(sm, meta);
-    analyse::utils::mem_utils::validate_symbol_memory(
-        *val, *val, *sm, true, true, true, true, true, meta);
+    Val->Stage8_CheckMemory(sm, meta);
+    ValidateSymbolMemory(
+        *Val, *Val, *sm, true, true, true, true, true, meta);
 }
 
 SPP_MOD_END

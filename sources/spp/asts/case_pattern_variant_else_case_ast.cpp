@@ -11,77 +11,71 @@ import spp.asts.utils.ast_utils;
 
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantElseCaseAst::CasePatternVariantElseCaseAst(
-    decltype(tok_else) &&tok_else,
-    decltype(case_expr) &&case_expr) :
-    tok_else(std::move(tok_else)),
-    case_expr(std::move(case_expr)) {
+    decltype(TokElse) &&tok_else,
+    decltype(CaseExpr) &&case_expr) :
+    TokElse(std::move(tok_else)),
+    CaseExpr(std::move(case_expr)) {
 }
-
 
 spp::asts::CasePatternVariantElseCaseAst::~CasePatternVariantElseCaseAst() = default;
 
-
-auto spp::asts::CasePatternVariantElseCaseAst::pos_start() const
+auto spp::asts::CasePatternVariantElseCaseAst::PosStart() const
     -> std::size_t {
-    return tok_else->pos_start();
+    // Use the "else" token.
+    return TokElse->PosStart();
 }
 
-
-auto spp::asts::CasePatternVariantElseCaseAst::pos_end() const
+auto spp::asts::CasePatternVariantElseCaseAst::PosEnd() const
     -> std::size_t {
-    return case_expr->pos_end();
+    // Use the [case expression]'s condition.
+    return CaseExpr->Cond->PosEnd();
 }
 
-
-auto spp::asts::CasePatternVariantElseCaseAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<CasePatternVariantElseCaseAst>(
-        ast_clone(tok_else),
-        ast_clone(case_expr));
+auto spp::asts::CasePatternVariantElseCaseAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<CasePatternVariantElseCaseAst>(
+        AstClone(TokElse), AstClone(CaseExpr));
 }
 
-
-spp::asts::CasePatternVariantElseCaseAst::operator std::string() const {
+auto spp::asts::CasePatternVariantElseCaseAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_else);
-    SPP_STRING_APPEND(case_expr);
+    SPP_STRING_APPEND(TokElse);
+    SPP_STRING_APPEND(CaseExpr);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::CasePatternVariantElseCaseAst::stage_7_analyse_semantics(
+auto spp::asts::CasePatternVariantElseCaseAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Forward analysis into the case expression.
-    case_expr->stage_7_analyse_semantics(sm, meta);
+    CaseExpr->Stage7_AnalyseSemantics(sm, meta);
 }
 
-
-auto spp::asts::CasePatternVariantElseCaseAst::stage_8_check_memory(
+auto spp::asts::CasePatternVariantElseCaseAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Forward memory checks into the case expression.
-    case_expr->stage_8_check_memory(sm, meta);
+    CaseExpr->Stage8_CheckMemory(sm, meta);
 }
 
-
-auto spp::asts::CasePatternVariantElseCaseAst::stage_9_comptime_resolution(
+auto spp::asts::CasePatternVariantElseCaseAst::Stage9_CompTimeResolve(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Get the comptime result from the case expression.
-    case_expr->stage_9_comptime_resolution(sm, meta);
+    CaseExpr->Stage9_CompTimeResolve(sm, meta);
 }
 
-
-auto spp::asts::CasePatternVariantElseCaseAst::stage_11_code_gen_2(
+auto spp::asts::CasePatternVariantElseCaseAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx) -> llvm::Value* {
     // Delegate code generation to the case expression.
-    return case_expr->stage_11_code_gen_2(sm, meta, ctx);
+    return CaseExpr->Stage11_CodeGen(sm, meta, ctx);
 }
 
 SPP_MOD_END

@@ -3,6 +3,7 @@ module;
 
 export module spp.utils.error_formatter;
 import spp.lex.tokens;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -15,19 +16,20 @@ namespace spp::utils::errors {
 
 
 SPP_EXP_CLS class spp::utils::errors::ErrorFormatter {
-    std::vector<lex::RawToken> m_tokens;
-    std::string m_file_path;
-
 public:
-    ErrorFormatter(std::vector<lex::RawToken> tokens, std::string file_path);
+    ErrorFormatter(Vec<lex::RawToken> tokens, Str file_path);
 
-    auto internal_parse_error_raw_pos(std::size_t ast_start_pos, std::size_t ast_size, std::string &&tag_message) -> std::tuple<std::string, std::string, std::string, std::string, std::string>;
+    auto InternalParseErrorRawPos(std::size_t ast_start_pos, std::size_t ast_size, Str &&tag_message) -> std::tuple<Str, Str, Str, Str, Str>;
 
-    auto error_raw_pos(std::size_t ast_start_pos, std::size_t ast_size, std::string &&message, std::string &&tag_message) -> std::string;
+    auto ErrorRawPos(std::size_t ast_start_pos, std::size_t ast_size, Str &&message, Str &&tag_message) -> Str;
 
-    auto error_raw_pow_minimal(std::size_t ast_start_pos, std::size_t ast_size, std::string &&tag_message) -> std::string;
+    auto ErrorRawPosMinimal(std::size_t ast_start_pos, std::size_t ast_size, Str &&tag_message) -> Str;
 
-    auto error_ast(asts::Ast const *ast, std::string &&message, std::string &&tag_message) -> std::string;
+    auto ErrorAst(asts::Ast const *ast, Str &&message, Str &&tag_message) -> Str;
 
-    auto error_ast_minimal(asts::Ast const *ast, std::string &&tag_message) -> std::string;
+    auto ErrorAstMinimal(asts::Ast const *ast, Str &&tag_message) -> Str;
+
+private:
+    Vec<lex::RawToken> _Tokens;
+    Str _FilePath;
 };

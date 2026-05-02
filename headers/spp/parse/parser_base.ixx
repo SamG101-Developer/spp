@@ -4,6 +4,7 @@ module;
 export module spp.parse.parser_base;
 import spp.lex.tokens;
 import spp.utils.error_formatter;
+import spp.utils.types;
 import std;
 
 namespace spp::parse::errors {
@@ -19,18 +20,18 @@ namespace spp::parse {
 
 SPP_EXP_CLS class spp::parse::ParserBase {
 public:
-    explicit ParserBase(std::vector<lex::RawToken> tokens, std::shared_ptr<utils::errors::ErrorFormatter> const &error_formatter = nullptr);
+    explicit ParserBase(Vec<lex::RawToken> tokens, Shared<utils::errors::ErrorFormatter> const &error_formatter = nullptr);
     virtual ~ParserBase();
 
 protected:
-    std::size_t m_pos = 0;
-    std::vector<lex::RawToken> m_tokens = {};
-    std::size_t m_tokens_len = 0;
-    std::unique_ptr<errors::SyntacticErrorBuilder<errors::SppSyntaxError>> m_error_builder;
-    std::shared_ptr<utils::errors::ErrorFormatter> m_error_formatter;
+    std::size_t _Pos = 0uz;
+    Vec<lex::RawToken> _Tokens = {};
+    std::size_t _TokensLen = 0uz;
+    Unique<errors::SyntacticErrorBuilder<errors::SppSyntaxError>> _ErrorBuilder;
+    Shared<utils::errors::ErrorFormatter> _ErrorFormatter;
 
     template <typename T>
-    using parser_method_t = std::function<std::unique_ptr<T>()>;
+    using parser_method_t = std::function<Unique<T>()>;
 
     template <typename T>
     using parser_method_alt_t = std::function<T()>;

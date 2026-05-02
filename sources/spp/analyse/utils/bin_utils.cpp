@@ -1,6 +1,7 @@
 module spp.analyse.utils.bin_utils;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.asts.ast;
 import spp.asts.binary_expression_ast;
 import spp.asts.case_expression_ast;
@@ -22,102 +23,101 @@ import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
+import spp.asts.type_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.utils.uid;
 import genex;
 
-
-auto spp::analyse::utils::bin_utils::combine_comp_ops(
+auto spp::analyse::utils::bin_utils::CombineCompOps(
     asts::BinaryExpressionAst &bin_expr,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
-    -> std::unique_ptr<asts::BinaryExpressionAst> {
+    -> Unique<asts::BinaryExpressionAst> {
     // Check the left-hand-side is a binary expression with a comparison operator.
-    const auto bin_lhs = bin_expr.lhs->to<asts::BinaryExpressionAst>();
+    const auto bin_lhs = bin_expr.Lhs->To<asts::BinaryExpressionAst>();
     if (
         bin_lhs == nullptr or
-        not genex::contains(BIN_COMPARISON_OPS, bin_expr.tok_op->token_type) or
-        not genex::contains(BIN_COMPARISON_OPS, bin_lhs->tok_op->token_type)) {
-        return std::make_unique<asts::BinaryExpressionAst>(
-            std::move(bin_expr.lhs),
-            std::move(bin_expr.tok_op),
-            std::move(bin_expr.rhs));
+        not genex::contains(kBinComparisonOps, bin_expr.TokOp->TokenType) or
+        not genex::contains(kBinComparisonOps, bin_lhs->TokOp->TokenType)) {
+        return MakeUnique<asts::BinaryExpressionAst>(
+            std::move(bin_expr.Lhs),
+            std::move(bin_expr.TokOp),
+            std::move(bin_expr.Rhs));
     }
 
     // Non-symbolic value being re-used -> put it into a variable first.
-    if (sm->current_scope->get_var_symbol_outermost(*bin_lhs->rhs).first == nullptr) {
+    if (sm->CurrentScope->GetVarSymbolOutermost(*bin_lhs->Rhs).First == nullptr) {
         const auto temp_var_name = ( {
-            const auto uid = spp::utils::generate_uid(bin_lhs->rhs.get());
-            std::make_shared<asts::IdentifierAst>(bin_lhs->rhs->pos_start(), uid);
+            const auto uid = spp::utils::Uid(bin_lhs->Rhs.get());
+            MakeShared<asts::IdentifierAst>(bin_lhs->Rhs->PosStart(), uid);
         });
 
         const auto temp_let = ( {
-            auto var = std::make_unique<asts::LocalVariableSingleIdentifierAst>(nullptr, temp_var_name, nullptr);
-            std::make_unique<asts::LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, std::move(bin_lhs->rhs));
+            auto var = MakeUnique<asts::LocalVariableSingleIdentifierAst>(nullptr, temp_var_name, nullptr);
+            MakeUnique<asts::LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, std::move(bin_lhs->Rhs));
         });
 
-        temp_let->stage_7_analyse_semantics(sm, meta);
-        bin_lhs->rhs = asts::ast_clone(temp_var_name);
+        temp_let->Stage7_AnalyseSemantics(sm, meta);
+        bin_lhs->Rhs = asts::AstClone(temp_var_name);
     }
 
     // Otherwise, re-arrange the ASTs, with an "and" combinator binary expression.
-    auto lhs = asts::ast_clone(bin_lhs->rhs);
-    auto rhs = std::move(bin_expr.rhs);
-    auto op_pos = bin_expr.tok_op->pos_start();
-    bin_expr.rhs = std::make_unique<asts::BinaryExpressionAst>(std::move(lhs), std::move(bin_expr.tok_op), std::move(rhs));
-    bin_expr.tok_op = std::make_unique<asts::TokenAst>(op_pos, lex::SppTokenType::KW_AND, "and");
+    auto lhs = asts::AstClone(bin_lhs->Rhs);
+    auto rhs = std::move(bin_expr.Rhs);
+    auto op_pos = bin_expr.TokOp->PosStart();
+    bin_expr.Rhs = MakeUnique<asts::BinaryExpressionAst>(std::move(lhs), std::move(bin_expr.TokOp), std::move(rhs));
+    bin_expr.TokOp = MakeUnique<asts::TokenAst>(op_pos, lex::SppTokenType::KW_AND, "and");
 
-    return combine_comp_ops(bin_expr, sm, meta);
+    return CombineCompOps(bin_expr, sm, meta);
 }
 
-
-auto spp::analyse::utils::bin_utils::convert_bin_expr_to_function_call(
+auto spp::analyse::utils::bin_utils::ConvertBinExprToFuncCall(
     asts::BinaryExpressionAst &bin_expr,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
-    -> std::unique_ptr<asts::PostfixExpressionAst> {
+    -> Unique<asts::PostfixExpressionAst> {
     // Call other utility methods that may modify the binary expression AST.
-    auto new_bin_expr = combine_comp_ops(bin_expr, sm, meta);
+    const auto new_bin_expr = CombineCompOps(bin_expr, sm, meta);
 
     // Get the method names based on the operator token.
-    auto method_name = BIN_METHODS.at(new_bin_expr->tok_op->token_type);
-    auto method_name_wrapped = std::make_unique<asts::IdentifierAst>(
-        new_bin_expr->tok_op->pos_start(), std::move(method_name));
+    auto method_name = kBinMethods.at(new_bin_expr->TokOp->TokenType);
+    auto method_name_wrapped = MakeShared<asts::IdentifierAst>(
+        new_bin_expr->TokOp->PosStart(), std::move(method_name));
 
     // Construct the function call AST.
-    auto field = std::make_unique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(method_name_wrapped));
-    auto field_access = std::make_unique<asts::PostfixExpressionAst>(std::move(new_bin_expr->lhs), std::move(field));
-    auto fn_call = std::make_unique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
+    auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(method_name_wrapped));
+    auto field_access = MakeUnique<asts::PostfixExpressionAst>(std::move(new_bin_expr->Lhs), std::move(field));
+    auto fn_call = MakeUnique<asts::PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
 
     // Set the arguments for the function call, and return the AST.
-    auto conv = genex::contains(BIN_COMPARISON_OPS, new_bin_expr->tok_op->token_type)
-        ? std::make_unique<asts::ConventionRefAst>(nullptr)
+    auto conv = genex::contains(kBinComparisonOps, new_bin_expr->TokOp->TokenType)
+        ? MakeUnique<asts::ConventionRefAst>(nullptr)
         : nullptr;
-    auto arg = std::make_unique<asts::FunctionCallArgumentPositionalAst>(std::move(conv), nullptr, std::move(new_bin_expr->rhs));
-    fn_call->arg_group->args.emplace_back(std::move(arg));
-    auto new_ast = std::make_unique<asts::PostfixExpressionAst>(std::move(field_access), std::move(fn_call));
+    auto arg = MakeUnique<asts::FunctionCallArgumentPositionalAst>(std::move(conv), nullptr, std::move(new_bin_expr->Rhs));
+    fn_call->FnArgGroup->Args.EmplaceBack(std::move(arg));
+    auto new_ast = MakeUnique<asts::PostfixExpressionAst>(std::move(field_access), std::move(fn_call));
     return new_ast;
 }
 
-
-auto spp::analyse::utils::bin_utils::convert_is_expr_to_function_call(
+auto spp::analyse::utils::bin_utils::ConvertIsExprToFuncCall(
     asts::IsExpressionAst &is_expr,
     scopes::ScopeManager *,
     asts::meta::CompilerMetaData *)
-    -> std::unique_ptr<asts::CaseExpressionAst> {
+    -> Unique<asts::CaseExpressionAst> {
     // Construct the expression-pattern based on the right-hand-side of the "x is Type".
-    auto pattern = std::move(is_expr.rhs);
-    auto patterns = std::vector<std::unique_ptr<asts::CasePatternVariantAst>>();
-    patterns.emplace_back(std::move(pattern));
+    auto pattern = std::move(is_expr.Rhs);
+    auto patterns = Vec<Unique<asts::CasePatternVariantAst>>();
+    patterns.EmplaceBack(std::move(pattern));
 
     // Construct the case expression branch that contains the pattern.
-    auto branch = std::make_unique<asts::CaseExpressionBranchAst>(
-        std::move(is_expr.tok_op), std::move(patterns), nullptr, nullptr);
-    auto branches = std::vector<std::unique_ptr<asts::CaseExpressionBranchAst>>();
-    branches.emplace_back(std::move(branch));
+    auto branch = MakeUnique<asts::CaseExpressionBranchAst>(
+        std::move(is_expr.TokOp), std::move(patterns), nullptr, nullptr);
+    auto branches = Vec<Unique<asts::CaseExpressionBranchAst>>();
+    branches.EmplaceBack(std::move(branch));
 
     // Construct and return the case expression AST.
-    auto case_expr = std::make_unique<asts::CaseExpressionAst>(
-        nullptr, std::move(is_expr.lhs), nullptr, std::move(branches));
+    auto case_expr = MakeUnique<asts::CaseExpressionAst>(
+        nullptr, std::move(is_expr.Lhs), nullptr, std::move(branches));
     return case_expr;
 }

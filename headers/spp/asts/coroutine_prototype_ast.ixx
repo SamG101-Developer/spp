@@ -4,6 +4,7 @@ module;
 export module spp.asts.coroutine_prototype_ast;
 import spp.asts.function_prototype_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -21,22 +22,22 @@ SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst
      * The generator environment that this coroutine yields into, using the GenExpressionAst nodes. This is only set for
      * coroutine prototypes.
      */
-    llvm::Value *llvm_gen_env;
+    llvm::Value *LlvmGenEnv;
 
-    llvm::Value *llvm_coro_yield_slot;
+    llvm::Value *LlvmCoroYieldSlot;
 
-    llvm::StructType *llvm_coro_env_type;
+    llvm::StructType *LlvmCoroEnvType;
 
     using FunctionPrototypeAst::FunctionPrototypeAst;
 
     ~CoroutinePrototypeAst() override;
 
-    SPP_ATTR_NODISCARD auto clone() const -> std::unique_ptr<Ast> override;
+    SPP_ATTR_NODISCARD auto Clone() const -> Unique<Ast> override;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
 private:
-    llvm::Function *m_llvm_resume_fn;
+    llvm::Function *_LlvmResumeFunc;
 };

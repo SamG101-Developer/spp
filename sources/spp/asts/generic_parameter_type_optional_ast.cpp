@@ -16,78 +16,71 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
-
 SPP_MOD_BEGIN
 spp::asts::GenericParameterTypeOptionalAst::GenericParameterTypeOptionalAst(
-    decltype(name) &&name,
-    decltype(constraints) &&constraints,
-    decltype(tok_assign) &&tok_assign,
-    decltype(default_val) &&default_val) :
+    decltype(Name) &&name,
+    decltype(Constraints) &&constraints,
+    decltype(TokAssign) &&tok_assign,
+    decltype(DefaultVal) &&DefaultVal) :
     GenericParameterTypeAst(std::move(name), std::move(constraints), utils::OrderableTag::OPTIONAL_PARAM),
-    tok_assign(std::move(tok_assign)),
-    default_val(std::move(default_val)) {
+    TokAssign(std::move(tok_assign)),
+    DefaultVal(std::move(DefaultVal)) {
 }
-
 
 spp::asts::GenericParameterTypeOptionalAst::~GenericParameterTypeOptionalAst() = default;
 
-
-auto spp::asts::GenericParameterTypeOptionalAst::pos_start() const
+auto spp::asts::GenericParameterTypeOptionalAst::PosStart() const
     -> std::size_t {
-    return name->pos_start();
+    // Use the name.
+    return Name->PosStart();
 }
 
-
-auto spp::asts::GenericParameterTypeOptionalAst::pos_end() const
+auto spp::asts::GenericParameterTypeOptionalAst::PosEnd() const
     -> std::size_t {
-    return default_val->pos_end();
+    // Use the default value.
+    return DefaultVal->PosEnd();
 }
 
-
-auto spp::asts::GenericParameterTypeOptionalAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<GenericParameterTypeOptionalAst>(
-        ast_clone(name),
-        ast_clone(constraints),
-        ast_clone(tok_assign),
-        ast_clone(default_val));
+auto spp::asts::GenericParameterTypeOptionalAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<GenericParameterTypeOptionalAst>(
+        AstClone(Name), AstClone(Constraints), AstClone(TokAssign), AstClone(DefaultVal));
 }
 
-
-spp::asts::GenericParameterTypeOptionalAst::operator std::string() const {
+auto spp::asts::GenericParameterTypeOptionalAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(name);
-    SPP_STRING_APPEND(constraints);
-    SPP_STRING_APPEND(tok_assign);
-    SPP_STRING_APPEND(default_val);
+    SPP_STRING_APPEND(Name);
+    SPP_STRING_APPEND(Constraints);
+    SPP_STRING_APPEND(TokAssign);
+    SPP_STRING_APPEND(DefaultVal);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::GenericParameterTypeOptionalAst::stage_4_qualify_types(
+auto spp::asts::GenericParameterTypeOptionalAst::Stage4_QualifyTypes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Default behaviour (inline constraints).
-    GenericParameterTypeAst::stage_4_qualify_types(sm, meta);
+    GenericParameterTypeAst::Stage4_QualifyTypes(sm, meta);
 
     // Handle the default type.
-    default_val->stage_7_analyse_semantics(sm, meta);
-    if (const auto sym = sm->current_scope->get_type_symbol(default_val->without_generics()); sym != nullptr) {
-        auto temp = sym->fq_name()->with_convention(ast_clone(default_val->get_convention()));
-        temp = temp->with_generics(std::move(default_val->type_parts().back()->generic_arg_group));
-        default_val = std::move(temp);
+    DefaultVal->Stage7_AnalyseSemantics(sm, meta);
+    if (const auto sym = sm->CurrentScope->GetTypeSymbol(DefaultVal->WithoutGenerics()); sym != nullptr) {
+        auto temp = sym->FqName()->WithConvention(AstClone(DefaultVal->GetConvention()));
+        temp = temp->WithGenerics(std::move(DefaultVal->TypeParts().Back()->GnArgGroup));
+        DefaultVal = std::move(temp);
     }
 }
 
-
-auto spp::asts::GenericParameterTypeOptionalAst::stage_7_analyse_semantics(
+auto spp::asts::GenericParameterTypeOptionalAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Analyse the name and default value of the generic type parameter.
-    GenericParameterTypeAst::stage_7_analyse_semantics(sm, meta);
-    default_val->stage_7_analyse_semantics(sm, meta);
+    GenericParameterTypeAst::Stage7_AnalyseSemantics(sm, meta);
+    DefaultVal->Stage7_AnalyseSemantics(sm, meta);
 }
 
 SPP_MOD_END

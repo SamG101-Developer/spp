@@ -4,20 +4,20 @@ import spp.asts.local_variable_ast;
 import genex;
 
 
-auto spp::analyse::utils::destructure_utils::get_nested_binding_identifiers(
-    std::vector<std::unique_ptr<asts::LocalVariableAst>> const &elems)
-    -> std::vector<std::shared_ptr<asts::IdentifierAst>> {
+auto spp::analyse::utils::destructure_utils::GetNestedBindingIdentifiers(
+    Vec<Unique<asts::LocalVariableAst>> const &elems)
+    -> Vec<Shared<asts::IdentifierAst>> {
     // Recursively walk the destructure pattern to extract all identifiers.
     return elems
-        | genex::views::transform(&asts::LocalVariableAst::extract_names)
+        | genex::views::transform(&asts::LocalVariableAst::ExtractNames)
         | genex::views::join
-        | genex::to<std::vector>();
+        | genex::to<Vec>();
 }
 
 
-auto spp::analyse::utils::destructure_utils::unmatchable_single_identifier(
+auto spp::analyse::utils::destructure_utils::UnmatchableSingleIdentifier(
     const std::size_t pos)
-    -> std::shared_ptr<asts::IdentifierAst> {
+    -> Shared<asts::IdentifierAst> {
     // No single identifier represents a binding destructuring.
-    return std::make_shared<asts::IdentifierAst>(pos, UNMATCHABLE_TAG);
+    return MakeShared<asts::IdentifierAst>(pos, kUnmatchableTag);
 }

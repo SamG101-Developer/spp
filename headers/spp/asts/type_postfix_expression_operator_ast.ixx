@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.type_postfix_expression_operator_ast;
 import spp.asts.ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -12,37 +13,24 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypePostfixExpressionOperatorNestedTypeAst;
 }
 
-
-SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorAst : virtual Ast {
-    using Ast::Ast;
+SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorAst : Ast {
+    TypePostfixExpressionOperatorAst();
 
     ~TypePostfixExpressionOperatorAst() override;
 
-    auto operator<=>(
-        TypePostfixExpressionOperatorAst const &) const
-        -> std::strong_ordering;
+    auto operator<=>(TypePostfixExpressionOperatorAst const &) const -> Ordering;
 
-    auto operator==(
-        TypePostfixExpressionOperatorAst const &) const
-        -> bool;
+    auto operator==(TypePostfixExpressionOperatorAst const &) const -> bool;
 
-    SPP_ATTR_NODISCARD virtual auto equals_nested_type(
-        TypePostfixExpressionOperatorNestedTypeAst const &) const
-        -> std::strong_ordering;
+    SPP_ATTR_NODISCARD virtual auto EqualsNestedType(TypePostfixExpressionOperatorNestedTypeAst const &) const -> Ordering;
 
-    SPP_ATTR_NODISCARD virtual auto equals(
-        TypePostfixExpressionOperatorAst const &) const
-        -> std::strong_ordering = 0;
+    SPP_ATTR_NODISCARD virtual auto Equals(TypePostfixExpressionOperatorAst const &) const -> Ordering = 0;
 
-    SPP_ATTR_NODISCARD virtual auto ns_parts() const
-        -> std::vector<std::shared_ptr<const IdentifierAst>> = 0;
+    SPP_ATTR_NODISCARD virtual auto NsParts() const -> Vec<Shared<const IdentifierAst>> = 0;
 
-    SPP_ATTR_NODISCARD virtual auto ns_parts()
-        -> std::vector<std::shared_ptr<IdentifierAst>> = 0;
+    SPP_ATTR_NODISCARD virtual auto NsParts() -> Vec<Shared<IdentifierAst>> = 0;
 
-    SPP_ATTR_NODISCARD virtual auto type_parts() const
-        -> std::vector<std::shared_ptr<const TypeIdentifierAst>> = 0;
+    SPP_ATTR_NODISCARD virtual auto TypeParts() const -> Vec<Shared<const TypeIdentifierAst>> = 0;
 
-    SPP_ATTR_NODISCARD virtual auto type_parts()
-        -> std::vector<std::shared_ptr<TypeIdentifierAst>> = 0;
+    SPP_ATTR_NODISCARD virtual auto TypeParts() -> Vec<Shared<TypeIdentifierAst>> = 0;
 };

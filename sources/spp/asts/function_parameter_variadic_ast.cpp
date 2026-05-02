@@ -11,50 +11,45 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 import spp.lex.tokens;
 
-
 SPP_MOD_BEGIN
 spp::asts::FunctionParameterVariadicAst::FunctionParameterVariadicAst(
-    decltype(tok_ellipsis) &&tok_ellipsis,
-    decltype(var) &&var,
-    decltype(tok_colon) &&tok_colon,
-    decltype(type) type) :
+    decltype(TokEllipsis) &&tok_ellipsis,
+    decltype(Var) &&var,
+    decltype(TokColon) &&tok_colon,
+    decltype(Type) type) :
     FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type), utils::OrderableTag::VARIADIC_PARAM),
-    tok_ellipsis(std::move(tok_ellipsis)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_ellipsis, lex::SppTokenType::TK_DOUBLE_DOT, "..", var ? var->pos_start() : 0);
+    TokEllipsis(std::move(tok_ellipsis)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokEllipsis, lex::SppTokenType::TK_DOUBLE_DOT, "..", var ? var->PosStart() : 0);
 }
-
 
 spp::asts::FunctionParameterVariadicAst::~FunctionParameterVariadicAst() = default;
 
-
-auto spp::asts::FunctionParameterVariadicAst::pos_start() const
+auto spp::asts::FunctionParameterVariadicAst::PosStart() const
     -> std::size_t {
-    return tok_ellipsis->pos_start();
+    // Use the ".." token.
+    return TokEllipsis->PosStart();
 }
 
-
-auto spp::asts::FunctionParameterVariadicAst::pos_end() const
+auto spp::asts::FunctionParameterVariadicAst::PosEnd() const
     -> std::size_t {
-    return tok_ellipsis->pos_end();
+    // Use the type.
+    return Type->PosEnd();
 }
 
-
-auto spp::asts::FunctionParameterVariadicAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<FunctionParameterVariadicAst>(
-        ast_clone(tok_ellipsis),
-        ast_clone(var),
-        ast_clone(tok_colon),
-        ast_clone(type));
+auto spp::asts::FunctionParameterVariadicAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<FunctionParameterVariadicAst>(
+        AstClone(TokEllipsis), AstClone(Var), AstClone(TokColon), AstCloneShared(Type));
 }
 
-
-spp::asts::FunctionParameterVariadicAst::operator std::string() const {
+auto spp::asts::FunctionParameterVariadicAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_ellipsis);
-    SPP_STRING_APPEND(var);
-    SPP_STRING_APPEND(tok_colon).append(" ");
-    SPP_STRING_APPEND(type);
+    SPP_STRING_APPEND(TokEllipsis);
+    SPP_STRING_APPEND(Var);
+    SPP_STRING_APPEND(TokColon).append(" ");
+    SPP_STRING_APPEND(Type);
     SPP_STRING_END;
 }
 

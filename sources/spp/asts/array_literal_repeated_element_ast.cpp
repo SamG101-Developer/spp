@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_info_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
@@ -22,170 +23,168 @@ import spp.lex.tokens;
 import spp.utils.uid;
 import llvm;
 
-
 SPP_MOD_BEGIN
 spp::asts::ArrayLiteralRepeatedElementAst::ArrayLiteralRepeatedElementAst(
-    decltype(tok_l) &&tok_l,
-    decltype(elem) &&elem,
-    decltype(tok_semicolon) &&tok_semicolon,
-    decltype(size) &&size,
-    decltype(tok_r) &&tok_r) :
-    tok_l(std::move(tok_l)),
-    elem(std::move(elem)),
-    tok_semicolon(std::move(tok_semicolon)),
-    size(std::move(size)),
-    tok_r(std::move(tok_r)) {
+    decltype(TokL) &&tok_l,
+    decltype(Elem) &&elem,
+    decltype(TokSemicolon) &&tok_semicolon,
+    decltype(Size) &&size,
+    decltype(TokR) &&tok_r) :
+    TokL(std::move(tok_l)),
+    Elem(std::move(elem)),
+    TokSemicolon(std::move(tok_semicolon)),
+    Size(std::move(size)),
+    TokR(std::move(tok_r)) {
     // Default the three tokens.
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_l, lex::SppTokenType::TK_LEFT_SQUARE_BRACKET, "[");
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_semicolon, lex::SppTokenType::TK_SEMICOLON, ";");
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_r, lex::SppTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokL, lex::SppTokenType::TK_LEFT_SQUARE_BRACKET, "[");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokSemicolon, lex::SppTokenType::TK_SEMICOLON, ";");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
 }
-
 
 spp::asts::ArrayLiteralRepeatedElementAst::~ArrayLiteralRepeatedElementAst() = default;
 
-
-auto spp::asts::ArrayLiteralRepeatedElementAst::equals_array_literal_repeated_elements(
+auto spp::asts::ArrayLiteralRepeatedElementAst::EqualsArrayLiteralRepeatedElement(
     ArrayLiteralRepeatedElementAst const &other) const
-    -> std::strong_ordering {
-    // Check the repeated element and size for equality with the other array literal. Both must be equal for the array
-    // literals to be equal.
-    if (*elem == *other.elem and *size == *other.size) {
-        return std::strong_ordering::equal;
-    }
-    return std::strong_ordering::less;
+    -> Ordering {
+    // Equality based off the element and size.
+    return *Elem == *other.Elem and *Size == *other.Size ? Ordering::equal : Ordering::less;
 }
 
-
-auto spp::asts::ArrayLiteralRepeatedElementAst::equals(
+auto spp::asts::ArrayLiteralRepeatedElementAst::Equals(
     ExpressionAst const &other) const
-    -> std::strong_ordering {
-    // Reverse hook to compare against the other expression.
-    return other.equals_array_literal_repeated_elements(*this);
+    -> Ordering {
+    // Reverse hook (double dispatch).
+    return other.EqualsArrayLiteralRepeatedElement(*this);
 }
 
-
-auto spp::asts::ArrayLiteralRepeatedElementAst::pos_start() const
+auto spp::asts::ArrayLiteralRepeatedElementAst::PosStart() const
     -> std::size_t {
-    // The position of the array literal is the position of the left square bracket token.
-    return tok_l->pos_start();
+    // Use the "[" token.
+    return TokL->PosStart();
 }
 
-
-auto spp::asts::ArrayLiteralRepeatedElementAst::pos_end() const
+auto spp::asts::ArrayLiteralRepeatedElementAst::PosEnd() const
     -> std::size_t {
-    // Span to the right square bracket token.
-    return tok_r->pos_end();
+    // Use the "]" token.
+    return TokR->PosEnd();
 }
 
-
-auto spp::asts::ArrayLiteralRepeatedElementAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<ArrayLiteralRepeatedElementAst>(
-        ast_clone(tok_l),
-        ast_clone(elem),
-        ast_clone(tok_semicolon),
-        ast_clone(size),
-        ast_clone(tok_r));
+auto spp::asts::ArrayLiteralRepeatedElementAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<ArrayLiteralRepeatedElementAst>(
+        AstClone(TokL), AstClone(Elem), AstClone(TokSemicolon), AstClone(Size), AstClone(TokR));
 }
 
-
-spp::asts::ArrayLiteralRepeatedElementAst::operator std::string() const {
+auto spp::asts::ArrayLiteralRepeatedElementAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_l);
-    SPP_STRING_APPEND(elem);
-    SPP_STRING_APPEND(tok_semicolon).append(" ");
-    SPP_STRING_APPEND(size);
-    SPP_STRING_APPEND(tok_r);
+    SPP_STRING_APPEND(TokL);
+    SPP_STRING_APPEND(Elem);
+    SPP_STRING_APPEND(TokSemicolon).append(" ");
+    SPP_STRING_APPEND(Size);
+    SPP_STRING_APPEND(TokR);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::ArrayLiteralRepeatedElementAst::stage_7_analyse_semantics(
+auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // Alias the common utils functions and types.
+    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::errors::SppInvalidExpressionNonCopyableTypeError;
+    using analyse::errors::SppSecondClassBorrowViolationError;
+    using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+    using analyse::utils::type_utils::IsTypeBorrowed;
+
     // Analyse the repeated element.
-    SPP_ENFORCE_EXPRESSION_SUBTYPE(elem.get());
-    elem->stage_7_analyse_semantics(sm, meta);
-    const auto elem_type = elem->infer_type(sm, meta);
-    const auto elem_type_sym = sm->current_scope->get_type_symbol(elem_type);
+    RaiseIf<SppExpressionTypeInvalidError>(
+        not IsPrimaryExprTypeValid(*Elem),
+        {sm->CurrentScope}, ERR_ARGS(*Elem));
+    Elem->Stage7_AnalyseSemantics(sm, meta);
+    const auto elem_type = Elem->InferType(sm, meta);
+    const auto elem_type_sym = sm->CurrentScope->GetTypeSymbol(elem_type);
 
     // Ensure the element type is copyable, so that is can be repeated in the array.
-    raise_if<analyse::errors::SppInvalidExpressionNonCopyableTypeError>(
-        not elem_type_sym->is_copyable(),
-        {sm->current_scope}, ERR_ARGS(*elem, *elem_type));
+    RaiseIf<SppInvalidExpressionNonCopyableTypeError>(
+        not elem_type_sym->IsCopyable(),
+        {sm->CurrentScope}, ERR_ARGS(*Elem, *elem_type));
 
     // Ensure the element's type is not a borrow type, as array elements cannot be borrows.
-    SPP_ENFORCE_EXPRESSION_SUBTYPE(size.get());
-    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(
-        elem, elem_type, *sm, "repeated array element type");
+    RaiseIf<SppExpressionTypeInvalidError>(
+        not IsPrimaryExprTypeValid(*Size),
+        {sm->CurrentScope}, ERR_ARGS(*Size));
+    RaiseIf<SppSecondClassBorrowViolationError>(
+        IsTypeBorrowed(*elem_type, *sm),
+        {sm->CurrentScope}, ERR_ARGS(*Elem, *elem_type, "repeated array element type"));
 
     // Ensure the size is a constant expression (if symbolic).
-    auto symbolic_size = ast_clone(size->to<IdentifierAst>());
-    const auto size_sym = sm->current_scope->get_var_symbol(std::move(symbolic_size));
-    raise_if<analyse::errors::SppCompileTimeConstantError>(
-        size_sym != nullptr and size_sym->comptime_value == nullptr,
-        {sm->current_scope}, ERR_ARGS(*size));
+    auto symbolic_size = AstClone(Size->To<IdentifierAst>());
+    const auto size_sym = sm->CurrentScope->GetVarSymbol(std::move(symbolic_size));
+    RaiseIf<analyse::errors::SppCompileTimeConstantError>(
+        size_sym != nullptr and size_sym->CompTimeValue == nullptr,
+        {sm->CurrentScope}, ERR_ARGS(*Size));
 }
 
-
-auto spp::asts::ArrayLiteralRepeatedElementAst::stage_8_check_memory(
+auto spp::asts::ArrayLiteralRepeatedElementAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // Alias the common utils functions and types.
+    using analyse::utils::mem_utils::ValidateSymbolMemory;
+
     // Check the memory of the repeated element (is it initialized etc).
-    elem->stage_8_check_memory(sm, meta);
-    analyse::utils::mem_utils::validate_symbol_memory(
-        *elem, *tok_semicolon, *sm, true, true, true, true, false, meta);
+    Elem->Stage8_CheckMemory(sm, meta);
+    ValidateSymbolMemory(
+        *Elem, *TokSemicolon, *sm, true, true, true, true, false, meta);
 }
 
-
-auto spp::asts::ArrayLiteralRepeatedElementAst::stage_9_comptime_resolution(
+auto spp::asts::ArrayLiteralRepeatedElementAst::Stage9_CompTimeResolve(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Convert the inner element to a compile-time value.
-    elem->stage_9_comptime_resolution(sm, meta);
+    Elem->Stage9_CompTimeResolve(sm, meta);
 
     // Wrap the compile-time array value.
-    meta->cmp_result = std::make_unique<ArrayLiteralRepeatedElementAst>(
-        nullptr, std::move(meta->cmp_result), nullptr, ast_clone(size), nullptr);
+    meta->CmpResult = MakeUnique<ArrayLiteralRepeatedElementAst>(
+        nullptr, std::move(meta->CmpResult), nullptr, AstClone(Size), nullptr);
 }
 
-
-auto spp::asts::ArrayLiteralRepeatedElementAst::stage_11_code_gen_2(
+auto spp::asts::ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Get the size from the generic comp arg.
-    const auto num_vals = std::stoull(size->to<IntegerLiteralAst>()->val->token_data);
+    const auto num_vals = std::stoull(
+        Size->To<IntegerLiteralAst>()->Val->TokenData);
 
     // Runtime allocation. Todo: Can this be removed for comp only?
-    if (not ctx->in_constant_context) {
+    if (not ctx->InConstantContext) {
         // Collect the generated versions of the elements.
-        auto vals = std::vector<llvm::Value*>();
+        auto vals = Vec<llvm::Value*>();
         vals.reserve(num_vals);
         for (auto i = 0uz; i < num_vals; ++i) {
-            vals.emplace_back(elem->stage_11_code_gen_2(sm, meta, ctx));
+            vals.EmplaceBack(Elem->Stage11_CodeGen(sm, meta, ctx));
         }
 
         // Create the array type.
-        const auto uid = spp::utils::generate_uid(this);
+        const auto uid = spp::utils::Uid(this);
         const auto elem_ty = vals[0]->getType();
-        const auto arr_ty = llvm::ArrayType::get(elem_ty, vals.size());
+        const auto arr_ty = llvm::ArrayType::get(elem_ty, vals.Len());
         SPP_ASSERT(arr_ty != nullptr);
-        const auto arr_alloc = ctx->builder.CreateAlloca(arr_ty, nullptr, "array.repeated.alloca" + uid);
+        const auto arr_alloc = ctx->Builder.CreateAlloca(arr_ty, nullptr, "array.repeated.alloca" + uid);
 
         // Store the elements in the array allocation.
-        for (auto i = 0uz; i < vals.size(); ++i) {
-            const auto idx0 = llvm::ConstantInt::get(*ctx->context, llvm::APInt(64, 0));
-            const auto idx1 = llvm::ConstantInt::get(*ctx->context, llvm::APInt(64, i));
-            const auto elem_ptr = ctx->builder.CreateGEP(arr_ty, arr_alloc, {idx0, idx1});
+        for (auto i = 0uz; i < vals.Len(); ++i) {
+            const auto idx0 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, 0));
+            const auto idx1 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, i));
+            const auto elem_ptr = ctx->Builder.CreateGEP(arr_ty, arr_alloc, {idx0, idx1});
 
             SPP_ASSERT(vals[i] != nullptr and elem_ptr != nullptr);
-            ctx->builder.CreateStore(vals[i], elem_ptr);
+            ctx->Builder.CreateStore(vals[i], elem_ptr);
         }
 
         // Return the array allocation.
@@ -193,24 +192,26 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::stage_11_code_gen_2(
     }
 
     // Constant array creation.
-    const auto comp_val = llvm::cast<llvm::Constant>(elem->stage_11_code_gen_2(sm, meta, ctx));
-    const auto comp_vals = std::vector(num_vals, comp_val);
+    const auto comp_val = llvm::cast<llvm::Constant>(Elem->Stage11_CodeGen(sm, meta, ctx));
+    const auto comp_vals = Vec(num_vals, comp_val);
 
     const auto elem_ty = comp_val->getType();
-    const auto arr_ty = llvm::ArrayType::get(elem_ty, comp_vals.size());
-    const auto arr_alloc = llvm::ConstantArray::get(arr_ty, comp_vals);
+    const auto arr_ty = llvm::ArrayType::get(elem_ty, comp_vals.Len());
+    const auto arr_alloc = llvm::ConstantArray::get(arr_ty, comp_vals.ToStdVector());
     return arr_alloc;
 }
 
-
-auto spp::asts::ArrayLiteralRepeatedElementAst::infer_type(
+auto spp::asts::ArrayLiteralRepeatedElementAst::InferType(
     ScopeManager *sm,
     CompilerMetaData *meta)
-    -> std::shared_ptr<TypeAst> {
+    -> Shared<TypeAst> {
+    // Alias the common utils functions and types.
+    using generate::common_types::ArrayType;
+
     // Create the standard "std::array::Arr[T, n]" type, with generic arguments.
-    auto elem_type = elem->infer_type(sm, meta);
-    auto array_type = generate::common_types::array_type(tok_l->pos_start(), std::move(elem_type), ast_clone(size));
-    array_type->stage_7_analyse_semantics(sm, meta);
+    auto elem_type = Elem->InferType(sm, meta);
+    auto array_type = ArrayType(TokL->PosStart(), std::move(elem_type), AstClone(Size));
+    array_type->Stage7_AnalyseSemantics(sm, meta);
     return array_type;
 }
 

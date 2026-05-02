@@ -4,10 +4,12 @@ module;
 export module spp.asts.inner_scope_ast;
 import spp.asts.ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
 namespace spp::asts {
+    SPP_EXP_CLS struct Ast; // TODO: GCC BUG REQUIRES THIS
     SPP_EXP_CLS template <typename T>
     struct InnerScopeAst;
     SPP_EXP_CLS struct TokenAst;
@@ -22,28 +24,27 @@ namespace spp::asts {
  * @tparam T The type of the members in the inner scope.
  */
 SPP_EXP_CLS template <typename T>
-struct spp::asts::InnerScopeAst : virtual Ast {
+struct spp::asts::InnerScopeAst : Ast {
     /**
      * The @c { token that represents the start of the inner scope. This is used to indicate the beginning of the scope
      * and is typically followed by a list of members or statements that belong to this scope.
      */
-    std::unique_ptr<TokenAst> tok_l;
+    Unique<TokenAst> TokL;
 
     /**
      * The list of members in the inner scope. They are all the @c T type, or a derived type. This allows for a flexible
      * structure where different types of ASTs can be included in the same inner scope, as long as they derive from
      * a common base class.
      */
-    std::vector<T> members;
+    Vec<T> Members;
 
     /**
      * The @c } token that represents the end of the inner scope. This is used to indicate the end of the scope after
      * all the members or statements have been defined.
      */
-    std::unique_ptr<TokenAst> tok_r;
+    Unique<TokenAst> TokR;
 
-    static auto new_empty()
-        -> std::unique_ptr<InnerScopeAst>;
+    static auto NewEmpty() -> Unique<InnerScopeAst>;
 
     /**
      * Construct the InnerScopeAst with the arguments matching the members.
@@ -52,21 +53,21 @@ struct spp::asts::InnerScopeAst : virtual Ast {
      * @param[in] tok_r The @c } token that represents the end of the inner scope.
      */
     InnerScopeAst(
-        decltype(tok_l) &&tok_l,
-        decltype(members) &&members,
-        decltype(tok_r) &&tok_r);
+        decltype(TokL) &&tok_l,
+        decltype(Members) &&members,
+        decltype(TokR) &&tok_r);
 
     ~InnerScopeAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    SPP_ATTR_NODISCARD auto final_member() const -> Ast*;
+    SPP_ATTR_NODISCARD auto FinalMember() const -> Ast*;
 
 protected:
     InnerScopeAst();

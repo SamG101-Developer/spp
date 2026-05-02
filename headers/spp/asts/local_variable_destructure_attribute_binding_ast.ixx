@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.local_variable_destructure_attribute_binding_ast;
 import spp.asts.local_variable_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -17,17 +18,17 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureAttributeBindingAst final 
      * The name of the attribute. This is the identifier that is used to refer to the attribute of the object being
      * destructured.
      */
-    std::shared_ptr<IdentifierAst> name;
+    Shared<IdentifierAst> Name;
 
     /**
      * The @c = token that separates the attribute name from the value in the destructure binding.
      */
-    std::unique_ptr<TokenAst> tok_assign;
+    Unique<TokenAst> TokAssign;
 
     /**
      * The value of the attribute. This can be a further destructure or a literal.
      */
-    std::unique_ptr<LocalVariableAst> val;
+    Unique<LocalVariableAst> Val;
 
     /**
      * Construct the LocalVariableDestructureAttributeBindingAst with the arguments matching the members.
@@ -36,13 +37,13 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureAttributeBindingAst final 
      * @param val The value of the attribute.
      */
     LocalVariableDestructureAttributeBindingAst(
-        decltype(name) &&name,
-        decltype(tok_assign) &&tok_assign,
-        decltype(val) &&val);
+        decltype(Name) name,
+        decltype(TokAssign) &&tok_assign,
+        decltype(Val) &&val);
 
     ~LocalVariableDestructureAttributeBindingAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    SPP_ATTR_NODISCARD auto extract_name() const -> std::shared_ptr<IdentifierAst> override;
+    SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst> override;
 };

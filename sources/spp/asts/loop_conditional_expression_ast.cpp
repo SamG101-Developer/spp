@@ -9,12 +9,15 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.boolean_literal_ast;
 import spp.asts.inner_scope_expression_ast;
+import spp.asts.identifier_ast;
 import spp.asts.loop_else_statement_ast;
 import spp.asts.token_ast;
+import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
@@ -23,223 +26,225 @@ import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
 
-
 SPP_MOD_BEGIN
 spp::asts::LoopConditionalExpressionAst::LoopConditionalExpressionAst(
-    decltype(tok_loop) &&tok_loop,
-    decltype(cond) &&cond,
-    decltype(body) &&body,
-    decltype(else_block) &&else_block) :
+    decltype(TokLoop) &&tok_loop,
+    decltype(Cond) &&cond,
+    decltype(Body) &&body,
+    decltype(ElseBlock) &&else_block) :
     LoopExpressionAst(std::move(tok_loop), std::move(body), std::move(else_block)),
-    cond(std::move(cond)) {
+    Cond(std::move(cond)) {
 }
-
 
 spp::asts::LoopConditionalExpressionAst::~LoopConditionalExpressionAst() = default;
 
-
-auto spp::asts::LoopConditionalExpressionAst::pos_start() const
+auto spp::asts::LoopConditionalExpressionAst::PosStart() const
     -> std::size_t {
-    return tok_loop->pos_start();
+    // Use the "loop" token.
+    return TokLoop->PosStart();
 }
 
-
-auto spp::asts::LoopConditionalExpressionAst::pos_end() const
+auto spp::asts::LoopConditionalExpressionAst::PosEnd() const
     -> std::size_t {
-    return cond->pos_end();
+    // Use the condition.
+    return Cond->PosEnd();
 }
 
-
-auto spp::asts::LoopConditionalExpressionAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<LoopConditionalExpressionAst>(
-        ast_clone(tok_loop),
-        ast_clone(cond),
-        ast_clone(body),
-        ast_clone(else_block));
+auto spp::asts::LoopConditionalExpressionAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<LoopConditionalExpressionAst>(
+        AstClone(TokLoop), AstClone(Cond), AstClone(Body), AstClone(ElseBlock));
 }
 
-
-spp::asts::LoopConditionalExpressionAst::operator std::string() const {
+auto spp::asts::LoopConditionalExpressionAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_loop).append(" ");
-    SPP_STRING_APPEND(cond).append(" ");
-    SPP_STRING_APPEND(body).append("\n");
-    SPP_STRING_APPEND(else_block);
+    SPP_STRING_APPEND(TokLoop).append(" ");
+    SPP_STRING_APPEND(Cond).append(" ");
+    SPP_STRING_APPEND(Body).append("\n");
+    SPP_STRING_APPEND(ElseBlock);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::LoopConditionalExpressionAst::stage_7_analyse_semantics(
+auto spp::asts::LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::errors::SppExpressionNotBooleanError;
+    using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+    using analyse::utils::type_utils::IsTypeBool;
+
     // Create the loop scope.
-    auto scope_name = analyse::scopes::ScopeBlockName::from_parts(
-        "loop-cond-expr", {}, pos_start());
-    sm->create_and_move_into_new_scope(std::move(scope_name), this);
-    Ast::stage_2_gen_top_level_scopes(sm, meta);
+    auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
+        "loop-cond-expr", {}, PosStart());
+    sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
+    Ast::Stage2_GenTopLvlScopes(sm, meta);
 
     // Analyse the condition expression.
-    SPP_ENFORCE_EXPRESSION_SUBTYPE(cond.get());
-    cond->stage_7_analyse_semantics(sm, meta);
+    RaiseIf<SppExpressionTypeInvalidError>(
+        not IsPrimaryExprTypeValid(*Cond),
+        {sm->CurrentScope}, ERR_ARGS(*Cond));
+    Cond->Stage7_AnalyseSemantics(sm, meta);
 
     // Check the loop condition is boolean.
-    const auto cond_type = cond->infer_type(sm, meta);
-    const auto target_type = generate::common_types_precompiled::BOOL;
-    raise_if<analyse::errors::SppExpressionNotBooleanError>(
-        not analyse::utils::type_utils::is_type_boolean(*cond_type, *sm->current_scope),
-        {sm->current_scope}, ERR_ARGS(*cond, *cond_type, "loop"));
+    const auto cond_type = Cond->InferType(sm, meta);
+    RaiseIf<SppExpressionNotBooleanError>(
+        not IsTypeBool(*cond_type, *sm->CurrentScope),
+        {sm->CurrentScope}, ERR_ARGS(*Cond, *cond_type, "loop"));
 
     // Set the loop level information into the "meta" object.
-    meta->save();
-    meta->current_loop_depth += 1;
-    meta->current_loop_ast = this;
-    body->stage_7_analyse_semantics(sm, meta);
-    if (meta->loop_return_types->contains(meta->current_loop_depth - 1)) {
-        m_loop_exit_type_info = (*meta->loop_return_types)[meta->current_loop_depth - 1];
+    meta->Save();
+    meta->LoopCurrentDepth += 1;
+    meta->LoopCurrentAst = this;
+    Body->Stage7_AnalyseSemantics(sm, meta);
+    if (meta->LoopReturnTypes->contains(meta->LoopCurrentDepth - 1)) {
+        m_loop_exit_type_info = (*meta->LoopReturnTypes)[meta->LoopCurrentDepth - 1];
     }
-    meta->restore();
+    meta->Restore();
 
     // Analyse the else block if it exists.
-    if (else_block != nullptr) {
-        else_block->stage_7_analyse_semantics(sm, meta);
+    if (ElseBlock != nullptr) {
+        ElseBlock->Stage7_AnalyseSemantics(sm, meta);
     }
 
     // Exit the loop scope.
-    sm->move_out_of_current_scope();
+    sm->MoveOutOfCurrentScope();
 }
 
-
-auto spp::asts::LoopConditionalExpressionAst::stage_8_check_memory(
+auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::utils::mem_utils::ValidateSymbolMemory;
+
     // Move into the loop scope.
-    sm->move_to_next_scope();
-    SPP_ASSERT(sm->current_scope == m_scope);
+    sm->MoveToNextScope();
+    SPP_ASSERT(sm->CurrentScope == _Scope);
 
     // Check twice so that invalidation fails on the second loop.
     // Todo: use the "reset" on "sm" like in TypeStatementAst?
-    auto tm = ScopeManager(sm->global_scope, sm->current_scope);
-    tm.reset(sm->current_scope, sm->current_iterator());
+    auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
+    tm.Reset(sm->CurrentScope, sm->CurrentIterator());
 
-    analyse::utils::mem_utils::validate_symbol_memory(
-        *cond, *tok_loop, *sm, true, true, true, true, true, meta);
+    ValidateSymbolMemory(*Cond, *TokLoop, *sm, true, true, true, true, true, meta);
     for (auto &m : {sm, &tm}) {
-        cond->stage_8_check_memory(m, meta);
-        body->stage_8_check_memory(m, meta);
+        Cond->Stage8_CheckMemory(m, meta);
+        Body->Stage8_CheckMemory(m, meta);
     }
 
     // Check the else block if it exists.
-    if (else_block != nullptr) {
-        else_block->stage_8_check_memory(sm, meta);
+    if (ElseBlock != nullptr) {
+        ElseBlock->Stage8_CheckMemory(sm, meta);
     }
 
     // Exit the loop scope.
-    sm->move_out_of_current_scope();
+    sm->MoveOutOfCurrentScope();
 }
 
-
-auto spp::asts::LoopConditionalExpressionAst::stage_11_code_gen_2(
+auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Move into the loop scope.
-    sm->move_to_next_scope();
+    sm->MoveToNextScope();
 
     // Determine if this "case" will be yielding an expression.
-    const auto uid = spp::utils::generate_uid(this);
-    const auto is_expr = meta->assignment_target != nullptr;
+    const auto uid = spp::utils::Uid(this);
+    const auto is_expr = meta->AssignmentTarget != nullptr;
 
     // Get the function, and create the basic blocks.
-    const auto func = ctx->builder.GetInsertBlock()->getParent();
-    const auto loop_cond_bb = llvm::BasicBlock::Create(*ctx->context, "loop.cond" + uid, func);
-    const auto loop_body_bb = llvm::BasicBlock::Create(*ctx->context, "loop.body" + uid, func);
-    const auto loop_else_bb = llvm::BasicBlock::Create(*ctx->context, "loop.else" + uid, func);
-    const auto loop_end_bb = llvm::BasicBlock::Create(*ctx->context, "loop.end" + uid, func);
-    ctx->builder.CreateBr(loop_cond_bb);
+    const auto func = ctx->Builder.GetInsertBlock()->getParent();
+    const auto loop_cond_bb = llvm::BasicBlock::Create(*ctx->Context, "loop.cond" + uid, func);
+    const auto loop_body_bb = llvm::BasicBlock::Create(*ctx->Context, "loop.body" + uid, func);
+    const auto loop_else_bb = llvm::BasicBlock::Create(*ctx->Context, "loop.else" + uid, func);
+    const auto loop_end_bb = llvm::BasicBlock::Create(*ctx->Context, "loop.end" + uid, func);
+    ctx->Builder.CreateBr(loop_cond_bb);
 
     auto phi = static_cast<llvm::PHINode*>(nullptr);
     if (is_expr) {
-        ctx->builder.SetInsertPoint(loop_cond_bb);
-        const auto ret_type_sym = sm->current_scope->get_type_symbol(infer_type(sm, meta));
-        phi = ctx->builder.CreatePHI(codegen::llvm_type(*ret_type_sym, ctx), 2, "loop.phi" + uid);
+        ctx->Builder.SetInsertPoint(loop_cond_bb);
+        const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(InferType(sm, meta));
+        phi = ctx->Builder.CreatePHI(codegen::llvm_type(*ret_type_sym, ctx), 2, "loop.phi" + uid);
     }
 
     // Jump to the condition entry block.
-    meta->save();
-    meta->end_bb = loop_end_bb;
-    meta->llvm_phi = phi;
+    meta->Save();
+    meta->LlvmEndBB = loop_end_bb;
+    meta->LlvmPhi = phi;
 
     // Generate the initial condition.
-    ctx->builder.SetInsertPoint(loop_cond_bb);
-    const auto llvm_cond = cond->stage_11_code_gen_2(sm, meta, ctx);
-    ctx->builder.CreateCondBr(llvm_cond, loop_body_bb, loop_else_bb);
+    ctx->Builder.SetInsertPoint(loop_cond_bb);
+    const auto llvm_cond = Cond->Stage11_CodeGen(sm, meta, ctx);
+    ctx->Builder.CreateCondBr(llvm_cond, loop_body_bb, loop_else_bb);
 
     // Generate the loop body block.
-    ctx->builder.SetInsertPoint(loop_body_bb);
-    body->stage_11_code_gen_2(sm, meta, ctx);
-    if (ctx->builder.GetInsertBlock()->getTerminator() == nullptr) {
-        ctx->builder.CreateBr(loop_cond_bb);
+    ctx->Builder.SetInsertPoint(loop_body_bb);
+    Body->Stage11_CodeGen(sm, meta, ctx);
+    if (ctx->Builder.GetInsertBlock()->getTerminator() == nullptr) {
+        ctx->Builder.CreateBr(loop_cond_bb);
     }
 
     // Generate the else block if it exists.
-    ctx->builder.SetInsertPoint(loop_else_bb);
-    if (else_block != nullptr) {
-        const auto else_val = else_block->stage_11_code_gen_2(sm, meta, ctx);
-        const auto else_end_bb = ctx->builder.GetInsertBlock();
+    ctx->Builder.SetInsertPoint(loop_else_bb);
+    if (ElseBlock != nullptr) {
+        const auto else_val = ElseBlock->Stage11_CodeGen(sm, meta, ctx);
+        const auto else_end_bb = ctx->Builder.GetInsertBlock();
         if (else_end_bb->getTerminator() == nullptr) {
             phi->addIncoming(else_val, else_end_bb);
-            ctx->builder.CreateBr(loop_end_bb);
+            ctx->Builder.CreateBr(loop_end_bb);
         }
     }
     else {
-        ctx->builder.CreateBr(loop_end_bb);
+        ctx->Builder.CreateBr(loop_end_bb);
     }
 
     // Finish the loop expression.
-    meta->restore();
-    sm->move_out_of_current_scope();
-    ctx->builder.SetInsertPoint(loop_end_bb);
+    meta->Restore();
+    sm->MoveOutOfCurrentScope();
+    ctx->Builder.SetInsertPoint(loop_end_bb);
     return phi;
 }
 
-
-auto spp::asts::LoopConditionalExpressionAst::infer_type(
+auto spp::asts::LoopConditionalExpressionAst::InferType(
     ScopeManager *sm,
     CompilerMetaData *meta)
-    -> std::shared_ptr<TypeAst> {
+    -> Shared<TypeAst> {
+    //
+    using generate::common_types::NeverType;
+
     // If the condition is a boolean literal "true" and no flow control statements exist, return the never type.
-    // if (const auto cond_bool_lit = cond->to<BooleanLiteralAst>()) {
+    // if (const auto cond_bool_lit = cond->To<BooleanLiteralAst>()) {
     //     if (cond_bool_lit->tok_bool->token_type == lex::SppTokenType::KW_TRUE) {
     //         if (m_loop_exit_type_info.has_value()) {
     //             const auto [exit_expr, _, _] = *m_loop_exit_type_info;
     //             if (exit_expr == nullptr) {
-    //                 return generate::common_types::never_type(pos_start());
+    //                 return generate::common_types::never_type(PosStart());
     //             }
     //         }
     //     }
     // }
 
     // A "loop true" with no exit statements returns "Never".
-    const auto cond_lit = cond->to<BooleanLiteralAst>();
-    if (cond_lit != nullptr and cond_lit->tok_bool->token_type == lex::SppTokenType::KW_TRUE) {
+    const auto cond_lit = Cond->To<BooleanLiteralAst>();
+    if (cond_lit != nullptr and cond_lit->TokBool->TokenType == lex::SppTokenType::KW_TRUE) {
         // Check the internal flow controls.
         if (not m_loop_exit_type_info.has_value()) {
-            return generate::common_types::never_type(pos_start());
+            return NeverType(PosStart());
         }
     }
 
-    return LoopExpressionAst::infer_type(sm, meta);
+    return LoopExpressionAst::InferType(sm, meta);
 }
 
-
-auto spp::asts::LoopConditionalExpressionAst::terminates() const
+auto spp::asts::LoopConditionalExpressionAst::Terminates() const
     -> bool {
     // The loop conditional expression only terminates if the body terminates.
-    return body->terminates();
+    return Body->Terminates();
 }
 
 SPP_MOD_END

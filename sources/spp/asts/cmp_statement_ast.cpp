@@ -24,238 +24,210 @@ import spp.lex.tokens;
 import llvm;
 import genex;
 
-
 SPP_MOD_BEGIN
 spp::asts::CmpStatementAst::CmpStatementAst(
-    decltype(annotations) &&annotations,
-    decltype(tok_cmp) &&tok_cmp,
-    decltype(name) &&name,
-    decltype(tok_colon) &&tok_colon,
-    decltype(type) type,
-    decltype(tok_assign) &&tok_assign,
-    decltype(value) &&value) :
-    annotations(std::move(annotations)),
-    tok_cmp(std::move(tok_cmp)),
-    name(std::move(name)),
-    tok_colon(std::move(tok_colon)),
-    type(std::move(type)),
-    tok_assign(std::move(tok_assign)),
-    value(std::move(value)),
-    m_from_use_statement(false) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_cmp, lex::SppTokenType::KW_CMP, "cmp");
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_colon, lex::SppTokenType::TK_COLON, ":");
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
+    decltype(Annotations) &&annotations,
+    decltype(TokCmp) &&tok_cmp,
+    decltype(Name) &&name,
+    decltype(TokColon) &&tok_colon,
+    decltype(Type) type,
+    decltype(TokAssign) &&tok_assign,
+    decltype(Value) &&value) :
+    Annotations(std::move(annotations)),
+    TokCmp(std::move(tok_cmp)),
+    Name(std::move(name)),
+    TokColon(std::move(tok_colon)),
+    Type(std::move(type)),
+    TokAssign(std::move(tok_assign)),
+    Value(std::move(value)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokCmp, lex::SppTokenType::KW_CMP, "cmp");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokColon, lex::SppTokenType::TK_COLON, ":");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
 }
-
 
 spp::asts::CmpStatementAst::~CmpStatementAst() = default;
 
-
-auto spp::asts::CmpStatementAst::pos_start() const
+auto spp::asts::CmpStatementAst::PosStart() const
     -> std::size_t {
-    return name->pos_start();
+    return Name->PosStart();
 }
 
-
-auto spp::asts::CmpStatementAst::pos_end() const
+auto spp::asts::CmpStatementAst::PosEnd() const
     -> std::size_t {
-    return value->pos_end();
+    return Value->PosEnd();
 }
 
-
-auto spp::asts::CmpStatementAst::clone() const
-    -> std::unique_ptr<Ast> {
-    auto ast = std::make_unique<CmpStatementAst>(
-        ast_clone_vec(annotations),
-        ast_clone(tok_cmp),
-        ast_clone(name),
-        ast_clone(tok_colon),
-        ast_clone(type),
-        ast_clone(tok_assign),
-        ast_clone(value));
-    ast->m_ctx = m_ctx;
-    ast->m_scope = m_scope;
-    ast->visibility = visibility;
-    for (auto const &a : ast->annotations) {
-        a->set_ast_ctx(ast.get());
-    }
+auto spp::asts::CmpStatementAst::Clone() const
+    -> Unique<Ast> {
+    auto ast = MakeUnique<CmpStatementAst>(
+        AstCloneVec(Annotations), AstClone(TokCmp), AstClone(Name), AstClone(TokColon), AstClone(Type),
+        AstClone(TokAssign), AstClone(Value));
+    ast->Visibility = Visibility;
+    ast->_Ctx = _Ctx;
+    ast->_Scope = _Scope;
+    for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.get()); }
     return ast;
 }
 
-
-spp::asts::CmpStatementAst::operator std::string() const {
+auto spp::asts::CmpStatementAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_EXTEND(annotations, "\n").append(not annotations.empty() ? "\n" : "");
-    SPP_STRING_APPEND(tok_cmp).append(" ");
-    SPP_STRING_APPEND(name);
-    SPP_STRING_APPEND(tok_colon).append(" ");
-    SPP_STRING_APPEND(type).append(" ");
-    SPP_STRING_APPEND(tok_assign).append(" ");
-    SPP_STRING_APPEND(value);
+    SPP_STRING_EXTEND(Annotations, "\n").append(not Annotations.IsEmpty() ? "\n" : "");
+    SPP_STRING_APPEND(TokCmp).append(" ");
+    SPP_STRING_APPEND(Name);
+    SPP_STRING_APPEND(TokColon).append(" ");
+    SPP_STRING_APPEND(Type).append(" ");
+    SPP_STRING_APPEND(TokAssign).append(" ");
+    SPP_STRING_APPEND(Value);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::CmpStatementAst::stage_1_pre_process(
+auto spp::asts::CmpStatementAst::Stage1_PreProcess(
     Ast *ctx)
     -> void {
     // No pre-processing needed for cmp statements.
-    Ast::stage_1_pre_process(ctx);
-    for (auto const &a : annotations) {
-        a->stage_1_pre_process(this);
-    }
+    Ast::Stage1_PreProcess(ctx);
+    for (auto const &a : Annotations) { a->Stage1_PreProcess(this); }
 }
 
-
-auto spp::asts::CmpStatementAst::stage_2_gen_top_level_scopes(
+auto spp::asts::CmpStatementAst::Stage2_GenTopLvlScopes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // No top-level scopes needed for cmp statements.
-    Ast::stage_2_gen_top_level_scopes(sm, meta);
-    for (auto const &a : annotations) {
-        a->stage_2_gen_top_level_scopes(sm, meta);
-    }
+    Ast::Stage2_GenTopLvlScopes(sm, meta);
+    for (auto const &a : Annotations) { a->Stage2_GenTopLvlScopes(sm, meta); }
 
     // Create a symbol for this constant declaration, pin to prevent moving.
-    m_alias_sym = std::make_shared<analyse::scopes::VariableSymbol>(
-        name, type, sm->current_scope, false, false, visibility.first);
-    m_alias_sym->memory_info->ast_pins.emplace_back(name.get());
-    m_alias_sym->memory_info->ast_comptime = ast_clone(this);
-    m_alias_sym->memory_info->initialized_by(*this, sm->current_scope);
-    sm->current_scope->add_var_symbol_check_conflict(m_alias_sym);
+    _AliasSym = MakeShared<analyse::scopes::VariableSymbol>(
+        Name, Type, sm->CurrentScope, false, false, Visibility.First);
+    _AliasSym->MemInfo->AstPins.EmplaceBack(Name.get());
+    _AliasSym->MemInfo->AstCompTime = AstClone(this);
+    _AliasSym->MemInfo->InitializedBy(*this, sm->CurrentScope);
+    sm->CurrentScope->AddVarSymbolCheckConflict(_AliasSym);
 }
 
-
-auto spp::asts::CmpStatementAst::stage_4_qualify_types(
+auto spp::asts::CmpStatementAst::Stage4_QualifyTypes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // Ensure that the type type doesn't have a convention.
-    SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(
-        this, type, *sm, "global constant type");
-
     //
-    for (auto const &a : annotations) {
-        a->stage_4_qualify_types(sm, meta);
-    }
+    using analyse::errors::SppSecondClassBorrowViolationError;
+    using analyse::utils::type_utils::IsTypeBorrowed;
+    for (auto const &a : Annotations) { a->Stage4_QualifyTypes(sm, meta); }
+
+    // Ensure that the type doesn't have a convention.
+    RaiseIf<SppSecondClassBorrowViolationError>(
+        IsTypeBorrowed(*Type, *sm),
+        {sm->CurrentScope}, ERR_ARGS(*this, *Type, "global constant type"));
 
     // Qualify the type.
-    type->stage_4_qualify_types(sm, meta);
-    type->stage_7_analyse_semantics(sm, meta);
-    if (not m_from_use_statement and not type->is_compiler_generated_type()) {
-        type = sm->current_scope->get_type_symbol(type)->fq_name();
-        m_alias_sym->type = type;
+    Type->Stage4_QualifyTypes(sm, meta);
+    Type->Stage7_AnalyseSemantics(sm, meta);
+    if (not _FromUseStatement and not Type->IsCompilerGeneratedType()) {
+        Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName();
+        _AliasSym->Type = Type;
     }
 }
 
-
-auto spp::asts::CmpStatementAst::stage_5_load_super_scopes(
+auto spp::asts::CmpStatementAst::Stage5_LoadSupScopes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    for (auto const &a : annotations) {
-        a->stage_5_load_super_scopes(sm, meta);
-    }
+    for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
     // Check the type exists before attaching super scopes
-    // type->stage_7_analyse_semantics(sm, meta);
+    // type->Stage7_AnalyseSemantics(sm, meta);
 }
 
-
-auto spp::asts::CmpStatementAst::stage_7_analyse_semantics(
+auto spp::asts::CmpStatementAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     //
-    for (auto const &a : annotations) {
-        a->stage_7_analyse_semantics(sm, meta);
-    }
+    using analyse::errors::SppTypeMismatchError;
+    using analyse::utils::type_utils::TypeEq;
+    for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
+
     // Analyse the type and value.
-    value->stage_7_analyse_semantics(sm, meta);
+    Value->Stage7_AnalyseSemantics(sm, meta);
 
     // Check the value's type is the same as the given type.
-    const auto given_type = type.get();
-    const auto inferred_type = value->infer_type(sm, meta);
+    const auto given_type = Type.get();
+    const auto inferred_type = Value->InferType(sm, meta);
 
-    raise_if<analyse::errors::SppTypeMismatchError>(
-        not is_from_use_statement()
-        and not analyse::utils::type_utils::symbolic_eq(*given_type, *inferred_type, *sm->current_scope, *sm->current_scope),
-        {sm->current_scope}, ERR_ARGS(*type, *given_type, *value, *inferred_type));
+    RaiseIf<SppTypeMismatchError>(
+        not IsFromUseStatement()
+        and not TypeEq(*given_type, *inferred_type, *sm->CurrentScope, *sm->CurrentScope),
+        {sm->CurrentScope}, ERR_ARGS(*Type, *given_type, *Value, *inferred_type));
 }
 
-
-auto spp::asts::CmpStatementAst::stage_8_check_memory(
+auto spp::asts::CmpStatementAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Check the memory of the type.
-    value->stage_8_check_memory(sm, meta);
-    analyse::utils::mem_utils::validate_symbol_memory(
-        *value, *value, *sm, true, true, true, true, true, meta);
+    using analyse::utils::mem_utils::ValidateSymbolMemory;
+    Value->Stage8_CheckMemory(sm, meta);
+    ValidateSymbolMemory(
+        *Value, *Value, *sm, true, true, true, true, true, meta);
 
     // Generate the value and assign it to the variable symbol's compile-time value.
-    if (not type->is_compiler_generated_type()) {
-        const auto var_sym = sm->current_scope->get_var_symbol(name);
-        var_sym->comptime_value = ast_clone(value);
+    if (not Type->IsCompilerGeneratedType()) {
+        const auto var_sym = sm->CurrentScope->GetVarSymbol(Name);
+        var_sym->CompTimeValue = AstClone(Value);
     }
 }
 
-
-auto spp::asts::CmpStatementAst::stage_9_comptime_resolution(
+auto spp::asts::CmpStatementAst::Stage9_CompTimeResolve(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     //
-    for (auto const &a : annotations) {
-        a->stage_9_comptime_resolution(sm, meta);
-    }
+    for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }
 
     // Generate the value and assign it to the variable symbol's compile-time value.
-    if (not type->is_compiler_generated_type()) {
-        const auto var_sym = sm->current_scope->get_var_symbol(name);
-        value->stage_9_comptime_resolution(sm, meta);
-        var_sym->comptime_value = std::move(meta->cmp_result);
+    if (not Type->IsCompilerGeneratedType()) {
+        const auto var_sym = sm->CurrentScope->GetVarSymbol(Name);
+        Value->Stage9_CompTimeResolve(sm, meta);
+        var_sym->CompTimeValue = std::move(meta->CmpResult);
     }
 }
 
-
-auto spp::asts::CmpStatementAst::stage_10_code_gen_1(
+auto spp::asts::CmpStatementAst::Stage10_PreCodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // No generation for $ types.
-    if (type->is_compiler_generated_type()) { return nullptr; }
+    if (Type->IsCompilerGeneratedType()) { return nullptr; }
 
     // Generate the value in a constant context.
-    ctx->in_constant_context = true;
-    const auto var_sym = sm->current_scope->get_var_symbol(name);
-    const auto val = var_sym->comptime_value->stage_11_code_gen_2(sm, meta, ctx);
-    ctx->in_constant_context = false;
+    ctx->InConstantContext = true;
+    const auto var_sym = sm->CurrentScope->GetVarSymbol(Name);
+    const auto val = var_sym->CompTimeValue->Stage11_CodeGen(sm, meta, ctx);
+    ctx->InConstantContext = false;
 
     // Create the global variable for the constant.
-    const auto type_sym = sm->current_scope->get_type_symbol(type);
+    const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type);
     const auto llvm_type = codegen::llvm_type(*type_sym, ctx);
     const auto llvm_global_var = new llvm::GlobalVariable(
-        *ctx->llvm_module, llvm_type, true, llvm::GlobalValue::ExternalLinkage, llvm::cast<llvm::Constant>(val),
-        codegen::mangle::mangle_cmp_name(*sm->current_scope, *this));
+        *ctx->Module, llvm_type, true, llvm::GlobalValue::ExternalLinkage, llvm::cast<llvm::Constant>(val),
+        codegen::mangle::mangle_cmp_name(*sm->CurrentScope, *this));
 
     // Register in the llvm info.
-    var_sym->llvm_info->alloca = llvm_global_var;
+    var_sym->LlvmInfo->Alloca = llvm_global_var;
     return nullptr;
 }
 
-
-auto spp::asts::CmpStatementAst::mark_from_use_statement()
+auto spp::asts::CmpStatementAst::MarkFromUseStatement()
     -> void {
-    m_from_use_statement = true;
+    _FromUseStatement = true;
 }
 
-
-auto spp::asts::CmpStatementAst::is_from_use_statement() const
+auto spp::asts::CmpStatementAst::IsFromUseStatement() const
     -> bool {
-    return m_from_use_statement;
+    return _FromUseStatement;
 }
 
 SPP_MOD_END

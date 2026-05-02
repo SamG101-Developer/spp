@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.scopes.scope_block_name;
+import spp.utils.types;
 import std;
 
 namespace spp::analyse::scopes {
@@ -29,7 +30,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::ScopeBlockName {
      * The name of the scope block. This is just a string, and can be anything that makes sense for the block.
      * Typically, a scope name may be "<loop#30>" for a loop block starting at token number 30.
      */
-    std::string name;
+    Str Name;
 
 private:
     /**
@@ -37,7 +38,7 @@ private:
      * unnecessary copies.
      * @param name The name of the scope block.
      */
-    explicit ScopeBlockName(std::string &&name);
+    explicit ScopeBlockName(Str &&name);
 
 public:
     /**
@@ -48,7 +49,7 @@ public:
      * @param pos The position of the AST in the source code, to make scope names unique.
      * @return The constructed ScopeBlockName.
      */
-    static auto from_parts(std::string &&header, std::vector<asts::Ast*> const &parts, std::size_t pos) -> ScopeBlockName;
+    static auto FromParts(Str &&header, Vec<asts::Ast*> const &parts, std::size_t pos) -> ScopeBlockName;
 
     /**
      * Allow default copy constructors for easy passing around of scope block names.
@@ -63,15 +64,15 @@ public:
 
 
 SPP_EXP_CLS struct spp::analyse::scopes::ScopeIdentifierName {
-    std::shared_ptr<asts::IdentifierAst> name;
+    Shared<asts::IdentifierAst> Name;
 
-    explicit ScopeIdentifierName(std::shared_ptr<asts::IdentifierAst> const &name);
+    explicit ScopeIdentifierName(Shared<asts::IdentifierAst> const &name);
 };
 
 
 SPP_EXP_CLS struct spp::analyse::scopes::ScopeTypeIdentifierName {
-    std::shared_ptr<asts::TypeIdentifierAst> name;
+    Shared<asts::TypeIdentifierAst> Name;
 
-    explicit ScopeTypeIdentifierName(std::shared_ptr<asts::TypeAst> const &name);
-    explicit ScopeTypeIdentifierName(std::shared_ptr<asts::TypeIdentifierAst> const &name);
+    explicit ScopeTypeIdentifierName(Shared<asts::TypeAst> const &name);
+    explicit ScopeTypeIdentifierName(Shared<asts::TypeIdentifierAst> const &name);
 };

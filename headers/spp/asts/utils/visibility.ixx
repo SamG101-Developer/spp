@@ -10,7 +10,7 @@ namespace spp::asts::utils {
 
 
 SPP_EXP_ENUM enum class spp::asts::utils::Visibility : std::uint8_t {
-    PUBLIC = 0,
-    PROTECTED = 1,
-    PRIVATE = 2
+    kPublic = 0,
+    kProtected = 1,
+    kPrivate = 2
 };

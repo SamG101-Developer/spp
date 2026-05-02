@@ -23,201 +23,196 @@ import spp.utils.strings;
 import spp.utils.uid;
 import genex;
 
-
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOperatorStaticMemberAccessAst(
-    decltype(tok_dbl_colon) &&tok_dbl_colon,
-    decltype(name) &&name) :
-    tok_dbl_colon(std::move(tok_dbl_colon)),
-    name(std::move(name)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_dbl_colon, lex::SppTokenType::TK_DOUBLE_COLON, "::", name ? name->pos_start() : 0);
+    decltype(TokDblColon) &&tok_dbl_colon,
+    decltype(Name) &&name) :
+    TokDblColon(std::move(tok_dbl_colon)),
+    Name(std::move(name)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokDblColon, lex::SppTokenType::TK_DOUBLE_COLON, "::", name ? name->PosStart() : 0);
 }
-
 
 spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::~PostfixExpressionOperatorStaticMemberAccessAst() = default;
 
-
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::pos_start() const
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PosStart() const
     -> std::size_t {
-    return tok_dbl_colon->pos_start();
+    // Use the "::" token.
+    return TokDblColon->PosStart();
 }
 
-
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::pos_end() const
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PosEnd() const
     -> std::size_t {
-    return name->pos_end();
+    // Use the name.
+    return Name->PosEnd();
 }
 
-
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<PostfixExpressionOperatorStaticMemberAccessAst>(
-        ast_clone(tok_dbl_colon),
-        ast_clone(name));
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<PostfixExpressionOperatorStaticMemberAccessAst>(
+        AstClone(TokDblColon), AstClone(Name));
 }
 
-
-spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::operator std::string() const {
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_dbl_colon);
-    SPP_STRING_APPEND(name);
+    SPP_STRING_APPEND(TokDblColon);
+    SPP_STRING_APPEND(Name);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_7_analyse_semantics(
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Handle types on the left-hand-side of a static member access.
-    if (const auto lhs_as_type = meta->postfix_expression_lhs->to<TypeAst>(); lhs_as_type != nullptr) {
-        const auto lhs_type_sym = sm->current_scope->get_type_symbol(ast_clone(lhs_as_type));
+    if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
+        const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(AstClone(lhs_as_type));
 
         // Check the target field exists on the type.
-        if (not lhs_type_sym->scope->has_var_symbol(name, true)) {
-            const auto alternatives = sm->current_scope->all_type_symbols(true, true)
-                | genex::views::transform([](auto &&x) { return x->name->name; })
-                | genex::to<std::vector>();
+        if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name, true)) {
+            const auto alternatives = sm->CurrentScope->AllTypeSymbols(true, true)
+                | genex::views::transform([](auto &&x) { return x->Name->Name; })
+                | genex::to<Vec>();
 
-            const auto closest_match = spp::utils::strings::closest_match(name->val, alternatives);
-            raise<analyse::errors::SppIdentifierUnknownError>(
-                {sm->current_scope}, ERR_ARGS(*this, "type member", closest_match));
+            const auto closest_match = spp::utils::strings::ClosestMatch(Name->Val, alternatives);
+            Raise<analyse::errors::SppIdentifierUnknownError>(
+                {sm->CurrentScope}, ERR_ARGS(*this, "type member", closest_match));
         }
 
         // Check there is only 1 target field on the type at the highest level.
-        if (lhs_type_sym->scope->get_var_symbol(name)->type->is_compiler_generated_type()) {
+        if (lhs_type_sym->LinkedScope->GetVarSymbol(Name)->Type->IsCompilerGeneratedType()) {
             return;
         }
 
-        auto scopes_and_syms = std::vector{lhs_type_sym->scope}
-            | genex::views::concat(lhs_type_sym->scope->sup_scopes())
-            | genex::views::transform([name=name.get()](auto &&x) { return std::make_pair(x, x->table.var_tbl.get(ast_clone(name))); })
-            | genex::views::filter([](auto &&x) { return x.second != nullptr; })
-            | genex::views::transform([lhs_type_sym](auto &&x) { return std::make_tuple(lhs_type_sym->scope->depth_difference(x.first), x.first, x.second); })
-            | genex::to<std::vector>();
+        auto scopes_and_syms = Vec{lhs_type_sym->LinkedScope}
+            | genex::views::concat(lhs_type_sym->LinkedScope->SupScopes())
+            | genex::views::transform([name=Name.get()](auto &&x) { return MakePair(x, x->GetVarSymbol(AstCloneShared(name), true)); })
+            | genex::views::filter([](auto &&x) { return x.Second != nullptr; })
+            | genex::views::transform([&](auto &&x) { return std::make_tuple(lhs_type_sym->LinkedScope->DepthDiff(x.First), x.First, x.Second); })
+            | genex::to<Vec>();
 
         auto min_depth = genex::min_element(scopes_and_syms
             | genex::views::transform([](auto &&x) { return std::get<0>(x); })
-            | genex::to<std::vector>());
+            | genex::to<Vec>());
 
         auto closest = scopes_and_syms
             | genex::views::filter([min_depth](auto &&x) { return std::get<0>(x) == min_depth; })
-            | genex::views::transform([](auto &&x) { return std::make_pair(std::get<1>(x), std::get<2>(x)); })
-            | genex::to<std::vector>();
+            | genex::views::transform([](auto &&x) { return MakePair(std::get<1>(x), std::get<2>(x)); })
+            | genex::to<Vec>();
 
-        if (closest.size() <= 1) { return; }
-        raise<analyse::errors::SppAmbiguousMemberAccessError>(
-            {closest[0].first, closest[1].first, sm->current_scope},
-            ERR_ARGS(*closest[0].second->name, *closest[1].second->name, *name));
+        if (closest.Len() <= 1) { return; }
+        Raise<analyse::errors::SppAmbiguousMemberAccessError>(
+            {closest[0].First, closest[1].First, sm->CurrentScope},
+            ERR_ARGS(*closest[0].Second->Name, *closest[1].Second->Name, *Name));
     }
 
     else {
-        const auto lhs_as_ident = meta->postfix_expression_lhs->to<IdentifierAst>();
-        const auto lhs_var_sym = sm->current_scope->get_var_symbol(ast_clone(lhs_as_ident));
+        const auto lhs_as_ident = meta->PostfixExpressionLhs->To<IdentifierAst>();
+        const auto lhs_var_sym = sm->CurrentScope->GetVarSymbol(AstClone(lhs_as_ident));
 
         // Check the lhs is a namespace and not a variable.
-        raise_if<analyse::errors::SppMemberAccessRuntimeOperatorExpectedError>(
-            lhs_var_sym != nullptr, {sm->current_scope},
-            ERR_ARGS(*meta->postfix_expression_lhs, *tok_dbl_colon));
+        RaiseIf<analyse::errors::SppMemberAccessRuntimeOperatorExpectedError>(
+            lhs_var_sym != nullptr, {sm->CurrentScope},
+            ERR_ARGS(*meta->PostfixExpressionLhs, *TokDblColon));
 
         // Check the constant exists inside the namespace.
-        const auto lhs_ns_sym = sm->current_scope->convert_postfix_to_nested_scope(meta->postfix_expression_lhs)->ns_sym;
-        if (not lhs_ns_sym->scope->has_var_symbol(name, true) and not lhs_ns_sym->scope->has_ns_symbol(name, true)) {
-            const auto alternatives = sm->current_scope->all_var_symbols(false, true)
-                | genex::views::transform([](auto &&x) { return x->name->val; })
-                | genex::to<std::vector>();
+        const auto lhs_ns_sym = sm->CurrentScope->ConvertPostfixToNestedScope(meta->PostfixExpressionLhs)->NsSym;
+        if (not lhs_ns_sym->LinkedScope->HasVarSymbol(Name, true) and not lhs_ns_sym->LinkedScope->HasNsSymbol(Name, true)) {
+            const auto alternatives = sm->CurrentScope->AllVarSymbols(false, true)
+                | genex::views::transform([](auto &&x) { return x->Name->Val; })
+                | genex::to<Vec>();
 
             // Todo: get the last part of postfix otherwise identifier value for string.
-            const auto closest_match = spp::utils::strings::closest_match(
-                meta->postfix_expression_lhs->to_string(), alternatives);
+            const auto closest_match = spp::utils::strings::ClosestMatch(
+                meta->PostfixExpressionLhs->ToString(), alternatives);
 
-            raise<analyse::errors::SppIdentifierUnknownError>(
-                {sm->current_scope}, ERR_ARGS(*this, "namespace member", closest_match));
+            Raise<analyse::errors::SppIdentifierUnknownError>(
+                {sm->CurrentScope}, ERR_ARGS(*this, "namespace member", closest_match));
         }
     }
 }
 
-
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_9_comptime_resolution(
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeResolve(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Handle accessing a symbol on a type.
-    if (const auto lhs_as_type = meta->postfix_expression_lhs->to<TypeAst>(); lhs_as_type != nullptr) {
-        const auto lhs_type_sym = sm->current_scope->get_type_symbol(ast_clone(lhs_as_type));
-        const auto sym = lhs_type_sym->scope->get_var_symbol(name, true);
-        auto tm = ScopeManager(sm->global_scope, lhs_type_sym->scope);
-        sym->comptime_value->stage_9_comptime_resolution(&tm, meta);
-        meta->cmp_result = ast_clone(meta->cmp_result);
+    if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
+        const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(AstClone(lhs_as_type));
+        const auto sym = lhs_type_sym->LinkedScope->GetVarSymbol(Name, true);
+        auto tm = ScopeManager(sm->GlobalScope, lhs_type_sym->LinkedScope);
+        sym->CompTimeValue->Stage9_CompTimeResolve(&tm, meta);
+        meta->CmpResult = AstClone(meta->CmpResult);
         return;
     }
 
     // Handle accessing a variable on a namespace.
     // Todo: Do we need to call stage_9 on the value?
-    const auto lhs = meta->postfix_expression_lhs;
-    const auto lhs_ns_sym = sm->current_scope->convert_postfix_to_nested_scope(lhs)->ns_sym;
-    const auto sym = lhs_ns_sym->scope->get_var_symbol(name, true);
-    meta->cmp_result = ast_clone(sym->comptime_value->to<ExpressionAst>());
+    const auto lhs = meta->PostfixExpressionLhs;
+    const auto lhs_ns_sym = sm->CurrentScope->ConvertPostfixToNestedScope(lhs)->NsSym;
+    const auto sym = lhs_ns_sym->LinkedScope->GetVarSymbol(Name, true);
+    meta->CmpResult = AstClone(sym->CompTimeValue->To<ExpressionAst>());
 }
 
-
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::stage_11_code_gen_2(
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
-    const auto uid = spp::utils::generate_uid(this);
+    const auto uid = spp::utils::Uid(this);
 
     // Type case: LHS is a TypeAst — access a cmp constant on the type's scope.
-    if (const auto lhs_as_type = meta->postfix_expression_lhs->to<TypeAst>(); lhs_as_type != nullptr) {
-        const auto lhs_type_sym = sm->current_scope->get_type_symbol(ast_clone(lhs_as_type));
-        const auto var_sym = lhs_type_sym->scope->get_var_symbol(name, true);
-        if (var_sym->type->is_compiler_generated_type()) { return nullptr; }
-        SPP_ASSERT(var_sym->llvm_info->alloca != nullptr);
-        const auto global_var = llvm::cast<llvm::GlobalVariable>(var_sym->llvm_info->alloca);
-        return ctx->builder.CreateLoad(global_var->getValueType(), global_var, "load.static_type_member" + uid);
+    if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
+        const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(AstClone(lhs_as_type));
+        const auto var_sym = lhs_type_sym->LinkedScope->GetVarSymbol(Name, true);
+        if (var_sym->Type->IsCompilerGeneratedType()) { return nullptr; }
+        SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
+        const auto global_var = llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca);
+        return ctx->Builder.CreateLoad(global_var->getValueType(), global_var, "load.static_type_member" + uid);
     }
 
     // Namespace case: LHS is a namespace identifier — access a cmp constant in the namespace's scope.
-    const auto lhs_ns_scope = sm->current_scope->convert_postfix_to_nested_scope(meta->postfix_expression_lhs);
-    const auto var_sym = lhs_ns_scope->get_var_symbol(name, true);
-    if (var_sym->type->is_compiler_generated_type()) { return nullptr; }
-    SPP_ASSERT(var_sym->llvm_info->alloca != nullptr);
-    const auto global_var = llvm::cast<llvm::GlobalVariable>(var_sym->llvm_info->alloca);
-    return ctx->builder.CreateLoad(global_var->getValueType(), global_var, "load.static_ns_member" + uid);
+    const auto lhs_ns_scope = sm->CurrentScope->ConvertPostfixToNestedScope(meta->PostfixExpressionLhs);
+    const auto var_sym = lhs_ns_scope->GetVarSymbol(Name, true);
+    if (var_sym->Type->IsCompilerGeneratedType()) { return nullptr; }
+    SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
+    const auto global_var = llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca);
+    return ctx->Builder.CreateLoad(global_var->getValueType(), global_var, "load.static_ns_member" + uid);
 }
 
-
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::infer_type(
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::InferType(
     ScopeManager *sm,
     CompilerMetaData *meta)
-    -> std::shared_ptr<TypeAst> {
+    -> Shared<TypeAst> {
+    //
+    using analyse::utils::type_utils::GetFwdTypes;
+
     // Get the left-hand-side type's member's type.
-    if (const auto lhs_as_type = meta->postfix_expression_lhs->to<TypeAst>(); lhs_as_type != nullptr) {
-        const auto lhs_type_sym = sm->current_scope->get_type_symbol(ast_clone(lhs_as_type));
-        const auto sym = lhs_type_sym->scope->get_var_symbol(name, true);
-        if (sym != nullptr) { return sym->type; }
+    if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
+        const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(AstClone(lhs_as_type));
+        const auto sym = lhs_type_sym->LinkedScope->GetVarSymbol(Name, true);
+        if (sym != nullptr) { return sym->Type; }
 
         // This is where we need to handle the FwdRef/FwdMut logic.
-        auto lhs_as_type_clone = std::shared_ptr(ast_clone(lhs_as_type));
-        auto [fwd_ref_type, _] = analyse::utils::type_utils::get_fwd_types(*lhs_as_type_clone, *sm);
-        const auto inner_type = fwd_ref_type->type_parts().back()->generic_arg_group->type_at("T")->val;
-        const auto inner_type_sym = sm->current_scope->get_type_symbol(inner_type);
-        const auto fwd_sym = inner_type_sym->scope->get_var_symbol(name, true);
-        return fwd_sym->type;
+        auto lhs_as_type_clone = AstCloneShared(lhs_as_type);
+        auto [fwd_ref_type, _] = GetFwdTypes(*lhs_as_type_clone, *sm);
+        const auto inner_type = fwd_ref_type->TypeParts().Back()->GnArgGroup->TypeAt("T")->Val;
+        const auto inner_type_sym = sm->CurrentScope->GetTypeSymbol(inner_type);
+        const auto fwd_sym = inner_type_sym->LinkedScope->GetVarSymbol(Name, true);
+        return fwd_sym->Type;
     }
 
     // Get the left-hand-side namespace's member's type.
-    const auto lhs_ns_scope = sm->current_scope->convert_postfix_to_nested_scope(meta->postfix_expression_lhs);
-    const auto type = lhs_ns_scope->get_var_symbol(name, true)->type;
-    return lhs_ns_scope->get_type_symbol(type)->fq_name();
+    const auto lhs_ns_scope = sm->CurrentScope->ConvertPostfixToNestedScope(meta->PostfixExpressionLhs);
+    const auto type = lhs_ns_scope->GetVarSymbol(Name, true)->Type;
+    return lhs_ns_scope->GetTypeSymbol(type)->FqName();
 }
 
-
-auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::expr_parts() const
-    -> std::vector<Ast*> {
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::ExprParts() const
+    -> Vec<Ast*> {
     // Static member access does not have any expression parts.
-    return {name.get()};
+    return {Name.get()};
 }
 
 SPP_MOD_END

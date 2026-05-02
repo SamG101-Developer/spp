@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.mixins.abstract_type_ast;
+import spp.utils.types;
 import genex;
 import std;
 
@@ -25,49 +26,49 @@ SPP_EXP_CLS struct spp::asts::mixins::AbstractTypeAst {
 
     virtual ~AbstractTypeAst();
 
-    SPP_ATTR_NODISCARD virtual auto iterator() const
-        -> std::vector<std::shared_ptr<const TypeIdentifierAst>> = 0;
+    SPP_ATTR_NODISCARD virtual auto Iterator() const
+        -> Vec<Shared<const TypeIdentifierAst>> = 0;
 
-    SPP_ATTR_NODISCARD virtual auto is_never_type() const
+    SPP_ATTR_NODISCARD virtual auto IsNeverType() const
         -> bool = 0;
 
-    SPP_ATTR_NODISCARD virtual auto ns_parts() const
-        -> std::vector<std::shared_ptr<const IdentifierAst>> = 0;
+    SPP_ATTR_NODISCARD virtual auto NsParts() const
+        -> Vec<Shared<const IdentifierAst>> = 0;
 
-    SPP_ATTR_NODISCARD virtual auto ns_parts()
-        -> std::vector<std::shared_ptr<IdentifierAst>> = 0;
+    SPP_ATTR_NODISCARD virtual auto NsParts()
+        -> Vec<Shared<IdentifierAst>> = 0;
 
-    SPP_ATTR_NODISCARD virtual auto type_parts() const
-        -> std::vector<std::shared_ptr<const TypeIdentifierAst>> = 0;
+    SPP_ATTR_NODISCARD virtual auto TypeParts() const
+        -> Vec<Shared<const TypeIdentifierAst>> = 0;
 
-    SPP_ATTR_NODISCARD virtual auto type_parts()
-        -> std::vector<std::shared_ptr<TypeIdentifierAst>> = 0;
+    SPP_ATTR_NODISCARD virtual auto TypeParts()
+        -> Vec<Shared<TypeIdentifierAst>> = 0;
 
-    SPP_ATTR_NODISCARD virtual auto without_convention() const
-        -> std::shared_ptr<const TypeAst> = 0;
+    SPP_ATTR_NODISCARD virtual auto WithoutConvention() const
+        -> Shared<const TypeAst> = 0;
 
-    SPP_ATTR_NODISCARD virtual auto get_convention() const
+    SPP_ATTR_NODISCARD virtual auto GetConvention() const
         -> ConventionAst* = 0;
 
-    SPP_ATTR_NODISCARD virtual auto with_convention(
-        std::unique_ptr<ConventionAst> &&conv) const
-        -> std::shared_ptr<TypeAst> = 0;
+    SPP_ATTR_NODISCARD virtual auto WithConvention(
+        Unique<ConventionAst> &&conv) const
+        -> Shared<TypeAst> = 0;
 
-    SPP_ATTR_NODISCARD virtual auto without_generics() const
-        -> std::shared_ptr<TypeAst> = 0;
+    SPP_ATTR_NODISCARD virtual auto WithoutGenerics() const
+        -> Shared<TypeAst> = 0;
 
-    SPP_ATTR_NODISCARD virtual auto substitute_generics(
-        std::vector<GenericArgumentAst*> const &args) const
-        -> std::shared_ptr<TypeAst> = 0;
+    SPP_ATTR_NODISCARD virtual auto SubstituteGenerics(
+        Vec<GenericArgumentAst*> const &args) const
+        -> Shared<TypeAst> = 0;
 
-    SPP_ATTR_NODISCARD virtual auto contains_generic(
+    SPP_ATTR_NODISCARD virtual auto ContainsGenerics(
         GenericParameterAst const &generic) const
         -> bool = 0;
 
-    SPP_ATTR_NODISCARD virtual auto with_generics(
-        std::unique_ptr<GenericArgumentGroupAst> &&arg_group) const
-        -> std::shared_ptr<TypeAst> = 0;
+    SPP_ATTR_NODISCARD virtual auto WithGenerics(
+        Unique<GenericArgumentGroupAst> &&arg_group) const
+        -> Shared<TypeAst> = 0;
 
-    SPP_ATTR_NODISCARD virtual auto is_compiler_generated_type() const
+    SPP_ATTR_NODISCARD virtual auto IsCompilerGeneratedType() const
         -> bool = 0;
 };

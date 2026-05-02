@@ -1,5 +1,4 @@
 module;
-#include <spp/analyse/macros.hpp>
 #include <spp/macros.hpp>
 
 module spp.asts.inner_scope_expression_ast;
@@ -7,105 +6,192 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
+import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.mem_utils;
+import spp.asts.ast;
+import spp.asts.identifier_ast;
 import spp.asts.loop_control_flow_statement_ast;
 import spp.asts.ret_statement_ast;
 import spp.asts.statement_ast;
 import spp.asts.token_ast;
+import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 import genex;
 
-
 SPP_MOD_BEGIN
-template <typename T>
-auto spp::asts::InnerScopeExpressionAst<T>::new_empty()
-    -> std::unique_ptr<InnerScopeExpressionAst> {
-    return std::make_unique<InnerScopeExpressionAst>(
-        nullptr, decltype(InnerScopeExpressionAst::members)(), nullptr);
+auto spp::asts::InnerScopeExpressionAst::NewEmpty()
+    -> Unique<InnerScopeExpressionAst> {
+    // Empty AST.
+    return MakeUnique<InnerScopeExpressionAst>(nullptr, decltype(Members)(), nullptr);
 }
 
-
-template <typename T>
-auto spp::asts::InnerScopeExpressionAst<T>::clone() const
-    -> std::unique_ptr<Ast> {
-    auto *c = InnerScopeAst<T>::clone().release()->template to<InnerScopeAst<T>>();
-    return std::make_unique<InnerScopeExpressionAst>(
-        std::move(c->tok_l),
-        std::move(c->members),
-        std::move(c->tok_r));
+spp::asts::InnerScopeExpressionAst::InnerScopeExpressionAst(
+    decltype(TokL) &&tok_l,
+    decltype(Members) &&members,
+    decltype(TokR) &&tok_r) :
+    TokL(std::move(tok_l)),
+    Members(std::move(members)),
+    TokR(std::move(tok_r)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokL, lex::SppTokenType::TK_LEFT_CURLY_BRACE, "{");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_CURLY_BRACE, "}");
 }
 
+spp::asts::InnerScopeExpressionAst::~InnerScopeExpressionAst() = default;
 
-template <typename T>
-auto spp::asts::InnerScopeExpressionAst<T>::stage_9_comptime_resolution(
+auto spp::asts::InnerScopeExpressionAst::PosStart() const
+    -> std::size_t {
+    // Use the "{" token.
+    return TokL->PosStart();
+}
+
+auto spp::asts::InnerScopeExpressionAst::PosEnd() const
+    -> std::size_t {
+    // Use the "}" token.
+    return TokR->PosEnd();
+}
+
+auto spp::asts::InnerScopeExpressionAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<InnerScopeExpressionAst>(
+        AstClone(TokL), AstCloneVec(Members), AstClone(TokR));
+}
+
+auto spp::asts::InnerScopeExpressionAst::ToString() const
+    -> Str {
+    SPP_STRING_START;
+    SPP_STRING_APPEND(TokL).append(not Members.IsEmpty() ? "\n" : "");
+    SPP_STRING_EXTEND(Members, "\n").append(not Members.IsEmpty() ? "\n" : "");
+    SPP_STRING_APPEND(TokR);
+    SPP_STRING_END;
+}
+
+auto spp::asts::InnerScopeExpressionAst::Stage7_AnalyseSemantics(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    //
+    using analyse::utils::expr_utils::ValidateNoUnreachableCode;
+
+    // Create a scope for the InnerScopeAst node.
+    auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
+        "inner-scope-expression", {}, PosStart());
+    sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
+    _Scope = sm->CurrentScope;
+
+    // Check for unreachable code.
+    ValidateNoUnreachableCode(
+        this->Members | genex::views::ptr | genex::to<Vec>(), *sm);
+
+    // Analyse the members of the inner scope.
+    for (auto const &x : this->Members) { x->Stage7_AnalyseSemantics(sm, meta); }
+    sm->MoveOutOfCurrentScope();
+}
+
+auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void {
+    //
+    using analyse::utils::mem_utils::ValidateSymbolMemory;
+
+    // Move into the next scope.
+    sm->MoveToNextScope();
+    SPP_ASSERT(sm->CurrentScope == _Scope);
+
+    // Check the memory of each member.
+    for (auto const &m : Members) { m->Stage8_CheckMemory(sm, meta); }
+
+    // If the final expression of the inner scope is being used (ie assigned ot outer variable), then memory check it.
+    if (const auto move = meta->AssignmentTarget; not Members.IsEmpty() and move != nullptr) {
+        if (const auto expr_member = FinalMember()->template To<ExpressionAst>(); expr_member != nullptr) {
+            ValidateSymbolMemory(*expr_member, *move, *sm, true, true, true, true, true, meta);
+        }
+    }
+
+    // Any escaping borrows that were defined in this scope need to be freed.
+    for (auto const &sym : sm->CurrentScope->AllVarSymbols()) {
+        auto escaping_borrows = sym->MemInfo->AstEscapingBorrows; // Copy
+        for (auto const &eb : escaping_borrows) {
+            auto const &[ast, _, scope] = eb;
+            if (scope != sm->CurrentScope) { continue; }
+            sym->MemInfo->AstEscapingBorrows.erase(
+                std::ranges::remove(sym->MemInfo->AstEscapingBorrows, eb).begin(),
+                sym->MemInfo->AstEscapingBorrows.end());
+        }
+    }
+
+    sm->MoveOutOfCurrentScope();
+}
+
+auto spp::asts::InnerScopeExpressionAst::Stage9_CompTimeResolve(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Comptime resolve each member of the inner scope.
-    sm->move_to_next_scope();
-    for (auto const &member : this->members) {
-        const auto did_ret = member->template to<RetStatementAst>() != nullptr;
-        member->stage_9_comptime_resolution(sm, meta);
+    sm->MoveToNextScope();
+    for (auto const &m : this->Members) {
+        const auto did_ret = m->template To<RetStatementAst>() != nullptr;
+        m->Stage9_CompTimeResolve(sm, meta);
         if (did_ret) { break; }
     }
 
     // Exit the scope.
-    sm->move_out_of_current_scope();
+    sm->MoveOutOfCurrentScope();
 }
 
-
-template <typename T>
-auto spp::asts::InnerScopeExpressionAst<T>::stage_11_code_gen_2(
+auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Add all the expressions/statements into the current scope.
-    sm->move_to_next_scope();
-    // SPP_ASSERT(sm->current_scope == m_scope);
+    sm->MoveToNextScope();
+    // SPP_ASSERT(sm->CurrentScope == _Scope);
 
     auto ret_val = static_cast<llvm::Value*>(nullptr);
-    for (auto const &member : this->members) {
-        ret_val = member->stage_11_code_gen_2(sm, meta, ctx);
+    for (auto const &m : this->Members) {
+        ret_val = m->Stage11_CodeGen(sm, meta, ctx);
     }
 
     // Exit the scope.
-    sm->move_out_of_current_scope();
+    sm->MoveOutOfCurrentScope();
 
-    if (ret_val and meta->llvm_assignment_target) {
-        ctx->builder.CreateStore(ret_val, meta->llvm_assignment_target);
+    if (ret_val and meta->LlvmAssignmentTarget) {
+        ctx->Builder.CreateStore(ret_val, meta->LlvmAssignmentTarget);
         return ret_val;
     }
     return ret_val;
 }
 
-
-template <typename T>
-auto spp::asts::InnerScopeExpressionAst<T>::infer_type(
+auto spp::asts::InnerScopeExpressionAst::InferType(
     ScopeManager *sm,
     CompilerMetaData *meta)
-    -> std::shared_ptr<TypeAst> {
+    -> Shared<TypeAst> {
     // If there are any members, return the last member's inferred type.
-    if (not this->members.empty()) {
-        auto tm = ScopeManager(sm->global_scope, get_ast_scope());
-        return this->members.back()->infer_type(&tm, meta);
+    if (not this->Members.IsEmpty()) {
+        auto tm = ScopeManager(sm->GlobalScope, GetAstScope());
+        return this->Members.Back()->InferType(&tm, meta);
     }
 
     // Otherwise, return the void type.
-    return generate::common_types::void_type(pos_start());
+    return generate::common_types::VoidType(PosStart());
 }
 
-
-template <typename T>
-auto spp::asts::InnerScopeExpressionAst<T>::terminates() const
+auto spp::asts::InnerScopeExpressionAst::Terminates() const
     -> bool {
     // The inner scope expression only terminates if the last member terminates.
-    if (this->members.empty()) { return false; }
-    return this->members.back()->terminates();
+    if (this->Members.IsEmpty()) { return false; }
+    return this->Members.Back()->Terminates();
 }
 
-
-template struct spp::asts::InnerScopeExpressionAst<std::unique_ptr<spp::asts::StatementAst>>;
+auto spp::asts::InnerScopeExpressionAst::FinalMember() const
+    -> Ast* {
+    return Members.IsEmpty() ? TokR->To<Ast>() : Members.Back()->template To<Ast>();
+}
 
 SPP_MOD_END

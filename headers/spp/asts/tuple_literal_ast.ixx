@@ -4,6 +4,7 @@ module;
 export module spp.asts.tuple_literal_ast;
 import spp.asts.literal_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -20,17 +21,17 @@ SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
     /**
      * The left parenthesis token that represents the start of the tuple literal.
      */
-    std::unique_ptr<TokenAst> tok_l;
+    Unique<TokenAst> TokL;
 
     /**
      * The elements of the tuple literal. This is a list of expressions that are contained within the tuple.
      */
-    std::vector<std::unique_ptr<ExpressionAst>> elems;
+    Vec<Unique<ExpressionAst>> Elems;
 
     /**
      * The right parenthesis token that represents the end of the tuple literal.
      */
-    std::unique_ptr<TokenAst> tok_r;
+    Unique<TokenAst> TokR;
 
     /**
      * Construct the TupleLiteralAst with the arguments matching the members.
@@ -39,31 +40,27 @@ SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
      * @param tok_r The right parenthesis token.
      */
     TupleLiteralAst(
-        decltype(tok_l) &&tok_l,
-        decltype(elems) &&elements,
-        decltype(tok_r) &&tok_r);
+        decltype(TokL) &&tok_l,
+        decltype(Elems) &&elements,
+        decltype(TokR) &&tok_r);
 
     ~TupleLiteralAst() override;
 
-    SPP_ATTR_NODISCARD auto equals_tuple_literal(
-        TupleLiteralAst const &) const
-        -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto EqualsTupleLiteral(TupleLiteralAst const &) const -> Ordering override;
 
-    SPP_ATTR_NODISCARD auto equals(
-        ExpressionAst const &other) const
-        -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };
 
 

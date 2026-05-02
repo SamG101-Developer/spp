@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstGenericArgumentGroup,
     test_use_comp_instead_of_type_generic,
@@ -13,7 +12,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         g[123]()
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstGenericArgumentGroup,
@@ -28,7 +26,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstGenericArgumentGroup,
     test_use_mix_instead_of_type_generic_variadic,
@@ -42,7 +39,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericArgumentGroup,
     test_use_type_generic_properly, R"(
@@ -55,7 +51,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericArgumentGroup,
     test_use_type_generic_variadic_properly, R"(
@@ -67,7 +62,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         g[std::string::Str, std::number::U32, std::number::U64]()
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstGenericArgumentGroup,
@@ -82,7 +76,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstGenericArgumentGroup,
     test_use_type_instead_of_comp_generic_variadic,
@@ -95,7 +88,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         g[std::string::Str, std::number::U32, std::number::U64]()
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstGenericArgumentGroup,
@@ -110,7 +102,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericArgumentGroup,
     test_use_comp_generic_properly, R"(
@@ -122,7 +113,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         g[false]()
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericArgumentGroup,
@@ -136,7 +126,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericArgumentGroup,
     test_type_match_same_type_same_generic_order, R"(
@@ -148,7 +137,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericArgumentGroup,
     test_type_match_same_type_different_generic_order, R"(
@@ -159,7 +147,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         type1 = Type[U=std::string::Str, T=std::boolean::Bool]()
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericArgumentGroup,
@@ -173,7 +160,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         x.push_back(element="hello")
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericArgumentGroup,

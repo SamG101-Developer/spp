@@ -19,31 +19,30 @@ import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.tuple_literal_ast;
+import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
+import ankerl.unordered_dense;
 import genex;
 import opex.cast;
 
-
-auto spp::analyse::utils::mem_utils::memory_region_overlap(
+auto spp::analyse::utils::mem_utils::MemRegionOverlap(
     asts::Ast const &ast_1,
     asts::Ast const &ast_2)
     -> bool {
-    const auto s1 = ast_1.to_string();
-    const auto s2 = ast_2.to_string();
+    const auto s1 = ast_1.ToString();
+    const auto s2 = ast_2.ToString();
     return s1.starts_with(s2) or s2.starts_with(s1);
 }
 
-
-auto spp::analyse::utils::mem_utils::memory_region_right_overlap(
+auto spp::analyse::utils::mem_utils::MemRegionRightOverlap(
     asts::Ast const &ast_1,
     asts::Ast const &ast_2) -> bool {
-    const auto s1 = ast_1.to_string();
-    const auto s2 = ast_2.to_string();
+    const auto s1 = ast_1.ToString();
+    const auto s2 = ast_2.ToString();
     return s2.starts_with(s1);
 }
 
-
-auto spp::analyse::utils::mem_utils::validate_symbol_memory(
+auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
     asts::ExpressionAst &value_ast,
     asts::Ast const &move_ast,
     scopes::ScopeManager &sm,
@@ -54,179 +53,180 @@ auto spp::analyse::utils::mem_utils::validate_symbol_memory(
     const bool mark_moves,
     asts::meta::CompilerMetaData *meta) -> void {
     // For tuple and array literals, recursively analyse each element.
-    if (auto const *arr_literal = value_ast.to<asts::ArrayLiteralRepeatedElementAst>(); arr_literal != nullptr) {
-        const auto x = arr_literal->elem.get();
-        validate_symbol_memory(*x, move_ast, sm, true, true, true, true, mark_moves, meta);
+    if (auto const *arr_literal = value_ast.To<asts::ArrayLiteralRepeatedElementAst>(); arr_literal != nullptr) {
+        const auto x = arr_literal->Elem.get();
+        ValidateSymbolMemory(*x, move_ast, sm, true, true, true, true, mark_moves, meta);
         return;
     }
-    if (auto const *arr_literal = value_ast.to<asts::ArrayLiteralExplicitElementsAst>(); arr_literal != nullptr) {
-        for (auto &&x : arr_literal->elems) {
-            validate_symbol_memory(*x, move_ast, sm, true, true, true, true, mark_moves, meta);
+    if (auto const *arr_literal = value_ast.To<asts::ArrayLiteralExplicitElementsAst>(); arr_literal != nullptr) {
+        for (auto &&x : arr_literal->Elems) {
+            ValidateSymbolMemory(*x, move_ast, sm, true, true, true, true, mark_moves, meta);
         }
         return;
     }
-    if (auto const *tup_literal = value_ast.to<asts::TupleLiteralAst>(); tup_literal != nullptr) {
-        for (auto &&x : tup_literal->elems) {
-            validate_symbol_memory(*x, move_ast, sm, true, true, true, true, mark_moves, meta);
+    if (auto const *tup_literal = value_ast.To<asts::TupleLiteralAst>(); tup_literal != nullptr) {
+        for (auto &&x : tup_literal->Elems) {
+            ValidateSymbolMemory(*x, move_ast, sm, true, true, true, true, mark_moves, meta);
         }
         return;
     }
 
     // Get the symbol representing the outermost part of the expression being moved. Non-symbolic => temporary value.
-    auto [var_sym, var_scope] = sm.current_scope->get_var_symbol_outermost(value_ast);
+    auto [var_sym, var_scope] = sm.CurrentScope->GetVarSymbolOutermost(value_ast);
     if (var_sym == nullptr) { return; }
-    const auto copies = var_scope->get_type_symbol(var_sym->type)->is_copyable();
-    const auto partial_copies = var_scope->get_type_symbol(value_ast.infer_type(&sm, meta))->is_copyable();
+    const auto temp = var_scope->GetTypeSymbol(var_sym->Type);
+    const auto copies = var_scope->GetTypeSymbol(var_sym->Type)->IsCopyable();
+    const auto partial_copies = var_scope->GetTypeSymbol(value_ast.InferType(&sm, meta))->IsCopyable();
 
     // Check for inconsistent memory initialization (from branching).
-    if (check_move and var_sym->memory_info->is_inconsistently_initialized.has_value()) {
-        const auto pair = *var_sym->memory_info->is_inconsistently_initialized;
-        raise<errors::SppInconsistentlyInitializedMemoryUseError>(
-            {sm.current_scope}, ERR_ARGS(value_ast, *std::get<0>(pair), *std::get<1>(pair), "initialized"));
+    if (check_move and var_sym->MemInfo->IsInconsistentlyInitialized.has_value()) {
+        const auto pair = *var_sym->MemInfo->IsInconsistentlyInitialized;
+        Raise<errors::SppInconsistentlyInitializedMemoryUseError>(
+            {sm.CurrentScope}, ERR_ARGS(value_ast, *pair.First, *pair.Second, "initialized"));
     }
 
     // Check for inconsistent memory moving (from branching).
-    if (check_move and var_sym->memory_info->is_inconsistently_moved.has_value()) {
-        const auto pair = *var_sym->memory_info->is_inconsistently_moved;
-        raise<errors::SppInconsistentlyInitializedMemoryUseError>(
-            {sm.current_scope}, ERR_ARGS(value_ast, *std::get<0>(pair), *std::get<1>(pair), "moved"));
+    if (check_move and var_sym->MemInfo->IsInconsistentlyMoved.has_value()) {
+        const auto pair = *var_sym->MemInfo->IsInconsistentlyMoved;
+        Raise<errors::SppInconsistentlyInitializedMemoryUseError>(
+            {sm.CurrentScope}, ERR_ARGS(value_ast, *pair.First, *pair.Second, "moved"));
     }
 
     // Check for inconsistent partial memory moving (from branching).
-    if (check_move and var_sym->memory_info->is_inconsistently_partially_moved.has_value()) {
-        const auto pair = *var_sym->memory_info->is_inconsistently_partially_moved;
-        raise<errors::SppInconsistentlyInitializedMemoryUseError>(
-            {sm.current_scope}, ERR_ARGS(value_ast, *std::get<0>(pair), *std::get<1>(pair), "partially moved"));
+    if (check_move and var_sym->MemInfo->IsInconsistentlyPartiallyMoved.has_value()) {
+        const auto pair = *var_sym->MemInfo->IsInconsistentlyPartiallyMoved;
+        Raise<errors::SppInconsistentlyInitializedMemoryUseError>(
+            {sm.CurrentScope}, ERR_ARGS(value_ast, *pair.First, *pair.Second, "partially moved"));
     }
 
     // Check for inconsistent pinned memory (from branching).
-    if (check_pins and var_sym->memory_info->is_inconsistently_pinned.has_value()) {
-        const auto pair = *var_sym->memory_info->is_inconsistently_pinned;
-        raise<errors::SppInconsistentlyPinnedMemoryUseError>(
-            {sm.current_scope}, ERR_ARGS(value_ast, *std::get<0>(pair), *std::get<1>(pair)));
+    if (check_pins and var_sym->MemInfo->IsInconsistentlyPinned.has_value()) {
+        const auto pair = *var_sym->MemInfo->IsInconsistentlyPinned;
+        Raise<errors::SppInconsistentlyPinnedMemoryUseError>(
+            {sm.CurrentScope}, ERR_ARGS(value_ast, *pair.First, *pair.Second));
     }
 
     // Check the symbol hasn't already been moved.
-    if (check_move and std::get<0>(var_sym->memory_info->ast_moved) != nullptr) {
-        const auto [where_init, _] = var_sym->memory_info->ast_initialization_origin;
-        const auto [where_moved, _] = var_sym->memory_info->ast_moved;
-        raise<errors::SppUninitializedMemoryUseError>(
-            {sm.current_scope}, ERR_ARGS(value_ast, *where_init, *where_moved));
+    if (check_move and std::get<0>(var_sym->MemInfo->AstMoved) != nullptr) {
+        const auto [where_init, _] = var_sym->MemInfo->AstInitializationOrigin;
+        const auto [where_moved, _] = var_sym->MemInfo->AstMoved;
+        Raise<errors::SppUninitializedMemoryUseError>(
+            {sm.CurrentScope}, ERR_ARGS(value_ast, *where_init, *where_moved));
     }
 
     // Check the symbol doesn't have any outstanding partial moved (moving a partially moved object).
-    if (check_partial_move and not var_sym->memory_info->ast_partial_moves.empty() and value_ast.to<asts::IdentifierAst>() != nullptr) {
-        const auto [where_init, _] = var_sym->memory_info->ast_initialization_origin;
-        const auto where_pm = var_sym->memory_info->ast_partial_moves.front();
-        raise<errors::SppPartiallyInitializedMemoryUseError>(
-            {sm.current_scope}, ERR_ARGS(value_ast, *where_init, *where_pm));
+    if (check_partial_move and not var_sym->MemInfo->AstPartialMoves.IsEmpty() and value_ast.To<asts::IdentifierAst>() != nullptr) {
+        const auto [where_init, _] = var_sym->MemInfo->AstInitializationOrigin;
+        const auto where_pm = var_sym->MemInfo->AstPartialMoves.Front();
+        Raise<errors::SppPartiallyInitializedMemoryUseError>(
+            {sm.CurrentScope}, ERR_ARGS(value_ast, *where_init, *where_pm));
     }
 
     // Check the symbol doesn't have any outstanding partial moves (directly moving a partial move).
-    if (check_partial_move and not var_sym->memory_info->ast_partial_moves.empty() and value_ast.to<asts::IdentifierAst>() == nullptr) {
-        const auto overlaps = var_sym->memory_info->ast_partial_moves
-            | genex::views::filter([&](auto const &x) { return memory_region_right_overlap(*x, value_ast); })
-            | genex::to<std::vector>();
-        if (not overlaps.empty()) {
-            const auto [where_init, _] = var_sym->memory_info->ast_initialization_origin;
-            const auto where_pm = overlaps.front();
-            raise<errors::SppUninitializedMemoryUseError>(
-                {sm.current_scope}, ERR_ARGS(value_ast, *where_init, *where_pm));
+    if (check_partial_move and not var_sym->MemInfo->AstPartialMoves.IsEmpty() and value_ast.To<asts::IdentifierAst>() == nullptr) {
+        const auto overlaps = var_sym->MemInfo->AstPartialMoves
+            | genex::views::filter([&](auto const &x) { return MemRegionRightOverlap(*x, value_ast); })
+            | genex::to<Vec>();
+        if (not overlaps.IsEmpty()) {
+            const auto [where_init, _] = var_sym->MemInfo->AstInitializationOrigin;
+            const auto where_pm = overlaps.Front();
+            Raise<errors::SppUninitializedMemoryUseError>(
+                {sm.CurrentScope}, ERR_ARGS(value_ast, *where_init, *where_pm));
         }
     }
 
     // Check the symbol isn't being moved from a borrowed context.
-    if (check_move_from_borrowed_ctx and std::get<0>(var_sym->memory_info->ast_borrowed) and value_ast.to<asts::IdentifierAst>() == nullptr and not partial_copies) {
-        const auto [where_borrow, _] = var_sym->memory_info->ast_borrowed;
-        const auto [where_pm, _] = var_sym->memory_info->ast_borrowed;
-        raise<errors::SppMoveFromBorrowedMemoryError>(
-            {sm.current_scope}, ERR_ARGS(value_ast, *where_pm, *where_borrow));
+    if (check_move_from_borrowed_ctx and std::get<0>(var_sym->MemInfo->AstBorrowed) and value_ast.To<asts::IdentifierAst>() == nullptr and not partial_copies) {
+        const auto [where_borrow, _] = var_sym->MemInfo->AstBorrowed;
+        const auto [where_pm, _] = var_sym->MemInfo->AstBorrowed;
+        Raise<errors::SppMoveFromBorrowedMemoryError>(
+            {sm.CurrentScope}, ERR_ARGS(value_ast, *where_pm, *where_borrow));
     }
 
     // Check the object being moved isn't pinned.
-    const auto symbolic_pins = var_sym->memory_info->ast_pins
+    const auto symbolic_pins = var_sym->MemInfo->AstPins
         | genex::views::cast_dynamic<asts::IdentifierAst const*>()
-        | genex::to<std::vector>();
+        | genex::to<Vec>();
 
-    if (check_pins and not symbolic_pins.empty() and not copies and not partial_copies) {
-        const auto [where_init, _] = var_sym->memory_info->ast_initialization_origin;
+    if (check_pins and not symbolic_pins.IsEmpty() and not copies and not partial_copies) {
+        const auto [where_init, _] = var_sym->MemInfo->AstInitializationOrigin;
         const auto where_move = &move_ast;
-        const auto where_pin = symbolic_pins.front();
-        raise<errors::SppMoveFromPinnedMemoryError>(
-            {sm.current_scope}, ERR_ARGS(value_ast, *where_init, *where_move, *where_pin));
+        const auto where_pin = symbolic_pins.Front();
+        Raise<errors::SppMoveFromPinnedMemoryError>(
+            {sm.CurrentScope}, ERR_ARGS(value_ast, *where_init, *where_move, *where_pin));
     }
 
     // Mark the symbol as moved/partially-moved if it is not copyable.
-    if (mark_moves and value_ast.to<asts::IdentifierAst>() != nullptr and not copies) {
-        var_sym->memory_info->moved_by(value_ast, sm.current_scope);
+    if (mark_moves and value_ast.To<asts::IdentifierAst>() != nullptr and not copies) {
+        var_sym->MemInfo->MovedBy(value_ast, sm.CurrentScope);
     }
 
-    else if (mark_moves and value_ast.to<asts::IdentifierAst>() == nullptr and not partial_copies) {
-        var_sym->memory_info->ast_partial_moves.emplace_back(&value_ast);
+    else if (mark_moves and value_ast.To<asts::IdentifierAst>() == nullptr and not partial_copies) {
+        var_sym->MemInfo->AstPartialMoves.EmplaceBack(&value_ast);
     }
 }
 
-
-auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
+auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
     asts::Ast *parent,
-    std::vector<asts::CaseExpressionBranchAst*> const &branches,
+    Vec<asts::CaseExpressionBranchAst*> const &branches,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
     -> void {
     // Define a simple alias for a list of symbols and their memory.
-    using SymbolMemoryList = std::vector<std::pair<asts::CaseExpressionBranchAst*, mem_info_utils::MemoryInfoSnapshot>>;
+    using SymbolMemoryList = Vec<Pair<asts::CaseExpressionBranchAst*, mem_info_utils::MemoryInfoSnapshot>>;
+    using SymbolMemoryMap = ankerl::unordered_dense::map<scopes::VariableSymbol *, mem_info_utils::MemoryInfoSnapshot>;
 
     // Create a map of the symbols' memory  information before any branches are analysed.
     auto sym_mem_info = std::map<scopes::VariableSymbol*, SymbolMemoryList>();
-    auto vs = sm->current_scope->all_var_symbols();
+    auto vs = sm->CurrentScope->AllVarSymbols();
     auto pre_analysis_mem_info = vs
-        | genex::views::transform([](auto const &x) { return std::make_pair(x.get(), x->memory_info->snapshot()); })
-        | genex::to<std::vector>();
+        | genex::views::transform([](auto const &x) { return MakePair(x.get(), x->MemInfo->Snapshot()); })
+        | genex::to<Vec>();
 
     // Make a record of the symbols' memory status in the scope before the branch is analysed.
     auto old_symbol_mem_info = vs
-        | genex::views::transform([](auto const &x) { return std::make_pair(x.get(), x->memory_info->snapshot()); })
-        | genex::to<std::vector>();
+        | genex::views::transform([](auto const &x) { return MakePair(x.get(), x->MemInfo->Snapshot()); })
+        | genex::to<Vec>();
 
     for (auto &&branch : branches) {
         // Analyse the memory and then recheck the symbols' memory status.
-        branch->stage_8_check_memory(sm, meta);
+        branch->Stage8_CheckMemory(sm, meta);
         auto new_symbol_mem_info = vs
-            | genex::views::transform([](auto const &x) { return std::make_pair(x.get(), x->memory_info->snapshot()); })
-            | genex::to<std::vector>();
+            | genex::views::transform([](auto const &x) { return MakePair(x.get(), x->MemInfo->Snapshot()); })
+            | genex::to<Vec>();
 
         // Reset the memory status of the symbols for the next branch to analyse with the same original memory states.
         // Todo: Scopes need restoring properly too.
         for (auto &&[sym, old_mem_status] : old_symbol_mem_info) {
-            sym->memory_info->ast_initialization = {old_mem_status.ast_initialization, std::get<1>(sym->memory_info->ast_initialization)};
-            sym->memory_info->ast_moved = {old_mem_status.ast_moved, std::get<1>(sym->memory_info->ast_moved)};
-            sym->memory_info->ast_partial_moves = old_mem_status.ast_partial_moves;
-            sym->memory_info->ast_pins = old_mem_status.ast_pins;
-            sym->memory_info->ast_escaping_borrows = old_mem_status.ast_escaping_borrows;
-            sym->memory_info->initialization_counter = old_mem_status.initialization_counter;
+            sym->MemInfo->AstInitialization = std::make_tuple(old_mem_status.AstInitialization, std::get<1>(sym->MemInfo->AstInitialization));
+            sym->MemInfo->AstMoved = {old_mem_status.AstMoved, std::get<1>(sym->MemInfo->AstMoved)};
+            sym->MemInfo->AstPartialMoves = old_mem_status.AstPartialMoves;
+            sym->MemInfo->AstPins = old_mem_status.AstPins;
+            sym->MemInfo->AstEscapingBorrows = old_mem_status.AstEscapingBorrows;
+            sym->MemInfo->InitializationCounter = old_mem_status.InitializationCounter;
 
             // Save this memory status for subsequent inter-branch status comparisons.
-            auto new_symbol_mem_info_map = std::map(new_symbol_mem_info.begin(), new_symbol_mem_info.end());
-            sym_mem_info[sym].emplace_back(branch, new_symbol_mem_info_map[sym]);
+            auto new_symbol_mem_info_map = SymbolMemoryMap(new_symbol_mem_info.begin(), new_symbol_mem_info.end());
+            sym_mem_info[sym].EmplaceBack(branch, new_symbol_mem_info_map[sym]);
         }
     }
 
     // Add the pre-analysis memory states as a "final" branch (just for comparison purposes).
     for (auto &&[sym, mem_info_list] : pre_analysis_mem_info) {
-        sym_mem_info[sym].emplace_back(nullptr, std::move(mem_info_list));
+        sym_mem_info[sym].EmplaceBack(nullptr, std::move(mem_info_list));
     }
 
     // Get the first "non-terminating" branch, and update the symbols to reflect its memory state.
     const auto non_terminating_branch = genex::find_if(
-        branches, [](auto const &x) { return not x->body->terminates(); });
+        branches, [](auto const &x) { return not x->Body->Terminates(); });
     const auto first_branch = non_terminating_branch == branches.end() ? parent : *non_terminating_branch;
     const auto first_branch_index = non_terminating_branch != branches.end() ? genex::iterators::distance(branches.begin(), non_terminating_branch) as SSize : -1;
     const auto first_branch_mem_info_getter = [&](auto const &branch_mem_info) {
-        return first_branch_index != -1 ? branch_mem_info.at(first_branch_index as USize).second : branch_mem_info.back().second;
+        return first_branch_index != -1 ? branch_mem_info.At(first_branch_index as USize).Second : branch_mem_info.Back().Second;
     };
 
-    const auto has_else_branch = not branches.empty() ? branches.back()->patterns[0]->to<asts::CasePatternVariantElseAst>() : nullptr;
-    const auto skip_else = has_else_branch and has_else_branch->marked_for_iter_loop_exit();
+    const auto has_else_branch = not branches.IsEmpty() ? branches.Back()->Patterns[0]->To<asts::CasePatternVariantElseAst>() : nullptr;
+    const auto skip_else = has_else_branch and has_else_branch->MarkedForIterLoopExit();
 
     // Check for consistency among the branches' symbols' memory states.
     auto current_branch = branches.begin();
@@ -235,44 +235,44 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
         if (current_branch == branches.end() - 1 and skip_else) { break; }
 
         // Assuming all new memory states are consistent across branches, update to the first "new" state list.
-        sym->memory_info->ast_initialization = {first_branch_mem_info.ast_initialization, std::get<1>(sym->memory_info->ast_initialization)};
-        sym->memory_info->ast_moved = {first_branch_mem_info.ast_moved, std::get<1>(sym->memory_info->ast_moved)};
-        sym->memory_info->ast_partial_moves = first_branch_mem_info.ast_partial_moves;
-        sym->memory_info->ast_pins = first_branch_mem_info.ast_pins;
-        sym->memory_info->ast_escaping_borrows = first_branch_mem_info.ast_escaping_borrows;
-        sym->memory_info->initialization_counter = first_branch_mem_info.initialization_counter;
+        sym->MemInfo->AstInitialization = {first_branch_mem_info.AstInitialization, std::get<1>(sym->MemInfo->AstInitialization)};
+        sym->MemInfo->AstMoved = {first_branch_mem_info.AstMoved, std::get<1>(sym->MemInfo->AstMoved)};
+        sym->MemInfo->AstPartialMoves = first_branch_mem_info.AstPartialMoves;
+        sym->MemInfo->AstPins = first_branch_mem_info.AstPins;
+        sym->MemInfo->AstEscapingBorrows = first_branch_mem_info.AstEscapingBorrows;
+        sym->MemInfo->InitializationCounter = first_branch_mem_info.InitializationCounter;
 
         // Check the new memory status for each symbol is consistent across all branches that don't terminate.
         auto applicable_branch_memory_info_lists = branches_memory_info_lists
             | genex::views::drop_last(1)
-            | genex::views::remove_if([&](auto const &x) { return x.first->body->terminates(); })
-            | genex::to<std::vector>();
+            | genex::views::remove_if([&](auto const &x) { return x.First->Body->Terminates(); })
+            | genex::to<Vec>();
 
         for (auto const &[branch, branch_memory_info_list] : applicable_branch_memory_info_lists) {
             // Check for consistent initialization.
-            if ((first_branch_mem_info.ast_initialization == nullptr) != (branch_memory_info_list.ast_initialization == nullptr)) {
-                sym->memory_info->is_inconsistently_initialized = std::make_pair(first_branch, branch);
+            if ((first_branch_mem_info.AstInitialization == nullptr) != (branch_memory_info_list.AstInitialization == nullptr)) {
+                sym->MemInfo->IsInconsistentlyInitialized = MakePair(first_branch, branch);
             }
 
             // Check for consistent moved state.
-            if ((first_branch_mem_info.ast_moved == nullptr) != (branch_memory_info_list.ast_moved == nullptr)) {
-                sym->memory_info->is_inconsistently_moved = std::make_pair(first_branch, branch);
+            if ((first_branch_mem_info.AstMoved == nullptr) != (branch_memory_info_list.AstMoved == nullptr)) {
+                sym->MemInfo->IsInconsistentlyMoved = MakePair(first_branch, branch);
             }
 
             // Check for consistent partial moves.
-            if (first_branch_mem_info.ast_partial_moves != branch_memory_info_list.ast_partial_moves) {
-                sym->memory_info->is_inconsistently_partially_moved = std::make_pair(first_branch, branch);
+            if (first_branch_mem_info.AstPartialMoves != branch_memory_info_list.AstPartialMoves) {
+                sym->MemInfo->IsInconsistentlyPartiallyMoved = MakePair(first_branch, branch);
             }
 
             // Check for consistent pins.
-            if (first_branch_mem_info.ast_pins != branch_memory_info_list.ast_pins) {
-                std::cout << "INCONSISTENT PIN: " << sym->name->to_string() << std::endl;
-                sym->memory_info->is_inconsistently_pinned = std::make_pair(first_branch, branch);
+            if (first_branch_mem_info.AstPins != branch_memory_info_list.AstPins) {
+                std::cout << "INCONSISTENT PIN: " << sym->Name->ToString() << std::endl;
+                sym->MemInfo->IsInconsistentlyPinned = MakePair(first_branch, branch);
             }
 
             // Check for consistent escaping borrows.
-            if (first_branch_mem_info.ast_escaping_borrows != branch_memory_info_list.ast_escaping_borrows) {
-                sym->memory_info->is_inconsistently_borrow_escaping = std::make_pair(first_branch, branch);
+            if (first_branch_mem_info.AstEscapingBorrows != branch_memory_info_list.AstEscapingBorrows) {
+                sym->MemInfo->IsInconsistentlyBorrowEscaping = MakePair(first_branch, branch);
             }
         }
 
@@ -280,40 +280,39 @@ auto spp::analyse::utils::mem_utils::validate_inconsistent_memory(
     }
 }
 
-
-auto spp::analyse::utils::mem_utils::prevent_borrow_lifetime_extension(
-    scopes::VariableSymbol const* lhs_outermost,
-    scopes::VariableSymbol const* rhs_outermost,
+auto spp::analyse::utils::mem_utils::PreventBorrowLifetimeExtension(
+    scopes::VariableSymbol const *lhs_outermost,
+    scopes::VariableSymbol const *rhs_outermost,
     asts::Ast *owner,
-    scopes::ScopeManager const& sm)
+    scopes::ScopeManager const &sm)
     -> void {
     // Todo: A similar version of this function will be needed for "return" statements as-well as the currently used "="
     //  statements.
 
     // Prevent a borrow being placed into a value with a longer lifetime.
-    const auto is_rhs_borrow = rhs_outermost and std::get<0>(rhs_outermost->memory_info->ast_borrowed) != nullptr;
+    const auto is_rhs_borrow = rhs_outermost and std::get<0>(rhs_outermost->MemInfo->AstBorrowed) != nullptr;
     if (lhs_outermost != nullptr and rhs_outermost != nullptr and is_rhs_borrow) {
-        const auto rhs_borrow_scope = std::get<1>(rhs_outermost->memory_info->ast_borrowed);
-        const auto lhs_init_scope = lhs_outermost->scope_defined_in;
+        const auto rhs_borrow_scope = std::get<1>(rhs_outermost->MemInfo->AstBorrowed);
+        const auto lhs_init_scope = lhs_outermost->ScopeDefinedIn;
         if (lhs_init_scope != nullptr) {
-            const auto scope_depth_difference = genex::position(lhs_init_scope->ancestors(), genex::operations::eq_fixed{rhs_borrow_scope});
-            raise_if<errors::SppBorrowLifetimeIncreaseError>(
-                scope_depth_difference < 0, {sm.current_scope},
-                ERR_ARGS(*owner, *lhs_outermost->name, *std::get<0>(rhs_outermost->memory_info->ast_borrowed)));
+            const auto scope_depth_difference = genex::position(lhs_init_scope->Ancestors(), genex::operations::eq_fixed{rhs_borrow_scope});
+            RaiseIf<errors::SppBorrowLifetimeIncreaseError>(
+                scope_depth_difference < 0, {sm.CurrentScope},
+                ERR_ARGS(*owner, *lhs_outermost->Name, *std::get<0>(rhs_outermost->MemInfo->AstBorrowed)));
         }
     }
 
     // Ensure a value that contains escaping borrows isn't increasing the escaping borrows' lifetimes.
     else if (lhs_outermost != nullptr and rhs_outermost != nullptr) {
-        const auto escaping_borrows = rhs_outermost->memory_info->ast_escaping_borrows;
-        const auto lhs_init_scope = lhs_outermost->scope_defined_in;
+        const auto escaping_borrows = rhs_outermost->MemInfo->AstEscapingBorrows;
+        const auto lhs_init_scope = lhs_outermost->ScopeDefinedIn;
         for (auto const &[e, _, _] : escaping_borrows) {
-            const auto escaping_borrow_scope = sm.current_scope->get_var_symbol_outermost(*e).first->scope_defined_in;
+            const auto escaping_borrow_scope = sm.CurrentScope->GetVarSymbolOutermost(*e).First->ScopeDefinedIn;
             if (not escaping_borrow_scope) { continue; }
-            const auto scope_depth_difference = genex::position(lhs_init_scope->ancestors(), genex::operations::eq_fixed{escaping_borrow_scope});
-            raise_if<errors::SppBorrowLifetimeIncreaseError>(
-                scope_depth_difference < 0, {sm.current_scope},
-                ERR_ARGS(*owner, *lhs_outermost->name, *e));
+            const auto scope_depth_difference = genex::position(lhs_init_scope->Ancestors(), genex::operations::eq_fixed{escaping_borrow_scope});
+            RaiseIf<errors::SppBorrowLifetimeIncreaseError>(
+                scope_depth_difference < 0, {sm.CurrentScope},
+                ERR_ARGS(*owner, *lhs_outermost->Name, *e));
         }
     }
 }

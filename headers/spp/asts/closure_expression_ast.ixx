@@ -5,6 +5,7 @@ export module spp.asts.closure_expression_ast;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_func;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -21,19 +22,19 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst 
      * The optional @c cor keyword. Providing this will turn the closure into a coroutine closure. Otherwise, it will
      * default to @code fun@endcode.
      */
-    std::unique_ptr<TokenAst> tok;
+    Unique<TokenAst> Tok;
 
     /**
      * The parameter and capture group of the closure. This will contain the parameters for the closure, as well as any
      * captured variables from the outer scopes.
      */
-    std::unique_ptr<ClosureExpressionParameterAndCaptureGroupAst> pc_group;
+    Unique<ClosureExpressionParameterAndCaptureGroupAst> PcGroup;
 
     /**
      * The body of the closure. This can be a single expression, like @code || 1 + 2@endcode, or an inner scope (type of
      * expression), for more complex closures.
      */
-    std::unique_ptr<ExpressionAst> body;
+    Unique<ExpressionAst> Body;
 
     /**
      * Construct the ClosureExpressionAst with the arguments matching the members.
@@ -42,34 +43,34 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst 
      * @param[in] body The body of the closure.
      */
     ClosureExpressionAst(
-        decltype(tok) &&tok,
-        decltype(pc_group) &&pc_group,
-        decltype(body) &&body);
+        decltype(Tok) &&tok,
+        decltype(PcGroup) &&pc_group,
+        decltype(Body) &&body);
 
     ~ClosureExpressionAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_8_check_memory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-    SPP_ATTR_NODISCARD auto get_llvm_func() const -> std::shared_ptr<codegen::LlvmFuncWrapper>;
+    SPP_ATTR_NODISCARD auto GetLlvmFunc() const -> Shared<codegen::LlvmFuncWrapper>;
 
 private:
     /**
      * The inferred return type of the closure. This is determined during semantic analysis and type inference. Must be
      * consistent with each returning value of the closure body.
      */
-    std::shared_ptr<TypeAst> m_ret_type;
+    Shared<TypeAst> _RetType;
 
     /**
      * The LLVM function representing the closure. This is generated during code generation stage 11, and is used to
      * call the closure when it is invoked.
      */
-    std::shared_ptr<codegen::LlvmFuncWrapper> m_llvm_func;
+    Shared<codegen::LlvmFuncWrapper> _LlvmFunc;
 };

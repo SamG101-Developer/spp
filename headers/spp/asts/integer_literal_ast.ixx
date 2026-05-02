@@ -3,8 +3,10 @@ module;
 
 export module spp.asts.integer_literal_ast;
 import spp.asts.literal_ast;
+import spp.asts.type_ast;
 import spp.codegen.llvm_ctx;
 import spp.lex.tokens;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -22,17 +24,17 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
      * The optionally provided sign token. This can be either a @c + or @c - sign, indicating the sign of the integer
      * literal. No sign means the integer is positive by default.
      */
-    std::unique_ptr<TokenAst> tok_sign;
+    Unique<TokenAst> TokSign;
 
     /**
      * The token that represents the integer literal. This is the actual integer value in the source code.
      */
-    std::unique_ptr<TokenAst> val;
+    Unique<TokenAst> Val;
 
     /**
      * The raw type of the integer literal. This is from the postfix tag to the literal, like "i32" or "u64".
      */
-    std::string type;
+    Str Type;
 
     /**
      * Construct the IntegerLiteralAst with the arguments matching the members.
@@ -41,32 +43,28 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
      * @param[in] type The type of the integer literal.
      */
     IntegerLiteralAst(
-        decltype(tok_sign) &&tok_sign,
-        decltype(val) &&val,
-        std::string &&type);
+        decltype(TokSign) &&tok_sign,
+        decltype(Val) &&val,
+        Str &&type);
 
     ~IntegerLiteralAst() override;
 
-    SPP_ATTR_NODISCARD auto equals_integer_literal(
-        IntegerLiteralAst const &) const
-        -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto EqualsIntegerLiteral(IntegerLiteralAst const &) const -> Ordering override;
 
-    SPP_ATTR_NODISCARD auto equals(
-        ExpressionAst const &other) const
-        -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
     template <typename T> requires std::integral<T>
-    auto cpp_value() const -> T;
+    auto CppVal() const -> T;
 };
 
 

@@ -1,0 +1,11 @@
+FLAMEGRAPH
+----------
+perf record -g -F 99 ./cmake-build-debug-wsl-dev/spp
+perf script > perf.txt
+cat perf.txt | ../FlameGraph/stackcollapse-perf.pl > collapsed.txt
+cat collapsed.txt | ../FlameGraph/flamegraph.pl > flamegraph1.html
+
+TREE
+----
+perf record -g -F 99 ./cmake-build-debug-wsl-dev/spp
+perf script | c++filt | gprof2dot -f perf --strip --wrap --node-thres=1 --edge-thres=1 | dot -Tsvg -Gsplines=ortho -Grankdir=LR -Gconcentrate=true -o graph3.svg

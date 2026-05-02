@@ -11,7 +11,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct Ast;
 }
 
-
 namespace spp::analyse::utils::assignment_utils {
     /**
      * Check if an AST is of the @c IdentifierAst type. This is put as a function here for uniform comparison to whether
@@ -19,7 +18,7 @@ namespace spp::analyse::utils::assignment_utils {
      * @param expr The AST to check.
      * @return If the AST is an identifier, return true. Otherwise, return false.
      */
-    SPP_EXP_FUN auto is_identifier(
+    SPP_EXP_FUN auto IsIdentifier(
         asts::Ast const *expr)
         -> bool;
 
@@ -31,7 +30,7 @@ namespace spp::analyse::utils::assignment_utils {
      * @param sm
      * @return
      */
-    SPP_EXP_FUN auto is_attr(
+    SPP_EXP_FUN auto IsAttr(
         asts::Ast const *expr,
         scopes::ScopeManager const *sm)
         -> bool;

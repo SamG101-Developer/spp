@@ -11,121 +11,107 @@ import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
 import genex;
 
-
 SPP_MOD_BEGIN
 template <typename I, typename S>
 spp::analyse::scopes::IndividualSymbolTable<I, S>::IndividualSymbolTable() :
-    m_table() {
+    _Table() {
 }
-
 
 template <typename I, typename S>
 spp::analyse::scopes::IndividualSymbolTable<I, S>::IndividualSymbolTable(
     IndividualSymbolTable const &that) {
     // Copy constructor from another symbol table.
-    m_table = that.m_table;
+    _Table = that._Table;
 }
-
 
 template <typename I, typename S>
 spp::analyse::scopes::IndividualSymbolTable<I, S>::~IndividualSymbolTable() = default;
-
 
 template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::operator=(
     IndividualSymbolTable const &that)
     -> IndividualSymbolTable& {
-    for (auto const &[k, v] : that.m_table) {
-        m_table[k] = std::make_shared<S>(*v);
+    for (auto const &[k, v] : that._Table) {
+        _Table[k] = MakeShared<S>(*v);
     }
     return *this;
 }
 
-
 template <typename I, typename S>
-auto spp::analyse::scopes::IndividualSymbolTable<I, S>::add(
-    std::shared_ptr<I> const &sym_name,
-    std::shared_ptr<S> const &sym)
+auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Add(
+    Shared<I> const &sym_name,
+    Shared<S> const &sym)
     -> void {
     // Add a symbol to the table. Use string_view for the find to avoid a copy.
-    const auto sv = sym_name->to_string_view();
-    auto it = m_table.find(sv);
-    if (it != m_table.end()) {
+    const auto sv = sym_name->ToView();
+    auto it = _Table.find(sv);
+    if (it != _Table.end()) {
         it->second = sym;
     }
     else {
-        m_table.emplace(sv, sym);
+        _Table.emplace(sv, sym);
     }
 }
 
-
 template <typename I, typename S>
-auto spp::analyse::scopes::IndividualSymbolTable<I, S>::rem(
-    std::shared_ptr<I> const &sym_name) -> void {
+auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Rem(
+    Shared<I> const &sym_name) -> void {
     // Remove a symbol from the table.
-    auto it = m_table.find(sym_name->to_string_view());
-    if (it != m_table.end()) {
-        m_table.erase(it);
+    auto it = _Table.find(sym_name->ToView());
+    if (it != _Table.end()) {
+        _Table.erase(it);
     }
 }
 
-
 template <typename I, typename S>
-auto spp::analyse::scopes::IndividualSymbolTable<I, S>::get(
-    std::shared_ptr<I> const &sym_name) const
-    -> std::shared_ptr<S> {
+auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Get(
+    Shared<I> const &sym_name) const
+    -> Shared<S> {
     // Get a symbol from the table. Use string_view to avoid a string copy per lookup.
     if (sym_name == nullptr) { return nullptr; }
-    auto ptr = m_table.find(sym_name->to_string_view());
-    return ptr != m_table.end() ? ptr->second : nullptr;
+    auto ptr = _Table.find(sym_name->ToView());
+    return ptr != _Table.end() ? ptr->second : nullptr;
 }
 
-
 template <typename I, typename S>
-auto spp::analyse::scopes::IndividualSymbolTable<I, S>::has(
-    std::shared_ptr<I> const &sym_name) const
+auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Has(
+    Shared<I> const &sym_name) const
     -> bool {
     // Check if a symbol exists in the table.
     if (sym_name == nullptr) { return false; }
-    auto ptr = m_table.find(sym_name->to_string_view());
-    return ptr != m_table.end();
+    auto ptr = _Table.find(sym_name->ToView());
+    return ptr != _Table.end();
 }
-
 
 template <typename I, typename S>
-auto spp::analyse::scopes::IndividualSymbolTable<I, S>::all() const
-    -> std::vector<std::shared_ptr<S>> {
+auto spp::analyse::scopes::IndividualSymbolTable<I, S>::All() const
+    -> Vec<Shared<S>> {
     // Generate all symbols in the table.
-    return m_table
+    return _Table
         | genex::views::vals
-        | genex::to<std::vector>();
+        | genex::to<Vec>();
 }
-
 
 spp::analyse::scopes::SymbolTable::SymbolTable() = default;
 
-
 spp::analyse::scopes::SymbolTable::SymbolTable(
     SymbolTable const &that) :
-    ns_tbl(that.ns_tbl),
-    type_tbl(that.type_tbl),
-    var_tbl(that.var_tbl) {
+    NsTbl(that.NsTbl),
+    TypeTbl(that.TypeTbl),
+    VarTbl(that.VarTbl) {
 }
 
-
 spp::analyse::scopes::SymbolTable::~SymbolTable() = default;
-
 
 auto spp::analyse::scopes::SymbolTable::operator=(
     SymbolTable const &that)
     -> SymbolTable& {
     // Assignment operator.
-    ns_tbl = that.ns_tbl;
-    type_tbl = that.type_tbl;
-    var_tbl = that.var_tbl;
+    NsTbl = that.NsTbl;
+    TypeTbl = that.TypeTbl;
+    VarTbl = that.VarTbl;
     return *this;
 }
-
 
 template class spp::analyse::scopes::IndividualSymbolTable<spp::asts::IdentifierAst, spp::analyse::scopes::NamespaceSymbol>;
 template class spp::analyse::scopes::IndividualSymbolTable<spp::asts::TypeIdentifierAst, spp::analyse::scopes::TypeSymbol>;

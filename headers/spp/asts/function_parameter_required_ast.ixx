@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.function_parameter_required_ast;
 import spp.asts.function_parameter_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -21,9 +22,9 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterRequiredAst final : FunctionParam
      * for uniformity with the other parameter variants.
      */
     FunctionParameterRequiredAst(
-        decltype(var) &&var,
-        decltype(tok_colon) &&tok_colon,
-        decltype(type) type);
+        decltype(Var) &&var,
+        decltype(TokColon) &&tok_colon,
+        decltype(Type) type);
 
     ~FunctionParameterRequiredAst() override;
 

@@ -3,6 +3,7 @@ module;
 
 export module spp.analyse.utils.bin_utils;
 import spp.lex.tokens;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -21,13 +22,12 @@ namespace spp::analyse::scopes {
     SPP_EXP_CLS struct TypeSymbol;
 }
 
-
 namespace spp::analyse::utils::bin_utils {
     /**
      * The map of binary operators to their corresponding method names. This is used when converting binary expressions
      * to function calls.
      */
-    SPP_EXP_CLS const auto BIN_METHODS = std::map<lex::SppTokenType, std::string>{
+    SPP_EXP_CLS const auto kBinMethods = std::map<lex::SppTokenType, Str>{
         {lex::SppTokenType::KW_OR, "ior_"},
         {lex::SppTokenType::KW_AND, "and_"},
         {lex::SppTokenType::TK_EQ, "eq"},
@@ -63,7 +63,7 @@ namespace spp::analyse::utils::bin_utils {
     /**
      * The list of binary compound assignment operators.
      */
-    SPP_EXP_CLS constexpr auto BIN_COMPOUND_ASSIGNMENT_OPS = std::array{
+    SPP_EXP_CLS constexpr auto kBinCompoundAssignmentOps = std::array{
         lex::SppTokenType::TK_ADD_ASSIGN,
         lex::SppTokenType::TK_SUB_ASSIGN,
         lex::SppTokenType::TK_MUL_ASSIGN,
@@ -79,7 +79,7 @@ namespace spp::analyse::utils::bin_utils {
     /**
      * The list of binary comparison operators.
      */
-    SPP_EXP_CLS constexpr auto BIN_COMPARISON_OPS = std::array{
+    SPP_EXP_CLS constexpr auto kBinComparisonOps = std::array{
         lex::SppTokenType::TK_EQ,
         lex::SppTokenType::TK_NE,
         lex::SppTokenType::TK_LT,
@@ -88,21 +88,21 @@ namespace spp::analyse::utils::bin_utils {
         lex::SppTokenType::TK_GE
     };
 
-    SPP_EXP_FUN auto combine_comp_ops(
+    SPP_EXP_FUN auto CombineCompOps(
         asts::BinaryExpressionAst &bin_expr,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
-        -> std::unique_ptr<asts::BinaryExpressionAst>;
+        -> Unique<asts::BinaryExpressionAst>;
 
-    SPP_EXP_FUN auto convert_bin_expr_to_function_call(
+    SPP_EXP_FUN auto ConvertBinExprToFuncCall(
         asts::BinaryExpressionAst &bin_expr,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
-        -> std::unique_ptr<asts::PostfixExpressionAst>;
+        -> Unique<asts::PostfixExpressionAst>;
 
-    SPP_EXP_FUN auto convert_is_expr_to_function_call(
+    SPP_EXP_FUN auto ConvertIsExprToFuncCall(
         asts::IsExpressionAst &is_expr,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)
-        -> std::unique_ptr<asts::CaseExpressionAst>;
+        -> Unique<asts::CaseExpressionAst>;
 }

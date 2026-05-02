@@ -4,6 +4,7 @@ module;
 export module spp.asts.statement_ast;
 import spp.asts.ast;
 import spp.asts.mixins.type_inferrable_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -16,7 +17,7 @@ namespace spp::asts {
  * The StatementAst class is the base class for all statements in the abstract syntax tree. It is used to represent
  * statements that do not return a value, such as variable declarations and control flow statements.
  */
-SPP_EXP_CLS struct spp::asts::StatementAst : virtual Ast, mixins::TypeInferrableAst {
+SPP_EXP_CLS struct spp::asts::StatementAst : Ast, mixins::TypeInferrableAst {
     StatementAst();
 
     ~StatementAst() override;
@@ -28,12 +29,12 @@ SPP_EXP_CLS struct spp::asts::StatementAst : virtual Ast, mixins::TypeInferrable
      * @param meta Associated metadata.
      * @return The Void type, as all statements are void.
      */
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
     /**
      * Test if the statement always terminates control flow with the "ret" instruction. For blocks, the final member is
      * always inspected, recursively.
      * @return If the statement always terminates control flow.
      */
-    SPP_ATTR_NODISCARD virtual auto terminates() const -> bool;
+    SPP_ATTR_NODISCARD virtual auto Terminates() const -> bool;
 };

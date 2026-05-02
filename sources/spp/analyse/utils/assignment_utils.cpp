@@ -5,17 +5,18 @@ import spp.asts.ast;
 import spp.asts.identifier_ast;
 import std;
 
-
-auto spp::analyse::utils::assignment_utils::is_identifier(
+auto spp::analyse::utils::assignment_utils::IsIdentifier(
     asts::Ast const *expr) -> bool {
     // Determine if the AST node is an identifier.
-    return expr->to<asts::IdentifierAst>() != nullptr;
+    return expr->To<asts::IdentifierAst>() != nullptr;
 }
 
-
-auto spp::analyse::utils::assignment_utils::is_attr(
+auto spp::analyse::utils::assignment_utils::IsAttr(
     asts::Ast const *expr,
     scopes::ScopeManager const *sm) -> bool {
     // Determine if the AST node is an attribute (ie not an identifier).
-    return not expr->to<asts::IdentifierAst>() and sm->current_scope->get_var_symbol_outermost(*expr).first != nullptr;
+    if (expr->To<asts::IdentifierAst>()) { return false; }
+
+    auto const var_symbol_outermost = sm->CurrentScope->GetVarSymbolOutermost(*expr);
+    return var_symbol_outermost.First != nullptr;
 }

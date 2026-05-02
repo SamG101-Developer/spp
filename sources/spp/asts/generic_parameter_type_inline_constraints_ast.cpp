@@ -11,74 +11,70 @@ import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
 import genex;
 
-
 SPP_MOD_BEGIN
-auto spp::asts::GenericParameterTypeInlineConstraintsAst::new_empty()
-    -> std::unique_ptr<GenericParameterTypeInlineConstraintsAst> {
-    return std::make_unique<GenericParameterTypeInlineConstraintsAst>(
-        nullptr, std::vector<std::unique_ptr<TypeAst>>{});
+auto spp::asts::GenericParameterTypeInlineConstraintsAst::NewEmpty()
+    -> Unique<GenericParameterTypeInlineConstraintsAst> {
+    return MakeUnique<GenericParameterTypeInlineConstraintsAst>(
+        nullptr, Vec<Unique<TypeAst>>{});
 }
 
-
 spp::asts::GenericParameterTypeInlineConstraintsAst::GenericParameterTypeInlineConstraintsAst(
-    decltype(tok_colon) &&tok_colon,
-    std::vector<std::unique_ptr<TypeAst>> &&constraints) :
-    tok_colon(std::move(tok_colon)) {
+    decltype(TokColon) &&tok_colon,
+    Vec<Unique<TypeAst>> &&constraints) :
+    TokColon(std::move(tok_colon)) {
     for (auto &&constraint : std::move(constraints)) {
-        this->constraints.emplace_back(std::move(constraint));
+        this->Constraints.EmplaceBack(Shared(std::move(constraint)));
     }
 }
 
-
 spp::asts::GenericParameterTypeInlineConstraintsAst::~GenericParameterTypeInlineConstraintsAst() = default;
 
-
-auto spp::asts::GenericParameterTypeInlineConstraintsAst::pos_start() const
+auto spp::asts::GenericParameterTypeInlineConstraintsAst::PosStart() const
     -> std::size_t {
-    return tok_colon->pos_start();
+    // Use the ":" token.
+    return TokColon->PosStart();
 }
 
-
-auto spp::asts::GenericParameterTypeInlineConstraintsAst::pos_end() const
+auto spp::asts::GenericParameterTypeInlineConstraintsAst::PosEnd() const
     -> std::size_t {
-    return constraints.empty() ? tok_colon->pos_end() : constraints.back()->pos_end();
+    // Use the last constraint.
+    return Constraints.IsEmpty() ? TokColon->PosEnd() : Constraints.Back()->PosEnd();
 }
 
-
-auto spp::asts::GenericParameterTypeInlineConstraintsAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<GenericParameterTypeInlineConstraintsAst>(
-        ast_clone(tok_colon),
-        ast_clone_vec(constraints));
+auto spp::asts::GenericParameterTypeInlineConstraintsAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<GenericParameterTypeInlineConstraintsAst>(
+        AstClone(TokColon),
+        AstCloneVec(Constraints));
 }
 
-
-spp::asts::GenericParameterTypeInlineConstraintsAst::operator std::string() const {
+auto spp::asts::GenericParameterTypeInlineConstraintsAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_colon);
-    SPP_STRING_EXTEND(constraints, " & ");
+    SPP_STRING_APPEND(TokColon);
+    SPP_STRING_EXTEND(Constraints, " & ");
     SPP_STRING_END;
 }
 
-
-auto spp::asts::GenericParameterTypeInlineConstraintsAst::stage_7_analyse_semantics(
+auto spp::asts::GenericParameterTypeInlineConstraintsAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Prepare the fully qualified constraints vector.
-    auto fq_constraints = decltype(constraints)();
-    fq_constraints.reserve(constraints.size());
+    auto fq_constraints = decltype(Constraints)();
+    fq_constraints.reserve(Constraints.Len());
 
     // Analyse each constraint type.
-    for (auto const &constraint : constraints) {
-        constraint->stage_7_analyse_semantics(sm, meta);
-        auto const constraint_type_sym = sm->current_scope->get_type_symbol(constraint->without_generics());
-        fq_constraints.emplace_back(
-            constraint_type_sym->fq_name()->with_generics(std::move(constraint->type_parts().back()->generic_arg_group)));
+    for (auto const &constraint : Constraints) {
+        constraint->Stage7_AnalyseSemantics(sm, meta);
+        auto const constraint_type_sym = sm->CurrentScope->GetTypeSymbol(constraint->WithoutGenerics());
+        fq_constraints.EmplaceBack(
+            constraint_type_sym->FqName()->WithGenerics(std::move(constraint->TypeParts().Back()->GnArgGroup)));
     }
 
     // Replace the constraints with their fully qualified versions.
-    constraints = std::move(fq_constraints);
+    Constraints = std::move(fq_constraints);
 }
 
 SPP_MOD_END

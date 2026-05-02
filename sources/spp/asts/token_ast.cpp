@@ -5,54 +5,55 @@ module spp.asts.token_ast;
 
 
 SPP_MOD_BEGIN
-auto spp::asts::TokenAst::new_empty(
+auto spp::asts::TokenAst::NewEmpty(
     lex::SppTokenType token_type,
-    std::string &&token_data,
+    Str &&token_data,
     const std::size_t pos)
-    -> std::unique_ptr<TokenAst> {
-    return std::make_unique<TokenAst>(pos, token_type, std::move(token_data));
+    -> Unique<TokenAst> {
+    return MakeUnique<TokenAst>(pos, token_type, std::move(token_data));
 }
-
 
 spp::asts::TokenAst::TokenAst(
     const std::size_t pos,
     const lex::SppTokenType token_type,
-    std::string &&token_data) :
-    token_type(token_type),
-    token_data(std::move(token_data)),
-    m_pos(pos) {
+    Str &&token_data) :
+    TokenType(token_type),
+    TokenData(std::move(token_data)),
+    _Pos(pos) {
 }
-
 
 spp::asts::TokenAst::~TokenAst() = default;
 
-
-auto spp::asts::TokenAst::pos_start() const
+auto spp::asts::TokenAst::PosStart() const
     -> std::size_t {
-    return m_pos;
+    // Use the local position.
+    return _Pos;
 }
 
-
-auto spp::asts::TokenAst::pos_end() const
+auto spp::asts::TokenAst::PosEnd() const
     -> std::size_t {
-    return m_pos + token_data.length();
+    // Add the data size to the local position.
+    return _Pos + TokenData.length();
 }
 
-
-auto spp::asts::TokenAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<TokenAst>(m_pos, token_type, token_data.c_str());
+auto spp::asts::TokenAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<TokenAst>(
+        _Pos, TokenType, TokenData.c_str());
 }
 
-
-spp::asts::TokenAst::operator std::string() const {
-    return token_data;
+auto spp::asts::TokenAst::ToString() const
+    -> Str {
+    // Use the token data.
+    return TokenData;
 }
 
-
-auto spp::asts::TokenAst::operator==(TokenAst const &that) const
+auto spp::asts::TokenAst::operator==(
+    TokenAst const &that) const
     -> bool {
-    return token_type == that.token_type;
+    // Equality is dependent on the token type alone.
+    return TokenType == that.TokenType;
 }
 
 SPP_MOD_END

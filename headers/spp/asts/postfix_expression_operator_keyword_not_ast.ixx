@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.postfix_expression_operator_keyword_not_ast;
 import spp.asts.postfix_expression_operator_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -16,12 +17,12 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordNotAst final : Pos
     /**
      * The @c . token that indicates a member access operation.
      */
-    std::unique_ptr<TokenAst> tok_dot;
+    Unique<TokenAst> TokDot;
 
     /**
      * The @c not token that indicates a keyword not operation.
      */
-    std::unique_ptr<TokenAst> tok_not;
+    Unique<TokenAst> TokNot;
 
     /**
      * Construct the PostfixExpressionOperatorKeywordNotAst with the arguments matching the members.
@@ -29,16 +30,16 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordNotAst final : Pos
      * @param tok_not The @c not token that indicates a keyword not operation.
      */
     PostfixExpressionOperatorKeywordNotAst(
-        decltype(tok_dot) &&tok_dot,
-        decltype(tok_not) &&tok_not);
+        decltype(TokDot) &&tok_dot,
+        decltype(TokNot) &&tok_not);
 
     ~PostfixExpressionOperatorKeywordNotAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };

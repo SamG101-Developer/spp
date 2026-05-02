@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.object_initializer_argument_shorthand_ast;
 import spp.asts.object_initializer_argument_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -21,7 +22,7 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentShorthandAst final : Obje
      * The optional @c .. token that indicates an "else" argument. This fills all the missing attributes in the object
      * with the corresponding attributes from this argument.
      */
-    std::unique_ptr<TokenAst> tok_ellipsis;
+    Unique<TokenAst> TokEllipsis;
 
     /**
      * Factory function to create a shorthand argument, with the provided expression, that is used for "autofill", ie
@@ -29,9 +30,9 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentShorthandAst final : Obje
      * @param val The expression to move fields off of.
      * @return The "..arg" form.
      */
-    static auto create_autofill(
-        std::unique_ptr<ExpressionAst> &&val)
-        -> std::unique_ptr<ObjectInitializerArgumentShorthandAst>;
+    static auto CreateAutoFillArg(
+        Unique<ExpressionAst> &&val)
+        -> Unique<ObjectInitializerArgumentShorthandAst>;
 
     /**
      * Construct the ObjectInitializerArgumentShorthandAst with the arguments matching the members.
@@ -42,12 +43,12 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentShorthandAst final : Obje
      * defined for uniformity with the other argument variants.
      */
     explicit ObjectInitializerArgumentShorthandAst(
-        std::unique_ptr<TokenAst> tok_ellipsis,
-        std::unique_ptr<ExpressionAst> &&val);
+        decltype(TokEllipsis) &&tok_ellipsis,
+        decltype(Val) &&val);
 
     ~ObjectInitializerArgumentShorthandAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };

@@ -5,29 +5,59 @@ export module spp.asts.inner_scope_expression_ast;
 import spp.asts.inner_scope_ast;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
 import std;
 
 namespace spp::asts {
-    SPP_EXP_CLS template <typename T>
-    struct InnerScopeExpressionAst;
+    SPP_EXP_CLS struct Ast;
+    SPP_EXP_CLS struct InnerScopeExpressionAst;
     SPP_EXP_CLS struct TypeAst;
 }
 
 
-SPP_EXP_CLS template <typename T>
-struct spp::asts::InnerScopeExpressionAst final : InnerScopeAst<T>, PrimaryExpressionAst {
-    static auto new_empty() -> std::unique_ptr<InnerScopeExpressionAst>;
+SPP_EXP_CLS struct spp::asts::InnerScopeExpressionAst : PrimaryExpressionAst {
+    /**
+     * The @c { token that represents the start of the inner scope. This is used to indicate the beginning of the scope
+     * and is typically followed by a list of members or statements that belong to this scope.
+     */
+    Unique<TokenAst> TokL;
 
-    using InnerScopeAst<T>::InnerScopeAst;
+    /**
+     * The list of members in the inner scope. They are all the @c T type, or a derived type. This allows for a flexible
+     * structure where different types of ASTs can be included in the same inner scope, as long as they derive from
+     * a common base class.
+     */
+    Vec<Unique<StatementAst>> Members;
 
-    SPP_ATTR_NODISCARD auto clone() const -> std::unique_ptr<Ast> override;
+    /**
+     * The @c } token that represents the end of the inner scope. This is used to indicate the end of the scope after
+     * all the members or statements have been defined.
+     */
+    Unique<TokenAst> TokR;
 
-    auto stage_9_comptime_resolution(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    static auto NewEmpty() -> Unique<InnerScopeExpressionAst>;
 
-    auto stage_11_code_gen_2(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    InnerScopeExpressionAst(
+        decltype(TokL) &&tok_l,
+        decltype(Members) &&members,
+        decltype(TokR) &&tok_r);
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    ~InnerScopeExpressionAst() override;
 
-    SPP_ATTR_NODISCARD auto terminates() const -> bool override;
+    SPP_AST_KEY_FUNCTIONS;
+
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+    SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
+
+    SPP_ATTR_NODISCARD auto FinalMember() const -> Ast*;
 };

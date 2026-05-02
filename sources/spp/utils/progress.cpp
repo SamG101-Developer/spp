@@ -8,7 +8,7 @@ SPP_MOD_BEGIN
 
 
 spp::utils::ProgressBar::ProgressBar(
-    std::string label,
+    Str label,
     const std::uint32_t total_steps,
     const bool enabled) :
     m_label(std::move(label)),

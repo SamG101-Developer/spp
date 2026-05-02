@@ -20,7 +20,7 @@ constexpr auto SPP_VERSION = "0.1.0";
 
 #define SPP_ATTR_ASSUME(x) [[assume(x)]]
 
-#define SPP_ATTR_ALWAYS_INLINE [[gnu::always_inline]] inline
+#define SPP_ATTR_ALWAYS_INLINE [[gnu::always_inline]]
 
 #define SPP_ATTR_NOINLINE [[gnu::noinline]]
 
@@ -60,24 +60,29 @@ constexpr auto SPP_VERSION = "0.1.0";
     }
 
 
-#define SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(ast_attr, ...)                               \
-    if ((ast_attr).get() == nullptr) {                                                 \
-        (ast_attr) = std::remove_cvref_t<decltype(*ast_attr)>::new_empty(__VA_ARGS__); \
+#define SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(ast_attr, ...)                              \
+    if ((ast_attr) == nullptr) {                                                      \
+        (ast_attr) = std::remove_cvref_t<decltype(*ast_attr)>::NewEmpty(__VA_ARGS__); \
     }
 
-#define SPP_STRING_START auto raw_string = std::string()
+#define SPP_SET_AST_TO_DEFAULT_SHARED_IF_NULLPTR(ast_attr, ...)                                    \
+    if ((ast_attr) == nullptr) {                                                            \
+        (ast_attr) = std::remove_cvref_t<decltype(*ast_attr)>::NewEmptyShared(__VA_ARGS__); \
+    }
 
-#define SPP_STRING_APPEND(x) raw_string.append(x != nullptr ? static_cast<std::string>(*x) : "")
+#define SPP_STRING_START auto raw_string = Str()
 
-#define SPP_STRING_EXTEND(x, j) raw_string.append(std::ranges::to<std::string>(std::ranges::views::join_with(std::ranges::views::transform(x, [&](auto &&x) { return x ? static_cast<std::string>(*x) : ""; }), std::string(j))))
+#define SPP_STRING_APPEND(x) raw_string.append(x != nullptr ? x->ToString() : "")
+
+#define SPP_STRING_EXTEND(x, j) raw_string.append(std::ranges::to<Str>(std::ranges::views::join_with(std::ranges::views::transform(x, [&](auto &&x) { return x ? x->ToString() : ""; }), Str(j))))
 
 #define SPP_STRING_END return raw_string
 
-#define SPP_AST_KEY_FUNCTIONS                                               \
-    SPP_ATTR_NODISCARD auto pos_start() const -> std::size_t override;      \
-    SPP_ATTR_NODISCARD auto pos_end() const -> std::size_t override;        \
-    SPP_ATTR_NODISCARD auto clone() const -> std::unique_ptr<Ast> override; \
-    SPP_ATTR_NODISCARD explicit operator std::string() const override;
+#define SPP_AST_KEY_FUNCTIONS                                         \
+    SPP_ATTR_NODISCARD auto PosStart() const -> std::size_t override; \
+    SPP_ATTR_NODISCARD auto PosEnd() const -> std::size_t override;   \
+    SPP_ATTR_NODISCARD auto Clone() const -> Unique<Ast> override;    \
+    SPP_ATTR_NODISCARD auto ToString() const -> Str override;
 
 #define SPP_GCC_VTABLE_FIX_BASE \
     virtual auto _spp_key_function() const -> void;
@@ -95,36 +100,38 @@ constexpr auto SPP_VERSION = "0.1.0";
     ((not (list).empty()) ? (list)[0] : decltype(list)::value_type{})
 
 
+/*
 #define SPP_ENFORCE_EXPRESSION_SUBTYPE(ast)                                            \
-    raise_if<analyse::errors::SppExpressionTypeInvalidError>(                          \
-        ast and ((ast->to<TypeAst>() != nullptr) or (ast->to<TokenAst>() != nullptr)), \
-        {sm->current_scope}, ERR_ARGS(*ast))
+    RaiseIf<analyse::errors::SppExpressionTypeInvalidError>(                          \
+        ast and ((ast->To<TypeAst>() != nullptr) or (ast->To<TokenAst>() != nullptr)), \
+        {sm->CurrentScope}, ERR_ARGS(*ast))
 
 
 #define SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(ast)       \
-    raise_if<analyse::errors::SppExpressionTypeInvalidError>( \
-        ast and ast->to<TypeAst>() != nullptr,                \
-        {sm->current_scope}, ERR_ARGS(*ast))
+    RaiseIf<analyse::errors::SppExpressionTypeInvalidError>( \
+        ast and ast->To<TypeAst>() != nullptr,                \
+        {sm->CurrentScope}, ERR_ARGS(*ast))
 
 
 #define SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TYPE(ast)        \
-    raise_if<analyse::errors::SppExpressionTypeInvalidError>( \
-        ast and ast->to<TokenAst>() != nullptr,               \
-        {sm->current_scope}, ERR_ARGS(*ast))
+    RaiseIf<analyse::errors::SppExpressionTypeInvalidError>( \
+        ast and ast->To<TokenAst>() != nullptr,               \
+        {sm->CurrentScope}, ERR_ARGS(*ast))
 
 
 #define SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(ast, type, m, what, ...)                \
-    raise_if<analyse::errors::SppSecondClassBorrowViolationError>(                        \
+    RaiseIf<analyse::errors::SppSecondClassBorrowViolationError>(                        \
         analyse::utils::type_utils::is_type_borrowed(*type, m __VA_OPT__(, __VA_ARGS__)), \
-        {sm->current_scope}, ERR_ARGS(*ast, *type, what))
+        {sm->CurrentScope}, ERR_ARGS(*ast, *type, what))
+*/
 
 
 #define SPP_RETURN_TYPE_OVERLOAD_HELPER(expr) \
-    if (auto pe = expr->to<PostfixExpressionAst>(); pe != nullptr and pe->op->to<PostfixExpressionOperatorFunctionCallAst>() != nullptr)
+    if (auto pe = expr->To<PostfixExpressionAst>(); pe != nullptr and pe->Op->To<PostfixExpressionOperatorFunctionCallAst>() != nullptr)
 
 
 #define SPP_DEREF_ALLOW_MOVE_HELPER(expr) \
-    if (auto pe = expr->to<PostfixExpressionAst>(); pe != nullptr and pe->op->to<PostfixExpressionOperatorDerefAst>() != nullptr)
+    if (auto pe = expr->To<PostfixExpressionAst>(); pe != nullptr and pe->Op->To<PostfixExpressionOperatorDerefAst>() != nullptr)
 
 
 #define SPP_EXP_ENUM export extern "C++"
@@ -143,6 +150,6 @@ constexpr auto SPP_VERSION = "0.1.0";
  * Shortcut to create an empty list of annotations for structs that contain an annotation list. The usual @c {} cannot
  * be used, because it is interpreted as an "empty initializer list".
  */
-#define SPP_NO_ANNOTATIONS std::vector<std::unique_ptr<asts::AnnotationAst>>()
+#define SPP_NO_ANNOTATIONS Vec<Unique<asts::AnnotationAst>>()
 
 #define SPP_LLVM_FUNC_INFO analyse::scopes::ScopeManager const *sm, asts::FunctionPrototypeAst const *proto

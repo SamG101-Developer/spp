@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.utils.ast_utils;
 import spp.asts.ast;
+import spp.utils.types;
 import std;
 
 
@@ -12,95 +13,100 @@ namespace spp::asts {
 
     SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
-    auto ast_clone(std::unique_ptr<T> const &ast) -> std::unique_ptr<std::remove_cvref_t<T>> {
+    inline auto AstClone(Unique<T> const &ast) -> Unique<std::remove_cvref_t<T>> {
         if (ast == nullptr) { return nullptr; }
-        return std::unique_ptr<std::remove_cvref_t<T>>(dynamic_cast<std::remove_cvref_t<T>*>(ast->clone().release()));
+        using ResultT = std::remove_cvref_t<T>;
+        return Unique<ResultT>(dynamic_cast<ResultT*>(ast->Clone().release()));
     }
 
     SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
-    auto ast_clone(std::shared_ptr<T> const &ast) -> std::unique_ptr<std::remove_cvref_t<T>> {
+    inline auto AstClone(Shared<T> const &ast) -> Unique<std::remove_cvref_t<T>> {
         if (ast == nullptr) { return nullptr; }
-        return std::unique_ptr<std::remove_cvref_t<T>>(dynamic_cast<std::remove_cvref_t<T>*>(ast->clone().release()));
+        using ResultT = std::remove_cvref_t<T>;
+        return Unique<ResultT>(dynamic_cast<ResultT*>(ast->Clone().release()));
     }
 
     SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
-    auto ast_clone(T *ast) -> std::unique_ptr<std::remove_cvref_t<T>> {
+    inline auto AstClone(T *ast) -> Unique<std::remove_cvref_t<T>> {
         if (ast == nullptr) { return nullptr; }
-        return std::unique_ptr<std::remove_cvref_t<T>>(dynamic_cast<std::remove_cvref_t<T>*>(ast->clone().release()));
+        using ResultT = std::remove_cvref_t<T>;
+        return Unique<ResultT>(dynamic_cast<ResultT*>(ast->Clone().release()));
     }
 
     SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
-    auto ast_clone_shared(std::unique_ptr<T> &&ast) -> std::shared_ptr<std::remove_cvref_t<T>> {
+    inline auto AstCloneShared(Shared<T> const &ast) -> Shared<std::remove_cvref_t<T>> {
         if (ast == nullptr) { return nullptr; }
-        return std::shared_ptr<T>(std::move(ast).release());
+        using ResultT = std::remove_cvref_t<T>;
+        return Shared<ResultT>(dynamic_cast<ResultT*>(ast->Clone().release()));
     }
 
     SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
-    auto ast_clone_shared(T *ast) -> std::shared_ptr<std::remove_cvref_t<T>> {
+    inline auto AstCloneShared(T *ast) -> Shared<std::remove_cvref_t<T>> {
         if (ast == nullptr) { return nullptr; }
-        return std::shared_ptr<T>(dynamic_cast<T*>(ast->clone().release()));
+        using ResultT = std::remove_cvref_t<T>;
+        return Shared<ResultT>(dynamic_cast<ResultT*>(ast->Clone().release()));
     }
 
     SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
-    auto ast_clone_vec(std::vector<T*> const &asts) -> std::vector<std::unique_ptr<T>> {
-        std::vector<std::unique_ptr<T>> cloned_asts;
-        cloned_asts.reserve(asts.size());
+    inline auto AstCloneVec(Vec<T*> const &asts) -> Vec<Unique<T>> {
+        Vec<Unique<T>> cloned_asts;
+        cloned_asts.Reserve(asts.Len());
         for (auto const *x : asts) {
-            cloned_asts.emplace_back(ast_clone(x));
+            cloned_asts.EmplaceBack(AstClone(x));
         }
         return cloned_asts;
     }
 
     SPP_EXP_FUN template <typename U, typename T>
     SPP_ATTR_ALWAYS_INLINE
-    auto ast_clone_vec(std::vector<T*> const &asts) -> std::vector<std::unique_ptr<U>> {
-        std::vector<std::unique_ptr<U>> cloned_asts;
-        cloned_asts.reserve(asts.size());
+    inline auto AstCloneVec(Vec<T*> const &asts) -> Vec<Unique<U>> {
+        Vec<Unique<U>> cloned_asts;
+        cloned_asts.Reserve(asts.Len());
         for (auto const *x : asts) {
-            cloned_asts.emplace_back(ast_clone(dynamic_cast<U const*>(x)));
+            cloned_asts.EmplaceBack(AstClone(dynamic_cast<U const*>(x)));
         }
         return cloned_asts;
     }
 
     SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
-    auto ast_clone_vec(std::vector<std::unique_ptr<T>> const &asts) -> std::vector<std::unique_ptr<T>> {
-        std::vector<std::unique_ptr<T>> cloned_asts;
-        cloned_asts.reserve(asts.size());
+    inline auto AstCloneVec(Vec<Unique<T>> const &asts) -> Vec<Unique<T>> {
+        Vec<Unique<T>> cloned_asts;
+        cloned_asts.Reserve(asts.Len());
         for (auto const &x : asts) {
-            cloned_asts.emplace_back(ast_clone(x));
+            cloned_asts.EmplaceBack(AstClone(x));
         }
         return cloned_asts;
     }
 
     SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
-    auto ast_clone_vec(std::vector<std::shared_ptr<T>> const &asts) -> std::vector<std::unique_ptr<T>> {
-        std::vector<std::unique_ptr<T>> cloned_asts;
-        cloned_asts.reserve(asts.size());
+    inline auto AstCloneVec(Vec<Shared<T>> const &asts) -> Vec<Unique<T>> {
+        Vec<Unique<T>> cloned_asts;
+        cloned_asts.Reserve(asts.Len());
         for (auto const &x : asts) {
-            cloned_asts.emplace_back(ast_clone(x));
+            cloned_asts.EmplaceBack(AstClone(x));
         }
         return cloned_asts;
     }
 
     SPP_EXP_FUN template <typename T>
     SPP_ATTR_ALWAYS_INLINE
-    auto ast_clone_vec_shared(std::vector<std::shared_ptr<T>> const &asts) -> std::vector<std::shared_ptr<T>> {
-        std::vector<std::shared_ptr<T>> cloned_asts;
-        cloned_asts.reserve(asts.size());
+    inline auto AstCloneVecShared(Vec<Shared<T>> const &asts) -> Vec<Shared<T>> {
+        Vec<Shared<T>> cloned_asts;
+        cloned_asts.reserve(asts.Len());
         for (auto const &x : asts) {
-            cloned_asts.emplace_back(x);
+            cloned_asts.EmplaceBack(x);
         }
         return cloned_asts;
     }
 
-    SPP_EXP_FUN auto ast_name(Ast *ast) -> std::shared_ptr<TypeAst>;
+    SPP_EXP_FUN auto AstName(Ast *ast) -> Shared<TypeAst>;
 
-    SPP_EXP_FUN auto ast_body(Ast *ast) -> std::vector<Ast*>;
+    SPP_EXP_FUN auto AstBody(Ast *ast) -> Vec<Ast*>;
 }

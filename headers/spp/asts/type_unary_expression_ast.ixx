@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.type_unary_expression_ast;
 import spp.asts.type_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -24,12 +25,12 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
     /**
      * The operator token that represents the unary operation. This indicates the type of operation being performed.
      */
-    std::shared_ptr<TypeUnaryExpressionOperatorAst> op;
+    Shared<TypeUnaryExpressionOperatorAst> Op;
 
     /**
      * The type that is being operated on by the unary operator.
      */
-    std::shared_ptr<TypeAst> rhs;
+    Shared<TypeAst> Rhs;
 
     /**
      * Construct the UnaryExpressionAst with the arguments matching the members.
@@ -37,79 +38,70 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
      * @param[in] rhs The type that is being operated on by the unary operator.
      */
     TypeUnaryExpressionAst(
-        decltype(op) op,
-        decltype(rhs) rhs);
+        decltype(Op) op,
+        decltype(Rhs) rhs);
 
     ~TypeUnaryExpressionAst() override;
 
-    auto operator<=>(
-        TypeUnaryExpressionAst const &other) const
-        -> std::strong_ordering;
+    auto operator<=>(TypeUnaryExpressionAst const &other) const -> Ordering;
+    auto operator==(TypeUnaryExpressionAst const &other) const -> bool;
 
-    auto operator==(
-        TypeUnaryExpressionAst const &other) const
-        -> bool;
+    SPP_ATTR_NODISCARD auto EqualsTypeUnaryExpression(TypeUnaryExpressionAst const &other) const -> Ordering override;
 
-    auto equals_type_unary_expression(
-        TypeUnaryExpressionAst const &other) const
-        -> std::strong_ordering override;
-
-    auto equals(
-        ExpressionAst const &other) const
-        -> std::strong_ordering override;
+    SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_4_qualify_types(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-    auto infer_type(ScopeManager *sm, CompilerMetaData *meta) -> std::shared_ptr<TypeAst> override;
+    auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-    SPP_ATTR_NODISCARD auto iterator() const
-        -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto Iterator() const
+        -> Vec<Shared<const TypeIdentifierAst>> override;
 
-    SPP_ATTR_NODISCARD auto is_never_type() const
+    SPP_ATTR_NODISCARD auto IsNeverType() const
         -> bool override;
 
-    SPP_ATTR_NODISCARD auto ns_parts() const
-        -> std::vector<std::shared_ptr<const IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto NsParts() const
+        -> Vec<Shared<const IdentifierAst>> override;
 
-    SPP_ATTR_NODISCARD auto ns_parts()
-        -> std::vector<std::shared_ptr<IdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto NsParts()
+        -> Vec<Shared<IdentifierAst>> override;
 
-    SPP_ATTR_NODISCARD auto type_parts() const
-        -> std::vector<std::shared_ptr<const TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto TypeParts() const
+        -> Vec<Shared<const TypeIdentifierAst>> override;
 
-    SPP_ATTR_NODISCARD auto type_parts()
-        -> std::vector<std::shared_ptr<TypeIdentifierAst>> override;
+    SPP_ATTR_NODISCARD auto TypeParts()
+        -> Vec<Shared<TypeIdentifierAst>> override;
 
-    SPP_ATTR_NODISCARD auto without_convention() const
-        -> std::shared_ptr<const TypeAst> override;
+    SPP_ATTR_NODISCARD auto WithoutConvention() const
+        -> Shared<const TypeAst> override;
 
-    SPP_ATTR_NODISCARD auto get_convention() const
+    SPP_ATTR_NODISCARD auto GetConvention() const
         -> ConventionAst* override;
 
-    SPP_ATTR_NODISCARD auto with_convention(
-        std::unique_ptr<ConventionAst> &&conv) const
-        -> std::shared_ptr<TypeAst> override;
+    SPP_ATTR_NODISCARD auto WithConvention(
+        Unique<ConventionAst> &&conv) const
+        -> Shared<TypeAst> override;
 
-    SPP_ATTR_NODISCARD auto without_generics() const
-        -> std::shared_ptr<TypeAst> override;
+    SPP_ATTR_NODISCARD auto WithoutGenerics() const
+        -> Shared<TypeAst> override;
 
-    SPP_ATTR_NODISCARD auto substitute_generics(
-        std::vector<GenericArgumentAst*> const &args) const
-        -> std::shared_ptr<TypeAst> override;
+    SPP_ATTR_NODISCARD auto SubstituteGenerics(
+        Vec<GenericArgumentAst*> const &args) const
+        -> Shared<TypeAst> override;
 
-    SPP_ATTR_NODISCARD auto contains_generic(
+    SPP_ATTR_NODISCARD auto ContainsGenerics(
         GenericParameterAst const &generic) const
         -> bool override;
 
-    SPP_ATTR_NODISCARD auto with_generics(
-        std::unique_ptr<GenericArgumentGroupAst> &&arg_group) const
-        -> std::shared_ptr<TypeAst> override;
+    SPP_ATTR_NODISCARD auto WithGenerics(
+        Unique<GenericArgumentGroupAst> &&arg_group) const
+        -> Shared<TypeAst> override;
 
-    SPP_ATTR_NODISCARD auto is_compiler_generated_type() const
+    SPP_ATTR_NODISCARD auto IsCompilerGeneratedType() const
         -> bool override;
 };
 

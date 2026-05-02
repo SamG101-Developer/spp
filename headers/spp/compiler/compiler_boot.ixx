@@ -4,6 +4,7 @@ module;
 export module spp.compiler.compiler_boot;
 import spp.codegen.llvm_ctx;
 import spp.utils.progress;
+import spp.utils.types;
 import llvm;
 import std;
 
@@ -22,27 +23,25 @@ namespace spp::compiler {
     SPP_EXP_CLS struct ModuleTree;
 }
 
-
 SPP_EXP_CLS struct spp::compiler::CompilerBoot {
+    auto Lex(utils::ProgressBar &bar, ModuleTree &tree) -> void;
+    auto Parse(utils::ProgressBar &bar, ModuleTree &tree) -> void;
+    auto Stage1_PreProcess(utils::ProgressBar &bar, ModuleTree &tree, asts::Ast *ctx) -> void;
+    auto Stage2_GenTopLvlScopes(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
+    auto Stage3_GenTopLvlAliases(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
+    auto Stage4_QualifyTypes(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
+    auto Stage5_LoadSupScopes(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
+    auto Stage6_PreAnalyseSemantics(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
+    auto Stage7_AnalyseSemantics(utils::ProgressBar &bar, ModuleTree &tree, bool is_exe, analyse::scopes::ScopeManager *sm) -> void;
+    auto Stage8_CheckMemory(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
+    auto Stage9_CompTimeResolve(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
+    auto Stage10_PreCodeGen(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
+    auto Stage11_CodeGen(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
+
 private:
-    std::vector<asts::ModulePrototypeAst*> m_modules;
-    std::vector<std::unique_ptr<codegen::LLvmCtx>> m_llvm_ctxs;
+    Vec<asts::ModulePrototypeAst*> _Modules;
+    Vec<Unique<codegen::LLvmCtx>> _LlvmCtxs;
 
-    auto validate_entry_point(analyse::scopes::ScopeManager *sm) -> void;
-    static auto move_scope_manager_to_ns(analyse::scopes::ScopeManager *sm, Module const &mod) -> void;
-
-public:
-    auto lex(utils::ProgressBar &bar, ModuleTree &tree) -> void;
-    auto parse(utils::ProgressBar &bar, ModuleTree &tree) -> void;
-    auto stage_1_pre_process(utils::ProgressBar &bar, ModuleTree &tree, asts::Ast *ctx) -> void;
-    auto stage_2_gen_top_level_scopes(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
-    auto stage_3_gen_top_level_aliases(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
-    auto stage_4_qualify_types(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
-    auto stage_5_load_super_scopes(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
-    auto stage_6_pre_analyse_semantics(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
-    auto stage_7_analyse_semantics(utils::ProgressBar &bar, ModuleTree &tree, bool is_exe, analyse::scopes::ScopeManager *sm) -> void;
-    auto stage_8_check_memory(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
-    auto stage_9_comptime_resolution(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
-    auto stage_10_code_gen_1(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
-    auto stage_11_code_gen_2(utils::ProgressBar &bar, ModuleTree &tree, analyse::scopes::ScopeManager *sm) -> void;
+    auto _ValidateEntryPoint(analyse::scopes::ScopeManager *sm) -> void;
+    static auto _MoveScopeManagerToNs(analyse::scopes::ScopeManager *sm, Module const &mod) -> void;
 };

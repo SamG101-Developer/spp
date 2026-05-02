@@ -8,55 +8,51 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.builtins;
 import spp.asts.expression_ast;
+import spp.asts.token_ast;
 import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
 import spp.utils.traits;
 import genex;
 
-
 SPP_MOD_BEGIN
-auto spp::asts::FunctionImplementationLoweredAst::new_empty()
-    -> std::unique_ptr<FunctionImplementationLoweredAst> {
-    return std::make_unique<FunctionImplementationLoweredAst>();
+auto spp::asts::FunctionImplementationLoweredAst::NewEmpty()
+    -> Unique<FunctionImplementationLoweredAst> {
+    // Empty AST.
+    return MakeUnique<FunctionImplementationLoweredAst>(nullptr, decltype(Members)(), nullptr);
 }
-
 
 spp::asts::FunctionImplementationLoweredAst::~FunctionImplementationLoweredAst() = default;
 
-
-auto spp::asts::FunctionImplementationLoweredAst::clone() const
-    -> std::unique_ptr<Ast> {
-    auto *c = FunctionImplementationAst::clone().release()->to<FunctionImplementationAst>();
-    auto f = std::make_unique<FunctionImplementationLoweredAst>(
-        std::move(c->tok_l),
-        std::move(c->members),
-        std::move(c->tok_r));
-    f->set_scope_str(m_scope_str);
+auto spp::asts::FunctionImplementationLoweredAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    auto f = MakeUnique<FunctionImplementationLoweredAst>(
+        AstClone(TokL), AstCloneVec(Members), AstClone(TokR));
+    f->SetScopePtr(_ScopePtr);
     return f;
 }
 
-
-auto spp::asts::FunctionImplementationLoweredAst::stage_9_comptime_resolution(
+auto spp::asts::FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
     ScopeManager *,
     CompilerMetaData *meta)
     -> void {
-    if (analyse::utils::builtins::BUILTIN_FUNCS.at(m_scope_str).cmp_fn == nullptr) {
+    if (analyse::utils::builtins::BUILTIN_FUNCS.at(_ScopePtr).cmp_fn == nullptr) {
         return;
     }
 
-    auto &lowered_cmp_code = *analyse::utils::builtins::BUILTIN_FUNCS.at(m_scope_str).cmp_fn;
-    auto extracted_args = std::vector<std::unique_ptr<ExpressionAst>>{};
-    for (auto &&[_, arg] : std::move(meta->cmp_args)) {
+    auto &lowered_cmp_code = *analyse::utils::builtins::BUILTIN_FUNCS.at(_ScopePtr).cmp_fn;
+    auto extracted_args = Vec<Unique<ExpressionAst>>{};
+    for (auto &&[_, arg] : std::move(meta->CmpArgs)) {
         extracted_args.push_back(std::move(arg));
     }
-    meta->cmp_result = lowered_cmp_code.invoke(std::move(extracted_args));
+    meta->CmpResult = lowered_cmp_code.invoke(std::move(extracted_args));
 
     // analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidComptimeOperationError>()
     //     .with_args(*this)
-    //     .raises_from(sm->current_scope);
+    //     .raises_from(sm->CurrentScope);
 }
 
-
-auto spp::asts::FunctionImplementationLoweredAst::stage_11_code_gen_2(
+auto spp::asts::FunctionImplementationLoweredAst::Stage11_CodeGen(
     ScopeManager *,
     CompilerMetaData *,
     codegen::LLvmCtx *)
@@ -65,12 +61,11 @@ auto spp::asts::FunctionImplementationLoweredAst::stage_11_code_gen_2(
     return nullptr;
 }
 
-
-auto spp::asts::FunctionImplementationLoweredAst::set_scope_str(
-    std::string const &scope_str)
+auto spp::asts::FunctionImplementationLoweredAst::SetScopePtr(
+    Str const &scope_str)
     -> void {
     // Set the scope string for this lowered function implementation.
-    m_scope_str = scope_str;
+    _ScopePtr = scope_str;
 }
 
 SPP_MOD_END

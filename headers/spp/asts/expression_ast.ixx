@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.expression_ast;
 import spp.asts.statement_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -39,22 +40,22 @@ SPP_EXP_CLS struct spp::asts::ExpressionAst : StatementAst {
     using StatementAst::StatementAst;
     ~ExpressionAst() override;
 
-    auto operator<=>(const ExpressionAst &) const -> std::strong_ordering;
+    auto operator<=>(const ExpressionAst &) const -> Ordering;
     auto operator==(const ExpressionAst &) const -> bool;
 
-    SPP_ATTR_NODISCARD virtual auto equals_array_literal_explicit_elements(ArrayLiteralExplicitElementsAst const &) const -> std::strong_ordering;
-    SPP_ATTR_NODISCARD virtual auto equals_array_literal_repeated_elements(ArrayLiteralRepeatedElementAst const &) const -> std::strong_ordering;
-    SPP_ATTR_NODISCARD virtual auto equals_boolean_literal(BooleanLiteralAst const &) const -> std::strong_ordering;
-    SPP_ATTR_NODISCARD virtual auto equals_char_literal(CharLiteralAst const &) const -> std::strong_ordering;
-    SPP_ATTR_NODISCARD virtual auto equals_float_literal(FloatLiteralAst const &) const -> std::strong_ordering;
-    SPP_ATTR_NODISCARD virtual auto equals_identifier(IdentifierAst const &) const -> std::strong_ordering;
-    SPP_ATTR_NODISCARD virtual auto equals_integer_literal(IntegerLiteralAst const &) const -> std::strong_ordering;
-    SPP_ATTR_NODISCARD virtual auto equals_string_literal(StringLiteralAst const &) const -> std::strong_ordering;
-    SPP_ATTR_NODISCARD virtual auto equals_tuple_literal(TupleLiteralAst const &) const -> std::strong_ordering;
-    SPP_ATTR_NODISCARD virtual auto equals_type_identifier(TypeIdentifierAst const &) const -> std::strong_ordering;
-    SPP_ATTR_NODISCARD virtual auto equals_type_unary_expression(TypeUnaryExpressionAst const &) const -> std::strong_ordering;
-    SPP_ATTR_NODISCARD virtual auto equals_type_postfix_expression(TypePostfixExpressionAst const &) const -> std::strong_ordering;
-    SPP_ATTR_NODISCARD virtual auto equals(ExpressionAst const &other) const -> std::strong_ordering; // Not "= 0" on purpose (postfix, unary etc)
+    SPP_ATTR_NODISCARD virtual auto EqualsArrayLiteralExplicitElements(ArrayLiteralExplicitElementsAst const &) const -> Ordering;
+    SPP_ATTR_NODISCARD virtual auto EqualsArrayLiteralRepeatedElement(ArrayLiteralRepeatedElementAst const &) const -> Ordering;
+    SPP_ATTR_NODISCARD virtual auto EqualsBooleanLiteral(BooleanLiteralAst const &) const -> Ordering;
+    SPP_ATTR_NODISCARD virtual auto EqualsCharLiteral(CharLiteralAst const &) const -> Ordering;
+    SPP_ATTR_NODISCARD virtual auto EqualsFloatLiteral(FloatLiteralAst const &) const -> Ordering;
+    SPP_ATTR_NODISCARD virtual auto EqualsIdentifier(IdentifierAst const &) const -> Ordering;
+    SPP_ATTR_NODISCARD virtual auto EqualsIntegerLiteral(IntegerLiteralAst const &) const -> Ordering;
+    SPP_ATTR_NODISCARD virtual auto EqualsStringLiteral(StringLiteralAst const &) const -> Ordering;
+    SPP_ATTR_NODISCARD virtual auto EqualsTupleLiteral(TupleLiteralAst const &) const -> Ordering;
+    SPP_ATTR_NODISCARD virtual auto EqualsTypeIdentifier(TypeIdentifierAst const &) const -> Ordering;
+    SPP_ATTR_NODISCARD virtual auto EqualsTypeUnaryExpression(TypeUnaryExpressionAst const &) const -> Ordering;
+    SPP_ATTR_NODISCARD virtual auto EqualsTypePostfixExpression(TypePostfixExpressionAst const &) const -> Ordering;
+    SPP_ATTR_NODISCARD virtual auto Equals(ExpressionAst const &other) const -> Ordering; // Not "= 0" on purpose (postfix, unary etc)
 
-    SPP_ATTR_NODISCARD virtual auto expr_parts() const -> std::vector<Ast*>;
+    SPP_ATTR_NODISCARD virtual auto ExprParts() const -> Vec<Ast*>;
 };

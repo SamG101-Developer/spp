@@ -7,47 +7,43 @@ import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
-
 SPP_MOD_BEGIN
 spp::asts::ObjectInitializerArgumentKeywordAst::ObjectInitializerArgumentKeywordAst(
-    decltype(name) name,
-    decltype(tok_assign) &&tok_assign,
-    decltype(val) &&val) :
+    decltype(Name) name,
+    decltype(TokAssign) &&tok_assign,
+    decltype(Val) &&val) :
     ObjectInitializerArgumentAst(std::move(name), std::move(val)),
-    tok_assign(std::move(tok_assign)) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->tok_assign, lex::SppTokenType::TK_ASSIGN, "=");
+    TokAssign(std::move(tok_assign)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
 }
-
 
 spp::asts::ObjectInitializerArgumentKeywordAst::~ObjectInitializerArgumentKeywordAst() = default;
 
-
-auto spp::asts::ObjectInitializerArgumentKeywordAst::pos_start() const
+auto spp::asts::ObjectInitializerArgumentKeywordAst::PosStart() const
     -> std::size_t {
-    return name->pos_start();
+    // Use the name.
+    return Name->PosStart();
 }
 
-
-auto spp::asts::ObjectInitializerArgumentKeywordAst::pos_end() const
+auto spp::asts::ObjectInitializerArgumentKeywordAst::PosEnd() const
     -> std::size_t {
-    return val->pos_end();
+    // Use the val.
+    return Val->PosEnd();
 }
 
-
-auto spp::asts::ObjectInitializerArgumentKeywordAst::clone() const
-    -> std::unique_ptr<Ast> {
-    return std::make_unique<ObjectInitializerArgumentKeywordAst>(
-        ast_clone(name),
-        ast_clone(tok_assign),
-        ast_clone(val));
+auto spp::asts::ObjectInitializerArgumentKeywordAst::Clone() const
+    -> Unique<Ast> {
+    // Clone all the members of the ast.
+    return MakeUnique<ObjectInitializerArgumentKeywordAst>(
+        AstCloneShared(Name), AstClone(TokAssign), AstClone(Val));
 }
 
-
-spp::asts::ObjectInitializerArgumentKeywordAst::operator std::string() const {
+auto spp::asts::ObjectInitializerArgumentKeywordAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(name);
-    SPP_STRING_APPEND(tok_assign);
-    SPP_STRING_APPEND(val);
+    SPP_STRING_APPEND(Name);
+    SPP_STRING_APPEND(TokAssign);
+    SPP_STRING_APPEND(Val);
     SPP_STRING_END;
 }
 

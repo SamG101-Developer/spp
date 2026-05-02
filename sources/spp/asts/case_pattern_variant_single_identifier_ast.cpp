@@ -18,85 +18,78 @@ import spp.asts.utils.ast_utils;
 
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantSingleIdentifierAst::CasePatternVariantSingleIdentifierAst(
-    decltype(conv) &&conv,
-    decltype(tok_mut) &&tok_mut,
-    decltype(name) &&name,
-    decltype(alias) &&alias) :
-    conv(std::move(conv)),
-    tok_mut(std::move(tok_mut)),
-    name(std::move(name)),
-    alias(std::move(alias)) {
+    decltype(Conv) &&conv,
+    decltype(TokMut) &&tok_mut,
+    decltype(Name) &&name,
+    decltype(Alias) &&alias) :
+    Conv(std::move(conv)),
+    TokMut(std::move(tok_mut)),
+    Name(std::move(name)),
+    Alias(std::move(alias)) {
 }
-
 
 spp::asts::CasePatternVariantSingleIdentifierAst::~CasePatternVariantSingleIdentifierAst() = default;
 
-
-auto spp::asts::CasePatternVariantSingleIdentifierAst::pos_start() const
+auto spp::asts::CasePatternVariantSingleIdentifierAst::PosStart() const
     -> std::size_t {
-    return tok_mut->pos_start();
+    // Use the "mut" token.
+    return TokMut->PosStart();
 }
 
-
-auto spp::asts::CasePatternVariantSingleIdentifierAst::pos_end() const
+auto spp::asts::CasePatternVariantSingleIdentifierAst::PosEnd() const
     -> std::size_t {
-    return alias->pos_end();
+    // Use the alias.
+    return Alias->PosEnd();
 }
 
 
-auto spp::asts::CasePatternVariantSingleIdentifierAst::clone() const
-    -> std::unique_ptr<Ast> {
-    auto i = std::make_unique<CasePatternVariantSingleIdentifierAst>(
-        ast_clone(conv),
-        ast_clone(tok_mut),
-        ast_clone(name),
-        ast_clone(alias));
-    i->m_mapped_let = ast_clone(m_mapped_let);
-    return i;
+auto spp::asts::CasePatternVariantSingleIdentifierAst::Clone() const
+    -> Unique<Ast> {
+    auto a = MakeUnique<CasePatternVariantSingleIdentifierAst>(
+        AstClone(Conv), AstClone(TokMut), AstCloneShared(Name), AstClone(Alias));
+    a->_MappedLet = AstClone(_MappedLet);
+    return a;
 }
 
-
-spp::asts::CasePatternVariantSingleIdentifierAst::operator std::string() const {
+auto spp::asts::CasePatternVariantSingleIdentifierAst::ToString() const
+    -> Str {
     SPP_STRING_START;
-    SPP_STRING_APPEND(tok_mut);
-    SPP_STRING_APPEND(name);
-    SPP_STRING_APPEND(alias);
+    SPP_STRING_APPEND(TokMut);
+    SPP_STRING_APPEND(Name);
+    SPP_STRING_APPEND(Alias);
     SPP_STRING_END;
 }
 
-
-auto spp::asts::CasePatternVariantSingleIdentifierAst::stage_7_analyse_semantics(
+auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Get the variable name.
-    auto var = convert_to_variable(meta);
+    auto var = ConvToVar(meta);
 
     // Forward analysis into the name and alias.
-    m_mapped_let = std::make_unique<LetStatementInitializedAst>(
-        nullptr, std::move(var), nullptr, nullptr, ast_clone(meta->case_condition));
-    m_mapped_let->stage_7_analyse_semantics(sm, meta);
+    _MappedLet = MakeUnique<LetStatementInitializedAst>(
+        nullptr, std::move(var), nullptr, nullptr, AstClone(meta->CaseCondition));
+    _MappedLet->Stage7_AnalyseSemantics(sm, meta);
 }
 
-
-auto spp::asts::CasePatternVariantSingleIdentifierAst::stage_8_check_memory(
+auto spp::asts::CasePatternVariantSingleIdentifierAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Forward memory checks into the name and alias.
-    m_mapped_let->stage_8_check_memory(sm, meta);
+    _MappedLet->Stage8_CheckMemory(sm, meta);
 }
 
-
-auto spp::asts::CasePatternVariantSingleIdentifierAst::convert_to_variable(
+auto spp::asts::CasePatternVariantSingleIdentifierAst::ConvToVar(
     CompilerMetaData *)
-    -> std::unique_ptr<LocalVariableAst> {
+    -> Unique<LocalVariableAst> {
     // Create the local variable single identifier binding AST. (Note no convention is propagated into the variable,
     // as conventions are only relevant at the pattern matching site, not the variable declaration site).
-    auto var = std::make_unique<LocalVariableSingleIdentifierAst>(
-        ast_clone(tok_mut), ast_clone(name), ast_clone(alias));
-    var->conv = ast_clone(conv);
-    var->mark_from_case_pattern();
+    auto var = MakeUnique<LocalVariableSingleIdentifierAst>(
+        AstClone(TokMut), AstCloneShared(Name), AstClone(Alias));
+    var->Conv = AstClone(Conv);
+    var->MarkFromCasePattern();
     return var;
 }
 

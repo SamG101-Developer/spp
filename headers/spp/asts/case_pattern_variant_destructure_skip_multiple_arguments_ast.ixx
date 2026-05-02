@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.case_pattern_variant_destructure_skip_multiple_arguments_ast;
 import spp.asts.case_pattern_variant_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -19,14 +20,14 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureSkipMultipleArguments
      * is being skipped. Bindings are used for array and tuple destructuring, while object destructuring can only use an
      * unbound multi skip.
      */
-    std::unique_ptr<TokenAst> tok_ellipsis;
+    Unique<TokenAst> TokEllipsis;
 
     /**
      * The optional binding for the skip multiple arguments pattern. This is used to bind the skipped arguments to a
      * variable, as an inner array or tuple (based on the outer type being destructured). No biding means that these
      * values are dropped.
      */
-    std::unique_ptr<CasePatternVariantSingleIdentifierAst> binding;
+    Unique<CasePatternVariantSingleIdentifierAst> Binding;
 
     /**
      * Construct the CasePatternVariantDestructureSkipMultipleArgumentsAst with the arguments matching the members.
@@ -34,12 +35,12 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureSkipMultipleArguments
      * @param binding The optional binding for the skip multiple arguments pattern.
      */
     CasePatternVariantDestructureSkipMultipleArgumentsAst(
-        decltype(tok_ellipsis) &&tok_ellipsis,
-        std::unique_ptr<CasePatternVariantAst> &&binding);
+        decltype(TokEllipsis) &&tok_ellipsis,
+        Unique<CasePatternVariantAst> &&binding);
 
     ~CasePatternVariantDestructureSkipMultipleArgumentsAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto convert_to_variable(CompilerMetaData *meta) -> std::unique_ptr<LocalVariableAst> override;
+    auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 };

@@ -28,159 +28,145 @@ import spp.utils.uid;
 import genex;
 import llvm;
 
-
 SPP_MOD_BEGIN
 spp::asts::CoroutinePrototypeAst::~CoroutinePrototypeAst() = default;
 
-
-auto spp::asts::CoroutinePrototypeAst::clone() const
-    -> std::unique_ptr<Ast> {
-    auto ast = std::make_unique<CoroutinePrototypeAst>(
-        ast_clone_vec(annotations),
-        nullptr,
-        ast_clone(tok_fun),
-        ast_clone(name),
-        ast_clone(generic_param_group),
-        ast_clone(param_group),
-        ast_clone(tok_arrow),
-        ast_clone(return_type),
-        ast_clone(impl));
-    ast->orig_name = ast_clone(orig_name);
-    ast->m_annotation_info = m_annotation_info
-        ? std::make_unique<analyse::utils::annotation_utils::AnnotationInfo>(*m_annotation_info)
+auto spp::asts::CoroutinePrototypeAst::Clone() const
+    -> Unique<Ast> {
+    auto ast = MakeUnique<CoroutinePrototypeAst>( // Todo: why no "cmp"?
+        AstCloneVec(Annotations), nullptr, AstClone(TokFun), AstClone(Name), AstClone(GnParamGroup),
+        AstClone(FnParamGroup), AstClone(TokArrow), AstClone(ReturnType), AstClone(Impl));
+    ast->_AnnotationInfo = _AnnotationInfo
+        ? MakeUnique<analyse::utils::annotation_utils::AnnotationInfo>(*_AnnotationInfo)
         : nullptr;
-    ast->m_original_impl = ast_clone(m_original_impl);
-    ast->m_ctx = m_ctx;
-    ast->m_scope = m_scope;
-    ast->abstract_annotation = abstract_annotation;
-    ast->virtual_annotation = virtual_annotation;
-    ast->temperature_annotation = temperature_annotation;
-    ast->ffi_annotation = ffi_annotation;
-    ast->builtin_annotation = builtin_annotation;
-    ast->inline_annotation = inline_annotation;
-    ast->visibility = visibility;
-    ast->m_llvm_func = m_llvm_func;
-    ast->llvm_coro_yield_slot = llvm_coro_yield_slot;
-    ast->llvm_gen_env = llvm_gen_env;
-    ast->m_llvm_resume_fn = m_llvm_resume_fn;
-    for (auto const &a : ast->annotations) {
-        a->set_ast_ctx(ast.get());
-    }
+    ast->_OriginalImpl = AstClone(_OriginalImpl);
+    ast->_Ctx = _Ctx;
+    ast->_Scope = _Scope;
+    ast->AbstractAnnotation = AbstractAnnotation;
+    ast->VirtualAnnotation = VirtualAnnotation;
+    ast->TemperatureAnnotation = TemperatureAnnotation;
+    ast->FfiAnnotation = FfiAnnotation;
+    ast->BuiltinAnnotation = BuiltinAnnotation;
+    ast->InlineAnnotation = InlineAnnotation;
+    ast->Visibility = Visibility;
+    ast->_LlvmFunc = _LlvmFunc;
+    ast->LlvmCoroYieldSlot = LlvmCoroYieldSlot;
+    ast->LlvmGenEnv = LlvmGenEnv;
+    ast->_LlvmResumeFunc = _LlvmResumeFunc;
+    for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.get()); }
     return ast;
 }
 
-
-auto spp::asts::CoroutinePrototypeAst::stage_7_analyse_semantics(
+auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Perform default function prototype semantic analysis
-    FunctionPrototypeAst::stage_7_analyse_semantics(sm, meta);
-    const auto ret_type_sym = sm->current_scope->get_type_symbol(return_type);
+    FunctionPrototypeAst::Stage7_AnalyseSemantics(sm, meta);
+    const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType);
 
     // Update the meta information for enclosing function information.
-    meta->save();
-    meta->enclosing_function_flavour = this->tok_fun.get();
-    meta->enclosing_function_ret_type.emplace_back(ret_type_sym->fq_name());
-    meta->enclosing_function_scope = sm->current_scope;
-    impl->stage_7_analyse_semantics(sm, meta);
+    meta->Save();
+    meta->EnclosingFunctionFlavour = TokFun.get();
+    meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
+    meta->EnclosingFunctionScope = sm->CurrentScope;
+    Impl->Stage7_AnalyseSemantics(sm, meta);
 
     // Check the return type superimposes the generator type.
-    auto temp = std::vector<std::shared_ptr<TypeAst>>();
-    temp.emplace_back(ret_type_sym->fq_name()->without_generics());
-    auto superimposed_types = ret_type_sym->scope->sup_types()
+    auto temp = Vec<Shared<TypeAst>>();
+    temp.EmplaceBack(ret_type_sym->FqName()->WithoutGenerics());
+    auto superimposed_types = ret_type_sym->LinkedScope->SupTypes()
         | genex::views::concat(std::move(temp))
-        | genex::views::transform([](auto const &x) { return x->without_generics(); })
-        | genex::to<std::vector>();
+        | genex::views::transform([](auto const &x) { return x->WithoutGenerics(); })
+        | genex::to<Vec>();
 
-    raise_if<analyse::errors::SppCoroutineInvalidReturnTypeError>(
-        genex::none_of(superimposed_types, [sm](auto const &x) { return analyse::utils::type_utils::is_type_generator(*x->without_generics(), *sm->current_scope); }),
-        {sm->current_scope}, ERR_ARGS(*this, *return_type));
+    RaiseIf<analyse::errors::SppCoroutineInvalidReturnTypeError>(
+        genex::none_of(superimposed_types, [sm](auto const &x) { return analyse::utils::type_utils::IsTypeGen(*x->WithoutGenerics(), *sm->CurrentScope); }),
+        {sm->CurrentScope}, ERR_ARGS(*this, *ReturnType));
 
     // Analyse the semantics of the function body, and move out the scope.
-    sm->move_out_of_current_scope();
-    meta->restore(true);
-    meta->loop_return_types->clear();
+    sm->MoveOutOfCurrentScope();
+    meta->Restore(true);
+    meta->LoopReturnTypes->clear();
 }
 
-
-auto spp::asts::CoroutinePrototypeAst::stage_11_code_gen_2(
+auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
     // Move into the coroutine scope.
-    sm->move_to_next_scope();
-    // SPP_ASSERT(sm->current_scope == m_scope);
+    sm->MoveToNextScope();
+    // SPP_ASSERT(sm->CurrentScope == _Scope);
 
-    // Create the coroutine contructor function.
-    const auto [llvm_coro_ctor, llvm_gen_env, llem_gen_env_args_type] = codegen::create_coro_gen_ctor(this, ctx, *sm->current_scope);
+    // Create the coroutine constructor function.
+    const auto [llvm_coro_ctor, llvm_gen_env, llvm_gen_env_args_type] = codegen::create_coro_gen_ctor(this, ctx, *sm->CurrentScope);
     if (llvm_gen_env != nullptr) {
-        const auto uid = spp::utils::generate_uid(this);
-        const auto llvm_coro_resume_func = codegen::create_coro_res_func(this, llem_gen_env_args_type, ctx, *sm->current_scope);
-        m_llvm_resume_fn = llvm_coro_resume_func; // Save for interaction with ".res()" calls.
-        this->llvm_gen_env = llvm_gen_env; // Save for interaction with ".res()" calls.
+        const auto uid = spp::utils::Uid(this);
+        const auto llvm_coro_resume_func = codegen::create_coro_res_func(this, llvm_gen_env_args_type, ctx, *sm->CurrentScope);
+        _LlvmResumeFunc = llvm_coro_resume_func; // Save for interaction with ".res()" calls.
+        LlvmGenEnv = llvm_gen_env; // Save for interaction with ".res()" calls.
 
         // Load the resume function into the 0th field of the coroutine environment.
-        ctx->builder.CreateStore(
-            ctx->builder.CreateBitCast(llvm_coro_resume_func, llvm::PointerType::get(*ctx->context, 0)),
-            ctx->builder.CreateStructGEP(llvm_coro_ctor->getReturnType(), llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::RES_FN)));
+        ctx->Builder.CreateStore(
+            ctx->Builder.CreateBitCast(llvm_coro_resume_func, llvm::PointerType::get(*ctx->Context, 0)),
+            ctx->Builder.CreateStructGEP(llvm_coro_ctor->getReturnType(), llvm_gen_env, static_cast<std::uint8_t>(codegen::GenEnvField::RES_FN)));
 
         // Entry block into the resume function.
-        const auto entry_bb = llvm::BasicBlock::Create(*ctx->context, "entry" + uid, llvm_coro_resume_func);
-        ctx->builder.SetInsertPoint(entry_bb);
+        const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry" + uid, llvm_coro_resume_func);
+        ctx->Builder.SetInsertPoint(entry_bb);
 
-        const auto ret_type_sym = sm->current_scope->get_type_symbol(return_type);
-        meta->save();
-        meta->enclosing_function_flavour = this->tok_fun.get();
-        meta->enclosing_function_scope = sm->current_scope;
-        meta->enclosing_function_ret_type.emplace_back(ret_type_sym->fq_name());
-        impl->stage_11_code_gen_2(sm, meta, ctx);
-        meta->restore();
+        const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType);
+        meta->Save();
+        meta->EnclosingFunctionFlavour = TokFun.get();
+        meta->EnclosingFunctionScope = sm->CurrentScope;
+        meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
+        Impl->Stage11_CodeGen(sm, meta, ctx);
+        meta->Restore();
 
         // Reset to the start of the resume function to build the switch.
-        ctx->builder.SetInsertPoint(entry_bb);
+        ctx->Builder.SetInsertPoint(entry_bb);
 
         // Create the "switch" header block, mapping location values to labels.
-        const auto number_of_yields = static_cast<std::uint32_t>(ctx->yield_continuations.size());
-        const auto switch_bb = llvm::BasicBlock::Create(*ctx->context, "coro.switch" + uid, llvm_coro_resume_func);
+        const auto number_of_yields = static_cast<std::uint32_t>(ctx->YieldContinuations.Len());
+        const auto switch_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.switch" + uid, llvm_coro_resume_func);
 
         // Switch on the value loaded from the coroutine environment's location field.
-        const auto loc_field = ctx->builder.CreateStructGEP(llvm::PointerType::get(*ctx->context, 0), llvm_coro_resume_func->getArg(0), 1, "coro.loc.gep" + uid);
-        const auto loc_value = ctx->builder.CreateLoad(llvm::Type::getInt32Ty(*ctx->context), loc_field, "coro.loc.load" + uid);
-        const auto switch_inst = ctx->builder.CreateSwitch(loc_value, switch_bb, number_of_yields + 1);
+        const auto loc_field = ctx->Builder.CreateStructGEP(llvm::PointerType::get(*ctx->Context, 0), llvm_coro_resume_func->getArg(0), 1, "coro.loc.gep" + uid);
+        const auto loc_value = ctx->Builder.CreateLoad(llvm::Type::getInt32Ty(*ctx->Context), loc_field, "coro.loc.load" + uid);
+        const auto switch_inst = ctx->Builder.CreateSwitch(loc_value, switch_bb, number_of_yields + 1);
 
         // Case for "0" => start of the coroutine.
-        const auto start_bb = llvm::BasicBlock::Create(*ctx->context, "coro.start" + uid, llvm_coro_resume_func);
-        switch_inst->addCase(llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), 0), start_bb);
-        ctx->builder.SetInsertPoint(start_bb);
+        const auto start_bb = llvm::BasicBlock::Create(*ctx->Context, "coro.start" + uid, llvm_coro_resume_func);
+        switch_inst->addCase(llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 0), start_bb);
+        ctx->Builder.SetInsertPoint(start_bb);
 
         // Loop up the yield counter, generating a "case" and "jump" for each yield point.
         for (std::size_t i = 0; i < number_of_yields; ++i) {
-            const auto target_block = ctx->yield_continuations[i];
-            switch_inst->addCase(llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->context), i + 1), target_block);
+            const auto target_block = ctx->YieldContinuations[i];
+            switch_inst->addCase(llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), i + 1), target_block);
         }
 
         // Reset the yield continuations for future coroutines.
-        ctx->yield_continuations.clear();
+        ctx->YieldContinuations.Clear();
     }
     else {
         // Generic base function so not generating for it.
         // Manual scope skipping.
-        const auto final_scope = sm->current_scope->final_child_scope();
-        while (sm->current_scope != final_scope) {
-            sm->move_to_next_scope(false);
+        const auto final_scope = sm->CurrentScope->FinalChildScope();
+        while (sm->CurrentScope != final_scope) {
+            sm->MoveToNextScope(false);
         }
     }
-    sm->move_out_of_current_scope();
+    sm->MoveOutOfCurrentScope();
 
     // Can't use "llvm_func == nullptr" because of coroutine ctor function.
     if (llvm_gen_env == nullptr) {
         // Analyse to make a new scope in the correct place.
-        for (auto const &[_, generic_impl] : m_generic_substitutions) {
-            auto tm = ScopeManager(sm->global_scope, m_scope->parent);
-            tm.reset(tm.current_scope);
-            generic_impl->stage_11_code_gen_2(&tm, meta, ctx);
+        for (auto const &[_, generic_impl] : _GenericSubstitutions) {
+            auto tm = ScopeManager(sm->GlobalScope, _Scope->Parent);
+            tm.Reset(tm.CurrentScope);
+            generic_impl->Stage11_CodeGen(&tm, meta, ctx);
         }
     }
 

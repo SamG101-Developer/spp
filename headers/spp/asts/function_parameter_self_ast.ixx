@@ -3,6 +3,7 @@ module;
 
 export module spp.asts.function_parameter_self_ast;
 import spp.asts.function_parameter_ast;
+import spp.utils.types;
 import std;
 
 namespace spp::asts {
@@ -16,7 +17,7 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterSelfAst final : FunctionParameter
      * The convention is attached to the self parameter rather than its type, as it is required before the type is
      * necessarily attached.
      */
-    std::unique_ptr<ConventionAst> conv;
+    Unique<ConventionAst> Conv;
 
     /**
      * Construct the FunctionParameterSelfAst with the arguments matching the members.
@@ -24,12 +25,12 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterSelfAst final : FunctionParameter
      * @param var The local variable declaration for this parameter.
      */
     FunctionParameterSelfAst(
-        decltype(conv) &&conv,
-        decltype(var) &&var);
+        decltype(Conv) &&conv,
+        decltype(Var) &&var);
 
     ~FunctionParameterSelfAst() override;
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto stage_7_analyse_semantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };
