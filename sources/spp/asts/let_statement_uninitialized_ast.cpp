@@ -13,6 +13,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.lex.tokens;
 
 SPP_MOD_BEGIN
 spp::asts::LetStatementUninitializedAst::LetStatementUninitializedAst(
@@ -24,6 +25,8 @@ spp::asts::LetStatementUninitializedAst::LetStatementUninitializedAst(
     Var(std::move(var)),
     TokColon(std::move(tok_colon)),
     Type(std::move(type)) {
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokLet, lex::SppTokenType::KW_LET, "let");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokColon, lex::SppTokenType::TK_COLON, ":");
 }
 
 spp::asts::LetStatementUninitializedAst::~LetStatementUninitializedAst() = default;
