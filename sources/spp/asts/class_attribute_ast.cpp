@@ -107,6 +107,11 @@ auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
     using analyse::utils::type_utils::IsTypeBorrowed;
     for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
+    // Sync the variable symbol's visibility from the AST (annotations set Visibility in Stage5).
+    const auto sym = sm->CurrentScope->GetVarSymbol(Name, true);
+    sym->Visibility = Visibility.First;
+    sym->VisibilityAnnotation = Visibility.Second;
+
     // Ensure that the convention type doesn't have a convention.
     RaiseIf<SppSecondClassBorrowViolationError>(
         IsTypeBorrowed(*Type, *sm),

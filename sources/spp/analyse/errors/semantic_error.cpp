@@ -1519,4 +1519,38 @@ spp::analyse::errors::SppInvalidBinaryFoldExpressionError::SppInvalidBinaryFoldE
         "Ensure the fold expression is applied to a tuple with 2 or more elements");
 }
 
+spp::analyse::errors::SppAccessViolationError::SppAccessViolationError(
+    asts::Ast const &access_site,
+    asts::Ast const &symbol_definition,
+    const StrView visibility,
+    const StrView what) {
+    AddHeaders(
+        90, "SPP Access Violation Error");
+    AddCtxForErr(
+        &symbol_definition,
+        Str(what) + " defined here with '" + Str(visibility) + "' visibility");
+    AddErr(
+        &access_site,
+        "Illegal access to " + Str(what) + " here");
+    AddFooter(
+        "The symbol '" + symbol_definition.ToString() + "' has '" + Str(visibility) + "' visibility and cannot be accessed from this context.",
+        "Move the access inside the appropriate type/module scope, or increase the symbol's visibility");
+}
+
+spp::analyse::errors::SppFunctionOverloadVisibilityMismatchError::SppFunctionOverloadVisibilityMismatchError(
+    asts::AnnotationAst const &first_annotation,
+    asts::FunctionPrototypeAst const &conflicting_overload) {
+    AddHeaders(
+        91, "SPP Function Overload Visibility Mismatch Error");
+    AddCtxForErr(
+        &first_annotation,
+        "First visibility annotation defined here");
+    AddErr(
+        &conflicting_overload,
+        "Conflicting overload with different visibility defined here");
+    AddFooter(
+        "All overloads of a function must have the same visibility annotation.",
+        "Ensure every overload of this function uses the same visibility modifier");
+}
+
 SPP_MOD_END

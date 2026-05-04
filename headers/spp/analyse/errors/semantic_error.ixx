@@ -131,6 +131,8 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppAnnotationTargetNotACmpFunctionError;
     SPP_EXP_CLS struct SppCalledAnnotationAppliedToInvalidAstError;
     SPP_EXP_CLS struct SppInvalidBinaryFoldExpressionError;
+    SPP_EXP_CLS struct SppAccessViolationError;
+    SPP_EXP_CLS struct SppFunctionOverloadVisibilityMismatchError;
 }
 
 SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::AbstractError {
@@ -511,4 +513,12 @@ SPP_EXP_CLS struct spp::analyse::errors::SppCalledAnnotationAppliedToInvalidAstE
 
 SPP_EXP_CLS struct spp::analyse::errors::SppInvalidBinaryFoldExpressionError final : SemanticError {
     explicit SppInvalidBinaryFoldExpressionError(asts::Ast const &expr, asts::Ast const &tup_type, std::size_t tup_num_elems);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppAccessViolationError final : SemanticError {
+    explicit SppAccessViolationError(asts::Ast const &access_site, asts::Ast const &symbol_definition, StrView visibility, StrView what);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppFunctionOverloadVisibilityMismatchError final : SemanticError {
+    explicit SppFunctionOverloadVisibilityMismatchError(asts::AnnotationAst const &first_annotation, asts::FunctionPrototypeAst const &conflicting_overload);
 };

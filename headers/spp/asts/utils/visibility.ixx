@@ -8,9 +8,9 @@ namespace spp::asts::utils {
     SPP_EXP_ENUM enum class Visibility : std::uint8_t;
 }
 
-
 SPP_EXP_ENUM enum class spp::asts::utils::Visibility : std::uint8_t {
-    kPublic = 0,
-    kProtected = 1,
-    kPrivate = 2
+    kPublic = 0, // Public to any module in any package.
+    kPackage = 1, // Public to any module in this package.
+    kProtected = 2, // Public to this module and child modules.
+    kPrivate = 3 // Public to this module only.
 };

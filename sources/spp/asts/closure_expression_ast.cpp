@@ -75,6 +75,8 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
     -> void {
     // Save the current scope for later resetting.
     const auto parent_scope = sm->CurrentScope;
+    meta->Save();
+    meta->OverriddenScopeForClosure = parent_scope;
     PcGroup->Stage7_AnalyseSemantics(sm, meta);
 
     const auto inherited_type_generics = sm->CurrentScope->AllTypeSymbols()
@@ -109,6 +111,7 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
     Body->Stage7_AnalyseSemantics(sm, meta);
     _RetType = not meta->EnclosingFunctionRetType.IsEmpty() ? meta->EnclosingFunctionRetType[0] : Body->InferType(sm, meta);
     meta->Restore(true);
+    meta->Restore();
 
     // Set the scope back.
     sm->CurrentScope = parent_scope;

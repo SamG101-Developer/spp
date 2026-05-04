@@ -282,6 +282,13 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
             RaiseIf<SppSuperimpositionExtensionNonVirtualMethodOverriddenError>(
                 not(base_method->AbstractAnnotation or base_method->VirtualAnnotation), {sm->CurrentScope},
                 ERR_ARGS(*this_method->Name, *base_method->Name, *SuperClass));
+
+            // Sync up the annotations from the base function.
+            // Todo: Once "inheriting" annotations is supported at definition, do it dynamically.
+            this_method->Visibility = base_method->Visibility;
+            const auto func_sym = sm->CurrentScope->GetVarSymbol(this_method->Name, true);
+            func_sym->Visibility = base_method->Visibility.First;
+            func_sym->VisibilityAnnotation = this_method->Visibility.Second;
         }
 
         else if (const auto type_member = member->To<TypeStatementAst>()) {

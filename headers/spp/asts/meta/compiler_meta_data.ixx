@@ -40,6 +40,7 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     bool IgnoreMissingElseBranchForInference;
     ExpressionAst *CaseCondition;
     analyse::scopes::TypeSymbol *ClsSym;
+    analyse::scopes::Scope *OverriddenScopeForClosure;
     analyse::scopes::Scope *EnclosingFunctionScope;
     TokenAst *EnclosingFunctionFlavour;
     SharedVec<TypeAst> EnclosingFunctionRetType;

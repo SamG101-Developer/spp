@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.visibility_utils;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
@@ -113,6 +114,14 @@ auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
         const auto closest_match = spp::utils::strings::ClosestMatch(Val, alternatives);
         Raise<analyse::errors::SppIdentifierUnknownError>(
             {sm->CurrentScope}, ERR_ARGS(*this, "identifier", closest_match));
+    }
+
+    // Enforce module-level visibility on the accessed symbol.
+    if (const auto sym = sm->CurrentScope->GetVarSymbol(shared)) {
+        if (sym->ScopeDefinedIn != nullptr and sym->ScopeDefinedIn->TySym == nullptr) {
+            analyse::utils::visibility_utils::CheckModuleMemberVisibility(
+                *sym, *this, *sym->ScopeDefinedIn, *sm);
+        }
     }
 }
 

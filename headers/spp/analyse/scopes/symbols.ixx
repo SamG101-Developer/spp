@@ -12,6 +12,7 @@ import std;
 
 
 namespace spp::asts {
+    SPP_EXP_CLS struct AnnotationAst;
     SPP_EXP_CLS struct ClassPrototypeAst;
     SPP_EXP_CLS struct ConventionAst;
     SPP_EXP_CLS struct IdentifierAst;
@@ -82,6 +83,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
     bool IsGeneric = false;
 
     asts::utils::Visibility Visibility;
+
+    asts::AnnotationAst *VisibilityAnnotation = nullptr;
 
     Unique<utils::mem_info_utils::MemoryInfo> MemInfo;
 

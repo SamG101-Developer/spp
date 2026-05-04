@@ -301,6 +301,25 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
     SPP_ASSERT(sm->CurrentScope == _Scope);
     for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
+    // Ensure overloads have the same visibility by comparing to the master symbol.
+    // Todo: Tidy this?
+    if (Visibility.Second != nullptr and Name and not Name->Val.starts_with("$")) {
+        if (auto *outer_scope = sm->CurrentScope->Parent != nullptr ? sm->CurrentScope->Parent->Parent : nullptr) {
+            if (const auto mock_sym = outer_scope->GetVarSymbol(Name, true)) {
+                if (mock_sym->Type and mock_sym->Type->IsCompilerGeneratedType()) {
+                    // Enforce that all overloads have the same visibility.
+                    if (mock_sym->VisibilityAnnotation != nullptr and mock_sym->Visibility != Visibility.First) {
+                        Raise<analyse::errors::SppFunctionOverloadVisibilityMismatchError>(
+                            {sm->CurrentScope},
+                            ERR_ARGS(*mock_sym->VisibilityAnnotation, *this));
+                    }
+                    mock_sym->Visibility = Visibility.First;
+                    mock_sym->VisibilityAnnotation = Visibility.Second;
+                }
+            }
+        }
+    }
+
     FnParamGroup->Stage7_AnalyseSemantics(sm, meta);
     ReturnType->Stage7_AnalyseSemantics(sm, meta);
 

@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
+import spp.analyse.utils.visibility_utils;
 import spp.asts.class_attribute_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
@@ -129,6 +130,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     using analyse::errors::SppTypeMismatchError;
     using analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError;
     using analyse::utils::type_utils::TypeEq;
+    using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
 
     // Get the attributes on the type and supertypes.
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(meta->ObjectInitType);
@@ -170,6 +172,14 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
             ERR_ARGS(*matching_attrs[0].First, *matching_attrs[1].First, *this));
 
         auto [attr, attr_type_sym] = matching_attrs[0];
+
+        // Enforce visibility on the field being initialized.
+        {
+            const auto scope = cls_sym->LinkedScope->NonGenericScope;
+            const auto sym = scope->GetVarSymbol(arg->Name, true);
+            CheckTypeMemberVisibility(*sym, *arg->Name, *scope, *sm, *meta);
+        }
+
         const auto attr_type = attr_type_sym->FqName();
         meta->Save();
         meta->AssignmentTargetType = attr_type;

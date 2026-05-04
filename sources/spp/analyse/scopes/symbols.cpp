@@ -73,6 +73,7 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
     IsMutable(that.IsMutable),
     IsGeneric(that.IsGeneric),
     Visibility(that.Visibility),
+    VisibilityAnnotation(that.VisibilityAnnotation),
     MemInfo(that.MemInfo->Clone()),
     LlvmInfo(MakeUnique<codegen::LlvmVarSymInfo>()) {
     LlvmInfo->Alloca = that.LlvmInfo->Alloca;

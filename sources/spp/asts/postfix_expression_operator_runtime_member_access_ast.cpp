@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.visibility_utils;
 import spp.analyse.utils.cmp_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.array_literal_explicit_elements_ast;
@@ -80,6 +81,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
     using analyse::errors::SppMemberAccessStaticOperatorExpectedError;
     using analyse::utils::type_utils::IsTypeCompTimeIndexable;
     using analyse::utils::type_utils::IsIndexWithinBound;
+    using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
 
     // Prevent types on the left-hand-side of a runtime member access.
     RaiseIf<SppMemberAccessStaticOperatorExpectedError>(
@@ -142,9 +144,9 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
         }
 
         // Check there is only 1 target field on the type at the highest level.
-        if (lhs_type_sym->LinkedScope->GetVarSymbol(Name)->Type->IsCompilerGeneratedType()) {
-            return;
-        }
+        // if (lhs_type_sym->LinkedScope->GetVarSymbol(Name)->Type->IsCompilerGeneratedType()) {
+        //     return;
+        // }
 
         auto scopes_and_syms = Vec{lhs_type_sym->LinkedScope}
             | genex::views::concat(lhs_type_sym->LinkedScope->SupScopes())
@@ -161,6 +163,12 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
             | genex::views::filter([min_depth](auto const &x) { return std::get<0>(x) == min_depth; })
             | genex::views::transform([](auto const &x) { return MakePair(std::get<1>(x), std::get<2>(x)); })
             | genex::to<Vec>();
+
+        // Enforce visibility on the accessed member.
+        if (not closest.IsEmpty()) {
+            const auto scope = closest[0].First->NonGenericScope;
+            CheckTypeMemberVisibility(*scope->GetVarSymbol(Name), *Name, *scope, *sm, *meta);
+        }
 
         if (closest.Len() <= 1) { return; }
         Raise<analyse::errors::SppAmbiguousMemberAccessError>(

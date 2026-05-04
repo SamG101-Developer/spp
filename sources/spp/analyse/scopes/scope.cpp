@@ -25,6 +25,7 @@ import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.compiler.module_tree;
 import spp.utils.error_formatter;
@@ -72,7 +73,7 @@ auto spp::analyse::scopes::Scope::NewGlobal(
     -> Shared<Scope> {
     // Create a new global scope (no parent or ast for the global scope).
     auto scope_name = ScopeBlockName::FromParts(
-        "global", {}, 0);
+        "__global__", {}, 0);
     auto glob_scope = MakeShared<Scope>(
         std::move(scope_name), nullptr, nullptr, mod.error_formatter.get());
 
@@ -580,6 +581,43 @@ auto spp::analyse::scopes::Scope::ParentModule() const
     for (auto *scope = this; scope != nullptr; scope = scope->Parent) {
         if (std::holds_alternative<ScopeIdentifierName>(scope->Name)) {
             return const_cast<Scope*>(scope); // TODO: REMOVE CONST CAST
+        }
+    }
+    return nullptr;
+}
+
+auto spp::analyse::scopes::Scope::TopLevelParentModule() const
+    -> Scope* {
+    // Get the top level parent module scope (ie until the parent is the global scope).
+    for (auto *scope = this; scope != nullptr; scope = scope->Parent) {
+        const auto next_scope = scope->Parent;
+        if (std::holds_alternative<ScopeBlockName>(next_scope->Name) and std::get<ScopeBlockName>(next_scope->Name).Name.contains("__global__")) {
+            return const_cast<Scope*>(scope); // TODO: REMOVE CONST CAST
+        }
+    }
+    return nullptr;
+}
+
+auto spp::analyse::scopes::Scope::GetEnclosingTypeScope(
+    asts::meta::CompilerMetaData const &meta) const
+    -> Scope* {
+    // If the current scope is a lambda scope, use the original scope that it overrode.
+    if (const auto block_name = std::get_if<ScopeBlockName>(&Name)) {
+        if (block_name != nullptr and block_name->Name.contains("<closure-inner")) {
+            return meta.OverriddenScopeForClosure->GetEnclosingTypeScope(meta);
+        }
+    }
+
+    // Walk up the scope chain. Return the first non-compiler-generated type scope, or the LinkedScope of a "Self" type
+    // symbol found in a sup-block scope (for module-level sup blocks that have no type scope in their chain).
+    for (auto *scope = this; scope != nullptr; scope = scope->Parent) {
+        if (scope->TySym != nullptr and not scope->TySym->Name->Name.starts_with("$")) {
+            return const_cast<Scope*>(scope);
+        }
+        for (auto const &ty_sym : scope->InternalTable.TypeTbl.All()) {
+            if (ty_sym->Name->Name == "Self" and ty_sym->LinkedScope != nullptr) {
+                return ty_sym->LinkedScope;
+            }
         }
     }
     return nullptr;

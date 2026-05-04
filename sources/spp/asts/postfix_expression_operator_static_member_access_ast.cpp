@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_utils;
+import spp.analyse.utils.visibility_utils;
 import spp.asts.expression_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_argument_type_ast;
@@ -65,6 +66,10 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::utils::visibility_utils::CheckModuleMemberVisibility;
+    using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
+
     // Handle types on the left-hand-side of a static member access.
     if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
         const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(AstClone(lhs_as_type));
@@ -101,6 +106,12 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
             | genex::views::transform([](auto &&x) { return MakePair(std::get<1>(x), std::get<2>(x)); })
             | genex::to<Vec>();
 
+        // Enforce visibility on the accessed member.
+        if (not closest.IsEmpty()) {
+            const auto scope = closest[0].First->NonGenericScope;
+            CheckTypeMemberVisibility(*scope->GetVarSymbol(Name), *Name, *scope, *sm, *meta);
+        }
+
         if (closest.Len() <= 1) { return; }
         Raise<analyse::errors::SppAmbiguousMemberAccessError>(
             {closest[0].First, closest[1].First, sm->CurrentScope},
@@ -129,6 +140,12 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
 
             Raise<analyse::errors::SppIdentifierUnknownError>(
                 {sm->CurrentScope}, ERR_ARGS(*this, "namespace member", closest_match));
+        }
+
+        // Enforce visibility on the accessed namespace symbol.
+        // Only for var symbols, not namespace symbols.
+        if (const auto sym = lhs_ns_sym->LinkedScope->GetVarSymbol(Name)) {
+            CheckModuleMemberVisibility(*sym, *Name, *lhs_ns_sym->LinkedScope, *sm);
         }
     }
 }

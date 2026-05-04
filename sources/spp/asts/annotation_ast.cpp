@@ -141,6 +141,7 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
     CompilerMetaData *)
     -> void {
     // Handle builtin annotations.
+    using A = analyse::utils::annotation_utils::BuiltinAnnotations;
     const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*Name).First;
     if (sym == nullptr) { return; }
     const auto fq_name = sym->FqName()->ToString();
@@ -148,73 +149,80 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
     // For the known builtin annotations, they will attempt to modify their contextual objects if possible, for required
     // behaviour like virtual and abstract tags on function prototypes. If the context is incorrect, nothing happens,
     // and a later stage will pickup the error, as there is a unified target-checking mechanism (custom and bulitin).
-    if (fq_name == "std::annotations::compiler_builtin") {
+    if (fq_name == A::kCompilerBuiltin) {
         const auto func_ctx = _Ctx->To<FunctionPrototypeAst>();
         if (func_ctx) { func_ctx->BuiltinAnnotation = this; }
     }
 
     // Mark a visibility-enabled ast as having "public" visibility.
-    else if (fq_name == "std::annotations::public") {
+    else if (fq_name == A::kPublic) {
         const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>();
         if (vis_ctx) { vis_ctx->Visibility = MakePair(utils::Visibility::kPublic, this); }
     }
 
+    // Mark a visibility-enabled ast as having "package" visibility.
+    else if (fq_name == A::kPackage) {
+        const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>();
+        if (vis_ctx) { vis_ctx->Visibility = MakePair(utils::Visibility::kPackage, this); }
+    }
+
     // Mark a visibility-enabled ast as having "protected" visibility.
-    else if (fq_name == "std::annotations::protected") {
+    else if (fq_name == A::kProtected) {
         const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>();
         if (vis_ctx) { vis_ctx->Visibility = MakePair(utils::Visibility::kProtected, this); }
     }
 
     // Mark a visibility-enabled ast as having "private" visibility.
-    else if (fq_name == "std::annotations::private") {
+    else if (fq_name == A::kPrivate) {
         const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>();
         if (vis_ctx) { vis_ctx->Visibility = MakePair(utils::Visibility::kPrivate, this); }
     }
 
     // Mark a method ast as being "virtual", enabling overriding.
-    else if (fq_name == "std::annotations::virtual_method") {
+    else if (fq_name == A::kVirtualMethod) {
         const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
         if (fun_ctx) { fun_ctx->VirtualAnnotation = this; }
     }
 
     // Mark a method ast as being "abstract", requiring overriding.
-    else if (fq_name == "std::annotations::abstract_method") {
+    else if (fq_name == A::kAbstractMethod) {
         const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
         if (fun_ctx) { fun_ctx->AbstractAnnotation = this; }
     }
 
     // Mark a function ast as being "ffi", providing a linkage name.
-    else if (fq_name == "std::annotations::ffi") {
+    else if (fq_name == A::kFfi) {
         const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
         if (fun_ctx) { fun_ctx->FfiAnnotation = this; }
+        if (fun_ctx) { fun_ctx->Visibility = MakePair(utils::Visibility::kPublic, this); }
     }
 
     // Mark a function as being inlinable via llvm.
-    else if (fq_name == "std::llvm::inline") {
+    else if (fq_name == A::kLlvmInline) {
         const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
         if (fun_ctx) { fun_ctx->InlineAnnotation = this; }
     }
 
     // Mark a function as being always inlined via llvm.
-    else if (fq_name == "std::llvm::always_inline") {
+    else if (fq_name == A::kLlvmAlwaysInline) {
         const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
         if (fun_ctx) { fun_ctx->InlineAnnotation = this; }
     }
 
     // Mark a function as being never inlined via llvm.
-    else if (fq_name == "std::llvm::noinline") {
+    else if (fq_name == A::kLlvmNoInline) {
         const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
         if (fun_ctx) { fun_ctx->InlineAnnotation = this; }
     }
 
     // Mark a function as being "hot" via llvm.
-    else if (fq_name == "std::llvm::hot") {
+    else if (fq_name == A::kLlvmHot) {
         const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
         if (fun_ctx) { fun_ctx->TemperatureAnnotation = this; }
     }
 
     // Mark a function as being "cold" via llvm.
-    else if (fq_name == "std::llvm::cold") {
+    else if (fq_name == A::kLlvmCold) {
         const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
         if (fun_ctx) { fun_ctx->TemperatureAnnotation = this; }
     }

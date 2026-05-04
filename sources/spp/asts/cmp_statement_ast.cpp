@@ -138,6 +138,11 @@ auto spp::asts::CmpStatementAst::Stage5_LoadSupScopes(
 
     // Check the type exists before attaching super scopes
     // type->Stage7_AnalyseSemantics(sm, meta);
+
+    if (_AliasSym != nullptr and not Type->IsCompilerGeneratedType()) {
+        _AliasSym->Visibility = Visibility.First;
+        _AliasSym->VisibilityAnnotation = Visibility.Second;
+    }
 }
 
 auto spp::asts::CmpStatementAst::Stage7_AnalyseSemantics(

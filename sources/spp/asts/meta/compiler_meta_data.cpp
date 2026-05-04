@@ -21,6 +21,7 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
     EnclosingFunctionFlavour = nullptr;
     EnclosingFunctionRetType = {};
     EnclosingFunctionCmp = nullptr;
+    OverriddenScopeForClosure = nullptr;
     CurrentLambdaOuterScope = nullptr;
     TargetCallFunctionPrototype = nullptr;
     TargetCallWasFunctionAsync = false;
@@ -54,8 +55,8 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
     _History.emplace(
         CurrentStage, ReturnTypeOverloadResolverType, AssignmentTarget,
         AssignmentTargetType, IgnoreMissingElseBranchForInference, CaseCondition, ClsSym,
-        EnclosingFunctionScope, EnclosingFunctionFlavour, EnclosingFunctionRetType, EnclosingFunctionCmp,
-        CurrentLambdaOuterScope, TargetCallFunctionPrototype, TargetCallWasFunctionAsync,
+        OverriddenScopeForClosure, EnclosingFunctionScope, EnclosingFunctionFlavour, EnclosingFunctionRetType,
+        EnclosingFunctionCmp, CurrentLambdaOuterScope, TargetCallFunctionPrototype, TargetCallWasFunctionAsync,
         PreventAutoGeneratorResume, LetStatementExplicitType, LetStatementValue, LetStatementFromUninitialized,
         LoopDoubleCheckActive, LoopCurrentDepth, LoopCurrentAst, LoopReturnTypes, ObjectInitType,
         InferSource, InferTarget, PostfixExpressionLhs, UnaryExpressionRhs, SkipTypeAnalysisGenericChecks,
@@ -80,6 +81,7 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
         EnclosingFunctionRetType = state.EnclosingFunctionRetType;
         EnclosingFunctionCmp = state.EnclosingFunctionCmp;
     }
+    OverriddenScopeForClosure = state.OverriddenScopeForClosure;
     CurrentLambdaOuterScope = state.CurrentLambdaOuterScope;
     TargetCallFunctionPrototype = state.TargetCallFunctionPrototype;
     TargetCallWasFunctionAsync = state.TargetCallWasFunctionAsync;

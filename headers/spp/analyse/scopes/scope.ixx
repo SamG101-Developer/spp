@@ -17,6 +17,10 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
+namespace spp::asts::meta {
+    SPP_EXP_CLS struct CompilerMetaData;
+}
+
 namespace spp::compiler {
     SPP_EXP_CLS struct Module;
 }
@@ -112,9 +116,7 @@ public:
      * @param mod The "main" module being compiled.
      * @return
      */
-    static auto NewGlobal(
-        compiler::Module const &mod)
-        -> Shared<Scope>;
+    static auto NewGlobal(compiler::Module const &mod) -> Shared<Scope>;
 
     /**
      * Search all "sup" scopes of an existing scope (this will be a type scope), for a variable
@@ -124,10 +126,7 @@ public:
      * @param name The name of the variable symbol to search for.
      * @return The found variable symbol, or nullptr if not found.
      */
-    static auto SearchSupScopesForVar(
-        Scope const &scope,
-        Shared<asts::IdentifierAst> const &name)
-        -> Shared<VariableSymbol>;
+    static auto SearchSupScopesForVar(Scope const &scope, Shared<asts::IdentifierAst> const &name) -> Shared<VariableSymbol>;
 
     /**
      * Search all "sup" scopes of an existing scope (this will be a type scope), for a type
@@ -137,10 +136,7 @@ public:
      * @param name The name of the type symbol to search for.
      * @return The found type symbol, or nullptr if not found.
      */
-    static auto SearchSupScopesForType(
-        Scope const &scope,
-        Shared<const asts::TypeAst> const &name)
-        -> Shared<TypeSymbol>;
+    static auto SearchSupScopesForType(Scope const &scope, Shared<const asts::TypeAst> const &name) -> Shared<TypeSymbol>;
 
     /**
      * Given a scope and a fully qualified type, this function moves through the namespace parts of
@@ -151,10 +147,7 @@ public:
      * @param fq_type The fully qualified type to shift the scope for.
      * @return A pair of the shifted scope and the unqualified type identifier.
      */
-    static auto ShiftForNamespacedType(
-        Scope const &scope,
-        asts::TypeAst const &fq_type)
-        -> Pair<const Scope*, Shared<const asts::TypeIdentifierAst>>;
+    static auto ShiftForNamespacedType(Scope const &scope, asts::TypeAst const &fq_type) -> Pair<const Scope*, Shared<const asts::TypeIdentifierAst>>;
 
     /**
      * Get the error formatter associated with this scope. Lots of scopes don't have error
@@ -163,167 +156,107 @@ public:
      * foratter.
      * @return The error formatter associated with this scope.
      */
-    SPP_ATTR_NODISCARD auto GetErrorFormatter() const
-        -> utils::errors::ErrorFormatter*;
+    SPP_ATTR_NODISCARD auto GetErrorFormatter() const -> utils::errors::ErrorFormatter*;
 
-    SPP_ATTR_NODISCARD auto GetGenerics() const
-        -> UniqueVec<asts::GenericArgumentAst>;
+    SPP_ATTR_NODISCARD auto GetGenerics() const -> UniqueVec<asts::GenericArgumentAst>;
 
-    SPP_ATTR_NODISCARD auto GetExtendedGenericSymbols(
-        Vec<asts::GenericArgumentAst*> const &generics,
-        Shared<asts::TypeAst> const &ignore = nullptr) const
-        -> SharedVec<Symbol>;
+    SPP_ATTR_NODISCARD auto GetExtendedGenericSymbols(Vec<asts::GenericArgumentAst*> const &generics, Shared<asts::TypeAst> const &ignore = nullptr) const -> SharedVec<Symbol>;
 
     /**
      * Register a new variable symbol into the symbol table held inside this scope.
      * @param sym The new variable symbol.
      */
-    auto AddVarSymbol(
-        Shared<VariableSymbol> const &sym)
-        -> void;
+    auto AddVarSymbol(Shared<VariableSymbol> const &sym) -> void;
 
     /**
      * Register a new variable symbol into the symbol table held inside this scope, checking for conflicts with existing
      * symbols. If a conflict is found, an error is raised.
      * @param sym The new variable symbol.
      */
-    auto AddVarSymbolCheckConflict(
-        Shared<VariableSymbol> const &sym)
-        -> void;
+    auto AddVarSymbolCheckConflict(Shared<VariableSymbol> const &sym) -> void;
 
     /**
      * Register a new type symbol into the symbol table held inside this scope.
      * @param sym The new type symbol.
      */
-    auto AddTypeSymbol(
-        Shared<TypeSymbol> const &sym)
-        -> void;
+    auto AddTypeSymbol(Shared<TypeSymbol> const &sym) -> void;
 
     /**
      * Register a new type symbol into the symbol table held inside this scope, checking for conflicts with existing
      * symbols. If a conflict is found, an error is raised.
      * @param sym The new type symbol.
      */
-    auto AddTypeSymbolCheckConflict(
-        Shared<TypeSymbol> const &sym)
-        -> void;
+    auto AddTypeSymbolCheckConflict(Shared<TypeSymbol> const &sym) -> void;
 
     /**
      * Register a new namespace symbol into the symbol table held inside this scope.
      * @param sym The new namespace symbol.
      */
-    auto AddNsSymbol(
-        Shared<NamespaceSymbol> const &sym)
-        -> void;
+    auto AddNsSymbol(Shared<NamespaceSymbol> const &sym) -> void;
 
     /**
      * Remove a variable symbol from the symbol table held inside this scope.
      * @param sym_name The name of the variable symbol to remove.
      */
-    auto RemVarSymbol(
-        Shared<asts::IdentifierAst> const &sym_name)
-        -> void;
+    auto RemVarSymbol(Shared<asts::IdentifierAst> const &sym_name) -> void;
 
     /**
      * Remove a type symbol from the symbol table held inside this scope.
      * @param sym_name The name of the type symbol to remove.
      */
-    auto RemTypeSymbol(
-        Shared<asts::TypeIdentifierAst> const &sym_name)
-        -> void;
+    auto RemTypeSymbol(Shared<asts::TypeIdentifierAst> const &sym_name) -> void;
 
     /**
      * Remove a namespace symbol from the symbol table held inside this scope.
      * @param sym_name The name of the namespace symbol to remove.
      */
-    auto RemNsSymbol(
-        Shared<asts::IdentifierAst> const &sym_name)
-        -> void;
+    auto RemNsSymbol(Shared<asts::IdentifierAst> const &sym_name) -> void;
 
-    SPP_ATTR_NODISCARD auto AllVarSymbols(
-        bool exclusive = false,
-        bool sup_scope_search = false) const
-        -> SharedVec<VariableSymbol>;
+    SPP_ATTR_NODISCARD auto AllVarSymbols(bool exclusive = false, bool sup_scope_search = false) const -> SharedVec<VariableSymbol>;
 
-    SPP_ATTR_NODISCARD auto AllTypeSymbols(
-        bool exclusive = false,
-        bool sup_scope_search = false) const
-        -> SharedVec<TypeSymbol>;
+    SPP_ATTR_NODISCARD auto AllTypeSymbols(bool exclusive = false, bool sup_scope_search = false) const -> SharedVec<TypeSymbol>;
 
-    SPP_ATTR_NODISCARD auto AllNsSymbols(
-        bool exclusive = false,
-        bool = false) const
-        -> SharedVec<NamespaceSymbol>;
+    SPP_ATTR_NODISCARD auto AllNsSymbols(bool exclusive = false, bool = false) const -> SharedVec<NamespaceSymbol>;
 
-    SPP_ATTR_NODISCARD auto HasVarSymbol(
-        Shared<asts::IdentifierAst> const &sym_name,
-        bool exclusive = false) const
-        -> bool;
+    SPP_ATTR_NODISCARD auto HasVarSymbol(Shared<asts::IdentifierAst> const &sym_name, bool exclusive = false) const -> bool;
 
-    SPP_ATTR_NODISCARD auto HasTypeSymbol(
-        Shared<asts::TypeAst> const &sym_name,
-        bool exclusive = false) const
-        -> bool;
+    SPP_ATTR_NODISCARD auto HasTypeSymbol(Shared<asts::TypeAst> const &sym_name, bool exclusive = false) const -> bool;
 
-    SPP_ATTR_NODISCARD auto HasNsSymbol(
-        Shared<asts::IdentifierAst> const &sym_name,
-        bool exclusive = false) const
-        -> bool;
+    SPP_ATTR_NODISCARD auto HasNsSymbol(Shared<asts::IdentifierAst> const &sym_name, bool exclusive = false) const -> bool;
 
-    SPP_ATTR_NODISCARD SPP_ATTR_HOT auto GetVarSymbol(
-        Shared<asts::IdentifierAst> const &sym_name,
-        bool exclusive = false,
-        bool sup_scope_search = true) const
-        -> Shared<VariableSymbol>;
+    SPP_ATTR_NODISCARD SPP_ATTR_HOT auto GetVarSymbol(Shared<asts::IdentifierAst> const &sym_name, bool exclusive = false, bool sup_scope_search = true) const -> Shared<VariableSymbol>;
 
-    SPP_ATTR_NODISCARD SPP_ATTR_HOT auto GetTypeSymbol(
-        Shared<const asts::TypeAst> const &sym_name,
-        bool exclusive = false,
-        bool sup_scope_search = true) const
-        -> Shared<TypeSymbol>;
+    SPP_ATTR_NODISCARD SPP_ATTR_HOT auto GetTypeSymbol(Shared<const asts::TypeAst> const &sym_name, bool exclusive = false, bool sup_scope_search = true) const -> Shared<TypeSymbol>;
 
-    SPP_ATTR_NODISCARD SPP_ATTR_HOT auto GetNsSymbol(
-        Shared<const asts::IdentifierAst> const &sym_name,
-        bool exclusive = false) const
-        -> Shared<NamespaceSymbol>;
+    SPP_ATTR_NODISCARD SPP_ATTR_HOT auto GetNsSymbol(Shared<const asts::IdentifierAst> const &sym_name, bool exclusive = false) const -> Shared<NamespaceSymbol>;
 
-    SPP_ATTR_NODISCARD auto GetVarSymbolOutermost(
-        asts::Ast const &expr) const
-        -> Pair<Shared<VariableSymbol>, Scope const*>;
+    SPP_ATTR_NODISCARD auto GetVarSymbolOutermost(asts::Ast const &expr) const -> Pair<Shared<VariableSymbol>, Scope const*>;
 
-    auto DepthDiff(
-        const Scope *scope) const
-        -> sys::ssize_t;
+    auto DepthDiff(const Scope *scope) const -> sys::ssize_t;
 
-    SPP_ATTR_NODISCARD auto FinalChildScope() const
-        -> Scope const*;
+    SPP_ATTR_NODISCARD auto FinalChildScope() const -> Scope const*;
 
-    SPP_ATTR_NODISCARD auto Ancestors() const
-        -> Vec<Scope const*>;
+    SPP_ATTR_NODISCARD auto Ancestors() const -> Vec<Scope const*>;
 
-    SPP_ATTR_NODISCARD auto ParentModule() const
-        -> Scope*;
+    SPP_ATTR_NODISCARD auto ParentModule() const -> Scope*;
 
-    SPP_ATTR_NODISCARD auto SupScopes() const
-        -> Vec<Scope*>;
+    SPP_ATTR_NODISCARD auto TopLevelParentModule() const -> Scope*;
 
-    SPP_ATTR_NODISCARD auto SupTypes() const
-        -> SharedVec<asts::TypeAst>;
+    SPP_ATTR_NODISCARD auto GetEnclosingTypeScope(asts::meta::CompilerMetaData const &meta) const -> Scope*;
 
-    SPP_ATTR_NODISCARD auto DirectSupTypes() const
-        -> SharedVec<asts::TypeAst>;
+    SPP_ATTR_NODISCARD auto SupScopes() const -> Vec<Scope*>;
 
-    auto ConvertPostfixToNestedScope(asts::ExpressionAst const *postfix_ast) const
-        -> Scope const*;
+    SPP_ATTR_NODISCARD auto SupTypes() const -> SharedVec<asts::TypeAst>;
 
-    SPP_ATTR_NODISCARD auto PrintScopeTree() const
-        -> Str;
+    SPP_ATTR_NODISCARD auto DirectSupTypes() const -> SharedVec<asts::TypeAst>;
 
-    SPP_ATTR_NODISCARD auto NameAsString() const
-        -> Str;
+    auto ConvertPostfixToNestedScope(asts::ExpressionAst const *postfix_ast) const -> Scope const*;
 
-    auto FixChildrenToParentPointer()
-        -> void;
+    SPP_ATTR_NODISCARD auto PrintScopeTree() const -> Str;
+
+    SPP_ATTR_NODISCARD auto NameAsString() const -> Str;
+
+    auto FixChildrenToParentPointer() -> void;
 
 private:
     utils::errors::ErrorFormatter *_ErrorFormatter;
