@@ -291,8 +291,9 @@ auto spp::compiler::CompilerBoot::_ValidateEntryPoint(
     });
 
     // Check whether the "main" function exists with the correct signature.
-    const auto main_call = INJECT_CODE("main::main(std::vector::Vec[std::string::Str]())", parse_expression);
+    const auto main_call = INJECT_CODE("main(std::vector::Vec[std::string::Str]())", parse_expression);
     sm->Reset();
+    sm->MoveToNextScope(); // into the "main" scope.
 
     try {
         auto meta = asts::meta::CompilerMetaData();
@@ -309,6 +310,8 @@ auto spp::compiler::CompilerBoot::_ValidateEntryPoint(
     catch (analyse::errors::SppFunctionCallNoValidSignaturesError const &) {
         Raise<analyse::errors::SppMissingMainFunctionError>({sm->GlobalScope.get()}, ERR_ARGS(*main_mod));
     }
+
+    sm->Reset();
 }
 
 auto spp::compiler::CompilerBoot::_MoveScopeManagerToNs(
