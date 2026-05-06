@@ -5,7 +5,6 @@ export module spp.utils.files;
 import spp.utils.types;
 import std;
 
-
 namespace spp::utils::files {
     /**
      * Simple function to read the contents of a file into a string.
@@ -25,8 +24,9 @@ namespace spp::utils::files {
 
     SPP_EXP_CLS struct FileLock;
     SPP_EXP_CLS struct FileLockException;
-}
 
+    SPP_EXP_FUN auto GlobSpp(std::string const &path) -> Vec<std::filesystem::path>;
+}
 
 // SPP_EXP_CLS struct spp::utils::files::FileLock {
 // private:

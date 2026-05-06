@@ -5,7 +5,6 @@ module spp.compiler.module_tree;
 import spp.asts.module_prototype_ast;
 import spp.utils.files;
 import genex;
-import glob;
 import std;
 import sys;
 
@@ -37,15 +36,15 @@ spp::compiler::ModuleTree::ModuleTree(
     m_ffi_path = m_root / "ffi";
 
     // Get all the modules from the src and vcs path.
-    auto src_modules = glob::rglob(m_src_path / "**/*.spp")
+    auto src_modules = spp::utils::files::GlobSpp(m_src_path)
         | genex::views::transform([](auto const &p) { return Module::FromPath(p); })
         | genex::to<Vec>();
 
-    auto vcs_modules = glob::rglob(m_vcs_path / "**/*.spp")
+    auto vcs_modules = spp::utils::files::GlobSpp(m_vcs_path)
         | genex::views::transform([](auto const &p) { return Module::FromPath(p); })
         | genex::to<Vec>();
 
-    auto ffi_modules = glob::rglob(m_ffi_path / "**/*.spp")
+    auto ffi_modules = spp::utils::files::GlobSpp(m_ffi_path)
         | genex::views::transform([](auto const &p) { return Module::FromPath(p); })
         | genex::to<Vec>();
 
