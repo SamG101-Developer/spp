@@ -22,6 +22,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
 import spp.asts.ast;
@@ -89,18 +90,26 @@ auto spp::analyse::utils::func_utils::GetFuncOwnerTypeAndFuncName(
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData *meta)
     -> std::tuple<Shared<asts::TypeAst>, scopes::Scope const*, Shared<asts::IdentifierAst>> {
+    //
+    using expr_utils::RaiseMissingIdentifierAndClosestOptions;
+
     // Define some expression casts that are used commonly.
     const auto postfix_lhs = lhs.To<asts::PostfixExpressionAst>();
     const auto runtime_field = postfix_lhs
-                                   ? postfix_lhs->Op->To<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>()
-                                   : nullptr;
+        ? postfix_lhs->Op->To<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>()
+        : nullptr;
     const auto static_field = postfix_lhs
-                                  ? postfix_lhs->Op->To<asts::PostfixExpressionOperatorStaticMemberAccessAst>()
-                                  : nullptr;
+        ? postfix_lhs->Op->To<asts::PostfixExpressionOperatorStaticMemberAccessAst>()
+        : nullptr;
 
     // Specific casts.
     const auto postfix_lhs_as_type = postfix_lhs ? postfix_lhs->Lhs->To<asts::TypeAst>() : nullptr;
     const auto lhs_as_ident = lhs.To<asts::IdentifierAst>();
+
+    // If the lhs is an identifier, it must be a variable symbol, not a namespace symbol.
+    if (lhs_as_ident and sm.CurrentScope->GetVarSymbol(asts::AstClone(lhs_as_ident)) == nullptr) {
+        RaiseMissingIdentifierAndClosestOptions(*lhs_as_ident, sm.CurrentScope->AllVarSymbols(), {}, sm);
+    }
 
     // Variables that will be set in each branch, and returned.
     auto fn_owner_type = Shared<asts::TypeAst>(nullptr);
@@ -214,8 +223,8 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
     else {
         // If a class scope was provided, get all the sup scopes from it, otherwise use the specific sup scope.
         const auto sup_scopes = target_scope->AstNode->To<asts::ClassPrototypeAst>() != nullptr
-                                    ? target_scope->SupScopes() | genex::views::transform([](auto x) -> scopes::Scope const* { return x; }) | genex::to<Vec>()
-                                    : Vec{target_scope};
+            ? target_scope->SupScopes() | genex::views::transform([](auto x) -> scopes::Scope const* { return x; }) | genex::to<Vec>()
+            : Vec{target_scope};
 
         // From the super scopes, check each one for "sup $Func ext FunXXX { ... }" super-impositions. The TypeIdentifier cast is always valid because the function types are always the target - "$Func" etc.
         // Todo: use the "is_valid_ext_scope"?
