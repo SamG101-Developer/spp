@@ -23,67 +23,67 @@ namespace spp::asts {
 
 
 OPEX_MAKE_UNARY_OP(cmp_abs, std::int64_t) {
-    OPEX_PROLOGUE;
+    OPEX_PROLOGUE; (void)lhs;
     return std::abs(rhs);
 }
 
 OPEX_MAKE_BIN_OP(cmp_smax, std::int64_t, std::int64_t) {
-    OPEX_PROLOGUE;
+    OPEX_PROLOGUE; (void)lhs;
     return std::max(lhs, rhs);
 }
 
 OPEX_MAKE_BIN_OP(cmp_umax, std::uint64_t, std::uint64_t) {
-    OPEX_PROLOGUE;
+    OPEX_PROLOGUE; (void)lhs;
     return std::max(lhs, rhs);
 }
 
 OPEX_MAKE_BIN_OP(cmp_smin, std::int64_t, std::int64_t) {
-    OPEX_PROLOGUE;
+    OPEX_PROLOGUE; (void)lhs;
     return std::min(lhs, rhs);
 }
 
 OPEX_MAKE_BIN_OP(cmp_umin, std::uint64_t, std::uint64_t) {
-    OPEX_PROLOGUE;
+    OPEX_PROLOGUE; (void)lhs;
     return std::min(lhs, rhs);
 }
 
 OPEX_MAKE_UNARY_OP(cmp_fabs, double) {
-    OPEX_PROLOGUE;
+    OPEX_PROLOGUE; (void)lhs;
     return std::fabs(rhs);
 }
 
 OPEX_MAKE_BIN_OP(cmp_fmax, double, double) {
-    OPEX_PROLOGUE;
+    OPEX_PROLOGUE; (void)lhs;
     return std::fmax(lhs, rhs);
 }
 
 OPEX_MAKE_BIN_OP(cmp_fmin, double, double) {
-    OPEX_PROLOGUE;
+    OPEX_PROLOGUE; (void)lhs;
     return std::fmin(lhs, rhs);
 }
 
 OPEX_MAKE_UNARY_OP(cmp_ffloor, double) {
-    OPEX_PROLOGUE;
+    OPEX_PROLOGUE; (void)lhs;
     return std::floor(rhs);
 }
 
 OPEX_MAKE_UNARY_OP(cmp_fceil, double) {
-    OPEX_PROLOGUE;
+    OPEX_PROLOGUE; (void)lhs;
     return std::ceil(rhs);
 }
 
 OPEX_MAKE_UNARY_OP(cmp_ftrunc, double) {
-    OPEX_PROLOGUE;
+    OPEX_PROLOGUE; (void)lhs;
     return std::trunc(rhs);
 }
 
 OPEX_MAKE_UNARY_OP(cmp_fround, double) {
-    OPEX_PROLOGUE;
+    OPEX_PROLOGUE; (void)lhs;
     return std::round(rhs);
 }
 
 OPEX_MAKE_BIN_OP(cmp_frem, double, double) {
-    OPEX_PROLOGUE;
+    OPEX_PROLOGUE; (void)lhs;
     return std::remainder(lhs, rhs);
 }
 
