@@ -18,26 +18,16 @@ import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.strings;
 import ankerl.unordered_dense;
+import boost;
 import llvm;
-import mppp;
 
 SPP_MOD_BEGIN
-const auto FLOAT_TYPE_MIN_MAX = ankerl::unordered_dense::map<spp::Str, spp::Pair<mppp::BigDec, mppp::BigDec>>{
-    {"f8", {
-        spp::utils::strings::ExpandScientificNotation("-5.7344e+4"),
-        spp::utils::strings::ExpandScientificNotation("5.7344e+4")}},
-    {"f16", {
-        spp::utils::strings::ExpandScientificNotation("-6.55e+4"),
-        spp::utils::strings::ExpandScientificNotation("6.55e+4")}},
-    {"f32", {
-        spp::utils::strings::ExpandScientificNotation("-3.4028235e+38"),
-        spp::utils::strings::ExpandScientificNotation("3.4028235e+38")}},
-    {"f64", {
-        spp::utils::strings::ExpandScientificNotation("-1.7976931348623157e+308"),
-        spp::utils::strings::ExpandScientificNotation("1.7976931348623157e+308")}},
-    {"f128", {
-        spp::utils::strings::ExpandScientificNotation("-1.189731495357231765e+4932"),
-        spp::utils::strings::ExpandScientificNotation("1.189731495357231765e+4932")}}, // TODO: Check this
+static const auto kFloatBounds = ankerl::unordered_dense::map<spp::Str, spp::Pair<boost::BigDec, boost::BigDec>>{
+    {"f8", {boost::BigDec("-5.7344e+4"), boost::BigDec("5.7344e+4")}},
+    {"f16", {boost::BigDec("-6.55e+4"), boost::BigDec("6.55e+4")}},
+    {"f32", {boost::BigDec("-3.4028235e+38"), boost::BigDec("3.4028235e+38")}},
+    {"f64", {boost::BigDec("-1.7976931348623157e+308"), boost::BigDec("1.7976931348623157e+308")}},
+    {"f128", {boost::BigDec("-1.189731495357231765e+4932"), boost::BigDec("1.189731495357231765e+4932")}},
 };
 
 auto spp::asts::FloatLiteralAst::FromSingleTok(
@@ -132,15 +122,15 @@ auto spp::asts::FloatLiteralAst::Stage7_AnalyseSemantics(
 
     // Get the lower and upper bounds as big floats.
     Type = Type.empty() ? "f32" : Type;
-    auto const &[lower, upper] = FLOAT_TYPE_MIN_MAX.at(Type);
+    auto const &[lower, upper] = kFloatBounds.at(Type);
     auto mapped_val = NormalizeFloatString(IntVal->TokenData, FracVal->TokenData);
     if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
-        mapped_val = mapped_val.neg();
+        mapped_val = boost::negate_integer(mapped_val, std::true_type());
     }
 
     // Check if the value is within the bounds.
     RaiseIf<SppFloatOutOfBoundsError>(
-        mapped_val < lower or mapped_val > upper,
+        mapped_val.compare(lower) < 0 or mapped_val.compare(upper) > 0,
         {sm->CurrentScope}, ERR_ARGS(*this, mapped_val, lower, upper, "float"));
 }
 

@@ -17,53 +17,25 @@ import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.strings;
 import ankerl.unordered_dense;
+import boost;
 import llvm;
-import mppp;
 
 SPP_MOD_BEGIN
-const auto INTEGER_TYPE_MIN_MAX = ankerl::unordered_dense::map<spp::Str, spp::Pair<mppp::BigInt, mppp::BigInt>>{
-    {"s8", {
-        mppp::BigInt("-128"),
-        mppp::BigInt("127")}},
-    {"s16", {
-        mppp::BigInt("-32768"),
-        mppp::BigInt("32767")}},
-    {"s32", {
-        mppp::BigInt("-2147483648"),
-        mppp::BigInt("2147483647")}},
-    {"s64", {
-        mppp::BigInt("-9223372036854775808"),
-        mppp::BigInt("9223372036854775807")}},
-    {"sz", {
-        mppp::BigInt("-9223372036854775808"),
-        mppp::BigInt("9223372036854775807")}},
-    {"s128", {
-        mppp::BigInt("-170141183460469231731687303715884105728"),
-        mppp::BigInt("170141183460469231731687303715884105727")}},
-    {"s256", {
-        mppp::BigInt("-57896044618658097711785492504343953926634992332820282019728792003956564819968"),
-        mppp::BigInt("57896044618658097711785492504343953926634992332820282019728792003956564819967")}},
-    {"u8", {
-        mppp::BigInt("0"),
-        mppp::BigInt("255")}},
-    {"u16", {
-        mppp::BigInt("0"),
-        mppp::BigInt("65535")}},
-    {"u32", {
-        mppp::BigInt("0"),
-        mppp::BigInt("4294967295")}},
-    {"u64", {
-        mppp::BigInt("0"),
-        mppp::BigInt("18446744073709551615")}},
-    {"uz", {
-        mppp::BigInt("0"),
-        mppp::BigInt("18446744073709551615")}},
-    {"u128", {
-        mppp::BigInt("0"),
-        mppp::BigInt("340282366841710300949128831971969468211455")}},
-    {"u256", {
-        mppp::BigInt("0"),
-        mppp::BigInt("115792089237316195423570985008687907853269984665640564039457584007913129639935")}}
+static const auto kIntegerBounds = ankerl::unordered_dense::map<spp::Str, spp::Pair<boost::BigInt, boost::BigInt>>{
+    {"s8", {boost::BigInt("-128"), boost::BigInt("127")}},
+    {"s16", {boost::BigInt("-32768"), boost::BigInt("32767")}},
+    {"s32", {boost::BigInt("-2147483648"), boost::BigInt("2147483647")}},
+    {"s64", {boost::BigInt("-9223372036854775808"), boost::BigInt("9223372036854775807")}},
+    {"s128", {boost::BigInt("-170141183460469231731687303715884105728"), boost::BigInt("170141183460469231731687303715884105727")}},
+    {"s256", {boost::BigInt("-57896044618658097711785492504343953926634992332820282019728792003956564819968"), boost::BigInt("57896044618658097711785492504343953926634992332820282019728792003956564819967")}},
+    {"sz", {boost::BigInt("-9223372036854775808"), boost::BigInt("9223372036854775807")}},
+    {"u8", {boost::BigInt("0"), boost::BigInt("255")}},
+    {"u16", {boost::BigInt("0"), boost::BigInt("65535")}},
+    {"u32", {boost::BigInt("0"), boost::BigInt("4294967295")}},
+    {"u64", {boost::BigInt("0"), boost::BigInt("18446744073709551615")}},
+    {"u128", {boost::BigInt("0"), boost::BigInt("340282366841710300949128831971969468211455")}},
+    {"u256", {boost::BigInt("0"), boost::BigInt("115792089237316195423570985008687907853269984665640564039457584007913129639935")}},
+    {"uz", {boost::BigInt("0"), boost::BigInt("18446744073709551615")}},
 };
 
 spp::asts::IntegerLiteralAst::IntegerLiteralAst(
@@ -131,15 +103,15 @@ auto spp::asts::IntegerLiteralAst::Stage7_AnalyseSemantics(
 
     // Get the lower and upper bounds as big ints.
     Type = Type.empty() ? "s32" : Type;
-    auto const &[lower, upper] = INTEGER_TYPE_MIN_MAX.at(Type);
+    auto const &[lower, upper] = kIntegerBounds.at(Type);
     auto mapped_val = NormaliseIntegerString(Val->TokenData);
     if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
-        mapped_val = mapped_val.neg();
+        mapped_val.backend().negate();
     }
 
     // Check if the value is within the bounds.
     RaiseIf<SppIntegerOutOfBoundsError>(
-        mapped_val < lower or mapped_val > upper,
+        mapped_val.compare(lower) < 0 or mapped_val.compare(upper) > 0,
         {sm->CurrentScope}, ERR_ARGS(*this, mapped_val, lower, upper, "int"));
 }
 
