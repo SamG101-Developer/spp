@@ -159,7 +159,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
         // Enforce visibility on the accessed member.
         if (not closest.IsEmpty()) {
             const auto scope = closest[0].First->NonGenericScope;
-            CheckTypeMemberVisibility(*scope->GetVarSymbol(Name), *Name, *scope, *sm, *meta);
+            CheckTypeMemberVisibility(*scope->GetVarSymbol(Name, true), *Name, *scope, *sm, *meta);
         }
 
         if (closest.Len() <= 1) { return; }
