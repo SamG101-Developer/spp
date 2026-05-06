@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.type_utils;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.expression_ast;
@@ -67,6 +68,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
     CompilerMetaData *meta)
     -> void {
     //
+    using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
     using analyse::utils::visibility_utils::CheckModuleMemberVisibility;
     using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
 
@@ -76,13 +78,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
 
         // Check the target field exists on the type.
         if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name, true)) {
-            const auto alternatives = sm->CurrentScope->AllTypeSymbols(true, true)
-                | genex::views::transform([](auto &&x) { return x->Name->Name; })
-                | genex::to<Vec>();
-
-            const auto closest_match = spp::utils::strings::ClosestMatch(Name->Val, alternatives);
-            Raise<analyse::errors::SppIdentifierUnknownError>(
-                {sm->CurrentScope}, ERR_ARGS(*this, "type member", closest_match));
+            RaiseMissingIdentifierAndClosestOptions(*Name, lhs_type_sym->LinkedScope->AllVarSymbols(true), {}, *sm);
         }
 
         // Check there is only 1 target field on the type at the highest level.
@@ -130,16 +126,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
         // Check the constant exists inside the namespace.
         const auto lhs_ns_sym = sm->CurrentScope->ConvertPostfixToNestedScope(meta->PostfixExpressionLhs)->NsSym;
         if (not lhs_ns_sym->LinkedScope->HasVarSymbol(Name, true) and not lhs_ns_sym->LinkedScope->HasNsSymbol(Name, true)) {
-            const auto alternatives = sm->CurrentScope->AllVarSymbols(false, true)
-                | genex::views::transform([](auto &&x) { return x->Name->Val; })
-                | genex::to<Vec>();
-
-            // Todo: get the last part of postfix otherwise identifier value for string.
-            const auto closest_match = spp::utils::strings::ClosestMatch(
-                meta->PostfixExpressionLhs->ToString(), alternatives);
-
-            Raise<analyse::errors::SppIdentifierUnknownError>(
-                {sm->CurrentScope}, ERR_ARGS(*this, "namespace member", closest_match));
+            RaiseMissingIdentifierAndClosestOptions(
+                *Name, lhs_ns_sym->LinkedScope->AllVarSymbols(false, true), lhs_ns_sym->LinkedScope->AllNsSymbols(), *sm);
         }
 
         // Enforce visibility on the accessed namespace symbol.

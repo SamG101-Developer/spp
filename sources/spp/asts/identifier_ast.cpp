@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -15,7 +16,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.utils.strings;
 import spp.utils.uid;
-import absl;
+import ankerl.unordered_dense;
 import genex;
 import llvm;
 
@@ -104,16 +105,14 @@ auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *)
     -> void {
+    //
+    using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
+
     // Check there is a symbol with the same name in the current scope.
     const auto shared = AstCloneShared(this);
     if (not sm->CurrentScope->HasVarSymbol(shared) and not sm->CurrentScope->HasNsSymbol(shared)) {
-        const auto alternatives = sm->CurrentScope->AllVarSymbols()
-            | genex::views::transform([](auto &&x) { return x->Name->Val; })
-            | genex::to<Vec>();
-
-        const auto closest_match = spp::utils::strings::ClosestMatch(Val, alternatives);
-        Raise<analyse::errors::SppIdentifierUnknownError>(
-            {sm->CurrentScope}, ERR_ARGS(*this, "identifier", closest_match));
+        RaiseMissingIdentifierAndClosestOptions(
+            *this, sm->CurrentScope->AllVarSymbols(), sm->CurrentScope->AllNsSymbols(), *sm);
     }
 
     // Enforce module-level visibility on the accessed symbol.
@@ -179,7 +178,7 @@ auto spp::asts::IdentifierAst::ToFuncIdentifier() const
 
 auto spp::asts::IdentifierAst::AnkerlHash() const
     -> std::size_t {
-    return absl::Hash<Str>()(Val);
+    return ankerl::unordered_dense::hash<Str>()(Val);
 }
 
 auto spp::asts::IdentifierAst::ExprParts() const

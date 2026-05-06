@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.visibility_utils;
 import spp.analyse.utils.cmp_utils;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.identifier_ast;
@@ -79,6 +80,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
     using analyse::errors::SppMemberAccessNonIndexableError;
     using analyse::errors::SppMemberAccessOutOfBoundsError;
     using analyse::errors::SppMemberAccessStaticOperatorExpectedError;
+    using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
     using analyse::utils::type_utils::IsTypeCompTimeIndexable;
     using analyse::utils::type_utils::IsIndexWithinBound;
     using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
@@ -134,19 +136,9 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
             }
 
             // Type field was not found on this type, or the forwarding type (includes nested forwarding checks).
-            const auto alternatives = sm->CurrentScope->AllVarSymbols(true, true)
-                | genex::views::transform([](auto const &x) { return x->Name->Val; })
-                | genex::to<Vec>();
-
-            const auto closest_match = spp::utils::strings::ClosestMatch(Name->Val, alternatives);
-            Raise<analyse::errors::SppIdentifierUnknownError>(
-                {sm->CurrentScope}, ERR_ARGS(*this, "instance member", closest_match));
+            RaiseMissingIdentifierAndClosestOptions(
+                *Name, lhs_type_sym->LinkedScope->AllVarSymbols(), lhs_type_sym->LinkedScope->AllNsSymbols(), *sm);
         }
-
-        // Check there is only 1 target field on the type at the highest level.
-        // if (lhs_type_sym->LinkedScope->GetVarSymbol(Name)->Type->IsCompilerGeneratedType()) {
-        //     return;
-        // }
 
         auto scopes_and_syms = Vec{lhs_type_sym->LinkedScope}
             | genex::views::concat(lhs_type_sym->LinkedScope->SupScopes())
