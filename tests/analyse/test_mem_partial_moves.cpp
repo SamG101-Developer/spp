@@ -16,8 +16,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryPartialMoves,
     test_invalid_memory_assign_to_non_initialized_attribute,
     SppUninitializedMemoryUseError, R"(
-    cls A { str: StrView }
-    cls B { a: A }
+    cls A { !public str: StrView }
+    cls B { !public a: A }
 
     fun f() -> std::void::Void {
         let mut b = B()
@@ -31,9 +31,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryPartialMoves,
     test_invalid_memory_assign_to_non_initialized_attributes_attribute,
     SppUninitializedMemoryUseError, R"(
-    cls A { str: StrView }
-    cls B { a: A }
-    cls C { b: B }
+    cls A { !public str: StrView }
+    cls B { !public a: A }
+    cls C { !public b: B }
 
     fun f() -> std::void::Void {
         let mut c = C()
@@ -47,9 +47,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryPartialMoves,
     test_invalid_memory_assign_to_non_initialized_attributes_attribute_deep,
     SppUninitializedMemoryUseError, R"(
-    cls A { str: StrView }
-    cls B { a: A }
-    cls C { b: B }
+    cls A { !public str: StrView }
+    cls B { !public a: A }
+    cls C { !public b: B }
 
     fun f() -> std::void::Void {
         let mut c = C()
@@ -62,9 +62,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstMemoryPartialMoves,
     test_valid_memory_assign_attribute_on_non_initialized_attribute_4, R"(
-    cls A { str: StrView }
-    cls B { a: A }
-    cls C { b: B }
+    cls A { !public str: StrView }
+    cls B { !public a: A }
+    cls C { !public b: B }
 
     fun f() -> std::void::Void {
         let mut c = C()

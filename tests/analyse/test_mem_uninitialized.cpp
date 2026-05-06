@@ -6,8 +6,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_using_uninitialized_symbol,
     SppUninitializedMemoryUseError, R"(
     cls Point {
-        x: std::number::S32
-        y: std::number::S32
+        !public x: std::number::S32
+        !public y: std::number::S32
     }
 
     fun f() -> std::void::Void {
@@ -22,8 +22,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_using_moved_symbol,
     SppUninitializedMemoryUseError, R"(
     cls Point {
-        x: std::number::S32
-        y: std::number::S32
+        !public x: std::number::S32
+        !public y: std::number::S32
     }
 
     fun f() -> std::void::Void {
@@ -39,8 +39,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_partially_using_uninitialized_symbol,
     SppUninitializedMemoryUseError, R"(
     cls Point {
-        x: std::number::S32
-        y: std::number::S32
+        !public x: std::number::S32
+        !public y: std::number::S32
     }
 
     fun f() -> std::void::Void {
@@ -55,8 +55,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_partially_using_moved_symbol,
     SppUninitializedMemoryUseError, R"(
     cls Point {
-        x: std::number::S32
-        y: std::number::S32
+        !public x: std::number::S32
+        !public y: std::number::S32
     }
 
     fun f() -> std::void::Void {
@@ -72,8 +72,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_partially_using_partially_moved_symbol_same_part,
     SppUninitializedMemoryUseError, R"(
     cls Point {
-        x: std::string_view::Str
-        y: std::string_view::Str
+        !public x: std::string_view::Str
+        !public y: std::string_view::Str
     }
 
     fun f() -> std::void::Void {
@@ -89,8 +89,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_using_partially_moved_symbol,
     SppPartiallyInitializedMemoryUseError, R"(
     cls Point {
-        x: std::string_view::Str
-        y: std::string_view::Str
+        !public x: std::string_view::Str
+        !public y: std::string_view::Str
     }
 
     fun f() -> std::void::Void {
@@ -105,8 +105,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstMemoryUninitialized,
     test_valid_memory_multiple_partial_moves_different_parts, R"(
     cls Point {
-        x: std::number::S32
-        y: std::number::S32
+        !public x: std::number::S32
+        !public y: std::number::S32
     }
 
     fun f() -> std::void::Void {
@@ -144,8 +144,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_uninitialized_symbol_in_assignment,
     SppUninitializedMemoryUseError, R"(
     cls Point {
-        x: std::number::S32
-        y: std::number::S32
+        !public x: std::number::S32
+        !public y: std::number::S32
     }
 
     fun f() -> std::void::Void {
@@ -293,8 +293,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_uninitialized_symbol_in_is_expression,
     SppUninitializedMemoryUseError, R"(
     cls Point {
-        x: std::number::S32
-        y: std::number::S32
+        !public x: std::number::S32
+        !public y: std::number::S32
     }
 
     fun f() -> std::void::Void {

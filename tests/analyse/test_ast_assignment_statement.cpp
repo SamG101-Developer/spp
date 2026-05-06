@@ -15,6 +15,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     AssignmentStatementAst,
     test_valid_owned_attribute_target, R"(
         cls A {
+            !public
             b: std::boolean::Bool
         }
 
@@ -28,6 +29,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     AssignmentStatementAst,
     test_valid_mutably_borrowed_attribute_target, R"(
         cls A {
+            !public
             b: std::boolean::Bool
         }
 
@@ -158,6 +160,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_type_mismatch_attribute_target,
     SppTypeMismatchError, R"(
         cls A {
+            !public
             b: std::boolean::Bool
         }
 
@@ -183,6 +186,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_immutable_attribute_target,
     SppInvalidMutationError, R"(
         cls A {
+            !public
             b: std::boolean::Bool
         }
 
@@ -197,6 +201,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_immutable_borrow_attribute_target,
     SppInvalidMutationError, R"(
         cls A {
+            !public
             b: std::boolean::Bool
         }
 
@@ -211,6 +216,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_mutable_val_immutable_borrow_attribute_target,
     SppInvalidMutationError, R"(
         cls A {
+            !public
             b: std::boolean::Bool
         }
 

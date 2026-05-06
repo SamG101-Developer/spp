@@ -102,7 +102,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     CasePatternVariantDestructureArrayAst,
     test_valid_nested_object_in_tuple, R"(
     cls Point {
+        !public
         x: std::number::S32
+
+        !public
         y: std::number::S32
     }
     fun f(p: (Point, Point)) -> std::void::Void {

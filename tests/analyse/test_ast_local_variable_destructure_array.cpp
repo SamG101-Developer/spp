@@ -126,8 +126,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     LocalVariableDestructureArrayAst,
     test_valid_nested_object, R"(
     cls Point {
-        x: std::number::S32
-        y: std::number::S32
+        !public x: std::number::S32
+        !public y: std::number::S32
     }
 
     fun f() -> std::void::Void {

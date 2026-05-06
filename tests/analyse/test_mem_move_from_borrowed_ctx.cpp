@@ -8,8 +8,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls T { }
 
     cls Point {
-        x: T
-        y: T
+        !public x: T
+        !public y: T
     }
 
     fun f(p: &mut Point) -> std::void::Void {
@@ -25,8 +25,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls T { }
 
     cls Point {
-        x: T
-        y: T
+        !public x: T
+        !public y: T
     }
 
     fun f(p: &mut Point) -> std::void::Void {
@@ -41,11 +41,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_moved_from_borrowed_context_nested,
     SppMoveFromBorrowedMemoryError, R"(
     cls U { }
-    cls T { u: U }
+    cls T {
+        !public u: U
+    }
 
     cls Point {
-        x: T
-        y: T
+        !public x: T
+        !public y: T
     }
 
     fun f(p: &mut Point) -> std::void::Void {
@@ -62,8 +64,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls T { }
 
     cls Point {
-        x: T
-        y: T
+        !public x: T
+        !public y: T
     }
 
     fun f(p: &Point) -> std::void::Void {
@@ -79,8 +81,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls T { }
 
     cls Point {
-        x: T
-        y: T
+        !public x: T
+        !public y: T
     }
 
     fun f(p: &Point) -> std::void::Void {
@@ -95,11 +97,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_moved_from_borrowed_context_nested,
     SppMoveFromBorrowedMemoryError, R"(
     cls U { }
-    cls T { u: U }
+    cls T {
+        !public u: U
+    }
 
     cls Point {
-        x: T
-        y: T
+        !public x: T
+        !public y: T
     }
 
     fun f(p: &Point) -> std::void::Void {

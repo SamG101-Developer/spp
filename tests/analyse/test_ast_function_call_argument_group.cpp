@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_duplicate_named_argument,
@@ -12,7 +11,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_argument_order,
@@ -23,7 +21,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         f(a=true, false)
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
@@ -37,14 +34,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_mut_value_and_mut_attr,
     SppMemoryOverlapUsageError, R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &mut A, b: &mut std::boolean::Bool) -> std::void::Void { }
@@ -54,14 +50,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_mov_value_and_mov_attr,
     SppUninitializedMemoryUseError, R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: A, b: std::boolean::Bool) -> std::void::Void { }
@@ -71,14 +66,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_ref_value_and_mov_attr,
     SppMemoryOverlapUsageError, R"(
     cls A {
-        a: std::string::Str
-        b: std::string::Str
+        !public a: std::string::Str
+        !public b: std::string::Str
     }
 
     fun f(a: &A, b: std::string::Str) -> std::void::Void { }
@@ -88,14 +82,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_mut_value_and_mov_attr,
     SppMemoryOverlapUsageError, R"(
     cls A {
-        a: std::string::Str
-        b: std::string::Str
+        !public a: std::string::Str
+        !public b: std::string::Str
     }
 
     fun f(a: &mut A, b: std::string::Str) -> std::void::Void { }
@@ -105,14 +98,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_ref_value_and_mut_attr,
     SppMemoryOverlapUsageError, R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &A, b: &mut std::boolean::Bool) -> std::void::Void { }
@@ -122,14 +114,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_mut_value_and_ref_attr,
     SppMemoryOverlapUsageError, R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &mut A, b: &std::boolean::Bool) -> std::void::Void { }
@@ -139,14 +130,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_mov_value_and_mut_attr,
     SppUninitializedMemoryUseError, R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: A, b: &mut std::boolean::Bool) -> std::void::Void { }
@@ -156,14 +146,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_mov_value_and_ref_attr,
     SppMemoryOverlapUsageError, R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &mut A, b: &std::boolean::Bool) -> std::void::Void { }
@@ -173,14 +162,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_mut_attr_and_mut_value,
     SppMemoryOverlapUsageError, R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &mut std::boolean::Bool, b: &mut A) -> std::void::Void { }
@@ -190,14 +178,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_ref_attr_and_mov_value,
     SppMemoryOverlapUsageError, R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &std::boolean::Bool, b: A) -> std::void::Void { }
@@ -207,14 +194,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_mut_attr_and_mov_value,
     SppMemoryOverlapUsageError, R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &mut std::boolean::Bool, b: A) -> std::void::Void { }
@@ -224,14 +210,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_ref_attr_and_mut_value,
     SppMemoryOverlapUsageError, R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &std::boolean::Bool, b: &mut A) -> std::void::Void { }
@@ -241,14 +226,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_mut_attr_and_ref_value,
     SppMemoryOverlapUsageError, R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &mut std::boolean::Bool, b: &A) -> std::void::Void { }
@@ -258,14 +242,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_mov_attr_and_mut_value,
     SppPartiallyInitializedMemoryUseError, R"(
     cls A {
-        a: std::bignum::bigint::BigInt
-        b: std::bignum::bigint::BigInt
+        !public a: std::bignum::bigint::BigInt
+        !public b: std::bignum::bigint::BigInt
     }
 
     fun f(a: std::bignum::bigint::BigInt, b: &mut A) -> std::void::Void { }
@@ -275,14 +258,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_mov_attr_and_ref_value,
     SppPartiallyInitializedMemoryUseError, R"(
     cls A {
-        a: std::bignum::bigint::BigInt
-        b: std::bignum::bigint::BigInt
+        !public a: std::bignum::bigint::BigInt
+        !public b: std::bignum::bigint::BigInt
     }
 
     fun f(a: std::bignum::bigint::BigInt, b: &A) -> std::void::Void { }
@@ -292,14 +274,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_mut_value_and_mut_value,
     SppMemoryOverlapUsageError, R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &mut A, b: &mut A) -> std::void::Void { }
@@ -309,14 +290,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_ref_value_and_mov_value,
     SppMemoryOverlapUsageError, R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &A, b: A) -> std::void::Void { }
@@ -326,14 +306,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_mut_value_and_mov_value,
     SppMemoryOverlapUsageError, R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &mut A, b: A) -> std::void::Void { }
@@ -343,14 +322,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_ref_value_and_mut_value,
     SppMemoryOverlapUsageError, R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &A, b: &mut A) -> std::void::Void { }
@@ -360,14 +338,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_mut_value_and_ref_value,
     SppMemoryOverlapUsageError, R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &mut A, b: &A) -> std::void::Void { }
@@ -377,14 +354,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_mov_value_and_mut_value,
     SppUninitializedMemoryUseError, R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: A, b: &mut A) -> std::void::Void { }
@@ -394,14 +370,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_invalid_overlap_mov_value_and_ref_value,
     SppUninitializedMemoryUseError, R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: A, b: &A) -> std::void::Void { }
@@ -411,14 +386,13 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_valid_overlap_ref_value_and_ref_attr,
     R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &A, b: &std::boolean::Bool) -> std::void::Void { }
@@ -428,14 +402,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_valid_overlap_ref_attr_and_ref_value,
     R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &std::boolean::Bool, b: &A) -> std::void::Void { }
@@ -445,14 +418,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_valid_overlap_ref_value_and_ref_value,
     R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &A, b: &A) -> std::void::Void { }
@@ -462,14 +434,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_valid_non_overlap_mut_attr_ref_attr,
     R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &mut std::boolean::Bool, b: &std::boolean::Bool) -> std::void::Void { }
@@ -479,14 +450,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_valid_overlap_ref_attr_and_mut_attr,
     R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &std::boolean::Bool, b: &mut std::boolean::Bool) -> std::void::Void { }
@@ -496,14 +466,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_valid_overlap_mut_attr_and_mut_attr,
     R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &mut std::boolean::Bool, b: &mut std::boolean::Bool) -> std::void::Void { }
@@ -513,14 +482,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_valid_overlap_ref_attr_and_ref_attr,
     R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &std::boolean::Bool, b: &std::boolean::Bool) -> std::void::Void { }
@@ -530,14 +498,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_valid_overlap_mov_attr_and_ref_attr,
     R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: std::boolean::Bool, b: &std::boolean::Bool) -> std::void::Void { }
@@ -547,14 +514,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_valid_overlap_mov_attr_and_mut_attr,
     R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: std::boolean::Bool, b: &mut std::boolean::Bool) -> std::void::Void { }
@@ -564,14 +530,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_valid_overlap_ref_attr_and_mov_attr,
     R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &std::boolean::Bool, b: std::boolean::Bool) -> std::void::Void { }
@@ -581,14 +546,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     FunctionCallArgumentGroupAst,
     test_valid_overlap_mut_attr_and_mov_attr,
     R"(
     cls A {
-        a: std::boolean::Bool
-        b: std::boolean::Bool
+        !public a: std::boolean::Bool
+        !public b: std::boolean::Bool
     }
 
     fun f(a: &mut std::boolean::Bool, b: std::boolean::Bool) -> std::void::Void { }

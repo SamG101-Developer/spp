@@ -258,12 +258,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_postfix_function_call_with_member_access, R"(
     cls TestClass { }
     cls NewClass {
-        t: TestClass
-        u: TestClass
+        !public t: TestClass
+        !public u: TestClass
     }
 
     sup TestClass {
-        fun f(self) -> std::void::Void { }
+        !public fun f(self) -> std::void::Void { }
     }
 
     fun g(n: NewClass) -> std::void::Void {
@@ -277,12 +277,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_postfix_function_call_with_member_access_2, R"(
     cls TestClass { }
     cls NewClass {
-        t: TestClass
-        u: TestClass
+        !public t: TestClass
+        !public u: TestClass
     }
 
     sup TestClass {
-        fun f(self, t: TestClass) -> std::void::Void { }
+        !public fun f(self, t: TestClass) -> std::void::Void { }
     }
 
     fun g(n: NewClass) -> std::void::Void {
@@ -296,13 +296,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_postfix_function_call_with_member_access_3, R"(
     cls TestClass { }
     cls NewClass {
-        t: TestClass
-        u: TestClass
-        v: TestClass
+        !public t: TestClass
+        !public u: TestClass
+        !public v: TestClass
     }
 
     sup TestClass {
-        fun f(self, t: TestClass) -> TestClass { ret t }
+        !public fun f(self, t: TestClass) -> TestClass { ret t }
     }
 
     fun g(n: NewClass) -> std::void::Void {
@@ -317,12 +317,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls TestClass { }
     sup TestClass {
         !virtual_method
+        !public
         fun f(self) -> std::void::Void { }
     }
 
     cls TestClass2 { }
     sup TestClass2 ext TestClass {
-        fun f(self) -> std::void::Void { }
+        !public fun f(self) -> std::void::Void { }
     }
 
     fun g() -> std::void::Void {
@@ -364,7 +365,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls TestClass[T] { }
 
     sup [T] TestClass[T] {
-        fun f(self, a: T) -> std::void::Void { }
+        !public fun f(self, a: T) -> std::void::Void { }
     }
 
     fun g() -> std::void::Void {

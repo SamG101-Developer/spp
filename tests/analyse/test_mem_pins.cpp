@@ -37,7 +37,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cor g(a: &std::string::Str) -> std::generator::Gen[std::string::Str, std::boolean::Bool] { }
 
     cls A {
-        a: std::string::Str
+        !public a: std::string::Str
     }
 
     fun f(mut a: A) -> std::void::Void {
@@ -72,7 +72,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cor g(a: &std::string::Str) -> std::generator::Gen[std::string::Str, std::boolean::Bool] { }
 
     cls A {
-        a: std::string::Str
+        !public a: std::string::Str
     }
 
     fun h() -> std::void::Void {

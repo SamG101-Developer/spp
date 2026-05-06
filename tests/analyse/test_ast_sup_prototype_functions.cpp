@@ -92,8 +92,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_sup_prototype_functions_generic_fallthrough_explicit, R"(
     cls BaseClass[T] { }
     sup [T] BaseClass[T] {
+        !public
         fun f(&self) -> T { ret T() }
     }
+
     fun f() -> std::void::Void {
         let x = BaseClass[std::boolean::Bool]()
         let mut y = x.f()
@@ -105,10 +107,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     SupPrototypeFunctionsAst,
     test_valid_sup_prototype_functions_generic_fallthrough_implicit, R"(
-    cls BaseClass[T] { a: T }
+    cls BaseClass[T] { !public a: T }
     sup [T] BaseClass[T] {
+        !public
         fun f(&self) -> T { ret T() }
     }
+
     fun f() -> std::void::Void {
         let x = BaseClass(a=false)
         let mut y = x.f()

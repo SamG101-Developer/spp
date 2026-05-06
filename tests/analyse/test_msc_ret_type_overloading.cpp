@@ -58,6 +58,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls To[Target] { }
     sup [Target] To[Target] {
         !abstract_method
+        !public
         fun to(&self) -> Target {  }
     }
 
@@ -81,6 +82,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
     test_valid_return_type_overloading_infer_from_class_attribute, R"(
     cls MyType {
+        !public
         a: Bool
     }
 
@@ -97,6 +99,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestReturnTypeOverloading,
     test_valid_return_type_overloading_infer_from_generic_class_attribute_explicit_argument, R"(
     cls MyType[T] {
+        !public
         a: T
     }
 
@@ -114,6 +117,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_return_type_overloading_infer_from_generic_class_attribute,
     SppFunctionCallOverloadAmbiguousError, R"(
     cls MyType[T] {
+        !public
         a: T
     }
 

@@ -6,8 +6,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_incorrect_type_destructure,
     SppTypeMismatchError, R"(
     cls Point {
-        x: std::number::S32
-        y: std::number::S32
+        !public x: std::number::S32
+        !public y: std::number::S32
     }
     fun f() -> std::void::Void {
         let a: Point = Point(x=1, y=2)
@@ -32,8 +32,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_incorrect_generic_destructure,
     SppTypeMismatchError, R"(
     cls Point[T] {
-        x: T
-        y: T
+        !public x: T
+        !public y: T
     }
     fun f() -> std::void::Void {
         let a: Point[std::number::S32] = Point[std::number::S32](x=1, y=2)
@@ -46,8 +46,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     IsExpressionAst,
     test_valid_is_expression_correct_type, R"(
     cls Point {
-        x: std::number::S32
-        y: std::number::S32
+        !public x: std::number::S32
+        !public y: std::number::S32
     }
     fun f() -> std::void::Void {
         let a: Point = Point(x=1, y=2)
@@ -70,8 +70,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     IsExpressionAst,
     test_valid_type_generic, R"(
     cls Point[T] {
-        x: T
-        y: T
+        !public x: T
+        !public y: T
     }
     fun f() -> std::void::Void {
         let a: Point[std::number::S32] = Point[std::number::S32](x=1, y=2)

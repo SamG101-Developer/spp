@@ -5,7 +5,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestClassAttributeAlias,
     test_valid_simple, R"(
     cls A {
-        b: Bool
+        !public b: Bool
     }
 
     fun f() -> std::void::Void {
@@ -20,7 +20,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     type MyVec[ZZ] = std::vector::Vec[ZZ]
 
     cls A {
-        b: MyVec[Bool]
+        !public b: MyVec[Bool]
     }
 
     fun f() -> std::void::Void {
@@ -34,7 +34,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestClassAttributeAlias,
     test_valid_number, R"(
     cls A {
-        b: S32
+        !public b: S32
     }
 
     fun f() -> std::void::Void {
@@ -47,7 +47,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupFunctionNameAlias,
     test_valid_simple, R"(
     sup Bool {
-        fun test(&self) -> Bool {
+        !public fun test(&self) -> Bool {
             ret self@
         }
     }
@@ -66,7 +66,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     type MyVec[ZZ] = std::vector::Vec[ZZ]
 
     sup [XX] MyVec[XX] {
-        fun test(&self) -> USize {
+        !public fun test(&self) -> USize {
             ret self.length()
         }
     }
@@ -87,7 +87,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupFunctionNameAlias,
     test_valid_number, R"(
     sup S32 {
-        fun test(&self) -> S32 {
+        !public fun test(&self) -> S32 {
             ret self@ + 1
         }
     }
@@ -104,7 +104,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupExtensionSuperClassAlias,
     test_valid_simple, R"(
     sup S32 ext From[S32, std::string::Str] {
-        fun from(that: std::string::Str) -> S32 {
+        !public fun from(that: std::string::Str) -> S32 {
             ret 0
         }
     }
@@ -123,7 +123,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     type MyVec[ZZ] = std::vector::Vec[ZZ]
 
     sup MyVec[S32] ext From[MyVec[S32], std::string::Str] {
-        fun from(that: std::string::Str) -> MyVec[S32] {
+        !public fun from(that: std::string::Str) -> MyVec[S32] {
             ret MyVec[S32]::new()
         }
     }
@@ -144,7 +144,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupExtensionSuperClassAlias,
     test_valid_number, R"(
     sup Str ext From[Str, S32] {
-        fun from(that: S32) -> Str {
+        !public fun from(that: S32) -> Str {
             ret Str::from("test")
         }
     }

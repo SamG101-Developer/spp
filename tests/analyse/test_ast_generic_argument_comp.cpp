@@ -29,10 +29,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     GenericArgumentGroupAst,
     test_valid_generic_argument_group_different_names_from_sup_1,
     R"(
-    cls A[T] { a: T }
+    cls A[T] { !public a: T }
 
     sup [T] A[T] {
-        fun f(&self) -> std::void::Void { }
+        !public fun f(&self) -> std::void::Void { }
     }
 
     fun g() -> std::void::Void {
@@ -46,13 +46,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     GenericArgumentGroupAst,
     test_valid_generic_argument_group_different_names_from_sup_2,
     R"(
-    cls A[T] { a: T }
+    cls A[T] { !public a: T }
     sup [T] A[T] {
-        fun new(&self) -> A[T] { ret A[T]() }
+        !public fun new(&self) -> A[T] { ret A[T]() }
     }
 
     sup [T] A[T] {
-        fun f(&self) -> T { ret self.new().a }
+        !public fun f(&self) -> T { ret self.new().a }
     }
 
     fun g() -> std::void::Void {

@@ -16,8 +16,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstMemoryCopy,
     test_valid_memory_copy_custom_type, R"(
     cls Point {
-        x: std::number::S32
-        y: std::number::S32
+        !public x: std::number::S32
+        !public y: std::number::S32
     }
 
     sup Point ext std::copy::Copy { }
@@ -34,8 +34,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstMemoryCopy,
     test_valid_memory_copy_custom_generic_type, R"(
     cls Point[T] {
-        x: T
-        y: T
+        !public x: T
+        !public y: T
     }
 
     sup [T] Point[T] ext std::copy::Copy { }

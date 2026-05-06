@@ -7,7 +7,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppTypeMismatchError, R"(
     cls MyType { }
     sup MyType {
-        cmp n: std::number::USize = 123_uz
+        !public cmp n: std::number::USize = 123_uz
     }
 
     fun f() -> std::void::Void {
@@ -23,7 +23,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppMoveFromPinnedMemoryError, R"(
     cls MyType { }
     sup MyType {
-        cmp n: (std::string_view::StrView, std::string_view::StrView) = ("hello world", "hello world")
+        !public cmp n: (std::string_view::StrView, std::string_view::StrView) = ("hello world", "hello world")
     }
 
     fun f() -> std::void::Void {
@@ -39,7 +39,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppTypeMismatchError, R"(
     cls MyType[T, cmp m: T] { }
     sup [T, cmp m: T] MyType[T, m] {
-        cmp n: T = m
+        !public cmp n: T = m
     }
 
     fun f() -> std::void::Void {
@@ -54,7 +54,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_simple, R"(
     cls MyType { }
     sup MyType {
-        cmp n: std::number::USize = 123_uz
+        !public cmp n: std::number::USize = 123_uz
     }
 
     fun f() -> std::void::Void {
@@ -70,7 +70,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppMoveFromPinnedMemoryError, R"(
     cls MyType[T, cmp m: T] { }
     sup [T, cmp m: T] MyType[T, m] {
-        cmp n: T = m
+        !public cmp n: T = m
     }
 
     fun f() -> std::void::Void {
@@ -85,7 +85,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppMoveFromPinnedMemoryError, R"(
     cls MyType[T, cmp m: T] { }
     sup [T, cmp m: T] MyType[T, m] {
-        cmp n: T = m
+        !public cmp n: T = m
     }
 
     fun f() -> std::void::Void {

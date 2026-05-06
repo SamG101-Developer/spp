@@ -6,12 +6,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_superimposition_extension_type_statement_diff_levels, R"(
     cls A { }
     sup A {
-        type X = std::number::S32
+        !public type X = std::number::S32
     }
 
     cls B { }
     sup B ext A {
-        type X = std::string::Str
+        !public type X = std::string::Str
     }
 )");
 
@@ -22,11 +22,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppIdentifierDuplicateError, R"(
     cls A { }
     sup A {
-        type X = std::number::S32
+        !public type X = std::number::S32
     }
 
     sup A {
-        type X = std::string::Str
+        !public type X = std::string::Str
     }
 )");
 
@@ -36,12 +36,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_superimposition_extension_type_statement_same_levels_via_inheritance, R"(
     cls B { }
     sup B {
-        type X = std::number::S32
+        !public type X = std::number::S32
     }
 
     cls C { }
     sup C {
-        type X = std::string::Str
+        !public type X = std::string::Str
     }
 
     cls A { }
@@ -56,12 +56,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppAmbiguousMemberAccessError, R"(
     cls B { }
     sup B {
-        type X = std::number::S32
+        !public type X = std::number::S32
     }
 
     cls C { }
     sup C {
-        type X = std::string::Str
+        !public type X = std::string::Str
     }
 
     cls A { }
@@ -80,12 +80,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppAmbiguousMemberAccessError, R"(
     cls B { }
     sup B {
-        type X = std::number::S32
+        !public type X = std::number::S32
     }
 
     cls C { }
     sup C {
-        type X = std::string::Str
+        !public type X = std::string::Str
     }
 
     cls A { }
@@ -103,12 +103,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_superimposition_extension_type_statement_same_levels_via_inheritance_with_unique_override, R"(
     cls B { }
     sup B {
-        type X = std::number::S32
+        !public type X = std::number::S32
     }
 
     cls C { }
     sup C {
-        type X = std::string::Str
+        !public type X = std::string::Str
     }
 
     cls A { }
@@ -129,12 +129,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_superimposition_extension_cmp_statement_diff_levels, R"(
     cls A { }
     sup A {
-        cmp x: std::number::S32 = 123
+        !public cmp x: std::number::S32 = 123
     }
 
     cls B { }
     sup B ext A {
-        cmp x: std::string_view::StrView = "hello world"
+        !public cmp x: std::string_view::StrView = "hello world"
     }
 )");
 
@@ -145,11 +145,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppIdentifierDuplicateError, R"(
     cls A { }
     sup A {
-        cmp x: std::number::S32 = 123
+        !public cmp x: std::number::S32 = 123
     }
 
     sup A {
-        cmp x: std::string_view::StrView = "hello world"
+        !public cmp x: std::string_view::StrView = "hello world"
     }
 )");
 
@@ -159,12 +159,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_superimposition_extension_cmp_statement_same_levels_via_inheritance, R"(
     cls B { }
     sup B {
-        cmp x: std::number::S32 = 123
+        !public cmp x: std::number::S32 = 123
     }
 
     cls C { }
     sup C {
-        cmp x: std::string_view::StrView = "hello world"
+        !public cmp x: std::string_view::StrView = "hello world"
     }
 
     cls A { }
@@ -179,12 +179,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppAmbiguousMemberAccessError, R"(
     cls B { }
     sup B {
-        cmp x: std::number::USize = 123_uz
+        !public cmp x: std::number::USize = 123_uz
     }
 
     cls C { }
     sup C {
-        cmp x: std::boolean::Bool = true
+        !public cmp x: std::boolean::Bool = true
     }
 
     cls A { }
@@ -202,12 +202,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_superimposition_extension_cmp_statement_same_levels_via_inheritance_with_unique_override, R"(
     cls B { }
     sup B {
-        cmp x: std::number::USize = 123_uz
+        !public cmp x: std::number::USize = 123_uz
     }
 
     cls C { }
     sup C {
-        cmp x: std::boolean::Bool = true
+        !public cmp x: std::boolean::Bool = true
     }
 
     cls A { }
@@ -227,11 +227,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestDuplicateMembers_SupClsAttr,
     test_valid_superimposition_extension_cls_attr_statement_diff_levels, R"(
     cls A {
-        a: std::number::S32
+        !public a: std::number::S32
     }
 
     cls B {
-        a: std::string::Str
+        !public a: std::string::Str
     }
 
     sup B ext A { }
@@ -253,11 +253,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestDuplicateMembers_SupClsAttr,
     test_valid_superimposition_extension_cls_attr_statement_same_levels_via_inheritance, R"(
     cls B {
-        a: std::number::S32
+        !public a: std::number::S32
     }
 
     cls C {
-        a: std::string::Str
+        !public a: std::string::Str
     }
 
     cls A { }
@@ -271,11 +271,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_superimposition_extension_cls_attr_statement_same_levels_via_inheritance_with_ambiguous_access,
     SppAmbiguousMemberAccessError, R"(
     cls B {
-        a: std::number::S32
+        !public a: std::number::S32
     }
 
     cls C {
-        a: std::string::Str
+        !public a: std::string::Str
     }
 
     cls A { }
@@ -292,15 +292,15 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestDuplicateMembers_SupClsAttr,
     test_valid_superimposition_extension_cls_attr_statement_same_levels_via_inheritance_with_unique_override, R"(
     cls B {
-        a: std::number::S32
+        !public a: std::number::S32
     }
 
     cls C {
-        a: std::string::Str
+        !public a: std::string::Str
     }
 
     cls A {
-        a: std::boolean::Bool
+        !public a: std::boolean::Bool
     }
 
     sup A ext B { }

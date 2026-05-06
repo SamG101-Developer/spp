@@ -5,7 +5,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTupleSuperimpositions,
     test_tuple_superimposition_any_3_tuple, R"(
     sup [T, U, V] std::tuple::Tup[T, U, V] {
-        fun f(&self) -> Void { }
+        !public fun f(&self) -> Void { }
     }
 
     fun f() -> Void {
@@ -20,7 +20,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_tuple_superimposition_wrong_number_elems_1,
     SppIdentifierUnknownError, R"(
     sup [T, U, V] std::tuple::Tup[T, U, V] {
-        fun f(&self) -> Void { }
+        !public fun f(&self) -> Void { }
     }
 
     fun f() -> Void {
@@ -35,7 +35,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_tuple_superimposition_wrong_number_elems_2,
     SppIdentifierUnknownError, R"(
     sup [T, U] std::tuple::Tup[T, U] {
-        fun f(&self) -> Void { }
+        !public fun f(&self) -> Void { }
     }
 
     fun f() -> Void {
@@ -50,7 +50,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_tuple_superimposition_specific_3_tuple_mismatch_types,
     SppIdentifierUnknownError, R"(
     sup std::tuple::Tup[U64, U32, U16] {
-        fun f(&self) -> Void { }
+        !public fun f(&self) -> Void { }
     }
 
     fun f() -> Void {
@@ -64,7 +64,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTupleSuperimpositions,
     test_tuple_superimposition_specific_3_tuple_correct_types, R"(
     sup std::tuple::Tup[U64, U32, U16] {
-        fun f(&self) -> Void { }
+        !public fun f(&self) -> Void { }
     }
 
     fun f() -> Void {
@@ -78,7 +78,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTupleSuperimpositions,
     test_tuple_superimposition_specific_and_generic_3_tuple_correct_types, R"(
     sup [P, Q] std::tuple::Tup[U64, P, Q] {
-        fun f(&self) -> Void { }
+        !public fun f(&self) -> Void { }
     }
 
     fun f() -> Void {
@@ -92,7 +92,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTupleSuperimpositions,
     test_tuple_superimposition_variadic_generics, R"(
     sup [..T] std::tuple::Tup[T] {
-        fun f(&self) -> Void { }
+        !public fun f(&self) -> Void { }
     }
 
     fun f() -> Void {

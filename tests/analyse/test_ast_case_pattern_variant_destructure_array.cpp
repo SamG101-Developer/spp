@@ -101,7 +101,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     CasePatternVariantDestructureArrayAst,
     test_valid_nested_object_in_array, R"(
     cls Point {
+        !public
         x: std::number::S32
+
+        !public
         y: std::number::S32
     }
     fun f(p: std::array::Arr[Point, 2_uz]) -> std::void::Void {

@@ -6,7 +6,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_partial_move_from_yielded_borrow_via_variable,
     SppMoveFromBorrowedMemoryError, R"(
     cls A {
-        a: Str
+        !public a: Str
     }
 
     cor g() -> std::generator::Gen[&A] { }
@@ -27,7 +27,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_partial_move_from_yielded_borrow_directly,
     SppMoveFromBorrowedMemoryError, R"(
     cls A {
-        a: Str
+        !public a: Str
     }
 
     cor g() -> std::generator::Gen[&A] { }
@@ -111,8 +111,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
-        cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
-        cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str] { }
+        !public cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
+        !public cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str] { }
     }
 
     fun test() -> std::void::Void {
@@ -129,8 +129,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
-        cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
-        cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str] { }
+        !public cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
+        !public cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str] { }
     }
 
     fun test() -> std::void::Void {
@@ -147,8 +147,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
-        cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
-        cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str] { }
+        !public cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
+        !public cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str] { }
     }
 
     fun test() -> std::void::Void {
@@ -164,8 +164,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_memory_define_conflicting_ref_borrow_after_ref_borrow_created, R"(
     cls MyType { }
     sup MyType {
-        cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
-        cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str] { }
+        !public cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
+        !public cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str] { }
     }
 
     fun test() -> std::void::Void {
@@ -182,8 +182,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
-        cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
-        cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str] { }
+        !public cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
+        !public cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str] { }
     }
 
     fun test() -> std::void::Void {
@@ -200,8 +200,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
-        cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
-        cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str] { }
+        !public cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
+        !public cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str] { }
     }
 
     fun test() -> std::void::Void {
@@ -218,8 +218,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
-        cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
-        cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str] { }
+        !public cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str] { }
+        !public cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str] { }
     }
 
     fun test() -> std::void::Void {
@@ -236,8 +236,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
-        cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
-        cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str, std::void::Void] { }
+        !public cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
+        !public cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str, std::void::Void] { }
     }
 
     fun test() -> std::void::Void {
@@ -257,8 +257,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
-        cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
-        cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str, std::void::Void] { }
+        !public cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
+        !public cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str, std::void::Void] { }
     }
 
     fun test() -> std::void::Void {
@@ -278,8 +278,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppMemoryOverlapUsageError, R"(
     cls MyType { }
     sup MyType {
-        cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
-        cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str, std::void::Void] { }
+        !public cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
+        !public cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str, std::void::Void] { }
     }
 
     fun test() -> std::void::Void {
@@ -298,8 +298,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_memory_create_ref_borrow_create_ref_borrow_use_ref_borrow_with_scoping, R"(
     cls MyType { }
     sup MyType {
-        cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
-        cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str, std::void::Void] { }
+        !public cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
+        !public cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str, std::void::Void] { }
     }
 
     fun test() -> std::void::Void {
@@ -320,7 +320,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     SppUninitializedMemoryUseError, R"(
     cls MyType { }
     sup MyType {
-        cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str, std::void::Void] { }
+        !public cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str, std::void::Void] { }
     }
 
     fun test() -> std::void::Void {
@@ -341,7 +341,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_memory_use_ref_borrow_after_conflicting_ref_borrow_created_for_resume, R"(
     cls MyType { }
     sup MyType {
-        cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
+        !public cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
     }
 
     fun test() -> std::void::Void {
@@ -362,8 +362,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_memory_use_mut_borrow_after_conflicting_ref_borrow_created_with_scoping, R"(
     cls MyType { }
     sup MyType {
-        cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
-        cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str, std::void::Void] { }
+        !public cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
+        !public cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str, std::void::Void] { }
     }
 
     fun test() -> std::void::Void {
@@ -382,8 +382,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_memory_use_ref_borrow_after_conflicting_mut_borrow_created_with_scoping, R"(
     cls MyType { }
     sup MyType {
-        cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
-        cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str, std::void::Void] { }
+        !public cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
+        !public cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str, std::void::Void] { }
     }
 
     fun test() -> std::void::Void {
@@ -402,8 +402,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_memory_use_mut_borrow_after_conflicting_mut_borrow_created_with_scoping, R"(
     cls MyType { }
     sup MyType {
-        cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
-        cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str, std::void::Void] { }
+        !public cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
+        !public cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str, std::void::Void] { }
     }
 
     fun test() -> std::void::Void {
@@ -422,8 +422,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_memory_use_ref_borrow_after_conflicting_ref_borrow_created_with_scoping_2, R"(
     cls MyType { }
     sup MyType {
-        cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
-        cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str, std::void::Void] { }
+        !public cor custom_iter_ref(&self) -> std::generator::Gen[&std::string::Str, std::void::Void] { }
+        !public cor custom_iter_mut(&mut self) -> std::generator::Gen[&mut std::string::Str, std::void::Void] { }
     }
 
     fun test() -> std::void::Void {

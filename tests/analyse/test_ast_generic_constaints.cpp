@@ -196,7 +196,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls A[T] { }
 
     sup [T: std::copy::Copy] A[T] {
-        fun my_function(&self) -> Void { }
+        !public fun my_function(&self) -> Void { }
     }
 
     fun f() -> Void {
@@ -213,7 +213,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls A[T] { }
 
     sup [T: std::copy::Copy] A[T] {
-        fun my_function(&self) -> Void { }
+        !public fun my_function(&self) -> Void { }
     }
 
     fun f() -> Void {

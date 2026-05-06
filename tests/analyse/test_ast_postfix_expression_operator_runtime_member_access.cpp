@@ -131,8 +131,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorRuntimeMemberAccessAst,
     test_valid_field_on_variable, R"(
     cls Point {
-        x: std::number::S32
-        y: std::number::S32
+        !public x: std::number::S32
+        !public y: std::number::S32
     }
 
     fun f(p: Point) -> std::void::Void {

@@ -5,12 +5,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSpecialization,
     test_specialization_vector_string, R"(
     sup std::vector::Vec[std::string::Str] {
+        !public
         fun test_func(&self) -> std::number::S32 {
             ret 1
         }
     }
 
     sup std::number::S32 {
+        !public
         fun to_string(&self) -> std::string::Str {
             ret std::string::Str::from("")
         }
@@ -30,6 +32,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_specialization_failure_different_generic,
     SppIdentifierUnknownError, R"(
     sup std::vector::Vec[std::string::Str] {
+        !public
         fun test_func(&self) -> std::number::S32 {
             ret 1
         }
@@ -46,22 +49,26 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSpecialization,
     test_methods_on_different_generic_names, R"(
     cls MyType[T] {
+        !public
         a: T
     }
 
     sup [T] MyType[T] {
+        !public
         fun test_func_0(self) -> T {
             ret self.a
         }
     }
 
     sup [U] MyType[U] {
+        !public
         fun test_func_1(self) -> U {
             ret self.a
         }
     }
 
     sup std::number::S32 {
+        !public
         fun to_string(&self) -> std::string::Str {
             ret std::string::Str::from("")
         }
@@ -83,6 +90,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSpecialization,
     test_blanket_specialization, R"(
     sup [T] T {
+        !public
         fun test_func(&self) -> std::number::S32 {
             ret 1
         }

@@ -255,11 +255,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     SupPrototypeExtensionAst,
     test_valid_superimposition_extension_stateful, R"(
-    cls A { a: std::number::S32 }
-    cls B { b: std::number::S32 }
+    cls A { !public a: std::number::S32 }
+    cls B { !public b: std::number::S32 }
 
     sup A {
         !virtual_method
+        !public
         fun f(mut self) -> std::void::Void {
             self.a = 100
         }
@@ -280,11 +281,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     SupPrototypeExtensionAst,
     test_valid_superimposition_extension_generics_1, R"(
-    cls A[T] { a: T }
-    cls B[T] { b: T }
+    cls A[T] { !public a: T }
+    cls B[T] { !public b: T }
 
     sup [T] A[T] {
         !virtual_method
+        !public
         fun f(mut self) -> std::void::Void { }
     }
 

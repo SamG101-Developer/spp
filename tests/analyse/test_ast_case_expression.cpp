@@ -94,7 +94,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     CaseExpressionAst,
     test_valid_partial_move_in_pattern, R"(
     cls Point {
+        !public
         x: std::number::S32
+
+        !public
         y: std::number::S32
     }
 

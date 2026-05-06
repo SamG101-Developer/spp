@@ -1,13 +1,11 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestTypeAst,
     test_invalid_unknown_type,
     SppIdentifierUnknownError, R"(
     fun f() -> Unknown { }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestTypeAst,
@@ -16,7 +14,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> std::Unknown { }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestTypeAst,
     test_invalid_type_unknown_namespace,
@@ -24,14 +21,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> test::Type { }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestTypeAst,
     test_invalid_type_unknown_namespace_nested,
     SppIdentifierUnknownError, R"(
     fun f() -> std::other::Unknown { }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestTypeAst,
@@ -42,7 +37,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestTypeAst,
     test_invalid_type_generic_nested_type,
@@ -52,13 +46,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type, R"(
     fun f() -> std::void::Void { }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
@@ -66,13 +58,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> std::void::Void { }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant, R"(
     fun f(mut a: std::string_view::StrView or std::boolean::Bool) -> std::void::Void { a = "hello" }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
@@ -80,13 +70,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(a: std::string_view::StrView or std::boolean::Bool = "hello") -> std::void::Void { }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant_tuple_1, R"(
     fun f(mut a: (std::string_view::StrView,)) -> std::void::Void { a = ("hello",) }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
@@ -94,13 +82,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(mut a: (std::string_view::StrView, std::boolean::Bool)) -> std::void::Void { a = ("hello", true) }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_shorthand_variant_tuple_default, R"(
     fun f(a: (std::string_view::StrView, std::boolean::Bool) = ("hello", true)) -> std::void::Void { }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
@@ -111,7 +97,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_type_function_type_with_function_call_2, R"(
@@ -121,12 +106,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_nested_type, R"(
     cls MyType { }
     sup MyType {
+        !public
         type X = std::string_view::StrView
     }
 
@@ -136,7 +121,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_multiple_nested_type, R"(
@@ -145,10 +129,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls MyTypeC { }
 
     sup MyTypeA {
+        !public
         type X = MyTypeB
     }
 
     sup MyTypeB {
+        !public
         type Y = MyTypeC
     }
 
@@ -158,12 +144,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_nested_type_generic, R"(
     cls MyType[T] { }
     sup [T] MyType[T] {
+        !public
         type X = T
     }
 
@@ -173,7 +159,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_nested_type_nested_generics, R"(
@@ -182,14 +167,17 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     cls TypeC[V] { }
 
     sup [V] TypeC[V] {
+        !public
         type InnerC[P] = TypeB[V, P]
     }
 
     sup [U, B] TypeB[U, B] {
+        !public
         type InnerB[Q] = TypeA[U, Q, B]
     }
 
     sup [T, A, B] TypeA[T, A, B] {
+        !public
         type InnerA[R] = (T, B, A, R)
     }
 
@@ -199,12 +187,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeAst,
     test_valid_nested_type_at_top_level, R"(
     cls TypeA { }
     sup TypeA {
+        !public
         type X = std::string_view::StrView
     }
 

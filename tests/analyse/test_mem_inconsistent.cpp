@@ -6,8 +6,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_inconsistently_initialized_moved,
     SppInconsistentlyInitializedMemoryUseError, R"(
     cls Point {
-        x: std::string::Str
-        y: std::string::Str
+        !public x: std::string::Str
+        !public y: std::string::Str
     }
 
     fun f() -> std::void::Void {
@@ -28,8 +28,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_inconsistently_initialized_initialized,
     SppInconsistentlyInitializedMemoryUseError, R"(
     cls Point {
-        x: std::string::Str
-        y: std::string::Str
+        !public x: std::string::Str
+        !public y: std::string::Str
     }
 
     fun f() -> std::void::Void {
@@ -49,8 +49,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_inconsistently_initialized_partially_moved_1,
     SppInconsistentlyInitializedMemoryUseError, R"(
     cls Point {
-        x: std::string::Str
-        y: std::string::Str
+        !public x: std::string::Str
+        !public y: std::string::Str
     }
 
     fun f() -> std::void::Void {
@@ -70,8 +70,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_inconsistently_initialized_partially_moved_2,
     SppInconsistentlyInitializedMemoryUseError, R"(
     cls Point {
-        x: std::string::Str
-        y: std::string::Str
+        !public x: std::string::Str
+        !public y: std::string::Str
     }
 
     fun f() -> std::void::Void {
@@ -91,8 +91,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_inconsistently_initialized_partially_initialized_1,
     SppInconsistentlyInitializedMemoryUseError, R"(
     cls Point {
-        x: std::string::Str
-        y: std::string::Str
+        !public x: std::string::Str
+        !public y: std::string::Str
     }
 
     fun f() -> std::void::Void {
@@ -114,8 +114,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_inconsistently_initialized_partially_initialized_2,
     SppInconsistentlyInitializedMemoryUseError, R"(
     cls Point {
-        x: std::string::Str
-        y: std::string::Str
+        !public x: std::string::Str
+        !public y: std::string::Str
     }
 
     fun f() -> std::void::Void {
@@ -138,8 +138,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_inconsistently_pinned_1,
     SppInconsistentlyPinnedMemoryUseError, R"(
     cls Point {
-        x: std::string::Str
-        y: std::string::Str
+        !public x: std::string::Str
+        !public y: std::string::Str
     }
 
     cor c(p: &Point) -> std::generator::Gen[std::boolean::Bool] { }
@@ -161,8 +161,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_inconsistently_pinned_2,
     SppInconsistentlyPinnedMemoryUseError, R"(
     cls Point {
-        x: std::string::Str
-        y: std::string::Str
+        !public x: std::string::Str
+        !public y: std::string::Str
     }
 
     cor c(x: &std::string::Str) -> std::generator::Gen[std::boolean::Bool] { }
@@ -184,8 +184,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_memory_inconsistently_pinned_3,
     SppInconsistentlyPinnedMemoryUseError, R"(
     cls Point {
-        x: std::string::Str
-        y: std::string::Str
+        !public x: std::string::Str
+        !public y: std::string::Str
     }
 
     cor c(x: &std::string::Str) -> std::generator::Gen[std::boolean::Bool] { }
