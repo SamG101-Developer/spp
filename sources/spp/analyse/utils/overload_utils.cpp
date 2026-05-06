@@ -65,7 +65,7 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
     auto temp = Shared<asts::ExpressionAst>(nullptr);
     if (const auto id = lhs->To<asts::IdentifierAst>()) {
         const auto x = sm->CurrentScope->GetVarSymbol(asts::AstCloneShared(id));
-        if (x->MemInfo->AstCompTime) {
+        if (x and x->MemInfo->AstCompTime) {
             temp = x->FqName();
             lhs = temp.get();
         }
