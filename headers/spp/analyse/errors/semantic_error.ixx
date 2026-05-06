@@ -4,7 +4,7 @@ module;
 export module spp.analyse.errors.semantic_error;
 import spp.utils.errors;
 import spp.utils.types;
-import mppp;
+import boost;
 import std;
 import sys;
 
@@ -235,11 +235,11 @@ SPP_EXP_CLS struct spp::analyse::errors::SppCoroutineInvalidReturnTypeError fina
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppFloatOutOfBoundsError final : SemanticError {
-    explicit SppFloatOutOfBoundsError(asts::LiteralAst const &literal, mppp::BigDec const &value, mppp::BigDec const &lower, mppp::BigDec const &upper, StrView what);
+    explicit SppFloatOutOfBoundsError(asts::LiteralAst const &literal, boost::BigDec const &value, boost::BigDec const &lower, boost::BigDec const &upper, StrView what);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppIntegerOutOfBoundsError final : SemanticError {
-    explicit SppIntegerOutOfBoundsError(asts::LiteralAst const &literal, mppp::BigInt const &value, mppp::BigInt const &lower, mppp::BigInt const &upper, StrView what);
+    explicit SppIntegerOutOfBoundsError(asts::LiteralAst const &literal, boost::BigInt const &value, boost::BigInt const &lower, boost::BigInt const &upper, StrView what);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppOrderInvalidError final : SemanticError {

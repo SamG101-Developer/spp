@@ -86,145 +86,35 @@ auto spp::utils::strings::SimilarityRatio(
 
 auto spp::utils::strings::NormaliseIntegerString(
     const StrView s1)
-    -> mppp::BigInt {
-    auto out = Str();
-    auto base = 10;
-
-    auto i = 0uz;
-    if (s1.length() > 2 and s1[0] == '0') {
-        if (s1[1] == 'b') {
-            base = 2;
-            i = 2;
-        }
-        else if (s1[1] == 'x') {
-            base = 16;
-            i = 2;
-        }
-        else if (s1[1] == 'o') {
-            base = 8;
-            i = 2;
-        }
-    }
-
-    for (; i < s1.length(); ++i) {
-        const auto c = s1[i];
-        if (c == '_') { continue; }
-        out.push_back(c);
-    }
-
-    return mppp::BigInt(out, base);
+    -> boost::BigInt {
+    // Normalise the input string by removing underscores.
+    const auto out = NormaliseAnyString(s1);
+    return boost::BigInt(std::move(out));
 }
 
 auto spp::utils::strings::NormalizeFloatString(
     const StrView s1,
-    const StrView s2)
-    -> mppp::BigDec {
-    auto out1 = Str();
-    for (const auto c : s1) {
-        if (c == '_') { continue; }
-        out1.push_back(c);
-    }
+    const StrView s2,
+    const StrView exp)
+    -> boost::BigDec {
+    // Normalise the input strings by removing underscores.
+    const auto int_part = NormaliseAnyString(s1);
+    const auto dec_part = NormaliseAnyString(s2);
+    const auto exp_part = NormaliseAnyString(exp);
 
-    auto out2 = Str();
-    for (const auto c : s2) {
-        if (c == '_') { continue; }
-        out2.push_back(c);
-    }
-
-    const auto numerator = out1 + out2;
-    const auto denominator = Str("1") + Str(out2.length(), '0');
-    return mppp::BigDec(numerator + "/" + denominator);
+    // Recombine into single string.
+    const auto final = int_part
+        + (not dec_part.empty() ? "." + dec_part : "")
+        + (not exp_part.empty() ? "e" + exp_part : "");
+    return boost::BigDec(std::move(final));
 }
 
-auto spp::utils::strings::ExpandScientificNotation(
+auto spp::utils::strings::NormaliseAnyString(
     const StrView s1)
-    -> mppp::BigDec {
-    // Handle empty case (should never throw).
-    if (s1.empty()) { return mppp::BigDec("0"); }
-
-    // Extract and strip the sign.
-    auto s = Str(s1);
-    auto sign = Str();
-    if (s.front() == '-' or s.front() == '+') {
-        sign = s.front();
-        s.erase(0, 1);
-    }
-
-    // Find the exponent marker ('e').
-    const auto e_pos = s.find_first_of('e');
-
-    auto mantissa = Str();
-    auto exponent = 0uz;
-
-    if (e_pos == Str::npos) {
-        // No exponent — treat as plain decimal.
-        mantissa = s;
-    }
-    else {
-        mantissa = s.substr(0, e_pos);
-        exponent = std::stoull(s.substr(e_pos + 1));
-    }
-
-    // Split mantissa into integer and fractional parts.
-    const auto dot_pos = mantissa.find('.');
-    auto int_part = Str();
-    auto frac_part = Str();
-    if (dot_pos == Str::npos) {
-        int_part = mantissa;
-        frac_part = "";
-    }
-    else {
-        int_part = mantissa.substr(0, dot_pos);
-        frac_part = mantissa.substr(dot_pos + 1);
-    }
-
-    auto digits = int_part + frac_part;
-    auto dot_after = int_part.length();
-    dot_after += exponent;
-    auto result = Str();
-
-    if (dot_after <= 0) {
-        // All digits are to the right of the decimal point; need leading zeros.
-        result = "0.";
-        result.append(-dot_after, '0');
-        result += digits;
-    }
-    else if (dot_after >= digits.length()) {
-        // Decimal point is beyond all digits; pad with trailing zeros.
-        result = digits;
-        result.append(dot_after - digits.length(), '0');
-    }
-    else {
-        // Decimal point sits within the digit string.
-        result = digits.substr(0, dot_after);
-        result += '.';
-        result += digits.substr(dot_after);
-    }
-
-    // Strip redundant leading zeros (but keep at least one digit before the dot).
-    {
-        const auto first_nonzero = result.find_first_not_of('0');
-        if (first_nonzero == Str::npos) {
-            result = "0";
-        }
-        else if (result[first_nonzero] == '.') {
-            result = "0" + result.substr(first_nonzero);
-        }
-        else {
-            result = result.substr(first_nonzero);
-        }
-    }
-
-    // Strip redundant trailing zeros after a decimal point.
-    if (result.find('.') != Str::npos) {
-        const auto last_nonzero = result.find_last_not_of('0');
-        if (result[last_nonzero] == '.') {
-            result = result.substr(0, last_nonzero);
-        }
-        else {
-            result = result.substr(0, last_nonzero + 1);
-        }
-    }
-
-    return mppp::BigDec(not result.empty() ? sign + result : "0");
+    -> Str {
+    // Strip all underscore characters from the input string.
+    auto out = Str();
+    out.reserve(s1.length());
+    std::ranges::copy_if(s1, std::back_inserter(out), [](const char c) { return c != '_'; });
+    return out;
 }

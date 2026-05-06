@@ -292,8 +292,14 @@ auto spp::compiler::CompilerBoot::_ValidateEntryPoint(
 
     // Check whether the "main" function exists with the correct signature.
     const auto main_call = INJECT_CODE("main(std::vector::Vec[std::string::Str]())", parse_expression);
-    sm->Reset();
-    sm->MoveToNextScope(); // into the "main" scope.
+    auto main_scope = static_cast<analyse::scopes::Scope*>(nullptr);
+    for (auto const& top_level_child: sm->GlobalScope->Children) {
+        if (const auto n = std::get_if<analyse::scopes::ScopeIdentifierName>(&top_level_child->Name); n and n->Name->Val == "main") {
+            main_scope = top_level_child.get();
+            break;
+        }
+    }
+    sm->Reset(main_scope);
 
     try {
         auto meta = asts::meta::CompilerMetaData();

@@ -406,34 +406,34 @@ spp::analyse::errors::SppCoroutineInvalidReturnTypeError::SppCoroutineInvalidRet
 
 spp::analyse::errors::SppFloatOutOfBoundsError::SppFloatOutOfBoundsError(
     asts::LiteralAst const &literal,
-    mppp::BigDec const &value,
-    mppp::BigDec const &lower,
-    mppp::BigDec const &upper,
+    boost::BigDec const &value,
+    boost::BigDec const &lower,
+    boost::BigDec const &upper,
     const StrView what) {
     AddHeaders(
         37, "SPP Float Out Of Bounds Error");
     AddErr(
         &literal,
-        "Float literal defined here with value: " + value.to_string());
+        "Float literal defined here with value: " + value.str());
     AddFooter(
         "The value of this float literal is out of bounds for " + Str(what) + " type.",
-        "Ensure the value is within the range: [" + lower.to_string() + ", " + upper.to_string() + "]");
+        "Ensure the value is within the range: [" + lower.str() + ", " + upper.str() + "]");
 }
 
 spp::analyse::errors::SppIntegerOutOfBoundsError::SppIntegerOutOfBoundsError(
     asts::LiteralAst const &literal,
-    mppp::BigInt const &value,
-    mppp::BigInt const &lower,
-    mppp::BigInt const &upper,
+    boost::BigInt const &value,
+    boost::BigInt const &lower,
+    boost::BigInt const &upper,
     const StrView what) {
     AddHeaders(
         38, "SPP Integer Out Of Bounds Error");
     AddErr(
         &literal,
-        "Integer literal defined here with value: " + value.to_string());
+        "Integer literal defined here with value: " + value.str());
     AddFooter(
         "The value of this integer literal is out of bounds for " + Str(what) + " type.",
-        "Ensure the value is within the range: [" + lower.to_string() + ", " + upper.to_string() + "]");
+        "Ensure the value is within the range: [" + lower.str() + ", " + upper.str() + "]");
 }
 
 spp::analyse::errors::SppOrderInvalidError::SppOrderInvalidError(
