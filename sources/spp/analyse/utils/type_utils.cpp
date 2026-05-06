@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.mem_utils;
 import spp.asts.annotation_ast;
@@ -924,17 +925,13 @@ auto spp::analyse::utils::type_utils::GetTypeSymOrError(
     scopes::ScopeManager const &sm,
     asts::meta::CompilerMetaData *)
     -> scopes::TypeSymbol* {
+    //
+    using expr_utils::RaiseMissingTypeIdentifierAndClosestOptions;
+
     // Get the type part's symbol, and raise an error if it doesn't exist.
     const auto type_sym = scope.GetTypeSymbol(type_part.shared_from_this(), false);
     if (type_sym == nullptr) {
-        const auto alternatives = sm.CurrentScope->AllTypeSymbols()
-            | genex::views::remove_if([](auto const &x) { return x->Name->IsCompilerGeneratedType(); })
-            | genex::views::transform([](auto const &x) { return x->Name->Name; })
-            | genex::to<Vec>();
-
-        const auto closest_match = spp::utils::strings::ClosestMatch(type_part.Name, alternatives);
-        Raise<errors::SppIdentifierUnknownError>(
-            {sm.CurrentScope}, ERR_ARGS(type_part, "type", closest_match));
+        RaiseMissingTypeIdentifierAndClosestOptions(type_part, scope.AllTypeSymbols(), sm);
     }
 
     // Return the found type symbol.
@@ -946,16 +943,13 @@ auto spp::analyse::utils::type_utils::get_ns_scope_or_error(
     asts::IdentifierAst const &ns,
     scopes::ScopeManager const &sm)
     -> scopes::Scope* {
+    //
+    using expr_utils::RaiseMissingIdentifierAndClosestOptions;
+
     // If the namespace does not exist, raise an error.
     const auto ns_sym = scope.GetNsSymbol(ns.shared_from_this());
     if (ns_sym == nullptr) {
-        const auto alternatives = sm.CurrentScope->AllVarSymbols()
-            | genex::views::transform([](auto const &x) { return x->Name->Val; })
-            | genex::to<Vec>();
-
-        const auto closest_match = spp::utils::strings::ClosestMatch(ns.Val, alternatives);
-        Raise<errors::SppIdentifierUnknownError>(
-            {sm.CurrentScope}, ERR_ARGS(ns, "namespace", closest_match));
+        RaiseMissingIdentifierAndClosestOptions(ns, {}, scope.AllNsSymbols(), sm);
     }
 
     // Return the found namespace scope.
@@ -1057,10 +1051,10 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
     const auto NO_PARAMS = asts::GenericParameterGroupAst::NewEmpty();
     const auto extract_params = [&NO_PARAMS](scopes::TypeSymbol const &ts) {
         return ts.AliasStmt
-                   ? ts.AliasStmt->GnParamGroup.get()
-                   : ts.Type
-                   ? ts.Type->GnParamGroup.get()
-                   : NO_PARAMS.get();
+            ? ts.AliasStmt->GnParamGroup.get()
+            : ts.Type
+            ? ts.Type->GnParamGroup.get()
+            : NO_PARAMS.get();
     };
 
     const auto filter_params = [](asts::GenericParameterGroupAst const &pg, asts::GenericArgumentGroupAst const &ag) {
