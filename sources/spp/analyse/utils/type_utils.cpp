@@ -436,6 +436,7 @@ auto spp::analyse::utils::type_utils::IsIndexWithinBound(
     scopes::Scope const &scope)
     -> bool {
     // For tuples, count the number of generic arguments.
+    using errors::SppInternalCompilerError;
     if (IsTypeTup(type, scope)) {
         return index < type.TypeParts().Back()->GnArgGroup->Args.Len();
     }
@@ -447,7 +448,7 @@ auto spp::analyse::utils::type_utils::IsIndexWithinBound(
         return index < std::stoull(size_arg_cast->Val->TokenData);
     }
 
-    Raise<errors::SppInternalCompilerError>(
+    Raise<SppInternalCompilerError>(
         {&scope},
         ERR_ARGS(type, "Non indexable type used in index check"));
 }
@@ -458,6 +459,7 @@ auto spp::analyse::utils::type_utils::GetNthTypeOfIndexableType(
     scopes::Scope const &scope)
     -> Shared<asts::TypeAst> {
     // For tuples, return the nth generic argument.
+    using errors::SppInternalCompilerError;
     if (IsTypeTup(type, scope)) {
         return type.TypeParts().Back()->GnArgGroup->GetTypeArgs()[index]->Val;
     }
@@ -467,7 +469,7 @@ auto spp::analyse::utils::type_utils::GetNthTypeOfIndexableType(
         return type.TypeParts().Back()->GnArgGroup->GetTypeArgs()[0]->Val;
     }
 
-    Raise<errors::SppInternalCompilerError>(
+    Raise<SppInternalCompilerError>(
         {&scope},
         ERR_ARGS(type, "Non indexable type used in index access"));
 }
@@ -845,6 +847,9 @@ auto spp::analyse::utils::type_utils::CreateGenericSym(
     asts::meta::CompilerMetaData *meta,
     scopes::ScopeManager *tm)
     -> Shared<scopes::Symbol> {
+    //
+    using errors::SppInternalCompilerError;
+
     // Handle the generic type argument => creates a type symbol.
     if (const auto type_arg = generic.To<asts::GenericArgumentTypeKeywordAst>(); type_arg != nullptr) {
         const auto true_val_sym = sm.CurrentScope->GetTypeSymbol(type_arg->Val);
@@ -881,7 +886,9 @@ auto spp::analyse::utils::type_utils::CreateGenericSym(
         return sym;
     }
 
-    std::unreachable();
+    Raise<SppInternalCompilerError>(
+        {sm.CurrentScope},
+        ERR_ARGS(generic, "Unknown generic argument ast type"));
 }
 
 auto spp::analyse::utils::type_utils::RegisterGenericSyms(

@@ -20,12 +20,12 @@ auto spp::analyse::utils::visibility_utils::VisibilityName(
     using V = asts::utils::Visibility;
     switch (vis) {
         case V::kPublic: return "public";
+        case V::kPackage: return "package";
         case V::kProtected: return "protected";
         case V::kPrivate: return "private";
-        default:
-            std::unreachable();
+        default: std::unreachable();
     }
-    return "unknown";
+    std::unreachable();
 }
 
 auto spp::analyse::utils::visibility_utils::CheckTypeMemberVisibility(

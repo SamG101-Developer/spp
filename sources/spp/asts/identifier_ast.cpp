@@ -130,7 +130,8 @@ auto spp::asts::IdentifierAst::Stage9_CompTimeResolve(
     -> void {
     // Extract the value from the symbol table and return it.
     const auto var_sym = sm->CurrentScope->GetVarSymbol(AstClone(this));
-    auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, var_sym->ScopeDefinedIn ? : sm->CurrentScope);
+    auto tm = analyse::scopes::ScopeManager(
+        sm->GlobalScope, var_sym->ScopeDefinedIn ? : sm->CurrentScope);
     var_sym->CompTimeValue->Stage9_CompTimeResolve(&tm, meta);
 }
 
@@ -139,6 +140,9 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
     CompilerMetaData *,
     codegen::LLvmCtx *ctx)
     -> llvm::Value* {
+    //
+    using analyse::errors::SppInternalCompilerError;
+
     // Get the allocation for the variable from the current scope.
     const auto uid = spp::utils::Uid(this);
     const auto var_sym = sm->CurrentScope->GetVarSymbol(AstClone(this));
@@ -157,7 +161,7 @@ auto spp::asts::IdentifierAst::Stage11_CodeGen(
     }
 
     // If the variable is neither local nor global, this is an internal compiler error.
-    Raise<analyse::errors::SppInternalCompilerError>(
+    Raise<SppInternalCompilerError>(
         {sm->CurrentScope},
         ERR_ARGS(*this, "Target identifier ie neither local or global"));
 }
