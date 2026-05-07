@@ -58,8 +58,7 @@ auto spp::asts::TypeArrayShorthandAst::Convert()
     -> Unique<TypeAst> {
     // Convert to the compiler-known array type.
     using generate::common_types::ArrayType;
-    const auto type = ArrayType(
-        PosStart(), std::move(ElemType), std::move(Size));
+    const auto type = ArrayType(PosStart(), std::move(ElemType), std::move(Size));
     return AstClone(type);
 }
 

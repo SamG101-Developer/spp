@@ -134,6 +134,7 @@ export import spp.asts.type_parenthesised_expression_ast;
 export import spp.asts.type_postfix_expression_ast;
 export import spp.asts.type_postfix_expression_operator_ast;
 export import spp.asts.type_postfix_expression_operator_nested_type_ast;
+export import spp.asts.type_slice_shorthand_ast;
 export import spp.asts.type_statement_ast;
 export import spp.asts.type_tuple_shorthand_ast;
 export import spp.asts.type_unary_expression_ast;

@@ -199,6 +199,17 @@ auto spp::asts::generate::common_types::ArrayType(std::size_t pos, Shared<TypeAs
     return type;
 }
 
+auto spp::asts::generate::common_types::SliceType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
+    auto generics_lst = UniqueVec<GenericArgumentAst>(1);
+    generics_lst[0] = MakeUnique<GenericArgumentTypePositionalAst>(std::move(elem_type));
+    auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+
+    Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("Slice"), std::move(generics));
+    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("slice")), nullptr), std::move(type));
+    type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr), std::move(type));
+    return type;
+}
+
 auto spp::asts::generate::common_types::VariantType(std::size_t pos, SharedVec<TypeAst> &&inner_types) -> Shared<TypeAst> {
     auto generics_lst = UniqueVec<GenericArgumentAst>(inner_types.Len());
     for (auto &&[i, inner_type] : inner_types | genex::views::enumerate) {

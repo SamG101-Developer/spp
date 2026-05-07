@@ -504,68 +504,68 @@ auto spp::parse::ParserSpp::parse_binary_expression(const std::uint8_t min_prec)
         if (peek >= _TokensLen) return {};
 
         switch (_Tokens[peek].type) {
-        case RT::TK_ASTERISK:
-            if (auto r = try_tok([this] { return parse_token_pow_assign(); }, 1)) return std::move(*r);
-            if (auto r = try_tok([this] { return parse_token_pow(); }, 11)) return std::move(*r);
-            if (auto r = try_tok([this] { return parse_token_mul_assign(); }, 1)) return std::move(*r);
-            if (auto r = try_tok([this] { return parse_token_mul(); }, 11)) return std::move(*r);
-            break;
-        case RT::TK_PLUS_SIGN:
-            if (auto r = try_tok([this] { return parse_token_add_assign(); }, 1)) return std::move(*r);
-            if (auto r = try_tok([this] { return parse_token_add(); }, 10)) return std::move(*r);
-            break;
-        case RT::TK_HYPHEN:
-            if (auto r = try_tok([this] { return parse_token_sub_assign(); }, 1)) return std::move(*r);
-            if (auto r = try_tok([this] { return parse_token_sub(); }, 10)) return std::move(*r);
-            break;
-        case RT::TK_SLASH:
-            if (auto r = try_tok([this] { return parse_token_div_assign(); }, 1)) return std::move(*r);
-            if (auto r = try_tok([this] { return parse_token_div(); }, 11)) return std::move(*r);
-            break;
-        case RT::TK_PERCENT_SIGN:
-            if (auto r = try_tok([this] { return parse_token_rem_assign(); }, 1)) return std::move(*r);
-            if (auto r = try_tok([this] { return parse_token_rem(); }, 11)) return std::move(*r);
-            break;
-        case RT::TK_VERTICAL_BAR:
-            if (auto r = try_tok([this] { return parse_token_bit_ior_assign(); }, 1)) return std::move(*r);
-            if (auto r = try_tok([this] { return parse_token_bit_ior(); }, 6)) return std::move(*r);
-            break;
-        case RT::TK_CARET:
-            if (auto r = try_tok([this] { return parse_token_bit_xor_assign(); }, 1)) return std::move(*r);
-            if (auto r = try_tok([this] { return parse_token_bit_xor(); }, 7)) return std::move(*r);
-            break;
-        case RT::TK_AMPERSAND:
-            if (auto r = try_tok([this] { return parse_token_bit_and_assign(); }, 1)) return std::move(*r);
-            if (auto r = try_tok([this] { return parse_token_bit_and(); }, 8)) return std::move(*r);
-            break;
-        case RT::TK_LESS_THAN:
-            if (auto r = try_tok([this] { return parse_token_bit_shl_assign(); }, 1)) return std::move(*r);
-            if (auto r = try_tok([this] { return parse_token_bit_shl(); }, 9)) return std::move(*r);
-            if (auto r = try_tok([this] { return parse_token_less_than_equals(); }, 5)) return std::move(*r);
-            if (auto r = try_tok([this] { return parse_token_less_than(); }, 5)) return std::move(*r);
-            break;
-        case RT::TK_GREATER_THAN:
-            if (auto r = try_tok([this] { return parse_token_bit_shr_assign(); }, 1)) return std::move(*r);
-            if (auto r = try_tok([this] { return parse_token_bit_shr(); }, 9)) return std::move(*r);
-            if (auto r = try_tok([this] { return parse_token_greater_than_equals(); }, 5)) return std::move(*r);
-            if (auto r = try_tok([this] { return parse_token_greater_than(); }, 5)) return std::move(*r);
-            break;
-        case RT::TK_EQUALS_TO:
-            if (auto r = try_tok([this] { return parse_token_equals(); }, 5)) return std::move(*r);
-            break;
-        case RT::TK_EXCLAMATION_MARK:
-            if (auto r = try_tok([this] { return parse_token_not_equals(); }, 5)) return std::move(*r);
-            break;
-        case RT::KW_OR:
-            if (auto r = try_tok([this] { return parse_keyword_or(); }, 2)) return std::move(*r);
-            break;
-        case RT::KW_AND:
-            if (auto r = try_tok([this] { return parse_keyword_and(); }, 3)) return std::move(*r);
-            break;
-        case RT::KW_IS:
-            if (auto r = try_tok([this] { return parse_keyword_is(); }, 4, true)) return std::move(*r);
-            break;
-        default: break;
+            case RT::TK_ASTERISK:
+                if (auto r = try_tok([this] { return parse_token_pow_assign(); }, 1)) return std::move(*r);
+                if (auto r = try_tok([this] { return parse_token_pow(); }, 11)) return std::move(*r);
+                if (auto r = try_tok([this] { return parse_token_mul_assign(); }, 1)) return std::move(*r);
+                if (auto r = try_tok([this] { return parse_token_mul(); }, 11)) return std::move(*r);
+                break;
+            case RT::TK_PLUS_SIGN:
+                if (auto r = try_tok([this] { return parse_token_add_assign(); }, 1)) return std::move(*r);
+                if (auto r = try_tok([this] { return parse_token_add(); }, 10)) return std::move(*r);
+                break;
+            case RT::TK_HYPHEN:
+                if (auto r = try_tok([this] { return parse_token_sub_assign(); }, 1)) return std::move(*r);
+                if (auto r = try_tok([this] { return parse_token_sub(); }, 10)) return std::move(*r);
+                break;
+            case RT::TK_SLASH:
+                if (auto r = try_tok([this] { return parse_token_div_assign(); }, 1)) return std::move(*r);
+                if (auto r = try_tok([this] { return parse_token_div(); }, 11)) return std::move(*r);
+                break;
+            case RT::TK_PERCENT_SIGN:
+                if (auto r = try_tok([this] { return parse_token_rem_assign(); }, 1)) return std::move(*r);
+                if (auto r = try_tok([this] { return parse_token_rem(); }, 11)) return std::move(*r);
+                break;
+            case RT::TK_VERTICAL_BAR:
+                if (auto r = try_tok([this] { return parse_token_bit_ior_assign(); }, 1)) return std::move(*r);
+                if (auto r = try_tok([this] { return parse_token_bit_ior(); }, 6)) return std::move(*r);
+                break;
+            case RT::TK_CARET:
+                if (auto r = try_tok([this] { return parse_token_bit_xor_assign(); }, 1)) return std::move(*r);
+                if (auto r = try_tok([this] { return parse_token_bit_xor(); }, 7)) return std::move(*r);
+                break;
+            case RT::TK_AMPERSAND:
+                if (auto r = try_tok([this] { return parse_token_bit_and_assign(); }, 1)) return std::move(*r);
+                if (auto r = try_tok([this] { return parse_token_bit_and(); }, 8)) return std::move(*r);
+                break;
+            case RT::TK_LESS_THAN:
+                if (auto r = try_tok([this] { return parse_token_bit_shl_assign(); }, 1)) return std::move(*r);
+                if (auto r = try_tok([this] { return parse_token_bit_shl(); }, 9)) return std::move(*r);
+                if (auto r = try_tok([this] { return parse_token_less_than_equals(); }, 5)) return std::move(*r);
+                if (auto r = try_tok([this] { return parse_token_less_than(); }, 5)) return std::move(*r);
+                break;
+            case RT::TK_GREATER_THAN:
+                if (auto r = try_tok([this] { return parse_token_bit_shr_assign(); }, 1)) return std::move(*r);
+                if (auto r = try_tok([this] { return parse_token_bit_shr(); }, 9)) return std::move(*r);
+                if (auto r = try_tok([this] { return parse_token_greater_than_equals(); }, 5)) return std::move(*r);
+                if (auto r = try_tok([this] { return parse_token_greater_than(); }, 5)) return std::move(*r);
+                break;
+            case RT::TK_EQUALS_TO:
+                if (auto r = try_tok([this] { return parse_token_equals(); }, 5)) return std::move(*r);
+                break;
+            case RT::TK_EXCLAMATION_MARK:
+                if (auto r = try_tok([this] { return parse_token_not_equals(); }, 5)) return std::move(*r);
+                break;
+            case RT::KW_OR:
+                if (auto r = try_tok([this] { return parse_keyword_or(); }, 2)) return std::move(*r);
+                break;
+            case RT::KW_AND:
+                if (auto r = try_tok([this] { return parse_keyword_and(); }, 3)) return std::move(*r);
+                break;
+            case RT::KW_IS:
+                if (auto r = try_tok([this] { return parse_keyword_is(); }, 4, true)) return std::move(*r);
+                break;
+            default: break;
         }
         return {};
     };
@@ -1461,8 +1461,8 @@ auto spp::parse::ParserSpp::parse_closure_expression_parameter()
 auto spp::parse::ParserSpp::parse_type_expression()
     -> Unique<asts::TypeAst> {
     PARSE_ALTERNATE(
-        p1, asts::TypeAst, parse_type_never, parse_type_parenthesised_expression, parse_type_array, parse_type_tuple,
-        parse_binary_type_expression);
+        p1, asts::TypeAst, parse_type_never, parse_type_parenthesised_expression, parse_type_array, parse_type_slice,
+        parse_type_tuple, parse_binary_type_expression);
     return FORWARD_AST(p1);
 }
 
@@ -1489,13 +1489,13 @@ auto spp::parse::ParserSpp::parse_binary_type_expression(const std::uint8_t min_
         if (peek >= _TokensLen) return {};
 
         switch (_Tokens[peek].type) {
-        case RT::KW_OR:
-            if (auto r = try_tok([this] { return parse_keyword_or(); }, 2)) return std::move(*r);
-            break;
-        case RT::KW_AND:
-            if (auto r = try_tok([this] { return parse_keyword_and(); }, 1)) return std::move(*r);
-            break;
-        default: break;
+            case RT::KW_OR:
+                if (auto r = try_tok([this] { return parse_keyword_or(); }, 2)) return std::move(*r);
+                break;
+            case RT::KW_AND:
+                if (auto r = try_tok([this] { return parse_keyword_and(); }, 1)) return std::move(*r);
+                break;
+            default: break;
         }
         return {};
     };
@@ -1631,6 +1631,14 @@ auto spp::parse::ParserSpp::parse_type_identifier()
     PARSE_ONCE(p1, parse_lexeme_upper_identifier);
     PARSE_OPTIONAL(p2, parse_generic_argument_group);
     return CREATE_AST(asts::TypeIdentifierAst, p1->PosStart(), p1->TokenData, p2);
+}
+
+auto spp::parse::ParserSpp::parse_type_slice()
+    -> Unique<asts::TypeAst> {
+    PARSE_ONCE(p1, parse_token_left_square_bracket);
+    PARSE_ONCE(p2, parse_type_expression);
+    PARSE_ONCE(p3, parse_token_right_square_bracket);
+    return CREATE_AST(asts::TypeSliceShorthandAst, p1, p2, p3)->Convert();
 }
 
 auto spp::parse::ParserSpp::parse_type_array()

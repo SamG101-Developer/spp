@@ -384,6 +384,7 @@ public:
 
     auto parse_type_identifier() -> Unique<asts::TypeIdentifierAst>;
 
+    auto parse_type_slice() -> Unique<asts::TypeAst>;
     auto parse_type_array() -> Unique<asts::TypeAst>;
     auto parse_type_tuple() -> Unique<asts::TypeAst>;
     auto parse_type_tuple_0_types() -> Unique<asts::TypeAst>;
