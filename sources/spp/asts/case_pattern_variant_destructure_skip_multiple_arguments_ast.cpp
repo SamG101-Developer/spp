@@ -12,7 +12,6 @@ import spp.asts.utils.ast_utils;
 import spp.utils.ptr;
 import spp.lex.tokens;
 
-
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::CasePatternVariantDestructureSkipMultipleArgumentsAst(
     decltype(TokEllipsis) &&tok_ellipsis,

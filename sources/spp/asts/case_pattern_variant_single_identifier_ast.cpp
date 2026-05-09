@@ -15,7 +15,6 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
-
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantSingleIdentifierAst::CasePatternVariantSingleIdentifierAst(
     decltype(Conv) &&conv,
@@ -41,7 +40,6 @@ auto spp::asts::CasePatternVariantSingleIdentifierAst::PosEnd() const
     // Use the alias.
     return Alias->PosEnd();
 }
-
 
 auto spp::asts::CasePatternVariantSingleIdentifierAst::Clone() const
     -> Unique<Ast> {

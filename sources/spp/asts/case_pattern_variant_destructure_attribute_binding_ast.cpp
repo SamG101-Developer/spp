@@ -8,7 +8,6 @@ import spp.asts.local_variable_destructure_attribute_binding_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 
-
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantDestructureAttributeBindingAst::CasePatternVariantDestructureAttributeBindingAst(
     decltype(Name) &&name,

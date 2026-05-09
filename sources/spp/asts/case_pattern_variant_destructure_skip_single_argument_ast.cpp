@@ -8,7 +8,6 @@ import spp.asts.local_variable_destructure_skip_single_argument_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 
-
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::CasePatternVariantDestructureSkipSingleArgumentAst(
     decltype(TokUnderscore) &&tok_underscore) :

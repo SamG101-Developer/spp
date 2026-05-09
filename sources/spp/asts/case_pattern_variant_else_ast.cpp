@@ -9,7 +9,6 @@ import spp.asts.token_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
-
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantElseAst::CasePatternVariantElseAst(
     decltype(TokElse) &&tok_else) :
@@ -71,6 +70,5 @@ auto spp::asts::CasePatternVariantElseAst::MarkedForIterLoopExit() const
     -> bool {
     return _ForIterLoopExit;
 }
-
 
 SPP_MOD_END

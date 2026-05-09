@@ -222,8 +222,8 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
         Elems | genex::views::ptr | genex::to<Vec>(), sm, meta, ctx);
     const auto combine_func = [&ctx](auto *a, auto *b) { return ctx->Builder.CreateAnd(a, b); };
     const auto llvm_master_transform = llvm_transforms.IsEmpty()
-                                           ? dynamic_cast<llvm::Value*>(llvm::ConstantInt::getTrue(*ctx->Context))
-                                           : genex::fold_left_first(llvm_transforms, std::move(combine_func));
+        ? dynamic_cast<llvm::Value*>(llvm::ConstantInt::getTrue(*ctx->Context))
+        : genex::fold_left_first(llvm_transforms, std::move(combine_func));
 
     // Return the combined statement.
     return llvm_master_transform;

@@ -30,7 +30,6 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import genex;
 
-
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantDestructureTupleAst::CasePatternVariantDestructureTupleAst(
     decltype(TokL) &&tok_l,
