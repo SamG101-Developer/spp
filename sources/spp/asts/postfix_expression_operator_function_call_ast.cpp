@@ -238,7 +238,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
     if (check_self and not FnArgGroup->GetKeywordArgs().IsEmpty() and FnArgGroup->GetKeywordArgs().Front()->Name->Val == "self") {
         // todo: use: .at("self") != nullptr
         _SelfCompTime->Stage9_CompTimeResolve(sm, meta);
-        args.EmplaceBack(MakeUnique<IdentifierAst>(0uz, "self"), std::move(meta->CmpResult));
+        args.EmplaceBack(MakeUnique<IdentifierAst>(FnArgGroup->PosStart(), "self"), std::move(meta->CmpResult));
     }
 
     for (auto const &arg : FnArgGroup->GetKeywordArgs()) {
@@ -420,7 +420,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::_HandleFunctionFolding
         auto new_arg_group = AstClone(FnArgGroup);
         for (const auto fold_index : fold_indexes) {
             // Create the postfix access into the tuple.
-            auto id = MakeUnique<IdentifierAst>(0uz, std::to_string(fold_index));
+            auto id = MakeUnique<IdentifierAst>(new_arg_group->Args[fold_index]->Val->PosEnd(), std::to_string(fold_index));
             auto ma = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(id));
             auto pf = MakeUnique<PostfixExpressionAst>(std::move(new_arg_group->Args[fold_index]->Val), std::move(ma));
             new_arg_group->Args[fold_index]->Val = std::move(pf);

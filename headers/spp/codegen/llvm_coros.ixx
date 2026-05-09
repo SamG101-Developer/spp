@@ -18,7 +18,7 @@ namespace spp::asts {
 }
 
 namespace spp::codegen {
-    SPP_EXP_ENUM enum class CoroutineState {
+    SPP_EXP_CLS enum class CoroutineState {
         READY, // Impossible in user code
         VARIABLE,
         EXHAUSTED,
@@ -26,7 +26,7 @@ namespace spp::codegen {
         EXCEPTION, // On GenRes
     };
 
-    SPP_EXP_ENUM enum class GenEnvField {
+    SPP_EXP_CLS enum class GenEnvField {
         RES_FN = 0,
         STATE = 1,
         LOCATION = 2,

@@ -49,16 +49,19 @@ spp::asts::CmpStatementAst::~CmpStatementAst() = default;
 
 auto spp::asts::CmpStatementAst::PosStart() const
     -> std::size_t {
+    // Use the name.
     return Name->PosStart();
 }
 
 auto spp::asts::CmpStatementAst::PosEnd() const
     -> std::size_t {
+    // Use the value.
     return Value->PosEnd();
 }
 
 auto spp::asts::CmpStatementAst::Clone() const
     -> Unique<Ast> {
+    // Clone all the members of the ast.
     auto ast = MakeUnique<CmpStatementAst>(
         AstCloneVec(Annotations), AstClone(TokCmp), AstClone(Name), AstClone(TokColon), AstClone(Type),
         AstClone(TokAssign), AstClone(Value));

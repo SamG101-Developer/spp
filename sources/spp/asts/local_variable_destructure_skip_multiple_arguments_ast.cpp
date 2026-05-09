@@ -10,7 +10,6 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.ptr;
 
-
 SPP_MOD_BEGIN
 spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::LocalVariableDestructureSkipMultipleArgumentsAst(
     decltype(TokEllipsis) &&tok_ellipsis,

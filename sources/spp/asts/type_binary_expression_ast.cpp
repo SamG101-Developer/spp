@@ -8,7 +8,6 @@ import spp.asts.generate.common_types;
 import spp.lex.tokens;
 import spp.asts.utils.ast_utils;
 
-
 SPP_MOD_BEGIN
 spp::asts::TypeBinaryExpressionAst::TypeBinaryExpressionAst(
     decltype(Lhs) &&lhs,

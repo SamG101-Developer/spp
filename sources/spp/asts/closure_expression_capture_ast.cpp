@@ -7,7 +7,6 @@ import spp.asts.expression_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 
-
 SPP_MOD_BEGIN
 spp::asts::ClosureExpressionCaptureAst::ClosureExpressionCaptureAst(
     decltype(Conv) &&conv,

@@ -7,15 +7,15 @@ import std;
 
 
 namespace spp::lex {
-    SPP_EXP_ENUM enum class RawTokenType : std::uint8_t;
-    SPP_EXP_ENUM enum class SppTokenType : std::uint8_t;
+    SPP_EXP_CLS enum class RawTokenType : std::uint8_t;
+    SPP_EXP_CLS enum class SppTokenType : std::uint8_t;
     SPP_EXP_CLS struct SppTokenSets;
     SPP_EXP_CLS class RawToken;
     SPP_EXP_FUN auto tok_to_string(SppTokenType token) noexcept -> Str;
 }
 
 
-SPP_EXP_ENUM enum class spp::lex::RawTokenType : std::uint8_t {
+SPP_EXP_CLS enum class spp::lex::RawTokenType : std::uint8_t {
     LX_CHARACTER,
     LX_DIGIT,
 
@@ -88,7 +88,7 @@ SPP_EXP_ENUM enum class spp::lex::RawTokenType : std::uint8_t {
 };
 
 
-SPP_EXP_ENUM enum class spp::lex::SppTokenType : std::uint8_t {
+SPP_EXP_CLS enum class spp::lex::SppTokenType : std::uint8_t {
     LX_CHARACTER,
     LX_DIGIT,
     LX_CHAR,
@@ -108,7 +108,6 @@ SPP_EXP_ENUM enum class spp::lex::SppTokenType : std::uint8_t {
     KW_TYPE,
     KW_SELF,
     KW_CASE,
-    KW_ITER,
     KW_OF,
     KW_LOOP,
     KW_IN,
@@ -217,7 +216,6 @@ SPP_EXP_FUN auto spp::lex::tok_to_string(const SppTokenType token) noexcept -> S
     case SppTokenType::KW_TYPE: return "type";
     case SppTokenType::KW_SELF: return "self";
     case SppTokenType::KW_CASE: return "case";
-    case SppTokenType::KW_ITER: return "iter";
     case SppTokenType::KW_OF: return "of";
     case SppTokenType::KW_LOOP: return "loop";
     case SppTokenType::KW_IN: return "in";

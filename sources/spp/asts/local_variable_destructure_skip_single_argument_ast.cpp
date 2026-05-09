@@ -7,7 +7,6 @@ import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 
-
 SPP_MOD_BEGIN
 spp::asts::LocalVariableDestructureSkipSingleArgumentAst::LocalVariableDestructureSkipSingleArgumentAst(
     decltype(TokUnderscore) &&tok_underscore) :

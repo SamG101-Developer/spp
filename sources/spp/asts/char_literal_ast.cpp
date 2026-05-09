@@ -13,7 +13,6 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import llvm;
 
-
 SPP_MOD_BEGIN
 spp::asts::CharLiteralAst::CharLiteralAst(
     decltype(Val) &&val) :

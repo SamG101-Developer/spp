@@ -70,7 +70,7 @@ auto spp::asts::UseStatementVariableAst::Stage1_PreProcess(
     -> void {
     // Pre-process the annotations.
     Ast::Stage1_PreProcess(ctx);
-    for (auto const &a : Annotations) { a->SetAstCtx(this);}
+    for (auto const &a : Annotations) { a->SetAstCtx(this); }
 }
 
 auto spp::asts::UseStatementVariableAst::Stage2_GenTopLvlScopes(

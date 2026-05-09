@@ -7,7 +7,6 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 
-
 SPP_MOD_BEGIN
 spp::asts::TypeArrayShorthandAst::TypeArrayShorthandAst(
     decltype(TokL) &&tok_l,

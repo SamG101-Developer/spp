@@ -38,7 +38,7 @@ auto spp::asts::FunctionParameterOptionalAst::PosStart() const
 
 auto spp::asts::FunctionParameterOptionalAst::PosEnd() const
     -> std::size_t {
-    // Use teh default value.
+    // Use the default value.
     return DefaultVal->PosEnd();
 }
 

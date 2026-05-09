@@ -65,7 +65,7 @@ constexpr auto SPP_VERSION = "0.1.0";
         (ast_attr) = std::remove_cvref_t<decltype(*ast_attr)>::NewEmpty(__VA_ARGS__); \
     }
 
-#define SPP_SET_AST_TO_DEFAULT_SHARED_IF_NULLPTR(ast_attr, ...)                                    \
+#define SPP_SET_AST_TO_DEFAULT_SHARED_IF_NULLPTR(ast_attr, ...)                             \
     if ((ast_attr) == nullptr) {                                                            \
         (ast_attr) = std::remove_cvref_t<decltype(*ast_attr)>::NewEmptyShared(__VA_ARGS__); \
     }
@@ -90,56 +90,20 @@ constexpr auto SPP_VERSION = "0.1.0";
 #define SPP_GCC_VTABLE_FIX \
     auto _spp_key_function() const -> void override;
 
-#define SPP_GCC_VTABLE_FIX_IMPL(Type)                \
-    SPP_MOD_BEGIN                                    \
-    auto Type::_spp_key_function() const -> void {}  \
+#define SPP_GCC_VTABLE_FIX_IMPL(Type)               \
+    SPP_MOD_BEGIN                                   \
+    auto Type::_spp_key_function() const -> void {} \
     SPP_MOD_END
-
-// Macro to take the 0th element of a list if the list is not empty, else return a default value.
-#define OR_NULL(list) \
-    ((not (list).empty()) ? (list)[0] : decltype(list)::value_type{})
-
-
-/*
-#define SPP_ENFORCE_EXPRESSION_SUBTYPE(ast)                                            \
-    RaiseIf<analyse::errors::SppExpressionTypeInvalidError>(                          \
-        ast and ((ast->To<TypeAst>() != nullptr) or (ast->To<TokenAst>() != nullptr)), \
-        {sm->CurrentScope}, ERR_ARGS(*ast))
-
-
-#define SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TOKEN(ast)       \
-    RaiseIf<analyse::errors::SppExpressionTypeInvalidError>( \
-        ast and ast->To<TypeAst>() != nullptr,                \
-        {sm->CurrentScope}, ERR_ARGS(*ast))
-
-
-#define SPP_ENFORCE_EXPRESSION_SUBTYPE_ALLOW_TYPE(ast)        \
-    RaiseIf<analyse::errors::SppExpressionTypeInvalidError>( \
-        ast and ast->To<TokenAst>() != nullptr,               \
-        {sm->CurrentScope}, ERR_ARGS(*ast))
-
-
-#define SPP_ENFORCE_SECOND_CLASS_BORROW_VIOLATION(ast, type, m, what, ...)                \
-    RaiseIf<analyse::errors::SppSecondClassBorrowViolationError>(                        \
-        analyse::utils::type_utils::is_type_borrowed(*type, m __VA_OPT__(, __VA_ARGS__)), \
-        {sm->CurrentScope}, ERR_ARGS(*ast, *type, what))
-*/
-
 
 #define SPP_RETURN_TYPE_OVERLOAD_HELPER(expr) \
     if (auto pe = expr->To<PostfixExpressionAst>(); pe != nullptr and pe->Op->To<PostfixExpressionOperatorFunctionCallAst>() != nullptr)
-
 
 #define SPP_DEREF_ALLOW_MOVE_HELPER(expr) \
     if (auto pe = expr->To<PostfixExpressionAst>(); pe != nullptr and pe->Op->To<PostfixExpressionOperatorDerefAst>() != nullptr)
 
 
-#define SPP_EXP_ENUM export extern "C++"
-
 #define SPP_EXP_FUN export
-
 #define SPP_EXP_CMP export inline
-
 #define SPP_EXP_CLS export extern "C++"
 
 #define SPP_MOD_BEGIN extern "C++" {

@@ -38,7 +38,7 @@ namespace spp::analyse::utils::type_utils {
         spp::utils::ptr::ptr_hash<Shared<asts::TypeIdentifierAst>>,
         spp::utils::ptr::ptr_eq<Shared<asts::TypeIdentifierAst>>>;
 
-    SPP_EXP_FUN auto convention_eq(
+    SPP_EXP_FUN auto ConventionEq(
         asts::TypeAst const &lhs_type,
         asts::TypeAst const &rhs_type)
         -> bool;

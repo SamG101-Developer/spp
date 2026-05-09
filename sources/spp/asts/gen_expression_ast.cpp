@@ -86,7 +86,7 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
     using analyse::errors::SppExpressionTypeInvalidError;
     using analyse::errors::SppFunctionSubroutineContainsGenExpressionError;
     using analyse::errors::SppYieldedTypeMismatchError;
-    
+
     // Analyse the expression.
     RaiseIf<SppExpressionTypeInvalidError>(
         not IsPrimaryExprTypeValid(*Expr),

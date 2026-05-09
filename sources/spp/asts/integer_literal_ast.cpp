@@ -51,6 +51,7 @@ spp::asts::IntegerLiteralAst::~IntegerLiteralAst() = default;
 auto spp::asts::IntegerLiteralAst::EqualsIntegerLiteral(
     IntegerLiteralAst const &other) const
     -> Ordering {
+    //
     if (
         ((not TokSign and not other.TokSign) or (TokSign and other.TokSign and *TokSign == *other.TokSign))
         and Val->TokenData == other.Val->TokenData
@@ -63,25 +64,27 @@ auto spp::asts::IntegerLiteralAst::EqualsIntegerLiteral(
 auto spp::asts::IntegerLiteralAst::Equals(
     ExpressionAst const &other) const
     -> Ordering {
+    // Reverse hook (double dispatch)/
     return other.EqualsIntegerLiteral(*this);
 }
 
 auto spp::asts::IntegerLiteralAst::PosStart() const
     -> std::size_t {
+    // Use sign token or the value.
     return TokSign ? TokSign->PosStart() : Val->PosStart();
 }
 
 auto spp::asts::IntegerLiteralAst::PosEnd() const
     -> std::size_t {
+    // Use the value.
     return Val->PosEnd();
 }
 
 auto spp::asts::IntegerLiteralAst::Clone() const
     -> Unique<Ast> {
+    // Clone all the members of the ast.
     return MakeUnique<IntegerLiteralAst>(
-        AstClone(TokSign),
-        AstClone(Val),
-        Type.c_str());
+        AstClone(TokSign), AstClone(Val), Type.c_str());
 }
 
 auto spp::asts::IntegerLiteralAst::ToString() const

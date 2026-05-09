@@ -223,7 +223,7 @@ auto spp::asts::GenericParameterGroupAst::Stage2_GenTopLvlScopes(
     CompilerMetaData *meta)
     -> void {
     // Run the generation steps on the parameters in the group.
-    for (auto const &p : Params) { p->Stage2_GenTopLvlScopes(sm, meta);}
+    for (auto const &p : Params) { p->Stage2_GenTopLvlScopes(sm, meta); }
 }
 
 auto spp::asts::GenericParameterGroupAst::Stage4_QualifyTypes(

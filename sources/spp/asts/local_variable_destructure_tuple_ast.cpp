@@ -110,7 +110,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::Stage7_AnalyseSemantics(
         const auto m = genex::position(Elems | genex::views::ptr, [&multi_arg_skips](auto &&x) { return x == multi_arg_skips[0]; }) as USize;
         auto new_elems = genex::views::iota(m, m + num_rhs_arr_elems - num_lhs_arr_elems + 1)
             | genex::views::transform([val](const auto i) {
-                auto identifier = MakeUnique<IdentifierAst>(0uz, std::to_string(i));
+                auto identifier = MakeUnique<IdentifierAst>(val->PosEnd(), std::to_string(i));
                 auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(identifier));
                 auto postfix = MakeUnique<PostfixExpressionAst>(AstClone(val), std::move(field));
                 return postfix;
@@ -150,7 +150,7 @@ auto spp::asts::LocalVariableDestructureTupleAst::Stage7_AnalyseSemantics(
 
         // Handle and other nested destructure or single identifier.
         else {
-            auto index = MakeUnique<IdentifierAst>(0uz, std::to_string(i));
+            auto index = MakeUnique<IdentifierAst>(val->PosEnd(), std::to_string(i));
             auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(index));
             auto pstfx = MakeUnique<PostfixExpressionAst>(AstClone(val), std::move(field));
             auto new_ast = MakeUnique<LetStatementInitializedAst>(nullptr, AstClone(elem), nullptr, nullptr, std::move(pstfx));

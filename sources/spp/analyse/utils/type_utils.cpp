@@ -53,7 +53,7 @@ import spp.utils.ptr;
 import spp.utils.strings;
 import genex;
 
-auto spp::analyse::utils::type_utils::convention_eq(
+auto spp::analyse::utils::type_utils::ConventionEq(
     asts::TypeAst const &lhs_type,
     asts::TypeAst const &rhs_type)
     -> bool {
@@ -105,7 +105,7 @@ auto spp::analyse::utils::type_utils::TypeEq(
         }
     }
 
-    if (not convention_eq(lhs_type, rhs_type)) { return false; }
+    if (not ConventionEq(lhs_type, rhs_type)) { return false; }
 
     // If the stripped types are not equal, return false (comparing by address is fine: ClassPrototypeAst* nodes).
     if (stripped_lhs_sym->Type != stripped_rhs_sym->Type) { return false; }
@@ -172,7 +172,7 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
 
     // Deliberately inverted for the param/arg checker. This will be removed once that type check is actually done
     // properly.
-    if (not convention_eq(rhs_type, lhs_type)) { return false; }
+    if (not ConventionEq(rhs_type, lhs_type)) { return false; }
 
     const auto stripped_lhs_sym = lhs_scope.GetTypeSymbol(stripped_lhs);
     if (stripped_lhs_sym->IsGeneric) {
@@ -732,7 +732,10 @@ auto spp::analyse::utils::type_utils::CreateGenericClsScope(
         }
     }
 
-    for (auto *attr : new_ast_ptr->Impl->Members | genex::views::ptr | genex::views::cast_dynamic<asts::ClassAttributeAst*>()) {
+    for (auto *attr : new_ast_ptr->Impl->Members
+         | genex::views::ptr
+         | genex::views::cast_dynamic<asts::ClassAttributeAst*>()) {
+        //
         attr->Type = attr->Type->SubstituteGenerics(substitution_generics);
         if (meta->CurrentStage > 5) {
             attr->Stage7_AnalyseSemantics(&tm, meta);
