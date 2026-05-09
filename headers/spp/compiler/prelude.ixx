@@ -7,6 +7,7 @@ import std;
 
 namespace spp::compiler {
     SPP_EXP_CMP const Str kPrelude = R"(
+use std::annotations::annotation
 use std::annotations::public
 use std::annotations::package
 use std::annotations::protected
