@@ -17,7 +17,7 @@ spp::asts::FunctionParameterVariadicAst::FunctionParameterVariadicAst(
     decltype(Var) &&var,
     decltype(TokColon) &&tok_colon,
     decltype(Type) type) :
-    FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type), utils::OrderableTag::VARIADIC_PARAM),
+    FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type), utils::OrderableTag::kVariadicParam),
     TokEllipsis(std::move(tok_ellipsis)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokEllipsis, lex::SppTokenType::TK_DOUBLE_DOT, "..", var ? var->PosStart() : 0);
 }
@@ -33,7 +33,7 @@ auto spp::asts::FunctionParameterVariadicAst::PosStart() const
 auto spp::asts::FunctionParameterVariadicAst::PosEnd() const
     -> std::size_t {
     // Use the type.
-    return Type->PosEnd();
+    return Source.OriginalType->PosEnd();
 }
 
 auto spp::asts::FunctionParameterVariadicAst::Clone() const

@@ -91,14 +91,14 @@ auto spp::asts::TupleLiteralAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     //
-    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::errors::SppSecondClassBorrowViolationError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::IsTypeBorrowed;
 
     // Analyse the elements in the tuple.
     for (auto const &elem : Elems) {
-        RaiseIf<SppExpressionTypeInvalidError>(
+        RaiseIf<SppInvalidPrimaryExpressionError>(
             not IsPrimaryExprTypeValid(*elem),
             {sm->CurrentScope}, ERR_ARGS(*elem));
         elem->Stage7_AnalyseSemantics(sm, meta);

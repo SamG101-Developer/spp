@@ -76,10 +76,10 @@ auto spp::asts::IsExpressionAst::Stage7_AnalyseSemantics(
     //
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::bin_utils::ConvertIsExprToFuncCall;
-    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
 
     // Ensure TypeAst's aren't used for expression for binary operands.
-    RaiseIf<SppExpressionTypeInvalidError>(
+    RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Lhs),
         {sm->CurrentScope}, ERR_ARGS(*Lhs.get()));
 

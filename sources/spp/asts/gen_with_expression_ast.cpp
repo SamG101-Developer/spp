@@ -80,12 +80,12 @@ auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
     using analyse::utils::type_utils::GetGenAndYieldTypes;
     using analyse::utils::type_utils::TypeEq;
     using analyse::errors::SppFunctionSubroutineContainsGenExpressionError;
-    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::errors::SppTypeMismatchError;
     using generate::common_types::VoidType;
 
     // Analyse the expression.
-    RaiseIf<SppExpressionTypeInvalidError>(
+    RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Expr),
         {sm->CurrentScope}, ERR_ARGS(*Expr));
 

@@ -5,19 +5,19 @@ import genex;
 import magic_enum;
 import std;
 
-inline constexpr std::array ARG_ORDER_ARR{
-    spp::asts::utils::OrderableTag::POSITIONAL_ARG,
-    spp::asts::utils::OrderableTag::KEYWORD_ARG,
+inline constexpr std::array kArgOrderArr{
+    spp::asts::utils::OrderableTag::kPositionalArg,
+    spp::asts::utils::OrderableTag::kKeywordArg,
 };
 
-inline constexpr std::array PARAM_ORDER_ARR{
-    spp::asts::utils::OrderableTag::SELF_PARAM,
-    spp::asts::utils::OrderableTag::REQUIRED_PARAM,
-    spp::asts::utils::OrderableTag::OPTIONAL_PARAM,
-    spp::asts::utils::OrderableTag::VARIADIC_PARAM,
+inline constexpr std::array kParamOrderArr{
+    spp::asts::utils::OrderableTag::kSelfParam,
+    spp::asts::utils::OrderableTag::kRequiredParam,
+    spp::asts::utils::OrderableTag::kOptionalParam,
+    spp::asts::utils::OrderableTag::kVariadicParam,
 };
 
-auto spp::analyse::utils::order_utils::order(
+auto spp::analyse::utils::order_utils::DoOrder(
     Vec<asts::mixins::OrderableAst*> &&args,
     Vec<asts::utils::OrderableTag> order)
     -> Vec<Pair<Str, asts::Ast*>> {
@@ -42,16 +42,16 @@ auto spp::analyse::utils::order_utils::order(
     return out_of_order;
 }
 
-auto spp::analyse::utils::order_utils::order_args(
+auto spp::analyse::utils::order_utils::DoOrderArgs(
     Vec<asts::mixins::OrderableAst*> &&args)
     -> Vec<Pair<Str, asts::Ast*>> {
     // Call the generic order function with the argument order.
-    return order(std::move(args), Vec(ARG_ORDER_ARR.begin(), ARG_ORDER_ARR.end()));
+    return DoOrder(std::move(args), Vec(ARG_ORDER_ARR.begin(), ARG_ORDER_ARR.end()));
 }
 
-auto spp::analyse::utils::order_utils::order_params(
+auto spp::analyse::utils::order_utils::DoOrderParams(
     Vec<asts::mixins::OrderableAst*> &&params)
     -> Vec<Pair<Str, asts::Ast*>> {
     // Call the generic order function with the parameter order.
-    return order(std::move(params), Vec(PARAM_ORDER_ARR.begin(), PARAM_ORDER_ARR.end()));
+    return DoOrder(std::move(params), Vec(PARAM_ORDER_ARR.begin(), PARAM_ORDER_ARR.end()));
 }

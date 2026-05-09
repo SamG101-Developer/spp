@@ -4,7 +4,7 @@
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     LoopConditionIterableAst,
     test_invalid_loop_condition_iterable_invalid_expression,
-    SppExpressionTypeInvalidError, R"(
+    SppInvalidPrimaryExpressionError, R"(
     fun f() -> std::void::Void {
         loop x in std::iterator::Iterator[std::string::Str] { }
     }

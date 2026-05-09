@@ -62,6 +62,10 @@ auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::utils::type_utils::IsTypeGen;
+    using analyse::errors::SppCoroutineInvalidReturnTypeError;
+
     // Perform default function prototype semantic analysis
     FunctionPrototypeAst::Stage7_AnalyseSemantics(sm, meta);
     const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType);
@@ -81,9 +85,9 @@ auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
         | genex::views::transform([](auto const &x) { return x->WithoutGenerics(); })
         | genex::to<Vec>();
 
-    RaiseIf<analyse::errors::SppCoroutineInvalidReturnTypeError>(
-        genex::none_of(superimposed_types, [sm](auto const &x) { return analyse::utils::type_utils::IsTypeGen(*x->WithoutGenerics(), *sm->CurrentScope); }),
-        {sm->CurrentScope}, ERR_ARGS(*this, *ReturnType));
+    RaiseIf<SppCoroutineInvalidReturnTypeError>(
+        genex::none_of(superimposed_types, [sm](auto const &x) { return IsTypeGen(*x->WithoutGenerics(), *sm->CurrentScope); }),
+        {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalReturnType, *ReturnType));
 
     // Analyse the semantics of the function body, and move out the scope.
     sm->MoveOutOfCurrentScope();

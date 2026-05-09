@@ -4,7 +4,7 @@
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     LoopControlFlowStatementAst,
     test_invalid_exit_expr,
-    SppExpressionTypeInvalidError, R"(
+    SppInvalidPrimaryExpressionError, R"(
     fun f() -> std::void::Void {
         loop true {
             exit std::boolean::Bool

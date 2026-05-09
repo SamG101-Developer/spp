@@ -57,11 +57,11 @@ auto spp::asts::ParenthesisedExpressionAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     //
-    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
 
     // Forward analysis into the expression.
-    RaiseIf<SppExpressionTypeInvalidError>(
+    RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Expr),
         {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
     Expr->Stage7_AnalyseSemantics(sm, meta);

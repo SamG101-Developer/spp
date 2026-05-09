@@ -36,11 +36,11 @@ auto spp::asts::FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
     ScopeManager *,
     CompilerMetaData *meta)
     -> void {
-    if (analyse::utils::builtins::BUILTIN_FUNCS.at(_ScopePtr).cmp_fn == nullptr) {
+    if (analyse::utils::builtins::kBuiltinFuncs.at(_ScopePtr).cmp_fn == nullptr) {
         return;
     }
 
-    auto &lowered_cmp_code = *analyse::utils::builtins::BUILTIN_FUNCS.at(_ScopePtr).cmp_fn;
+    auto &lowered_cmp_code = *analyse::utils::builtins::kBuiltinFuncs.at(_ScopePtr).cmp_fn;
     auto extracted_args = Vec<Unique<ExpressionAst>>{};
     for (auto &&[_, arg] : std::move(meta->CmpArgs)) {
         extracted_args.push_back(std::move(arg));

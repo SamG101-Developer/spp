@@ -15,7 +15,7 @@ spp::asts::FunctionParameterRequiredAst::FunctionParameterRequiredAst(
     decltype(Var) &&var,
     decltype(TokColon) &&tok_colon,
     decltype(Type) type) :
-    FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type), utils::OrderableTag::REQUIRED_PARAM) {
+    FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type), utils::OrderableTag::kRequiredParam) {
 }
 
 spp::asts::FunctionParameterRequiredAst::~FunctionParameterRequiredAst() = default;
@@ -29,7 +29,7 @@ auto spp::asts::FunctionParameterRequiredAst::PosStart() const
 auto spp::asts::FunctionParameterRequiredAst::PosEnd() const
     -> std::size_t {
     // Use the type.
-    return Type->PosEnd();
+    return Source.OriginalType->PosEnd();
 }
 
 auto spp::asts::FunctionParameterRequiredAst::Clone() const

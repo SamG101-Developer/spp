@@ -119,6 +119,14 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::errors::SppExpansionOfNonTupleError;
+    using analyse::errors::SppIdentifierDuplicateError;
+    using analyse::errors::SppOrderInvalidError;
+    using analyse::errors::SppInvalidMutationError;
+    using analyse::utils::order_utils::DoOrderArgs;
+    using analyse::utils::type_utils::IsTypeTup;
+
     // Check there are no duplicate argument names.
     const auto arg_names = GetKeywordArgs()
         | genex::views::transform([](auto const &x) { return x->Name.get(); })
@@ -126,19 +134,19 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<Vec>();
 
-    RaiseIf<analyse::errors::SppIdentifierDuplicateError>(
+    RaiseIf<SppIdentifierDuplicateError>(
         not arg_names.IsEmpty(), {sm->CurrentScope},
         ERR_ARGS(*arg_names[0], *arg_names[1], "keyword function-argument"));
 
     // Check the arguments are in the correct order.
-    const auto unordered_args = analyse::utils::order_utils::order_args(Args
+    const auto unordered_args = DoOrderArgs(Args
         | genex::views::ptr
         | genex::views::cast_dynamic<mixins::OrderableAst*>()
         | genex::to<Vec>());
 
-    RaiseIf<analyse::errors::SppOrderInvalidError>(
+    RaiseIf<SppOrderInvalidError>(
         not unordered_args.IsEmpty(), {sm->CurrentScope},
-        ERR_ARGS(unordered_args[0].First, *unordered_args[0].Second, unordered_args[1].First, *unordered_args[1].Second));
+        ERR_ARGS(unordered_args[1].First, *unordered_args[1].Second, unordered_args[0].First, *unordered_args[0].Second));
 
     // Expand tuple-expansion arguments ("..tuple" => "tuple.0, tuple.1, ...")
     // Must use "materialize" because the list gets updates from within the loop.
@@ -149,9 +157,9 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
 
         // Check the argument value is a tuple expression.
         auto arg_type = arg->InferType(sm, meta);
-        RaiseIf<analyse::errors::SppExpansionOfNonTupleError>(
-            not analyse::utils::type_utils::IsTypeTup(*arg_type, *sm->CurrentScope),
-            {sm->CurrentScope}, ERR_ARGS(*arg->Val, *arg_type));
+        RaiseIf<SppExpansionOfNonTupleError>(
+            not IsTypeTup(*arg_type, *sm->CurrentScope),
+            {sm->CurrentScope}, ERR_ARGS(*pos_arg->TokUnpack, *arg->Val, *arg_type));
 
         // Replace the tuple-expansion argument with the expanded arguments.
         const auto max = static_cast<sys::ssize_t>(arg_type->TypeParts().Back()->GnArgGroup->Args.Len());
@@ -174,14 +182,14 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
         if (arg->Conv == nullptr or *arg->Conv == ConventionTag::REF) { continue; }
 
         // Immutable symbols cannot be mutated.
-        RaiseIf<analyse::errors::SppInvalidMutationError>(
+        RaiseIf<SppInvalidMutationError>(
             not sym->IsMutable, {sm->CurrentScope},
-            ERR_ARGS(*arg->Val, *arg->Val, *std::get<0>(sym->MemInfo->AstInitialization)));
+            ERR_ARGS(*sym->Name, *arg->Conv, *std::get<0>(sym->MemInfo->AstInitialization)));
 
         // Immutable borrows, even if their symbol is mutable, cannot be mutated.
-        RaiseIf<analyse::errors::SppInvalidMutationError>(
+        RaiseIf<SppInvalidMutationError>(
             std::get<0>(sym->MemInfo->AstBorrowed) and *sym->Type->GetConvention() == ConventionTag::REF,
-            {sm->CurrentScope}, ERR_ARGS(*arg->Val, *arg->Val, *std::get<0>(sym->MemInfo->AstBorrowed)));
+            {sm->CurrentScope}, ERR_ARGS(*sym->Name, *arg->Conv, *std::get<0>(sym->MemInfo->AstBorrowed)));
     }
 }
 

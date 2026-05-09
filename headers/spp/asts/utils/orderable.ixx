@@ -9,10 +9,10 @@ namespace spp::asts::utils {
 }
 
 SPP_EXP_CLS enum class spp::asts::utils::OrderableTag {
-    KEYWORD_ARG,
-    POSITIONAL_ARG,
-    SELF_PARAM,
-    REQUIRED_PARAM,
-    OPTIONAL_PARAM,
-    VARIADIC_PARAM,
+    kKeywordArg,
+    kPositionalArg,
+    kSelfParam,
+    kRequiredParam,
+    kOptionalParam,
+    kVariadicParam,
 };

@@ -4,7 +4,7 @@
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     CaseExpressionAst,
     test_invalid_case_expression,
-    SppExpressionTypeInvalidError, R"(
+    SppInvalidPrimaryExpressionError, R"(
     fun f() -> std::void::Void {
         case std::boolean::Bool == 1 { }
     }

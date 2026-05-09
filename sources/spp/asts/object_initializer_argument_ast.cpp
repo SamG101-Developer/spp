@@ -29,11 +29,11 @@ auto spp::asts::ObjectInitializerArgumentAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     //
-    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
 
     // Forward analysis into the value expression.
-    RaiseIf<SppExpressionTypeInvalidError>(
+    RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Val),
         {sm->CurrentScope}, ERR_ARGS(*Val));
     Val->Stage7_AnalyseSemantics(sm, meta);

@@ -22,7 +22,7 @@ spp::asts::GenericParameterTypeOptionalAst::GenericParameterTypeOptionalAst(
     decltype(Constraints) &&constraints,
     decltype(TokAssign) &&tok_assign,
     decltype(DefaultVal) &&DefaultVal) :
-    GenericParameterTypeAst(std::move(name), std::move(constraints), utils::OrderableTag::OPTIONAL_PARAM),
+    GenericParameterTypeAst(std::move(name), std::move(constraints), utils::OrderableTag::kOptionalParam),
     TokAssign(std::move(tok_assign)),
     DefaultVal(std::move(DefaultVal)) {
 }

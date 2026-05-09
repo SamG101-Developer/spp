@@ -17,16 +17,16 @@ namespace spp::asts::mixins {
 
 namespace spp::analyse::utils::order_utils {
     inline constexpr std::array ARG_ORDER_ARR{
-        spp::asts::utils::OrderableTag::POSITIONAL_ARG,
-        spp::asts::utils::OrderableTag::KEYWORD_ARG,
+        spp::asts::utils::OrderableTag::kPositionalArg,
+        spp::asts::utils::OrderableTag::kKeywordArg,
     };
 
 
     inline constexpr std::array PARAM_ORDER_ARR{
-        spp::asts::utils::OrderableTag::SELF_PARAM,
-        spp::asts::utils::OrderableTag::REQUIRED_PARAM,
-        spp::asts::utils::OrderableTag::OPTIONAL_PARAM,
-        spp::asts::utils::OrderableTag::VARIADIC_PARAM,
+        spp::asts::utils::OrderableTag::kSelfParam,
+        spp::asts::utils::OrderableTag::kRequiredParam,
+        spp::asts::utils::OrderableTag::kOptionalParam,
+        spp::asts::utils::OrderableTag::kVariadicParam,
     };
 
     /**
@@ -36,7 +36,7 @@ namespace spp::analyse::utils::order_utils {
      * @param order The correct order of the tags.
      * @return The list of arguments that are out of order, paired with a string representation of their tag.
      */
-    SPP_EXP_FUN auto order(
+    SPP_EXP_FUN auto DoOrder(
         Vec<asts::mixins::OrderableAst*> &&args,
         Vec<asts::utils::OrderableTag> order)
         -> Vec<Pair<Str, asts::Ast*>>;
@@ -47,7 +47,7 @@ namespace spp::analyse::utils::order_utils {
      * @param args The list of arguments to check the order of.
      * @return The list of arguments that are out of order, paired with a string representation of their tag.
      */
-    SPP_EXP_FUN auto order_args(
+    SPP_EXP_FUN auto DoOrderArgs(
         Vec<asts::mixins::OrderableAst*> &&args)
         -> Vec<Pair<Str, asts::Ast*>>;
 
@@ -57,7 +57,7 @@ namespace spp::analyse::utils::order_utils {
      * @param params The list of parameters to check the order of.
      * @return The list of parameters that are out of order, paired with a string representation of their tag.
      */
-    SPP_EXP_FUN auto order_params(
+    SPP_EXP_FUN auto DoOrderParams(
         Vec<asts::mixins::OrderableAst*> &&params)
         -> Vec<Pair<Str, asts::Ast*>>;
 }

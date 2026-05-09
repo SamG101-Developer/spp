@@ -15,7 +15,7 @@ import spp.asts.utils.orderable;
 SPP_MOD_BEGIN
 spp::asts::GenericArgumentTypePositionalAst::GenericArgumentTypePositionalAst(
     decltype(Val) val) :
-    GenericArgumentTypeAst(std::move(val), utils::OrderableTag::POSITIONAL_ARG) {
+    GenericArgumentTypeAst(std::move(val), utils::OrderableTag::kPositionalArg) {
 }
 
 spp::asts::GenericArgumentTypePositionalAst::~GenericArgumentTypePositionalAst() = default;

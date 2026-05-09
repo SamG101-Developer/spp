@@ -4,7 +4,7 @@
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     LoopConditionBooleanAst,
     test_invalid_invalid_expression,
-    SppExpressionTypeInvalidError, R"(
+    SppInvalidPrimaryExpressionError, R"(
     fun f() -> std::void::Void {
         loop std::boolean::Bool { }
     }

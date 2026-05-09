@@ -43,6 +43,7 @@ spp::asts::CmpStatementAst::CmpStatementAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokCmp, lex::SppTokenType::KW_CMP, "cmp");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokColon, lex::SppTokenType::TK_COLON, ":");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
+    Source.OriginalType = AstClone(Type);
 }
 
 spp::asts::CmpStatementAst::~CmpStatementAst() = default;
@@ -50,7 +51,7 @@ spp::asts::CmpStatementAst::~CmpStatementAst() = default;
 auto spp::asts::CmpStatementAst::PosStart() const
     -> std::size_t {
     // Use the name.
-    return Name->PosStart();
+    return TokCmp->PosStart();
 }
 
 auto spp::asts::CmpStatementAst::PosEnd() const
@@ -122,7 +123,7 @@ auto spp::asts::CmpStatementAst::Stage4_QualifyTypes(
     // Ensure that the type doesn't have a convention.
     RaiseIf<SppSecondClassBorrowViolationError>(
         IsTypeBorrowed(*Type, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*this, *Type, "global constant type"));
+        {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalType, "global constant type"));
 
     // Qualify the type.
     Type->Stage4_QualifyTypes(sm, meta);
@@ -161,13 +162,12 @@ auto spp::asts::CmpStatementAst::Stage7_AnalyseSemantics(
     Value->Stage7_AnalyseSemantics(sm, meta);
 
     // Check the value's type is the same as the given type.
-    const auto given_type = Type.get();
     const auto inferred_type = Value->InferType(sm, meta);
 
     RaiseIf<SppTypeMismatchError>(
         not IsFromUseStatement()
-        and not TypeEq(*given_type, *inferred_type, *sm->CurrentScope, *sm->CurrentScope),
-        {sm->CurrentScope}, ERR_ARGS(*Type, *given_type, *Value, *inferred_type));
+        and not TypeEq(*Type, *inferred_type, *sm->CurrentScope, *sm->CurrentScope),
+        {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *Value, *inferred_type));
 }
 
 auto spp::asts::CmpStatementAst::Stage8_CheckMemory(

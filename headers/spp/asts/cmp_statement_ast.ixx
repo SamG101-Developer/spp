@@ -25,7 +25,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
 /**
  * The CmpStatementAst represents a compile time definition statement at either the module or superimposition level. It
  * is analogous to Rust's "const" statement.
@@ -75,6 +74,10 @@ SPP_EXP_CLS struct spp::asts::CmpStatementAst final : StatementAst, ModuleMember
      * initialization that only uses compile time values.
      */
     Unique<ExpressionAst> Value;
+
+    struct {
+        Shared<TypeAst> OriginalType;
+    } Source;
 
     /**
      * Construct the CmpStatementAst with the arguments matching the members.

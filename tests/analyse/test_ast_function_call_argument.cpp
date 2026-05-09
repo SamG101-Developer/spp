@@ -4,7 +4,7 @@
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentAst,
     test_invalid_unnamed_argument,
-    SppExpressionTypeInvalidError, R"(
+    SppInvalidPrimaryExpressionError, R"(
     fun f(a: std::boolean::Bool) -> std::void::Void { }
 
     fun g() -> std::void::Void {
@@ -16,7 +16,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentAst,
     test_invalid_named_argument,
-    SppExpressionTypeInvalidError, R"(
+    SppInvalidPrimaryExpressionError, R"(
     fun f(a: std::boolean::Bool) -> std::void::Void { }
 
     fun g() -> std::void::Void {

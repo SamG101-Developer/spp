@@ -358,11 +358,12 @@ auto spp::analyse::utils::type_utils::IsTypeRecursive(
     scopes::ScopeManager const &sm)
     -> Shared<asts::TypeAst> {
     // Get the attribute types recursively from the class prototype, and check for a match with the class prototype.
+    // Use the source type as this is used for error reporting.
     auto attr_info = Vec<Pair<Shared<scopes::TypeSymbol>, asts::ClassAttributeAst*>>{};
     GetAttrTypes(&type, sm.CurrentScope, attr_info);
     for (auto const &[attr_type_sym, attr_ast] : attr_info) {
         if (attr_type_sym == type.GetClsSym()) {
-            return attr_ast->Type;
+            return attr_ast->Source.OriginalType;
         }
     }
 

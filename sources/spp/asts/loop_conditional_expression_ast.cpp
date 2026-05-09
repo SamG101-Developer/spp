@@ -72,7 +72,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     //
-    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::errors::SppExpressionNotBooleanError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::IsTypeBool;
@@ -84,7 +84,7 @@ auto spp::asts::LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
     Ast::Stage2_GenTopLvlScopes(sm, meta);
 
     // Analyse the condition expression.
-    RaiseIf<SppExpressionTypeInvalidError>(
+    RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Cond),
         {sm->CurrentScope}, ERR_ARGS(*Cond));
     Cond->Stage7_AnalyseSemantics(sm, meta);

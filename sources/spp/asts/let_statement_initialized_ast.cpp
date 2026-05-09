@@ -70,13 +70,13 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     // Todo: Test preventing "let x = void_type()" + same for "let x: Void"
-    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::errors::SppInvalidTypeAnnotationError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::TypeEq;
 
     // Check the value is a valid expression type.
-    RaiseIf<SppExpressionTypeInvalidError>(
+    RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Val),
         {sm->CurrentScope}, ERR_ARGS(*Val.get()));
 

@@ -12,7 +12,7 @@ SPP_MOD_BEGIN
 spp::asts::GenericParameterTypeRequiredAst::GenericParameterTypeRequiredAst(
     decltype(Name) name,
     decltype(Constraints) &&constraints) :
-    GenericParameterTypeAst(std::move(name), std::move(constraints), utils::OrderableTag::REQUIRED_PARAM) {
+    GenericParameterTypeAst(std::move(name), std::move(constraints), utils::OrderableTag::kRequiredParam) {
 }
 
 spp::asts::GenericParameterTypeRequiredAst::~GenericParameterTypeRequiredAst() = default;

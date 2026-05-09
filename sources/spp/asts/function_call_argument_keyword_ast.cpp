@@ -17,7 +17,7 @@ spp::asts::FunctionCallArgumentKeywordAst::FunctionCallArgumentKeywordAst(
     decltype(TokAssign) &&tok_assign,
     decltype(Conv) &&conv,
     decltype(Val) &&val) :
-    FunctionCallArgumentAst(std::move(conv), std::move(val), utils::OrderableTag::KEYWORD_ARG),
+    FunctionCallArgumentAst(std::move(conv), std::move(val), utils::OrderableTag::kKeywordArg),
     Name(std::move(name)),
     TokAssign(std::move(tok_assign)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");

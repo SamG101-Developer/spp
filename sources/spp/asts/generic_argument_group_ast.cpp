@@ -216,7 +216,7 @@ auto spp::asts::GenericArgumentGroupAst::Stage7_AnalyseSemantics(
         ERR_ARGS(*comp_arg_names[0], *comp_arg_names[1], "keyword function-argument"));
 
     // Check the arguments are in the correct order.
-    const auto unordered_args = analyse::utils::order_utils::order_args(Args
+    const auto unordered_args = analyse::utils::order_utils::DoOrderArgs(Args
         | genex::views::ptr
         | genex::views::cast_dynamic<mixins::OrderableAst*>()
         | genex::to<Vec>());

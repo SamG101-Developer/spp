@@ -29,7 +29,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstObjectInitializerArgumentAst,
     test_invalid_object_initializer_named_argument_expression_type,
-    SppExpressionTypeInvalidError, R"(
+    SppInvalidPrimaryExpressionError, R"(
     cls Foo {
         !public a: std::number::S32
     }

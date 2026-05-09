@@ -77,8 +77,8 @@ auto spp::asts::CaseExpressionAst::PosStart() const
 
 auto spp::asts::CaseExpressionAst::PosEnd() const
     -> std::size_t {
-    // Use the condition.
-    return Cond->PosEnd();
+    // Use the "of" token, or condition.
+    return TokOf != nullptr ? TokOf->PosEnd() : Cond->PosEnd();
 }
 
 auto spp::asts::CaseExpressionAst::Clone() const
@@ -105,11 +105,11 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
     // Alias the common utils functions and types.
     using analyse::errors::SppCaseBranchElseNotLastError;
     using analyse::errors::SppCaseBranchMultipleDestructuresError;
-    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
 
     // Analyse the condition expression.
-    RaiseIf<SppExpressionTypeInvalidError>(
+    RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Cond),
         {sm->CurrentScope}, ERR_ARGS(*Cond));
 

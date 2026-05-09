@@ -36,10 +36,10 @@ auto spp::asts::FunctionCallArgumentAst::Stage7_AnalyseSemantics(
     -> void {
     //
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
 
     // Analyse the semantics of the value expression.
-    RaiseIf<SppExpressionTypeInvalidError>(
+    RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Val),
         {sm->CurrentScope}, ERR_ARGS(*Val));
     Val->Stage7_AnalyseSemantics(sm, meta);

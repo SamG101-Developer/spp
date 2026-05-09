@@ -21,7 +21,6 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.utils.uid;
 
-
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantLiteralAst::CasePatternVariantLiteralAst(
     decltype(Literal) &&literal) :

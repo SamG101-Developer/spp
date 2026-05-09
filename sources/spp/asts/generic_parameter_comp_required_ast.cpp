@@ -14,7 +14,7 @@ spp::asts::GenericParameterCompRequiredAst::GenericParameterCompRequiredAst(
     decltype(Name) name,
     decltype(TokColon) &&tok_colon,
     decltype(Type) type) :
-    GenericParameterCompAst(std::move(tok_cmp), std::move(name), std::move(tok_colon), std::move(type), utils::OrderableTag::REQUIRED_PARAM) {
+    GenericParameterCompAst(std::move(tok_cmp), std::move(name), std::move(tok_colon), std::move(type), utils::OrderableTag::kRequiredParam) {
 }
 
 spp::asts::GenericParameterCompRequiredAst::~GenericParameterCompRequiredAst() = default;

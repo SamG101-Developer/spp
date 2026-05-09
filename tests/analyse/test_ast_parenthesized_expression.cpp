@@ -4,7 +4,7 @@
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstParenthesizedExpressionAst,
     test_invalid_parenthesized_expression_invalid_expression_type,
-    SppExpressionTypeInvalidError, R"(
+    SppInvalidPrimaryExpressionError, R"(
     fun f() -> std::void::Void {
         let a = (std::boolean::Bool)
     }

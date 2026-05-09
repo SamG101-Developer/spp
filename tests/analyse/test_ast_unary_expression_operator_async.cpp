@@ -4,7 +4,7 @@
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestUnaryExpressionOperatorAsyncAst,
     test_invalid_async_bad_target_1,
-    SppExpressionTypeInvalidError, R"(
+    SppInvalidPrimaryExpressionError, R"(
     fun g() -> std::void::Void {
         async std::boolean::Bool
     }

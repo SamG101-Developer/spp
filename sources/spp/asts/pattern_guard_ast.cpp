@@ -58,13 +58,13 @@ auto spp::asts::PatternGuardAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     //
-    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::errors::SppExpressionNotBooleanError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::IsTypeBool;
 
     // Check the expression in the pattern guard.
-    RaiseIf<SppExpressionTypeInvalidError>(
+    RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Expr),
         {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
     Expr->Stage7_AnalyseSemantics(sm, meta);

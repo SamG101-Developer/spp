@@ -131,7 +131,7 @@ auto spp::asts::FloatLiteralAst::Stage7_AnalyseSemantics(
     // Check if the value is within the bounds.
     RaiseIf<SppFloatOutOfBoundsError>(
         mapped_val.compare(lower) < 0 or mapped_val.compare(upper) > 0,
-        {sm->CurrentScope}, ERR_ARGS(*this, mapped_val, lower, upper, "float"));
+        {sm->CurrentScope}, ERR_ARGS(*this, mapped_val, lower, upper, Type));
 }
 
 auto spp::asts::FloatLiteralAst::Stage9_CompTimeResolve(

@@ -18,7 +18,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
 /**
  * The FunctionParameterAst provides a common base to all parameter types in a function prototype. It is inherited by
  * the required, optional, variadic and self parameters, and provides the common functionality for all of them.
@@ -41,6 +40,10 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterAst : Ast, mixins::OrderableAst {
      * a required field, as the type of the parameter must be known at compile time.
      */
     Shared<TypeAst> Type;
+
+    struct {
+        Shared<TypeAst> OriginalType;
+    } Source;
 
     /**
      * Construct the FunctionParameterAst with the arguments matching the members.

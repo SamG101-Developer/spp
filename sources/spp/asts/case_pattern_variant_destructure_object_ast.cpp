@@ -53,6 +53,7 @@ spp::asts::CasePatternVariantDestructureObjectAst::CasePatternVariantDestructure
     _FlowSym(nullptr) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokL, lex::SppTokenType::TK_LEFT_PARENTHESIS, "(");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_PARENTHESIS, ")");
+    Source.OriginalType = AstClone(Type);
 }
 
 spp::asts::CasePatternVariantDestructureObjectAst::~CasePatternVariantDestructureObjectAst() = default;
@@ -67,7 +68,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::FromType(
 auto spp::asts::CasePatternVariantDestructureObjectAst::PosStart() const
     -> std::size_t {
     // Use the "[" token.
-    return TokL->PosStart();
+    return Source.OriginalType->PosStart();
 }
 
 auto spp::asts::CasePatternVariantDestructureObjectAst::PosEnd() const
@@ -103,6 +104,7 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
     using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsDummyCore;
     using analyse::utils::type_utils::IsTypeVariant;
     using analyse::utils::type_utils::TypeEq;
+    using analyse::errors::SppTypeMismatchError;
 
     // TODO: Move flow typing logic to local variable mapping
     // TODO: Flow typing doesn't work on nested variant destructuring
@@ -142,9 +144,9 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
 
     // Flow type the condition symbol if necessary.
     if (IsTypeVariant(*_CondSym->Type, *sm->CurrentScope)) {
-        RaiseIf<analyse::errors::SppTypeMismatchError>(
+        RaiseIf<SppTypeMismatchError>(
             not TypeEq(*_CondSym->Type, *Type, *sm->CurrentScope, *sm->CurrentScope),
-            {sm->CurrentScope}, ERR_ARGS(*cond, *_CondSym->Type, *Type, *Type));
+            {sm->CurrentScope}, ERR_ARGS(*cond, *_CondSym->Type, *Source.OriginalType, *Type));
 
         _FlowSym = MakeShared<analyse::scopes::VariableSymbol>(*_CondSym);
         _FlowSym->Type = Type;

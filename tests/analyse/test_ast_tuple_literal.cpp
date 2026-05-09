@@ -22,7 +22,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestTupleLiteralNElementAst,
     test_invalid_tuple_filled_tuple_literal_invalid_element,
-    SppExpressionTypeInvalidError, R"(
+    SppInvalidPrimaryExpressionError, R"(
     fun f() -> std::void::Void {
         let a = (std::boolean::Bool, std::boolean::Bool)
     }

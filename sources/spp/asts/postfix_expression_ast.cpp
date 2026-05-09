@@ -62,10 +62,10 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
     //
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::expr_utils::PrimaryExpressionOptions;
-    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
 
     // Analyse the lhs.
-    RaiseIf<SppExpressionTypeInvalidError>(
+    RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Lhs, {.AllowTypeAst = true}),
         {sm->CurrentScope}, ERR_ARGS(*Lhs.get()));
 

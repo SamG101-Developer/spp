@@ -20,7 +20,7 @@ SPP_MOD_BEGIN
 spp::asts::FunctionParameterSelfAst::FunctionParameterSelfAst(
     decltype(Conv) &&conv,
     decltype(Var) &&var) :
-    FunctionParameterAst(std::move(var), nullptr, nullptr, utils::OrderableTag::SELF_PARAM),
+    FunctionParameterAst(std::move(var), nullptr, nullptr, utils::OrderableTag::kSelfParam),
     Conv(std::move(conv)) {
     // Set the type to "Self" -> will resolve later in scope.
     using generate::common_types::SelfType;

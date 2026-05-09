@@ -31,7 +31,7 @@ spp::asts::GenericArgumentTypeKeywordAst::GenericArgumentTypeKeywordAst(
     decltype(Name) name,
     decltype(TokAssign) &&tok_assign,
     decltype(Val) val) :
-    GenericArgumentTypeAst(std::move(val), utils::OrderableTag::KEYWORD_ARG),
+    GenericArgumentTypeAst(std::move(val), utils::OrderableTag::kKeywordArg),
     Name(std::move(name)),
     TokAssign(std::move(tok_assign)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");

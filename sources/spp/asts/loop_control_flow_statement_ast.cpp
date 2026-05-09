@@ -85,7 +85,7 @@ auto spp::asts::LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     //
-    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::errors::SppLoopTooManyControlFlowStatementsError;
     using analyse::errors::SppTypeMismatchError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
@@ -98,7 +98,7 @@ auto spp::asts::LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
     const auto nested_loop_depth = meta->LoopCurrentDepth;
 
     // Analyse the expression if it is present.
-    RaiseIf<SppExpressionTypeInvalidError>(
+    RaiseIf<SppInvalidPrimaryExpressionError>(
         Expr and not IsPrimaryExprTypeValid(*Expr),
         {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
 

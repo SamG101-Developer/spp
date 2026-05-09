@@ -14,7 +14,7 @@ spp::asts::GenericParameterTypeVariadicAst::GenericParameterTypeVariadicAst(
     decltype(TokEllipsis) &&tok_ellipsis,
     decltype(Name) &&name,
     decltype(Constraints) &&constraints) :
-    GenericParameterTypeAst(std::move(name), std::move(constraints), utils::OrderableTag::VARIADIC_PARAM),
+    GenericParameterTypeAst(std::move(name), std::move(constraints), utils::OrderableTag::kVariadicParam),
     TokEllipsis(std::move(tok_ellipsis)) {
 }
 

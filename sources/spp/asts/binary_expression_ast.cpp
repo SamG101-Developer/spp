@@ -79,7 +79,7 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
     using analyse::utils::bin_utils::ConvertBinExprToFuncCall;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::IsTypeTup;
-    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::errors::SppMemberAccessNonIndexableError;
     using analyse::errors::SppInvalidBinaryFoldExpressionError;
 
@@ -87,10 +87,10 @@ auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
     if (_MappedFunc) { return; }
 
     // Ensure TypeAst's aren't used for expression for binary operands.
-    RaiseIf<SppExpressionTypeInvalidError>(
+    RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Lhs, {.AllowTokenAst = true}),
         {sm->CurrentScope}, ERR_ARGS(*Lhs));
-    RaiseIf<SppExpressionTypeInvalidError>(
+    RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Rhs, {.AllowTokenAst = true}),
         {sm->CurrentScope}, ERR_ARGS(*Rhs));
 

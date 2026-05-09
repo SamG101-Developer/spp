@@ -91,12 +91,12 @@ auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     //
-    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::GetGenAndYieldTypes;
 
     // Exp check.
-    RaiseIf<SppExpressionTypeInvalidError>(
+    RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Iterable),
         {sm->CurrentScope}, ERR_ARGS(*Iterable));
 

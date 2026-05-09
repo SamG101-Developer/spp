@@ -41,7 +41,23 @@ import spp.asts.type_ast;
 import spp.asts.type_statement_ast;
 import colex;
 
-// TODO: READ ALL ERRORS: CURRENTLY WRITTEN BY AI
+/*
+ * Rules for writing error messages.
+ *
+ * How to write context / error lines:
+ * - Names/symbols: declared, defined, introduced.
+ * - Syntax constructs: starts here, begins here, here.
+ * - References/borrows: used here, referenced here,
+ *
+ * How to write note lines:
+ * - Focus on the rule being violated.
+ * - Neutral, not accusatory.
+ * - Example: "Cannot mutate immutable variable" is better
+ *     than "Attempted to mutate immutable variable".
+ *
+ * How to write help lines:
+ * - Describe exactly what to do by token or keyword.
+ */
 
 SPP_MOD_BEGIN
 auto spp::analyse::errors::SemanticError::AddHeaders(
@@ -83,13 +99,13 @@ auto spp::analyse::errors::SemanticError::Clone() const
 }
 
 // [HUMAN WRITTEN]
-spp::analyse::errors::SppExpressionTypeInvalidError::SppExpressionTypeInvalidError(
+spp::analyse::errors::SppInvalidPrimaryExpressionError::SppInvalidPrimaryExpressionError(
     asts::Ast const &expr) {
-    AddHeaders(1, "Invalid Expression Error");
-    AddErr(&expr, "Invalid primary expression used here");
+    AddHeaders(1, "Invalid Primary Expression Error");
+    AddErr(&expr, "Primary expression introduced here");
     AddFooter(
-        "The expression is invalid in the current context.",
-        "Change the type/token to a different primary expression.");
+        "The current context requires a primary expression that is not a type or token ast.",
+        "Change the expression to a different value expression.");
 }
 
 // [HUMAN WRITTEN]
@@ -286,85 +302,63 @@ spp::analyse::errors::SppMemberAccessOutOfBoundsError::SppMemberAccessOutOfBound
         "Ensure the accessed member exists within the bounds of the type");
 }
 
+// [HUMAN WRITTEN]
 spp::analyse::errors::SppCaseBranchElseNotLastError::SppCaseBranchElseNotLastError(
     asts::CaseExpressionBranchAst const &non_last_else_branch,
     asts::CaseExpressionBranchAst const &last_branch) {
-    AddHeaders(
-        20, "SPP Case Branch Else Not Last Error");
-    AddCtxForErr(
-        &non_last_else_branch,
-        "Non-last 'else' branch defined here");
-    AddErr(
-        &last_branch,
-        "Last branch defined here");
+    AddHeaders(20, "Case Branch Else Not Last Error");
+    AddCtxForErr(&non_last_else_branch, "Non-last " + INLINE_INFO("else") + " branch defined here");
+    AddErr(&last_branch, "Last branch defined here");
     AddFooter(
-        "The 'else' branch must be the last branch in a case expression.",
-        "Move the 'else' branch to be the last branch");
+        "The " + INLINE_NOTE("else") + " branch must be the last branch in a case expression.",
+        "Move the " + INLINE_HELP("else") + " branch to be the last branch");
 }
 
+// [HUMAN WRITTEN]
 spp::analyse::errors::SppCaseBranchMissingElseError::SppCaseBranchMissingElseError(
     asts::CaseExpressionAst const &case_expr,
     asts::CaseExpressionBranchAst const &last_branch) {
-    AddHeaders(
-        33, "SPP Case Branch Missing Else Error");
-    AddCtxForErr(
-        &case_expr,
-        "Case expression defined here");
-    AddErr(
-        &last_branch,
-        "Last branch defined here");
+    AddHeaders(33, "Case Branch Missing Else Error");
+    AddCtxForErr(&case_expr, "Case expression introduced here");
+    AddErr(&last_branch, "Last branch introduced here");
     AddFooter(
-        "A case expression must have an 'else' branch to handle all possible cases.",
-        "Add an 'else' branch to the case expression");
+        "A case expression must have an " + INLINE_NOTE("else") + " branch to handle all possible cases.",
+        "Add an " + INLINE_HELP("else") + " branch to the case expression.");
 }
 
 spp::analyse::errors::SppIdentifierDuplicateError::SppIdentifierDuplicateError(
     asts::Ast const &first_identifier,
     asts::Ast const &duplicate_identifier,
     const StrView what) {
-    AddHeaders(
-        18, "SPP Identifier Duplicate Error");
-    AddCtxForErr(
-        &first_identifier,
-        "First " + Str(what) + " '" + first_identifier.ToString() + "' defined here");
-    AddErr(
-        &duplicate_identifier,
-        "Duplicate " + Str(what) + " '" + duplicate_identifier.ToString() + "' defined here");
+    AddHeaders(18, "Identifier Duplicate Error");
+    AddCtxForErr(&first_identifier, "First " + INLINE_INFO(Str(what)) + " named " + INLINE_INFO(first_identifier.ToString()) + " defined here");
+    AddErr(&duplicate_identifier, "Duplicate " + INLINE_INFO(Str(what)) + " named " + INLINE_INFO(duplicate_identifier.ToString()) + " defined here");
     AddFooter(
-        "This " + Str(what) + " identifier has already been defined in the current scope.",
+        "This " + INLINE_NOTE(Str(what)) + " identifier has already been used.",
         "Rename or remove the duplicate identifier");
 }
 
 spp::analyse::errors::SppRecursiveTypeError::SppRecursiveTypeError(
     asts::ClassPrototypeAst const &type,
     asts::TypeAst const &recursion) {
-    AddHeaders(
-        35, "SPP Recursive Type Error");
-    AddCtxForErr(
-        &type,
-        "Type defined here");
-    AddErr(
-        &recursion,
-        "Recursive reference defined here");
+    AddHeaders(35, "Recursive Type Error");
+    AddCtxForErr(&type, "Type defined here");
+    AddErr(&recursion, "Recursive attribute introduced here");
     AddFooter(
-        "This type is recursively defined in a way that is not allowed.",
-        "Modify the type definition to eliminate illegal recursion");
+        "This type contains an attribute that causes recursion.",
+        "Remove the attribute, change the type, or use smart pointers to prevent the type recursion.");
 }
 
 spp::analyse::errors::SppCoroutineInvalidReturnTypeError::SppCoroutineInvalidReturnTypeError(
     asts::CoroutinePrototypeAst const &proto,
-    asts::TypeAst const &return_type) {
-    AddHeaders(
-        36, "SPP Coroutine Invalid Return Type Error");
-    AddCtxForErr(
-        &proto,
-        "Coroutine prototype defined here");
-    AddErr(
-        &return_type,
-        "Invalid return type defined here");
+    asts::Ast const &ret_type_expr,
+    asts::TypeAst const &ret_type) {
+    AddHeaders(36, "Coroutine Invalid Return Type Error");
+    AddCtxForErr(&proto, "Coroutine prototype defined here");
+    AddErr(&ret_type_expr, "Type inferred as: " + INLINE_INFO(ret_type.ToString()));
     AddFooter(
         "The return type of a coroutine must be a generator type.",
-        "Change the return type to 'Gen/GenOpt/GenRes/GenOnce'");
+        "Change the return type to 'Gen/GenOnce'");
 }
 
 spp::analyse::errors::SppFloatOutOfBoundsError::SppFloatOutOfBoundsError(
@@ -373,14 +367,11 @@ spp::analyse::errors::SppFloatOutOfBoundsError::SppFloatOutOfBoundsError(
     boost::BigDec const &lower,
     boost::BigDec const &upper,
     const StrView what) {
-    AddHeaders(
-        37, "SPP Float Out Of Bounds Error");
-    AddErr(
-        &literal,
-        "Float literal defined here with value: " + value.str());
+    AddHeaders(37, "Float Out Of Bounds Error");
+    AddErr(&literal, "Float introduced here with value: " + INLINE_INFO(value.str()));
     AddFooter(
-        "The value of this float literal is out of bounds for " + Str(what) + " type.",
-        "Ensure the value is within the range: [" + lower.str() + ", " + upper.str() + "]");
+        "The value of this float literal is out of bounds for " + INLINE_NOTE(Str(what)) + " type.",
+        "Ensure the value is within the range: " + INLINE_HELP("[") + INLINE_HELP(lower.str()) + INLINE_HELP(", ") + INLINE_HELP(upper.str()) + INLINE_HELP("]"));
 }
 
 spp::analyse::errors::SppIntegerOutOfBoundsError::SppIntegerOutOfBoundsError(
@@ -404,46 +395,35 @@ spp::analyse::errors::SppOrderInvalidError::SppOrderInvalidError(
     asts::Ast const &first,
     const StrView second_what,
     asts::Ast const &second) {
-    AddHeaders(
-        39, "SPP Order Invalid Error");
-    AddCtxForErr(
-        &first,
-        "First " + Str(first_what) + " defined here");
-    AddErr(
-        &second,
-        "Second " + Str(second_what) + " defined here");
+    AddHeaders(39, "Order Invalid Error");
+    AddCtxForErr(&first, INLINE_INFO(Str(first_what)) + " defined here");
+    AddErr(&second, INLINE_INFO(Str(second_what)) + " defined here");
     AddFooter(
-        "The order of these two elements is invalid.",
-        "Ensure the order of the elements is correct");
+        "The order of these two asts is invalid.",
+        "Switch the order of these asts.");
 }
 
 spp::analyse::errors::SppExpansionOfNonTupleError::SppExpansionOfNonTupleError(
+    asts::TokenAst const &unpack,
     asts::Ast const &ast,
     asts::TypeAst const &type) {
-    AddHeaders(
-        40, "SPP Expansion Of Non-Tuple Error");
-    AddErr(
-        &ast,
-        "Expression defined here with type: " + type.ToString());
+    AddHeaders(40, "Expansion Of Non-Tuple Error");
+    AddCtxForErr(&ast, "Expression defined here with type " + INLINE_INFO(type.ToString()));
+    AddErr(&unpack, "Unpack operator defined here");
     AddFooter(
         "This expression is being expanded, but it is not of tuple type.",
-        "Ensure the expression is of tuple type before expanding");
+        "Ensure the expression is of tuple type before expanding.");
 }
 
 spp::analyse::errors::SppMemoryOverlapUsageError::SppMemoryOverlapUsageError(
     asts::Ast const &ast,
     asts::Ast const &overlap_ast) {
-    AddHeaders(
-        41, "SPP Memory Overlap Usage Error");
-    AddCtxForErr(
-        &ast,
-        "Expression defined here");
-    AddErr(
-        &overlap_ast,
-        "Overlapping memory region defined here");
+    AddHeaders(41, "Memory Overlap Usage Error");
+    AddCtxForErr(&ast, "Memory region used here");
+    AddErr(&overlap_ast, "Overlapping memory region used here");
     AddFooter(
-        "This expression uses memory that overlaps with another memory region in an invalid way.",
-        "Ensure the memory regions do not overlap or are used safely");
+        "This expression uses memory that overlaps with another memory region.",
+        "Ensure the memory regions do not overlap.");
 }
 
 spp::analyse::errors::SppMultipleSelfParametersError::SppMultipleSelfParametersError(

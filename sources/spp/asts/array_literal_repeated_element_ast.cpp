@@ -93,14 +93,14 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
     -> void {
     // Alias the common utils functions and types.
     using analyse::errors::SppCompileTimeConstantError;
-    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::errors::SppInvalidExpressionNonCopyableTypeError;
     using analyse::errors::SppSecondClassBorrowViolationError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::IsTypeBorrowed;
 
     // Analyse the repeated element.
-    RaiseIf<SppExpressionTypeInvalidError>(
+    RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Elem),
         {sm->CurrentScope}, ERR_ARGS(*Elem));
     Elem->Stage7_AnalyseSemantics(sm, meta);
@@ -113,7 +113,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
         {sm->CurrentScope}, ERR_ARGS(*this, *Elem, *elem_type));
 
     // Check the size argument is a valid AST.
-    RaiseIf<SppExpressionTypeInvalidError>(
+    RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Size),
         {sm->CurrentScope}, ERR_ARGS(*Size));
 

@@ -35,6 +35,7 @@ spp::asts::FunctionParameterAst::FunctionParameterAst(
         auto var_name = MakeShared<IdentifierAst>(pos, uid);
         this->Var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
     }
+    Source.OriginalType = AstClone(Type);
 }
 
 spp::asts::FunctionParameterAst::~FunctionParameterAst() = default;

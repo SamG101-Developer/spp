@@ -3,7 +3,7 @@
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ArrayLiteralExplicitElementsAst,
     test_invalid_element_ast,
-    SppExpressionTypeInvalidError, R"(
+    SppInvalidPrimaryExpressionError, R"(
     fun f() -> std::void::Void {
         let a = [std::boolean::Bool, std::boolean::Bool]
     }

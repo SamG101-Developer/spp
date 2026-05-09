@@ -95,14 +95,14 @@ auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::IsTypeBorrowed;
     using analyse::utils::type_utils::TypeEq;
-    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::errors::SppSecondClassBorrowViolationError;
     using analyse::errors::SppTypeMismatchError;
 
     // Analyse the element inside the array. Also enforce beforehand that the element
     // is an acceptable primary expression, ie not a TypeAst or a TokenAst.
     for (auto const &elem : Elems) {
-        RaiseIf<SppExpressionTypeInvalidError>(
+        RaiseIf<SppInvalidPrimaryExpressionError>(
             not IsPrimaryExprTypeValid(*elem),
             {sm->CurrentScope}, ERR_ARGS(*elem));
         elem->Stage7_AnalyseSemantics(sm, meta);

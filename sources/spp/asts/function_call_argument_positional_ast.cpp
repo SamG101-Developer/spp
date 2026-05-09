@@ -15,7 +15,7 @@ spp::asts::FunctionCallArgumentPositionalAst::FunctionCallArgumentPositionalAst(
     decltype(Conv) &&conv,
     decltype(TokUnpack) &&tok_unpack,
     decltype(Val) &&val) :
-    FunctionCallArgumentAst(std::move(conv), std::move(val), utils::OrderableTag::POSITIONAL_ARG),
+    FunctionCallArgumentAst(std::move(conv), std::move(val), utils::OrderableTag::kPositionalArg),
     TokUnpack(std::move(tok_unpack)) {
 }
 

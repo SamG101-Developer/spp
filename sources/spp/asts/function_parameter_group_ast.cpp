@@ -87,7 +87,7 @@ auto spp::asts::FunctionParameterGroupAst::Stage7_AnalyseSemantics(
         | genex::views::duplicates({}, genex::meta::deref)
         | genex::to<Vec>();
 
-    const auto unordered_params = analyse::utils::order_utils::order_params(Params
+    const auto unordered_params = analyse::utils::order_utils::DoOrderParams(Params
         | genex::views::ptr
         | genex::views::cast_dynamic<mixins::OrderableAst*>()
         | genex::to<Vec>());

@@ -23,7 +23,7 @@ spp::asts::FunctionParameterOptionalAst::FunctionParameterOptionalAst(
     decltype(Type) type,
     decltype(TokAssign) &&tok_assign,
     decltype(DefaultVal) &&default_val) :
-    FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type), utils::OrderableTag::OPTIONAL_PARAM),
+    FunctionParameterAst(std::move(var), std::move(tok_colon), std::move(type), utils::OrderableTag::kOptionalParam),
     TokAssign(std::move(tok_assign)),
     DefaultVal(std::move(default_val)) {
 }

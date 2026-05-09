@@ -49,7 +49,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     BinaryExpressionAst,
     test_invalid_binary_lhs_value,
-    SppExpressionTypeInvalidError, R"(
+    SppInvalidPrimaryExpressionError, R"(
     fun f() -> std::void::Void {
         let a = std::bignum::bigint::BigInt + 2
     }
@@ -59,7 +59,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     BinaryExpressionAst,
     test_invalid_binary_rhs_value,
-    SppExpressionTypeInvalidError, R"(
+    SppInvalidPrimaryExpressionError, R"(
     fun f() -> std::void::Void {
         let a = 1 + std::bignum::bigint::BigInt
     }

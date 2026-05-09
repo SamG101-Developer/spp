@@ -18,7 +18,7 @@ import spp.asts.utils.orderable;
 SPP_MOD_BEGIN
 spp::asts::GenericArgumentCompPositionalAst::GenericArgumentCompPositionalAst(
     decltype(Val) &&val) :
-    GenericArgumentCompAst(std::move(val), utils::OrderableTag::POSITIONAL_ARG) {
+    GenericArgumentCompAst(std::move(val), utils::OrderableTag::kPositionalArg) {
 }
 
 spp::asts::GenericArgumentCompPositionalAst::~GenericArgumentCompPositionalAst() = default;
@@ -68,11 +68,11 @@ auto spp::asts::GenericArgumentCompPositionalAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     //
-    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
 
     // Analyse the value.
-    RaiseIf<SppExpressionTypeInvalidError>(
+    RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Val),
         {sm->CurrentScope}, ERR_ARGS(*Val.get()));
     Val->Stage7_AnalyseSemantics(sm, meta);

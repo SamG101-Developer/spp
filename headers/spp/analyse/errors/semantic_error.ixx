@@ -42,7 +42,7 @@ namespace spp::asts {
 namespace spp::analyse::errors {
     SPP_EXP_CLS struct SemanticError;
 
-    SPP_EXP_CLS struct SppExpressionTypeInvalidError;
+    SPP_EXP_CLS struct SppInvalidPrimaryExpressionError;
     SPP_EXP_CLS struct SppTypeMismatchError;
     SPP_EXP_CLS struct SppSecondClassBorrowViolationError;
     SPP_EXP_CLS struct SppCompileTimeConstantError;
@@ -158,8 +158,8 @@ SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::Abs
     auto Clone() const -> Unique<SemanticError>;
 };
 
-SPP_EXP_CLS struct spp::analyse::errors::SppExpressionTypeInvalidError final : SemanticError {
-    explicit SppExpressionTypeInvalidError(asts::Ast const &expr);
+SPP_EXP_CLS struct spp::analyse::errors::SppInvalidPrimaryExpressionError final : SemanticError {
+    explicit SppInvalidPrimaryExpressionError(asts::Ast const &expr);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppTypeMismatchError final : SemanticError {
@@ -227,7 +227,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppRecursiveTypeError final : SemanticE
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppCoroutineInvalidReturnTypeError final : SemanticError {
-    explicit SppCoroutineInvalidReturnTypeError(asts::CoroutinePrototypeAst const &proto, asts::TypeAst const &return_type);
+    explicit SppCoroutineInvalidReturnTypeError(asts::CoroutinePrototypeAst const &proto, asts::Ast const& ret_type_expr, asts::TypeAst const &ret_type);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppFloatOutOfBoundsError final : SemanticError {
@@ -243,7 +243,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppOrderInvalidError final : SemanticEr
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppExpansionOfNonTupleError final : SemanticError {
-    explicit SppExpansionOfNonTupleError(asts::Ast const &ast, asts::TypeAst const &type);
+    explicit SppExpansionOfNonTupleError(asts::TokenAst const& unpack, asts::Ast const &ast, asts::TypeAst const &type);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppMemoryOverlapUsageError final : SemanticError {

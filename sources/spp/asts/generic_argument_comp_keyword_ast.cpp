@@ -48,7 +48,7 @@ spp::asts::GenericArgumentCompKeywordAst::GenericArgumentCompKeywordAst(
     decltype(Name) name,
     decltype(TokAssign) &&tok_assign,
     decltype(Val) &&val) :
-    GenericArgumentCompAst(std::move(val), utils::OrderableTag::KEYWORD_ARG),
+    GenericArgumentCompAst(std::move(val), utils::OrderableTag::kKeywordArg),
     Name(std::move(name)),
     TokAssign(std::move(tok_assign)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
@@ -103,11 +103,11 @@ auto spp::asts::GenericArgumentCompKeywordAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     //
-    using analyse::errors::SppExpressionTypeInvalidError;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
 
     // Analyse the value.
-    RaiseIf<SppExpressionTypeInvalidError>(
+    RaiseIf<SppInvalidPrimaryExpressionError>(
         not IsPrimaryExprTypeValid(*Val),
         {sm->CurrentScope}, ERR_ARGS(*Val));
     Val->Stage7_AnalyseSemantics(sm, meta);

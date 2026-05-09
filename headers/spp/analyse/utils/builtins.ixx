@@ -13,5 +13,5 @@ namespace spp::analyse::utils::builtins {
 
     auto MakeBuiltinFuncMap() -> ankerl::unordered_dense::map<Str, LoweredFuncImpl>;
 
-    export const auto BUILTIN_FUNCS = MakeBuiltinFuncMap();
+    export const auto kBuiltinFuncs = MakeBuiltinFuncMap();
 }
