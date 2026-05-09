@@ -52,6 +52,10 @@ SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : Ast, ClassMemberAst, mix
      */
     Unique<ExpressionAst> DefaultVal;
 
+    struct {
+        std::shared_ptr<TypeAst> OriginalType;
+    } Source;
+
     /**
      * Construct the ClassAttributeAst with the arguments matching the members.
      * @param[in] annotations The list of annotations that are applied to this class attribute.

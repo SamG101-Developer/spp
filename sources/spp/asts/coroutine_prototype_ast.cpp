@@ -39,7 +39,8 @@ auto spp::asts::CoroutinePrototypeAst::Clone() const
     ast->_AnnotationInfo = _AnnotationInfo
         ? MakeUnique<analyse::utils::annotation_utils::AnnotationInfo>(*_AnnotationInfo)
         : nullptr;
-    ast->_OriginalImpl = AstClone(_OriginalImpl);
+    ast->Source.OriginalImpl = AstClone(Source.OriginalImpl);
+    ast->Source.OriginalReturnType = AstClone(Source.OriginalReturnType);
     ast->_Ctx = _Ctx;
     ast->_Scope = _Scope;
     ast->AbstractAnnotation = AbstractAnnotation;

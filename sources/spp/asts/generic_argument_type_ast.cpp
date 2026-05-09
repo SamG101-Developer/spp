@@ -17,6 +17,7 @@ spp::asts::GenericArgumentTypeAst::GenericArgumentTypeAst(
     const utils::OrderableTag order_tag) :
     GenericArgumentAst(order_tag),
     Val(std::move(val)) {
+    Source.OriginalVal = AstClone(Val);
 }
 
 spp::asts::GenericArgumentTypeAst::~GenericArgumentTypeAst() = default;

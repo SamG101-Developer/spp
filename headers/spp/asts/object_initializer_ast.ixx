@@ -14,7 +14,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst {
     /**
      * The type being initialized by the object initializer. This is the type of the object being created.
@@ -26,6 +25,10 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst 
      * will be passed into the attributes of the object being created.
      */
     Unique<ObjectInitializerArgumentGroupAst> ArgGroup;
+
+    struct {
+        Shared<TypeAst> OriginalType;
+    } Source;
 
     /**
      * Construct the ObjectInitializerAst with the arguments matching the members.

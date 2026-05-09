@@ -92,6 +92,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     // Alias the common utils functions and types.
+    using analyse::errors::SppCompileTimeConstantError;
     using analyse::errors::SppExpressionTypeInvalidError;
     using analyse::errors::SppInvalidExpressionNonCopyableTypeError;
     using analyse::errors::SppSecondClassBorrowViolationError;
@@ -109,22 +110,30 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
     // Ensure the element type is copyable, so that is can be repeated in the array.
     RaiseIf<SppInvalidExpressionNonCopyableTypeError>(
         not elem_type_sym->IsCopyable(),
-        {sm->CurrentScope}, ERR_ARGS(*Elem, *elem_type));
+        {sm->CurrentScope}, ERR_ARGS(*this, *Elem, *elem_type));
 
-    // Ensure the element's type is not a borrow type, as array elements cannot be borrows.
+    // Check the size argument is a valid AST.
     RaiseIf<SppExpressionTypeInvalidError>(
         not IsPrimaryExprTypeValid(*Size),
         {sm->CurrentScope}, ERR_ARGS(*Size));
+
+    // Ensure the element's type is not a borrow type, as array elements cannot be borrows.
     RaiseIf<SppSecondClassBorrowViolationError>(
         IsTypeBorrowed(*elem_type, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Elem, *elem_type, "repeated array element type"));
 
     // Ensure the size is a constant expression (if symbolic).
-    auto symbolic_size = AstClone(Size->To<IdentifierAst>());
-    const auto size_sym = sm->CurrentScope->GetVarSymbol(std::move(symbolic_size));
-    RaiseIf<analyse::errors::SppCompileTimeConstantError>(
-        size_sym != nullptr and size_sym->CompTimeValue == nullptr,
+    Size->Stage7_AnalyseSemantics(sm, meta);
+    auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
+    Size->Stage9_CompTimeResolve(&tm, meta);
+
+    RaiseIf<SppCompileTimeConstantError>(
+        meta->CmpResult == nullptr,
         {sm->CurrentScope}, ERR_ARGS(*Size));
+    Size = AstClone(meta->CmpResult);
+
+    // Make sure the generic array type is analysed for generic generation.
+    InferType(sm, meta)->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto spp::asts::ArrayLiteralRepeatedElementAst::Stage8_CheckMemory(

@@ -171,7 +171,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppSecondClassBorrowViolationError fina
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppCompileTimeConstantError final : SemanticError {
-    explicit SppCompileTimeConstantError(asts::ExpressionAst const &expr);
+    explicit SppCompileTimeConstantError(asts::Ast const &expr);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppInvalidMutationError final : SemanticError {
@@ -208,10 +208,6 @@ SPP_EXP_CLS struct spp::analyse::errors::SppMemberAccessNonIndexableError final 
 
 SPP_EXP_CLS struct spp::analyse::errors::SppMemberAccessOutOfBoundsError final : SemanticError {
     explicit SppMemberAccessOutOfBoundsError(asts::ExpressionAst const &lhs, asts::TypeAst const &lhs_type, asts::Ast const &access_op);
-};
-
-SPP_EXP_CLS struct spp::analyse::errors::SppCaseBranchMultipleDestructuresError final : SemanticError {
-    explicit SppCaseBranchMultipleDestructuresError(asts::CasePatternVariantAst const &first_pattern, asts::CasePatternVariantAst const &second_pattern);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppCaseBranchElseNotLastError final : SemanticError {
@@ -459,7 +455,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppDereferenceInvalidExpressionNonBorro
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppInvalidExpressionNonCopyableTypeError final : SemanticError {
-    explicit SppInvalidExpressionNonCopyableTypeError(asts::ExpressionAst const &expr, asts::TypeAst const &type);
+    explicit SppInvalidExpressionNonCopyableTypeError(asts::Ast const& ctx, asts::ExpressionAst const &expr, asts::TypeAst const &type);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppGenericParameterInferredConflictInferredError final : SemanticError {

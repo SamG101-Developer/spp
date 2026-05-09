@@ -79,7 +79,8 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->GnParamGroup);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokArrow, lex::SppTokenType::TK_ARROW_RIGHT, "->");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Impl);
-    _OriginalImpl = AstClone(this->Impl.get());
+    Source.OriginalImpl = AstClone(this->Impl);
+    Source.OriginalReturnType = AstClone(this->ReturnType);
     _NonGenericImpl = this;
     _LlvmFunc = MakeShared<Shared<codegen::LlvmFuncWrapper>>(nullptr);
 }
@@ -89,13 +90,13 @@ spp::asts::FunctionPrototypeAst::~FunctionPrototypeAst() = default;
 auto spp::asts::FunctionPrototypeAst::PosStart() const
     -> std::size_t {
     // Use the "fun"/"cor" token.
-    return TokFun->PosStart();
+    return TokCmp ? TokCmp->PosStart() : TokFun->PosStart();
 }
 
 auto spp::asts::FunctionPrototypeAst::PosEnd() const
     -> std::size_t {
     // Use the return type.
-    return ReturnType->PosEnd();
+    return Source.OriginalReturnType->PosEnd();
 }
 
 auto spp::asts::FunctionPrototypeAst::Clone() const
@@ -527,7 +528,7 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
         const auto current_scope = tm.CurrentScope;
         const auto current_iter = tm.CurrentIterator();
 
-        generic_proto->Impl = std::move(generic_proto->_OriginalImpl);
+        generic_proto->Impl = std::move(generic_proto->Source.OriginalImpl);
         generic_proto->Stage7_AnalyseSemantics(&tm, meta);
 
         tm.Reset(current_scope, current_iter);

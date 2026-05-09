@@ -37,13 +37,13 @@ auto spp::asts::GenericArgumentTypePositionalAst::Equals(
 auto spp::asts::GenericArgumentTypePositionalAst::PosStart() const
     -> std::size_t {
     // Use the val.
-    return Val->PosStart();
+    return Source.OriginalVal->PosStart();
 }
 
 auto spp::asts::GenericArgumentTypePositionalAst::PosEnd() const
     -> std::size_t {
     // Use the val.
-    return Val->PosEnd();
+    return Source.OriginalVal->PosEnd();
 }
 
 auto spp::asts::GenericArgumentTypePositionalAst::Clone() const

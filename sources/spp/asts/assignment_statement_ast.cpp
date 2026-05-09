@@ -135,7 +135,7 @@ auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
             IsAttr(lhs_expr, sm)
             and lhs_sym->Type->GetConvention()
             and *lhs_sym->Type->GetConvention() == ConventionTag::REF,
-            {sm->CurrentScope}, ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstBorrowed)));
+            {sm->CurrentScope}, ERR_ARGS(*lhs_sym->Name, *TokAssign, *std::get<0>(lhs_sym->MemInfo->AstInitialization)));
 
         // Prevent double initializations to immutable uninitialized let statements.
         if (IsIdentifier(lhs_expr)) {

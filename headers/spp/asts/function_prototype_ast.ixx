@@ -31,7 +31,6 @@ namespace spp::analyse::scopes {
     SPP_EXP_CLS class Scope;
 }
 
-
 /**
  * The @c FunctionPrototypeAst represents the prototype of a function. It defines the structure of a function, including
  * its name, parameters, and return type. The body of the function is defined in the FunctionImplementationAst.
@@ -134,6 +133,11 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
      */
     Unique<FunctionImplementationAst> Impl;
 
+    struct {
+        Shared<TypeAst> OriginalReturnType;
+        Unique<FunctionImplementationAst> OriginalImpl;
+    } Source;
+
     /**
      * Construct the FunctionPrototypeAst with the arguments matching the members.
      * @param annotations The list of annotations that are applied to this function prototype.
@@ -209,8 +213,6 @@ protected:
      */
     std::list<Pair<Unique<analyse::scopes::Scope>, Unique<FunctionPrototypeAst>>> _GenericSubstitutions;
 
-    Unique<FunctionImplementationAst> _OriginalImpl;
-
     FunctionPrototypeAst *_NonGenericImpl;
 
     /**
@@ -226,6 +228,5 @@ protected:
 
     SPP_ATTR_NODISCARD auto _IsPureGeneric(ScopeManager *sm, codegen::LLvmCtx *ctx) const -> std::tuple<bool, llvm::Type*, Vec<llvm::Type*>>;
 };
-
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FunctionPrototypeAst)

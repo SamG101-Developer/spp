@@ -62,7 +62,7 @@ auto spp::asts::GenericArgumentTypeKeywordAst::PosStart() const
 auto spp::asts::GenericArgumentTypeKeywordAst::PosEnd() const
     -> std::size_t {
     // Use the value.
-    return Val->PosEnd();
+    return Source.OriginalVal->PosEnd();
 }
 
 auto spp::asts::GenericArgumentTypeKeywordAst::Clone() const

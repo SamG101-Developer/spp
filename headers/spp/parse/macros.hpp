@@ -94,7 +94,7 @@
     T::static_func(BOOST_PP_SEQ_ENUM(BOOST_PP_SEQ_TRANSFORM(MOVE_AST_FOR_CREATION, BOOST_PP_EMPTY(), BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))))
 
 #define MOVE_AST_FOR_CREATION(_1, _2, ast) \
-    std::move((ast))
+    std::move(ast)
 
 #define INJECT_CODE(code, method) \
     spp::parse::ParserSpp(spp::lex::Lexer((code)).lex()).method()

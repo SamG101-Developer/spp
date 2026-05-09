@@ -90,7 +90,7 @@ auto spp::asts::FloatLiteralAst::PosStart() const
 
 auto spp::asts::FloatLiteralAst::PosEnd() const
     -> std::size_t {
-    // Use teh fractional part.
+    // Use the fractional part.
     return FracVal->PosEnd();
 }
 

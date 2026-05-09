@@ -92,7 +92,7 @@ auto spp::asts::TypeIdentifierAst::PosStart() const
 auto spp::asts::TypeIdentifierAst::PosEnd() const
     -> std::size_t {
     // Use the final generic argument or name.
-    return GnArgGroup ? GnArgGroup->PosEnd() : _Pos + Name.length();
+    return _Pos + Name.length();
 }
 
 auto spp::asts::TypeIdentifierAst::Clone() const

@@ -27,6 +27,10 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeAst : GenericArgumentAst {
      */
     Shared<TypeAst> Val;
 
+    struct {
+        Shared<TypeAst> OriginalVal;
+    } Source;
+
     /**
      * Construct the GenericArgumentTypeAst with the arguments matching the members.
      * @param val The value of the generic type argument.

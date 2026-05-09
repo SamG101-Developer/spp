@@ -1,6 +1,15 @@
 module;
 #include <spp/macros.hpp>
 
+#define INLINE_INFO(info) \
+    (colex::fg_bright_yellow + colex::st_italic) + info + (colex::reset + colex::st_bold + colex::fg_bright_white)
+
+#define INLINE_NOTE(info) \
+    (colex::fg_bright_yellow + colex::st_italic) + info + (colex::reset + colex::st_bold + colex::fg_bright_cyan)
+
+#define INLINE_HELP(info) \
+    (colex::fg_bright_yellow + colex::st_italic) + info + (colex::reset + colex::st_bold + colex::fg_bright_red)
+
 module spp.analyse.errors.semantic_error;
 import spp.asts.ast;
 import spp.asts.annotation_ast;
@@ -30,6 +39,7 @@ import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_statement_ast;
+import colex;
 
 // TODO: READ ALL ERRORS: CURRENTLY WRITTEN BY AI
 
@@ -72,103 +82,77 @@ auto spp::analyse::errors::SemanticError::Clone() const
     return MakeUnique<SemanticError>(*this);
 }
 
+// [HUMAN WRITTEN]
 spp::analyse::errors::SppExpressionTypeInvalidError::SppExpressionTypeInvalidError(
     asts::Ast const &expr) {
-    AddHeaders(
-        3, "SPP Expression Type Invalid Error");
-    AddErr(
-        &expr,
-        "Expression with invalid type defined here");
+    AddHeaders(1, "Invalid Expression Error");
+    AddErr(&expr, "Invalid primary expression used here");
     AddFooter(
-        "The type of this expression is invalid in the current context.",
-        "Ensure the expression has a valid type");
+        "The expression is invalid in the current context.",
+        "Change the type/token to a different primary expression.");
 }
 
+// [HUMAN WRITTEN]
 spp::analyse::errors::SppTypeMismatchError::SppTypeMismatchError(
     asts::Ast const &lhs,
     asts::TypeAst const &lhs_ty,
     asts::Ast const &rhs,
     asts::TypeAst const &rhs_ty) {
-    AddHeaders(
-        4, "SPP Type Mismatch Error");
-    AddCtxForErr(
-        &lhs,
-        "Left-hand side type: " + lhs_ty.ToString());
-    AddErr(
-        &rhs,
-        "Right-hand side type: " + rhs_ty.ToString());
+    AddHeaders(2, "Type Mismatch Error");
+    AddCtxForErr(&lhs, "Type inferred as: " + INLINE_INFO(lhs_ty.ToString()));
+    AddErr(&rhs, "Type inferred as: " + INLINE_INFO(rhs_ty.ToString()));
     AddFooter(
-        "The types of the left-hand side and right-hand side do not match.",
-        "Ensure both sides have compatible types");
+        "The two types are not symbolically equal.",
+        "Change one of the expression to match the other's type. If using variant types, consider swapping the\n"
+        "expressions, so the broader variant is on the left of the comparison.");
 }
 
+// [HUMAN WRITTEN]
 spp::analyse::errors::SppSecondClassBorrowViolationError::SppSecondClassBorrowViolationError(
     asts::Ast const &expr,
     asts::Ast const &type,
     const StrView ctx) {
-    AddHeaders(
-        5, "SPP Second-Class Borrow Violation Error");
-    AddCtxForErr(
-        &expr,
-        "Expression defined here");
-    AddErr(
-        &type,
-        "Conversion to second-class type in " + Str(ctx) + " context defined here");
+    AddHeaders(3, "Second-Class Borrow Violation Error");
+    AddCtxForErr(&type, "Second-class borrow type declared here");
+    AddErr(&expr, "Expression used here");
     AddFooter(
-        "This expression cannot be used in a " + Str(ctx) + " context because it is a second-class type.",
-        "Use a first-class type or adjust the context");
+        "Second-class borrow types cannot be used in the " + Str(ctx) + " context.",
+        "Use a first-class type ensuring ownership in this context.");
 }
 
 spp::analyse::errors::SppCompileTimeConstantError::SppCompileTimeConstantError(
-    asts::ExpressionAst const &expr) {
-    AddHeaders(
-        6, "SPP Compile-Time Constant Error");
-    AddErr(
-        &expr,
-        "Expression defined here");
+    asts::Ast const &expr) {
+    AddHeaders(4, "SPP Compile-Time Constant Error");
+    AddErr(&expr, "Non compile-time expression defined here");
     AddFooter(
         "This expression must be a compile-time constant.",
-        "Ensure the expression can be evaluated at compile time");
+        "Ensure the expression can be evaluated at compile time.");
 }
 
 spp::analyse::errors::SppInvalidMutationError::SppInvalidMutationError(
     asts::Ast const &sym,
     asts::Ast const &mutator,
     asts::Ast const &initialization_location) {
-    AddHeaders(
-        7, "SPP Invalid Mutation Error");
-    AddCtxForErr(
-        &sym,
-        "Symbol defined here");
-    AddCtxForErr(
-        &initialization_location,
-        "Initialized here");
-    AddErr(
-        &mutator,
-        "Invalid mutation attempted here");
+    AddHeaders(5, "Invalid Mutation Error");
+    AddCtxForErr(&sym, "Symbol immutably defined here");
+    AddCtxForErr(&initialization_location, "Initialized here");
+    AddErr(&mutator, "Invalid mutation attempted here");
     AddFooter(
-        "The symbol " + sym.ToString() + " cannot be mutated because it was not declared as mutable.",
-        "Declare the symbol as mutable or remove the mutation");
+        "The symbol " + INLINE_NOTE(sym.ToString()) + " cannot be mutated because it declared immutably.",
+        "Declare the symbol as mutable or remove the mutation.");
 }
 
 spp::analyse::errors::SppUninitializedMemoryUseError::SppUninitializedMemoryUseError(
     asts::ExpressionAst const &ast,
     asts::Ast const &init_location,
     asts::Ast const &move_location) {
-    AddHeaders(
-        8, "SPP Uninitialized Memory Use Error");
-    AddCtxForErr(
-        &init_location,
-        "Memory was initialized here");
-    AddCtxForErr(
-        &move_location,
-        "Memory was moved here");
-    AddErr(
-        &ast,
-        "Expression using uninitialized memory");
+    AddHeaders(6, "Uninitialized Memory Use Error");
+    AddCtxForErr(&init_location, "Memory initialized here");
+    AddCtxForErr(&move_location, "Memory moved/uninitialized here");
+    AddErr(&ast, "Uninitialized memory used here");
     AddFooter(
-        "This expression uses memory that may not have been initialized.",
-        "Ensure the memory is properly initialized before use");
+        "This expression uses memory that is not initialized, or has been moved.",
+        "Reinitialize the variable, or use a different variable.");
 }
 
 spp::analyse::errors::SppPartiallyInitializedMemoryUseError::SppPartiallyInitializedMemoryUseError(
@@ -277,17 +261,12 @@ spp::analyse::errors::SppMemberAccessNonIndexableError::SppMemberAccessNonIndexa
     asts::ExpressionAst const &lhs,
     asts::TypeAst const &lhs_type,
     asts::Ast const &access_op) {
-    AddHeaders(
-        16, "SPP Member Access Non-Indexable Error");
-    AddCtxForErr(
-        &lhs,
-        "Left-hand side expression defined here with type: " + lhs_type.ToString());
-    AddErr(
-        &access_op,
-        "Member access operator defined here");
+    AddHeaders(12, "Member Access Non-Indexable Error");
+    AddCtxForErr(&lhs, "Expression defined here with type: " + INLINE_INFO(lhs_type.ToString()));
+    AddErr(&access_op, "Token used here creates the index operation");
     AddFooter(
-        "The left-hand side expression is not indexable, so member access cannot be performed.",
-        "Ensure the left-hand side is an indexable type (e.g., array, tuple, struct)");
+        "The expression is not indexable, so member access cannot be performed.",
+        "Ensure the left-hand side is an indexable type (e.g., array or tuple).");
 }
 
 spp::analyse::errors::SppMemberAccessOutOfBoundsError::SppMemberAccessOutOfBoundsError(
@@ -305,22 +284,6 @@ spp::analyse::errors::SppMemberAccessOutOfBoundsError::SppMemberAccessOutOfBound
     AddFooter(
         "The member access is out of bounds for the given type.",
         "Ensure the accessed member exists within the bounds of the type");
-}
-
-spp::analyse::errors::SppCaseBranchMultipleDestructuresError::SppCaseBranchMultipleDestructuresError(
-    asts::CasePatternVariantAst const &first_pattern,
-    asts::CasePatternVariantAst const &second_pattern) {
-    AddHeaders(
-        19, "SPP Case Branch Multiple Destructures Error");
-    AddCtxForErr(
-        &first_pattern,
-        "First destructure pattern defined here");
-    AddErr(
-        &second_pattern,
-        "Second destructure pattern defined here");
-    AddFooter(
-        "A case branch cannot contain multiple destructure patterns.",
-        "Combine the patterns into a single destructure or separate them into different branches");
 }
 
 spp::analyse::errors::SppCaseBranchElseNotLastError::SppCaseBranchElseNotLastError(
@@ -1295,17 +1258,17 @@ spp::analyse::errors::SppDereferenceInvalidExpressionNonBorrowedTypeError::SppDe
         "Ensure the expression has a borrowable type (e.g., a reference)");
 }
 
+// [HUMAN WRITTEN]
 spp::analyse::errors::SppInvalidExpressionNonCopyableTypeError::SppInvalidExpressionNonCopyableTypeError(
+    asts::Ast const &ctx,
     asts::ExpressionAst const &expr,
     asts::TypeAst const &type) {
-    AddHeaders(
-        76, "SPP Dereference Invalid Expression Non-Copyable Type Error");
-    AddErr(
-        &expr,
-        "Expression with non-copyable type: " + type.ToString() + " defined here");
+    AddHeaders(76, "Invalid Expression Non-Copyable Type Error");
+    AddCtxForErr(&ctx, "Ast requires a copyable type");
+    AddErr(&expr, "Non-copyable type " + INLINE_INFO(type.ToString()));
     AddFooter(
-        "Cannot dereference an expression of a non-copyable type.",
-        "Ensure the expression has a copyable type");
+        "Cannot use a non-copyable type here.",
+        "Change the expression or superimpose " + INLINE_HELP("Copy") + " over the type.");
 }
 
 spp::analyse::errors::SppGenericParameterInferredConflictInferredError::SppGenericParameterInferredConflictInferredError(
@@ -1466,54 +1429,39 @@ spp::analyse::errors::SppAnnotationTargetNotAnAnnotationError::SppAnnotationTarg
         "Ensure the target function is defined with the '!annotation' tag");
 }
 
+// [HUMAN WRITTEN]
 spp::analyse::errors::SppAnnotationTargetNotACmpFunctionError::SppAnnotationTargetNotACmpFunctionError(
     asts::AnnotationAst const &annotation_marker,
     asts::Ast const &non_function_ast) {
-    AddHeaders(
-        87, "SPP Annotation Not A Cmp Function Error");
-    AddCtxForErr(
-        &non_function_ast,
-        "Non-cmp-function or non-function defined here");
-    AddErr(
-        &annotation_marker,
-        "Annotation marker '" + annotation_marker.ToString() + "' defined here");
+    AddHeaders(87, "Annotation Not A Cmp Function Error");
+    AddCtxForErr(&non_function_ast, "Non-cmp-function defined here");
+    AddErr(&annotation_marker, "Annotation marker applied here");
     AddFooter(
         "This annotation cannot be applied because the target is not a cmp function.",
-        "Ensure the annotation is applied to a cmp function");
+        "Ensure the annotation is applied to a cmp function.");
 }
 
+// [HUMAN WRITTEN]
 spp::analyse::errors::SppCalledAnnotationAppliedToInvalidAstError::SppCalledAnnotationAppliedToInvalidAstError(
     asts::Ast const &invalid_ast,
     asts::Ast const &annotation_call,
     asts::AnnotationAst const &annotation_definition) {
-    AddHeaders(
-        88, "SPP Called Annotation Applied To Invalid Ast Error");
-    AddCtxForErr(
-        &annotation_definition,
-        "Annotation & possible targets defined here");
-    AddErr(
-        &annotation_call,
-        "Annotation call defined here");
-    AddCtxForErr(
-        &invalid_ast,
-        "Invalid target of annotation defined here");
+    AddHeaders(88, "Called Annotation Applied To Invalid Ast Error");
+    AddCtxForErr(&annotation_definition, "Annotation & possible targets defined here");
+    AddCtxForErr(&annotation_call, "Annotation applied here");
+    AddErr(&invalid_ast, "Invalid target of annotation used here");
     AddFooter(
-        "This annotation cannot be applied to the target AST node.",
-        "Ensure the annotation is applied to a valid target as defined in the annotation's definition");
+        "Annotation targets must be satisfied by the AST they are applied to.",
+        "Remove the annotation, or add the AST's type to the annotation's targets.");
 }
 
 spp::analyse::errors::SppInvalidBinaryFoldExpressionError::SppInvalidBinaryFoldExpressionError(
     asts::Ast const &expr,
     asts::Ast const &tup_type,
     const std::size_t tup_num_elems) {
-    AddHeaders(
-        89, "SPP Invalid Binary Fold Expression Error");
-    AddCtxForErr(
-        &expr,
-        "Fold expression defined here as type: " + tup_type.ToString());
-    AddErr(
-        &expr,
-        "Fold expression has " + std::to_string(tup_num_elems) + " elements");
+    AddHeaders(89, "Invalid Binary Fold Expression Error");
+    AddCtxForErr(&expr, "Fold operand expression inferred as: " + INLINE_INFO(tup_type.ToString()));
+    AddErr(&expr, "Fold expression has " + INLINE_INFO(std::to_string(tup_num_elems)) + " element(s)");
     AddFooter(
         "Binary fold expressions must operate on tuples of 2+ elements.",
         "Ensure the fold expression is applied to a tuple with 2 or more elements");

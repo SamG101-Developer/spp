@@ -73,7 +73,7 @@ spp::asts::PostfixExpressionOperatorFunctionCallAst::~PostfixExpressionOperatorF
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::PosStart() const
     -> std::size_t {
     // Use the generic argument group.
-    return GnArgGroup->PosStart();
+    return not GnArgGroup->Args.IsEmpty() ? GnArgGroup->PosStart() : FnArgGroup->PosStart();
 }
 
 auto spp::asts::PostfixExpressionOperatorFunctionCallAst::PosEnd() const
@@ -223,13 +223,20 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // Todo: For now, don't allow folding in comptime.
-    RaiseIf<analyse::errors::SppCompileTimeConstantError>(
-        Fold != nullptr,
-        {sm->CurrentScope}, ERR_ARGS(*Fold));
+    //
+    using analyse::errors::SppCompileTimeConstantError;
+    using analyse::errors::SppCompileTimeConstantError;
 
     // Get the function prototype and resolve it.
     const auto fn_proto = _OverloadInfo->Proto->GetNonGenericImpl();
+    RaiseIf<SppCompileTimeConstantError>(
+        fn_proto->TokCmp == nullptr,
+        {sm->CurrentScope}, ERR_ARGS(*this));
+
+    // Todo: For now, don't allow folding in comptime.
+    RaiseIf<SppCompileTimeConstantError>(
+        Fold != nullptr,
+        {sm->CurrentScope}, ERR_ARGS(*Fold));
 
     // Create the argument map for the function to use.
     auto args = Vec<Pair<Shared<IdentifierAst>, Unique<ExpressionAst>>>();

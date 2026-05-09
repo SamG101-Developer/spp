@@ -99,7 +99,7 @@ private:
             return formatter->ErrorAstMinimal(ast, std::move(tag));
         }
         case SemanticError::ErrorInformationType::HEADER: {
-            return (colex::fg_bright_white & colex::st_bold) + std::move(msg) + std::move(tag) + "\n"s;
+            return (colex::fg_bright_white & colex::st_bold) + std::move(msg) + ": "s + std::move(tag) + "\n"s;
         }
         case SemanticError::ErrorInformationType::FOOTER: {
             return (colex::fg_bright_cyan & colex::st_bold) + std::move(tag) + "\n"s + (colex::fg_bright_red & colex::st_bold) + std::move(msg) + "\n"s;

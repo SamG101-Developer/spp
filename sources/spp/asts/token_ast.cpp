@@ -2,7 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.token_ast;
-
+import spp.lex.tokens;
 
 SPP_MOD_BEGIN
 auto spp::asts::TokenAst::NewEmpty(
@@ -32,8 +32,13 @@ auto spp::asts::TokenAst::PosStart() const
 
 auto spp::asts::TokenAst::PosEnd() const
     -> std::size_t {
-    // Add the data size to the local position.
-    return _Pos + TokenData.length();
+    // Keywords appear in the raw token stream as one multi-char raw token (e.g. "fun" is one
+    // token, not three 'f'/'u'/'n' tokens), so the exclusive end index is _Pos + 1.
+    // All other tokens use one raw token per source character, so data.length() gives the span.
+    const auto is_single_raw_token_keyword =
+        TokenType >= lex::SppTokenType::KW_CLS &&
+        TokenType <= lex::SppTokenType::KW_CAPS;
+    return is_single_raw_token_keyword ? _Pos + 1 : _Pos + TokenData.length();
 }
 
 auto spp::asts::TokenAst::Clone() const

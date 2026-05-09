@@ -33,6 +33,7 @@ spp::asts::ObjectInitializerAst::ObjectInitializerAst(
     Type(std::move(type)),
     ArgGroup(std::move(arg_group)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->ArgGroup);
+    Source.OriginalType = AstClone(Type);
 }
 
 spp::asts::ObjectInitializerAst::~ObjectInitializerAst() = default;
@@ -40,7 +41,7 @@ spp::asts::ObjectInitializerAst::~ObjectInitializerAst() = default;
 auto spp::asts::ObjectInitializerAst::PosStart() const
     -> std::size_t {
     // Use the type.
-    return Type->PosStart();
+    return Source.OriginalType->PosStart();
 }
 
 auto spp::asts::ObjectInitializerAst::PosEnd() const
@@ -51,9 +52,9 @@ auto spp::asts::ObjectInitializerAst::PosEnd() const
 
 auto spp::asts::ObjectInitializerAst::Clone() const
     -> Unique<Ast> {
+    // Clone all the members of the ast.
     return MakeUnique<ObjectInitializerAst>(
-        AstClone(Type),
-        AstClone(ArgGroup));
+        AstClone(Type), AstClone(ArgGroup));
 }
 
 auto spp::asts::ObjectInitializerAst::ToString() const

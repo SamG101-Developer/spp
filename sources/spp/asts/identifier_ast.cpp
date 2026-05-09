@@ -132,6 +132,11 @@ auto spp::asts::IdentifierAst::Stage9_CompTimeResolve(
     const auto var_sym = sm->CurrentScope->GetVarSymbol(AstClone(this));
     auto tm = analyse::scopes::ScopeManager(
         sm->GlobalScope, var_sym->ScopeDefinedIn ? : sm->CurrentScope);
+
+    RaiseIf<analyse::errors::SppCompileTimeConstantError>(
+        var_sym != nullptr and var_sym->CompTimeValue == nullptr,
+        {sm->CurrentScope}, ERR_ARGS(*this));
+
     var_sym->CompTimeValue->Stage9_CompTimeResolve(&tm, meta);
 }
 

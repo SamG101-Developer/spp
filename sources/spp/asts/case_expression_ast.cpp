@@ -131,11 +131,6 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
 
     // Analyse eac branch of the case expression.
     for (auto const &branch : Branches) {
-        // Destructures can only use 1 pattern.
-        RaiseIf<SppCaseBranchMultipleDestructuresError>(
-            branch->Op != nullptr and branch->Op->TokenType == lex::SppTokenType::KW_IS and branch->Patterns.Len() > 1,
-            {sm->CurrentScope}, ERR_ARGS(*branch->Patterns[0], *branch->Patterns[1]));
-
         // Check the "else" branch is the last branch (also checks there is only 1 "else" branch).
         RaiseIf<SppCaseBranchElseNotLastError>(
             branch->Patterns[0]->To<CasePatternVariantElseAst>() and branch != Branches.Back(),

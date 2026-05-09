@@ -234,6 +234,8 @@ auto spp::asts::AnnotationAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // Todo: Validate "Void" return type on annotation + test.
+
     // Convert the target into a function call to ensure it exists.
     auto fn = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
         std::move(GnArgGroup), std::move(FnArgGroup), nullptr);

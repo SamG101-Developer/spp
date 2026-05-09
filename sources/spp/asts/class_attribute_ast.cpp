@@ -31,6 +31,7 @@ spp::asts::ClassAttributeAst::ClassAttributeAst(
     TokColon(std::move(tok_colon)),
     Type(std::move(type)),
     DefaultVal(std::move(default_val)) {
+    Source.OriginalType = AstClone(Type);
 }
 
 spp::asts::ClassAttributeAst::~ClassAttributeAst() = default;
@@ -52,6 +53,7 @@ auto spp::asts::ClassAttributeAst::Clone() const
     // Clone all the members of the ast.
     auto ast = MakeUnique<ClassAttributeAst>(
         AstCloneVec(Annotations), AstClone(Name), AstClone(TokColon), AstClone(Type), AstClone(DefaultVal));
+    ast->Source.OriginalType = AstClone(Source.OriginalType);
     ast->_Ctx = _Ctx;
     ast->_Scope = _Scope;
     for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.get()); }
@@ -115,7 +117,7 @@ auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
     // Ensure that the convention type doesn't have a convention.
     RaiseIf<SppSecondClassBorrowViolationError>(
         IsTypeBorrowed(*Type, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Type, *Type, "attribute type"));
+        {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
 
     // Check the type is valid before scopes are attached.
     Type->Stage7_AnalyseSemantics(sm, meta);
@@ -140,11 +142,11 @@ auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
     // Repeated convention check for generic substitutions.
     RaiseIf<SppSecondClassBorrowViolationError>(
         IsTypeBorrowed(*Type, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Type, *Type, "substituted function return type"));
+        {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
 
+    const auto var_sym = sm->CurrentScope->GetVarSymbol(Name);
     Type->Stage7_AnalyseSemantics(sm, meta);
     Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName();
-    const auto var_sym = sm->CurrentScope->GetVarSymbol(Name);
     var_sym->Type = Type;
 
     if (meta->CurrentStage == 9 and DefaultVal != nullptr) {
@@ -154,7 +156,7 @@ auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
         // Make sure the default's inferred type matches the attribute's type.
         RaiseIf<SppTypeMismatchError>(
             not TypeEq(*Type, *default_type, *sm->CurrentScope, *sm->CurrentScope),
-            {sm->CurrentScope}, ERR_ARGS(*this, *Type, *DefaultVal, *default_type));
+            {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *DefaultVal, *default_type));
     }
 }
 

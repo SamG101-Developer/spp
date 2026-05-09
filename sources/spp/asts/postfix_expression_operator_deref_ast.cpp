@@ -65,10 +65,10 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
         lhs_type->GetConvention() == nullptr,
         {sm->CurrentScope}, ERR_ARGS(*TokDeref, *lhs, *lhs_type));
 
-    // Check the right-hand-side expression is a "Copy" type.
+    // Check the right-hand-side expression is a "Copy" type. TODO: Add to unit tests.
     RaiseIf<SppInvalidExpressionNonCopyableTypeError>(
         not sm->CurrentScope->GetTypeSymbol(lhs_type)->IsCopyable() and not meta->AllowMoveDeref,
-        {sm->CurrentScope}, ERR_ARGS(*lhs, *lhs_type));
+        {sm->CurrentScope}, ERR_ARGS(*this, *lhs, *lhs_type));
 }
 
 auto spp::asts::PostfixExpressionOperatorDerefAst::Stage9_CompTimeResolve(
