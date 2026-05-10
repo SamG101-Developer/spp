@@ -14,7 +14,6 @@ import spp.lex.tokens;
 import spp.utils.progress;
 import std;
 
-
 SPP_MOD_BEGIN
 spp::compiler::Compiler::Compiler(
     const Mode mode,
@@ -26,12 +25,11 @@ spp::compiler::Compiler::Compiler(
     m_boot = MakeUnique<CompilerBoot>();
 }
 
-
-auto spp::compiler::Compiler::for_unit_tests(
+auto spp::compiler::Compiler::ForUnitTests(
     const Mode mode,
     Str &&main_code) -> Unique<Compiler> {
     auto c = MakeUnique<Compiler>();
-    c->m_modules = ModuleTree::for_unit_tests(std::filesystem::current_path(), std::move(main_code));
+    c->m_modules = ModuleTree::ForUnitTests(std::filesystem::current_path(), std::move(main_code));
     c->m_mode = mode;
     c->m_build_type = BuildType::EXE; // Tests for "main" in the test suite.
     c->m_path = std::filesystem::current_path() / "src";
@@ -40,11 +38,9 @@ auto spp::compiler::Compiler::for_unit_tests(
     return c;
 }
 
-
 spp::compiler::Compiler::~Compiler() = default;
 
-
-auto spp::compiler::Compiler::compile() -> void {
+auto spp::compiler::Compiler::Compile() -> void {
     const auto is_exe = m_build_type == BuildType::EXE;
     auto progress_bars = Vec<Unique<utils::ProgressBar>>();
     auto num_modules = static_cast<std::uint32_t>(m_modules->GetModules().Len());
@@ -72,11 +68,10 @@ auto spp::compiler::Compiler::compile() -> void {
     m_boot->Stage9_CompTimeResolve(**ps++, *m_modules, m_scope_manager.get());
     // m_boot->Stage10_PreCodeGen(**ps++, *m_modules, m_scope_manager.get());
     // m_boot->Stage11_CodeGen(**ps++, *m_modules, m_scope_manager.get());
-    cleanup();
+    Cleanup();
 }
 
-
-auto spp::compiler::Compiler::cleanup() -> void {
+auto spp::compiler::Compiler::Cleanup() -> void {
     analyse::scopes::ScopeManager::Cleanup();
 }
 

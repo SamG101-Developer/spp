@@ -58,11 +58,11 @@ public:
 
     explicit Compiler(Mode mode, BuildType build_type);
 
-    static auto for_unit_tests(Mode mode, Str &&main_code) -> Unique<Compiler>;
+    static auto ForUnitTests(Mode mode, Str &&main_code) -> Unique<Compiler>;
 
     ~Compiler();
 
-    auto compile() -> void;
+    auto Compile() -> void;
 
-    static auto cleanup() -> void;
+    static auto Cleanup() -> void;
 };

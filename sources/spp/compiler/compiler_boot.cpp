@@ -34,7 +34,7 @@ import genex;
 #define PREP_SCOPE_MANAGER_AND_META(s)                                    \
     PREP_SCOPE_MANAGER;                                                   \
     spp::compiler::CompilerBoot::_MoveScopeManagerToNs(sm, *mod_in_tree); \
-    auto meta = spp::asts::meta::CompilerMetaData();                       \
+    auto meta = spp::asts::meta::CompilerMetaData();                      \
     meta.CurrentStage = (s)
 
 SPP_MOD_BEGIN
@@ -44,11 +44,11 @@ auto spp::compiler::CompilerBoot::Lex(
     -> void {
     // Lexing stage.
     for (auto const &mod : tree) {
-        mod->tokens = lex::Lexer(mod->code, not mod->path.string().contains("/src/std/")).lex();
+        mod->tokens = lex::Lexer(mod->code, not mod->path.string().contains("/src/std/")).Lex();
         mod->error_formatter = MakeUnique<utils::errors::ErrorFormatter>(mod->tokens, mod->path.string());
-        bar.next();
+        bar.Next();
     }
-    bar.finish();
+    bar.Finish();
 }
 
 auto spp::compiler::CompilerBoot::Parse(
@@ -59,9 +59,9 @@ auto spp::compiler::CompilerBoot::Parse(
     for (auto const &mod : tree) {
         mod->module_ast = parse::ParserSpp(mod->tokens, mod->error_formatter).parse();
         _Modules.EmplaceBack(mod->module_ast.get());
-        bar.next();
+        bar.Next();
     }
-    bar.finish();
+    bar.Finish();
 }
 
 auto spp::compiler::CompilerBoot::Stage1_PreProcess(
@@ -74,9 +74,9 @@ auto spp::compiler::CompilerBoot::Stage1_PreProcess(
         PREP_SCOPE_MANAGER;
         mod->FilePath = mod_in_tree->path;
         mod->Stage1_PreProcess(ctx);
-        bar.next();
+        bar.Next();
     }
-    bar.finish();
+    bar.Finish();
 }
 
 auto spp::compiler::CompilerBoot::Stage2_GenTopLvlScopes(
@@ -89,9 +89,9 @@ auto spp::compiler::CompilerBoot::Stage2_GenTopLvlScopes(
         PREP_SCOPE_MANAGER_AND_META(4.0);
         mod->Stage2_GenTopLvlScopes(sm, &meta);
         sm->Reset();
-        bar.next();
+        bar.Next();
     }
-    bar.finish();
+    bar.Finish();
 }
 
 auto spp::compiler::CompilerBoot::Stage3_GenTopLvlAliases(
@@ -104,9 +104,9 @@ auto spp::compiler::CompilerBoot::Stage3_GenTopLvlAliases(
         PREP_SCOPE_MANAGER_AND_META(5.0);
         mod->Stage3_GenTopLvlAliases(sm, &meta);
         sm->Reset();
-        bar.next();
+        bar.Next();
     }
-    bar.finish();
+    bar.Finish();
 }
 
 auto spp::compiler::CompilerBoot::Stage4_QualifyTypes(
@@ -119,9 +119,9 @@ auto spp::compiler::CompilerBoot::Stage4_QualifyTypes(
         PREP_SCOPE_MANAGER_AND_META(6.0);
         mod->Stage4_QualifyTypes(sm, &meta);
         sm->Reset();
-        bar.next();
+        bar.Next();
     }
-    bar.finish();
+    bar.Finish();
 }
 
 auto spp::compiler::CompilerBoot::Stage5_LoadSupScopes(
@@ -134,9 +134,9 @@ auto spp::compiler::CompilerBoot::Stage5_LoadSupScopes(
         PREP_SCOPE_MANAGER_AND_META(7.0);
         mod->Stage5_LoadSupScopes(sm, &meta);
         sm->Reset();
-        bar.next();
+        bar.Next();
     }
-    bar.finish();
+    bar.Finish();
 
     // Attach all super scopes now.
     // Todo: New progress bar here
@@ -155,9 +155,9 @@ auto spp::compiler::CompilerBoot::Stage6_PreAnalyseSemantics(
         PREP_SCOPE_MANAGER_AND_META(8.0);
         mod->Stage6_PreAnalyseSemantics(sm, &meta);
         sm->Reset();
-        bar.next();
+        bar.Next();
     }
-    bar.finish();
+    bar.Finish();
 }
 
 auto spp::compiler::CompilerBoot::Stage7_AnalyseSemantics(
@@ -171,9 +171,9 @@ auto spp::compiler::CompilerBoot::Stage7_AnalyseSemantics(
         PREP_SCOPE_MANAGER_AND_META(9.0);
         mod->Stage7_AnalyseSemantics(sm, &meta);
         sm->Reset();
-        bar.next();
+        bar.Next();
     }
-    bar.finish();
+    bar.Finish();
 
     // Validate entry point now.
     if (is_exe) { _ValidateEntryPoint(sm); }
@@ -189,9 +189,9 @@ auto spp::compiler::CompilerBoot::Stage8_CheckMemory(
         PREP_SCOPE_MANAGER_AND_META(10.0);
         mod->Stage8_CheckMemory(sm, &meta);
         sm->Reset();
-        bar.next();
+        bar.Next();
     }
-    bar.finish();
+    bar.Finish();
 
     // Attach all LLVM type info to all types now.
     for (auto const &mod : _Modules) {
@@ -211,9 +211,9 @@ auto spp::compiler::CompilerBoot::Stage9_CompTimeResolve(
         PREP_SCOPE_MANAGER_AND_META(11.0);
         mod->Stage9_CompTimeResolve(sm, &meta);
         sm->Reset();
-        bar.next();
+        bar.Next();
     }
-    bar.finish();
+    bar.Finish();
 }
 
 auto spp::compiler::CompilerBoot::Stage10_PreCodeGen(
@@ -226,9 +226,9 @@ auto spp::compiler::CompilerBoot::Stage10_PreCodeGen(
         PREP_SCOPE_MANAGER_AND_META(11.0);
         mod->Stage10_PreCodeGen(sm, &meta, ctx);
         sm->Reset();
-        bar.next();
+        bar.Next();
     }
-    bar.finish();
+    bar.Finish();
 }
 
 auto spp::compiler::CompilerBoot::Stage11_CodeGen(
@@ -242,9 +242,9 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
         meta.LlvmCtx = ctx;
         mod->Stage11_CodeGen(sm, &meta, ctx);
         sm->Reset();
-        bar.next();
+        bar.Next();
     }
-    bar.finish();
+    bar.Finish();
 
     // Write the llvm modules to file.
     const auto out_path = tree.RootPath() / "out" / "llvm";
@@ -293,7 +293,7 @@ auto spp::compiler::CompilerBoot::_ValidateEntryPoint(
     // Check whether the "main" function exists with the correct signature.
     const auto main_call = INJECT_CODE("main(std::vector::Vec[std::string::Str]())", parse_expression);
     auto main_scope = static_cast<analyse::scopes::Scope*>(nullptr);
-    for (auto const& top_level_child: sm->GlobalScope->Children) {
+    for (auto const &top_level_child : sm->GlobalScope->Children) {
         if (const auto n = std::get_if<analyse::scopes::ScopeIdentifierName>(&top_level_child->Name); n and n->Name->Val == "main") {
             main_scope = top_level_child.get();
             break;

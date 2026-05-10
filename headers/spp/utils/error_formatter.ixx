@@ -14,7 +14,6 @@ namespace spp::utils::errors {
     SPP_EXP_CLS class ErrorFormatter;
 }
 
-
 SPP_EXP_CLS class spp::utils::errors::ErrorFormatter {
 public:
     ErrorFormatter(Vec<lex::RawToken> tokens, Str file_path);

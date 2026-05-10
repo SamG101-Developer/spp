@@ -2,7 +2,7 @@ module spp.utils.files;
 import std;
 import sys;
 
-auto spp::utils::files::read_file(
+auto spp::utils::files::ReadFile(
     std::filesystem::path const &path)
     -> Str {
     // Create an input file stream.
@@ -12,7 +12,7 @@ auto spp::utils::files::read_file(
     return buf.str();
 }
 
-auto spp::utils::files::write_file(
+auto spp::utils::files::WriteFile(
     std::filesystem::path const &path,
     Str const &content)
     -> void {

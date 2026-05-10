@@ -4,7 +4,6 @@ module;
 export module spp.utils.traits;
 import std;
 
-
 namespace spp::utils::traits {
     SPP_EXP_CLS template <typename T>
     struct function_traits : function_traits<decltype(&T::operator())> {
@@ -13,7 +12,6 @@ namespace spp::utils::traits {
     SPP_EXP_CLS template <std::size_t N, typename F>
     using nth_param_t = function_traits<F>::template arg_type<N>;
 }
-
 
 SPP_EXP_CLS template <typename Ret, typename... Args>
 struct spp::utils::traits::function_traits<Ret(*)(Args...)> {
@@ -28,7 +26,6 @@ struct spp::utils::traits::function_traits<Ret(*)(Args...)> {
     using arg_t = std::tuple_element_t<N, std::tuple<Args...>>;
 };
 
-
 SPP_EXP_CLS template <typename Class, typename Ret, typename... Args>
 struct spp::utils::traits::function_traits<Ret(Class::*)(Args...) const> {
     using ret_t = Ret;
@@ -41,7 +38,6 @@ struct spp::utils::traits::function_traits<Ret(Class::*)(Args...) const> {
     template <std::size_t N>
     using arg_t = std::tuple_element_t<N, std::tuple<Args...>>;
 };
-
 
 SPP_EXP_CLS template <typename Class, typename Ret, typename... Args>
 struct spp::utils::traits::function_traits<Ret(Class::*)(Args...)> {

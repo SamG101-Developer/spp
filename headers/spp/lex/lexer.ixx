@@ -21,5 +21,5 @@ SPP_EXP_CLS class spp::lex::Lexer {
 
 public:
     explicit Lexer(Str code, bool add_prelude = false);
-    SPP_ATTR_NODISCARD auto lex() const -> Vec<RawToken>;
+    SPP_ATTR_NODISCARD auto Lex() const -> Vec<RawToken>;
 };

@@ -109,7 +109,7 @@ public:
     constexpr Vec() = default;
     explicit constexpr Vec(A const &allocator) noexcept : _Vec(allocator) {}
     explicit constexpr Vec(std::size_t n, A const &allocator = A()) : _Vec(n, allocator) {}
-    constexpr Vec(std::size_t n, T const& v, A const &allocator = A()) : _Vec(n, v, allocator) {}
+    constexpr Vec(std::size_t n, T const &v, A const &allocator = A()) : _Vec(n, v, allocator) {}
     constexpr Vec(std::initializer_list<T> list, A const &allocator = A()) : _Vec(list, allocator) {}
 
     template <typename I> requires std::input_iterator<I>
@@ -588,19 +588,19 @@ struct spp::Pair {
     template <typename K2, typename V2>
     requires std::constructible_from<K, K2 const&> && std::constructible_from<V, V2 const&>
     explicit Pair(Pair<K2, V2> const &other)
-    noexcept(std::is_nothrow_constructible_v<K, K2 const&> && std::is_nothrow_constructible_v<V, V2 const&>) :
-    First(other.First), Second(other.Second) {}
+        noexcept(std::is_nothrow_constructible_v<K, K2 const&> && std::is_nothrow_constructible_v<V, V2 const&>) :
+        First(other.First), Second(other.Second) {}
 
     template <typename K2, typename V2>
     requires std::constructible_from<K, K2&&> && std::constructible_from<V, V2&&>
     explicit Pair(Pair<K2, V2> &&other)
-    noexcept(std::is_nothrow_constructible_v<K, K2&&> && std::is_nothrow_constructible_v<V, V2&&>) :
-    First(std::move(other.First)), Second(std::move(other.Second)) {}
+        noexcept(std::is_nothrow_constructible_v<K, K2&&> && std::is_nothrow_constructible_v<V, V2&&>) :
+        First(std::move(other.First)), Second(std::move(other.Second)) {}
 
     template <typename K2, typename V2>
     requires std::assignable_from<K&, K2 const&> && std::assignable_from<V&, V2 const&>
     auto operator=(Pair<K2, V2> const &other)
-    noexcept(std::is_nothrow_assignable_v<K, K2 const&> && std::is_nothrow_assignable_v<V, V2 const&>) -> Pair& {
+        noexcept(std::is_nothrow_assignable_v<K, K2 const&> && std::is_nothrow_assignable_v<V, V2 const&>) -> Pair& {
         First = other.First;
         Second = other.Second;
         return *this;
@@ -609,7 +609,7 @@ struct spp::Pair {
     template <typename K2, typename V2>
     requires std::assignable_from<K&, K2&&> && std::assignable_from<V&, V2&&>
     auto operator=(Pair<K2, V2> &&other)
-    noexcept(std::is_nothrow_assignable_v<K, K2&&> && std::is_nothrow_assignable_v<V, V2&&>) -> Pair& {
+        noexcept(std::is_nothrow_assignable_v<K, K2&&> && std::is_nothrow_assignable_v<V, V2&&>) -> Pair& {
         First = std::move(other.First);
         Second = std::move(other.Second);
         return *this;
@@ -618,20 +618,19 @@ struct spp::Pair {
     template <typename K2, typename V2>
     requires std::convertible_to<K2, K> && std::convertible_to<V2, V>
     Pair(K2 &&key, V2 &&value)
-    noexcept(std::is_nothrow_constructible_v<K, K2&&> && std::is_nothrow_constructible_v<V, V2&&>) :
-    First(std::forward<K2>(key)), Second(std::forward<V2>(value)) {}
+        noexcept(std::is_nothrow_constructible_v<K, K2&&> && std::is_nothrow_constructible_v<V, V2&&>) :
+        First(std::forward<K2>(key)), Second(std::forward<V2>(value)) {}
 
     template <typename K2, typename V2>
     requires std::constructible_from<K, K2 const&> && std::constructible_from<V, V2 const&>
     operator std::pair<K2, V2>() const
-    noexcept(std::is_nothrow_constructible_v<K2, K const&> && std::is_nothrow_constructible_v<V2, V const&>) {
+        noexcept(std::is_nothrow_constructible_v<K2, K const&> && std::is_nothrow_constructible_v<V2, V const&>) {
         return std::pair<K2, V2>(First, Second);
     }
 
     template <typename K2, typename V2>
     requires std::constructible_from<K, K2&&> && std::constructible_from<V, V2&&>
-    operator std::pair<K2, V2>() &&
-    noexcept(std::is_nothrow_constructible_v<K2, K&&> && std::is_nothrow_constructible_v<V2, V&&>) {
+    operator std::pair<K2, V2>() && noexcept(std::is_nothrow_constructible_v<K2, K&&> && std::is_nothrow_constructible_v<V2, V&&>) {
         return std::pair<K2, V2>(std::move(First), std::move(Second));
     }
 

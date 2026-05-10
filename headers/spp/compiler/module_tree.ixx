@@ -49,7 +49,7 @@ private:
 public:
     explicit ModuleTree(std::filesystem::path path);
 
-    static auto for_unit_tests(std::filesystem::path path, Str &&main_code) -> Unique<ModuleTree>;
+    static auto ForUnitTests(std::filesystem::path path, Str &&main_code) -> Unique<ModuleTree>;
 
     auto begin() -> Vec<Unique<Module>>::iterator;
 

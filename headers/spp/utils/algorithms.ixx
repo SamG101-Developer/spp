@@ -4,12 +4,10 @@ module;
 export module spp.utils.algorithms;
 import std;
 
-
 namespace spp::utils::algorithms {
     SPP_EXP_FUN template <typename InputIt, typename T, typename BinOp>
     auto MoveAccumulate(InputIt first, InputIt last, T &&init, BinOp &&op) -> decltype(init);
 }
-
 
 SPP_EXP_FUN template <typename InputIt, typename T, typename BinOp>
 auto spp::utils::algorithms::MoveAccumulate(InputIt first, InputIt last, T &&init, BinOp &&op) -> decltype(init) {

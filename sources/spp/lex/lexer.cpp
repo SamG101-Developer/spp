@@ -19,7 +19,7 @@ spp::lex::Lexer::Lexer(Str code, const bool add_prelude)
 }
 
 
-auto spp::lex::Lexer::lex() const
+auto spp::lex::Lexer::Lex() const
     -> Vec<RawToken> {
     // Define tracker variables.
     auto tokens = Vec<RawToken>();

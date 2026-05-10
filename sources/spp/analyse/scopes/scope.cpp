@@ -686,10 +686,13 @@ auto spp::analyse::scopes::Scope::ConvertPostfixToNestedScope(
 
 auto spp::analyse::scopes::Scope::PrintScopeTree() const
     -> Str {
+    //
+    using spp::utils::functions::Overload;
+
     // Indent the children, print the scope name.
     auto func = [](this auto &&self, Scope const *scope, Str const &indent) -> Str {
         auto result = indent + std::visit(
-            spp::utils::functions::overload{
+            Overload{
                 [](ScopeIdentifierName const &id) { return id.Name->Val; },
                 [](ScopeTypeIdentifierName const &id) { return id.Name->Name; },
                 [](ScopeBlockName const &block) { return block.Name; }

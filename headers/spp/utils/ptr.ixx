@@ -15,7 +15,7 @@ namespace spp {
     }
 
     SPP_EXP_FUN template <typename Out, typename In>
-    requires (std::derived_from<Out, In> )
+    requires (std::derived_from<Out, In>)
     SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE
     inline auto dynamic_shared_cast(Unique<In> &&ptr) -> Shared<Out> {
         if (ptr == nullptr) { return nullptr; }

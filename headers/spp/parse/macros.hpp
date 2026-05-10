@@ -97,4 +97,4 @@
     std::move(ast)
 
 #define INJECT_CODE(code, method) \
-    spp::parse::ParserSpp(spp::lex::Lexer((code)).lex()).method()
+    spp::parse::ParserSpp(spp::lex::Lexer((code)).Lex()).method()

@@ -109,8 +109,8 @@ auto spp::cli::handle_init()
     std::filesystem::create_directory(cwd / SRC_FOLDER / cwd.filename());
 
     // Fill in "main.spp" and "spp.toml" with template content.
-    utils::files::write_file(cwd / SRC_FOLDER / MAIN_FILE, format_default_file_contents(MAIN_FILE_CONTENTS));
-    utils::files::write_file(cwd / CONFIG_FILE, create_default_config_for(cwd.filename().string()));
+    utils::files::WriteFile(cwd / SRC_FOLDER / MAIN_FILE, format_default_file_contents(MAIN_FILE_CONTENTS));
+    utils::files::WriteFile(cwd / CONFIG_FILE, create_default_config_for(cwd.filename().string()));
 }
 
 
@@ -195,7 +195,7 @@ auto spp::cli::handle_build(
     auto c = compiler::Compiler(
         mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL,
         build_type == "exe" ? compiler::Compiler::BuildType::EXE : compiler::Compiler::BuildType::LIB);
-    c.compile();
+    c.Compile();
 }
 
 
@@ -382,8 +382,8 @@ auto spp::cli::unit_test(
 
     // Compile the code.
     const auto m = mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL;
-    const auto c = compiler::Compiler::for_unit_tests(m, std::move(main_code));
-    c->compile();
+    const auto c = compiler::Compiler::ForUnitTests(m, std::move(main_code));
+    c->Compile();
 }
 
 

@@ -73,12 +73,12 @@ spp::compiler::ModuleTree::ModuleTree(
 
     Lock();
     for (auto &&m : m_modules) {
-        m->code = utils::files::read_file(std::filesystem::current_path() / m->path);
+        m->code = utils::files::ReadFile(std::filesystem::current_path() / m->path);
     }
     Unlock();
 }
 
-auto spp::compiler::ModuleTree::for_unit_tests(
+auto spp::compiler::ModuleTree::ForUnitTests(
     std::filesystem::path path,
     Str &&main_code)
     -> Unique<ModuleTree> {
