@@ -15,16 +15,19 @@ import spp.asts.type_identifier_ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
+import spp.lex.tokens;
 
 SPP_MOD_BEGIN
 spp::asts::GenericParameterTypeOptionalAst::GenericParameterTypeOptionalAst(
     decltype(Name) &&name,
     decltype(Constraints) &&constraints,
     decltype(TokAssign) &&tok_assign,
-    decltype(DefaultVal) &&DefaultVal) :
+    decltype(DefaultVal) &&default_val) :
     GenericParameterTypeAst(std::move(name), std::move(constraints), utils::OrderableTag::kOptionalParam),
     TokAssign(std::move(tok_assign)),
-    DefaultVal(std::move(DefaultVal)) {
+    DefaultVal(std::move(default_val)) {
+    // Default the two optional argument groups.
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
 }
 
 spp::asts::GenericParameterTypeOptionalAst::~GenericParameterTypeOptionalAst() = default;

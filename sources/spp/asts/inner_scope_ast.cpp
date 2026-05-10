@@ -1,6 +1,5 @@
 module;
 #include <spp/macros.hpp>
-#include <spp/analyse/macros.hpp>
 
 module spp.asts.inner_scope_ast;
 import spp.analyse.errors.semantic_error;

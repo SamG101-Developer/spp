@@ -4,7 +4,7 @@
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     CasePatternVariantDestructureTupleAst,
     test_invalid_multiple_multi_skip,
-    SppMultipleSkipMultiArgumentsError, R"(
+    SppMultipleRestPatternsError, R"(
     fun f(p: (std::bignum::bigint::BigInt, std::bignum::bigint::BigInt)) -> std::void::Void {
         case p is [.., ..] { }
     }

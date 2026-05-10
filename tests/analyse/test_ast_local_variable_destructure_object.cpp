@@ -3,7 +3,7 @@
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     LocalVariableDestructureObjectAst,
     test_invalid_multiple_multi_skip,
-    SppMultipleSkipMultiArgumentsError, R"(
+    SppMultipleRestPatternsError, R"(
     cls Point {
         !public x: std::number::S32
         !public y: std::number::S32
@@ -72,7 +72,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     LocalVariableDestructureObjectAst,
     test_invalid_with_bound_multi_skip,
-    SppVariableObjectDestructureWithBoundMultiSkipError, R"(
+    SppVariableObjectDestructureWithBoundRestPatternError, R"(
     cls Point {
         !public x: std::number::S32
         !public y: std::number::S32

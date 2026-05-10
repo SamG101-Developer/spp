@@ -115,7 +115,7 @@ auto spp::asts::IntegerLiteralAst::Stage7_AnalyseSemantics(
     // Check if the value is within the bounds.
     RaiseIf<SppIntegerOutOfBoundsError>(
         mapped_val.compare(lower) < 0 or mapped_val.compare(upper) > 0,
-        {sm->CurrentScope}, ERR_ARGS(*this, mapped_val, lower, upper, "int"));
+        {sm->CurrentScope}, ERR_ARGS(*this, mapped_val, lower, upper, Type));
 }
 
 auto spp::asts::IntegerLiteralAst::Stage9_CompTimeResolve(

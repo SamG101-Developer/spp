@@ -4,7 +4,7 @@
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     CasePatternVariantDestructureObjectAst,
     test_invalid_multiple_multi_skip,
-    SppMultipleSkipMultiArgumentsError, R"(
+    SppMultipleRestPatternsError, R"(
     cls Point {
         x: std::bignum::bigint::BigInt
         y: std::bignum::bigint::BigInt
@@ -19,7 +19,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     CasePatternVariantDestructureObjectAst,
     test_invalid_bound_multi_skip,
-    SppVariableObjectDestructureWithBoundMultiSkipError, R"(
+    SppVariableObjectDestructureWithBoundRestPatternError, R"(
     cls Point {
         x: std::bignum::bigint::BigInt
         y: std::bignum::bigint::BigInt

@@ -16,7 +16,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::LetStatementInitializedAst final : LetStatementAst {
     /**
      * The @c let token that starts this statement. It is used to indicate the beginning of a let statement.
@@ -46,6 +45,10 @@ SPP_EXP_CLS struct spp::asts::LetStatementInitializedAst final : LetStatementAst
      * the variable.
      */
     Unique<ExpressionAst> Val;
+
+    struct {
+        Shared<TypeAst> OriginalType;
+    } Source;
 
     /**
      * Construct the LetStatementInitializedAst with the arguments matching the members.

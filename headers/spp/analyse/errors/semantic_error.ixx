@@ -75,12 +75,12 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppIdentifierUnknownError;
     SPP_EXP_CLS struct SppUnreachableCodeError;
     SPP_EXP_CLS struct SppInvalidTypeAnnotationError;
-    SPP_EXP_CLS struct SppMultipleSkipMultiArgumentsError;
+    SPP_EXP_CLS struct SppMultipleRestPatternsError;
     SPP_EXP_CLS struct SppVariableArrayDestructureArrayTypeMismatchError;
     SPP_EXP_CLS struct SppVariableArrayDestructureArraySizeMismatchError;
     SPP_EXP_CLS struct SppVariableTupleDestructureTupleTypeMismatchError;
     SPP_EXP_CLS struct SppVariableTupleDestructureTupleSizeMismatchError;
-    SPP_EXP_CLS struct SppVariableObjectDestructureWithBoundMultiSkipError;
+    SPP_EXP_CLS struct SppVariableObjectDestructureWithBoundRestPatternError;
     SPP_EXP_CLS struct SppExpressionNotBooleanError;
     SPP_EXP_CLS struct SppExpressionNotGeneratorError;
     SPP_EXP_CLS struct SppExpressionAmbiguousGeneratorError;
@@ -286,8 +286,8 @@ SPP_EXP_CLS struct spp::analyse::errors::SppInvalidTypeAnnotationError final : S
     explicit SppInvalidTypeAnnotationError(asts::TypeAst const &type, asts::LocalVariableAst const &var);
 };
 
-SPP_EXP_CLS struct spp::analyse::errors::SppMultipleSkipMultiArgumentsError final : SemanticError {
-    explicit SppMultipleSkipMultiArgumentsError(asts::LocalVariableAst const &var, asts::LocalVariableDestructureSkipMultipleArgumentsAst const &first_arg, asts::LocalVariableDestructureSkipMultipleArgumentsAst const &second_arg);
+SPP_EXP_CLS struct spp::analyse::errors::SppMultipleRestPatternsError final : SemanticError {
+    explicit SppMultipleRestPatternsError(asts::LocalVariableAst const &var, asts::LocalVariableDestructureSkipMultipleArgumentsAst const &pattern_1, asts::LocalVariableDestructureSkipMultipleArgumentsAst const &pattern_2);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppVariableArrayDestructureArrayTypeMismatchError final : SemanticError {
@@ -306,8 +306,8 @@ SPP_EXP_CLS struct spp::analyse::errors::SppVariableTupleDestructureTupleSizeMis
     explicit SppVariableTupleDestructureTupleSizeMismatchError(asts::LocalVariableDestructureTupleAst const &var, std::size_t var_size, asts::ExpressionAst const &val, std::size_t val_size);
 };
 
-SPP_EXP_CLS struct spp::analyse::errors::SppVariableObjectDestructureWithBoundMultiSkipError final : SemanticError {
-    explicit SppVariableObjectDestructureWithBoundMultiSkipError(asts::LocalVariableDestructureObjectAst const &var, asts::LocalVariableDestructureSkipMultipleArgumentsAst const &multi_skip);
+SPP_EXP_CLS struct spp::analyse::errors::SppVariableObjectDestructureWithBoundRestPatternError final : SemanticError {
+    explicit SppVariableObjectDestructureWithBoundRestPatternError(asts::LocalVariableDestructureObjectAst const &var, asts::LocalVariableDestructureSkipMultipleArgumentsAst const &rest_pattern);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppExpressionNotBooleanError final : SemanticError {

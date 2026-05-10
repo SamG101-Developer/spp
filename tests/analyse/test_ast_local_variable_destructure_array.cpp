@@ -14,7 +14,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     LocalVariableDestructureArrayAst,
     test_invalid_multiple_multi_skip,
-    SppMultipleSkipMultiArgumentsError, R"(
+    SppMultipleRestPatternsError, R"(
     fun f() -> std::void::Void {
         let [a, .., .., b] = [1, 2, 3, 4]
     }

@@ -17,7 +17,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::LocalVariableDestructureObjectAst final : LocalVariableAst {
     /**
      * The type of the object being destructured. This is used to determine the type of the destructured elements (by
@@ -40,6 +39,10 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureObjectAst final : LocalVar
      * The @code )@endcode token that indicates the end of an object destructuring pattern.
      */
     Unique<TokenAst> TokR;
+
+    struct {
+        Shared<TypeAst> OriginalType;
+    } Source;
 
     /**
      * Construct the LocalVariableDestructureObjectAst with the arguments matching the members.

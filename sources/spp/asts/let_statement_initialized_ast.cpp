@@ -6,6 +6,7 @@ module spp.asts.let_statement_initialized_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.identifier_ast;
@@ -29,8 +30,10 @@ spp::asts::LetStatementInitializedAst::LetStatementInitializedAst(
     Type(std::move(type)),
     TokAssign(std::move(tok_assign)),
     Val(std::move(val)) {
+    //
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokLet, lex::SppTokenType::KW_LET, "let");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
+    Source.OriginalType = AstClone(Type);
 }
 
 spp::asts::LetStatementInitializedAst::~LetStatementInitializedAst() = default;
@@ -86,7 +89,10 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
         {sm->CurrentScope}, ERR_ARGS(*Type, *Var));
 
     // Analyse the type if it has been given.
-    if (Type != nullptr) { Type->Stage7_AnalyseSemantics(sm, meta); }
+    if (Type != nullptr) {
+        Type->Stage7_AnalyseSemantics(sm, meta);
+        Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName()->WithConvention(AstClone(Type->GetConvention()));
+    }
 
     // Add the type into the return type overload resolver.
     meta->Save();
@@ -100,7 +106,7 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
         const auto val_type = Val->InferType(sm, meta);
         RaiseIf<analyse::errors::SppTypeMismatchError>(
             not TypeEq(*Type, *val_type, *sm->CurrentScope, *sm->CurrentScope),
-            {sm->CurrentScope}, ERR_ARGS(*Type, *Type, *Val, *val_type));
+            {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *Val, *val_type));
     }
 
     meta->LetStatementExplicitType = Type;

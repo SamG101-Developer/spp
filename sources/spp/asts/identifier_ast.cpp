@@ -107,6 +107,7 @@ auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
     -> void {
     //
     using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
+    using analyse::utils::visibility_utils::CheckModuleMemberVisibility;
 
     // Check there is a symbol with the same name in the current scope.
     const auto shared = AstCloneShared(this);
@@ -118,8 +119,7 @@ auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
     // Enforce module-level visibility on the accessed symbol.
     if (const auto sym = sm->CurrentScope->GetVarSymbol(shared)) {
         if (sym->ScopeDefinedIn != nullptr and sym->ScopeDefinedIn->TySym == nullptr) {
-            analyse::utils::visibility_utils::CheckModuleMemberVisibility(
-                *sym, *this, *sym->ScopeDefinedIn, *sm);
+            CheckModuleMemberVisibility(*sym, *this, *sym->ScopeDefinedIn, *sm);
         }
     }
 }
@@ -128,12 +128,15 @@ auto spp::asts::IdentifierAst::Stage9_CompTimeResolve(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::errors::SppCompileTimeConstantError;
+
     // Extract the value from the symbol table and return it.
     const auto var_sym = sm->CurrentScope->GetVarSymbol(AstClone(this));
     auto tm = analyse::scopes::ScopeManager(
         sm->GlobalScope, var_sym->ScopeDefinedIn ? : sm->CurrentScope);
 
-    RaiseIf<analyse::errors::SppCompileTimeConstantError>(
+    RaiseIf<SppCompileTimeConstantError>(
         var_sym != nullptr and var_sym->CompTimeValue == nullptr,
         {sm->CurrentScope}, ERR_ARGS(*this));
 

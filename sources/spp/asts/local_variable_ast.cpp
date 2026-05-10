@@ -12,16 +12,16 @@ spp::asts::LocalVariableAst::LocalVariableAst() :
 
 spp::asts::LocalVariableAst::~LocalVariableAst() = default;
 
-auto spp::asts::LocalVariableAst::ExtractNames() const
-    -> Vec<Shared<IdentifierAst>> {
-    // Default implementation returns an empty list.
-    return {};
-}
-
 auto spp::asts::LocalVariableAst::ExtractName() const
     -> Shared<IdentifierAst> {
     // Default implementation returns nullptr.
     return nullptr;
+}
+
+auto spp::asts::LocalVariableAst::ExtractNames() const
+    -> Vec<Shared<IdentifierAst>> {
+    // Default implementation returns an empty list.
+    return {};
 }
 
 auto spp::asts::LocalVariableAst::MarkFromCasePattern()

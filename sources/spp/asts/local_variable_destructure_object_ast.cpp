@@ -40,8 +40,10 @@ spp::asts::LocalVariableDestructureObjectAst::LocalVariableDestructureObjectAst(
     TokL(std::move(tok_l)),
     Elems(std::move(elems)),
     TokR(std::move(tok_r)) {
+    //
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokL, lex::SppTokenType::TK_LEFT_PARENTHESIS, "(");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_PARENTHESIS, ")");
+    Source.OriginalType = AstClone(Type);
 }
 
 spp::asts::LocalVariableDestructureObjectAst::~LocalVariableDestructureObjectAst() = default;
@@ -81,8 +83,8 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     -> void {
     //
     using analyse::errors::SppArgumentMissingError;
-    using analyse::errors::SppMultipleSkipMultiArgumentsError;
-    using analyse::errors::SppVariableObjectDestructureWithBoundMultiSkipError;
+    using analyse::errors::SppMultipleRestPatternsError;
+    using analyse::errors::SppVariableObjectDestructureWithBoundRestPatternError;
     using analyse::errors::SppTypeMismatchError;
     using analyse::utils::type_utils::TypeEq;
 
@@ -90,6 +92,7 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     const auto val = meta->LetStatementValue;
     const auto val_type = val->InferType(sm, meta);
     Type->Stage7_AnalyseSemantics(sm, meta);
+    Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName()->WithConvention(AstClone(Type->GetConvention()));
 
     const auto cls_proto = sm->CurrentScope->GetTypeSymbol(Type)->Type;
     const auto cls_attrs = cls_proto != nullptr ? cls_proto->Impl->Members | genex::views::ptr | genex::to<Vec>() : Vec<Ast*>{};
@@ -118,15 +121,15 @@ auto spp::asts::LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     // Check the type matches.
     RaiseIf<SppTypeMismatchError>(
         not TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope, _FromCasePattern),
-        {sm->CurrentScope}, ERR_ARGS(*val, *val_type, *Type, *Type));
+        {sm->CurrentScope}, ERR_ARGS(*val, *val_type, *Source.OriginalType, *Type));
 
     // Only 1 "multi-skip" allowed in a destructure.
-    RaiseIf<SppMultipleSkipMultiArgumentsError>(
+    RaiseIf<SppMultipleRestPatternsError>(
         multi_arg_skips.Len() > 1,
         {sm->CurrentScope}, ERR_ARGS(*this, *multi_arg_skips[0], *multi_arg_skips[1]));
 
     // Multi skips cannot be bound.
-    RaiseIf<SppVariableObjectDestructureWithBoundMultiSkipError>(
+    RaiseIf<SppVariableObjectDestructureWithBoundRestPatternError>(
         not multi_arg_skips.IsEmpty() and multi_arg_skips[0]->Binding != nullptr,
         {sm->CurrentScope}, ERR_ARGS(*this, *multi_arg_skips[0]));
 

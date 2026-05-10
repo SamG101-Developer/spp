@@ -368,10 +368,10 @@ spp::analyse::errors::SppFloatOutOfBoundsError::SppFloatOutOfBoundsError(
     boost::BigDec const &upper,
     const StrView what) {
     AddHeaders(37, "Float Out Of Bounds Error");
-    AddErr(&literal, "Float introduced here with value: " + INLINE_INFO(value.str()));
+    AddErr(&literal, "Float introduced here with value " + INLINE_INFO(value.str()));
     AddFooter(
-        "The value of this float literal is out of bounds for " + INLINE_NOTE(Str(what)) + " type.",
-        "Ensure the value is within the range: " + INLINE_HELP("[") + INLINE_HELP(lower.str()) + INLINE_HELP(", ") + INLINE_HELP(upper.str()) + INLINE_HELP("]"));
+        "The value of this float is out of bounds for the " + INLINE_NOTE(Str(what)) + " type.",
+        "Ensure the value is within the range: " + INLINE_HELP("[") + INLINE_HELP(lower.str()) + INLINE_HELP(", ") + INLINE_HELP(upper.str()) + INLINE_HELP("]") + ".");
 }
 
 spp::analyse::errors::SppIntegerOutOfBoundsError::SppIntegerOutOfBoundsError(
@@ -380,14 +380,11 @@ spp::analyse::errors::SppIntegerOutOfBoundsError::SppIntegerOutOfBoundsError(
     boost::BigInt const &lower,
     boost::BigInt const &upper,
     const StrView what) {
-    AddHeaders(
-        38, "SPP Integer Out Of Bounds Error");
-    AddErr(
-        &literal,
-        "Integer literal defined here with value: " + value.str());
+    AddHeaders(38, "Integer Out Of Bounds Error");
+    AddErr(&literal, "Integer introduced here with value " + INLINE_INFO(value.str()));
     AddFooter(
-        "The value of this integer literal is out of bounds for " + Str(what) + " type.",
-        "Ensure the value is within the range: [" + lower.str() + ", " + upper.str() + "]");
+        "The value of this integer is out of bounds for the " + INLINE_NOTE(Str(what)) + " type.",
+        "Ensure the value is within the range: " + INLINE_HELP("[") + INLINE_HELP(lower.str()) + INLINE_HELP(", ") + INLINE_HELP(upper.str()) + INLINE_HELP("]") + ".");
 }
 
 spp::analyse::errors::SppOrderInvalidError::SppOrderInvalidError(
@@ -551,41 +548,29 @@ spp::analyse::errors::SppInvalidTypeAnnotationError::SppInvalidTypeAnnotationErr
         "Correct or remove the type annotation");
 }
 
-spp::analyse::errors::SppMultipleSkipMultiArgumentsError::SppMultipleSkipMultiArgumentsError(
+spp::analyse::errors::SppMultipleRestPatternsError::SppMultipleRestPatternsError(
     asts::LocalVariableAst const &var,
-    asts::LocalVariableDestructureSkipMultipleArgumentsAst const &first_arg,
-    asts::LocalVariableDestructureSkipMultipleArgumentsAst const &second_arg) {
-    AddHeaders(
-        22, "SPP Multiple Skip Multi-Arguments Error");
-    AddCtxForErr(
-        &var,
-        "Variable defined here");
-    AddCtxForErr(
-        &first_arg,
-        "First skip multi-argument defined here");
-    AddErr(
-        &second_arg,
-        "Second skip multi-argument defined here");
+    asts::LocalVariableDestructureSkipMultipleArgumentsAst const &pattern_1,
+    asts::LocalVariableDestructureSkipMultipleArgumentsAst const &pattern_2) {
+    AddHeaders(22, "Multiple Rest Patterns Error");
+    AddCtxForErr(&var, "Variable destructure introduced here");
+    AddCtxForErr(&pattern_1, "First rest pattern introduced here");
+    AddErr(&pattern_2, "Second rest pattern introduced here");
     AddFooter(
-        "A destructure cannot contain multiple skip multi-arguments.",
-        "Remove one of the skip multi-arguments");
+        "A destructure cannot contain multiple rest patterns.",
+        "Remove one of the skip multi-arguments.");
 }
 
 spp::analyse::errors::SppVariableArrayDestructureArrayTypeMismatchError::SppVariableArrayDestructureArrayTypeMismatchError(
     asts::LocalVariableDestructureArrayAst const &var,
     asts::ExpressionAst const &val,
     asts::TypeAst const &val_type) {
-    AddHeaders(
-        23, "SPP Variable Array Destructure Array Type Mismatch Error");
-    AddCtxForErr(
-        &var,
-        "Array destructure variable defined here");
-    AddErr(
-        &val,
-        "Value being destructured defined here with type: " + val_type.ToString());
+    AddHeaders(23, "Variable Array Destructure Array Type Mismatch Error");
+    AddCtxForErr(&var, "Array destructure introduced here");
+    AddErr(&val, "Type inferred as " + INLINE_INFO(val_type.ToString()));
     AddFooter(
-        "The type of the value being destructured does not match the expected array type.",
-        "Ensure the value is of an array type compatible with the destructure");
+        "The type of the value being destructured is not an array.",
+        "Change the target to an array, or change the destructure.");
 }
 
 spp::analyse::errors::SppVariableArrayDestructureArraySizeMismatchError::SppVariableArrayDestructureArraySizeMismatchError(
@@ -593,34 +578,25 @@ spp::analyse::errors::SppVariableArrayDestructureArraySizeMismatchError::SppVari
     const std::size_t var_size,
     asts::ExpressionAst const &val,
     const std::size_t val_size) {
-    AddHeaders(
-        24, "SPP Variable Array Destructure Array Size Mismatch Error");
-    AddCtxForErr(
-        &var,
-        "Array destructure variable defined here with size: " + std::to_string(var_size));
-    AddErr(
-        &val,
-        "Value being destructured defined here with size: " + std::to_string(val_size));
+    AddHeaders(24, "Variable Array Destructure Array Size Mismatch Error");
+    AddCtxForErr(&var, "Array destructure introduced with " + INLINE_INFO(std::to_string(var_size)) + " elements");
+    AddErr(&val, "Array has " + INLINE_INFO(std::to_string(val_size)) + " elements");
+    auto extra = var_size < val_size ? ", or add the " + INLINE_HELP("..") + " rest pattern" : "";
     AddFooter(
-        "The size of the value being destructured does not match the expected array size.",
-        "Ensure the value has the same size as the destructure variable");
+        "The size of the array does not equal the size of the destructure pattern.",
+        "Change the size of the destructure pattern" + extra + ".");
 }
 
 spp::analyse::errors::SppVariableTupleDestructureTupleTypeMismatchError::SppVariableTupleDestructureTupleTypeMismatchError(
     asts::LocalVariableDestructureTupleAst const &var,
     asts::ExpressionAst const &val,
     asts::TypeAst const &val_type) {
-    AddHeaders(
-        25, "SPP Variable Tuple Destructure Tuple Type Mismatch Error");
-    AddCtxForErr(
-        &var,
-        "Tuple destructure variable defined here");
-    AddErr(
-        &val,
-        "Value being destructured defined here with type: " + val_type.ToString());
+    AddHeaders(25, "Variable Tuple Destructure Tuple Type Mismatch Error");
+    AddCtxForErr(&var, "Tuple destructure introduced here");
+    AddErr(&val, "Type inferred as " + INLINE_INFO(val_type.ToString()));
     AddFooter(
-        "The type of the value being destructured does not match the expected tuple type.",
-        "Ensure the value is of a tuple type compatible with the destructure");
+        "The type of the value being destructured is not a tuple.",
+        "Change the target to an tuple, or change the destructure.");
 }
 
 spp::analyse::errors::SppVariableTupleDestructureTupleSizeMismatchError::SppVariableTupleDestructureTupleSizeMismatchError(
@@ -628,47 +604,35 @@ spp::analyse::errors::SppVariableTupleDestructureTupleSizeMismatchError::SppVari
     const std::size_t var_size,
     asts::ExpressionAst const &val,
     const std::size_t val_size) {
-    AddHeaders(
-        26, "SPP Variable Tuple Destructure Tuple Size Mismatch Error");
-    AddCtxForErr(
-        &var,
-        "Tuple destructure variable defined here with size: " + std::to_string(var_size));
-    AddErr(
-        &val,
-        "Value being destructured defined here with size: " + std::to_string(val_size));
+    AddHeaders(26, "Variable Tuple Destructure Tuple Size Mismatch Error");
+    AddCtxForErr(&var, "Tuple destructure introduced with " + INLINE_INFO(std::to_string(var_size)) + " elements");
+    AddErr(&val, "Tuple has " + INLINE_INFO(std::to_string(val_size)) + " elements");
+    auto extra = var_size < val_size ? ", or add the " + INLINE_HELP("..") + " rest pattern" : "";
     AddFooter(
-        "The size of the value being destructured does not match the expected tuple size.",
-        "Ensure the value has the same size as the destructure variable");
+        "The size of the tuple does not equal the size of the destructure pattern.",
+        "Change the size of the destructure pattern" + extra + ".");
 }
 
-spp::analyse::errors::SppVariableObjectDestructureWithBoundMultiSkipError::SppVariableObjectDestructureWithBoundMultiSkipError(
+spp::analyse::errors::SppVariableObjectDestructureWithBoundRestPatternError::SppVariableObjectDestructureWithBoundRestPatternError(
     asts::LocalVariableDestructureObjectAst const &var,
-    asts::LocalVariableDestructureSkipMultipleArgumentsAst const &multi_skip) {
-    AddHeaders(
-        27, "SPP Variable Object Destructure With Bound Multi-Skip Error");
-    AddCtxForErr(
-        &var,
-        "Object destructure variable defined here");
-    AddErr(
-        &multi_skip,
-        "Bound skip multi-argument defined here");
+    asts::LocalVariableDestructureSkipMultipleArgumentsAst const &rest_pattern) {
+    AddHeaders(27, "Variable Object Destructure With Bound Rest Pattern Error");
+    AddCtxForErr(&var, "Object destructure introduced here");
+    AddErr(&rest_pattern, "Bound rest pattern introduced here");
     AddFooter(
-        "An object destructure cannot contain a bound skip multi-argument.",
-        "Remove the bound skip multi-argument from the destructure");
+        "An object destructure cannot contain a bound rest pattern.",
+        "Remove the bound rest pattern from the destructure.");
 }
 
 spp::analyse::errors::SppExpressionNotBooleanError::SppExpressionNotBooleanError(
     asts::Ast const &expr,
     asts::TypeAst const &expr_type,
     const StrView what) {
-    AddHeaders(
-        28, "SPP Expression Not Boolean Error");
-    AddErr(
-        &expr,
-        "Expression defined here with type: " + expr_type.ToString());
+    AddHeaders(28, "Expression Not Boolean Error");
+    AddErr(&expr, "Type inferred as " + INLINE_INFO(expr_type.ToString()));
     AddFooter(
-        "This expression must be of boolean type to be used in a " + Str(what) + " context.",
-        "Ensure the expression evaluates to a boolean value");
+        "This expression be boolean to be used in a " + INLINE_NOTE(Str(what)) + " context.",
+        "Change this expression to a boolean type expression.");
 }
 
 spp::analyse::errors::SppExpressionNotGeneratorError::SppExpressionNotGeneratorError(
@@ -812,17 +776,12 @@ spp::analyse::errors::SppArgumentMissingError::SppArgumentMissingError(
     const StrView target_what,
     asts::Ast const &source,
     const StrView source_what) {
-    AddHeaders(
-        51, "SPP Argument Missing Error");
-    AddCtxForErr(
-        &target,
-        Str(target_what) + " defined here");
-    AddErr(
-        &source,
-        Str(source_what) + " defined here");
+    AddHeaders(51, "SPP Argument Missing Error");
+    AddCtxForErr(&target, "Missing " + INLINE_INFO(Str(target_what)) + " defined here");
+    AddErr(&source, "Existing " + INLINE_INFO(Str(source_what)) + " defined here");
     AddFooter(
         "A required argument is missing in the current context.",
-        "Provide the missing argument");
+        "Provide the missing argument.");
 }
 
 spp::analyse::errors::SppEarlyReturnRequiresTryTypeError::SppEarlyReturnRequiresTryTypeError(

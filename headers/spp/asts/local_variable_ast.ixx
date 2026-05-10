@@ -16,9 +16,9 @@ SPP_EXP_CLS struct spp::asts::LocalVariableAst : Ast {
 
     ~LocalVariableAst() override;
 
-    SPP_ATTR_NODISCARD virtual auto ExtractNames() const -> Vec<Shared<IdentifierAst>>;
-
     SPP_ATTR_NODISCARD virtual auto ExtractName() const -> Shared<IdentifierAst>;
+
+    SPP_ATTR_NODISCARD virtual auto ExtractNames() const -> Vec<Shared<IdentifierAst>>;
 
     auto MarkFromCasePattern() -> void;
 

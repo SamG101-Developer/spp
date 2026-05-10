@@ -103,7 +103,7 @@ auto spp::codegen::func_impls::simple_intrinsic_unop_assign(
 
     // Build the function body.
     ctx->Builder.SetInsertPoint(entry_bb);
-    const auto lhs = fn->arg_begin();;
+    const auto lhs = fn->arg_begin();
     SPP_ASSERT(ty != nullptr and lhs != nullptr);
     const auto loaded_val = ctx->Builder.CreateLoad(ty, lhs, "intrinsic.assign.loaded" + uid);
     const auto result = method(loaded_val);

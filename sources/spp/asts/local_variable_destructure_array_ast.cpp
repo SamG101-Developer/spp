@@ -77,9 +77,10 @@ auto spp::asts::LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     //
-    using analyse::errors::SppMultipleSkipMultiArgumentsError;
+    using analyse::errors::SppMultipleRestPatternsError;
     using analyse::errors::SppVariableArrayDestructureArraySizeMismatchError;
     using analyse::errors::SppVariableArrayDestructureArrayTypeMismatchError;
+    using analyse::utils::type_utils::IsTypeArr;
 
     // Only 1 "multi-skip" allowed in a destructure.
     const auto multi_arg_skips = Elems
@@ -87,7 +88,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
         | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>()
         | genex::to<Vec>();
 
-    RaiseIf<SppMultipleSkipMultiArgumentsError>(
+    RaiseIf<SppMultipleRestPatternsError>(
         multi_arg_skips.Len() > 1, {sm->CurrentScope},
         ERR_ARGS(*this, *multi_arg_skips[0], *multi_arg_skips[1]));
 
@@ -95,7 +96,7 @@ auto spp::asts::LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
     const auto val = meta->LetStatementValue;
     const auto val_type = val->InferType(sm, meta);
     RaiseIf<SppVariableArrayDestructureArrayTypeMismatchError>(
-        not analyse::utils::type_utils::IsTypeArr(*val_type, *sm->CurrentScope),
+        not IsTypeArr(*val_type, *sm->CurrentScope),
         {sm->CurrentScope}, ERR_ARGS(*this, *val, *val_type));
 
     // Determine number of elements in the left-hand-side and right-hand-side arrays.
