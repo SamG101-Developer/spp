@@ -76,7 +76,7 @@ auto spp::asts::FunctionParameterOptionalAst::Stage7_AnalyseSemantics(
 
         RaiseIf<SppTypeMismatchError>(
             not TypeEq(*Type, *default_type, *sm->CurrentScope, *sm->CurrentScope),
-            {sm->CurrentScope}, ERR_ARGS(*ExtractName(), *Type, *DefaultVal, *default_type));
+            {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *DefaultVal, *default_type));
     }
 }
 

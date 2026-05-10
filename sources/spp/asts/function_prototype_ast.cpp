@@ -247,14 +247,18 @@ auto spp::asts::FunctionPrototypeAst::Stage2_GenTopLvlScopes(
     analyse::scopes::ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::scopes::ScopeBlockName;
+    using analyse::errors::SppSelfParamInFreeFunctionError;
+
     // Create a new scope for the function prototype, and move into it.
-    auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
+    auto scope_name = ScopeBlockName::FromParts(
         "function", {Name.get()}, PosStart());
     sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
     Ast::Stage2_GenTopLvlScopes(sm, meta);
 
     // If there is a self parameter in a free function, throw as error.
-    RaiseIf<analyse::errors::SppSelfParamInFreeFunctionError>(
+    RaiseIf<SppSelfParamInFreeFunctionError>(
         _Ctx->To<ModulePrototypeAst>() and FnParamGroup->GetSelfParam() != nullptr,
         {sm->CurrentScope}, ERR_ARGS(*this, *FnParamGroup->GetSelfParam()));
 
@@ -336,6 +340,10 @@ auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
     analyse::scopes::ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::utils::func_utils::CheckForConflictingOverload;
+    using analyse::errors::SppFunctionPrototypeConflictError;
+
     // Perform conflict checking before standard semantic analysis errors due to multiple possible prototypes.
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -346,9 +354,10 @@ auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
         : _Ctx->GetAstScope()->GetTypeSymbol(AstName(_Ctx))->LinkedScope;
 
     // Error if there are conflicts.
-    const auto conflict = analyse::utils::func_utils::check_for_conflicting_overload(*sm->CurrentScope, type_scope, *this, *sm, meta);
-    RaiseIf<analyse::errors::SppFunctionPrototypeConflictError>(
-        conflict, {sm->CurrentScope}, ERR_ARGS(*this, *conflict));
+    // Todo: Maybe need 2 scopes if the conflict is across modules (if possible, esp in sup-blocks)?
+    const auto conflict = CheckForConflictingOverload(*sm->CurrentScope, type_scope, *this, *sm, meta);
+    RaiseIf<SppFunctionPrototypeConflictError>(
+        conflict, {sm->CurrentScope}, ERR_ARGS(*conflict, *this));
 
     // Move out of the function scope, as it is now complete.
     sm->MoveOutOfCurrentScope();
@@ -630,10 +639,6 @@ auto spp::asts::FunctionPrototypeAst::_DeduceMockClassType() const
     }
 
     std::unreachable();
-
-    // Raise<analyse::errors::SppInternalCompilerError>(
-    //     {sm->CurrentScope},
-    //     ERR_ARGS(*this, "Self convention escaped possible enum values"));
 }
 
 auto spp::asts::FunctionPrototypeAst::_IsPureGeneric(

@@ -119,7 +119,7 @@ namespace spp::analyse::utils::func_utils {
         asts::meta::CompilerMetaData *meta)
         -> Vec<std::tuple<scopes::Scope const*, asts::FunctionPrototypeAst*, Unique<asts::GenericArgumentGroupAst>, Shared<asts::TypeAst>>>;
 
-    SPP_EXP_FUN auto check_for_conflicting_overload(
+    SPP_EXP_FUN auto CheckForConflictingOverload(
         scopes::Scope const &this_scope,
         scopes::Scope const *target_scope,
         asts::FunctionPrototypeAst const &new_fn,

@@ -128,11 +128,11 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
     }
 
     // Determine the "Yield" type of the enclosing function (to type check the expression against).
-    auto [_, yield_type, _] = GetGenAndYieldTypes(
-        *_GenType, *sm->CurrentScope, *_GenType, "coroutine");
+    auto [_, yield_type, _] = GetGenAndYieldTypes(*_GenType, *sm->CurrentScope, *_GenType, "coroutine");
     const auto direct_match = TypeEq(
         *yield_type, *expr_type, *meta->EnclosingFunctionScope, *sm->CurrentScope);
 
+    // Todo: Known issue with the "yield_type" ast position being wrong.
     RaiseIf<SppYieldedTypeMismatchError>(
         not direct_match, {sm->CurrentScope},
         ERR_ARGS(*yield_type, *yield_type, Expr ? *Expr->To<Ast>() : *TokGen->To<Ast>(), *expr_type));
@@ -142,8 +142,11 @@ auto spp::asts::GenExpressionAst::Stage8_CheckMemory(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
-    // If there is no expression, then now ork needs to be done.
+    //
     using analyse::utils::mem_utils::ValidateSymbolMemory;
+    using analyse::errors::SppInvalidMutationError;
+
+    // If there is no expression, then now ork needs to be done.
     if (Expr == nullptr) return;
 
     // Ensure the argument isn't moved or partially moved (for all conventions)
@@ -158,13 +161,20 @@ auto spp::asts::GenExpressionAst::Stage8_CheckMemory(
     if (Conv == nullptr) {
         // Ensure that attributes aren't being moved off of a borrowed value and that pins are maintained. Mark the move
         // or partial move of the argument.
-        ValidateSymbolMemory(
-            *Expr, *TokGen, *sm, false, false, true, true, true, meta);
+        ValidateSymbolMemory(*Expr, *TokGen, *sm, false, false, true, true, true, meta);
     }
 
-    RaiseIf<analyse::errors::SppInvalidMutationError>(
-        Conv and *Conv == ConventionTag::MUT and not sym->IsMutable, {sm->CurrentScope},
-        ERR_ARGS(*Expr, *Conv, *std::get<0>(sym->MemInfo->AstInitialization)));
+    else if (*Conv == ConventionTag::MUT) {
+        // Immutable symbols cannot be mutated.
+        RaiseIf<SppInvalidMutationError>(
+            not sym->IsMutable, {sm->CurrentScope},
+            ERR_ARGS(*sym->Name, *Conv, *std::get<0>(sym->MemInfo->AstInitialization)));
+
+        // Immutable borrows, even if their symbol is mutable, cannot be mutated.
+        RaiseIf<SppInvalidMutationError>(
+            std::get<0>(sym->MemInfo->AstBorrowed) and *sym->Type->GetConvention() == ConventionTag::REF,
+            {sm->CurrentScope}, ERR_ARGS(*sym->Name, *Conv, *std::get<0>(sym->MemInfo->AstBorrowed)));
+    }
 }
 
 auto spp::asts::GenExpressionAst::Stage11_CodeGen(

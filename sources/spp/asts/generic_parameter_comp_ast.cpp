@@ -20,6 +20,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
+import spp.lex.tokens;
 
 SPP_MOD_BEGIN
 spp::asts::GenericParameterCompAst::GenericParameterCompAst(
@@ -32,6 +33,10 @@ spp::asts::GenericParameterCompAst::GenericParameterCompAst(
     TokCmp(std::move(tok_cmp)),
     TokColon(std::move(tok_colon)),
     Type(std::move(type)) {
+    // Default the "cmp" and ":" tokens if they are null.
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokCmp, lex::SppTokenType::KW_CMP, "cmp");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokColon, lex::SppTokenType::TK_COLON, ":");
+    Source.OriginalType = AstClone(Type);
 }
 
 spp::asts::GenericParameterCompAst::~GenericParameterCompAst() = default;
@@ -64,6 +69,7 @@ auto spp::asts::GenericParameterCompAst::Stage4_QualifyTypes(
     meta->IgnoreCmpGeneric = Name;
 
     // Ensure that the convention type doesn't have a convention.
+    // Todo: an we safely allow this? I don't really see why not?
     RaiseIf<SppSecondClassBorrowViolationError>(
         IsTypeBorrowed(*Type, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Type, *Type, "function return type"));

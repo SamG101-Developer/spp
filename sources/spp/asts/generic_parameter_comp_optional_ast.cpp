@@ -76,7 +76,7 @@ auto spp::asts::GenericParameterCompOptionalAst::Stage7_AnalyseSemantics(
     const auto default_type = DefaultVal->InferType(sm, meta);
     RaiseIf<SppTypeMismatchError>(
         not TypeEq(*Type, *default_type, *sm->CurrentScope, *sm->CurrentScope),
-        {sm->CurrentScope}, ERR_ARGS(*Name, *Type, *DefaultVal, *default_type));
+        {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *DefaultVal, *default_type));
 }
 
 auto spp::asts::GenericParameterCompOptionalAst::Stage8_CheckMemory(

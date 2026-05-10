@@ -253,6 +253,10 @@ auto spp::asts::GenericParameterGroupAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     //
+    using analyse::errors::SppIdentifierDuplicateError;
+    using analyse::errors::SppOrderInvalidError;
+
+    //
     const auto param_names = Params
         | genex::views::transform([](auto const &x) { return x->Name.get(); })
         | genex::to<Vec>()
@@ -275,12 +279,12 @@ auto spp::asts::GenericParameterGroupAst::Stage7_AnalyseSemantics(
     }
 
     // Check there are no duplicate parameter names.
-    RaiseIf<analyse::errors::SppIdentifierDuplicateError>(
+    RaiseIf<SppIdentifierDuplicateError>(
         not param_names.IsEmpty(), {sm->CurrentScope},
         ERR_ARGS(*param_names[0], *param_names[1], "keyword function-argument"));
 
     // Check the parameters are in the correct order.
-    RaiseIf<analyse::errors::SppOrderInvalidError>(
+    RaiseIf<SppOrderInvalidError>(
         not unordered_params.IsEmpty(), {sm->CurrentScope},
         ERR_ARGS(unordered_params[0].First, *unordered_params[0].Second, unordered_params[1].First, *unordered_params[1].Second));
 

@@ -110,7 +110,7 @@ auto spp::asts::FunctionParameterGroupAst::Stage7_AnalyseSemantics(
     // Check the parameters are in the correct order.
     RaiseIf<SppOrderInvalidError>(
         not unordered_params.IsEmpty(), {sm->CurrentScope},
-        ERR_ARGS(unordered_params[0].First, *unordered_params[0].Second, unordered_params[1].First, *unordered_params[1].Second));
+        ERR_ARGS(unordered_params[1].First, *unordered_params[1].Second, unordered_params[0].First, *unordered_params[0].Second));
 
     // Analyse the parameters.
     for (auto const &param : Params) { param->Stage7_AnalyseSemantics(sm, meta); }

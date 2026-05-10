@@ -15,7 +15,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
     SPP_GCC_VTABLE_FIX
 
@@ -36,6 +35,10 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
      * @c F64 . This is a required field, as the type of the parameter must be known at compile time.
      */
     Shared<TypeAst> Type;
+
+    struct {
+        Shared<TypeAst> OriginalType;
+    } Source;
 
     /**
      * Construct the GenericParameterCompAst with the arguments matching the members.
@@ -62,6 +65,5 @@ SPP_EXP_CLS struct spp::asts::GenericParameterCompAst : GenericParameterAst {
 
     auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };
-
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterCompAst)

@@ -115,8 +115,8 @@ spp::analyse::errors::SppTypeMismatchError::SppTypeMismatchError(
     asts::Ast const &rhs,
     asts::TypeAst const &rhs_ty) {
     AddHeaders(2, "Type Mismatch Error");
-    AddCtxForErr(&lhs, "Type inferred as: " + INLINE_INFO(lhs_ty.ToString()));
-    AddErr(&rhs, "Type inferred as: " + INLINE_INFO(rhs_ty.ToString()));
+    AddCtxForErr(&lhs, "Type inferred as " + INLINE_INFO(lhs_ty.ToString()));
+    AddErr(&rhs, "Type inferred as " + INLINE_INFO(rhs_ty.ToString()));
     AddFooter(
         "The two types are not symbolically equal.",
         "Change one of the expression to match the other's type. If using variant types, consider swapping the\n"
@@ -132,7 +132,7 @@ spp::analyse::errors::SppSecondClassBorrowViolationError::SppSecondClassBorrowVi
     AddCtxForErr(&type, "Second-class borrow type declared here");
     AddErr(&expr, "Expression used here");
     AddFooter(
-        "Second-class borrow types cannot be used in the " + Str(ctx) + " context.",
+        "Second-class borrow types cannot be used in the " + INLINE_NOTE(Str(ctx)) + " context.",
         "Use a first-class type ensuring ownership in this context.");
 }
 
@@ -429,33 +429,23 @@ spp::analyse::errors::SppMemoryOverlapUsageError::SppMemoryOverlapUsageError(
 spp::analyse::errors::SppMultipleSelfParametersError::SppMultipleSelfParametersError(
     asts::FunctionParameterSelfAst const &first_self,
     asts::FunctionParameterSelfAst const &second_self) {
-    AddHeaders(
-        42, "SPP Multiple Self Parameters Error");
-    AddCtxForErr(
-        &first_self,
-        "First 'self' parameter defined here");
-    AddErr(
-        &second_self,
-        "Second 'self' parameter defined here");
+    AddHeaders(42, "Multiple Self Parameters Error");
+    AddCtxForErr(&first_self, "First " + INLINE_INFO("self") + " parameter defined here");
+    AddErr(&second_self, "Second " + INLINE_INFO("self") + " parameter defined here");
     AddFooter(
-        "A function cannot have multiple 'self' parameters.",
-        "Remove one of the 'self' parameters");
+        "A function cannot have multiple " + INLINE_NOTE("self") + " parameters.",
+        "Remove the second " + INLINE_HELP("self") + " parameters.");
 }
 
 spp::analyse::errors::SppMultipleVariadicParametersError::SppMultipleVariadicParametersError(
     asts::FunctionParameterVariadicAst const &first_variadic,
     asts::FunctionParameterVariadicAst const &second_variadic) {
-    AddHeaders(
-        43, "SPP Multiple Variadic Parameters Error");
-    AddCtxForErr(
-        &first_variadic,
-        "First variadic parameter defined here");
-    AddErr(
-        &second_variadic,
-        "Second variadic parameter defined here");
+    AddHeaders(43, "Multiple Variadic Parameters Error");
+    AddCtxForErr(&first_variadic, "First " + INLINE_INFO("variadic") + " parameter defined here");
+    AddErr(&second_variadic, "Second " + INLINE_INFO("variadic") + " parameter defined here");
     AddFooter(
-        "A function cannot have multiple variadic parameters.",
-        "Remove one of the variadic parameters");
+        "A function cannot have multiple " + INLINE_NOTE("variadic") + " parameters.",
+        "Remove one of the " + INLINE_HELP("variadic") + " parameters.");
 }
 
 spp::analyse::errors::SppSelfParamInFreeFunctionError::SppSelfParamInFreeFunctionError(
@@ -493,17 +483,13 @@ spp::analyse::errors::SppFunctionPrototypeConflictError::SppFunctionPrototypeCon
 spp::analyse::errors::SppFunctionSubroutineContainsGenExpressionError::SppFunctionSubroutineContainsGenExpressionError(
     asts::TokenAst const &fun_tag,
     asts::TokenAst const &gen_expr) {
-    AddHeaders(
-        45, "SPP Function Subroutine Contains Generator Expression Error");
-    AddCtxForErr(
-        &fun_tag,
-        "Function or subroutine defined here");
-    AddErr(
-        &gen_expr,
-        "Generator expression defined here");
+    AddHeaders(45, "Function Subroutine Contains Generator Expression Error");
+    AddCtxForErr(&fun_tag, "Subroutine defined here");
+    AddErr(&gen_expr, "Coroutine value generation introduced here");
     AddFooter(
-        "A function or subroutine cannot contain a generator expression.",
-        "Remove the generator expression or change the function to a coroutine");
+        "A subroutine cannot contain a " + INLINE_NOTE("gen") + " expression.",
+        "Remove the " + INLINE_HELP("gen") + " expression or change the subroutine to a coroutine, by replacing\n"
+        "" + INLINE_HELP("fun") + " with " + INLINE_HELP("cor"));
 }
 
 spp::analyse::errors::SppYieldedTypeMismatchError::SppYieldedTypeMismatchError(
@@ -511,14 +497,9 @@ spp::analyse::errors::SppYieldedTypeMismatchError::SppYieldedTypeMismatchError(
     asts::TypeAst const &lhs_ty,
     asts::Ast const &rhs,
     asts::TypeAst const &rhs_ty) {
-    AddHeaders(
-        46, "SPP Yielded Type Mismatch Error");
-    AddCtxForErr(
-        &lhs,
-        "Yielded type: " + lhs_ty.ToString());
-    AddErr(
-        &rhs,
-        "Expected type: " + rhs_ty.ToString());
+    AddHeaders(46, "Yielded Type Mismatch Error");
+    AddCtxForErr(&lhs, "Yielded type inferred as " + INLINE_INFO(lhs_ty.ToString()));
+    AddErr(&rhs, "Expected type inferred as " + INLINE_INFO(rhs_ty.ToString()));
     AddFooter(
         "The type of the yielded value does not match the expected type.",
         "Ensure the yielded value matches the expected type");
@@ -1468,17 +1449,13 @@ spp::analyse::errors::SppAccessViolationError::SppAccessViolationError(
 spp::analyse::errors::SppFunctionOverloadVisibilityMismatchError::SppFunctionOverloadVisibilityMismatchError(
     asts::AnnotationAst const &first_annotation,
     asts::FunctionPrototypeAst const &conflicting_overload) {
-    AddHeaders(
-        91, "SPP Function Overload Visibility Mismatch Error");
-    AddCtxForErr(
-        &first_annotation,
-        "First visibility annotation defined here");
-    AddErr(
-        &conflicting_overload,
-        "Conflicting overload with different visibility defined here");
+    AddHeaders(91, "Function Overload Visibility Mismatch Error");
+    AddCtxForErr(&first_annotation, "First visibility annotation defined here as " + INLINE_INFO(first_annotation.Name->ToString()));
+    AddCtxForErr(conflicting_overload.Visibility.Second, "Second visibility annotation defined here as " + INLINE_INFO(conflicting_overload.Visibility.Second->Name->ToString()));
+    AddErr(&conflicting_overload, "Conflicting overload with second visibility defined here");
     AddFooter(
         "All overloads of a function must have the same visibility annotation.",
-        "Ensure every overload of this function uses the same visibility modifier");
+        "Ensure every overload of this function uses the same visibility modifier.");
 }
 
 SPP_MOD_END

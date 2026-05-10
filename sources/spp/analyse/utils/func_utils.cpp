@@ -280,7 +280,7 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
     return overload_scopes;
 }
 
-auto spp::analyse::utils::func_utils::check_for_conflicting_overload(
+auto spp::analyse::utils::func_utils::CheckForConflictingOverload(
     scopes::Scope const &this_scope,
     scopes::Scope const *target_scope,
     asts::FunctionPrototypeAst const &new_fn,

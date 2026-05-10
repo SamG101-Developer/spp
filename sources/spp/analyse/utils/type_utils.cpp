@@ -492,7 +492,7 @@ auto spp::analyse::utils::type_utils::GetGenAndYieldTypes(
 
     // Search through the supertypes for a direct generator type.
     const auto generator_type_candidates = sup_types
-        | genex::views::filter([&scope](auto const &sup_type) { return IsTypeGen(*sup_type, scope); })
+        | genex::views::filter([&](auto const &sup_type) { return IsTypeGen(*sup_type, scope); })
         | genex::to<Vec>();
 
     RaiseIf<errors::SppExpressionNotGeneratorError>(

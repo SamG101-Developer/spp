@@ -37,8 +37,8 @@ auto spp::asts::FunctionParameterSelfAst::PosStart() const
 
 auto spp::asts::FunctionParameterSelfAst::PosEnd() const
     -> std::size_t {
-    // Use the variable.
-    return Var->PosEnd();
+    // Use the token after convention (self keyword); it is mapped into local-var which calculates size differently.
+    return PosStart() + 2;
 }
 
 auto spp::asts::FunctionParameterSelfAst::Clone() const

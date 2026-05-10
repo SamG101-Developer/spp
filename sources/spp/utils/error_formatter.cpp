@@ -101,6 +101,7 @@ auto spp::utils::errors::ErrorFormatter::ErrorRawPos(
     Str &&message,
     Str &&tag_message)
     -> Str {
+    //
     using namespace std::string_literals;
 
     auto [file_path, line_number, error_line, left_padding, carets] = InternalParseErrorRawPos(
@@ -122,6 +123,7 @@ auto spp::utils::errors::ErrorFormatter::ErrorRawPosMinimal(
     const std::size_t ast_size,
     Str &&tag_message)
     -> Str {
+    //
     using namespace std::string_literals;
 
     auto [file_path, line_number, error_line, left_padding, carets] = InternalParseErrorRawPos(

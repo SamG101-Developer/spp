@@ -75,6 +75,7 @@ auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    // Todo: Just map this to a loop and individual "gen" inside?
     //
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::GetGenAndYieldTypes;
@@ -125,6 +126,7 @@ auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
         *meta->EnclosingFunctionRetType[0], *sm->CurrentScope, *meta->EnclosingFunctionRetType[0], "coroutine");
 
     // The expression type must be a Gen type that exactly matches the function_ret_type.
+    // Todo: Known issue with the "yield_type" ast position being wrong.
     RaiseIf<SppTypeMismatchError>(
         not TypeEq(*meta->EnclosingFunctionRetType[0], *expr_type, *meta->EnclosingFunctionScope, *sm->CurrentScope),
         {meta->EnclosingFunctionScope, sm->CurrentScope},
