@@ -696,16 +696,11 @@ spp::analyse::errors::SppLoopTooManyControlFlowStatementsError::SppLoopTooManyCo
     asts::LoopControlFlowStatementAst const &stmt,
     const std::size_t num_controls,
     const std::size_t loop_depth) {
-    AddHeaders(
-        48, "SPP Loop Too Many Control Flow Statements Error");
-    AddCtxForErr(
-        &tok_loop,
-        "Loop defined here with depth: " + std::to_string(loop_depth));
-    AddErr(
-        &stmt,
-        "Control flow statement defined here (" + std::to_string(num_controls) + " total)");
+    AddHeaders(48, "Loop Too Many Control Flow Statements Error");
+    AddCtxForErr(&tok_loop, "Loop introduced here with at a depth of " + INLINE_INFO(std::to_string(loop_depth)) + " loops");
+    AddErr(&stmt, "Control flow statement defined here with " + INLINE_INFO(std::to_string(num_controls)) + " control flow statements");
     AddFooter(
-        "This loop contains too many control flow statements (break/continue) for its depth.",
+        "This loop contains too many control flow statements (exit/skip) for its depth.",
         "Reduce the number of control flow statements or increase the loop depth");
 }
 
