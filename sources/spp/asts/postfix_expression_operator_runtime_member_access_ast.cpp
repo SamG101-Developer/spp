@@ -88,7 +88,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
     // Prevent types on the left-hand-side of a runtime member access.
     RaiseIf<SppMemberAccessStaticOperatorExpectedError>(
         meta->PostfixExpressionLhs->To<TypeAst>() != nullptr,
-        {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *TokDot));
+        {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *TokDot, "type"));
 
     // Numeric index access (for tuples).
     if (std::isdigit(Name->Val[0])) {
@@ -101,9 +101,10 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
             {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, *TokDot));
 
         // Check the index is within the bounds of the tuple/array.
+        auto [in_bounds, n] = IsIndexWithinBound(std::stoul(Name->Val), *lhs_type, *sm->CurrentScope);
         RaiseIf<SppMemberAccessOutOfBoundsError>(
-            not IsIndexWithinBound(std::stoul(Name->Val), *lhs_type, *sm->CurrentScope),
-            {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, *TokDot));
+            not in_bounds,
+            {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, n, *TokDot));
     }
 
     // Accessing a regular attribute/method on an instance.
@@ -117,9 +118,9 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
         const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type);
 
         // Check the lhs is a variable and not a namespace.
-        RaiseIf<SppMemberAccessStaticOperatorExpectedError>(
+        RaiseIf<SppMemberAccessStaticOperatorExpectedError>( // Todo: this error message uses "Type" -> accept param for ctx (ns)
             lhs_var_sym == nullptr and lhs_ns_sym != nullptr, {sm->CurrentScope},
-            ERR_ARGS(*meta->PostfixExpressionLhs, *TokDot));
+            ERR_ARGS(*meta->PostfixExpressionLhs, *TokDot, "namespace"));
 
         // Check the target field exists on the type.
         if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name, true)) {
@@ -137,15 +138,18 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseS
 
             // Type field was not found on this type, or the forwarding type (includes nested forwarding checks).
             RaiseMissingIdentifierAndClosestOptions(
-                *Name, lhs_type_sym->LinkedScope->AllVarSymbols(), lhs_type_sym->LinkedScope->AllNsSymbols(), *sm);
+                *Name, lhs_type_sym->LinkedScope->AllVarSymbols(true, true), {}, *sm);
         }
 
         auto scopes_and_syms = Vec{lhs_type_sym->LinkedScope}
             | genex::views::concat(lhs_type_sym->LinkedScope->SupScopes())
-            | genex::views::transform([name=Name.get()](auto const &x) { return MakePair(x, x->GetVarSymbol(AstCloneShared(name), true)); })
-            | genex::views::filter([](auto const &x) { return x.Second != nullptr; })
+            | genex::views::transform([name=Name.get()](auto const &x) { return MakePair(x, x->GetVarSymbol(AstCloneShared(name), true, false)); })
+            | genex::views::filter([](auto const &x) { return x.Second != nullptr and not x.Second->Type->IsCompilerGeneratedType(); })
             | genex::views::transform([&](auto const &x) { return std::make_tuple(lhs_type_sym->LinkedScope->DepthDiff(x.First), x.First, x.Second); })
             | genex::to<Vec>();
+
+        // If we only have functional types, just return.
+        if (scopes_and_syms.Len() < 1) { return; }
 
         auto min_depth = genex::min_element(scopes_and_syms
             | genex::views::transform([](auto const &x) { return std::get<0>(x); })

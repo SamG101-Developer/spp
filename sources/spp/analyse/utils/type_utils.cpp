@@ -435,18 +435,20 @@ auto spp::analyse::utils::type_utils::IsIndexWithinBound(
     const std::size_t index,
     asts::TypeAst const &type,
     scopes::Scope const &scope)
-    -> bool {
+    -> Pair<bool, std::size_t> {
     // For tuples, count the number of generic arguments.
     using errors::SppInternalCompilerError;
     if (IsTypeTup(type, scope)) {
-        return index < type.TypeParts().Back()->GnArgGroup->Args.Len();
+        auto elems = type.TypeParts().Back()->GnArgGroup->Args.Len();
+        return MakePair(index < elems, elems);
     }
 
     // For arrays, check the size argument.
     if (IsTypeArr(type, scope)) {
         const auto size_arg = type.TypeParts().Back()->GnArgGroup->CompAt("n");
         const auto size_arg_cast = size_arg->Val->To<asts::IntegerLiteralAst>();
-        return index < std::stoull(size_arg_cast->Val->TokenData);
+        const auto elems = std::stoul(size_arg_cast->Val->TokenData);
+        return MakePair(index < elems, elems);
     }
 
     Raise<SppInternalCompilerError>(

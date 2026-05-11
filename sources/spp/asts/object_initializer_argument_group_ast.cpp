@@ -91,7 +91,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
 
     RaiseIf<SppIdentifierDuplicateError>(
         not duplicates.IsEmpty(), {sm->CurrentScope},
-        ERR_ARGS(*duplicates[0], *duplicates[1], "keyword object initializer arguments"));
+        ERR_ARGS(*duplicates[0], *duplicates[1], "keyword object initializer argument"));
 
     // Get the attributes on the type and supertypes.
     const auto all_attrs = GetAllAttrs(*meta->ObjectInitType, sm);
@@ -195,7 +195,7 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     // Type check the default argument (if it exists).
     if (const auto af_arg = GetAutoFillArg(); af_arg != nullptr) {
         const auto af_arg_type = af_arg->Val->InferType(sm, meta);
-        RaiseIf<SppTypeMismatchError>(
+        RaiseIf<SppTypeMismatchError>( // Todo: pass a "meta->SourceObjectInitType" or just pass a "meta->ObjectInit"
             not TypeEq(*af_arg_type, *meta->ObjectInitType, *sm->CurrentScope, *sm->CurrentScope),
             {sm->CurrentScope}, ERR_ARGS(*meta->ObjectInitType, *meta->ObjectInitType, *af_arg, *af_arg_type));
     }

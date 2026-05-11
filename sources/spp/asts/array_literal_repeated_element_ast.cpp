@@ -94,7 +94,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
     // Alias the common utils functions and types.
     using analyse::errors::SppCompileTimeConstantError;
     using analyse::errors::SppInvalidPrimaryExpressionError;
-    using analyse::errors::SppInvalidExpressionNonCopyableTypeError;
+    using analyse::errors::SppNonCopyableTypeError;
     using analyse::errors::SppSecondClassBorrowViolationError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::IsTypeBorrowed;
@@ -108,7 +108,7 @@ auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
     const auto elem_type_sym = sm->CurrentScope->GetTypeSymbol(elem_type);
 
     // Ensure the element type is copyable, so that is can be repeated in the array.
-    RaiseIf<SppInvalidExpressionNonCopyableTypeError>(
+    RaiseIf<SppNonCopyableTypeError>(
         not elem_type_sym->IsCopyable(),
         {sm->CurrentScope}, ERR_ARGS(*this, *Elem, *elem_type));
 

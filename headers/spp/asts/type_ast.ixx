@@ -33,7 +33,7 @@ SPP_EXP_CLS struct spp::asts::TypeAst : PrimaryExpressionAst, mixins::AbstractTy
 
     mutable utils::Cache<analyse::scopes::Scope const*, Shared<analyse::scopes::TypeSymbol>> CachedTypeSymbols;
 
-    using PrimaryExpressionAst::PrimaryExpressionAst;
+    TypeAst();
 
     ~TypeAst() override;
 

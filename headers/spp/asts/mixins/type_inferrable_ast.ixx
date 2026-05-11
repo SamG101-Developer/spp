@@ -27,8 +27,7 @@ SPP_EXP_CLS struct spp::asts::mixins::TypeInferrableAst {
 
     virtual ~TypeInferrableAst();
 
-    virtual auto InferType(
-        analyse::scopes::ScopeManager *sm,
-        meta::CompilerMetaData *meta)
-        -> Shared<TypeAst> = 0;
+    virtual auto InferType(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> Shared<TypeAst> = 0;
+
+    virtual auto InferTypeForDisplay(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta) -> Shared<TypeAst>;
 };

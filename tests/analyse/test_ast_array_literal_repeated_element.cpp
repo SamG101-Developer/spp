@@ -24,7 +24,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ArrayLiteralRepeatedElementAst,
     test_invalid_non_copyable_element,
-    SppInvalidExpressionNonCopyableTypeError, R"(
+    SppNonCopyableTypeError, R"(
     fun f() -> std::void::Void {
         let a = [std::string::Str::from("hello"); 1_uz]
     }

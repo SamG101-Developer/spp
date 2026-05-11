@@ -98,7 +98,6 @@ auto spp::analyse::errors::SemanticError::Clone() const
     return MakeUnique<SemanticError>(*this);
 }
 
-// [HUMAN WRITTEN]
 spp::analyse::errors::SppInvalidPrimaryExpressionError::SppInvalidPrimaryExpressionError(
     asts::Ast const &expr) {
     AddHeaders(1, "Invalid Primary Expression Error");
@@ -108,7 +107,6 @@ spp::analyse::errors::SppInvalidPrimaryExpressionError::SppInvalidPrimaryExpress
         "Change the expression to a different value expression.");
 }
 
-// [HUMAN WRITTEN]
 spp::analyse::errors::SppTypeMismatchError::SppTypeMismatchError(
     asts::Ast const &lhs,
     asts::TypeAst const &lhs_ty,
@@ -123,7 +121,6 @@ spp::analyse::errors::SppTypeMismatchError::SppTypeMismatchError(
         "expressions, so the broader variant is on the left of the comparison.");
 }
 
-// [HUMAN WRITTEN]
 spp::analyse::errors::SppSecondClassBorrowViolationError::SppSecondClassBorrowViolationError(
     asts::Ast const &expr,
     asts::Ast const &type,
@@ -278,8 +275,8 @@ spp::analyse::errors::SppMemberAccessNonIndexableError::SppMemberAccessNonIndexa
     asts::TypeAst const &lhs_type,
     asts::Ast const &access_op) {
     AddHeaders(12, "Member Access Non-Indexable Error");
-    AddCtxForErr(&lhs, "Expression defined here with type: " + INLINE_INFO(lhs_type.ToString()));
-    AddErr(&access_op, "Token used here creates the index operation");
+    AddCtxForErr(&lhs, "Type inferred as " + INLINE_INFO(lhs_type.ToString()));
+    AddErr(&access_op, "Member access operator introduced here");
     AddFooter(
         "The expression is not indexable, so member access cannot be performed.",
         "Ensure the left-hand side is an indexable type (e.g., array or tuple).");
@@ -287,22 +284,17 @@ spp::analyse::errors::SppMemberAccessNonIndexableError::SppMemberAccessNonIndexa
 
 spp::analyse::errors::SppMemberAccessOutOfBoundsError::SppMemberAccessOutOfBoundsError(
     asts::ExpressionAst const &lhs,
-    asts::TypeAst const &lhs_type,
+    asts::TypeAst const &,
+    std::size_t n,
     asts::Ast const &access_op) {
-    AddHeaders(
-        17, "SPP Member Access Out Of Bounds Error");
-    AddCtxForErr(
-        &lhs,
-        "Left-hand side expression defined here with type: " + lhs_type.ToString());
-    AddErr(
-        &access_op,
-        "Member access operator defined here");
+    AddHeaders(17, "Member Access Out Of Bounds Error");
+    AddCtxForErr(&lhs, "Type has " + INLINE_NOTE(std::to_string(n)) + " elements");
+    AddErr(&access_op, "Member access operator introduced here");
     AddFooter(
         "The member access is out of bounds for the given type.",
         "Ensure the accessed member exists within the bounds of the type");
 }
 
-// [HUMAN WRITTEN]
 spp::analyse::errors::SppCaseBranchElseNotLastError::SppCaseBranchElseNotLastError(
     asts::CaseExpressionBranchAst const &non_last_else_branch,
     asts::CaseExpressionBranchAst const &last_branch) {
@@ -314,7 +306,6 @@ spp::analyse::errors::SppCaseBranchElseNotLastError::SppCaseBranchElseNotLastErr
         "Move the " + INLINE_HELP("else") + " branch to be the last branch");
 }
 
-// [HUMAN WRITTEN]
 spp::analyse::errors::SppCaseBranchMissingElseError::SppCaseBranchMissingElseError(
     asts::CaseExpressionAst const &case_expr,
     asts::CaseExpressionBranchAst const &last_branch) {
@@ -506,14 +497,11 @@ spp::analyse::errors::SppIdentifierUnknownError::SppIdentifierUnknownError(
     asts::Ast const &name,
     const StrView what,
     std::optional<Str> const &closest) {
-    AddHeaders(
-        34, "SPP Identifier Unknown Error");
-    AddErr(
-        &name,
-        "Unknown " + Str(what) + " '" + name.ToString() + "' defined here" + (closest ? " (did you mean '" + *closest + "'?)" : ""));
+    AddHeaders(34, "Identifier Unknown Error");
+    AddErr(&name, "Unknown " + INLINE_INFO(Str(what)) + " introduced here" + (closest ? " (did you mean '" + *closest + "'?)" : ""));
     AddFooter(
-        "The " + Str(what) + " '" + name.ToString() + "' is not defined in the current scope.",
-        "Define the identifier or correct its name");
+        "The " + INLINE_NOTE(Str(what)) + " is not defined in the current scope.",
+        "Define the identifier or correct its name.");
 }
 
 spp::analyse::errors::SppUnreachableCodeError::SppUnreachableCodeError(
@@ -667,14 +655,11 @@ spp::analyse::errors::SppExpressionNotIndexableError::SppExpressionNotIndexableE
     asts::Ast const &expr,
     asts::TypeAst const &expr_type,
     const StrView what) {
-    AddHeaders(
-        38, "SPP Expression Not Indexable Error");
-    AddErr(
-        &expr,
-        "Expression defined here with type: " + expr_type.ToString());
+    AddHeaders(38, "Expression Not Indexable Error");
+    AddErr(&expr, "Expression inferred as " + INLINE_INFO(expr_type.ToString()));
     AddFooter(
-        "This expression must be of an indexable type to be used in a " + Str(what) + " context.",
-        "Ensure the expression evaluates to an indexable type (e.g., superimposes IndexRef/IndexMut)");
+        "This expression be an indexable type to be used for " + INLINE_NOTE(Str(what)) + ".",
+        "Superimpose " + INLINE_HELP("IndexRef") + " or " + INLINE_HELP("IndexMut") + " (or a subtype) over the expression type.");
 }
 
 spp::analyse::errors::SppExpressionAmbiguousIndexableError::SppExpressionAmbiguousIndexableError(
@@ -707,29 +692,22 @@ spp::analyse::errors::SppLoopTooManyControlFlowStatementsError::SppLoopTooManyCo
 spp::analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError::SppObjectInitializerMultipleAutofillArgumentsError(
     asts::ObjectInitializerArgumentAst const &arg1,
     asts::ObjectInitializerArgumentAst const &arg2) {
-    AddHeaders(
-        49, "SPP Object Initializer Multiple Autofill Arguments Error");
-    AddCtxForErr(
-        &arg1,
-        "First autofill argument defined here");
-    AddErr(
-        &arg2,
-        "Second autofill argument defined here");
+    AddHeaders(49, "Object Initializer Multiple Autofill Arguments Error");
+    AddCtxForErr(&arg1, "First autofill argument introduced here");
+    AddErr(&arg2, "Second autofill argument introduced here");
     AddFooter(
         "An object initializer cannot contain multiple autofill arguments.",
-        "Remove one of the autofill arguments");
+        "Remove one of the autofill arguments.");
 }
 
 spp::analyse::errors::SppObjectInitializerInvalidArgumentError::SppObjectInitializerInvalidArgumentError(
     asts::ObjectInitializerArgumentAst const &arg) {
-    AddHeaders(
-        50, "SPP Object Initializer Invalid Argument Error");
-    AddErr(
-        &arg,
-        "Non-identifier shorthand argument defined here");
+    AddHeaders(50, "Object Initializer Invalid Argument Error");
+    AddErr(&arg, "Non-identifier shorthand argument defined here");
     AddFooter(
         "This argument in the object initializer is invalid.",
-        "Ensure the shorthand argument is an identifier");
+        "Shorthand arguments to object initializers must be variables whose identifier name matches a target\n"
+        "attribute. Otherwise, use the keyword format " + INLINE_HELP("attr=value") + ".");
 }
 
 spp::analyse::errors::SppObjectInitializerGenericWithArgsError::SppObjectInitializerGenericWithArgsError(
@@ -782,14 +760,11 @@ spp::analyse::errors::SppArgumentMissingError::SppArgumentMissingError(
 spp::analyse::errors::SppEarlyReturnRequiresTryTypeError::SppEarlyReturnRequiresTryTypeError(
     asts::ExpressionAst const &expr,
     asts::TypeAst const &type) {
-    AddHeaders(
-        52, "SPP Early Return Requires Try Type Error");
-    AddErr(
-        &expr,
-        "Expression defined here with type: " + type.ToString());
+    AddHeaders(52, "Early Return Requires Try Type Error");
+    AddErr(&expr, "Expression inferred as " + INLINE_INFO(type.ToString()));
     AddFooter(
         "This expression is used in an early return context, but its type is not a try type.",
-        "Change the expression to have a try type or adjust the context");
+        "Change the expression to have a try type.");
 }
 
 spp::analyse::errors::SppFunctionCallAbstractFunctionError::SppFunctionCallAbstractFunctionError(
@@ -904,34 +879,25 @@ spp::analyse::errors::SppFunctionCallOverloadAmbiguousError::SppFunctionCallOver
 
 spp::analyse::errors::SppMemberAccessStaticOperatorExpectedError::SppMemberAccessStaticOperatorExpectedError(
     asts::Ast const &lhs,
-    asts::TokenAst const &access) {
-    AddHeaders(
-        60, "SPP Member Access Static Operator Expected Error");
-    AddCtxForErr(
-        &lhs,
-        "Left-hand side defined here");
-    AddErr(
-        &access,
-        "Member access operator defined here");
+    asts::TokenAst const &access,
+    StrView what) {
+    AddHeaders(60, "Member Access Static Operator Expected Error");
+    AddCtxForErr(&lhs, "" + INLINE_INFO(what) + " identifier introduced here");
+    AddErr(&access, "Runtime member access operator " + INLINE_INFO(".") + " introduced here");
     AddFooter(
-        "A static operator is expected for this member access.",
-        "Use a static member or adjust the access accordingly");
+        "A static operator is required for " + INLINE_NOTE(what) + " member access.",
+        "Use the " + INLINE_HELP("::") + " operator, or change the type to a value.");
 }
 
 spp::analyse::errors::SppMemberAccessRuntimeOperatorExpectedError::SppMemberAccessRuntimeOperatorExpectedError(
     asts::Ast const &lhs,
     asts::TokenAst const &access) {
-    AddHeaders(
-        61, "SPP Member Access Runtime Operator Expected Error");
-    AddCtxForErr(
-        &lhs,
-        "Left-hand side defined here");
-    AddErr(
-        &access,
-        "Member access operator defined here");
+    AddHeaders(61, "Member Access Runtime Operator Expected Error");
+    AddCtxForErr(&lhs, "" + INLINE_INFO("variable") + " identifier introduced here");
+    AddErr(&access, "Static member access operator " + INLINE_INFO("::") + " introduced here");
     AddFooter(
-        "A runtime operator is expected for this member access.",
-        "Use a runtime member or adjust the access accordingly");
+        "A runtime operator is required for " + INLINE_NOTE("variable") + " member access.",
+        "Use the " + INLINE_HELP(".") + " operator, or change the variable to a namespace.");
 }
 
 spp::analyse::errors::SppGenericTypeInvalidUsageError::SppGenericTypeInvalidUsageError(
@@ -971,20 +937,15 @@ spp::analyse::errors::SppAmbiguousMemberAccessError::SppAmbiguousMemberAccessErr
         "Qualify the access to resolve the ambiguity");
 }
 
-spp::analyse::errors::SppCoroutineContainsRetExprExpressionError::SppCoroutineContainsRetExprExpressionError(
+spp::analyse::errors::SppCoroutineContainsReturnStatementError::SppCoroutineContainsReturnStatementError(
     asts::TokenAst const &fun_tag,
     asts::TokenAst const &ret_stmt) {
-    AddHeaders(
-        64, "SPP Function Coroutine Contains RetExpr Expression Error");
-    AddCtxForErr(
-        &fun_tag,
-        "Coroutine defined here");
-    AddErr(
-        &ret_stmt,
-        "Return expression defined here");
+    AddHeaders(64, "Function Coroutine Contains Return Statement Error");
+    AddCtxForErr(&fun_tag, "Coroutine introduced here");
+    AddErr(&ret_stmt, "Return expression introduced here");
     AddFooter(
-        "A coroutine cannot contain a return expression.",
-        "Use yield expressions instead or change to a subroutine");
+        "A coroutine cannot contain a return statement.",
+        "Use " + INLINE_HELP("gen") + " expressions instead or change the function to a subroutine.");
 }
 
 spp::analyse::errors::SppFunctionSubroutineMissingReturnStatementError::SppFunctionSubroutineMissingReturnStatementError(
@@ -1156,31 +1117,25 @@ spp::analyse::errors::SppAsyncTargetNotFunctionCallError::SppAsyncTargetNotFunct
         "Ensure the target is a valid function call");
 }
 
-spp::analyse::errors::SppDereferenceInvalidExpressionNonBorrowedTypeError::SppDereferenceInvalidExpressionNonBorrowedTypeError(
+spp::analyse::errors::SppDereferenceNonBorrowedTypeError::SppDereferenceNonBorrowedTypeError(
     asts::TokenAst const &tok_deref,
     asts::ExpressionAst const &expr,
     asts::TypeAst const &type) {
-    AddHeaders(
-        75, "SPP Dereference Invalid Expression Non-Borrowed Type Error");
-    AddCtxForErr(
-        &tok_deref,
-        "Dereference operator defined here");
-    AddErr(
-        &expr,
-        "Expression with non-borrowed type: " + type.ToString() + " defined here");
+    AddHeaders(75, "Dereference Non-Borrowed Type Error");
+    AddCtxForErr(&tok_deref, "Dereference operator introduced here");
+    AddErr(&expr, "Expression inferred as " + INLINE_INFO(type.ToString()) + " defined here");
     AddFooter(
         "Cannot dereference an expression of a non-borrowed type.",
         "Ensure the expression has a borrowable type (e.g., a reference)");
 }
 
-// [HUMAN WRITTEN]
-spp::analyse::errors::SppInvalidExpressionNonCopyableTypeError::SppInvalidExpressionNonCopyableTypeError(
+spp::analyse::errors::SppNonCopyableTypeError::SppNonCopyableTypeError(
     asts::Ast const &ctx,
     asts::ExpressionAst const &expr,
     asts::TypeAst const &type) {
     AddHeaders(76, "Invalid Expression Non-Copyable Type Error");
     AddCtxForErr(&ctx, "Ast requires a copyable type");
-    AddErr(&expr, "Non-copyable type " + INLINE_INFO(type.ToString()));
+    AddErr(&expr, "Non-copyable underlying type " + INLINE_INFO(type.ToString()));
     AddFooter(
         "Cannot use a non-copyable type here.",
         "Change the expression or superimpose " + INLINE_HELP("Copy") + " over the type.");
@@ -1257,14 +1212,11 @@ spp::analyse::errors::SppMissingMainFunctionError::SppMissingMainFunctionError(
 spp::analyse::errors::SppInvalidVoidValueError::SppInvalidVoidValueError(
     asts::ExpressionAst const &expr,
     const StrView what) {
-    AddHeaders(
-        82, "SPP Invalid Void Value Error");
-    AddErr(
-        &expr,
-        "Expression defined here");
+    AddHeaders(82, "Invalid Void Value Error");
+    AddErr(&expr, "Expression inferred as " + INLINE_INFO("Void"));
     AddFooter(
-        "This expression evaluates to 'Void' and cannot be used in a " + Str(what) + " context.",
-        "Ensure the expression has a valid non-void type");
+        "Void expressions cannot be used in " + INLINE_NOTE(what) + " contexts.",
+        "Ensure the expression has a valid non-void type, or move it out of the " + INLINE_HELP(what) + " context.");
 }
 
 spp::analyse::errors::SppBorrowLifetimeIncreaseError::SppBorrowLifetimeIncreaseError(
@@ -1344,7 +1296,6 @@ spp::analyse::errors::SppAnnotationTargetNotAnAnnotationError::SppAnnotationTarg
         "Ensure the target function is defined with the '!annotation' tag");
 }
 
-// [HUMAN WRITTEN]
 spp::analyse::errors::SppAnnotationTargetNotACmpFunctionError::SppAnnotationTargetNotACmpFunctionError(
     asts::AnnotationAst const &annotation_marker,
     asts::Ast const &non_function_ast) {
@@ -1356,7 +1307,6 @@ spp::analyse::errors::SppAnnotationTargetNotACmpFunctionError::SppAnnotationTarg
         "Ensure the annotation is applied to a cmp function.");
 }
 
-// [HUMAN WRITTEN]
 spp::analyse::errors::SppCalledAnnotationAppliedToInvalidAstError::SppCalledAnnotationAppliedToInvalidAstError(
     asts::Ast const &invalid_ast,
     asts::Ast const &annotation_call,

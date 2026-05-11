@@ -268,7 +268,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ClosureExpressionAst,
     test_invalid_closure_containing_ret_statement,
-    SppCoroutineContainsRetExprExpressionError, R"(
+    SppCoroutineContainsReturnStatementError, R"(
     fun f() -> std::void::Void {
         let a = 5_u32
         let x = cor (caps a) { ret a }

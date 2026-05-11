@@ -27,6 +27,10 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionAst final : ExpressionAst {
      */
     Unique<PostfixExpressionOperatorAst> Op;
 
+    struct {
+        mutable Shared<TypeAst> CachedInference;
+    } Source;
+
     /**
      * Construct the PostfixExpressionAst with the arguments matching the members.
      * @param[in] lhs The left-hand side expression of the postfix expression.

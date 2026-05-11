@@ -53,22 +53,23 @@ auto spp::asts::PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     //
-    using analyse::errors::SppDereferenceInvalidExpressionNonBorrowedTypeError;
-    using analyse::errors::SppInvalidExpressionNonCopyableTypeError;
+    using analyse::errors::SppDereferenceNonBorrowedTypeError;
+    using analyse::errors::SppNonCopyableTypeError;
 
     // Get the right-hand-side expression's type for constraint checks.
     const auto lhs = meta->PostfixExpressionLhs;
     const auto lhs_type = lhs->InferType(sm, meta);
 
     // Check the right-hand-side expression is a borrowable type.
-    RaiseIf<SppDereferenceInvalidExpressionNonBorrowedTypeError>(
+    RaiseIf<SppDereferenceNonBorrowedTypeError>(
         lhs_type->GetConvention() == nullptr,
         {sm->CurrentScope}, ERR_ARGS(*TokDeref, *lhs, *lhs_type));
 
     // Check the right-hand-side expression is a "Copy" type. TODO: Add to unit tests.
-    RaiseIf<SppInvalidExpressionNonCopyableTypeError>(
+    const auto lhs_type_no_conv = lhs_type->WithoutConvention();
+    RaiseIf<SppNonCopyableTypeError>(
         not sm->CurrentScope->GetTypeSymbol(lhs_type)->IsCopyable() and not meta->AllowMoveDeref,
-        {sm->CurrentScope}, ERR_ARGS(*this, *lhs, *lhs_type));
+        {sm->CurrentScope}, ERR_ARGS(*this, *lhs, *lhs_type_no_conv));
 }
 
 auto spp::asts::PostfixExpressionOperatorDerefAst::Stage9_CompTimeResolve(

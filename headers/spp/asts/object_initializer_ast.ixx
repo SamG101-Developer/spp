@@ -52,4 +52,6 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst 
     auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
     auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+    auto InferTypeForDisplay(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };

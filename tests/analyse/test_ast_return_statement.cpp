@@ -4,7 +4,7 @@
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstReturnStatementAst,
     test_invalid_ret_statement_in_coroutine_with_expr,
-    SppCoroutineContainsRetExprExpressionError, R"(
+    SppCoroutineContainsReturnStatementError, R"(
     cor f() -> std::generator::Gen[std::number::S32] {
         ret 123
     }

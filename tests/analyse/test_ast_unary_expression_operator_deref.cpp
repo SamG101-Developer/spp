@@ -4,7 +4,7 @@
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     UnaryExpressionOperatorDerefAst,
     test_invalid_non_borrow_type,
-    SppDereferenceInvalidExpressionNonBorrowedTypeError, R"(
+    SppDereferenceNonBorrowedTypeError, R"(
     fun f() -> std::void::Void {
         let x = 10
         let y = x@
@@ -35,7 +35,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     UnaryExpressionOperatorDerefAst,
     test_invalid_non_copyable,
-    SppInvalidExpressionNonCopyableTypeError, R"(
+    SppNonCopyableTypeError, R"(
     fun f(x: &std::string::Str) -> std::string::Str {
         let y = x@
         ret y

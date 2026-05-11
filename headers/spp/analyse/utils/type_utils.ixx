@@ -177,7 +177,7 @@ namespace spp::analyse::utils::type_utils {
         std::size_t index,
         asts::TypeAst const &type,
         scopes::Scope const &scope)
-        -> bool;
+        -> Pair<bool, std::size_t>;
 
     SPP_EXP_FUN auto GetNthTypeOfIndexableType(
         std::size_t index,

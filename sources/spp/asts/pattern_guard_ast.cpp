@@ -86,8 +86,7 @@ auto spp::asts::PatternGuardAst::Stage8_CheckMemory(
     // Check the memory of the expression.
     // Todo: how is this even applied? just truth check => barely any mem checks needed
     Expr->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(
-        *Expr, *this, *sm, true, true, false, false, false, meta);
+    ValidateSymbolMemory(*Expr, *this, *sm, true, true, false, false, false, meta);
 }
 
 auto spp::asts::PatternGuardAst::Stage9_CompTimeResolve(

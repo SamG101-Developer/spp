@@ -83,11 +83,12 @@ auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
     // Check this type isn't a borrow violation.
     RaiseIf<SppSecondClassBorrowViolationError>(
         IsTypeBorrowed(*Type, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*this, *Type, "object initializer"));
+        {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalType, "object initializer"));
 
     const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Type->WithoutGenerics());
 
-    // Generic types cannot have any attributes set | TODO: future with constraints will allow some.
+    // Generic types cannot have any attributes set.
+    // TODO: future with constraints will allow some.
     RaiseIf<SppObjectInitializerGenericWithArgsError>(
         base_cls_sym->IsGeneric and not ArgGroup->Args.IsEmpty(),
         {sm->CurrentScope}, ERR_ARGS(*Type, *ArgGroup->Args[0]));
@@ -223,6 +224,14 @@ auto spp::asts::ObjectInitializerAst::InferType(
     // The type of the object initializer is the type being initialized. The conventions are added for dummy types being
     // created into values during other ast's analysis. Types cannot be instantiated as borrows in user code.
     return sm->CurrentScope->GetTypeSymbol(Type)->FqName()->WithConvention(AstClone(Type->GetConvention()));
+}
+
+auto spp::asts::ObjectInitializerAst::InferTypeForDisplay(
+    ScopeManager *,
+    CompilerMetaData *)
+    -> Shared<TypeAst> {
+    // Use the source original type.
+    return Source.OriginalType;
 }
 
 SPP_MOD_END

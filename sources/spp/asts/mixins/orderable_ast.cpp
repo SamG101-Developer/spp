@@ -3,16 +3,13 @@ module;
 
 module spp.asts.mixins.orderable_ast;
 
-
 SPP_MOD_BEGIN
 spp::asts::mixins::OrderableAst::OrderableAst(
     const utils::OrderableTag order_tag) :
     m_order_tag(order_tag) {
 }
 
-
 spp::asts::mixins::OrderableAst::~OrderableAst() = default;
-
 
 auto spp::asts::mixins::OrderableAst::GetOrderTag() const
     -> utils::OrderableTag {

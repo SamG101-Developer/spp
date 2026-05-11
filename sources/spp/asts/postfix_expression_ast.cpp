@@ -24,6 +24,8 @@ spp::asts::PostfixExpressionAst::PostfixExpressionAst(
     decltype(Op) &&op) :
     Lhs(std::move(lhs)),
     Op(std::move(op)) {
+    //
+    Source.CachedInference = nullptr;
 }
 
 spp::asts::PostfixExpressionAst::~PostfixExpressionAst() = default;
@@ -152,12 +154,15 @@ auto spp::asts::PostfixExpressionAst::InferType(
     analyse::scopes::ScopeManager *sm,
     CompilerMetaData *meta)
     -> Shared<TypeAst> {
+    // Check cache.
+    if (Source.CachedInference != nullptr) { return Source.CachedInference; }
+
     // Forward into the operator AST.
     meta->Save();
     meta->PostfixExpressionLhs = Lhs.get();
-    auto ret_type = Op->InferType(sm, meta);
+    Source.CachedInference = Op->InferType(sm, meta);
     meta->Restore();
-    return ret_type;
+    return Source.CachedInference;
 }
 
 auto spp::asts::PostfixExpressionAst::ExprParts() const

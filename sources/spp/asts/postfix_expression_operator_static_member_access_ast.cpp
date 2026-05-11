@@ -71,6 +71,8 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
     using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
     using analyse::utils::visibility_utils::CheckModuleMemberVisibility;
     using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
+    using analyse::errors::SppAmbiguousMemberAccessError;
+    using analyse::errors::SppMemberAccessRuntimeOperatorExpectedError;
 
     // Handle types on the left-hand-side of a static member access.
     if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
@@ -78,7 +80,11 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
 
         // Check the target field exists on the type.
         if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name, true)) {
-            RaiseMissingIdentifierAndClosestOptions(*Name, lhs_type_sym->LinkedScope->AllVarSymbols(true), {}, *sm);
+            // Todo: Need to filter these candidates to function groups who contain a sttaic overload.
+            auto candidates = lhs_type_sym->LinkedScope->AllVarSymbols(true, true)
+                | genex::views::filter([](auto const &sym) { return sym->Type->IsCompilerGeneratedType(); })
+                | genex::to<Vec>();
+            RaiseMissingIdentifierAndClosestOptions(*Name, std::move(candidates), {}, *sm);
         }
 
         // Check there is only 1 target field on the type at the highest level.
@@ -109,32 +115,31 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
         }
 
         if (closest.Len() <= 1) { return; }
-        Raise<analyse::errors::SppAmbiguousMemberAccessError>(
+        Raise<SppAmbiguousMemberAccessError>(
             {closest[0].First, closest[1].First, sm->CurrentScope},
             ERR_ARGS(*closest[0].Second->Name, *closest[1].Second->Name, *Name));
     }
 
-    else {
-        const auto lhs_as_ident = meta->PostfixExpressionLhs->To<IdentifierAst>();
-        const auto lhs_var_sym = sm->CurrentScope->GetVarSymbol(AstClone(lhs_as_ident));
+    // Otherwise, we are handling a namespace left-hand-side.
+    const auto lhs_as_ident = meta->PostfixExpressionLhs->To<IdentifierAst>();
+    const auto lhs_var_sym = sm->CurrentScope->GetVarSymbol(AstClone(lhs_as_ident));
 
-        // Check the lhs is a namespace and not a variable.
-        RaiseIf<analyse::errors::SppMemberAccessRuntimeOperatorExpectedError>(
-            lhs_var_sym != nullptr, {sm->CurrentScope},
-            ERR_ARGS(*meta->PostfixExpressionLhs, *TokDblColon));
+    // Check the lhs is a namespace and not a variable.
+    RaiseIf<SppMemberAccessRuntimeOperatorExpectedError>(
+        lhs_var_sym != nullptr, {sm->CurrentScope},
+        ERR_ARGS(*meta->PostfixExpressionLhs, *TokDblColon));
 
-        // Check the constant exists inside the namespace.
-        const auto lhs_ns_sym = sm->CurrentScope->ConvertPostfixToNestedScope(meta->PostfixExpressionLhs)->NsSym;
-        if (not lhs_ns_sym->LinkedScope->HasVarSymbol(Name, true) and not lhs_ns_sym->LinkedScope->HasNsSymbol(Name, true)) {
-            RaiseMissingIdentifierAndClosestOptions(
-                *Name, lhs_ns_sym->LinkedScope->AllVarSymbols(false, true), lhs_ns_sym->LinkedScope->AllNsSymbols(), *sm);
-        }
+    // Check the constant exists inside the namespace.
+    const auto lhs_ns_sym = sm->CurrentScope->ConvertPostfixToNestedScope(meta->PostfixExpressionLhs)->NsSym;
+    if (not lhs_ns_sym->LinkedScope->HasVarSymbol(Name, true) and not lhs_ns_sym->LinkedScope->HasNsSymbol(Name, true)) {
+        RaiseMissingIdentifierAndClosestOptions(
+            *Name, lhs_ns_sym->LinkedScope->AllVarSymbols(false, true), lhs_ns_sym->LinkedScope->AllNsSymbols(), *sm);
+    }
 
-        // Enforce visibility on the accessed namespace symbol.
-        // Only for var symbols, not namespace symbols.
-        if (const auto sym = lhs_ns_sym->LinkedScope->GetVarSymbol(Name)) {
-            CheckModuleMemberVisibility(*sym, *Name, *lhs_ns_sym->LinkedScope, *sm);
-        }
+    // Enforce visibility on the accessed namespace symbol.
+    // Only for var symbols, not namespace symbols.
+    if (const auto sym = lhs_ns_sym->LinkedScope->GetVarSymbol(Name)) {
+        CheckModuleMemberVisibility(*sym, *Name, *lhs_ns_sym->LinkedScope, *sm);
     }
 }
 
