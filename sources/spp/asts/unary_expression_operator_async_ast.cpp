@@ -58,11 +58,14 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::errors::SppAsyncTargetNotFunctionCallError;
+
     // Check the right-hand-side is a function call expression.
     const auto rhs = meta->UnaryExpressionRhs->To<PostfixExpressionAst>();
-    RaiseIf<analyse::errors::SppAsyncTargetNotFunctionCallError>(
+    RaiseIf<SppAsyncTargetNotFunctionCallError>(
         rhs == nullptr or rhs->Op->To<PostfixExpressionOperatorFunctionCallAst>() == nullptr,
-        {sm->CurrentScope}, ERR_ARGS(*TokAsync, *this));
+        {sm->CurrentScope}, ERR_ARGS(*TokAsync, *meta->UnaryExpressionRhs));
 
     // Mark the function call as async.
     rhs->Op->To<PostfixExpressionOperatorFunctionCallAst>()->mark_as_async(this);

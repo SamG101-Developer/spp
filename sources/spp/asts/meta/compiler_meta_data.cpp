@@ -7,7 +7,6 @@ import spp.asts.identifier_ast;
 import spp.asts.type_ast;
 import ankerl.unordered_dense;
 
-
 SPP_MOD_BEGIN
 spp::asts::meta::CompilerMetaData::CompilerMetaData() {
     CurrentStage = 0;
@@ -20,6 +19,7 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
     EnclosingFunctionScope = nullptr;
     EnclosingFunctionFlavour = nullptr;
     EnclosingFunctionRetType = {};
+    EnclosingFunctionSourceRetType = {};
     EnclosingFunctionCmp = nullptr;
     OverriddenScopeForClosure = nullptr;
     CurrentLambdaOuterScope = nullptr;
@@ -50,12 +50,12 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
     CmpResult = nullptr;
 }
 
-
 auto spp::asts::meta::CompilerMetaData::Save() -> void {
     _History.emplace(
         CurrentStage, ReturnTypeOverloadResolverType, AssignmentTarget,
         AssignmentTargetType, IgnoreMissingElseBranchForInference, CaseCondition, ClsSym,
         OverriddenScopeForClosure, EnclosingFunctionScope, EnclosingFunctionFlavour, EnclosingFunctionRetType,
+        EnclosingFunctionSourceRetType,
         EnclosingFunctionCmp, CurrentLambdaOuterScope, TargetCallFunctionPrototype, TargetCallWasFunctionAsync,
         PreventAutoGeneratorResume, LetStatementExplicitType, LetStatementValue, LetStatementFromUninitialized,
         LoopDoubleCheckActive, LoopCurrentDepth, LoopCurrentAst, LoopReturnTypes, ObjectInitType,
@@ -63,7 +63,6 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
         TypeAnalysisTypeScope, IgnoreCmpGeneric, AllowMoveDeref, LlvmEndBB, LlvmCtx,
         LlvmAssignmentTarget, LlvmAssignmentTargetType, LlvmPhi, std::move(CmpArgs), nullptr);
 }
-
 
 auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
     auto state = std::move(_History.top()); // *DO NOT* click "convert to structured bindings" (CLion) -- LAG
@@ -79,6 +78,7 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
         EnclosingFunctionScope = state.EnclosingFunctionScope;
         EnclosingFunctionFlavour = state.EnclosingFunctionFlavour;
         EnclosingFunctionRetType = state.EnclosingFunctionRetType;
+        EnclosingFunctionSourceRetType = state.EnclosingFunctionSourceRetType;
         EnclosingFunctionCmp = state.EnclosingFunctionCmp;
     }
     OverriddenScopeForClosure = state.OverriddenScopeForClosure;
@@ -109,7 +109,6 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
     LlvmPhi = state.LlvmPhi;
     CmpArgs = std::move(state.CmpArgs);
 }
-
 
 auto spp::asts::meta::CompilerMetaData::Depth() const
     -> std::size_t {

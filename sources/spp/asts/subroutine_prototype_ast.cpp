@@ -67,6 +67,7 @@ auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
     meta->Save();
     meta->EnclosingFunctionFlavour = this->TokFun.get();
     meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
+    meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
     meta->EnclosingFunctionScope = sm->CurrentScope;
     meta->EnclosingFunctionCmp = TokCmp.get();
     Impl->Stage7_AnalyseSemantics(sm, meta);
@@ -87,7 +88,7 @@ auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
     const auto final_member = Impl->FinalMember();
     RaiseUnless<analyse::errors::SppFunctionSubroutineMissingReturnStatementError>(
         is_void or is_never or FfiAnnotation or BuiltinAnnotation or AbstractAnnotation or (not Impl->Members.IsEmpty() and Impl->Members.Back()->To<RetStatementAst>()),
-        {sm->CurrentScope}, ERR_ARGS(*final_member, *ReturnType));
+        {sm->CurrentScope}, ERR_ARGS(*final_member, *Source.OriginalReturnType, *ReturnType));
 
     sm->MoveOutOfCurrentScope();
     meta->Restore(true);

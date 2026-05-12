@@ -610,7 +610,7 @@ auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
     auto mismatch_branches_type_info = branches_type_info
         | genex::views::remove_if([&](auto const &x) { return TypeEq(*asts::generate::common_types_precompiled::NEVER, *x.Second, *sm->CurrentScope, *sm->CurrentScope); })
         | genex::views::remove_if([&](auto const &x) { return x.First == master_branch_type_info.First; })
-        | genex::views::remove_if([&](auto const &x) { return type_utils::TypeEq(*master_branch_type_info.Second, *x.Second, *sm->CurrentScope, *sm->CurrentScope); })
+        | genex::views::remove_if([&](auto const &x) { return TypeEq(*master_branch_type_info.Second, *x.Second, *sm->CurrentScope, *sm->CurrentScope); })
         | genex::to<Vec>();
 
     if (not mismatch_branches_type_info.IsEmpty()) {
@@ -650,7 +650,6 @@ auto spp::analyse::utils::type_utils::GetAllAttrs(
     for (auto const &[sup_scope, syms] : all_syms) {
         for (auto const &sym : syms) {
             const auto sym_type = sup_scope->GetTypeSymbol(sym->Type);
-            const auto ext_type = sym_type->FqName();
             extended_syms.EmplaceBack(sym->Name, sym_type);
         }
     }

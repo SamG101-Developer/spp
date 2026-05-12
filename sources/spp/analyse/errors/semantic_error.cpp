@@ -904,17 +904,12 @@ spp::analyse::errors::SppGenericTypeInvalidUsageError::SppGenericTypeInvalidUsag
     asts::Ast const &gen_name,
     asts::TypeAst const &gen_val,
     const StrView what) {
-    AddHeaders(
-        62, "SPP Generic Type Invalid Usage Error");
-    AddCtxForErr(
-        &gen_name,
-        "Generic name defined here");
-    AddErr(
-        &gen_val,
-        "Generic value used in " + Str(what) + " context");
+    AddHeaders(62, "Generic Type Invalid Usage Error");
+    AddCtxForErr(&gen_name, "Generic type defined here");
+    AddErr(&gen_val, "Generic value used in " + INLINE_INFO(what) + " context");
     AddFooter(
-        "This generic type is used invalidly in the " + Str(what) + " context.",
-        "Correct the usage of the generic type");
+        "This generic type is used invalidly in the " + INLINE_NOTE(what) + " context.",
+        "Correct the usage of the generic type.");
 }
 
 spp::analyse::errors::SppAmbiguousMemberAccessError::SppAmbiguousMemberAccessError(
@@ -950,99 +945,71 @@ spp::analyse::errors::SppCoroutineContainsReturnStatementError::SppCoroutineCont
 
 spp::analyse::errors::SppFunctionSubroutineMissingReturnStatementError::SppFunctionSubroutineMissingReturnStatementError(
     asts::Ast const &final_member,
+    asts::Ast const &return_type_definition,
     asts::TypeAst const &return_type) {
-    AddHeaders(
-        65, "SPP Function Subroutine Missing Return Statement Error");
-    AddErr(
-        &final_member,
-        "Final member defined here");
+    AddHeaders(65, "Function Subroutine Missing Return Statement Error");
+    AddCtxForErr(&return_type_definition, "Return type introduced as " + INLINE_INFO(return_type.ToString()));
+    AddErr(&final_member, "Final member here");
     AddFooter(
-        "This subroutine is missing a return statement for return type: " + return_type.ToString(),
-        "Add a return statement at the end of the subroutine");
+        "This subroutine is missing a return statement for " + INLINE_NOTE(return_type.ToString()) + ".",
+        "Add a return statement with an expression at the end of the subroutine.");
 }
 
 spp::analyse::errors::SppSuperimpositionCyclicExtensionError::SppSuperimpositionCyclicExtensionError(
     asts::TypeAst const &first_extension,
     asts::TypeAst const &second_extension) {
-    AddHeaders(
-        66, "SPP Superimposition Cyclic Extension Error");
-    AddCtxForErr(
-        &first_extension,
-        "First extension defined here");
-    AddErr(
-        &second_extension,
-        "Second extension causing cycle defined here");
+    AddHeaders(66, "Superimposition Cyclic Extension Error");
+    AddCtxForErr(&first_extension, "First extension introduced here");
+    AddErr(&second_extension, "Second extension causing cycle introduced here");
     AddFooter(
         "This superimposition extension creates a cyclic dependency.",
-        "Break the cycle by adjusting the extensions");
+        "Break the cycle by adjusting the extensions.");
 }
 
 spp::analyse::errors::SppSuperimpositionDoubleExtensionError::SppSuperimpositionDoubleExtensionError(
     asts::TypeAst const &first_extension,
     asts::TypeAst const &second_extension) {
-    AddHeaders(
-        66, "SPP Superimposition Double Extension Error");
-    AddCtxForErr(
-        &first_extension,
-        "First extension defined here");
-    AddErr(
-        &second_extension,
-        "Second extension defined here");
+    AddHeaders(66, "Superimposition Double Extension Error");
+    AddCtxForErr(&first_extension, "First extension introduced here");
+    AddErr(&second_extension, "Second extension causing duplication introduced here");
     AddFooter(
         "A type cannot superimpose the same type more than once.",
-        "Remove one of the extensions / merge the blocks");
+        "Remove one of the extensions or merge the blocks.");
 }
 
 spp::analyse::errors::SppSuperimpositionSelfExtensionError::SppSuperimpositionSelfExtensionError(
     asts::TypeAst const &first_extension,
     asts::TypeAst const &second_extension) {
-    AddHeaders(
-        67, "SPP Superimposition Self Extension Error");
-    AddCtxForErr(
-        &first_extension,
-        "Extension defined here");
-    AddErr(
-        &second_extension,
-        "Self-extension defined here");
+    AddHeaders(67, "Superimposition Self Extension Error");
+    AddCtxForErr(&first_extension, "Extension introduced here");
+    AddErr(&second_extension, "Equal typed super type extended here");
     AddFooter(
         "A type cannot extend itself in superimposition.",
-        "Remove the self-extension");
+        "Remove the self-extension or use a normal " + INLINE_HELP("sup") + " block.");
 }
 
 spp::analyse::errors::SppSuperimpositionExtensionMethodInvalidError::SppSuperimpositionExtensionMethodInvalidError(
     asts::IdentifierAst const &new_method,
     asts::TypeAst const &super_class) {
-    AddHeaders(
-        68, "SPP Superimposition Extension Method Invalid Error");
-    AddCtxForErr(
-        &super_class,
-        "Super class defined here");
-    AddErr(
-        &new_method,
-        "Invalid extension method defined here");
+    AddHeaders(68, "Superimposition Extension Method Invalid Error");
+    AddCtxForErr(&super_class, "Super class extended here");
+    AddErr(&new_method, "Invalid extension method defined here");
     AddFooter(
-        "This method is invalid in the superimposition extension.",
-        "Remove or correct the invalid method");
+        "This method does not exist on the super class.",
+        "Remove or correct the invalid method.");
 }
 
 spp::analyse::errors::SppSuperimpositionExtensionNonVirtualMethodOverriddenError::SppSuperimpositionExtensionNonVirtualMethodOverriddenError(
     asts::IdentifierAst const &new_method,
     asts::IdentifierAst const &base_method,
     asts::TypeAst const &super_class) {
-    AddHeaders(
-        69, "SPP Superimposition Extension Non-Virtual Method Overridden Error");
-    AddCtxForErr(
-        &base_method,
-        "Base non-virtual method defined here");
-    AddCtxForErr(
-        &super_class,
-        "Super class defined here");
-    AddErr(
-        &new_method,
-        "Override of non-virtual method defined here");
+    AddHeaders(69, "Superimposition Extension Non-Virtual Method Overridden Error");
+    AddCtxForErr(&base_method, "Base non-virtual method of " + INLINE_INFO(super_class.ToString()) + " defined here");
+    AddCtxForErr(&super_class, "Super class extended here");
+    AddErr(&new_method, "Override of non-virtual method defined here");
     AddFooter(
         "Non-virtual methods cannot be overridden in superimposition extensions.",
-        "Make the base method virtual or remove the override");
+        "Make the base method virtual or remove the override.");
 }
 
 spp::analyse::errors::SppSuperimpositionOptionalGenericParameterError::SppSuperimpositionOptionalGenericParameterError(
@@ -1104,17 +1071,12 @@ spp::analyse::errors::SppSuperimpositionExtensionCmpStatementInvalidError::SppSu
 spp::analyse::errors::SppAsyncTargetNotFunctionCallError::SppAsyncTargetNotFunctionCallError(
     asts::TokenAst const &async_op,
     asts::Ast const &rhs) {
-    AddHeaders(
-        74, "SPP Async Target Not Function Call Error");
-    AddCtxForErr(
-        &async_op,
-        "Async operator defined here");
-    AddErr(
-        &rhs,
-        "Target expression defined here");
+    AddHeaders(74, "Async Target Not Function Call Error");
+    AddCtxForErr(&async_op, "Async operator defined here");
+    AddErr(&rhs, "Target expression defined here");
     AddFooter(
         "The target of an async operation must be a function call.",
-        "Ensure the target is a valid function call");
+        "Change the target to a function call operation, or remove " + INLINE_HELP("async") + ".");
 }
 
 spp::analyse::errors::SppDereferenceNonBorrowedTypeError::SppDereferenceNonBorrowedTypeError(
@@ -1126,7 +1088,7 @@ spp::analyse::errors::SppDereferenceNonBorrowedTypeError::SppDereferenceNonBorro
     AddErr(&expr, "Expression inferred as " + INLINE_INFO(type.ToString()) + " defined here");
     AddFooter(
         "Cannot dereference an expression of a non-borrowed type.",
-        "Ensure the expression has a borrowable type (e.g., a reference)");
+        "Ensure the expression has a borrowable type (e.g., a reference).");
 }
 
 spp::analyse::errors::SppNonCopyableTypeError::SppNonCopyableTypeError(

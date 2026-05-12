@@ -327,6 +327,7 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
 
     FnParamGroup->Stage7_AnalyseSemantics(sm, meta);
     ReturnType->Stage7_AnalyseSemantics(sm, meta);
+    ReturnType = sm->CurrentScope->GetTypeSymbol(ReturnType)->FqName();
 
     // Ensure the function's return type does not have a convention.
     RaiseIf<SppSecondClassBorrowViolationError>(
@@ -494,6 +495,7 @@ auto spp::asts::FunctionPrototypeAst::Stage11_CodeGen(
     meta->Save();
     meta->EnclosingFunctionFlavour = TokFun.get();
     meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
+    meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
     meta->EnclosingFunctionScope = sm->CurrentScope;
 
     // If there is an implementation, generate its code.

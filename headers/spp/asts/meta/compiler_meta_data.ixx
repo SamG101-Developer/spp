@@ -31,7 +31,6 @@ namespace spp::codegen {
     SPP_EXP_CLS struct LLvmCtx;
 }
 
-
 SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     double CurrentStage;
     Shared<TypeAst> ReturnTypeOverloadResolverType;
@@ -44,6 +43,7 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     analyse::scopes::Scope *EnclosingFunctionScope;
     TokenAst *EnclosingFunctionFlavour;
     SharedVec<TypeAst> EnclosingFunctionRetType;
+    SharedVec<TypeAst> EnclosingFunctionSourceRetType;
     TokenAst *EnclosingFunctionCmp;
     analyse::scopes::Scope *CurrentLambdaOuterScope;
     FunctionPrototypeAst *TargetCallFunctionPrototype;
@@ -73,7 +73,6 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     ankerl::unordered_dense::map<Shared<IdentifierAst>, Unique<ExpressionAst>, utils::ptr::ptr_hash<Shared<IdentifierAst>>, utils::ptr::ptr_eq<Shared<IdentifierAst>>> CmpArgs;
     Unique<ExpressionAst> CmpResult;
 };
-
 
 /**
  * Shared metadata for ASTs, exclusive to the stage of compilation taking place. For example, tracking if an assignment

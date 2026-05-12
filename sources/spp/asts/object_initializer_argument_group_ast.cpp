@@ -125,16 +125,17 @@ auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     //
+    using analyse::utils::type_utils::TypeEq;
+    using analyse::utils::type_utils::GetAllAttrs;
+    using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
     using analyse::errors::SppArgumentNameInvalidError;
     using analyse::errors::SppAmbiguousMemberAccessError;
     using analyse::errors::SppTypeMismatchError;
     using analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError;
-    using analyse::utils::type_utils::TypeEq;
-    using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
 
     // Get the attributes on the type and supertypes.
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(meta->ObjectInitType);
-    const auto all_attrs = analyse::utils::type_utils::GetAllAttrs(*meta->ObjectInitType, sm);
+    const auto all_attrs = GetAllAttrs(*meta->ObjectInitType, sm);
     const auto all_attr_names = all_attrs
         | genex::views::transform([](auto const &x) { return x.First; })
         | genex::to<Vec>();

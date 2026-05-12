@@ -121,6 +121,7 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
         _GenType = GenType(Expr->PosStart(), expr_type);
         _GenType->Stage7_AnalyseSemantics(sm, meta);
         meta->EnclosingFunctionRetType.EmplaceBack(_GenType);
+        meta->EnclosingFunctionSourceRetType.EmplaceBack(expr_type);
     }
     else {
         // Todo - this list isn't getting cleared, so [0] != [last] (using .Back() hides the bug - TEMP FIX).

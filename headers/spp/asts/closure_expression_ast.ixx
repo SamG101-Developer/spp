@@ -36,6 +36,10 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst 
      */
     Unique<ExpressionAst> Body;
 
+    struct {
+        Shared<TypeAst> _OriginalRetType;
+    } Source;
+
     /**
      * Construct the ClosureExpressionAst with the arguments matching the members.
      * @param[in] tok The optional @c cor keyword.

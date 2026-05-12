@@ -17,7 +17,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
 /**
  * The SupPrototypeFunctionsAst represents a superimposition of methods over a type. This is used to add behavior to a
  * type. For example, to extend the @c std::Str type with additional methods, the following code can be used:
@@ -51,6 +50,10 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeFunctionsAst final : Ast, ModuleMember
      * defined as a FunctionPrototypeAst, which includes the method's name, parameters, and return type.
      */
     Unique<SupImplementationAst> Impl;
+
+    struct {
+        Shared<TypeAst> OriginalName;
+    } Source;
 
     /**
      * Construct the SupPrototypeFunctionsAst with the arguments matching the members.
@@ -89,5 +92,5 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeFunctionsAst final : Ast, ModuleMember
 
     auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
-    auto Stage11_CodeGen(ScopeManager *sm , CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
+    auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 };

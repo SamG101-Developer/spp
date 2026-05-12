@@ -28,6 +28,10 @@ SPP_EXP_CLS struct spp::asts::RetStatementAst final : StatementAst {
      */
     Unique<ExpressionAst> Expr;
 
+    struct {
+        Shared<TypeAst> _OriginalRetType;
+    } Source;
+
     /**
      * Construct the RetStatementAst with the arguments matching the members.
      * @param tok_ret The @c return token that starts this statement.

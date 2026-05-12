@@ -40,6 +40,7 @@ spp::asts::TypeStatementAst::TypeStatementAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokType, lex::SppTokenType::KW_TYPE, "type");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->GnParamGroup);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
+    Source.OriginalOldType = AstClone(OldType);
 }
 
 spp::asts::TypeStatementAst::~TypeStatementAst() {
@@ -55,7 +56,7 @@ auto spp::asts::TypeStatementAst::PosStart() const
 auto spp::asts::TypeStatementAst::PosEnd() const
     -> std::size_t {
     // Use the old type.
-    return OldType->PosEnd();
+    return Source.OriginalOldType->PosEnd();
 }
 
 auto spp::asts::TypeStatementAst::Clone() const

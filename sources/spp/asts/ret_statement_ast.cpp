@@ -35,6 +35,8 @@ spp::asts::RetStatementAst::RetStatementAst(
     TokRet(std::move(tok_ret)),
     Expr(std::move(val)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokRet, lex::SppTokenType::KW_RET, "ret", Expr ? Expr->PosStart() : 0);
+    Source._OriginalRetType = nullptr;
+    _RetType = nullptr;
 }
 
 spp::asts::RetStatementAst::~RetStatementAst() = default;
@@ -71,9 +73,10 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     //
+    using analyse::utils::type_utils::IsTypeVoid;
     using analyse::utils::type_utils::TypeEq;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-    using analyse::errors::SppCoroutineContainsRetExprExpressionError;
+    using analyse::errors::SppCoroutineContainsReturnStatementError;
     using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::errors::SppInvalidVoidValueError;
     using analyse::errors::SppTypeMismatchError;
@@ -86,7 +89,7 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
 
     // Check the enclosing function is a subroutine and not a subroutine, if a value is being returned.
     const auto function_flavour = meta->EnclosingFunctionFlavour;
-    RaiseIf<SppCoroutineContainsRetExprExpressionError>(
+    RaiseIf<SppCoroutineContainsReturnStatementError>(
         function_flavour->TokenType != lex::SppTokenType::KW_FUN and Expr != nullptr,
         {sm->CurrentScope}, ERR_ARGS(*function_flavour, *TokRet));
 
@@ -95,11 +98,11 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
     if (Expr != nullptr) {
         meta->Save();
         SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) {
-            meta->ReturnTypeOverloadResolverType = meta->EnclosingFunctionRetType[0];
+            meta->ReturnTypeOverloadResolverType = meta->EnclosingFunctionRetType.Back();
         }
 
         // For case conditions, we need an assignment target in case of variants.
-        meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionRetType[0];
+        meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionRetType.Back();
         meta->AssignmentTarget = meta->AssignmentTargetType ? IdentifierAst::FromType(*meta->AssignmentTargetType) : nullptr;
         Expr->Stage7_AnalyseSemantics(sm, meta);
         expr_type = Expr->InferType(sm, meta);
@@ -107,26 +110,29 @@ auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
 
         // Check the expr_type isn't Void (don't allow "ret void_func()" => "void_func(); ret").
         RaiseIf<SppInvalidVoidValueError>(
-            analyse::utils::type_utils::IsTypeVoid(*expr_type, *sm->CurrentScope),
-            {sm->CurrentScope}, ERR_ARGS(*Expr, "return value"));
+            IsTypeVoid(*expr_type, *sm->CurrentScope),
+            {sm->CurrentScope}, ERR_ARGS(*Expr, "return statement"));
     }
 
     // Functions provide the return type, closures require inference; handle the inference.
     if (meta->EnclosingFunctionRetType.IsEmpty()) {
         _RetType = expr_type;
+        Source._OriginalRetType = _RetType;
         meta->EnclosingFunctionRetType.EmplaceBack(_RetType);
+        meta->EnclosingFunctionSourceRetType.EmplaceBack(_RetType);
     }
     else {
         _RetType = meta->EnclosingFunctionRetType.Back();
+        Source._OriginalRetType = meta->EnclosingFunctionSourceRetType.Back();
     }
 
     // Type check the expression type against the return type of the enclosing subroutine.
     if (function_flavour->TokenType == lex::SppTokenType::KW_FUN) {
         const auto direct_match = TypeEq(*_RetType, *expr_type, *meta->EnclosingFunctionScope, *sm->CurrentScope);
-        const auto expr_for_err = Expr ? Expr->To<Ast>() : TokRet->To<Ast>();
+        // const auto expr_for_err = Expr ? Expr->To<Ast>() : TokRet->To<Ast>();
         RaiseIf<SppTypeMismatchError>(
-            not direct_match, {sm->CurrentScope},
-            ERR_ARGS(*expr_type, *expr_type, *expr_for_err, *_RetType));
+            not direct_match, {meta->EnclosingFunctionScope, sm->CurrentScope},
+            ERR_ARGS(*Source._OriginalRetType, *_RetType, *Expr, *expr_type));
     }
 }
 

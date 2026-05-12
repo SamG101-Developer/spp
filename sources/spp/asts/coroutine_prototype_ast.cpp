@@ -74,6 +74,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
     meta->Save();
     meta->EnclosingFunctionFlavour = TokFun.get();
     meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
+    meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
     meta->EnclosingFunctionScope = sm->CurrentScope;
     Impl->Stage7_AnalyseSemantics(sm, meta);
 
@@ -126,6 +127,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
         meta->EnclosingFunctionFlavour = TokFun.get();
         meta->EnclosingFunctionScope = sm->CurrentScope;
         meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
+        meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
         Impl->Stage11_CodeGen(sm, meta, ctx);
         meta->Restore();
 

@@ -115,6 +115,7 @@ auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
         _GenType = generate::common_types::GenType(Expr->PosStart(), expr_type);
         _GenType->Stage7_AnalyseSemantics(sm, meta);
         meta->EnclosingFunctionRetType.EmplaceBack(_GenType);
+        meta->EnclosingFunctionSourceRetType.EmplaceBack(expr_type);
         meta->EnclosingFunctionScope = sm->CurrentScope;
     }
     else {
@@ -130,7 +131,7 @@ auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
     RaiseIf<SppTypeMismatchError>(
         not TypeEq(*meta->EnclosingFunctionRetType[0], *expr_type, *meta->EnclosingFunctionScope, *sm->CurrentScope),
         {meta->EnclosingFunctionScope, sm->CurrentScope},
-        ERR_ARGS(*meta->EnclosingFunctionRetType[0], *meta->EnclosingFunctionRetType[0], *Expr, *expr_type));
+        ERR_ARGS(*meta->EnclosingFunctionSourceRetType[0], *meta->EnclosingFunctionRetType[0], *Expr, *expr_type));
 }
 
 auto spp::asts::GenWithExpressionAst::Stage8_CheckMemory(

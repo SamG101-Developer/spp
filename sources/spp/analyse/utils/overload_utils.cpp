@@ -42,13 +42,12 @@ import spp.utils.ptr;
 import genex;
 import opex.cast;
 
-
 // The variadic arg is the different exception types that need to get "caught".
-#define SPP_OVERLOAD_RESOLUTION_ERROR_HANDLER(error_type, message)           \
-    catch (error_type const &e) {                                            \
+#define SPP_OVERLOAD_RESOLUTION_ERROR_HANDLER(error_type, message)          \
+    catch (error_type const &e) {                                           \
         fail_overloads.EmplaceBack(fn_scope, fn_proto, e.Clone(), message); \
+        while (meta->Depth() > original_meta_depth) { meta->Restore(); }    \
     }
-
 
 auto spp::analyse::utils::overload_utils::DetermineOverload(
     asts::PostfixExpressionOperatorFunctionCallAst &fn_call,
@@ -88,6 +87,7 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
     auto [is_closure, closure_proto, all_overloads] = RetrieveAllOverloads(fn_name.get(), *fn_owner_scope, sm, meta);
     auto pass_overloads = Vec<PassOverloadInfo>{};
     auto fail_overloads = Vec<FailOverloadInfo>{};
+    auto original_meta_depth = meta->Depth();
 
     // Check each provided overload for a complete match.
     for (auto &&[fn_scope, fn_proto, sup_generic_arg_group, fwd_type] : all_overloads) {
@@ -157,7 +157,6 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
     return MakePair(std::move(pass_overloads[0]), is_closure);
 }
 
-
 auto spp::analyse::utils::overload_utils::PropagateMethodToFunction(
     asts::PostfixExpressionOperatorFunctionCallAst &fn_call,
     asts::TypeAst const &fn_owner_type,
@@ -188,7 +187,6 @@ auto spp::analyse::utils::overload_utils::PropagateMethodToFunction(
     return std::make_tuple(std::move(overload_info), is_closure, std::move(pf));
 }
 
-
 auto spp::analyse::utils::overload_utils::RetrieveAllOverloads(
     asts::IdentifierAst const *fn_name,
     scopes::Scope const &fn_owner_scope,
@@ -217,7 +215,6 @@ auto spp::analyse::utils::overload_utils::RetrieveAllOverloads(
     return std::make_tuple(false, nullptr, Vec<OverloadInfo>{});
 }
 
-
 auto spp::analyse::utils::overload_utils::RetrieveImplicitGenericArgsForCall(
     Shared<asts::TypeAst> const &fwd_type,
     Vec<Unique<asts::GenericArgumentAst>> &&sup_gn_args,
@@ -244,7 +241,6 @@ auto spp::analyse::utils::overload_utils::RetrieveImplicitGenericArgsForCall(
     gn_args->MergeGenerics(std::move(sup_gn_args));
     return gn_args;
 }
-
 
 auto spp::analyse::utils::overload_utils::InferAllGenerics(
     asts::FunctionPrototypeAst const &fn_proto,
@@ -289,7 +285,6 @@ auto spp::analyse::utils::overload_utils::InferAllGenerics(
         false, *sm, *meta);
     explicit_gn_args.Args = std::move(temp_arg_group->Args);
 }
-
 
 auto spp::analyse::utils::overload_utils::GenerateGenericSubstitutedPrototype(
     asts::FunctionPrototypeAst *fn_proto,
@@ -343,7 +338,6 @@ auto spp::analyse::utils::overload_utils::GenerateGenericSubstitutedPrototype(
     return std::make_tuple(fn_proto, fn_scope);
 }
 
-
 auto spp::analyse::utils::overload_utils::ManageMatchedOverloads(
     asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
     Vec<PassOverloadInfo> const &pass_overloads,
@@ -390,7 +384,6 @@ auto spp::analyse::utils::overload_utils::ManageMatchedOverloads(
             {sm->CurrentScope}, ERR_ARGS(fn_call, signatures, arg_usage_signature));
     }
 }
-
 
 auto spp::analyse::utils::overload_utils::ValidateArgsMatchParams(
     asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,

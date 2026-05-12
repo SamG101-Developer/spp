@@ -3,10 +3,8 @@ module;
 
 module spp.asts.type_unary_expression_operator_ast;
 
-
 SPP_MOD_BEGIN
 spp::asts::TypeUnaryExpressionOperatorAst::~TypeUnaryExpressionOperatorAst() = default;
-
 
 auto spp::asts::TypeUnaryExpressionOperatorAst::operator<=>(
     TypeUnaryExpressionOperatorAst const &that) const
@@ -14,20 +12,17 @@ auto spp::asts::TypeUnaryExpressionOperatorAst::operator<=>(
     return Equals(that);
 }
 
-
 auto spp::asts::TypeUnaryExpressionOperatorAst::operator==(
     TypeUnaryExpressionOperatorAst const &that) const
     -> bool {
     return Equals(that) == Ordering::equal;
 }
 
-
 auto spp::asts::TypeUnaryExpressionOperatorAst::EqualsOpBorrow(
     TypeUnaryExpressionOperatorBorrowAst const &) const
     -> Ordering {
     return Ordering::less;
 }
-
 
 auto spp::asts::TypeUnaryExpressionOperatorAst::EqualsOpNamespace(
     TypeUnaryExpressionOperatorNamespaceAst const &) const

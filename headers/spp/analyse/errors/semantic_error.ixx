@@ -227,7 +227,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppRecursiveTypeError final : SemanticE
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppCoroutineInvalidReturnTypeError final : SemanticError {
-    explicit SppCoroutineInvalidReturnTypeError(asts::CoroutinePrototypeAst const &proto, asts::Ast const& ret_type_expr, asts::TypeAst const &ret_type);
+    explicit SppCoroutineInvalidReturnTypeError(asts::CoroutinePrototypeAst const &proto, asts::Ast const &ret_type_expr, asts::TypeAst const &ret_type);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppFloatOutOfBoundsError final : SemanticError {
@@ -243,7 +243,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppOrderInvalidError final : SemanticEr
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppExpansionOfNonTupleError final : SemanticError {
-    explicit SppExpansionOfNonTupleError(asts::TokenAst const& unpack, asts::Ast const &ast, asts::TypeAst const &type);
+    explicit SppExpansionOfNonTupleError(asts::TokenAst const &unpack, asts::Ast const &ast, asts::TypeAst const &type);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppMemoryOverlapUsageError final : SemanticError {
@@ -407,7 +407,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppCoroutineContainsReturnStatementErro
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppFunctionSubroutineMissingReturnStatementError final : SemanticError {
-    explicit SppFunctionSubroutineMissingReturnStatementError(asts::Ast const &final_member, asts::TypeAst const &return_type);
+    explicit SppFunctionSubroutineMissingReturnStatementError(asts::Ast const &final_member, asts::Ast const &return_type_definition, asts::TypeAst const &return_type);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppSuperimpositionCyclicExtensionError final : SemanticError {
@@ -455,7 +455,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppDereferenceNonBorrowedTypeError fina
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppNonCopyableTypeError final : SemanticError {
-    explicit SppNonCopyableTypeError(asts::Ast const& ctx, asts::ExpressionAst const &expr, asts::TypeAst const &type);
+    explicit SppNonCopyableTypeError(asts::Ast const &ctx, asts::ExpressionAst const &expr, asts::TypeAst const &type);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppGenericParameterInferredConflictInferredError final : SemanticError {

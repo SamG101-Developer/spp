@@ -92,7 +92,7 @@ auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics
     RaiseIf<SppTypeMismatchError>(
         not TypeEq(*meta->EnclosingFunctionRetType[0], *residual_type, *meta->EnclosingFunctionScope, *sm->CurrentScope),
         {meta->EnclosingFunctionScope, sm->CurrentScope},
-        ERR_ARGS(*meta->EnclosingFunctionRetType[0], *meta->EnclosingFunctionRetType[0], *lhs, *residual_type));
+        ERR_ARGS(*meta->EnclosingFunctionSourceRetType[0], *meta->EnclosingFunctionRetType[0], *lhs, *residual_type));
 }
 
 auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(

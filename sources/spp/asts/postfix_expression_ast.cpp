@@ -155,14 +155,14 @@ auto spp::asts::PostfixExpressionAst::InferType(
     CompilerMetaData *meta)
     -> Shared<TypeAst> {
     // Check cache.
-    if (Source.CachedInference != nullptr) { return Source.CachedInference; }
+    // if (Source.CachedInference != nullptr) { return Source.CachedInference; }
 
     // Forward into the operator AST.
     meta->Save();
     meta->PostfixExpressionLhs = Lhs.get();
-    Source.CachedInference = Op->InferType(sm, meta);
+    auto x = Op->InferType(sm, meta);
     meta->Restore();
-    return Source.CachedInference;
+    return x;
 }
 
 auto spp::asts::PostfixExpressionAst::ExprParts() const

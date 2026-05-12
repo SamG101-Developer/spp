@@ -72,6 +72,11 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMember
      */
     Unique<SupImplementationAst> Impl;
 
+    struct {
+        Shared<TypeAst> OriginalName;
+        Shared<TypeAst> OriginalSuperClass;
+    } Source;
+
     /**
      * Construct the SupPrototypeFunctionsAst with the arguments matching the members.
      * @param tok_sup The @c sup keyword that represents the start of the superimposition.

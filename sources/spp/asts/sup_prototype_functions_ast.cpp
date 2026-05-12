@@ -39,6 +39,7 @@ spp::asts::SupPrototypeFunctionsAst::SupPrototypeFunctionsAst(
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokSup, lex::SppTokenType::KW_SUP, "sup");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->GnParamGroup);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Impl);
+    Source.OriginalName = AstClone(Name);
 }
 
 spp::asts::SupPrototypeFunctionsAst::~SupPrototypeFunctionsAst() = default;
@@ -52,7 +53,7 @@ auto spp::asts::SupPrototypeFunctionsAst::PosStart() const
 auto spp::asts::SupPrototypeFunctionsAst::PosEnd() const
     -> std::size_t {
     // Use the name.
-    return Name->PosStart();
+    return Source.OriginalName->PosEnd();
 }
 
 auto spp::asts::SupPrototypeFunctionsAst::Clone() const
@@ -87,6 +88,10 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage2_GenTopLvlScopes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::errors::SppSuperimpositionOptionalGenericParameterError;
+    using analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError;
+
     // Create a new scope for the superimposition extension.
     auto scope_name = analyse::scopes::ScopeBlockName::FromParts(
         "sup-prototype-functions", {Name.get()}, PosStart());
@@ -95,14 +100,14 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage2_GenTopLvlScopes(
 
     // Check there are optional generic parameters.
     const auto optional = GnParamGroup->GetOptionalParams();
-    RaiseIf<analyse::errors::SppSuperimpositionOptionalGenericParameterError>(
+    RaiseIf<SppSuperimpositionOptionalGenericParameterError>(
         not optional.IsEmpty(), {sm->CurrentScope}, ERR_ARGS(*optional[0]));
 
     // Check every generic parameter is constrained by the type.
     const auto unconstrained = GnParamGroup->GetAllParams()
         | genex::views::filter([this](auto const &x) { return not Name->ContainsGenerics(*x); })
         | genex::to<Vec>();
-    RaiseIf<analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError>(
+    RaiseIf<SppSuperimpositionUnconstrainedGenericParameterError>(
         not unconstrained.IsEmpty(), {sm->CurrentScope}, ERR_ARGS(*unconstrained[0]));
 
     // Generate symbols for the generic parameter group, and the self type.
@@ -150,7 +155,7 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
     Name->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppSecondClassBorrowViolationError>(
         IsTypeBorrowed(*Name, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*this, *Name, "superimposition type"));
+        {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalName, "superimposition type"));
     Name = sm->CurrentScope->GetTypeSymbol(Name)->FqName();
 
     // Register the superimposition against the base symbol.

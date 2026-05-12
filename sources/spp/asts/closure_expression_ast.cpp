@@ -35,6 +35,8 @@ spp::asts::ClosureExpressionAst::ClosureExpressionAst(
     PcGroup(std::move(pc_group)),
     Body(std::move(body)) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Tok, lex::SppTokenType::KW_FUN, "fun");
+    Source._OriginalRetType = nullptr;
+    _RetType = nullptr;
 }
 
 spp::asts::ClosureExpressionAst::~ClosureExpressionAst() = default;
@@ -98,6 +100,7 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
     sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
     meta->EnclosingFunctionFlavour = Tok.get();
     meta->EnclosingFunctionRetType = {};
+    meta->EnclosingFunctionSourceRetType = {};
 
     // Add the inherited generics into the closure-inner scope.
     for (auto const &type_generic_sym : inherited_type_generics) {
@@ -110,6 +113,7 @@ auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
     // Analyse the body of the closure.
     Body->Stage7_AnalyseSemantics(sm, meta);
     _RetType = not meta->EnclosingFunctionRetType.IsEmpty() ? meta->EnclosingFunctionRetType[0] : Body->InferType(sm, meta);
+    Source._OriginalRetType = _RetType;
     meta->Restore(true);
     meta->Restore();
 
@@ -171,6 +175,7 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     const auto saved_bb = ctx->Builder.GetInsertBlock();
     const auto saved_fn_scope = meta->EnclosingFunctionScope;
     const auto saved_ret_ty = meta->EnclosingFunctionRetType;
+    const auto saved_src_ret_ty = meta->EnclosingFunctionSourceRetType;
     const auto saved_flavour = meta->EnclosingFunctionFlavour;
     const auto saved_current_closure_type = ctx->CurrentClosureType;
 
@@ -179,6 +184,7 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     _LlvmFunc = MakeShared<codegen::LlvmFuncWrapper>(llvm_fn);
     meta->EnclosingFunctionScope = sm->CurrentScope;
     meta->EnclosingFunctionRetType = {_RetType};
+    meta->EnclosingFunctionSourceRetType = {Source._OriginalRetType};
     meta->EnclosingFunctionFlavour = Tok.get();
     ctx->CurrentClosureType = env_ty;
     ctx->CurrentClosureScope = sm->CurrentScope;
@@ -196,6 +202,7 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
     ctx->Builder.SetInsertPoint(saved_bb);
     meta->EnclosingFunctionScope = saved_fn_scope;
     meta->EnclosingFunctionRetType = saved_ret_ty;
+    meta->EnclosingFunctionSourceRetType = saved_src_ret_ty;
     meta->EnclosingFunctionFlavour = saved_flavour;
     ctx->CurrentClosureType = saved_current_closure_type;
 

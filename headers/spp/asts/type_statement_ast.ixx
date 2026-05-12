@@ -27,7 +27,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct UseStatementAst;
 }
 
-
 /**
  * The TypeStatementAst is used to alias a type to a new name in this scope. It can also use generic parameters for more
  * complex types, such as aliasing vectors, or partially specialized hash maps etc. For example,
@@ -73,6 +72,10 @@ SPP_EXP_CLS struct spp::asts::TypeStatementAst final : StatementAst, ModuleMembe
      * @code type Str = std::Str@endcode, the fully qualified type is @c std::Str.
      */
     Shared<TypeAst> OldType;
+
+    struct {
+        Shared<TypeAst> OriginalOldType;
+    } Source;
 
     /**
      * Construct the TypeStatementAst with the arguments matching the members.
@@ -130,6 +133,5 @@ private:
 
     Shared<analyse::scopes::TypeSymbol> _AliasSym;
 };
-
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeStatementAst)
