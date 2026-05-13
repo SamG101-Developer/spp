@@ -421,6 +421,9 @@ auto spp::analyse::utils::func_utils::enforce_no_invalid_fn_args(
     Vec<asts::FunctionCallArgumentKeywordAst*> const &named_args,
     scopes::ScopeManager &sm)
     -> void {
+    //
+    using errors::SppArgumentNameInvalidError;
+
     // Get the parameter names using the extraction method.
     const auto p_names = params
         | genex::views::transform([](auto *x) { return x->ExtractName(); })
@@ -437,7 +440,7 @@ auto spp::analyse::utils::func_utils::enforce_no_invalid_fn_args(
         | genex::to<Vec>();
 
     // Raise an error if any invalid argument names were found.
-    RaiseIf<errors::SppArgumentNameInvalidError>(
+    RaiseIf<SppArgumentNameInvalidError>(
         not invalid_arg_names.IsEmpty(), {sm.CurrentScope},
         ERR_ARGS(*params[0], "fn param", *invalid_arg_names[0], "fn arg"));
 }

@@ -3,7 +3,6 @@ import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
 import genex;
 
-
 auto spp::analyse::utils::destructure_utils::GetNestedBindingIdentifiers(
     Vec<Unique<asts::LocalVariableAst>> const &elems)
     -> Vec<Shared<asts::IdentifierAst>> {
@@ -13,7 +12,6 @@ auto spp::analyse::utils::destructure_utils::GetNestedBindingIdentifiers(
         | genex::views::join
         | genex::to<Vec>();
 }
-
 
 auto spp::analyse::utils::destructure_utils::UnmatchableSingleIdentifier(
     const std::size_t pos)

@@ -731,17 +731,12 @@ spp::analyse::errors::SppArgumentNameInvalidError::SppArgumentNameInvalidError(
     const StrView target_what,
     asts::Ast const &source,
     const StrView source_what) {
-    AddHeaders(
-        50, "SPP Argument Name Invalid Error");
-    AddCtxForErr(
-        &target,
-        Str(target_what) + " defined here");
-    AddErr(
-        &source,
-        Str(source_what) + " defined here");
+    AddHeaders(50, "Argument Name Invalid Error");
+    AddCtxForErr(&target, INLINE_INFO(target_what) + " defined here");
+    AddErr(&source, INLINE_INFO(source_what) + " defined here");
     AddFooter(
-        "The name of this argument is invalid in the current context.",
-        "Ensure the argument name is correct and valid");
+        "The name of the " + INLINE_NOTE(source_what) + " is invalid in the current context.",
+        "Change the " + INLINE_HELP(source_what) + " to a name that is a " + INLINE_HELP(target_what) + ".");
 }
 
 spp::analyse::errors::SppArgumentMissingError::SppArgumentMissingError(
@@ -749,7 +744,7 @@ spp::analyse::errors::SppArgumentMissingError::SppArgumentMissingError(
     const StrView target_what,
     asts::Ast const &source,
     const StrView source_what) {
-    AddHeaders(51, "SPP Argument Missing Error");
+    AddHeaders(51, "Argument Missing Error");
     AddCtxForErr(&target, "Missing " + INLINE_INFO(Str(target_what)) + " defined here");
     AddErr(&source, "Existing " + INLINE_INFO(Str(source_what)) + " defined here");
     AddFooter(
