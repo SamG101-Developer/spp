@@ -22,7 +22,7 @@ auto spp::utils::files::WriteFile(
 }
 
 auto spp::utils::files::GlobSpp(
-    std::string const &path)
+    Str const &path)
     -> Vec<std::filesystem::path> {
     // Use the filesystem iterator to recursively walk the path, finding all ".spp" files.
     auto paths = Vec<std::filesystem::path>();

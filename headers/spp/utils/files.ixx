@@ -25,7 +25,7 @@ namespace spp::utils::files {
     SPP_EXP_CLS struct FileLock;
     SPP_EXP_CLS struct FileLockException;
 
-    SPP_EXP_FUN auto GlobSpp(std::string const &path) -> Vec<std::filesystem::path>;
+    SPP_EXP_FUN auto GlobSpp(Str const &path) -> Vec<std::filesystem::path>;
 }
 
 // SPP_EXP_CLS struct spp::utils::files::FileLock {
