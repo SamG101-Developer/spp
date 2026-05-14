@@ -20,7 +20,9 @@ import spp.asts.class_prototype_ast;
 import spp.asts.coroutine_prototype_ast;
 import spp.asts.cmp_statement_ast;
 import spp.asts.expression_ast;
+import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_prototype_ast;
+import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_self_ast;
 import spp.asts.function_parameter_variadic_ast;
 import spp.asts.generic_argument_ast;
@@ -732,8 +734,8 @@ spp::analyse::errors::SppArgumentNameInvalidError::SppArgumentNameInvalidError(
     asts::Ast const &source,
     const StrView source_what) {
     AddHeaders(50, "Argument Name Invalid Error");
-    AddCtxForErr(&target, INLINE_INFO(target_what) + " defined here");
-    AddErr(&source, INLINE_INFO(source_what) + " defined here");
+    AddCtxForErr(&target, INLINE_INFO(target_what) + " introduced here");
+    AddErr(&source, INLINE_INFO(source_what) + " introduced here");
     AddFooter(
         "The name of the " + INLINE_NOTE(source_what) + " is invalid in the current context.",
         "Change the " + INLINE_HELP(source_what) + " to a name that is a " + INLINE_HELP(target_what) + ".");
@@ -797,17 +799,12 @@ spp::analyse::errors::SppFunctionCallNotImplFunctionError::SppFunctionCallNotImp
 spp::analyse::errors::SppFunctionCallTooManyArgumentsError::SppFunctionCallTooManyArgumentsError(
     asts::FunctionPrototypeAst const &proto,
     asts::PostfixExpressionOperatorFunctionCallAst const &call) {
-    AddHeaders(
-        55, "SPP Function Call Too Many Arguments Error");
-    AddCtxForErr(
-        &proto,
-        "Function prototype defined here");
-    AddErr(
-        &call,
-        "Function call defined here");
+    AddHeaders(55, "SPP Function Call Too Many Arguments Error");
+    AddCtxForErr(&proto, "Function prototype defined here with " + INLINE_INFO(std::to_string(proto.FnParamGroup->Params.Len())) + " parameter(s)");
+    AddErr(&call, "Function call introduced here with " + INLINE_INFO(std::to_string(call.FnArgGroup->Args.Len())) + " argument(s)");
     AddFooter(
         "This function call provides more arguments than the function prototype allows.",
-        "Reduce the number of arguments in the function call to match the prototype");
+        "Reduce the number of arguments in the function call to match the prototype.");
 }
 
 spp::analyse::errors::SppFunctionFoldTupleElementTypeMismatchError::SppFunctionFoldTupleElementTypeMismatchError(

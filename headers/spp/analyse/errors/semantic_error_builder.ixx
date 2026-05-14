@@ -29,10 +29,12 @@ namespace spp {
 
     SPP_EXP_FUN template <typename E, typename A>
     requires std::derived_from<E, analyse::errors::SemanticError>
-    SPP_ATTR_NORETURN auto Raise(Vec<analyse::scopes::Scope const*> const &scopes, A &&arg_binder) -> void {
+    SPP_ATTR_NORETURN auto Raise(Vec<analyse::scopes::Scope const*> const &scopes, A &&arg_binder, Vec<Str> sub_errors = {}) -> void {
         std::apply(
             [&]<typename... Args2>(Args2 &&... unpacked_args) {
-                analyse::errors::SemanticErrorBuilder<E>().WithArgs(std::forward<Args2>(unpacked_args)...).raises_from_vec(scopes);
+                analyse::errors::SemanticErrorBuilder<E>()
+                    .WithSubErrors(std::move(sub_errors))
+                    .WithArgs(std::forward<Args2>(unpacked_args)...).raises_from_vec(scopes);
             },
             std::forward<A>(arg_binder)());
         std::unreachable();
@@ -64,6 +66,11 @@ struct spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::Ab
     SemanticErrorBuilder() = default;
     ~SemanticErrorBuilder() override = default;
 
+    auto WithSubErrors(Vec<Str> &&sub_errors) -> SemanticErrorBuilder& {
+        _SubErrors = std::move(sub_errors);
+        return *this;
+    }
+
     SPP_ATTR_NORETURN auto Raise() -> void override {
         const auto cast_error = dynamic_cast<SemanticError*>(this->_ErrObj.get());
 
@@ -79,11 +86,21 @@ struct spp::analyse::errors::SemanticErrorBuilder final : spp::utils::errors::Ab
             | genex::views::transform([this](auto &&x) { return _StringifyErrorInformation(std::get<1>(x), std::get<0>(x)); })
             | genex::to<Vec>();
 
+        // Format and append each per-overload sub-error consecutively beneath the main error.
+        auto i = 1;
+        for (auto const &msg : _SubErrors) {
+            auto header = colex::st_underline + std::string("Candidate ") + std::to_string(i) + ":\n" + colex::reset;
+            cast_error->messages.EmplaceBack(header + msg);
+            ++i;
+        }
+
         // Throw the error object.
         spp::utils::errors::AbstractErrorBuilder<T>::Raise();
     }
 
 private:
+    Vec<Str> _SubErrors;
+
     static auto _StringifyErrorInformation(
         spp::utils::errors::ErrorFormatter *formatter,
         std::tuple<asts::Ast const*, SemanticError::ErrorInformationType, Str, Str> const &info)

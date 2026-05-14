@@ -48,7 +48,7 @@ namespace spp::analyse::utils::overload_utils {
     using FailOverloadInfo = std::tuple<
         scopes::Scope const*,
         asts::FunctionPrototypeAst*,
-        Unique<errors::SemanticError>,
+        Str,
         Str>;
 
     SPP_EXP_FUN auto DetermineOverload(
@@ -113,7 +113,7 @@ namespace spp::analyse::utils::overload_utils {
     SPP_EXP_FUN auto ManageMatchedOverloads(
         asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
         Vec<PassOverloadInfo> const &pass_overloads,
-        Vec<FailOverloadInfo> const &fail_overloads,
+        Vec<FailOverloadInfo> &&fail_overloads,
         asts::FunctionCallArgumentGroupAst const &arg_group,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)

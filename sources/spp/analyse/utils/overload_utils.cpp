@@ -1,5 +1,4 @@
 module;
-#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 #include <opex/macros.hpp>
 
@@ -45,7 +44,7 @@ import opex.cast;
 // The variadic arg is the different exception types that need to get "caught".
 #define SPP_OVERLOAD_RESOLUTION_ERROR_HANDLER(error_type, message)          \
     catch (error_type const &e) {                                           \
-        fail_overloads.EmplaceBack(fn_scope, fn_proto, e.Clone(), message); \
+        fail_overloads.EmplaceBack(fn_scope, fn_proto, e.what(), message); \
         while (meta->Depth() > original_meta_depth) { meta->Restore(); }    \
     }
 
@@ -55,6 +54,7 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
     asts::meta::CompilerMetaData *meta)
     -> Pair<PassOverloadInfo, bool> {
     // Extract metadata about the target function's overloads (owner, scope, etc).
+    using errors::SppFunctionCallTooManyArgumentsError;
     using type_utils::TypeEq;
     using func_utils::GetFuncOwnerTypeAndFuncName;
     auto lhs = meta->PostfixExpressionLhs;
@@ -111,7 +111,7 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
         try {
             // Cannot check for "too few" arguments here because of potential "T=Void" + "x: T" removal.
             // Check if there are too many arguments (for a non-variadic function).
-            RaiseIf<errors::SppFunctionCallTooManyArgumentsError>(
+            RaiseIf<SppFunctionCallTooManyArgumentsError>(
                 fn_args->Args.Len() > fn_params->Params.Len() and not is_variadic_fn,
                 {fn_scope}, ERR_ARGS(*fn_proto, fn_call));
 
@@ -150,7 +150,7 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
         }
     }
 
-    ManageMatchedOverloads(fn_call, pass_overloads, fail_overloads, *fn_call.FnArgGroup, sm, meta);
+    ManageMatchedOverloads(fn_call, pass_overloads, std::move(fail_overloads), *fn_call.FnArgGroup, sm, meta);
     if (closure_proto) {
         fn_call.SetClosureDummyProto(std::move(closure_proto));
     }
@@ -341,7 +341,7 @@ auto spp::analyse::utils::overload_utils::GenerateGenericSubstitutedPrototype(
 auto spp::analyse::utils::overload_utils::ManageMatchedOverloads(
     asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
     Vec<PassOverloadInfo> const &pass_overloads,
-    Vec<FailOverloadInfo> const &fail_overloads,
+    Vec<FailOverloadInfo> &&fail_overloads,
     asts::FunctionCallArgumentGroupAst const &arg_group,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
@@ -361,8 +361,13 @@ auto spp::analyse::utils::overload_utils::ManageMatchedOverloads(
             | genex::views::join
             | genex::to<Str>();
 
+        auto sub_errors = fail_overloads
+            | genex::views::transform([](auto &&f) { return std::move(std::get<2>(std::move(f))); })
+            | genex::to<Vec>();
+
         Raise<errors::SppFunctionCallNoValidSignaturesError>(
-            {sm->CurrentScope}, ERR_ARGS(fn_call, failed_signatures_and_errors, arg_usage_signature));
+            {sm->CurrentScope}, ERR_ARGS(fn_call, failed_signatures_and_errors, arg_usage_signature),
+            std::move(sub_errors));
     }
 
     // If there are multiple pass overloads, raise an error.
