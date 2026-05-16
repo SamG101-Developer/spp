@@ -790,7 +790,7 @@ spp::analyse::errors::SppAmbiguousMemberAccessError::SppAmbiguousMemberAccessErr
     AddHeaders(63, "Ambiguous Member Access Error");
     AddCtxForErr(&found_field_1, "First matching field defined here");
     AddCtxForErr(&found_field_2, "Second matching field defined here");
-    AddErr(&field_access,"Ambiguous member access defined here");
+    AddErr(&field_access, "Ambiguous member access defined here");
     AddFooter(
         "The member access is ambiguous due to multiple matching fields of equal subclass depth.",
         "Not supported at the moment.");
@@ -1056,17 +1056,12 @@ spp::analyse::errors::SppGenericConstraintError::SppGenericConstraintError(
 spp::analyse::errors::SppAnnotationTargetNotAnAnnotationError::SppAnnotationTargetNotAnAnnotationError(
     asts::AnnotationAst const &call_site,
     asts::FunctionPrototypeAst const &target_definition) {
-    AddHeaders(
-        86, "SPP Annotation Target Not An Annotation Error");
-    AddCtxForErr(
-        &target_definition,
-        "Function defined here is missing '!annotation' tag");
-    AddErr(
-        &call_site,
-        "Calling annotation candidate '" + call_site.ToString() + "' here.");
+    AddHeaders(86, "Annotation Target Not An Annotation Error");
+    AddCtxForErr(&target_definition, "Function defined here is missing " + INLINE_INFO("!annotation") + " tag");
+    AddErr(&call_site, "Calling annotation candidate " + INLINE_INFO(call_site.ToString()) + " here.");
     AddFooter(
         "This annotation cannot be applied because the target is not an annotation.",
-        "Ensure the target function is defined with the '!annotation' tag");
+        "Ensure the target function is defined with the '!annotation' tag.");
 }
 
 spp::analyse::errors::SppAnnotationTargetNotACmpFunctionError::SppAnnotationTargetNotACmpFunctionError(
@@ -1102,7 +1097,7 @@ spp::analyse::errors::SppInvalidBinaryFoldExpressionError::SppInvalidBinaryFoldE
     AddErr(&expr, "Fold expression has " + INLINE_INFO(std::to_string(tup_num_elems)) + " element(s)");
     AddFooter(
         "Binary fold expressions must operate on tuples of 2+ elements.",
-        "Ensure the fold expression is applied to a tuple with 2 or more elements");
+        "Ensure the fold expression is applied to a tuple with 2 or more elements.");
 }
 
 spp::analyse::errors::SppAccessViolationError::SppAccessViolationError(
@@ -1110,17 +1105,12 @@ spp::analyse::errors::SppAccessViolationError::SppAccessViolationError(
     asts::Ast const &symbol_definition,
     const StrView visibility,
     const StrView what) {
-    AddHeaders(
-        90, "SPP Access Violation Error");
-    AddCtxForErr(
-        &symbol_definition,
-        Str(what) + " defined here with '" + Str(visibility) + "' visibility");
-    AddErr(
-        &access_site,
-        "Illegal access to " + Str(what) + " here");
+    AddHeaders(90, "Access Violation Error");
+    AddCtxForErr(&symbol_definition, INLINE_INFO(what) + " defined here with '" + INLINE_INFO(visibility) + "' visibility");
+    AddErr(&access_site, "Illegal access to " + INLINE_INFO(what) + " here");
     AddFooter(
-        "The symbol '" + symbol_definition.ToString() + "' has '" + Str(visibility) + "' visibility and cannot be accessed from this context.",
-        "Move the access inside the appropriate type/module scope, or increase the symbol's visibility");
+        "The symbol '" + INLINE_NOTE(symbol_definition.ToString()) + "' has '" + INLINE_NOTE(visibility) + "' visibility and cannot be accessed from this context.",
+        "Move the access inside the appropriate type/module scope, or increase the symbol's visibility.");
 }
 
 spp::analyse::errors::SppFunctionOverloadVisibilityMismatchError::SppFunctionOverloadVisibilityMismatchError(
