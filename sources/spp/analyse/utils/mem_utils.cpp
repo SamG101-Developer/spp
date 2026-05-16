@@ -12,15 +12,21 @@ import spp.analyse.utils.mem_info_utils;
 import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.array_literal_repeated_element_ast;
 import spp.asts.ast;
+import spp.asts.convention_ast;
 import spp.asts.case_expression_branch_ast;
 import spp.asts.case_pattern_variant_ast;
 import spp.asts.case_pattern_variant_else_ast;
 import spp.asts.expression_ast;
+import spp.asts.function_call_argument_ast;
+import spp.asts.function_call_argument_group_ast;
+import spp.asts.function_prototype_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_keyword_res_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.tuple_literal_ast;
+import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 import ankerl.unordered_dense;
@@ -325,5 +331,17 @@ auto spp::analyse::utils::mem_utils::PreventBorrowLifetimeExtension(
     else if (const auto pf = rhs_expr.To<asts::PostfixExpressionAst>(); pf and pf->Op->To<asts::PostfixExpressionOperatorKeywordResAst>()) {
         const auto new_rhs_sym = sm.CurrentScope->GetVarSymbolOutermost(*pf->Lhs).First.get();
         PreventBorrowLifetimeExtension(*pf->Lhs, lhs_outermost, new_rhs_sym, owner, sm, true);
+    }
+
+    // Finally, an inline coroutine call, such as "x = coro(&borrow)" also needs checking.
+    // This is also a temporary borrow, but being contained rather than yielded at this point.
+    else if (pf and pf->Op->To<asts::PostfixExpressionOperatorFunctionCallAst>()) {
+        const auto new_rhs_sym = sm.CurrentScope->GetVarSymbolOutermost(*pf->Lhs).First.get();
+        const auto lhs_func = pf->Op->To<asts::PostfixExpressionOperatorFunctionCallAst>();
+        const auto lhs_func_call_is_coro = lhs_func->Target()->IsCoroutine();
+        const auto has_borrowed_args = lhs_func_call_is_coro and genex::any_of(lhs_func->FnArgGroup->Args, [&](auto const &arg) {
+            return arg->Conv != nullptr;
+        });
+        PreventBorrowLifetimeExtension(*pf->Lhs, lhs_outermost, new_rhs_sym, owner, sm, lhs_func_call_is_coro and has_borrowed_args);
     }
 }

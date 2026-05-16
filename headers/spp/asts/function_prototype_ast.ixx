@@ -207,6 +207,8 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
 
     virtual auto GenerateLlvmDeclaration(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> Shared<codegen::LlvmFuncWrapper>;
 
+    virtual auto IsCoroutine() const -> bool = 0;
+
 protected:
     /**
      * Using a list because there are times that the collection is iterated whilst being appended to.

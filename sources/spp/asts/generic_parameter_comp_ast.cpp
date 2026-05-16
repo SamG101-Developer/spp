@@ -91,6 +91,14 @@ auto spp::asts::GenericParameterCompAst::Stage7_AnalyseSemantics(
     // type->Stage7_AnalyseSemantics(sm, meta);
 }
 
+auto spp::asts::GenericParameterCompAst::Stage9_CompTimeResolve(
+    ScopeManager *,
+    CompilerMetaData *meta)
+    -> void {
+    // Return the identifier.
+    meta->CmpResult = IdentifierAst::FromType(*Name);
+}
+
 auto spp::asts::GenericParameterCompAst::Stage11_CodeGen(
     ScopeManager *sm,
     CompilerMetaData *meta,

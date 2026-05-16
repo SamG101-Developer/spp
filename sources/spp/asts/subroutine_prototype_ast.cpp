@@ -95,4 +95,9 @@ auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
     meta->LoopReturnTypes->clear();
 }
 
+auto spp::asts::SubroutinePrototypeAst::IsCoroutine() const
+    -> bool {
+    return false;
+}
+
 SPP_MOD_END

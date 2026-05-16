@@ -427,7 +427,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::_HandleFunctionFolding
         auto new_arg_group = AstClone(FnArgGroup);
         for (const auto fold_index : fold_indexes) {
             // Create the postfix access into the tuple.
-            auto id = MakeUnique<IdentifierAst>(new_arg_group->Args[fold_index]->Val->PosEnd(), std::to_string(fold_index));
+            auto id = MakeUnique<IdentifierAst>(new_arg_group->Args[fold_index]->Val->PosEnd(), std::to_string(i));
             auto ma = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(id));
             auto pf = MakeUnique<PostfixExpressionAst>(std::move(new_arg_group->Args[fold_index]->Val), std::move(ma));
             new_arg_group->Args[fold_index]->Val = std::move(pf);

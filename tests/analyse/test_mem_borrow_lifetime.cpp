@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestMemoryBorrowLifetime,
     test_invalid_memory_assign_borrow_extends_lifetime_indirect,
@@ -19,7 +18,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestMemoryBorrowLifetime,
     test_invalid_memory_assign_borrow_extends_lifetime_direct,
@@ -37,7 +35,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestMemoryBorrowLifetime,
     test_valid_memory_assign_borrow_non_extends_lifetime_indirect, R"(
@@ -54,7 +51,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestMemoryBorrowLifetime,

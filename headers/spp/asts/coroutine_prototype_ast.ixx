@@ -38,6 +38,8 @@ SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst
 
     auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LLvmCtx *ctx) -> llvm::Value* override;
 
+    auto IsCoroutine() const -> bool override;
+
 private:
     llvm::Function *_LlvmResumeFunc;
 };

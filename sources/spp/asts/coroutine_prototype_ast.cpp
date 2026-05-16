@@ -172,4 +172,9 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
     return llvm_coro_ctor;
 }
 
+auto spp::asts::CoroutinePrototypeAst::IsCoroutine() const
+    -> bool {
+    return true;
+}
+
 SPP_MOD_END

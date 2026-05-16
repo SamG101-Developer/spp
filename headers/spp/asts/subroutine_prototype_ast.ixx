@@ -19,4 +19,6 @@ SPP_EXP_CLS struct spp::asts::SubroutinePrototypeAst final : FunctionPrototypeAs
     SPP_ATTR_NODISCARD auto Clone() const -> Unique<Ast> override;
 
     auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+    auto IsCoroutine() const -> bool override;
 };

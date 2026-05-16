@@ -326,9 +326,10 @@ auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
         }
     }
 
+    // Carry the convention for error purposes.
     FnParamGroup->Stage7_AnalyseSemantics(sm, meta);
     ReturnType->Stage7_AnalyseSemantics(sm, meta);
-    ReturnType = sm->CurrentScope->GetTypeSymbol(ReturnType)->FqName();
+    ReturnType = sm->CurrentScope->GetTypeSymbol(ReturnType)->FqName()->WithConvention(AstClone(ReturnType->GetConvention()));
 
     // Ensure the function's return type does not have a convention.
     RaiseIf<SppSecondClassBorrowViolationError>(

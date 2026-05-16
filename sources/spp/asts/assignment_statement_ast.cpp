@@ -201,6 +201,9 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
         }
 
         // Ensure a borrow is not increasing its lifetime.
+        if (ToString().contains("x1234")) {
+            auto _ = 123;
+        }
         const auto lhs_outermost = sm->CurrentScope->GetVarSymbolOutermost(*lhs_expr).First;
         const auto rhs_outermost = sm->CurrentScope->GetVarSymbolOutermost(*rhs_expr).First;
         PreventBorrowLifetimeExtension(
