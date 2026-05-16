@@ -249,8 +249,6 @@ auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
     // Move to the next scope.
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
-    Name->Stage7_AnalyseSemantics(sm, meta);
-    // super_class->Stage7_AnalyseSemantics(sm, meta);
 
     // Get the symbols.
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
@@ -340,8 +338,10 @@ auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
     GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
-    // name->Stage7_AnalyseSemantics(sm, meta);
-    // super_class->Stage7_AnalyseSemantics(sm, meta);
+    Name->ResetCache();
+    Name->Stage7_AnalyseSemantics(sm, meta);
+    SuperClass->ResetCache();
+    SuperClass->Stage7_AnalyseSemantics(sm, meta);
     Impl->Stage7_AnalyseSemantics(sm, meta);
     sm->MoveOutOfCurrentScope();
 }

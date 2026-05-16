@@ -1040,17 +1040,12 @@ spp::analyse::errors::SppInternalCompilerError::SppInternalCompilerError(
 spp::analyse::errors::SppGenericConstraintError::SppGenericConstraintError(
     asts::Ast const &constraint,
     asts::Ast const &concrete_type) {
-    AddHeaders(
-        85, "SPP Generic Constraint Error");
-    AddCtxForErr(
-        &constraint,
-        "Generic constraint required here: " + constraint.ToString());
-    AddErr(
-        &concrete_type,
-        "Concrete type defined here: " + concrete_type.ToString());
+    AddHeaders(85, "Generic Constraint Error");
+    AddCtxForErr(&constraint, "Generic constraint introduced here as " + INLINE_INFO(constraint.ToString()));
+    AddErr(&concrete_type, "Concrete type provided here as " + INLINE_INFO(concrete_type.ToString()));
     AddFooter(
         "The concrete type does not satisfy the generic constraint.",
-        "Ensure the concrete type meets all requirements of the generic constraint");
+        "Ensure the concrete type meets all requirements of the generic constraint.");
 }
 
 spp::analyse::errors::SppAnnotationTargetNotAnAnnotationError::SppAnnotationTargetNotAnAnnotationError(

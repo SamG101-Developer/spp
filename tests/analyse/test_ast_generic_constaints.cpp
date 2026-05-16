@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstGenericConstraints,
     test_invalid_function_constraint_mismatch,
@@ -12,7 +11,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         g(123)
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstGenericConstraints,
@@ -31,7 +29,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericConstraints,
     test_valid_function_constraint, R"(
@@ -43,7 +40,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         g(a)
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericConstraints,
@@ -63,7 +59,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstGenericConstraints,
     test_invalid_class_constraint_mismatch,
@@ -75,7 +70,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let b = B[std::number::U32]()
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstGenericConstraints,
@@ -94,7 +88,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericConstraints,
     test_valid_class_constraint, R"(
@@ -106,7 +99,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let b = B[A]()
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericConstraints,
@@ -125,7 +117,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstGenericConstraints,
     test_invalid_alias_constraint_mismatch,
@@ -135,7 +126,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     type C[U] = B[U]
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericConstraints,
     test_valid_alias_constraint, R"(
@@ -144,27 +134,22 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     type C[U: A] = B[U]
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstGenericConstraints,
     test_invalid_sup_constraint_mismatch,
     SppGenericConstraintError, R"(
     cls A { }
     cls B[T: A] { }
-
     sup [X] B[X] { }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericConstraints,
     test_valid_sup_constraint, R"(
     cls A { }
     cls B[T: A] { }
-
     sup [X: A] B[X] { }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstGenericConstraints,
@@ -173,10 +158,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls A { }
     cls B[T: A] { }
     cls C { }
-
     sup [X] C ext B[X] { }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericConstraints,
@@ -187,7 +170,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     sup [X: A] C ext B[X] { }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstGenericConstraints,
@@ -204,7 +186,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         a.my_function()  # invalid; Str is not Copy
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericConstraints,

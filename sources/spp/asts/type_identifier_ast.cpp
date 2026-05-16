@@ -72,8 +72,8 @@ auto spp::asts::TypeIdentifierAst::EqualsTypeIdentifier(
     -> Ordering {
     // Equality is based on the name and generics.
     return Name == other.Name and *GnArgGroup == *other.GnArgGroup
-               ? Ordering::equal
-               : Ordering::less;
+        ? Ordering::equal
+        : Ordering::less;
 }
 
 auto spp::asts::TypeIdentifierAst::Equals(
@@ -358,6 +358,12 @@ auto spp::asts::TypeIdentifierAst::IsCompilerGeneratedType() const
     -> bool {
     // Types starting with "$" are compiler generated (not parsable).
     return Name[0] == '$';
+}
+
+auto spp::asts::TypeIdentifierAst::ResetCache()
+    -> void {
+    // Reset the cache to allow overriding the analysis skipper instruction.
+    _HasAnalysed = false;
 }
 
 auto spp::asts::TypeIdentifierAst::IsTypeIdentifier() const noexcept

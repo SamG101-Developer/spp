@@ -265,4 +265,10 @@ auto spp::asts::TypePostfixExpressionAst::IsCompilerGeneratedType() const
     return false;
 }
 
+auto spp::asts::TypePostfixExpressionAst::ResetCache()
+    -> void {
+    // Forward into the LHS to reach the inner TypeIdentifierAst.
+    Lhs->ResetCache();
+}
+
 SPP_MOD_END

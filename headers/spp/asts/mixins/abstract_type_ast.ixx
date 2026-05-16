@@ -20,7 +20,6 @@ namespace spp::asts::mixins {
     SPP_EXP_CLS struct AbstractTypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::mixins::AbstractTypeAst {
     AbstractTypeAst();
 
@@ -71,4 +70,7 @@ SPP_EXP_CLS struct spp::asts::mixins::AbstractTypeAst {
 
     SPP_ATTR_NODISCARD virtual auto IsCompilerGeneratedType() const
         -> bool = 0;
+
+    virtual auto ResetCache()
+        -> void = 0;
 };

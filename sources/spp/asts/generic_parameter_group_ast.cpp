@@ -255,6 +255,7 @@ auto spp::asts::GenericParameterGroupAst::Stage7_AnalyseSemantics(
     //
     using analyse::errors::SppIdentifierDuplicateError;
     using analyse::errors::SppOrderInvalidError;
+    using analyse::utils::type_utils::IsTypeCopyable;
 
     //
     const auto param_names = Params
@@ -269,10 +270,10 @@ auto spp::asts::GenericParameterGroupAst::Stage7_AnalyseSemantics(
         | genex::to<Vec>());
 
     // Mark copyable generics.
-    for (auto const &param : GetTypeParams()) {
-        for (auto const &constraint : param->Constraints->Constraints) {
-            if (analyse::utils::type_utils::IsTypeCopyable(*constraint, *sm)) {
-                const auto generic_sym = sm->CurrentScope->GetTypeSymbol(param->Name);
+    for (auto const &p : GetTypeParams()) {
+        for (auto const &constraint : p->Constraints->Constraints) {
+            if (IsTypeCopyable(*constraint, *sm)) {
+                const auto generic_sym = sm->CurrentScope->GetTypeSymbol(p->Name);
                 generic_sym->IsDirectlyCopyable = true;
             }
         }

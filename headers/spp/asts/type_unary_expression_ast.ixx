@@ -18,7 +18,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
     SPP_GCC_VTABLE_FIX
 
@@ -103,7 +102,9 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
 
     SPP_ATTR_NODISCARD auto IsCompilerGeneratedType() const
         -> bool override;
-};
 
+    auto ResetCache()
+        -> void override;
+};
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeUnaryExpressionAst)

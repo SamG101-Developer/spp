@@ -215,6 +215,7 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
     if (_Generated) {
         sm->MoveToNextScope();
         SPP_ASSERT(sm->CurrentScope == _Scope);
+        OldType->ResetCache();
         OldType->Stage7_AnalyseSemantics(sm, meta);
         sm->MoveOutOfCurrentScope();
         return;

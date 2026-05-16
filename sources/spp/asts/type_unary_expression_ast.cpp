@@ -231,4 +231,10 @@ auto spp::asts::TypeUnaryExpressionAst::IsCompilerGeneratedType() const
     return Rhs->IsCompilerGeneratedType();
 }
 
+auto spp::asts::TypeUnaryExpressionAst::ResetCache()
+    -> void {
+    // Forward into the RHS to reach the inner TypeIdentifierAst.
+    Rhs->ResetCache();
+}
+
 SPP_MOD_END

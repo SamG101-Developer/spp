@@ -15,7 +15,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeIdentifierAst;
 }
 
-
 /**
  * The TypeIdentifierAst is a type expression that is represented by a single type name, and is analogous to the
  * IdentifierAst of the ExpressionAst.
@@ -128,6 +127,9 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
     SPP_ATTR_NODISCARD auto IsCompilerGeneratedType() const
         -> bool override;
 
+    auto ResetCache()
+        -> void override;
+
     SPP_ATTR_NODISCARD auto IsTypeIdentifier() const noexcept
         -> bool override;
 
@@ -144,6 +146,5 @@ private:
 
     bool _HasAnalysed = false;
 };
-
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeIdentifierAst)

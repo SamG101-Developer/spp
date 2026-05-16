@@ -194,7 +194,7 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage6_PreAnalyseSemantics(
     // Move to the next scope.
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
-    Name->Stage7_AnalyseSemantics(sm, meta);
+    // Name->Stage7_AnalyseSemantics(sm, meta);
     Impl->Stage6_PreAnalyseSemantics(sm, meta);
     sm->MoveOutOfCurrentScope();
 }
@@ -207,6 +207,7 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
     GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
+    Name->ResetCache();
     Name->Stage7_AnalyseSemantics(sm, meta);
     Impl->Stage7_AnalyseSemantics(sm, meta);
     sm->MoveOutOfCurrentScope();

@@ -17,7 +17,6 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypePostfixExpressionAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
     SPP_GCC_VTABLE_FIX
 
@@ -103,7 +102,9 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
 
     SPP_ATTR_NODISCARD auto IsCompilerGeneratedType() const
         -> bool override;
-};
 
+    auto ResetCache()
+        -> void override;
+};
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypePostfixExpressionAst)
