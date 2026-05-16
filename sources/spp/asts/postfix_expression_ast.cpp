@@ -7,6 +7,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.asts.ast;
@@ -71,14 +72,19 @@ auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
         not IsPrimaryExprTypeValid(*Lhs, {.AllowTypeAst = true}),
         {sm->CurrentScope}, ERR_ARGS(*Lhs.get()));
 
+    if (ToString().contains("faaa")) {
+        auto _ = 123;
+    }
+
     // The "ast_clone" is required because the "lhs" could be a uniquely owned TypeAst, which must have access to
     // "shared_from_this" (on a shared pointer, which "ast_clone" provides).
     meta->Save();
     meta->ReturnTypeOverloadResolverType = nullptr;
     meta->PreventAutoGeneratorResume = false;
     if (Lhs->To<TypeAst>() != nullptr) {
-        const auto temp_lhs = Shared<TypeAst>(Lhs.release()->To<TypeAst>());
-        temp_lhs->Stage7_AnalyseSemantics(sm, meta);
+        auto temp_lhs = Shared<TypeAst>(Lhs.release()->To<TypeAst>());
+        temp_lhs->Stage7_AnalyseSemantics(sm, meta); // Todo: Don't this this is doing anything? FQ?
+        temp_lhs = sm->CurrentScope->GetTypeSymbol(temp_lhs)->FqName();
         Lhs = AstClone(temp_lhs);
     }
     else {
