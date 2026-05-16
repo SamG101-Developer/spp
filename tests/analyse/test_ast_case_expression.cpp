@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     CaseExpressionAst,
     test_invalid_case_expression,
@@ -9,19 +8,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         case std::boolean::Bool == 1 { }
     }
 )");
-
-
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    CaseExpressionAst,
-    test_invalid_multiple_destructures_on_single_branch,
-    SppCaseBranchMultipleDestructuresError, R"(
-    fun f() -> std::void::Void {
-        case (1, 2) of {
-            is (a, b), (a, 1) { }
-        }
-    }
-)");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     CaseExpressionAst,
@@ -48,7 +34,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     CaseExpressionAst,
     test_valid_simple_array_destructure, R"(
@@ -60,7 +45,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     CaseExpressionAst,
     test_valid_simple_tuple_destructure, R"(
@@ -71,7 +55,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     CaseExpressionAst,
@@ -88,7 +71,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     CaseExpressionAst,

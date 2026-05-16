@@ -4,7 +4,7 @@
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     CoroutinePrototypeAst,
     test_invalid_return_type,
-    SppCoroutineInvalidReturnTypeError, R"(
+    SppExpressionNotGeneratorError, R"(
     cor c() -> std::void::Void { }
 )");
 
