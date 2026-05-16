@@ -159,7 +159,10 @@ auto spp::asts::CmpStatementAst::Stage7_AnalyseSemantics(
     for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
 
     // Analyse the type and value.
+    meta->Save();
+    meta->ReturnTypeOverloadResolverType = Type; // Todo: Add this to unit tests.
     Value->Stage7_AnalyseSemantics(sm, meta);
+    meta->Restore();
 
     // Check the value's type is the same as the given type.
     const auto inferred_type = Value->InferType(sm, meta);

@@ -113,7 +113,7 @@ auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
     const auto shared = AstCloneShared(this);
     if (not sm->CurrentScope->HasVarSymbol(shared) and not sm->CurrentScope->HasNsSymbol(shared)) {
         RaiseMissingIdentifierAndClosestOptions(
-            *this, sm->CurrentScope->AllVarSymbols(), sm->CurrentScope->AllNsSymbols(), *sm);
+            *this, sm->CurrentScope->AllVarSymbols(), {}, *sm);
     }
 
     // Enforce module-level visibility on the accessed symbol.

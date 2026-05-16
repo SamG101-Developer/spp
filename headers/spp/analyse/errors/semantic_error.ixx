@@ -55,12 +55,10 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppInconsistentlyPinnedMemoryUseError;
     SPP_EXP_CLS struct SppMemberAccessNonIndexableError;
     SPP_EXP_CLS struct SppMemberAccessOutOfBoundsError;
-    SPP_EXP_CLS struct SppCaseBranchMultipleDestructuresError;
     SPP_EXP_CLS struct SppCaseBranchElseNotLastError;
     SPP_EXP_CLS struct SppCaseBranchMissingElseError;
     SPP_EXP_CLS struct SppIdentifierDuplicateError;
     SPP_EXP_CLS struct SppRecursiveTypeError;
-    SPP_EXP_CLS struct SppCoroutineInvalidReturnTypeError;
     SPP_EXP_CLS struct SppFloatOutOfBoundsError;
     SPP_EXP_CLS struct SppIntegerOutOfBoundsError;
     SPP_EXP_CLS struct SppOrderInvalidError;
@@ -74,7 +72,7 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppYieldedTypeMismatchError;
     SPP_EXP_CLS struct SppIdentifierUnknownError;
     SPP_EXP_CLS struct SppUnreachableCodeError;
-    SPP_EXP_CLS struct SppInvalidTypeAnnotationError;
+    SPP_EXP_CLS struct SppInvalidLocalVariableTypeAnnotationError;
     SPP_EXP_CLS struct SppMultipleRestPatternsError;
     SPP_EXP_CLS struct SppVariableArrayDestructureArrayTypeMismatchError;
     SPP_EXP_CLS struct SppVariableArrayDestructureArraySizeMismatchError;
@@ -94,10 +92,7 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppArgumentMissingError;
     SPP_EXP_CLS struct SppEarlyReturnRequiresTryTypeError;
     SPP_EXP_CLS struct SppFunctionCallAbstractFunctionError;
-    SPP_EXP_CLS struct SppFunctionCallNotImplFunctionError;
     SPP_EXP_CLS struct SppFunctionCallTooManyArgumentsError;
-    SPP_EXP_CLS struct SppFunctionFoldTupleElementTypeMismatchError;
-    SPP_EXP_CLS struct SppFunctionFoldTupleLengthMismatchError;
     SPP_EXP_CLS struct SppFunctionCallNoValidSignaturesError;
     SPP_EXP_CLS struct SppFunctionCallOverloadAmbiguousError;
     SPP_EXP_CLS struct SppMemberAccessStaticOperatorExpectedError;
@@ -144,7 +139,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::Abs
         HEADER, ERROR, CONTEXT, FOOTER
     };
 
-    Vec<std::tuple<asts::Ast const*, ErrorInformationType, Str, Str>> m_error_info;
+    Vec<std::tuple<asts::Ast const*, ErrorInformationType, Str, Str>> ErrorInfo;
 
     auto AddHeaders(std::size_t err_code, Str &&msg) -> void;
 
@@ -226,10 +221,6 @@ SPP_EXP_CLS struct spp::analyse::errors::SppRecursiveTypeError final : SemanticE
     explicit SppRecursiveTypeError(asts::ClassPrototypeAst const &type, asts::TypeAst const &recursion);
 };
 
-SPP_EXP_CLS struct spp::analyse::errors::SppCoroutineInvalidReturnTypeError final : SemanticError {
-    explicit SppCoroutineInvalidReturnTypeError(asts::CoroutinePrototypeAst const &proto, asts::Ast const &ret_type_expr, asts::TypeAst const &ret_type);
-};
-
 SPP_EXP_CLS struct spp::analyse::errors::SppFloatOutOfBoundsError final : SemanticError {
     explicit SppFloatOutOfBoundsError(asts::LiteralAst const &literal, boost::BigDec const &value, boost::BigDec const &lower, boost::BigDec const &upper, StrView what);
 };
@@ -282,8 +273,8 @@ SPP_EXP_CLS struct spp::analyse::errors::SppUnreachableCodeError final : Semanti
     explicit SppUnreachableCodeError(asts::Ast const &member, asts::Ast const &next_member);
 };
 
-SPP_EXP_CLS struct spp::analyse::errors::SppInvalidTypeAnnotationError final : SemanticError {
-    explicit SppInvalidTypeAnnotationError(asts::TypeAst const &type, asts::LocalVariableAst const &var);
+SPP_EXP_CLS struct spp::analyse::errors::SppInvalidLocalVariableTypeAnnotationError final : SemanticError {
+    explicit SppInvalidLocalVariableTypeAnnotationError(asts::TypeAst const &type, asts::LocalVariableAst const &var);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppMultipleRestPatternsError final : SemanticError {
@@ -362,20 +353,8 @@ SPP_EXP_CLS struct spp::analyse::errors::SppFunctionCallAbstractFunctionError fi
     explicit SppFunctionCallAbstractFunctionError(asts::FunctionPrototypeAst const &proto, asts::PostfixExpressionOperatorFunctionCallAst const &call);
 };
 
-SPP_EXP_CLS struct spp::analyse::errors::SppFunctionCallNotImplFunctionError final : SemanticError {
-    explicit SppFunctionCallNotImplFunctionError(asts::FunctionPrototypeAst const &proto, asts::PostfixExpressionOperatorFunctionCallAst const &call);
-};
-
 SPP_EXP_CLS struct spp::analyse::errors::SppFunctionCallTooManyArgumentsError final : SemanticError {
     explicit SppFunctionCallTooManyArgumentsError(asts::FunctionPrototypeAst const &proto, asts::PostfixExpressionOperatorFunctionCallAst const &call);
-};
-
-SPP_EXP_CLS struct spp::analyse::errors::SppFunctionFoldTupleElementTypeMismatchError final : SemanticError {
-    explicit SppFunctionFoldTupleElementTypeMismatchError(asts::TypeAst const &type, asts::ExpressionAst const &expr);
-};
-
-SPP_EXP_CLS struct spp::analyse::errors::SppFunctionFoldTupleLengthMismatchError final : SemanticError {
-    explicit SppFunctionFoldTupleLengthMismatchError(asts::ExpressionAst const &first_tup, std::size_t first_length, asts::ExpressionAst const &second_tup, std::size_t second_length);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppFunctionCallNoValidSignaturesError final : SemanticError {
@@ -471,7 +450,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppGenericArgumentTooManyError final : 
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppMissingMainFunctionError final : SemanticError {
-    explicit SppMissingMainFunctionError(asts::ModulePrototypeAst const &mod);
+    explicit SppMissingMainFunctionError();
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppInvalidVoidValueError final : SemanticError {

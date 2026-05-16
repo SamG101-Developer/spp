@@ -484,9 +484,7 @@ auto spp::analyse::scopes::Scope::GetVarSymbolOutermost(
     // Define helper methods to check expression types.
     auto is_valid_postfix_expression = []<typename OpType>(auto *ast) -> bool {
         auto postfix_expr = ast->template To<asts::PostfixExpressionAst>();
-        if (postfix_expr == nullptr) {
-            return false;
-        }
+        if (postfix_expr == nullptr) { return false; }
 
         auto postfix_op = postfix_expr->Op->template To<OpType>();
         return postfix_op != nullptr;

@@ -6,7 +6,6 @@ import spp.asts.ast;
 import spp.asts.utils.ast_utils;
 import genex;
 
-
 SPP_MOD_BEGIN
 auto spp::analyse::utils::mem_info_utils::MemoryInfo::InitializedBy(
     asts::Ast const &ast,

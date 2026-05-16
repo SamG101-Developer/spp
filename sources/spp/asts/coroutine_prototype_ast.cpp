@@ -64,7 +64,7 @@ auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
     -> void {
     //
     using analyse::utils::type_utils::IsTypeGen;
-    using analyse::errors::SppCoroutineInvalidReturnTypeError;
+    using analyse::utils::type_utils::GetGenAndYieldTypes;
 
     // Perform default function prototype semantic analysis
     FunctionPrototypeAst::Stage7_AnalyseSemantics(sm, meta);
@@ -79,16 +79,8 @@ auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
     Impl->Stage7_AnalyseSemantics(sm, meta);
 
     // Check the return type superimposes the generator type.
-    auto temp = Vec<Shared<TypeAst>>();
-    temp.EmplaceBack(ret_type_sym->FqName()->WithoutGenerics());
-    auto superimposed_types = ret_type_sym->LinkedScope->SupTypes()
-        | genex::views::concat(std::move(temp))
-        | genex::views::transform([](auto const &x) { return x->WithoutGenerics(); })
-        | genex::to<Vec>();
-
-    RaiseIf<SppCoroutineInvalidReturnTypeError>(
-        genex::none_of(superimposed_types, [sm](auto const &x) { return IsTypeGen(*x->WithoutGenerics(), *sm->CurrentScope); }),
-        {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalReturnType, *ReturnType));
+    GetGenAndYieldTypes(
+        *ret_type_sym->FqName(), *sm->CurrentScope, *Source.OriginalReturnType, "coroutine return type");
 
     // Analyse the semantics of the function body, and move out the scope.
     sm->MoveOutOfCurrentScope();

@@ -18,7 +18,6 @@ namespace spp::analyse::scopes {
     SPP_EXP_CLS class VariableSymbol;
 }
 
-
 namespace spp::analyse::utils::mem_utils {
     /**
      * Two memory regions overlap, if one of the symbols is a strict subset of the other. Sharing a common owner does
@@ -95,9 +94,11 @@ namespace spp::analyse::utils::mem_utils {
         -> void;
 
     SPP_EXP_FUN auto PreventBorrowLifetimeExtension(
+        asts::Ast const &rhs_expr,
         scopes::VariableSymbol const *lhs_outermost,
         scopes::VariableSymbol const *rhs_outermost,
         asts::Ast *owner,
-        scopes::ScopeManager const &sm)
+        scopes::ScopeManager const &sm,
+        bool override_borrow = false)
         -> void;
 }

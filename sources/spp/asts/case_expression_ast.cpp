@@ -104,7 +104,6 @@ auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
     -> void {
     // Alias the common utils functions and types.
     using analyse::errors::SppCaseBranchElseNotLastError;
-    using analyse::errors::SppCaseBranchMultipleDestructuresError;
     using analyse::errors::SppInvalidPrimaryExpressionError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
 

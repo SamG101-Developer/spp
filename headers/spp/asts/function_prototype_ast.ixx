@@ -152,7 +152,7 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
      */
     FunctionPrototypeAst(
         decltype(Annotations) &&annotations,
-        decltype(TokFun) &&tok_cmp,
+        decltype(TokCmp) &&tok_cmp,
         decltype(TokFun) &&tok_fun,
         decltype(Name) &&name,
         decltype(GnParamGroup) &&generic_param_group,

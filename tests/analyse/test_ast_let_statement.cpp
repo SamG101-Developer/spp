@@ -57,7 +57,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     LetStatementAst,
     test_invalid_explicit_type_hint_4, // todo ?
-    SppInvalidTypeAnnotationError, R"(
+    SppInvalidLocalVariableTypeAnnotationError, R"(
     cls A { a: std::boolean::Bool }
 
     fun f(aa: A) -> std::void::Void {

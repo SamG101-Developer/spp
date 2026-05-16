@@ -204,7 +204,7 @@ auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
         const auto lhs_outermost = sm->CurrentScope->GetVarSymbolOutermost(*lhs_expr).First;
         const auto rhs_outermost = sm->CurrentScope->GetVarSymbolOutermost(*rhs_expr).First;
         PreventBorrowLifetimeExtension(
-            lhs_outermost.get(), rhs_outermost.get(), this, *sm);
+            *rhs_expr, lhs_outermost.get(), rhs_outermost.get(), this, *sm);
     }
 }
 

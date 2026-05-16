@@ -285,11 +285,6 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
 auto spp::compiler::CompilerBoot::_ValidateEntryPoint(
     analyse::scopes::ScopeManager *sm)
     -> void {
-    // Get the "main.spp" main module (entry point).
-    const auto main_mod = *genex::find_if(_Modules, [](auto const *mod) {
-        return mod->FileName()->Val.ends_with("main.spp");
-    });
-
     // Check whether the "main" function exists with the correct signature.
     const auto main_call = INJECT_CODE("main(std::vector::Vec[std::string::Str]())", parse_expression);
     auto main_scope = static_cast<analyse::scopes::Scope*>(nullptr);
@@ -309,12 +304,12 @@ auto spp::compiler::CompilerBoot::_ValidateEntryPoint(
 
     // Check that the "main" function exists,
     catch (analyse::errors::SppIdentifierUnknownError const &) {
-        Raise<analyse::errors::SppMissingMainFunctionError>({sm->GlobalScope.get()}, ERR_ARGS(*main_mod));
+        Raise<analyse::errors::SppMissingMainFunctionError>({sm->GlobalScope.get()}, ERR_ARGS());
     }
 
     // Check that if the "main" function exists, the signature is compatible.
     catch (analyse::errors::SppFunctionCallNoValidSignaturesError const &) {
-        Raise<analyse::errors::SppMissingMainFunctionError>({sm->GlobalScope.get()}, ERR_ARGS(*main_mod));
+        Raise<analyse::errors::SppMissingMainFunctionError>({sm->GlobalScope.get()}, ERR_ARGS());
     }
 
     sm->Reset();

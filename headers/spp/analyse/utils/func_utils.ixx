@@ -136,26 +136,26 @@ namespace spp::analyse::utils::func_utils {
         scopes::Scope const *exclude_scope = nullptr)
         -> asts::FunctionPrototypeAst*;
 
-    SPP_EXP_FUN auto enforce_no_invalid_fn_args(
+    SPP_EXP_FUN auto EnforceNoInvalidFnArgs(
         Vec<asts::FunctionParameterAst*> const &params,
         Vec<asts::FunctionCallArgumentKeywordAst*> const &named_args,
         scopes::ScopeManager &sm)
         -> void;
 
     SPP_EXP_FUN template <typename GenericArgType, typename GenericParamType>
-    auto enforce_no_invalid_gn_args(
+    auto EnforceNoInvalidGnArgs(
         Vec<asts::GenericParameterAst*> const &params,
         Vec<asts::GenericArgumentAst*> const &named_args,
         scopes::ScopeManager &sm)
         -> void;
 
     SPP_EXP_FUN template <typename InferenceResultMap>
-    auto enforce_no_conflicting_inferred_gn_args(
+    auto EnforceNoConflictingInferredGnArgs(
         InferenceResultMap const &inferred,
         scopes::ScopeManager &sm)
         -> void;
 
-    SPP_EXP_FUN auto enforce_no_uninferred_gn_args(
+    SPP_EXP_FUN auto EnforceNoUninferredGnArgs(
         Vec<Shared<asts::TypeIdentifierAst>> const &p_names,
         Vec<Shared<asts::TypeIdentifierAst>> const &i_names,
         scopes::Scope const &owner_scope,
@@ -163,7 +163,7 @@ namespace spp::analyse::utils::func_utils {
         scopes::ScopeManager &sm)
         -> void;
 
-    SPP_EXP_FUN auto enforce_no_generic_constraint_violations(
+    SPP_EXP_FUN auto EnforceNoGnArgConstraintViolations(
         Vec<Shared<asts::TypeIdentifierAst>> const &p_names,
         Vec<Vec<Shared<asts::TypeAst>>> const &p_con_groups,
         Vec<asts::GenericArgumentTypeKeywordAst*> const& type_args,
@@ -173,13 +173,13 @@ namespace spp::analyse::utils::func_utils {
         asts::meta::CompilerMetaData const &meta)
         -> void;
 
-    SPP_EXP_FUN auto name_fn_args(
+    SPP_EXP_FUN auto NameFnArgs(
         asts::FunctionCallArgumentGroupAst &a_group,
         asts::FunctionParameterGroupAst const &p_group,
         scopes::ScopeManager &sm)
         -> void;
 
-    SPP_EXP_FUN auto name_gn_args(
+    SPP_EXP_FUN auto NameGnArgs(
         asts::GenericArgumentGroupAst &a_group,
         asts::GenericParameterGroupAst const &p_group,
         asts::Ast const &owner,
@@ -189,7 +189,7 @@ namespace spp::analyse::utils::func_utils {
         -> void;
 
     SPP_EXP_FUN template <typename GenericArgType, typename GenericParamType, typename GenericParamVariadicType>
-    auto name_gn_args_impl(
+    auto NameGnArgsImpl(
         asts::GenericArgumentGroupAst &a_group,
         Vec<asts::GenericParameterAst*> const &params,
         asts::Ast const &owner,
@@ -197,7 +197,7 @@ namespace spp::analyse::utils::func_utils {
         asts::meta::CompilerMetaData &meta)
         -> void;
 
-    SPP_EXP_FUN auto infer_gn_args(
+    SPP_EXP_FUN auto InferGnArgs(
         asts::GenericParameterGroupAst const &p_group,
         asts::GenericArgumentGroupAst &args,
         InferenceSourceMap infer_source,
@@ -210,7 +210,7 @@ namespace spp::analyse::utils::func_utils {
         asts::meta::CompilerMetaData &meta)
         -> void;
 
-    SPP_EXP_FUN auto infer_gn_args_impl_comp(
+    SPP_EXP_FUN auto InferGnArgsImplComp(
         Vec<asts::GenericParameterCompAst*> const &comp_params,
         Vec<Unique<asts::GenericArgumentCompKeywordAst>> const &comp_args,
         Vec<asts::GenericArgumentAst*> &all_args,
@@ -223,7 +223,7 @@ namespace spp::analyse::utils::func_utils {
         asts::meta::CompilerMetaData &meta)
         -> Vec<Unique<asts::GenericArgumentCompKeywordAst>>;
 
-    SPP_EXP_FUN auto infer_gn_args_impl_type(
+    SPP_EXP_FUN auto InferGnArgsImplType(
         Vec<asts::GenericParameterTypeAst*> const &type_params,
         Vec<Unique<asts::GenericArgumentTypeKeywordAst>> const &type_args,
         Vec<asts::GenericArgumentAst*> &all_args,
@@ -246,7 +246,7 @@ namespace spp::analyse::utils::func_utils {
         asts::TypeAst const &expr_type)
         -> Unique<asts::FunctionPrototypeAst>;
 
-    SPP_EXP_FUN auto get_overload_types(
+    SPP_EXP_FUN auto GetOverloadTypes(
         asts::TypeAst const &overload_set_type,
         scopes::Scope const& scope)
         -> Vec<Shared<asts::TypeAst>>;

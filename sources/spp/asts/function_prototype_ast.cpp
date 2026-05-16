@@ -50,7 +50,7 @@ import genex;
 SPP_MOD_BEGIN
 spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     decltype(Annotations) &&annotations,
-    decltype(TokFun) &&tok_cmp,
+    decltype(TokCmp) &&tok_cmp,
     decltype(TokFun) &&tok_fun,
     decltype(Name) &&name,
     decltype(GnParamGroup) &&generic_param_group,
@@ -75,8 +75,9 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
     Impl(std::move(impl)),
     _LlvmFunc(nullptr),
     _AnnotationInfo(nullptr) {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokFun, lex::SppTokenType::KW_FUN, "fun");
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokFun, lex::SppTokenType::KW_FUN, "fun"); // TODO <- "cor"?
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->GnParamGroup);
+    // SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->FnParamGroup);
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokArrow, lex::SppTokenType::TK_ARROW_RIGHT, "->");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Impl);
     Source.OriginalImpl = AstClone(this->Impl);

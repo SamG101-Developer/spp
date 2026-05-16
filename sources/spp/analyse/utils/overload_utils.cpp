@@ -125,7 +125,6 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
         }
 
         SPP_OVERLOAD_RESOLUTION_ERROR_HANDLER(analyse::errors::SppFunctionCallAbstractFunctionError, "calling an abstract function")
-        SPP_OVERLOAD_RESOLUTION_ERROR_HANDLER(analyse::errors::SppFunctionCallNotImplFunctionError, "calling a function that is not implemented")
         SPP_OVERLOAD_RESOLUTION_ERROR_HANDLER(analyse::errors::SppFunctionCallTooManyArgumentsError, "too many arguments")
         SPP_OVERLOAD_RESOLUTION_ERROR_HANDLER(analyse::errors::SppArgumentNameInvalidError, "invalid argument name")
         SPP_OVERLOAD_RESOLUTION_ERROR_HANDLER(analyse::errors::SppArgumentMissingError, "missing required argument")
@@ -254,9 +253,14 @@ auto spp::analyse::utils::overload_utils::InferAllGenerics(
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
     -> void {
+    //
+    using func_utils::InferGnArgs;
+    using func_utils::NameFnArgs;
+    using func_utils::NameGnArgs;
+
     // Name the positional function and generic arguments.
-    func_utils::name_fn_args(fn_args, fn_params, *sm);
-    func_utils::name_gn_args(explicit_gn_args, gn_params, *dynamic_shared_cast<asts::Ast>(fn_proto.Name), *sm, *meta);
+    NameFnArgs(fn_args, fn_params, *sm);
+    NameGnArgs(explicit_gn_args, gn_params, *dynamic_shared_cast<asts::Ast>(fn_proto.Name), *sm, *meta);
 
     // The inference source is all of the function arguments (except for "self")
     auto generic_infer_source = fn_args.GetKeywordArgs()
@@ -274,7 +278,7 @@ auto spp::analyse::utils::overload_utils::InferAllGenerics(
     *temp_arg_group += explicit_gn_args;
     *temp_arg_group += implicit_gn_args;
 
-    func_utils::infer_gn_args(
+    InferGnArgs(
         *fn_proto.GnParamGroup,
         *temp_arg_group,
         {generic_infer_source.begin(), generic_infer_source.end()},

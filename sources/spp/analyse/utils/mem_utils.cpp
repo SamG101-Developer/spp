@@ -17,6 +17,8 @@ import spp.asts.case_pattern_variant_ast;
 import spp.asts.case_pattern_variant_else_ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_keyword_res_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.type_ast;
@@ -174,7 +176,7 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
     -> void {
     // Define a simple alias for a list of symbols and their memory.
     using SymbolMemoryList = Vec<Pair<asts::CaseExpressionBranchAst*, mem_info_utils::MemoryInfoSnapshot>>;
-    using SymbolMemoryMap = ankerl::unordered_dense::map<scopes::VariableSymbol *, mem_info_utils::MemoryInfoSnapshot>;
+    using SymbolMemoryMap = ankerl::unordered_dense::map<scopes::VariableSymbol*, mem_info_utils::MemoryInfoSnapshot>;
 
     // Create a map of the symbols' memory  information before any branches are analysed.
     auto sym_mem_info = std::map<scopes::VariableSymbol*, SymbolMemoryList>();
@@ -281,24 +283,26 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
 }
 
 auto spp::analyse::utils::mem_utils::PreventBorrowLifetimeExtension(
+    asts::Ast const &rhs_expr,
     scopes::VariableSymbol const *lhs_outermost,
     scopes::VariableSymbol const *rhs_outermost,
     asts::Ast *owner,
-    scopes::ScopeManager const &sm)
+    scopes::ScopeManager const &sm,
+    const bool override_borrow)
     -> void {
     // Todo: A similar version of this function will be needed for "return" statements as-well as the currently used "="
     //  statements.
 
     // Prevent a borrow being placed into a value with a longer lifetime.
-    const auto is_rhs_borrow = rhs_outermost and std::get<0>(rhs_outermost->MemInfo->AstBorrowed) != nullptr;
+    const auto is_rhs_borrow = override_borrow or (rhs_outermost and std::get<0>(rhs_outermost->MemInfo->AstBorrowed) != nullptr);
     if (lhs_outermost != nullptr and rhs_outermost != nullptr and is_rhs_borrow) {
-        const auto rhs_borrow_scope = std::get<1>(rhs_outermost->MemInfo->AstBorrowed);
+        const auto rhs_borrow_scope = std::get<1>(rhs_outermost->MemInfo->AstBorrowed) ?: sm.CurrentScope;
         const auto lhs_init_scope = lhs_outermost->ScopeDefinedIn;
         if (lhs_init_scope != nullptr) {
             const auto scope_depth_difference = genex::position(lhs_init_scope->Ancestors(), genex::operations::eq_fixed{rhs_borrow_scope});
             RaiseIf<errors::SppBorrowLifetimeIncreaseError>(
                 scope_depth_difference < 0, {sm.CurrentScope},
-                ERR_ARGS(*owner, *lhs_outermost->Name, *std::get<0>(rhs_outermost->MemInfo->AstBorrowed)));
+                ERR_ARGS(*owner, *lhs_outermost->Name, *(std::get<0>(rhs_outermost->MemInfo->AstBorrowed) ?: &rhs_expr)));
         }
     }
 
@@ -314,5 +318,12 @@ auto spp::analyse::utils::mem_utils::PreventBorrowLifetimeExtension(
                 scope_depth_difference < 0, {sm.CurrentScope},
                 ERR_ARGS(*owner, *lhs_outermost->Name, *e));
         }
+    }
+
+    // Ensure a value that contains escaping borrows isn't increasing the escaping borrows' lifetimes for "gen.res()"
+    // As the borrow is a temporary (no scope), the topmost branch uses "current scope".
+    else if (const auto pf = rhs_expr.To<asts::PostfixExpressionAst>(); pf and pf->Op->To<asts::PostfixExpressionOperatorKeywordResAst>()) {
+        const auto new_rhs_sym = sm.CurrentScope->GetVarSymbolOutermost(*pf->Lhs).First.get();
+        PreventBorrowLifetimeExtension(*pf->Lhs, lhs_outermost, new_rhs_sym, owner, sm, true);
     }
 }

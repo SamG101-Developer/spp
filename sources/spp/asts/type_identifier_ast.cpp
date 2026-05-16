@@ -132,6 +132,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     //
+    using analyse::utils::func_utils::InferGnArgs;
     using analyse::utils::type_utils::CreateGenericClsScope;
     using analyse::utils::type_utils::GetTypeSymOrError;
     if (_HasAnalysed) { return; }
@@ -149,7 +150,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
         as_unary != nullptr and *as_unary == *generate::common_types_precompiled::TUP->To<TypeUnaryExpressionAst>();
     });
 
-    analyse::utils::func_utils::name_gn_args(
+    analyse::utils::func_utils::NameGnArgs(
         *GnArgGroup,
         *(type_sym->AliasStmt ? type_sym->AliasStmt->GnParamGroup : type_sym->Type->GnParamGroup),
         *this, *sm, *meta, is_tuple);
@@ -170,7 +171,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     // const auto owner_scope = owner_sym->alias_stmt ? owner_sym->alias_stmt->
     //     owner_sym != nullptr ? owner_sym->scope : type_sym->scope;
 
-    analyse::utils::func_utils::infer_gn_args(
+    InferGnArgs(
         *(type_sym->AliasStmt ? type_sym->AliasStmt->GnParamGroup : type_sym->Type->GnParamGroup),
         *GnArgGroup,
         meta->InferSource, meta->InferTarget,

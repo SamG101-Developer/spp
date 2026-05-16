@@ -416,7 +416,7 @@ auto spp::analyse::utils::func_utils::CheckForConflictingOverride(
     return nullptr;
 }
 
-auto spp::analyse::utils::func_utils::enforce_no_invalid_fn_args(
+auto spp::analyse::utils::func_utils::EnforceNoInvalidFnArgs(
     Vec<asts::FunctionParameterAst*> const &params,
     Vec<asts::FunctionCallArgumentKeywordAst*> const &named_args,
     scopes::ScopeManager &sm)
@@ -446,12 +446,13 @@ auto spp::analyse::utils::func_utils::enforce_no_invalid_fn_args(
 }
 
 template <typename GenericArgType, typename GenericParamType>
-auto spp::analyse::utils::func_utils::enforce_no_invalid_gn_args(
+auto spp::analyse::utils::func_utils::EnforceNoInvalidGnArgs(
     Vec<asts::GenericParameterAst*> const &params,
     Vec<asts::GenericArgumentAst*> const &named_args,
     scopes::ScopeManager &sm)
     -> void {
     // Shortcut.
+    using errors::SppArgumentNameInvalidError;
     if (named_args.IsEmpty()) { return; }
 
     // Get the parameter names using the attribute.
@@ -472,13 +473,13 @@ auto spp::analyse::utils::func_utils::enforce_no_invalid_gn_args(
         | genex::to<Vec>();
 
     // Raise an error if any invalid argument names were found.
-    RaiseIf<errors::SppArgumentNameInvalidError>(
+    RaiseIf<SppArgumentNameInvalidError>(
         not invalid_arg_names.IsEmpty(), {sm.CurrentScope},
         ERR_ARGS(*params[0], "gn param", *invalid_arg_names[0], "gn arg"));
 }
 
 template <typename InferenceResultMap>
-auto spp::analyse::utils::func_utils::enforce_no_conflicting_inferred_gn_args(
+auto spp::analyse::utils::func_utils::EnforceNoConflictingInferredGnArgs(
     InferenceResultMap const &inferred,
     scopes::ScopeManager &sm)
     -> void {
@@ -499,7 +500,7 @@ auto spp::analyse::utils::func_utils::enforce_no_conflicting_inferred_gn_args(
     }
 }
 
-auto spp::analyse::utils::func_utils::enforce_no_uninferred_gn_args(
+auto spp::analyse::utils::func_utils::EnforceNoUninferredGnArgs(
     Vec<Shared<asts::TypeIdentifierAst>> const &p_names,
     Vec<Shared<asts::TypeIdentifierAst>> const &i_names,
     scopes::Scope const &owner_scope,
@@ -519,7 +520,7 @@ auto spp::analyse::utils::func_utils::enforce_no_uninferred_gn_args(
         ERR_ARGS(*uninferred_params[0], *owner));
 }
 
-auto spp::analyse::utils::func_utils::enforce_no_generic_constraint_violations(
+auto spp::analyse::utils::func_utils::EnforceNoGnArgConstraintViolations(
     Vec<Shared<asts::TypeIdentifierAst>> const &p_names,
     Vec<Vec<Shared<asts::TypeAst>>> const &p_con_groups,
     Vec<asts::GenericArgumentTypeKeywordAst*> const &type_args,
@@ -559,13 +560,13 @@ auto spp::analyse::utils::func_utils::enforce_no_generic_constraint_violations(
     }
 }
 
-auto spp::analyse::utils::func_utils::name_fn_args(
+auto spp::analyse::utils::func_utils::NameFnArgs(
     asts::FunctionCallArgumentGroupAst &a_group,
     asts::FunctionParameterGroupAst const &p_group,
     scopes::ScopeManager &sm)
     -> void {
     // Validate the named arguments against the paramters.
-    enforce_no_invalid_fn_args(p_group.GetAllParams(), a_group.GetKeywordArgs(), sm);
+    EnforceNoInvalidFnArgs(p_group.GetAllParams(), a_group.GetKeywordArgs(), sm);
 
     // Get the names of the keyword arguments.
     auto a_names = a_group.GetKeywordArgs()
@@ -608,7 +609,7 @@ auto spp::analyse::utils::func_utils::name_fn_args(
     }
 }
 
-auto spp::analyse::utils::func_utils::name_gn_args(
+auto spp::analyse::utils::func_utils::NameGnArgs(
     asts::GenericArgumentGroupAst &a_group,
     asts::GenericParameterGroupAst const &p_group,
     asts::Ast const &owner,
@@ -637,8 +638,8 @@ auto spp::analyse::utils::func_utils::name_gn_args(
     const auto type_params = Vec<asts::GenericParameterAst*>(type_params_raw.begin(), type_params_raw.end());
 
     // Name the two kinds of arguments separately.
-    name_gn_args_impl<asts::GenericArgumentCompAst, asts::GenericParameterCompAst, asts::GenericParameterCompVariadicAst>(*comp_args, comp_params, owner, sm, meta);
-    name_gn_args_impl<asts::GenericArgumentTypeAst, asts::GenericParameterTypeAst, asts::GenericParameterTypeVariadicAst>(*type_args, type_params, owner, sm, meta);
+    NameGnArgsImpl<asts::GenericArgumentCompAst, asts::GenericParameterCompAst, asts::GenericParameterCompVariadicAst>(*comp_args, comp_params, owner, sm, meta);
+    NameGnArgsImpl<asts::GenericArgumentTypeAst, asts::GenericParameterTypeAst, asts::GenericParameterTypeVariadicAst>(*type_args, type_params, owner, sm, meta);
 
     // Recombine the named arguments back into the original argument group.
     std::ranges::move(comp_args->Args, std::back_inserter(a_group.Args));
@@ -656,7 +657,7 @@ auto spp::analyse::utils::func_utils::name_gn_args(
 }
 
 template <typename GenericArgType, typename GenericParamType, typename GenericParamTypeVariadicAst>
-auto spp::analyse::utils::func_utils::name_gn_args_impl(
+auto spp::analyse::utils::func_utils::NameGnArgsImpl(
     asts::GenericArgumentGroupAst &a_group,
     Vec<asts::GenericParameterAst*> const &params,
     asts::Ast const &owner,
@@ -668,7 +669,7 @@ auto spp::analyse::utils::func_utils::name_gn_args_impl(
     using errors::SppGenericArgumentTooManyError;
 
     // Validate the named arguments against the parameters.
-    enforce_no_invalid_gn_args<GenericArgType, GenericParamType>(
+    EnforceNoInvalidGnArgs<GenericArgType, GenericParamType>(
         params, a_group.GetAllArgs(), sm);
 
     // Get the names of the keyword arguments.
@@ -725,7 +726,7 @@ auto spp::analyse::utils::func_utils::name_gn_args_impl(
     }
 }
 
-auto spp::analyse::utils::func_utils::infer_gn_args(
+auto spp::analyse::utils::func_utils::InferGnArgs(
     asts::GenericParameterGroupAst const &p_group,
     asts::GenericArgumentGroupAst &args,
     InferenceSourceMap infer_source, // Note: must be copied, ignore hints.
@@ -764,8 +765,8 @@ auto spp::analyse::utils::func_utils::infer_gn_args(
     // Todo: These need to move left-to-right no matter type vs comp
     // Todo: Because of cross substitution left to right between type and comp
     // Todo: Or do type, comp, type-cross-substitution again
-    auto new_type_args = infer_gn_args_impl_type(type_params, type_args, all_args, infer_source, infer_target, owner, owner_scope, variadic_fn_param_name, sm, meta);
-    auto new_comp_args = infer_gn_args_impl_comp(comp_params, comp_args, all_args, infer_source, infer_target, owner, owner_scope, variadic_fn_param_name, sm, meta);
+    auto new_type_args = InferGnArgsImplType(type_params, type_args, all_args, infer_source, infer_target, owner, owner_scope, variadic_fn_param_name, sm, meta);
+    auto new_comp_args = InferGnArgsImplComp(comp_params, comp_args, all_args, infer_source, infer_target, owner, owner_scope, variadic_fn_param_name, sm, meta);
 
     // Build index map once for O(n) lookup during sort.
     auto param_index = ankerl::unordered_dense::map<StrView, std::size_t>();
@@ -783,7 +784,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args(
     args.Args = std::move(final_args);
 }
 
-auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
+auto spp::analyse::utils::func_utils::InferGnArgsImplComp(
     Vec<asts::GenericParameterCompAst*> const &comp_params,
     Vec<Unique<asts::GenericArgumentCompKeywordAst>> const &comp_args,
     Vec<asts::GenericArgumentAst*> &all_args,
@@ -796,6 +797,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
     asts::meta::CompilerMetaData &meta)
     -> Vec<Unique<asts::GenericArgumentCompKeywordAst>> {
     //
+    using errors::SppTypeMismatchError;
     using type_utils::TypeEq;
 
     // Get the names for ease of use.
@@ -846,8 +848,8 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
     }
 
     // Check each generic argument name only has one unique inferred type. "cmp n: S32" cannot infer to "1" and "2".
-    enforce_no_conflicting_inferred_gn_args(inferred_args, sm);
-    enforce_no_uninferred_gn_args(p_names, i_names, owner_scope, owner, sm);
+    EnforceNoConflictingInferredGnArgs(inferred_args, sm);
+    EnforceNoUninferredGnArgs(p_names, i_names, owner_scope, owner, sm);
 
     // At this point, all conflicts have been checked, so it is safe to only use the first inferred value.
     auto formatted_args = InferenceFinalCompMap();
@@ -868,12 +870,12 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
     for (auto const &[key, val] : formatted_args) {
         if (const auto val_as_type = val->To<asts::TypeAst>(); val_as_type != nullptr) {
             auto temp_val = asts::IdentifierAst::FromType(*val_as_type);
-            auto temp_arg = MakeUnique<asts::GenericArgumentCompKeywordAst>(AstClone(key), nullptr, std::move(temp_val));
+            auto temp_arg = MakeUnique<asts::GenericArgumentCompKeywordAst>(asts::AstClone(key), nullptr, std::move(temp_val));
             final_args.EmplaceBack(std::move(temp_arg));
         }
         else {
-            auto temp_val = AstClone(val);
-            auto temp_arg = MakeUnique<asts::GenericArgumentCompKeywordAst>(AstClone(key), nullptr, std::move(temp_val));
+            auto temp_val = asts::AstClone(val);
+            auto temp_arg = MakeUnique<asts::GenericArgumentCompKeywordAst>(asts::AstClone(key), nullptr, std::move(temp_val));
             final_args.EmplaceBack(std::move(temp_arg));
         }
     }
@@ -904,7 +906,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
                 | genex::to<Vec>();
 
             for (auto const &a_type_inner : variadic_types) {
-                RaiseIf<errors::SppTypeMismatchError>(
+                RaiseIf<SppTypeMismatchError>(
                     not TypeEq(*p_type, *a_type_inner, owner_scope, *sm.CurrentScope),
                     {&owner_scope, sm.CurrentScope}, ERR_ARGS(*param, *p_type, *arg, *a_type_inner));
             }
@@ -912,15 +914,16 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_comp(
         }
 
         // Otherwise, just check the argument type against the parameter type.
-        RaiseIf<errors::SppTypeMismatchError>(
+        auto raw_a_type = arg->Val->InferType(&sm, &meta);
+        RaiseIf<SppTypeMismatchError>(
             not TypeEq(*p_type, *a_type, owner_scope, *sm.CurrentScope),
-            {&owner_scope, sm.CurrentScope}, ERR_ARGS(*param, *p_type, *arg, *a_type));
+            {&owner_scope, sm.CurrentScope}, ERR_ARGS(*param, *p_type, *arg, *raw_a_type));
     }
 
     return final_args;
 }
 
-auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
+auto spp::analyse::utils::func_utils::InferGnArgsImplType(
     Vec<asts::GenericParameterTypeAst*> const &type_params,
     Vec<Unique<asts::GenericArgumentTypeKeywordAst>> const &type_args,
     Vec<asts::GenericArgumentAst*> &all_args,
@@ -999,8 +1002,8 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
     }
 
     // Check each generic argument name only has one unique inferred type. "T" cannot infer to "Str" and "U32".
-    enforce_no_conflicting_inferred_gn_args(inferred_args, sm);
-    enforce_no_uninferred_gn_args(p_names, i_names, owner_scope, owner, sm);
+    EnforceNoConflictingInferredGnArgs(inferred_args, sm);
+    EnforceNoUninferredGnArgs(p_names, i_names, owner_scope, owner, sm);
 
     // At this point, all conflicts have been checked, so it is safe to only use the first inferred value.
     auto formatted_args = InferenceFinalTypeMap();
@@ -1041,7 +1044,7 @@ auto spp::analyse::utils::func_utils::infer_gn_args_impl_type(
     // Finally, enforce the constraints on the inferred generic arguments.
     if (meta.CurrentStage < 9) { return final_args; }
     const auto type_args_raw = final_args | genex::views::ptr | genex::to<Vec>();
-    enforce_no_generic_constraint_violations(p_names, p_con_groups, type_args_raw, all_args, owner_scope, sm, meta);
+    EnforceNoGnArgConstraintViolations(p_names, p_con_groups, type_args_raw, all_args, owner_scope, sm, meta);
     return final_args;
 }
 
@@ -1080,7 +1083,7 @@ auto spp::analyse::utils::func_utils::CreateCallablePrototype(
     return dummy_overload;
 }
 
-auto spp::analyse::utils::func_utils::get_overload_types(
+auto spp::analyse::utils::func_utils::GetOverloadTypes(
     asts::TypeAst const &overload_set_type,
     scopes::Scope const &scope)
     -> Vec<Shared<asts::TypeAst>> {
@@ -1090,7 +1093,7 @@ auto spp::analyse::utils::func_utils::get_overload_types(
         | genex::to<Vec>();
 }
 
-template auto spp::analyse::utils::func_utils::name_gn_args_impl<
+template auto spp::analyse::utils::func_utils::NameGnArgsImpl<
     spp::asts::GenericArgumentCompAst,
     spp::asts::GenericParameterCompAst,
     spp::asts::GenericParameterCompVariadicAst>(
@@ -1100,7 +1103,7 @@ template auto spp::analyse::utils::func_utils::name_gn_args_impl<
     scopes::ScopeManager &sm,
     asts::meta::CompilerMetaData &meta) -> void;
 
-template auto spp::analyse::utils::func_utils::name_gn_args_impl<
+template auto spp::analyse::utils::func_utils::NameGnArgsImpl<
     spp::asts::GenericArgumentTypeAst,
     spp::asts::GenericParameterTypeAst,
     spp::asts::GenericParameterTypeVariadicAst>(

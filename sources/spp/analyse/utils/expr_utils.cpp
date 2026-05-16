@@ -54,6 +54,7 @@ auto spp::analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions(
     -> void {
     //
     using spp::utils::strings::ClosestMatch;
+    using errors::SppIdentifierUnknownError;
 
     //
     const auto v_alternatives = var_symbols
@@ -66,7 +67,7 @@ auto spp::analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions(
 
     //
     const auto closest_match = ClosestMatch(identifier.Val, alternatives);
-    Raise<errors::SppIdentifierUnknownError>(
+    Raise<SppIdentifierUnknownError>(
         {sm.CurrentScope}, ERR_ARGS(identifier, "identifier", closest_match));
 }
 

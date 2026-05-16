@@ -170,8 +170,8 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
         return true;
     }
 
-    // Deliberately inverted for the param/arg checker. This will be removed once that type check is actually done
-    // properly.
+    // TODO: Deliberately inverted for the param/arg checker. This will be removed once that type check is actually done
+    //  properly.
     if (not ConventionEq(rhs_type, lhs_type)) { return false; }
 
     const auto stripped_lhs_sym = lhs_scope.GetTypeSymbol(stripped_lhs);
@@ -192,7 +192,7 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
 
     // If the left-hand-side is a "$" (function overload) type, check the composite overload types.
     if (lhs_type.IsCompilerGeneratedType()) {
-        auto lhs_composite_types = func_utils::get_overload_types(lhs_type, lhs_scope);
+        auto lhs_composite_types = func_utils::GetOverloadTypes(lhs_type, lhs_scope);
         if (genex::any_of(lhs_composite_types, [&](auto &&lhs_composite_type) { return RelaxedTypeEq(*lhs_composite_type, rhs_type, lhs_scope, rhs_scope, generic_args); })) {
             return true;
         }
@@ -483,9 +483,14 @@ auto spp::analyse::utils::type_utils::GetGenAndYieldTypes(
     asts::ExpressionAst const &expr,
     StrView what)
     -> std::tuple<Shared<const asts::TypeAst>, Shared<asts::TypeAst>, bool> {
+    //
+    using asts::generate::common_types_precompiled::GEN_ONCE;
+    using errors::SppExpressionNotGeneratorError;
+    using errors::SppExpressionAmbiguousGeneratorError;
+
     // Generic types are not generators, so raise an error.
     const auto type_sym = scope.GetTypeSymbol(type.shared_from_this());
-    RaiseIf<errors::SppExpressionNotGeneratorError>(
+    RaiseIf<SppExpressionNotGeneratorError>(
         type_sym->IsGeneric, {&scope}, ERR_ARGS(expr, type, what));
 
     // Discover the supertypes and add the current type to it.=.
@@ -497,10 +502,10 @@ auto spp::analyse::utils::type_utils::GetGenAndYieldTypes(
         | genex::views::filter([&](auto const &sup_type) { return IsTypeGen(*sup_type, scope); })
         | genex::to<Vec>();
 
-    RaiseIf<errors::SppExpressionNotGeneratorError>(
+    RaiseIf<SppExpressionNotGeneratorError>(
         generator_type_candidates.IsEmpty(), {&scope}, ERR_ARGS(expr, type, what));
 
-    RaiseIf<errors::SppExpressionAmbiguousGeneratorError>(
+    RaiseIf<SppExpressionAmbiguousGeneratorError>(
         generator_type_candidates.Len() > 1, {&scope}, ERR_ARGS(expr, type, what));
 
     // Extract the generator and yield type.
@@ -509,7 +514,7 @@ auto spp::analyse::utils::type_utils::GetGenAndYieldTypes(
 
     // Extract the multiplicity, optionality and fallibility from the generator type.
     auto is_once = TypeEq(
-        *asts::generate::common_types_precompiled::GEN_ONCE, *generator_type->WithoutGenerics(), scope, scope);
+        *GEN_ONCE, *generator_type->WithoutGenerics(), scope, scope);
 
     // Return all the information about the generator type.
     return std::make_tuple(generator_type, yield_type, is_once);
@@ -573,6 +578,9 @@ auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
     -> std::tuple<Pair<asts::Ast*, Shared<asts::TypeAst>>, Vec<Pair<asts::Ast*, Shared<asts::TypeAst>>>> {
+    //
+    using errors::SppTypeMismatchError;
+
     // Collect type information for each branch, pairing the branch with its inferred type.
     auto branches_type_info = branches
         | genex::views::transform([sm, meta](auto *x) { return MakePair(x, x->InferType(sm, meta)); })
@@ -617,7 +625,7 @@ auto spp::analyse::utils::type_utils::ValidateInconsistentTypes(
         const auto [mismatch_branch, mismatch_branch_type] = std::move(mismatch_branches_type_info[0]);
         const auto [master_branch, master_branch_type] = master_branch_type_info;
         const auto final_member = master_branch ? master_branch->Body->FinalMember() : meta->AssignmentTarget.get();
-        Raise<errors::SppTypeMismatchError>(
+        Raise<SppTypeMismatchError>(
             {sm->CurrentScope},
             ERR_ARGS(*final_member, *master_branch_type, *mismatch_branch->Body->FinalMember(), *mismatch_branch_type));
     }
@@ -974,6 +982,9 @@ auto spp::analyse::utils::type_utils::EnforceGenericConstraints(
     scopes::Scope const &generic_scope,
     scopes::Scope const &concrete_scope)
     -> void {
+    //
+    using errors::SppGenericConstraintError;
+
     // Determine the concrete symbol, and if non-generic, add its scope.
     const auto concrete_sym = concrete_scope.GetTypeSymbol(concrete_type.shared_from_this());
     auto sup_info = Vec<Pair<Shared<asts::TypeAst>, scopes::Scope const*>>{};
@@ -998,7 +1009,7 @@ auto spp::analyse::utils::type_utils::EnforceGenericConstraints(
         }
 
         // If any constraint is not met, raise en error.
-        RaiseIf<errors::SppGenericConstraintError>(
+        RaiseIf<SppGenericConstraintError>(
             not matched, {&generic_scope, &concrete_scope},
             ERR_ARGS(*constraint, concrete_type));
     }
@@ -1117,7 +1128,7 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
 
         // Name the generics for this alias, and shift into the next scope.
         else {
-            func_utils::name_gn_args(*old_type->TypeParts().Back()->GnArgGroup, *extract_params(*old_sym), *old_type, *sm, *meta, false);
+            func_utils::NameGnArgs(*old_type->TypeParts().Back()->GnArgGroup, *extract_params(*old_sym), *old_type, *sm, *meta, false);
             if (old_sym->AliasStmt) {
                 final_generic_params = filter_params(*old_sym->AliasStmt->GnParamGroup, *old_type->TypeParts().Back()->GnArgGroup);
             }
@@ -1133,7 +1144,7 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
         if (old_sym->AliasStmt == nullptr and (use_stmt_propagating_generics == nullptr or use_stmt_propagating_generics->Args.IsEmpty())) { break; }
     }
 
-    func_utils::name_gn_args(
+    func_utils::NameGnArgs(
         *old_type->TypeParts().Back()->GnArgGroup, *extract_params(*old_sym), *old_type, *sm, *meta, false);
     old_type = old_type->SubstituteGenerics(generic_args->GetAllArgs());
     return std::make_tuple(old_type, final_generic_params, tracking_scope);

@@ -74,7 +74,7 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
     -> void {
     // Todo: Test preventing "let x = void_type()" + same for "let x: Void"
     using analyse::errors::SppInvalidPrimaryExpressionError;
-    using analyse::errors::SppInvalidTypeAnnotationError;
+    using analyse::errors::SppInvalidLocalVariableTypeAnnotationError;
     using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::TypeEq;
 
@@ -84,7 +84,7 @@ auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
         {sm->CurrentScope}, ERR_ARGS(*Val.get()));
 
     // An explicit type can only be applied if the left-hand-side is a single identifier.
-    RaiseIf<SppInvalidTypeAnnotationError>(
+    RaiseIf<SppInvalidLocalVariableTypeAnnotationError>(
         Type != nullptr and Var->To<LocalVariableSingleIdentifierAst>() == nullptr,
         {sm->CurrentScope}, ERR_ARGS(*Type, *Var));
 
