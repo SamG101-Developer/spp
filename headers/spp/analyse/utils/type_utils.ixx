@@ -262,7 +262,7 @@ namespace spp::analyse::utils::type_utils {
         asts::meta::CompilerMetaData *meta)
         -> scopes::TypeSymbol*;
 
-    SPP_EXP_FUN auto get_ns_scope_or_error(
+    SPP_EXP_FUN auto GetNsScopeOrError(
         scopes::Scope const &scope,
         asts::IdentifierAst const &ns,
         scopes::ScopeManager const &sm)

@@ -809,7 +809,8 @@ auto spp::analyse::utils::type_utils::CreateGenericSupScope(
     self_type->Stage7_AnalyseSemantics(&tm, meta);
     const auto old_self_sym = new_sup_scope_ptr->GetTypeSymbol(self_type);
     const auto new_self_sym = MakeShared<scopes::TypeSymbol>(
-        MakeUnique<asts::TypeIdentifierAst>(0uz, "Self", nullptr), new_cls_scope.TySym->Type, &new_cls_scope, new_sup_scope_ptr);
+        MakeUnique<asts::TypeIdentifierAst>(0uz, "Self", nullptr), new_cls_scope.TySym->Type, &new_cls_scope,
+        new_sup_scope_ptr);
     new_self_sym->AliasStmt = MakeUnique<asts::TypeStatementAst>(
         SPP_NO_ANNOTATIONS, nullptr, asts::TypeIdentifierAst::FromString("Self"), nullptr, nullptr, self_type);
     old_self_sym->AliasedBySyms.EmplaceBack(new_self_sym);
@@ -958,7 +959,7 @@ auto spp::analyse::utils::type_utils::GetTypeSymOrError(
     return type_sym.get();
 }
 
-auto spp::analyse::utils::type_utils::get_ns_scope_or_error(
+auto spp::analyse::utils::type_utils::GetNsScopeOrError(
     scopes::Scope const &scope,
     asts::IdentifierAst const &ns,
     scopes::ScopeManager const &sm)
