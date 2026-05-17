@@ -48,8 +48,7 @@ spp::asts::TypeIdentifierAst::TypeIdentifierAst(
     decltype(GnArgGroup) generic_arg_group) :
     Name(std::move(name)),
     GnArgGroup(std::move(generic_arg_group)),
-    _Pos(pos),
-    _IsNeverType(false) {
+    _Pos(pos) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->GnArgGroup);
 }
 
