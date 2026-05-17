@@ -88,7 +88,7 @@ auto spp::asts::TypeUnaryExpressionAst::Stage4_QualifyTypes(
     // Qualify the RHS type.
     if (const auto op_ns = Op->To<TypeUnaryExpressionOperatorNamespaceAst>()) {
         const auto tm = ScopeManager(sm->GlobalScope, meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope);
-        const auto type_scope = analyse::utils::type_utils::get_ns_scope_or_error(*tm.CurrentScope, *op_ns->Ns, tm);
+        const auto type_scope = analyse::utils::type_utils::GetNsScopeOrError(*tm.CurrentScope, *op_ns->Ns, tm);
         meta->Save();
         meta->TypeAnalysisTypeScope = type_scope;
         Rhs->Stage4_QualifyTypes(sm, meta);
@@ -106,7 +106,7 @@ auto spp::asts::TypeUnaryExpressionAst::Stage7_AnalyseSemantics(
     // Analyse the RHS type.
     if (const auto op_ns = Op->To<TypeUnaryExpressionOperatorNamespaceAst>()) {
         const auto tm = ScopeManager(sm->GlobalScope, meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope);
-        const auto type_scope = analyse::utils::type_utils::get_ns_scope_or_error(*tm.CurrentScope, *op_ns->Ns, tm);
+        const auto type_scope = analyse::utils::type_utils::GetNsScopeOrError(*tm.CurrentScope, *op_ns->Ns, tm);
         meta->Save();
         meta->TypeAnalysisTypeScope = type_scope;
         Rhs->Stage7_AnalyseSemantics(sm, meta);
