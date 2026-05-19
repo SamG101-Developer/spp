@@ -1,15 +1,21 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.generic_parameter_type_inline_constraints_ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
 import genex;
+
+// Todo: second-class borrow violation unit test.
 
 SPP_MOD_BEGIN
 auto spp::asts::GenericParameterTypeInlineConstraintsAst::NewEmpty()
@@ -22,7 +28,7 @@ spp::asts::GenericParameterTypeInlineConstraintsAst::GenericParameterTypeInlineC
     decltype(TokColon) &&tok_colon,
     Vec<Unique<TypeAst>> &&constraints) :
     TokColon(std::move(tok_colon)) {
-    for (auto &&constraint : std::move(constraints)) {
+    for (auto &&constraint : std::move(constraints)) { // Todo: tidy this up (simple assignment preferably).
         this->Constraints.EmplaceBack(Shared(std::move(constraint)));
     }
 }
@@ -57,20 +63,25 @@ auto spp::asts::GenericParameterTypeInlineConstraintsAst::ToString() const
     SPP_STRING_END;
 }
 
-auto spp::asts::GenericParameterTypeInlineConstraintsAst::Stage7_AnalyseSemantics(
+auto spp::asts::GenericParameterTypeInlineConstraintsAst::Stage4_QualifyTypes(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
     // Prepare the fully qualified constraints vector.
+    using analyse::errors::SppSecondClassBorrowViolationError;
     auto fq_constraints = decltype(Constraints)();
     fq_constraints.reserve(Constraints.Len());
 
     // Analyse each constraint type.
     for (auto const &constraint : Constraints) {
+        RaiseIf<SppSecondClassBorrowViolationError>(
+            constraint->GetConvention() != nullptr,
+            {sm->CurrentScope}, ERR_ARGS(*this, *this, "generic type constraint"));
+
         constraint->Stage7_AnalyseSemantics(sm, meta);
         auto const constraint_type_sym = sm->CurrentScope->GetTypeSymbol(constraint->WithoutGenerics());
         fq_constraints.EmplaceBack(
-            constraint_type_sym->FqName()->WithGenerics(std::move(constraint->TypeParts().Back()->GnArgGroup)));
+            constraint_type_sym->FqName()->WithGenerics(AstClone(constraint->TypeParts().Back()->GnArgGroup)));
     }
 
     // Replace the constraints with their fully qualified versions.

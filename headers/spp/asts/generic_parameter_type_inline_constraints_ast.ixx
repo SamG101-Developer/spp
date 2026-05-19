@@ -40,5 +40,5 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeInlineConstraintsAst final : A
 
     SPP_AST_KEY_FUNCTIONS;
 
-    auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+    auto Stage4_QualifyTypes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };

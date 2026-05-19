@@ -234,9 +234,9 @@ auto spp::asts::GenericParameterGroupAst::Stage4_QualifyTypes(
     for (auto const &p : Params) { p->Stage4_QualifyTypes(sm, meta); }
 
     // Do the constraints after all the parameters are qualified. This is because of external generic symbols using
-    // non-qualified types when analysing generically substituted constraint types.
+    // unqualified types when analysing generically substituted constraint types.
     for (auto const &p : GetTypeParams()) {
-        p->Constraints->Stage7_AnalyseSemantics(sm, meta);
+        p->Constraints->Stage4_QualifyTypes(sm, meta);
 
         // Attach the scopes of the constraint types as sup-scopes to the generic scope.
         for (auto const &constraint : p->Constraints->Constraints) {
@@ -245,6 +245,8 @@ auto spp::asts::GenericParameterGroupAst::Stage4_QualifyTypes(
                 dummy_scope->DirectSupScopes.EmplaceBack(constraint_scope);
             }
         }
+
+        p->GetDummyScopes()[0]->TySym->GenericConstraints = AstCloneVecShared(p->Constraints->Constraints);
     }
 }
 

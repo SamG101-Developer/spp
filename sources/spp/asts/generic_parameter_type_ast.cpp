@@ -18,6 +18,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.utils.ast_utils;
+import spp.asts.utils.visibility;
 
 SPP_MOD_BEGIN
 spp::asts::GenericParameterTypeAst::GenericParameterTypeAst(
@@ -35,6 +36,9 @@ auto spp::asts::GenericParameterTypeAst::Stage2_GenTopLvlScopes(
     ScopeManager *sm,
     CompilerMetaData *)
     -> void {
+    //
+    using utils::Visibility;
+
     // Create a dummy scope for the generic type.
     auto dummy_scope_name = analyse::scopes::ScopeBlockName::FromParts(
         "generic-parameter-type", {Name->TypeParts().Back().get()}, PosStart());
@@ -44,7 +48,8 @@ auto spp::asts::GenericParameterTypeAst::Stage2_GenTopLvlScopes(
 
     // Create the type symbol for the generic parameter.
     const auto sym = MakeShared<analyse::scopes::TypeSymbol>(
-        AstCloneShared(Name->TypeParts().Back()), nullptr, dummy_scope.get(), sm->CurrentScope, nullptr, true);
+        AstCloneShared(Name->TypeParts().Back()), nullptr, dummy_scope.get(), sm->CurrentScope, nullptr, true, false,
+        Visibility::kPublic, nullptr, Constraints->Constraints);
     sm->CurrentScope->AddTypeSymbol(sym);
     dummy_scope->TySym = sym;
 
