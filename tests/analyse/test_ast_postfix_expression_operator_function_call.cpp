@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_on_non_callable,
@@ -9,7 +8,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         5()
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
@@ -20,7 +18,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_arg_name,
@@ -29,7 +26,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         f(a=1, b=2)
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
@@ -40,7 +36,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_name_missing_with_generic_type,
@@ -49,7 +44,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         f(1)
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
@@ -60,7 +54,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_missing_explicit_generic,
@@ -69,7 +62,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         f(1)
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
@@ -80,7 +72,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_unnecessary_explicit_generic_1,
@@ -89,7 +80,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         f[std::number::S32](1)
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
@@ -100,7 +90,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_extra_generic,
@@ -109,7 +98,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         f[std::boolean::Bool, std::boolean::Bool](1)
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
@@ -120,7 +108,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_generic_explicit_and_inferred,
@@ -129,7 +116,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         f[std::boolean::Bool](123)
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
@@ -143,7 +129,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_func_call_ambiguous_2,
@@ -156,7 +141,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_func_call_no_params, R"(
@@ -164,7 +148,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         f()
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
@@ -174,7 +157,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_func_call_multiple_params, R"(
@@ -182,7 +164,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         f(1, 2)
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
@@ -192,7 +173,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_func_call_generic_multiple, R"(
@@ -200,7 +180,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         f(1, "1")
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
@@ -210,7 +189,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_func_call_generic_explicit, R"(
@@ -219,7 +197,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_func_call_generic_explicit_and_inferred, R"(
@@ -227,7 +204,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         f[U=std::boolean::Bool](123)
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
@@ -240,7 +216,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_func_call_async_correct_pins, R"(
@@ -251,7 +226,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         async a(&x)
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
@@ -271,7 +245,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_function_call_with_member_access_2, R"(
@@ -289,7 +262,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         n.t.f(n.u)
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
@@ -310,7 +282,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_function_call_with_superimposition, R"(
@@ -323,14 +294,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     cls TestClass2 { }
     sup TestClass2 ext TestClass {
-        !public fun f(self) -> std::void::Void { }
+        fun f(self) -> std::void::Void { }
     }
 
     fun g() -> std::void::Void {
         TestClass2().f()
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
@@ -345,7 +315,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_postfix_function_folding_2, R"(
@@ -357,7 +326,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut z = f(x, y)..
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
@@ -374,7 +342,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_function_folding_2,
@@ -386,7 +353,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         f(x, y)..
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
@@ -400,7 +366,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_invalid_postfix_function_folding_copying_objects, R"(
@@ -411,7 +376,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         f(x, y)..
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
@@ -425,7 +389,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_variadic_single_generic_type, R"(
@@ -437,7 +400,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         g("hello", 1, 2, 3, 4)
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
@@ -451,7 +413,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
     test_valid_variadic_given_no_args, R"(
@@ -463,7 +424,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         g("hello")
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorFunctionCallAst,
