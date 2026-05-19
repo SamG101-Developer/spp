@@ -287,23 +287,23 @@ auto spp::analyse::scopes::Scope::AddNsSymbol(
 
 auto spp::analyse::scopes::Scope::RemVarSymbol(
     Shared<asts::IdentifierAst> const &sym_name)
-    -> void {
+    -> Shared<VariableSymbol> {
     // Remove a variable symbol from the corresponding symbol table.
-    InternalTable.VarTbl.Rem(sym_name);
+    return InternalTable.VarTbl.Rem(sym_name);
 }
 
 auto spp::analyse::scopes::Scope::RemTypeSymbol(
     Shared<asts::TypeIdentifierAst> const &sym_name)
-    -> void {
+    -> Shared<TypeSymbol> {
     // Remove a type symbol from the corresponding symbol table.
-    InternalTable.TypeTbl.Rem(sym_name);
+    return InternalTable.TypeTbl.Rem(sym_name);
 }
 
 auto spp::analyse::scopes::Scope::RemNsSymbol(
     Shared<asts::IdentifierAst> const &sym_name)
-    -> void {
+    -> Shared<NamespaceSymbol> {
     // Remove a namespace symbol from the corresponding symbol table.
-    InternalTable.NsTbl.Rem(sym_name);
+    return InternalTable.NsTbl.Rem(sym_name);
 }
 
 auto spp::analyse::scopes::Scope::AllVarSymbols(

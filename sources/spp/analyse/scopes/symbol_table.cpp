@@ -55,12 +55,15 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Add(
 
 template <typename I, typename S>
 auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Rem(
-    Shared<I> const &sym_name) -> void {
+    Shared<I> const &sym_name) -> Shared<S> {
     // Remove a symbol from the table.
     auto it = _Table.find(sym_name->ToView());
     if (it != _Table.end()) {
+        auto sym = it->second;
         _Table.erase(it);
+        return sym;
     }
+    return nullptr;
 }
 
 template <typename I, typename S>

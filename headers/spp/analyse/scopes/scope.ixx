@@ -198,19 +198,19 @@ public:
      * Remove a variable symbol from the symbol table held inside this scope.
      * @param sym_name The name of the variable symbol to remove.
      */
-    auto RemVarSymbol(Shared<asts::IdentifierAst> const &sym_name) -> void;
+    auto RemVarSymbol(Shared<asts::IdentifierAst> const &sym_name) -> Shared<VariableSymbol>;
 
     /**
      * Remove a type symbol from the symbol table held inside this scope.
      * @param sym_name The name of the type symbol to remove.
      */
-    auto RemTypeSymbol(Shared<asts::TypeIdentifierAst> const &sym_name) -> void;
+    auto RemTypeSymbol(Shared<asts::TypeIdentifierAst> const &sym_name) -> Shared<TypeSymbol>;
 
     /**
      * Remove a namespace symbol from the symbol table held inside this scope.
      * @param sym_name The name of the namespace symbol to remove.
      */
-    auto RemNsSymbol(Shared<asts::IdentifierAst> const &sym_name) -> void;
+    auto RemNsSymbol(Shared<asts::IdentifierAst> const &sym_name) -> Shared<NamespaceSymbol>;
 
     SPP_ATTR_NODISCARD auto AllVarSymbols(bool exclusive = false, bool sup_scope_search = false) const -> SharedVec<VariableSymbol>;
 

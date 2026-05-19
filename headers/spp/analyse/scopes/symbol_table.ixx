@@ -57,7 +57,7 @@ public:
     SPP_ATTR_HOT
     auto Add(Shared<I> const &sym_name, Shared<S> const &sym) -> void;
 
-    auto Rem(Shared<I> const &sym_name) -> void;
+    auto Rem(Shared<I> const &sym_name) -> Shared<S>;
 
     SPP_ATTR_NODISCARD SPP_ATTR_HOT
     auto Get(Shared<I> const &sym_name) const -> Shared<S>;
