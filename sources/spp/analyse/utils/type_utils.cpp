@@ -76,6 +76,31 @@ auto spp::analyse::utils::type_utils::ConventionEq(
     return true;
 }
 
+auto spp::analyse::utils::type_utils::ConstraintEq(
+    Vec<Shared<asts::TypeAst>> const &constraints,
+    asts::TypeAst const &type,
+    scopes::Scope const &constraint_scope,
+    scopes::Scope const &type_scope,
+    GenericInferenceMap const &generic_args)
+    -> bool {
+    //
+    using errors::SppGenericConstraintError;
+    if (constraints.IsEmpty()) { return true; }
+
+    // Check that all the constraints are satisfied.
+    try {
+        const auto gs = asts::GenericArgumentGroupAst::FromMap(generic_args);
+        auto temp_constraints = constraints
+            | genex::views::transform([&](auto const &constraint) { return constraint->SubstituteGenerics(gs->GetAllArgs()); })
+            | genex::to<Vec>();
+        EnforceGenericConstraintsOneArg(constraints, type, constraint_scope, type_scope);
+        return true;
+    }
+
+    // If an error was thrown, there is a constraint mismatch.
+    catch (SppGenericConstraintError const &) { return false; }
+}
+
 auto spp::analyse::utils::type_utils::TypeEq(
     asts::TypeAst const &lhs_type,
     asts::TypeAst const &rhs_type,
@@ -122,7 +147,9 @@ auto spp::analyse::utils::type_utils::TypeEq(
         }
     }
 
-    // Ensure each generic argument is symbolically equal to the other. Todo: why genex broke here?
+    // Ensure each generic argument is symbolically equal to the other.
+    // Todo: why genex broke here?
+    // Todo: different lengths?
     for (auto const &[lhs_generic, rhs_generic] : std::ranges::views::zip(lhs_generics, rhs_generics)) {
         if (lhs_generic->To<asts::GenericArgumentTypeAst>()) {
             const auto lhs_generic_part = lhs_generic->To<asts::GenericArgumentTypeAst>();
@@ -156,7 +183,8 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
     scopes::Scope const &lhs_scope,
     scopes::Scope const &rhs_scope,
     GenericInferenceMap &generic_args,
-    const bool check_variant) -> bool {
+    const bool check_variant,
+    const bool check_constraints) -> bool {
     // Strip the generics from the right-hand-side type (possible generic).
     using asts::generate::common_types_precompiled::VAR;
     const auto stripped_lhs = mut_shared_cast(lhs_type.WithoutGenerics()->WithoutConvention());
@@ -167,6 +195,7 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
     if (stripped_rhs_sym->IsGeneric) {
         const auto t = dynamic_shared_cast<asts::TypeIdentifierAst>(stripped_rhs);
         generic_args.insert({t, const_cast<asts::TypeAst*>(&lhs_type)});
+        if (check_constraints and not ConstraintEq(stripped_rhs_sym->GenericConstraints, lhs_type, rhs_scope, lhs_scope, generic_args)) { return false; }
         return true;
     }
 
@@ -178,6 +207,7 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
     if (stripped_lhs_sym->IsGeneric) {
         const auto t = dynamic_shared_cast<asts::TypeIdentifierAst>(stripped_lhs);
         generic_args.insert({t, const_cast<asts::TypeAst*>(&rhs_type)});
+        if (check_constraints and not ConstraintEq(stripped_lhs_sym->GenericConstraints, rhs_type, lhs_scope, rhs_scope, generic_args)) { return false; }
         return true;
     }
 
@@ -191,12 +221,13 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
     }
 
     // If the left-hand-side is a "$" (function overload) type, check the composite overload types.
-    if (lhs_type.IsCompilerGeneratedType()) {
-        auto lhs_composite_types = func_utils::GetOverloadTypes(lhs_type, lhs_scope);
-        if (genex::any_of(lhs_composite_types, [&](auto &&lhs_composite_type) { return RelaxedTypeEq(*lhs_composite_type, rhs_type, lhs_scope, rhs_scope, generic_args); })) {
-            return true;
-        }
-    }
+    // Todo: This doesn't work (or should be in normal TypeEq actually?)
+    // if (lhs_type.IsCompilerGeneratedType()) {
+    //     auto lhs_composite_types = func_utils::GetOverloadTypes(lhs_type, lhs_scope);
+    //     if (genex::any_of(lhs_composite_types, [&](auto &&lhs_composite_type) { return RelaxedTypeEq(*lhs_composite_type, rhs_type, lhs_scope, rhs_scope, generic_args); })) {
+    //         return true;
+    //     }
+    // }
 
     // If the stripped types aren't equal, then return false.
     if (stripped_lhs_sym->Type != stripped_rhs_sym->Type) { return false; }
@@ -207,9 +238,7 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
     const auto temp_type_proto = lhs_scope.GetTypeSymbol(lhs_type.shared_from_this())->Type;
     if (temp_type_proto and not temp_type_proto->GnParamGroup->Params.IsEmpty()) {
         if (temp_type_proto->GnParamGroup->Params.Back()->To<asts::FunctionParameterVariadicAst>() != nullptr) {
-            if (lhs_generics.Len() != rhs_generics.Len()) {
-                return false;
-            }
+            if (lhs_generics.Len() != rhs_generics.Len()) { return false; }
         }
     }
 
@@ -218,16 +247,12 @@ auto spp::analyse::utils::type_utils::RelaxedTypeEq(
         if (rhs_generic->To<asts::GenericArgumentTypeAst>()) {
             const auto lhs_generic_part = lhs_generic->To<asts::GenericArgumentTypeAst>();
             const auto rhs_generic_part = rhs_generic->To<asts::GenericArgumentTypeAst>();
-            if (not RelaxedTypeEq(*lhs_generic_part->Val, *rhs_generic_part->Val, lhs_scope, rhs_scope, generic_args)) {
-                return false;
-            }
+            if (not RelaxedTypeEq(*lhs_generic_part->Val, *rhs_generic_part->Val, lhs_scope, rhs_scope, generic_args, check_variant, check_constraints)) { return false; }
         }
         else {
             const auto lhs_generic_part = lhs_generic->To<asts::GenericArgumentCompAst>();
             const auto rhs_generic_part = rhs_generic->To<asts::GenericArgumentCompAst>();
-            if (not RelaxedTypeEq(*lhs_generic_part->Val, *rhs_generic_part->Val, lhs_scope, rhs_scope, generic_args)) {
-                return false;
-            }
+            if (not RelaxedTypeEq(*lhs_generic_part->Val, *rhs_generic_part->Val, lhs_scope, rhs_scope, generic_args)) { return false; }
         }
     }
 
@@ -798,8 +823,8 @@ auto spp::analyse::utils::type_utils::CreateGenericSupScope(
     new_sup_scope_ptr->InternalTable = old_sup_scope.InternalTable;
     old_sup_scope.Parent->Children.EmplaceBack(std::move(new_sup_scope));
 
-    // std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->Name).name =
-    //    substitute_sup_scope_name(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->Name).name, generic_args);
+    std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->Name).Name =
+        SubstituteSupScopeName(std::get<scopes::ScopeBlockName>(new_sup_scope_ptr->Name).Name, generic_args);
 
     // Register the generic symbols.
     auto tm = scopes::ScopeManager(sm->GlobalScope, new_sup_scope_ptr);
@@ -929,7 +954,8 @@ auto spp::analyse::utils::type_utils::RegisterGenericSyms(
 
     // Register the created generic symbols to the scope.
     for (auto const &e : generic_syms | genex::views::cast_smart<scopes::TypeSymbol>()) {
-        scope->RemTypeSymbol(e->Name);
+        const auto old = scope->RemTypeSymbol(e->Name);
+        if (old) { e->GenericConstraints = asts::AstCloneVecShared(old->GenericConstraints); }
         scope->AddTypeSymbol(e);
     }
 
@@ -977,10 +1003,10 @@ auto spp::analyse::utils::type_utils::GetNsScopeOrError(
     return ns_sym->LinkedScope;
 }
 
-auto spp::analyse::utils::type_utils::EnforceGenericConstraints(
+auto spp::analyse::utils::type_utils::EnforceGenericConstraintsOneArg(
     Vec<Shared<asts::TypeAst>> const &constraints,
     asts::TypeAst const &concrete_type,
-    scopes::Scope const &generic_scope,
+    scopes::Scope const &constraints_owner_scope,
     scopes::Scope const &concrete_scope)
     -> void {
     //
@@ -1005,13 +1031,13 @@ auto spp::analyse::utils::type_utils::EnforceGenericConstraints(
     for (auto const &constraint : constraints) {
         auto matched = false;
         for (auto const &[sup_type, sup_scope] : sup_info) {
-            matched = TypeEq(*constraint, *sup_type, *sup_scope, *sup_scope);
+            matched = TypeEq(*constraint, *sup_type, constraints_owner_scope, *sup_scope);
             if (matched) { break; }
         }
 
         // If any constraint is not met, raise en error.
         RaiseIf<SppGenericConstraintError>(
-            not matched, {&generic_scope, &concrete_scope},
+            not matched, {&constraints_owner_scope, &concrete_scope},
             ERR_ARGS(*constraint, concrete_type));
     }
 }

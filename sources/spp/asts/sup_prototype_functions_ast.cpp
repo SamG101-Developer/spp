@@ -10,8 +10,10 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.func_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
+import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
 import spp.asts.generic_argument_group_ast;
@@ -203,12 +205,19 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::utils::func_utils::EnforceGenericConstraintsAllArgs;
+
     // Move to the next scope.
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
     GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
     Name->ResetCache();
     Name->Stage7_AnalyseSemantics(sm, meta);
+
+    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
+    if (cls_sym->Type) EnforceGenericConstraintsAllArgs(
+        *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
     Impl->Stage7_AnalyseSemantics(sm, meta);
     sm->MoveOutOfCurrentScope();
 }

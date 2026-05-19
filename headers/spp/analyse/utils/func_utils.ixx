@@ -163,11 +163,9 @@ namespace spp::analyse::utils::func_utils {
         scopes::ScopeManager &sm)
         -> void;
 
-    SPP_EXP_FUN auto EnforceNoGnArgConstraintViolations(
-        Vec<Shared<asts::TypeIdentifierAst>> const &p_names,
-        Vec<Vec<Shared<asts::TypeAst>>> const &p_con_groups,
-        Vec<asts::GenericArgumentTypeKeywordAst*> const& type_args,
-        Vec<asts::GenericArgumentAst*> const &all_args,
+    SPP_EXP_FUN auto EnforceGenericConstraintsAllArgs(
+        asts::GenericParameterGroupAst const &p_group,
+        asts::GenericArgumentGroupAst const &a_group,
         scopes::Scope const &owner_scope,
         scopes::ScopeManager const &sm,
         asts::meta::CompilerMetaData const &meta)
@@ -226,7 +224,6 @@ namespace spp::analyse::utils::func_utils {
     SPP_EXP_FUN auto InferGnArgsImplType(
         Vec<asts::GenericParameterTypeAst*> const &type_params,
         Vec<Unique<asts::GenericArgumentTypeKeywordAst>> const &type_args,
-        Vec<asts::GenericArgumentAst*> &all_args,
         InferenceSourceMap const &infer_source,
         InferenceTargetMap const &infer_target,
         Shared<asts::Ast> const &owner,

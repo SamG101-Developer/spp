@@ -131,6 +131,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
 
     bool IsGeneric = false;
 
+    Vec<Shared<asts::TypeAst>> GenericConstraints;
+
     bool IsDirectlyCopyable = false;
 
     Function<bool()> IsCopyable;
@@ -151,12 +153,13 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
         Shared<asts::TypeIdentifierAst> name,
         asts::ClassPrototypeAst *type,
         Scope *scope,
-        Scope *ScopeDefinedIn,
+        Scope *scope_defined_in,
         Scope *scope_module = nullptr,
         bool is_generic = false,
         bool is_directly_copyable = false,
         asts::utils::Visibility visibility = asts::utils::Visibility::kPublic,
-        Unique<asts::ConventionAst> &&convention = nullptr);
+        Unique<asts::ConventionAst> &&convention = nullptr,
+        Vec<Shared<asts::TypeAst>> const &generic_constraints = {});
 
     TypeSymbol(
         TypeSymbol const &that);

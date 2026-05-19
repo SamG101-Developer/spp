@@ -334,14 +334,26 @@ auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void {
+    //
+    using analyse::utils::func_utils::EnforceGenericConstraintsAllArgs;
+
     // Move to the next scope.
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
     GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
+
     Name->ResetCache();
     Name->Stage7_AnalyseSemantics(sm, meta);
+    const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
+    if (cls_sym->Type) EnforceGenericConstraintsAllArgs(
+        *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
+
     SuperClass->ResetCache();
     SuperClass->Stage7_AnalyseSemantics(sm, meta);
+    const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass);
+    if (cls_sym->Type) EnforceGenericConstraintsAllArgs(
+        *sup_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
+
     Impl->Stage7_AnalyseSemantics(sm, meta);
     sm->MoveOutOfCurrentScope();
 }
@@ -459,7 +471,7 @@ auto spp::asts::SupPrototypeExtensionAst::CheckDoubleExtension(
         auto dummy = GenericInferenceMap();
         const auto ext = sc->AstNode->To<SupPrototypeExtensionAst>();
         return ext and
-            RelaxedTypeEq(*ext->Name, *Name, *sc, check_scope, dummy, false) and
+            RelaxedTypeEq(*ext->Name, *Name, *sc, check_scope, dummy, false, false) and
             TypeEq(*ext->SuperClass, *SuperClass, *sc, check_scope, false);
     };
 

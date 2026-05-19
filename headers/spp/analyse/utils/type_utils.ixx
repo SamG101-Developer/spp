@@ -43,6 +43,14 @@ namespace spp::analyse::utils::type_utils {
         asts::TypeAst const &rhs_type)
         -> bool;
 
+    SPP_EXP_FUN auto ConstraintEq(
+        Vec<Shared<asts::TypeAst>> const &constraints,
+        asts::TypeAst const &type,
+        scopes::Scope const &constraint_scope,
+        scopes::Scope const &type_scope,
+        GenericInferenceMap const &generic_args)
+        -> bool;
+
     /**
      * The symbolic equality type checker is a complex type checking algorithm that takes namespacing, scopes, aliases,
      * variants, etc, all into account, and returns whether two types are indeed the same. Generic arguments are also
@@ -85,7 +93,8 @@ namespace spp::analyse::utils::type_utils {
         scopes::Scope const &lhs_scope,
         scopes::Scope const &rhs_scope,
         GenericInferenceMap &generic_args,
-        bool check_variant = false)
+        bool check_variant = false,
+        bool check_constraints = true)
         -> bool;
 
     SPP_EXP_FUN auto RelaxedTypeEq(
@@ -268,10 +277,10 @@ namespace spp::analyse::utils::type_utils {
         scopes::ScopeManager const &sm)
         -> scopes::Scope*;
 
-    SPP_EXP_FUN auto EnforceGenericConstraints(
+    SPP_EXP_FUN auto EnforceGenericConstraintsOneArg(
         SharedVec<asts::TypeAst> const &constraints,
         asts::TypeAst const &concrete_type,
-        scopes::Scope const &generic_scope,
+        scopes::Scope const &constraints_owner_scope,
         scopes::Scope const &concrete_scope)
         -> void;
 

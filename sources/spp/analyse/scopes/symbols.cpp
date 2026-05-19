@@ -20,7 +20,6 @@ import spp.codegen.llvm_sym_info;
 import spp.utils.ptr;
 import genex;
 
-
 SPP_MOD_BEGIN
 spp::analyse::scopes::Symbol::~Symbol() = default;
 
@@ -63,7 +62,6 @@ spp::analyse::scopes::VariableSymbol::VariableSymbol(
     LlvmInfo = MakeUnique<codegen::LlvmVarSymInfo>();
     CompTimeValue = nullptr;
 }
-
 
 spp::analyse::scopes::VariableSymbol::VariableSymbol(
     VariableSymbol const &that) :
@@ -124,18 +122,20 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(
     Shared<asts::TypeIdentifierAst> name,
     asts::ClassPrototypeAst *type,
     Scope *scope,
-    Scope *ScopeDefinedIn,
+    Scope *scope_defined_in,
     Scope *scope_module,
     const bool is_generic,
     const bool is_directly_copyable,
     const asts::utils::Visibility visibility,
-    Unique<asts::ConventionAst> &&convention) :
+    Unique<asts::ConventionAst> &&convention,
+    Vec<Shared<asts::TypeAst>> const &generic_constraints) :
     Name(std::move(name)),
     Type(type),
     LinkedScope(scope),
-    ScopeDefinedIn(ScopeDefinedIn),
+    ScopeDefinedIn(scope_defined_in),
     ScopeModule(scope_module),
     IsGeneric(is_generic),
+    GenericConstraints(generic_constraints),
     IsDirectlyCopyable(is_directly_copyable),
     IsCopyable([this] { return this->IsDirectlyCopyable; }),
     Visibility(visibility),
@@ -151,6 +151,7 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
     ScopeDefinedIn(that.ScopeDefinedIn),
     ScopeModule(that.ScopeModule),
     IsGeneric(that.IsGeneric),
+    GenericConstraints(that.GenericConstraints),
     IsDirectlyCopyable(that.IsDirectlyCopyable),
     IsCopyable(that.IsCopyable),
     Visibility(that.Visibility),
@@ -158,7 +159,6 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
     GenericImpl(that.GenericImpl) {
     AliasStmt = asts::AstClone(that.AliasStmt);
     LlvmInfo = that.LlvmInfo;
-
 }
 
 spp::analyse::scopes::TypeSymbol::~TypeSymbol() = default;

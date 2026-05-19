@@ -520,15 +520,23 @@ auto spp::analyse::utils::func_utils::EnforceNoUninferredGnArgs(
         ERR_ARGS(*uninferred_params[0], *owner));
 }
 
-auto spp::analyse::utils::func_utils::EnforceNoGnArgConstraintViolations(
-    Vec<Shared<asts::TypeIdentifierAst>> const &p_names,
-    Vec<Vec<Shared<asts::TypeAst>>> const &p_con_groups,
-    Vec<asts::GenericArgumentTypeKeywordAst*> const &type_args,
-    Vec<asts::GenericArgumentAst*> const &all_args,
+auto spp::analyse::utils::func_utils::EnforceGenericConstraintsAllArgs(
+    asts::GenericParameterGroupAst const &p_group,
+    asts::GenericArgumentGroupAst const &a_group,
     scopes::Scope const &owner_scope,
     scopes::ScopeManager const &sm,
     asts::meta::CompilerMetaData const &meta)
     -> void {
+    // Extract important information.
+    auto p_names = p_group.GetTypeParams()
+        | genex::views::transform([](auto &&x) { return dynamic_shared_cast<asts::TypeIdentifierAst>(x->Name); })
+        | genex::to<Vec>();
+    auto p_con_groups = p_group.GetTypeParams()
+        | genex::views::transform([](auto &&x) { return x->Constraints->Constraints; })
+        | genex::to<Vec>();
+    const auto all_args = a_group.GetAllArgs();
+    const auto type_args = a_group.GetTypeArgs();
+
     // Define the cloned constraint groups.
     auto p_con_groups_cloned = Vec<Vec<Shared<asts::TypeAst>>>();
     p_con_groups_cloned.reserve(p_names.Len());
@@ -555,8 +563,9 @@ auto spp::analyse::utils::func_utils::EnforceNoGnArgConstraintViolations(
     const auto args = type_args;
     for (auto [i, p_name] : p_names | genex::views::enumerate) {
         const auto p_cons = p_con_groups_cloned[i];
+        if (i >= args.Len()) { break; }
         const auto a = args[i];
-        type_utils::EnforceGenericConstraints(p_cons, *a->Val, owner_scope, *sm.CurrentScope);
+        type_utils::EnforceGenericConstraintsOneArg(p_cons, *a->Val, owner_scope, *sm.CurrentScope);
     }
 }
 
@@ -565,7 +574,7 @@ auto spp::analyse::utils::func_utils::NameFnArgs(
     asts::FunctionParameterGroupAst const &p_group,
     scopes::ScopeManager &sm)
     -> void {
-    // Validate the named arguments against the paramters.
+    // Validate the named arguments against the parameters.
     EnforceNoInvalidFnArgs(p_group.GetAllParams(), a_group.GetKeywordArgs(), sm);
 
     // Get the names of the keyword arguments.
@@ -765,7 +774,7 @@ auto spp::analyse::utils::func_utils::InferGnArgs(
     // Todo: These need to move left-to-right no matter type vs comp
     // Todo: Because of cross substitution left to right between type and comp
     // Todo: Or do type, comp, type-cross-substitution again
-    auto new_type_args = InferGnArgsImplType(type_params, type_args, all_args, infer_source, infer_target, owner, owner_scope, variadic_fn_param_name, sm, meta);
+    auto new_type_args = InferGnArgsImplType(type_params, type_args, infer_source, infer_target, owner, owner_scope, variadic_fn_param_name, sm, meta);
     auto new_comp_args = InferGnArgsImplComp(comp_params, comp_args, all_args, infer_source, infer_target, owner, owner_scope, variadic_fn_param_name, sm, meta);
 
     // Build index map once for O(n) lookup during sort.
@@ -926,7 +935,6 @@ auto spp::analyse::utils::func_utils::InferGnArgsImplComp(
 auto spp::analyse::utils::func_utils::InferGnArgsImplType(
     Vec<asts::GenericParameterTypeAst*> const &type_params,
     Vec<Unique<asts::GenericArgumentTypeKeywordAst>> const &type_args,
-    Vec<asts::GenericArgumentAst*> &all_args,
     InferenceSourceMap const &infer_source,
     InferenceTargetMap const &infer_target,
     Shared<asts::Ast> const &owner,
@@ -1042,9 +1050,6 @@ auto spp::analyse::utils::func_utils::InferGnArgsImplType(
     });
 
     // Finally, enforce the constraints on the inferred generic arguments.
-    if (meta.CurrentStage < 9) { return final_args; }
-    const auto type_args_raw = final_args | genex::views::ptr | genex::to<Vec>();
-    EnforceNoGnArgConstraintViolations(p_names, p_con_groups, type_args_raw, all_args, owner_scope, sm, meta);
     return final_args;
 }
 
