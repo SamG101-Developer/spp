@@ -182,11 +182,21 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
     Vec<Scope*> &&sup_scopes,
     asts::meta::CompilerMetaData *meta) const
     -> void {
+    //
+    using utils::type_utils::CreateGenericSupScope;
+    using utils::type_utils::IsTypeFunc;
+    using utils::type_utils::RelaxedTypeEq;
+    using utils::type_utils::GenericInferenceMap;
+
+    if (&scope == reinterpret_cast<Scope*>(0xd6765c0)) {
+        auto _ = 123;
+    }
+
     // Skip "$" identifiers (functions don't have substitutable members and take up lots of time).
     const auto scope_name = scope.TySym->FqName();
-    if (scope_name->IsCompilerGeneratedType()) { return; }
-    if (utils::type_utils::IsTypeFunc(*scope_name, scope)) { return; }
     if (sup_scopes.IsEmpty()) { return; }
+    if (scope_name->IsCompilerGeneratedType()) { return; }
+    if (IsTypeFunc(*scope_name, scope)) { return; }
 
     // Clear the sup scopes list.
     scope.DirectSupScopes.Clear();
@@ -196,12 +206,10 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
     // Iterate through all the super scopes and check if the name matches.
     for (auto *sup_scope : sup_scopes) {
         // Perform a relaxed comparison between the two types (allows for specializations to match bases).
-        auto scope_generics_map = utils::type_utils::GenericInferenceMap();
-        if (not utils::type_utils::RelaxedTypeEq(*fq_type, *asts::AstName(sup_scope->AstNode), *scope.TySym->ScopeDefinedIn, *sup_scope, scope_generics_map)) {
-            // Todo: Is this eliminating too many cases?
-            // Todo: For example, superimposing a type will be omitted here because the type won't be the same.
-            continue;
-        }
+        auto scope_generics_map = GenericInferenceMap();
+
+        // Load the generics.
+        if (not RelaxedTypeEq(*fq_type, *asts::AstName(sup_scope->AstNode), *scope.TySym->ScopeDefinedIn, *sup_scope, scope_generics_map, false, false)) { continue; }
         auto scope_generics = asts::GenericArgumentGroupAst::FromMap(std::move(scope_generics_map));
 
         // Create a generic version of the super scope if needed.
@@ -212,8 +220,11 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
         // Todo: Is this "if-else" quite correct? 2 conditions in the "if", then no "else if" block.
         if (not scope_generics->Args.IsEmpty() and not genex::contains(generic_sup_blocks, sup_scope)) {
             const auto external_generics = scope.TySym->ScopeDefinedIn->GetExtendedGenericSymbols(scope_generics->Args | genex::views::ptr | genex::to<Vec>());
-            std::tie(new_sup_scope, new_cls_scope) = utils::type_utils::CreateGenericSupScope(*sup_scope, scope, *scope_generics, external_generics, this, meta);
+            std::tie(new_sup_scope, new_cls_scope) = CreateGenericSupScope(*sup_scope, scope, *scope_generics, external_generics, this, meta);
             sup_sym = new_cls_scope ? new_cls_scope->TySym.get() : nullptr;
+
+            auto _ = GenericInferenceMap();
+            if (not RelaxedTypeEq(*fq_type, *asts::AstName(sup_scope->AstNode), *scope.TySym->ScopeDefinedIn, *new_sup_scope, _)) { continue; }
         }
         else {
             const auto sup_proto = sup_scope->AstNode->To<asts::SupPrototypeExtensionAst>();
