@@ -335,13 +335,13 @@ auto spp::analyse::utils::mem_utils::PreventBorrowLifetimeExtension(
 
     // Finally, an inline coroutine call, such as "x = coro(&borrow)" also needs checking.
     // This is also a temporary borrow, but being contained rather than yielded at this point.
-    else if (pf and pf->Op->To<asts::PostfixExpressionOperatorFunctionCallAst>()) {
-        const auto new_rhs_sym = sm.CurrentScope->GetVarSymbolOutermost(*pf->Lhs).First.get();
-        const auto lhs_func = pf->Op->To<asts::PostfixExpressionOperatorFunctionCallAst>();
-        const auto lhs_func_call_is_coro = lhs_func->Target()->IsCoroutine();
-        const auto has_borrowed_args = lhs_func_call_is_coro and genex::any_of(lhs_func->FnArgGroup->Args, [&](auto const &arg) {
-            return arg->Conv != nullptr;
-        });
-        PreventBorrowLifetimeExtension(*pf->Lhs, lhs_outermost, new_rhs_sym, owner, sm, lhs_func_call_is_coro and has_borrowed_args);
-    }
+    // else if (pf and pf->Op->To<asts::PostfixExpressionOperatorFunctionCallAst>()) {
+    //     const auto new_rhs_sym = sm.CurrentScope->GetVarSymbolOutermost(*pf->Lhs).First.get();
+    //     const auto lhs_func = pf->Op->To<asts::PostfixExpressionOperatorFunctionCallAst>();
+    //     const auto lhs_func_call_is_coro = lhs_func->Target()->IsCoroutine();
+    //     const auto has_borrowed_args = lhs_func_call_is_coro and genex::any_of(lhs_func->FnArgGroup->Args, [&](auto const &arg) {
+    //         return arg->Conv != nullptr;
+    //     });
+    //     PreventBorrowLifetimeExtension(*pf->Lhs, lhs_outermost, new_rhs_sym, owner, sm, lhs_func_call_is_coro and has_borrowed_args);
+    // }
 }
