@@ -9,10 +9,13 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.func_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.annotation_ast;
+import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -209,6 +212,7 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     //
+    using analyse::utils::func_utils::EnforceGenericConstraintsAllArgs;
     for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
 
     // If this is a pre-generated AST (mod/sup context), skip any generation steps.
@@ -217,6 +221,12 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
         SPP_ASSERT(sm->CurrentScope == _Scope);
         OldType->ResetCache();
         OldType->Stage7_AnalyseSemantics(sm, meta);
+
+        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(OldType);
+        if (cls_sym->Type) EnforceGenericConstraintsAllArgs(
+            *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup),
+            *sm->CurrentScope, *sm, *meta);
+
         sm->MoveOutOfCurrentScope();
         return;
     }
