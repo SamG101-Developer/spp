@@ -254,6 +254,7 @@ auto spp::analyse::utils::overload_utils::InferAllGenerics(
     asts::meta::CompilerMetaData *meta)
     -> void {
     //
+    using func_utils::EnforceGenericConstraintsAllArgs;
     using func_utils::InferGnArgs;
     using func_utils::NameFnArgs;
     using func_utils::NameGnArgs;
@@ -288,6 +289,8 @@ auto spp::analyse::utils::overload_utils::InferAllGenerics(
         is_variadic_fn ? fn_proto.FnParamGroup->GetVariadicParams()->ExtractName() : nullptr,
         false, *sm, *meta);
     explicit_gn_args.Args = std::move(temp_arg_group->Args);
+
+    EnforceGenericConstraintsAllArgs(*fn_proto.GnParamGroup, explicit_gn_args, *fn_scope, *sm, *meta);
 }
 
 auto spp::analyse::utils::overload_utils::GenerateGenericSubstitutedPrototype(
@@ -327,6 +330,7 @@ auto spp::analyse::utils::overload_utils::GenerateGenericSubstitutedPrototype(
         }
         new_fn_proto->ReturnType = new_fn_proto->ReturnType->SubstituteGenerics(combined_generics->GetAllArgs());
         new_fn_proto->ReturnType->Stage7_AnalyseSemantics(&tm, meta);
+        // Todo: new_fn_proto->ReturnTye = scope->GetTypeSymbol(...)->FqName() ?
 
         // Check the new return type isn't a borrow type.
         RaiseIf<SppSecondClassBorrowViolationError>(
