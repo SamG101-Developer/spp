@@ -37,7 +37,7 @@ namespace spp::asts {
  * this class.
  */
 SPP_EXP_CLS struct spp::asts::ExpressionAst : StatementAst {
-    using StatementAst::StatementAst;
+    ExpressionAst();
     ~ExpressionAst() override;
 
     auto operator<=>(const ExpressionAst &) const -> Ordering;

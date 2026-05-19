@@ -4,6 +4,7 @@ module;
 module spp.asts.expression_ast;
 
 SPP_MOD_BEGIN
+spp::asts::ExpressionAst::ExpressionAst() = default;
 spp::asts::ExpressionAst::~ExpressionAst() = default;
 
 auto spp::asts::ExpressionAst::operator<=>(
