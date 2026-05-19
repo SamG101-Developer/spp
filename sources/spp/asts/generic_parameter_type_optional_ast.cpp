@@ -8,6 +8,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.convention_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_parameter_type_inline_constraints_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -72,7 +73,7 @@ auto spp::asts::GenericParameterTypeOptionalAst::Stage4_QualifyTypes(
     DefaultVal->Stage7_AnalyseSemantics(sm, meta);
     if (const auto sym = sm->CurrentScope->GetTypeSymbol(DefaultVal->WithoutGenerics()); sym != nullptr) {
         auto temp = sym->FqName()->WithConvention(AstClone(DefaultVal->GetConvention()));
-        temp = temp->WithGenerics(std::move(DefaultVal->TypeParts().Back()->GnArgGroup));
+        temp = temp->WithGenerics(AstClone(DefaultVal->TypeParts().Back()->GnArgGroup));
         DefaultVal = std::move(temp);
     }
 }
