@@ -53,11 +53,11 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
         -> Unique<GenericArgumentGroupAst>;
 
     static auto FromMap(
-        analyse::utils::type_utils::GenericInferenceMap &&map)
+        analyse::utils::type_utils::GenericInferenceMap const &map)
         -> Unique<GenericArgumentGroupAst>;
 
     static auto FromMap(
-        analyse::utils::func_utils::InferenceFinalTypeMap &&map)
+        analyse::utils::func_utils::InferenceFinalTypeMap const &map)
         -> Unique<GenericArgumentGroupAst>;
 
     /**

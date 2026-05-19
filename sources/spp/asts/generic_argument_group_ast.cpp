@@ -68,23 +68,23 @@ auto spp::asts::GenericArgumentGroupAst::FromParams(
 }
 
 auto spp::asts::GenericArgumentGroupAst::FromMap(
-    analyse::utils::type_utils::GenericInferenceMap &&map)
+    analyse::utils::type_utils::GenericInferenceMap const &map)
     -> Unique<GenericArgumentGroupAst> {
     // Create the list of arguments, initially empty.
     auto mapped_args = Vec<Unique<GenericArgumentAst>>();
 
-    for (auto &&[arg_name, arg_val] : std::move(map)) {
+    for (auto const &[arg_name, arg_val] : std::move(map)) {
         // Map type ASTs to keyword type arguments.
         if (auto *arg_val_for_type = arg_val->To<TypeAst>()) {
             auto val = AstClone(arg_val_for_type);
-            auto arg = MakeUnique<GenericArgumentTypeKeywordAst>(std::move(arg_name), nullptr, std::move(val));
+            auto arg = MakeUnique<GenericArgumentTypeKeywordAst>(arg_name, nullptr, std::move(val));
             mapped_args.EmplaceBack(std::move(arg));
         }
 
         // Map expression ASTs to keyword comptime arguments.
         else if (auto *arg_val_for_comp = arg_val->To<ExpressionAst>()) {
             auto val = AstClone(arg_val_for_comp);
-            auto arg = MakeUnique<GenericArgumentCompKeywordAst>(std::move(arg_name), nullptr, std::move(val));
+            auto arg = MakeUnique<GenericArgumentCompKeywordAst>(arg_name, nullptr, std::move(val));
             mapped_args.EmplaceBack(std::move(arg));
         }
     }
@@ -94,12 +94,12 @@ auto spp::asts::GenericArgumentGroupAst::FromMap(
 }
 
 auto spp::asts::GenericArgumentGroupAst::FromMap(
-    analyse::utils::func_utils::InferenceFinalTypeMap &&map)
+    analyse::utils::func_utils::InferenceFinalTypeMap const &map)
     -> Unique<GenericArgumentGroupAst> {
     // Cast the values to "ExpressionAst const*".
     auto mapped_args = analyse::utils::type_utils::GenericInferenceMap();
-    for (auto const &[k, v] : std::move(map)) { mapped_args[k] = v.get(); }
-    return FromMap(std::move(mapped_args));
+    for (auto const &[k, v] : map) { mapped_args[k] = v.get(); }
+    return FromMap(mapped_args);
 }
 
 spp::asts::GenericArgumentGroupAst::GenericArgumentGroupAst(
