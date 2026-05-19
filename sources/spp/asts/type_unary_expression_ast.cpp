@@ -69,8 +69,7 @@ auto spp::asts::TypeUnaryExpressionAst::PosEnd() const
 auto spp::asts::TypeUnaryExpressionAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
-    return MakeUnique<TypeUnaryExpressionAst>(
-        AstClone(Op), AstClone(Rhs));
+    return MakeUnique<TypeUnaryExpressionAst>(AstClone(Op), AstClone(Rhs));
 }
 
 auto spp::asts::TypeUnaryExpressionAst::ToString() const

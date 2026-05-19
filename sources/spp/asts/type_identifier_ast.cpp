@@ -97,9 +97,7 @@ auto spp::asts::TypeIdentifierAst::PosEnd() const
 auto spp::asts::TypeIdentifierAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
-    auto t = MakeUnique<TypeIdentifierAst>(
-        _Pos, Str(Name),
-        AstClone(GnArgGroup));
+    auto t = MakeUnique<TypeIdentifierAst>(_Pos, Str(Name), AstClone(GnArgGroup));
     t->_CachedWithoutGenerics = _CachedWithoutGenerics;
     t->_IsNeverType = _IsNeverType;
     return t;
@@ -131,6 +129,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     CompilerMetaData *meta)
     -> void {
     //
+    using analyse::utils::func_utils::EnforceGenericConstraintsAllArgs;
     using analyse::utils::func_utils::InferGnArgs;
     using analyse::utils::type_utils::CreateGenericClsScope;
     using analyse::utils::type_utils::GetTypeSymOrError;
@@ -139,42 +138,29 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     // Determine the scope and get the type symbol.
     const auto scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
     const auto type_sym = GetTypeSymOrError(
-        *scope, *dynamic_shared_cast<TypeIdentifierAst>(WithoutGenerics()), *sm, meta);
-    // const auto type_scope = type_sym->scope;
+        *scope, *WithoutGenerics()->To<TypeIdentifierAst>(), *sm, meta);
     if (type_sym->IsGeneric or Name == "Self") { return; }
 
-    // Name all the generic arguments.
     const auto is_tuple = ( {
         const auto as_unary = dynamic_shared_cast<TypeUnaryExpressionAst>(type_sym->FqName()->WithoutGenerics());
         as_unary != nullptr and *as_unary == *generate::common_types_precompiled::TUP->To<TypeUnaryExpressionAst>();
     });
 
+    // Name all the generic arguments.
     analyse::utils::func_utils::NameGnArgs(
         *GnArgGroup,
         *(type_sym->AliasStmt ? type_sym->AliasStmt->GnParamGroup : type_sym->Type->GnParamGroup),
         *this, *sm, *meta, is_tuple);
 
-    // Stop here is there is a flag to not check generics.
-    if (meta->SkipTypeAnalysisGenericChecks) {
-        return;
-    }
-
     // Analyse the generic arguments.
+    if (meta->SkipTypeAnalysisGenericChecks) { return; }
     meta->TypeAnalysisTypeScope = nullptr;
     GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
+    const auto &gn_param_group = type_sym->AliasStmt ? type_sym->AliasStmt->GnParamGroup : type_sym->Type->GnParamGroup;
 
-    // Infer the generic arguments from information given from object initialization.
-    const auto owner = GetTypeSymOrError(
-        *scope, *WithoutGenerics()->To<TypeIdentifierAst>(), *sm, meta)->FqName();
-    const auto owner_sym = sm->CurrentScope->GetTypeSymbol(owner);
-    // const auto owner_scope = owner_sym->alias_stmt ? owner_sym->alias_stmt->
-    //     owner_sym != nullptr ? owner_sym->scope : type_sym->scope;
-
+    // Infer the generic arguments from information given from object initialisation.
     InferGnArgs(
-        *(type_sym->AliasStmt ? type_sym->AliasStmt->GnParamGroup : type_sym->Type->GnParamGroup),
-        *GnArgGroup,
-        meta->InferSource, meta->InferTarget,
-        owner, *(owner_sym != nullptr ? owner_sym->LinkedScope : type_sym->LinkedScope),
+        *gn_param_group, *GnArgGroup, meta->InferSource, meta->InferTarget, type_sym->FqName(), *type_sym->LinkedScope,
         nullptr, is_tuple, *sm, *meta);
     GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
 
@@ -193,6 +179,7 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     if (not scope->HasTypeSymbol(shared_from_this())) {
         const auto external_generics = sm->CurrentScope->GetExtendedGenericSymbols(GnArgGroup->GetAllArgs(), meta->IgnoreCmpGeneric);
         CreateGenericClsScope(*this, *type_sym, external_generics, is_tuple, sm, meta);
+        if (meta->CurrentStage >= 9) { EnforceGenericConstraintsAllArgs(*gn_param_group, *GnArgGroup, *sm->CurrentScope, *sm, *meta); }
     }
 
     _HasAnalysed = true;

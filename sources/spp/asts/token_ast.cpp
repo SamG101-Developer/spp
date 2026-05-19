@@ -44,8 +44,7 @@ auto spp::asts::TokenAst::PosEnd() const
 auto spp::asts::TokenAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
-    return MakeUnique<TokenAst>(
-        _Pos, TokenType, TokenData.c_str());
+    return MakeUnique<TokenAst>(_Pos, TokenType, TokenData.c_str());
 }
 
 auto spp::asts::TokenAst::ToString() const
