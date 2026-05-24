@@ -90,7 +90,7 @@ auto spp::compiler::ModuleTree::ForUnitTests(
 
 auto spp::compiler::ModuleTree::Lock() -> void {
     m_lock_fd = sys::open(".lock", sys::O_RDWR | sys::O_CREAT);
-    sys::flock(m_lock_fd, sys::LOCK_EX);
+    sys::flock(m_lock_fd, sys::LOCK_SH);
 }
 
 auto spp::compiler::ModuleTree::Unlock() const -> void {
