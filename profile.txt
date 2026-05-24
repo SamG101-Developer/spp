@@ -5,6 +5,12 @@ perf script > perf.txt
 cat perf.txt | ../FlameGraph/stackcollapse-perf.pl > collapsed.txt
 cat collapsed.txt | ../FlameGraph/flamegraph.pl > flamegraph1.html
 
+ONE_LINE
+--------
+perf record -g -F 99 -o /tmp/perf.data ./cmake-build-debug-wsl-dev/spp && \
+  perf script -i /tmp/perf.data | ../FlameGraph/stackcollapse-perf.pl | ../FlameGraph/flamegraph.pl > flamegraph1.html && \
+  rm /tmp/perf.data
+
 TREE
 ----
 perf record -g -F 99 ./cmake-build-debug-wsl-dev/spp
