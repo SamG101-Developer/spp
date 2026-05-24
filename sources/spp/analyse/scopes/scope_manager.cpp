@@ -304,6 +304,7 @@ auto spp::analyse::scopes::ScopeManager::CheckConflictingTypeOrCmpStatements(
 auto spp::analyse::scopes::ScopeManager::Cleanup() -> void {
     normal_sup_blocks.clear();
     generic_sup_blocks.Clear();
+    temp_scopes.Clear();
 }
 
 SPP_MOD_END

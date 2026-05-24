@@ -423,9 +423,11 @@ auto spp::analyse::scopes::Scope::GetTypeSymbol(
     // Adjust the scope for the namespace of the type identifier if there is one.
     if (sym_name == nullptr) { return nullptr; }
 
-    // Check cache.
+    // Check cache (weak_ptr: only use if the symbol is still alive).
     if (sym_name->CachedTypeSymbols.contains(this)) {
-        return sym_name->CachedTypeSymbols.get(this);
+        if (const auto locked = sym_name->CachedTypeSymbols.get(this).lock()) {
+            return locked;
+        }
     }
 
     auto scope = this;
@@ -455,7 +457,7 @@ auto spp::analyse::scopes::Scope::GetTypeSymbol(
 
     // Update cache and return the found symbol, or nullptr.
     if (sym != nullptr) {
-        sym_name->CachedTypeSymbols.set(this, sym);
+        sym_name->CachedTypeSymbols.set(this, Weak<TypeSymbol>(sym));
     }
     return sym;
 }
