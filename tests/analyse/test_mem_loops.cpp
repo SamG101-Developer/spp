@@ -1,7 +1,5 @@
 #include "../test_macros.hpp"
 
-
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryLoopChecks,
     test_invalid_loop_with_memory_move,
@@ -14,19 +12,21 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryLoopChecks,
     test_invalid_loop_with_memory_move_nested,
     SppUninitializedMemoryUseError, R"(
+    cls SomeType {
+        a: Str
+    }
+
     fun f() -> std::void::Void {
-        let x = std::string::Str::from("hello world")
+        let x = SomeType()
         loop true {
-            let d = x.data
+            let a = x.a
         }
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstMemoryLoopChecks,

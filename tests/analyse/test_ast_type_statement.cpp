@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestTypeStatementAst,
     test_invalid_type_statement_old_type_convention_mut,
@@ -8,14 +7,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     type MyType = &mut std::boolean::Bool
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestTypeStatementAst,
     test_invalid_type_statement_old_type_convention_ref,
     SppSecondClassBorrowViolationError, R"(
     type MyType = &std::boolean::Bool
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementAst,
@@ -26,7 +23,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(a: MyString, b: MyBool) -> std::void::Void { }
     fun g() -> std::void::Void { f("hello", true) }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementAst,
@@ -40,7 +36,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementAst,
     test_valid_type_statement_variant, R"(
@@ -48,7 +43,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(a: SomeType) -> std::void::Void { }
     fun g() -> std::void::Void { f("hello") }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementAst,
@@ -59,7 +53,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         x = "hello"
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementAst,
@@ -77,7 +70,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementAst,
     test_valid_type_statement_local_generics_alias, R"(
@@ -86,7 +78,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = MyVec[std::string_view::StrView]()
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementAst,
@@ -97,7 +88,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         f(x)
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementAst,

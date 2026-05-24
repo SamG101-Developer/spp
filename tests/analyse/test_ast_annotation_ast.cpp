@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AnnotationAst,
     test_valid_annotation_virtual_method, R"(
@@ -11,7 +10,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AnnotationAst,
     test_valid_annotation_abstract_method, R"(
@@ -21,7 +19,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         fun f() -> A { }
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AnnotationAst,
@@ -38,7 +35,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> std::void::Void { }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AnnotationAst,
     test_valid_annotation_protected, R"(
@@ -53,7 +49,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     !protected
     fun g() -> std::void::Void { }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AnnotationAst,
@@ -70,7 +65,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> std::void::Void { }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AnnotationAst,
     test_valid_annotation_cold, R"(
@@ -84,7 +78,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     !std::llvm::cold
     fun g() -> std::void::Void { }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AnnotationAst,
@@ -100,7 +93,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> std::void::Void { }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
     test_invalid_annotation_virtual_method_outside_sup,
@@ -108,7 +100,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     !virtual_method
     fun f() -> Void { }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
@@ -118,7 +109,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> Void { }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
     test_invalid_annotation_virtual_method_on_non_function,
@@ -126,7 +116,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     !virtual_method
     cls A { }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
@@ -136,7 +125,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls A { }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
     test_invalid_annotation_cold_on_non_function,
@@ -145,7 +133,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls A { }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
     test_invalid_annotation_hot_on_non_function,
@@ -153,7 +140,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     !std::llvm::hot
     cls A { }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
@@ -173,7 +159,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
     test_invalid_annotation_annotation_identifier,
@@ -185,7 +170,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     !invalid
     fun f() -> A { }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
@@ -200,7 +184,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> A { }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
     test_invalid_annotation_non_annotation,
@@ -212,7 +195,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     !aaa
     fun f() -> A { }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AnnotationAst,
@@ -227,7 +209,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> A { }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AnnotationAst,
     test_valid_annotation_custom_no_args, R"(
@@ -237,7 +218,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     !my_annotation
     fun f() -> Void { }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AnnotationAst,
@@ -250,7 +230,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     !my_annotation("hello world")
     fun f() -> Void { }
 )");
-
 
 // SPP_TEST_SHOULD_FAIL_SEMANTIC(
 //     AnnotationAst,

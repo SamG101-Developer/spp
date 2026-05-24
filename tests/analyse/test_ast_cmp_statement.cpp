@@ -46,7 +46,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     CmpStatementAst,
     test_invalid_value_comp_identifier_noncopyanle,
-    SppMoveFromPinnedMemoryError, R"(
+    SppMovingComptimeConstantMemoryError, R"(
     cls MyClass {
         !public x: std::string_view::StrView
     }

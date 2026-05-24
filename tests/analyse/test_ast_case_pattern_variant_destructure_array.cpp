@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     CasePatternVariantDestructureArrayAst,
     test_invalid_multiple_multi_skip,
@@ -9,7 +8,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         case p is [.., ..] { }
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     CasePatternVariantDestructureArrayAst,
@@ -20,7 +18,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     CasePatternVariantDestructureArrayAst,
     test_invalid_extra_value,
@@ -30,7 +27,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     CasePatternVariantDestructureArrayAst,
     test_valid_value_only, R"(
@@ -38,7 +34,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case p is [x, y] { }
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     CasePatternVariantDestructureArrayAst,
@@ -48,7 +43,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     CasePatternVariantDestructureArrayAst,
     test_valid_value_and_unbound_multi_skip, R"(
@@ -57,7 +51,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     CasePatternVariantDestructureArrayAst,
     test_valid_value_and_bound_multi_skip, R"(
@@ -65,7 +58,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case p is [..x] { }
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     CasePatternVariantDestructureArrayAst,
@@ -78,7 +70,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     CasePatternVariantDestructureArrayAst,
     test_valid_nested_array_in_array, R"(
@@ -87,7 +78,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     CasePatternVariantDestructureArrayAst,
     test_valid_nested_tuple_in_array, R"(
@@ -95,7 +85,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case p is [(a, b), (c, d)] { }
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     CasePatternVariantDestructureArrayAst,

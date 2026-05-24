@@ -34,7 +34,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ClosureExpressionAst,
     test_invalid_closure_move_pinned_by_ref,
-    SppMoveFromPinnedMemoryError, R"(
+    SppMovingEscapingBorrowedMemoryError, R"(
     fun g(func: FunRef[(), U32]) -> std::void::Void { }
 
     fun f() -> std::void::Void {
@@ -47,7 +47,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ClosureExpressionAst,
     test_invalid_closure_move_pinned_by_mut,
-    SppMoveFromPinnedMemoryError, R"(
+    SppMovingEscapingBorrowedMemoryError, R"(
     fun g(func: FunMut[(), U32]) -> std::void::Void { }
 
     fun f() -> std::void::Void {
@@ -214,7 +214,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     ClosureExpressionAst,
     test_invalid_closure_move_borrowed_capture,
-    SppMoveFromPinnedMemoryError, R"(
+    SppMovingEscapingBorrowedMemoryError, R"(
     fun f() -> std::void::Void {
         let some_variable = std::string::Str::from("hello world")
         let x = (caps &some_variable) 123_u32

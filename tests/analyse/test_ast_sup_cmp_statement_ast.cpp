@@ -20,7 +20,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstSupCmpStatementAst,
     test_invalid_moving_non_copy_cmp,
-    SppMoveFromPinnedMemoryError, R"(
+    SppMovingEscapingBorrowedMemoryError, R"(
     cls MyType { }
     sup MyType {
         !public cmp n: (std::string_view::StrView, std::string_view::StrView) = ("hello world", "hello world")
@@ -67,7 +67,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstSupCmpStatementAst,
     test_invalid_with_generic_move,
-    SppMoveFromPinnedMemoryError, R"(
+    SppMovingComptimeConstantMemoryError, R"(
     cls MyType[T, cmp m: T] { }
     sup [T, cmp m: T] MyType[T, m] {
         !public cmp n: T = m
@@ -79,16 +79,15 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstSupCmpStatementAst,
-    test_invalid_with_generic_copy,
-    SppMoveFromPinnedMemoryError, R"(
+    test_invalid_with_generic_copy, R"(
     cls MyType[T, cmp m: T] { }
-    sup [T, cmp m: T] MyType[T, m] {
+    sup [T: Copy, cmp m: T] MyType[T, m] {
         !public cmp n: T = m
     }
 
     fun f() -> std::void::Void {
-        let mut x = MyType[std::number::U32, 123]::n
+        let mut x = MyType[std::number::S32, 123]::n
     }
 )");

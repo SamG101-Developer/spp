@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryInconsistent,
     test_invalid_memory_inconsistently_initialized_moved,
@@ -22,7 +21,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryInconsistent,
     test_invalid_memory_inconsistently_initialized_initialized,
@@ -42,7 +40,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let r = p
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryInconsistent,
@@ -64,7 +61,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryInconsistent,
     test_invalid_memory_inconsistently_initialized_partially_moved_2,
@@ -84,7 +80,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let r = p
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryInconsistent,
@@ -107,7 +102,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let r = p
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryInconsistent,
@@ -132,11 +126,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryInconsistent,
     test_invalid_memory_inconsistently_pinned_1,
-    SppInconsistentlyPinnedMemoryUseError, R"(
+    SppInconsistentlyEscapingBorrows, R"(
     cls Point {
         !public x: std::string::Str
         !public y: std::string::Str
@@ -155,11 +148,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryInconsistent,
     test_invalid_memory_inconsistently_pinned_2,
-    SppInconsistentlyPinnedMemoryUseError, R"(
+    SppInconsistentlyEscapingBorrows, R"(
     cls Point {
         !public x: std::string::Str
         !public y: std::string::Str
@@ -178,11 +170,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryInconsistent,
     test_invalid_memory_inconsistently_pinned_3,
-    SppInconsistentlyPinnedMemoryUseError, R"(
+    SppInconsistentlyEscapingBorrows, R"(
     cls Point {
         !public x: std::string::Str
         !public y: std::string::Str

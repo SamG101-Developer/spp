@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestDuplicateMembers_SupType,
     test_valid_superimposition_extension_type_statement_diff_levels, R"(
@@ -15,7 +14,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestDuplicateMembers_SupType,
     test_invalid_superimposition_extension_type_statement_same_levels,
@@ -29,7 +27,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         !public type X = std::string::Str
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestDuplicateMembers_SupType,
@@ -48,7 +45,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A ext B { }
     sup A ext C { }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestDuplicateMembers_SupType,
@@ -73,7 +69,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestDuplicateMembers_SupType,
     test_invalid_superimposition_extension_type_statement_same_levels_via_inheritance_with_ambiguous_access_2,
@@ -96,7 +91,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = A::X()
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestDuplicateMembers_SupType,
@@ -123,7 +117,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestDuplicateMembers_SupCmp,
     test_valid_superimposition_extension_cmp_statement_diff_levels, R"(
@@ -134,10 +127,24 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     cls B { }
     sup B ext A {
-        !public cmp x: std::string_view::StrView = "hello world"
+        !public cmp x: std::number::S32 = 456
     }
 )");
 
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestDuplicateMembers_SupCmp,
+    test_invalid_superimposition_extension_cmp_statement_diff_levels_diff_types,
+    SppSuperimpositionExtensionCmpStatementInvalidError, R"(
+    cls A { }
+    sup A {
+        !public cmp x: std::number::S32 = 123
+    }
+
+    cls B { }
+    sup B ext A {
+        !public cmp x: std::string_view::StrView = "hello world"
+    }
+)");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestDuplicateMembers_SupCmp,
@@ -152,7 +159,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         !public cmp x: std::string_view::StrView = "hello world"
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestDuplicateMembers_SupCmp,
@@ -171,7 +177,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A ext B { }
     sup A ext C { }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestDuplicateMembers_SupCmp,
@@ -196,10 +201,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
-SPP_TEST_SHOULD_PASS_SEMANTIC(
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestDuplicateMembers_SupCmp,
-    test_valid_superimposition_extension_cmp_statement_same_levels_via_inheritance_with_unique_override, R"(
+    test_invalid_superimposition_extension_cmp_statement_same_levels_via_extension_with_unique_override_diff_types,
+    SppSuperimpositionExtensionCmpStatementInvalidError, R"(
     cls B { }
     sup B {
         !public cmp x: std::number::USize = 123_uz
@@ -222,7 +227,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestDuplicateMembers_SupClsAttr,
     test_valid_superimposition_extension_cls_attr_statement_diff_levels, R"(
@@ -237,7 +241,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup B ext A { }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestDuplicateMembers_SupClsAttr,
     test_invalid_superimposition_extension_cls_attr_statement_same_levels,
@@ -247,7 +250,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         a: std::string::Str
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestDuplicateMembers_SupClsAttr,
@@ -264,7 +266,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A ext B { }
     sup A ext C { }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestDuplicateMembers_SupClsAttr,
@@ -286,7 +287,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = A().a
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestDuplicateMembers_SupClsAttr,

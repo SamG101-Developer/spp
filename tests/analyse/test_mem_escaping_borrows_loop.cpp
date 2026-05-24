@@ -1,6 +1,5 @@
 #include "../test_macros.hpp"
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstMemoryPinsLoop,
     test_valid_memory_mov_iterator_no_modifications, R"(
@@ -8,7 +7,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         loop x in v.iter_mov() { }
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstMemoryPinsLoop,
@@ -18,7 +16,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstMemoryPinsLoop,
     test_valid_memory_ref_iterator_no_modifications, R"(
@@ -26,7 +23,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         loop x in v.iter_ref() { }
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryPinsLoop,
@@ -39,7 +35,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryPinsLoop,
     test_invalid_memory_mut_iterator_mut_owned_object,
@@ -50,7 +45,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         }
     }
 )");
-
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryPinsLoop,
@@ -63,7 +57,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryPinsLoop,
     test_invalid_memory_ref_iterator_mut_owned_object,
@@ -75,7 +68,6 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstMemoryPinsLoop,
     test_valid_memory_mut_iterator_modify_owned_object_after_loop, R"(
@@ -86,7 +78,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstMemoryPinsLoop,
     test_valid_memory_mut_iterator_modify_owned_object_clone, R"(
@@ -96,7 +87,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
     }
 )");
-
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstMemoryPinsLoop,
