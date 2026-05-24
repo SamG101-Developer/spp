@@ -3,6 +3,20 @@ import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 
 
+auto spp::asts::generate::common_types_precompiled::ClearTypes() -> void {
+    GEN = nullptr; GEN_ONCE = nullptr;
+    INDEX_REF = nullptr; INDEX_MUT = nullptr;
+    FUN_MOV = nullptr; FUN_MUT = nullptr; FUN_REF = nullptr;
+    ARR = nullptr; TUP = nullptr; VAR = nullptr; TRY = nullptr; FUT = nullptr;
+    BOOL = nullptr; VOID = nullptr;
+    NEVER = nullptr; COPY = nullptr;
+    SINGLE = nullptr; SHARED = nullptr; SHADOW = nullptr;
+    FWD_MUT = nullptr; FWD_REF = nullptr;
+    S8 = nullptr; S16 = nullptr; S32 = nullptr; S64 = nullptr; S128 = nullptr; S256 = nullptr; SSIZE = nullptr;
+    U8 = nullptr; U16 = nullptr; U32 = nullptr; U64 = nullptr; U128 = nullptr; U256 = nullptr; USIZE = nullptr;
+    F8 = nullptr; F16 = nullptr; F32 = nullptr; F64 = nullptr; F128 = nullptr;
+}
+
 auto spp::asts::generate::common_types_precompiled::InitTypes() -> void {
     GEN = common_types::GenType(0, common_types::VoidType(0), common_types::VoidType(0))->WithoutGenerics();
     GEN_ONCE = common_types::GenOnceType(0, common_types::VoidType(0))->WithoutGenerics();

@@ -72,6 +72,7 @@ auto spp::compiler::Compiler::Compile() -> void {
 }
 
 auto spp::compiler::Compiler::Cleanup() -> void {
+    asts::generate::common_types_precompiled::ClearTypes();
     analyse::scopes::ScopeManager::Cleanup();
 }
 

@@ -12,6 +12,9 @@ namespace spp {
     using Shared = std::shared_ptr<T>;
 
     SPP_EXP_CLS template <typename T>
+    using Weak = std::weak_ptr<T>;
+
+    SPP_EXP_CLS template <typename T>
     using Unique = std::unique_ptr<T>;
 
     SPP_EXP_CLS template <typename T, typename A = std::allocator<T>>
