@@ -86,8 +86,7 @@ auto spp::asts::CasePatternVariantExpressionAst::Stage8_CheckMemory(
 
     // Check the memory of the expression. todo: maybe do this via generated == function?
     Expr->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(
-        *Expr, *Expr, *sm, true, true, true, true, true, meta);
+    ValidateSymbolMemory(*Expr, *Expr, *sm, true, true, true, true, true, meta);
 }
 
 auto spp::asts::CasePatternVariantExpressionAst::Stage9_CompTimeResolve(

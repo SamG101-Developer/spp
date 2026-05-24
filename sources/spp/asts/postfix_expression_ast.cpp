@@ -114,8 +114,7 @@ auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
     meta->Save();
     meta->PostfixExpressionLhs = Lhs.get();
     if (Lhs->To<IdentifierAst>() != nullptr) {
-        ValidateSymbolMemory(
-            *meta->PostfixExpressionLhs, *Op, *sm, true, false, false, false, false, meta);
+        ValidateSymbolMemory(*meta->PostfixExpressionLhs, *Op, *sm, true, false, false, false, false, meta);
     }
     Op->Stage8_CheckMemory(sm, meta);
     meta->Restore();

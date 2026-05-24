@@ -86,8 +86,7 @@ auto spp::asts::GenericParameterCompOptionalAst::Stage8_CheckMemory(
     // Check the default value for memory issues.
     using analyse::utils::mem_utils::ValidateSymbolMemory;
     DefaultVal->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(
-        *DefaultVal, *DefaultVal, *sm, true, true, true, true, true, meta);
+    ValidateSymbolMemory(*DefaultVal, *DefaultVal, *sm, true, true, true, true, true, meta);
 }
 
 SPP_MOD_END

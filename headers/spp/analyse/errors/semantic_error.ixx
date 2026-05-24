@@ -50,9 +50,8 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppUninitializedMemoryUseError;
     SPP_EXP_CLS struct SppPartiallyInitializedMemoryUseError;
     SPP_EXP_CLS struct SppMoveFromBorrowedMemoryError;
-    SPP_EXP_CLS struct SppMoveFromPinnedMemoryError;
     SPP_EXP_CLS struct SppInconsistentlyInitializedMemoryUseError;
-    SPP_EXP_CLS struct SppInconsistentlyPinnedMemoryUseError;
+    SPP_EXP_CLS struct SppInconsistentlyEscapingBorrows;
     SPP_EXP_CLS struct SppMemberAccessNonIndexableError;
     SPP_EXP_CLS struct SppMemberAccessOutOfBoundsError;
     SPP_EXP_CLS struct SppCaseBranchElseNotLastError;
@@ -128,6 +127,8 @@ namespace spp::analyse::errors {
     SPP_EXP_CLS struct SppInvalidBinaryFoldExpressionError;
     SPP_EXP_CLS struct SppAccessViolationError;
     SPP_EXP_CLS struct SppFunctionOverloadVisibilityMismatchError;
+    SPP_EXP_CLS struct SppMovingEscapingBorrowedMemoryError;
+    SPP_EXP_CLS struct SppMovingComptimeConstantMemoryError;
 }
 
 SPP_EXP_CLS struct spp::analyse::errors::SemanticError : spp::utils::errors::AbstractError {
@@ -185,16 +186,12 @@ SPP_EXP_CLS struct spp::analyse::errors::SppMoveFromBorrowedMemoryError final : 
     explicit SppMoveFromBorrowedMemoryError(asts::ExpressionAst const &ast, asts::Ast const &move_location, asts::Ast const &borrow_location);
 };
 
-SPP_EXP_CLS struct spp::analyse::errors::SppMoveFromPinnedMemoryError final : SemanticError {
-    explicit SppMoveFromPinnedMemoryError(asts::ExpressionAst const &ast, asts::Ast const &init_location, asts::Ast const &move_location, asts::Ast const &pin_location);
-};
-
 SPP_EXP_CLS struct spp::analyse::errors::SppInconsistentlyInitializedMemoryUseError final : SemanticError {
     explicit SppInconsistentlyInitializedMemoryUseError(asts::ExpressionAst const &ast, asts::Ast const &branch_1, asts::Ast const &branch_2, StrView what);
 };
 
-SPP_EXP_CLS struct spp::analyse::errors::SppInconsistentlyPinnedMemoryUseError final : SemanticError {
-    explicit SppInconsistentlyPinnedMemoryUseError(asts::ExpressionAst const &ast, asts::Ast const &branch_1, asts::Ast const &branch_2);
+SPP_EXP_CLS struct spp::analyse::errors::SppInconsistentlyEscapingBorrows final : SemanticError {
+    explicit SppInconsistentlyEscapingBorrows(asts::ExpressionAst const &ast, asts::Ast const &branch_1, asts::Ast const &branch_2);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppMemberAccessNonIndexableError final : SemanticError {
@@ -496,4 +493,12 @@ SPP_EXP_CLS struct spp::analyse::errors::SppAccessViolationError final : Semanti
 
 SPP_EXP_CLS struct spp::analyse::errors::SppFunctionOverloadVisibilityMismatchError final : SemanticError {
     explicit SppFunctionOverloadVisibilityMismatchError(asts::AnnotationAst const &first_annotation, asts::FunctionPrototypeAst const &conflicting_overload);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppMovingEscapingBorrowedMemoryError final : SemanticError {
+    explicit SppMovingEscapingBorrowedMemoryError(asts::Ast const &container, asts::Ast const &where_moved);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppMovingComptimeConstantMemoryError final : SemanticError {
+    explicit SppMovingComptimeConstantMemoryError(asts::Ast const &ast, asts::Ast const &move_location);
 };

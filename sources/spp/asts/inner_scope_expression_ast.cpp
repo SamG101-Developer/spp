@@ -20,6 +20,7 @@ import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.ptr;
 import genex;
 
 SPP_MOD_BEGIN
@@ -113,17 +114,35 @@ auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
         }
     }
 
-    // Any escaping borrows that were defined in this scope need to be freed.
+    // Variable symbols' memory info structs contain the escaping borrow containers, and the contained escaping borrows.
+    // At the end of a scope, we need to check, for every symbol, if it contains any escaping borrows. If the
+    // containment happened in this scope, then we need to free the escaping borrows, as the container is now out of
+    // scope.
     for (auto const &sym : sm->CurrentScope->AllVarSymbols()) {
-        auto escaping_borrows = sym->MemInfo->AstEscapingBorrows; // Copy
-        for (auto const &eb : escaping_borrows) {
-            auto const &[ast, _, scope] = eb;
-            if (scope != sm->CurrentScope) { continue; }
-            sym->MemInfo->AstEscapingBorrows.erase(
-                std::ranges::remove(sym->MemInfo->AstEscapingBorrows, eb).begin(),
-                sym->MemInfo->AstEscapingBorrows.end());
+        auto contained_escaping_borrows = sym->MemInfo->AstContainedEscapingBorrows
+            | genex::views::filter([&](auto const &x) { return std::get<2>(x) == sm->CurrentScope; })
+            | genex::to<Vec>();
+
+        for (auto const &ceb : contained_escaping_borrows) {
+            sym->MemInfo->AstContainedEscapingBorrows |= genex::actions::remove(ceb);
+            const auto b = AstCloneShared(std::get<0>(ceb)->To<IdentifierAst>());
+            sm->CurrentScope->GetVarSymbol(b)->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if([&](auto info) {
+                return *std::get<0>(info)->template To<IdentifierAst>() == *sym->Name;
+            });
         }
     }
+
+    // Any escaping borrows that were defined in this scope need to be freed.
+    // for (auto const &sym : sm->CurrentScope->AllVarSymbols()) {
+    //     auto escaping_borrows = sym->MemInfo->AstContainedEscapingBorrows; // Copy
+    //     for (auto const &eb : escaping_borrows) {
+    //         auto const &[ast, _, scope] = eb;
+    //         if (scope != sm->CurrentScope) { continue; }
+    //         sym->MemInfo->AstContainedEscapingBorrows.erase(
+    //             std::ranges::remove(sym->MemInfo->AstContainedEscapingBorrows, eb).begin(),
+    //             sym->MemInfo->AstContainedEscapingBorrows.end());
+    //     }
+    // }
 
     sm->MoveOutOfCurrentScope();
 }

@@ -122,8 +122,7 @@ auto spp::asts::GenericArgumentCompKeywordAst::Stage8_CheckMemory(
 
     // Check the value for memory issues.
     Val->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(
-        *Val, *Val, *sm, true, true, true, true, true, meta);
+    ValidateSymbolMemory(*Val, *Val, *sm, true, true, true, true, true, meta);
 }
 
 auto spp::asts::GenericArgumentCompKeywordAst::ViewName() const

@@ -144,8 +144,7 @@ auto spp::asts::GenWithExpressionAst::Stage8_CheckMemory(
     // Ensure the argument isn't moved or partially moved (for all conventions)
     // Todo: Investigate pin checks here.
     Expr->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(
-        *Expr, *TokGen, *sm, true, true, false, false, false, meta);
+    ValidateSymbolMemory(*Expr, *TokGen, *sm, true, true, false, false, false, meta);
 }
 
 auto spp::asts::GenWithExpressionAst::Stage11_CodeGen(

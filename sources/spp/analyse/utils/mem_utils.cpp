@@ -57,7 +57,7 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
     const bool check_move,
     const bool check_partial_move,
     const bool check_move_from_borrowed_ctx,
-    const bool check_pins,
+    const bool,
     const bool mark_moves,
     asts::meta::CompilerMetaData *meta) -> void {
     // For tuple and array literals, recursively analyse each element.
@@ -87,39 +87,52 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
     const auto partial_copies = var_scope->GetTypeSymbol(value_ast.InferType(&sm, meta))->IsCopyable();
 
     // Check for inconsistent memory initialization (from branching).
-    if (check_move and var_sym->MemInfo->IsInconsistentlyInitialized.has_value()) {
+    if (var_sym->MemInfo->IsInconsistentlyInitialized.has_value()) {
         const auto pair = *var_sym->MemInfo->IsInconsistentlyInitialized;
         Raise<errors::SppInconsistentlyInitializedMemoryUseError>(
             {sm.CurrentScope}, ERR_ARGS(value_ast, *pair.First, *pair.Second, "initialized"));
     }
 
     // Check for inconsistent memory moving (from branching).
-    if (check_move and var_sym->MemInfo->IsInconsistentlyMoved.has_value()) {
+    if (var_sym->MemInfo->IsInconsistentlyMoved.has_value()) {
         const auto pair = *var_sym->MemInfo->IsInconsistentlyMoved;
         Raise<errors::SppInconsistentlyInitializedMemoryUseError>(
             {sm.CurrentScope}, ERR_ARGS(value_ast, *pair.First, *pair.Second, "moved"));
     }
 
     // Check for inconsistent partial memory moving (from branching).
-    if (check_move and var_sym->MemInfo->IsInconsistentlyPartiallyMoved.has_value()) {
+    if (var_sym->MemInfo->IsInconsistentlyPartiallyMoved.has_value()) {
         const auto pair = *var_sym->MemInfo->IsInconsistentlyPartiallyMoved;
         Raise<errors::SppInconsistentlyInitializedMemoryUseError>(
             {sm.CurrentScope}, ERR_ARGS(value_ast, *pair.First, *pair.Second, "partially moved"));
     }
 
-    // Check for inconsistent pinned memory (from branching).
-    if (check_pins and var_sym->MemInfo->IsInconsistentlyPinned.has_value()) {
-        const auto pair = *var_sym->MemInfo->IsInconsistentlyPinned;
-        Raise<errors::SppInconsistentlyPinnedMemoryUseError>(
+    // Check for inconsistent escaping borrows (from branching).
+    if (var_sym->MemInfo->IsInconsistentlyPartiallyMoved.has_value()) {
+        const auto pair = *var_sym->MemInfo->IsInconsistentlyBorrowEscaping;
+        Raise<errors::SppInconsistentlyEscapingBorrows>(
             {sm.CurrentScope}, ERR_ARGS(value_ast, *pair.First, *pair.Second));
     }
 
     // Check the symbol hasn't already been moved.
-    if (check_move and std::get<0>(var_sym->MemInfo->AstMoved) != nullptr) {
+    if (std::get<0>(var_sym->MemInfo->AstMoved) != nullptr) {
         const auto [where_init, _] = var_sym->MemInfo->AstInitializationOrigin;
         const auto [where_moved, _] = var_sym->MemInfo->AstMoved;
         Raise<errors::SppUninitializedMemoryUseError>(
             {sm.CurrentScope}, ERR_ARGS(value_ast, *where_init, *where_moved));
+    }
+
+    // Check we aren't trying to move an escaping borrow (unless copyable).
+    if (check_move and not copies and not var_sym->MemInfo->AstContainersOfEscapingBorrows.IsEmpty()) {
+        const auto [where_contained, _] = var_sym->MemInfo->AstContainersOfEscapingBorrows[0];
+        Raise<errors::SppMovingEscapingBorrowedMemoryError>(
+            {sm.CurrentScope}, ERR_ARGS(*where_contained, move_ast));
+    }
+
+    // Check we aren't trying to move a comptime constant (unless copyable).
+    if (check_move and not copies and var_sym->MemInfo->AstCompTime != nullptr) {
+        Raise<errors::SppMovingComptimeConstantMemoryError>(
+            {sm.CurrentScope}, ERR_ARGS(value_ast, move_ast));
     }
 
     // Check the symbol doesn't have any outstanding partial moved (moving a partially moved object).
@@ -149,19 +162,6 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
         const auto [where_pm, _] = var_sym->MemInfo->AstBorrowed;
         Raise<errors::SppMoveFromBorrowedMemoryError>(
             {sm.CurrentScope}, ERR_ARGS(value_ast, *where_pm, *where_borrow));
-    }
-
-    // Check the object being moved isn't pinned.
-    const auto symbolic_pins = var_sym->MemInfo->AstPins
-        | genex::views::cast_dynamic<asts::IdentifierAst const*>()
-        | genex::to<Vec>();
-
-    if (check_pins and not symbolic_pins.IsEmpty() and not copies and not partial_copies) {
-        const auto [where_init, _] = var_sym->MemInfo->AstInitializationOrigin;
-        const auto where_move = &move_ast;
-        const auto where_pin = symbolic_pins.Front();
-        Raise<errors::SppMoveFromPinnedMemoryError>(
-            {sm.CurrentScope}, ERR_ARGS(value_ast, *where_init, *where_move, *where_pin));
     }
 
     // Mark the symbol as moved/partially-moved if it is not copyable.
@@ -209,8 +209,7 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
             sym->MemInfo->AstInitialization = std::make_tuple(old_mem_status.AstInitialization, std::get<1>(sym->MemInfo->AstInitialization));
             sym->MemInfo->AstMoved = {old_mem_status.AstMoved, std::get<1>(sym->MemInfo->AstMoved)};
             sym->MemInfo->AstPartialMoves = old_mem_status.AstPartialMoves;
-            sym->MemInfo->AstPins = old_mem_status.AstPins;
-            sym->MemInfo->AstEscapingBorrows = old_mem_status.AstEscapingBorrows;
+            sym->MemInfo->AstContainedEscapingBorrows = old_mem_status.AstContainedEscapingBorrows;
             sym->MemInfo->InitializationCounter = old_mem_status.InitializationCounter;
 
             // Save this memory status for subsequent inter-branch status comparisons.
@@ -246,8 +245,7 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
         sym->MemInfo->AstInitialization = {first_branch_mem_info.AstInitialization, std::get<1>(sym->MemInfo->AstInitialization)};
         sym->MemInfo->AstMoved = {first_branch_mem_info.AstMoved, std::get<1>(sym->MemInfo->AstMoved)};
         sym->MemInfo->AstPartialMoves = first_branch_mem_info.AstPartialMoves;
-        sym->MemInfo->AstPins = first_branch_mem_info.AstPins;
-        sym->MemInfo->AstEscapingBorrows = first_branch_mem_info.AstEscapingBorrows;
+        sym->MemInfo->AstContainedEscapingBorrows = first_branch_mem_info.AstContainedEscapingBorrows;
         sym->MemInfo->InitializationCounter = first_branch_mem_info.InitializationCounter;
 
         // Check the new memory status for each symbol is consistent across all branches that don't terminate.
@@ -272,14 +270,8 @@ auto spp::analyse::utils::mem_utils::ValidateInconsistentMemory(
                 sym->MemInfo->IsInconsistentlyPartiallyMoved = MakePair(first_branch, branch);
             }
 
-            // Check for consistent pins.
-            if (first_branch_mem_info.AstPins != branch_memory_info_list.AstPins) {
-                std::cout << "INCONSISTENT PIN: " << sym->Name->ToString() << std::endl;
-                sym->MemInfo->IsInconsistentlyPinned = MakePair(first_branch, branch);
-            }
-
             // Check for consistent escaping borrows.
-            if (first_branch_mem_info.AstEscapingBorrows != branch_memory_info_list.AstEscapingBorrows) {
+            if (first_branch_mem_info.AstContainedEscapingBorrows != branch_memory_info_list.AstContainedEscapingBorrows) {
                 sym->MemInfo->IsInconsistentlyBorrowEscaping = MakePair(first_branch, branch);
             }
         }
@@ -314,7 +306,7 @@ auto spp::analyse::utils::mem_utils::PreventBorrowLifetimeExtension(
 
     // Ensure a value that contains escaping borrows isn't increasing the escaping borrows' lifetimes.
     else if (lhs_outermost != nullptr and rhs_outermost != nullptr) {
-        const auto escaping_borrows = rhs_outermost->MemInfo->AstEscapingBorrows;
+        const auto escaping_borrows = rhs_outermost->MemInfo->AstContainedEscapingBorrows;
         const auto lhs_init_scope = lhs_outermost->ScopeDefinedIn;
         for (auto const &[e, _, _] : escaping_borrows) {
             const auto escaping_borrow_scope = sm.CurrentScope->GetVarSymbolOutermost(*e).First->ScopeDefinedIn;

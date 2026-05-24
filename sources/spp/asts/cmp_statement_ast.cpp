@@ -105,7 +105,7 @@ auto spp::asts::CmpStatementAst::Stage2_GenTopLvlScopes(
     // Create a symbol for this constant declaration, pin to prevent moving.
     _AliasSym = MakeShared<analyse::scopes::VariableSymbol>(
         Name, Type, sm->CurrentScope, false, false, Visibility.First);
-    _AliasSym->MemInfo->AstPins.EmplaceBack(Name.get());
+    // _AliasSym->MemInfo->AstPins.EmplaceBack(Name.get()); TODO
     _AliasSym->MemInfo->AstCompTime = AstClone(this);
     _AliasSym->MemInfo->InitializedBy(*this, sm->CurrentScope);
     sm->CurrentScope->AddVarSymbolCheckConflict(_AliasSym);
@@ -180,8 +180,7 @@ auto spp::asts::CmpStatementAst::Stage8_CheckMemory(
     // Check the memory of the type.
     using analyse::utils::mem_utils::ValidateSymbolMemory;
     Value->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(
-        *Value, *Value, *sm, true, true, true, true, true, meta);
+    ValidateSymbolMemory(*Value, *Value, *sm, true, true, true, true, true, meta);
 
     // Generate the value and assign it to the variable symbol's compile-time value.
     if (not Type->IsCompilerGeneratedType()) {

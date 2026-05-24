@@ -106,10 +106,11 @@ auto spp::asts::ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
             const auto cap_val = cap->Val->To<IdentifierAst>();
             auto cap_sym = sm->CurrentScope->GetVarSymbol(AstCloneShared(cap_val));
             cap_sym->MemInfo->AstBorrowed = {cap->Conv.get(), sm->CurrentScope};
-            if (ass_sym != nullptr) { ass_sym->MemInfo->AstPins.EmplaceBack(cap->Val.get()); }
+            // if (ass_sym != nullptr) { ass_sym->MemInfo->AstPins.EmplaceBack(cap->Val.get()); }
+            // TODO: New escaping borrow system needs using here
 
             cap_sym = meta->CurrentLambdaOuterScope->GetVarSymbol(AstCloneShared(cap_val));
-            cap_sym->MemInfo->AstPins.EmplaceBack(cap->Val.get());
+            // cap_sym->MemInfo->AstPins.EmplaceBack(cap->Val.get());
         }
         else {
             // Mark the symbol from the outer context as moved.

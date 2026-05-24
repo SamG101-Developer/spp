@@ -106,12 +106,12 @@ auto spp::asts::LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
     CompilerMetaData *meta)
     -> void {
     // No value => nothing to check.
+    using analyse::utils::mem_utils::ValidateSymbolMemory;
     if (meta->LetStatementFromUninitialized) { return; }
 
     // Check the value's memory.
     meta->LetStatementValue->Stage8_CheckMemory(sm, meta);
-    analyse::utils::mem_utils::ValidateSymbolMemory(
-        *meta->LetStatementValue, *this, *sm, true, true, true, true, true, meta);
+    ValidateSymbolMemory(*meta->LetStatementValue, *this, *sm, true, true, true, true, true, meta);
 
     // Get the name or alias symbol to mark it as initialized.
     const auto sym = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name : Name);

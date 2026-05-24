@@ -49,7 +49,7 @@ auto spp::asts::GenericParameterCompAst::Stage2_GenTopLvlScopes(
     auto sym = MakeUnique<analyse::scopes::VariableSymbol>(
         IdentifierAst::FromType(*Name), Type, sm->CurrentScope,
         false, true, utils::Visibility::kPublic);
-    sym->MemInfo->AstPins.EmplaceBack(Name.get());
+    // sym->MemInfo->AstPins.EmplaceBack(Name.get()); TODO
     sym->MemInfo->AstCompTime = AstClone(this);
     sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
     sym->CompTimeValue = AstClone(this); // TODO: this or name?

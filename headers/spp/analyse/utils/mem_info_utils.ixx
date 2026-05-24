@@ -75,13 +75,16 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo {
     Vec<asts::Ast const*> AstPartialMoves;
 
     /**
-     * The @c ast_pins are the ASTs that are either this symbol or partials of this symbol that are pinned from borrows
-     * into coroutines or async function calls. Certain operations cannot be performed on pinned symbols, such as moving
-     * them, or re-initializing them.
+     * Borrows that this symbol, a [coroutine/async call]-handle, contain, escaping the typical inner frame lifetime
+     * constraint.
      */
-    Vec<asts::Ast const*> AstPins;
+    Vec<std::tuple<asts::Ast const*, bool, scopes::Scope*>> AstContainedEscapingBorrows;
 
-    Vec<std::tuple<asts::Ast const*, bool, scopes::Scope*>> AstEscapingBorrows;
+    /**
+     * A reverse map of the @c AstContainedEscapingBorrows, so we don't have to search each symbol for a contained
+     * borrow match / overlap. The structure is "<container, where_contained>".
+     */
+    Vec<std::tuple<asts::Ast const*, asts::Ast const*>> AstContainersOfEscapingBorrows;
 
     /**
      * The @c ast_comptime AST is the AST that represents the compile-time declaration of the symbol. This might be the
@@ -115,12 +118,6 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo {
      * leaves the symbol in different partially moved states.
      */
     std::optional<InconsistentCondMemState> IsInconsistentlyPartiallyMoved;
-
-    /**
-     * A symbol is inconsistently pinned if the symbol maintains different pin states in branches. This leaves the
-     * symbol in different pinned states.
-     */
-    std::optional<InconsistentCondMemState> IsInconsistentlyPinned;
 
     std::optional<InconsistentCondMemState> IsInconsistentlyBorrowEscaping;
 
@@ -185,12 +182,12 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfoSnapshot {
     scopes::Scope *ScopeInitialization = nullptr;
 
     /**
-     * View of the moving ast for the owning @c MemoryInfo
+     * View of the moving ast for the owning @c MemoryInfo at the time of the snapshot.
      */
     asts::Ast const *AstMoved;
 
     /**
-     * The scope in which the moving ast for the owning @c MemoryInfo was present at the time of the snapshot.
+     * The scope for the moving ast for the owning @c MemoryInfo at the time of the snapshot.
      */
     scopes::Scope *ScopeMoved;
 
@@ -200,11 +197,9 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfoSnapshot {
     Vec<asts::Ast const*> AstPartialMoves;
 
     /**
-     * List of pins that were present in the owning @c MemoryInfo at the time of the snapshot.
+     * List of escaping borrows that were present in the owning @c MemoryInfo at the time of the snapshot.
      */
-    Vec<asts::Ast const*> AstPins;
-
-    Vec<std::tuple<asts::Ast const*, bool, scopes::Scope*>> AstEscapingBorrows;
+    Vec<std::tuple<asts::Ast const*, bool, scopes::Scope*>> AstContainedEscapingBorrows;
 
     /**
      * The @c initialization_counter that was present in the owning @c MemoryInfo at the time of the snapshot.

@@ -19,7 +19,6 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::InitializedBy(
     IsInconsistentlyInitialized = std::nullopt;
     IsInconsistentlyMoved = std::nullopt;
     IsInconsistentlyPartiallyMoved = std::nullopt;
-    IsInconsistentlyPinned = std::nullopt;
 }
 
 auto spp::analyse::utils::mem_info_utils::MemoryInfo::MovedBy(
@@ -48,7 +47,7 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::Snapshot() const
     return MemoryInfoSnapshot(
         std::get<0>(AstInitialization), std::get<1>(AstInitialization),
         std::get<0>(AstMoved), std::get<1>(AstMoved),
-        AstPartialMoves, AstPins, AstEscapingBorrows, InitializationCounter);
+        AstPartialMoves, AstContainedEscapingBorrows, InitializationCounter);
 }
 
 auto spp::analyse::utils::mem_info_utils::MemoryInfo::Clone() const
@@ -59,14 +58,12 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::Clone() const
     out->AstInitializationOrigin = AstInitializationOrigin;
     out->AstBorrowed = AstBorrowed;
     out->AstPartialMoves = AstPartialMoves;
-    out->AstPins = AstPins;
-    out->AstEscapingBorrows = AstEscapingBorrows;
+    out->AstContainedEscapingBorrows = AstContainedEscapingBorrows;
     out->AstCompTime = asts::AstClone(AstCompTime);
     out->InitializationCounter = InitializationCounter;
     out->IsInconsistentlyInitialized = IsInconsistentlyInitialized;
     out->IsInconsistentlyMoved = IsInconsistentlyMoved;
     out->IsInconsistentlyPartiallyMoved = IsInconsistentlyPartiallyMoved;
-    out->IsInconsistentlyPinned = IsInconsistentlyPinned;
     return out;
 }
 
@@ -76,8 +73,7 @@ auto spp::analyse::utils::mem_info_utils::MemoryInfo::FillFromSnapshot(
     AstInitialization = {snapshot.AstInitialization, snapshot.ScopeInitialization};
     AstMoved = {snapshot.AstMoved, snapshot.ScopeMoved};
     AstPartialMoves = snapshot.AstPartialMoves;
-    AstPins = snapshot.AstPins;
-    AstEscapingBorrows = snapshot.AstEscapingBorrows;
+    AstContainedEscapingBorrows = snapshot.AstContainedEscapingBorrows;
     InitializationCounter = snapshot.InitializationCounter;
 }
 

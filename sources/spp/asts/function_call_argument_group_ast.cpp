@@ -214,7 +214,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     // Load pre-existing escaping borrows into the vectors.
     const auto all_syms = sm->CurrentScope->AllVarSymbols();
     for (auto const &sym : all_syms) {
-        for (auto const &[borrow, is_mut, _] : sym->MemInfo->AstEscapingBorrows) {
+        for (auto const &[borrow, is_mut, _] : sym->MemInfo->AstContainedEscapingBorrows) {
             (is_mut ? borrows_mut : borrows_ref).EmplaceBack(borrow);
         }
     }
@@ -233,7 +233,7 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
         // Ensure the argument isn't moved or partially moved (applies to all conventions). For non-symbolic arguments,
         // nested checking is done via the argument itself (tuples, arrays, etc). Can borrow attributes so don't check
         // for moving from borrowed context right here.
-        ValidateSymbolMemory(*arg->Val, *arg, *sm, true, true, false, false, false, meta);
+        ValidateSymbolMemory(*arg->Val, *arg, *sm, false, false, false, false, false, meta);
 
         if (arg->Conv == nullptr) {
             // Ensure that attributes aren't being moved off of a borrowed value and that pins are maintained. Mark the
@@ -269,8 +269,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
             // Save any escaping borrows into the handle's memory info.
             if (handle and pins_required) {
                 // TODO: Test suite needs to take handle/lack of handle into account
-                handle_sym->MemInfo->AstEscapingBorrows.EmplaceBack(arg->Val.get(), false, sm->CurrentScope);
-                sym->MemInfo->AstPins.EmplaceBack(arg->Val.get());
+                handle_sym->MemInfo->AstContainedEscapingBorrows.EmplaceBack(arg->Val.get(), false, sm->CurrentScope);
+                sym->MemInfo->AstContainersOfEscapingBorrows.EmplaceBack(handle_sym->Name.get(), arg->Val.get());
             }
 
             // Add the immutable borrow to the immutable borrow set.
@@ -291,8 +291,8 @@ auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
             // Save any escaping borrows into the handle's memory info.
             if (handle and pins_required) {
                 // TODO: Test suite needs to take handle/lack of handle into account
-                handle_sym->MemInfo->AstEscapingBorrows.EmplaceBack(arg->Val.get(), true, sm->CurrentScope);
-                sym->MemInfo->AstPins.EmplaceBack(arg->Val.get());
+                handle_sym->MemInfo->AstContainedEscapingBorrows.EmplaceBack(arg->Val.get(), true, sm->CurrentScope);
+                sym->MemInfo->AstContainersOfEscapingBorrows.EmplaceBack(handle_sym->Name.get(), arg->Val.get());
             }
 
             // Add the mutable borrow to the mutable borrow set.

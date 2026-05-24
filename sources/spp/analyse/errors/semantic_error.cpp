@@ -194,30 +194,6 @@ spp::analyse::errors::SppMoveFromBorrowedMemoryError::SppMoveFromBorrowedMemoryE
     AddCtxForErr(&borrow_location, "Memory was borrowed here");
 }
 
-spp::analyse::errors::SppMoveFromPinnedMemoryError::SppMoveFromPinnedMemoryError(
-    asts::ExpressionAst const &ast,
-    asts::Ast const &init_location,
-    asts::Ast const &move_location,
-    asts::Ast const &pin_location) {
-    AddHeaders(
-        9, "SPP Move From Pinned Memory Error");
-    AddCtxForErr(
-        &ast,
-        "Expression attempting to move from pinned memory");
-    AddCtxForErr(
-        &init_location,
-        "Memory was initialized here");
-    AddCtxForErr(
-        &pin_location,
-        "Memory was pinned here");
-    AddErr(
-        &move_location,
-        "Move attempted here");
-    AddFooter(
-        "This expression attempts to move from memory that is currently pinned.",
-        "Ensure the memory is unpinned before moving from it");
-}
-
 spp::analyse::errors::SppInconsistentlyInitializedMemoryUseError::SppInconsistentlyInitializedMemoryUseError(
     asts::ExpressionAst const &ast,
     asts::Ast const &branch_1,
@@ -232,24 +208,17 @@ spp::analyse::errors::SppInconsistentlyInitializedMemoryUseError::SppInconsisten
     AddCtxForErr(&branch_2, "In this branch, the memory is not " + INLINE_INFO(what));
 }
 
-spp::analyse::errors::SppInconsistentlyPinnedMemoryUseError::SppInconsistentlyPinnedMemoryUseError(
+spp::analyse::errors::SppInconsistentlyEscapingBorrows::SppInconsistentlyEscapingBorrows(
     asts::ExpressionAst const &ast,
     asts::Ast const &branch_1,
     asts::Ast const &branch_2) {
-    AddHeaders(
-        14, "SPP Inconsistently Pinned Memory Use Error");
-    AddCtxForErr(
-        &ast,
-        "Expression using inconsistently pinned memory defined here");
-    AddCtxForErr(
-        &branch_1,
-        "In this branch, the memory is pinned");
-    AddErr(
-        &branch_2,
-        "In this branch, the memory is not pinned");
+    AddHeaders(14, "SPP Inconsistently Escaping Borrows");
+    AddCtxForErr(&ast, "Expression using inconsistently escape-borrowed memory defined here");
+    AddCtxForErr(&branch_1, "In this branch, the memory escapingly borrowed");
+    AddErr(&branch_2, "In this branch, the memory is not escapingly borrowed");
     AddFooter(
-        "This expression uses memory that is not consistently pinned across all branches.",
-        "Ensure the memory is consistently pinned in all branches before use");
+        "This expression uses memory that is not consistently escapingly borrowed across all branches.",
+        "Ensure the memory is consistently escapingly borrowed in all branches before use.");
 }
 
 spp::analyse::errors::SppMemberAccessNonIndexableError::SppMemberAccessNonIndexableError(
@@ -1118,6 +1087,28 @@ spp::analyse::errors::SppFunctionOverloadVisibilityMismatchError::SppFunctionOve
     AddFooter(
         "All overloads of a function must have the same visibility annotation.",
         "Ensure every overload of this function uses the same visibility modifier.");
+}
+
+spp::analyse::errors::SppMovingEscapingBorrowedMemoryError::SppMovingEscapingBorrowedMemoryError(
+    asts::Ast const &container,
+    asts::Ast const &where_moved) {
+    AddHeaders(92, "Moving Escaping Borrow Memory Error");
+    AddCtxForErr(&container, "Escaping borrow contained by this symbol");
+    AddErr(&where_moved, "Attempted to move underlying value here");
+    AddFooter(
+        "Non-copyable values that are borrowed with an escaping context cannot be moved from.",
+        "Remove the move operation, make the type copyable, or restructure your borrows");
+}
+
+spp::analyse::errors::SppMovingComptimeConstantMemoryError::SppMovingComptimeConstantMemoryError(
+    asts::Ast const &ast,
+    asts::Ast const &move_location) {
+    AddHeaders(93, "Moving Compile-Time Constant Memory Error");
+    AddCtxForErr(&ast, "Compile-time constant defined here");
+    AddErr(&move_location, "Attempted to move compile-time constant here");
+    AddFooter(
+        "Compile-time constants cannot be moved from.",
+        "Remove the move operation or ensure the value is not a compile-time constant.");
 }
 
 SPP_MOD_END
