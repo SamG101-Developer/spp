@@ -112,7 +112,8 @@ auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
         meta->AssignmentTargetType = meta->EnclosingFunctionRetType.IsEmpty() ? nullptr : meta->EnclosingFunctionRetType[0];
         meta->AssignmentTarget = meta->AssignmentTargetType ? IdentifierAst::FromType(*meta->AssignmentTargetType) : nullptr;
         Expr->Stage7_AnalyseSemantics(sm, meta);
-        expr_type = Expr->InferType(sm, meta)->WithConvention(AstClone(Conv));
+        expr_type = Expr->InferType(sm, meta);
+        if (Conv) expr_type = expr_type->WithConvention(AstClone(Conv));
         meta->Restore();
     }
 
