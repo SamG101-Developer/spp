@@ -103,7 +103,7 @@ auto spp::asts::IdentifierAst::operator+(
 
 auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
     ScopeManager *sm,
-    CompilerMetaData *)
+    CompilerMetaData *meta)
     -> void {
     //
     using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
@@ -119,7 +119,7 @@ auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
     // Enforce module-level visibility on the accessed symbol.
     if (const auto sym = sm->CurrentScope->GetVarSymbol(shared)) {
         if (sym->ScopeDefinedIn != nullptr and sym->ScopeDefinedIn->TySym == nullptr) {
-            CheckModuleMemberVisibility(*sym, *this, *sym->ScopeDefinedIn, *sm);
+            CheckModuleMemberVisibility(*sym, *this, *sym->ScopeDefinedIn, *sm, *meta);
         }
     }
 }

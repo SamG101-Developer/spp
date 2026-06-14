@@ -139,7 +139,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSe
     // Enforce visibility on the accessed namespace symbol.
     // Only for var symbols, not namespace symbols.
     if (const auto sym = lhs_ns_sym->LinkedScope->GetVarSymbol(Name)) {
-        CheckModuleMemberVisibility(*sym, *Name, *lhs_ns_sym->LinkedScope, *sm);
+        CheckModuleMemberVisibility(*sym, *Name, *lhs_ns_sym->LinkedScope, *sm, *meta);
     }
 }
 
@@ -200,7 +200,7 @@ auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::InferType(
 
     // Get the left-hand-side type's member's type.
     if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
-        const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(AstClone(lhs_as_type));
+        const auto lhs_type_sym = sm->CurrentScope->GetTypeSymbol(AstCloneShared(lhs_as_type));
         const auto sym = lhs_type_sym->LinkedScope->GetVarSymbol(Name, true);
         if (sym != nullptr) { return sym->Type; }
 
