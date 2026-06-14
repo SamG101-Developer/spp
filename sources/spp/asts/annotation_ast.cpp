@@ -138,18 +138,29 @@ auto spp::asts::AnnotationAst::Stage4_QualifyTypes(
 
 auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
     ScopeManager *sm,
-    CompilerMetaData *)
+    CompilerMetaData *meta)
     -> void {
     // Handle builtin annotations.
     using A = analyse::utils::annotation_utils::BuiltinAnnotations;
+
+    meta->Save();
+    meta->IgnoreAccessModifierViolations = true;
+    if (const auto pf = Name->To<PostfixExpressionAst>(); pf and pf->Op->To<PostfixExpressionOperatorFunctionCallAst>()) {
+        pf->Lhs->Stage7_AnalyseSemantics(sm, meta);
+    }
+    else {
+        Name->Stage7_AnalyseSemantics(sm, meta);
+    }
+    meta->Restore();
+
     const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*Name).First;
-    if (sym == nullptr) { return; }
+    // if (sym == nullptr) { return; }
     const auto fq_name = sym->FqName()->ToString();
 
     // For the known builtin annotations, they will attempt to modify their contextual objects if possible, for required
     // behaviour like virtual and abstract tags on function prototypes. If the context is incorrect, nothing happens,
     // and a later stage will pickup the error, as there is a unified target-checking mechanism (custom and bulitin).
-    if (fq_name == A::kCompilerBuiltin) {
+    if (fq_name == A::kIntrinsic) {
         const auto func_ctx = _Ctx->To<FunctionPrototypeAst>();
         if (func_ctx) { func_ctx->BuiltinAnnotation = this; }
     }
