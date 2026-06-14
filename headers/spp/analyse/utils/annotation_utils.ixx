@@ -31,7 +31,7 @@ SPP_EXP_CLS struct spp::analyse::utils::annotation_utils::AnnotationInfo {
 };
 
 SPP_EXP_CLS struct spp::analyse::utils::annotation_utils::BuiltinAnnotations {
-    constexpr static auto kCompilerBuiltin = "std::annotations::compiler_builtin";
+    constexpr static auto kIntrinsic = "std::annotations::intrinsic";
     constexpr static auto kPublic = "std::annotations::public";
     constexpr static auto kPackage = "std::annotations::package";
     constexpr static auto kProtected = "std::annotations::protected";
