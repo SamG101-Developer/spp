@@ -60,7 +60,10 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
     SPP_ATTR_NODISCARD auto Iterator() const
         -> Vec<Shared<const TypeIdentifierAst>> override;
 
-    SPP_ATTR_NODISCARD auto IsNeverType() const
+    SPP_ATTR_NODISCARD auto IsNeverType() const noexcept
+        -> bool override;
+
+    SPP_ATTR_NODISCARD auto IsSelfType() const noexcept
         -> bool override;
 
     SPP_ATTR_NODISCARD auto NsParts() const

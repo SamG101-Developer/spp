@@ -39,6 +39,8 @@ SPP_EXP_CLS struct spp::asts::TypeAst : PrimaryExpressionAst, mixins::AbstractTy
 
     SPP_ATTR_NODISCARD virtual auto IsTypeIdentifier() const noexcept -> bool { return false; }
 
+    SPP_ATTR_NODISCARD virtual auto IsSelfType() const noexcept -> bool { return false; }
+
 protected:
     mutable Shared<TypeAst> _CachedWithoutGenerics;
 

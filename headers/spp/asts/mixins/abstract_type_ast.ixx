@@ -28,7 +28,7 @@ SPP_EXP_CLS struct spp::asts::mixins::AbstractTypeAst {
     SPP_ATTR_NODISCARD virtual auto Iterator() const
         -> Vec<Shared<const TypeIdentifierAst>> = 0;
 
-    SPP_ATTR_NODISCARD virtual auto IsNeverType() const
+    SPP_ATTR_NODISCARD virtual auto IsNeverType() const noexcept
         -> bool = 0;
 
     SPP_ATTR_NODISCARD virtual auto NsParts() const

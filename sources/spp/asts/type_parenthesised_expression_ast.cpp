@@ -48,7 +48,7 @@ auto spp::asts::TypeParenthesisedExpressionAst::ToString() const
 
 auto spp::asts::TypeParenthesisedExpressionAst::Convert()
     -> Unique<TypeAst> {
-    return Unique<TypeAst>(Expr.get()); // TODO: Release?
+    return AstClone(Expr);
 }
 
 SPP_MOD_END

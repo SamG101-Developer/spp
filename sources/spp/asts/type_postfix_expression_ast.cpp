@@ -167,7 +167,7 @@ auto spp::asts::TypePostfixExpressionAst::Iterator() const
     return Lhs->Iterator();
 }
 
-auto spp::asts::TypePostfixExpressionAst::IsNeverType() const
+auto spp::asts::TypePostfixExpressionAst::IsNeverType() const noexcept
     -> bool {
     return false;
 }

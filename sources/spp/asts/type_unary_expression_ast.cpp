@@ -69,7 +69,7 @@ auto spp::asts::TypeUnaryExpressionAst::PosEnd() const
 auto spp::asts::TypeUnaryExpressionAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
-    return MakeUnique<TypeUnaryExpressionAst>(AstClone(Op), AstClone(Rhs));
+    return MakeUnique<TypeUnaryExpressionAst>(AstCloneShared(Op), AstCloneShared(Rhs));
 }
 
 auto spp::asts::TypeUnaryExpressionAst::ToString() const
@@ -105,7 +105,7 @@ auto spp::asts::TypeUnaryExpressionAst::Stage7_AnalyseSemantics(
     // Analyse the RHS type.
     if (const auto op_ns = Op->To<TypeUnaryExpressionOperatorNamespaceAst>()) {
         const auto tm = ScopeManager(sm->GlobalScope, meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope);
-        const auto type_scope = analyse::utils::type_utils::GetNsScopeOrError(*tm.CurrentScope, *op_ns->Ns, tm);
+        const auto type_scope = analyse::utils::type_utils::GetNsScopeOrError(*tm.CurrentScope, *op_ns->Ns, *sm);
         meta->Save();
         meta->TypeAnalysisTypeScope = type_scope;
         Rhs->Stage7_AnalyseSemantics(sm, meta);
@@ -132,9 +132,15 @@ auto spp::asts::TypeUnaryExpressionAst::Iterator() const
     return Rhs->Iterator();
 }
 
-auto spp::asts::TypeUnaryExpressionAst::IsNeverType() const
+auto spp::asts::TypeUnaryExpressionAst::IsNeverType() const noexcept
     -> bool {
     return false;
+}
+
+auto spp::asts::TypeUnaryExpressionAst::IsSelfType() const noexcept
+    -> bool {
+    // Allow for &Self to be considered "Self".
+    return Op->To<TypeUnaryExpressionOperatorBorrowAst>() and Rhs->IsSelfType();
 }
 
 auto spp::asts::TypeUnaryExpressionAst::NsParts() const
@@ -184,6 +190,10 @@ auto spp::asts::TypeUnaryExpressionAst::GetConvention() const
 auto spp::asts::TypeUnaryExpressionAst::WithConvention(
     Unique<ConventionAst> &&conv) const
     -> Shared<TypeAst> {
+    if (conv == nullptr and Op->To<TypeUnaryExpressionOperatorBorrowAst>() != nullptr) {
+        // Remove the convention
+        return Rhs;
+    }
     if (conv == nullptr) {
         return MakeShared<TypeUnaryExpressionAst>(Op, Rhs);
     }
@@ -220,6 +230,7 @@ auto spp::asts::TypeUnaryExpressionAst::WithGenerics(
     -> Shared<TypeAst> {
     // Clone this type and add the generics to the right most part.
     auto type_clone = AstClone(this);
+    arg_group = arg_group ? std::move(arg_group) : GenericArgumentGroupAst::NewEmpty();
     type_clone->TypeParts().Back()->GnArgGroup = std::move(arg_group);
     return type_clone;
 }

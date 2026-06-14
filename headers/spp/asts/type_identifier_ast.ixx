@@ -38,9 +38,7 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
      * @param identifier The @c IdentifierAst node being transitioned.
      * @return The new @c TypeIdentifierAst.
      */
-    static auto FromIdentifier(
-        IdentifierAst const &identifier)
-        -> Shared<TypeIdentifierAst>;
+    static auto FromIdentifier(IdentifierAst const &identifier) -> Shared<TypeIdentifierAst>;
 
     /**
      * Factory function to create a @c TypeIdentifierAst from a raw @c Str node. Generics cannot be included in
@@ -49,9 +47,7 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
      * @param identifier The raw string being transitioned.
      * @return The new @c TypeIdentifierAst.
      */
-    static auto FromString(
-        Str const &identifier)
-        -> Shared<TypeIdentifierAst>;
+    static auto FromString(Str const &identifier) -> Shared<TypeIdentifierAst>;
 
     /**
      * Construct the TypeIdentifier with the arguments matching the members.
@@ -84,7 +80,10 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
     SPP_ATTR_NODISCARD auto Iterator() const
         -> Vec<Shared<const TypeIdentifierAst>> override;
 
-    SPP_ATTR_NODISCARD auto IsNeverType() const
+    SPP_ATTR_NODISCARD auto IsNeverType() const noexcept
+        -> bool override;
+
+    SPP_ATTR_NODISCARD auto IsSelfType() const noexcept
         -> bool override;
 
     SPP_ATTR_NODISCARD auto NsParts() const
@@ -143,6 +142,8 @@ private:
     std::size_t _Pos;
 
     bool _IsNeverType = false;
+
+    bool _IsSelfType = false;
 
     bool _HasAnalysed = false;
 };

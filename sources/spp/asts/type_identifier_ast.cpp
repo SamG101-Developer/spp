@@ -50,6 +50,7 @@ spp::asts::TypeIdentifierAst::TypeIdentifierAst(
     GnArgGroup(std::move(generic_arg_group)),
     _Pos(pos) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->GnArgGroup);
+    if (Name == "Self") { _IsSelfType = true; }
 }
 
 spp::asts::TypeIdentifierAst::~TypeIdentifierAst() = default;
@@ -105,13 +106,10 @@ auto spp::asts::TypeIdentifierAst::Clone() const
 
 auto spp::asts::TypeIdentifierAst::ToString() const
     -> Str {
-    if (_CachedStringification.empty()) {
-        SPP_STRING_START;
-        raw_string.append(Name);
-        SPP_STRING_APPEND(GnArgGroup);
-        _CachedStringification = raw_string;
-    }
-    return _CachedStringification;
+    SPP_STRING_START;
+    raw_string.append(Name);
+    SPP_STRING_APPEND(GnArgGroup);
+    SPP_STRING_END;
 }
 
 auto spp::asts::TypeIdentifierAst::Stage4_QualifyTypes(
@@ -134,12 +132,13 @@ auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
     using analyse::utils::type_utils::CreateGenericClsScope;
     using analyse::utils::type_utils::GetTypeSymOrError;
     if (_HasAnalysed) { return; }
+    if (Name == "Self") { return; }
 
     // Determine the scope and get the type symbol.
     const auto scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
     const auto type_sym = GetTypeSymOrError(
         *scope, *WithoutGenerics()->To<TypeIdentifierAst>(), *sm, meta);
-    if (type_sym->IsGeneric or Name == "Self") { return; }
+    if (type_sym->IsGeneric) { return; }
 
     const auto is_tuple = ( {
         const auto as_unary = dynamic_shared_cast<TypeUnaryExpressionAst>(type_sym->FqName()->WithoutGenerics());
@@ -225,9 +224,14 @@ auto spp::asts::TypeIdentifierAst::Iterator() const
     return parts;
 }
 
-auto spp::asts::TypeIdentifierAst::IsNeverType() const
+auto spp::asts::TypeIdentifierAst::IsNeverType() const noexcept
     -> bool {
     return _IsNeverType;
+}
+
+auto spp::asts::TypeIdentifierAst::IsSelfType() const noexcept
+    -> bool {
+    return _IsSelfType;
 }
 
 auto spp::asts::TypeIdentifierAst::NsParts() const
@@ -263,7 +267,7 @@ auto spp::asts::TypeIdentifierAst::GetConvention() const
 auto spp::asts::TypeIdentifierAst::WithConvention(
     Unique<ConventionAst> &&conv) const
     -> Shared<TypeAst> {
-    if (conv == nullptr) { return AstClone(this); }
+    if (conv == nullptr) { return AstCloneShared(this); }
 
     auto borrow_op = MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv));
     auto wrapped = MakeShared<TypeUnaryExpressionAst>(std::move(borrow_op), AstClone(this));
@@ -337,6 +341,7 @@ auto spp::asts::TypeIdentifierAst::WithGenerics(
     Unique<GenericArgumentGroupAst> &&arg_group) const
     -> Shared<TypeAst> {
     // Attach the new generic argument group to a clone of this type identifier.
+    arg_group = arg_group ? std::move(arg_group) : GenericArgumentGroupAst::NewEmpty();
     return MakeShared<TypeIdentifierAst>(_Pos, Str(Name), std::move(arg_group));
 }
 
@@ -362,8 +367,9 @@ auto spp::asts::TypeIdentifierAst::InferType(
     CompilerMetaData *meta)
     -> Shared<TypeAst> {
     // Fully qualify this type name from the scope.
+    // Have to AstClone because PostfixExpressionAst lhs (will change with removal of all shared pointers)
     const auto type_scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
-    const auto type_sym = type_scope->GetTypeSymbol(shared_from_this());
+    const auto type_sym = type_scope->GetTypeSymbol(AstClone(this));
     return type_sym->FqName();
 }
 
