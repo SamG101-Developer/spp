@@ -145,6 +145,16 @@ auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
     for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
+
+    // Add the "Self" symbol into the scope.
+    if (not Name->IsCompilerGeneratedType()) {
+        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
+        const auto self_sym = MakeShared<analyse::scopes::TypeSymbol>(
+            MakeUnique<TypeIdentifierAst>(Name->PosStart(), "Self", nullptr),
+            sm->SelfProto(), cls_sym->LinkedScope, sm->CurrentScope);
+        sm->CurrentScope->AddTypeSymbol(self_sym);
+    }
+
     Impl->Stage5_LoadSupScopes(sm, meta);
     sm->MoveOutOfCurrentScope();
 }
@@ -174,6 +184,15 @@ auto spp::asts::ClassPrototypeAst::Stage7_AnalyseSemantics(
     // Analyse semantics for the class body.
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
+
+    // Re-map "Self" to the true type.
+    if (not Name->IsCompilerGeneratedType()) {
+        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
+        const auto self_sym = sm->CurrentScope->GetTypeSymbol(MakeUnique<TypeIdentifierAst>(Name->PosStart(), "Self", nullptr), true);
+        self_sym->Type = cls_sym->Type;
+        cls_sym->AliasedBySyms.EmplaceBack(self_sym);
+    }
+
     for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
     GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
     Impl->Stage7_AnalyseSemantics(sm, meta);
