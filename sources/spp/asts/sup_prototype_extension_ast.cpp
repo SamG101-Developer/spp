@@ -343,14 +343,17 @@ auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
     Name->ResetCache();
     Name->Stage7_AnalyseSemantics(sm, meta);
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
-    if (cls_sym->Type) EnforceGenericConstraintsAllArgs(
-        *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
+    if (cls_sym->Type)
+        EnforceGenericConstraintsAllArgs(
+            *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
 
     SuperClass->ResetCache();
     SuperClass->Stage7_AnalyseSemantics(sm, meta);
-    const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass);
-    if (cls_sym->Type) EnforceGenericConstraintsAllArgs(
-        *sup_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
+    if (cls_sym->Type and not cls_sym->Type->Name->IsCompilerGeneratedType()) {
+        const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass);
+        EnforceGenericConstraintsAllArgs(
+            *sup_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
+    }
 
     Impl->Stage7_AnalyseSemantics(sm, meta);
     sm->MoveOutOfCurrentScope();
