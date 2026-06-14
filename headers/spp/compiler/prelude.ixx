@@ -17,7 +17,7 @@ use std::annotations::abstract_method
 use std::annotations::ffi
 use std::annotations::Annotation
 use std::string::Str
-use std::string::StrView
+use std::string_view::StrView
 use std::boolean::Bool
 use std::number::U8
 use std::number::U16
@@ -47,7 +47,6 @@ use std::result::Pass
 use std::result::Fail
 use std::array::Arr
 use std::vector::Vec
-use std::slice::Slice
 use std::tuple::Tup
 use std::single::Single
 use std::function::FunRef
