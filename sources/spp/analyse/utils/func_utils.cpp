@@ -242,6 +242,7 @@ auto spp::analyse::utils::func_utils::GetAllFunctionScopes(
         // When a derived class has overridden a method, the base method must be removed.
         for (auto &&[scope_1, fn_1, _, _] : overload_scopes) {
             for (auto &&[scope_2, fn_2, _, _] : overload_scopes) {
+                // This depth difference checker ensures the derived version is kept.
                 if (fn_1 != fn_2 and target_scope->DepthDiff(scope_1) < target_scope->DepthDiff(scope_2)) {
                     const auto temp = fn_1->GetAstScope()->Parent->Parent;
                     fn_1->GetAstScope()->Parent->Parent = const_cast<scopes::Scope*>(scope_1);
