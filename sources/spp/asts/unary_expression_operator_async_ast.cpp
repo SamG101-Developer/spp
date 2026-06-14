@@ -68,7 +68,7 @@ auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
         {sm->CurrentScope}, ERR_ARGS(*TokAsync, *meta->UnaryExpressionRhs));
 
     // Mark the function call as async.
-    rhs->Op->To<PostfixExpressionOperatorFunctionCallAst>()->mark_as_async(this);
+    rhs->Op->To<PostfixExpressionOperatorFunctionCallAst>()->MarkAsAsync(this);
 }
 
 auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage11_CodeGen(

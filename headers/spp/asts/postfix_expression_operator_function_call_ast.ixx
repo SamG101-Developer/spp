@@ -73,7 +73,7 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
 
     auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-    auto mark_as_async(Ast *async_token) -> void;
+    auto MarkAsAsync(Ast *async_token) -> void;
 
     SPP_ATTR_NODISCARD auto Target() const -> FunctionPrototypeAst*;
 

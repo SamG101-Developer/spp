@@ -378,7 +378,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferType(
     return ret_type;
 }
 
-auto spp::asts::PostfixExpressionOperatorFunctionCallAst::mark_as_async(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::MarkAsAsync(
     Ast *async_token)
     -> void {
     _IsAsync = async_token;
