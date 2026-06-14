@@ -27,9 +27,9 @@ auto spp::utils::files::GlobSpp(
     // Use the filesystem iterator to recursively walk the path, finding all ".spp" files.
     auto paths = Vec<std::filesystem::path>();
     for (auto const &entry : std::filesystem::recursive_directory_iterator(path)) {
-        const auto full_name = entry.path().string();
+        const auto full_name = entry.path().display_string();
         if (not entry.is_regular_file()) { continue; }
-        if (entry.path().extension().string() != ".spp") { continue; }
+        if (entry.path().extension().display_string() != ".spp") { continue; }
         paths.EmplaceBack(full_name);
     }
     return paths;
