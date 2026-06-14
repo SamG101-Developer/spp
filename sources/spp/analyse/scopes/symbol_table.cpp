@@ -72,7 +72,7 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Get(
     -> Shared<S> {
     // Get a symbol from the table. Use string_view to avoid a string copy per lookup.
     if (sym_name == nullptr) { return nullptr; }
-    auto ptr = _Table.find(sym_name->ToView());
+    auto ptr = _Table.find(sym_name->ToString());
     return ptr != _Table.end() ? ptr->second : nullptr;
 }
 
@@ -82,7 +82,7 @@ auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Has(
     -> bool {
     // Check if a symbol exists in the table.
     if (sym_name == nullptr) { return false; }
-    auto ptr = _Table.find(sym_name->ToView());
+    auto ptr = _Table.find(sym_name->ToString());
     return ptr != _Table.end();
 }
 
