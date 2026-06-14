@@ -92,7 +92,7 @@ namespace spp::analyse::utils::overload_utils {
         asts::meta::CompilerMetaData *meta)
         -> void;
 
-    SPP_EXP_FUN auto GenerateGenericSubstitutedPrototype(
+    SPP_EXP_FUN auto PotentiallyGenerateGenericSubstitutedPrototype(
         asts::FunctionPrototypeAst *fn_proto,
         scopes::Scope const *fn_scope,
         asts::GenericArgumentGroupAst &implicit_generic_args,
@@ -113,7 +113,7 @@ namespace spp::analyse::utils::overload_utils {
     SPP_EXP_FUN auto ManageMatchedOverloads(
         asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
         Vec<PassOverloadInfo> const &pass_overloads,
-        Vec<FailOverloadInfo> &&fail_overloads,
+        Vec<FailOverloadInfo> const &fail_overloads,
         asts::FunctionCallArgumentGroupAst const &arg_group,
         scopes::ScopeManager *sm,
         asts::meta::CompilerMetaData *meta)

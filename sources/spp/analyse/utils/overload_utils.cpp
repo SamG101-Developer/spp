@@ -98,14 +98,9 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
         auto gn_args = asts::AstClone(fn_call.GnArgGroup);
 
         // Get the implicit generic arguments for the function call.
-        auto implicit_gn_args = RetrieveImplicitGenericArgsForCall(
-            fwd_type, std::move(sup_generic_arg_group->Args), meta);
+        auto implicit_gn_args = RetrieveImplicitGenericArgsForCall(fwd_type, std::move(sup_generic_arg_group->Args), meta);
 
         // Extract the parameter names and argument names.
-        auto fn_param_names = fn_proto->FnParamGroup->GetAllParams()
-            | genex::views::transform([](auto *param) { return param->ExtractName(); });
-        auto fn_param_names_req = fn_proto->FnParamGroup->GetRequiredParams()
-            | genex::views::transform([](auto *param) { return param->ExtractName(); });
         const auto is_variadic_fn = fn_proto->FnParamGroup->GetVariadicParams() != nullptr;
 
         try {
@@ -115,11 +110,8 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
                 fn_args->Args.Len() > fn_params->Params.Len() and not is_variadic_fn,
                 {fn_scope}, ERR_ARGS(*fn_proto, fn_call));
 
-            InferAllGenerics(
-                *fn_proto, *fn_params, *gn_params, *fn_args, *gn_args, *implicit_gn_args, is_variadic_fn, fn_scope, sm, meta);
-            std::tie(fn_proto, fn_scope) = GenerateGenericSubstitutedPrototype(
-                fn_proto, fn_scope, *implicit_gn_args, *gn_args, sm, meta);
-
+            InferAllGenerics(*fn_proto, *fn_params, *gn_params, *fn_args, *gn_args, *implicit_gn_args, is_variadic_fn, fn_scope, sm, meta);
+            std::tie(fn_proto, fn_scope) = PotentiallyGenerateGenericSubstitutedPrototype(fn_proto, fn_scope, *implicit_gn_args, *gn_args, sm, meta);
             ValidateArgsMatchParams(fn_call, *fn_proto, fn_scope, *fn_args, sm, meta);
             pass_overloads.EmplaceBack(fn_scope, fn_proto, std::move(fn_args), gn_args->GetAllArgs());
         }
@@ -151,7 +143,7 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
         }
     }
 
-    ManageMatchedOverloads(fn_call, pass_overloads, std::move(fail_overloads), *fn_call.FnArgGroup, sm, meta);
+    ManageMatchedOverloads(fn_call, pass_overloads, fail_overloads, *fn_call.FnArgGroup, sm, meta);
     if (closure_proto) {
         fn_call.SetClosureDummyProto(std::move(closure_proto));
     }
@@ -295,7 +287,7 @@ auto spp::analyse::utils::overload_utils::InferAllGenerics(
     EnforceGenericConstraintsAllArgs(*fn_proto.GnParamGroup, explicit_gn_args, *fn_scope, *sm, *meta);
 }
 
-auto spp::analyse::utils::overload_utils::GenerateGenericSubstitutedPrototype(
+auto spp::analyse::utils::overload_utils::PotentiallyGenerateGenericSubstitutedPrototype(
     asts::FunctionPrototypeAst *fn_proto,
     scopes::Scope const *fn_scope,
     asts::GenericArgumentGroupAst &implicit_generic_args,
@@ -351,7 +343,7 @@ auto spp::analyse::utils::overload_utils::GenerateGenericSubstitutedPrototype(
 auto spp::analyse::utils::overload_utils::ManageMatchedOverloads(
     asts::PostfixExpressionOperatorFunctionCallAst const &fn_call,
     Vec<PassOverloadInfo> const &pass_overloads,
-    Vec<FailOverloadInfo> &&fail_overloads,
+    Vec<FailOverloadInfo> const &fail_overloads,
     asts::FunctionCallArgumentGroupAst const &arg_group,
     scopes::ScopeManager *sm,
     asts::meta::CompilerMetaData *meta)
