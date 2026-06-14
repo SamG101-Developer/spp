@@ -699,6 +699,9 @@ auto spp::analyse::utils::func_utils::NameGnArgsImpl(
         return p->template To<GenericParamTypeVariadicAst>() != nullptr;
     });
 
+    meta.Save();
+    meta.TypeAnalysisTypeScope = nullptr;
+
     for (auto [i, positional_arg] : a_group.GetPositionalArgs() | genex::views::enumerate) {
         RaiseIf<SppGenericArgumentTooManyError>(
             p_names.IsEmpty(), {sm.CurrentScope},
@@ -732,8 +735,11 @@ auto spp::analyse::utils::func_utils::NameGnArgsImpl(
 
         // Otherwise, attach the single argument convention and value.
         kw_arg->Val = asts::AstClone(positional_arg->To<GenericArgType>()->Val);
+        if (meta.CurrentStage > 5) { kw_arg->Val->Stage7_AnalyseSemantics(&sm, &meta); }
         a_group.Args[i] = std::move(kw_arg);
     }
+
+    meta.Restore();
 }
 
 auto spp::analyse::utils::func_utils::InferGnArgs(
@@ -1001,9 +1007,11 @@ auto spp::analyse::utils::func_utils::InferGnArgsImplType(
 
         auto def_type = opt_param->DefaultVal;
         auto def_type_raw = def_type->WithoutGenerics();
-        if (auto def_val_type_sym = owner_scope.GetTypeSymbol(def_type_raw); def_val_type_sym != nullptr and meta.CurrentStage > 4) {
+        if (auto def_val_type_sym = sm.CurrentScope->GetTypeSymbol(def_type_raw); def_val_type_sym != nullptr and meta.CurrentStage > 4) {
             auto temp = def_val_type_sym->FqName()->WithConvention(asts::AstClone(def_type->GetConvention()));
-            temp = temp->WithGenerics(asts::AstClone(def_type->TypeParts().Back()->GnArgGroup));
+            if (not type_utils::IsTypeSelf(*def_type)) {
+                temp = temp->WithGenerics(asts::AstClone(def_type->TypeParts().Back()->GnArgGroup));
+            }
             def_type = std::move(temp);
         }
         inferred_args[cast_name].EmplaceBack(def_type);
@@ -1012,7 +1020,6 @@ auto spp::analyse::utils::func_utils::InferGnArgsImplType(
 
     // Check each generic argument name only has one unique inferred type. "T" cannot infer to "Str" and "U32".
     EnforceNoConflictingInferredGnArgs(inferred_args, sm);
-    EnforceNoUninferredGnArgs(p_names, i_names, owner_scope, owner, sm);
 
     // At this point, all conflicts have been checked, so it is safe to only use the first inferred value.
     auto formatted_args = InferenceFinalTypeMap();
@@ -1034,6 +1041,8 @@ auto spp::analyse::utils::func_utils::InferGnArgsImplType(
         t->Stage7_AnalyseSemantics(&sm, &meta);
         formatted_args[arg_name] = t;
     }
+
+    EnforceNoUninferredGnArgs(p_names, i_names, owner_scope, owner, sm);
 
     // Convert the inferred types into new generic arguments.
     auto final_args = std::remove_cvref_t<decltype(type_args)>();
