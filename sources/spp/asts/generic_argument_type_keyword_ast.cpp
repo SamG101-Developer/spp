@@ -90,6 +90,10 @@ auto spp::asts::GenericArgumentTypeKeywordAst::Stage7_AnalyseSemantics(
     -> void {
     // Analyse the name and value of the generic type argument.
     Val->Stage7_AnalyseSemantics(sm, meta);
+    if (const auto type = Val->To<TypeIdentifierAst>(); type and type->Name == "Self") {
+        return;
+    }
+
     const auto tmp1 = sm->CurrentScope->GetTypeSymbol(Val);
     const auto tmp2 = tmp1->FqName();
     auto tmp3 = AstClone(Val->GetConvention());
