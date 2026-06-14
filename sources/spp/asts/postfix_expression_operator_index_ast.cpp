@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.type_utils;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
@@ -87,10 +88,16 @@ auto spp::asts::PostfixExpressionOperatorIndexAst::Stage7_AnalyseSemantics(
     // Already analysed => return early.
     using analyse::errors::SppExpressionAmbiguousIndexableError;
     using analyse::errors::SppExpressionNotIndexableError;
+    using analyse::errors::SppInvalidPrimaryExpressionError;
+    using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
     using analyse::utils::type_utils::TypeEq;
     using generate::common_types_precompiled::INDEX_MUT;
     using generate::common_types_precompiled::INDEX_REF;
     if (_MappedFunc != nullptr) { return; }
+
+    RaiseIf<SppInvalidPrimaryExpressionError>(
+        not IsPrimaryExprTypeValid(*Expr),
+        {sm->CurrentScope}, ERR_ARGS(*Expr));
 
     // Determine the left-hand-side type.
     const auto lhs_type = const_shared_cast(
