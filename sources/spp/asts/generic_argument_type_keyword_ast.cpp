@@ -7,6 +7,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.ast;
 import spp.asts.convention_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -20,7 +21,9 @@ auto spp::asts::GenericArgumentTypeKeywordAst::FromSym(
     analyse::scopes::TypeSymbol const &sym)
     -> Unique<GenericArgumentTypeKeywordAst> {
     // Extract the value from the symbol's scope, if it exists.
-    auto value = sym.LinkedScope->TySym->FqName()->WithConvention(AstClone(sym.Convention.get()));
+    auto value = sym.LinkedScope != nullptr
+        ? sym.LinkedScope->TySym->FqName()->WithConvention(AstClone(sym.Convention.get()))
+        : MakeShared<TypeIdentifierAst>(0, "Self", nullptr);
 
     // Wrap the value into a type argument.
     return MakeUnique<GenericArgumentTypeKeywordAst>(
@@ -62,7 +65,7 @@ auto spp::asts::GenericArgumentTypeKeywordAst::PosStart() const
 auto spp::asts::GenericArgumentTypeKeywordAst::PosEnd() const
     -> std::size_t {
     // Use the value.
-    return Source.OriginalVal->PosEnd();
+    return Source.OriginalValPosEnd;
 }
 
 auto spp::asts::GenericArgumentTypeKeywordAst::Clone() const
