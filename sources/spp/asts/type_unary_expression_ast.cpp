@@ -198,13 +198,9 @@ auto spp::asts::TypeUnaryExpressionAst::WithConvention(
         return MakeShared<TypeUnaryExpressionAst>(Op, Rhs);
     }
     if (Op->To<TypeUnaryExpressionOperatorBorrowAst>()) {
-        return MakeShared<TypeUnaryExpressionAst>(
-            MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)),
-            Rhs);
+        return MakeShared<TypeUnaryExpressionAst>(MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), Rhs);
     }
-    return MakeShared<TypeUnaryExpressionAst>(
-        MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)),
-        MakeShared<TypeUnaryExpressionAst>(Op, Rhs));
+    return MakeShared<TypeUnaryExpressionAst>(MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), MakeShared<TypeUnaryExpressionAst>(Op, Rhs));
 }
 
 auto spp::asts::TypeUnaryExpressionAst::WithoutGenerics() const
