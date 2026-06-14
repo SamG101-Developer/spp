@@ -14,9 +14,13 @@ namespace spp::asts {
     SPP_EXP_CLS struct TypeAst;
 }
 
-
 SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
     SPP_GCC_VTABLE_FIX
+
+    /**
+     * The optional "b" prefix, converting the char into a byte string.
+     */
+    Unique<TokenAst> BytePrefix;
 
     /**
      * The string value of the string literal. This is the actual string that is represented by the literal.
@@ -25,9 +29,11 @@ SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
 
     /**
      * Construct the StringLiteralAst with the arguments matching the members.
+     * @param[in] byte_prefix The optional byte prefix of the string literal (e.g., 'b' for byte literals).
      * @param[in] val The string value of the string literal.
      */
     explicit StringLiteralAst(
+        decltype(BytePrefix) &&byte_prefix,
         decltype(Val) &&val);
 
     ~StringLiteralAst() override;
@@ -44,6 +50,5 @@ SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
 
     auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };
-
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::StringLiteralAst)

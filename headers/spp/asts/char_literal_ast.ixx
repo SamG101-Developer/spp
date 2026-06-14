@@ -11,11 +11,16 @@ import std;
 namespace spp::asts {
     SPP_EXP_CLS struct CharLiteralAst;
     SPP_EXP_CLS struct TypeAst;
-    SPP_EXP_CLS struct TokenAst;}
-
+    SPP_EXP_CLS struct TokenAst;
+}
 
 SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {
     SPP_GCC_VTABLE_FIX
+
+    /**
+     * The optional "b" prefix, converting the char into a U8 byte type.
+     */
+    Unique<TokenAst> BytePrefix;
 
     /**
      * The char value of the char literal. This is the actual char that is represented by the literal.
@@ -24,9 +29,11 @@ SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {
 
     /**
      * Construct the CharLiteralAst with the arguments matching the members.
+     * @param[in] byte_prefix The optional byte prefix of the char literal (e.g., 'b' for byte literals).
      * @param[in] val The char value of the char literal.
      */
     explicit CharLiteralAst(
+        decltype(BytePrefix) &&byte_prefix,
         decltype(Val) &&val);
 
     ~CharLiteralAst() override;
@@ -47,6 +54,5 @@ SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {
 
     auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 };
-
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CharLiteralAst)

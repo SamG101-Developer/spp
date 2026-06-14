@@ -15,7 +15,9 @@ import llvm;
 
 SPP_MOD_BEGIN
 spp::asts::StringLiteralAst::StringLiteralAst(
+    decltype(BytePrefix) &&byte_prefix,
     decltype(Val) &&val) :
+    BytePrefix(std::move(byte_prefix)),
     Val(std::move(val)) {
 }
 
@@ -25,7 +27,8 @@ auto spp::asts::StringLiteralAst::EqualsStringLiteral(
     StringLiteralAst const &other) const
     -> Ordering {
     // Equality is based on the internal string value.
-    return Val->TokenData == other.Val->TokenData ? Ordering::equal : Ordering::less;
+    const auto matching_byte_prefix = static_cast<bool>(BytePrefix) == static_cast<bool>(other.BytePrefix);
+    return matching_byte_prefix and Val->TokenData == other.Val->TokenData ? Ordering::equal : Ordering::less;
 }
 
 auto spp::asts::StringLiteralAst::Equals(
@@ -51,12 +54,13 @@ auto spp::asts::StringLiteralAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<StringLiteralAst>(
-        AstClone(Val));
+        AstClone(BytePrefix), AstClone(Val));
 }
 
 auto spp::asts::StringLiteralAst::ToString() const
     -> Str {
     SPP_STRING_START;
+    SPP_STRING_APPEND(BytePrefix);
     SPP_STRING_APPEND(Val);
     SPP_STRING_END;
 }
@@ -85,9 +89,12 @@ auto spp::asts::StringLiteralAst::InferType(
     ScopeManager *,
     CompilerMetaData *)
     -> Shared<TypeAst> {
-    // The type of a string literal is always a string type.
+    // A char literal is either a StrView or Vec[U8] type, depending on the "b" byte prefix.
     using generate::common_types::StringViewType;
-    return StringViewType(Val->PosStart());
+    using generate::common_types::VecU8Type;
+    return BytePrefix != nullptr
+        ? VecU8Type(PosStart())
+        : StringViewType(PosStart());
 }
 
 SPP_MOD_END

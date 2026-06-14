@@ -15,7 +15,9 @@ import llvm;
 
 SPP_MOD_BEGIN
 spp::asts::CharLiteralAst::CharLiteralAst(
+    decltype(BytePrefix) &&byte_prefix,
     decltype(Val) &&val) :
+    BytePrefix(std::move(byte_prefix)),
     Val(std::move(val)) {
 }
 
@@ -25,7 +27,8 @@ auto spp::asts::CharLiteralAst::EqualsCharLiteral(
     CharLiteralAst const &other) const
     -> Ordering {
     // Equality based on the token data.
-    return Val->TokenData == other.Val->TokenData ? Ordering::equal : Ordering::less;
+    const auto matching_byte_prefix = static_cast<bool>(BytePrefix) == static_cast<bool>(other.BytePrefix);
+    return matching_byte_prefix and Val->TokenData == other.Val->TokenData ? Ordering::equal : Ordering::less;
 }
 
 auto spp::asts::CharLiteralAst::Equals(
@@ -51,12 +54,13 @@ auto spp::asts::CharLiteralAst::Clone() const
     -> Unique<Ast> {
     // Clone all the members of the ast.
     return MakeUnique<CharLiteralAst>(
-        AstClone(Val));
+        AstClone(BytePrefix), AstClone(Val));
 }
 
 auto spp::asts::CharLiteralAst::ToString() const
     -> Str {
     SPP_STRING_START;
+    SPP_STRING_APPEND(BytePrefix);
     SPP_STRING_APPEND(Val);
     SPP_STRING_END;
 }
@@ -83,9 +87,12 @@ auto spp::asts::CharLiteralAst::InferType(
     ScopeManager *,
     CompilerMetaData *)
     -> Shared<TypeAst> {
-    // A char literal is always a U8 type.
+    // A char literal is either a Char or U8 type, depending on the "b" byte prefix.
     using generate::common_types::U8;
-    return U8(Val->PosStart());
+    using generate::common_types::CharType;
+    return BytePrefix != nullptr
+        ? U8(Val->PosStart())
+        : CharType(Val->PosStart());
 }
 
 SPP_MOD_END
