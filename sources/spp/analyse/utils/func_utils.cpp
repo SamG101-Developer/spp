@@ -871,7 +871,7 @@ auto spp::analyse::utils::func_utils::InferGnArgsImplComp(
         auto filtered_formatted_args = formatted_args;
         filtered_formatted_args.erase(arg_name);
         auto other_args_group = asts::GenericArgumentGroupAst::FromMap(std::move(filtered_formatted_args));
-        auto other_args_vec = other_args_group->Args | genex::views::ptr | genex::to<Vec>();
+        auto other_args_vec = other_args_group->GetAllArgs();
     }
 
     // Convert the inferred types into new generic arguments.
@@ -1027,7 +1027,7 @@ auto spp::analyse::utils::func_utils::InferGnArgsImplType(
         auto filtered_formatted_args = formatted_args;
         filtered_formatted_args.erase(arg_name);
         auto other_args_group = asts::GenericArgumentGroupAst::FromMap(std::move(filtered_formatted_args));
-        auto other_args_vec = other_args_group->Args | genex::views::ptr | genex::to<Vec>();
+        auto other_args_vec = other_args_group->GetAllArgs();
 
         auto t = formatted_args[arg_name]->SubstituteGenerics(other_args_vec);
         t->Stage7_AnalyseSemantics(&sm, &meta);
