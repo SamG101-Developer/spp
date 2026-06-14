@@ -173,9 +173,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
 
     // Special case for GenOnce called as a coroutine => auto move into the "Yield" type.
     if (_OverloadInfo->Proto->TokFun->TokenType == lex::SppTokenType::KW_COR and not meta->PreventAutoGeneratorResume) {
-        _IsCoroAndAutoResume = TypeEq(
-            *GEN_ONCE, *_OverloadInfo->Proto->ReturnType->WithoutGenerics(),
-            *sm->CurrentScope, *_OverloadInfo->OverloadScope);
+        // This needs to be any type that EXTENDS GenOnce, not just GenOnce itself.
+        auto [_, _, is_once] = analyse::utils::type_utils::GetGenAndYieldTypes(
+            *_OverloadInfo->Proto->ReturnType, *sm->CurrentScope, *meta->PostfixExpressionLhs, "GenOnce collapse");
+        _IsCoroAndAutoResume = is_once;
     }
     meta->PreventAutoGeneratorResume = false;
 
