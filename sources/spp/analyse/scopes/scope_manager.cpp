@@ -51,7 +51,7 @@ auto spp::analyse::scopes::ScopeManager::Reset(
     -> void {
     // Set the current scope to the provided scope or global scope.
     CurrentScope = scope ? scope : GlobalScope.get();
-    m_it = iterator.has_value() ? *iterator : ScopeIterator{CurrentScope};
+    _It = iterator.has_value() ? *iterator : ScopeIterator{CurrentScope};
 }
 
 auto spp::analyse::scopes::ScopeManager::CreateAndMoveIntoNewScope(
@@ -62,7 +62,7 @@ auto spp::analyse::scopes::ScopeManager::CreateAndMoveIntoNewScope(
     // Create a new scope, using the current scope as the parent scope.
     auto scope = MakeUnique<Scope>(name, CurrentScope, ast, error_formatter);
     CurrentScope->Children.EmplaceBack(std::move(scope));
-    ++m_it;
+    ++_It;
 
     // Set the new scope as the current scope, and advance the iterator to match.
     CurrentScope = CurrentScope->Children.Back().get();
@@ -81,9 +81,9 @@ auto spp::analyse::scopes::ScopeManager::MoveToNextScope(
     -> Scope* {
     // For debugging mode only, check if the iterator has reached the end of the generator.
     // Move to the next scope by advancing the iterator.
-    CurrentScope = *++m_it;
+    CurrentScope = *++_It;
     while (ignore_alias_class_scopes and CurrentScope->TySym != nullptr and CurrentScope->TySym->AliasStmt != nullptr) {
-        CurrentScope = *++m_it;
+        CurrentScope = *++_It;
     }
     return CurrentScope;
 }
@@ -188,10 +188,6 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
     using utils::type_utils::RelaxedTypeEq;
     using utils::type_utils::GenericInferenceMap;
 
-    if (&scope == reinterpret_cast<Scope*>(0xd6765c0)) {
-        auto _ = 123;
-    }
-
     // Skip "$" identifiers (functions don't have substitutable members and take up lots of time).
     const auto scope_name = scope.TySym->FqName();
     if (sup_scopes.IsEmpty()) { return; }
@@ -219,7 +215,7 @@ auto spp::analyse::scopes::ScopeManager::AttachSpecificSuperScopesImpl(
 
         // Todo: Is this "if-else" quite correct? 2 conditions in the "if", then no "else if" block.
         if (not scope_generics->Args.IsEmpty() and not genex::contains(generic_sup_blocks, sup_scope)) {
-            const auto external_generics = scope.TySym->ScopeDefinedIn->GetExtendedGenericSymbols(scope_generics->Args | genex::views::ptr | genex::to<Vec>());
+            const auto external_generics = scope.TySym->ScopeDefinedIn->GetExtendedGenericSymbols(scope_generics->GetAllArgs());
             std::tie(new_sup_scope, new_cls_scope) = CreateGenericSupScope(*sup_scope, scope, *scope_generics, external_generics, this, meta);
             sup_sym = new_cls_scope ? new_cls_scope->TySym.get() : nullptr;
 
@@ -299,6 +295,16 @@ auto spp::analyse::scopes::ScopeManager::CheckConflictingTypeOrCmpStatements(
             }
         }
     }
+}
+
+auto spp::analyse::scopes::ScopeManager::CurrentIterator()
+    -> ScopeIterator& {
+    return _It;
+}
+
+auto spp::analyse::scopes::ScopeManager::SelfProto() const
+    -> asts::ClassPrototypeAst* {
+    return _SelfProto.get();
 }
 
 auto spp::analyse::scopes::ScopeManager::Cleanup() -> void {

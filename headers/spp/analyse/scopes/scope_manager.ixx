@@ -12,6 +12,7 @@ import std;
 
 namespace spp::asts {
     SPP_EXP_CLS struct Ast;
+    SPP_EXP_CLS struct ClassPrototypeAst;
     SPP_EXP_CLS struct LoopExpressionAst;
     SPP_EXP_CLS struct ModulePrototypeAst;
     SPP_EXP_CLS struct TypeStatementAst;
@@ -30,7 +31,6 @@ namespace spp::utils::errors {
     SPP_EXP_CLS class ErrorFormatter;
 }
 
-
 /**
  * The @c ScopeManager type is critical for the semantic analysis of the entire program being compiled. It contains the
  * scopes of the code, providing the structure of the code, and the symbols within those scopes. It also provides an
@@ -42,7 +42,9 @@ SPP_EXP_CLS class spp::analyse::scopes::ScopeManager {
      * scopes. It is reset with the @c reset method, and advanced with the @c move_to_next_scope and
      * @c create_and_move_into_new_scope methods.
      */
-    ScopeIterator m_it;
+    ScopeIterator _It;
+
+    Unique<asts::ClassPrototypeAst> _SelfProto;
 
 public:
     /**
@@ -213,14 +215,14 @@ private:
         -> void;
 
 public:
+    auto CurrentIterator() -> ScopeIterator&;
+
+    auto SelfProto() const -> asts::ClassPrototypeAst*;
+
     /**
      * Reset the static state of the @c ScopeManager. This clears the static lists of sup blocks, so that a new
      * compilation can be started from a clean state. This should be called at the end of a full compilation. This is
      * required so that the unit tests can run different code as "main" in the same process.
      */
     static auto Cleanup() -> void;
-
-    auto CurrentIterator() -> ScopeIterator& {
-        return m_it;
-    }
 };
