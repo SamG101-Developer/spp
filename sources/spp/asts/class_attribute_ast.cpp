@@ -114,15 +114,15 @@ auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
     sym->Visibility = Visibility.First;
     sym->VisibilityAnnotation = Visibility.Second;
 
-    // Ensure that the convention type doesn't have a convention.
-    RaiseIf<SppSecondClassBorrowViolationError>(
-        IsTypeBorrowed(*Type, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
-
     // Check the type is valid before scopes are attached.
     Type->Stage7_AnalyseSemantics(sm, meta);
     Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName();
     sm->CurrentScope->GetVarSymbol(Name)->Type = Type;
+
+    // Ensure that the convention type doesn't have a convention.
+    RaiseIf<SppSecondClassBorrowViolationError>(
+        IsTypeBorrowed(*Type, *sm),
+        {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
 }
 
 auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
@@ -134,19 +134,20 @@ auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
     using analyse::errors::SppTypeMismatchError;
     using analyse::utils::type_utils::IsTypeBorrowed;
     using analyse::utils::type_utils::TypeEq;
+    using analyse::utils::type_utils::IsTypeSelf;
 
     if (meta->CurrentStage == 9) {
         for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
     }
 
-    // Repeated convention check for generic substitutions.
-    RaiseIf<SppSecondClassBorrowViolationError>(
-        IsTypeBorrowed(*Type, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
-
     const auto var_sym = sm->CurrentScope->GetVarSymbol(Name);
     Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName();
+    if (not IsTypeSelf(*Type)) {
+        Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName();
+        RaiseIf<SppSecondClassBorrowViolationError>(
+            IsTypeBorrowed(*Type, *sm),
+            {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
+    }
     var_sym->Type = Type;
 
     if (meta->CurrentStage == 9 and DefaultVal != nullptr) {

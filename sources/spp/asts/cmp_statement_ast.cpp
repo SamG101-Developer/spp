@@ -120,15 +120,16 @@ auto spp::asts::CmpStatementAst::Stage4_QualifyTypes(
     using analyse::utils::type_utils::IsTypeBorrowed;
     for (auto const &a : Annotations) { a->Stage4_QualifyTypes(sm, meta); }
 
+    // Qualify the type.
+    Type->Stage4_QualifyTypes(sm, meta);
+    Type->Stage7_AnalyseSemantics(sm, meta);
+
     // Ensure that the type doesn't have a convention.
     RaiseIf<SppSecondClassBorrowViolationError>(
         IsTypeBorrowed(*Type, *sm),
         {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalType, "global constant type"));
 
-    // Qualify the type.
-    Type->Stage4_QualifyTypes(sm, meta);
-    Type->Stage7_AnalyseSemantics(sm, meta);
-    if (not _FromUseStatement and not Type->IsCompilerGeneratedType()) {
+    if (not _FromUseStatement and not Type->IsCompilerGeneratedType() and not Type->IsSelfType()) {
         Type = sm->CurrentScope->GetTypeSymbol(Type)->FqName();
         _AliasSym->Type = Type;
     }

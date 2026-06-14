@@ -370,6 +370,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferType(
         ret_type = yield_type;
     }
 
+    if (ret_type->IsSelfType()) {
+        ret_type = meta->PostfixExpressionLhs->To<PostfixExpressionAst>()->Lhs->InferType(sm, meta)->WithConvention(nullptr);
+    }
+
     // Return the type.
     return ret_type;
 }

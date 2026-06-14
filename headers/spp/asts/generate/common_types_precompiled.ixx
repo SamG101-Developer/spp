@@ -65,6 +65,8 @@ namespace spp::asts::generate::common_types_precompiled {
     SPP_EXP_CMP Shared<TypeAst> F64 = nullptr;
     SPP_EXP_CMP Shared<TypeAst> F128 = nullptr;
 
+    SPP_EXP_CMP Shared<TypeAst> CHAR = nullptr;
+
     /**
      * Initialize the precompiled common types. This must be called before using any of the precompiled types.
      */

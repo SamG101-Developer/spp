@@ -138,7 +138,9 @@ auto spp::analyse::utils::overload_utils::DetermineOverload(
     if (meta->ReturnTypeOverloadResolverType != nullptr) {
         auto return_matches = Vec<PassOverloadInfo>();
         for (auto &&[fn_scope, fn_proto, fn_args, fn_generics] : pass_overloads) {
-            if (TypeEq(*fn_proto->ReturnType, *meta->ReturnTypeOverloadResolverType, *fn_scope, *sm->CurrentScope)) {
+            auto ret = asts::AstCloneShared(fn_proto->ReturnType);
+            if (ret->IsSelfType()) { ret = asts::AstCloneShared(meta->PostfixExpressionLhs->To<asts::PostfixExpressionAst>()->Lhs->To<asts::TypeAst>()); }
+            if (TypeEq(*ret, *meta->ReturnTypeOverloadResolverType, *fn_scope, *sm->CurrentScope)) {
                 return_matches.EmplaceBack(fn_scope, fn_proto, std::move(fn_args), std::move(fn_generics));
             }
         }

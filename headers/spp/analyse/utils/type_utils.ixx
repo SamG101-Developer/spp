@@ -115,6 +115,10 @@ namespace spp::analyse::utils::type_utils {
         scopes::Scope const &scope)
         -> bool;
 
+    SPP_EXP_FUN auto IsTypeSelf(
+        asts::TypeAst const &type)
+        -> bool;
+
     SPP_EXP_FUN auto IsTypeArr(
         asts::TypeAst const &type,
         scopes::Scope const &scope)

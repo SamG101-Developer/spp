@@ -112,14 +112,15 @@ auto spp::analyse::utils::type_utils::TypeEq(
     using asts::generate::common_types_precompiled::VAR;
     if (rhs_type.IsNeverType()) { return true; }
     if (lhs_type.IsNeverType()) { return rhs_type.IsNeverType(); }
+    if (lhs_type.IsSelfType() and rhs_type.IsSelfType()) { return true; }
 
     // Strip the generics from the types.
     const auto stripped_lhs = lhs_type.WithoutGenerics();
     const auto stripped_rhs = rhs_type.WithoutGenerics();
 
     // Get the non-generic symbols.
-    const auto stripped_lhs_sym = lhs_scope.GetTypeSymbol(stripped_lhs, false);
-    const auto stripped_rhs_sym = rhs_scope.GetTypeSymbol(stripped_rhs, false);
+    const auto stripped_lhs_sym = (lhs_type.IsSelfType() ? rhs_scope : lhs_scope).GetTypeSymbol(stripped_lhs, false);
+    const auto stripped_rhs_sym = (rhs_type.IsSelfType() ? lhs_scope : rhs_scope).GetTypeSymbol(stripped_rhs, false);
     const auto lhs_sym = lhs_scope.GetTypeSymbol(lhs_type.shared_from_this());
 
     // If the left-hand-side is a "Variant" type, check the composite types first.
@@ -348,6 +349,14 @@ auto spp::analyse::utils::type_utils::IsTypeGen(
         TypeEq(*type.WithoutGenerics(), *asts::generate::common_types_precompiled::GEN_ONCE, scope, scope);
 }
 
+auto spp::analyse::utils::type_utils::IsTypeSelf(
+    asts::TypeAst const &type)
+    -> bool {
+    // Check for a string match to "Self".
+    const auto type_identifier = type.To<asts::TypeIdentifierAst>();
+    return type_identifier != nullptr and type_identifier->Name == "Self";
+}
+
 auto spp::analyse::utils::type_utils::IsTypeRuntimeIndexable(
     asts::TypeAst const &type,
     scopes::Scope const &scope)
@@ -404,6 +413,7 @@ auto spp::analyse::utils::type_utils::IsTypeBorrowed(
     // Check that either this type, or any inner types for variants, are "&" or "&mut".
     using asts::generate::common_types_precompiled::VAR;
     if (type.GetConvention() != nullptr) { return true; }
+    if (type.IsSelfType()) { return false; }
     // if (type.IsCompilerGeneratedType()) { return false; }
 
     // Check the inner types for variant types.
@@ -891,6 +901,13 @@ auto spp::analyse::utils::type_utils::CreateGenericSym(
 
     // Handle the generic type argument => creates a type symbol.
     if (const auto type_arg = generic.To<asts::GenericArgumentTypeKeywordAst>(); type_arg != nullptr) {
+        // "Self" should not be looked up and changed.
+        if (type_arg->Val->IsSelfType()) {
+            return MakeShared<scopes::TypeSymbol>(
+                type_arg->Name->TypeParts().Back(), nullptr, nullptr, sm.CurrentScope, sm.CurrentScope->ParentModule(),
+                true);
+        }
+
         const auto true_val_sym = sm.CurrentScope->GetTypeSymbol(type_arg->Val);
 
         // If the target is generic, then create a generic scope for it.
