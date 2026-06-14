@@ -451,6 +451,10 @@ auto spp::analyse::utils::overload_utils::ValidateArgsMatchParams(
 
     for (auto [arg, param] : genex::views::zip(sorted_func_arguments, func_params->GetAllParams())) {
         auto p_type = fn_scope->GetTypeSymbol(param->Type)->FqName()->WithConvention(AstClone(param->Type->GetConvention()));
+        if (p_type->IsSelfType()) {
+            p_type = asts::AstClone(meta->PostfixExpressionLhs->To<asts::PostfixExpressionAst>()->Lhs->To<asts::TypeAst>())->WithConvention(asts::AstClone(p_type->GetConvention()));
+        }
+
         auto a_type = arg->InferType(sm, meta);
         auto temp = type_utils::GenericInferenceMap();
 
