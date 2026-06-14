@@ -54,12 +54,12 @@ spp::compiler::ModuleTree::ModuleTree(
         auto relative_path = std::filesystem::relative(m->path, m_vcs_path);
         auto inner_path = std::filesystem::path();
         constexpr auto sep = std::filesystem::path::preferred_separator;
-        for (auto const &part : std::filesystem::path(relative_path.string() | genex::views::split(sep) | genex::views::drop(1) | genex::to<Vec>() | genex::views::join_with(sep) | genex::to<Str>())) {
+        for (auto const &part : std::filesystem::path(relative_path.display_string() | genex::views::split(sep) | genex::views::drop(1) | genex::to<Vec>() | genex::views::join_with(sep) | genex::to<Str>())) {
             inner_path /= part;
         }
 
         // Check if the inner_path matches "src/main.spp" or startswith "ffi/":
-        if (inner_path != std::filesystem::path("src/main.spp") and not inner_path.string().starts_with("ffi"s + std::filesystem::path::preferred_separator)) {
+        if (inner_path != std::filesystem::path("src/main.spp") and not inner_path.display_string().starts_with("ffi"s + std::filesystem::path::preferred_separator)) {
             filtered_vcs_modules.EmplaceBack(std::move(m));
         }
     }
