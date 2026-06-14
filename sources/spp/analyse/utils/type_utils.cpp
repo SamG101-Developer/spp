@@ -766,8 +766,15 @@ auto spp::analyse::utils::type_utils::CreateGenericClsScope(
 
     // Run generic substitution on the symbols in the scope.
     const auto fq_type = new_cls_sym->FqName();
-    auto substitution_generics = fq_type->TypeParts().Back()->GnArgGroup->Args | genex::views::ptr | genex::to<Vec>();
-    substitution_generics.AppendRange(type_part.GnArgGroup->Args | genex::views::ptr | genex::to<Vec>());
+    auto substitution_generics = fq_type->TypeParts().Back()->GnArgGroup->GetAllArgs();
+    substitution_generics.AppendRange(type_part.GnArgGroup->GetAllArgs());
+
+    // Substitute the "Self" sym.
+    const auto self_type = asts::AstName(old_cls_scope->AstNode)->SubstituteGenerics(type_part.GnArgGroup->GetAllArgs());
+    const auto new_self_sym = MakeShared<scopes::TypeSymbol>(
+        MakeUnique<asts::TypeIdentifierAst>(0uz, "Self", nullptr), sm->SelfProto(), new_cls_scope_ptr,
+        new_cls_scope_ptr);
+    new_cls_scope_ptr->AddTypeSymbol(new_self_sym);
 
     auto tm = scopes::ScopeManager(sm->GlobalScope, new_alias_stmt ? sm->CurrentScope->GetTypeSymbol(new_alias_stmt->OldType)->LinkedScope : new_cls_scope_ptr);
     for (auto const &scoped_sym : new_cls_scope_ptr->AllVarSymbols(true)) {
@@ -842,13 +849,9 @@ auto spp::analyse::utils::type_utils::CreateGenericSupScope(
 
     // Add the "Self" symbol into the new scope.
     self_type->Stage7_AnalyseSemantics(&tm, meta);
-    const auto old_self_sym = new_sup_scope_ptr->GetTypeSymbol(self_type);
     const auto new_self_sym = MakeShared<scopes::TypeSymbol>(
-        MakeUnique<asts::TypeIdentifierAst>(0uz, "Self", nullptr), new_cls_scope.TySym->Type, &new_cls_scope,
+        MakeUnique<asts::TypeIdentifierAst>(0uz, "Self", nullptr), sm->SelfProto(), &new_cls_scope,
         new_sup_scope_ptr);
-    new_self_sym->AliasStmt = MakeUnique<asts::TypeStatementAst>(
-        SPP_NO_ANNOTATIONS, nullptr, asts::TypeIdentifierAst::FromString("Self"), nullptr, nullptr, self_type);
-    old_self_sym->AliasedBySyms.EmplaceBack(new_self_sym);
     new_sup_scope_ptr->AddTypeSymbol(new_self_sym);
 
     // Run generic substitution on the aliases in the new scope.
