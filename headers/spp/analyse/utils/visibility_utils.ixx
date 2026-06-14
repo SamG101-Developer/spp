@@ -39,6 +39,7 @@ namespace spp::analyse::utils::visibility_utils {
         scopes::VariableSymbol const &sym,
         asts::Ast const &access_ast,
         scopes::Scope const &definition_scope,
-        scopes::ScopeManager const &sm)
+        scopes::ScopeManager const &sm,
+        asts::meta::CompilerMetaData const &meta)
         -> void;
 }

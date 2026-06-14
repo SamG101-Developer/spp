@@ -37,62 +37,67 @@ auto spp::analyse::utils::visibility_utils::CheckTypeMemberVisibility(
     -> void {
     using V = asts::utils::Visibility;
     using errors::SppAccessViolationError;
+    if (meta.IgnoreAccessModifierViolations) { return; }
     if (sym.Visibility == V::kPublic) { return; }
 
     const auto accessing_module = sm.CurrentScope->ParentModule();
     const auto definition_module = type_scope.ParentModule();
     auto enclosing_scope = sm.CurrentScope->GetEnclosingTypeScope(meta);
     enclosing_scope = enclosing_scope ? enclosing_scope->NonGenericScope : nullptr;
+    const auto vis_name = VisibilityName(sym.Visibility);
 
     // Private class member: only accessible from the same class, in the same module.
     const auto good_private = enclosing_scope == &type_scope and accessing_module == definition_module;
     RaiseIf<SppAccessViolationError>(
         sym.Visibility == V::kPrivate and not good_private,
-        {sm.CurrentScope, definition_module}, ERR_ARGS(access_ast, *sym.Name, VisibilityName(sym.Visibility), "symbol"));
+        {sm.CurrentScope, definition_module}, ERR_ARGS(access_ast, *sym.Name, vis_name, "symbol"));
 
     // Protected class member: only accessible from the same or subclass, in the module that class was defined in.
     const auto good_protected = good_private or (enclosing_scope and genex::contains(enclosing_scope->SupScopes(), &type_scope) and accessing_module == enclosing_scope->ParentModule());
     RaiseIf<SppAccessViolationError>(
         sym.Visibility == V::kProtected and not good_protected,
-        {sm.CurrentScope, definition_module}, ERR_ARGS(access_ast, *sym.Name, VisibilityName(sym.Visibility), "symbol"));
+        {sm.CurrentScope, definition_module}, ERR_ARGS(access_ast, *sym.Name, vis_name, "symbol"));
 
     // Package class member: accessible within any module that is in this package.
     const auto good_package = good_protected or accessing_module->TopLevelParentModule() == definition_module->TopLevelParentModule();
     RaiseIf<SppAccessViolationError>(
         sym.Visibility == V::kPackage and not good_package,
-        {sm.CurrentScope, definition_module}, ERR_ARGS(access_ast, *sym.Name, VisibilityName(sym.Visibility), "symbol"));
+        {sm.CurrentScope, definition_module}, ERR_ARGS(access_ast, *sym.Name, vis_name, "symbol"));
 }
 
 auto spp::analyse::utils::visibility_utils::CheckModuleMemberVisibility(
     scopes::VariableSymbol const &sym,
     asts::Ast const &access_ast,
     scopes::Scope const &definition_scope,
-    scopes::ScopeManager const &sm)
+    scopes::ScopeManager const &sm,
+    asts::meta::CompilerMetaData const &meta)
     -> void {
     //
     using V = asts::utils::Visibility;
     using errors::SppAccessViolationError;
+    if (meta.IgnoreAccessModifierViolations) { return; }
     if (sym.Visibility == V::kPublic) { return; }
 
     // Define the accessing module and the definition module.
     const auto accessing_module = sm.CurrentScope->ParentModule();
     const auto definition_module = definition_scope.ParentModule();
+    const auto vis_name = VisibilityName(sym.Visibility);
 
     // Private module member: only accessible from the same module.
     const auto good_private = accessing_module == definition_module;
     RaiseIf<SppAccessViolationError>(
         sym.Visibility == V::kPrivate and not good_private,
-        {sm.CurrentScope, definition_module}, ERR_ARGS(access_ast, *sym.Name, VisibilityName(sym.Visibility), "symbol"));
+        {sm.CurrentScope, definition_module}, ERR_ARGS(access_ast, *sym.Name, vis_name, "symbol"));
 
     // Protected module member: accessible from children modules.
     const auto good_protected = good_private or genex::contains(accessing_module->Ancestors(), definition_module);
     return RaiseIf<SppAccessViolationError>(
         sym.Visibility == V::kProtected and not good_protected,
-        {sm.CurrentScope, definition_module}, ERR_ARGS(access_ast, *sym.Name, VisibilityName(sym.Visibility), "symbol"));
+        {sm.CurrentScope, definition_module}, ERR_ARGS(access_ast, *sym.Name, vis_name, "symbol"));
 
     // Package module member: accessible within any module that is in the same package.
     const auto good_package = good_protected or accessing_module->TopLevelParentModule() == definition_module->TopLevelParentModule();
     RaiseIf<SppAccessViolationError>(
         sym.Visibility == V::kPackage and not good_package,
-        {sm.CurrentScope, definition_module}, ERR_ARGS(access_ast, *sym.Name, VisibilityName(sym.Visibility), "symbol"));
+        {sm.CurrentScope, definition_module}, ERR_ARGS(access_ast, *sym.Name, vis_name, "symbol"));
 }
