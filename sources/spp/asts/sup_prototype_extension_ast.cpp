@@ -470,7 +470,7 @@ auto spp::asts::SupPrototypeExtensionAst::CheckDoubleExtension(
     auto check_double = [this, &check_scope](analyse::scopes::Scope const *sc) {
         auto dummy = GenericInferenceMap();
         const auto ext = sc->AstNode->To<SupPrototypeExtensionAst>();
-        return ext and
+        return ext != nullptr and
             RelaxedTypeEq(*ext->Name, *Name, *sc, check_scope, dummy, false, false) and
             TypeEq(*ext->SuperClass, *SuperClass, *sc, check_scope, false);
     };
