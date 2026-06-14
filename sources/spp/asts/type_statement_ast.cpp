@@ -17,6 +17,8 @@ import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_parameter_group_ast;
+import spp.asts.generic_parameter_comp_ast;
+import spp.asts.generic_parameter_type_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -174,10 +176,10 @@ auto spp::asts::TypeStatementAst::Stage4_QualifyTypes(
     // Get the old type's symbol, without generics.
     const auto stripped_old_sym = sm->CurrentScope->GetTypeSymbol(OldType->WithoutGenerics(), false);
     if (not stripped_old_sym->IsGeneric) {
-        auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, _TrackingScope ? _TrackingScope : sm->CurrentScope);
+        auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, _TrackingScope);
         GnParamGroup->Stage4_QualifyTypes(&tm, meta);
-        OldType->Stage4_QualifyTypes(&tm, meta);
-        OldType->Stage7_AnalyseSemantics(sm, meta);
+        OldType->Stage4_QualifyTypes(&tm, meta); // Qualify from scope of lowest level alias
+        OldType->Stage7_AnalyseSemantics(sm, meta); // Analyse in this scope (generics are in this scope)
 
         const auto old_sym = sm->CurrentScope->GetTypeSymbol(OldType);
         _AliasSym->Type = old_sym->Type;
@@ -223,9 +225,10 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
         OldType->Stage7_AnalyseSemantics(sm, meta);
 
         const auto cls_sym = sm->CurrentScope->GetTypeSymbol(OldType);
-        if (cls_sym->Type) EnforceGenericConstraintsAllArgs(
-            *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup),
-            *sm->CurrentScope, *sm, *meta);
+        if (cls_sym->Type)
+            EnforceGenericConstraintsAllArgs(
+                *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup),
+                *sm->CurrentScope, *sm, *meta);
 
         sm->MoveOutOfCurrentScope();
         return;
@@ -243,8 +246,8 @@ auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
     iter_copy = sm->CurrentIterator();
     Stage3_GenTopLvlAliases(sm, meta);
 
-    sm->Reset(current_scope, iter_copy);
-    Stage4_QualifyTypes(sm, meta);
+    // sm->Reset(current_scope, iter_copy);
+    // Stage4_QualifyTypes(sm, meta);
 }
 
 auto spp::asts::TypeStatementAst::Stage8_CheckMemory(

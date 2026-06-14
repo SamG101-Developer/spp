@@ -1191,8 +1191,11 @@ auto spp::analyse::utils::type_utils::RecursiveAliasSearch(
         if (old_sym->AliasStmt == nullptr and (use_stmt_propagating_generics == nullptr or use_stmt_propagating_generics->Args.IsEmpty())) { break; }
     }
 
+    old_type = tracking_scope->GetTypeSymbol(old_type->WithoutGenerics())->FqName()->WithGenerics(AstClone(old_type->TypeParts().Back()->GnArgGroup));
+
+    auto &temp = *old_type->TypeParts().Back()->GnArgGroup;
     func_utils::NameGnArgs(
-        *old_type->TypeParts().Back()->GnArgGroup, *extract_params(*old_sym), *old_type, *sm, *meta, false);
+        temp, *extract_params(*old_sym), *old_type, *sm, *meta, false);
     old_type = old_type->SubstituteGenerics(generic_args->GetAllArgs());
     return std::make_tuple(old_type, final_generic_params, tracking_scope);
 }
