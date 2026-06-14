@@ -827,7 +827,7 @@ auto spp::analyse::utils::type_utils::CreateGenericSupScope(
     asts::meta::CompilerMetaData *meta)
     -> std::tuple<scopes::Scope*, scopes::Scope*> {
     // Create a new scope for the generic substituted super scope.
-    const auto self_type = asts::AstName(old_sup_scope.AstNode)->SubstituteGenerics(generic_args.Args | genex::views::ptr | genex::to<Vec>());
+    const auto self_type = asts::AstName(old_sup_scope.AstNode)->SubstituteGenerics(generic_args.GetAllArgs());
     auto new_sup_scope = MakeUnique<scopes::Scope>(old_sup_scope);
     auto new_sup_scope_ptr = new_sup_scope.get();
     new_sup_scope_ptr->InternalTable = old_sup_scope.InternalTable;
@@ -854,7 +854,7 @@ auto spp::analyse::utils::type_utils::CreateGenericSupScope(
     // Run generic substitution on the aliases in the new scope.
     for (auto const &scoped_sym : new_sup_scope_ptr->AllTypeSymbols(true)) {
         if (scoped_sym->AliasStmt != nullptr) {
-            auto old_type_sub = scoped_sym->AliasStmt->OldType->SubstituteGenerics(generic_args.Args | genex::views::ptr | genex::to<Vec>());
+            auto old_type_sub = scoped_sym->AliasStmt->OldType->SubstituteGenerics(generic_args.GetAllArgs());
             // old_type_sub->Stage7_AnalyseSemantics(&tm, meta);  // Todo: Why is this commented?
             const auto old_type_sub_sym = new_sup_scope_ptr->GetTypeSymbol(old_type_sub);
 
@@ -875,14 +875,14 @@ auto spp::analyse::utils::type_utils::CreateGenericSupScope(
 
     // Run generic substitution on the constants in the new scope.
     for (auto const &scoped_sym : new_sup_scope_ptr->AllVarSymbols(true)) {
-        auto old_type_sub = scoped_sym->Type->SubstituteGenerics(generic_args.Args | genex::views::ptr | genex::to<Vec>());
+        auto old_type_sub = scoped_sym->Type->SubstituteGenerics(generic_args.GetAllArgs());
         scoped_sym->Type = std::move(old_type_sub);
     }
 
     // Create the scope for the new super class type. This will handle recursive sup-scope creation.
     auto super_cls_scope = static_cast<scopes::Scope*>(nullptr);
     if (const auto ext_ast = old_sup_scope.AstNode->To<asts::SupPrototypeExtensionAst>(); ext_ast != nullptr) {
-        const auto new_fq_super_type = ext_ast->SuperClass->SubstituteGenerics(generic_args.Args | genex::views::ptr | genex::to<Vec>());
+        const auto new_fq_super_type = ext_ast->SuperClass->SubstituteGenerics(generic_args.GetAllArgs());
         new_fq_super_type->Stage7_AnalyseSemantics(&tm, meta);
         super_cls_scope = new_cls_scope.GetTypeSymbol(new_fq_super_type)->LinkedScope;
     }
