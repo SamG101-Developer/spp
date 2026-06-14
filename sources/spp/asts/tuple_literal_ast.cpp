@@ -109,7 +109,7 @@ auto spp::asts::TupleLiteralAst::Stage7_AnalyseSemantics(
         auto elem_type = elem->InferType(sm, meta);
         RaiseIf<SppSecondClassBorrowViolationError>(
             IsTypeBorrowed(*elem_type, *sm),
-            {sm->CurrentScope}, ERR_ARGS(*elem, *elem_type, "array element type"));
+            {sm->CurrentScope}, ERR_ARGS(*elem, *elem_type, "tuple element type"));
     }
 
     // Analyse the inferred tuple type to generate the generic implementation.
