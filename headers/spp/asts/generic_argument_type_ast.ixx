@@ -28,7 +28,8 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentTypeAst : GenericArgumentAst {
     Shared<TypeAst> Val;
 
     struct {
-        Shared<TypeAst> OriginalVal;
+        std::size_t OriginalValPosStart;
+        std::size_t OriginalValPosEnd;
     } Source;
 
     /**
