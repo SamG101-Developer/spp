@@ -1,4 +1,5 @@
 module spp.asts.generate.common_types;
+import spp.asts.convention_ref_ast;
 import spp.asts.expression_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
@@ -8,6 +9,7 @@ import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.type_unary_expression_ast;
+import spp.asts.type_unary_expression_operator_borrow_ast;
 import spp.asts.type_unary_expression_operator_namespace_ast;
 import spp.asts.type_ast;
 import genex;
@@ -177,6 +179,10 @@ auto spp::asts::generate::common_types::StringViewType(std::size_t pos) -> Share
     Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("StrView"), nullptr);
     type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("string_view")), nullptr), std::move(type));
     type = MakeShared<TypeUnaryExpressionAst>(MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr), std::move(type));
+
+    // As it is a view, we add the "&" convention by default.
+    auto op = MakeShared<TypeUnaryExpressionOperatorBorrowAst>(MakeUnique<ConventionRefAst>(nullptr));
+    type = MakeShared<TypeUnaryExpressionAst>(op, std::move(type));
     return type;
 }
 
