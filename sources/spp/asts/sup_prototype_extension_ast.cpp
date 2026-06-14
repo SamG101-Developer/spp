@@ -99,13 +99,6 @@ auto spp::asts::SupPrototypeExtensionAst::Stage1_PreProcess(
     if (Name->IsCompilerGeneratedType()) { return; }
     Ast::Stage1_PreProcess(ctx);
 
-    // Substitute the "Self" parameter's type with the name of the type being superimposed over.
-    const auto self_gen_sub = MakeUnique<GenericArgumentTypeKeywordAst>(
-        generate::common_types::SelfType(PosStart()), nullptr, Name);
-    auto gen_sub = Vec<GenericArgumentAst*>(1);
-    gen_sub[0] = self_gen_sub.get();
-    SuperClass = SuperClass->SubstituteGenerics(gen_sub);
-
     // Preprocess the implementation.
     Impl->Stage1_PreProcess(this);
 
@@ -207,12 +200,8 @@ auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
         const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
         const auto self_sym = MakeShared<analyse::scopes::TypeSymbol>(
             MakeUnique<TypeIdentifierAst>(Name->PosStart(), "Self", nullptr),
-            cls_sym->Type, cls_sym->LinkedScope, sm->CurrentScope);
-        self_sym->AliasStmt = MakeUnique<TypeStatementAst>(
-            SPP_NO_ANNOTATIONS, nullptr,
-            TypeIdentifierAst::FromString("Self"), nullptr, nullptr, Name);
+            sm->SelfProto(), cls_sym->LinkedScope, sm->CurrentScope);
         sm->CurrentScope->AddTypeSymbol(self_sym);
-        sm->CurrentScope->GetTypeSymbol(Name)->AliasedBySyms.EmplaceBack(self_sym);
     }
 
     // Analyse the supertype after Self has been added (allows use in generic arguments to the superclass).
@@ -340,6 +329,15 @@ auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
     // Move to the next scope.
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
+
+    // Re-map "Self" to the true type.
+    if (not Name->IsCompilerGeneratedType()) {
+        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
+        const auto self_sym = sm->CurrentScope->GetTypeSymbol(MakeUnique<TypeIdentifierAst>(Name->PosStart(), "Self", nullptr), true);
+        self_sym->Type = cls_sym->Type;
+        cls_sym->AliasedBySyms.EmplaceBack(self_sym);
+    }
+
     GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
 
     Name->ResetCache();

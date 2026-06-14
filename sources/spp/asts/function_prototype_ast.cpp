@@ -177,17 +177,6 @@ auto spp::asts::FunctionPrototypeAst::Stage1_PreProcess(
     // Get the name of either the module, sup, or sup-ext context name.
     Ast::Stage1_PreProcess(ctx);
 
-    // Substitute the "Self" parameter's type with the name of the method.
-    if (ctx->To<ModulePrototypeAst>() == nullptr and FnParamGroup->GetSelfParam() != nullptr) {
-        const auto self_gen_sub = MakeUnique<GenericArgumentTypeKeywordAst>(
-            generate::common_types::SelfType(PosStart()), nullptr, AstName(ctx));
-        auto gen_sub = Vec<GenericArgumentAst*>(1);
-        gen_sub[0] = self_gen_sub.get();
-
-        for (auto const &x : FnParamGroup->Params) { x->Type = x->Type->SubstituteGenerics(gen_sub); }
-        ReturnType = ReturnType->SubstituteGenerics(gen_sub);
-    }
-
     // Convert the "fun" function to a "sup" superimposition of a "Fun[Mov|Mut|Ref]" type over a mock type.
     auto mock_class_name = TypeIdentifierAst::FromIdentifier(*Name->ToFuncIdentifier());
     auto function_type = _DeduceMockClassType();

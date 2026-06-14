@@ -176,12 +176,8 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
         const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
         const auto self_sym = MakeShared<analyse::scopes::TypeSymbol>(
             MakeUnique<TypeIdentifierAst>(Name->PosStart(), "Self", nullptr),
-            cls_sym->Type, cls_sym->LinkedScope, sm->CurrentScope);
-        self_sym->AliasStmt = MakeUnique<TypeStatementAst>(
-            SPP_NO_ANNOTATIONS, nullptr,
-            TypeIdentifierAst::FromString("Self"), nullptr, nullptr, Name);
+            sm->SelfProto(), cls_sym->LinkedScope, sm->CurrentScope);
         sm->CurrentScope->AddTypeSymbol(self_sym);
-        sm->CurrentScope->GetTypeSymbol(Name)->AliasedBySyms.EmplaceBack(self_sym);
     }
 
     // Load the implementation and move out of the scope.
@@ -196,6 +192,7 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage6_PreAnalyseSemantics(
     // Move to the next scope.
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
+
     // Name->Stage7_AnalyseSemantics(sm, meta);
     Impl->Stage6_PreAnalyseSemantics(sm, meta);
     sm->MoveOutOfCurrentScope();
@@ -211,13 +208,23 @@ auto spp::asts::SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
     // Move to the next scope.
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
+
     GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
     Name->ResetCache();
     Name->Stage7_AnalyseSemantics(sm, meta);
 
+    // Re-map "Self" to the true type.
+    if (not Name->IsCompilerGeneratedType()) {
+        const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
+        const auto self_sym = sm->CurrentScope->GetTypeSymbol(MakeUnique<TypeIdentifierAst>(Name->PosStart(), "Self", nullptr), true);
+        self_sym->Type = cls_sym->Type;
+        cls_sym->AliasedBySyms.EmplaceBack(self_sym);
+    }
+
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name);
-    if (cls_sym->Type) EnforceGenericConstraintsAllArgs(
-        *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
+    if (cls_sym->Type)
+        EnforceGenericConstraintsAllArgs(
+            *cls_sym->Type->GnParamGroup, *GenericArgumentGroupAst::FromParams(*GnParamGroup), *sm->CurrentScope, *sm, *meta);
     Impl->Stage7_AnalyseSemantics(sm, meta);
     sm->MoveOutOfCurrentScope();
 }
