@@ -95,9 +95,11 @@ auto spp::asts::FunctionCallArgumentAst::InferType(
     CompilerMetaData *meta)
     -> Shared<TypeAst> {
     // Infer the type from the value expression, unless an explicit "self" type has been given.
-    return _InjectedSelfType != nullptr
-        ? _InjectedSelfType
-        : Val->InferType(sm, meta)->WithConvention(AstClone(Conv));
+    if (_InjectedSelfType != nullptr) { return _InjectedSelfType; }
+
+    auto type = Val->InferType(sm, meta);
+    if (Conv) { type = type->WithConvention(AstClone(Conv)); }
+    return type;
 }
 
 auto spp::asts::FunctionCallArgumentAst::SetSelfType(
