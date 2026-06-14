@@ -48,6 +48,7 @@ spp::asts::meta::CompilerMetaData::CompilerMetaData() {
     LlvmAssignmentTargetType = nullptr;
     LlvmPhi = nullptr;
     CmpResult = nullptr;
+    IgnoreAccessModifierViolations = false;
 }
 
 auto spp::asts::meta::CompilerMetaData::Save() -> void {
@@ -55,13 +56,13 @@ auto spp::asts::meta::CompilerMetaData::Save() -> void {
         CurrentStage, ReturnTypeOverloadResolverType, AssignmentTarget,
         AssignmentTargetType, IgnoreMissingElseBranchForInference, CaseCondition, ClsSym,
         OverriddenScopeForClosure, EnclosingFunctionScope, EnclosingFunctionFlavour, EnclosingFunctionRetType,
-        EnclosingFunctionSourceRetType,
-        EnclosingFunctionCmp, CurrentLambdaOuterScope, TargetCallFunctionPrototype, TargetCallWasFunctionAsync,
-        PreventAutoGeneratorResume, LetStatementExplicitType, LetStatementValue, LetStatementFromUninitialized,
-        LoopDoubleCheckActive, LoopCurrentDepth, LoopCurrentAst, LoopReturnTypes, ObjectInitType,
-        InferSource, InferTarget, PostfixExpressionLhs, UnaryExpressionRhs, SkipTypeAnalysisGenericChecks,
-        TypeAnalysisTypeScope, IgnoreCmpGeneric, AllowMoveDeref, LlvmEndBB, LlvmCtx,
-        LlvmAssignmentTarget, LlvmAssignmentTargetType, LlvmPhi, std::move(CmpArgs), nullptr);
+        EnclosingFunctionSourceRetType, EnclosingFunctionCmp, CurrentLambdaOuterScope, TargetCallFunctionPrototype,
+        TargetCallWasFunctionAsync, PreventAutoGeneratorResume, LetStatementExplicitType, LetStatementValue,
+        LetStatementFromUninitialized, LoopDoubleCheckActive, LoopCurrentDepth, LoopCurrentAst, LoopReturnTypes,
+        ObjectInitType, InferSource, InferTarget, PostfixExpressionLhs, UnaryExpressionRhs,
+        SkipTypeAnalysisGenericChecks, TypeAnalysisTypeScope, IgnoreCmpGeneric, AllowMoveDeref, LlvmEndBB, LlvmCtx,
+        LlvmAssignmentTarget, LlvmAssignmentTargetType, LlvmPhi, std::move(CmpArgs), nullptr,
+        IgnoreAccessModifierViolations);
 }
 
 auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
@@ -108,6 +109,8 @@ auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
     LlvmAssignmentTargetType = state.LlvmAssignmentTargetType;
     LlvmPhi = state.LlvmPhi;
     CmpArgs = std::move(state.CmpArgs);
+    CmpResult = std::move(state.CmpResult);
+    IgnoreAccessModifierViolations = state.IgnoreAccessModifierViolations;
 }
 
 auto spp::asts::meta::CompilerMetaData::Depth() const
